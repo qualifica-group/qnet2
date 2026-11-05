@@ -27,7 +27,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Current status', 'Available actions'],
           rows: [
-            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract** (only if never validated), **Terminate contract**'],
+            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract** (only if never validated), **Program** (only if already validated), **Terminate contract**'],
             ['Closed (positive)', '**Program**, **Terminate contract**, **Reopen contract**'],
             ['Closed (negative)', '**Reopen contract**'],
             ['"Sospeso"', '**Reopen contract**'],
@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Validate contract**: set the **Validation date** (not in the future). It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza").',
+            '**Validate contract**: set the **Validation date** (not in the future). It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza"): those contracts show **Program** instead, unless suspended.',
             '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**.',
             'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open or Pending: press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
             '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status. Reopening a Closed (positive) or Closed (negative) contract also clears the validation date and author, so the contract can be validated again; the previous values stay in **Activity history**.',
@@ -95,7 +95,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'In the **Contracts** table select from 2 to 50 contracts that are **Closed won**.',
+            'In the **Contracts** table select from 2 to 50 contracts that are **Closed won** or **already validated** (and not suspended).',
             'Press the **Schedule single work order** action (you need the schedule permission).',
             'In the window the lines are grouped by contract. Only the **revenue lines** of a branch with the setting on and **not yet in a work order** can be selected; the others stay visible but disabled.',
             'Pick the lines: they must all belong to the **same branch** and come from **at least two** different offers.',
@@ -105,7 +105,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order cannot be reused. If at least one selected contract is not yet in a **Closed (positive)** status (for example **Da validare**) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows which contracts, with their customer, must be removed from the selection.',
+          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order cannot be reused. If at least one selected contract cannot be programmed yet (not validated, for example **Da validare**, or suspended) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows which contracts, with their customer, must be removed from the selection.',
         },
       ],
     },
@@ -142,6 +142,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+        },
+        {
+          type: 'paragraph',
+          text: "When you choose a category tab, the columns of the flexible fields of the contract's **source quote** appear at the end of the list, read-only. You can filter and sort them, but to edit them you must open the quote.",
         },
         {
           type: 'note',

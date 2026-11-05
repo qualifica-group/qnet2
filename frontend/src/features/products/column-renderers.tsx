@@ -80,6 +80,16 @@ function CostTypeCell({ value }: ICellRendererParams) {
   )
 }
 
+/** Renders the `revenue_type` column (spec 0350): "code name" of the default revenue sub-account, em dash when unset. */
+function RevenueTypeCell({ value }: ICellRendererParams) {
+  const revenueType = value as { code?: string; name: string } | null
+  return revenueType ? (
+    <span className="truncate">{revenueType.code ? `${revenueType.code} ${revenueType.name}` : revenueType.name}</span>
+  ) : (
+    <span className="text-muted-foreground">—</span>
+  )
+}
+
 /**
  * Renders the `unit_of_measure` column (spec 0088): the unit's SYMBOL as a
  * badge — the compact form, the same one the offer lines show — with an info
@@ -132,5 +142,6 @@ export const productColumnRenderers: TableRendererMap = {
   unit_of_measure: (params) => <UnitOfMeasureCell {...params} />,
   product_typology: (params) => <ProductTypologyCell {...params} />,
   cost_type: (params) => <CostTypeCell {...params} />,
+  revenue_type: (params) => <RevenueTypeCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

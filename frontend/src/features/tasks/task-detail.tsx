@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Form } from '@/components/ui/form'
 import { RecordBody } from '@/components/detail/record-body'
@@ -18,6 +19,7 @@ import {
   TaskDetailPeopleSection,
   TaskDetailPlanningSection,
 } from '@/features/tasks/task-detail-sections'
+import { taskDetailQueryKey } from '@/features/tasks/api'
 import { TaskSubtasksSection } from '@/features/tasks/task-subtasks-section'
 import { useTaskInlineEdit } from '@/features/tasks/use-task-inline-edit'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
@@ -57,7 +59,10 @@ export function TaskDetailView(props: TaskDetailViewProps) {
 
 function TaskDetailContent({ task, onOpenSubtask, onCreateSubtask, onChanged }: TaskDetailViewProps) {
   const { t } = useTranslation()
-  const collaborationTabs = useTaskCollaborationTabs(task)
+  const queryClient = useQueryClient()
+  const collaborationTabs = useTaskCollaborationTabs(task, () => {
+    void queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(task.id) })
+  })
   const editor = useTaskInlineEdit(task, onChanged)
   const createdAt = formatDateTime(task.created_at)
   const updatedAt = formatDateTime(task.updated_at)

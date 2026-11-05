@@ -6,11 +6,11 @@ use App\DataObjects\Notes\CreateNoteData;
 use App\DataObjects\Notes\NoteCursor;
 use App\DataObjects\Notes\NotePage;
 use App\DataObjects\Notes\NoteQuoteScope;
+use App\DataObjects\Notes\NoteSaveResult;
 use App\DataObjects\Notes\UpdateNoteData;
-use App\DataObjects\Shared\ForSelectQuery;
-use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Note;
 use App\Models\User;
+use App\Notes\Mentions\MentionEnlistment;
 use App\Notes\Mentions\MentionValidator;
 use App\Notes\NoteEntityRegistry;
 use App\Notes\NoteThreadResolver;
@@ -47,6 +47,7 @@ final class NoteService
         private readonly NoteThreadResolver $threadResolver,
         private readonly MentionValidator $mentionValidator,
         private readonly NoteBodyProcessor $bodyProcessor,
+        private readonly MentionEnlistment $enlistment,
     ) {}
 
     /**
@@ -92,6 +93,7 @@ final class NoteService
             $hasMore ? $this->cursorFor($items->last())->encode() : null,
             $hasMore,
             $this->registry->quoteScopes($entityType, $record),
+            $this->registry->mentionOutsideFor($user, $entityType, $record),
         );
     }
 
@@ -99,7 +101,7 @@ final class NoteService
      * POST /api/notes. `notes.create` is checked by the controller (Policy);
      * read access to the host record is checked HERE, ANDed (D-6).
      */
-    public function create(User $user, CreateNoteData $data): Note
+    public function create(User $user, CreateNoteData $data): NoteSaveResult
     {
         $record = $this->authorizedRecord($user, $data->entityType, $data->entityId);
         $alias = $record->getMorphClass();
@@ -109,13 +111,19 @@ final class NoteService
         // NoteBodyProcessor::sanitize() for why a brand new inline image
         // does not survive this pass).
         $sanitizedBody = $this->bodyProcessor->sanitize($data->body);
-        $this->mentionValidator->validate($data->entityType, $record, $sanitizedBody, $data->mentionIds);
+        $outsideIds = $this->mentionValidator->validate($data->entityType, $record, $sanitizedBody, $data->mentionIds, $user);
 
         $parentId = $this->threadResolver->resolveParentId($data->parentId, $record, $alias);
         $quoteId = $this->resolveQuoteId($data->quoteId, $parentId);
 
-        return DB::transaction(function () use ($user, $record, $alias, $sanitizedBody, $data, $parentId, $quoteId): Note {
-            // Step 2: persist the owner first — RichTextImageProcessor
+        $enlisted = [];
+
+        $note = DB::transaction(function () use ($user, $record, $alias, $sanitizedBody, $data, $parentId, $quoteId, $outsideIds, &$enlisted): Note {
+            // Step 2: enlist the outsiders FIRST, so a refusal (full team)
+            // rolls back before any file side effect (spec 0353, D-6).
+            $enlisted = $this->enlistment->enlist($data->entityType, $record, $outsideIds);
+
+            // Step 3: persist the owner first — RichTextImageProcessor
             // attaches images to an ALREADY EXISTING record.
             $note = new Note(['body' => $sanitizedBody]);
             $note->notable_type = $alias;
@@ -125,7 +133,7 @@ final class NoteService
             $note->user_id = $user->id;
             $note->save();
 
-            // Step 3: extract the ORIGINAL body's inline images into rich_text
+            // Step 4: extract the ORIGINAL body's inline images into rich_text
             // attachments of the note (D-3/D-2) and persist the final body. A
             // second save inside the same transaction — accepted trade-off
             // (no attachment can exist before its owner's row does).
@@ -134,10 +142,12 @@ final class NoteService
             $note->body = $result->html;
             $note->save();
 
-            $this->syncMentionsAndNotify($note, $user, $data->entityType, $record, $data->mentionIds);
+            $this->syncMentionsAndNotify($note, $user, $data->entityType, $record, $data->mentionIds, $enlisted);
 
             return $note->load(['author.avatar', 'mentionedUsers.avatar', 'quote']);
         });
+
+        return new NoteSaveResult($note, $enlisted);
     }
 
     /**
@@ -146,16 +156,20 @@ final class NoteService
      * record, since it may have been revoked since the note was created
      * (data_contract: "403 ... o se hai perso l'accesso al record ospite").
      */
-    public function update(User $user, Note $note, UpdateNoteData $data): Note
+    public function update(User $user, Note $note, UpdateNoteData $data): NoteSaveResult
     {
         [$entityType, $record] = $this->reauthorizeHost($user, $note);
 
         $sanitizedBody = $this->bodyProcessor->sanitize($data->body);
-        $this->mentionValidator->validate($entityType, $record, $sanitizedBody, $data->mentionIds);
+        $outsideIds = $this->mentionValidator->validate($entityType, $record, $sanitizedBody, $data->mentionIds, $user);
 
         $referencedAttachmentIds = [];
+        $enlisted = [];
 
-        $note = DB::transaction(function () use ($note, $data, $user, $entityType, $record, &$referencedAttachmentIds): Note {
+        $note = DB::transaction(function () use ($note, $data, $user, $entityType, $record, $outsideIds, &$referencedAttachmentIds, &$enlisted): Note {
+            // Enlist first: a refusal rolls back before any file side effect.
+            $enlisted = $this->enlistment->enlist($entityType, $record, $outsideIds);
+
             // The note already exists (unlike create()): images attach
             // directly against it, working off the ORIGINAL $data->body so a
             // newly pasted image is decoded/stored (D-3/D-2).
@@ -166,7 +180,7 @@ final class NoteService
             $note->edited_at = now();
             $note->save();
 
-            $this->syncMentionsAndNotify($note, $user, $entityType, $record, $data->mentionIds);
+            $this->syncMentionsAndNotify($note, $user, $entityType, $record, $data->mentionIds, $enlisted);
 
             return $note->load(['author.avatar', 'mentionedUsers.avatar', 'quote']);
         });
@@ -175,7 +189,7 @@ final class NoteService
         // saved body no longer references (file + row).
         $this->bodyProcessor->deleteUnreferenced($note, $referencedAttachmentIds);
 
-        return $note;
+        return new NoteSaveResult($note, $enlisted);
     }
 
     /**
@@ -197,40 +211,6 @@ final class NoteService
         }
 
         $note->delete();
-    }
-
-    /**
-     * GET /api/notes/mentionable-users — the D-10 set, paginated exactly
-     * like every other for-select endpoint (ADR 0011): `ids[]` hydration is
-     * still scoped to the mentionable set, never bypassing it.
-     */
-    public function mentionableUsers(User $user, string $entityType, int $entityId, ForSelectQuery $query): ForSelectResult
-    {
-        $record = $this->authorizedRecord($user, $entityType, $entityId);
-
-        $scope = $this->registry->mentionableUsersQuery($entityType, $record)
-            ->select(['id', 'name', 'email'])
-            ->with('avatar');
-
-        $filtered = clone $scope;
-
-        if ($query->hasSearch()) {
-            $term = '%'.$query->search.'%';
-            $filtered->where(fn (Builder $q) => $q->where('name', 'like', $term)->orWhere('email', 'like', $term));
-        }
-
-        $window = $query->page($filtered, static fn ($ordered) => $ordered->orderBy('name')->orderBy('id'));
-        $page = $window->items;
-
-        if ($query->hasIds()) {
-            $missingIds = array_values(array_diff($query->ids, $page->pluck('id')->all()));
-
-            if ($missingIds !== []) {
-                $page = $page->concat((clone $scope)->whereIn('id', $missingIds)->get());
-            }
-        }
-
-        return $window->withItems($page);
     }
 
     private function authorizedRecord(User $user, string $entityType, int $entityId): Model
@@ -262,8 +242,9 @@ final class NoteService
      * transaction commits so a slow/unavailable channel never blocks the save.
      *
      * @param  array<int, int>  $mentionIds
+     * @param  array<int, int>  $enlistedIds  people this save added to the record (spec 0353): their notification says so
      */
-    private function syncMentionsAndNotify(Note $note, User $author, string $entityType, Model $record, array $mentionIds): void
+    private function syncMentionsAndNotify(Note $note, User $author, string $entityType, Model $record, array $mentionIds, array $enlistedIds): void
     {
         $sync = $note->mentionedUsers()->sync($mentionIds);
         $note->load('mentionedUsers.avatar');
@@ -279,9 +260,11 @@ final class NoteService
         // The deep link is NOT precomputed here: it depends on the recipient's
         // own abilities, so the notification resolves it per notifiable
         // (same rule as RecordAssignmentNotification, spec 0081).
-        DB::afterCommit(function () use ($newRecipientIds, $note, $author, $label, $entityType, $record): void {
+        $enlistedRole = $enlistedIds === [] ? null : $this->registry->enlisterFor($entityType)?->enlistmentRole();
+
+        DB::afterCommit(function () use ($newRecipientIds, $note, $author, $label, $entityType, $record, $enlistedIds, $enlistedRole): void {
             $recipients = User::query()->whereIn('id', $newRecipientIds)->get();
-            Notification::send($recipients, new NoteMentionNotification($note, $author, $label, $entityType, $record));
+            Notification::send($recipients, new NoteMentionNotification($note, $author, $label, $entityType, $record, $enlistedIds, $enlistedRole));
         });
     }
 

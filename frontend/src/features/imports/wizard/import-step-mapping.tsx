@@ -1,15 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Controller, useForm, type FieldPath } from 'react-hook-form'
+import { useForm, type FieldPath } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { Columns3, CopyCheck, Loader2, MoveRight, Settings2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
+import { Columns3, CopyCheck, Loader2, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { FieldHint } from '@/components/field-hint'
 import type { CampaignForSelectMeta } from '@/features/campaigns/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { StepAlert, StepSectionHeader } from '@/features/imports/wizard/wizard-ui'
@@ -27,18 +24,22 @@ import {
   buildImportMappingSchema,
   type ImportMappingFormValues,
 } from '@/features/imports/wizard/import-mapping-schema'
+import { MappingColumnsTable } from '@/features/imports/wizard/mapping-columns-table'
+import { MappingExtrasLoader } from '@/features/imports/wizard/mapping-extras-loader'
 import { computeMappingSignals } from '@/features/imports/wizard/mapping-signals'
 import {
   MatchingTemplateBanner,
   SavedTemplatesMenu,
   SaveAsTemplateToggle,
 } from '@/features/imports/wizard/mapping-template-controls'
-import { EXTRA_TARGET, IGNORE_TARGET } from '@/features/imports/wizard/types'
+import { IGNORE_TARGET } from '@/features/imports/wizard/types'
 import type {
   DetectedColumn,
   ImportGlobalFieldDescriptor,
   ImportRunDetail,
+  ValueMappings,
 } from '@/features/imports/wizard/types'
+import { ValueMappingPanel } from '@/features/imports/wizard/value-mapping-panel'
 
 /** Stable empty fallback so the `columns` useMemo dependency keeps its identity. */
 const EMPTY_COLUMNS: DetectedColumn[] = []
@@ -90,6 +91,8 @@ export interface ImportStepMappingProps {
     globalConfig: ImportConfigFormValues,
     /** Present only when the operator checked "save as template" (spec 0035 AC-011). */
     saveAsTemplate?: { name: string },
+    /** Present only for domains with a "Valori" panel (spec 0348); leads never passes it. */
+    valueMappings?: ValueMappings,
   ) => void
   isSubmitting: boolean
   submitError: string | null
@@ -118,6 +121,9 @@ export function ImportStepMapping({
   // (`imports.leads.fields.*`), so they resolve through the default translator,
   // not the `importWizard` one.
   const { t: tLabel } = useTranslation()
+  // A domain may reword the lead-flavoured defaults (`domains.<resource>.*`).
+  const domainText = (key: string, fallback: string) =>
+    run ? t(`domains.${run.resource}.${key}`, { defaultValue: fallback }) : fallback
   const fields = run?.fields ?? []
   const columns = run?.detected_columns ?? EMPTY_COLUMNS
   const dedupModes = run?.dedup_modes ?? []
@@ -164,6 +170,7 @@ export function ImportStepMapping({
   const [intendedFromFile, setIntendedFromFile] = useState<string[]>([])
 
   const mappingValues = form.watch('mapping')
+  const watchedGlobalConfig = form.watch('global_config')
   // Re-key the index-based form values back to the real column keys for the
   // signals (which reason per column key). Computed inline every render (not
   // memoized): `form.watch` may hand back a stable reference on a change, and
@@ -224,7 +231,7 @@ export function ImportStepMapping({
     form.setValue(`global_config.${SOURCE_GLOBAL_FIELD_ID}` as FieldPath<ImportMappingFormValues>, sourceId)
   }
 
-  const handleSubmit = form.handleSubmit((values) => {
+  function submitValues(values: ImportMappingFormValues, valueMappings: ValueMappings | undefined) {
     if (fieldsMissingColumn.length > 0) {
       return
     }
@@ -235,12 +242,15 @@ export function ImportStepMapping({
     }
     const globalConfig = stripFileBackedConfig(values.global_config, globalFields, mappedFromFileIds)
     const trimmedTemplateName = templateName.trim()
-    if (saveAsTemplate && trimmedTemplateName.length > 0) {
-      onSubmit(realMapping, values.dedup_strategy, globalConfig, { name: trimmedTemplateName })
+    const template = saveAsTemplate && trimmedTemplateName.length > 0 ? { name: trimmedTemplateName } : undefined
+    if (valueMappings) {
+      onSubmit(realMapping, values.dedup_strategy, globalConfig, template, valueMappings)
+    } else if (template) {
+      onSubmit(realMapping, values.dedup_strategy, globalConfig, template)
     } else {
       onSubmit(realMapping, values.dedup_strategy, globalConfig)
     }
-  })
+  }
 
   // Applies a server-matched template's mapping/dedup strategy onto the form
   // (AC-009): every value stays a normal `setValue`, so it remains fully
@@ -259,11 +269,23 @@ export function ImportStepMapping({
 
   return (
     <Form {...form}>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      <MappingExtrasLoader
+        run={run}
+        form={form}
+        columns={columns}
+        keyedMapping={keyedMapping}
+        globalConfig={watchedGlobalConfig}
+      >
+        {(extras) => (
+          <form
+            onSubmit={form.handleSubmit((values) => submitValues(values, extras.valueMapping?.payload))}
+            className="flex flex-col gap-4"
+            noValidate
+          >
             <StepSectionHeader
               icon={Columns3}
               title={t('mapping.title')}
-              description={t('mapping.subtitle')}
+              description={domainText('mappingSubtitle', t('mapping.subtitle'))}
               aside={run ? <SavedTemplatesMenu domain={run.resource} /> : null}
             />
 
@@ -274,71 +296,15 @@ export function ImportStepMapping({
               />
             ) : null}
 
-            <div className="overflow-hidden rounded-lg border">
-              <div className="hidden gap-2 border-b bg-muted/40 px-3 py-2 sm:grid sm:grid-cols-[minmax(0,1fr)_1.25rem_16rem]">
-                <span className="text-xs font-medium text-muted-foreground">{t('mapping.columnHeader')}</span>
-                <span aria-hidden="true" />
-                <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                  {t('mapping.targetHeader')}
-                  <FieldHint text={t('mapping.hints.target')} label={t('mapping.hints.targetLabel')} />
-                </span>
-              </div>
-              <div className="divide-y">
-              {columns.map((column) => {
-                const fieldName = `mapping.${column.index}` as FieldPath<ImportMappingFormValues>
-                const currentTarget = mappingValues[String(column.index)] ?? IGNORE_TARGET
-                const isConflict = signals.conflictFieldIds.has(currentTarget)
-                const isMapped = currentTarget !== IGNORE_TARGET
-
-                return (
-                  <div
-                    key={`${column.index}-${column.name}`}
-                    className="flex flex-col gap-1.5 px-3 py-2.5 transition-colors hover:bg-muted/40 sm:grid sm:grid-cols-[minmax(0,1fr)_1.25rem_16rem] sm:items-center sm:gap-2"
-                  >
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-medium">{column.name}</span>
-                      {column.duplicate ? (
-                        <Badge variant="outline">{t('mapping.badges.duplicateColumn')}</Badge>
-                      ) : null}
-                      {isConflict ? (
-                        <Badge variant="destructive">{t('mapping.badges.conflict')}</Badge>
-                      ) : null}
-                    </div>
-                    <MoveRight
-                      aria-hidden="true"
-                      className={cn(
-                        'hidden size-4 transition-colors sm:block',
-                        isMapped ? 'text-primary' : 'text-muted-foreground/40',
-                      )}
-                    />
-                    <Controller
-                      control={form.control}
-                      name={fieldName}
-                      render={({ field }) => (
-                        <Select value={(field.value as string) || IGNORE_TARGET} onValueChange={field.onChange}>
-                          <SelectTrigger
-                            className={cn('w-full', !isMapped && 'text-muted-foreground')}
-                            aria-label={t('mapping.targetHeader')}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={IGNORE_TARGET}>{t('mapping.ignore')}</SelectItem>
-                            <SelectItem value={EXTRA_TARGET}>{t('mapping.extra')}</SelectItem>
-                            {fields.map((mappableField) => (
-                              <SelectItem key={mappableField.id} value={mappableField.id}>
-                                {mappableField.required ? `${tLabel(mappableField.label)} *` : tLabel(mappableField.label)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                )
-              })}
-              </div>
-            </div>
+            <MappingColumnsTable
+              columns={columns}
+              fields={fields}
+              attributeOptions={extras.attributeOptions}
+              control={form.control}
+              mappingValues={mappingValues}
+              conflictFieldIds={signals.conflictFieldIds}
+              domain={run?.resource}
+            />
 
             {signals.requiredMissing.length > 0 ? (
               <StepAlert>
@@ -359,7 +325,7 @@ export function ImportStepMapping({
                 <StepSectionHeader
                   icon={Settings2}
                   title={t('config.title')}
-                  description={t('config.subtitle')}
+                  description={domainText('configSubtitle', t('config.subtitle'))}
                 />
                 {fileBackedFields.map((fileBackedField) => (
                   <ImportCampaignSource
@@ -383,12 +349,14 @@ export function ImportStepMapping({
               </>
             ) : null}
 
+            {extras.valueMapping ? <ValueMappingPanel controller={extras.valueMapping} /> : null}
+
             <Separator />
 
             <StepSectionHeader
               icon={CopyCheck}
               title={t('mapping.duplicateStrategy')}
-              description={t('mapping.hints.dedup')}
+              description={domainText('dedupHint', t('mapping.hints.dedup'))}
             />
 
             <FormField
@@ -408,7 +376,7 @@ export function ImportStepMapping({
                     <SelectContent>
                       {dedupModes.map((mode) => (
                         <SelectItem key={mode} value={mode}>
-                          {t(`mapping.dedupModes.${mode}`, { defaultValue: mode })}
+                          {domainText(`dedupModes.${mode}`, t(`mapping.dedupModes.${mode}`, { defaultValue: mode }))}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -430,12 +398,14 @@ export function ImportStepMapping({
             <Separator />
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || extras.valueMapping?.blocked === true}>
                 {isSubmitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
                 {isSubmitting ? t('mapping.submitting') : t('mapping.submit')}
               </Button>
             </div>
           </form>
-        </Form>
+        )}
+      </MappingExtrasLoader>
+    </Form>
   )
 }

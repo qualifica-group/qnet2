@@ -74,7 +74,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
     {
         // Eager-load the derived relations to avoid N+1 when every row
         // projects them.
-        $query = Product::query()->with(['category', 'unitOfMeasure', 'productTypology', 'costType']);
+        $query = Product::query()->with(['category', 'unitOfMeasure', 'productTypology', 'costType', 'revenueType']);
         ProductStockColumn::withSum($query);
         $this->priceColumn->withEffectiveValue($query);
         $this->costColumn->withEffectiveValue($query);
@@ -172,6 +172,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'unit_of_measure' => $this->unitOfMeasureSummary($row->unitOfMeasure),
             'product_typology' => $this->productTypologySummary($row->productTypology),
             'cost_type' => $row->costType === null ? null : ['id' => $row->costType->id, 'name' => $row->costType->name, 'color' => $row->costType->color],
+            'revenue_type' => $row->revenueType === null ? null : ['id' => $row->revenueType->id, 'code' => $row->revenueType->code, 'name' => $row->revenueType->name],
             'product_type' => $row->product_type,
             'usages' => $row->usages?->map(static fn (ProductUsage $usage): string => $usage->value)->values()->all() ?? [],
             ProductStockColumn::COLUMN_ID => ProductStockColumn::value($actor, $row),

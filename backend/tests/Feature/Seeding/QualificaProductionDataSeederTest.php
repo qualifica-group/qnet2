@@ -78,7 +78,10 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
         ->and(User::query()->where('email', 'nicola.eliseo@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([UserService::PRIVILEGED_ROLE])
         ->and(User::query()->where('email', 'mario.esposito@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::ADMIN_ROLE])
         ->and(User::query()->where('email', 'enrico.ferrante@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::ADMIN_ROLE])
-        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::SUPERVISOR_ROLE])
+        // REQUIREMENT CHANGED (2026-11-03, spec 0348): the two request importers also hold `importatore-richieste`.
+        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->sole()->getRoleNames()->sort()->values()->all())->toBe(['importatore-richieste', OperatorRoleCatalogue::SUPERVISOR_ROLE])
+        ->and(User::query()->where('email', 'fabrizio.aliberti@qualificagroup.com')->sole()->getRoleNames()->sort()->values()->all())->toBe(['importatore-richieste', OperatorRoleCatalogue::SUPERVISOR_ROLE])
+        ->and(User::query()->where('email', 'giovanna.gervasio@qualificagroup.com')->sole()->can('request-management.import'))->toBeFalse()
         // Step 9 runs last: a staff account reports to the operators of step 7.
         ->and(User::query()->where('email', 'jessica.virgolini@qualificagroup.com')->with('employment.reportsTo')->sole()
             ->employment->reportsTo->pluck('email')->all())->toBe(['fabrizio.aliberti@qualificagroup.com', 'rosa.falzarano@qualificagroup.com']);

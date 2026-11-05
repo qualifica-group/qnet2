@@ -13,6 +13,7 @@ use App\Models\TaskTemplate;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
+use App\Services\Notifications\AssignmentNotifier;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
 use App\Services\WorkOrders\WorkOrderProgressEntryService;
@@ -106,6 +107,7 @@ class WorkOrderService
         private readonly WorkOrderTitleWriter $titleWriter,
         private readonly WorkOrderWorkflowStatusAssigner $statusAssigner,
         private readonly WorkOrderProgressEntryService $progressEntries,
+        private readonly AssignmentNotifier $assignmentNotifier,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -263,8 +265,8 @@ class WorkOrderService
 
             // Step 3: the two user pivots (spec 0096, D-1/D-3), inside the
             // same transaction: a 422 from Step 2 rolls both back (AC-027).
-            $workOrder->supervisors()->sync($data->supervisorIds);
-            PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots));
+            $supervisorSync = $workOrder->supervisors()->sync($data->supervisorIds);
+            $participantSync = PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots));
 
             // Step 4 (spec 0124, D-7): generate the Modello di Task's tasks,
             // AFTER the supervisors are synced (D-2: they are the generated
@@ -287,6 +289,9 @@ class WorkOrderService
             if ($workOrder->is_force_closed) {
                 $this->taskForceCloser->closeOpenTasks($workOrder, $workOrder->force_close_reason);
             }
+
+            // Step 6 (spec 0351): last, once code, title and status are final.
+            $this->notifyAddedMembers($workOrder, $supervisorSync['attached'], $participantSync['attached']);
 
             return $workOrder;
         });
@@ -359,18 +364,39 @@ class WorkOrderService
 
             // Full-replace only when the key was actually submitted
             // (AC-024): an untouched relation must not trigger a no-op sync.
+            $addedSupervisorIds = [];
+            $addedParticipantIds = [];
+
             if ($data->hasSupervisorIds()) {
-                $workOrder->supervisors()->sync($data->supervisorIds ?? []);
+                $addedSupervisorIds = $workOrder->supervisors()->sync($data->supervisorIds ?? [])['attached'];
                 $workOrder->unsetRelation('supervisors');
             }
 
             if ($data->hasParticipantSlots()) {
-                PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots ?? []));
+                $addedParticipantIds = PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots ?? []))['attached'];
                 $workOrder->unsetRelation('participants');
             }
+
+            // Spec 0351, D-2: only who just ENTERED the team; a slot move is not an assignment.
+            $this->notifyAddedMembers($workOrder, $addedSupervisorIds, $addedParticipantIds);
         });
 
         return $this->loadDetail($workOrder);
+    }
+
+    /**
+     * Spec 0351: tell the Responsabili and Partecipanti just added. The
+     * actor is null outside an HTTP request (the legacy migration, which
+     * mutes the notifier anyway).
+     *
+     * @param  array<int, int>  $supervisorIds
+     * @param  array<int, int>  $participantIds
+     */
+    private function notifyAddedMembers(WorkOrder $workOrder, array $supervisorIds, array $participantIds): void
+    {
+        $actor = Auth::user();
+
+        $this->assignmentNotifier->notifyWorkOrder($workOrder, $actor instanceof User ? $actor : null, $supervisorIds, $participantIds);
     }
 
     /**

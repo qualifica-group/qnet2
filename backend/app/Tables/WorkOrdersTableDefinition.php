@@ -349,6 +349,12 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             $allowed[] = 'progress';
         }
 
+        // Spec 0352: only while open / in progress (progress is preloaded per row).
+        if (Gate::forUser($actor)->allows('requestUpdate', $row)
+            && $this->statusResolver->progress($row)->status->acceptsUpdateRequest()) {
+            $allowed[] = 'request_update';
+        }
+
         if (! $row->hasAccountingDocuments() && Gate::forUser($actor)->allows('delete', $row)) {
             $allowed[] = 'delete';
         }

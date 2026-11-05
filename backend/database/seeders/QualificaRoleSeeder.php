@@ -9,6 +9,7 @@ use Database\Seeders\QualificaCatalog\CommercialBackOfficeRoleCatalogue as BackO
 use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue as HrOffice;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
 use Database\Seeders\QualificaCatalog\OwnAbsencesCatalogue as OwnAbsences;
+use Database\Seeders\QualificaCatalog\RequestImporterRoleCatalogue as RequestImporter;
 use Database\Seeders\QualificaCatalog\SeniorSalesRoleCatalogue as SeniorSales;
 use Database\Seeders\QualificaCatalog\StockKeeperRoleCatalogue as StockKeeper;
 use Illuminate\Database\Seeder;
@@ -61,9 +62,10 @@ class QualificaRoleSeeder extends Seeder
             );
         }
 
-        // Step 4: the `admin` role, outside the mansioni: the whole catalogue,
-        // the contractual data granted explicitly (see grantedFields).
-        $admin = $this->syncRole(Catalogue::ADMIN_ROLE, Catalogue::ADMIN_DESCRIPTION, $catalogue);
+        // Step 4: the `admin` role, outside the mansioni: the whole catalogue
+        // but the request import (its own role), the contractual data granted
+        // explicitly (see grantedFields).
+        $admin = $this->syncRole(Catalogue::ADMIN_ROLE, Catalogue::ADMIN_DESCRIPTION, $catalogue->reject(RequestImporter::PERMISSION)->values());
         $this->syncFieldPermissions($admin, grantedFields: HrOffice::SENSITIVE_FIELDS);
 
         // Step 4b: the HR office (spec 0283), held on top of a mansione.
@@ -89,6 +91,10 @@ class QualificaRoleSeeder extends Seeder
         // mansione, with the `stock` module only.
         $stockKeeper = $this->syncRole(StockKeeper::ROLE, StockKeeper::DESCRIPTION, $this->stockKeeperPermissions($catalogue));
         $this->syncFieldPermissions($stockKeeper);
+
+        // Step 4e: the request import (spec 0348), held on top of a mansione.
+        $requestImporter = $this->syncRole(RequestImporter::ROLE, RequestImporter::DESCRIPTION, collect([RequestImporter::PERMISSION])->intersect($catalogue)->values());
+        $this->syncFieldPermissions($requestImporter);
 
         // Step 5: drop the roles the Italian names replaced. A model delete, so
         // spatie detaches their permissions and memberships and the field
@@ -176,10 +182,11 @@ class QualificaRoleSeeder extends Seeder
             Catalogue::MARKETING => in_array($resource, Catalogue::MARKETING_MODULES, true)
                 || $this->isSelectOnlyGrant($resource, $ability, Catalogue::MARKETING_SELECT_ONLY_RESOURCES),
             Catalogue::LEAD_CONVERSION => in_array($permission, Catalogue::LEAD_CONVERSION_PERMISSIONS, true),
-            Catalogue::ALL_REQUESTS => $resource === Catalogue::REQUEST_MODULE
+            Catalogue::ALL_REQUESTS => ($resource === Catalogue::REQUEST_MODULE && $permission !== RequestImporter::PERMISSION)
                 || in_array($permission, Catalogue::REQUEST_EXTRA_PERMISSIONS, true)
                 || $this->isSelectOnlyGrant($resource, $ability, Catalogue::ALL_REQUESTS_SELECT_ONLY_RESOURCES),
             Catalogue::OWN_REQUESTS => ($resource === Catalogue::REQUEST_MODULE
+                    && $permission !== RequestImporter::PERMISSION
                     && ! in_array($ability, Catalogue::OWN_REQUESTS_DENIED_ABILITIES, true))
                 || in_array($permission, Catalogue::REQUEST_EXTRA_PERMISSIONS, true)
                 || $permission === Catalogue::FIELD_CHANGE_PROPOSAL

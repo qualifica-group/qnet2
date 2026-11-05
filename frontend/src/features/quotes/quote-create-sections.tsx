@@ -69,6 +69,7 @@ export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateS
           code: values.code ?? '',
           title: values.title ?? '',
           quoteDate: values.quote_date ?? '',
+          followUpDate: values.follow_up_date ?? null,
           status: null,
           opportunity: refs.opportunity,
         }}

@@ -288,6 +288,15 @@ final class WorkOrderColumnCatalog
                 'permission' => 'work-orders.view',
             ],
             [
+                // Spec 0352: opens the "Richiedi aggiornamento" dialog.
+                'key' => 'request_update',
+                'label' => 'workOrders.actions.requestUpdate.label',
+                'icon' => 'message-square-more',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'work-orders.requestUpdate',
+            ],
+            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

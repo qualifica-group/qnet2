@@ -33,6 +33,23 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'revenue-type',
+      title: 'Sottoconto ricavo delle righe',
+      blocks: [
+        { type: 'paragraph', text: 'Ogni riga porta un **Sottoconto ricavo** del piano dei conti, un dato **solo gestionale** che non compare sul documento.' },
+        {
+          type: 'list',
+          items: [
+            'Nell\'emissione la colonna **Sottoconto ricavo** è già compilata con la proposta (dal prodotto o dalla sua categoria; per le richieste Ente, il sottoconto predefinito delle provvigioni Ente). Puoi cambiarlo o svuotarlo.',
+            'Una riga aggiunta a mano mostra **Automatico (proposto al salvataggio)**: se non scegli nulla il sistema applica la proposta al salvataggio; se scegli un sottoconto o lo svuoti, vale la tua scelta.',
+            'Nel dettaglio di qualsiasi documento, anche **emesso o incassato**, chi può modificare le fatture cambia il sottoconto della singola riga dalla tabella Righe, senza toccare importi né altre righe. Le righe senza sottoconto mostrano **Da classificare**.',
+            'Le righe già esistenti vengono classificate in automatico quando è possibile; quelle che restano senza sottoconto si classificano a mano.',
+            'Se il cambio viene rifiutato (permesso mancante o sottoconto non valido) compare un messaggio e la riga resta com\'era.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'status',
       title: 'Stato dei pagamenti',
       blocks: [

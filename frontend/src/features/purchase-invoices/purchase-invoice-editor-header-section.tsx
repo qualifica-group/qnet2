@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { COMPANY_SITES_FOR_SELECT_RESOURCE } from '@/features/company-sites/for-select-api'
-import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import {
   BANK_ACCOUNT_FOR_SELECT_PARAMS,
@@ -178,8 +178,8 @@ export function PurchaseInvoiceEditorHeaderSection({
           resource={COST_TYPES_FOR_SELECT_RESOURCE}
           label={label('defaultCostType')}
           placeholder={label('selectCostType')}
-          selected={source.costType}
-          renderItem={costTypeOptionRenderer}
+          selected={null}
+          {...COST_SUB_ACCOUNT_SELECT_PROPS}
         />
         <PurchaseInvoiceEditorRelationField
           control={control}

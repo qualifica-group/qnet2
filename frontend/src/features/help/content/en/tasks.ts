@@ -415,6 +415,7 @@ const guide: HelpGuide = {
             'a task is closed: the notification reaches the requester and the watchers, and the assignees only if there is more than one; if the task was in validation, the assignees still get a separate approval notification;',
             'a task is reopened, blocked or unblocked;',
             'someone requests an update: the chosen recipients get it, with a copy (**CC**) to the watchers whenever the request targets the assignees.',
+            'someone mentions you in a note with **Mention anyone** and adds you as a watcher: you only get the mention notification ("mentioned you and added you as Watcher"), not the new watcher one.',
           ],
         },
         {

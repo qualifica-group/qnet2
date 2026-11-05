@@ -5,7 +5,8 @@ import { RecordField, RecordFieldList, RecordSection } from '@/components/detail
 import { RecordRelationEditor, RecordTextEditor } from '@/components/record-form/record-field-editors'
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { COMPANY_SITES_FOR_SELECT_RESOURCE } from '@/features/company-sites/for-select-api'
-import { CostTypeBadge } from '@/features/cost-types/cost-type-badge'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
+import { CostSubAccountValue } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account-value'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { BANK_ACCOUNT_FOR_SELECT_PARAMS, FINANCIAL_ACCOUNTS_FOR_SELECT_RESOURCE } from '@/features/financial-accounts/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
@@ -107,9 +108,9 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           canEdit={unlocked}
           label={field('cost_type')}
           inline={inline}
-          editor={<RecordRelationEditor control={control} name="cost_type_id" label={field('cost_type')} resource={COST_TYPES_FOR_SELECT_RESOURCE} selected={invoice.cost_type} placeholder={pick('selectCostType')} />}
+          editor={<RecordRelationEditor control={control} name="cost_type_id" label={field('cost_type')} resource={COST_TYPES_FOR_SELECT_RESOURCE} selected={null} placeholder={pick('selectCostType')} {...COST_SUB_ACCOUNT_SELECT_PROPS} />}
         >
-          {invoice.cost_type ? <CostTypeBadge name={invoice.cost_type.name} color={invoice.cost_type.color} /> : <DetailEmpty />}
+          {invoice.cost_type ? <CostSubAccountValue id={invoice.cost_type.id} name={invoice.cost_type.name} /> : <DetailEmpty />}
         </RecordInlineField>
         <RecordInlineField
           field="work_order_id"

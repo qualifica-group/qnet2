@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0352-work-order-update-request" status="approved" owner="utente" date="2026-11-04">
+
+  <goal>
+    "Richiedi aggiornamento" sulla commessa: chi ha il permesso apre un dialog, sceglie un gruppo fisso di
+    destinatari (Partecipanti, Responsabili, Tutti), scrive un messaggio obbligatorio e i destinatari ricevono
+    una notifica in-app e una mail con il link alla commessa. Stesso comportamento della richiesta di
+    aggiornamento del task (spec 0153 D-14).
+  </goal>
+
+  <context>
+    - Modello di riferimento (task, spec 0118/0153): `TaskRequestUpdateController` (invokable),
+      `RequestTaskUpdateRequest` (target + message 3..2000, 422 se il gruppo non ha destinatari),
+      `RequestTaskUpdateData`, `TaskActionService::requestUpdate()` (nessuna scrittura sul record, nessuna
+      transazione, attore mai escluso), `TaskUpdateRequested` (database+mail, ShouldQueue, `is_cc`),
+      FE `task-request-update-dialog.tsx`, `useRequestTaskUpdate`, azione di riga `request_update`.
+    - Commessa = `App\Models\WorkOrder`: `supervisors()` (pivot `work_order_supervisor`, "Responsabili") e
+      `participants()` (pivot `work_order_participant`, "Partecipanti"). Visibilita' `WorkOrderVisibilityScope`,
+      authz `WorkOrderPolicy` (`withinPerimeter` permesso + scope), flag azioni
+      `WorkOrdersAuthorization::actionPermissions()`, azioni di riga `WorkOrderColumnCatalog::actions()` +
+      `WorkOrdersTableDefinition::actionsFor()`.
+    - Stato calcolato: `WorkOrderStatusResolver::progress($wo)->status` (Open, InProgress, Completed, Closed =
+      chiusura forzata). Le righe della griglia hanno gia' il progress precaricato (`withProgress`): nessuna
+      query in piu' per riga.
+    - Deep link: `RecordLinkResolver::pathFor($user, AssignmentTargetEnum::WorkOrder, $id)` (stessa regola della
+      notifica di assegnazione, spec 0351). Etichetta record: `RecordDetails::labelFor($workOrder)`.
+    - Permessi: `SyncPermissions` crea i permessi da `WorkOrderPolicy::abilities()`; etichetta in
+      `it-permissions.ts`/`en-permissions.ts`.
+    - Decisioni utente 2026-11-04: D-1..D-4 sotto.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Destinatari = tre gruppi fissi calcolati dai pivot CORRENTI della commessa:
+      `participants` (Partecipanti; i Responsabili che non sono anche Partecipanti ricevono una COPIA, notifica
+      separata con `is_cc: true`), `supervisors` (solo Responsabili), `all` (unione, un solo invio, nessuna copia).
+      Un gruppo che non risolve nessuno = 422 su `target`. L'attore non viene escluso (come nel task).</decision>
+    <decision id="D-2">Chi invia: nuovo permesso `work-orders.requestUpdate` AND commessa nel perimetro di
+      visibilita' dell'utente (`WorkOrderPolicy::requestUpdate`, stesso `withinPerimeter` delle altre azioni).
+      Nessun ruolo lo riceve in automatico tranne super-admin: si assegna dall'editor ruoli.</decision>
+    <decision id="D-3">Disponibile solo su commesse Aperte o In corso. Su Completata o Chiusa (chiusura forzata)
+      l'azione e' nascosta (flag `request_update` false) e il server risponde 422.</decision>
+    <decision id="D-4">Punti di ingresso: pulsante nell'intestazione del dettaglio commessa e azione di riga
+      `request_update` nella griglia Commesse; entrambi aprono lo STESSO dialog. L'azione di riga carica il
+      dettaglio fresco (`fetchWorkOrder`) prima di aprire il dialog, come nel task.</decision>
+    <decision id="D-5">Riuso FE: il dialog del task e quello della commessa condividono la stessa struttura
+      (radio dei gruppi con conteggio, hint copia, messaggio 3..2000, errori 422 inline). Si estrae un componente
+      condiviso `features/shared/request-update-dialog.tsx` (schema, riga radio, form); il dialog del task diventa
+      un wrapper sottile che gli passa gruppi, testi e mutation. Nessun cambio di comportamento sul task: i suoi
+      test esistenti restano invariati e verdi.</decision>
+    <decision id="D-6">La risposta 200 non restituisce la commessa (la richiesta non scrive nulla sul record):
+      envelope `{ success: true, message, data: null }`. Il FE non invalida query.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: route `POST work-orders/{workOrder}/request-update`, `WorkOrderRequestUpdateController` (invokable),
+        `RequestWorkOrderUpdateRequest`, `RequestWorkOrderUpdateData`, service `WorkOrderUpdateRequester`
+        (`handle()`), notifica `WorkOrderUpdateRequested`.</item>
+      <item>BE: ability `requestUpdate` in `WorkOrderPolicy` (+ `abilities()`), flag `request_update` in
+        `WorkOrdersAuthorization::actionPermissions()`, azione di riga in `WorkOrderColumnCatalog` +
+        `WorkOrdersTableDefinition::actionsFor()`.</item>
+      <item>BE: traduzioni IT (`lang/it.json`) dei testi di notifica/mail ed errori.</item>
+      <item>FE: `features/shared/request-update-dialog.tsx` (estratto dal task), refactor
+        `task-request-update-dialog.tsx` a wrapper, nuovo `work-order-request-update-dialog.tsx`, mutation in
+        `features/work-orders/api.ts` + hook, pulsante in `work-order-detail-header.tsx`, caso
+        `request_update` in `use-work-order-row-actions.tsx`, icona di riga.</item>
+      <item>FE: i18n `it-work-orders.ts`/`en-work-orders.ts` (testi dialog), `it-permissions.ts`/`en-permissions.ts`
+        (etichetta permesso).</item>
+      <item>Manuale: guida in-app `help/content/{it,en}/work-orders.ts` (nuova sezione, stessi id) e manuale
+        Claude Docs (sezione Commesse).</item>
+      <item>Test Pest (endpoint, policy, flag, azione di riga, notifica) e Vitest (dialog commessa, dialog task
+        invariato, header, row action).</item>
+    </in>
+    <out>
+      <item>Nessuna modifica al comportamento della richiesta di aggiornamento del task.</item>
+      <item>Nessuna scrittura sulla commessa, nessuna voce di activity log, nessuno storico delle richieste.</item>
+      <item>Nessuna assegnazione automatica del nuovo permesso ai ruoli esistenti (tranne super-admin).</item>
+      <item>Nessun template email configurabile (testo fisso come nel task).</item>
+      <item>Nessun throttle sull'endpoint (backend.md §2).</item>
+      <item>Nessuna modifica ai file commesse/contratti attualmente modificati nel working tree e non committati.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/request-update">
+      <request>
+        { "target": "participants" | "supervisors" | "all", "message": string (trim, min 3, max 2000) }
+      </request>
+      <response status="200">
+        { "success": true, "message": "Update request sent.", "data": null }
+      </response>
+      <errors>
+        401 non autenticato; 403 senza `work-orders.requestUpdate` o commessa fuori perimetro;
+        404 commessa inesistente; 422 `errors.target` (valore non ammesso o gruppo senza destinatari),
+        `errors.message` (mancante, &lt;3, &gt;2000); 422 senza `errors` con messaggio
+        "This work order is already completed or closed." su commessa Completata/Chiusa.
+      </errors>
+    </endpoint>
+    <permissions_flag>
+      `permissions.actions.request_update: boolean` nel dettaglio (`GET /api/work-orders/{id}`) =
+      can('requestUpdate', $wo) AND stato in {open, in_progress}.
+    </permissions_flag>
+    <row_action key="request_update" label="workOrders.actions.requestUpdate.label" icon="message-square-more"
+      type="action" confirm="false" permission="work-orders.requestUpdate"/>
+    <notification class="WorkOrderUpdateRequested" via="database,mail">
+      data: { title: "Aggiornamento richiesto", message: ":requester ha chiesto un aggiornamento sulla commessa
+      \":label\" " + messaggio (limit 2000) [+ frase "non puoi aprire questo record" se nessun link],
+      level: "info", action_url: "/work-orders/{id}" | null, is_cc: boolean }.
+      Mail: subject = title, saluto, corpo, pulsante "Apri" solo se action_url non e' null.
+    </notification>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con `work-orders.requestUpdate` che vede una commessa Aperta con 2
+      Partecipanti e 1 Responsabile non partecipante, quando invia target=participants, allora i 2 Partecipanti
+      ricevono `WorkOrderUpdateRequested` con is_cc=false e il Responsabile la riceve con is_cc=true; risposta 200
+      con data null.</criterion>
+    <criterion id="AC-002">target=supervisors notifica solo i Responsabili, nessuna copia.</criterion>
+    <criterion id="AC-003">target=all notifica l'unione senza duplicati (un utente in entrambi i ruoli riceve una
+      sola notifica), nessuna copia.</criterion>
+    <criterion id="AC-004">Un gruppo vuoto (es. supervisors su commessa senza Responsabili) risponde 422 con
+      `errors.target` e non invia nulla.</criterion>
+    <criterion id="AC-005">message mancante, di 2 caratteri o di 2001 caratteri risponde 422 su `errors.message`;
+      target fuori dall'elenco risponde 422 su `errors.target`.</criterion>
+    <criterion id="AC-006">Utente senza `work-orders.requestUpdate` riceve 403; utente con il permesso ma
+      commessa fuori perimetro riceve 403; nessuna notifica inviata.</criterion>
+    <criterion id="AC-007">Commessa Completata o con chiusura forzata: 422 e nessuna notifica.</criterion>
+    <criterion id="AC-008">La notifica salvata ha title, message che contiene nome del richiedente, etichetta
+      della commessa e messaggio, action_url `/work-orders/{id}` per chi ha `work-orders.view`, null (con frase di
+      accesso mancante) per chi non lo ha; la mail ha il pulsante solo con action_url.</criterion>
+    <criterion id="AC-009">`permissions.actions.request_update` e' true solo con permesso + perimetro + stato
+      Aperta/In corso; false negli altri casi.</criterion>
+    <criterion id="AC-010">La griglia Commesse offre `request_update` nelle azioni di riga solo alle stesse
+      condizioni di AC-009.</criterion>
+    <criterion id="AC-011">`work-orders.requestUpdate` compare nel catalogo permessi (SyncPermissions) e la
+      commessa non viene modificata (updated_at invariato, nessuna activity).</criterion>
+    <criterion id="AC-012">FE: il dialog commessa mostra i tre gruppi con il conteggio, disabilita quelli a zero,
+      mostra l'hint copia sotto Partecipanti quando ci sono Responsabili, valida il messaggio 3..2000, invia
+      `{ target, message }` trim, chiude e mostra il toast di successo.</criterion>
+    <criterion id="AC-013">FE: un 422 con `errors.target`/`errors.message` viene mostrato sotto il campo; gli
+      altri errori in toast.</criterion>
+    <criterion id="AC-014">FE: il pulsante nell'intestazione del dettaglio appare solo con
+      `permissions.actions.request_update`; l'azione di riga carica il dettaglio e apre lo stesso dialog.</criterion>
+    <criterion id="AC-015">FE: i test esistenti del dialog del task restano verdi senza modifiche dopo
+      l'estrazione del componente condiviso.</criterion>
+    <criterion id="AC-016">Guide in-app IT ed EN della commessa contengono la nuova sezione con gli stessi id;
+      `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Envelope di progetto. Authz server-side su endpoint, flag e azione di riga.
+    - Controller sottile; logica in `WorkOrderUpdateRequester::handle()` con `// Step N`.
+    - Notifica ShouldQueue, link calcolato per destinatario, mai URL assoluti in `action_url`.
+    - File entro 300/500 righe (`WorkOrdersTableDefinition.php` e' a 420: aggiunta minima).
+    - Test mirati durante lo sviluppo; suite completa a fine feature (`nice -n 10 composer test -- --processes=4`),
+      Vitest, ESLint, Pint, `npx tsc -b --force`.
+    - Nessun comando distruttivo sul DB di sviluppo.
+  </constraints>
+
+  <microtasks>
+    <task id="MT-01" lane="backend">Permesso, policy, flag, azione di riga, route, request/DTO, service,
+      notifica, traduzioni IT + test Pest AC-001..AC-011.</task>
+    <task id="MT-02" lane="frontend" depends="contratto">Estrazione `request-update-dialog` condiviso + refactor
+      dialog task (AC-015), dialog commessa, api/hook, header, row action, i18n + test Vitest AC-012..AC-014.</task>
+    <task id="MT-03" lane="docs" depends="MT-01,MT-02">Guide in-app IT/EN (AC-016), manuale Claude Docs,
+      HANDOFF.</task>
+    <task id="MT-04" lane="verify" depends="MT-01,MT-02,MT-03">Suite completa BE/FE, lint, typecheck.</task>
+  </microtasks>
+</spec>

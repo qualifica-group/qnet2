@@ -1,6 +1,7 @@
 <?php
 
 use App\Imports\LeadsImportDefinition;
+use App\Imports\RequestManagementImportDefinition;
 
 return [
 
@@ -26,6 +27,7 @@ return [
 
     'definitions' => [
         'leads' => LeadsImportDefinition::class,
+        'request-management' => RequestManagementImportDefinition::class,
     ],
 
     /*
@@ -94,13 +96,13 @@ return [
     'column_aliases' => [
         // "Nome" alone carries the whole name; next to a "Cognome" column it
         // is re-targeted to `first_name` by `contextual_aliases` below.
-        'full_name' => ['nome completo', 'full name', 'nominativo', 'nome'],
+        'full_name' => ['nome completo', 'full name', 'nominativo', 'nome', 'nome e cognome'],
         'first_name' => ['first name'],
         'last_name' => ['cognome', 'last name'],
         'email' => ['e mail', 'indirizzo email', 'indirizzo e mail'],
         // Spec 0139: one telephone field — a "cellulare" column maps here too.
         'phone' => ['telefono', 'tel', 'cellulare', 'cell'],
-        'company_name' => ['ragione sociale', 'azienda', 'company'],
+        'company_name' => ['ragione sociale', 'azienda', 'company', 'nome azienda'],
         'tax_code' => ['codice fiscale', 'cf'],
         'vat_number' => ['partita iva', 'piva', 'vat'],
         'street' => ['indirizzo', 'via'],
@@ -108,12 +110,23 @@ return [
         'country' => ['nazione', 'stato'],
         'region' => ['regione'],
         'province' => ['provincia'],
-        'city' => ['citta', 'comune'],
+        'city' => ['citta', 'comune', 'comune di residenza'],
         'notes' => ['note'],
         // Spec 0108: the column carries the campaign CODE (CMP-0001), never
         // its name — "campagna" is an alias of the code column on purpose,
         // a file holding names there produces motivated per-row errors.
         'campaign_code' => ['codice campagna', 'campagna', 'campaign code', 'cod campagna'],
+        // Spec 0348 (request-management): ids that exist for this domain only.
+        // `stato` is also an alias of `country` above: the domain lists
+        // `workflow_status` before `country`, and ColumnMapper keeps the FIRST
+        // field claiming a header.
+        'operator_name' => ['operatore'],
+        'reporter_name' => ['segnalatore'],
+        'workflow_status' => ['stato'],
+        'source_name' => ['fonte'],
+        'next_callback_date' => ['data richiamo', 'data di richiamo'],
+        'product_name' => ['prodotto'],
+        'product_category_name' => ['categoria prodotto'],
     ],
 
     /*
@@ -128,6 +141,53 @@ return [
     */
     'contextual_aliases' => [
         'first_name' => ['when_matched' => 'last_name', 'aliases' => ['nome']],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Request-management import (spec 0348)
+    |--------------------------------------------------------------------------
+    |
+    | Keys of `status_aliases` / `source_aliases` are compared after
+    | App\Support\Import\ImportValueMappings::normalize() (case and spacing
+    | insensitive); the value is the NAME of the existing status / source the
+    | file value stands for.
+    */
+    'request_management' => [
+        // Time of day the planned callback gets (the file carries a date only), in the app timezone.
+        'callback_time' => env('IMPORT_REQUEST_CALLBACK_TIME', '09:00'),
+
+        'status_aliases' => [
+            'NR' => 'Non risponde',
+            'Trattativa' => 'In trattativa',
+            'Attesa_App APL' => 'Attesa _ App. APL',
+        ],
+
+        'source_aliases' => [
+            'social' => 'Social',
+            'sito' => 'Sito',
+            'spoki' => 'Spoki',
+            'centralino' => 'Centralino',
+            'diretto + passaparola' => 'Diretto / Passaparola',
+            'passaparola' => 'Passaparola',
+        ],
+
+        // Heading used in the general notes for a value that could not be stored.
+        'note_labels' => [
+            'email' => 'Email',
+            'phone' => 'Telefono',
+            'operator_name' => 'Operatore',
+            'reporter_name' => 'Segnalatore',
+            'next_callback_date' => 'Data richiamo',
+            'product_name' => 'Prodotto',
+        ],
+
+        // Product matching: tokens that carry no meaning, and the smallest
+        // prefix of a product word a file abbreviation may be ("Agg" for "Aggiornamento").
+        'product_stopwords' => ['per', 'il', 'lo', 'la', 'le', 'di', 'del', 'della', 'da', 'e', 'ed', 'con', 'in', 'a', 'i', 'un', 'una', 'su'],
+        // Words of a "Prodotto" cell that name the course family or the site, not the product.
+        'product_noise_words' => ['corso', 'milano'],
+        'product_min_prefix' => 3,
     ],
 
 ];

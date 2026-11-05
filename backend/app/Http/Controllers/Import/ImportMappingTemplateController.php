@@ -11,6 +11,7 @@ use App\Imports\Support\ColumnAnalysis;
 use App\Models\ImportMappingTemplate;
 use App\Models\ImportRun;
 use App\Models\User;
+use App\Support\Import\ImportValueMappings;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -50,7 +51,7 @@ class ImportMappingTemplateController extends BaseApiController
             $definition = $this->registry->resolve($domain); // 404 if unknown
             /** @var User $actor */
             $actor = $request->user();
-            $this->authorize('create', ImportRun::class);
+            $this->authorize('create', [ImportRun::class, $domain]);
             $this->authorizeImportGate($definition, $actor);
 
             $templates = ImportMappingTemplate::query()
@@ -75,7 +76,7 @@ class ImportMappingTemplateController extends BaseApiController
             $definition = $this->registry->resolve($domain); // 404 if unknown
             /** @var User $actor */
             $actor = $request->user();
-            $this->authorize('create', ImportRun::class);
+            $this->authorize('create', [ImportRun::class, $domain]);
             $this->authorizeImportGate($definition, $actor);
 
             $run = $this->resolveRun((int) $request->validated('import_run_id'), $domain);
@@ -87,6 +88,7 @@ class ImportMappingTemplateController extends BaseApiController
                 'name' => $request->validated('name'),
                 'columns' => ColumnAnalysis::columnKeys($run->detected_columns ?? []),
                 'column_mapping' => $run->column_mapping,
+                'value_mappings' => ImportValueMappings::reusableEntries($run->value_mappings),
                 'dedup_strategy' => $run->dedup_strategy,
             ]);
 

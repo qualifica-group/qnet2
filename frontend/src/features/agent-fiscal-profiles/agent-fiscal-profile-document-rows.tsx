@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
+import { CostSubAccountValue } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account-value'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
 import type {
@@ -69,16 +71,17 @@ export function CostTypeRow({ inline, canEdit, refs }: RowProps) {
           label={t('agentFiscalProfiles.form.costType')}
           resource={COST_TYPES_FOR_SELECT_RESOURCE}
           searchPlaceholder={t('agentFiscalProfiles.form.costTypeSearch')}
-          selected={refs.costType}
+          selected={null}
           placeholder={t('agentFiscalProfiles.form.costTypePlaceholder')}
           emptyLabel={t('agentFiscalProfiles.form.costTypeEmpty')}
           errorLabel={t('agentFiscalProfiles.form.costTypeError')}
           clearLabel={t('common.clear')}
           retryLabel={t('common.retry')}
+          {...COST_SUB_ACCOUNT_SELECT_PROPS}
         />
       }
     >
-      {refs.costType ? refs.costType.name : <DetailEmpty />}
+      {refs.costType ? <CostSubAccountValue id={refs.costType.id} name={refs.costType.name} /> : <DetailEmpty />}
     </RecordInlineField>
   )
 }

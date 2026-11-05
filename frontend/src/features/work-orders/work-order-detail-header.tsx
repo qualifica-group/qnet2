@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Hammer, TrendingUp } from 'lucide-react'
+import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Hammer, MessageSquareMore, TrendingUp } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,7 @@ import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
+import { WorkOrderRequestUpdateDialog } from '@/features/work-orders/work-order-request-update-dialog'
 import { WorkOrderClosureActions } from '@/features/work-orders/work-order-closure-actions'
 import type { WorkOrderDetailWithPermissions, WorkOrderStatusValue, WorkOrderType } from '@/features/work-orders/types'
 
@@ -89,6 +90,7 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
       actions={
         <>
           <WorkOrderProgressAction workOrder={workOrder} onChanged={onChanged} />
+          {workOrder.permissions.actions.request_update ? <WorkOrderRequestUpdateAction workOrder={workOrder} /> : null}
           <WorkOrderClosureActions workOrder={workOrder} onChanged={onChanged} />
         </>
       }
@@ -114,6 +116,28 @@ function WorkOrderProgressAction({ workOrder, onChanged }: WorkOrderDetailHeader
         {t('workOrders.progress.action')}
       </Button>
       <WorkOrderProgressDialog workOrderId={open ? workOrder.id : null} onOpenChange={setOpen} onMutated={onChanged} />
+    </>
+  )
+}
+
+/** Spec 0352: the "Richiedi aggiornamento" action, the same dialog the grid row action opens. */
+function WorkOrderRequestUpdateAction({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant={ACTION_BUTTON_VARIANT.action}
+        className="bg-card"
+        size="sm"
+        onClick={() => setOpen(true)}
+      >
+        <MessageSquareMore aria-hidden="true" />
+        {t('workOrders.actions.requestUpdate.label')}
+      </Button>
+      <WorkOrderRequestUpdateDialog open={open} onOpenChange={setOpen} workOrder={workOrder} />
     </>
   )
 }

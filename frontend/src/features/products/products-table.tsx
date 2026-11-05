@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Tags } from 'lucide-react'
+import { Coins, Plus, Tags } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { BulkAction } from '@/features/table/use-bulk-actions-slot'
 import { productColumnRenderers } from '@/features/products/column-renderers'
 import { deleteProduct } from '@/features/products/api'
+import { ProductRevenueTypeDialog } from '@/features/products/product-revenue-type-dialog'
 import { ProductCostTypeDialog, type ProductCostTypeTarget } from '@/features/products/product-cost-type-dialog'
 
 /** Domain key used to mount the generic table for products. */
@@ -26,6 +27,10 @@ const PRODUCTS_DOMAIN = 'products'
 
 const UPDATE_PERMISSION = 'products.update'
 const NO_TARGETS: readonly ProductCostTypeTarget[] = []
+
+function toTargets(rows: TableRow[]): ProductCostTypeTarget[] {
+  return rows.map((row) => ({ id: Number(row.id), name: String(row.name ?? row.id) }))
+}
 
 /**
  * Thin Products adapter over the generic table. It mounts `<TableView>` with
@@ -49,6 +54,7 @@ export function ProductsTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const [costTypeTargets, setCostTypeTargets] = useState<readonly ProductCostTypeTarget[]>(NO_TARGETS)
+  const [revenueTypeTargets, setRevenueTypeTargets] = useState<readonly ProductCostTypeTarget[]>(NO_TARGETS)
   const { can } = useAbilities()
   const canUpdate = can(UPDATE_PERMISSION)
 
@@ -107,8 +113,13 @@ export function ProductsTable() {
               key: 'set-cost-type',
               label: t('products.bulkCostType.bulkAction'),
               icon: Tags,
-              onSelect: () =>
-                setCostTypeTargets(selection.rows.map((row) => ({ id: Number(row.id), name: String(row.name ?? row.id) }))),
+              onSelect: () => setCostTypeTargets(toTargets(selection.rows)),
+            },
+            {
+              key: 'set-revenue-type',
+              label: t('revenueTypes.bulk.bulkAction'),
+              icon: Coins,
+              onSelect: () => setRevenueTypeTargets(toTargets(selection.rows)),
             },
           ]
         : [],
@@ -154,6 +165,16 @@ export function ProductsTable() {
         onOpenChange={(open) => (open ? undefined : setCostTypeTargets(NO_TARGETS))}
         onApplied={() => {
           setCostTypeTargets(NO_TARGETS)
+          refreshGrid()
+        }}
+      />
+
+      <ProductRevenueTypeDialog
+        key={`revenue-${revenueTypeTargets.map((target) => target.id).join(',')}`}
+        targets={revenueTypeTargets}
+        onOpenChange={(open) => (open ? undefined : setRevenueTypeTargets(NO_TARGETS))}
+        onApplied={() => {
+          setRevenueTypeTargets(NO_TARGETS)
           refreshGrid()
         }}
       />

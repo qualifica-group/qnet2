@@ -9,6 +9,7 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
+use App\Models\WorkOrder;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
@@ -61,6 +62,13 @@ final class RecordDetails
     ];
 
     /**
+     * @var array<int, string>
+     */
+    private const array WORK_ORDER_RELATIONS = [
+        'quote.opportunity.registry', 'workOrderWorkflowStatus', 'supervisors', 'participants',
+    ];
+
+    /**
      * @return array<string, string>
      */
     public static function for(Model $record): array
@@ -69,6 +77,7 @@ final class RecordDetails
             $record instanceof Registry => self::forRegistry($record),
             $record instanceof Opportunity => self::forOpportunity($record),
             $record instanceof Quote => self::forQuote($record),
+            $record instanceof WorkOrder => self::forWorkOrder($record),
             default => [],
         };
     }
@@ -78,17 +87,24 @@ final class RecordDetails
         return match (true) {
             $record instanceof Registry => AssignmentTargetEnum::Registry,
             $record instanceof Quote => AssignmentTargetEnum::Quote,
+            $record instanceof WorkOrder => AssignmentTargetEnum::WorkOrder,
             default => AssignmentTargetEnum::Opportunity,
         };
     }
 
     /**
      * The record's name as the notification sentence quotes it: an Offerta
-     * is known by its title (spec 0186), every other record by its name.
+     * is known by its title (spec 0186), a Commessa by "code - title" (spec
+     * 0351, as WorkOrderLinePaymentWriter already labels it), every other
+     * record by its name.
      */
     public static function labelFor(Model $record): string
     {
-        return (string) $record->getAttribute($record instanceof Quote ? 'title' : 'name');
+        return match (true) {
+            $record instanceof Quote => (string) $record->title,
+            $record instanceof WorkOrder => "{$record->code} - {$record->title}",
+            default => (string) $record->getAttribute('name'),
+        };
     }
 
     /**
@@ -150,6 +166,27 @@ final class RecordDetails
             'notifications.fields.source' => $quote->source?->name,
             'notifications.fields.supervisor' => $quote->supervisor?->name,
             'notifications.fields.operator' => $quote->operator?->name,
+        ]);
+    }
+
+    /**
+     * Spec 0351: the Commessa's own facts — title, client of its offer,
+     * "Stato lavorazione", start date and the whole team, so a new member
+     * sees who else is on it.
+     *
+     * @return array<string, string>
+     */
+    private static function forWorkOrder(WorkOrder $workOrder): array
+    {
+        $workOrder->loadMissing(self::WORK_ORDER_RELATIONS);
+
+        return self::compact([
+            'notifications.fields.title' => self::labelFor($workOrder),
+            'notifications.fields.client' => $workOrder->quote?->opportunity?->registry?->name,
+            'notifications.fields.status' => $workOrder->workOrderWorkflowStatus?->name,
+            'notifications.fields.start_date' => $workOrder->start_date?->format('d/m/Y'),
+            'notifications.fields.supervisors' => $workOrder->supervisors->pluck('name')->implode(', '),
+            'notifications.fields.participants' => self::managerList($workOrder->participants),
         ]);
     }
 

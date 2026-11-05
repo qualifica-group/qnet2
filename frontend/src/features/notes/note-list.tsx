@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NoteComposer } from '@/features/notes/note-composer'
 import { NoteItem } from '@/features/notes/note-item'
-import type { Note } from '@/features/notes/types'
+import type { MentionOutsideMeta, Note } from '@/features/notes/types'
 
 export interface NoteListProps {
   /** Spec 0085: etichetta di contesto su ogni root — solo nella vista aggregata. */
@@ -18,6 +18,9 @@ export interface NoteListProps {
   onLoadMore: () => void
   /** Fired quando una reply viene creata o una nota eliminata (conteggio host). */
   onThreadChanged?: () => void
+  /** Spec 0353: inoltrati ai composer di risposta e di modifica. */
+  mentionOutside?: MentionOutsideMeta
+  onMembersAdded?: () => void
 }
 
 /**
@@ -26,7 +29,7 @@ export interface NoteListProps {
  * Owns which root currently shows its inline reply composer; edit-in-place is
  * owned by `NoteItem` itself.
  */
-export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingNextPage, onLoadMore, onThreadChanged, showQuoteBadge = false }: NoteListProps) {
+export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingNextPage, onLoadMore, onThreadChanged, showQuoteBadge = false, mentionOutside, onMembersAdded }: NoteListProps) {
   const { t } = useTranslation()
   const [replyingRootId, setReplyingRootId] = useState<number | null>(null)
 
@@ -49,6 +52,8 @@ export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingN
             }
             onThreadChanged={onThreadChanged}
             showQuoteBadge={showQuoteBadge}
+            mentionOutside={mentionOutside}
+            onMembersAdded={onMembersAdded}
           />
           {(root.replies ?? []).length > 0 ? (
             <div className="ml-4 flex flex-col gap-2 border-l-2 border-muted-foreground/20 pl-3">
@@ -67,6 +72,8 @@ export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingN
                   isRoot={false}
                   isReplying={false}
                   onThreadChanged={onThreadChanged}
+                  mentionOutside={mentionOutside}
+                  onMembersAdded={onMembersAdded}
                 />
               ))}
             </div>
@@ -82,6 +89,8 @@ export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingN
                   onThreadChanged?.()
                 }}
                 onCancel={() => setReplyingRootId(null)}
+                mentionOutside={mentionOutside}
+                onMembersAdded={onMembersAdded}
                 autoFocus
               />
             </div>

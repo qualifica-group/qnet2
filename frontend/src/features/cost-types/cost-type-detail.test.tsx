@@ -41,6 +41,8 @@ function costType(overrides: Partial<CostTypeDetailWithPermissions> = {}): CostT
     color: 'blue',
     sort_order: 7,
     is_active: true,
+    code: null,
+    chart_account_id: null,
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
     abilities: { update: true, delete: true },

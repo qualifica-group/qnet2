@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Table;
 
 use App\Services\Table\AdvancedFilterApplier;
-use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
+use App\Tables\CategoryTabs\AttributeColumnsScopable;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -164,7 +164,7 @@ class TableFilterStateRequest extends FormRequest
             // Spec 0064, D-4: saved filters are per-domain, not per-tab — the
             // allow-list must accept the UNION of every category's `attr.*`
             // ids regardless of which tab was open when the client saved.
-            if ($definition instanceof RequestManagementScopedTableDefinition) {
+            if ($definition instanceof AttributeColumnsScopable) {
                 $definition->scopeToAllProductCategories();
             }
 

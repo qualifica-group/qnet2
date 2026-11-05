@@ -77,6 +77,8 @@ class UpdateProductRequest extends FormRequest
             // Spec 0251: active cost types, plus the one already assigned so a
             // resubmit keeps passing once that type is deactivated.
             'cost_type_id' => ['sometimes', 'nullable', 'integer', $this->costTypeRule()],
+            // Spec 0350: active sub-accounts, or the one the product already has.
+            'revenue_type_id' => ['sometimes', 'nullable', 'integer', $this->revenueTypeRule()],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }
@@ -116,6 +118,16 @@ class UpdateProductRequest extends FormRequest
         $currentId = $product instanceof Product ? $product->cost_type_id : null;
 
         return Rule::exists('cost_types', 'id')->where(
+            static fn ($query) => $query->where('is_active', true)->when($currentId !== null, static fn ($inner) => $inner->orWhere('id', $currentId)),
+        );
+    }
+
+    private function revenueTypeRule(): Exists
+    {
+        $product = $this->route('product');
+        $currentId = $product instanceof Product ? $product->revenue_type_id : null;
+
+        return Rule::exists('revenue_types', 'id')->where(
             static fn ($query) => $query->where('is_active', true)->when($currentId !== null, static fn ($inner) => $inner->orWhere('id', $currentId)),
         );
     }

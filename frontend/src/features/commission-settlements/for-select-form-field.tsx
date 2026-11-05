@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Control, FieldPathByValue, FieldValues } from 'react-hook-form'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
-import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { AsyncPaginatedSelect, type GroupOptions } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import type { ForSelectItem } from '@/features/for-select/types'
 
 interface BaseProps {
   /** Resource segment of the for-select endpoint (`referents`, `companies`, ...). */
@@ -20,6 +22,9 @@ interface BaseProps {
 interface SingleProps<TFieldValues extends FieldValues> extends BaseProps {
   control: Control<TFieldValues>
   name: FieldPathByValue<TFieldValues, number | null>
+  /** Custom trigger/option content and option headings (see `AsyncPaginatedSelect`). */
+  renderItem?: (item: ForSelectItem) => ReactNode
+  groupOptions?: GroupOptions
 }
 
 interface MultiProps<TFieldValues extends FieldValues> extends BaseProps {
@@ -41,6 +46,8 @@ export function ForSelectFormField<TFieldValues extends FieldValues>({
   required = false,
   hideLabel = false,
   quickCreate = false,
+  renderItem,
+  groupOptions,
 }: SingleProps<TFieldValues>) {
   const { t } = useTranslation()
   const { renderAction, selectedItemFor } = useQuickCreateAction(resource)
@@ -59,6 +66,8 @@ export function ForSelectFormField<TFieldValues extends FieldValues>({
               value={field.value as number | null}
               onChange={field.onChange}
               selectedItem={selectedItemFor(field.value as number | null)}
+              renderItem={renderItem}
+              groupOptions={groupOptions}
               labels={{
                 placeholder,
                 searchPlaceholder: t('commissionSettlements.picker.search'),

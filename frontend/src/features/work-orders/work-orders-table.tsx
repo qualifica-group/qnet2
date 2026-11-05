@@ -54,6 +54,7 @@ export function WorkOrdersGrid({ domain, rowScope, scope, tableKey, onMutated, s
     sheet,
     forceCloseDialog,
     progressDialog,
+    requestUpdateDialog,
   } = useWorkOrderRowActions({ onMutated: refreshGrid })
 
   return (
@@ -83,6 +84,7 @@ export function WorkOrdersGrid({ domain, rowScope, scope, tableKey, onMutated, s
       {sheet}
       {forceCloseDialog}
       {progressDialog}
+      {requestUpdateDialog}
 
       <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refreshGrid} />
 

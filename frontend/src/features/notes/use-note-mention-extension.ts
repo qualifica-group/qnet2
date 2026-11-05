@@ -13,7 +13,8 @@ import {
   type MentionSuggestionListHandle,
   type MentionSuggestionListProps,
 } from '@/features/notes/mention-suggestion-list'
-import type { ForSelectItem } from '@/features/for-select/types'
+import type { MentionSource } from '@/features/notes/use-mention-outside'
+import type { MentionableUser } from '@/features/notes/types'
 
 /** Mirrors `useDebouncedValue`'s default (`hooks/use-debounced-value.ts`): same search rhythm as the retired `MentionTextarea`. */
 const MENTION_SEARCH_DEBOUNCE_MS = 300
@@ -26,6 +27,8 @@ type MentionPopupRenderer = ReactRenderer<MentionSuggestionListHandle, MentionSu
 interface UseNoteMentionExtensionOptions {
   entityType: string
   entityId: number
+  /** Spec 0353: scope, ruolo e flag delle scelte; letti a ogni ricerca, quindi l'editor non si ricrea al cambio. */
+  source: MentionSource
 }
 
 /**
@@ -37,31 +40,34 @@ interface UseNoteMentionExtensionOptions {
  * next to the caret via the `Suggestion` plugin's own `clientRect` — the
  * shared `components/rich-text/` components own none of this positioning.
  */
-export function useNoteMentionExtension({ entityType, entityId }: UseNoteMentionExtensionOptions): Extensions {
+export function useNoteMentionExtension({ entityType, entityId, source }: UseNoteMentionExtensionOptions): Extensions {
   return useMemo(
     () => [
       Mention.configure({
         renderText: richTextMentionRenderText,
         renderHTML: richTextMentionRenderHTML,
         suggestion: {
-          items: async ({ query }: { query: string }): Promise<ForSelectItem[]> => {
+          items: async ({ query }: { query: string }): Promise<MentionableUser[]> => {
             const page = await fetchMentionableUsers({
               entityType,
               entityId,
               search: query,
               offset: 0,
               limit: NOTES_MENTIONABLE_PAGE_SIZE,
+              scope: source.getScope(),
             })
+            source.remember(page.items)
             return page.items
           },
           debounce: MENTION_SEARCH_DEBOUNCE_MS,
-          render: createMentionPopupRenderer,
+          render: () => createMentionPopupRenderer(source),
           // Mirrors the extension's own default insertion (trailing space,
           // absorbing one already there) minus its trailing native
           // `window.getSelection().collapseToEnd()` housekeeping call, which
           // jsdom rejects ("no selection to collapse") when nothing native
           // is selected — ProseMirror's own selection state doesn't need it.
           command: ({ editor, range, props }) => {
+            source.pick(Number(props.id))
             const nodeAfter = editor.view.state.selection.$to.nodeAfter
             if (nodeAfter?.text?.startsWith(' ')) {
               range.to += 1
@@ -78,15 +84,15 @@ export function useNoteMentionExtension({ entityType, entityId }: UseNoteMention
         },
       }),
     ],
-    [entityType, entityId],
+    [entityType, entityId, source],
   )
 }
 
 /** `suggestion.render()` factory: Tiptap calls this once per open/close cycle of the popup. */
-function createMentionPopupRenderer() {
+function createMentionPopupRenderer(source: MentionSource) {
   let popup: MentionPopupRenderer | null = null
 
-  function position(clientRect: SuggestionProps<ForSelectItem>['clientRect']) {
+  function position(clientRect: SuggestionProps<MentionableUser>['clientRect']) {
     const rect = clientRect?.()
     if (!popup || !rect) {
       return
@@ -105,17 +111,17 @@ function createMentionPopupRenderer() {
     })
   }
 
-  function popupProps(props: SuggestionProps<ForSelectItem>): MentionSuggestionListProps {
-    return { items: props.items, loading: props.loading, command: props.command }
+  function popupProps(props: SuggestionProps<MentionableUser>): MentionSuggestionListProps {
+    return { items: props.items, loading: props.loading, command: props.command, outsideRole: source.getRole() }
   }
 
   return {
-    onStart(props: SuggestionProps<ForSelectItem>) {
+    onStart(props: SuggestionProps<MentionableUser>) {
       popup = new ReactRenderer(MentionSuggestionList, { editor: props.editor, props: popupProps(props) })
       document.body.appendChild(popup.element)
       position(props.clientRect)
     },
-    onUpdate(props: SuggestionProps<ForSelectItem>) {
+    onUpdate(props: SuggestionProps<MentionableUser>) {
       popup?.updateProps(popupProps(props))
       position(props.clientRect)
     },

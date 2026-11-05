@@ -95,6 +95,29 @@ export function QuoteDateField({ control }: FieldProps) {
   )
 }
 
+/** Spec 0349 "Data ricontatto": optional, an emptied input sends `null`. */
+export function QuoteFollowUpDateField({ control }: FieldProps) {
+  const { t } = useTranslation()
+  return (
+    <MetaField control={control} name="follow_up_date" metaKey="follow_up_date" label={t('quotes.form.followUpDate')}>
+      {({ field, disabled, readOnly }) => (
+        <FormControl>
+          <Input
+            type="date"
+            disabled={disabled}
+            readOnly={readOnly}
+            value={field.value ?? ''}
+            onChange={(event) => field.onChange(event.target.value || null)}
+            onBlur={field.onBlur}
+            name={field.name}
+            ref={field.ref}
+          />
+        </FormControl>
+      )}
+    </MetaField>
+  )
+}
+
 interface OpportunityFieldProps extends RelationFieldProps {
   /** A pick or clear: the create form inherits the Opportunita's roles, sede and G.A. from its `meta`. */
   onItemChange: (item: ForSelectItem | null) => void

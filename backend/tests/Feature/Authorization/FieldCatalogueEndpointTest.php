@@ -91,6 +91,8 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'purchase-requests',
         // spec 0210 `cost-types` (CostTypesAuthorization: the purchase order line cost type lookup).
         'cost-types',
+        // spec 0348 (REQUIREMENT CHANGED): the managerial chart of accounts joins the generic registry.
+        'chart-accounts', 'revenue-types',
         // spec 0271 (REQUIREMENT CHANGED): the HR org structure catalogues are registered in the generic registry.
         'job-roles', 'job-activities',
         // spec 0247 `purchase-request-priorities` (PurchaseRequestPrioritiesAuthorization: the RDA priority lookup).

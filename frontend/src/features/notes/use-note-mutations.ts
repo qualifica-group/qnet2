@@ -3,7 +3,7 @@ import type { AxiosError } from 'axios'
 import type { ApiErrorResponse } from '@/api/types'
 import { createNote, deleteNote, updateNote } from '@/features/notes/api'
 import { notesKeys } from '@/features/notes/query-keys'
-import type { CreateNotePayload, Note, UpdateNotePayload } from '@/features/notes/types'
+import type { CreateNotePayload, NoteMutationResult, UpdateNotePayload } from '@/features/notes/types'
 
 /**
  * Write side of a host record's notes thread (spec 0052). Each mutation
@@ -18,7 +18,7 @@ import type { CreateNotePayload, Note, UpdateNotePayload } from '@/features/note
 export function useCreateNote(entityType: string, entityId: number) {
   const queryClient = useQueryClient()
 
-  return useMutation<Note, AxiosError<ApiErrorResponse>, CreateNotePayload>({
+  return useMutation<NoteMutationResult, AxiosError<ApiErrorResponse>, CreateNotePayload>({
     mutationFn: (payload) => createNote(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists(entityType, entityId) })
@@ -34,7 +34,7 @@ interface UpdateNoteVariables {
 export function useUpdateNote(entityType: string, entityId: number) {
   const queryClient = useQueryClient()
 
-  return useMutation<Note, AxiosError<ApiErrorResponse>, UpdateNoteVariables>({
+  return useMutation<NoteMutationResult, AxiosError<ApiErrorResponse>, UpdateNoteVariables>({
     mutationFn: ({ noteId, payload }) => updateNote(noteId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists(entityType, entityId) })

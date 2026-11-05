@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\InvoiceLine;
+use App\Services\ChartOfAccounts\RevenueTypeRef;
 use App\Services\Invoices\InvoicePaymentStatusResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -76,6 +77,8 @@ class InvoiceResource extends JsonResource
                 'vat_amount' => $line->vat_amount,
                 'total_amount' => $line->total_amount,
                 'sort_order' => $line->sort_order,
+                'revenue_type_id' => $line->revenue_type_id,
+                'revenue_type' => $line->revenueType === null ? null : RevenueTypeRef::from($line->revenueType),
             ])->all(),
             'installments' => $this->installments->map(fn (InvoiceInstallment $installment): array => [
                 'id' => $installment->id,

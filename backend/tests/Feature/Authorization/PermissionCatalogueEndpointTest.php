@@ -100,7 +100,7 @@ it('AC-005: no area exposes an addresses/contacts/personal_data module', functio
     expect($resources->all())->not->toContain('addresses', 'contacts', 'personal_data');
 });
 
-it('AC-006: the "shared" area exists with exactly notes, attachments, table-filter-views and legacy-ids, fields: []', function () {
+it('AC-006: the "shared" area exists with exactly notes, attachments, table-filter-views, legacy-ids and revenue-types (spec 0348), fields: []', function () {
     Sanctum::actingAs(actorWithRolesAbility('viewAny'));
 
     $areas = collect($this->getJson(ENDPOINT)->assertOk()->json('data.areas'));
@@ -112,7 +112,7 @@ it('AC-006: the "shared" area exists with exactly notes, attachments, table-filt
         // Spec 0158: `table-filter-views.publish` joined this permission-only
         // area alongside notes/attachments (config/authorization.php), then
         // `legacy-ids.view` (see the legacy old id on grids and details).
-        ->and(collect($shared['resources'])->pluck('resource')->all())->toEqualCanonicalizing(['notes', 'attachments', 'table-filter-views', 'legacy-ids']);
+        ->and(collect($shared['resources'])->pluck('resource')->all())->toEqualCanonicalizing(['notes', 'attachments', 'table-filter-views', 'legacy-ids', 'revenue-types']);
 
     foreach ($shared['resources'] as $resource) {
         expect($resource['fields'])->toBe([]);

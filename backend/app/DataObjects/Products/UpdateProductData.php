@@ -63,6 +63,8 @@ final readonly class UpdateProductData
         public ?int $costTypeId = null,
         public bool $costTypeIdSubmitted = false,
         public ?array $suppliers = null,
+        public ?int $revenueTypeId = null,
+        public bool $revenueTypeIdSubmitted = false,
     ) {}
 
     /**
@@ -95,6 +97,8 @@ final readonly class UpdateProductData
             costTypeId: array_key_exists('cost_type_id', $data) && $data['cost_type_id'] !== null ? (int) $data['cost_type_id'] : null,
             costTypeIdSubmitted: array_key_exists('cost_type_id', $data),
             suppliers: array_key_exists('suppliers', $data) ? ProductSupplierData::listFromValidated((array) $data['suppliers']) : null,
+            revenueTypeId: array_key_exists('revenue_type_id', $data) && $data['revenue_type_id'] !== null ? (int) $data['revenue_type_id'] : null,
+            revenueTypeIdSubmitted: array_key_exists('revenue_type_id', $data),
         );
     }
 
@@ -155,6 +159,10 @@ final readonly class UpdateProductData
 
         if ($this->costTypeIdSubmitted) {
             $attributes['cost_type_id'] = $this->costTypeId;
+        }
+
+        if ($this->revenueTypeIdSubmitted) {
+            $attributes['revenue_type_id'] = $this->revenueTypeId;
         }
 
         return $attributes;

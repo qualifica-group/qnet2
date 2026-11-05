@@ -32,6 +32,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "Chi viene **aggiunto** come **Responsabile** o **Partecipante**, alla creazione della commessa o dopo (anche dall'elenco), riceve una **notifica** nella campanella e per email con il link alla commessa. Chi c'era già, chi cambia solo posizione tra i Partecipanti e chi viene tolto non riceve nulla; nessuno riceve notifiche per le modifiche che fa lui stesso. Chi è sia Responsabile sia Partecipante riceve una notifica per ciascun ruolo.",
+        },
+        {
+          type: 'note',
           text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {
@@ -73,6 +77,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+        },
+        {
+          type: 'paragraph',
+          text: "Scegliendo la tab di una categoria (non **Tutte** e non una tab di **Categorie madri**), in fondo all'elenco compaiono le colonne dei campi flessibili della **commessa** di quella categoria (non quelli dell'offerta). Puoi filtrarle e ordinarle. Se hai il permesso di modificarle, le cambi direttamente nella cella. I campi di tipo tabella si modificano solo dal dettaglio.",
         },
         {
           type: 'note',
@@ -133,6 +141,29 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "Registri ed elimini le registrazioni se puoi modificare la commessa, altrimenti vedi solo l'elenco. Lo stato dei task non cambia più lo stato della commessa; la percentuale dei task resta visibile nel task board.",
+        },
+      ],
+    },
+    {
+      id: 'request-update',
+      title: 'Richiesta di aggiornamento',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio e tra le azioni di riga della tabella Commesse; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa Aperta o In lavorazione (non su una Terminata o Chiusa). La commessa non viene modificata.',
+        },
+        {
+          type: 'table',
+          headers: ['Destinatari', 'Chi riceve la richiesta'],
+          rows: [
+            ['Partecipanti', 'Tutti i partecipanti; i responsabili ricevono comunque una copia, contrassegnata **In copia**.'],
+            ['Responsabili', 'Tutti i responsabili della commessa.'],
+            ['Partecipanti e responsabili', 'Entrambi i gruppi, come destinatari diretti.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Il messaggio è **obbligatorio** (da 3 a 2000 caratteri). Un gruppo senza persone non si può scegliere; il numero accanto a ogni gruppo indica quante persone lo ricevono.',
         },
       ],
     },
@@ -233,9 +264,9 @@ const guide: HelpGuide = {
           items: [
             'Apri la scheda **Costi effettivi**: un unico riquadro con a sinistra il **Catalogo prodotti** e a destra i costi effettivi come card (su schermi stretti uno sotto l\'altro). Senza il permesso di gestire i costi il catalogo non compare e le card sono in sola lettura.',
             'Nel **Catalogo prodotti** cerca per nome o descrizione: ogni prodotto mostra nome, codice, tipologia, prezzo di costo con unità di misura, categoria e descrizione.',
-            'Spunta uno o più prodotti e premi **Aggiungi N selezionati**: ogni prodotto diventa un costo con data di oggi, quantità 1, prezzo di costo, IVA, unità di misura e **tipo di costo** del prodotto. Lo stesso prodotto si può aggiungere più volte.',
+            'Spunta uno o più prodotti e premi **Aggiungi N selezionati**: ogni prodotto diventa un costo con data di oggi, quantità 1, prezzo di costo, IVA, unità di misura e **sottoconto costo** del prodotto. Lo stesso prodotto si può aggiungere più volte.',
             "Se il prodotto ha dei fornitori, il **fornitore** si sceglie solo tra quelli del prodotto: il predefinito e il suo costo sono proposti e, cambiando fornitore, cambia il prezzo. Se il fornitore ha una commissione Fornitore su quel prodotto, il prezzo è 0 e non modificabile, con l'avviso accanto al fornitore. Con un prodotto senza fornitori, o senza prodotto, il fornitore è libero come prima.",
-            'In ogni card trovi in alto prodotto, codice e categoria con il cestino per rimuoverla; sotto quantità per prezzo unitario, IVA, **Riga offerta di riferimento** e imponibile, IVA e totale; in fondo data, **tipo di costo**, **fornitore**, **riferimento documento** e descrizione aggiuntiva. In fondo al riquadro c\'è il **Totale costi**.',
+            'In ogni card trovi in alto prodotto, codice e categoria con il cestino per rimuoverla; sotto quantità per prezzo unitario, IVA, **Riga offerta di riferimento** e imponibile, IVA e totale; in fondo data, **sottoconto costo**, **fornitore**, **riferimento documento** e descrizione aggiuntiva. In fondo al riquadro c\'è il **Totale costi**.',
             'Per cambiare prodotto rimuovi la card e scegli il prodotto dal catalogo.',
             'Premi **Salva** per sostituire l\'intero elenco dei costi, oppure **Annulla** per tornare all\'ultimo salvataggio.',
           ],
@@ -403,6 +434,7 @@ const guide: HelpGuide = {
         { type: 'table', headers: ["Permesso", "Commesse visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Responsabile** o **Partecipante**."], ["**Visualizza per sede**", "Le tue e quelle la cui offerta è di una tua sede. Per una commessa con più offerte basta che lo sia una."], ["**Visualizza per competenza**", "Le tue e quelle in cui almeno una offerta di origine ha una categoria nel tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** tutte."], ["**Visualizza tutti**", "Tutte."]] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di una commessa che non puoi vedere mostra un errore di accesso. Vedere una commessa non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
         { type: 'note', text: "Se crei una commessa senza esserne Responsabile o Partecipante, non la vedrai più a meno di avere **Visualizza tutti**, **Visualizza per sede** o **Visualizza per competenza**." },
+        { type: 'tip', text: "Chi può modificare la commessa può coinvolgere un collega che non la vede menzionandolo in una nota con **Menziona chiunque**: al salvataggio diventa **Partecipante** (vedi **Note e documenti** nella guida generale)." },
       ],
     },
     {

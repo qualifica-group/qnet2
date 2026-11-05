@@ -51,8 +51,9 @@ it('declares every column the form edits as a single field', function () {
         ->where('editable', true)->pluck('id')->sort()->values()->all();
 
     // REQUIREMENT CHANGED: spec 0332 — `source` is an editable relation column.
+    // REQUIREMENT CHANGED: spec 0349 — `follow_up_date` is an editable date column.
     expect($editable)->toBe([
-        'commercial', 'company', 'company_site', 'managers', 'operational_site',
+        'commercial', 'company', 'company_site', 'follow_up_date', 'managers', 'operational_site',
         'quote_workflow_status', 'reporter', 'source', 'supervisor', 'title',
     ]);
 });

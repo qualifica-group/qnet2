@@ -177,7 +177,7 @@ describe('PurchaseOrderForm header and save (AC-020)', () => {
     fireEvent.change(screen.getByLabelText(/^Description(?! \d)/), { target: { value: 'Monthly consulting' } })
     fireEvent.change(screen.getByRole('spinbutton', { name: /Copies/ }), { target: { value: '3' } })
     fireEvent.change(screen.getByLabelText('Description 1'), { target: { value: 'Consulting' } })
-    await pick(/Cost type 1/, /Collaboratori/)
+    await pick(/Cost sub-account 1/, /Collaboratori/)
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]!)
 
     await waitFor(() => expect(createPurchaseOrder).toHaveBeenCalledTimes(1))

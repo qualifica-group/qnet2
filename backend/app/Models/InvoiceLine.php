@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'invoice_id', 'quote_line_id', 'product_id', 'description', 'quantity', 'unit_price',
-    'vat_rate_id', 'net_amount', 'vat_amount', 'total_amount', 'sort_order',
+    'vat_rate_id', 'net_amount', 'vat_amount', 'total_amount', 'sort_order', 'revenue_type_id',
 ])]
 class InvoiceLine extends BaseModel
 {
@@ -65,5 +65,15 @@ class InvoiceLine extends BaseModel
     public function vatRate(): BelongsTo
     {
         return $this->belongsTo(VatRate::class);
+    }
+
+    /**
+     * Revenue sub-account of the line (spec 0350), null = to be classified.
+     *
+     * @return BelongsTo<RevenueType, $this>
+     */
+    public function revenueType(): BelongsTo
+    {
+        return $this->belongsTo(RevenueType::class);
     }
 }

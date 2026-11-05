@@ -5,5 +5,6 @@ return [
     'downgrade_forbidden' => 'You are not allowed to change or remove the number and date of a registered invoice.',
     'line_already_invoiced' => 'The line is already present in another invoicing document.',
     'line_not_in_request' => 'The line is not one of the services of this proforma request (different kind, institution or company).',
+    'revenue_type_inactive' => 'The revenue sub-account does not exist or is not active: choose an active one.',
     'unit_price_decimals' => 'The unit price can have at most 2 decimals.',
 ];

@@ -5,6 +5,8 @@ namespace App\Http\Resources;
 use App\Authorization\LegacyIdVisibility;
 use App\Models\Attribute;
 use App\Models\ProductCategory;
+use App\Services\ChartOfAccounts\EffectiveRevenueType;
+use App\Services\ChartOfAccounts\RevenueTypeRef;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Attributes\PreserveKeys;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -97,6 +99,10 @@ class ProductCategoryResource extends JsonResource
             'business_function' => $this->businessFunction !== null
                 ? ['id' => $this->businessFunction->id, 'name' => $this->businessFunction->name]
                 : null,
+            // Spec 0350: own default revenue sub-account and the effective one (own or from the closest ancestor).
+            'revenue_type_id' => $this->revenue_type_id,
+            'revenue_type' => RevenueTypeRef::find($this->revenue_type_id),
+            'effective_revenue_type' => app(EffectiveRevenueType::class)->forCategory($this->resource),
             'attributes' => $this->attributes->map(fn (Attribute $attribute): array => [
                 'attribute_id' => $attribute->id,
                 'code' => $attribute->code,

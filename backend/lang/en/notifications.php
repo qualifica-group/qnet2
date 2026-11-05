@@ -56,6 +56,11 @@ return [
         'end_date' => 'Due date',
         'requester' => 'Requester',
         'assignees' => 'Assignees',
+
+        // Commessa (spec 0351)
+        'start_date' => 'Start date',
+        'supervisors' => 'Supervisors',
+        'participants' => 'Participants',
     ],
 
     'values' => [

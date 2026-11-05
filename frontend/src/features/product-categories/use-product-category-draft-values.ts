@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useWatch, type Control } from 'react-hook-form'
+import { idList, useRevenueTypeLabels } from '@/features/revenue-types/use-revenue-types-for-select'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import {
@@ -31,8 +32,14 @@ export function useProductCategoryDraftValues(control: Control<ProductCategoryFo
   const ids = useMemo(() => (businessFunctionId === null ? NO_IDS : [businessFunctionId]), [businessFunctionId])
   const labels = useForSelectLabels({ resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE, ids })
 
-  return useMemo(
-    () => buildDraftRecordValues(draft, tree, (id) => labels.get(id)?.label ?? PENDING_LABEL),
-    [draft, tree, labels],
-  )
+  const revenueTypeId = draft.revenue_type_id ?? null
+  const revenueTypes = useRevenueTypeLabels(idList(revenueTypeId))
+
+  return useMemo(() => {
+    const option = revenueTypeId !== null ? revenueTypes.get(revenueTypeId) : undefined
+    return {
+      ...buildDraftRecordValues(draft, tree, (id) => labels.get(id)?.label ?? PENDING_LABEL),
+      revenue_type: revenueTypeId !== null ? { id: revenueTypeId, code: option?.code ?? '', name: option?.name ?? PENDING_LABEL } : null,
+    }
+  }, [draft, tree, labels, revenueTypeId, revenueTypes])
 }

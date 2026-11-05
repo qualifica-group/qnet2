@@ -32,6 +32,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "Whoever is **added** as **Supervisor** or **Participant**, when the work order is created or later (from the list too), receives a **notification** in the bell and by email with the link to the work order. People already on it, a Participant who only changes position and anyone removed receive nothing; nobody is notified of their own changes. Someone who is both Supervisor and Participant receives one notification per role.",
+        },
+        {
+          type: 'note',
           text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
@@ -73,6 +77,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+        },
+        {
+          type: 'paragraph',
+          text: "When you choose a category tab (not **All** and not a **Parent categories** tab), the columns of that category's flexible fields of the **work order** (not those of the quote) appear at the end of the list. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
         },
         {
           type: 'note',
@@ -133,6 +141,29 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'You record and delete records if you may edit the work order, otherwise you only see the list. Task statuses no longer change the work order status; the tasks percentage stays visible in the task board.',
+        },
+      ],
+    },
+    {
+      id: 'request-update',
+      title: 'Update request',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The button is at the top of the detail and among the row actions of the Work orders table; it shows only if you hold the **Request updates** permission and only on an Open or In progress work order (not on a Completed or Closed one). The work order is not changed.',
+        },
+        {
+          type: 'table',
+          headers: ['Recipients', 'Who gets the request'],
+          rows: [
+            ['Participants', 'Every participant; the supervisors still get a copy, marked **CC**.'],
+            ['Supervisors', 'Every supervisor of the work order.'],
+            ['Participants and supervisors', 'Both groups, as direct recipients.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'The message is **required** (3 to 2000 characters). A group with nobody in it cannot be picked; the number next to each group tells how many people get it.',
         },
       ],
     },
@@ -233,9 +264,9 @@ const guide: HelpGuide = {
           items: [
             'Open the **Actual costs** tab: a single panel with the **Product catalogue** on the left and the actual costs as cards on the right (stacked on narrow screens). Without the permission to manage costs the catalogue is hidden and the cards are read-only.',
             'In the **Product catalogue** search by name or description: each product shows name, code, type, cost price with unit of measure, category and description.',
-            'Tick one or more products and press **Add N selected**: each product becomes a cost with today\'s date, quantity 1, cost price, VAT, unit of measure and the product\'s **cost type**. The same product can be added more than once.',
+            'Tick one or more products and press **Add N selected**: each product becomes a cost with today\'s date, quantity 1, cost price, VAT, unit of measure and the product\'s **cost sub-account**. The same product can be added more than once.',
             "If the product has suppliers, the **supplier** is chosen only among the product ones: the default and its cost are proposed and, when you change supplier, the price changes. If the supplier has a Supplier commission on that product, the price is 0 and cannot be edited, with the notice next to the supplier. With a product without suppliers, or no product, the supplier is free as before.",
-            'Each card shows product, code and category at the top with the bin to remove it; below, quantity times unit price, VAT, **Reference offer line** and net amount, VAT and total; at the bottom date, **cost type**, **supplier**, **document reference** and extra description. The **Cost total** is at the bottom of the panel.',
+            'Each card shows product, code and category at the top with the bin to remove it; below, quantity times unit price, VAT, **Reference offer line** and net amount, VAT and total; at the bottom date, **cost sub-account**, **supplier**, **document reference** and extra description. The **Cost total** is at the bottom of the panel.',
             'To change product, remove the card and pick the product from the catalogue.',
             'Press **Save** to replace the whole list of costs, or **Cancel** to go back to the last saved state.',
           ],
@@ -403,6 +434,7 @@ const guide: HelpGuide = {
         { type: 'table', headers: ["Permission", "Visible work orders"], rows: [["**View**", "Those where you are a **Supervisor** or a **Participant**."], ["**View by site**", "Your own plus those whose quote belongs to one of your sites. For a work order with several quotes, one is enough."], ["**View by competence**", "Your own plus those where at least one source quote has a category in your assignment scope, in any site. With **Scope on all categories**, all of them."], ["**View all**", "All of them."]] },
         { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to a work order you cannot see shows an access error. Seeing a work order does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
         { type: 'note', text: "If you create a work order without being a Supervisor or a Participant, you will no longer see it unless you have **View all**, **View by site** or **View by competence**." },
+        { type: 'tip', text: "Whoever can edit the work order can involve a colleague who cannot see it by mentioning them in a note with **Mention anyone**: on save they become a **Participant** (see **Notes and documents** in the general guide)." },
       ],
     },
     {

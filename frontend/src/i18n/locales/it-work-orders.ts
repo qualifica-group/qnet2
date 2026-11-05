@@ -104,6 +104,23 @@ export const workOrders = {
   },
   /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
   actions: {
+    requestUpdate: {
+      label: 'Richiedi aggiornamento',
+      title: 'Richiedi aggiornamento',
+      description: 'Scegli chi deve ricevere la richiesta e scrivi un messaggio: riceveranno una mail e una notifica.',
+      target: 'Destinatari',
+      targetParticipants: 'Partecipanti',
+      targetParticipantsHint: 'I Responsabili ricevono una copia della richiesta.',
+      targetSupervisors: 'Responsabili',
+      targetAll: 'Partecipanti e responsabili',
+      recipientsEmpty: 'Questa commessa non ha partecipanti né responsabili da contattare.',
+      message: 'Messaggio',
+      messagePlaceholder: 'Scrivi il messaggio da inviare ai destinatari.',
+      messageTooShort: 'Il messaggio deve avere almeno 3 caratteri.',
+      messageTooLong: 'Il messaggio non può superare 2000 caratteri.',
+      submit: 'Invia richiesta',
+      success: 'Richiesta di aggiornamento inviata.',
+    },
     forceClose: {
       title: 'Chiusura forzata della commessa',
       description: 'La commessa viene chiusa indicandone il motivo. Potrai riaprirla in seguito.',

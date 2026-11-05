@@ -7,6 +7,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { EffectiveRevenueType, RevenueTypeRef } from '@/features/revenue-types/types'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type {
   CustomFieldConfig,
@@ -142,6 +143,10 @@ export interface ProductCategoryDetail {
   business_function: ProductCategoryBusinessFunction | null
   /** Own or inherited business function; invariant: `inherited === true` implies `business_function_id === null`. */
   effective_business_function: EffectiveBusinessFunction | null
+  /** The category's OWN revenue sub-account (spec 0350); `effective_revenue_type` adds the one inherited from an ancestor. */
+  revenue_type_id?: number | null
+  revenue_type?: RevenueTypeRef | null
+  effective_revenue_type?: EffectiveRevenueType | null
   /** Whether the category is quoted — authored by the branch ROOT, mirrored here on every descendant. */
   requires_quote: boolean
   /** The root `requires_quote` is inherited from; null when this category IS the root and owns the flag. */
@@ -285,6 +290,8 @@ export interface CreateProductCategoryPayload {
   attributes?: AttributeAssignmentInput[]
   /** Own business function; omit or null when the category has none of its own (spec 0023). */
   business_function_id?: number | null
+  /** Own revenue sub-account (spec 0350); null removes it so the category inherits. */
+  revenue_type_id?: number | null
   /** Only ever sent for a ROOT category (`parent_id: null`): a child inherits the flag and the server refuses a divergent value. */
   requires_quote?: boolean
   /** Whether the category may be picked as a classification target (spec 0074); omitted on create means selectable. */

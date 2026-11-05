@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Query of GET /api/contracts/multi-programmable-lines (spec 0267, D-3). The
- * per-contract gate (`program` + ClosedWon) is NOT here: it is applied by
+ * per-contract gate (`program` + ContractActionAvailability::mayProgram) is NOT here: it is applied by
  * MultiQuoteContractGate in the controller.
  */
 class MultiProgrammableLinesRequest extends FormRequest

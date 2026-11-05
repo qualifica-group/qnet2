@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Model;
  * @phpstan-type ImportField array{id: string, label: string, required: bool, group: ?string, type: string}
  * @phpstan-type ImportGlobalField array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed, required_unless_mapped: ?string}
  * @phpstan-type ImportReviewField array{id: string, label: string}
+ * @phpstan-type MappedValueColumn array{column_key: string, values: array<int, array{value: string, count: int}>}
  */
 interface ImportDefinition
 {
@@ -241,4 +242,82 @@ interface ImportDefinition
      * @return array<int, ImportReviewField>
      */
     public function reviewFields(): array;
+
+    /**
+     * Field ids whose DISTINCT file values the wizard maps one by one onto
+     * domain records (spec 0348: e.g. workflow_status, source_name). Defaults
+     * to none: the definition then has no value-mapping step.
+     *
+     * @return array<int, string>
+     */
+    public function valueMappingFields(): array;
+
+    /**
+     * Mapping targets of the form `attribute.<code>` this definition accepts
+     * (dynamic attributes resolved from a global field), or null when the
+     * domain has none. Shape: {context, depends_on} where depends_on is the
+     * global field id the attribute set derives from.
+     *
+     * @return array{context: string, depends_on: string}|null
+     */
+    public function attributeTargets(): ?array;
+
+    /**
+     * Build the value-mapping step payload: one entry per mapped
+     * value-mapping field, in valueMappingFields() order. A definition that
+     * cannot build it (e.g. a required global field missing) throws a
+     * ValidationException keyed `global_config.<id>` (-> 422).
+     *
+     * @param  array<string, MappedValueColumn>  $mappedColumns  field id => its file column and distinct values
+     * @param  array<string, mixed>  $globalConfig
+     * @return array<int, array{field: string, column_key: string, allow_create: bool, options: array<int, array{id: int, name: string, group: ?string}>, values: array<int, array{value: string, count: int, suggested_id: ?int}>}>
+     */
+    public function valueMappingPreview(array $mappedColumns, array $globalConfig): array;
+
+    /**
+     * Validate the submitted value_mappings against the file's distinct
+     * values (every distinct value needs a decision, ids must be selectable).
+     *
+     * @param  array<string, MappedValueColumn>  $mappedColumns
+     * @param  array<string, mixed>  $valueMappings  field id => value => {id}|{create}
+     * @param  array<string, mixed>  $globalConfig
+     * @return array<string, array<int, string>> error key (e.g. `value_mappings.workflow_status`) => messages
+     */
+    public function validateValueMappings(array $mappedColumns, array $valueMappings, array $globalConfig): array;
+
+    /**
+     * Validate the `attribute.<code>` targets used in the column mapping
+     * (only called when attributeTargets() is not null).
+     *
+     * @param  array<string, string>  $columnMapping  column key => target
+     * @param  array<string, mixed>  $globalConfig
+     * @return array<string, array<int, string>> error key (`column_mapping.<key>`) => messages
+     */
+    public function validateAttributeTargets(array $columnMapping, array $globalConfig): array;
+
+    /**
+     * Whether the confirm step may convert imported records into
+     * Opportunities (spec 0045). False for a domain that already writes
+     * Opportunities itself: the summary then omits `conversion_readiness` and
+     * confirm ignores `convert_to_opportunity`.
+     */
+    public function supportsOpportunityConversion(): bool;
+
+    /**
+     * Mapped field ids whose distinct file values feed globalConfigDefaults()
+     * (spec 0348 D-5). Empty (the default) means the run detail never reads
+     * the file to pre-fill global fields.
+     *
+     * @return array<int, string>
+     */
+    public function defaultSourceFields(): array;
+
+    /**
+     * Suggested defaults for global fields, derived from the distinct values
+     * of the defaultSourceFields() columns the auto-mapping proposed.
+     *
+     * @param  array<string, MappedValueColumn>  $mappedColumns  field id => its file column and distinct values
+     * @return array<string, mixed> global field id => default
+     */
+    public function globalConfigDefaults(array $mappedColumns): array;
 }

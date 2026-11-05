@@ -74,6 +74,8 @@ class StoreProductRequest extends FormRequest
             'product_typology_id' => ['sometimes', 'nullable', 'integer', 'exists:product_typologies,id'],
             // Spec 0251: optional default cost type, active ones only.
             'cost_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('cost_types', 'id')->where('is_active', true)],
+            // Spec 0350: optional default revenue sub-account, active ones only.
+            'revenue_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('revenue_types', 'id')->where('is_active', true)],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }

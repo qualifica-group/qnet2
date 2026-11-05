@@ -27,6 +27,8 @@ class NoteMentionableUserResource extends ForSelectResource
             'label' => $this->name,
             'subtitle' => $this->email,
             'avatar_url' => $this->avatarDataUri(),
+            'in_record' => (bool) $this->in_record,
+            'has_module_access' => (bool) $this->has_module_access,
         ];
     }
 }

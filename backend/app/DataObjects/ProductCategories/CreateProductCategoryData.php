@@ -53,6 +53,8 @@ final readonly class CreateProductCategoryData
         public ?array $managerLabels = null,
         /** Spec 0080: whether this category inherits its ancestors' manager labels. Defaults to true, same as the attribute barriers. */
         public bool $inheritsManagerLabels = true,
+        /** Spec 0350: own default revenue sub-account; null = inherit from the ancestors. */
+        public ?int $revenueTypeId = null,
     ) {}
 
     /**
@@ -84,6 +86,7 @@ final readonly class CreateProductCategoryData
             simplifiedOfferLineOverride: isset($data['simplified_offer_line_override']) ? (bool) $data['simplified_offer_line_override'] : null,
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : true,
+            revenueTypeId: array_key_exists('revenue_type_id', $data) && $data['revenue_type_id'] !== null ? (int) $data['revenue_type_id'] : null,
         );
     }
 

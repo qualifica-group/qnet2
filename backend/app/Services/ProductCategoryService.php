@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\Enums\AttributeContext;
+use App\Jobs\ClassifyRevenueLinesJob;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutCopier;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -57,6 +58,7 @@ class ProductCategoryService
                 'inherits_work_order_attributes' => $data->inheritsWorkOrderAttributes,
                 'description' => $data->description,
                 'business_function_id' => $data->businessFunctionId,
+                'revenue_type_id' => $data->revenueTypeId,
                 'is_selectable' => $data->isSelectable,
                 'is_active' => $data->isActive,
                 'is_reportable' => $data->isReportable,
@@ -100,7 +102,9 @@ class ProductCategoryService
         $this->rootOwnedSettings->assertUpdateNotOverridden($category, $data);
         $this->coherence->assertUpdate($category, $data);
 
-        return DB::transaction(function () use ($category, $data): ProductCategory {
+        $revenueTypeChanged = false;
+
+        $updated = DB::transaction(function () use ($category, $data, &$revenueTypeChanged): ProductCategory {
             $attributes = $data->submittedAttributes();
 
             // Spec 0080: the label VALUES are normalized (trim, empty
@@ -123,6 +127,7 @@ class ProductCategoryService
             // attribute changed, so the HasCustomFields write pipeline (spec 0021)
             // persists a custom-fields-only edit. A clean save runs no UPDATE query.
             $category->fill($attributes)->save();
+            $revenueTypeChanged = $category->wasChanged('revenue_type_id');
 
             if ($data->hasAttributes()) {
                 $this->syncAttributes($category, $data->attributes);
@@ -142,6 +147,13 @@ class ProductCategoryService
 
             return $category->fresh(['parent', 'attributes', 'businessFunction']);
         });
+
+        // Spec 0350, D-9b: the products that inherit this category's sub-account get their NULL lines classified.
+        if ($revenueTypeChanged) {
+            ClassifyRevenueLinesJob::dispatch(categoryId: $category->id);
+        }
+
+        return $updated;
     }
 
     /**

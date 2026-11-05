@@ -58,7 +58,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri **Raggruppa per** sopra la tabella e spunta una o più colonne (**Fornitore**, **Tipo di costo**, **Commessa**, **Società**, **Sede aziendale**, **Sede operativa**, **Codice modalità**, **Conto di pagamento** o **Mese scadenza**): l’ordine in cui le spunti è l’ordine dei livelli.',
+            'Apri **Raggruppa per** sopra la tabella e spunta una o più colonne (**Fornitore**, **Sottoconto costo**, **Commessa**, **Società**, **Sede aziendale**, **Sede operativa**, **Codice modalità**, **Conto di pagamento** o **Mese scadenza**): l’ordine in cui le spunti è l’ordine dei livelli.',
             'Ogni gruppo mostra il numero di rate e i totali di **Importo**, **Pagato** e **Residuo**: espandilo per vedere i livelli successivi o le rate.',
             'Puoi raggruppare fino a **3 livelli**; togli un livello con la **x** del suo chip o usa **Rimuovi raggruppamento** per tornare all’elenco piatto.',
           ],

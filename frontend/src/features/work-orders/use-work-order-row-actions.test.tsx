@@ -94,3 +94,30 @@ describe('useWorkOrderRowActions — closure', () => {
     await waitFor(() => expect(onMutated).toHaveBeenCalledOnce())
   })
 })
+
+describe('useWorkOrderRowActions — request update (spec 0352 AC-014)', () => {
+  it('loads the fresh record and opens the request-update dialog with its recipients', async () => {
+    vi.mocked(fetchWorkOrder).mockResolvedValue({
+      id: 7,
+      participants: [{ id: 1, name: 'Bruno Bianchi', position: 1 }],
+      supervisors: [{ id: 2, name: 'Ada Alberti' }],
+    } as never)
+    const Wrapper = wrapper()
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: Wrapper })
+
+    act(() => result.current.handleAction(action('request_update'), ROW))
+    await waitFor(() => expect(fetchWorkOrder).toHaveBeenCalledWith(7))
+    // The dialog mounts once the fetch resolved; render the latest slot.
+    await waitFor(() => expect(result.current.requestUpdateDialog).not.toBeNull())
+    render(<>{result.current.requestUpdateDialog}</>, { wrapper: Wrapper })
+
+    expect(await screen.findByRole('dialog', { name: 'Request update' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Participants (1)' })).toBeChecked()
+  })
+
+  it('exposes the message-square-more icon for the row action', () => {
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: wrapper() })
+
+    expect(result.current.iconMap['message-square-more']).toBeDefined()
+  })
+})

@@ -20,4 +20,7 @@ export const notesKeys = {
    */
   list: (entityType: string, entityId: number, quoteScope: NoteQuoteScope = 'all') =>
     [...notesKeys.lists(entityType, entityId), { quoteScope }] as const,
+  /** Spec 0353: idratazione dei flag degli utenti gia' menzionati in una nota in modifica (`scope=extended`). */
+  mentionHydration: (entityType: string, entityId: number, ids: number[]) =>
+    ['notes-mention-hydration', entityType, entityId, ids] as const,
 }

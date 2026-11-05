@@ -3,6 +3,7 @@
 namespace Database\Seeders\QualificaCatalog;
 
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Roles;
+use Database\Seeders\QualificaCatalog\RequestImporterRoleCatalogue as RequestImporter;
 
 /**
  * The client's operator roster, transcribed from "Mansionario Operatori
@@ -85,6 +86,18 @@ final class OperatorRoster
     private const array SICILY_APL_CATEGORIES = ['APL', 'Autoimpiego', 'Autofinanziato', 'GOL - Sicilia'];
 
     private const array SICILY_CATEGORIES = ['Autoimpiego', 'Autofinanziato', 'GOL - Sicilia'];
+
+    /**
+     * Roles held on top of the roster's own one, by email: "Importa richieste"
+     * (spec 0348, user directive 2026-11-03). Applied by QualificaOperatorSeeder
+     * and by QualificaRoleResetSeeder alike.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const array EXTRA_ROLES = [
+        'rosa.falzarano@qualificagroup.com' => [RequestImporter::ROLE],
+        'fabrizio.aliberti@qualificagroup.com' => [RequestImporter::ROLE],
+    ];
 
     /**
      * first name, last name, email, job (the sheet's "Settore"), role, physical

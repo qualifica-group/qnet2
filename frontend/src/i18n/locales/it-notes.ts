@@ -48,4 +48,22 @@ export const notes = {
     hint: 'Tab o Invio per inserire',
     empty: 'Nessun utente corrispondente',
   },
+  mentionOutside: {
+    toggle: 'Menziona chiunque',
+    noModuleAccess: 'Riceverà la notifica ma non potrà aprire il record',
+    willJoin: {
+      participant: 'Verrà aggiunto come Partecipante',
+      watcher: 'Verrà aggiunto come Osservatore',
+    },
+    summary: {
+      participant_one: 'Verrà aggiunto come Partecipante',
+      participant_other: 'Verranno aggiunti come Partecipanti',
+      watcher_one: 'Verrà aggiunto come Osservatore',
+      watcher_other: 'Verranno aggiunti come Osservatori',
+    },
+    enlisted: {
+      participant: 'Aggiunti come Partecipanti: {{names}}',
+      watcher: 'Aggiunti come Osservatori: {{names}}',
+    },
+  },
 }

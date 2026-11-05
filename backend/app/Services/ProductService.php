@@ -8,6 +8,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\AttributeContext;
 use App\Enums\FormMode;
+use App\Jobs\ClassifyRevenueLinesJob;
 use App\Models\Product;
 use App\Models\ProductTypology;
 use App\Models\StockMovement;
@@ -134,6 +135,7 @@ class ProductService
                 'unit_of_measure_id' => $data->unitOfMeasureId,
                 'product_typology_id' => $data->productTypologyId,
                 'cost_type_id' => $data->costTypeId,
+                'revenue_type_id' => $data->revenueTypeId,
             ]);
 
             // Spec 0142, D-3: absent keeps the model's default (Sellable only).
@@ -197,17 +199,25 @@ class ProductService
         // Spec 0099, D-3: a submitted null resets to the default typology.
         $product->product_typology_id ??= $this->resolveDefaultProductTypologyId();
 
-        DB::transaction(function () use ($product, $data): void {
+        $revenueTypeChanged = false;
+
+        DB::transaction(function () use ($product, $data, &$revenueTypeChanged): void {
             // Unconditional save: fire the model's saved event even when no native
             // attribute changed, so the HasCustomFields write pipeline (spec 0021)
             // persists a custom-fields-only edit. A clean save runs no UPDATE query.
             $product->save();
+            $revenueTypeChanged = $product->wasChanged('revenue_type_id');
 
             // Spec 0320: absent leaves the supplier list untouched, [] removes it all.
             if ($data->suppliers !== null) {
                 $this->supplierSync->sync($product, $data->suppliers);
             }
         });
+
+        // Spec 0350, D-9b: the still unclassified invoice lines of this product follow the new sub-account.
+        if ($revenueTypeChanged) {
+            ClassifyRevenueLinesJob::dispatch([$product->id]);
+        }
 
         return $product->fresh(self::HYDRATED_RELATIONS);
     }

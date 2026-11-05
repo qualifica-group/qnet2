@@ -215,4 +215,82 @@ abstract class AbstractImportDefinition implements ImportDefinition
             'label' => $field['label'],
         ], $this->fields());
     }
+
+    /**
+     * Retro-compatible default: no value-mapping step.
+     *
+     * @return array<int, string>
+     */
+    public function valueMappingFields(): array
+    {
+        return [];
+    }
+
+    /**
+     * Retro-compatible default: no `attribute.<code>` mapping targets.
+     *
+     * @return array{context: string, depends_on: string}|null
+     */
+    public function attributeTargets(): ?array
+    {
+        return null;
+    }
+
+    /**
+     * @param  array<string, array{column_key: string, values: array<int, array{value: string, count: int}>}>  $mappedColumns
+     * @param  array<string, mixed>  $globalConfig
+     * @return array<int, array{field: string, column_key: string, allow_create: bool, options: array<int, array{id: int, name: string, group: ?string}>, values: array<int, array{value: string, count: int, suggested_id: ?int}>}>
+     */
+    public function valueMappingPreview(array $mappedColumns, array $globalConfig): array
+    {
+        return [];
+    }
+
+    /**
+     * @param  array<string, array{column_key: string, values: array<int, array{value: string, count: int}>}>  $mappedColumns
+     * @param  array<string, mixed>  $valueMappings
+     * @param  array<string, mixed>  $globalConfig
+     * @return array<string, array<int, string>>
+     */
+    public function validateValueMappings(array $mappedColumns, array $valueMappings, array $globalConfig): array
+    {
+        return [];
+    }
+
+    /**
+     * @param  array<string, string>  $columnMapping
+     * @param  array<string, mixed>  $globalConfig
+     * @return array<string, array<int, string>>
+     */
+    public function validateAttributeTargets(array $columnMapping, array $globalConfig): array
+    {
+        return [];
+    }
+
+    /**
+     * Retro-compatible default: conversion offered (leads).
+     */
+    public function supportsOpportunityConversion(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Retro-compatible default: no global field is pre-filled from the file.
+     *
+     * @return array<int, string>
+     */
+    public function defaultSourceFields(): array
+    {
+        return [];
+    }
+
+    /**
+     * @param  array<string, array{column_key: string, values: array<int, array{value: string, count: int}>}>  $mappedColumns
+     * @return array<string, mixed>
+     */
+    public function globalConfigDefaults(array $mappedColumns): array
+    {
+        return [];
+    }
 }

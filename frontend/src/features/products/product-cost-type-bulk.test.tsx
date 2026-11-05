@@ -8,7 +8,7 @@ import { ProductsTable } from '@/features/products/products-table'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { BulkProductCostTypePayload, BulkProductCostTypeResult } from '@/features/products/types'
 
-/** Spec 0251 AC-007: the "Set cost type" bulk action of the Products grid and its dialog. */
+/** Spec 0251 AC-007: the "Set cost sub-account" bulk action of the Products grid and its dialog. */
 
 const canMock = vi.fn<(permission: string) => boolean>()
 vi.mock('@/features/auth/use-abilities', () => ({
@@ -83,38 +83,38 @@ beforeEach(() => {
   refreshMock.mockReset()
 })
 
-describe('Products grid - bulk "Set cost type" (spec 0251 AC-007)', () => {
+describe('Products grid - bulk "Set cost sub-account" (spec 0251 AC-007)', () => {
   it('is not offered without products.update', () => {
     canMock.mockImplementation((permission) => permission !== 'products.update')
 
     renderTable()
 
-    expect(screen.queryByRole('button', { name: 'Set cost type' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Set cost sub-account' })).not.toBeInTheDocument()
   })
 
   it('opens a dialog listing the selection, sets the chosen type, toasts the count and refreshes the grid', async () => {
     renderTable()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Set cost type' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Set cost sub-account' }))
     expect(screen.getByRole('list', { name: 'Selected products' })).toHaveTextContent('FuelToll')
 
     const confirm = screen.getByRole('button', { name: 'Apply to 2 products' })
     expect(confirm).toBeDisabled()
 
-    fireEvent.click(screen.getByTestId('select-Cost type'))
+    fireEvent.click(screen.getByTestId('select-Cost sub-account'))
     await waitFor(() => expect(confirm).toBeEnabled())
     fireEvent.click(confirm)
 
     await waitFor(() => expect(setCostTypeMock).toHaveBeenCalledWith({ product_ids: [1, 2], cost_type_id: 7 }))
-    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Cost type updated on 2 product(s).'))
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Cost sub-account updated on 2 product(s).'))
     expect(refreshMock).toHaveBeenCalled()
   })
 
   it('"None" removes the cost type by sending null', async () => {
     renderTable()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Set cost type' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'None (remove the cost type)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Set cost sub-account' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'None (remove the cost sub-account)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Apply to 2 products' }))
 
     await waitFor(() => expect(setCostTypeMock).toHaveBeenCalledWith({ product_ids: [1, 2], cost_type_id: null }))

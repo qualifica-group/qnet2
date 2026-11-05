@@ -9,6 +9,8 @@ import type { AiAssistantConfig } from '@/features/ai-assistant/types'
 /** Test-only helpers shared by the component tests of the assistant (not imported by production code). */
 export function buildAiConfig(overrides: Partial<AiAssistantConfig> = {}): AiAssistantConfig {
   return {
+    floating_enabled: true,
+    page_enabled: true,
     configured: true,
     driver: 'openai',
     model: 'gpt-test',

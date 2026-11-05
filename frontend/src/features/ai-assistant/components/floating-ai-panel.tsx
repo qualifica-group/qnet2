@@ -5,6 +5,7 @@ import { ExternalLink, History, MessageSquarePlus, MessagesSquare, X } from 'luc
 import { Button } from '@/components/ui/button'
 import { AiChatPanel } from '@/features/ai-assistant/components/ai-chat-panel'
 import { AiConversationList } from '@/features/ai-assistant/components/ai-conversation-list'
+import { useAiAssistantConfig } from '@/features/ai-assistant/hooks/use-ai-assistant-config'
 import { AI_ASSISTANT_ROUTE } from '@/features/ai-assistant/routes'
 import { useActiveWorkspaceSlug } from '@/features/workspaces/use-active-workspace-slug'
 import { workspacePath } from '@/features/workspaces/workspace-path'
@@ -23,6 +24,7 @@ interface Props {
 export default function FloatingAiPanel({ open, onClose }: Props) {
   const { t } = useTranslation()
   const slug = useActiveWorkspaceSlug()
+  const pageEnabled = useAiAssistantConfig().data?.page_enabled ?? false
   const [conversationId, setConversationId] = useState<number | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const fullPagePath = slug ? workspacePath(slug, AI_ASSISTANT_ROUTE) : AI_ASSISTANT_ROUTE
@@ -56,11 +58,13 @@ export default function FloatingAiPanel({ open, onClose }: Props) {
         >
           {showHistory ? <MessagesSquare className="size-3.5" /> : <History className="size-3.5" />}
         </Button>
-        <Button asChild variant="ghost" size="icon-sm">
-          <Link to={fullPagePath} state={{ conversationId }} aria-label={t('aiAssistant.openFullPage')}>
-            <ExternalLink className="size-3.5" />
-          </Link>
-        </Button>
+        {pageEnabled ? (
+          <Button asChild variant="ghost" size="icon-sm">
+            <Link to={fullPagePath} state={{ conversationId }} aria-label={t('aiAssistant.openFullPage')}>
+              <ExternalLink className="size-3.5" />
+            </Link>
+          </Button>
+        ) : null}
         <Button type="button" variant="ghost" size="icon-sm" aria-label={t('aiAssistant.closeButton')} onClick={onClose}>
           <X className="size-3.5" />
         </Button>

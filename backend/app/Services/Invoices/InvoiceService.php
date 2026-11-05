@@ -6,12 +6,14 @@ namespace App\Services\Invoices;
 
 use App\Enums\FinancialAccountType;
 use App\Enums\InvoiceType;
+use App\Enums\ProformaRequestKind;
 use App\Enums\ProformaRequestStatus;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\ProformaRequest;
 use App\Models\User;
+use App\Services\ChartOfAccounts\RevenueTypeResolver;
 use App\Services\Commissions\Accruals\CommissionAccrualSynchronizer;
 use App\Support\Amounts\LineAmountCalculator;
 use Carbon\CarbonImmutable;
@@ -38,6 +40,7 @@ class InvoiceService
         'quote:id,code',
         'lines.product:id,name',
         'lines.vatRate:id,name,rate',
+        'lines.revenueType.chartAccount.parent',
         'installments',
         'createdBy:id,name',
         'layout:id,name',
@@ -56,6 +59,7 @@ class InvoiceService
         private readonly CommissionAccrualSynchronizer $accruals,
         private readonly InvoiceLineGuard $lineGuard,
         private readonly RegisteredInvoiceGuard $registeredGuard,
+        private readonly RevenueTypeResolver $revenueTypes,
     ) {}
 
     /**
@@ -217,6 +221,8 @@ class InvoiceService
     {
         $this->assertBankBelongsToCompany($data);
         $this->lineGuard->assert($data['lines'], $request, $workOrderId, $quoteId, $ignoreInvoiceId);
+        // A line without `revenue_type_id` takes the server proposal; a present key is the user's choice (spec 0350, D-7)
+        $data['lines'] = $this->revenueTypes->fillMissing($data['lines'], $request?->kind === ProformaRequestKind::Institution);
 
         $computed = $this->amounts->compute($data['lines'], $this->amounts->vatRates(array_column($data['lines'], 'vat_rate_id')));
 

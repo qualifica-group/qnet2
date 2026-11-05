@@ -31,6 +31,8 @@ class CostTypesAuthorization extends AbstractResourceAuthorization
     public function fields(): array
     {
         return [
+            new FieldDefinition('chart_account_id', 'select'),
+            new FieldDefinition('code', 'text'),
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('nature', 'select', mandatory: true),
@@ -55,6 +57,8 @@ class CostTypesAuthorization extends AbstractResourceAuthorization
         $mayWrite = $this->actorMayWrite($actor, $model);
 
         return [
+            'chart_account_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'code' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'nature' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),

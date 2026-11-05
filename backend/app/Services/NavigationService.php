@@ -104,8 +104,8 @@ class NavigationService
                 continue;
             }
 
-            // Server-side gating hint only: not part of the payload.
-            unset($item['open_to_managers']);
+            // Server-side gating hints only: not part of the payload.
+            unset($item['open_to_managers'], $item['feature']);
             $item['children'] = $children;
             $visible[] = $item;
         }
@@ -119,9 +119,14 @@ class NavigationService
      * that Spatie role — combined with the permission check (both must pass).
      * `open_to_managers` (spec 0309) also opens the item to anyone with at
      * least one active subordinate in the org chart, permission or not.
+     * `feature` (spec 0347 D-16) hides the item while its config switch is off.
      */
     private function isAllowed(array $item, User $user): bool
     {
+        if (isset($item['feature']) && ! config($item['feature'])) {
+            return false;
+        }
+
         $permission = $item['permission'] ?? null;
         $role = $item['role'] ?? null;
 

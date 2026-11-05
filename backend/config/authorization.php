@@ -7,6 +7,7 @@ use App\Authorization\ApiClientsAuthorization;
 use App\Authorization\AttributesAuthorization;
 use App\Authorization\BusinessFunctionsAuthorization;
 use App\Authorization\CampaignsAuthorization;
+use App\Authorization\ChartAccountsAuthorization;
 use App\Authorization\CommissionAccrualsAuthorization;
 use App\Authorization\CommissionConfigurationsAuthorization;
 use App\Authorization\CommissionSettlementsAuthorization;
@@ -56,6 +57,7 @@ use App\Authorization\ReferentTypesAuthorization;
 use App\Authorization\RegistriesAuthorization;
 use App\Authorization\RequestManagementAuthorization;
 use App\Authorization\RequestStatisticsAuthorization;
+use App\Authorization\RevenueTypesAuthorization;
 use App\Authorization\RewardedReferentsAuthorization;
 use App\Authorization\RewardStatusesAuthorization;
 use App\Authorization\RewardTypesAuthorization;
@@ -176,6 +178,9 @@ return [
         'units-of-measure' => UnitsOfMeasureAuthorization::class,
         // spec 0210: tipi di costo (righe ODA).
         'cost-types' => CostTypesAuthorization::class,
+        // spec 0348: managerial chart of accounts (groups/accounts and revenue sub-accounts).
+        'chart-accounts' => ChartAccountsAuthorization::class,
+        'revenue-types' => RevenueTypesAuthorization::class,
         // spec 0247: catalogs of the simple purchasing/accounting lists.
         'purchase-request-priorities' => PurchaseRequestPrioritiesAuthorization::class,
         // spec 0248: presentation catalogues of the ODA and RDA line statuses.
@@ -261,6 +266,9 @@ return [
         // `legacy-ids.view` (LegacyIdPolicy): see the legacy `old_id` on grids
         // and record details — cross-cutting, no form of its own.
         'legacy-ids',
+        // Spec 0348: `revenue-types.*` (revenue sub-accounts) has no menu entry of its own: it is
+        // managed from the chart of accounts screen, gated on `chart-accounts.view`.
+        'revenue-types',
     ],
 
 ];

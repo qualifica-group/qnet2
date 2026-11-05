@@ -108,6 +108,15 @@ class WorkOrderPolicy extends BasePolicy
     }
 
     /**
+     * "Richiedi aggiornamento" (spec 0352, D-2): permission plus the same
+     * membership scoping as the other record actions.
+     */
+    public function requestUpdate(User $user, WorkOrder $workOrder): Response
+    {
+        return $this->withinPerimeter($user->can($this->permission('requestUpdate')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
+    }
+
+    /**
      * Gates the "Costi" section and the budget/actual comparison (spec 0190,
      * D-4): permission plus the same membership scoping as view.
      */
@@ -158,7 +167,7 @@ class WorkOrderPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'viewEmails', 'sendEmail', 'requestUpdate', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments'];
     }
 
     private function isInScope(User $user, Model $model): bool

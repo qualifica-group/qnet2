@@ -30,6 +30,7 @@ export const quotes = {
     operationalSite: 'Sede operativa',
     source: 'Fonte',
     nextCallbackAt: 'Prossimo richiamo',
+    followUpDate: 'Data ricontatto',
     alert: 'Avviso',
   },
   alerts: {
@@ -176,6 +177,7 @@ export const quotes = {
       "Proposto come codice dell'offerta seguito dai prodotti delle sue righe di ricavo (es. QUO-0042 - ISO 9001 + SOA). Se lo modifichi resta il tuo; svuota il campo per tornare al titolo automatico.",
     titleMax: 'Il titolo può contenere al massimo 191 caratteri.',
     quoteDate: 'Data offerta',
+    followUpDate: 'Data ricontatto',
     quoteDateRequired: 'La data offerta è obbligatoria.',
     opportunity: 'Opportunità',
     opportunitySearch: 'Cerca opportunità…',

@@ -83,7 +83,7 @@ class QualificaOperatorSeeder extends Seeder
         }
 
         $user->save();
-        $user->syncRoles([$role]);
+        $user->syncRoles([$role, ...(OperatorRoster::EXTRA_ROLES[$email] ?? [])]);
 
         return $user;
     }

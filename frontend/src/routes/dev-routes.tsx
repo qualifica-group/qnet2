@@ -9,6 +9,7 @@ const ApiIntegrationsPage = lazyRoute(
   () => import('@/features/api-integrations/api-integrations-page'),
 )
 const WorkspacesPage = lazyRoute(() => import('@/features/workspaces/workspaces-page'))
+const RequestImportPage = lazyRoute(() => import('@/pages/request-import-page'))
 const ApiDocsPage = lazyRoute(() => import('@/features/api-integrations/api-docs-page'))
 
 /** Routes of the "Develop" menu section, plus redirects from their former URLs. */
@@ -28,6 +29,7 @@ export const devRoutes: RouteObject[] = [
   },
   { path: 'dev/api-clients', element: <ApiIntegrationsPage /> },
   { path: 'dev/api-docs', element: <ApiDocsPage /> },
+  { path: 'dev/request-imports', element: <RequestImportPage /> },
   { path: 'migrations/*', element: <RedirectKeepingLocation to="/dev/migrations" /> },
   { path: 'admin/system-health', element: <RedirectKeepingLocation to="/dev/system-health" /> },
   { path: 'admin/api-integrations', element: <RedirectKeepingLocation to="/dev/api-clients" /> },

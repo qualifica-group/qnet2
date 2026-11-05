@@ -1,10 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { GenerateOrdersDialog } from '@/features/purchase-requests/generate-orders-dialog'
 import type { LineTarget } from '@/features/purchase-requests/line-status-transitions'
 import type { GenerateOrdersPayload, GenerateOrdersResult } from '@/features/purchase-requests/types'
@@ -20,10 +19,16 @@ vi.mock('@/features/purchase-requests/api', async (importOriginal) => ({
   generatePurchaseOrders: (payload: GenerateOrdersPayload) => generateMock(payload),
 }))
 
+/** Spec 0350 D-12 contract: placed sub-accounts carry code/group/account, the unplaced ones null. */
+const COST_SUB_ACCOUNTS = [
+  { id: 3, label: 'Services', meta: { color: 'blue', nature: 'direct' }, code: '61.01.001', path: '61 Costs > 61.01 Purchases > 61.01.001 Services', group: { code: '61', name: 'Costs' }, account: { code: '61.01', name: 'Purchases' } },
+  { id: 5, label: 'Misc', meta: { color: null, nature: 'general' }, code: null, path: null, group: null, account: null },
+]
+
 vi.mock('@/features/for-select/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/for-select/api')>()),
   fetchForSelect: vi.fn(async (resource: string) => ({
-    items: [resource === 'cost-types' ? { id: 3, label: 'Services', meta: { color: 'blue', nature: 'direct' } } : { id: 4, label: 'Bank transfer' }],
+    items: resource === 'cost-types' ? COST_SUB_ACCOUNTS : [{ id: 4, label: 'Bank transfer' }],
     export_link: null,
     pagination: { total: 1, offset: 0, limit: 25, total_pages: 1 },
   })),
@@ -62,8 +67,8 @@ function renderDialog(onGenerated = vi.fn()) {
 }
 
 async function pickCostType() {
-  fireEvent.click(screen.getByRole('combobox', { name: 'Cost type' }))
-  fireEvent.click(await screen.findByRole('option', { name: 'Services' }))
+  fireEvent.click(screen.getByRole('combobox', { name: 'Cost sub-account' }))
+  fireEvent.click(await screen.findByRole('option', { name: '61.01.001 Services' }))
 }
 
 beforeAll(async () => {
@@ -74,18 +79,35 @@ beforeEach(() => {
   generateMock.mockReset()
 })
 
-describe('GenerateOrdersDialog - colored cost type (spec 0249 AC-007)', () => {
-  it('renders the cost type option as a badge carrying its own color', async () => {
+describe('GenerateOrdersDialog - cost sub-account picker (spec 0350 D-12 AC-017)', () => {
+  it('groups by group and account, then a "To be placed" group, and shows code + name', async () => {
     renderDialog()
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Cost type' }))
-    const option = await screen.findByRole('option', { name: 'Services' })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Cost sub-account' }))
+    await screen.findByRole('option', { name: '61.01.001 Services' })
 
-    const dot = option.querySelector('.rounded-full')
-    expect(dot).not.toBeNull()
-    for (const token of (swatchClassFor('blue') ?? '').split(' ')) {
-      expect(dot).toHaveClass(token)
-    }
+    const group = screen.getByRole('group', { name: '61 Costs' })
+    expect(within(group).getByRole('group', { name: '61.01 Purchases' })).toBeInTheDocument()
+    const unplaced = screen.getByRole('group', { name: 'To be placed' })
+    expect(within(unplaced).getByRole('option', { name: 'Misc' })).toBeInTheDocument()
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['61.01.001 Services', 'Misc'])
+  })
+
+  it('picks a placed sub-account and shows code + name in the trigger', async () => {
+    renderDialog()
+
+    await pickCostType()
+
+    expect(screen.getByRole('combobox', { name: 'Cost sub-account' })).toHaveTextContent('61.01.001 Services')
+  })
+
+  it('picks an unplaced sub-account (name only)', async () => {
+    renderDialog()
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Cost sub-account' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Misc' }))
+
+    expect(screen.getByRole('combobox', { name: 'Cost sub-account' })).toHaveTextContent('Misc')
   })
 })
 

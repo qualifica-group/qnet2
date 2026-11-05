@@ -583,3 +583,25 @@ describe('WorkOrderDetailView — multi-offer work order (spec 0267 AC-016)', ()
     expect(screen.queryByText('Multi-offer')).not.toBeInTheDocument()
   })
 })
+
+/** Spec 0352 AC-014: the header's "Request update" button follows `permissions.actions.request_update` alone. */
+describe('WorkOrderDetailView — request update action (spec 0352)', () => {
+  function withActions(actions: Record<string, boolean>) {
+    const base = workOrder()
+    return workOrder({ permissions: { ...base.permissions, actions } })
+  }
+
+  it('shows the button and opens the dialog with the request_update flag', () => {
+    render(<WorkOrderDetailView workOrder={withActions({ request_update: true })} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Request update' }))
+
+    expect(screen.getByRole('dialog', { name: 'Request update' })).toBeInTheDocument()
+  })
+
+  it('hides the button without the flag', () => {
+    render(<WorkOrderDetailView workOrder={withActions({ request_update: false })} />)
+
+    expect(screen.queryByRole('button', { name: 'Request update' })).not.toBeInTheDocument()
+  })
+})

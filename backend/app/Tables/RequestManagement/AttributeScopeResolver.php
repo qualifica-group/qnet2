@@ -38,7 +38,24 @@ final class AttributeScopeResolver
     /** @var Collection<int, array<string, mixed>>|null */
     private ?Collection $union = null;
 
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    /**
+     * `$context` defaults to Quote (Gestione Richieste, quotes grid); the
+     * work-orders grid reads the WorkOrder context (spec 0350, D-2).
+     */
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly AttributeContext $context = AttributeContext::Quote,
+    ) {}
+
+    /**
+     * A resolver of another context with its OWN memo: the per-instance
+     * memos below are keyed by category only, so two contexts must never
+     * share one instance (spec 0350, T1).
+     */
+    public function forContext(AttributeContext $context): self
+    {
+        return new self($this->hierarchy, $context);
+    }
 
     /**
      * @return Collection<int, array<string, mixed>>
@@ -79,7 +96,7 @@ final class AttributeScopeResolver
         // ITS OWN inheritance contract; spec 0064 (AC-005) requires a
         // strict [sort_order, code] order for the columns endpoint,
         // regardless of which level an attribute is inherited from.
-        return self::sortBySortOrderThenCode($this->hierarchy->effectiveAttributes($category, AttributeContext::Quote));
+        return self::sortBySortOrderThenCode($this->hierarchy->effectiveAttributes($category, $this->context));
     }
 
     /**
@@ -92,7 +109,7 @@ final class AttributeScopeResolver
         // One batched read for the whole catalogue (the per-category walk cost
         // ~5 queries per category on every grid request), seeding the
         // per-category memo on the way so forCategory() never re-reads it.
-        foreach ($this->hierarchy->effectiveAttributesByCategory(AttributeContext::Quote) as $categoryId => $attributes) {
+        foreach ($this->hierarchy->effectiveAttributesByCategory($this->context) as $categoryId => $attributes) {
             $this->byCategory[$categoryId] ??= self::sortBySortOrderThenCode($attributes);
 
             foreach ($this->byCategory[$categoryId] as $row) {

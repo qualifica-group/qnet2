@@ -4,6 +4,7 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   BulkProductCostTypePayload,
   BulkProductCostTypeResult,
+  BulkProductRevenueTypePayload,
   CreateProductPayload,
   ProductDetail,
   ProductDetailWithPermissions,
@@ -71,5 +72,11 @@ export async function deleteProduct(id: number): Promise<void> {
 /** Bulk "Set cost type" (spec 0251 D-6): one cost type (or none) for every selected product, all-or-nothing server-side. */
 export async function setProductsCostType(payload: BulkProductCostTypePayload): Promise<BulkProductCostTypeResult> {
   const { data } = await apiClient.post<ApiResponse<BulkProductCostTypeResult>>('/products/cost-type', payload)
+  return data.data
+}
+
+/** Bulk "Set revenue sub-account" (spec 0350): one sub-account (or none) for every selected product. */
+export async function setProductsRevenueType(payload: BulkProductRevenueTypePayload): Promise<BulkProductCostTypeResult> {
+  const { data } = await apiClient.post<ApiResponse<BulkProductCostTypeResult>>('/products/revenue-type', payload)
   return data.data
 }

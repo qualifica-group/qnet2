@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { setProductsCostType } from '@/features/products/api'
 import type { BulkProductCostTypeResult } from '@/features/products/types'
@@ -88,7 +88,7 @@ export function ProductCostTypeDialog({ targets, onOpenChange, onApplied }: Prod
                 setRemoving(false)
                 setCostTypeId(next)
               }}
-              renderItem={costTypeOptionRenderer}
+              {...COST_SUB_ACCOUNT_SELECT_PROPS}
               labels={{
                 placeholder: t('products.bulkCostType.placeholder'),
                 searchPlaceholder: t('products.form.costTypeSearch'),

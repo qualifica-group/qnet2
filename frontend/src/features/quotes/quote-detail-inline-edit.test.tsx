@@ -97,6 +97,7 @@ function quote(overrides: Partial<QuoteDetailWithPermissions> = {}): QuoteDetail
     code: 'QUO-0009',
     title: 'Fornitura annuale',
     quote_date: '2026-03-15',
+    follow_up_date: null,
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
     quote_workflow_status_id: 1,
@@ -272,6 +273,30 @@ describe('QuoteDetailView — in-place editing (spec 0197)', () => {
 
     expect(rowValue('Source')).toContain('Web')
     expect(queryPencil('Source')).not.toBeInTheDocument()
+  })
+
+  // Spec 0349 AC-008: "Data ricontatto" is a row of "Dati offerta", edited in place.
+  it('shows the follow-up date, saves a new one and clears it to null', async () => {
+    const record = quote({ follow_up_date: '2026-12-01' })
+    vi.mocked(updateQuote).mockResolvedValue(record)
+    renderDetail(record)
+
+    expect(rowValue('Follow-up date')).toContain('2026')
+    openRow('Follow-up date')
+    fireEvent.change(screen.getByLabelText('Follow-up date'), { target: { value: '2026-12-20' } })
+    pressRowButton('Save')
+    await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledWith(9, { follow_up_date: '2026-12-20' }))
+  })
+
+  it('sends null when the follow-up date is emptied', async () => {
+    const record = quote({ follow_up_date: '2026-12-01' })
+    vi.mocked(updateQuote).mockResolvedValue({ ...record, follow_up_date: null })
+    renderDetail(record)
+
+    openRow('Follow-up date')
+    fireEvent.change(screen.getByLabelText('Follow-up date'), { target: { value: '' } })
+    pressRowButton('Save')
+    await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledWith(9, { follow_up_date: null }))
   })
 
   it('opens the status on its own row, the persisted pill as its value', () => {

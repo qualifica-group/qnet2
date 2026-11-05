@@ -6,6 +6,7 @@ namespace App\Authorization;
 
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\WorkOrderStatusResolver;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -71,7 +72,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen'];
     }
 
     /**
@@ -131,6 +132,9 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // WorkOrderPolicy::view, which applies the same isInScope rule).
             'view_emails' => $model !== null && $actor->can('work-orders.viewEmails'),
             'send_email' => $model !== null && $actor->can('work-orders.sendEmail'),
+            // Spec 0352, D-2/D-3: permission + perimeter, only while open / in progress.
+            'request_update' => $model instanceof WorkOrder && $actor->can('requestUpdate', $model)
+                && app(WorkOrderStatusResolver::class)->progress($model)->status->acceptsUpdateRequest(),
             // Spec 0190, D-4: gate the "Costi" section and its editor.
             'view_costs' => $model !== null && $actor->can('work-orders.viewCosts'),
             // Spec 0282, D-8: gates the "Proforma attiva/passiva" tabs.

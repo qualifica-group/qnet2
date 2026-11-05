@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0348 — Piano dei conti gestionale, fase 1 di N: la sola gestione del piano (albero a tre livelli
+  Mastro / Conto / Sottoconto) senza ancora collegarlo a prodotti e fatture attive.
+  Fasi successive (spec separate): F2 sottoconti su prodotti e righe fattura attiva (proposta + snapshot,
+  sottoconto predefinito provvigioni Ente, backfill fatture esistenti), F3 statistiche.
+  Contract-first: backend e frontend lavorano contro il data_contract qui sotto.
+-->
+<spec id="0348-chart-of-accounts" status="draft" owner="utente" date="2026-11-03">
+
+  <goal>
+    Dare all'amministrazione una schermata "Piano dei conti" in Configurazione > Contabilita' che mostra e
+    gestisce un piano dei conti GESTIONALE a tre livelli (Mastro > Conto > Sottoconto), con mastri di tipo Costo
+    o Ricavo, senza prima nota. I tipi di costo esistenti diventano i sottoconti di costo; i sottoconti di ricavo
+    sono una nuova anagrafica. Al rilascio il piano contiene una struttura di partenza modificabile.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-03 (conversazione di analisi). Decisioni utente nella stessa data (vincolanti):
+    - D-1 Piano dei conti gestionale, non contabilita' generale: nessuna prima nota, nessuna voce patrimoniale.
+      Tre livelli: Mastro, Conto, Sottoconto. Solo i sottoconti saranno assegnabili ai documenti (fase 2).
+    - D-2 Il tipo Costo/Ricavo sta sul MASTRO; conto e sottoconto lo ereditano. NON si chiama "natura":
+      `cost_types.nature` (Diretto/Indiretto/Generale, `App\Enums\CostTypeNature`, spec 0249) esiste gia' ed e'
+      usata dal Controllo di gestione (spec 0268-0270, `StructureCostsBuilder`, `NatureTrendAggregator`); resta
+      invariata sui sottoconti di costo.
+    - D-3 Struttura dati "opzione a": nuova tabella `chart_accounts` per mastri e conti; la tabella esistente
+      `cost_types` diventa l'insieme dei sottoconti di COSTO (aggiunge solo il conto padre e il codice); nuova
+      tabella `revenue_types` per i sottoconti di RICAVO. Motivo: `cost_types` e' referenziata da
+      `purchase_order_lines`, `purchase_invoices`, `purchase_invoice_lines`, `products`, `work_order_costs`,
+      `agent_fiscal_profiles`, dal Controllo di gestione e dalla migrazione legacy (`LegacyCostTypeLookup`, lookup per
+      nome univoco): nessuno di questi punti cambia.
+    - D-4 Struttura di partenza proposta (voci civilistiche art. 2425 c.c.), caricata da migrazione dati al rilascio
+      e modificabile da interfaccia. Il piano del commercialista potra' sostituirla: codici e descrizioni sono sempre
+      modificabili; le voci non usate si eliminano.
+    - D-5 Codici obbligatori, formato libero (`^[A-Za-z0-9.\-]+$`, max 20), UNIVOCI su tutto il piano (mastri,
+      conti, sottoconti di costo e di ricavo insieme). L'albero ordina per codice in ordine naturale
+      (`60.2` prima di `60.10`).
+    - D-6 Tipi di costo esistenti: la migrazione dati colloca per nome (trim, case-insensitive) i quattro tipi
+      iniziali (`Collaboratori`, `Fitti`, `Utenze`, `Altro`, migrazione 2026_10_13_100000) sotto i conti indicati in
+      D-11. Ogni altro tipo di costo (es. arrivato dalla migrazione legacy) resta SENZA conto e senza codice e
+      compare nel gruppo virtuale "Sottoconti di costo da collocare", da cui si colloca.
+    - D-7 Menu: nuova voce "Piano dei conti" in Configurazione > Contabilita'
+      (`config/navigation/configuration/accounting.php`, gruppo `config-accounting`), rotta `/chart-of-accounts`.
+      La pagina "Tipi di costo" (Configurazione > Acquisti, spec 0210) RESTA invariata; natura e colore di un
+      sottoconto di costo si modificano anche dal piano dei conti.
+
+    Decisioni tecniche proposte (da validare con l'approvazione del piano):
+    - D-8 Nomi: tabella `chart_accounts` (model `ChartAccount`), colonna `level` enum `ChartAccountLevel`
+      { `group` = Mastro, `account` = Conto }, colonna `kind` enum `ChartAccountKind` { `cost`, `revenue` }
+      valorizzata SOLO sui mastri (NULL sui conti, che la ereditano dal mastro). Sottoconti di ricavo: tabella
+      `revenue_types` (model `RevenueType`), speculare a `cost_types`. Identificatori in inglese, etichette UI
+      italiane via i18n ("Mastro", "Conto", "Sottoconto", "Costo", "Ricavo").
+    - D-9 Regole di albero: un mastro non ha padre; un conto ha come padre un mastro; un sottoconto di costo ha come
+      padre un conto il cui mastro e' `cost`; un sottoconto di ricavo un conto il cui mastro e' `revenue`. Un conto si
+      puo' spostare solo sotto un mastro dello stesso tipo. Il `kind` di un mastro non si cambia se ha conti.
+      `level` non si cambia mai. Profondita' massima tre livelli per costruzione (nessuna ricorsione libera).
+    - D-10 Eliminazione restrittiva (409, come spec 0246): mastro con conti, conto con sottoconti -> 409; sottoconto
+      di ricavo sempre eliminabile in questa fase (nessun documento lo usa ancora); sottoconto di costo: guardia
+      esistente di `CostTypeService::delete` invariata. `is_active` su ogni voce: in questa fase e' solo un dato
+      mostrato (voce attenuata); l'effetto sulle selezioni arriva in fase 2 (un sottoconto sara' selezionabile se lui
+      e i suoi antenati sono attivi). Nessuna cascata di disattivazione.
+    - D-11 Struttura di partenza (D-4): 8 mastri di costo e 3 di ricavo. La migrazione inserisce esattamente:
+        COSTO  60 Acquisti di beni: 60.01 Materie prime e sussidiarie, 60.02 Materiale di consumo, 60.03 Merci
+               61 Servizi: 61.01 Consulenze e collaborazioni, 61.02 Provvigioni, 61.03 Utenze, 61.04 Manutenzioni,
+                  61.05 Viaggi e trasferte, 61.06 Pubblicita' e marketing, 61.07 Altri servizi
+               62 Godimento beni di terzi: 62.01 Affitti e locazioni, 62.02 Noleggi e leasing
+               63 Personale: 63.01 Retribuzioni, 63.02 Oneri sociali, 63.03 Trattamento di fine rapporto
+               64 Ammortamenti: 64.01 Immobilizzazioni immateriali, 64.02 Immobilizzazioni materiali
+               65 Oneri diversi di gestione: 65.01 Imposte e tasse non sul reddito, 65.02 Altri oneri
+               66 Oneri finanziari: 66.01 Interessi passivi, 66.02 Commissioni e spese bancarie
+               67 Imposte sul reddito: 67.01 IRES, 67.02 IRAP
+        RICAVO 70 Ricavi delle vendite e delle prestazioni: 70.01 Prestazioni di servizi, 70.02 Vendita di prodotti,
+                  70.03 Provvigioni attive
+               71 Altri ricavi e proventi: 71.01 Contributi, 71.02 Altri proventi
+               72 Proventi finanziari: 72.01 Interessi attivi
+        Sottoconti di ricavo: 70.01.001 Ricavi da consulenza, 70.02.001 Ricavi da vendita prodotti,
+               70.03.001 Provvigioni da enti.
+        Collocazione tipi di costo (D-6): Collaboratori -> 61.01.001, Utenze -> 61.03.001, Fitti -> 62.01.001,
+               Altro -> 65.02.001 (solo se il nome esiste e il tipo non ha gia' un conto).
+      La migrazione dati e' idempotente (salta un codice gia' presente) e reversibile (`down` rimuove colonne e
+      tabelle). Non e' un seeder: il dato serve anche in produzione (precedente: tipi iniziali di 2026_10_13_100000).
+    - D-12 Lista: endpoint DEDICATO `GET /api/chart-of-accounts/tree`, non una `TableDefinition` SSRM. Motivo:
+      l'albero unisce tre tabelle e l'albero SSRM generico (spec 0157, `supportsTree`/`applyTreeScope`) lavora su un
+      solo model; il piano ha al piu' qualche centinaio di voci, caricate in una risposta con un numero costante di
+      query (3), ricerca ed espansione lato client (precedente: D-17 spec 0268). Eccezione consapevole a
+      backend.md §4, da approvare.
+    - D-13 Permessi: risorsa `chart-accounts` (view/create/update/delete/viewActivity) per mastri, conti e per la
+      schermata; risorsa `revenue-types` (view/create/update/delete/viewActivity) per i sottoconti di ricavo; i
+      sottoconti di costo restano sotto `cost-types.*` (permessi e `CostTypesAuthorization` esistenti, con i nuovi
+      campi `code` e `chart_account_id`). La voce di menu richiede `chart-accounts.view`. Il tree endpoint
+      richiede `chart-accounts.view` e restituisce le abilities per ciascuna delle tre risorse.
+    - D-14 Audit: `LogsModelActivity` su `ChartAccount` e `RevenueType` (come `CostType`).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazioni: `chart_accounts`; `revenue_types`; `cost_types` + `chart_account_id` (nullable, FK restrict)
+        e `code` (nullable, unique); migrazione dati con la struttura di partenza e la collocazione D-6/D-11.</item>
+      <item>Model `ChartAccount`, `RevenueType`, enum `ChartAccountLevel`, `ChartAccountKind`, factory; relazioni
+        `CostType::chartAccount()`.</item>
+      <item>API: tree endpoint, CRUD `chart-accounts`, CRUD `revenue-types`, estensione `cost-types` (store/update
+        accettano e la resource restituisce `code`, `chart_account_id`).</item>
+      <item>Validazione univocita' del codice su tutto il piano (D-5) e regole di albero (D-9); eliminazione
+        restrittiva (D-10).</item>
+      <item>Permessi `chart-accounts.*`, `revenue-types.*` (sync via `permissions:sync`), ResourceAuthorization per
+        le due nuove risorse, voce di menu, rotta e breadcrumb frontend.</item>
+      <item>Schermata "Piano dei conti": albero espandibile (mastri > conti > sottoconti), badge Costo/Ricavo sul
+        mastro, voci inattive attenuate, ricerca per codice o descrizione (mostra le voci che corrispondono con i loro
+        antenati), espandi/comprimi tutto, gruppo "Sottoconti di costo da collocare".</item>
+      <item>Azioni dall'albero: nuovo mastro; nuovo conto (su un mastro); nuovo sottoconto (su un conto: di costo o di
+        ricavo secondo il tipo del mastro); modifica; elimina; storico attivita'; colloca un tipo di costo (assegna
+        conto e codice). Form in Sheet.</item>
+      <item>Form sottoconto di costo: riusa i campi del tipo di costo (nome, descrizione, natura, colore, attivo) piu'
+        conto e codice.</item>
+      <item>Guida in-app IT+EN nuova chiave `chart-of-accounts` (+ `HELP_GUIDE_KEYS`), aggiornamento guida
+        `cost-types` (il tipo di costo e' un sottoconto, codice e conto). Manuale Claude Docs: nuova sezione.</item>
+    </in>
+    <out>
+      <item>Sottoconto costo/ricavo sulla scheda prodotto e sulle righe di fattura attiva (fase 2).</item>
+      <item>Sottoconto predefinito provvigioni Ente, backfill fatture esistenti, modifica dopo l'emissione (fase 2).</item>
+      <item>Effetto di `is_active` sulle selezioni dei documenti (fase 2).</item>
+      <item>Statistiche, dashboard, budget, riconciliazione col bilancio (fasi successive).</item>
+      <item>Import del piano da file (CSV/Excel), accorpamento di sottoconti, export verso contabilita' esterna.</item>
+      <item>Categoria "non economica" / voci patrimoniali.</item>
+      <item>Modifiche alla pagina "Tipi di costo", alle selezioni dei tipi di costo nei documenti di acquisto, al
+        Controllo di gestione e a `LegacyCostTypeLookup`.</item>
+      <item>Riordino manuale (drag and drop) delle voci: l'ordine e' il codice.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Importi: nessuno. Date ISO 8601. -->
+
+    <endpoint method="GET" path="/api/chart-of-accounts/tree">
+      <request>Nessun parametro. Restituisce tutte le voci, attive e inattive.</request>
+      <response status="200">
+        data: {
+          groups: Array&lt;{
+            id: number, code: string, name: string, description: string|null,
+            kind: "cost"|"revenue", is_active: boolean,
+            accounts: Array&lt;{
+              id: number, code: string, name: string, description: string|null, is_active: boolean,
+              sub_accounts: Array&lt;SubAccount>
+            }>
+          }>,
+          unplaced_cost_types: Array&lt;SubAccount>,
+          abilities: {
+            chart_accounts: { create: boolean, update: boolean, delete: boolean, view_activity: boolean },
+            revenue_types:  { create: boolean, update: boolean, delete: boolean, view_activity: boolean },
+            cost_types:     { create: boolean, update: boolean, delete: boolean, view_activity: boolean }
+          }
+        }
+        SubAccount = {
+          id: number, source: "cost_type"|"revenue_type", code: string|null, name: string,
+          description: string|null, is_active: boolean,
+          nature: "direct"|"indirect"|"general"|null,   (solo source = cost_type)
+          color: string|null                             (solo source = cost_type)
+        }
+        Ordinamento: gruppi, conti e sottoconti per codice in ordine naturale; `unplaced_cost_types` per nome.
+        `unplaced_cost_types` = tipi di costo con `chart_account_id` NULL.
+      </response>
+      <errors>401 non autenticato; 403 senza `chart-accounts.view`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/chart-accounts/{chartAccount}">
+      <response status="200">
+        data: ChartAccountResource = {
+          id, level: "group"|"account", parent_id: number|null, code, name, description: string|null,
+          kind: "cost"|"revenue"   (sul conto: quello EFFETTIVO, ereditato dal mastro),
+          is_active, children_count: number, created_at, updated_at,
+          abilities: { update: boolean, delete: boolean }
+        }
+      </response>
+      <errors>403 senza `chart-accounts.view`; 404.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/chart-accounts">
+      <request>
+        { level: "group"|"account" (required),
+          parent_id: number (required se account, deve essere un mastro; prohibited se group),
+          kind: "cost"|"revenue" (required se group; prohibited se account),
+          code: string (required, max 20, regex D-5, univoco su tutto il piano),
+          name: string (required, max 150),
+          description: string|null (max 500),
+          is_active: boolean (opzionale, default true) }
+      </request>
+      <response status="201">data: ChartAccountResource</response>
+      <errors>403 senza `chart-accounts.create`; 422 validazione (chiavi errori: `level`, `parent_id`, `kind`,
+        `code` con messaggio "codice gia' usato nel piano dei conti", `name`).</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/chart-accounts/{chartAccount}">
+      <request>
+        { parent_id (solo conto; un mastro dello STESSO kind), kind (solo mastro; 422 se ha conti e cambia),
+          code, name, description, is_active }  — `level` prohibited.
+      </request>
+      <response status="200">data: ChartAccountResource</response>
+      <errors>403 senza `chart-accounts.update`; 404; 422 (`parent_id` di kind diverso o non mastro, `kind`
+        con conti, `code` duplicato, `level` presente).</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/chart-accounts/{chartAccount}">
+      <response status="200">data: null</response>
+      <errors>403 senza `chart-accounts.delete`; 404; 409 se ha figli (mastro con conti, conto con sottoconti di
+        costo o di ricavo), messaggio "la voce ha voci collegate: disattivala o eliminale prima".</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/revenue-types/{revenueType}">
+      <response status="200">
+        data: RevenueTypeResource = { id, chart_account_id: number, code, name, description: string|null,
+          is_active, created_at, updated_at, abilities: { update: boolean, delete: boolean } }
+      </response>
+      <errors>403 senza `revenue-types.view`; 404.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/revenue-types">
+      <request>
+        { chart_account_id: number (required; un CONTO il cui mastro e' revenue),
+          code (required, D-5, univoco sul piano), name (required, max 150), description (max 500),
+          is_active (default true) }
+      </request>
+      <response status="201">data: RevenueTypeResource</response>
+      <errors>403 senza `revenue-types.create`; 422 (`chart_account_id` non conto o di costo, `code` duplicato).</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/revenue-types/{revenueType}">
+      <request>Stessi campi di POST, tutti `sometimes`.</request>
+      <response status="200">data: RevenueTypeResource</response>
+      <errors>403 senza `revenue-types.update`; 404; 422 come POST.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/revenue-types/{revenueType}">
+      <response status="200">data: null</response>
+      <errors>403 senza `revenue-types.delete`; 404.</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/cost-types[/{costType}] (ESTENSIONE, spec 0210)">
+      <request>
+        Campi esistenti invariati + `chart_account_id`: number|null (un CONTO il cui mastro e' cost) e
+        `code`: string|null (D-5, univoco sul piano). `code` required_with `chart_account_id`; un tipo di costo con
+        conto deve avere il codice, senza conto puo' non averlo. Omessi -> invariati (la pagina "Tipi di costo"
+        non li invia e continua a funzionare).
+      </request>
+      <response status="200|201">CostTypeResource esistente + `code`: string|null, `chart_account_id`: number|null.</response>
+      <errors>Esistenti + 422 (`chart_account_id` non conto o di ricavo, `code` duplicato o mancante con conto).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo `migrate` su un DB con i tipi di costo iniziali, `chart_accounts` contiene gli 11 mastri
+      e i conti di D-11 con kind sul solo mastro, `revenue_types` i 3 sottoconti di ricavo, e Collaboratori/Utenze/
+      Fitti/Altro hanno il conto e il codice di D-11; un tipo di costo con altro nome resta con conto e codice NULL.
+      Rieseguire la migrazione dati non duplica righe; `migrate:rollback` rimuove tabelle e colonne.</criterion>
+    <criterion id="AC-002">Dato un utente con `chart-accounts.view`, GET /api/chart-of-accounts/tree restituisce la
+      shape del contratto, ordinata per codice naturale (`60.2` prima di `60.10`), con i tipi di costo senza conto in
+      `unplaced_cost_types` e abilities coerenti coi permessi; il numero di query non cresce col numero di voci.</criterion>
+    <criterion id="AC-003">Senza `chart-accounts.view` il tree endpoint risponde 403; senza i rispettivi permessi
+      create/update/delete gli endpoint `chart-accounts` e `revenue-types` rispondono 403 e non modificano dati.</criterion>
+    <criterion id="AC-004">POST /api/chart-accounts crea un mastro (con kind) e un conto (con parent mastro); un conto
+      con parent conto, un conto con kind, un mastro con parent o senza kind -> 422 senza scrittura.</criterion>
+    <criterion id="AC-005">Un codice gia' usato da una qualsiasi voce del piano (mastro, conto, sottoconto di costo o di
+      ricavo) viene rifiutato con 422 su `code` da tutti e tre gli endpoint di scrittura; aggiornare una voce
+      mantenendo il proprio codice e' accettato.</criterion>
+    <criterion id="AC-006">PATCH di un conto verso un mastro di kind diverso -> 422; PATCH del kind di un mastro con
+      conti -> 422; PATCH di `level` -> 422; spostare un conto sotto un altro mastro dello stesso kind riuscito.</criterion>
+    <criterion id="AC-007">DELETE di un mastro con conti o di un conto con sottoconti (di costo o di ricavo) -> 409 e
+      nessuna eliminazione; DELETE di una voce senza figli -> 200 ed eliminata.</criterion>
+    <criterion id="AC-008">POST/PATCH /api/revenue-types con `chart_account_id` di un mastro o di un conto di costo
+      -> 422; con un conto di ricavo -> 201/200.</criterion>
+    <criterion id="AC-009">PATCH /api/cost-types/{id} con conto di costo e codice colloca il tipo (sparisce da
+      `unplaced_cost_types`, compare sotto il conto); con conto di ricavo -> 422; con conto ma senza codice -> 422;
+      una PATCH senza i due campi (pagina Tipi di costo) lascia conto e codice invariati.</criterion>
+    <criterion id="AC-010">La voce di menu "Piano dei conti" in Configurazione > Contabilita' compare solo con
+      `chart-accounts.view`; la rotta `/chart-of-accounts` mostra l'albero con mastri comprimibili, badge Costo/Ricavo,
+      voci inattive attenuate e il gruppo "da collocare" solo se non vuoto.</criterion>
+    <criterion id="AC-011">La ricerca per codice o descrizione mostra le voci che corrispondono insieme ai loro
+      antenati, espansi; svuotata la ricerca l'albero torna allo stato di espansione precedente.</criterion>
+    <criterion id="AC-012">Dall'albero: "Nuovo conto" su un mastro e "Nuovo sottoconto" su un conto aprono il form con
+      il padre preimpostato; su un conto di ricavo il sottoconto e' un sottoconto di ricavo, su un conto di costo un
+      tipo di costo (campi natura e colore inclusi); dopo il salvataggio l'albero si aggiorna.</criterion>
+    <criterion id="AC-013">I pulsanti crea/modifica/elimina/storico sono nascosti in base alle abilities del tree
+      endpoint; un 409 o un 422 del backend viene mostrato come messaggio (toast o errore di campo) senza perdere il
+      form.</criterion>
+    <criterion id="AC-014">Il test di parita' delle guide (`help-content-parity.test.ts`) e `help-guide-keys.test.ts`
+      (101 -> 102, REQUIREMENT CHANGED) sono verdi con la nuova guida `chart-of-accounts` IT+EN.</criterion>
+    <criterion id="AC-015">La schermata a 375px non ha scrollbar orizzontale: codice e descrizione troncati,
+      azioni raggiungibili da menu riga; navigabile da tastiera (frecce/Invio per espandere, focus visibile).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: albero costruito con componenti `components/ui/` esistenti (Collapsible/Button/
+      Badge/DropdownMenu/Sheet/Input) + lucide; nessun pacchetto tree.</item>
+    <item>Layering backend.md §1: controller sottili, FormRequest (regole di albero e univocita' codice in una Rule
+      condivisa `UniqueChartCode`), Service per scrittura/eliminazione, Resource in uscita, Policy + ResourceAuthorization.</item>
+    <item>Ordinamento naturale del codice calcolato in PHP sul risultato (dataset piccolo), mai `orderByRaw` con input.</item>
+    <item>Migrazione dati senza riferimenti ai model (DB facade), come 2026_10_13_100000; reversibile.</item>
+    <item>Frontend: TanStack Query (chiavi in `features/chart-of-accounts/query-keys.ts`), RHF + Zod, i18n IT/EN,
+      nessun `useEffect` per fetch; superfici secondo ui-design.md §1-bis, densita' compatta §2.</item>
+    <item>File sotto 300 righe (soft) / 500 (hard).</item>
+    <item>Test: Pest feature test per ogni endpoint (happy, 403, 404, 409, 422), test della migrazione dati; Vitest per
+      costruzione/filtro dell'albero (`.test.ts`, node) e per la schermata (`.test.tsx`).</item>
+  </constraints>
+
+</spec>

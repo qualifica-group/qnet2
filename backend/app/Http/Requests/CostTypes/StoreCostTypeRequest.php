@@ -3,8 +3,11 @@
 namespace App\Http\Requests\CostTypes;
 
 use App\DataObjects\CostTypes\CreateCostTypeData;
+use App\Enums\ChartAccountKind;
 use App\Enums\CostTypeNature;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Rules\ChartAccountRules;
+use App\Rules\UniqueChartCode;
 use App\Support\BadgeTokens;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +42,8 @@ class StoreCostTypeRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string', 'max:'.self::DESCRIPTION_MAX],
             'nature' => ['required', Rule::enum(CostTypeNature::class)],
             'color' => ['required', 'string', Rule::in(BadgeTokens::colors())],
+            'chart_account_id' => ['sometimes', 'nullable', 'integer', ChartAccountRules::accountOfKind(ChartAccountKind::Cost)],
+            'code' => ['nullable', 'required_with:chart_account_id', ...UniqueChartCode::rules()],
             'sort_order' => ['prohibited'],
             'is_active' => ['sometimes', 'boolean'],
         ];

@@ -18,6 +18,9 @@ use Illuminate\Support\Collection;
  */
 class CostTypeService
 {
+    /** Relation path the placement (account > group) of a for-select item reads. */
+    public const string PLACEMENT_RELATION = 'chartAccount.parent';
+
     public function __construct(private readonly LookupOrderManager $orderManager) {}
 
     public function create(CreateCostTypeData $data): CostType
@@ -67,26 +70,23 @@ class CostTypeService
     }
 
     /**
-     * Active cost types only, by display order. The requested `ids[]`
-     * (edit-mode hydration) are appended even when inactive, so an existing
-     * line keeps showing its type.
+     * Active cost types only, placed ones first by natural code (`61.2` before
+     * `61.10`), then the unplaced ones by name (spec 0350, D-12). Searched on
+     * code and name. The requested `ids[]` (edit-mode hydration) are appended
+     * even when inactive and do not inflate the total. The lookup is small, so
+     * ordering and paging happen in memory (no orderByRaw).
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = $this->orderedQuery()->where('is_active', true);
+        // Step 1: the selectable population, in display order
+        $selectable = $this->selectable($query)->get()->sort($this->byDisplayOrder(...))->values();
 
-        if ($query->hasSearch()) {
-            $base->where('name', 'like', '%'.$query->search.'%');
-        }
-
-        $total = (clone $base)->count();
-
-        /** @var Collection<int, CostType> $page */
-        $page = $base->offset($query->offset)->limit($query->limit)->get();
+        // Step 2: the requested window, then the hydrated ids not already in it
+        $page = $selectable->slice($query->offset, $query->limit)->values();
 
         return new ForSelectResult(
             items: $this->appendHydratedIds($page, $query),
-            total: $total,
+            total: $selectable->count(),
             offset: $query->offset,
             limit: $query->limit,
         );
@@ -95,12 +95,28 @@ class CostTypeService
     /**
      * @return Builder<CostType>
      */
-    private function orderedQuery(): Builder
+    private function selectable(ForSelectQuery $query): Builder
     {
-        return CostType::query()->select(['id', 'name', 'nature', 'color', 'is_active', 'sort_order'])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id');
+        return CostType::query()->with(self::PLACEMENT_RELATION)
+            ->where('is_active', true)
+            ->when($query->hasSearch(), static fn (Builder $costTypes) => $costTypes->where(
+                static fn (Builder $match) => $match->where('code', 'like', "%{$query->search}%")->orWhere('name', 'like', "%{$query->search}%"),
+            ));
+    }
+
+    private function byDisplayOrder(CostType $a, CostType $b): int
+    {
+        $aPlaced = $a->chart_account_id !== null;
+
+        if ($aPlaced !== ($b->chart_account_id !== null)) {
+            return $aPlaced ? -1 : 1;
+        }
+
+        $byLabel = $aPlaced
+            ? strnatcasecmp((string) $a->code, (string) $b->code)
+            : strnatcasecmp($a->name, $b->name);
+
+        return $byLabel !== 0 ? $byLabel : $a->id <=> $b->id;
     }
 
     /**
@@ -109,16 +125,12 @@ class CostTypeService
      */
     private function appendHydratedIds(Collection $page, ForSelectQuery $query): Collection
     {
-        if (! $query->hasIds()) {
-            return $page;
-        }
-
         $missingIds = array_values(array_diff($query->ids, $page->pluck('id')->all()));
 
         if ($missingIds === []) {
             return $page;
         }
 
-        return $page->concat($this->orderedQuery()->whereIn('id', $missingIds)->get());
+        return $page->concat(CostType::query()->with(self::PLACEMENT_RELATION)->whereIn('id', $missingIds)->get()->sort($this->byDisplayOrder(...)))->values();
     }
 }

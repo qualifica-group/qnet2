@@ -110,7 +110,7 @@ class DemoTaskNoteSeeder extends Seeder
                 quoteId: null,
                 mentionIds: [],
             ),
-        );
+        )->note;
     }
 
     /**

@@ -47,7 +47,7 @@ class QualificaRoleResetSeeder extends Seeder
             }
 
             foreach (OperatorRoster::OPERATORS as [, , $email, , $role]) {
-                $this->syncRoleOf($email, $role);
+                $this->syncRoleOf($email, $role, ...(OperatorRoster::EXTRA_ROLES[$email] ?? []));
             }
 
             $this->assignBaseRoleToStaff();
@@ -87,17 +87,17 @@ class QualificaRoleResetSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-    private function syncRoleOf(string $email, string $role): void
+    private function syncRoleOf(string $email, string ...$roles): void
     {
         $user = User::query()->where('email', $email)->first();
 
         if ($user === null) {
-            $this->command?->warn(sprintf('%s: no account, role "%s" skipped.', $email, $role));
+            $this->command?->warn(sprintf('%s: no account, role "%s" skipped.', $email, implode('", "', $roles)));
 
             return;
         }
 
-        $user->syncRoles([$role]);
+        $user->syncRoles($roles);
     }
 
     /**

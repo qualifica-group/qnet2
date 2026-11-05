@@ -78,7 +78,7 @@ it('every work-orders endpoint requires authentication (401)', function () {
 it('permissions:sync creates all 18 work-orders.* permissions, derived from the Policy alone (AC-051)', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
-    foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments'] as $ability) {
+    foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments', 'requestUpdate'] as $ability) {
         expect(Permission::where('name', "work-orders.{$ability}")->exists())->toBeTrue();
     }
 
@@ -91,7 +91,8 @@ it('permissions:sync creates all 18 work-orders.* permissions, derived from the 
     // 17, not 16: spec 0282 D-3 added `viewInvoices` (REQUIREMENT CHANGED).
     // 18, not 17: spec 0316 D-5 added `viewSite` (REQUIREMENT CHANGED).
     // 19, not 18: spec 0340 added `viewCompetence` (REQUIREMENT CHANGED).
-    expect(Permission::where('name', 'like', 'work-orders.%')->count())->toBe(19);
+    // 20, not 19: spec 0352 added `requestUpdate` (REQUIREMENT CHANGED).
+    expect(Permission::where('name', 'like', 'work-orders.%')->count())->toBe(20);
 });
 
 // ---------------------------------------------------------------------------

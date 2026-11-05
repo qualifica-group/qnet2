@@ -83,4 +83,12 @@ describe('useReviewProductsScope', () => {
     )
     expect(result.current.campaignCategoryIds).toEqual([3, 4])
   })
+
+  it("scopes the products picker on the run's product line when there is no campaign (spec 0348)", () => {
+    const { result } = renderHook(() =>
+      useReviewProductsScope(baseRun({ global_config: { product_category_id: 26 } })),
+    )
+
+    expect(result.current.campaignCategoryIds).toEqual([26])
+  })
 })

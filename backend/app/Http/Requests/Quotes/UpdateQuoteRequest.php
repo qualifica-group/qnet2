@@ -77,6 +77,8 @@ class UpdateQuoteRequest extends FormRequest
             'title' => ['sometimes', 'nullable', 'string', 'max:191'],
             // Spec 0228: editable, never null.
             'quote_date' => ['sometimes', 'date_format:Y-m-d'],
+            // Spec 0349 "Data ricontatto": null clears it.
+            'follow_up_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'quote_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
             'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],

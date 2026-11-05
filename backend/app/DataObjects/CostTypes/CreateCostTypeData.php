@@ -16,6 +16,8 @@ final readonly class CreateCostTypeData
         public CostTypeNature $nature,
         public string $color,
         public bool $isActive,
+        public ?int $chartAccountId = null,
+        public ?string $code = null,
     ) {}
 
     /**
@@ -29,6 +31,8 @@ final readonly class CreateCostTypeData
             nature: CostTypeNature::from((string) $data['nature']),
             color: (string) $data['color'],
             isActive: (bool) ($data['is_active'] ?? true),
+            chartAccountId: isset($data['chart_account_id']) ? (int) $data['chart_account_id'] : null,
+            code: $data['code'] ?? null,
         );
     }
 
@@ -43,6 +47,8 @@ final readonly class CreateCostTypeData
             'nature' => $this->nature,
             'color' => $this->color,
             'is_active' => $this->isActive,
+            'chart_account_id' => $this->chartAccountId,
+            'code' => $this->code,
         ];
     }
 }

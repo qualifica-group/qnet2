@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0350-category-tab-attribute-columns" status="approved" owner="utente" date="2026-11-04" revision="2">
+
+  <!-- rev.2 (2026-11-04, build): nomi endpoint allineati al codice reale (`GET .../columns`, `POST .../values`
+       con `columnId`); la shape non cambia. Lettura/scrittura in due trait (D-7). -->
+
+  <goal>
+    Sulle griglie Offerte, Commesse e Contratti, scegliendo la tab di una categoria prodotto compaiono
+    anche le colonne dei campi flessibili ("Informazioni aggiuntive") di quella categoria, come in
+    Gestione Richieste: filtrabili, ordinabili e, dove consentito, modificabili nella cella.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel codice (2026-11-04). -->
+    - Richiesta utente 2026-11-04: "voglio commesse, contratti e offerte come gestione richieste, ossia in base
+      alla categoria scelta escono anche i campi flessibili; per commessa i campi flessibili della commessa e non
+      dell'offerta". Supera la riga della spec 0335 "solo filtro righe + conteggio (niente attr.*)" per queste
+      tre griglie (la rinomina dei Gestori Account resta esclusa).
+    - Riferimento: Gestione Richieste (spec 0064, ripristinata dalla direttiva 2026-08-31).
+      `App\Tables\RequestManagement\RequestManagementScopedTableDefinition` (decoratore outermost) delega a
+      `AttributeGridColumns` (forme colonna, valori riga, filtro/sort/distinct sul JSON, gate
+      `valuesEditable()` = `{domain}.update` + campo `attribute_values` editabile in `role_field_permissions`),
+      `AttributeScopeResolver` (set effettivo per categoria via `CategoryHierarchy::effectiveAttributes()`,
+      unione deduplicata per `code` via `effectiveAttributesByCategory()`, ordine [sort_order, code]),
+      `AttributeColumnBuilder` (id `attr.<code>`, `EDITABLE_FIELD = 'attribute_values'`, forma raw/resolved),
+      `AttributeDateFilterApplier` (date/datetime), trait `Concerns\WritesAttributeCells` (scrittura cella).
+      Oggi sono cablati su `quotes.attribute_values`, `AttributeContext::Quote`, `new Quote` e
+      `RequestAttributeResolver`.
+    - Griglie e decoratori outermost attuali (`TableRegistry::resolve`):
+      `quotes` -> `Tables\Quotes\OpportunityScopedTableDefinition` (214 righe, `ProductCategoryScopable` +
+      `RegistryScopable`); `work-orders` -> `Tables\WorkOrders\QuoteScopedTableDefinition` (210 righe, idem);
+      `contracts` -> `Tables\Contracts\ContractCategoryScopedTableDefinition` (63 righe, solo righe).
+      Righe per tab: offerte/contratti = categorie delle righe di RICAVO dell'offerta
+      (`RevenueCategoryQuoteIds`), commesse = `WorkOrderSourceQuotes::withRevenueCategory()`.
+    - Valori e contesti: `quotes.attribute_values` (contesto `AttributeContext::Quote`),
+      `work_orders.attribute_values` (contesto `AttributeContext::WorkOrder`, spec 0098 D-2, indipendente da
+      quello dell'offerta). `contracts` NON ha `attribute_values`: ha `quote_id` (offerta di origine) e la
+      griglia carica gia' in eager `quote` (`ContractsTableDefinition::baseQuery()`).
+    - Scrittura: `QuoteCellWriter` / `WorkOrderCellWriter` validano col FormRequest del form
+      (`UpdateQuoteRequest` / `UpdateWorkOrderRequest`, `attribute_values` => `sometimes|array`) e chiamano
+      `QuoteService::update` / `WorkOrderService::update`, che passano da `QuoteAttributeValueWriter` /
+      `WorkOrderAttributeValueWriter` (merge sparso, validazione contro il set del RECORD:
+      `QuoteAttributeResolver::resolve` / `WorkOrderAttributeResolver::resolve`, layout `FormMode::View`).
+    - Permesso di campo `attribute_values` gia' dichiarato in `QuotesAuthorization` e `WorkOrdersAuthorization`
+      (visibile+editabile se puo' scrivere, altrimenti sola lettura).
+    - Allow-list unione (D-4 spec 0064) per salvataggio filtri: `TableController::scopeToAllProductCategories()`
+      e `TableFilterStateRequest::definition()` testano oggi `instanceof RequestManagementScopedTableDefinition`.
+      `TableController.php` e' a 493 righe (hard limit 500).
+    - Frontend: `TableView`/`useTableConfig`/`ssrm-datasource` passano gia' `scope.productCategoryId` a config,
+      righe, valori distinti e preferenze per qualunque dominio; le tre griglie montano gia' `CategoryTabs` con
+      `key={tableKey}`. Le colonne `attr.*` sono rese in modo generico dal config. Atteso: nessuna modifica di
+      codice frontend.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Offerte: colonne del set effettivo della categoria nel contesto `Quote`, valori da
+      `quotes.attribute_values`, modificabili in cella con lo stesso gate di Gestione Richieste
+      (`quotes.update` + campo `attribute_values` editabile). Decisione utente 2026-11-04.</decision>
+    <decision id="D-2">Commesse: contesto `WorkOrder`, valori da `work_orders.attribute_values` (i campi della
+      commessa, mai quelli dell'offerta), modificabili in cella (`work-orders.update` + campo
+      `attribute_values`). Decisione utente 2026-11-04.</decision>
+    <decision id="D-3">Contratti: campi flessibili dell'offerta di origine (`contracts.quote_id` ->
+      `quotes.attribute_values`, contesto `Quote`), SOLA LETTURA (colonna `editable: false`), filtrabili e
+      ordinabili. Si modificano dall'offerta. Decisione utente 2026-11-04.</decision>
+    <decision id="D-4">Tab "Tutte" e tab "Categorie madri" (spec 0337): nessuna colonna `attr.*`, come in
+      Gestione Richieste.</decision>
+    <decision id="D-5">Nessun nuovo endpoint, nessuna migrazione, nessuna nuova colonna DB: si estende la shape
+      gia' esistente di `/api/tables/{domain}/*` per `quotes`, `work-orders`, `contracts`.</decision>
+    <decision id="D-6">La cella scrive dallo stesso punto del form: CellWriter del modulo -> FormRequest di
+      update -> Service::update -> AttributeValueWriter. Il set di validazione e' quello del RECORD, non della
+      tab (come Gestione Richieste). Un campo di tipo `table` resta modificabile solo dal form (spec 0180).</decision>
+    <decision id="D-7">Riuso: `AttributeGridColumns`/`AttributeScopeResolver` diventano parametrici su un
+      bersaglio (colonna JSON dei valori, `AttributeContext`, model per il gate di campo) senza cambiare il
+      comportamento di Gestione Richieste; le tre griglie condividono il trait di lettura
+      `App\Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns` (offerte e commesse anche quello di
+      scrittura `WritesCategoryAttributeCells`; bersaglio `App\Tables\CategoryTabs\AttributeGridTarget`) e una interfaccia
+      `App\Tables\CategoryTabs\AttributeColumnsScopable` (`scopeToAllProductCategories()`), implementata anche
+      da `RequestManagementScopedTableDefinition`, che sostituisce i due `instanceof` concreti.
+      Le classi restano nel namespace `App\Tables\RequestManagement` (spostarle e' fuori scope).</decision>
+    <decision id="D-8">Contratti, implementazione dei filtri/sort sul JSON dell'offerta senza cambiare la query
+      base: filtro = `whereIn('contracts.quote_id', <sottoquery quotes filtrata dall'handler su
+      'quotes.attribute_values'>)`; sort = join `quotes` con alias dedicato aggiunto SOLO quando si ordina per
+      un `attr.*`, con `select('contracts.*')` esplicito; valori distinti letti da `quotes` ristretto agli id
+      offerta dei contratti visibili.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: colonne `attr.<code>` (config, righe, filtro, ordinamento, valori distinti, preferenze,
+        stato filtri) sulle griglie `quotes`, `work-orders`, `contracts` quando c'e' una tab categoria.</item>
+      <item>Backend: modifica in cella delle `attr.*` su `quotes` e `work-orders`; sola lettura su `contracts`.</item>
+      <item>Refactor minimo e senza cambi di comportamento di `AttributeGridColumns`/`AttributeScopeResolver`
+        (parametrici sul bersaglio) e dei due `instanceof` (interfaccia `AttributeColumnsScopable`).</item>
+      <item>Test Pest nuovi per le tre griglie; suite esistenti di Gestione Richieste verdi senza modifiche.</item>
+      <item>Guide in-app IT+EN `quotes#category-tabs`, `work-orders#category-tabs`, `contracts#category-tabs`
+        (paragrafo sulle colonne dei campi flessibili). Manuale Claude Docs: sezioni Offerte, Commesse,
+        Contratti (tab categorie).</item>
+    </in>
+    <out>
+      <item>Rinomina delle colonne Gestori Account per categoria (resta solo in Gestione Richieste).</item>
+      <item>Colonne `attr.*` sulle griglie annidate (Offerte nel dettaglio Opportunita'/Anagrafica, Commesse nel
+        dettaglio Offerta/Contratto) e sulla griglia Opportunita' (l'Opportunita' non ha campi flessibili).</item>
+      <item>Modifica dalla griglia Contratti dei campi dell'offerta; campi flessibili propri del contratto.</item>
+      <item>Export, statistiche e report: non seguono la tab (come spec 0335).</item>
+      <item>Riscrivere `RequestManagementScopedTableDefinition` sul nuovo trait o spostare le classi `attr.*`
+        fuori da `App\Tables\RequestManagement` (si segnala come follow-up).</item>
+      <item>Qualsiasi modifica di codice frontend (se ne emerge il bisogno: stop e segnalazione).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo: la shape e' quella di Gestione Richieste (spec 0064), estesa a tre domini. -->
+    <endpoint method="GET" path="/api/tables/{quotes|work-orders|contracts}/columns">
+      <request>query `product_category_id?: int` (tab categoria) | `product_category_branch_id?: int` (tab madre).</request>
+      <response status="200">
+        envelope `{ success, message, data }`; `data.columns` = colonne native invariate, seguite (solo con
+        `product_category_id`) da una colonna per attributo effettivo della categoria nel contesto del dominio,
+        ordine [sort_order, code], nella forma di `AttributeColumnBuilder::resolved()`:
+        `{ id: "attr.<code>", label: <nome attributo>, type, filterType, editable: bool, visible: true,
+        order, editor?, options?, relation? }`.
+        `editable` = true solo per quotes/work-orders con gate D-1/D-2 e tipo diverso da `table`; sempre false su contracts.
+        Nessuna `attr.*` senza tab o con `product_category_branch_id`.
+      </response>
+      <errors>403 senza `{domain}.viewAny`; 422 categoria inesistente (regole gia' esistenti).</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/{quotes|work-orders|contracts}/rows">
+      <request>body SSRM invariato + `productCategoryId?`; `sortModel`/`filterModel` accettano `attr.<code>`
+        del set della tab.</request>
+      <response status="200">ogni riga porta in piu' `"attr.<code>": <valore salvato | null>` per ogni attributo
+        della tab: quotes = `quotes.attribute_values`, work-orders = `work_orders.attribute_values`, contracts =
+        `quote.attribute_values` dell'offerta di origine.</response>
+      <errors>422 se `attr.<code>` non appartiene al set della tab (allow-list).</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/{quotes|work-orders|contracts}/values">
+      <request>body `columnId: "attr.<code>"`, `productCategoryId?`, `search?`.</request>
+      <response status="200">valori distinti dell'attributo nel perimetro visibile della tab.</response>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tables/{quotes|work-orders}/rows/{id}">
+      <request>`{ column: "attr.<code>", value: mixed }` (shape cella gia' esistente).</request>
+      <response status="200">riga rimappata, inclusa `attr.<code>` aggiornata (set del record).</response>
+      <errors>403 senza `{domain}.update` o campo `attribute_values` non editabile per il ruolo; 404 riga fuori
+        visibilita'; 422 codice non applicabile al record, tipo errato, attributo `table`.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tables/contracts/rows/{id}">
+      <request>`{ column: "attr.<code>", value }`.</request>
+      <errors>422 "Column not editable" (colonna `editable: false`); `quotes.attribute_values` invariato.</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/tables/{quotes|work-orders|contracts}/preferences | /filters">
+      <request>invariato; l'allow-list accetta l'UNIONE degli `attr.*` di tutte le categorie del contesto del
+        dominio (D-4 spec 0064).</request>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un attributo assegnato alla categoria C nel contesto Quote, quando chiedo il config
+      di `quotes` con `product_category_id=C`, allora compare `attr.<code>` dopo le colonne native; senza tab e
+      con `product_category_branch_id` non compare nessuna `attr.*`.</criterion>
+    <criterion id="AC-002">Data un'offerta nella tab C con `attribute_values.<code>` valorizzato, le righe di
+      `quotes` con tab C riportano il valore in `attr.<code>`; filtro e ordinamento per `attr.<code>` restringono
+      e ordinano le righe; i valori distinti lo elencano.</criterion>
+    <criterion id="AC-003">Un utente con `quotes.update` e campo `attribute_values` editabile vede `editable: true`
+      e il PATCH della cella salva il valore su `quotes.attribute_values` (merge sparso, altri codici invariati,
+      voce di activity log); senza permesso di campo `editable: false` e PATCH 403; codice non applicabile
+      all'offerta o tipo errato -> 422; attributo `table` -> non editabile.</criterion>
+    <criterion id="AC-004">Commesse: con tab C il config di `work-orders` riporta gli attributi del contesto
+      WorkOrder di C e NON quelli solo-Quote; le righe leggono `work_orders.attribute_values`; filtro, sort e
+      valori distinti funzionano.</criterion>
+    <criterion id="AC-005">Commesse: PATCH `attr.<code>` con permesso salva su `work_orders.attribute_values`
+      e non tocca `quotes.attribute_values` dell'offerta; senza permesso 403; codice non applicabile 422.</criterion>
+    <criterion id="AC-006">Contratti: con tab C il config di `contracts` riporta gli attributi Quote di C con
+      `editable: false`; le righe mostrano i valori dell'offerta di origine; filtro, ordinamento e valori distinti
+      per `attr.<code>` funzionano e la paginazione non duplica righe.</criterion>
+    <criterion id="AC-007">Contratti: PATCH `attr.<code>` -> 422 e `quotes.attribute_values` invariato.</criterion>
+    <criterion id="AC-008">Salvataggio filtri/preferenze di `quotes`, `work-orders`, `contracts` con un
+      `attr.<code>` di qualunque categoria non da' 422 (allow-list unione); una colonna `attr.*` nascosta resta
+      nascosta al ricaricamento.</criterion>
+    <criterion id="AC-009">Nessuna regressione: le suite `tests/Feature/RequestManagement` (colonne, scritture,
+      preferenze, filtri data) e `tests/Feature/CategoryTabs` restano verdi senza modifiche ai test.</criterion>
+    <criterion id="AC-010">Visibilita': le righe e i valori distinti `attr.*` rispettano
+      `QuoteVisibilityScope`/`WorkOrderVisibilityScope`/`ContractVisibilityScope` (nessun valore di un record non
+      visibile nei distinti).</criterion>
+    <criterion id="AC-011">Guide in-app IT+EN aggiornate con lo stesso id di sezione; `help-content-parity.test.ts`
+      verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza, nessuna migrazione. Authz server-side: gate di riga + gate di campo esistenti.
+    - Codici `attr.<code>` solo dal set risolto dal server (allow-list), mai dall'input: niente `*Raw` con input.
+    - Niente N+1: contratti leggono `quote.attribute_values` dall'eager gia' presente; set attributi memoizzato
+      per richiesta come in `AttributeScopeResolver`.
+    - File: `OpportunityScopedTableDefinition`/`QuoteScopedTableDefinition` restano sotto 300 righe (la logica
+      `attr.*` vive nel trait); `TableController.php` non cresce oltre 500 (solo sostituzione del tipo testato).
+    - Pint, Pest mirato (`XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/...`), suite completa una volta a fine
+      feature con `nice -n 10 composer test -- --processes=4`; Vitest help + `tsc -b --force`.
+    - Mai comandi distruttivi sul DB di sviluppo (migrate:fresh/rollback/seed).
+  </constraints>
+
+</spec>

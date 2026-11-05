@@ -16,12 +16,12 @@ import { AttributeLayoutField } from '@/features/attributes/attribute-layout-fie
 import { MetaField } from '@/features/authorization/MetaField'
 import { useEnumOptions } from '@/features/config/use-config'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
-import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE } from '@/features/product-typologies/for-select-api'
 import { UNITS_OF_MEASURE_FOR_SELECT_RESOURCE } from '@/features/units-of-measure/for-select-api'
 import type { ProductCategoryPicker } from '@/features/products/use-product-category-picker'
-import type { ProductCostTypeSummary, ProductType } from '@/features/products/types'
+import type { ProductType } from '@/features/products/types'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 
 /*
@@ -172,12 +172,8 @@ export function ProductTypologyField({ control, selected }: SelectedFieldProps) 
   )
 }
 
-interface CostTypeFieldProps extends FieldProps {
-  selected: ProductCostTypeSummary | null
-}
-
-/** "Tipo di costo" (spec 0251): the default classification of the product's costs, with the coloured badge. */
-export function ProductCostTypeField({ control, selected }: CostTypeFieldProps) {
+/** "Sottoconto costo" (specs 0251, 0350 D-12): the default classification of the product's costs; the picker resolves the value by id to show code + name. */
+export function ProductCostTypeField({ control }: FieldProps) {
   const { t } = useTranslation()
   return (
     <RelationSelectField
@@ -187,13 +183,13 @@ export function ProductCostTypeField({ control, selected }: CostTypeFieldProps) 
       label={t('products.form.costType')}
       resource={COST_TYPES_FOR_SELECT_RESOURCE}
       searchPlaceholder={t('products.form.costTypeSearch')}
-      selected={selected ? { id: selected.id, name: selected.name, meta: { color: selected.color } } : null}
+      selected={null}
       placeholder={t('products.form.costTypePlaceholder')}
       emptyLabel={t('products.form.costTypeEmpty')}
       errorLabel={t('products.form.costTypeError')}
       clearLabel={t('common.clear')}
       retryLabel={t('common.retry')}
-      renderItem={costTypeOptionRenderer}
+      {...COST_SUB_ACCOUNT_SELECT_PROPS}
     />
   )
 }
