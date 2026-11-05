@@ -1,7 +1,8 @@
+/* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
 import { Briefcase, Building, Building2, Handshake, MapPin, Radio, UserRound } from 'lucide-react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { CELL_WRAPPER, DateTimeCell } from '@/features/table/cell-renderers'
-import { CodeBadgeCell, CurrencyCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import { CodeBadgeCell, CurrencyCell, DateCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import { QuoteAlertBadge } from '@/features/quotes/quote-alert-badge'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
@@ -62,6 +63,7 @@ export const quoteColumnRenderers: TableRendererMap = {
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   source: (params) => <RelationCell {...params} icon={Radio} />,
   next_callback_at: (params) => <DateTimeCell {...params} optionalTime />,
+  follow_up_date: (params) => <DateCell {...params} />,
   alert: (params) => <AlertCell {...params} />,
   offer_lines: (params) => <OfferLinesCell {...params} />,
   root_categories: (params) => <RefNamesCell {...params} />,

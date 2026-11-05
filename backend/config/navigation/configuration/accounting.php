@@ -9,6 +9,13 @@ return [
     'permission' => null,
     'children' => [
         [
+            'key' => 'chart-of-accounts',
+            'label' => 'navigation.chartOfAccounts',
+            'icon' => 'list-tree',
+            'route' => '/chart-of-accounts',
+            'permission' => 'chart-accounts.view',
+        ],
+        [
             'key' => 'payment-methods',
             'label' => 'navigation.paymentMethods',
             'icon' => 'credit-card',

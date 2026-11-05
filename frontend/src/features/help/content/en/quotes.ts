@@ -29,8 +29,8 @@ const guide: HelpGuide = {
           rows: [
             [
               'Quote data',
-              '**Code**, **Title**, **Quote date**, **Opportunity**',
-              "The quote date is proposed as today's date. The opportunity cannot change after creation.",
+              '**Code**, **Title**, **Quote date**, **Follow-up date**, **Opportunity**',
+              "The quote date is proposed as today's date. The follow-up date is optional. The opportunity cannot change after creation.",
             ],
             ['Context', '**Source**', "A field of the quote: prefilled with the lead's Source when the opportunity has one, otherwise empty; you can pick or change it."],
             ['Registry and contacts', '**Commercial**, **Reporter** (with their **Rewards**)', 'Prefilled from the opportunity.'],
@@ -55,6 +55,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'The **Quote date** is required and can also be changed from the detail. A quote created from **Request Management** or from a lead conversion takes the date of the day it is created.',
+        },
+        {
+          type: 'note',
+          text: 'The **Follow-up date** is an optional date to note when to pick the quote up again: set and change it from the detail or the list, and empty it by clearing the date. It sends no reminder and is not the **Next callback**, which is planned from **Request Management**.',
         },
       ],
     },
@@ -122,6 +126,10 @@ const guide: HelpGuide = {
           text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
         },
         {
+          type: 'paragraph',
+          text: "When you choose a category tab (not **All** and not a **Parent categories** tab), the columns of that category's flexible fields (**Additional information**) appear at the end of the list. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
+        },
+        {
           type: 'note',
           text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the quotes.",
         },
@@ -133,7 +141,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Title, Status, Commercial, Reporter, Supervisor, Account managers, Company, Company site, Operational site, Source) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Title, Status, Commercial, Reporter, Supervisor, Account managers, Company, Company site, Operational site, Source, Follow-up date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',

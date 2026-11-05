@@ -40,6 +40,8 @@ export function buildInvoiceLineSchema(t: TFunction) {
       .max(UNIT_PRICE_LIMIT, t('invoiceEditor.errors.unitPriceRange'))
       .refine((price) => round2(price) === price, t('invoiceEditor.errors.unitPriceDecimals')),
     vat_rate_id: z.number(t('invoiceEditor.errors.vatRateRequired')).int(),
+    // Spec 0350 D-7: the key stays absent until the user chooses, so the server proposes the sub-account.
+    revenue_type_id: z.number().int().nullable().optional(),
   })
 }
 

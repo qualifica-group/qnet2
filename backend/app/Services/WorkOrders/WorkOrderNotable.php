@@ -6,10 +6,14 @@ namespace App\Services\WorkOrders;
 
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Notes\Contracts\EnlistsMentionedUsers;
 use App\Notes\Contracts\NotableEntity;
+use App\Support\ManagerPositions;
+use App\Support\PositionalPivotSync;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Guard;
 use Spatie\Permission\Models\Permission;
 
@@ -24,9 +28,9 @@ use Spatie\Permission\Models\Permission;
  * AC-021): the module declares how it wants to be treated, the notes core
  * never names the module. Mirrors App\Services\Tasks\TaskNotable.
  */
-final class WorkOrderNotable implements NotableEntity
+final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
 {
-    private const VIEW_PERMISSION = 'work-orders.view';
+    public const string VIEW_PERMISSION = 'work-orders.view';
 
     public function modelClass(): string
     {
@@ -123,6 +127,52 @@ final class WorkOrderNotable implements NotableEntity
     {
         /** @var WorkOrder $record */
         return $this->authorizeRead($recipient, $record) ? '/work-orders/'.$record->getKey() : null;
+    }
+
+    public function enlistmentRole(): string
+    {
+        return self::ROLE_PARTICIPANT;
+    }
+
+    public function canEnlist(User $actor, Model $record): bool
+    {
+        return $actor->can('update', $record);
+    }
+
+    public function modulePermission(): string
+    {
+        return self::VIEW_PERMISSION;
+    }
+
+    /**
+     * Newcomers take the first free Partecipanti slot (spec 0353, D-3/D-6);
+     * all or nothing: a full team refuses the whole batch.
+     */
+    public function enlist(Model $record, array $userIds): array
+    {
+        /** @var WorkOrder $record */
+        $current = ManagerPositions::positionsOf($record->participants()->get());
+        $newcomers = array_values(array_diff($userIds, array_keys($current)));
+
+        if ($newcomers === []) {
+            return [];
+        }
+
+        $slots = ManagerPositions::slotsFromIds($current, [...array_keys($current), ...$newcomers]);
+
+        if (count($slots) > ManagerPositions::MAX) {
+            throw ValidationException::withMessages([
+                'mentions' => [__("The work order's Partecipanti are full (max :max): :users cannot be added.", [
+                    'max' => ManagerPositions::MAX,
+                    'users' => User::query()->whereIn('id', $newcomers)->orderBy('name')->pluck('name')->implode(', '),
+                ])],
+            ]);
+        }
+
+        $attached = PositionalPivotSync::sync($record->participants(), ManagerPositions::syncMap($slots))['attached'];
+        $record->unsetRelation('participants');
+
+        return array_map('intval', $attached);
     }
 
     /**

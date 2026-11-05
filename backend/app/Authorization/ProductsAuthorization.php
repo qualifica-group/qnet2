@@ -57,6 +57,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('unit_of_measure_id', 'select'),
             new FieldDefinition('product_typology_id', 'select'),
             new FieldDefinition('cost_type_id', 'select'),
+            new FieldDefinition('revenue_type_id', 'select'),
         ];
     }
 
@@ -94,6 +95,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             'unit_of_measure_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'product_typology_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost_type_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'revenue_type_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

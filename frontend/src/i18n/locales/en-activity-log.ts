@@ -163,6 +163,7 @@ export const activityLog = {
     quote_workflow_status_id: 'Status',
     attribute_values: 'Request fields',
     next_callback_at: 'Next callback',
+    follow_up_date: 'Follow-up date',
     body: 'Note body',
     edited_at: 'Edited at',
     original_name: 'File name',

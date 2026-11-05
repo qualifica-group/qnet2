@@ -29,7 +29,11 @@ const TIME_ENTRIES_TAB = 'time-entries'
  * rather than lazily inside its own tab content: the trigger's total-minutes
  * badge needs it even while the tab itself is not the active one.
  */
-export function useTaskCollaborationTabs(task: TaskDetailWithPermissions): RecordCollaborationTab[] {
+export function useTaskCollaborationTabs(
+  task: TaskDetailWithPermissions,
+  /** Spec 0353: una nota ha aggiunto Osservatori al task; l'host ricarica il dettaglio. */
+  onMembersAdded?: () => void,
+): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
   const canViewTimeEntries = can('time-entries.viewAny')
@@ -41,7 +45,14 @@ export function useTaskCollaborationTabs(task: TaskDetailWithPermissions): Recor
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
-      content: <NotesSection entityType={TASKS_DOMAIN} entityId={task.id} showHeader={false} />,
+      content: (
+        <NotesSection
+          entityType={TASKS_DOMAIN}
+          entityId={task.id}
+          showHeader={false}
+          onMembersAdded={onMembersAdded}
+        />
+      ),
     })
   }
 

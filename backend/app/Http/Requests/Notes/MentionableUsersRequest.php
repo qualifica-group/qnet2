@@ -5,7 +5,9 @@ namespace App\Http\Requests\Notes;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Notes\Concerns\ValidatesNotableEntity;
+use App\Notes\Mentions\MentionableUserDirectory;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates GET /api/notes/mentionable-users (spec 0052 data_contract): the
@@ -14,7 +16,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * the response matches every other for-select endpoint's contract.
  *
  * Authorization is NOT handled here: it needs the resolved host record (D-6
- * read gate), so it runs inside NoteService::mentionableUsers.
+ * read gate), so it runs inside MentionableUserDirectory::list.
  */
 class MentionableUsersRequest extends FormRequest
 {
@@ -39,7 +41,13 @@ class MentionableUsersRequest extends FormRequest
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
             'include_total' => ['sometimes', 'boolean'],
+            'scope' => ['sometimes', Rule::in([MentionableUserDirectory::SCOPE_RECORD, MentionableUserDirectory::SCOPE_EXTENDED])],
         ]);
+    }
+
+    public function mentionScope(): string
+    {
+        return (string) ($this->validated()['scope'] ?? MentionableUserDirectory::SCOPE_RECORD);
     }
 
     public function toQuery(): ForSelectQuery

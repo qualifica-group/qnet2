@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
+import { buildAccountCodeSchema } from '@/features/chart-of-accounts/account-code'
 import { COST_TYPE_NATURES } from '@/features/cost-types/types'
 
 /**
@@ -31,3 +32,17 @@ export function buildCostTypeSchema(t: TFunction) {
 }
 
 export type CostTypeFormValues = z.infer<ReturnType<typeof buildCostTypeSchema>>
+
+/**
+ * Form of a cost type managed as a ledger sub-account (spec 0348): the page's
+ * fields plus the parent chart account and the mandatory code. The cost types
+ * page keeps the base schema and never sends the two extra fields.
+ */
+export function buildCostTypeLedgerSchema(t: TFunction) {
+  return buildCostTypeSchema(t).extend({
+    chart_account_id: z.number({ message: t('costTypes.form.chartAccountRequired') }).int(),
+    code: buildAccountCodeSchema(t),
+  })
+}
+
+export type CostTypeLedgerFormValues = z.infer<ReturnType<typeof buildCostTypeLedgerSchema>>

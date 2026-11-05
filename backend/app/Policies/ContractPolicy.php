@@ -18,8 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  * creates `contracts.create`/`contracts.delete` (AC-037). The 5 domain-action
  * abilities (validate/terminate/program/changeStatus/reactivate, MT-03/spec
  * 0095 D-2) are resource-level, like `viewActivity` — the record-level rule
- * for `reactivate` (only when suspended) and for `program` (only on a
- * ClosedWon-group contract) lives in ContractsAuthorization's
+ * for `reactivate` (only when suspended) and for `program` (closed_won, or
+ * validated and still working) lives in ContractsAuthorization's
  * `actionPermissions()`, not here: each caller of the two `program`-gated
  * endpoints (spec 0095) explicitly ANDs this ability with
  * ContractActionAvailability::mayProgram(), never folding the lifecycle rule
@@ -90,9 +90,8 @@ class ContractPolicy extends BasePolicy
     /**
      * "Programma" (spec 0095, D-2): the ability alone — pure permission
      * check, like every other domain action here. The lifecycle gate
-     * (ClosedWon group) is ANDed separately by each of the two callers
-     * (ContractProgrammableLinesController/ContractWorkOrderController), via
-     * ContractActionAvailability::mayProgram().
+     * (ContractActionAvailability::mayProgram) is ANDed separately by each caller
+     * (ContractProgrammableLinesController/ContractWorkOrderController).
      */
     public function program(User $user, Contract $contract): Response
     {

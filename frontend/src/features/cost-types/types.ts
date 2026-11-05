@@ -24,6 +24,10 @@ export interface CostTypeDetail {
   /** Server-managed (reorder endpoint): read-only, never accepted on write. */
   sort_order: number
   is_active: boolean
+  /** Ledger code (spec 0348): null until the cost type is placed under a chart account. */
+  code: string | null
+  /** Parent chart account (spec 0348), null while the cost type is unplaced. */
+  chart_account_id: number | null
   created_at: string
   updated_at: string
   abilities: { update: boolean; delete: boolean }
@@ -45,6 +49,9 @@ export interface CostTypePayload {
   nature: CostTypeNature
   color: string
   is_active: boolean
+  /** Spec 0348: omitted by the cost types page (the backend then leaves both unchanged). */
+  code?: string | null
+  chart_account_id?: number | null
 }
 
 /** Payload for PATCH /cost-types/{id}: only the fields that changed. */

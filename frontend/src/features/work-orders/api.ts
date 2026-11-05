@@ -3,6 +3,7 @@ import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   CreateWorkOrderPayload,
+  RequestWorkOrderUpdatePayload,
   UpdateWorkOrderPayload,
   WorkOrderDetail,
   WorkOrderDetailWithPermissions,
@@ -87,4 +88,13 @@ export async function updateWorkOrder(
 /** Deletes a work order. Backend responds 204 with no body; its pivot rows cascade (D-11). */
 export async function deleteWorkOrder(id: number): Promise<void> {
   await apiClient.delete(`/work-orders/${id}`)
+}
+
+/**
+ * "Richiedi aggiornamento" (spec 0352): notifies a fixed recipient group by
+ * mail and in-app notification. Writes nothing on the work order, so the
+ * envelope carries no data.
+ */
+export async function requestWorkOrderUpdate(id: number, payload: RequestWorkOrderUpdatePayload): Promise<void> {
+  await apiClient.post<ApiResponse<null>>(`/work-orders/${id}/request-update`, payload)
 }

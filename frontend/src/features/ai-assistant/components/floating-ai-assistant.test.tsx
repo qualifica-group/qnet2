@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { buildAiConfig, renderWithProviders } from '@/features/ai-assistant/components/ai-test-support'
 import { FloatingAiAssistant } from '@/features/ai-assistant/components/floating-ai-assistant'
 
@@ -24,11 +24,12 @@ beforeEach(() => {
   vi.mocked(fetchAiAssistantConfig).mockResolvedValue(buildAiConfig())
 })
 
+// REQUIREMENT CHANGED (D-16): the launcher waits for /config (floating_enabled), so it is found asynchronously.
 describe('FloatingAiAssistant (AC-019 FE)', () => {
   it('shows the launcher to a user with ai-assistant.use and opens the chat window', async () => {
     renderWithProviders(<FloatingAiAssistant />, '/companies')
 
-    fireEvent.click(screen.getByRole('button', { name: "Apri l'assistente AI" }))
+    fireEvent.click(await screen.findByRole('button', { name: "Apri l'assistente AI" }))
 
     expect(await screen.findByRole('complementary', { name: 'Assistente AI' })).toBeInTheDocument()
     expect(await screen.findByRole('textbox', { name: 'Scrivi un messaggio' })).toBeInTheDocument()
@@ -50,7 +51,7 @@ describe('FloatingAiAssistant (AC-019 FE)', () => {
 
   it('keeps the window mounted but hidden when closed', async () => {
     renderWithProviders(<FloatingAiAssistant />, '/companies')
-    fireEvent.click(screen.getByRole('button', { name: "Apri l'assistente AI" }))
+    fireEvent.click(await screen.findByRole('button', { name: "Apri l'assistente AI" }))
     await screen.findByRole('textbox', { name: 'Scrivi un messaggio' })
 
     fireEvent.click(screen.getAllByRole('button', { name: "Chiudi l'assistente AI" })[0])
@@ -58,5 +59,25 @@ describe('FloatingAiAssistant (AC-019 FE)', () => {
     // Tailwind is not loaded in jsdom: the closed state is the `hidden` utility, the node stays mounted.
     expect(screen.getByRole('complementary', { name: 'Assistente AI' })).toHaveClass('hidden')
     expect(screen.getByRole('textbox', { name: 'Scrivi un messaggio' })).toBeInTheDocument()
+  })
+})
+
+describe('FloatingAiAssistant surfaces (AC-034 FE, D-16)', () => {
+  it('renders no launcher while the server keeps the floating chat off', async () => {
+    vi.mocked(fetchAiAssistantConfig).mockResolvedValue(buildAiConfig({ floating_enabled: false }))
+    renderWithProviders(<FloatingAiAssistant />, '/companies')
+
+    await waitFor(() => expect(fetchAiAssistantConfig).toHaveBeenCalled())
+    expect(screen.queryByRole('button', { name: "Apri l'assistente AI" })).not.toBeInTheDocument()
+  })
+
+  it('drops the full-page link while the page is off', async () => {
+    vi.mocked(fetchAiAssistantConfig).mockResolvedValue(buildAiConfig({ page_enabled: false }))
+    renderWithProviders(<FloatingAiAssistant />, '/companies')
+
+    fireEvent.click(await screen.findByRole('button', { name: "Apri l'assistente AI" }))
+
+    expect(await screen.findByRole('textbox', { name: 'Scrivi un messaggio' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Apri a pagina intera' })).not.toBeInTheDocument()
   })
 })

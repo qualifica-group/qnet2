@@ -92,7 +92,7 @@ const guide: HelpGuide = {
           items: [
             'Seleziona le righe **Approvate** con un fornitore (anche di RDA diverse) e scegli **Genera ODA** dal menu **Azioni**. La voce è attiva solo se hai il permesso di creare ordini di acquisto.',
             'La finestra mostra le righe raggruppate per **fornitore** e quante ODA verranno create (una per fornitore; le RDA con società o sedi diverse generano ODA separate).',
-            'Scegli il **Tipo costo** (obbligatorio), se vuoi il **Metodo di pagamento** e la **Data ordine** (di default oggi), poi conferma con **Genera N ODA**.',
+            'Scegli il **Sottoconto costo** (obbligatorio), se vuoi il **Metodo di pagamento** e la **Data ordine** (di default oggi), poi conferma con **Genera N ODA**.',
             'A operazione conclusa la finestra elenca le ODA create: ogni codice è un **link** all’ordine, che nasce in **bozza**.',
           ],
         },

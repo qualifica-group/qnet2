@@ -72,6 +72,9 @@ export interface AiAssistantLimits {
 }
 
 export interface AiAssistantConfig {
+  /** Surfaces switched on by the server env (D-16), both off by default. */
+  floating_enabled: boolean
+  page_enabled: boolean
   configured: boolean
   driver: AiDriverName | null
   model: string | null

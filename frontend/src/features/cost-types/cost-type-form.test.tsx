@@ -46,6 +46,8 @@ function created(overrides: Partial<CostTypeDetail> = {}): CostTypeDetail {
     color: 'emerald',
     sort_order: 5,
     is_active: true,
+    code: null,
+    chart_account_id: null,
     created_at: '2026-10-12T08:00:00Z',
     updated_at: '2026-10-12T08:00:00Z',
     abilities: { update: true, delete: true },

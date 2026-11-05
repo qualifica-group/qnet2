@@ -10,6 +10,9 @@ use App\Models\FinancialAccount;
 use App\Models\ProformaRequest;
 use App\Models\QuoteLine;
 use App\Models\Registry;
+use App\Models\RevenueType;
+use App\Services\ChartOfAccounts\RevenueTypeRef;
+use App\Services\ChartOfAccounts\RevenueTypeResolver;
 use App\Support\Amounts\LineAmountCalculator;
 use DateTimeImmutable;
 
@@ -26,6 +29,7 @@ final class InvoiceDraftBuilder
         private readonly ProformaRequestBillableLines $billableLines,
         private readonly SupplierCommissionCalculator $commissions,
         private readonly LineAmountCalculator $amounts,
+        private readonly RevenueTypeResolver $revenueTypes,
     ) {}
 
     /**
@@ -63,10 +67,34 @@ final class InvoiceDraftBuilder
                 'notes' => null,
                 'layout' => null,
             ],
-            'available_lines' => $this->billableLines->available($request)
-                ->map(fn (QuoteLine $line): array => $this->line($line, $request->kind, $referenceDate))->values()->all(),
+            'available_lines' => $this->availableLines($request, $referenceDate),
             'bank_accounts' => $banks->map(fn (FinancialAccount $bank): array => $this->bank($bank) + ['company_id' => $bank->company_id])->values()->all(),
         ];
+    }
+
+    /**
+     * The billable lines with the revenue sub-account the server proposes for
+     * each (spec 0350, D-6), resolved once for the whole draft.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function availableLines(ProformaRequest $request, DateTimeImmutable $referenceDate): array
+    {
+        $lines = $this->billableLines->available($request)->values();
+        $proposals = $this->revenueTypes->resolve($lines->map(fn (QuoteLine $line): array => [
+            'product_id' => $line->product_id,
+            'institution' => $request->kind === ProformaRequestKind::Institution,
+        ])->all());
+        $types = RevenueType::query()->with(RevenueTypeRef::RELATION)->whereIn('id', array_filter($proposals))->get()->keyBy('id');
+
+        return $lines->map(function (QuoteLine $line, int $index) use ($request, $referenceDate, $proposals, $types): array {
+            $type = $types->get($proposals[$index]);
+
+            return $this->line($line, $request->kind, $referenceDate) + [
+                'revenue_type_id' => $type?->id,
+                'revenue_type' => $type === null ? null : RevenueTypeRef::from($type),
+            ];
+        })->all();
     }
 
     private function defaultCustomer(ProformaRequest $request): ?Registry

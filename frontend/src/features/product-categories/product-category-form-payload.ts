@@ -60,6 +60,7 @@ export function buildCreatePayload(
     description: values.description,
     attributes: values.attributes,
     business_function_id: values.business_function_id,
+    ...(values.revenue_type_id != null ? { revenue_type_id: values.revenue_type_id } : {}),
     // Only a ROOT category authors the quote flag; under a parent it is
     // inherited and the server resolves it (a divergent value is a 422).
     ...(values.parent_id === null ? { requires_quote: values.requires_quote } : {}),
@@ -128,6 +129,10 @@ export function buildUpdatePayload(
   // satisfies "never send business_function_id when inherited" (spec AC-015).
   if (values.business_function_id !== original.business_function_id) {
     payload.business_function_id = values.business_function_id
+  }
+
+  if ((values.revenue_type_id ?? null) !== (original.revenue_type_id ?? null)) {
+    payload.revenue_type_id = values.revenue_type_id ?? null
   }
 
   // Sent only while the category stays (or becomes) a ROOT: on a child the

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { Input } from '@/components/ui/input'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
-import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { ProductSupplierSelect } from '@/features/products/product-supplier-select'
@@ -49,10 +49,6 @@ export function WorkOrderCostCardDetails({ n, row, disabled, error, rowId, onCha
   const { commissionOf } = useCostRowCommission(row)
   const errorId = (field: string) => `${rowId}-${field}-error`
 
-  const costTypeItem: (ForSelectItem & { meta: { color: string | null } }) | null =
-    row.cost_type_id !== null && row.display.cost_type_name
-      ? { id: row.cost_type_id, label: row.display.cost_type_name, meta: { color: row.display.cost_type_color } }
-      : null
   const supplierItem: ForSelectItem | null =
     row.supplier_id !== null && row.display.supplier_name ? { id: row.supplier_id, label: row.display.supplier_name } : null
 
@@ -83,8 +79,7 @@ export function WorkOrderCostCardDetails({ n, row, disabled, error, rowId, onCha
               display: { ...row.display, cost_type_name: item?.label ?? null, cost_type_color: color ?? null },
             })
           }}
-          selectedItem={costTypeItem}
-          renderItem={costTypeOptionRenderer}
+          {...COST_SUB_ACCOUNT_SELECT_PROPS}
           action={costTypeCreate.renderAction(
             (ref) =>
               onChangeField({

@@ -222,6 +222,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // own column, projected in the SAME wire format Gestione Richieste
             // uses so both grids parse the value identically.
             'next_callback_at' => $row->next_callback_at?->format('Y-m-d\TH:i'),
+            'follow_up_date' => $row->follow_up_date,
             'notes_count' => (int) ($row->notes_count ?? 0),
             // "Gestori Account" (spec 0087, D-1/T-10): avatar stack by pivot position; [] when no team.
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Products\ProductCostTypeController;
 use App\Http\Controllers\Products\ProductForSelectController;
+use App\Http\Controllers\Products\ProductRevenueTypeController;
 use App\Http\Controllers\Products\ProductSupplierCommissionsController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +41,9 @@ Route::get('products/supplier-commissions', ProductSupplierCommissionsController
 
 // Mass default-cost-type assignment (spec 0251, D-6), gated by products.update.
 Route::post('products/cost-type', [ProductCostTypeController::class, 'assign']);
+
+// Mass default-revenue-type assignment (spec 0350), gated by products.update.
+Route::post('products/revenue-type', [ProductRevenueTypeController::class, 'assign']);
 
 Route::get('products/{product}', [ProductController::class, 'show']);
 Route::post('products', [ProductController::class, 'store']);

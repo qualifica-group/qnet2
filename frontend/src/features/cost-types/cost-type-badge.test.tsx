@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { CostTypeBadge } from '@/features/cost-types/cost-type-badge'
-import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
 import { costTypeColumnRenderers } from '@/features/cost-types/column-renderers'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 
@@ -29,15 +28,6 @@ describe('CostTypeBadge', () => {
 
     expect(screen.getByText('Fitti')).toBeInTheDocument()
     expect(container.querySelector('[aria-hidden="true"]')).toBeNull()
-  })
-})
-
-describe('costTypeOptionRenderer', () => {
-  it('projects the for-select item meta.color onto the badge', () => {
-    const { container } = render(<>{costTypeOptionRenderer({ id: 3, label: 'Services', meta: { color: 'blue', nature: 'direct' } } as never)}</>)
-
-    expect(screen.getByText('Services')).toBeInTheDocument()
-    expectDotOf(container, 'blue')
   })
 })
 

@@ -28,7 +28,7 @@ export const purchaseInvoiceInstallments = {
     status: 'Status',
     overdue: 'Overdue',
     supplier: 'Supplier',
-    cost_type: 'Cost type',
+    cost_type: 'Cost sub-account',
     work_order: 'Work order',
     company: 'Company',
     company_site: 'Company site',

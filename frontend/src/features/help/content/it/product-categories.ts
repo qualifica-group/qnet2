@@ -264,6 +264,21 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'revenue-type',
+      title: 'Sottoconto ricavo ed ereditarietà',
+      blocks: [
+        { type: 'paragraph', text: 'Ogni categoria può avere un **Sottoconto ricavo** (piano dei conti). I prodotti della categoria che non ne hanno uno proprio usano quello della categoria.' },
+        {
+          type: 'list',
+          items: [
+            'Una categoria senza sottoconto **eredita** da quella sopra di lei, risalendo l\'albero: nella scheda leggi **Ereditato da categoria X**.',
+            'Un prodotto con un sottoconto proprio non è toccato dalla categoria.',
+            'Cambiare il sottoconto di una categoria classifica in automatico le righe di fattura ancora **Da classificare** dei prodotti che lo ereditano; le righe già classificate restano invariate.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'management-rules-in-practice',
       title: 'Le regole di gestione nella pratica',
       blocks: [

@@ -6,6 +6,7 @@ import type {
   InvoiceCollectionPayload,
   InvoiceDetailsPayload,
   InvoiceDraft,
+  InvoiceLineRevenueTypeResult,
   InvoiceWithPermissions,
   InvoiceWritePayload,
   InstallmentPreviewPayload,
@@ -88,6 +89,19 @@ export async function updateInvoiceDetails(
     payload,
   )
   return { ...data.data, permissions: data.permissions }
+}
+
+/** Changes only the revenue sub-account of one line, on any document state (spec 0350 D-2/D-8). */
+export async function setInvoiceLineRevenueType(
+  invoiceId: number,
+  lineId: number,
+  revenueTypeId: number | null,
+): Promise<InvoiceLineRevenueTypeResult> {
+  const { data } = await apiClient.patch<ApiResponse<InvoiceLineRevenueTypeResult>>(
+    `/invoices/${invoiceId}/lines/${lineId}/revenue-type`,
+    { revenue_type_id: revenueTypeId },
+  )
+  return data.data
 }
 
 /** Deletes a document (204). 409 when an installment has collections. */

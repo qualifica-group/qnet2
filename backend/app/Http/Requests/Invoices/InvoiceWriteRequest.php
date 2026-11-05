@@ -54,6 +54,10 @@ class InvoiceWriteRequest extends FormRequest
             'lines.*.quantity' => ['required', 'numeric', 'gt:0', 'max:9999999'],
             'lines.*.unit_price' => ['required', 'numeric', 'decimal:0,2', 'between:-9999999999,9999999999'],
             'lines.*.vat_rate_id' => ['required', 'integer', Rule::exists('vat_rates', 'id')],
+            // Spec 0350, D-7: key absent = server proposal, id or null = the user's choice; an inactive sub-account only if already on the document.
+            'lines.*.revenue_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('revenue_types', 'id')->where(
+                fn ($types) => $types->where('is_active', true)->orWhereIn('id', $this->storedRevenueTypeIds()),
+            )],
         ];
     }
 
@@ -90,10 +94,19 @@ class InvoiceWriteRequest extends FormRequest
                 'quantity' => $line->quantity,
                 'unit_price' => $line->unit_price,
                 'vat_rate_id' => $line->vat_rate_id,
+                'revenue_type_id' => $line->revenue_type_id,
             ])->all();
         }
 
         $this->merge(array_diff_key($stored, $this->all()));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function storedRevenueTypeIds(): array
+    {
+        return $this->storedInvoice()?->lines()->whereNotNull('revenue_type_id')->pluck('revenue_type_id')->all() ?? [];
     }
 
     private function storedInvoice(): ?Invoice
@@ -108,7 +121,10 @@ class InvoiceWriteRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['lines.*.unit_price.decimal' => __('invoices.unit_price_decimals')];
+        return [
+            'lines.*.unit_price.decimal' => __('invoices.unit_price_decimals'),
+            'lines.*.revenue_type_id.exists' => __('invoices.revenue_type_inactive'),
+        ];
     }
 
     /**

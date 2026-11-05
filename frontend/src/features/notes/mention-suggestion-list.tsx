@@ -1,11 +1,13 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useState } from 'react'
 import type { SuggestionKeyDownProps } from '@tiptap/suggestion'
 import { MentionPickerPanel } from '@/features/notes/mention-picker-panel'
-import type { ForSelectItem } from '@/features/for-select/types'
+import type { MentionableUser, MentionOutsideRole } from '@/features/notes/types'
 
 export interface MentionSuggestionListProps {
-  items: ForSelectItem[]
+  items: MentionableUser[]
   loading: boolean
+  /** Ruolo con cui il modulo aggiunge chi e' fuori perimetro (spec 0353); null = nessuna aggiunta possibile. */
+  outsideRole?: MentionOutsideRole | null
   /** Mention's own suggestion command (D-7): inserts the node for the picked user. */
   command: (attrs: { id: string; label: string }) => void
 }
@@ -22,7 +24,7 @@ export interface MentionSuggestionListHandle {
  * Enter/Tab/arrow handling the plugin delegates to it.
  */
 export const MentionSuggestionList = forwardRef<MentionSuggestionListHandle, MentionSuggestionListProps>(
-  function MentionSuggestionList({ items, loading, command }, ref) {
+  function MentionSuggestionList({ items, loading, outsideRole = null, command }, ref) {
     const listboxId = useId()
     const [activeIndex, setActiveIndex] = useState(0)
 
@@ -67,6 +69,7 @@ export const MentionSuggestionList = forwardRef<MentionSuggestionListHandle, Men
         activeIndex={activeIndex}
         onActiveIndexChange={setActiveIndex}
         onSelect={(item) => command({ id: String(item.id), label: item.label })}
+        outsideRole={outsideRole}
         optionId={(userId) => `${listboxId}-option-${userId}`}
       />
     )

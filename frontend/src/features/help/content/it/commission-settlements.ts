@@ -121,7 +121,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Anagrafica fornitore**: se il referente ha già un’anagrafica fornitore collegata, è quella. Altrimenti la finestra propone le anagrafiche **candidate** (stesso codice fiscale o partita IVA del referente) da collegare, oppure **Crea dal referente** (serve anche il permesso di creare anagrafiche): la nuova anagrafica copia la scheda del referente, contatti e indirizzi compresi, ed è un fornitore. Se la scheda del referente è incompleta, il messaggio indica i campi mancanti. Il collegamento si può cambiare anche dal campo **Anagrafica fornitore** del referente.',
-            '**Metodo di pagamento**, **Tipo di costo** e **Aliquota IVA** sono proposti dal **profilo fiscale** dell’agente (vedi la guida Profili fiscali), sono obbligatori e puoi modificarli.',
+            '**Metodo di pagamento**, **Sottoconto costo** e **Aliquota IVA** sono proposti dal **profilo fiscale** dell’agente (vedi la guida Profili fiscali), sono obbligatori e puoi modificarli.',
             'L’**anteprima delle rate** mostra le scadenze generate dal metodo di pagamento, calcolate sul **netto da pagare**.',
             'La fattura ha una riga unica «Provvigioni» del periodo, con numero e data del documento dell’agente, **Ritenuta d’acconto** ed **ENASARCO a carico** presi dal documento. L’IVA della riga deve stare entro la tolleranza dall’IVA del documento, altrimenti l’errore compare sull’aliquota IVA. Un numero già usato per lo stesso fornitore nell’anno viene rifiutato.',
           ],

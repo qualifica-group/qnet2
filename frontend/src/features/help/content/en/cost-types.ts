@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'A cost type classifies the expense of a purchase order (ODA) line. The type is **required on every line** and appears as a badge in its own color (the picker on ODA lines and in Generate ODA, the ODA detail, the Cost types and Payable installments grids). The same type can be set as the default of a product and indicated on work order costs. Collaboratori, Fitti, Utenze and Altro are already available; you can add more or edit them.',
+          text: 'A cost type classifies the expense of a purchase order (ODA) line and is the **cost sub-account** of the Chart of accounts: on documents the field is called **Cost sub-account** and the picker shows code and name, grouped by group and account. The field is **required on every line** and appears as a badge in the Cost types and Payable installments grids. The same type can be set as the default of a product and indicated on work order costs. Collaboratori, Fitti, Utenze and Altro are already available; you can add more or edit them.',
         },
       ],
     },
@@ -27,6 +27,7 @@ const guide: HelpGuide = {
             ['Description', 'Optional free text.'],
             ['Nature', '**Direct** (chargeable to a work order), **Indirect** (production cost, allocated) or **General** (structure and overhead). Required; the existing types are Direct.'],
             ['Color', 'The color of the type badge, picked from the palette. Required; the existing types are slate.'],
+            ['Code and account', 'Optional here: a cost type is also a **cost sub-account** of the **Chart of accounts**, where it has a parent account and a unique code. They are not edited from this page: place them from the Chart of accounts (**Place in the chart**) and they do not change when you save from here.'],
             ['Active', 'An inactive type can no longer be chosen on new lines.'],
           ],
         },

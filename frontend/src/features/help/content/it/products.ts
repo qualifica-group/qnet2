@@ -82,7 +82,7 @@ const guide: HelpGuide = {
           rows: [
             ['Categoria', 'La categoria del prodotto. Obbligatoria.'],
             ['Tipologia', "Scelta dall'elenco Tipologie Prodotto."],
-            ['Tipo di costo', 'Facoltativo. Il tipo di costo predefinito del prodotto (per esempio Collaboratori o Fitti), pensato per i prodotti Utilizzabili come costo: viene proposto sulle righe di ordini di acquisto, fatture passive e costi commessa quando scegli il prodotto. Si mostra come badge colorato anche nella griglia (con filtro per nome).'],
+            ['Sottoconto costo', 'Facoltativo. Il sottoconto costo predefinito del prodotto (per esempio Collaboratori o Fitti), pensato per i prodotti Utilizzabili come costo: viene proposto sulle righe di ordini di acquisto, fatture passive e costi commessa quando scegli il prodotto. Si mostra come badge colorato anche nella griglia (con filtro per nome).'],
             ['Unità di misura', 'Per esempio ore o pezzi.'],
             ['Tipo', 'Servizio oppure Bene fisico (un oggetto, per esempio un notebook o un arredo).'],
             ['Utilizzo in offerta', "Dove si può usare il prodotto: in un'offerta, o come bene a uso interno (vedi sotto)."],
@@ -100,20 +100,36 @@ const guide: HelpGuide = {
     },
     {
       id: 'bulk-cost-type',
-      title: 'Impostare il tipo di costo in massa',
+      title: 'Impostare il sottoconto costo in massa',
       blocks: [
         {
           type: 'steps',
           items: [
             'Apri Magazzino e Dotazioni › Prodotti e, se serve, filtra per Categoria o Utilizzo in offerta.',
             'Seleziona le righe con le caselle a sinistra.',
-            'Dal menu delle azioni sulla selezione scegli **Imposta tipo di costo** (compare solo se puoi modificare i prodotti).',
-            'Nella finestra scegli il tipo di costo, oppure **Nessuno** per toglierlo, e conferma: l’operazione vale per tutti i prodotti selezionati o per nessuno.',
+            'Dal menu delle azioni sulla selezione scegli **Imposta sottoconto costo** (compare solo se puoi modificare i prodotti).',
+            'Nella finestra scegli il sottoconto costo, oppure **Nessuno** per toglierlo, e conferma: l’operazione vale per tutti i prodotti selezionati o per nessuno.',
           ],
         },
         {
           type: 'tip',
-          text: 'Nessuna corrispondenza tra categoria e tipo di costo è preimpostata: i prodotti esistenti partono senza tipo e si assegnano con questa azione.',
+          text: 'Nessuna corrispondenza tra categoria e sottoconto costo è preimpostata: i prodotti esistenti partono senza sottoconto e si assegnano con questa azione.',
+        },
+      ],
+    },
+    {
+      id: 'revenue-type',
+      title: 'Sottoconto ricavo',
+      blocks: [
+        { type: 'paragraph', text: 'Nella sezione di classificazione trovi il campo **Sottoconto ricavo**: è il sottoconto del piano dei conti (mastro › conto) proposto sulle righe di fattura e proforma di questo prodotto. Si sceglie da un elenco raggruppato per mastro e conto, con ricerca per codice o nome.' },
+        {
+          type: 'list',
+          items: [
+            'Se il campo è **vuoto**, il prodotto usa il sottoconto della sua **categoria** (o del primo antenato che ne ha uno): sotto il campo leggi **Ereditato da categoria X** e il sottoconto che ne deriva.',
+            'Se né il prodotto né le categorie hanno un sottoconto, le righe restano **Da classificare**.',
+            'Per impostarlo su molti prodotti: seleziona le righe e scegli **Imposta sottoconto ricavo** dal menu delle azioni (compare solo se puoi modificare i prodotti); **Nessuno** lo rimuove. Vale per tutti i prodotti selezionati o per nessuno.',
+            'Assegnare o cambiare il sottoconto classifica in automatico le righe di fattura ancora **Da classificare** di quei prodotti; le righe già classificate non vengono mai cambiate.',
+          ],
         },
       ],
     },

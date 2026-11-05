@@ -16,6 +16,9 @@ export const importWizardKeys = {
   /** Owned by F3 (summary step). */
   summary: (domain: string, importRunId: number) =>
     ['imports', 'wizard', domain, importRunId, 'summary'] as const,
+  /** Value-mapping suggestions (spec 0348); `signature` is the part of the mapping/config the response depends on. */
+  valueMapping: (domain: string, importRunId: number, signature: string) =>
+    ['imports', 'wizard', domain, importRunId, 'value-mapping', signature] as const,
   /** Saved mapping templates of a domain (spec 0035), team-shared. */
   mappingTemplates: (domain: string) => ['imports', 'wizard', domain, 'mapping-templates'] as const,
 }

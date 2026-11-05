@@ -154,6 +154,11 @@ describe('buildCreatePayload', () => {
     expect(buildCreatePayload(values(), [])).not.toHaveProperty('cost_type_id')
   })
 
+  it('spec 0350: sends the revenue sub-account only when one is chosen', () => {
+    expect(buildCreatePayload(values({ revenue_type_id: 6 }), [])).toMatchObject({ revenue_type_id: 6 })
+    expect(buildCreatePayload(values(), [])).not.toHaveProperty('revenue_type_id')
+  })
+
   it('omits the code still equal to the next-code suggestion, so a concurrent create cannot make it collide', () => {
     expect(buildCreatePayload(values({ code: 'PRD-0005' }), [], 'PRD-0005')).not.toHaveProperty('code')
   })
@@ -254,6 +259,14 @@ describe('buildUpdatePayload', () => {
       cost_type_id: null,
     })
     expect(buildUpdatePayload(values({ cost_type_id: 4 }), original({ cost_type_id: 4 }), [])).toEqual({})
+  })
+
+  it('spec 0350: sends the revenue sub-account only when it changed, null included to remove it', () => {
+    expect(buildUpdatePayload(values({ revenue_type_id: 6 }), original(), [])).toEqual({ revenue_type_id: 6 })
+    expect(buildUpdatePayload(values({ revenue_type_id: null }), original({ revenue_type_id: 6 }), [])).toEqual({
+      revenue_type_id: null,
+    })
+    expect(buildUpdatePayload(values({ revenue_type_id: 6 }), original({ revenue_type_id: 6 }), [])).toEqual({})
   })
 
   it('AC-080: never sends code, even when the form value differs from the original (immutable)', () => {

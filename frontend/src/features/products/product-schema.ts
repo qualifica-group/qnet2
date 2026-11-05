@@ -71,6 +71,8 @@ function baseFields(t: TFunction) {
     product_typology_id: z.number().nullable(),
     // Spec 0251: optional default cost type of the product.
     cost_type_id: z.number().nullable(),
+    // Spec 0350: optional default revenue sub-account of the product.
+    revenue_type_id: z.number().nullable().optional(),
   }
 }
 

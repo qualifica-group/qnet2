@@ -24,6 +24,8 @@ class AiAssistantConfigController extends BaseApiController
     {
         try {
             return $this->ok([
+                'floating_enabled' => (bool) config('ai-assistant.floating_enabled'),
+                'page_enabled' => (bool) config('ai-assistant.page_enabled'),
                 'configured' => $this->drivers->isConfigured(),
                 'driver' => $this->drivers->driverName(),
                 'model' => $this->drivers->model(),

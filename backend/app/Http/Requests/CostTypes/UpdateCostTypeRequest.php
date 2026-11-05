@@ -3,9 +3,12 @@
 namespace App\Http\Requests\CostTypes;
 
 use App\DataObjects\CostTypes\UpdateCostTypeData;
+use App\Enums\ChartAccountKind;
 use App\Enums\CostTypeNature;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\CostType;
+use App\Rules\ChartAccountRules;
+use App\Rules\UniqueChartCode;
 use App\Support\BadgeTokens;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +41,8 @@ class UpdateCostTypeRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string', 'max:'.StoreCostTypeRequest::DESCRIPTION_MAX],
             'nature' => ['sometimes', 'required', Rule::enum(CostTypeNature::class)],
             'color' => ['sometimes', 'required', 'string', Rule::in(BadgeTokens::colors())],
+            'chart_account_id' => ['sometimes', 'nullable', 'integer', ChartAccountRules::accountOfKind(ChartAccountKind::Cost)],
+            'code' => ['nullable', 'required_with:chart_account_id', ...UniqueChartCode::rules($costType instanceof CostType ? $costType : null)],
             'sort_order' => ['prohibited'],
             'is_active' => ['sometimes', 'boolean'],
         ];

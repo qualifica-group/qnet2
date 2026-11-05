@@ -46,7 +46,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `usages` (spec 0142) is the set of App\Enums\ProductUsage values deciding
  * which Offerta tab may pick the product; it defaults to Sellable only.
  */
-#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id', 'cost_type_id'])]
+#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id', 'cost_type_id', 'revenue_type_id'])]
 class Product extends BaseModel
 {
     /** @use HasFactory<ProductFactory> */
@@ -135,6 +135,16 @@ class Product extends BaseModel
     public function costType(): BelongsTo
     {
         return $this->belongsTo(CostType::class);
+    }
+
+    /**
+     * Default revenue sub-account of the product (spec 0350).
+     *
+     * @return BelongsTo<RevenueType, $this>
+     */
+    public function revenueType(): BelongsTo
+    {
+        return $this->belongsTo(RevenueType::class);
     }
 
     /**

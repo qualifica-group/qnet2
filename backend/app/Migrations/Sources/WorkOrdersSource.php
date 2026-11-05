@@ -20,6 +20,7 @@ use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\Notifications\AssignmentNotifier;
 use App\Services\WorkOrderService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -31,8 +32,9 @@ use RuntimeException;
  * (`quotes.old_id`) is mandatory: unresolved, the row fails.
  *
  * No task template (G-2): no stage, task or email is generated, and the
- * service notifies nobody on create. Lines (G-10) are the offer's REVENUE
- * lines matched on `quote_lines.old_id`; a line already programmed into
+ * Responsabili and Partecipanti are not notified (spec 0351, D-6: the
+ * service call runs under AssignmentNotifier::muted()). Lines (G-10) are the
+ * offer's REVENUE lines matched on `quote_lines.old_id`; a line already programmed into
  * another commessa stays with it and this one gets a copy of the line on the
  * offer (QuoteLineDuplicator, user decision 2026-10-02), never reaching
  * WorkOrderLineWriter's 422. A legacy line not found on the offer, a commessa
@@ -158,7 +160,8 @@ class WorkOrdersSource extends AbstractMigrationSource
         }
 
         // Step 2: create through the domain service, without task template (G-2).
-        $workOrder = $this->service->create($this->buildData($externalId, $quoteId, array_values($lineIdsByOldId), $record, $warnings));
+        $data = $this->buildData($externalId, $quoteId, array_values($lineIdsByOldId), $record, $warnings);
+        $workOrder = AssignmentNotifier::muted(fn (): WorkOrder => $this->service->create($data));
 
         // Step 3: the legacy phases, flexible fields, payment data and costs (G-20..G-24).
         $this->stageWriter->write($workOrder, (array) ($record['stages'] ?? []), $warnings);

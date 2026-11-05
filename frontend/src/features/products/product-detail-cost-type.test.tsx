@@ -64,15 +64,15 @@ describe('ProductDetailView - cost type (spec 0251 AC-007)', () => {
     renderDetail(productFixture({ cost_type_id: 4, cost_type: { id: 4, name: 'Travel', color: 'blue' } }))
 
     expect(screen.getByText('Travel')).toBeInTheDocument()
-    expect(pencilOf('Cost type')).toBeInTheDocument()
+    expect(pencilOf('Cost sub-account')).toBeInTheDocument()
   })
 
   it('PATCHes the picked cost type alone', async () => {
     updateProductMock.mockResolvedValue(productFixture({ cost_type_id: 7 }))
     renderDetail(productFixture())
 
-    fireEvent.click(pencilOf('Cost type'))
-    fireEvent.click(screen.getByTestId('select-Cost type'))
+    fireEvent.click(pencilOf('Cost sub-account'))
+    fireEvent.click(screen.getByTestId('select-Cost sub-account'))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateProductMock).toHaveBeenCalledWith(5, { cost_type_id: 7 }))

@@ -18,7 +18,8 @@ function navChildKeys(?array $section): array
     return collect(data_get($section, 'children', []))->pluck('key')->all();
 }
 
-it('gives a super-admin the five develop children in order, with the new /dev routes', function () {
+// REQUIREMENT CHANGED (spec 0348): the "request-imports" entry joins the develop section.
+it('gives a super-admin the six develop children in order, with the new /dev routes', function () {
     Role::query()->firstOrCreate(['name' => 'super-admin']);
     Permission::query()->firstOrCreate(['name' => 'api-clients.view', 'guard_name' => 'web']);
     $user = User::factory()->create();
@@ -28,9 +29,9 @@ it('gives a super-admin the five develop children in order, with the new /dev ro
 
     $develop = navSection('develop');
 
-    expect(navChildKeys($develop))->toBe(['migrations', 'system-health', 'workspaces', 'api-integrations', 'api-docs'])
+    expect(navChildKeys($develop))->toBe(['migrations', 'system-health', 'workspaces', 'request-imports', 'api-integrations', 'api-docs'])
         ->and(collect($develop['children'])->pluck('route')->all())
-        ->toBe(['/dev/migrations', '/dev/system-health', '/dev/workspaces', '/dev/api-clients', '/dev/api-docs']);
+        ->toBe(['/dev/migrations', '/dev/system-health', '/dev/workspaces', '/dev/request-imports', '/dev/api-clients', '/dev/api-docs']);
 });
 
 it('shows develop with only the API items to a user holding api-clients.view', function () {

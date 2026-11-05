@@ -5,7 +5,9 @@ import { RecordField, RecordFieldList, RecordSection } from '@/components/detail
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { Badge } from '@/components/ui/badge'
 import { enumLabelOf } from '@/features/config/enum-label'
-import { CostTypeBadge } from '@/features/cost-types/cost-type-badge'
+import { CostSubAccountValue } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account-value'
+import { RevenueTypeValue } from '@/features/revenue-types/effective-revenue-type'
+import { RevenueTypeField } from '@/features/revenue-types/revenue-type-field'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import { formatDecimal } from '@/features/products/column-renderers'
 import {
@@ -125,9 +127,26 @@ export function ProductClassificationRecordSection(props: ProductRecordSectionPr
           field="cost_type_id"
           label={t('products.form.costType')}
           inline={inline}
-          editor={<ProductCostTypeField control={control} selected={values.cost_type} />}
+          editor={<ProductCostTypeField control={control} />}
         >
-          {values.cost_type ? <CostTypeBadge name={values.cost_type.name} color={values.cost_type.color} /> : <DetailEmpty />}
+          {values.cost_type ? <CostSubAccountValue id={values.cost_type.id} name={values.cost_type.name} /> : <DetailEmpty />}
+        </RecordInlineField>
+        <RecordInlineField
+          field="revenue_type_id"
+          label={t('revenueTypes.field.label')}
+          inline={inline}
+          editor={
+            <RevenueTypeField
+              control={control}
+              name="revenue_type_id"
+              metaKey="revenue_type_id"
+              label={t('revenueTypes.field.label')}
+              selected={values.revenue_type}
+              effective={values.effective_revenue_type}
+            />
+          }
+        >
+          <RevenueTypeValue own={values.revenue_type} effective={values.effective_revenue_type} />
         </RecordInlineField>
         <RecordInlineField
           field="product_type"

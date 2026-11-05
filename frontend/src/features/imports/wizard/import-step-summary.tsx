@@ -25,7 +25,7 @@ import type { ConfirmImportPayload, ImportRunDetail, ImportRunSummaryReport } fr
 export interface ImportStepSummaryProps {
   domain: string
   run: ImportRunDetail | null
-  onConfirm: (payload: ConfirmImportPayload) => void
+  onConfirm: (payload?: ConfirmImportPayload) => void
   /** Sends the operator back to the review step (spec: not-ready auto-convert blocker). */
   onBackToReview: () => void
   isConfirming: boolean
@@ -116,6 +116,7 @@ export function ImportStepSummary({
   }
 
   const summary = summaryQuery.data
+  const readiness = summary.conversion_readiness
   const configEntries = resolveGlobalConfigEntries(run, summary.global_config, tLabel)
 
   return (
@@ -242,15 +243,17 @@ export function ImportStepSummary({
           </div>
         ) : null}
 
-        <Can permission={CONVERT_TO_OPPORTUNITY_PERMISSION}>
-          <ConversionReadinessSection
-            checked={autoConvert}
-            onCheckedChange={setAutoConvertPreference}
-            readiness={summary.conversion_readiness}
-            onBackToReview={onBackToReview}
-            t={t}
-          />
-        </Can>
+        {readiness ? (
+          <Can permission={CONVERT_TO_OPPORTUNITY_PERMISSION}>
+            <ConversionReadinessSection
+              checked={autoConvert}
+              onCheckedChange={setAutoConvertPreference}
+              readiness={readiness}
+              onBackToReview={onBackToReview}
+              t={t}
+            />
+          </Can>
+        ) : null}
 
         {confirmError ? <StepAlert>{confirmError}</StepAlert> : null}
 
@@ -259,8 +262,8 @@ export function ImportStepSummary({
         <div className="flex justify-end">
           <Button
             type="button"
-            onClick={() => onConfirm({ convert_to_opportunity: autoConvert })}
-            disabled={isConfirming || (autoConvert && !isConversionReady(summary.conversion_readiness))}
+            onClick={() => onConfirm(readiness ? { convert_to_opportunity: autoConvert } : undefined)}
+            disabled={isConfirming || (readiness != null && autoConvert && !isConversionReady(readiness))}
           >
             {isConfirming ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
             {isConfirming ? t('summary.confirming') : t('summary.confirm')}

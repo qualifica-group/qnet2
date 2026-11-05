@@ -104,6 +104,8 @@ export function valuesFromInvoice(invoice: Invoice): InvoiceWriteFormValues {
       quantity: Number(line.quantity),
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate.id,
+      // Explicit, so saving the set never re-proposes over a classification already made.
+      revenue_type_id: line.revenue_type_id ?? null,
     })),
   }
 }

@@ -56,7 +56,7 @@ async function fillInvoice() {
   await pick(/^Supplier$/, /Acme/)
   await pick(/^Company$/, /Qualifica/)
   await pick(/^Payment method$/, /Bonifico/)
-  await pick(/Default cost type/, /Collaboratori/)
+  await pick(/Default cost sub-account/, /Collaboratori/)
   fireEvent.click(screen.getByRole('button', { name: 'Free' }))
   fireEvent.change(screen.getByLabelText('Free row description'), { target: { value: 'Commissions' } })
   fireEvent.click(screen.getByRole('button', { name: 'Add row' }))

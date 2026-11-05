@@ -71,6 +71,9 @@ final readonly class UpdateProductCategoryData
         public bool $managerLabelsSubmitted = false,
         public ?bool $inheritsManagerLabels = null,
         public bool $inheritsManagerLabelsSubmitted = false,
+        /** Spec 0350: own default revenue sub-account; submitted null = back to inherit. */
+        public ?int $revenueTypeId = null,
+        public bool $revenueTypeIdSubmitted = false,
     ) {}
 
     /**
@@ -121,6 +124,8 @@ final readonly class UpdateProductCategoryData
             managerLabelsSubmitted: array_key_exists('manager_labels', $data),
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : null,
             inheritsManagerLabelsSubmitted: array_key_exists('inherits_manager_labels', $data),
+            revenueTypeId: array_key_exists('revenue_type_id', $data) && $data['revenue_type_id'] !== null ? (int) $data['revenue_type_id'] : null,
+            revenueTypeIdSubmitted: array_key_exists('revenue_type_id', $data),
         );
     }
 
@@ -258,6 +263,10 @@ final readonly class UpdateProductCategoryData
         // applies on top of this array — this DTO stays a dumb data carrier.
         if ($this->inheritsManagerLabelsSubmitted) {
             $attributes['inherits_manager_labels'] = $this->inheritsManagerLabels;
+        }
+
+        if ($this->revenueTypeIdSubmitted) {
+            $attributes['revenue_type_id'] = $this->revenueTypeId;
         }
 
         return $attributes;

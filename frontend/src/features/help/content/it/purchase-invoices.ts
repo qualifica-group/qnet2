@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'purchase-invoices',
   title: 'Fatture passive',
-  summary: 'Fatture e proforma dei fornitori: registrazione da zero o dagli ODA, righe con tipo di costo e commessa, scadenze e allegati.',
+  summary: 'Fatture e proforma dei fornitori: registrazione da zero o dagli ODA, righe con sottoconto costo e commessa, scadenze e allegati.',
   sections: [
     {
       id: 'overview',
@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Il modulo si trova in **Contabilità › Passiva › Fatture passive**. Raccoglie le **fatture e i proforma ricevuti dai fornitori**: ogni documento ha le sue **righe** (ciascuna con **tipo di costo** e, se serve, **commessa**), le **scadenze** di pagamento e gli **allegati** del fornitore.',
+          text: 'Il modulo si trova in **Contabilità › Passiva › Fatture passive**. Raccoglie le **fatture e i proforma ricevuti dai fornitori**: ogni documento ha le sue **righe** (ciascuna con **sottoconto costo** e, se serve, **commessa**), le **scadenze** di pagamento e gli **allegati** del fornitore.',
         },
         {
           type: 'paragraph',
@@ -31,7 +31,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Azione', 'Cosa fa'],
           rows: [
-            ['**Visualizza**', 'Apre la scheda del documento, dove si modifica tutto: ogni campo ha la **matita** (premi, cambia, **Salva**; si salva solo quel campo). In **Testata** cambi data, pagamento, banca, sedi, tipo di costo e commessa predefiniti (solo proforma; con pagamenti data e pagamento sono bloccati; fornitore e società non cambiano). In **Registrazione e note** inserisci il **numero** del fornitore e le note, modificabili anche dopo la registrazione. Nella sezione **Righe** (solo proforma) ogni riga ha la **matita** (si apre al suo posto, cambi e premi **Salva**) e il **cestino** (chiede conferma; non sull’ultima riga); **Aggiungi riga** propone una riga da catalogo o a testo libero che si apre in modifica. Le scadenze si ricalcolano al salvataggio.'],
+            ['**Visualizza**', 'Apre la scheda del documento, dove si modifica tutto: ogni campo ha la **matita** (premi, cambia, **Salva**; si salva solo quel campo). In **Testata** cambi data, pagamento, banca, sedi, sottoconto costo e commessa predefiniti (solo proforma; con pagamenti data e pagamento sono bloccati; fornitore e società non cambiano). In **Registrazione e note** inserisci il **numero** del fornitore e le note, modificabili anche dopo la registrazione. Nella sezione **Righe** (solo proforma) ogni riga ha la **matita** (si apre al suo posto, cambi e premi **Salva**) e il **cestino** (chiede conferma; non sull’ultima riga); **Aggiungi riga** propone una riga da catalogo o a testo libero che si apre in modifica. Le scadenze si ricalcolano al salvataggio.'],
             ['**Data documento** (cella)', 'Sui proforma senza pagamenti la data si cambia anche direttamente nell’elenco, con doppio clic.'],
             ['**Elimina**', 'Elimina il documento dopo conferma (solo proforma senza pagamenti).'],
             ['**Attività**', 'Storico delle modifiche del documento.'],
@@ -51,7 +51,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi **Nuova fattura passiva** e scegli **Fornitore**, **Società**, **Data documento** e **Modalità di pagamento** (e, se serve, conto, sedi, note).',
-            'Aggiungi le **righe**: dal catalogo prodotti, libere oppure da un ODA. Se il fornitore ha ordini fatturabili per quella società, il riquadro **ODA fatturabili** li elenca con codice, data e totale: con la freccia apri le righe dell’ordine ancora da fatturare (descrizione, quantità **ordinata**, quantità **da fatturare**, prezzo) e con **Aggiungi** le porti nel documento, dove puoi correggere le quantità. Per ogni riga indica descrizione, quantità, prezzo, IVA, **tipo di costo** (obbligatorio) e **commessa**. Il tipo di costo e la commessa di testata sono solo il valore proposto alle nuove righe; per una riga dal catalogo, se la testata non ne ha uno, il tipo di costo si propone dal prodotto (se ne ha uno predefinito).',
+            'Aggiungi le **righe**: dal catalogo prodotti, libere oppure da un ODA. Se il fornitore ha ordini fatturabili per quella società, il riquadro **ODA fatturabili** li elenca con codice, data e totale: con la freccia apri le righe dell’ordine ancora da fatturare (descrizione, quantità **ordinata**, quantità **da fatturare**, prezzo) e con **Aggiungi** le porti nel documento, dove puoi correggere le quantità. Per ogni riga indica descrizione, quantità, prezzo, IVA, **sottoconto costo** (obbligatorio) e **commessa**. Il sottoconto costo e la commessa di testata sono solo il valore proposto alle nuove righe; per una riga dal catalogo, se la testata non ne ha uno, il sottoconto costo si propone dal prodotto (se ne ha uno predefinito).',
             'Se serve, indica **Ritenuta d’acconto** ed **ENASARCO a carico** (opzionali, nella sezione **Trattenute**).',
             'Controlla i **totali**, compreso il **Netto da pagare**, e l’**anteprima delle scadenze**, generate dalla modalità di pagamento.',
             'Premi **Salva**.',
@@ -73,7 +73,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal dettaglio di un ODA **Approvato**, **Inviato al fornitore**, **Parzialmente evaso** o **Evaso** premi **Registra fattura**: l’editor si apre con le righe dell’ordine già compilate (descrizione, prodotto, quantità, prezzo, IVA, tipo di costo, commessa) e l’ODA collegato. Puoi aggiungere altri ODA dello stesso fornitore e società e modificare, aggiungere o togliere righe.',
+          text: 'Dal dettaglio di un ODA **Approvato**, **Inviato al fornitore**, **Parzialmente evaso** o **Evaso** premi **Registra fattura**: l’editor si apre con le righe dell’ordine già compilate (descrizione, prodotto, quantità, prezzo, IVA, sottoconto costo, commessa) e l’ODA collegato. Puoi aggiungere altri ODA dello stesso fornitore e società e modificare, aggiungere o togliere righe.',
         },
         {
           type: 'warning',

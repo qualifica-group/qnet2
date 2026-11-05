@@ -11,6 +11,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     code: 'QUO-0001',
     title: 'Offerta cliente Acme',
     quote_date: '2026-03-15',
+    follow_up_date: null,
     opportunity_id: 10,
     // Matches `detail()`'s default below (quote_workflow_status_id is a required FK,
     // never null) so the "unchanged" fixtures below are genuinely unchanged.
@@ -41,6 +42,7 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     code: 'QUO-0001',
     title: 'Offerta cliente Acme',
     quote_date: '2026-03-15',
+    follow_up_date: null,
     opportunity_id: 10,
     opportunity: { id: 10, name: 'Deal Acme' },
     quote_workflow_status_id: 1,
@@ -129,6 +131,11 @@ describe('buildCreatePayload', () => {
 
   it('sends the quote date on create (spec 0228)', () => {
     expect(buildCreatePayload(formValues({ quote_date: '2026-10-12' })).quote_date).toBe('2026-10-12')
+  })
+
+  it('sends the follow-up date on create, null when empty (spec 0349 AC-007)', () => {
+    expect(buildCreatePayload(formValues({ follow_up_date: '2026-12-01' })).follow_up_date).toBe('2026-12-01')
+    expect(buildCreatePayload(formValues()).follow_up_date).toBeNull()
   })
 
   it('sends opportunity_id on create', () => {
@@ -241,6 +248,12 @@ describe('buildUpdatePayload', () => {
 
   it('sends the quote date only when it changed (spec 0228)', () => {
     expect(buildUpdatePayload(formValues({ quote_date: '2026-04-01' }), detail())).toEqual({ quote_date: '2026-04-01' })
+  })
+
+  it('sends the follow-up date only when it changed, and null when it is cleared (spec 0349 AC-007)', () => {
+    expect(buildUpdatePayload(formValues(), detail())).toEqual({})
+    expect(buildUpdatePayload(formValues({ follow_up_date: '2026-12-01' }), detail())).toEqual({ follow_up_date: '2026-12-01' })
+    expect(buildUpdatePayload(formValues(), detail({ follow_up_date: '2026-12-01' }))).toEqual({ follow_up_date: null })
   })
 
   it('sends null for a cleared title, back to the automatic one (spec 0171 rev.2)', () => {

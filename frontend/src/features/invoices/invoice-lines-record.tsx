@@ -47,6 +47,7 @@ export function InvoiceLinesRecord({ invoice, editor }: InvoiceLinesRecordProps)
     >
       <InvoiceLinesTable
         lines={invoice.lines}
+        invoiceId={invoice.id}
         editing={
           canWrite
             ? {

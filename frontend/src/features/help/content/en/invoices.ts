@@ -33,6 +33,23 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'revenue-type',
+      title: 'Revenue sub-account of the lines',
+      blocks: [
+        { type: 'paragraph', text: 'Each line carries a chart-of-accounts **Revenue sub-account**, **management data only** that does not appear on the document.' },
+        {
+          type: 'list',
+          items: [
+            'When issuing, the **Revenue sub-account** column is already filled with the proposal (from the product or its category; for Entity requests, the default Entity commissions sub-account). You can change or clear it.',
+            'A line added by hand shows **Automatic (proposed on save)**: if you choose nothing the system applies the proposal when saving; if you pick a sub-account or clear it, your choice wins.',
+            'In the detail of any document, even **issued or collected**, whoever can edit invoices changes the sub-account of a single line from the Lines table, without touching amounts or other lines. Lines without a sub-account show **To be classified**.',
+            'Existing lines are classified automatically where possible; those still without a sub-account are classified by hand.',
+            'If the change is refused (missing permission or invalid sub-account) a message appears and the line stays as it was.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'status',
       title: 'Payment status',
       blocks: [

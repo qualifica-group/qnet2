@@ -130,6 +130,9 @@ final readonly class CreateQuoteData
         // Appended after the pre-existing parameters (spec 0332): the Fonte, a
         // plain optional value with nothing to inherit from the Opportunity.
         public ?int $sourceId = null,
+        // Appended after the pre-existing parameters (spec 0349): "Data
+        // ricontatto", a plain optional date with nothing to inherit.
+        public ?string $followUpDate = null,
     ) {}
 
     /**
@@ -169,6 +172,7 @@ final readonly class CreateQuoteData
             promoteManagersToOpportunity: (bool) ($data['promote_managers_to_opportunity'] ?? false),
             quoteDate: $data['quote_date'] ?? null,
             sourceId: isset($data['source_id']) ? (int) $data['source_id'] : null,
+            followUpDate: $data['follow_up_date'] ?? null,
         );
     }
 
@@ -251,6 +255,7 @@ final readonly class CreateQuoteData
     {
         return [
             'quote_date' => $this->quoteDate ?? CarbonImmutable::today()->toDateString(),
+            'follow_up_date' => $this->followUpDate,
             'opportunity_id' => $this->opportunityId,
             'commercial_id' => $this->commercialId,
             'reporter_id' => $this->reporterId,

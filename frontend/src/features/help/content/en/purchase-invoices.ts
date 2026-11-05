@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'purchase-invoices',
   title: 'Passive invoices',
-  summary: 'Supplier invoices and proformas: register them from scratch or from ODAs, lines with cost type and work order, installments and attachments.',
+  summary: 'Supplier invoices and proformas: register them from scratch or from ODAs, lines with cost sub-account and work order, installments and attachments.',
   sections: [
     {
       id: 'overview',
@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The module is under **Accounting › Payable › Passive invoices**. It collects the **invoices and proformas received from suppliers**: each document has its **lines** (each with a **cost type** and, if needed, a **work order**), its payment **installments** and the supplier **attachments**.',
+          text: 'The module is under **Accounting › Payable › Passive invoices**. It collects the **invoices and proformas received from suppliers**: each document has its **lines** (each with a **cost sub-account** and, if needed, a **work order**), its payment **installments** and the supplier **attachments**.',
         },
         {
           type: 'paragraph',
@@ -31,7 +31,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Action', 'What it does'],
           rows: [
-            ['**View**', 'Opens the document sheet, where everything is edited: every field has the **pencil** (press it, change, **Save**; only that field is saved). In **Header** you change date, payment, bank, sites, default cost type and work order (proformas only; with payments date and payment are locked; supplier and company do not change). In **Registration and notes** you enter the supplier **number** and the notes, editable after registration too. In the **Lines** section (proformas only) each line has the **pencil** (it opens in place, change it and press **Save**) and the **trash** (asks for confirmation; not on the last line); **Add line** offers a catalog or free-text line that opens in edit mode. The installments are recalculated on save.'],
+            ['**View**', 'Opens the document sheet, where everything is edited: every field has the **pencil** (press it, change, **Save**; only that field is saved). In **Header** you change date, payment, bank, sites, default cost sub-account and work order (proformas only; with payments date and payment are locked; supplier and company do not change). In **Registration and notes** you enter the supplier **number** and the notes, editable after registration too. In the **Lines** section (proformas only) each line has the **pencil** (it opens in place, change it and press **Save**) and the **trash** (asks for confirmation; not on the last line); **Add line** offers a catalog or free-text line that opens in edit mode. The installments are recalculated on save.'],
             ['**Document date** (cell)', 'On proformas without payments the date can also be changed directly in the list, with a double-click.'],
             ['**Delete**', 'Deletes the document after confirmation (proformas without payments only).'],
             ['**Activity**', 'Change history of the document.'],
@@ -51,7 +51,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press **New passive invoice** and choose **Supplier**, **Company**, **Document date** and **Payment method** (and, if needed, account, sites, notes).',
-            'Add the **lines**: from the product catalog, free ones or from an ODA. If the supplier has invoiceable orders for that company, the **Invoiceable purchase orders** box lists them with code, date and total: the arrow opens the order rows still to invoice (description, **ordered** quantity, quantity **to invoice**, price) and **Add** brings them into the document, where you can adjust the quantities. For each line set description, quantity, price, VAT, **cost type** (required) and **work order**. The header cost type and work order are only the value proposed to new lines; for a catalog line, if the header has none, the cost type is proposed from the product (when it has a default one).',
+            'Add the **lines**: from the product catalog, free ones or from an ODA. If the supplier has invoiceable orders for that company, the **Invoiceable purchase orders** box lists them with code, date and total: the arrow opens the order rows still to invoice (description, **ordered** quantity, quantity **to invoice**, price) and **Add** brings them into the document, where you can adjust the quantities. For each line set description, quantity, price, VAT, **cost sub-account** (required) and **work order**. The header cost sub-account and work order are only the value proposed to new lines; for a catalog line, if the header has none, the cost sub-account is proposed from the product (when it has a default one).',
             'If needed, enter **Withholding tax** and **ENASARCO charged to the company** (optional, in the **Withholdings** section).',
             'Check the **totals**, including the **Net payable**, and the **installment preview**, generated from the payment method.',
             'Press **Save**.',
@@ -73,7 +73,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'From the detail of an ODA that is **Approved**, **Sent to supplier**, **Partially fulfilled** or **Fulfilled** press **Register invoice**: the editor opens with the order lines already filled in (description, product, quantity, price, VAT, cost type, work order) and the ODA linked. You can add other ODAs of the same supplier and company and edit, add or remove lines.',
+          text: 'From the detail of an ODA that is **Approved**, **Sent to supplier**, **Partially fulfilled** or **Fulfilled** press **Register invoice**: the editor opens with the order lines already filled in (description, product, quantity, price, VAT, cost sub-account, work order) and the ODA linked. You can add other ODAs of the same supplier and company and edit, add or remove lines.',
         },
         {
           type: 'warning',

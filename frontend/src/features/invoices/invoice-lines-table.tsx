@@ -1,22 +1,25 @@
 import { useTranslation } from 'react-i18next'
 import { LineEditorTableRow, type LinesTableEditing } from '@/components/record-form/record-lines'
 import { formatEuro } from '@/features/invoices/invoice-format'
+import { InvoiceLineRevenueTypeCell } from '@/features/invoices/invoice-line-revenue-type-cell'
 import type { InvoiceLine } from '@/features/invoices/types'
 
 const HEAD = 'px-2 py-1 text-left text-xs font-medium text-muted-foreground'
 const NUM_HEAD = 'px-2 py-1 text-right text-xs font-medium text-muted-foreground'
 const CELL = 'px-2 py-1 text-xs'
 const NUM_CELL = 'px-2 py-1 text-right text-xs tabular-nums'
-const DATA_COLUMNS = 7
+const DATA_COLUMNS = 8
 
 interface InvoiceLinesTableProps {
   lines: InvoiceLine[]
+  /** The document, so a line's revenue sub-account can be changed in place (spec 0350); absent = read-only. */
+  invoiceId?: number
   /** The record's in-place editing (spec 0263); absent on the grid's detail panel. */
   editing?: LinesTableEditing
 }
 
 /** Compact table of the document lines; on a record, editable in place. */
-export function InvoiceLinesTable({ lines, editing }: InvoiceLinesTableProps) {
+export function InvoiceLinesTable({ lines, editing, invoiceId }: InvoiceLinesTableProps) {
   const { t } = useTranslation()
   const actions = editing?.actions
   const columns = actions ? DATA_COLUMNS + 1 : DATA_COLUMNS
@@ -43,6 +46,9 @@ export function InvoiceLinesTable({ lines, editing }: InvoiceLinesTableProps) {
             </th>
             <th scope="col" className={NUM_HEAD}>
               {t('invoices.detail.linesColumns.vat_rate')}
+            </th>
+            <th scope="col" className={`${HEAD} min-w-48`}>
+              {t('revenueTypes.invoiceLine.column')}
             </th>
             <th scope="col" className={NUM_HEAD}>
               {t('invoices.detail.linesColumns.net_amount')}
@@ -74,6 +80,9 @@ export function InvoiceLinesTable({ lines, editing }: InvoiceLinesTableProps) {
                 <td className={NUM_CELL}>{Number(line.quantity)}</td>
                 <td className={NUM_CELL}>{formatEuro(line.unit_price)}</td>
                 <td className={NUM_CELL}>{`${Number(line.vat_rate.rate)}%`}</td>
+                <td className={CELL}>
+                  <InvoiceLineRevenueTypeCell invoiceId={invoiceId} line={line} position={index + 1} />
+                </td>
                 <td className={NUM_CELL}>{formatEuro(line.net_amount)}</td>
                 <td className={NUM_CELL}>{formatEuro(line.vat_amount)}</td>
                 <td className={`${NUM_CELL} font-medium`}>{formatEuro(line.total_amount)}</td>

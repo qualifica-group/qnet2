@@ -10,6 +10,7 @@ use App\Imports\Staging\StagedRowBuilder;
 use App\Imports\Support\ColumnAnalysis;
 use App\Models\ImportRun;
 use App\Models\Product;
+use App\Support\Import\ConfigureValueMappingsValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -38,9 +39,22 @@ class ConfigureImportRequest extends FormRequest
 {
     private ?ImportDefinition $resolvedDefinition = null;
 
+    /**
+     * Gate BEFORE validation (spec 0348): an actor without the domain's import
+     * permission gets a 403, never the 422 of a body they should not even be
+     * allowed to submit. A run of another domain passes through so the
+     * controller's 404 guard answers it.
+     */
     public function authorize(): bool
     {
-        return true;
+        $run = $this->route('importRun');
+        $actor = $this->user();
+
+        if (! $run instanceof ImportRun || $run->resource !== (string) $this->route('domain')) {
+            return true;
+        }
+
+        return $actor !== null && $actor->can('update', $run) && $this->definition()->authorizeImport($actor);
     }
 
     /**
@@ -61,6 +75,10 @@ class ConfigureImportRequest extends FormRequest
             // own shape/existence/coherence checks therefore run manually in
             // assertGlobalProductIdsCoherent() below, never as a rule.
             'global_config' => ['sometimes', 'array'],
+            // Spec 0348: domain-defined shape, validated by the definition
+            // (ConfigureValueMappingsValidator) — no per-key dot-rule, same
+            // reason as `global_config` above.
+            'value_mappings' => ['sometimes', 'nullable', 'array'],
             'dedup_strategy' => ['required', 'string', Rule::in($this->allowedDedupValues())],
         ];
     }
@@ -75,6 +93,7 @@ class ConfigureImportRequest extends FormRequest
             $this->assertRequiredGlobalConfigPresent($validator, $definition);
             $this->assertMappedModeExcludesGlobals($validator, $definition);
             $this->assertGlobalProductIdsCoherent($validator, $definition);
+            $this->assertValueMappingsAndAttributesValid($validator, $definition);
         });
     }
 
@@ -99,11 +118,54 @@ class ConfigureImportRequest extends FormRequest
                 continue;
             }
 
-            if (! is_string($target) || ! in_array($target, $allowedTargets, true)) {
+            if (! is_string($target) || ! $this->isAllowedTarget($target, $allowedTargets, $definition)) {
                 $validator->errors()->add(
                     "column_mapping.{$columnKey}",
                     "The mapping target for column [{$columnKey}] is not allowed.",
                 );
+            }
+        }
+    }
+
+    /**
+     * `attribute.<code>` targets are open-ended (the attribute set depends on
+     * the chosen global config): accepted here when the definition declares
+     * them, then checked one by one by validateAttributeTargets().
+     *
+     * @param  array<int, string>  $allowedTargets
+     */
+    private function isAllowedTarget(string $target, array $allowedTargets, ImportDefinition $definition): bool
+    {
+        return in_array($target, $allowedTargets, true)
+            || ($definition->attributeTargets() !== null && str_starts_with($target, ConfigureValueMappingsValidator::ATTRIBUTE_TARGET_PREFIX));
+    }
+
+    /**
+     * Spec 0348: value_mappings coverage + attribute targets, delegated to the
+     * definition. Skipped when the mapping itself is already invalid, so the
+     * source file is only read for a structurally sound request.
+     */
+    private function assertValueMappingsAndAttributesValid(Validator $validator, ImportDefinition $definition): void
+    {
+        $run = $this->route('importRun');
+        $mapping = $this->input('column_mapping');
+        $globalConfig = $this->input('global_config', []);
+
+        if ($validator->errors()->isNotEmpty() || ! $run instanceof ImportRun || ! is_array($mapping)) {
+            return;
+        }
+
+        $errors = app(ConfigureValueMappingsValidator::class)->errors(
+            $definition,
+            $run,
+            $mapping,
+            is_array($globalConfig) ? $globalConfig : [],
+            $this->input('value_mappings'),
+        );
+
+        foreach ($errors as $key => $messages) {
+            foreach ($messages as $message) {
+                $validator->errors()->add($key, $message);
             }
         }
     }

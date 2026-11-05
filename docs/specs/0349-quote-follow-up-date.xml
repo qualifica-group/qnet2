@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0349-quote-follow-up-date" status="approved" owner="utente" date="2026-11-04">
+
+  <goal>
+    Una nuova data facoltativa sull'Offerta, "Data ricontatto", che gli utenti (in particolare il
+    backoffice) impostano dalla scheda Offerta o direttamente nella griglia Offerte per sapere quando
+    riprendere in mano l'offerta. Distinta da "Prossimo richiamo", che resta di Gestione Richieste.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-04 (risposte in terminale, piano approvato):
+    - D-1: nome generico, senza "backoffice": etichetta "Data ricontatto" / "Follow-up date",
+      colonna `quotes.follow_up_date`.
+    - D-2: solo data (`date`, formato `Y-m-d`), facoltativa, nessuna ora.
+    - D-3: nessun promemoria o notifica: solo il campo.
+    - D-4: si modifica dalla scheda Offerta (creazione e dettaglio) e in linea nella griglia Offerte;
+      non compare in Gestione Richieste.
+    - D-5: nessun permesso nuovo: modificabile da chi puo' modificare l'Offerta (`quotes.update`,
+      stesso livello di `quote_date` in QuotesAuthorization), altrimenti sola lettura.
+    - D-6: campo nuovo, nessuna migrazione dal legacy (QuotesSource invariato).
+    - D-7: colonna griglia visibile di default, in coda prima di `alert` (spec 0001: i layout salvati
+      sono indicizzati per id colonna).
+
+    Fatti verificati nel repo:
+    - "Prossimo richiamo" = `quotes.next_callback_at` (datetime), scritto solo da Gestione Richieste
+      (RequestManagementService), sola lettura in QuoteColumnCatalog. "Data richiamo" delle Commesse =
+      `work_orders.callback_date`. Nessuno dei due cambia.
+    - Percorso di un campo scalare dell'Offerta (precedente `quote_date`, spec 0228, e `source_id`,
+      spec 0332): Quote #[Fillable] + casts; StoreQuoteRequest / UpdateQuoteRequest; CreateQuoteData /
+      UpdateQuoteData (flag `*Submitted`); QuoteService; QuoteResource; QuotesAuthorization fields() +
+      fieldPermissionCeiling(); QuoteColumnCatalog + QuotesTableDefinition::mapRow(); cella in linea via
+      QuoteCellWriter (UpdateQuoteRequest + QuoteService::update, ramo default).
+    - Frontend: features/quotes/{types.ts, quote-schema.ts, quote-form-defaults.ts,
+      quote-form-payload.ts, use-quote-form.ts, quote-identity-fields.tsx, quote-record-identity.tsx,
+      quote-create-sections.tsx, quote-detail-sections.tsx, column-renderers.tsx}; etichette in
+      i18n/locales/{it,en}-quotes.ts e {it,en}-activity-log.ts.
+    - Essendo in #[Fillable], il campo entra nel log automatico (LogsModelActivity::logFillable).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: `quotes.follow_up_date` date nullable, indicizzata.</item>
+      <item>Backend: model, request, DTO, resource, permessi di campo, colonna griglia modificabile.</item>
+      <item>Frontend: campo nella sezione "Dati offerta" (creazione e dettaglio), cella data in griglia, etichette IT/EN (anche registro attivita').</item>
+      <item>Guida in-app `quotes` IT/EN e manuale Claude Docs (sezione Offerte).</item>
+    </in>
+    <out>
+      <item>Promemoria, notifiche, scheduler (D-3).</item>
+      <item>Gestione Richieste: nessuna colonna, campo o filtro (D-4).</item>
+      <item>Migrazione dal legacy (D-6).</item>
+      <item>Permesso dedicato (D-5).</item>
+      <item>Proiezione nelle menzioni dell'assistente AI, filtri avanzati dedicati, export PDF dell'offerta.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/quotes">
+      <request>follow_up_date?: string|null (Y-m-d). Assente o null = nessuna data.</request>
+      <response status="201">data.follow_up_date: string|null (Y-m-d)</response>
+      <response status="422">follow_up_date non nel formato Y-m-d.</response>
+    </endpoint>
+    <endpoint method="PUT|PATCH" path="/api/quotes/{quote}">
+      <request>follow_up_date?: string|null (Y-m-d). Assente = invariata; null = cancellata.</request>
+      <response status="200">data.follow_up_date: string|null</response>
+      <response status="403">senza `quotes.update` (policy esistente).</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <response status="200">data.follow_up_date: string|null (Y-m-d)</response>
+    </endpoint>
+    <table_column domain="quotes" id="follow_up_date">
+      type date, visible true, sortable, filterable (filterType date), editable, nullable; label
+      `quotes.columns.followUpDate`; posizione: dopo `next_callback_at`, prima di `alert`.
+      Riga: `follow_up_date` come le date di Opportunita' (start_date).
+    </table_column>
+    <field_permission resource="quotes" field="follow_up_date" type="date">
+      editabile se l'attore puo' scrivere l'Offerta, altrimenti sola lettura; non obbligatorio.
+    </field_permission>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST /api/quotes con follow_up_date "2026-12-01" salva la data e la risposta la restituisce in Y-m-d; senza la chiave il campo resta null.</criterion>
+    <criterion id="AC-002">PATCH con follow_up_date imposta la data; PATCH con null la cancella; PATCH senza la chiave la lascia invariata.</criterion>
+    <criterion id="AC-003">follow_up_date "01/12/2026" o "2026-12-01 10:00" danno 422 sulla chiave `follow_up_date` e nulla viene scritto.</criterion>
+    <criterion id="AC-004">Un utente senza `quotes.update` riceve 403 sul PATCH; nei permessi di campo `follow_up_date` e' editabile per chi scrive e in sola lettura per chi legge soltanto.</criterion>
+    <criterion id="AC-005">La griglia Offerte espone la colonna `follow_up_date` (date, editabile, nullable) dopo `next_callback_at` e prima di `alert`; la riga porta il valore; la modifica in linea della cella scrive la data, la cancella con null e rifiuta un formato non valido.</criterion>
+    <criterion id="AC-006">La griglia ordina e filtra per `follow_up_date` (filtro data).</criterion>
+    <criterion id="AC-007">(FE) Schema, default e payload: create invia follow_up_date (null se vuoto); update la invia solo se cambiata, null quando svuotata.</criterion>
+    <criterion id="AC-008">(FE) La sezione "Dati offerta" mostra "Data ricontatto" con la data formattata o vuota, modificabile in linea.</criterion>
+    <criterion id="AC-009">Guida in-app `quotes` IT/EN aggiornata con gli stessi id di sezione (help-content-parity verde).</criterion>
+  </acceptance_criteria>
+
+</spec>

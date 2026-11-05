@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Un tipo di costo classifica la spesa di una riga di un ordine di acquisto (ODA). Il tipo è **obbligatorio su ogni riga** e compare come badge colorato nel suo colore (menu di scelta delle righe ODA e di Genera ODA, dettaglio ODA, griglie Tipi di costo e Scadenze passive). Lo stesso tipo si può impostare come predefinito su un prodotto e indicare sui costi di una commessa. Sono già presenti Collaboratori, Fitti, Utenze e Altro; puoi aggiungerne altri o modificarli.',
+          text: 'Un tipo di costo classifica la spesa di una riga di un ordine di acquisto (ODA) ed è il **sottoconto di costo** del Piano dei conti: nei documenti il campo si chiama **Sottoconto costo** e il menu di scelta mostra codice e nome, raggruppati per mastro e conto. Il campo è **obbligatorio su ogni riga** e compare come badge colorato nelle griglie Tipi di costo e Scadenze passive. Lo stesso tipo si può impostare come predefinito su un prodotto e indicare sui costi di una commessa. Sono già presenti Collaboratori, Fitti, Utenze e Altro; puoi aggiungerne altri o modificarli.',
         },
       ],
     },
@@ -27,6 +27,7 @@ const guide: HelpGuide = {
             ['Descrizione', 'Testo libero facoltativo.'],
             ['Natura', '**Diretto** (imputabile a una commessa), **Indiretto** (costo di produzione, ripartito) o **Generale** (struttura e spese generali). Obbligatoria; i tipi già presenti sono Diretto.'],
             ['Colore', 'Il colore del badge del tipo, scelto dalla tavolozza. Obbligatorio; i tipi già presenti sono grigio ardesia.'],
+            ['Codice e conto', 'Facoltativi qui: un tipo di costo è anche un **sottoconto di costo** del **Piano dei conti**, dove ha un conto padre e un codice univoco. Da questa pagina non si modificano: si collocano dal Piano dei conti (**Colloca nel piano**) e non cambiano se salvi da qui.'],
             ['Attivo', 'Un tipo non attivo non si può più scegliere sulle nuove righe.'],
           ],
         },

@@ -50,6 +50,7 @@ final class InvoiceAmountCalculator
                 'vat_amount' => $amounts['vat'],
                 'total_amount' => $amounts['total'],
                 'sort_order' => $index,
+                'revenue_type_id' => $line['revenue_type_id'] ?? null,
             ];
         }
 

@@ -343,6 +343,24 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
   })
 
+  // Decisione utente 2026-11-04: un contratto gia' validato su uno stato
+  // PENDING (migrazione legacy, es. "Da programmare") si programma.
+  it('su PENDING gia validato offre Programma al posto di Valida', () => {
+    renderView(
+      contract({
+        contract_status: { id: 2, name: 'Da programmare', color: 'blue', group: 'pending' },
+        validated_at: '2026-07-14',
+      }),
+    )
+    expect(screen.getByRole('button', { name: 'Program' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
+  })
+
+  it('non offre Programma su un contratto sospeso, anche se gia validato', () => {
+    renderView(contract({ is_suspended: true, suspended_at: '2026-02-01T10:00:00Z', validated_at: '2026-01-15' }))
+    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
+  })
+
   it('su CHIUSO POSITIVO lascia Disdici, Programma (attivo, spec 0095) e Riapri', () => {
     // Direttiva utente 2026-08-31 rev.3: anche la chiusura positiva si riapre.
     renderView(validatedContract())

@@ -55,9 +55,12 @@ use App\DataObjects\Users\ProfileData;
  * are the created Opportunity's forecast trio, also OPTIONAL: `null` leaves
  * them unset, as before.
  *
- * No working-status pair here: the create form does not offer one (the set
- * depends on criteria the server resolves), so the Offerta is born on the
- * `open` row QuoteService bootstraps, exactly as in the Offerte module.
+ * `workflowStatusId` is the OPTIONAL working status the Offerta is born with
+ * (spec 0348, the request import): the create form does not offer one (the set
+ * depends on criteria the server resolves), so without it the Offerta is born on
+ * the `open` row QuoteService bootstraps, exactly as in the Offerte module. When
+ * given, QuoteService validates it against the resolved set like any explicit
+ * choice.
  *
  * `offerLines` (user directive 2026-08-07) are the created Offerta's own
  * REVENUE rows, handed to QuoteService::create() verbatim: `null` means the
@@ -91,5 +94,6 @@ final readonly class CreateRequestData
         public ?int $successProbability = null,
         public ?array $attributeValues = null,
         public ?array $offerLines = null,
+        public ?int $workflowStatusId = null,
     ) {}
 }

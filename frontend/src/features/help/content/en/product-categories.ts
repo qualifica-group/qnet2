@@ -264,6 +264,21 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'revenue-type',
+      title: 'Revenue sub-account and inheritance',
+      blocks: [
+        { type: 'paragraph', text: 'Each category can have a **Revenue sub-account** (chart of accounts). Products in the category that have none of their own use the category one.' },
+        {
+          type: 'list',
+          items: [
+            'A category without a sub-account **inherits** from the one above it, going up the tree: in the record you read **Inherited from category X**.',
+            'A product with its own sub-account is not touched by the category.',
+            'Changing the sub-account of a category automatically classifies the invoice lines of the products inheriting it that are still **To be classified**; lines already classified stay unchanged.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'management-rules-in-practice',
       title: 'Management rules in practice',
       blocks: [

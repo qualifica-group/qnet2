@@ -85,6 +85,322 @@
 - Aperto: il Set Filter (`/tables/{domain}/values`) non invia `work_order_type` -> su Commesse puo' mostrare valori di
   commesse project. Micro-task da decidere con l'utente.
 
+## Note: "Menziona chiunque" su commesse e task (spec 0353) — VERDE, NON COMMITTATO (2026-11-04)
+
+- Spec `docs/specs/0353-note-mentions-outside-record.xml` (D-1..D-9, AC-001..AC-018). Decisioni utente: solo
+  `work-orders` e `tasks` (opportunita'/offerte rimandate); sblocca chi ha `can('update', $record)`, nessun permesso
+  nuovo; fuori perimetro -> Partecipante della commessa (prima posizione libera, `ManagerPositions::MAX`) /
+  Osservatore del task; elenco esteso = tutti gli attivi non di servizio, chi non ha la vista del modulo viene
+  aggiunto con avviso; commessa piena = 422 `mentions` tutto o niente; solo `NoteMentionNotification` (testo
+  "ti ha aggiunto come ..."), nessuna notifica di assegnazione; togliere menzione/cancellare nota non toglie nessuno.
+- BE: interfaccia `App\Notes\Contracts\EnlistsMentionedUsers` (implementata da `WorkOrderNotable`, `TaskNotable`;
+  `enlist()` restituisce gli id realmente aggiunti, sul task salta creatore/richiedente/assegnatari per
+  `TaskWatcherOverlapGuard`), `NoteEntityRegistry::enlisterFor()/mentionOutsideFor()`,
+  `Mentions/MentionableUserDirectory` (ex `NoteService::mentionableUsers`, `scope=record|extended`, flag
+  `in_record`/`has_module_access`), `Mentions/MentionEnlistment`. `NoteService::create/update` ora restituiscono
+  `DataObjects\Notes\NoteSaveResult` (`note`, `enlistedUserIds`): ogni chiamante legge `->note`
+  (`DemoTaskNoteSeeder` aggiornato). Contratto: `meta.mention_outside {allowed, role}` su `GET /api/notes`,
+  `meta.enlisted_user_ids` su POST/PATCH.
+- FE: `features/notes/use-mention-outside.ts`, `mention-outside-summary.tsx`, interruttore in `note-composer.tsx`,
+  prop `onMembersAdded` su `NotesSection` (gli host dettaglio commessa/task invalidano il dettaglio; `task-detail.tsx`
+  passa il callback a `useTaskCollaborationTabs`). i18n `notes.mentionOutside`.
+- Manuale: guide in-app IT/EN `general.ts#notes-and-documents`, `work-orders.ts#visibility`,
+  `tasks.ts#collaboration-and-notifications`; manuale Claude Docs (Note, Quali commesse vedi, notifiche task).
+- Verifica: `tests/Feature/Notes` 119/119, `DemoTaskSeederTest` verde, Vitest completo 9880/9880, tsc/eslint/pint
+  puliti. Suite BE completa: fallimenti senza file della feature nelle tracce, da confermare su baseline pulita:
+  AiAssistant AC-012/014/029 (tipi MIME ristretti dall'env), ManagementControl x4 ("array offset on null"),
+  `QualificaOperatorSeederTest` x2 (ruolo `importatore-richieste`), Migration `UsersSource*`/`MigrationPlan*`/
+  `MigrationSourceAvailability`, `SettlementApprovalTest` AC-006 (dipende dalla data), `WorkOrderCategoryTabsTest`
+  (verde da solo), piu' i noti `PermissionCatalogueEndpointTest` AC-004, `TableBulkDeleteTest`, `QuoteDocumentPdfTest`
+  (LibreOffice assente). Vitest: 11 unhandled error `toast.error is not a function` da `vat-rate-form-metadata.test.tsx`.
+- Prossimo passo possibile: estendere a opportunita'/offerte (serve decidere il "partecipante" e la lettura del thread
+  della gestione richieste, oggi solo Operatore GA2 / viewAll / sede / competenza).
+
+## Commesse: "Richiedi aggiornamento" (spec 0352) — VERDE, NON COMMITTATO (2026-11-04)
+
+- Spec `docs/specs/0352-work-order-update-request.xml` (D-1..D-6, AC-001..AC-016), clone della richiesta del task
+  (spec 0153 D-14). Decisioni utente: gruppi fissi `participants` (Responsabili non partecipanti in copia,
+  `is_cc: true`) / `supervisors` / `all`; nuovo permesso `work-orders.requestUpdate` + perimetro; solo commesse
+  open/in_progress (`WorkOrderStatus::acceptsUpdateRequest()`, unica fonte per service, flag e azione di riga);
+  pulsante nell'header del dettaglio + azione di riga `request_update`.
+- BE: `POST /api/work-orders/{workOrder}/request-update` -> `WorkOrderRequestUpdateController` ->
+  `RequestWorkOrderUpdateRequest` (422 `target` se il gruppo e' vuoto) -> `WorkOrderUpdateRequester::handle()` ->
+  notifica `WorkOrderUpdateRequested` (database+mail, link via `RecordLinkResolver`). Risposta `data: null`
+  (nessuna scrittura sulla commessa). Flag `permissions.actions.request_update`.
+- FE: dialog condiviso `features/shared/request-update-dialog.tsx` (`RequestUpdateDialog<T>`); il dialog del task e'
+  ora un wrapper; nuovo `work-order-request-update-dialog.tsx`, `use-request-work-order-update.ts`; gli host di
+  `useWorkOrderRowActions` (griglia commesse, contratto, anagrafica) montano `requestUpdateDialog`.
+- Manuale: guide in-app IT/EN sezione `request-update`; manuale Claude Docs, paragrafo "Richiedi aggiornamento"
+  dopo "Notifiche" della commessa.
+- Fallimenti preesistenti NON di questa feature: `PermissionCatalogueEndpointTest` AC-004 (`request-management`
+  esposto in due aree, commercial e develop -> 17 duplicati) e `TableBulkDeleteTest` guard ultimo super-admin
+  (`forbidden` invece di `guarded`). `work-order-detail.test.tsx` era gia' oltre 500 righe (585 -> 607).
+- Il permesso nuovo va assegnato ai ruoli dall'editor ruoli (solo super-admin lo ha di default).
+
+## Contratti: "Programma" anche sui contratti gia' validati in lavorazione — VERDE, NON COMMITTATO (2026-11-04)
+
+- Decisione utente 2026-11-04: `ContractActionAvailability::mayProgram()` = `closed_won` OPPURE (gruppo open/pending
+  AND `validated_at` pieno AND non sospeso). Causa: la migrazione legacy porta i contratti validati su righe pending
+  ("Da programmare" 172, "Programmato" 4729, "In scadenza" 5149) che non avevano ne' "Valida" ne' "Programma".
+- Specchio FE in `contract-lifecycle.ts` (`program`). Vale anche per griglia, endpoint programmable-lines/work-orders
+  e "Programma commessa unica" (`MultiQuoteContractGate`). Messaggi 403/422 aggiornati (it.json, work_orders it/en).
+- Nessun cambio automatico di stato dopo la programmazione (non richiesto). Guida in-app contratti IT/EN aggiornata.
+- Test: Pest `tests/Feature/Contracts` + WorkOrders + Tasks verdi; Vitest contracts+help verdi; tsc -b pulito.
+
+## Piano dei conti fase 2: classificazione ricavi + "Sottoconto costo" (spec 0350) — VERDE, NON COMMITTATO (2026-11-04)
+
+- Spec `docs/specs/0350-chart-of-accounts-revenue-classification.xml` (D-1..D-12, AC-001..AC-017). Decisioni utente:
+  classificazione automatica delle righe vuote, sottoconto modificabile anche dopo emissione/incasso, ereditarieta'
+  dalla categoria prodotto, fase 3 conta fatture E proforma su entrambi i lati (D-4).
+- Schema: `revenue_type_id` su `invoice_lines`, `products`, `product_categories`; flag
+  `revenue_types.is_institution_commission_default` (al piu' uno, migrazione lo mette su 70.03.001). Migrazioni
+  `2026_11_19_100000` (schema) e `2026_11_19_100100` (classifica le righe NULL delle fatture Ente).
+- `App\Services\ChartOfAccounts\RevenueTypeResolver` = UNICA fonte della proposta (Ente -> predefinito provvigioni;
+  prodotto; categoria effettiva risalendo l'albero; altrimenti null), max 3 query. `RevenueLineClassifier` +
+  `ClassifyRevenueLinesJob` (solo righe NULL, mai sovrascrive) accodato quando cambia il sottoconto di prodotto/
+  categoria/assegnazione massiva; comando `php artisan chart:classify-revenue` (idempotente).
+- Fatture: `lines.*.revenue_type_id` chiave ASSENTE = proposta server, PRESENTE (id|null) = utente (il FE invia null
+  esplicito sulle righe salvate). `PATCH /api/invoices/{invoice}/lines/{line}/revenue-type` (permesso
+  `invoices.update`, ammesso con incassi, audit sulla fattura). Bozza: `available_lines[].revenue_type_id`.
+  `InvoicesSource` (legacy) classifica dopo `createMany`. Delete di un sottoconto di ricavo in uso -> 409.
+- Prodotti/categorie: `revenue_type_id`, `revenue_type`, `effective_revenue_type`; `POST /api/products/revenue-type`
+  `{ids, revenue_type_id}`; colonna griglia `revenue_type`. `GET /api/revenue-types/for-select` (file rotte
+  `routes/api/revenue-types.php`).
+- D-12: `GET /api/cost-types/for-select` esteso in modo additivo (`code`, `path`, `group`, `account`; collocati per
+  codice, poi non collocati per nome). FE: etichetta "Sottoconto costo" e selettore raggruppato mastro > conto con
+  gruppo "Da collocare" in prodotti, ordini, generazione ordini, fatture passive, costi commessa, profilo agente,
+  approvazione estratto; codice condiviso in `features/chart-of-accounts/sub-account-select/`, prop `groupOptions`
+  su `components/ui/async-paginated-select.tsx` (484 righe, vicino al limite). Pagina "Tipi di costo" e Controllo
+  di gestione invariati.
+- Verifica: gate verifier su AC-001..015 PASS (nessun rosso nuovo; 1 worker vitest crashato per ambiente, aree 0350
+  verdi 916/916). D-12: backend CostTypes 37/37, frontend 242 file / 1726 test, tsc pulito. Suite completa NON
+  rieseguita dopo D-12.
+- Manuale Claude Docs: NON aggiornato (connettore non disponibile/doc non condiviso). Sezioni da aggiornare: Piano dei
+  conti (fase 1, export/import, flag Ente), Prodotti, Categorie prodotto, Fatture attive (sottoconto riga),
+  Ordini/Fatture passive/Costi commessa/Profilo agente/Estratto provvigioni ("Sottoconto costo").
+- Prossimo: fase 3 = prospetto per mastro > conto > sottoconto, filtri periodo/societa', fatture + proforma su
+  entrambi i lati.
+
+## Piano dei conti: export e import (spec 0349) — VERDE, COMMITTATO fbb91078 (2026-11-04)
+
+- Spec `docs/specs/0349-chart-of-accounts-export-import.xml` (D-1..D-12, AC-001..AC-014, tutti PASS dal verifier).
+- `GET /api/chart-of-accounts/export?format=xlsx|csv` (download sincrono, `ChartOfAccountsExporter` +
+  `ChartOfAccountsLayout` = tracciato e vocabolario IT/EN condivisi); `POST /api/chart-of-accounts/import`
+  (multipart `file` + `dry_run` accettato come 1/0/true/false; tutto-o-niente in `DB::transaction`; scritture solo via
+  `ChartAccountService`/`RevenueTypeService`/`CostTypeService`). Classi in `app/Imports/ChartOfAccounts/`
+  (FileReader, RowParser, Planner, Applier, Importer + value object). Chiave = codice; nessuna eliminazione; un
+  sottoconto di costo con codice nuovo e nome di un tipo esistente lo adotta. Tipi da collocare esclusi dall'export.
+- Permessi `chart-accounts.export|import` (gia' nel catalogo); creare/aggiornare tipi di costo da file richiede anche
+  `cost-types.create|update` (errore di riga). Tree endpoint: `abilities.chart_accounts.export|import`.
+- Lingue: intestazioni/valori/errori seguono `Accept-Language`; l'import accetta IT e EN. Chiavi `chart_accounts.io.*`
+  (backend), `chartOfAccounts.export|import.*` (frontend). Guida in-app sezione `export-import` IT+EN.
+- Test helper `resetChartOfAccounts()` in `tests/Helpers/ChartOfAccountsHelpers.php` (la migrazione semina il piano).
+- Limite noto: `SpreadsheetReader` salta le righe vuote, quindi con righe vuote in mezzo il numero di riga degli
+  errori puo' non coincidere con il file.
+- Manuale Claude Docs: NON aggiornato (doc non condiviso con l'account della sessione) -> aggiungere
+  "Piano dei conti > Esporta e importa".
+- Suite completa: rossi ESTRANEI alla feature (da sistemare a parte): `PermissionCatalogueEndpointTest` AC-004
+  (17 permessi `request-management.*` in due aree di menu, commercial + develop), `SettlementApprovalTest` AC-006
+  (dipende dalla data), `QualificaOperatorSeederTest` (ruolo `importatore-richieste`), `TableBulkDeleteTest:131`,
+  `ManagementControl/*AccessTest` (array offset on null; insieme instabile tra due run). `ApiDocsParityTest` va in
+  fatal con memory_limit 512M; Pint sull'intero progetto crasha (`NameQualifiedTransformer`). Frontend: 11 unhandled
+  `toast.error is not a function` in job-activities/vat-rates test.
+
+## Campi flessibili per tab categoria su Offerte, Commesse, Contratti (spec 0350) — VERDE, COMMITTATO (2026-11-04)
+
+- Richiesta utente: "commesse, contratti e offerte come gestione richieste: in base alla categoria escono i campi
+  flessibili; per commessa quelli della commessa". Decisioni utente 2026-11-04: Offerte = contesto Quote su
+  `quotes.attribute_values`, modificabili in cella; Commesse = contesto WorkOrder su `work_orders.attribute_values`,
+  modificabili in cella; Contratti = campi dell'offerta di origine (`contracts.quote_id`), SOLA LETTURA ma
+  filtrabili/ordinabili. Tab "Tutte" e "Categorie madri": nessuna `attr.*`. Supera "niente attr.*" della 0335.
+- Backend (nessuna migrazione, nessun endpoint nuovo, nessuna modifica frontend): `Tables\CategoryTabs\AttributeGridTarget`
+  (colonna JSON + `AttributeContext` + model del gate; `quote()`, `workOrder()`), interfaccia
+  `Tables\CategoryTabs\AttributeColumnsScopable` (`scopeToAllProductCategories()`, sostituisce gli `instanceof
+  RequestManagementScopedTableDefinition` in `TableController`/`TableFilterStateRequest`), trait di lettura
+  `Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns` (3 griglie) e di scrittura `WritesCategoryAttributeCells`
+  (quotes/work-orders: CellWriter del modulo con `attribute_values => [code => value]`, poi remap col resolver del record).
+  `AttributeGridColumns::forTarget()`, `AttributeScopeResolver::forContext()` (memo per contesto); Gestione Richieste invariata.
+  Contratti: filtro `whereIn(contracts.quote_id, sottoquery quotes)`, sort con join alias `contract_quote_attrs` solo se
+  si ordina per `attr.*` + `select('contracts.*')`, distinti dalle offerte dei contratti visibili; PATCH `attr.*` -> 422.
+- Attenzione: le commesse risolvono gli attributi dalle righe offerta collegate (`quoteLines`), non da `quote_id`: una
+  commessa senza righe non ha attributi applicabili (scrittura 422), coerente col form.
+- Test: `tests/Feature/CategoryTabs/{Quote,WorkOrder,Contract}CategoryAttributeColumnsTest.php`, helper
+  `tests/Helpers/CategoryTabAttributeHelpers.php`. Verifier: AC-001..AC-011 PASS; Pest CategoryTabs 108/109 (unico rosso
+  `WorkOrderCategoryTabsTest` AC-024, flaky preesistente: fallisce 1/3 anche da solo, ordine chiavi senza ORDER BY in
+  `GridCategoryTabsResolver`, commit beb6a426, non toccato); CategoryTabs+RequestManagement 978/978 prima dei test di
+  copertura aggiunti; suite completa backend 13596/13619 con 22 rossi estranei (PDF/LibreOffice, bulk delete, ManagementControl,
+  Migration, piu' AiAssistant*, SettlementApproval, PermissionCatalogueEndpoint, QualificaOperatorSeeder: non toccano il
+  codice cambiato, preesistenza non provata); Vitest 9818/9818, `tsc -b` 0, ESLint help ok, Pint ok.
+- Manuale: guide in-app IT/EN `quotes|work-orders|contracts#category-tabs`; manuale Claude Docs: paragrafi "Campi
+  flessibili nella tab" in Offerte e Contratti + tabella contesti attributi. Commesse nel manuale resta "in sviluppo"
+  (nessun paragrafo). PDF da rigenerare.
+- Follow-up segnalati (fuori scope): portare `RequestManagementScopedTableDefinition` sul trait condiviso e spostare le
+  classi `attr.*` fuori da `Tables\RequestManagement`; fix del flaky AC-024 (ORDER BY stabile).
+
+## Notifica di inserimento nel team della Commessa (spec 0351) — VERDE, COMMITTATO (2026-11-04)
+
+- Richiesta utente: notificare chi viene aggiunto a una commessa come Responsabile o Partecipante. Riusa
+  `RecordAssignmentNotification` (database + mail, in coda) con target `WorkOrder` e ruoli nuovi
+  `AssignmentRoleEnum::WorkOrderSupervisor` / `Participant`; dispatch da `AssignmentNotifier::notifyWorkOrder()`
+  (muto, esclude l'attore, afterCommit, una notifica per ruolo). `notify()` invariato; helper `recipients()` -> `usersById()`.
+- `WorkOrderService::create()` (Step 6) e `update()` passano gli `attached` di `supervisors()->sync()` e
+  `PositionalPivotSync::sync()`: solo i nuovi entrati, mai i cambi di slot o le rimozioni. Copre POST/PATCH, cella
+  griglia, Programma e commessa unica. `WorkOrdersSource` chiama il service sotto `AssignmentNotifier::muted()`.
+- `RecordDetails`: etichetta "COM-xxxx - titolo", scheda email titolo/cliente/stato/data inizio/Responsabili/Partecipanti
+  (chiavi `notifications.fields.start_date|supervisors|participants`). Testi IT in `lang/it.json`; in EN il
+  Responsabile si chiama "Supervisor" come nella UI.
+- Test: `tests/Feature/Notifications/WorkOrderAssignmentNotificationTest.php` (6, AC-001..005, 007); AC-006 gia' in
+  `WorkOrdersSourceImportTest` (`assertNothingSent`). Verdi: Notifications, WorkOrders, Contracts, RequestManagement,
+  Imports, Registries, Migration WorkOrder*. In Quotes falliscono solo i 3 test PDF (LibreOffice assente in locale);
+  `DemoOpportunitySeederTest` instabile in parallelo (passa da solo 3/3), non legati.
+- Guida in-app `work-orders#editing-a-work-order` IT/EN (nota notifiche); manuale Claude Docs rev 576 (paragrafo
+  "Notifiche." dopo la visibilita' delle Commesse). Suite completa non eseguita.
+
+## Piano dei conti gestionale, fase 1 (spec 0348) — VERDE, COMMITTATO 1b8ed70c + fix test guide (2026-11-03)
+
+- Spec `docs/specs/0348-chart-of-accounts.xml` (D-1..D-14, AC-001..AC-015). Piano gestionale a 3 livelli, nessuna
+  prima nota. Mastri e conti in `chart_accounts` (`level` group|account, `kind` cost|revenue SOLO sul mastro);
+  sottoconti di costo = `cost_types` (+ `chart_account_id`, `code`); sottoconti di ricavo = nuova `revenue_types`.
+  NON chiamare "natura" il tipo Costo/Ricavo: `cost_types.nature` (diretto/indiretto/generale) resta del Controllo di gestione.
+- Codice univoco su tutto il piano (`App\Rules\UniqueChartCode`), regole d'albero in `ChartAccountRules`; delete
+  restrittivo 409 (`chart_accounts.in_use`). Struttura di partenza + collocazione dei 4 tipi iniziali dalla migrazione
+  dati `2026_11_03_100100_seed_default_chart_of_accounts` (idempotente); altri tipi di costo -> `unplaced_cost_types`.
+- API: `GET /api/chart-of-accounts/tree` (endpoint dedicato, non TableDefinition: D-12), CRUD `chart-accounts`,
+  `revenue-types`; `cost-types` accetta/restituisce `code`, `chart_account_id` (omessi = invariati). Permessi
+  `chart-accounts.*`, `revenue-types.*` (`permission_only_resources`); menu Configurazione > Contabilita' > Piano dei conti.
+- Frontend `features/chart-of-accounts/` (albero, ricerca con antenati, Sheet per mastro/conto, sottoconto ricavo,
+  sottoconto costo = form ledger di `features/cost-types`), guide in-app `chart-of-accounts` IT/EN (HELP_GUIDE_KEYS 103 dopo il merge con `request-imports`). ATTENZIONE: numero spec 0348 usato anche da `0348-request-management-import.xml` (collisione da risolvere).
+- Ambiente locale: dopo il pull servono `php artisan migrate` + `php artisan permissions:sync`.
+- Gate verifier: AC-001..AC-014 PASS, AC-015 (375px) da verificare a mano. Rossi NON della feature nella suite
+  completa: 4 `ManagementControl/*AccessTest` + `ManagementControlPermissionTest` (nodo menu
+  `management-control-section` assente gia' in HEAD), `TableBulkDeleteTest:131` (guarded/forbidden),
+  `SettlementApprovalTest` (dipende dalla data), 10 errori FE `toast.error is not a function` (skills, vat-rates,
+  job-roles...); `composer test` va in memory limit su `ApiDocsParityTest` (512M).
+- Da fare: sezione "Piano dei conti" nel manuale Claude Docs.
+  Prossime fasi: F2 sottoconto su prodotti e righe fattura attiva (snapshot, provvigioni Ente, backfill),
+  F3 prospetto per mastro filtrabile per societa' (decisione utente 2026-11-03: piano unico di gruppo).
+
+## Offerte: "Data ricontatto" (`quotes.follow_up_date`) — VERDE, COMMITTATO (2026-11-04, spec 0349)
+
+- Data facoltativa (`date`, `Y-m-d`) sull'Offerta, nessun promemoria; nome generico per decisione utente (non
+  "backoffice"). Distinta da "Prossimo richiamo" (`next_callback_at`, scritto solo da Gestione Richieste) e dalla
+  "Data richiamo" delle Commesse (`work_orders.callback_date`).
+- Backend: migrazione `2026_11_19_100000_add_follow_up_date_to_quotes_table` (indice); Quote #[Fillable] + cast `date`
+  (entra nel log automatico); Store/UpdateQuoteRequest `nullable|date_format:Y-m-d`; Create/UpdateQuoteData
+  (`followUpDate`, `followUpDateSubmitted`); QuoteResource; QuotesAuthorization (editabile se si scrive l'offerta);
+  QuoteColumnCatalog colonna `follow_up_date` editabile dopo `next_callback_at`, prima di `alert`; mapRow.
+- Frontend: tipo, schema Zod (`nullable`), default, payload (update solo se cambiata, `null` se svuotata),
+  `QuoteFollowUpDateField` + riga in "Dati offerta" (`quote-record-identity.tsx`), `DateCell` in griglia, i18n
+  `quotes.columns.followUpDate` / `quotes.form.followUpDate` e activity-log `follow_up_date`. Aggiunta in
+  `quotes/column-renderers.tsx` la direttiva `react-refresh/only-export-components` del file gemello di Opportunita'
+  (errore ESLint preesistente su HEAD).
+- Test: `tests/Feature/Quotes/QuoteFollowUpDateTest.php` (AC-001..006); enumerazioni aggiornate (REQUIREMENT CHANGED)
+  in QuoteAuthorizationTest, QuoteGridInlineEditTest, QuoteTableTest; Vitest payload/schema/inline-edit; fixture FE con
+  `follow_up_date: null`. Rosso preesistente: QuoteDocumentPdfTest (LibreOffice assente).
+- Da fare in locale: `php artisan migrate` (non eseguito). Manuale: guida `quotes` IT/EN e Claude Docs (Offerte,
+  dopo "Data offerta") aggiornati; PDF derivato da rigenerare.
+
+## Assistente AI: interruttori env per finestra flottante e pagina — VERDE, COMMITTATO (2026-11-03, spec 0347 D-16)
+
+- Env backend `AI_ASSISTANT_FLOATING_ENABLED` / `AI_ASSISTANT_PAGE_ENABLED` (config `ai-assistant.floating_enabled`
+  / `page_enabled`), entrambe `false` di default. Esposte da `GET /api/ai-assistant/config` (`floating_enabled`,
+  `page_enabled`). Entrambe spente: middleware `EnsureAiAssistantEnabled` -> 404 envelope su tutte le rotte tranne
+  `/config` (permesso controllato prima: senza permesso resta 403).
+- Navigazione: nuova chiave opzionale `feature` (config key booleana) letta da `NavigationService::isAllowed`, tolta
+  dal payload; `navigation/ai-assistant.php` usa `ai-assistant.page_enabled`. Il permesso resta nel catalogo;
+  `NavigationCatalogue` (workspaces) NON filtra: la voce resta assegnabile ai workspace.
+- Frontend: launcher flottante solo con `floating_enabled`; link "Apri a pagina intera" solo con `page_enabled`;
+  pagina `/ai-assistant` con `page_enabled=false` mostra `aiAssistant.pageDisabled`.
+- Test: `tests/Feature/AiAssistant/Api/AiAssistantSurfacesTest.php` (AC-031..033); `aiapi_configure()` accende le due
+  superfici (REQUIREMENT CHANGED); FE `floating-ai-assistant.test.tsx` (launcher ora asincrono, REQUIREMENT CHANGED)
+  e `pages/ai-assistant-page.test.tsx` (AC-034).
+- Attenzione: il `.env` locale ha `AI_ASSISTANT_ACCEPTED_MIMES` senza PDF -> 4 test AiAssistant (AC-012, AC-014, AC-029)
+  rossi in locale, preesistenti e indipendenti da questa modifica.
+- Manuale: guide in-app `ai-assistant` IT/EN (sezione how-to-open) e Claude Docs (sottosezione "Assistente AI")
+  aggiornati; PDF derivato da rigenerare.
+
+## Fix: "recipient_role ha un valore duplicato" su offerte multi-riga — VERDE, COMMITTATO 6b86e915 (2026-11-03)
+
+- Causa: `distinct` di Laravel su `offer_lines.*.commissions.*.recipient_role` confronta TUTTE le righe insieme
+  (wildcard annidato), quindi un'offerta con piu' righe che pagano lo stesso ruolo (es. Segnalatore) dava 422.
+- Fix: `App\Quotes\QuoteLineCommissionRoleRule` (DataAwareRule) sostituisce `distinct` in `QuoteLineRules`:
+  unicita' del ruolo SOLO dentro la stessa riga (come l'unique DB `quote_line_id + recipient_role`), stesso
+  messaggio `validation.distinct`. Test: `tests/Feature/Quotes/QuoteCommissionRoleDistinctTest.php`.
+- Preesistenti, non legati: `QuoteDocumentPdfTest` (conversione PDF, ambiente) e `TableBulkDeleteTest` (last super-admin).
+- Manuale: nessun impatto.
+
+## Importa richieste (Develop): trattative Excel -> Gestione Richieste — VERDE sui test della feature, COMMITTATO (2026-11-03, spec 0348)
+
+- Dominio import `request-management` sul wizard generico (`/api/imports/request-management/...`), pagina
+  `/dev/request-imports` (Develop › Importa richieste), permesso `request-management.import` (gia' prodotto da
+  RequestManagementPolicy/BasePolicy). Ogni riga: Anagrafica (dedup come leads) + Opportunita' + Offerta via
+  `RequestCreationService` (nuovo `CreateRequestData::$workflowStatusId`); nessun Lead; notifiche spente con
+  `AssignmentNotifier::muted()` attorno a ogni persistRow.
+- Sede operativa (decisione utente 2026-11-03): globale FACOLTATIVA; ogni richiesta prende override di riga ??
+  sede principale dell'operatore (`RequestImportLookups::primarySiteIdOf`) ?? sede globale ?? sede dell'attore.
+- Segnalatore (decisione utente 2026-11-03): field `reporter_name` (alias "segnalatore") -> Referent `reporter_id` su
+  Opportunita'+Offerta. Esistente per nome normalizzato; inesistente o omonimi -> vuoto + avviso + nota.
+  I referenti NON vengono mai creati dall'import (decisione utente 2026-11-03, revoca della creazione).
+- Accesso (decisione utente 2026-11-03): `request-management.import` SOLO a super-admin e al ruolo `importatore-richieste`
+  (costanti in `QualificaCatalog/RequestImporterRoleCatalogue`, ruolo creato da QualificaRoleSeeder; tolto da
+  ALL_REQUESTS/OWN_REQUESTS e da `admin`). Assegnazione: `OperatorRoster::EXTRA_ROLES` (Rosa Falzarano, Fabrizio
+  Aliberti, in aggiunta a supervisore), applicata da QualificaOperatorSeeder e QualificaRoleResetSeeder. Nessun seeder
+  dedicato (decisione utente). Installazione live: `php artisan db:seed --class=QualificaRoleResetSeeder`. NON eseguito su dev.
+- Motore (T-01): `ImportDefinition` += valueMappingFields, attributeTargets, valueMappingPreview,
+  validateValueMappings, validateAttributeTargets, supportsOpportunityConversion (false qui: summary senza
+  `conversion_readiness`, confirm forza convert=false), defaultSourceFields/globalConfigDefaults (linea di
+  prodotto precompilata se la colonna categoria ha un solo valore). Endpoint `POST imports/{domain}/{run}/value-mapping`.
+  `import_runs.value_mappings` + `import_mapping_templates.value_mappings` (migrazione 2026_11_18_100000, APPLICATA
+  al DB dev con --path). Template: value_mappings fotografati dal run (solo voci {id}). `ImportRunPolicy` per dominio.
+- Dominio (T-03/T-04): `App\Imports\RequestManagementImportDefinition` + `App\Imports\RequestManagement\*`;
+  config `imports.request_management` (alias stati/fonti, callback_time 09:00, note_labels, stopword/noise
+  prodotti). Stati nuovi creati al primo persistRow via `WorkflowStatusWriter::appendCustom` (idempotenti).
+  Workflow risolto prima dell'offerta con una Quote transitoria + QuoteWorkflowResolver.
+- Frontend: pannello Valori (stati esistenti / crea nuovo stato / fonti), target `attribute.<code>` dagli
+  attributi efficaci contesto quote, testi wizard per dominio (`importWizard.domains.<resource>.*`), guida in-app
+  `request-imports` IT/EN; manuale Claude Docs: sezione "Importa richieste" dopo "Stato del sistema".
+- Prova reale sui 4 Excel utente (transazione annullata, DB invariato): 72/163/23/284 righe tutte create, 0 errori;
+  prodotti riconosciuti 82% Autofinanziato, 71% DIL (non risolti: make up 30/40 ore, "generica", Gare d'Appalto,
+  "???", OSA/ASACOM); 195/284 righe DIL senza cognome (avviso).
+- REQUIREMENT CHANGED: DevelopSectionTest (6 voci), ImportRegistryTest (2 domini), help-guide-keys.test.ts e
+  workspaces-help.test.ts (102 chiavi), vecchio test AC-008 (categoria "DIL - Lombardia").
+- Limiti noti: un'edit in revisione perde le note dei valori scartati di quella riga; stato/fonte non visibili
+  in revisione (applicati al commit); stati closed_*/validated richiedono una riga offerta; stati con
+  requires_note falliscono (note null).
+- Suite completa (gate finale): pint verde, tsc verde; backend 15 failed + 6 errors e frontend 11 unhandled
+  `toast.error is not a function` su file NON toccati dalla feature (PermissionCatalogue 677≠660, Migration/*,
+  AiAssistant/*, TableBulkDelete, QualificaRoleMatrix, SettlementApproval, QuoteDocumentPdf/LibreOffice,
+  ManagementControl/*): estranei per deduzione, non confrontati con HEAD. Unico rosso della feature
+  (workspaces-help 101→102) corretto.
+- Prossimo passo: applicare sull'installazione live QualificaRoleResetSeeder; import reale dei file dalla pagina; decidere se admin deve tenere l'import.
+- Nota: questo file e' ~980 KB, molto oltre i 50 KB: va archiviato in `docs/handoff-archive/` (fuori scope qui).
+
+## Segnalatori 2026 v2: commissioni per colonna e per prodotto 2°/3° anno, seeder convergente — VERDE, COMMITTATO (2026-11-03)
+
+- Sorgente: Excel utente "COM_- Segnalatori 2026_ (2).xlsx" (stesse righe del 30/10, piu' colonne). Catalogo
+  `QualificaCatalog\ReporterCommissionCatalogue` riscritto: `COLUMNS` (colonna -> `categories` | `year`+`within`-`except` |
+  `products` per categoria, `valid_from`/`note` propri) e 92 `REPORTERS` (`old_id` o anagrafica, `supervisor`, `contact`,
+  `rates`, `note`). `ReporterCommissionTargets` (colonne -> categorie/prodotti; `marksYear()` legge "2° Anno", "_II anno",
+  "_2 anno") e `ReporterCommissionRules` (sync delle regole di un segnalatore + `removeOrphans()`); seeder orchestratore.
+- Decisioni utente 2026-11-03: match sulla colonna NOME (per le righe con `old_id` vale l'abbinamento confermato il 30/10;
+  senza `old_id` nome normalizzato: maiuscole, accenti e ordine parole ignorati; piu' omonimi -> warning e salto);
+  "X 2/3 ANNO" = una regola PRODUCT su ogni prodotto 2°/3° anno del ramo (ISO esclude PDR 125/SA8000); SA8000:
+  sorveglianze 12-18 mesi = 2° anno, 24/30/33-35 = 3°, 6 mesi resta sulla categoria; AVV/GAR = categoria "Gare" con
+  `valid_from` 2027-01-01 e riga nelle note; PAL applicata come APL (stesso valore ovunque); note del referente =
+  Supervisore commerciale + Referente + NOTE + AVV/GAR; tipo "Segnalatore" solo se il referente non ne ha uno.
+- Seeder = fonte di verita' per quei segnalatori (REQUIREMENT CHANGED: il rilancio ripristina i valori del catalogo, prima
+  lasciava le regole modificate da UI). Rimuove solo regole col prefisso "Segnalatore - " non piu' in catalogo e quelle
+  orfane di referenti cancellati; una regola gia' applicata a righe d'offerta viene sospesa (FK restrict). Regole fatte a
+  mano con altro nome restano. Lanciabile da solo: `php artisan db:seed --class=QualificaReporterCommissionSeeder`.
+- Prova a secco sul DB dev (transazione annullata): +23 referenti (i 23 creati il 30/10 erano stati cancellati da UI
+  dall'utente #3 alle 15:42, le loro regole erano rimaste orfane), 17.728 create / 186 aggiornate / 144 rimosse,
+  18.215 regole totali; secondo giro 0/0/0. Riga 95 del vecchio file (Giuseppe Ciocci, old_id 19473) non e' piu'
+  nell'Excel: le sue 7 regole restano intatte. NON eseguito davvero sul DB dev (serve ok esplicito).
+- Test: `ReporterCommissionSeederTest` 17/17, `tests/Feature/CommissionConfigurations` 66/66, Seeding production/sample
+  5/5; Pint ok. Manuale: nessun impatto (solo dati).
+- Fuori scope, da segnalare: cancellare un referente lascia le sue regole commissione personali orfane (recipient
+  polimorfico senza FK).
+
 ## Catalogo: ramo "Progettazione" + seeder per la produzione — VERDE, COMMITTATO 916b8787 (2026-11-03)
 
 - Sorgente: Excel utente "Funzione Aziendale_ Progettazione". `QualificaCatalog\ProjectDesignCatalogue` (radice

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildCreatePayload, buildUpdatePayload } from '@/features/cost-types/cost-type-form-payload'
+import {
+  buildCreatePayload,
+  buildLedgerCreatePayload,
+  buildLedgerUpdatePayload,
+  buildUpdatePayload,
+} from '@/features/cost-types/cost-type-form-payload'
 import type { CostTypeDetail } from '@/features/cost-types/types'
 
 const ORIGINAL: CostTypeDetail = {
@@ -10,6 +15,8 @@ const ORIGINAL: CostTypeDetail = {
   color: 'slate',
   sort_order: 2,
   is_active: true,
+  code: null,
+  chart_account_id: null,
   created_at: '2026-10-12T08:00:00Z',
   updated_at: '2026-10-12T08:00:00Z',
   abilities: { update: true, delete: true },
@@ -44,5 +51,29 @@ describe('buildUpdatePayload (spec 0249)', () => {
 
   it('maps a cleared description to null', () => {
     expect(buildUpdatePayload({ ...VALUES, description: '' }, ORIGINAL)).toEqual({ description: null })
+  })
+})
+
+describe('ledger payloads (spec 0348)', () => {
+  const LEDGER_VALUES = { ...VALUES, chart_account_id: 10, code: ' 61.03.001 ' }
+  const PLACED = { ...ORIGINAL, code: '61.03.001', chart_account_id: 10 }
+
+  it('the plain page payloads never carry the two ledger fields', () => {
+    expect(buildCreatePayload(VALUES)).not.toHaveProperty('chart_account_id')
+    expect(buildCreatePayload(VALUES)).not.toHaveProperty('code')
+    expect(buildUpdatePayload(VALUES, ORIGINAL)).toEqual({})
+  })
+
+  it('create carries the account and the trimmed code', () => {
+    expect(buildLedgerCreatePayload(LEDGER_VALUES)).toMatchObject({ chart_account_id: 10, code: '61.03.001' })
+  })
+
+  it('placing an unplaced type sends account and code together', () => {
+    expect(buildLedgerUpdatePayload(LEDGER_VALUES, ORIGINAL)).toEqual({ chart_account_id: 10, code: '61.03.001' })
+  })
+
+  it('is empty when nothing changed and sends only the code when only it changed', () => {
+    expect(buildLedgerUpdatePayload({ ...LEDGER_VALUES, code: '61.03.001' }, PLACED)).toEqual({})
+    expect(buildLedgerUpdatePayload({ ...LEDGER_VALUES, code: '61.03.002' }, PLACED)).toEqual({ code: '61.03.002' })
   })
 })

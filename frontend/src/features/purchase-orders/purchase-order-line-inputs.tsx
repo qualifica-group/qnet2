@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
-import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { AsyncPaginatedSelect, type GroupOptions } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
@@ -97,6 +97,7 @@ interface LineRelationSelectProps extends LineFieldBase {
   onItemChange?: (item: ForSelectItem | null) => void
   /** Custom option/trigger content (e.g. the colored cost type badge). */
   renderItem?: (item: ForSelectItem) => ReactNode
+  groupOptions?: GroupOptions
 }
 
 /** Compact for-select picker of one id of a line (cost type, U.m., VAT rate, work order). */
@@ -110,6 +111,7 @@ export function LineRelationSelect({
   placeholder,
   onItemChange,
   renderItem,
+  groupOptions,
 }: LineRelationSelectProps) {
   const labels = useSelectLabels(placeholder, label)
   return (
@@ -125,6 +127,7 @@ export function LineRelationSelect({
               onChange={field.onChange}
               onItemChange={onItemChange}
               renderItem={renderItem}
+              groupOptions={groupOptions}
               className={COMPACT_SELECT}
               disabled={disabled}
               labels={labels}

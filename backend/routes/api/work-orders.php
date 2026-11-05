@@ -5,6 +5,7 @@ use App\Http\Controllers\CategoryTabs\GridCategoryTabsController;
 use App\Http\Controllers\QuoteOfferLines\QuoteOfferLineForSelectController;
 use App\Http\Controllers\WorkOrders\WorkOrderController;
 use App\Http\Controllers\WorkOrders\WorkOrderForSelectController;
+use App\Http\Controllers\WorkOrders\WorkOrderRequestUpdateController;
 use App\Tables\CategoryTabs\CategoryTabGrid;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +63,9 @@ Route::get('work-orders/{workOrder}', [WorkOrderController::class, 'show']);
 Route::post('work-orders', [WorkOrderController::class, 'store']);
 Route::match(['put', 'patch'], 'work-orders/{workOrder}', [WorkOrderController::class, 'update']);
 Route::delete('work-orders/{workOrder}', [WorkOrderController::class, 'destroy']);
+
+// Spec 0352: "Richiedi aggiornamento", notifications only (the record is never written).
+Route::post('work-orders/{workOrder}/request-update', WorkOrderRequestUpdateController::class);
 
 // Task board + "Fasi" (spec 0146): nested here rather than required directly
 // from routes/api.php (which sits at engineering.md §6's own 500-line hard

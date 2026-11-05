@@ -58,7 +58,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Group by** above the table and tick one or more columns (**Supplier**, **Cost type**, **Work order**, **Company**, **Company site**, **Operational site**, **Method code**, **Payment account** or **Due month**): the order you tick them is the order of the levels.',
+            'Open **Group by** above the table and tick one or more columns (**Supplier**, **Cost sub-account**, **Work order**, **Company**, **Company site**, **Operational site**, **Method code**, **Payment account** or **Due month**): the order you tick them is the order of the levels.',
             'Each group shows the installment count and the totals of **Amount**, **Paid** and **Residual**: expand it to see the next levels or the installments.',
             'You can group up to **3 levels**; remove a level with the **x** on its chip or use **Remove grouping** to go back to the flat list.',
           ],

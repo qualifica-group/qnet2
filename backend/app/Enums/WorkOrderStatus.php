@@ -41,6 +41,12 @@ enum WorkOrderStatus: string
     #[Color('slate')]
     case Closed = 'closed';
 
+    /** Spec 0352, D-3: "Richiedi aggiornamento" is offered only while the work is ongoing. */
+    public function acceptsUpdateRequest(): bool
+    {
+        return $this === self::Open || $this === self::InProgress;
+    }
+
     /**
      * @return array<int, string>
      */

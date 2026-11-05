@@ -4,7 +4,8 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
  * Which domain actions the contract's CURRENT status group admits (direttiva
  * utente 2026-08-31 rev.2):
  *
- * - Aperto | Pending    → dati modificabili sul posto (spec 0219), "Modifica stato", "Valida", "Disdici"
+ * - Aperto | Pending    → dati modificabili sul posto (spec 0219), "Modifica stato", "Valida", "Disdici";
+ *   anche "Programma" se gia' validato e non sospeso (decisione utente 2026-11-04)
  * - Chiuso positivo     → "Disdici", "Programma" e "Riapri contratto", nient'altro
  * - Chiuso negativo     → "Riapri contratto", nient'altro
  *
@@ -67,7 +68,7 @@ export function contractLifecycleActions(contract: ContractDetail): ContractLife
 
   return {
     validate: working && !contract.is_suspended && contract.validated_at === null,
-    program: closedWon,
+    program: closedWon || (working && !contract.is_suspended && contract.validated_at !== null),
     terminate: working || closedWon,
     edit: working,
     changeStatus: working,

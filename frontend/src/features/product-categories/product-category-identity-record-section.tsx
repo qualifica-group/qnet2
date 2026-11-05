@@ -4,6 +4,8 @@ import { FolderTree } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
+import { RevenueTypeValue } from '@/features/revenue-types/effective-revenue-type'
+import { RevenueTypeField } from '@/features/revenue-types/revenue-type-field'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
 import {
   ProductCategoryDescriptionField,
@@ -74,6 +76,24 @@ export function ProductCategoryIdentityRecordSection({ values, form, inline, mod
           ) : (
             <DetailEmpty />
           )}
+        </RecordInlineField>
+        <RecordInlineField
+          field="revenue_type_id"
+          label={t('revenueTypes.field.label')}
+          inline={inline}
+          canEdit={canEdit}
+          editor={
+            <RevenueTypeField
+              control={control}
+              name="revenue_type_id"
+              metaKey="revenue_type_id"
+              label={t('revenueTypes.field.label')}
+              selected={values.revenue_type}
+              effective={values.effective_revenue_type}
+            />
+          }
+        >
+          <RevenueTypeValue own={values.revenue_type} effective={values.effective_revenue_type} />
         </RecordInlineField>
       </RecordFieldList>
     </RecordSection>

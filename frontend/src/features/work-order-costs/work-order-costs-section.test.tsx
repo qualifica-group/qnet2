@@ -32,6 +32,12 @@ vi.mock('@/features/for-select/api', async () => {
   return { ...actual, fetchForSelect: (resource: string, params: unknown) => fetchForSelectMock(resource, params) }
 })
 
+/** Spec 0350 D-12: cost-types for-select items carry code and chart placement. */
+const COST_SUB_ACCOUNTS = [
+  { id: 12, label: 'Fuel', meta: { color: 'amber' }, code: '61.01.001', path: null, group: { code: '61', name: 'Costs' }, account: { code: '61.01', name: 'Fleet' } },
+  { id: 6, label: 'Travel', meta: { color: 'blue' }, code: '61.02.001', path: null, group: { code: '61', name: 'Costs' }, account: { code: '61.02', name: 'Trips' } },
+]
+
 const PAGINATION = { offset: 0, limit: 25, total: 1 }
 const PRODUCT_ITEM = {
   id: 9,
@@ -102,7 +108,7 @@ beforeEach(() => {
         resource === 'products'
           ? [PRODUCT_ITEM]
           : resource === 'cost-types'
-            ? [{ id: 12, label: 'Fuel', meta: { color: 'amber' } }]
+            ? COST_SUB_ACCOUNTS
             : [{ id: 41, label: 'Fornitore Due' }],
       pagination: PAGINATION,
       export_link: null,
@@ -256,11 +262,11 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
 
     await addFromCatalogue()
 
-    expect(screen.getByRole('combobox', { name: 'Cost type, row 2' })).toHaveTextContent('Travel')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Cost sub-account, row 2' })).toHaveTextContent('61.02.001 Travel'))
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Cost type, row 2' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Cost sub-account, row 2' }))
     fireEvent.click(await screen.findByRole('option', { name: /Fuel/ }))
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Cost type, row 2' })).toHaveTextContent('Fuel'))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Cost sub-account, row 2' })).toHaveTextContent('61.01.001 Fuel'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 

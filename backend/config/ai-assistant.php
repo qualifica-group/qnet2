@@ -8,6 +8,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Surfaces (spec 0347, D-16)
+    |--------------------------------------------------------------------------
+    |
+    | The floating chat and the /ai-assistant page are switched on separately
+    | and are both OFF by default. With both off every /api/ai-assistant
+    | endpoint except /config answers 404; with the page off its menu item is
+    | hidden. The `ai-assistant.use` permission is still required on top.
+    |
+    */
+
+    'floating_enabled' => (bool) env('AI_ASSISTANT_FLOATING_ENABLED', false),
+    'page_enabled' => (bool) env('AI_ASSISTANT_PAGE_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Provider driver (spec 0347, D-2)
     |--------------------------------------------------------------------------
     |

@@ -155,6 +155,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
     sheet,
     forceCloseDialog,
     progressDialog,
+    requestUpdateDialog,
   } = useWorkOrderRowActions({ onMutated: refresh, forceMode: OPEN_MODE_MODAL })
 
   return (
@@ -181,6 +182,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
       {sheet}
       {forceCloseDialog}
       {progressDialog}
+      {requestUpdateDialog}
       <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refresh} />
       <ResourceActivityDialog resource={WORK_ORDERS_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
     </>

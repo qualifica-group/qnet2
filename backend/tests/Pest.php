@@ -44,6 +44,7 @@ require_once __DIR__.'/Helpers/PaymentMethodHelpers.php';
 require_once __DIR__.'/Helpers/RequestManagementHelpers.php';
 require_once __DIR__.'/Helpers/CampaignHelpers.php';
 require_once __DIR__.'/Helpers/CategoryTabHelpers.php';
+require_once __DIR__.'/Helpers/CategoryTabAttributeHelpers.php';
 require_once __DIR__.'/Helpers/RegistryHelpers.php';
 require_once __DIR__.'/Helpers/ProformaRequestHelpers.php';
 require_once __DIR__.'/Helpers/ProformaMultiQuoteHelpers.php';
@@ -89,6 +90,8 @@ require_once __DIR__.'/Helpers/PersonalDataHelpers.php';
 require_once __DIR__.'/Helpers/OfferProjectionHelpers.php';
 require_once __DIR__.'/Helpers/CompetenceVisibilityHelpers.php';
 require_once __DIR__.'/Helpers/AiAssistantHelpers.php';
+require_once __DIR__.'/Helpers/ChartOfAccountsHelpers.php';
+require_once __DIR__.'/Helpers/RevenueClassificationHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

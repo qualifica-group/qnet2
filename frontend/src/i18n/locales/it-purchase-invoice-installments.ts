@@ -28,7 +28,7 @@ export const purchaseInvoiceInstallments = {
     status: 'Stato',
     overdue: 'Scaduta',
     supplier: 'Fornitore',
-    cost_type: 'Tipo di costo',
+    cost_type: 'Sottoconto costo',
     work_order: 'Commessa',
     company: 'Società',
     company_site: 'Sede aziendale',

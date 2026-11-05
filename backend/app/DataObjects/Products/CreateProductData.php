@@ -45,6 +45,7 @@ final readonly class CreateProductData
         public ?array $usages = null,
         public ?int $costTypeId = null,
         public ?array $suppliers = null,
+        public ?int $revenueTypeId = null,
     ) {}
 
     /**
@@ -68,6 +69,7 @@ final readonly class CreateProductData
             usages: array_key_exists('usages', $data) ? array_map(static fn (mixed $usage): ProductUsage => ProductUsage::from((string) $usage), (array) $data['usages']) : null,
             costTypeId: array_key_exists('cost_type_id', $data) && $data['cost_type_id'] !== null ? (int) $data['cost_type_id'] : null,
             suppliers: array_key_exists('suppliers', $data) ? ProductSupplierData::listFromValidated((array) $data['suppliers']) : null,
+            revenueTypeId: array_key_exists('revenue_type_id', $data) && $data['revenue_type_id'] !== null ? (int) $data['revenue_type_id'] : null,
             code: array_key_exists('code', $data) && $data['code'] !== null && $data['code'] !== '' ? (string) $data['code'] : null,
         );
     }

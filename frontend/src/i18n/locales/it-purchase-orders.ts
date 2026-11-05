@@ -51,7 +51,7 @@ export const purchaseOrders = {
   },
   lines: {
     description: 'Descrizione',
-    costType: 'Tipo costo',
+    costType: 'Sottoconto costo',
     unit: 'U.m.',
     quantity: 'Quantità',
     unitPrice: 'Prezzo unitario',

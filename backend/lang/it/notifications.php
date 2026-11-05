@@ -53,6 +53,11 @@ return [
         'end_date' => 'Data fine',
         'requester' => 'Richiedente',
         'assignees' => 'Assegnatari',
+
+        // Commessa (spec 0351)
+        'start_date' => 'Data inizio',
+        'supervisors' => 'Responsabili',
+        'participants' => 'Partecipanti',
     ],
 
     'values' => [

@@ -139,6 +139,7 @@ class QuoteResource extends JsonResource
             // Spec 0171 rev.2: true when the title was typed by the user.
             'title_is_manual' => $this->title_is_manual,
             'quote_date' => $this->quote_date?->toDateString(),
+            'follow_up_date' => $this->follow_up_date?->toDateString(),
             'opportunity_id' => $this->opportunity_id,
             'opportunity' => $this->summarizeByName($this->opportunity),
             // Proiezione READ-ONLY del record padre (richiesta utente

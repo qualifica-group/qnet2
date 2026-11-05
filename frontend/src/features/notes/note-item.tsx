@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { NoteBody } from '@/features/notes/note-body'
 import { NoteComposer } from '@/features/notes/note-composer'
 import { useDeleteNote } from '@/features/notes/use-note-mutations'
-import type { Note } from '@/features/notes/types'
+import type { MentionOutsideMeta, Note } from '@/features/notes/types'
 
 export interface NoteItemProps {
   note: Note
@@ -29,6 +29,9 @@ export interface NoteItemProps {
    * Offerta, il contesto e' gia' dato e ripeterlo su ogni riga e' rumore.
    */
   showQuoteBadge?: boolean
+  /** Spec 0353: inoltrati al composer di modifica. */
+  mentionOutside?: MentionOutsideMeta
+  onMembersAdded?: () => void
 }
 
 /**
@@ -47,6 +50,8 @@ export function NoteItem({
   onToggleReply,
   onThreadChanged,
   showQuoteBadge = false,
+  mentionOutside,
+  onMembersAdded,
 }: NoteItemProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
@@ -77,6 +82,8 @@ export function NoteItem({
         editingNote={note}
         onDone={() => setIsEditing(false)}
         onCancel={() => setIsEditing(false)}
+        mentionOutside={mentionOutside}
+        onMembersAdded={onMembersAdded}
         autoFocus
       />
     )

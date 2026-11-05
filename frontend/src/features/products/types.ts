@@ -4,6 +4,7 @@
  * spec 0017 frozen `data_contract`.
  */
 
+import type { EffectiveRevenueType, RevenueTypeRef } from '@/features/revenue-types/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
@@ -131,6 +132,10 @@ export interface ProductDetail {
    */
   cost_type_id?: number | null
   cost_type?: ProductCostTypeSummary | null
+  /** Default revenue sub-account (spec 0350); `effective_revenue_type` adds the one inherited from the category. */
+  revenue_type_id?: number | null
+  revenue_type?: RevenueTypeRef | null
+  effective_revenue_type?: EffectiveRevenueType | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
   /**
@@ -186,6 +191,8 @@ export interface CreateProductPayload {
   product_typology_id: number | null
   /** Default cost type (spec 0251); `null` removes it. */
   cost_type_id?: number | null
+  /** Default revenue sub-account (spec 0350); `null` removes it. */
+  revenue_type_id?: number | null
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
   /** Valued attribute values, keyed by attribute `code` (spec 0061, additive). */
@@ -204,6 +211,12 @@ export interface BulkProductCostTypePayload {
 /** `data` of POST /products/cost-type. */
 export interface BulkProductCostTypeResult {
   updated: number
+}
+
+/** Payload for POST /products/revenue-type (spec 0350): `revenue_type_id: null` removes the sub-account. */
+export interface BulkProductRevenueTypePayload {
+  ids: number[]
+  revenue_type_id: number | null
 }
 
 /** Discriminated form mode of `useProductForm`: the create form, or the in-place detail (edit). */

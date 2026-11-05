@@ -109,6 +109,10 @@ final readonly class UpdateQuoteData
         // same submitted/persisted toggle as every other optional FK here.
         public ?int $sourceId = null,
         public bool $sourceIdSubmitted = false,
+        // Appended after the pre-existing parameters (spec 0349): "Data
+        // ricontatto", null clears it.
+        public ?string $followUpDate = null,
+        public bool $followUpDateSubmitted = false,
     ) {}
 
     /**
@@ -154,6 +158,8 @@ final readonly class UpdateQuoteData
             quoteDateSubmitted: array_key_exists('quote_date', $data),
             sourceId: self::nullableInt($data, 'source_id'),
             sourceIdSubmitted: array_key_exists('source_id', $data),
+            followUpDate: $data['follow_up_date'] ?? null,
+            followUpDateSubmitted: array_key_exists('follow_up_date', $data),
         );
     }
 
@@ -223,6 +229,10 @@ final readonly class UpdateQuoteData
 
         if ($this->quoteDateSubmitted) {
             $attributes['quote_date'] = $this->quoteDate;
+        }
+
+        if ($this->followUpDateSubmitted) {
+            $attributes['follow_up_date'] = $this->followUpDate;
         }
 
         if ($this->commercialIdSubmitted) {

@@ -12,6 +12,7 @@ import { WorkflowStatusBadge } from '@/features/workflow-statuses/workflow-statu
 import {
   QuoteCodeField,
   QuoteDateField,
+  QuoteFollowUpDateField,
   QuoteInternalNotesField,
   QuoteOpportunityField,
   QuoteTitleField,
@@ -28,6 +29,8 @@ export interface QuoteIdentityValues {
   title: string
   /** Spec 0228: `Y-m-d`, today on a create draft. */
   quoteDate: string
+  /** Spec 0349 "Data ricontatto": `Y-m-d` or `null`. */
+  followUpDate: string | null
   /** `null` on create: the backend assigns the `open` row of the set it resolves (AC-020). */
   status: QuoteWorkflowStatusRef | null
   opportunity: RelationFieldRef | null
@@ -121,6 +124,14 @@ export function QuoteIdentitySection({
           editor={<QuoteDateField control={control} />}
         >
           {formatDate(values.quoteDate) || <DetailEmpty />}
+        </RecordInlineField>
+        <RecordInlineField
+          field="follow_up_date"
+          label={t('quotes.form.followUpDate')}
+          inline={inline}
+          editor={<QuoteFollowUpDateField control={control} />}
+        >
+          {formatDate(values.followUpDate) || <DetailEmpty />}
         </RecordInlineField>
         {status && values.status ? (
           <RecordInlineField

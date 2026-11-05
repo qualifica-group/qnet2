@@ -15,7 +15,8 @@ use Spatie\Permission\Models\Permission;
  * row actions:
  *
  * - open | pending → edit, change_status, validate (only if never
- *   validated, user decision 2026-10-30), terminate
+ *   validated, user decision 2026-10-30), terminate; program once validated
+ *   and not suspended (user decision 2026-11-04)
  * - closed_won     → terminate, program, reactivate
  * - closed_lost    → reactivate
  *
@@ -89,8 +90,10 @@ it('behaves the same on a PENDING contract', function () {
         ->and($flags['reactivate'])->toBeFalse();
 });
 
-it('drops only validate on a PENDING contract that is already validated (legacy migration)', function () {
-    $pending = ContractStatus::where('name', 'Programmato')->sole();
+it('swaps validate for program on a PENDING contract that is already validated (legacy migration)', function () {
+    // REQUIREMENT CHANGED (user decision 2026-11-04): a validated contract on a
+    // pending row ("Da programmare", "Programmato", "In scadenza") is programmable.
+    $pending = ContractStatus::where('name', 'Da programmare')->sole();
     $flags = contractActionFlags(Contract::factory()->create([
         'contract_status_id' => $pending->id,
         'validated_at' => now()->subMonth(),
@@ -99,8 +102,18 @@ it('drops only validate on a PENDING contract that is already validated (legacy 
     expect($flags['validate'])->toBeFalse()
         ->and($flags['terminate'])->toBeTrue()
         ->and($flags['change_status'])->toBeTrue()
-        ->and($flags['program'])->toBeFalse()
+        ->and($flags['program'])->toBeTrue()
         ->and($flags['reactivate'])->toBeFalse();
+});
+
+it('does not offer program on a SUSPENDED contract, even if already validated', function () {
+    $flags = contractActionFlags(contractOnSystemStatus('suspended', [
+        'suspended_at' => now(),
+        'validated_at' => now()->subMonth(),
+    ]));
+
+    expect($flags['program'])->toBeFalse()
+        ->and($flags['reactivate'])->toBeTrue();
 });
 
 it('offers terminate, program and reactivate on a CLOSED_WON contract', function () {
@@ -158,7 +171,7 @@ it('drops the lifecycle-refused keys from the grid row actions too', function ()
         ->and($row['actions'])->toContain('reactivate');
 });
 
-it('drops validate from the grid row actions of an already validated pending contract', function () {
+it('swaps validate for program in the grid row actions of an already validated pending contract', function () {
     $validated = Contract::factory()->create([
         'contract_status_id' => ContractStatus::where('name', 'Programmato')->sole()->id,
         'validated_at' => now()->subMonth(),
@@ -171,6 +184,7 @@ it('drops validate from the grid row actions of an already validated pending con
 
     expect($row)->not->toBeNull()
         ->and($row['actions'])->not->toContain('validate')
+        ->and($row['actions'])->toContain('program')
         ->and($row['actions'])->toContain('terminate')
         ->and($row['actions'])->toContain('change_status');
 });

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
 import { purchaseOrderKeys } from '@/features/purchase-orders/api'
@@ -117,7 +117,7 @@ export function GenerateOrdersDialog({ targets, onOpenChange, onGenerated }: Gen
                 onChange={setCostTypeId}
                 selectedItem={costTypeCreate.selectedItemFor(costTypeId)}
                 action={costTypeCreate.renderAction((ref) => setCostTypeId(ref.id))}
-                renderItem={costTypeOptionRenderer}
+                {...COST_SUB_ACCOUNT_SELECT_PROPS}
                 labels={labels(t('purchaseRequests.generateOrders.costTypePlaceholder'), t('purchaseRequests.generateOrders.costType'))}
               />
             </div>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0351-work-order-assignment-notification" status="approved" owner="utente" date="2026-11-04">
+
+  <goal>
+    Chi viene aggiunto a una Commessa come Responsabile o come Partecipante riceve una notifica
+    (campanella + email), come gia' avviene per Supervisore e Gestori Account di Anagrafiche,
+    Opportunita' e Offerte (spec 0081, 0186).
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-04: "Notifica se sei stato aggiunto in una commessa, sia responsabile che
+    partecipanti". Default applicati (coerenti con spec 0081/0186):
+    - D-1: stessa notifica delle assegnazioni (`RecordAssignmentNotification`, canali database + mail,
+      in coda), target `AssignmentTargetEnum::WorkOrder`, ruoli nuovi `WorkOrderSupervisor` e `Participant`.
+    - D-2: si notifica solo chi viene AGGIUNTO: alla creazione tutti i Responsabili e Partecipanti, in
+      modifica solo i nuovi entrati. Chi resta, chi cambia solo posizione tra i Partecipanti e chi viene
+      tolto non riceve nulla (decisione utente 2026-08-04 sul solo cambio di slot).
+    - D-3: l'autore dell'operazione non si notifica da solo.
+    - D-4: chi e' sia Responsabile sia Partecipante riceve una notifica per ruolo (regola di
+      AssignmentRoleEnum: i ruoli non si sostituiscono).
+    - D-5: invio dopo il commit; nessuna notifica se la scrittura va in rollback.
+    - D-6: la migrazione dal legacy (`WorkOrdersSource`) non notifica (AssignmentNotifier::muted).
+    - D-7: link `/work-orders/{id}` se il destinatario ha `work-orders.view`, altrimenti nessun link e
+      frase di richiesta accesso (RecordLinkResolver, invariato).
+    - D-8: etichetta "COM-0001 - Titolo"; scheda email: titolo, cliente, stato lavorazione, data
+      inizio, Responsabili, Partecipanti.
+
+    Punti di scrittura verificati: WorkOrderService::create() (POST /api/work-orders, Programma del
+    contratto e commessa unica multi-offerta, migrazione) e WorkOrderService::update() (PATCH e cella
+    in linea della griglia via WorkOrderCellWriter).
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: AssignmentRoleEnum, AssignmentNotifier::notifyWorkOrder(), RecordDetails per WorkOrder, testi IT/EN, WorkOrderService, WorkOrdersSource muto.</item>
+      <item>Guida in-app `work-orders` IT/EN (sezione Team) e manuale Claude Docs (sezione Commesse).</item>
+    </in>
+    <out>
+      <item>Notifica di rimozione dalla commessa.</item>
+      <item>Preferenze di notifica per utente o per canale.</item>
+      <item>Frontend: la campanella mostra gia' titolo/messaggio/link del payload.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <notification class="RecordAssignmentNotification" target="WORK_ORDER">
+      payload database: { title, message, level: info, action_url: "/work-orders/{id}" | null }.
+      Responsabile: title "Sei stato inserito come Responsabile della commessa", message ":actor ti ha
+      inserito come Responsabile della commessa :label.". Partecipante: title "Sei stato inserito come Partecipante
+      della commessa", message ":actor ti ha inserito come Partecipante della
+      commessa :label.".
+    </notification>
+  </data_contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">POST /api/work-orders con supervisor_ids e participant_slots notifica ogni Responsabile e Partecipante, escluso l'autore.</ac>
+    <ac id="AC-002">PATCH che aggiunge un Responsabile o un Partecipante notifica solo il nuovo entrato.</ac>
+    <ac id="AC-003">PATCH che sposta un Partecipante di slot o rimuove qualcuno non notifica.</ac>
+    <ac id="AC-004">Un utente sia Responsabile sia Partecipante riceve due notifiche, una per ruolo.</ac>
+    <ac id="AC-005">Una creazione respinta (422 dentro la transazione) non notifica nessuno.</ac>
+    <ac id="AC-006">La migrazione legacy delle commesse non notifica nessuno.</ac>
+    <ac id="AC-007">Payload: titolo/messaggio del ruolo, etichetta "codice - titolo", link /work-orders/{id} solo con work-orders.view.</ac>
+  </acceptance_criteria>
+</spec>
