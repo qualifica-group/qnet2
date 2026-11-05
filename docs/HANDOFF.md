@@ -3,7 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Chat nelle Commesse di Progetto (spec 0352) — COMPLETA E VERDE (2026-11-04)
+## Chat nelle Commesse di Progetto (spec 0354) — COMPLETA E VERDE (2026-11-04)
+
+- RINUMERATA 0352 -> 0354 il 2026-11-05 (decisione utente): il merge da main ha portato "Richiedi aggiornamento"
+  con lo stesso numero 0352. Spec ora `docs/specs/0354-project-work-order-chat.xml`; commenti/test della chat
+  aggiornati. I messaggi dei commit 7271f43d, 6588bac9, 00b1fbe8, 129c0615 citano ancora "spec 0352" (storia git,
+  non riscritta): si riferiscono alla chat.
 
 - Passo 3 (chiusura):
   - Guide in-app: nuova `project-work-orders` (sezioni overview, unread-column, chat-access, edit-delete,
@@ -54,7 +59,7 @@
 - Ambiente locale per il realtime: `BROADCAST_CONNECTION=reverb` + `REVERB_*` nel backend, `VITE_REVERB_*` nel frontend,
   `composer dev` (avvia `reverb:start`), riavvio di Vite. Con `QUEUE_CONNECTION=sync` il broadcast gira nella richiesta.
 
-- Spec `docs/specs/0352-project-work-order-chat.xml` approvata (commit 7271f43d). D-10 confermata: il super-admin
+- Spec `docs/specs/0354-project-work-order-chat.xml` approvata (commit 7271f43d). D-10 confermata: il super-admin
   MODERA (modifica/cancella messaggi altrui senza finestra di 15 min; blocco commessa chiusa vale anche per lui),
   risposta GET con `can_moderate`. Auth SPA = BEARER token (non cookie/CSRF): spec allineata.
 - Passo 1 fatto (B1, B2, F1, F3):

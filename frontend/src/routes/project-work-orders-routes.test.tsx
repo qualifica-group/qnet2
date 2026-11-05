@@ -17,8 +17,8 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-/** Spec 0352 D-1, AC-016 (frontend side): the route, its breadcrumb and the menu label. */
-describe('project work orders route (spec 0352)', () => {
+/** Spec 0354 D-1, AC-016 (frontend side): the route, its breadcrumb and the menu label. */
+describe('project work orders route (spec 0354)', () => {
   it('resolves /project-work-orders', () => {
     const matches = matchRoutes(router.routes, { pathname: '/project-work-orders' })
     expect(matches?.at(-1)?.route.path).toBe('project-work-orders')

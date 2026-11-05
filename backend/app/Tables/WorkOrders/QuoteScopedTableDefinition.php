@@ -131,7 +131,7 @@ class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCat
     }
 
     /**
-     * Spec 0352, D-2: narrows `baseQuery()` to one commessa type. Only the two
+     * Spec 0354, D-2: narrows `baseQuery()` to one commessa type. Only the two
      * menu pages send it; the Contratto and Anagrafica tabs leave it null and
      * keep every type.
      */

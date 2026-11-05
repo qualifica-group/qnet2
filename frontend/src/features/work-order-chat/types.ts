@@ -1,4 +1,4 @@
-/** Contract of the project work order chat (spec 0352 data_contract). */
+/** Contract of the project work order chat (spec 0354 data_contract). */
 
 export interface ChatAuthor {
   id: number

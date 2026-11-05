@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Table definition for the `project-work-orders` domain (spec 0352, D-1):
+ * Table definition for the `project-work-orders` domain (spec 0354, D-1):
  * the `work-orders` grid (same columns, actions, allow-lists, visibility
  * scope and `viewAny`, all inherited) restricted to `type = project`, plus
  * the read-only `chat_unread_count` column.

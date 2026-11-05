@@ -23,7 +23,7 @@ interface WorkTab {
 /**
  * Full-width card below the work order record hosting the Task board (spec
  * 0146), the Costi section (spec 0190) and the read-only active/passive
- * proforma tabs (spec 0282) and the project chat (spec 0352) as switchable tabs: the first tab present is the
+ * proforma tabs (spec 0282) and the project chat (spec 0354) as switchable tabs: the first tab present is the
  * one open by default (Task). Each tab keeps its own gate
  * (`tasks.viewAny`, `view_costs`, `view_invoices`, `view_chat`) and is absent when unauthorized; no tab left
  * = no card. The contract data (spec 0201) live in the record card itself. The

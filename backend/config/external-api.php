@@ -55,7 +55,7 @@ return [
             'auth/set-password',
             'config',
             'system-health',
-            // Spec 0352: Echo's private-channel auth for the in-app realtime chat.
+            // Spec 0354: Echo's private-channel auth for the in-app realtime chat.
             'broadcasting',
         ],
 

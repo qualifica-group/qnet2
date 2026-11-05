@@ -107,7 +107,7 @@ class WorkOrder extends BaseModel
     }
 
     /**
-     * Chat messages of this commessa (spec 0352), soft-deleted ones included.
+     * Chat messages of this commessa (spec 0354), soft-deleted ones included.
      *
      * @return HasMany<WorkOrderChatMessage, $this>
      */

@@ -12,7 +12,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * @mixin WorkOrderChatMessage
  *
- * One chat message (spec 0352 ChatMessage), identical in the REST responses
+ * One chat message (spec 0354 ChatMessage), identical in the REST responses
  * and in the broadcast payload, so it carries nothing that depends on the
  * reader. Needs `author.avatar` eager-loaded.
  */

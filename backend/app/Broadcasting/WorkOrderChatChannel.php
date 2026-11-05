@@ -9,7 +9,7 @@ use App\Models\WorkOrder;
 use App\Services\WorkOrders\Chat\WorkOrderChatAccess;
 
 /**
- * The private work order chat channel (spec 0352, D-9.c): the ONLY place that
+ * The private work order chat channel (spec 0354, D-9.c): the ONLY place that
  * generates its name. The frontend receives it from the API and never builds it.
  */
 final class WorkOrderChatChannel

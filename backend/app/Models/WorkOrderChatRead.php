@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Per-user read marker of a work order's chat (spec 0352): the last message
+ * Per-user read marker of a work order's chat (spec 0354): the last message
  * the user has seen, from which the unread count is derived.
  */
 #[Fillable(['work_order_id', 'user_id', 'last_read_message_id'])]

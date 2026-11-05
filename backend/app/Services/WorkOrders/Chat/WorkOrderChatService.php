@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Reads and writes of a work order's chat (spec 0352). Every query starts from
+ * Reads and writes of a work order's chat (spec 0354). Every query starts from
  * an already authorized work order (D-9.b); the callers (FormRequests) have
  * run WorkOrderChatAccess::assertCanRead/assertOpen, this class adds only
  * the per-message edit rule.

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0352-project-work-order-chat" status="approved" owner="utente" date="2026-11-04">
+<spec id="0354-project-work-order-chat" status="approved" owner="utente" date="2026-11-04">
 
   <goal>
     Le commesse di tipo Progetto hanno una voce di menu propria, "Commesse di Progetto", e dentro ogni

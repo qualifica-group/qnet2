@@ -26,7 +26,7 @@ interface WorkOrderChatPanelProps {
  * Body of the "Chat" tab: chronological messages, older-page loader, composer.
  * Live updates are NOT subscribed here: `WorkOrderChatTabLabel` owns the channel
  * so the badge stays live while another tab is open. Mounting this panel marks
- * the thread read (spec 0352 AC-022).
+ * the thread read (spec 0354 AC-022).
  */
 export function WorkOrderChatPanel({ workOrderId, canWriteAction }: WorkOrderChatPanelProps) {
   const { t } = useTranslation()

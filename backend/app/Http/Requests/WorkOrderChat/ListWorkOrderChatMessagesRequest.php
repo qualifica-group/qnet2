@@ -7,7 +7,7 @@ namespace App\Http\Requests\WorkOrderChat;
 use App\Services\WorkOrders\Chat\WorkOrderChatService;
 
 /**
- * GET /api/work-orders/{workOrder}/chat/messages (spec 0352).
+ * GET /api/work-orders/{workOrder}/chat/messages (spec 0354).
  */
 class ListWorkOrderChatMessagesRequest extends WorkOrderChatRequest
 {

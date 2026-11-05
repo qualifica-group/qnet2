@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 
-/** Backend ceiling of a chat message (spec 0352). */
+/** Backend ceiling of a chat message (spec 0354). */
 export const CHAT_MESSAGE_MAX_LENGTH = 2000
 
 /** Mirrors the server rule: trimmed, required, 1..2000 characters. */

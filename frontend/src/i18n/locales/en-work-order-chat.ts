@@ -1,4 +1,4 @@
-/** English labels (`workOrders.chat.*`) of the project work order chat (spec 0352). */
+/** English labels (`workOrders.chat.*`) of the project work order chat (spec 0354). */
 export const workOrderChat = {
   tab: 'Chat',
   unreadBadge: '{{count}} unread messages',

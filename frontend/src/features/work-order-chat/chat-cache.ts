@@ -42,7 +42,7 @@ export function applyReadResult(thread: ChatThread, result: ChatReadResult): Cha
   return { ...thread, last_read_message_id: result.last_read_message_id, unread_count: result.unread_count }
 }
 
-/** Spec 0352 data_contract: the client-side mirror of the server's edit/delete rule. */
+/** Spec 0354 data_contract: the client-side mirror of the server's edit/delete rule. */
 export function canManageMessage(
   message: ChatMessage,
   options: { canWrite: boolean; canModerate: boolean; currentUserId: number | null; now: number },

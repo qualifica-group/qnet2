@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * What a broadcast chat event reports about its message (spec 0352).
+ * What a broadcast chat event reports about its message (spec 0354).
  */
 enum WorkOrderChatAction: string
 {

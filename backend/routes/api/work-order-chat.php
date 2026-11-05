@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Project work order chat (spec 0352)
+| Project work order chat (spec 0354)
 |--------------------------------------------------------------------------
 |
 | Required from routes/api/work-orders.php, so it inherits the same

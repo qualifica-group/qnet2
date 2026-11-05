@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 
-// Spec 0352, B4: `project-work-orders` domain and the `work_order_type` row scope (AC-014, AC-015).
+// Spec 0354, B4: `project-work-orders` domain and the `work_order_type` row scope (AC-014, AC-015).
 
 uses(RefreshDatabase::class);
 

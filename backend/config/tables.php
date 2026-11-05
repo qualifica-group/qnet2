@@ -169,7 +169,7 @@ return [
         'quote-workflows' => QuoteWorkflowsTableDefinition::class,
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersTableDefinition::class,
-        // spec 0352: le Commesse di Progetto (type = project) con la colonna dei messaggi chat non letti.
+        // spec 0354: le Commesse di Progetto (type = project) con la colonna dei messaggi chat non letti.
         'project-work-orders' => ProjectWorkOrdersTableDefinition::class,
         // spec 0201: the configurable payment statuses of a commessa line.
         'work-order-payment-statuses' => WorkOrderPaymentStatusesTableDefinition::class,
