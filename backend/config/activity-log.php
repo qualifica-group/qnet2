@@ -67,6 +67,8 @@ use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\TaskTemplate;
 use App\Models\TaskType;
+use App\Models\TreasuryMovement;
+use App\Models\TreasuryType;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserSkill;
@@ -358,6 +360,12 @@ return [
         ],
         'revenue-types' => [
             'model' => RevenueType::class,
+        ],
+        'treasury-movements' => [
+            'model' => TreasuryMovement::class,
+        ],
+        'treasury-types' => [
+            'model' => TreasuryType::class,
         ],
         'cost-types' => [
             'model' => CostType::class,

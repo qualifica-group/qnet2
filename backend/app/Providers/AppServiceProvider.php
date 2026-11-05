@@ -104,6 +104,8 @@ use App\Models\TaskTemplateStage;
 use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\TimeEntryDayNote;
+use App\Models\TreasuryMovement;
+use App\Models\TreasuryType;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserSkill;
@@ -275,6 +277,9 @@ class AppServiceProvider extends ServiceProvider
             'cost_type' => CostType::class,
             'chart_account' => ChartAccount::class,
             'revenue_type' => RevenueType::class,
+            // spec 0355: treasury movements and financial sub-accounts.
+            'treasury_movement' => TreasuryMovement::class,
+            'treasury_type' => TreasuryType::class,
             'job_role' => JobRole::class,
             'job_activity' => JobActivity::class,
             'employment_contract' => EmploymentContract::class,

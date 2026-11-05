@@ -4,13 +4,19 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { ApiErrorResponse } from '@/api/types'
 import { useConfirm } from '@/components/confirm-dialog-context'
-import { deleteChartAccount, deleteRevenueType } from '@/features/chart-of-accounts/api'
+import { deleteChartAccount, deleteRevenueType, deleteTreasuryType } from '@/features/chart-of-accounts/api'
 import { chartOfAccountsKeys } from '@/features/chart-of-accounts/query-keys'
 import type { TreeRow } from '@/features/chart-of-accounts/tree-model'
+import type { SubAccountSource } from '@/features/chart-of-accounts/types'
 import { deleteCostType } from '@/features/cost-types/api'
 import { apiErrorMessage } from '@/lib/forbidden-message'
 
 const HTTP_CONFLICT = 409
+
+function subDeleteRequest(source: SubAccountSource, id: number): () => Promise<void> {
+  if (source === 'revenue_type') return () => deleteRevenueType(id)
+  return source === 'treasury_type' ? () => deleteTreasuryType(id) : () => deleteCostType(id)
+}
 
 function deleteRequest(row: TreeRow): (() => Promise<void>) | null {
   switch (row.type) {
@@ -18,7 +24,7 @@ function deleteRequest(row: TreeRow): (() => Promise<void>) | null {
     case 'account':
       return () => deleteChartAccount(row.node.id)
     case 'sub':
-      return row.node.source === 'revenue_type' ? () => deleteRevenueType(row.node.id) : () => deleteCostType(row.node.id)
+      return subDeleteRequest(row.node.source, row.node.id)
     case 'unplaced':
       return null
   }

@@ -54,6 +54,8 @@ export interface BulkCollectionItem {
 
 export interface BulkCollectionPayload {
   collected_at: string
+  /** Spec 0355: null = each invoice's own account. */
+  financial_account_id: number | null
   items: BulkCollectionItem[]
 }
 

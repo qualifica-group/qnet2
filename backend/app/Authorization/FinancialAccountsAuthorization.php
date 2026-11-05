@@ -53,6 +53,7 @@ class FinancialAccountsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('card_number', 'text'),
             new FieldDefinition('card_expiry', 'text'),
             new FieldDefinition('notes', 'textarea'),
+            new FieldDefinition('opening_balance', 'text'),
         ];
     }
 
@@ -78,6 +79,8 @@ class FinancialAccountsAuthorization extends AbstractResourceAuthorization
         }
 
         $permissions['type'] = $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly();
+        // Changed only through the dedicated endpoint (permission manageOpeningBalance), never the plain update.
+        $permissions['opening_balance'] = FieldPermission::visibleReadonly();
         $permissions['name'] = $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly();
 
         return $permissions;

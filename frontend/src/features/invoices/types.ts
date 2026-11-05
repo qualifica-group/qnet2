@@ -72,6 +72,8 @@ export interface InvoiceInstallment {
   collected_amount: string | null
   collected_at: string | null
   status: InstallmentStatus
+  /** Account chosen at collection time (spec 0355); null = the invoice account applies. */
+  financial_account?: NamedRef | null
 }
 
 /** `InvoiceResource` (envelope `data`). */
@@ -171,6 +173,8 @@ export interface InvoiceCollectionPayload {
   collected_at: string
   residual_mode?: ResidualMode
   residual_due_date?: string
+  /** Spec 0355: null = the invoice account applies. */
+  financial_account_id: number | null
 }
 
 /** A work-order line still available to be copied into the document. */

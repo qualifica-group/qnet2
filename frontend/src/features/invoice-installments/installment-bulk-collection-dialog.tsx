@@ -5,6 +5,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { formatDate } from '@/lib/formatting/date-display'
 import { formatEuro } from '@/features/invoices/invoice-format'
+import { CollectionAccountField } from '@/features/invoices/collection-account-field'
 import type { BulkCollectionTarget } from '@/features/invoice-installments/installment-bulk-collection'
 import { useInstallmentBulkCollectionForm } from '@/features/invoice-installments/use-installment-bulk-collection-form'
 
@@ -27,7 +28,7 @@ function BulkCollectionForm({ targets, onClose, onSaved }: BulkCollectionFormPro
   return (
     <Form {...form}>
       <form onSubmit={submit} noValidate className="flex min-h-0 flex-col">
-        <div className="border-b px-4 py-3">
+        <div className="flex flex-col gap-3 border-b px-4 py-3">
           <FormField
             control={form.control}
             name="collected_at"
@@ -39,6 +40,17 @@ function BulkCollectionForm({ targets, onClose, onSaved }: BulkCollectionFormPro
                 </FormControl>
                 <FormMessage />
               </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="financial_account_id"
+            render={({ field }) => (
+              <CollectionAccountField
+                value={field.value}
+                onChange={field.onChange}
+                hint={t('treasuryCollection.bulkHint')}
+              />
             )}
           />
         </div>

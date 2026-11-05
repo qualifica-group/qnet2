@@ -39,11 +39,16 @@ interface CollectionFormFields {
   collected_at: string
   residual_mode?: ResidualMode
   residual_due_date?: string
+  financial_account_id: number | null
 }
 
 /** Sends `residual_*` only for a partial collection; the date only for a new residual installment. */
 export function buildCollectionPayload(values: CollectionFormFields, installmentAmount: number): InvoiceCollectionPayload {
-  const base = { collected_amount: values.collected_amount, collected_at: values.collected_at }
+  const base = {
+    collected_amount: values.collected_amount,
+    collected_at: values.collected_at,
+    financial_account_id: values.financial_account_id,
+  }
   if (!isPartialCollection(values.collected_amount, installmentAmount) || values.residual_mode === undefined) {
     return base
   }

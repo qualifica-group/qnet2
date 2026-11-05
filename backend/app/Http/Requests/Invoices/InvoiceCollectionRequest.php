@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Invoices;
 
 use App\Enums\ResidualMode;
+use App\Models\FinancialAccount;
 use App\Models\InvoiceInstallment;
 use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -42,6 +43,7 @@ class InvoiceCollectionRequest extends FormRequest
         return [
             'collected_amount' => ['required', 'numeric', 'gt:0', ...($isOpen ? ['max:'.$installment->amount] : [])],
             'collected_at' => ['required', 'date'],
+            'financial_account_id' => ['nullable', 'integer', Rule::exists(FinancialAccount::class, 'id')],
             'residual_mode' => [Rule::requiredIf($isPartial), 'nullable', Rule::enum(ResidualMode::class)],
             'residual_due_date' => [
                 Rule::requiredIf(fn (): bool => $isPartial() && $this->input('residual_mode') === ResidualMode::NewInstallment->value),
@@ -56,7 +58,7 @@ class InvoiceCollectionRequest extends FormRequest
     public function payload(): array
     {
         return array_filter(
-            $this->safe()->only(['collected_amount', 'collected_at', 'residual_mode', 'residual_due_date']),
+            $this->safe()->only(['collected_amount', 'collected_at', 'financial_account_id', 'residual_mode', 'residual_due_date']),
             fn (mixed $value): bool => $value !== null,
         );
     }

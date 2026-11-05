@@ -2,6 +2,7 @@ import type { KeyboardEvent } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
+import { chartKindLabel } from '@/features/chart-of-accounts/kind-label'
 import { ChartTreeRowMenu } from '@/features/chart-of-accounts/chart-tree-row-menu'
 import type { RowActionKey } from '@/features/chart-of-accounts/tree-actions'
 import type { TreeRow } from '@/features/chart-of-accounts/tree-model'
@@ -90,7 +91,7 @@ export function ChartTreeRow({ row, actions, locked, onToggle, onAction }: Chart
 
       {row.type === 'group' ? (
         <Badge variant={row.node.kind === 'cost' ? 'secondary' : 'outline'} className="shrink-0 text-[11px]">
-          {t(`chartOfAccounts.kind.${row.node.kind}`)}
+          {chartKindLabel(t, row.node.kind)}
         </Badge>
       ) : null}
       {row.type === 'unplaced' ? (

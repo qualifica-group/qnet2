@@ -3,6 +3,8 @@
 namespace App\Http\Resources;
 
 use App\Models\FinancialAccount;
+use App\Services\Treasury\AccountStatementService;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +23,8 @@ class FinancialAccountResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $statements = app(AccountStatementService::class);
+
         return [
             'id' => $this->id,
             'type' => $this->type,
@@ -43,6 +47,11 @@ class FinancialAccountResource extends JsonResource
             'card_number_masked' => $this->card_last_four === null ? null : self::MASK_PREFIX.$this->card_last_four,
             'card_expiry' => $this->card_expiry,
             'notes' => $this->notes,
+            'opening_balance' => (string) $this->opening_balance,
+            'opening_balance_date' => $statements->openingDate($this->resource)->toDateString(),
+            'current_balance' => $request->user()?->can('treasury-movements.view') === true
+                ? $statements->balanceAt($this->resource, CarbonImmutable::today())
+                : null,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

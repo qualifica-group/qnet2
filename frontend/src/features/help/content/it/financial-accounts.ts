@@ -46,6 +46,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'opening-balance',
+      title: 'Saldo di apertura e saldo attuale',
+      blocks: [
+        { type: 'paragraph', text: 'Ogni conto ha un **Saldo di apertura**: l’importo da cui parte il conto alla **Data di apertura**. Se non lo imposti il saldo è 0 e la data è il **01/01/2026**; se il conto è stato aperto più tardi (ad esempio a marzo) puoi indicare una data propria. Movimenti, incassi e pagamenti precedenti alla data di apertura non entrano nel saldo né nell’**Estratto conto**.' },
+        { type: 'steps', items: ['Apri la scheda del conto con **Visualizza**.', 'Nel riquadro **Saldo di apertura** premi **Modifica**.', 'Inserisci **Importo** e **Data di apertura** e premi **Salva**.'] },
+        { type: 'list', items: ['Il saldo di apertura lo modifica solo chi ha il permesso dedicato; gli altri lo vedono in sola lettura. Ogni modifica finisce nello storico.', 'Non puoi spostare la data di apertura dopo un movimento già registrato sul conto.', 'Il **Saldo attuale** compare solo a chi può consultare i movimenti di tesoreria, con il link **Vedi estratto conto** per aprire l’Estratto conto di quel conto.'] },
+        { type: 'note', text: 'Solo i conti hanno un saldo di apertura: per clienti e fornitori si parte dal residuo delle rate.' },
+      ],
+    },
+    {
       id: 'manage',
       title: 'Creare, modificare ed eliminare',
       blocks: [

@@ -17,14 +17,15 @@ function chartMigration(string $file): object
     return require database_path('migrations/'.$file);
 }
 
-it('AC-001: seeds 11 groups with kind only on groups, their accounts and the revenue sub-accounts', function () {
+it('AC-001: seeds 12 groups with kind only on groups, their accounts and the revenue sub-accounts', function () {
     $groups = DB::table('chart_accounts')->where('level', 'group')->orderBy('code')->get();
 
-    expect($groups->pluck('code')->all())->toBe(['60', '61', '62', '63', '64', '65', '66', '67', '70', '71', '72'])
+    expect($groups->pluck('code')->all())->toBe(['60', '61', '62', '63', '64', '65', '66', '67', '70', '71', '72', '90'])
         ->and($groups->where('kind', 'cost')->count())->toBe(8)
         ->and($groups->where('kind', 'revenue')->count())->toBe(3)
+        ->and($groups->where('kind', 'financial')->count())->toBe(1)
         ->and($groups->whereNotNull('parent_id')->count())->toBe(0)
-        ->and(DB::table('chart_accounts')->where('level', 'account')->count())->toBe(29)
+        ->and(DB::table('chart_accounts')->where('level', 'account')->count())->toBe(33)
         ->and(DB::table('chart_accounts')->where('level', 'account')->whereNotNull('kind')->count())->toBe(0);
 
     $account = ChartAccount::where('code', '61.03')->firstOrFail();
@@ -77,6 +78,7 @@ it('AC-001: matches the initial names trimmed and case-insensitive, only when th
 });
 
 it('AC-001: rollback removes the seeded data, then the tables and columns', function () {
+    chartMigration('2026_11_10_100400_seed_financial_movements_chart_group.php')->down();
     chartMigration(SEED_MIGRATION)->down();
 
     expect(ChartAccount::count())->toBe(0)

@@ -77,6 +77,8 @@ use App\Authorization\TasksAuthorization;
 use App\Authorization\TaskStatusesAuthorization;
 use App\Authorization\TaskTemplatesAuthorization;
 use App\Authorization\TaskTypesAuthorization;
+use App\Authorization\TreasuryMovementsAuthorization;
+use App\Authorization\TreasuryTypesAuthorization;
 use App\Authorization\UnitsOfMeasureAuthorization;
 use App\Authorization\UsersAuthorization;
 use App\Authorization\UserSkillsAuthorization;
@@ -181,6 +183,10 @@ return [
         // spec 0348: managerial chart of accounts (groups/accounts and revenue sub-accounts).
         'chart-accounts' => ChartAccountsAuthorization::class,
         'revenue-types' => RevenueTypesAuthorization::class,
+        // spec 0355: financial sub-accounts of the chart (treasury types).
+        'treasury-types' => TreasuryTypesAuthorization::class,
+        // spec 0355: manual treasury movements (income, expense, transfer, adjustment).
+        'treasury-movements' => TreasuryMovementsAuthorization::class,
         // spec 0247: catalogs of the simple purchasing/accounting lists.
         'purchase-request-priorities' => PurchaseRequestPrioritiesAuthorization::class,
         // spec 0248: presentation catalogues of the ODA and RDA line statuses.
@@ -269,6 +275,8 @@ return [
         // Spec 0348: `revenue-types.*` (revenue sub-accounts) has no menu entry of its own: it is
         // managed from the chart of accounts screen, gated on `chart-accounts.view`.
         'revenue-types',
+        // Spec 0355: `treasury-types.*` (financial sub-accounts), same as revenue-types.
+        'treasury-types',
     ],
 
 ];

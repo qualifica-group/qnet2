@@ -24,7 +24,7 @@ class InvoiceBulkCollectionController extends BaseApiController
     public function __invoke(InvoiceBulkCollectionRequest $request): JsonResponse
     {
         try {
-            return $this->ok($this->collector->handle($request->user(), $request->items(), $request->collectedAt()));
+            return $this->ok($this->collector->handle($request->user(), $request->items(), $request->collectedAt(), $request->financialAccountId()));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

@@ -5,6 +5,7 @@
 
 import { agentFiscalProfiles, commissionAccruals, enasarcoParameters } from './en-agent-commissions'
 import { commissionSettlementRuns, commissionSettlements } from './en-commission-settlements'
+import { accountStatements } from './en-account-statements'
 import { financialAccounts } from './en-financial-accounts'
 import { invoiceEditor } from './en-invoice-editor'
 import { invoiceInstallments } from './en-invoice-installments'
@@ -16,9 +17,16 @@ import { proformaRequests } from './en-proforma-requests'
 import { purchaseInvoiceInstallments } from './en-purchase-invoice-installments'
 import { purchaseInvoices } from './en-purchase-invoices'
 import { purchaseInvoiceViews } from './en-purchase-invoice-views'
+import { treasuryCollection } from './en-treasury-collection'
+import { treasuryMovements } from './en-treasury-movements'
+import { treasuryTypes } from './en-treasury-types'
 
 export const accounting = {
   financialAccounts,
+  treasuryMovements,
+  accountStatements,
+  treasuryCollection,
+  treasuryTypes,
   proformaRequests,
   paymentMethods,
   invoices,

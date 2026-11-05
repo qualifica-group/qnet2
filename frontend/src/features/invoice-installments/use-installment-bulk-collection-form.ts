@@ -35,7 +35,7 @@ export function useInstallmentBulkCollectionForm(targets: readonly BulkCollectio
   const form = useForm<BulkCollectionFormValues>({
     resolver: zodResolver(schema),
     mode: 'onChange',
-    defaultValues: { collected_at: todayIso(), amounts: targets.map(() => '') },
+    defaultValues: { collected_at: todayIso(), financial_account_id: null, amounts: targets.map(() => '') },
   })
 
   const amounts = useWatch({ control: form.control, name: 'amounts' })

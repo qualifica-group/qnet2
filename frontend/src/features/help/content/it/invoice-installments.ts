@@ -115,6 +115,14 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'collection-account',
+      title: 'Il conto dell’incasso',
+      blocks: [
+        { type: 'paragraph', text: 'Nella finestra di **Registra incasso** c’è il campo **Conto** (facoltativo): indica su quale banca, cassa o carta è entrato l’incasso. Viene **proposto il conto della fattura**; puoi cambiarlo o svuotarlo, e in quel caso vale il conto della fattura. L’incasso compare così nell’**Estratto conto** di quel conto.' },
+        { type: 'note', text: '**Annulla incasso** azzera anche il conto scelto. Un incasso senza alcun conto (né sulla scadenza né sulla fattura) finisce nel riquadro **Da verificare** dell’Estratto conto.' },
+      ],
+    },
+    {
       id: 'bulk-collection',
       title: 'Incasso multiplo',
       blocks: [
@@ -138,6 +146,7 @@ const guide: HelpGuide = {
             'I campi importo partono **vuoti**: una riga lasciata vuota o a 0 **non viene incassata**.',
             'L’importo non può **superare** quello della scadenza: il campo va in errore e **Salva** resta disabilitato.',
             'Se scrivi un importo **minore** della scadenza, la scadenza si chiude a quell’importo e nasce una **scadenza residua** con la differenza e la **stessa data di scadenza** di quella di partenza (se la data è già passata, il residuo risulta subito scaduto).',
+            'Il campo **Conto** è facoltativo: se resta **vuoto**, ogni incasso va sul conto della **propria fattura**; se lo scegli, vale per tutte le righe.',
             'Il salvataggio è **tutto o niente**: se una riga non è valida (ad esempio la scadenza è stata incassata nel frattempo) non viene registrato nulla e la riga viene segnalata.',
           ],
         },

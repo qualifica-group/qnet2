@@ -26,6 +26,8 @@ export const navigation = {
   vatRates: 'IVA',
   unitsOfMeasure: 'Unita di Misura',
   financialAccounts: 'Gestione Conti',
+  treasuryMovements: 'Movimenti di tesoreria',
+  accountStatements: 'Estratto conto',
   managementControl: 'Controllo di gestione',
   incomeStatement: 'Conto economico',
   exposure: 'Scadenzario ed esposizione',

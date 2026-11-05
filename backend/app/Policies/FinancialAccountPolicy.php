@@ -24,11 +24,16 @@ class FinancialAccountPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'revealCardNumber'];
+        return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'revealCardNumber', 'manageOpeningBalance'];
     }
 
     public function revealCardNumber(User $user, FinancialAccount $financialAccount): bool
     {
         return $user->can($this->permission('revealCardNumber'));
+    }
+
+    public function manageOpeningBalance(User $user, FinancialAccount $financialAccount): bool
+    {
+        return $user->can($this->permission('manageOpeningBalance'));
     }
 }

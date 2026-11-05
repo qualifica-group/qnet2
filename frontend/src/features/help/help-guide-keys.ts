@@ -65,6 +65,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'invoices',
   'invoice-installments',
   'ledger',
+  'treasury-movements',
+  'account-statements',
   'management-control',
   'management-control-exposure',
   'management-control-cash-flow',

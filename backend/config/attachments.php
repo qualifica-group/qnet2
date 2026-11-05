@@ -15,6 +15,7 @@ use App\Models\Registry;
 use App\Models\Task;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
+use App\Models\TreasuryMovement;
 use App\Models\User;
 use App\Models\WorkOrder;
 
@@ -175,6 +176,8 @@ return [
         'purchase_order' => PurchaseOrder::class,
         // Supplier document (spec 0250, D-3): alias in the global morph map.
         'purchase_invoice' => PurchaseInvoice::class,
+        // Treasury movement documents (spec 0355): alias in the global morph map.
+        'treasury_movement' => TreasuryMovement::class,
     ],
     /*
     |--------------------------------------------------------------------------
@@ -188,6 +191,6 @@ return [
     |
     */
 
-    'owner_scoped_types' => ['opportunity', 'work_order', 'contract'],
+    'owner_scoped_types' => ['opportunity', 'work_order', 'contract', 'treasury_movement'],
 
 ];

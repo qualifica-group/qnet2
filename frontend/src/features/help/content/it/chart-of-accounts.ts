@@ -27,9 +27,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Livello', 'Cosa è'],
           rows: [
-            ['Mastro', 'Il livello più alto (per esempio 61 Servizi). Ha il **tipo Costo o Ricavo**, che conti e sottoconti ereditano.'],
+            ['Mastro', 'Il livello più alto (per esempio 61 Servizi). Ha il **tipo Costo, Ricavo o Finanziario**, che conti e sottoconti ereditano.'],
             ['Conto', 'Sta sotto un mastro (per esempio 61.03 Utenze). Raggruppa i sottoconti.'],
-            ['Sottoconto', 'La voce finale. Nei mastri di **Costo** è un **tipo di costo**; nei mastri di **Ricavo** è un sottoconto di ricavo.'],
+            ['Sottoconto', 'La voce finale. Nei mastri di **Costo** è un **tipo di costo**; nei mastri di **Ricavo** è un sottoconto di ricavo; nei mastri **Finanziari** è un sottoconto finanziario.'],
           ],
         },
         {
@@ -156,6 +156,15 @@ const guide: HelpGuide = {
             'Nei selettori compaiono solo sottoconti **attivi** con conto e mastro attivi.',
           ],
         },
+      ],
+    },
+    {
+      id: 'financial-sub-accounts',
+      title: 'Mastri e sottoconti finanziari',
+      blocks: [
+        { type: 'paragraph', text: 'Oltre a **Costo** e **Ricavo**, un mastro può essere di tipo **Finanziario**. I suoi sottoconti, i **sottoconti finanziari**, non classificano costi o ricavi ma i movimenti di denaro: si usano nei **Movimenti di tesoreria** e sono gli unici ammessi per **Giroconti** e **Rettifiche di saldo** (per entrate e uscite si possono scegliere anche quelli di ricavo e di costo).' },
+        { type: 'paragraph', text: 'La struttura di partenza ha il **mastro 90 Movimenti finanziari** con i conti **90.01 Giroconti**, **90.02 Finanziamenti**, **90.03 Tributi e contributi**, **90.04 Rettifiche di saldo** e un sottoconto ciascuno. È solo una proposta: si modifica, si aggiunge e si disattiva come il resto del piano, con **Nuovo sottoconto** sul conto finanziario.' },
+        { type: 'note', text: 'Un sottoconto finanziario già usato da un movimento non si può eliminare: disattivalo. L’esportazione e l’importazione del piano riguardano per ora solo costi e ricavi.' },
       ],
     },
     {

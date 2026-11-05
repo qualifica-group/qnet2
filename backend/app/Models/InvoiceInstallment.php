@@ -19,7 +19,7 @@ use Spatie\Activitylog\LogOptions;
  */
 #[Fillable([
     'invoice_id', 'sequence', 'due_date', 'amount', 'payment_method_code',
-    'collected_amount', 'collected_at', 'redistribution_snapshot',
+    'collected_amount', 'collected_at', 'redistribution_snapshot', 'financial_account_id',
 ])]
 class InvoiceInstallment extends BaseModel
 {
@@ -36,7 +36,7 @@ class InvoiceInstallment extends BaseModel
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['due_date', 'payment_method_code', 'collected_amount', 'collected_at'])
+            ->logOnly(['due_date', 'payment_method_code', 'collected_amount', 'collected_at', 'financial_account_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName($this->getTable());
@@ -63,6 +63,14 @@ class InvoiceInstallment extends BaseModel
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /**
+     * @return BelongsTo<FinancialAccount, $this>
+     */
+    public function financialAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinancialAccount::class);
     }
 
     public function status(): InstallmentStatus

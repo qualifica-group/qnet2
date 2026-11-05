@@ -25,6 +25,8 @@ export const navigation = {
   vatRates: 'VAT',
   unitsOfMeasure: 'Units of Measure',
   financialAccounts: 'Financial accounts',
+  treasuryMovements: 'Treasury movements',
+  accountStatements: 'Account statements',
   managementControl: 'Management control',
   incomeStatement: 'Income statement',
   exposure: 'Schedule and exposure',

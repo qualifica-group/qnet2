@@ -3,6 +3,7 @@
 return [
     'in_use' => 'La voce ha voci collegate: disattivala o eliminale prima.',
     'revenue_type_in_use' => 'Il sottoconto è usato da righe di fattura, prodotti o categorie: disattivalo invece di eliminarlo.',
+    'treasury_type_in_use' => 'Il sottoconto è usato da movimenti di tesoreria: disattivalo invece di eliminarlo.',
     'code_taken' => 'Codice già usato nel piano dei conti.',
     'kind_locked' => 'Il tipo (costo o ricavo) di un mastro che ha conti non può essere cambiato.',
     'io' => [

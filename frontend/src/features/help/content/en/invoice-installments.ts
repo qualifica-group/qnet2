@@ -115,6 +115,14 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'collection-account',
+      title: 'The collection account',
+      blocks: [
+        { type: 'paragraph', text: 'The **Record collection** dialog has an **Account** field (optional): it says which bank, cash or card account the money came into. The **invoice account is proposed**; you can change or clear it, and when cleared the invoice account applies. The collection then shows in the **Account statements** of that account.' },
+        { type: 'note', text: '**Clear collection** also resets the chosen account. A collection with no account at all (neither on the installment nor on the invoice) ends up in the **To verify** box of the Account statements.' },
+      ],
+    },
+    {
       id: 'bulk-collection',
       title: 'Bulk collection',
       blocks: [
@@ -138,6 +146,7 @@ const guide: HelpGuide = {
             'The amount fields start **empty**: a row left empty or at 0 is **not collected**.',
             'The amount cannot **exceed** the installment: the field shows an error and **Save** stays disabled.',
             'With an amount **lower** than the installment, the installment closes at that amount and a **residual installment** is created with the difference and the **same due date** as the original one (if that date has passed, the residual is overdue right away).',
+            'The **Account** field is optional: if left **empty**, each collection goes to the account of **its own invoice**; if you pick one, it applies to every row.',
             'Saving is **all or nothing**: if a row is not valid (for example the installment was collected meanwhile) nothing is recorded and the row is flagged.',
           ],
         },

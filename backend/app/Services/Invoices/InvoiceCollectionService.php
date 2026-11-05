@@ -29,7 +29,7 @@ final class InvoiceCollectionService
     ) {}
 
     /**
-     * @param  array<string, string>  $payload  collected_amount, collected_at, residual_mode?, residual_due_date?
+     * @param  array<string, string|int>  $payload  collected_amount, collected_at, residual_mode?, residual_due_date?, financial_account_id? (int)
      */
     public function record(InvoiceInstallment $installment, array $payload): Invoice
     {
@@ -44,6 +44,11 @@ final class InvoiceCollectionService
             // Step 2: a full collection closes the installment, a partial one redistributes the residual
             $collected = $this->amounts->roundToCents($payload['collected_amount']);
             $attributes = ['collected_amount' => $collected, 'collected_at' => $payload['collected_at']];
+
+            // The account is set only when sent: the legacy imports collections without it (spec 0355, D-5)
+            if (isset($payload['financial_account_id'])) {
+                $attributes['financial_account_id'] = (int) $payload['financial_account_id'];
+            }
 
             if (bccomp($collected, (string) $current->amount, 2) >= 0) {
                 $current->update($attributes);
@@ -68,7 +73,7 @@ final class InvoiceCollectionService
             $rows = $this->restorable($invoice, $current);
 
             if ($rows === null) {
-                $current->update(['collected_amount' => null, 'collected_at' => null, 'redistribution_snapshot' => null]);
+                $current->update(['collected_amount' => null, 'collected_at' => null, 'financial_account_id' => null, 'redistribution_snapshot' => null]);
             } else {
                 $this->restore($current, $rows);
             }
@@ -96,8 +101,8 @@ final class InvoiceCollectionService
     }
 
     /**
-     * @param  array<string, string>  $attributes  collected_amount, collected_at
-     * @param  array<string, string>  $payload
+     * @param  array<string, string|int>  $attributes  collected_amount, collected_at, financial_account_id?
+     * @param  array<string, string|int>  $payload
      */
     private function recordPartial(Invoice $invoice, InvoiceInstallment $current, array $attributes, array $payload): void
     {
@@ -216,6 +221,6 @@ final class InvoiceCollectionService
             $rows->get($entry['id'])->update(['sequence' => $entry['sequence'], 'amount' => $entry['amount']]);
         }
 
-        $current->refresh()->update(['collected_amount' => null, 'collected_at' => null, 'redistribution_snapshot' => null]);
+        $current->refresh()->update(['collected_amount' => null, 'collected_at' => null, 'financial_account_id' => null, 'redistribution_snapshot' => null]);
     }
 }

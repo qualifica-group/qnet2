@@ -22,6 +22,7 @@ class InvoiceInstallmentResource extends JsonResource
     /** Relations the projection reads. */
     public const array RELATIONS = [
         'invoice',
+        'financialAccount:id,name',
         'invoice.customer:id,name',
         'invoice.workOrder:id,code,title',
         'invoice.quote:id,company_site_id,operational_site_id',
@@ -55,6 +56,7 @@ class InvoiceInstallmentResource extends JsonResource
             'payment_method_code' => $this->payment_method_code,
             'collected_amount' => $this->collected_amount,
             'collected_at' => $this->collected_at?->toDateString(),
+            'financial_account' => $this->financialAccount === null ? null : ['id' => $this->financialAccount->id, 'name' => $this->financialAccount->name],
             'status' => $this->status(),
             'residual_amount' => $this->residualAmount(),
             'is_overdue' => $daysOverdue > 0,

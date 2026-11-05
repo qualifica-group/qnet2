@@ -98,6 +98,7 @@ export const permissions = {
     viewInvoices: 'Vedere proforma e fatture',
     managePayments: 'Gestire i pagamenti',
     manageCompensation: 'Gestire i dati retributivi',
+    manageOpeningBalance: 'Gestire il saldo di apertura',
     // Spec 0279: calendario delle assenze, tre livelli di visibilita'.
     calendarOwn: 'Calendario: solo le proprie',
     calendarAll: 'Calendario: di tutti',
@@ -153,6 +154,8 @@ export const permissions = {
     tags: 'Tag',
     'units-of-measure': 'Unita di Misura',
     'financial-accounts': 'Gestione Conti',
+    'treasury-movements': 'Movimenti di tesoreria',
+    'treasury-types': 'Sottoconti finanziari',
     'proforma-requests': 'Richieste Proforma',
     'purchase-requests': 'Richieste di acquisto (RDA)',
     'purchase-orders': 'Ordini di acquisto (ODA)',

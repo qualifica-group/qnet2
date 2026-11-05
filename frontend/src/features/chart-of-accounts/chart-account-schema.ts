@@ -22,7 +22,7 @@ export function buildChartAccountSchema(t: TFunction, level: ChartAccountLevel) 
   return z
     .object({
       ...baseFields(t),
-      kind: z.enum(['cost', 'revenue']).optional(),
+      kind: z.enum(['cost', 'revenue', 'financial']).optional(),
       parent_id: z.number().int().optional(),
     })
     .superRefine((values, ctx) => {
@@ -35,6 +35,15 @@ export function buildChartAccountSchema(t: TFunction, level: ChartAccountLevel) 
     })
 }
 export type ChartAccountFormValues = z.infer<ReturnType<typeof buildChartAccountSchema>>
+
+/** Financial sub-account form (spec 0355). */
+export function buildTreasuryTypeSchema(t: TFunction) {
+  return z.object({
+    ...baseFields(t),
+    chart_account_id: z.number({ message: t('chartOfAccounts.form.accountRequired') }).int(),
+  })
+}
+export type TreasuryTypeFormValues = z.infer<ReturnType<typeof buildTreasuryTypeSchema>>
 
 /** Revenue sub-account form. */
 export function buildRevenueTypeSchema(t: TFunction) {

@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0355-treasury-account-balances" status="approved" owner="utente" date="2026-11-05">
+
+  <goal>
+    Tesoreria fase A "Conti con saldo": per ogni banca, cassa e carta l'amministrazione vede il saldo a oggi e a
+    una data e l'estratto conto movimento per movimento, che unisce gli incassi e i pagamenti gia' registrati sulle
+    rate con i nuovi movimenti manuali (entrata, uscita, giroconto, rettifica di saldo). Non e' contabilita' in
+    partita doppia.
+  </goal>
+
+  <context>
+    Prospetto di riferimento: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y (fasi A-D). Questa spec e' la fase A.
+
+    Decisioni utente 2026-11-05:
+    - D-1: saldo di apertura per ogni conto, data di partenza 01/01/2026 (`config('treasury.default_opening_date')`).
+      Solo i conti finanziari hanno un saldo di apertura; clienti e fornitori partono dal residuo delle rate.
+      Un conto puo' avere una data di apertura propria (es. aperto a marzo); senza, vale la data di default e
+      saldo 0. Modifica solo con permesso dedicato, con audit.
+    - D-2: chi scrive = chi ha il permesso di gestione movimenti; un permesso separato per la sola consultazione.
+    - D-3: sottoconto OBBLIGATORIO su ogni movimento manuale. Il piano dei conti (spec 0348) riceve un tipo di
+      mastro NON economico ("finanziario") con i suoi sottoconti; seed di partenza modificabile.
+    - D-4: incassi e pagamenti senza conto non entrano nel saldo: restano nell'elenco "da verificare".
+    - D-5 (risposta "Conto scelto all'incasso"): la rata attiva riceve un conto proprio
+      (`invoice_installments.financial_account_id`), scelto nella finestra di incasso (singolo e multiplo),
+      proposto dal conto della fattura. Regola di attribuzione, uguale sui due lati:
+      conto della rata, se assente quello del documento (come gia' fa `PaymentAggregator`, spec 0271).
+    - D-6 (rettificata dall'utente 2026-11-05): il giroconto e' ammesso SOLO tra conti della stessa societa'
+      (stesso `company_id`; due conti senza societa' contano come stessa societa'). Tra societa' diverse non si
+      registra un giroconto: 422.
+    - D-7 (risposta "Saldo proprio"): una carta e' un conto con saldo proprio: le spese la fanno scendere,
+      l'addebito mensile in banca e' un giroconto banca -> carta. Nessuna logica speciale per le carte.
+    - D-8 (risposta "Sempre, con storico"): i movimenti manuali si modificano e cancellano sempre, con audit
+      completo (chi, cosa, quando, prima/dopo). Nessun blocco di periodo in fase A.
+
+    Fatti verificati nel codice (ramo feature/amministrazione, 2026-11-05):
+    - `financial_accounts` (spec 0189): `type` enum `FinancialAccountType` (bank_account, card, cash), `name`,
+      `company_id` nullable, `linked_account_id` (carta -> conto), `old_id`. Model `FinancialAccount`, policy
+      `FinancialAccountPolicy::abilities()` (viewAny, view, create, update, delete, export, viewActivity,
+      revealCardNumber), authorization `FinancialAccountsAuthorization`, rotte `routes/api/financial-accounts.php`,
+      dominio griglia `financial-accounts` (`FinancialAccountsTableDefinition`), FE `features/financial-accounts`,
+      pagina `pages/financial-accounts-page.tsx`.
+    - Rate attive `invoice_installments`: `collected_amount`, `collected_at`, `residual_amount` generata,
+      `redistribution_snapshot`; NESSUN `financial_account_id`. Il conto e' su `invoices.financial_account_id`.
+      Incasso: `InvoiceCollectionRequest` + `InvoiceCollectionController` + `InvoiceCollectionService::record()`
+      (residuo con `ResidualMode` spread/new_installment) e `clear()`; multiplo: `InvoiceBulkCollectionRequest` +
+      `InvoiceBulkCollectionController`. FE `features/invoices/invoice-collection-dialog.tsx`,
+      `features/invoice-installments/installment-bulk-collection-dialog`.
+    - Rate passive `purchase_invoice_installments`: `paid_amount`, `paid_at`, `financial_account_id`;
+      il documento ha `purchase_invoices.financial_account_id`.
+    - Controllo di gestione > Conti (spec 0271): `CollectionAggregator` attribuisce gli incassi a
+      `invoices.financial_account_id`; `PaymentAggregator` usa COALESCE(rata, documento).
+    - Piano dei conti (spec 0348): `chart_accounts` (level group|account, kind cost|revenue sul mastro, code
+      univoco, es. mastri '60', conti '60.01'); sottoconti = `cost_types` / `revenue_types` con `chart_account_id`;
+      enum `ChartAccountKind`; `ChartOfAccountsTreeBuilder`; export/import spec 0349.
+    - Partitario (spec 0266): `App\Services\Ledger\LedgerCalculator`, aritmetica pura in centesimi interi con
+      saldo progressivo e di apertura: da riusare o affiancare, non duplicare.
+    - Allegati: `Attachment` polimorfo + trait `HasAttachments`, endpoint generico `/attachments`
+      (`attachable_type` alias della morph map), FE `features/attachments`.
+    - Permessi: nascono da `Policy::abilities()` (`permissions:sync`). Menu: `config/navigation/accounting.php`,
+      gruppo `accounting-finance` (voci `ledger`, `financial-accounts`). Export xlsx: `App\Exports\XlsxExportWriter`
+      (openspout). Envelope `ok()` / `handleControllerException()`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Saldo di apertura per conto (importo + data) con endpoint dedicato, permesso `financial-accounts.manageOpeningBalance` e audit.</item>
+      <item>Tipo di mastro `financial` nel piano dei conti, sottoconti finanziari (`treasury_types`) con CRUD come i sottoconti di ricavo, visibili nell'albero del piano; seed: mastro 90 "Movimenti finanziari" con conti 90.01 Giroconti, 90.02 Finanziamenti, 90.03 Tributi e contributi, 90.04 Rettifiche di saldo e un sottoconto ciascuno.</item>
+      <item>Movimenti manuali di tesoreria (`treasury_movements`): entrata, uscita, giroconto, rettifica; CRUD, griglia `treasury-movements`, allegati, audit.</item>
+      <item>Conto sulla rata attiva: colonna, scelta nella finestra di incasso singolo e multiplo, azzerata da "Annulla incasso"; `CollectionAggregator` passa a COALESCE(rata, fattura).</item>
+      <item>Estratto conto per conto: saldo di apertura del periodo, righe cronologiche con saldo progressivo (movimenti manuali + incassi + pagamenti), totali, saldo finale e a oggi; filtri; export xlsx.</item>
+      <item>Elenco saldi dei conti (per il selettore della pagina) ed elenco "da verificare" (incassi/pagamenti senza conto).</item>
+      <item>Permessi `treasury-movements.*`, voci di menu "Movimenti di tesoreria" ed "Estratto conto" in Contabilita' > Finanza.</item>
+      <item>Frontend: pagina movimenti con form, pagina estratto conto, editor del saldo di apertura nella scheda conto, campo conto nelle finestre di incasso, sottoconti finanziari nel piano dei conti, i18n IT/EN.</item>
+      <item>Guide in-app IT/EN: nuove `treasury-movements` e `account-statements`; aggiornate `financial-accounts`, `invoice-installments` (incasso), `chart-of-accounts`. Manuale Claude Docs o elenco sezioni.</item>
+    </in>
+    <out>
+      <item>Abbuono/stralcio (fase B), Quadro finanziario (fase C), spunta e riconciliazione bancaria, modelli ricorrenti, compensazioni (fase D).</item>
+      <item>Partita doppia, stato patrimoniale, IVA, F24 come documento, cespiti, ratei/risconti.</item>
+      <item>Import di estratti bancari (CSV, CBI, CAMT) e qualsiasi collegamento con le banche.</item>
+      <item>Export PDF dell'estratto conto (solo xlsx).</item>
+      <item>Export/import del piano dei conti (spec 0349) per i mastri finanziari: l'export continua a esportare solo costo/ricavo e l'import rifiuta il tipo financial; da estendere a parte.</item>
+      <item>Migrazione dal QNet legacy di movimenti o saldi; nessun cambio ai controller legacy.</item>
+      <item>Valuta diversa dall'euro, cambi.</item>
+      <item>Blocco dei movimenti per periodo chiuso (D-8).</item>
+      <item>Modifiche al Partitario (spec 0266) e alle altre pagine del Controllo di gestione oltre a `CollectionAggregator`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!--
+      Regola di saldo (unica, nel servizio `AccountStatementService`):
+        apertura(conto) = opening_balance alla data opening_balance_date ?? config('treasury.default_opening_date')
+        saldo(conto, data D) = apertura
+          + somma entrate/uscite/rettifiche manuali del conto con apertura <= movement_date <= D
+          + giroconti in ingresso (counterpart_account_id = conto) - giroconti in uscita (financial_account_id = conto)
+          + incassi: invoice_installments.collected_amount con COALESCE(installment.financial_account_id,
+            invoices.financial_account_id) = conto e apertura <= collected_at <= D
+          - pagamenti: purchase_invoice_installments.paid_amount con COALESCE(rata, purchase_invoices) = conto
+            e apertura <= paid_at <= D
+        Fatti prima della data di apertura del conto: esclusi dal saldo e dall'estratto.
+        Aritmetica in centesimi interi; importi in uscita come stringhe decimali "1234.56".
+
+      TreasuryMovement (shape comune di risposta):
+      { id, type: "income"|"expense"|"transfer"|"adjustment", direction: "in"|"out"|null (solo adjustment),
+        movement_date: "YYYY-MM-DD", amount: "123.45" (sempre > 0),
+        account: {id, name, type, company: {id, name}|null},
+        counterpart_account: {id, name, type, company}|null (solo transfer),
+        description: string, sub_account: {kind: "cost"|"revenue"|"financial", id, code, name},
+        registry: {id, name}|null, work_order: {id, code}|null,
+        attachments_count: int, created_by: {id, name}|null, created_at, updated_at }
+
+      Regole sottoconto (exactly one di cost_type_id / revenue_type_id / treasury_type_id):
+        income -> revenue_type o treasury_type; expense -> cost_type o treasury_type;
+        transfer e adjustment -> solo treasury_type. Sottoconti disattivati (is_active=false) non selezionabili
+        in creazione; restano validi sui movimenti gia' salvati.
+    -->
+
+    <endpoint method="PATCH" path="/api/financial-accounts/{financialAccount}/opening-balance">
+      <request>{ opening_balance: decimal (-999999999.99..999999999.99, 2 decimali), opening_balance_date: date }</request>
+      <response status="200">{ success, message, data: FinancialAccountResource }  // con opening_balance, opening_balance_date, current_balance</response>
+      <errors>401 · 403 senza financial-accounts.manageOpeningBalance · 404 · 422 (data dopo un movimento manuale gia' registrato sul conto)</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/financial-accounts/{financialAccount}">
+      <response status="200">FinancialAccountResource esistente + opening_balance: string, opening_balance_date: string (effettiva, default incluso), current_balance: string|null (null senza treasury-movements.view)</response>
+    </endpoint>
+
+    <endpoint method="GET|POST|PATCH|DELETE" path="/api/treasury-types[/{treasuryType}] + GET /api/treasury-types/for-select">
+      <request>{ chart_account_id: int (conto di un mastro kind=financial), code: string(20) univoco, name: string(150), description?: string(500), is_active: bool }</request>
+      <response status="200|201">{ success, message, data: { id, chart_account_id, code, name, description, is_active } }</response>
+      <errors>403 senza treasury-types.* · 409 delete se usato da un movimento · 422</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/treasury-movements">
+      <request>{ type, direction? (obbligatorio e solo per adjustment), movement_date, financial_account_id,
+        counterpart_account_id? (obbligatorio e solo per transfer, diverso dal conto, stessa societa' - D-6), amount (> 0, 2 decimali),
+        description (1..255), cost_type_id? | revenue_type_id? | treasury_type_id? (esattamente uno, regole sopra),
+        registry_id?, work_order_id? }</request>
+      <response status="201">{ success, message, data: TreasuryMovement }</response>
+      <errors>401 · 403 senza treasury-movements.create · 422 (regole sopra; movement_date prima della data di apertura del conto o del conto di destinazione)</errors>
+    </endpoint>
+    <endpoint method="GET|PATCH|DELETE" path="/api/treasury-movements/{treasuryMovement}">
+      <response status="200">{ success, message, data: TreasuryMovement }</response>
+      <errors>403 (view/update/delete) · 404 · 422</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/treasury-movements/rows (framework SSRM esistente)">
+      <response>colonne: movement_date, type, account, counterpart_account, company, description, sub_account,
+        registry, work_order, inflow, outflow, created_by; filtri e ordinamento da allow-list; export standard.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/financial-accounts/{financialAccount}/statement">
+      <request>query: date_from: date (default 1 del mese corrente), date_to: date (default oggi, >= date_from),
+        types?: ("manual_income"|"manual_expense"|"transfer"|"adjustment"|"collection"|"payment")[],
+        registry_id?: int, search?: string (descrizione/numero documento)</request>
+      <response status="200">{ success, message, data: {
+        account: {id, name, type, company},
+        opening: {date, balance},                // saldo di apertura del conto (D-1)
+        period_opening_balance: string,          // saldo al giorno prima di date_from (filtri esclusi)
+        rows: [{ key: "movement:12"|"collection:345"|"payment:67", date, source: "movement"|"collection"|"payment",
+                 type, description, registry: {id,name}|null, document: {kind: "invoice"|"purchase_invoice", id, number}|null,
+                 work_order: {id, code}|null, inflow: string|null, outflow: string|null, balance: string,
+                 movement_id: int|null }],
+        totals: {inflow, outflow}, closing_balance: string, balance_today: string,
+        filtered: bool                           // true se types/registry/search attivi: balance resta quello reale
+      } }</response>
+      <errors>401 · 403 senza treasury-movements.view · 404 · 422 (date invertite; righe oltre config('treasury.statement_max_rows', 5000): "restringi il periodo")</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/financial-accounts/{financialAccount}/statement/export">
+      <request>stessi parametri dello statement</request>
+      <response status="200">file xlsx (Content-Disposition attachment), stesse colonne e saldo progressivo</response>
+      <errors>403 senza treasury-movements.export · 422 come sopra</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/account-statements/balances">
+      <request>query: company_id?: int, date?: date (default oggi)</request>
+      <response status="200">{ success, message, data: { date, accounts: [{id, name, type, company, balance}], total: string } }</response>
+      <errors>403 senza treasury-movements.view</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/account-statements/unassigned">
+      <request>query: company_id?: int</request>
+      <response status="200">{ success, message, data: { count: int, rows: [{ source: "collection"|"payment", installment_id,
+        document: {kind, id, number}, registry: {id, name}|null, date, amount }] } }  // solo date >= default opening date</response>
+      <errors>403 senza treasury-movements.view</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/invoices/{invoice}/installments/{installment}/collection (esistente) + incasso multiplo (esistente)">
+      <request>payload esistente + financial_account_id?: int|null (conto esistente). Assente = null (vale il conto della fattura).</request>
+      <response>InvoiceInstallmentResource esistente + financial_account: {id, name}|null</response>
+      <errors>invariati + 422 se il conto non esiste</errors>
+    </endpoint>
+
+    <permissions>
+      treasury-movements: viewAny, view, create, update, delete, export, viewActivity
+        (consultazione = viewAny/view: movimenti, estratto, saldi, da verificare; gestione = create/update/delete).
+      treasury-types: viewAny, view, create, update, delete.
+      financial-accounts: + manageOpeningBalance.
+    </permissions>
+
+    <navigation group="accounting-finance">
+      treasury-movements -> /treasury-movements (treasury-movements.view), label navigation.treasuryMovements;
+      account-statements -> /account-statements (treasury-movements.view), label navigation.accountStatements.
+    </navigation>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un conto senza saldo di apertura, quando si legge lo statement, allora opening = {date: 2026-01-01, balance: "0.00"}; dopo PATCH opening-balance con 1000.00 al 2026-01-01 lo statement parte da 1000.00 e l'activitylog registra il valore prima/dopo. (Pest)</criterion>
+    <criterion id="AC-002">Dato un utente senza financial-accounts.manageOpeningBalance, quando fa PATCH opening-balance, allora 403 e nulla cambia; data di apertura successiva a un movimento manuale del conto -> 422. (Pest)</criterion>
+    <criterion id="AC-003">Dato il piano dei conti dopo la migrazione, allora esiste il mastro 90 kind=financial con i conti 90.01-90.04 e un sottoconto ciascuno; l'albero li mostra; la migrazione fa su e giu'. (Pest)</criterion>
+    <criterion id="AC-004">Dato un sottoconto finanziario usato da un movimento, quando lo si cancella, allora 409; senza permesso treasury-types.* 403; CRUD con 201/200 per chi ha il permesso. (Pest)</criterion>
+    <criterion id="AC-005">Dato POST treasury-movements per ciascun tipo valido, allora 201 con la shape TreasuryMovement e voce in activitylog. (Pest)</criterion>
+    <criterion id="AC-006">Dato un movimento con sottoconto incoerente col tipo (es. expense con revenue_type, transfer con cost_type), zero o due sottoconti, importo &lt;= 0, descrizione vuota, transfer senza o con conto di destinazione uguale, adjustment senza direction, oppure data prima dell'apertura, allora 422 e nessuna riga. (Pest)</criterion>
+    <criterion id="AC-007">Dato un giroconto da 200.00 tra due conti della stessa societa', allora il saldo del primo scende di 200.00, quello del secondo sale di 200.00 e il totale dei saldi della societa' non cambia; un giroconto tra conti di societa' diverse (o tra un conto con societa' e uno senza) risponde 422 e non crea righe. (Pest)</criterion>
+    <criterion id="AC-008">Dato un movimento modificato e poi cancellato, allora lo statement riflette ogni passo e l'activitylog ha le voci updated (prima/dopo) e deleted. (Pest)</criterion>
+    <criterion id="AC-009">Dato un utente con solo treasury-movements.view, allora legge griglia, statement, saldi e da verificare (200) ma POST/PATCH/DELETE danno 403; senza alcun permesso tesoreria tutti 403. (Pest)</criterion>
+    <criterion id="AC-010">Dato un conto con apertura 1000.00, un incasso rata 500.00 (conto sulla rata), un pagamento rata passiva 200.00 (conto solo sul documento), un'uscita manuale 50.00 e un giroconto in ingresso 100.00, quando si chiede lo statement, allora le righe sono in ordine di data con inflow/outflow e balance progressivo, closing_balance = 1350.00 e i totali coincidono. (Pest)</criterion>
+    <criterion id="AC-011">Dati movimenti e incassi prima della data di apertura del conto, allora non compaiono nello statement ne' nel saldo. (Pest)</criterion>
+    <criterion id="AC-012">Dato uno statement con date_from successiva all'apertura, allora period_opening_balance = saldo al giorno prima; con filtri attivi (types/registry/search) le righe filtrate mantengono il balance reale e filtered = true. (Pest)</criterion>
+    <criterion id="AC-013">Dato un periodo con piu' righe di statement_max_rows, allora 422 con messaggio di restringere il periodo; date_to prima di date_from -> 422. (Pest)</criterion>
+    <criterion id="AC-014">Dato l'export dello statement, allora risponde un xlsx con le stesse righe, colonne e saldo progressivo della risposta JSON; senza treasury-movements.export 403. (Pest)</criterion>
+    <criterion id="AC-015">Dati incassi e pagamenti dal 2026-01-01 senza conto ne' sulla rata ne' sul documento, allora compaiono in /account-statements/unassigned e in nessun saldo; assegnato il conto (sulla rata), escono dall'elenco ed entrano nel saldo. (Pest)</criterion>
+    <criterion id="AC-016">Dato /account-statements/balances con company_id, allora solo i conti di quella societa' con il saldo alla data; senza company_id tutti i conti e total = somma. (Pest)</criterion>
+    <criterion id="AC-017">Dato un incasso (singolo e multiplo) con financial_account_id, allora la rata salva il conto e lo restituisce; senza il campo resta null e vale il conto della fattura; "Annulla incasso" lo azzera; Controllo di gestione > Conti attribuisce l'incasso al conto della rata (COALESCE). (Pest)</criterion>
+    <criterion id="AC-018">Dato un aggiornamento incrementale dal legacy su una rata attiva gia' incassata con conto scelto in qnet2, allora financial_account_id resta invariato. (Pest)</criterion>
+    <criterion id="AC-019">Dato il menu con treasury-movements.view, allora compaiono "Movimenti di tesoreria" ed "Estratto conto" in Contabilita' > Finanza; senza permesso no. (Pest + Vitest)</criterion>
+    <criterion id="AC-020">Dato il form del movimento, quando si cambia tipo, allora compaiono solo i campi pertinenti (destinazione per giroconto, direzione per rettifica) e solo i sottoconti ammessi; errori annunciati con la triade aria; importo e descrizione obbligatori. (Vitest)</criterion>
+    <criterion id="AC-021">Data la pagina Estratto conto, quando si sceglie un conto e un periodo, allora mostra saldo iniziale del periodo, righe con saldo progressivo, totali e saldo finale; il conto e' preselezionabile da URL (?account=); il pulsante export scarica il file; il riquadro "da verificare" mostra il conteggio. (Vitest)</criterion>
+    <criterion id="AC-022">Data la scheda di un conto, con manageOpeningBalance si vede e modifica il saldo di apertura, senza si vede in sola lettura; il saldo attuale compare solo con treasury-movements.view. (Vitest)</criterion>
+    <criterion id="AC-023">Data la finestra di incasso (singola e multipla), allora c'e' il campo Conto proposto dal conto della fattura, modificabile o svuotabile, inviato come financial_account_id. (Vitest)</criterion>
+    <criterion id="AC-024">Dato il piano dei conti, allora i mastri finanziari e i loro sottoconti compaiono con etichetta "Finanziario" e si gestiscono come quelli di ricavo. (Vitest)</criterion>
+    <criterion id="AC-025">Le guide in-app treasury-movements e account-statements esistono IT/EN con gli stessi id di sezione; financial-accounts, invoice-installments e chart-of-accounts aggiornate; help-content-parity verde. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: export con `XlsxExportWriter` (openspout) gia' presente.</item>
+    <item>Authz server-side su ogni endpoint tramite Policy; permessi da `abilities()`; nessun throttle (decisione 2026-07-15).</item>
+    <item>Regola di saldo in UN solo servizio (`AccountStatementService`), usato da statement, export, balances e scheda conto; riuso dell'aritmetica in centesimi di `LedgerCalculator` dove possibile, nessuna somma in float.</item>
+    <item>Query sullo statement parametrizzate; filtri e ordinamenti della griglia da allow-list nella `TableDefinition`; nessun `whereRaw` con input.</item>
+    <item>Migrazioni reversibili; indici su (financial_account_id, movement_date), (counterpart_account_id, movement_date), su `invoice_installments.financial_account_id`; FK `restrictOnDelete` dai movimenti ai conti e ai sottoconti (un conto con movimenti non si cancella: 409 gia' gestito come "in uso").</item>
+    <item>Identificatori in inglese (`treasury_movements`, `treasury_types`, `TreasuryMovementType`), testi a schermo via i18n IT/EN.</item>
+    <item>Legacy (backend.md §9): nessun cambio ai controller legacy; il writer incrementale delle rate attive non tocca `financial_account_id` se il legacy non lo invia.</item>
+    <item>File sotto 300 righe (500 tetto); orchestrazione con `// Step N`; nessun dead code.</item>
+    <item>Frontend: dati server solo via TanStack Query, client axios di progetto, RHF + Zod, UI compatta, superfici da token, responsive 375/768/1024.</item>
+    <item>Git: nessun commit senza via libera esplicito (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

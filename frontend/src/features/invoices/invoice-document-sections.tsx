@@ -41,6 +41,7 @@ export function InvoiceDocumentSections({ invoice, onChanged, lines }: InvoiceDo
       <InvoiceCollectionDialog
         installment={actions.collectTarget}
         installments={invoice.installments}
+        defaultAccount={invoice.financial_account}
         onClose={actions.closeCollect}
         onSaved={onChanged}
       />

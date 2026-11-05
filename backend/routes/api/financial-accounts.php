@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\FinancialAccounts\FinancialAccountController;
 use App\Http\Controllers\FinancialAccounts\FinancialAccountForSelectController;
+use App\Http\Controllers\Treasury\OpeningBalanceController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -25,3 +26,4 @@ Route::get('financial-accounts/{financialAccount}/card-number', [FinancialAccoun
 Route::post('financial-accounts', [FinancialAccountController::class, 'store']);
 Route::match(['put', 'patch'], 'financial-accounts/{financialAccount}', [FinancialAccountController::class, 'update']);
 Route::delete('financial-accounts/{financialAccount}', [FinancialAccountController::class, 'destroy']);
+Route::patch('financial-accounts/{financialAccount}/opening-balance', OpeningBalanceController::class);

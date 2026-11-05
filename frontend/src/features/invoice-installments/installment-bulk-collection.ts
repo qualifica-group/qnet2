@@ -65,6 +65,7 @@ export function buildBulkCollectionSchema(t: TFunction, targets: readonly BulkCo
   return z
     .object({
       collected_at: z.string().min(1, t('invoiceInstallments.bulkCollection.errors.dateRequired')),
+      financial_account_id: z.number().int().nullable(),
       amounts: z.array(z.string()),
     })
     .superRefine((values, ctx) => {
@@ -114,5 +115,8 @@ export function buildBulkCollectionPayload(
       rowIndexes.push(index)
     }
   })
-  return { payload: { collected_at: values.collected_at, items }, rowIndexes }
+  return {
+    payload: { collected_at: values.collected_at, financial_account_id: values.financial_account_id, items },
+    rowIndexes,
+  }
 }

@@ -31,9 +31,9 @@ final class InvoiceBulkCollector
      * @param  array<int, array{installment_id: int, collected_amount: string}>  $items
      * @return array{collected_count: int, residual_count: int}
      */
-    public function handle(User $actor, array $items, string $collectedAt): array
+    public function handle(User $actor, array $items, string $collectedAt, ?int $financialAccountId = null): array
     {
-        return DB::transaction(function () use ($actor, $items, $collectedAt): array {
+        return DB::transaction(function () use ($actor, $items, $collectedAt, $financialAccountId): array {
             // Step 1: lock the invoices involved and read the selected installments
             $installments = $this->lockedInstallments(array_column($items, 'installment_id'));
 
@@ -48,6 +48,10 @@ final class InvoiceBulkCollector
             foreach ($items as $item) {
                 $installment = $installments->get($item['installment_id']);
                 $payload = ['collected_amount' => $item['collected_amount'], 'collected_at' => $collectedAt];
+
+                if ($financialAccountId !== null) {
+                    $payload['financial_account_id'] = $financialAccountId;
+                }
 
                 if ($this->amounts->isPartial($item['collected_amount'], $installment->amount)) {
                     $payload += [

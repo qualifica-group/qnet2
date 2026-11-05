@@ -3,13 +3,14 @@ import { useDeleteEntry } from '@/features/chart-of-accounts/use-delete-entry'
 import type { RowActionKey } from '@/features/chart-of-accounts/tree-actions'
 import type { TreeRow } from '@/features/chart-of-accounts/tree-model'
 import type { SheetState } from '@/features/chart-of-accounts/sheet-state'
-import { CHART_ACCOUNTS_DOMAIN, REVENUE_TYPES_DOMAIN } from '@/features/chart-of-accounts/types'
+import { CHART_ACCOUNTS_DOMAIN, REVENUE_TYPES_DOMAIN, TREASURY_TYPES_DOMAIN } from '@/features/chart-of-accounts/types'
 import { COST_TYPES_DOMAIN } from '@/features/cost-types/types'
 
 /** Activity-log registry key of the resource a row belongs to. */
 function activityResource(row: TreeRow): string {
   if (row.type !== 'sub') return CHART_ACCOUNTS_DOMAIN
-  return row.node.source === 'revenue_type' ? REVENUE_TYPES_DOMAIN : COST_TYPES_DOMAIN
+  if (row.node.source === 'revenue_type') return REVENUE_TYPES_DOMAIN
+  return row.node.source === 'treasury_type' ? TREASURY_TYPES_DOMAIN : COST_TYPES_DOMAIN
 }
 
 function rowId(row: TreeRow): number {

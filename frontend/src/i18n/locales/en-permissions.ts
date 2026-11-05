@@ -95,6 +95,7 @@ export const permissions = {
     viewInvoices: 'View proforma and invoices',
     managePayments: 'Manage payments',
     manageCompensation: 'Manage compensation data',
+    manageOpeningBalance: 'Manage opening balance',
     // Spec 0279: absence calendar, three visibility levels.
     calendarOwn: 'Calendar: own only',
     calendarAll: 'Calendar: everyone',
@@ -150,6 +151,8 @@ export const permissions = {
     tags: 'Tags',
     'units-of-measure': 'Units of Measure',
     'financial-accounts': 'Financial accounts',
+    'treasury-movements': 'Treasury movements',
+    'treasury-types': 'Financial sub-accounts',
     'proforma-requests': 'Proforma requests',
     'purchase-requests': 'Purchase requests (RDA)',
     'purchase-orders': 'Purchase orders (ODA)',

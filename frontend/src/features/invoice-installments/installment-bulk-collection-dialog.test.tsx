@@ -13,6 +13,22 @@ vi.mock('@/features/invoice-installments/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/invoice-installments/api')>()),
   bulkCollectInstallments: (payload: BulkCollectionPayload) => bulkMock(payload),
 }))
+vi.mock('@/features/purchase-invoice-installments/purchase-financial-account-select', () => ({
+  PurchaseFinancialAccountSelect: (props: {
+    value: number | null
+    onChange: (value: number | null) => void
+    label: string
+  }) => (
+    <div>
+      <button type="button" aria-label={props.label} onClick={() => props.onChange(9)}>
+        {props.value === null ? 'no account' : `account ${props.value}`}
+      </button>
+      <button type="button" onClick={() => props.onChange(null)}>
+        clear account
+      </button>
+    </div>
+  ),
+}))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const TARGETS: BulkCollectionTarget[] = [
@@ -93,5 +109,38 @@ describe('InstallmentBulkCollectionDialog (spec 0198 AC-010)', () => {
     fireEvent.click(saveButton())
 
     expect(await screen.findByText('This installment has already been collected.')).toBeInTheDocument()
+  })
+
+  it('spec 0355 AC-023: the account is empty by default, explains it and is sent as null', async () => {
+    renderDialog()
+
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('no account')
+    expect(screen.getByText(/each collection goes to the account of its own invoice/)).toBeInTheDocument()
+
+    typeAmount(0, '100')
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    fireEvent.click(saveButton())
+
+    await waitFor(() => expect(bulkMock).toHaveBeenCalledTimes(1))
+    expect(bulkMock.mock.calls[0][0]).toMatchObject({ financial_account_id: null })
+  })
+
+  it('spec 0355 AC-023: the chosen account is sent and can be cleared again', async () => {
+    renderDialog()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('account 9')
+    typeAmount(0, '100')
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(bulkMock).toHaveBeenCalledTimes(1))
+    expect(bulkMock.mock.calls[0][0]).toMatchObject({ financial_account_id: 9 })
+
+    bulkMock.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'clear account' }))
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(bulkMock).toHaveBeenCalledTimes(1))
+    expect(bulkMock.mock.calls[0][0]).toMatchObject({ financial_account_id: null })
   })
 })

@@ -10,6 +10,7 @@ enum ChartAccountKind: string
 {
     case Cost = 'cost';
     case Revenue = 'revenue';
+    case Financial = 'financial';
 
     /**
      * @return array<int, string>

@@ -2,16 +2,18 @@
 
 namespace App\Services\ChartOfAccounts;
 
+use App\Enums\ChartAccountKind;
 use App\Enums\ChartAccountLevel;
 use App\Models\ChartAccount;
 use App\Models\CostType;
 use App\Models\RevenueType;
+use App\Models\TreasuryType;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
 /**
  * Builds the whole chart tree for GET /api/chart-of-accounts/tree (spec 0348,
- * D-12): three fixed queries (groups+accounts, cost types, revenue types),
+ * D-12): four fixed queries (groups+accounts, cost, revenue and treasury types),
  * assembled and naturally sorted by code in PHP (`60.2` before `60.10`).
  */
 class ChartOfAccountsTreeBuilder
@@ -21,13 +23,14 @@ class ChartOfAccountsTreeBuilder
      */
     public function build(User $actor): array
     {
-        // Step 1: the three queries
+        // Step 1: the four queries
         $nodes = ChartAccount::query()->get();
         $costTypes = CostType::query()->get();
         $revenueTypes = RevenueType::query()->get();
+        $treasuryTypes = TreasuryType::query()->get();
 
         // Step 2: sub-accounts grouped by parent account
-        $subAccountsByAccount = $this->groupByAccount($costTypes, $revenueTypes);
+        $subAccountsByAccount = $this->groupByAccount($costTypes, $revenueTypes, $treasuryTypes);
 
         // Step 3: assemble groups > accounts > sub-accounts
         $accountsByGroup = $nodes->where('level', ChartAccountLevel::Account)->groupBy('parent_id');
@@ -113,13 +116,33 @@ class ChartOfAccountsTreeBuilder
     }
 
     /**
-     * Placed cost types and all revenue types, keyed by their parent account id.
+     * @return array<string, mixed>
+     */
+    private function treasurySubAccount(TreasuryType $type): array
+    {
+        return [
+            'id' => $type->id,
+            'source' => 'treasury_type',
+            'kind' => ChartAccountKind::Financial->value,
+            'code' => $type->code,
+            'name' => $type->name,
+            'description' => $type->description,
+            'is_active' => $type->is_active,
+            'nature' => null,
+            'color' => null,
+            'is_institution_commission_default' => false,
+        ];
+    }
+
+    /**
+     * Placed cost types and all revenue and treasury types, keyed by their parent account id.
      *
      * @param  Collection<int, CostType>  $costTypes
      * @param  Collection<int, RevenueType>  $revenueTypes
+     * @param  Collection<int, TreasuryType>  $treasuryTypes
      * @return array<int, array<int, array<string, mixed>>>
      */
-    private function groupByAccount(Collection $costTypes, Collection $revenueTypes): array
+    private function groupByAccount(Collection $costTypes, Collection $revenueTypes, Collection $treasuryTypes): array
     {
         $grouped = [];
 
@@ -129,6 +152,10 @@ class ChartOfAccountsTreeBuilder
 
         foreach ($revenueTypes as $type) {
             $grouped[$type->chart_account_id][] = $this->revenueSubAccount($type);
+        }
+
+        foreach ($treasuryTypes as $type) {
+            $grouped[$type->chart_account_id][] = $this->treasurySubAccount($type);
         }
 
         return $grouped;
@@ -167,6 +194,7 @@ class ChartOfAccountsTreeBuilder
             ],
             'revenue_types' => $resolve('revenue-types'),
             'cost_types' => $resolve('cost-types'),
+            'treasury_types' => $resolve('treasury-types'),
         ];
     }
 }

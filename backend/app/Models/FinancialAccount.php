@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'type', 'name', 'company_id', 'iban', 'account_number', 'address_line', 'postal_code',
     'country_id', 'state_id', 'province_id', 'city_id', 'card_type', 'card_circuit',
     'linked_account_id', 'card_holder', 'card_number', 'card_last_four', 'card_expiry', 'notes',
+    'opening_balance', 'opening_balance_date',
 ])]
 #[Hidden(['card_number'])]
 class FinancialAccount extends BaseModel
@@ -41,6 +42,8 @@ class FinancialAccount extends BaseModel
             'card_type' => FinancialCardType::class,
             'card_circuit' => FinancialCardCircuit::class,
             'card_number' => 'encrypted',
+            'opening_balance' => 'decimal:2',
+            'opening_balance_date' => 'date',
         ];
     }
 

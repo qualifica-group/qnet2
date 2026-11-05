@@ -12,6 +12,22 @@ vi.mock('@/features/invoices/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/invoices/api')>()),
   recordCollection: (installmentId: number, body: InvoiceCollectionPayload) => recordMock(installmentId, body),
 }))
+vi.mock('@/features/purchase-invoice-installments/purchase-financial-account-select', () => ({
+  PurchaseFinancialAccountSelect: (props: {
+    value: number | null
+    onChange: (value: number | null) => void
+    label: string
+  }) => (
+    <div>
+      <button type="button" aria-label={props.label} onClick={() => props.onChange(9)}>
+        {props.value === null ? 'no account' : `account ${props.value}`}
+      </button>
+      <button type="button" onClick={() => props.onChange(null)}>
+        clear account
+      </button>
+    </div>
+  ),
+}))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function installment(sequence: number, overrides: Partial<InvoiceInstallment> = {}): InvoiceInstallment {
@@ -31,11 +47,15 @@ function installment(sequence: number, overrides: Partial<InvoiceInstallment> = 
 const FIRST = installment(1)
 const PLAN = [FIRST, installment(2), installment(3)]
 
-function renderDialog(target: InvoiceInstallment, installments: InvoiceInstallment[]) {
+function renderDialog(
+  target: InvoiceInstallment,
+  installments: InvoiceInstallment[],
+  defaultAccount: { id: number; name: string } | null = null,
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <InvoiceCollectionDialog installment={target} installments={installments} onClose={vi.fn()} />
+      <InvoiceCollectionDialog installment={target} installments={installments} defaultAccount={defaultAccount} onClose={vi.fn()} />
     </QueryClientProvider>,
   )
 }
@@ -124,4 +144,36 @@ describe('InvoiceCollectionDialog residual choice (spec 0196 AC-022)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('The new installment date is required.')
     expect(recordMock).not.toHaveBeenCalled()
   })
+})
+
+describe('InvoiceCollectionDialog account field (spec 0355 AC-023)', () => {
+  it('proposes the invoice account and sends it as financial_account_id', async () => {
+    renderDialog(FIRST, PLAN, { id: 4, name: 'Main bank' })
+
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('account 4')
+    fireEvent.click(screen.getByRole('button', { name: 'Record' }))
+
+    await waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+    expect(recordMock.mock.calls[0][1]).toMatchObject({ collected_amount: 400, financial_account_id: 4 })
+  })
+
+  it('proposes the installment own account over the invoice one', async () => {
+    renderDialog(installment(1, { financial_account: { id: 6, name: 'Cash' } }), PLAN, { id: 4, name: 'Main bank' })
+
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('account 6')
+  })
+
+  it('lets the user change it and clear it (sent as null)', async () => {
+    renderDialog(FIRST, PLAN, { id: 4, name: 'Main bank' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('account 9')
+    fireEvent.click(screen.getByRole('button', { name: 'clear account' }))
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('no account')
+    fireEvent.click(screen.getByRole('button', { name: 'Record' }))
+
+    await waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+    expect(recordMock.mock.calls[0][1]).toMatchObject({ financial_account_id: null })
+  })
+
 })

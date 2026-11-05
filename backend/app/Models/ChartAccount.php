@@ -68,6 +68,14 @@ class ChartAccount extends BaseModel
     }
 
     /**
+     * @return HasMany<TreasuryType, $this>
+     */
+    public function treasuryTypes(): HasMany
+    {
+        return $this->hasMany(TreasuryType::class);
+    }
+
+    /**
      * The group's own kind, or the parent group's for an account. Requires the
      * `parent` relation loaded on an account.
      */
@@ -84,6 +92,7 @@ class ChartAccount extends BaseModel
     {
         return $this->children()->exists()
             || $this->costTypes()->exists()
-            || $this->revenueTypes()->exists();
+            || $this->revenueTypes()->exists()
+            || $this->treasuryTypes()->exists();
     }
 }

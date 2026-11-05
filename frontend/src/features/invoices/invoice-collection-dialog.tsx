@@ -7,25 +7,29 @@ import { formatDate } from '@/lib/formatting/date-display'
 import { formatEuro, parseNumberInput } from '@/features/invoices/invoice-format'
 import { InvoiceCollectionResidualFields } from '@/features/invoices/invoice-collection-residual-fields'
 import { useInvoiceCollectionForm } from '@/features/invoices/use-invoice-collection-form'
-import type { InvoiceInstallment } from '@/features/invoices/types'
+import { CollectionAccountField } from '@/features/invoices/collection-account-field'
+import type { InvoiceInstallment, NamedRef } from '@/features/invoices/types'
 
 interface CollectionFormProps {
   installment: InvoiceInstallment
   installments: readonly InvoiceInstallment[]
+  defaultAccount: NamedRef | null
   onClose: () => void
   onSaved?: () => void
 }
 
-function CollectionForm({ installment, installments, onClose, onSaved }: CollectionFormProps) {
+function CollectionForm({ installment, installments, defaultAccount, onClose, onSaved }: CollectionFormProps) {
   const { t } = useTranslation()
-  const { form, submit, isPending, isPartial, canSpread, residualMode, residualAmount } = useInvoiceCollectionForm(
-    installment,
-    installments,
-    () => {
-      onSaved?.()
-      onClose()
-    },
-  )
+  const { form, submit, isPending, isPartial, canSpread, residualMode, residualAmount, proposedAccount } =
+    useInvoiceCollectionForm(
+      installment,
+      installments,
+      () => {
+        onSaved?.()
+        onClose()
+      },
+      defaultAccount,
+    )
 
   return (
     <Form {...form}>
@@ -65,6 +69,18 @@ function CollectionForm({ installment, installments, onClose, onSaved }: Collect
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="financial_account_id"
+          render={({ field }) => (
+            <CollectionAccountField
+              value={field.value}
+              onChange={field.onChange}
+              selected={proposedAccount}
+              hint={t('treasuryCollection.singleHint')}
+            />
+          )}
+        />
         {isPartial ? (
           <InvoiceCollectionResidualFields
             form={form}
@@ -90,13 +106,21 @@ interface InvoiceCollectionDialogProps {
   installment: InvoiceInstallment | null
   /** All installments of the document: they decide whether the residual can be spread. */
   installments: readonly InvoiceInstallment[]
+  /** Account of the invoice, proposed in the Account field (spec 0355). */
+  defaultAccount?: NamedRef | null
   onClose: () => void
   /** Called after a successful save (the caller refreshes its grid). */
   onSaved?: () => void
 }
 
 /** "Registra incasso" for one installment; the form remounts per installment via `key`. */
-export function InvoiceCollectionDialog({ installment, installments, onClose, onSaved }: InvoiceCollectionDialogProps) {
+export function InvoiceCollectionDialog({
+  installment,
+  installments,
+  defaultAccount = null,
+  onClose,
+  onSaved,
+}: InvoiceCollectionDialogProps) {
   const { t } = useTranslation()
   return (
     <Dialog open={installment !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
@@ -118,6 +142,7 @@ export function InvoiceCollectionDialog({ installment, installments, onClose, on
             key={installment.id}
             installment={installment}
             installments={installments}
+            defaultAccount={defaultAccount}
             onClose={onClose}
             onSaved={onSaved}
           />

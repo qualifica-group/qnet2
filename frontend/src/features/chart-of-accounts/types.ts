@@ -7,10 +7,11 @@ import type { CostTypeNature } from '@/features/cost-types/types'
 
 export const CHART_ACCOUNTS_DOMAIN = 'chart-accounts'
 export const REVENUE_TYPES_DOMAIN = 'revenue-types'
+export const TREASURY_TYPES_DOMAIN = 'treasury-types'
 
-export type ChartAccountKind = 'cost' | 'revenue'
+export type ChartAccountKind = 'cost' | 'revenue' | 'financial'
 export type ChartAccountLevel = 'group' | 'account'
-export type SubAccountSource = 'cost_type' | 'revenue_type'
+export type SubAccountSource = 'cost_type' | 'revenue_type' | 'treasury_type'
 
 /** Leaf of the plan: a cost type (cost groups) or a revenue type (revenue groups). */
 export interface SubAccount {
@@ -63,6 +64,8 @@ export interface ChartAccountsAbilities extends ResourceAbilities {
 export interface ChartTreeAbilities {
   chart_accounts: ChartAccountsAbilities
   revenue_types: ResourceAbilities
+  /** Spec 0355: financial sub-accounts. */
+  treasury_types: ResourceAbilities
   cost_types: ResourceAbilities
 }
 
@@ -114,6 +117,19 @@ export interface UpdateChartAccountPayload {
   description?: string | null
   is_active?: boolean
 }
+
+/** Spec 0355: same shape as a revenue type. */
+export type TreasuryTypeResource = RevenueTypeResource
+
+export interface TreasuryTypePayload {
+  chart_account_id: number
+  code: string
+  name: string
+  description: string | null
+  is_active: boolean
+}
+
+export type UpdateTreasuryTypePayload = Partial<TreasuryTypePayload>
 
 export interface RevenueTypePayload {
   chart_account_id: number

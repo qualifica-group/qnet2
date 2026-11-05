@@ -1,10 +1,16 @@
-import type { ChartAccountFormValues, RevenueTypeFormValues } from '@/features/chart-of-accounts/chart-account-schema'
+import type {
+  ChartAccountFormValues,
+  RevenueTypeFormValues,
+  TreasuryTypeFormValues,
+} from '@/features/chart-of-accounts/chart-account-schema'
 import type {
   ChartAccountLevel,
   CreateChartAccountPayload,
   RevenueTypePayload,
   UpdateChartAccountPayload,
+  TreasuryTypePayload,
   UpdateRevenueTypePayload,
+  UpdateTreasuryTypePayload,
 } from '@/features/chart-of-accounts/types'
 
 /** A blank description is sent as `null`. */
@@ -75,5 +81,28 @@ export function buildUpdateRevenueTypePayload(
   if ((values.is_institution_commission_default ?? false) !== (original.is_institution_commission_default ?? false)) {
     payload.is_institution_commission_default = values.is_institution_commission_default ?? false
   }
+  return payload
+}
+
+export function buildTreasuryTypePayload(values: TreasuryTypeFormValues): TreasuryTypePayload {
+  return {
+    chart_account_id: values.chart_account_id,
+    code: values.code,
+    name: values.name,
+    description: descriptionValue(values.description),
+    is_active: values.is_active,
+  }
+}
+
+export function buildUpdateTreasuryTypePayload(
+  values: TreasuryTypeFormValues,
+  original: SavedChartAccount & { chart_account_id?: number },
+): UpdateTreasuryTypePayload {
+  const payload: UpdateTreasuryTypePayload = {}
+  if (values.code !== original.code) payload.code = values.code
+  if (values.name !== original.name) payload.name = values.name
+  if (descriptionValue(values.description) !== original.description) payload.description = descriptionValue(values.description)
+  if (values.is_active !== original.is_active) payload.is_active = values.is_active
+  if (values.chart_account_id !== original.chart_account_id) payload.chart_account_id = values.chart_account_id
   return payload
 }

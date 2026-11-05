@@ -20,7 +20,7 @@ import {
   type InvoiceCollectionFormValues,
 } from '@/features/invoices/invoice-schema'
 import { useRecordCollection } from '@/features/invoices/use-invoice-queries'
-import type { InvoiceInstallment } from '@/features/invoices/types'
+import type { InvoiceInstallment, NamedRef } from '@/features/invoices/types'
 
 const CONFLICT_STATUS = 409
 
@@ -32,6 +32,8 @@ export function useInvoiceCollectionForm(
   installment: InvoiceInstallment,
   installments: readonly InvoiceInstallment[],
   onDone: () => void,
+  /** Account of the invoice, proposed when the installment has none of its own (spec 0355). */
+  defaultAccount: NamedRef | null = null,
 ) {
   const { t, i18n } = useTranslation()
   const installmentAmount = Number(installment.amount)
@@ -47,6 +49,7 @@ export function useInvoiceCollectionForm(
     defaultValues: {
       collected_amount: installmentAmount,
       collected_at: todayIso(),
+      financial_account_id: (installment.financial_account ?? defaultAccount)?.id ?? null,
       residual_mode: canSpread ? 'spread' : 'new_installment',
       residual_due_date: addDaysIso(installment.due_date, RESIDUAL_INSTALLMENT_DAYS),
     },
@@ -72,6 +75,7 @@ export function useInvoiceCollectionForm(
           const mapped = applyServerValidationErrors(error, form.setError, [
             'collected_amount',
             'collected_at',
+            'financial_account_id',
             'residual_mode',
             'residual_due_date',
           ])
@@ -86,6 +90,7 @@ export function useInvoiceCollectionForm(
   return {
     form,
     submit,
+    proposedAccount: installment.financial_account ?? defaultAccount,
     isPending: mutation.isPending,
     isPartial,
     canSpread,

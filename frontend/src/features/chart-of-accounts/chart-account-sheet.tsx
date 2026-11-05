@@ -11,13 +11,14 @@ import {
 import { buildChartAccountSchema, type ChartAccountFormValues } from '@/features/chart-of-accounts/chart-account-schema'
 import { EntrySheet } from '@/features/chart-of-accounts/entry-sheet'
 import { EntrySelectField, EntrySwitchField, EntryTextField } from '@/features/chart-of-accounts/entry-fields'
+import { chartKindLabel } from '@/features/chart-of-accounts/kind-label'
 import type { AccountSheetState } from '@/features/chart-of-accounts/sheet-state'
 import type { ChartAccountKind, ChartAccountLevel, ChartGroup } from '@/features/chart-of-accounts/types'
 import { useEntrySubmit } from '@/features/chart-of-accounts/use-entry-submit'
 
 const FORM_ID = 'chart-account-form'
 const ERROR_FIELDS = ['code', 'name', 'description', 'kind', 'parent_id', 'is_active'] as const
-const KINDS: readonly ChartAccountKind[] = ['cost', 'revenue']
+const KINDS: readonly ChartAccountKind[] = ['cost', 'revenue', 'financial']
 
 interface ChartAccountSheetProps {
   state: AccountSheetState
@@ -93,7 +94,7 @@ export function ChartAccountSheet({ state, groups, onClose }: ChartAccountSheetP
             <EntrySelectField<ChartAccountFormValues>
               name="kind"
               label={t('chartOfAccounts.form.kind')}
-              options={KINDS.map((kind) => ({ value: kind, label: t(`chartOfAccounts.kind.${kind}`) }))}
+              options={KINDS.map((kind) => ({ value: kind, label: chartKindLabel(t, kind) }))}
               parse={(value) => value}
               required
               disabled={kindLocked}

@@ -112,6 +112,7 @@ export function buildInvoiceCollectionSchema(t: TFunction, { installmentAmount, 
         .gt(0, t('invoices.collection.errors.amountPositive'))
         .max(installmentAmount, t('invoices.collection.errors.amountExceeds')),
       collected_at: z.string().min(1, t('invoices.collection.errors.dateRequired')),
+      financial_account_id: z.number().int().nullable(),
       residual_mode: z.enum(RESIDUAL_MODES).optional(),
       residual_due_date: z.string().optional(),
     })

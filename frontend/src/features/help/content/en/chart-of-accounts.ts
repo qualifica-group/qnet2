@@ -27,9 +27,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Level', 'What it is'],
           rows: [
-            ['Group', 'The top level (for example 61 Services). It has the **type Cost or Revenue**, which accounts and sub-accounts inherit.'],
+            ['Group', 'The top level (for example 61 Services). It has the **type Cost, Revenue or Financial**, which accounts and sub-accounts inherit.'],
             ['Account', 'Sits under a group (for example 61.03 Utilities). It collects sub-accounts.'],
-            ['Sub-account', 'The final entry. In **Cost** groups it is a **cost type**; in **Revenue** groups it is a revenue sub-account.'],
+            ['Sub-account', 'The final entry. In **Cost** groups it is a **cost type**; in **Revenue** groups it is a revenue sub-account; in **Financial** groups it is a financial sub-account.'],
           ],
         },
         {
@@ -156,6 +156,15 @@ const guide: HelpGuide = {
             'Pickers only list **active** sub-accounts with active account and group.',
           ],
         },
+      ],
+    },
+    {
+      id: 'financial-sub-accounts',
+      title: 'Financial groups and sub-accounts',
+      blocks: [
+        { type: 'paragraph', text: 'Besides **Cost** and **Revenue**, a group can be of type **Financial**. Its sub-accounts, the **financial sub-accounts**, classify money movements rather than costs or revenues: they are used in **Treasury movements** and are the only ones allowed for **Transfers** and **Balance adjustments** (for income and expenses you can also pick revenue and cost ones).' },
+        { type: 'paragraph', text: 'The starting structure has **group 90 Financial movements** with the accounts **90.01 Transfers**, **90.02 Loans**, **90.03 Taxes and contributions**, **90.04 Balance adjustments** and one sub-account each. It is only a proposal: edit, add and deactivate it like the rest of the chart, using **New sub-account** on the financial account.' },
+        { type: 'note', text: 'A financial sub-account already used by a movement cannot be deleted: deactivate it. Chart export and import currently cover costs and revenues only.' },
       ],
     },
     {

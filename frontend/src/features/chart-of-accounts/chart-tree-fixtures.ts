@@ -1,4 +1,4 @@
-import type { ChartTree, ChartTreeAbilities, SubAccount } from '@/features/chart-of-accounts/types'
+import type { ChartGroup, ChartTree, ChartTreeAbilities, SubAccount } from '@/features/chart-of-accounts/types'
 
 const ALL = { create: true, update: true, delete: true, view_activity: true }
 const NONE = { create: false, update: false, delete: false, view_activity: false }
@@ -6,11 +6,13 @@ const NONE = { create: false, update: false, delete: false, view_activity: false
 export const ALL_ABILITIES: ChartTreeAbilities = {
   chart_accounts: { ...ALL, export: true, import: true },
   revenue_types: ALL,
+  treasury_types: ALL,
   cost_types: ALL,
 }
 export const NO_ABILITIES: ChartTreeAbilities = {
   chart_accounts: { ...NONE, export: false, import: false },
   revenue_types: NONE,
+  treasury_types: NONE,
   cost_types: NONE,
 }
 
@@ -26,6 +28,37 @@ export function costSub(overrides: Partial<SubAccount> = {}): SubAccount {
     color: 'blue',
     ...overrides,
   }
+}
+
+/** Spec 0355: a financial group with one account and one financial sub-account. */
+export const FINANCIAL_GROUP: ChartGroup = {
+  id: 3,
+  code: '90',
+  name: 'Movimenti finanziari',
+  description: null,
+  kind: 'financial',
+  is_active: true,
+  accounts: [
+    {
+      id: 30,
+      code: '90.01',
+      name: 'Giroconti',
+      description: null,
+      is_active: true,
+      sub_accounts: [
+        {
+          id: 7,
+          source: 'treasury_type',
+          code: '90.01.001',
+          name: 'Giroconto tra conti',
+          description: null,
+          is_active: true,
+          nature: null,
+          color: null,
+        },
+      ],
+    },
+  ],
 }
 
 /** Test fixture mirroring the frozen tree contract of spec 0348. */

@@ -79,6 +79,7 @@ use App\Tables\TasksTableDefinition;
 use App\Tables\TaskStatusesTableDefinition;
 use App\Tables\TaskTemplatesTableDefinition;
 use App\Tables\TaskTypesTableDefinition;
+use App\Tables\TreasuryMovementsTableDefinition;
 use App\Tables\UnitsOfMeasureTableDefinition;
 use App\Tables\UserSkills\UserSkillsTableDefinition;
 use App\Tables\UsersTableDefinition;
@@ -193,6 +194,8 @@ return [
         'purchase-request-line-statuses' => PurchaseRequestLineStatusesTableDefinition::class,
         'invoice-tags' => InvoiceTagsTableDefinition::class,
         'financial-accounts' => FinancialAccountsTableDefinition::class,
+        // spec 0355: manual treasury movements.
+        'treasury-movements' => TreasuryMovementsTableDefinition::class,
         // spec 0212: profili fiscali degli agenti.
         'agent-fiscal-profiles' => AgentFiscalProfilesTableDefinition::class,
         // spec 0212: maturato provvigioni (libro mastro in sola lettura).

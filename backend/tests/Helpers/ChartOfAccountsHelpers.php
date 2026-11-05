@@ -40,6 +40,7 @@ if (! function_exists('resetChartOfAccounts')) {
      */
     function resetChartOfAccounts(): void
     {
+        DB::table('treasury_types')->delete();
         DB::table('revenue_types')->delete();
         DB::table('cost_types')->update(['chart_account_id' => null, 'code' => null]);
         DB::table('chart_accounts')->where('level', 'account')->delete();

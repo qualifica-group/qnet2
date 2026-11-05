@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Invoices;
 
+use App\Models\FinancialAccount;
 use App\Models\InvoiceInstallment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,6 +28,7 @@ class InvoiceBulkCollectionRequest extends FormRequest
     {
         return [
             'collected_at' => ['required', 'date'],
+            'financial_account_id' => ['nullable', 'integer', Rule::exists(FinancialAccount::class, 'id')],
             'items' => ['required', 'array', 'min:1', 'max:'.self::MAX_ITEMS],
             'items.*.installment_id' => ['required', 'integer', 'distinct', Rule::exists(InvoiceInstallment::class, 'id')],
             'items.*.collected_amount' => ['required', 'numeric', 'gt:0'],
@@ -42,6 +44,13 @@ class InvoiceBulkCollectionRequest extends FormRequest
             'installment_id' => (int) $item['installment_id'],
             'collected_amount' => (string) $item['collected_amount'],
         ], $this->validated('items'));
+    }
+
+    public function financialAccountId(): ?int
+    {
+        $id = $this->validated('financial_account_id');
+
+        return $id === null ? null : (int) $id;
     }
 
     public function collectedAt(): string

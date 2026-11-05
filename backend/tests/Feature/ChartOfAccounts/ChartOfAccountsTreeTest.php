@@ -47,6 +47,7 @@ it('AC-002: returns the contract shape, naturally sorted, with the unplaced cost
             'chart_accounts' => ['create' => false, 'update' => false, 'delete' => false, 'view_activity' => false, 'export' => false, 'import' => false],
             'revenue_types' => ['create' => false, 'update' => false, 'delete' => false, 'view_activity' => true],
             'cost_types' => ['create' => false, 'update' => true, 'delete' => false, 'view_activity' => false],
+            'treasury_types' => ['create' => false, 'update' => false, 'delete' => false, 'view_activity' => false],
         ]);
 });
 

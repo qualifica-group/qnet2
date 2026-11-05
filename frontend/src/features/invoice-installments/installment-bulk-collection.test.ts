@@ -63,7 +63,7 @@ describe('bulk collection helpers (spec 0198)', () => {
   })
 
   it('D-4: an amount above its own installment is an error on that row only', () => {
-    const result = buildBulkCollectionSchema(t, TARGETS).safeParse({ collected_at: '2026-10-08', amounts: ['1000.01', '500'] })
+    const result = buildBulkCollectionSchema(t, TARGETS).safeParse({ collected_at: '2026-10-08', financial_account_id: null, amounts: ['1000.01', '500'] })
 
     expect(result.success).toBe(false)
     expect(result.error?.issues.map((issue) => [issue.path.join('.'), issue.message])).toEqual([
@@ -72,12 +72,12 @@ describe('bulk collection helpers (spec 0198)', () => {
   })
 
   it('accepts empty rows and the exact installment amount', () => {
-    expect(buildBulkCollectionSchema(t, TARGETS).safeParse({ collected_at: '2026-10-08', amounts: ['', '500'] }).success).toBe(true)
+    expect(buildBulkCollectionSchema(t, TARGETS).safeParse({ collected_at: '2026-10-08', financial_account_id: null, amounts: ['', '500'] }).success).toBe(true)
   })
 
   it('sends only the filled rows and remembers their dialog position', () => {
-    expect(buildBulkCollectionPayload({ collected_at: '2026-10-08', amounts: ['', '250.555'] }, TARGETS)).toEqual({
-      payload: { collected_at: '2026-10-08', items: [{ installment_id: 2, collected_amount: 250.56 }] },
+    expect(buildBulkCollectionPayload({ collected_at: '2026-10-08', financial_account_id: null, amounts: ['', '250.555'] }, TARGETS)).toEqual({
+      payload: { collected_at: '2026-10-08', financial_account_id: null, items: [{ installment_id: 2, collected_amount: 250.56 }] },
       rowIndexes: [1],
     })
   })

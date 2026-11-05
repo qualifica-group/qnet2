@@ -41,7 +41,7 @@ class InvoiceService
         'lines.product:id,name',
         'lines.vatRate:id,name,rate',
         'lines.revenueType.chartAccount.parent',
-        'installments',
+        'installments.financialAccount:id,name',
         'createdBy:id,name',
         'layout:id,name',
         'invoiceTag:id,name,color',

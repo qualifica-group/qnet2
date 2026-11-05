@@ -4,6 +4,7 @@ import { filenameFromContentDisposition } from '@/lib/download'
 import {
   CHART_ACCOUNTS_DOMAIN,
   REVENUE_TYPES_DOMAIN,
+  TREASURY_TYPES_DOMAIN,
   type ChartAccountResource,
   type ChartExportFormat,
   type ChartImportResult,
@@ -11,12 +12,16 @@ import {
   type CreateChartAccountPayload,
   type RevenueTypePayload,
   type RevenueTypeResource,
+  type TreasuryTypePayload,
+  type TreasuryTypeResource,
   type UpdateChartAccountPayload,
   type UpdateRevenueTypePayload,
+  type UpdateTreasuryTypePayload,
 } from '@/features/chart-of-accounts/types'
 
 const ACCOUNTS_ENDPOINT = `/${CHART_ACCOUNTS_DOMAIN}`
 const REVENUE_ENDPOINT = `/${REVENUE_TYPES_DOMAIN}`
+const TREASURY_ENDPOINT = `/${TREASURY_TYPES_DOMAIN}`
 
 export async function fetchChartTree(): Promise<ChartTree> {
   const { data } = await apiClient.get<ApiResponse<ChartTree>>('/chart-of-accounts/tree')
@@ -50,6 +55,20 @@ export async function updateRevenueType(id: number, payload: UpdateRevenueTypePa
 
 export async function deleteRevenueType(id: number): Promise<void> {
   await apiClient.delete(`${REVENUE_ENDPOINT}/${id}`)
+}
+
+export async function createTreasuryType(payload: TreasuryTypePayload): Promise<TreasuryTypeResource> {
+  const { data } = await apiClient.post<ApiResponse<TreasuryTypeResource>>(TREASURY_ENDPOINT, payload)
+  return data.data
+}
+
+export async function updateTreasuryType(id: number, payload: UpdateTreasuryTypePayload): Promise<TreasuryTypeResource> {
+  const { data } = await apiClient.patch<ApiResponse<TreasuryTypeResource>>(`${TREASURY_ENDPOINT}/${id}`, payload)
+  return data.data
+}
+
+export async function deleteTreasuryType(id: number): Promise<void> {
+  await apiClient.delete(`${TREASURY_ENDPOINT}/${id}`)
 }
 
 /** Whole plan as a spreadsheet; the server answers a file download. */

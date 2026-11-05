@@ -42,8 +42,9 @@ it('AC-016: placed types come first by natural code, then the unplaced by name',
     CostType::factory()->create(['name' => 'Alfa unplaced']);
     placedCostType('91', '91.10', 'Dieci');
     placedCostType('91', '91.2', 'Due');
-    $group = ChartAccount::factory()->create(['code' => '90']);
-    $first = CostType::factory()->create(['name' => 'Primo', 'code' => '90.01', 'chart_account_id' => ChartAccount::factory()->account($group)->create()->id]);
+    // REQUIREMENT CHANGED (spec 0355): '90' is now the seeded financial group, so the fixture group moves to '89'.
+    $group = ChartAccount::factory()->create(['code' => '89']);
+    $first = CostType::factory()->create(['name' => 'Primo', 'code' => '89.01', 'chart_account_id' => ChartAccount::factory()->account($group)->create()->id]);
 
     $ids = collect($this->getJson('/api/cost-types/for-select')->assertOk()->json('items'))->pluck('label')->all();
 

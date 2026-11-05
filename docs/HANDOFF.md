@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tesoreria fase A "Conti con saldo" (spec 0355) — VERDE, NON COMMITTATO (2026-11-05)
+
+- Prospetto fasi A-D: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y. Spec `docs/specs/0355-treasury-account-balances.xml`
+  (approvata). Decisioni: apertura 01/01/2026 (`config('treasury.default_opening_date')`, per conto
+  `opening_balance_date`); sottoconto obbligatorio; conto scelto all'incasso attivo (D-5); giroconto SOLO stessa
+  societa' (D-6, rettificata dall'utente); carta = conto con saldo proprio; movimenti sempre modificabili con audit.
+- Backend:
+  - Schema: `financial_accounts.opening_balance/opening_balance_date`, `invoice_installments.financial_account_id`,
+    `treasury_types`, `treasury_movements`, `ChartAccountKind::Financial`, mastro 90 (90.01-90.04) da migrazione.
+  - `AccountStatementService` = UNICA regola di saldo (conto rata, altrimenti documento; fatti prima dell'apertura
+    esclusi; centesimi interi). Endpoint: `PATCH financial-accounts/{id}/opening-balance` (ability
+    `financial-accounts.manageOpeningBalance`), `GET financial-accounts/{id}/statement[/export]`,
+    `GET account-statements/balances|unassigned`, CRUD `treasury-movements` (+ griglia), CRUD `treasury-types`
+    (+ for-select, albero del piano). Regole incrociate in `TreasuryMovementRuleChecker`; in update il body si fonde
+    sul salvato: il FE invia i due sottoconti non scelti a null.
+  - Incasso: `financial_account_id` su incasso singolo/multiplo, azzerato da annulla; `CollectionAggregator` con
+    COALESCE; `InvoiceResource` espone il conto per rata. Legacy: `CollectionsSource` non lo tocca.
+  - Allegati: `treasury_movement` in `config/attachments.php`, anche in `owner_scoped_types` (scelta B3).
+- Frontend: pagine `/treasury-movements` e `/account-statements`, saldo di apertura nella scheda conto, campo Conto
+  negli incassi, mastri/sottoconti finanziari nel piano dei conti, namespace i18n in `{it,en}-accounting.ts`; menu
+  "Contabilita' > Finanziario". Guide in-app: nuove `treasury-movements`, `account-statements`; aggiornate
+  `financial-accounts`, `invoice-installments`, `chart-of-accounts` (106 chiavi).
+- Gate finale: Pest 13.863, rossi solo 10 PREESISTENTI estranei (SettlementApproval data; TableBulkDelete; catalogo
+  permessi AC-004 per `request-management` in due aree di menu; 4 ManagementControl `management-control-section`;
+  2 QualificaOperatorSeeder ruolo `importatore-richieste` spec 0348). `CostTypeForSelectPlacementTest` fixture
+  spostata da '90' a '89' (REQUIREMENT CHANGED). Vitest 9.948 verdi (11 unhandled `toast.error` preesistenti in
+  moduli non toccati); `tsc -b --force` 0; ESLint e Pint puliti.
+- Manuale Claude Docs: NON aggiornato (accesso negato). Sezioni: Movimenti di tesoreria, Estratto conto (nuove);
+  Gestione Conti (saldo di apertura), Scadenze attive (Conto nell'incasso), Piano dei conti (mastri finanziari).
+- Aperti: export/import del piano senza mastri finanziari; nessun import dei saldi di apertura; data di partenza
+  (01/01/2026 o go-live) da confermare per il rilascio; fasi B (abbuono), C (Quadro), D (riconciliazione).
+
 ## Chat nelle Commesse di Progetto (spec 0354) — COMPLETA E VERDE (2026-11-04)
 
 - RINUMERATA 0352 -> 0354 il 2026-11-05 (decisione utente): il merge da main ha portato "Richiedi aggiornamento"

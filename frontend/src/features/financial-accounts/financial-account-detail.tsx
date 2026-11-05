@@ -14,6 +14,7 @@ import { RecordBody } from '@/components/detail/record-body'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { FinancialAccountOpeningBalance } from '@/features/financial-accounts/financial-account-opening-balance'
 import { FinancialAccountCardNumber } from '@/features/financial-accounts/financial-account-card-number'
 import type { FinancialAccountDetailWithPermissions } from '@/features/financial-accounts/types'
 
@@ -105,6 +106,16 @@ export function FinancialAccountDetailView({
               </RecordField>
             </RecordFieldList>
           </RecordSection>
+          {account.opening_balance !== undefined && account.opening_balance_date !== undefined ? (
+            <RecordSection title={t('accountStatements.openingBalance.title')} full>
+              <FinancialAccountOpeningBalance
+                accountId={account.id}
+                openingBalance={account.opening_balance}
+                openingBalanceDate={account.opening_balance_date}
+                currentBalance={account.current_balance ?? null}
+              />
+            </RecordSection>
+          ) : null}
         </RecordSectionsGrid>
       </RecordBody>
 

@@ -46,6 +46,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'opening-balance',
+      title: 'Opening balance and current balance',
+      blocks: [
+        { type: 'paragraph', text: 'Every account has an **Opening balance**: the amount the account starts from on the **Opening date**. If you do not set it the balance is 0 and the date is **01/01/2026**; if the account was opened later (for example in March) you can set its own date. Movements, collections and payments before the opening date do not count in the balance or in the **Account statements**.' },
+        { type: 'steps', items: ['Open the account record with **View**.', 'In the **Opening balance** box press **Edit**.', 'Enter **Amount** and **Opening date** and press **Save**.'] },
+        { type: 'list', items: ['Only whoever has the dedicated permission can change the opening balance; everyone else sees it read-only. Every change goes to the history.', 'You cannot move the opening date after a movement already recorded on the account.', 'The **Current balance** is shown only to people who can view treasury movements, with the **View statement** link that opens the Account statements for that account.'] },
+        { type: 'note', text: 'Only accounts have an opening balance: customers and suppliers start from the residual of their installments.' },
+      ],
+    },
+    {
       id: 'manage',
       title: 'Create, edit and delete',
       blocks: [

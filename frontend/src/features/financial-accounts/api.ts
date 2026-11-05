@@ -5,6 +5,7 @@ import type {
   FinancialAccountDetail,
   FinancialAccountDetailWithPermissions,
   FinancialAccountPayload,
+  OpeningBalancePayload,
 } from '@/features/financial-accounts/types'
 
 /** Fetches one financial account together with the actor's authorization metadata. */
@@ -47,6 +48,18 @@ export async function updateFinancialAccount(
  */
 export async function deleteFinancialAccount(id: number): Promise<void> {
   await apiClient.delete(`/financial-accounts/${id}`)
+}
+
+/** Sets the opening balance and date of an account (requires `financial-accounts.manageOpeningBalance`). */
+export async function updateOpeningBalance(
+  id: number,
+  payload: OpeningBalancePayload,
+): Promise<FinancialAccountDetail> {
+  const { data } = await apiClient.patch<ApiResponse<FinancialAccountDetail>>(
+    `/financial-accounts/${id}/opening-balance`,
+    payload,
+  )
+  return data.data
 }
 
 /** Returns the full card number (requires `financial-accounts.revealCardNumber`; audited server-side). */

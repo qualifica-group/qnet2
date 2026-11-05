@@ -84,6 +84,20 @@ return [
                     'route' => '/financial-accounts',
                     'permission' => 'financial-accounts.view',
                 ],
+                [
+                    'key' => 'treasury-movements',
+                    'label' => 'navigation.treasuryMovements',
+                    'icon' => 'arrow-left-right',
+                    'route' => '/treasury-movements',
+                    'permission' => 'treasury-movements.view',
+                ],
+                [
+                    'key' => 'account-statements',
+                    'label' => 'navigation.accountStatements',
+                    'icon' => 'scroll-text',
+                    'route' => '/account-statements',
+                    'permission' => 'treasury-movements.view',
+                ],
             ],
         ],
         [
