@@ -69,6 +69,7 @@ require_once __DIR__.'/Helpers/DocumentBundleHelpers.php';
 require_once __DIR__.'/Helpers/TableFieldHelpers.php';
 require_once __DIR__.'/Helpers/FinancialAccountHelpers.php';
 require_once __DIR__.'/Helpers/TreasuryMovementHelpers.php';
+require_once __DIR__.'/Helpers/ReconciliationHelpers.php';
 require_once __DIR__.'/Helpers/AgentFiscalProfileHelpers.php';
 require_once __DIR__.'/Helpers/InvoiceHelpers.php';
 require_once __DIR__.'/Helpers/InvoiceInstallmentHelpers.php';

@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { apiClient } from '@/api/client'
 import { saveBlob } from '@/lib/download'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import AccountStatementsPage from '@/pages/account-statements-page'
 import type { Statement } from '@/features/account-statements/types'
 
@@ -81,6 +82,7 @@ function statement(filtered: boolean): Statement {
         outflow: null,
         balance: '1500.00',
         movement_id: null,
+        reconciled: true,
       },
       {
         key: 'movement:2',
@@ -95,12 +97,15 @@ function statement(filtered: boolean): Statement {
         outflow: '150.00',
         balance: '1350.00',
         movement_id: 2,
+        reconciled: false,
       },
     ],
     totals: { inflow: '500.00', outflow: '150.00' },
     closing_balance: '1350.00',
     balance_today: '1350.00',
     filtered,
+    reconciled_balance: '1500.00',
+    unreconciled_count: 1,
   }
 }
 
@@ -112,6 +117,7 @@ function mockApi(stmt: Statement) {
   getMock.mockImplementation((url: string) => {
     if (url === '/account-statements/balances') return envelope(BALANCES)
     if (url === '/account-statements/unassigned') return envelope(UNASSIGNED)
+    if (url.endsWith('/bank-reconciliations')) return envelope([])
     if (url.endsWith('/statement/export')) {
       return Promise.resolve({
         data: new Blob(['x']),
@@ -128,7 +134,9 @@ function renderPage(entry: string) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
-        <AccountStatementsPage />
+        <ConfirmDialogProvider>
+          <AccountStatementsPage />
+        </ConfirmDialogProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -218,6 +226,7 @@ describe('AccountStatementsPage (AC-021)', () => {
         return Promise.reject(Object.assign(new Error('too many'), { response: { status: 422 } }))
       }
       if (url === '/account-statements/balances') return envelope(BALANCES)
+      if (url.endsWith('/bank-reconciliations')) return envelope([])
       return envelope({ count: 0, rows: [] })
     })
     renderPage('/account-statements?account=5')

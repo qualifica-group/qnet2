@@ -25,7 +25,7 @@ final class PurchaseInstallmentDerivedQuery
     private const array SET_COLUMNS = ['supplier', 'cost_type', 'work_order', 'company', 'company_site', 'operational_site', 'payment_method_code', 'due_month', 'financial_account', 'write_off_reason'];
 
     /** Columns with a dedicated filter instead of the generic one on a plain column. */
-    private const array SPECIAL_COLUMNS = ['purchase_orders', 'days_overdue', 'status', 'overdue'];
+    private const array SPECIAL_COLUMNS = ['purchase_orders', 'days_overdue', 'status', 'overdue', 'reconciled'];
 
     /**
      * Handles every filterable column of the domain; false for an unknown one.
@@ -41,6 +41,7 @@ final class PurchaseInstallmentDerivedQuery
             $columnId === 'days_overdue' => self::applyDaysOverdue($query, $columnConfig, $filter),
             $columnId === 'status' => self::applyStatus($query, $filter),
             $columnId === 'overdue' => self::applyOverdue($query, $filter),
+            $columnId === 'reconciled' => self::applyReconciled($query, $filter),
             $columnId === 'paid_amount' => ZeroWhenEmptyAmountFilter::apply($query, 'purchase_invoice_installments', 'paid_amount', $columnConfig, $filter),
             in_array($columnId, self::SET_COLUMNS, true) => self::applySet($query, (string) PurchaseInstallmentSql::label($columnId), $filter),
             isset(PurchaseInstallmentSql::PLAIN_COLUMNS[$columnId]) => app(FilterApplier::class)->apply($query, PurchaseInstallmentSql::PLAIN_COLUMNS[$columnId], $columnConfig, $filter),
@@ -101,6 +102,10 @@ final class PurchaseInstallmentDerivedQuery
 
         if ($columnId === 'overdue') {
             return PurchaseInstallmentColumnCatalog::OVERDUE_VALUES;
+        }
+
+        if ($columnId === 'reconciled') {
+            return PurchaseInstallmentColumnCatalog::RECONCILED_VALUES;
         }
 
         if (! in_array($columnId, self::SET_COLUMNS, true)) {
@@ -201,6 +206,22 @@ final class PurchaseInstallmentDerivedQuery
         }
 
         $query->whereRaw($selected[0] === 'yes' ? PurchaseInstallmentSql::overdue() : 'NOT '.PurchaseInstallmentSql::overdue(), [self::today()]);
+    }
+
+    /**
+     * @param  Builder<PurchaseInvoiceInstallment>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private static function applyReconciled(Builder $query, array $filter): void
+    {
+        $selected = array_values(array_intersect(PurchaseInstallmentColumnCatalog::RECONCILED_VALUES, self::stringValues($filter)));
+
+        // Both values (or none) select everything.
+        if (count($selected) !== 1) {
+            return;
+        }
+
+        $query->whereRaw('purchase_invoice_installments.reconciled_at IS '.($selected[0] === 'yes' ? 'NOT NULL' : 'NULL'));
     }
 
     /**

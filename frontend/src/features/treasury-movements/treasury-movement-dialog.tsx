@@ -34,20 +34,29 @@ function MovementForm({ movement, onSaved, onClose }: MovementFormProps) {
     onSaved,
   })
 
+  const locked = movement?.reconciled === true
+
   return (
     <>
       <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-0.5">
+        {locked ? (
+          <p role="status" className="rounded-lg border bg-surface p-2 text-xs text-muted-foreground">
+            {t('treasuryMovements.form.reconciledNotice')}
+          </p>
+        ) : null}
         <Form {...form}>
           <form id={FORM_ID} onSubmit={(event) => void submit(event)} noValidate>
-            <TreasuryMovementFields movement={movement} />
+            <fieldset disabled={locked} className="min-w-0">
+              <TreasuryMovementFields movement={movement} />
+            </fieldset>
           </form>
         </Form>
         {movement ? (
           <DocumentsSection
             resource={TREASURY_MOVEMENT_ATTACHABLE_TYPE}
             id={movement.id}
-            canUpload={can('treasury-movements.update')}
-            canDelete={can('treasury-movements.update')}
+            canUpload={can('treasury-movements.update') && !locked}
+            canDelete={can('treasury-movements.update') && !locked}
           />
         ) : null}
       </div>
@@ -55,7 +64,7 @@ function MovementForm({ movement, onSaved, onClose }: MovementFormProps) {
         <Button type="button" variant="outline" className="bg-card" onClick={onClose}>
           {t('treasuryMovements.form.cancel')}
         </Button>
-        <Button type="submit" form={FORM_ID} disabled={isSubmitting}>
+        <Button type="submit" form={FORM_ID} disabled={isSubmitting || locked}>
           {isSubmitting ? t('treasuryMovements.form.saving') : t('treasuryMovements.form.save')}
         </Button>
       </DialogFooter>

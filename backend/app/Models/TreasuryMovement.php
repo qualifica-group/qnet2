@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'type', 'direction', 'movement_date', 'financial_account_id', 'counterpart_account_id', 'amount',
     'description', 'cost_type_id', 'revenue_type_id', 'treasury_type_id', 'registry_id', 'work_order_id',
-    'created_by',
+    'created_by', 'reconciled_at', 'reconciled_by', 'counterpart_reconciled_at', 'counterpart_reconciled_by',
 ])]
 class TreasuryMovement extends BaseModel
 {
@@ -38,7 +38,15 @@ class TreasuryMovement extends BaseModel
             'direction' => TreasuryMovementDirection::class,
             'movement_date' => 'date',
             'amount' => 'decimal:2',
+            'reconciled_at' => 'datetime',
+            'counterpart_reconciled_at' => 'datetime',
         ];
+    }
+
+    /** A reconciled side (either) locks the movement against edits (spec 0363, D-8). */
+    public function isReconciled(): bool
+    {
+        return $this->reconciled_at !== null || $this->counterpart_reconciled_at !== null;
     }
 
     /**

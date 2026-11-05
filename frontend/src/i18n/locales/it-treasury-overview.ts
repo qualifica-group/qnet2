@@ -47,5 +47,9 @@ export const treasuryOverview = {
     adjustments_one: '{{count}} rettifica di saldo nel mese {{month}}',
     adjustments_other: '{{count}} rettifiche di saldo nel mese {{month}}',
     adjustmentAmounts: 'Entrate {{inflow}} · Uscite {{outflow}}',
+    unreconciled_one: '{{count}} riga non spuntata',
+    unreconciled_other: '{{count}} righe non spuntate',
+    unreconciledAccounts: 'Righe non spuntate per conto',
+    unreconciledAccount: '{{name}}: {{count}}',
   },
 }

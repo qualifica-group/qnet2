@@ -87,7 +87,10 @@ final class AccountStatementService
         // Step 3: filters narrow the rows only; the balance of each row stays the real one
         $rows = array_values(array_filter($period, fn (array $row): bool => $this->matches($row, $filters)));
 
-        // Step 4: totals of the shown rows, closing and today balances
+        // Step 4: reconciled balance and unreconciled count, never narrowed by the filters (spec 0363)
+        $reconciled = AccountStatementFacts::reconciledSummary($facts, AccountStatementFacts::toCents((string) $account->opening_balance));
+
+        // Step 5: totals of the shown rows, closing and today balances
         return [
             'account' => $this->accountSummary($account),
             'opening' => ['date' => $opening->toDateString(), 'balance' => AccountStatementFacts::toDecimal(AccountStatementFacts::toCents((string) $account->opening_balance))],
@@ -95,6 +98,8 @@ final class AccountStatementService
             'rows' => array_map($this->presentRow(...), $rows),
             'totals' => $this->totals($rows),
             'closing_balance' => AccountStatementFacts::toDecimal($running),
+            'reconciled_balance' => AccountStatementFacts::toDecimal($reconciled['balance_cents']),
+            'unreconciled_count' => $reconciled['unreconciled'],
             'balance_today' => $this->balanceAt($account, CarbonImmutable::today()),
             'filtered' => $filters->isFiltered(),
         ];
@@ -164,6 +169,9 @@ final class AccountStatementService
         if ($filters->types !== [] && ! in_array($row['type'], $filters->types, true)) {
             return false;
         }
+        if ($filters->reconciled !== null && $row['reconciled'] !== $filters->reconciled) {
+            return false;
+        }
         if ($filters->registryId !== null && ($row['registry']['id'] ?? null) !== $filters->registryId) {
             return false;
         }
@@ -195,6 +203,7 @@ final class AccountStatementService
             'outflow' => $row['cents'] < 0 ? AccountStatementFacts::toDecimal(-$row['cents']) : null,
             'balance' => AccountStatementFacts::toDecimal($row['balance_cents']),
             'movement_id' => $row['movement_id'],
+            'reconciled' => $row['reconciled'],
         ];
     }
 

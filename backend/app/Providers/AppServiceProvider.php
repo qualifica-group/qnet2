@@ -20,6 +20,7 @@ use App\Models\AiMessage;
 use App\Models\Attachment;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
+use App\Models\BankReconciliation;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\ChartAccount;
@@ -280,6 +281,8 @@ class AppServiceProvider extends ServiceProvider
             // spec 0360: treasury movements and financial sub-accounts.
             'treasury_movement' => TreasuryMovement::class,
             'treasury_type' => TreasuryType::class,
+            // spec 0363: audited subject (LogsModelActivity).
+            'bank_reconciliation' => BankReconciliation::class,
             'job_role' => JobRole::class,
             'job_activity' => JobActivity::class,
             'employment_contract' => EmploymentContract::class,

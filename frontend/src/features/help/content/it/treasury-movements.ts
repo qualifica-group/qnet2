@@ -96,6 +96,13 @@ const guide: HelpGuide = {
         { type: 'note', text: 'Chi può solo consultare vede tutto ma non può creare, modificare o eliminare movimenti.' },
       ],
     },
+    {
+      id: 'reconciled-lock',
+      title: 'Movimenti spuntati sull\'estratto della banca',
+      blocks: [
+        { type: 'paragraph', text: 'Un movimento **spuntato** nell\'estratto conto (vedi la guida Estratto conto) si apre in **sola lettura** con un avviso e non si puo\' modificare ne\' eliminare. Per cambiarlo, togli prima la spunta nell\'estratto.' },
+      ],
+    },
   ],
 }
 

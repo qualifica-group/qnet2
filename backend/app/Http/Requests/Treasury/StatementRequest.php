@@ -39,6 +39,7 @@ class StatementRequest extends FormRequest
             'types.*' => ['string', Rule::in(self::TYPES)],
             'registry_id' => ['nullable', 'integer', Rule::exists('registries', 'id')],
             'search' => ['nullable', 'string', 'max:100'],
+            'reconciled' => ['nullable', Rule::in(['yes', 'no'])],
         ];
     }
 
@@ -53,6 +54,7 @@ class StatementRequest extends FormRequest
             types: array_values(array_unique($data['types'] ?? [])),
             registryId: isset($data['registry_id']) ? (int) $data['registry_id'] : null,
             search: isset($data['search']) && trim($data['search']) !== '' ? trim($data['search']) : null,
+            reconciled: isset($data['reconciled']) ? $data['reconciled'] === 'yes' : null,
         );
     }
 }

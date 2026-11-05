@@ -41,5 +41,7 @@ export interface TreasuryOverview {
   to_verify: {
     unassigned: { count: number; collections: string; payments: string }
     adjustments: { month: string; count: number; inflow: string; outflow: string }
+    /** Spec 0363: rows not ticked up to today, per account (only accounts with count > 0, count desc). */
+    unreconciled: { count: number; accounts: Array<{ id: number; name: string; count: number }> }
   }
 }

@@ -197,6 +197,20 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'reconciled-lock',
+      title: 'Collections ticked on the bank statement',
+      blocks: [
+        { type: 'paragraph', text: 'When the collection of an installment is **ticked** in the account statement, **Clear collection** (and recording it again) is disabled and the reason is shown. Untick the row in the statement first.' },
+      ],
+    },
+    {
+      id: 'link-filter',
+      title: 'Opening the page already filtered',
+      blocks: [
+        { type: 'paragraph', text: 'The address accepts `?quick=` with **unpaid**, **due**, **overdue**, **paid** or **all**: the page opens with that quick filter active (an unknown value keeps the default). The Treasury overview uses it: **Open** opens **unpaid**, **Not yet due** opens **due**, **Overdue** and the overdue bands open **overdue**.' },
+      ],
+    },
   ],
 }
 

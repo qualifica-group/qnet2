@@ -162,13 +162,14 @@ it('AC-008: to verify, unassigned facts and the adjustments of the month', funct
     TreasuryMovement::factory()->adjustment(TreasuryMovementDirection::In)->create(['financial_account_id' => $accountA->id, 'amount' => '99.00', 'movement_date' => '2026-10-31']);
     TreasuryMovement::factory()->expense()->create(['financial_account_id' => $accountA->id, 'amount' => '5.00', 'movement_date' => '2026-11-05']);
 
-    $all = $this->getJson('/api/treasury-overview')->json('data.to_verify');
+    // Spec 0363 added `unreconciled` (own test); this one keeps its original keys
+    $all = collect($this->getJson('/api/treasury-overview')->json('data.to_verify'))->except('unreconciled')->all();
     expect($all)->toBe([
         'unassigned' => ['count' => 2, 'collections' => '300.00', 'payments' => '80.00'],
         'adjustments' => ['month' => '2026-11', 'count' => 2, 'inflow' => '12.50', 'outflow' => '3.00'],
     ]);
 
-    $scoped = $this->getJson("/api/treasury-overview?company_id={$a->id}")->json('data.to_verify');
+    $scoped = collect($this->getJson("/api/treasury-overview?company_id={$a->id}")->json('data.to_verify'))->except('unreconciled')->all();
     expect($scoped)->toBe([
         'unassigned' => ['count' => 1, 'collections' => '300.00', 'payments' => '0.00'],
         'adjustments' => ['month' => '2026-11', 'count' => 1, 'inflow' => '12.50', 'outflow' => '0.00'],

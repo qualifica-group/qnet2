@@ -21,6 +21,14 @@ describe('installment quick filter (spec 0197 AC-018, D-9)', () => {
     expect(result.current.quickFilter).toBe('unpaid')
   })
 
+  it('forces every key of a ?quick= filter, null included, so a saved filter on that column is cleared (spec 0363 AC-017)', () => {
+    const tableRef = { current: null }
+    const { result } = renderHook(() => useInstallmentQuickFilter(tableRef, 'unpaid'))
+
+    expect(result.current.forcedFilterModel).toEqual({ status: UNPAID_SET, overdue: null })
+    expect(result.current.quickFilter).toBe('unpaid')
+  })
+
   it.each([
     ['unpaid', { status: UNPAID_SET, overdue: null }],
     ['due', { status: UNPAID_SET, overdue: OVERDUE_NO }],

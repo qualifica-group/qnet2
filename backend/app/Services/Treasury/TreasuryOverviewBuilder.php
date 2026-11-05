@@ -7,6 +7,7 @@ namespace App\Services\Treasury;
 use App\Enums\FinancialAccountType;
 use App\Enums\TreasuryMovementDirection;
 use App\Enums\TreasuryMovementType;
+use App\Models\FinancialAccount;
 use App\Services\ManagementControl\Exposure\PayableScheduleAggregator;
 use App\Services\ManagementControl\Exposure\ReceivableScheduleAggregator;
 use Carbon\CarbonImmutable;
@@ -22,6 +23,7 @@ final class TreasuryOverviewBuilder
 {
     public function __construct(
         private readonly AccountStatementService $statements,
+        private readonly AccountStatementFacts $facts,
         private readonly TreasuryScheduleSnapshot $schedule,
         private readonly ReceivableScheduleAggregator $receivable,
         private readonly PayableScheduleAggregator $payable,
@@ -56,6 +58,7 @@ final class TreasuryOverviewBuilder
             'to_verify' => [
                 'unassigned' => $this->unassigned($companyId),
                 'adjustments' => $this->adjustments($companyId, $today),
+                'unreconciled' => $this->unreconciled($companyId, $today),
             ],
         ];
     }
@@ -128,6 +131,31 @@ final class TreasuryOverviewBuilder
             'collections' => AccountStatementFacts::toDecimal($sums['collection']),
             'payments' => AccountStatementFacts::toDecimal($sums['payment']),
         ];
+    }
+
+    /**
+     * Statement rows not ticked yet, from each account's opening to today (spec 0363),
+     * only the accounts with something left, most first.
+     *
+     * @return array{count: int, accounts: array<int, array{id: int, name: string, count: int}>}
+     */
+    private function unreconciled(?int $companyId, CarbonImmutable $today): array
+    {
+        $accounts = [];
+        $accountRows = FinancialAccount::query()
+            ->when($companyId !== null, fn ($query) => $query->where('company_id', $companyId))
+            ->orderBy('name')->orderBy('id')->get();
+
+        foreach ($accountRows as $account) {
+            $facts = $this->facts->forAccount($account->id, $this->statements->openingDate($account)->toDateString(), $today->toDateString());
+            $count = AccountStatementFacts::reconciledSummary($facts, 0)['unreconciled'];
+            if ($count > 0) {
+                $accounts[] = ['id' => $account->id, 'name' => $account->name, 'count' => $count];
+            }
+        }
+        usort($accounts, fn (array $a, array $b): int => $b['count'] <=> $a['count']);
+
+        return ['count' => array_sum(array_column($accounts, 'count')), 'accounts' => $accounts];
     }
 
     /**

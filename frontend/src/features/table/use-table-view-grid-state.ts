@@ -123,7 +123,11 @@ export function useTableViewGridState(
   const initialFilterModel = useMemo(() => {
     const saved = config?.filterState ?? EMPTY_FILTER_MODEL
     const base = Object.keys(saved).length === 0 && defaultFilterModel ? defaultFilterModel : saved
-    return forcedFilterModel ? { ...base, ...forcedFilterModel } : base
+    if (!forcedFilterModel) {
+      return base
+    }
+    // A `null` forced key clears the saved filter on that column instead of being replayed as a filter.
+    return Object.fromEntries(Object.entries({ ...base, ...forcedFilterModel }).filter(([, value]) => value !== null))
   }, [config?.filterState, defaultFilterModel, forcedFilterModel])
 
   // SSRM rows are not cached by TanStack Query, so they cannot be invalidated

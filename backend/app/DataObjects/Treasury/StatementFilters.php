@@ -18,10 +18,11 @@ final readonly class StatementFilters
         public array $types = [],
         public ?int $registryId = null,
         public ?string $search = null,
+        public ?bool $reconciled = null,
     ) {}
 
     public function isFiltered(): bool
     {
-        return $this->types !== [] || $this->registryId !== null || $this->search !== null;
+        return $this->types !== [] || $this->registryId !== null || $this->search !== null || $this->reconciled !== null;
     }
 }

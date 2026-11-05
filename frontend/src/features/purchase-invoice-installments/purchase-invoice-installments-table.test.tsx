@@ -34,6 +34,7 @@ function action(key: string): TableActionDefinition {
 }
 
 const ROW: TableRow = { id: 7, sequence: 2, purchase_invoice_id: 31, actions: [] }
+const rowState = { reconciled: false }
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
@@ -42,11 +43,12 @@ vi.mock('@/features/table/table-view', () => ({
       domain: string
       forcedFilterModel?: Record<string, unknown>
       onAction?: (action: TableActionDefinition, row: TableRow) => void
+      resolveActionState?: (action: TableActionDefinition, row: TableRow) => { disabled?: boolean; label?: string } | undefined
       renderFooter?: (aggregates: Record<string, number> | undefined) => ReactNode
       getBulkActions?: unknown
       onRowGroupColumnsChange?: (columnIds: string[]) => void
     }
-  >(function TableViewStub({ domain, forcedFilterModel, onAction, renderFooter, getBulkActions, onRowGroupColumnsChange }, ref) {
+  >(function TableViewStub({ domain, forcedFilterModel, onAction, resolveActionState, renderFooter, getBulkActions, onRowGroupColumnsChange }, ref) {
     useImperativeHandle(ref, () => ({ refresh: refreshMock, setFilterModel: () => {}, clearSelection: () => {} }))
     return (
       <div
@@ -58,22 +60,26 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onRowGroupColumnsChange?.(['supplier'])}>
           group-supplier
         </button>
-        {['record_payment', 'clear_payment', 'open_document'].map((key) => (
-          <button key={key} type="button" onClick={() => onAction?.(action(key), ROW)}>
-            {key}
-          </button>
-        ))}
+        {['record_payment', 'clear_payment', 'open_document'].map((key) => {
+          const row = { ...ROW, reconciled: rowState.reconciled }
+          const state = resolveActionState?.(action(key), row)
+          return (
+            <button key={key} type="button" disabled={state?.disabled === true} onClick={() => onAction?.(action(key), row)}>
+              {state?.label ?? key}
+            </button>
+          )
+        })}
         {renderFooter?.({ amount: 1200, paid_amount: 200, residual_amount: 1000 })}
       </div>
     )
   }),
 }))
 
-function renderTable() {
+function renderTable(entry = '/purchase-invoice-installments') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/purchase-invoice-installments']}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route path="/purchase-invoice-installments" element={<PurchaseInvoiceInstallmentsTable />} />
           <Route path="/purchase-invoices/:id" element={<p>document page</p>} />
@@ -93,6 +99,7 @@ beforeEach(() => {
   getMock.mockReset().mockResolvedValue(purchaseDetail())
   clearMock.mockReset().mockResolvedValue(purchaseDetail())
   canMock.mockReset().mockReturnValue(true)
+  rowState.reconciled = false
 })
 
 describe('PurchaseInvoiceInstallmentsTable (spec 0211 AC-014, AC-016)', () => {
@@ -181,5 +188,36 @@ describe('PurchaseInvoiceInstallmentsTable bulk payment (spec 0211 AC-017)', () 
       ),
     )
     expect(canMock).toHaveBeenCalledWith('purchase-invoices.pay')
+  })
+})
+
+describe('PurchaseInvoiceInstallmentsTable reconciliation lock and ?quick= (spec 0363 AC-016, AC-017)', () => {
+  it('opens on the quick filter named by ?quick=overdue', () => {
+    renderTable('/purchase-invoice-installments?quick=overdue')
+
+    const region = screen.getByRole('region', { name: 'table-purchase-invoice-installments' })
+    expect(JSON.parse(region.getAttribute('data-forced') ?? '{}')).toEqual({
+      status: { filterType: 'set', values: ['unpaid'] },
+      overdue: { filterType: 'set', values: ['yes'] },
+    })
+    expect(screen.getByRole('tab', { name: 'Overdue', selected: true })).toBeInTheDocument()
+  })
+
+  it('keeps the default for an unknown ?quick= value', () => {
+    renderTable('/purchase-invoice-installments?quick=bogus')
+
+    const region = screen.getByRole('region', { name: 'table-purchase-invoice-installments' })
+    expect(JSON.parse(region.getAttribute('data-forced') ?? '{}')).toEqual({
+      status: { filterType: 'set', values: ['unpaid'] },
+    })
+  })
+
+  it('disables clear and record with the reason on a reconciled installment', () => {
+    rowState.reconciled = true
+    renderTable()
+
+    expect(screen.getByRole('button', { name: /clear_payment - ticked on a bank statement/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /record_payment - ticked on a bank statement/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'open_document' })).toBeEnabled()
   })
 })

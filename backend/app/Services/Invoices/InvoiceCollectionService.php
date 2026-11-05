@@ -8,6 +8,7 @@ use App\Enums\ResidualMode;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Services\Commissions\Accruals\CommissionAccrualSynchronizer;
+use App\Services\Treasury\ReconciliationGuard;
 use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,7 @@ final class InvoiceCollectionService
         return DB::transaction(function () use ($installment, $payload): Invoice {
             // Step 1: serialize on the invoice and refuse a second collection
             [$invoice, $current] = $this->lock($installment);
+            ReconciliationGuard::assertInstallmentFree($current);
 
             if ($this->isCollected($current)) {
                 abort(409, 'This installment is already collected: clear the collection first.');
@@ -68,6 +70,7 @@ final class InvoiceCollectionService
         return DB::transaction(function () use ($installment): Invoice {
             // Step 1: serialize on the invoice
             [$invoice, $current] = $this->lock($installment);
+            ReconciliationGuard::assertInstallmentFree($current);
 
             // Step 2: restore the previous plan when still possible, else clear only the collection
             $rows = $this->restorable($invoice, $current);

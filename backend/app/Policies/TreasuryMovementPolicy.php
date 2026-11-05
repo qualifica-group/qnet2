@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 
 /**
@@ -21,6 +22,12 @@ class TreasuryMovementPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity'];
+        return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'reconcile'];
+    }
+
+    /** Tick/untick statement rows and save/delete bank reconciliations (spec 0363, D-4). */
+    public function reconcile(User $user): bool
+    {
+        return $user->can($this->permission('reconcile'));
     }
 }

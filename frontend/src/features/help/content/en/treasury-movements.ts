@@ -96,6 +96,13 @@ const guide: HelpGuide = {
         { type: 'note', text: 'Whoever can only view sees everything but cannot create, edit or delete movements.' },
       ],
     },
+    {
+      id: 'reconciled-lock',
+      title: 'Movements ticked on the bank statement',
+      blocks: [
+        { type: 'paragraph', text: 'A movement **ticked** on the account statement (see the Account statements guide) opens **read-only** with a notice, and it cannot be edited or deleted. Untick it in the statement to change it.' },
+      ],
+    },
   ],
 }
 

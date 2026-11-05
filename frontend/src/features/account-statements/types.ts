@@ -51,6 +51,8 @@ export interface StatementRow {
   outflow: string | null
   balance: string
   movement_id: number | null
+  /** Spec 0363: the row has been ticked against the bank statement. */
+  reconciled: boolean
 }
 
 export interface Statement {
@@ -62,6 +64,10 @@ export interface Statement {
   closing_balance: string
   balance_today: string
   filtered: boolean
+  /** Spec 0363 D-5: opening balance + ticked rows up to `date_to`; independent of the filters. */
+  reconciled_balance: string
+  /** Rows not ticked from the opening date to `date_to`; independent of the filters. */
+  unreconciled_count: number
 }
 
 export interface UnassignedRow {
@@ -78,6 +84,10 @@ export interface UnassignedList {
   rows: UnassignedRow[]
 }
 
+/** Reconciled filter of the statement: every row, only ticked rows (`yes`) or only unticked ones (`no`). */
+export const RECONCILED_FILTERS = ['all', 'yes', 'no'] as const
+export type ReconciledFilter = (typeof RECONCILED_FILTERS)[number]
+
 /** UI filters of the statement page. */
 export interface StatementFilters {
   dateFrom: string
@@ -85,6 +95,7 @@ export interface StatementFilters {
   types: StatementType[]
   registryId: number | null
   search: string
+  reconciled: ReconciledFilter
 }
 
 /** Query parameters of statement and export, as sent to the backend. */
@@ -94,4 +105,33 @@ export interface StatementParams {
   types?: StatementType[]
   registry_id?: number
   search?: string
+  reconciled?: 'yes' | 'no'
+}
+
+/** One saved bank reconciliation (spec 0363). */
+export interface BankReconciliation {
+  id: number
+  statement_date: string
+  bank_balance: string
+  reconciled_balance: string
+  /** bank_balance - reconciled_balance at save time, before the adjustment. */
+  difference: string
+  adjustment_movement_id: number | null
+  note: string | null
+  created_by: { id: number; name: string } | null
+  created_at: string
+}
+
+export interface ReconciliationPreview {
+  statement_date: string
+  reconciled_balance: string
+  unreconciled_count: number
+}
+
+export interface ReconciliationPayload {
+  statement_date: string
+  bank_balance: string
+  note: string | null
+  create_adjustment: boolean
+  treasury_type_id?: number
 }

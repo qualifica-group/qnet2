@@ -11,6 +11,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Services\Invoices\InstallmentRebalancer;
 use App\Services\Invoices\InstallmentWriteOff;
+use App\Services\Treasury\ReconciliationGuard;
 use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,7 @@ final class PurchaseInvoicePaymentService
         return DB::transaction(function () use ($installment, $payload): PurchaseInvoiceInstallment {
             // Step 1: serialize on the document and refuse a second payment
             [$invoice, $current] = $this->lock($installment);
+            ReconciliationGuard::assertInstallmentFree($current);
 
             if ($current->isPaid()) {
                 abort(409, 'This installment is already paid: clear the payment first.');
@@ -70,6 +72,7 @@ final class PurchaseInvoicePaymentService
         return DB::transaction(function () use ($installment): PurchaseInvoiceInstallment {
             // Step 1: serialize on the document
             [$invoice, $current] = $this->lock($installment);
+            ReconciliationGuard::assertInstallmentFree($current);
 
             // Step 2: restore the previous plan when still possible, else clear only the payment
             $rows = $this->restorable($invoice, $current);

@@ -72,7 +72,7 @@ it('AC-005: every valid type answers 201 with the TreasuryMovement shape and an 
 
         expect(array_keys($data))->toBe([
             'id', 'type', 'direction', 'movement_date', 'amount', 'account', 'counterpart_account', 'description',
-            'sub_account', 'registry', 'work_order', 'attachments_count', 'created_by', 'created_at', 'updated_at', 'custom_fields',
+            'sub_account', 'registry', 'work_order', 'reconciled', 'attachments_count', 'created_by', 'created_at', 'updated_at', 'custom_fields',
         ])
             ->and($data['type'])->toBe($payload['type'])
             ->and($data['amount'])->toBe('200.00')

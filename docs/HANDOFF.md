@@ -3,7 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Tesoreria fase C "Quadro finanziario" (spec 0362) — VERDE, NON COMMITTATO (2026-11-05)
+## Tesoreria fase D1 "Spunta e riconciliazione" (spec 0363) — VERDE, NON COMMITTATO (2026-11-05)
+
+- Spec `docs/specs/0363-bank-reconciliation.xml` (approvata). Fase D divisa: D1 = questa; D2 modelli ricorrenti
+  RINVIATA (l'utente deve decidere come registrare buste paga, affitti, leasing); D3 compensazioni = prossima spec.
+  Decisioni: riga spuntata bloccata (422 su modifica/elimina movimento e registra/annulla incasso o pagamento);
+  riconciliazioni salvate, una per conto e data; saldo spuntato = apertura + righe spuntate fino alla data;
+  rettifica opzionale gia' spuntata; spuntando una rata senza conto si scrive il conto effettivo sulla rata (D-7);
+  giroconto spuntato per lato; permesso nuovo `treasury-movements.reconcile` (+ `create` per la rettifica).
+- Backend: migrazioni `2026_11_21_100000` (colonne `reconciled_at/_by`, `counterpart_reconciled_at/_by`) e
+  `2026_11_21_100100` (`bank_reconciliations`); `BankReconciliation` (morph alias `bank_reconciliation`);
+  `ReconciliationMarkService`, `BankReconciliationService`, `ReconciliationGuard` in `app/Services/Treasury`;
+  `BankReconciliationController`; rotte in `routes/api/account-statements.php` (`reconciliation-marks`,
+  `bank-reconciliations`, `/preview`, `DELETE bank-reconciliations/{id}`); lang `treasury_reconciliations`.
+  `AccountStatementFacts` ora usa `whereDate` (in SQLite `whereBetween` perdeva il giorno finale);
+  `reconciledSummary` unico calcolo del saldo spuntato (estratto, anteprima, Quadro `to_verify.unreconciled`).
+  Colonna `reconciled` (yes/no) sulle griglie scadenziari; `reconciled` nelle resource di movimenti, rate, fatture.
+- Frontend: estratto con colonna Spunta, selezione + Spunta/Togli spunta (blocchi da 500), filtro `?reconciled=`,
+  saldo spuntato; dialog Nuova riconciliazione + storico (`features/account-statements/reconciliation-*`);
+  movimento spuntato in sola lettura; azioni rata disabilitate; `?quick=` sugli scadenziari (le chiavi `null`
+  del `forcedFilterModel` ora CANCELLANO il filtro salvato: `features/table/use-table-view-grid-state.ts`);
+  link filtrati del Quadro e voce "Righe non spuntate". Guide IT/EN aggiornate (5).
+- Verifiche: Pest Treasury 135, Invoices 112, PurchaseInvoices 110, installment 116, Migration 749 verdi; Vitest
+  mirato 771 verdi; ESLint, Pint puliti; `tsc -b --force` 0. Suite completa backend: rossi solo i PREESISTENTI
+  (TableBulkDelete, PermissionCatalogue AC-004, 2 QualificaOperatorSeeder, SettlementApproval AC-006,
+  WorkOrderCategoryTabs, 4 ManagementControl); `ForbiddenWithoutMessageTest` corretto. Vitest completo: unico
+  rosso `workspaces-help.test.ts` (conteggio guide fermo a 106 dalla 0362) corretto a 107.
+- Manuale Claude Docs: NON aggiornato (documento non condiviso con la sessione). Sezioni: Estratto conto
+  (spunta, riconciliazioni), Movimenti (spuntato bloccato), Scadenze (annulla bloccato, link filtrati), Quadro.
+- Prossimo: D3 compensazioni (`/plan-feature`); D2 quando l'utente decide.
+
+## Tesoreria fase C "Quadro finanziario" (spec 0362) — VERDE, COMMITTATO 0b38d798 (2026-11-05)
 
 - Spec `docs/specs/0362-treasury-overview.xml` (approvata). Decisioni: permesso `treasury-movements.view` (nessuno
   nuovo); previsione 30/60/90 = liquidita' oggi + rate attive in scadenza da oggi a oggi+N - rate passive, scaduti e

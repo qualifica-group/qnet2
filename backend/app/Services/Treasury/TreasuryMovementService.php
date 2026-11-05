@@ -45,8 +45,12 @@ final class TreasuryMovementService
      */
     public function update(TreasuryMovement $movement, array $data): TreasuryMovement
     {
-        // Step 1: apply the changes (the activity log records before/after)
-        DB::transaction(fn (): bool => $movement->update($data));
+        // Step 1: refuse a reconciled movement, then apply the changes (the activity log records before/after)
+        DB::transaction(function () use ($movement, $data): bool {
+            ReconciliationGuard::assertMovementFree($this->locked($movement));
+
+            return $movement->update($data);
+        });
 
         // Step 2: reload with the resource relations
         return $this->detail($movement);
@@ -54,7 +58,17 @@ final class TreasuryMovementService
 
     public function delete(TreasuryMovement $movement): void
     {
-        DB::transaction(fn (): ?bool => $movement->delete());
+        DB::transaction(function () use ($movement): ?bool {
+            ReconciliationGuard::assertMovementFree($this->locked($movement));
+
+            return $movement->delete();
+        });
+    }
+
+    /** Fresh read under lock: a tick made meanwhile must not be lost. */
+    private function locked(TreasuryMovement $movement): TreasuryMovement
+    {
+        return TreasuryMovement::query()->whereKey($movement->getKey())->lockForUpdate()->firstOrFail();
     }
 
     public function detail(TreasuryMovement $movement): TreasuryMovement

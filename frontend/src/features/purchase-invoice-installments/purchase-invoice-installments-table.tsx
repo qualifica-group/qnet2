@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CalendarClock, HandCoins, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { PURCHASE_INSTALLMENTS_DOMAIN } from '@/features/purchase-invoice-installments/api'
@@ -10,10 +11,19 @@ import { PurchaseInstallmentQuickFilterToolbar } from '@/features/purchase-invoi
 import { PurchaseInstallmentTotalsFooter } from '@/features/purchase-invoice-installments/purchase-installment-totals-footer'
 import { PurchasePaymentDialog } from '@/features/purchase-invoice-installments/purchase-payment-dialog'
 import { usePurchaseInstallmentBulkPayment } from '@/features/purchase-invoice-installments/use-purchase-installment-bulk-payment'
-import { usePurchaseInstallmentQuickFilter } from '@/features/purchase-invoice-installments/use-purchase-installment-quick-filter'
+import {
+  parseQuickFilterParam,
+  usePurchaseInstallmentQuickFilter,
+} from '@/features/purchase-invoice-installments/use-purchase-installment-quick-filter'
 import { usePurchaseInstallmentRowActions } from '@/features/purchase-invoice-installments/use-purchase-installment-row-actions'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import { useReconciledActionState } from '@/features/treasury-movements/use-reconciled-action-state'
+
+/** Payment actions a ticked (reconciled) installment cannot take (spec 0363 D-2). */
+const RECONCILED_LOCKED_ACTIONS = ['clear_payment', 'record_payment'] as const
+/** URL parameter that opens the grid on a quick filter (the treasury overview links here). */
+const QUICK_PARAM = 'quick'
 
 /** Icon keys the backend action catalog may use for the installment actions. */
 const PURCHASE_ACTION_ICONS: ActionIconMap = {
@@ -30,7 +40,9 @@ const PURCHASE_ACTION_ICONS: ActionIconMap = {
  */
 export function PurchaseInvoiceInstallmentsTable() {
   const tableRef = useRef<TableViewHandle>(null)
-  const quickFilter = usePurchaseInstallmentQuickFilter(tableRef)
+  const [searchParams] = useSearchParams()
+  const quickFilter = usePurchaseInstallmentQuickFilter(tableRef, parseQuickFilterParam(searchParams.get(QUICK_PARAM)))
+  const resolveActionState = useReconciledActionState(RECONCILED_LOCKED_ACTIONS)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const actions = usePurchaseInstallmentRowActions(refreshGrid)
   const bulkPayment = usePurchaseInstallmentBulkPayment(tableRef, refreshGrid)
@@ -48,6 +60,7 @@ export function PurchaseInvoiceInstallmentsTable() {
         forcedFilterModel={quickFilter.forcedFilterModel}
         onFilterModelChange={quickFilter.onFilterModelChange}
         onAction={actions.handleAction}
+        resolveActionState={resolveActionState}
         isRowSelectable={isBulkPayable}
         getBulkActions={bulkPayment.getBulkActions}
         onRowGroupColumnsChange={bulkPayment.onRowGroupColumnsChange}

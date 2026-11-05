@@ -6,11 +6,14 @@ import { Can } from '@/features/auth/can'
 import { AccountSelector } from '@/features/account-statements/account-selector'
 import { AccountStatementPanel } from '@/features/account-statements/account-statement-panel'
 import { UnassignedBox } from '@/features/account-statements/unassigned-box'
+import { parseReconciledParam } from '@/features/account-statements/api'
 import type { AccountBalance } from '@/features/account-statements/types'
 import { useBalances } from '@/features/account-statements/use-account-statements'
 
 /** URL parameter holding the chosen account, so the page is linkable (account sheet links here). */
 const ACCOUNT_PARAM = 'account'
+/** `?reconciled=yes|no` pre-filters the statement (the treasury overview links here). */
+const RECONCILED_PARAM = 'reconciled'
 const NO_ACCOUNTS: AccountBalance[] = []
 
 function parseAccountId(raw: string | null): number | null {
@@ -59,7 +62,11 @@ export default function AccountStatementsPage() {
             {t('accountStatements.emptyState')}
           </p>
         ) : (
-          <AccountStatementPanel key={accountId} accountId={accountId} />
+          <AccountStatementPanel
+            key={accountId}
+            accountId={accountId}
+            initialReconciled={parseReconciledParam(searchParams.get(RECONCILED_PARAM))}
+          />
         )}
       </div>
     </Can>

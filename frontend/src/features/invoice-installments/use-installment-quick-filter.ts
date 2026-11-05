@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type RefObject } from 'react'
 import type { TableViewHandle } from '@/features/table/table-view'
-import type { InstallmentQuickFilter } from '@/features/invoice-installments/types'
+import { INSTALLMENT_QUICK_FILTERS, type InstallmentQuickFilter } from '@/features/invoice-installments/types'
 
 export const STATUS_FILTER_KEY = 'status'
 export const OVERDUE_FILTER_KEY = 'overdue'
@@ -34,6 +34,19 @@ export function buildQuickFilterPatch(filter: InstallmentQuickFilter): FilterMod
     case 'all':
       return { [STATUS_FILTER_KEY]: null, [OVERDUE_FILTER_KEY]: null }
   }
+}
+
+/** Quick filter named by the `?quick=` URL parameter; an unknown or missing value keeps the default. */
+export function parseQuickFilterParam(raw: string | null): InstallmentQuickFilter | undefined {
+  return INSTALLMENT_QUICK_FILTERS.find((filter) => filter === raw)
+}
+
+/** Forced grid filters of an initial quick filter: a `null` key clears that column's saved filter. */
+function initialFilterModel(filter: InstallmentQuickFilter | undefined): FilterModel {
+  if (filter === undefined) {
+    return { [STATUS_FILTER_KEY]: setFilter(UNPAID) }
+  }
+  return buildQuickFilterPatch(filter)
 }
 
 /** The quick filter a live grid filter model corresponds to, or `null` when the user customized it. */
@@ -70,11 +83,9 @@ export interface InstallmentQuickFilterState {
  */
 export function useInstallmentQuickFilter(
   tableRef: RefObject<TableViewHandle | null>,
+  initialQuickFilter?: InstallmentQuickFilter,
 ): InstallmentQuickFilterState {
-  const forcedFilterModel = useMemo<FilterModel>(
-    () => ({ [STATUS_FILTER_KEY]: setFilter(UNPAID) }),
-    [],
-  )
+  const forcedFilterModel = useMemo<FilterModel>(() => initialFilterModel(initialQuickFilter), [initialQuickFilter])
   const [model, setModel] = useState<FilterModel>(forcedFilterModel)
   const quickFilter = useMemo(() => readQuickFilter(model), [model])
 

@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { InvoiceInstallmentsTable } from '@/features/invoice-installments/invoice-installments-table'
 import type { InstallmentDetail } from '@/features/invoice-installments/types'
@@ -39,6 +40,7 @@ function action(key: string): TableActionDefinition {
 }
 
 const ROW: TableRow = { id: 21, actions: [] }
+const rowState = { reconciled: false }
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
@@ -47,11 +49,12 @@ vi.mock('@/features/table/table-view', () => ({
       domain: string
       forcedFilterModel?: Record<string, unknown>
       onAction?: (action: TableActionDefinition, row: TableRow) => void
+      resolveActionState?: (action: TableActionDefinition, row: TableRow) => { disabled?: boolean; label?: string } | undefined
       renderFooter?: (aggregates: Record<string, number> | undefined) => ReactNode
       getBulkActions?: unknown
       onRowGroupColumnsChange?: (columnIds: string[]) => void
     }
-  >(function TableViewStub({ domain, forcedFilterModel, onAction, renderFooter, getBulkActions, onRowGroupColumnsChange }, ref) {
+  >(function TableViewStub({ domain, forcedFilterModel, onAction, resolveActionState, renderFooter, getBulkActions, onRowGroupColumnsChange }, ref) {
     useImperativeHandle(ref, () => ({ refresh: refreshMock, setFilterModel: () => {}, clearSelection: () => {} }))
     return (
       <div
@@ -63,11 +66,15 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onRowGroupColumnsChange?.(['customer'])}>
           group-customer
         </button>
-        {['view_invoice', 'record_collection', 'clear_collection'].map((key) => (
-          <button key={key} type="button" onClick={() => onAction?.(action(key), ROW)}>
-            {key}
-          </button>
-        ))}
+        {['view_invoice', 'record_collection', 'clear_collection'].map((key) => {
+          const row = { ...ROW, reconciled: rowState.reconciled }
+          const state = resolveActionState?.(action(key), row)
+          return (
+            <button key={key} type="button" disabled={state?.disabled === true} onClick={() => onAction?.(action(key), row)}>
+              {state?.label ?? key}
+            </button>
+          )
+        })}
         {renderFooter?.({ amount: 1200, collected_amount: 200, residual_amount: 1000 })}
       </div>
     )
@@ -117,11 +124,13 @@ function stubDetail(): InstallmentDetail {
   }
 }
 
-function renderTable() {
+function renderTable(entry = '/invoice-installments') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <InvoiceInstallmentsTable />
+      <MemoryRouter initialEntries={[entry]}>
+        <InvoiceInstallmentsTable />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -136,6 +145,7 @@ beforeEach(() => {
   getInvoiceMock.mockReset().mockResolvedValue({ id: 3, installments: [OPEN, COLLECTED] })
   clearMock.mockReset().mockResolvedValue({} as Invoice)
   canMock.mockReset().mockReturnValue(true)
+  rowState.reconciled = false
 })
 
 describe('InvoiceInstallmentsTable (spec 0197 AC-018, AC-020)', () => {
@@ -199,5 +209,36 @@ describe('InvoiceInstallmentsTable bulk collection (spec 0198 AC-009)', () => {
       expect(screen.getByRole('region', { name: 'table-invoice-installments' })).toHaveAttribute('data-bulk', 'false'),
     )
     expect(canMock).toHaveBeenCalledWith('invoices.collect')
+  })
+})
+
+describe('InvoiceInstallmentsTable reconciliation lock and ?quick= (spec 0363 AC-016, AC-017)', () => {
+  it('opens on the quick filter named by ?quick=overdue', () => {
+    renderTable('/invoice-installments?quick=overdue')
+
+    const region = screen.getByRole('region', { name: 'table-invoice-installments' })
+    expect(JSON.parse(region.getAttribute('data-forced') ?? '{}')).toEqual({
+      status: { filterType: 'set', values: ['unpaid'] },
+      overdue: { filterType: 'set', values: ['yes'] },
+    })
+    expect(screen.getByRole('tab', { name: 'Overdue', selected: true })).toBeInTheDocument()
+  })
+
+  it('keeps the default for an unknown ?quick= value', () => {
+    renderTable('/invoice-installments?quick=bogus')
+
+    const region = screen.getByRole('region', { name: 'table-invoice-installments' })
+    expect(JSON.parse(region.getAttribute('data-forced') ?? '{}')).toEqual({
+      status: { filterType: 'set', values: ['unpaid'] },
+    })
+  })
+
+  it('disables clear and record with the reason on a reconciled installment', () => {
+    rowState.reconciled = true
+    renderTable()
+
+    expect(screen.getByRole('button', { name: /clear_collection - ticked on a bank statement/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /record_collection - ticked on a bank statement/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'view_invoice' })).toBeEnabled()
   })
 })

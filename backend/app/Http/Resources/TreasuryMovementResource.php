@@ -32,6 +32,7 @@ class TreasuryMovementResource extends JsonResource
             'sub_account' => $this->subAccount(),
             'registry' => $this->registry === null ? null : ['id' => $this->registry->id, 'name' => $this->registry->name],
             'work_order' => $this->workOrder === null ? null : ['id' => $this->workOrder->id, 'code' => $this->workOrder->code],
+            'reconciled' => $this->isReconciled(),
             'attachments_count' => (int) ($this->attachments_count ?? 0),
             'created_by' => $this->creator === null ? null : ['id' => $this->creator->id, 'name' => $this->creator->name],
             'created_at' => $this->created_at,

@@ -47,5 +47,9 @@ export const treasuryOverview = {
     adjustments_one: '{{count}} balance adjustment in {{month}}',
     adjustments_other: '{{count}} balance adjustments in {{month}}',
     adjustmentAmounts: 'Inflow {{inflow}} · Outflow {{outflow}}',
+    unreconciled_one: '{{count}} row not ticked',
+    unreconciled_other: '{{count}} rows not ticked',
+    unreconciledAccounts: 'Rows not ticked by account',
+    unreconciledAccount: '{{name}}: {{count}}',
   },
 }

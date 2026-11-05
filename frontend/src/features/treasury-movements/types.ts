@@ -41,6 +41,8 @@ export interface TreasuryMovement {
   registry: { id: number; name: string } | null
   work_order: { id: number; code: string } | null
   attachments_count: number
+  /** Spec 0363: ticked on a statement; locked until unticked. */
+  reconciled: boolean
   created_by: { id: number; name: string } | null
   created_at: string
   updated_at: string

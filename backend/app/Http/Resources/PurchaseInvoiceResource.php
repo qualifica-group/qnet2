@@ -93,6 +93,7 @@ class PurchaseInvoiceResource extends JsonResource
             'paid_amount' => $row->paid_amount,
             'paid_at' => $row->paid_at?->toDateString(),
             'write_off' => WriteOffPayload::from($row),
+            'reconciled' => $row->reconciled_at !== null,
             'status' => $row->status(),
             'residual_amount' => $row->residualAmount(),
             'is_overdue' => $daysOverdue > 0,

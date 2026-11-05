@@ -72,7 +72,7 @@ final class AccountStatementFacts
     {
         $movements = TreasuryMovement::query()
             ->with(['registry:id,name', 'workOrder:id,code'])
-            ->whereBetween('movement_date', [$from, $to])
+            ->whereDate('movement_date', '>=', $from)->whereDate('movement_date', '<=', $to)
             ->where(function ($query) use ($accountId): void {
                 $query->where('financial_account_id', $accountId)
                     ->orWhere(fn ($transfer) => $transfer->where('type', TreasuryMovementType::Transfer->value)->where('counterpart_account_id', $accountId));
@@ -90,7 +90,16 @@ final class AccountStatementFacts
             'work_order' => $movement->workOrder === null ? null : ['id' => $movement->workOrder->id, 'code' => $movement->workOrder->code],
             'cents' => $this->movementCents($movement, $accountId),
             'movement_id' => $movement->id,
+            'reconciled' => $this->movementSideReconciled($movement, $accountId),
         ])->all();
+    }
+
+    /** A transfer is ticked per side: the origin on `reconciled_at`, the destination on `counterpart_reconciled_at` (D-8). */
+    private function movementSideReconciled(TreasuryMovement $movement, int $accountId): bool
+    {
+        $destination = $movement->type === TreasuryMovementType::Transfer && $movement->counterpart_account_id === $accountId;
+
+        return ($destination ? $movement->counterpart_reconciled_at : $movement->reconciled_at) !== null;
     }
 
     private function movementType(TreasuryMovement $movement): string
@@ -124,7 +133,7 @@ final class AccountStatementFacts
         $installment = $this->installmentAlias($source);
         $document = $this->documentAlias($source);
         $query = $this->installmentQuery($source)
-            ->whereBetween($this->dateColumn($source), [$from, $to])
+            ->whereDate($this->dateColumn($source), '>=', $from)->whereDate($this->dateColumn($source), '<=', $to)
             ->where(function (Builder $query) use ($installment, $document, $accountId): void {
                 $query->where("{$installment}.financial_account_id", $accountId)
                     ->orWhere(fn (Builder $inherited) => $inherited
@@ -143,7 +152,7 @@ final class AccountStatementFacts
                 ->leftJoin('registries as reg', 'reg.id', '=', 'doc.customer_registry_id')
                 ->leftJoin('work_orders as wo', 'wo.id', '=', 'doc.work_order_id')
                 ->whereNotNull('ii.collected_at')->where('ii.collected_amount', '>', 0)
-                ->select(['ii.id', 'ii.collected_amount as amount', 'ii.collected_at as at', 'doc.id as doc_id', 'doc.number', 'doc.year',
+                ->select(['ii.id', 'ii.collected_amount as amount', 'ii.collected_at as at', 'ii.reconciled_at', 'doc.id as doc_id', 'doc.number', 'doc.year',
                     'reg.id as reg_id', 'reg.name as reg_name', 'wo.id as wo_id', 'wo.code as wo_code']);
         }
 
@@ -152,7 +161,7 @@ final class AccountStatementFacts
             ->leftJoin('registries as reg', 'reg.id', '=', 'pdoc.supplier_id')
             ->leftJoin('work_orders as wo', 'wo.id', '=', 'pdoc.work_order_id')
             ->whereNotNull('pi.paid_at')->where('pi.paid_amount', '>', 0)
-            ->select(['pi.id', 'pi.paid_amount as amount', 'pi.paid_at as at', 'pdoc.id as doc_id', 'pdoc.document_number as number',
+            ->select(['pi.id', 'pi.paid_amount as amount', 'pi.paid_at as at', 'pi.reconciled_at', 'pdoc.id as doc_id', 'pdoc.document_number as number',
                 'reg.id as reg_id', 'reg.name as reg_name', 'wo.id as wo_id', 'wo.code as wo_code']);
     }
 
@@ -191,7 +200,26 @@ final class AccountStatementFacts
             'work_order' => $row->wo_id === null ? null : ['id' => (int) $row->wo_id, 'code' => $row->wo_code],
             'cents' => $collection ? $cents : -$cents,
             'movement_id' => null,
+            'reconciled' => $row->reconciled_at !== null,
         ];
+    }
+
+    /**
+     * Reconciled balance (D-5: the opening balance counts as reconciled) and number of
+     * unreconciled rows of the facts from the opening date to the end of the period.
+     *
+     * @param  array<int, array<string, mixed>>  $facts
+     * @return array{balance_cents: int, unreconciled: int}
+     */
+    public static function reconciledSummary(array $facts, int $openingCents): array
+    {
+        $balance = $openingCents;
+        $unreconciled = 0;
+        foreach ($facts as $fact) {
+            $fact['reconciled'] ? $balance += $fact['cents'] : $unreconciled++;
+        }
+
+        return ['balance_cents' => $balance, 'unreconciled' => $unreconciled];
     }
 
     /** Decimal string ("1234.56", "-5.1") to integer cents, without floats. */

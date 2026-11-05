@@ -62,6 +62,13 @@ const OVERVIEW: TreasuryOverview = {
   to_verify: {
     unassigned: { count: 2, collections: '100.00', payments: '50.00' },
     adjustments: { month: '2026-11', count: 1, inflow: '12.50', outflow: '0.00' },
+    unreconciled: {
+      count: 5,
+      accounts: [
+        { id: 5, name: 'Intesa CC', count: 4 },
+        { id: 6, name: 'Cassa', count: 1 },
+      ],
+    },
   },
 }
 
@@ -148,12 +155,15 @@ describe('TreasuryOverviewPage (spec 0362)', () => {
 
     expect(within(liquidity).getByRole('link', { name: formatEuro('1500.00') })).toHaveAttribute('href', '/account-statements')
     expect(within(liquidity).getByRole('link', { name: formatEuro('1350.00') })).toHaveAttribute('href', '/account-statements?account=5')
-    expect(
-      within(screen.getByRole('region', { name: 'Customer receivables' })).getByRole('link', { name: formatEuro('900.00') }),
-    ).toHaveAttribute('href', '/invoice-installments')
+    // Spec 0363 (REQUIREMENT CHANGED): the schedule figures open the grid on a quick filter.
+    const receivable = within(screen.getByRole('region', { name: 'Customer receivables' }))
+    expect(receivable.getByRole('link', { name: formatEuro('900.00') })).toHaveAttribute('href', '/invoice-installments?quick=unpaid')
+    expect(receivable.getByRole('link', { name: formatEuro('600.00') })).toHaveAttribute('href', '/invoice-installments?quick=due')
+    expect(receivable.getByRole('link', { name: formatEuro('300.00') })).toHaveAttribute('href', '/invoice-installments?quick=overdue')
+    expect(receivable.getByRole('link', { name: formatEuro('200.00') })).toHaveAttribute('href', '/invoice-installments?quick=overdue')
     expect(
       within(screen.getByRole('region', { name: 'Supplier payables' })).getAllByRole('link', { name: formatEuro('400.00') })[0],
-    ).toHaveAttribute('href', '/purchase-invoice-installments')
+    ).toHaveAttribute('href', '/purchase-invoice-installments?quick=unpaid')
     const toVerify = screen.getByRole('region', { name: 'To verify' })
     expect(within(toVerify).getByRole('link', { name: '2 collections/payments without account' })).toHaveAttribute(
       'href',
@@ -162,6 +172,15 @@ describe('TreasuryOverviewPage (spec 0362)', () => {
     expect(within(toVerify).getByRole('link', { name: '1 balance adjustment in 2026-11' })).toHaveAttribute(
       'href',
       '/treasury-movements',
+    )
+    expect(within(toVerify).getByText('5 rows not ticked')).toBeInTheDocument()
+    expect(within(toVerify).getByRole('link', { name: 'Intesa CC: 4' })).toHaveAttribute(
+      'href',
+      '/account-statements?account=5&reconciled=no',
+    )
+    expect(within(toVerify).getByRole('link', { name: 'Cassa: 1' })).toHaveAttribute(
+      'href',
+      '/account-statements?account=6&reconciled=no',
     )
   })
 

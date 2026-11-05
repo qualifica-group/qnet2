@@ -83,6 +83,27 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'A **card** is an account with its **own balance**: expenses make it go down. The **monthly debit** on the bank account is recorded as a **Transfer** from the bank to the card, so the card balance goes back up and the bank balance goes down (a transfer is only allowed between accounts of the same company).' },
       ],
     },
+    {
+      id: 'reconcile',
+      title: 'Ticking rows against the bank statement',
+      blocks: [
+        { type: 'paragraph', text: 'Next to each row there is a checkbox (visible to whoever has the **reconcile** permission). Select the rows you find on the **bank statement** and press **Tick**: the **Ticked** column shows a check mark. **Untick** removes it.' },
+        { type: 'steps', items: ['Select one or more rows (the header checkbox selects all the shown rows).', 'Press **Tick** (or **Untick** to remove the tick).', 'The **Reconciled balance** and **Rows not ticked** figures are updated.'] },
+        { type: 'paragraph', text: 'The **Reconciliation** filter shows **All rows**, only the **Ticked** ones or only the **Not ticked** ones. The running balance stays the real one.' },
+        { type: 'note', text: 'A ticked row is **locked**: a manual movement cannot be edited or deleted, and the collection or payment of an installment cannot be cleared, until you untick it. A transfer appears on two statements and each side is ticked on its own: one ticked side is enough to lock it.' },
+        { type: 'paragraph', text: 'Ticking a collection or payment that has no account of its own fixes the invoice account on the installment: changing the invoice account later does not move a ticked row.' },
+      ],
+    },
+    {
+      id: 'reconciliations',
+      title: 'Saving a reconciliation',
+      blocks: [
+        { type: 'paragraph', text: 'The **reconciled balance** at a date is the account opening balance plus the ticked rows up to that date. In the **Bank reconciliations** section press **New reconciliation**.' },
+        { type: 'steps', items: ['Enter the **Statement date** and the **Bank balance** shown by the bank at that date, and optionally a **Note**.', 'QNet shows the **Reconciled balance**, the **Rows not ticked** and the **Difference** (bank balance - reconciled balance).', 'If the difference is not zero you can tick **Create a balance adjustment for the difference** and choose the **financial sub-account** (it needs the permission to create treasury movements): QNet creates an adjustment dated like the reconciliation, already ticked.', 'Press **Save**.'] },
+        { type: 'note', text: 'There is at most one reconciliation per account and date: to redo it, delete it and create it again. Deleting a reconciliation does not delete the adjustment it created, which stays among the movements.' },
+        { type: 'paragraph', text: 'The saved reconciliations are listed in the same section, most recent first.' },
+      ],
+    },
   ],
 }
 

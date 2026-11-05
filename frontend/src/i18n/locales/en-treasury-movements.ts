@@ -16,7 +16,9 @@ export const treasuryMovements = {
     revenue: 'Revenues',
     financial: 'Financial',
   },
+  reconciledLock: 'ticked on a bank statement: untick it first',
   form: {
+    reconciledNotice: 'This movement is ticked on a bank statement: it cannot be edited or deleted until you untick it.',
     newMovement: 'New movement',
     createTitle: 'New treasury movement',
     editTitle: 'Edit treasury movement',

@@ -16,7 +16,9 @@ export const treasuryMovements = {
     revenue: 'Ricavi',
     financial: 'Finanziari',
   },
+  reconciledLock: 'spuntato sull\'estratto della banca: togli prima la spunta',
   form: {
+    reconciledNotice: 'Questo movimento e\' spuntato sull\'estratto della banca: non si puo\' modificare ne\' eliminare finche\' non togli la spunta.',
     newMovement: 'Nuovo movimento',
     createTitle: 'Nuovo movimento di tesoreria',
     editTitle: 'Modifica movimento di tesoreria',

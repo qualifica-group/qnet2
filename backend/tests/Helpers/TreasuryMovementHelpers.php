@@ -13,7 +13,7 @@ if (! function_exists('treasuryUserWith')) {
      */
     function treasuryUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'reconcile'] as $ability) {
             Permission::findOrCreate("treasury-movements.{$ability}");
         }
 

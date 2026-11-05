@@ -197,6 +197,20 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'reconciled-lock',
+      title: 'Incassi spuntati sull\'estratto della banca',
+      blocks: [
+        { type: 'paragraph', text: 'Quando l\'incasso di una rata e\' **spuntato** nell\'estratto conto, **Annulla incasso** (e una nuova registrazione) e\' disabilitato e ne viene mostrato il motivo. Togli prima la spunta nell\'estratto.' },
+      ],
+    },
+    {
+      id: 'link-filter',
+      title: 'Aprire la pagina gia\' filtrata',
+      blocks: [
+        { type: 'paragraph', text: 'L\'indirizzo accetta `?quick=` con **unpaid**, **due**, **overdue**, **paid** o **all**: la pagina si apre con quel filtro rapido attivo (un valore sconosciuto lascia quello predefinito). Il Quadro finanziario lo usa: **Aperto** apre **unpaid**, **A scadere** apre **due**, **Scaduto** e le fasce di scaduto aprono **overdue**.' },
+      ],
+    },
   ],
 }
 

@@ -18,6 +18,9 @@ final class InstallmentColumnCatalog
     /** The two values of the derived `overdue` column. */
     public const array OVERDUE_VALUES = ['yes', 'no'];
 
+    /** The two values of the `reconciled` column (spec 0363). */
+    public const array RECONCILED_VALUES = ['yes', 'no'];
+
     /** Column id => `invoice-installments` field whose visibility gates it. */
     public const array FIELD_BY_COLUMN = [
         'amount' => 'amount',
@@ -42,6 +45,7 @@ final class InstallmentColumnCatalog
             self::column('days_overdue', 'number', sortable: true, filter: 'number', valueList: false),
             self::column('status', 'badge', sortable: true, filter: 'set', options: InstallmentStatus::values()),
             self::column('overdue', 'badge', filter: 'set', options: self::OVERDUE_VALUES),
+            self::column('reconciled', 'badge', filter: 'set', options: self::RECONCILED_VALUES),
             self::column('customer', 'text', sortable: true, filter: 'set'),
             self::column('work_order', 'text', sortable: true, filter: 'set'),
             self::column('company', 'text', sortable: true, filter: 'set'),

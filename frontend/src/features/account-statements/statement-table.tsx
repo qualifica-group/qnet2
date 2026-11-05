@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Check } from 'lucide-react'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import type { StatementRow } from '@/features/account-statements/types'
 
@@ -10,8 +11,20 @@ function formatDate(iso: string): string {
   return `${day}/${month}/${year}`
 }
 
+export interface StatementSelection {
+  selected: ReadonlySet<string>
+  onToggle: (key: string) => void
+  onToggleAll: (checked: boolean) => void
+}
+
+interface StatementTableProps {
+  rows: StatementRow[]
+  /** Present only for users who may tick rows (`treasury-movements.reconcile`): adds the checkbox column. */
+  selection?: StatementSelection
+}
+
 /** Chronological rows with running balance; horizontal scroll below the md breakpoint. */
-export function StatementTable({ rows }: { rows: StatementRow[] }) {
+export function StatementTable({ rows, selection }: StatementTableProps) {
   const { t } = useTranslation()
   if (rows.length === 0) {
     return (
@@ -30,9 +43,21 @@ export function StatementTable({ rows }: { rows: StatementRow[] }) {
 
   return (
     <div className="overflow-x-auto rounded-lg border bg-card">
-      <table className="w-full min-w-[56rem] text-sm">
+      <table className="w-full min-w-[60rem] text-sm">
         <thead className="bg-surface text-xs text-muted-foreground">
           <tr className="text-left">
+            {selection ? (
+              <th scope="col" className={`${CELL} w-8`}>
+                <input
+                  type="checkbox"
+                  className="size-3.5 accent-primary"
+                  aria-label={t('accountStatements.reconciliation.selectAll')}
+                  checked={rows.every((row) => selection.selected.has(row.key))}
+                  onChange={(event) => selection.onToggleAll(event.target.checked)}
+                />
+              </th>
+            ) : null}
+            <th scope="col" className={`${CELL} w-10`}>{t('accountStatements.columns.reconciled')}</th>
             <th scope="col" className={CELL}>{t('accountStatements.columns.date')}</th>
             <th scope="col" className={CELL}>{t('accountStatements.columns.type')}</th>
             <th scope="col" className={CELL}>{t('accountStatements.columns.description')}</th>
@@ -46,6 +71,25 @@ export function StatementTable({ rows }: { rows: StatementRow[] }) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.key} className="border-t hover:bg-muted/40">
+              {selection ? (
+                <td className={CELL}>
+                  <input
+                    type="checkbox"
+                    className="size-3.5 accent-primary"
+                    aria-label={t('accountStatements.reconciliation.selectRow', { description: row.description })}
+                    checked={selection.selected.has(row.key)}
+                    onChange={() => selection.onToggle(row.key)}
+                  />
+                </td>
+              ) : null}
+              <td className={CELL}>
+                {row.reconciled ? (
+                  <>
+                    <Check className="size-3.5 text-primary" aria-hidden="true" />
+                    <span className="sr-only">{t('accountStatements.reconciliation.reconciledRow')}</span>
+                  </>
+                ) : null}
+              </td>
               <td className={`${CELL} whitespace-nowrap`}>{formatDate(row.date)}</td>
               <td className={`${CELL} whitespace-nowrap`}>
                 {t(`accountStatements.types.${row.type}`, { defaultValue: row.type })}

@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0363-bank-reconciliation" status="approved" owner="utente" date="2026-11-05">
+
+  <goal>
+    Tesoreria fase D1 "Spunta e riconciliazione": nell'Estratto conto l'utente spunta le righe ritrovate
+    sull'estratto della banca, confronta il saldo spuntato a una data con il saldo della banca, salva la
+    riconciliazione e chiude l'eventuale differenza con una Rettifica di saldo. Una riga spuntata non si puo' piu'
+    modificare, eliminare o annullare finche' non si toglie la spunta. Il Quadro finanziario segnala le righe non
+    spuntate e i suoi link aprono gli scadenziari gia' filtrati.
+  </goal>
+
+  <context>
+    Prospetto: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y (blocco 3 "spunta", blocco 5 "movimenti non
+    spuntati", fase D). Dipende da 0360 (fase A), 0361 (fase B), 0362 (fase C).
+
+    Decisioni utente 2026-11-05:
+    - D-1 (suddivisione): la fase D si divide in tre spec in sequenza. D1 = questa (spunta, riconciliazione, filtri
+      URL del Quadro). D2 = modelli ricorrenti, RINVIATA finche' l'utente non decide come registrare buste paga,
+      affitti e leasing. D3 = compensazioni crediti/debiti, spec successiva.
+    - D-2 (blocco): una riga spuntata e' bloccata. Movimento manuale: niente modifica ne' eliminazione. Incasso o
+      pagamento di una rata: niente "Annulla incasso/pagamento" e niente nuova registrazione sopra. Per cambiare
+      si toglie prima la spunta.
+    - D-3 (riconciliazioni salvate): per un conto si registra "saldo banca al &lt;data&gt;". QNet calcola il saldo
+      spuntato a quella data, la differenza e, se l'utente lo chiede, crea la Rettifica di saldo. Lo storico delle
+      riconciliazioni resta consultabile.
+
+    Decisioni approvate con la spec (utente 2026-11-05):
+    - D-4 (permesso): nuova ability `reconcile` su `TreasuryMovementPolicy` -> permesso
+      `treasury-movements.reconcile` (spunta, togli spunta, crea/elimina riconciliazione). La consultazione resta
+      `treasury-movements.view`. Creare la rettifica da una riconciliazione richiede anche
+      `treasury-movements.create`.
+    - D-5 (saldo spuntato): saldo spuntato al giorno X = saldo di apertura del conto + somma delle righe spuntate con
+      data da apertura a X inclusa. Il saldo di apertura conta come gia' riconciliato.
+    - D-6 (rettifica automatica): la rettifica creata dalla riconciliazione ha data = data della riconciliazione,
+      direzione dal segno della differenza (banca - spuntato), importo = |differenza|, sottoconto scelto
+      dall'utente (obbligatorio come per ogni movimento), descrizione fissa tradotta, ed e' gia' spuntata.
+    - D-7 (conto congelato): spuntando un incasso/pagamento senza conto proprio, il conto effettivo (quello della
+      fattura) viene scritto sulla rata. Cosi' cambiare il conto della fattura non sposta una riga gia' spuntata,
+      senza toccare i form fattura.
+    - D-8 (giroconto): un giroconto compare su due estratti; ogni lato si spunta per conto suo (colonne separate).
+      Basta uno dei due lati spuntato per bloccare il movimento.
+    - D-9 (riconciliazione unica per data): al massimo una riconciliazione per conto e data. Si elimina e si rifa'.
+      Eliminare una riconciliazione non elimina la rettifica che ha creato (resta un movimento normale, spuntato).
+
+    Fatti verificati nel codice (feature/amministrazione @ 0b38d798):
+    - Righe dell'estratto: `App\Services\Treasury\AccountStatementFacts` (sorgenti `SOURCE_MOVEMENT='movement'`,
+      `SOURCE_COLLECTION='collection'`, `SOURCE_PAYMENT='payment'`); `AccountStatementService::statement()` e
+      `presentRow()` -> riga `{key:"<source>:<id>", date, source, type, description, registry, document,
+      work_order, inflow, outflow, balance, movement_id}`. Conto effettivo di una rata =
+      `installment.financial_account_id` altrimenti quello del documento. Saldo = apertura + fatti dal giorno di
+      apertura (`openingDate`).
+    - `treasury_movements` (migrazione `2026_11_10_100300`): `financial_account_id`, `counterpart_account_id`
+      (giroconto), `type` (`TreasuryMovementType`), `direction` (`TreasuryMovementDirection`), `treasury_type_id`
+      (sottoconto finanziario). Model `TreasuryMovement` con `#[Fillable]`, `LogsModelActivity`.
+    - `invoice_installments.financial_account_id` (migrazione `2026_11_10_100100`) e
+      `purchase_invoice_installments.financial_account_id` esistono gia'.
+    - Rotte: `routes/api/account-statements.php` (`financial-accounts/{financialAccount}/statement`, `/export`,
+      `account-statements/balances`, `/unassigned`, `treasury-overview`), `routes/api/treasury-movements.php`
+      (store/show/update/destroy), `routes/api/invoices.php` (`PUT|DELETE invoice-installments/{installment}/collection`,
+      `POST invoice-installments/collections`), `routes/api/purchase-invoices.php` (`PUT|DELETE
+      purchase-invoice-installments/{installment}/payment`, `POST purchase-invoice-installments/payments`).
+    - Permessi: `TreasuryMovementPolicy::abilities()` = viewAny, view, create, update, delete, export, viewActivity.
+    - Migrazione legacy `App\Migrations\Sources\CollectionsSource` scrive solo su rate non incassate (o con
+      abbuono, che salta): una rata spuntata e' gia' incassata, quindi non viene toccata. Nessuna modifica.
+    - Frontend: `features/account-statements/` (`statement-table.tsx`, `statement-summary.tsx`,
+      `statement-filters-bar.tsx`, `unassigned-box.tsx`, `use-account-statements.ts`), pagina
+      `pages/account-statements-page.tsx` (parametro URL `account`). Scadenziari: `buildQuickFilterPatch` in
+      `features/invoice-installments/use-installment-quick-filter.ts` e in
+      `features/purchase-invoice-installments/use-purchase-installment-quick-filter.ts` (quick filter
+      unpaid|due|overdue|paid|all); `DataTable` accetta `initialFilterModel`. Quadro:
+      `features/treasury-overview/` (`OVERVIEW_LINKS`, `to-verify-card.tsx`, `schedule-card.tsx`).
+  </context>
+
+  <scope>
+    <in>
+      <item>Colonne di spunta: `treasury_movements.reconciled_at/_by`, `counterpart_reconciled_at/_by`;
+        `invoice_installments.reconciled_at/_by`; `purchase_invoice_installments.reconciled_at/_by`.</item>
+      <item>Tabella `bank_reconciliations` + model `BankReconciliation` (con storico attivita').</item>
+      <item>Estratto conto: flag `reconciled` per riga, filtro `reconciled`, `reconciled_balance` a fine periodo.</item>
+      <item>Endpoint di spunta/togli spunta a blocchi di righe dell'estratto.</item>
+      <item>Endpoint riconciliazioni: anteprima, elenco, creazione (con rettifica opzionale), eliminazione.</item>
+      <item>Blocco server-side (422) di modifica/eliminazione movimento e di registra/annulla incasso o pagamento su
+        righe spuntate; `reconciled` esposto da resource movimento e righe degli scadenziari.</item>
+      <item>Permesso `treasury-movements.reconcile`.</item>
+      <item>Frontend: colonna Spunta e azioni di massa nell'estratto, filtro Spunta, saldo spuntato, sezione
+        Riconciliazioni (nuova, storico, elimina); dialog movimento e azioni rata disabilitati con avviso se
+        spuntati.</item>
+      <item>Quadro finanziario: voce "Righe non spuntate" in Da verificare; link con filtri via URL
+        (`?quick=` sugli scadenziari, `?account=&amp;reconciled=no` sull'estratto).</item>
+      <item>Guide in-app IT/EN: account-statements, treasury-movements, invoice-installments,
+        purchase-invoice-installments, treasury-overview.</item>
+    </in>
+    <out>
+      <item>Modelli ricorrenti (D2, rinviata) e compensazioni (D3, spec successiva).</item>
+      <item>Import di estratti bancari (CSV, CBI, CAMT), abbinamento automatico, collegamenti con le banche.</item>
+      <item>Blocco per periodo chiuso (spec 0360 D-8 resta valida); blocco per data della riconciliazione.</item>
+      <item>Spunta degli abbuoni (non sono denaro, non stanno nell'estratto).</item>
+      <item>Filtri URL per fascia di scaduto o per societa' sugli scadenziari (le fasce aprono "Scaduto").</item>
+      <item>Filtri URL sulla griglia Movimenti di tesoreria.</item>
+      <item>Export della riconciliazione; la colonna Spunta nell'export xlsx dell'estratto.</item>
+      <item>Modifiche ai form fattura attiva/passiva e al QNet legacy.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Importi stringa decimale "1234.56". Date YYYY-MM-DD. -->
+
+    <endpoint method="GET" path="/api/financial-accounts/{financialAccount}/statement">
+      <request>Parametri esistenti + `reconciled` opzionale: `yes` | `no` (filtra solo le righe, il saldo resta
+        quello reale come gli altri filtri).</request>
+      <response status="200">
+        Shape esistente con in piu':
+        rows[]: + `reconciled: bool`
+        + `reconciled_balance: string` (saldo spuntato alla data `date_to`, D-5)
+        + `unreconciled_count: int` (righe non spuntate da apertura a `date_to`, non filtrate)
+      </response>
+      <errors>403 senza `treasury-movements.view`; 422 parametro `reconciled` non valido.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/financial-accounts/{financialAccount}/reconciliation-marks">
+      <request>{ keys: string[] (1..500, formato "movement:ID" | "collection:ID" | "payment:ID", distinti),
+        reconciled: bool }</request>
+      <response status="200">data: { updated: int } (righe effettivamente cambiate; idempotente)</response>
+      <errors>403 senza `treasury-movements.reconcile`; 422 se una chiave non e' una riga dell'estratto di quel
+        conto (sorgente sconosciuta, id inesistente, conto effettivo diverso, data prima dell'apertura): nessuna
+        riga viene cambiata (transazione unica).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/financial-accounts/{financialAccount}/bank-reconciliations">
+      <response status="200">data: [{ id, statement_date, bank_balance, reconciled_balance, difference,
+        adjustment_movement_id: int|null, note: string|null, created_by: {id, name}|null, created_at }]
+        ordinate per `statement_date` decrescente.</response>
+      <errors>403 senza `treasury-movements.view`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/financial-accounts/{financialAccount}/bank-reconciliations/preview">
+      <request>statement_date: date (obbligatoria, non prima della data di apertura del conto)</request>
+      <response status="200">data: { statement_date, reconciled_balance, unreconciled_count }</response>
+      <errors>403 senza `treasury-movements.reconcile`; 422 data mancante o prima dell'apertura.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/financial-accounts/{financialAccount}/bank-reconciliations">
+      <request>{ statement_date: date, bank_balance: numeric (2 decimali, puo' essere negativo), note?: string|null
+        (max 255), create_adjustment: bool, treasury_type_id?: int (obbligatorio se create_adjustment e la
+        differenza non e' zero; sottoconto finanziario attivo) }</request>
+      <response status="201">data: la riconciliazione (shape dell'elenco). `difference` = bank_balance -
+        reconciled_balance calcolato al salvataggio (prima della rettifica). Se create_adjustment e difference != 0:
+        creato un `TreasuryMovement` type `adjustment` (D-6) gia' spuntato, id in `adjustment_movement_id`.</response>
+      <errors>403 senza `treasury-movements.reconcile` (o senza `treasury-movements.create` se create_adjustment);
+        422 riconciliazione gia' presente per quel conto e data, data prima dell'apertura, sottoconto mancante o non
+        finanziario.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/bank-reconciliations/{bankReconciliation}">
+      <response status="200">{ success: true, message }</response>
+      <errors>403 senza `treasury-movements.reconcile`.</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH|DELETE" path="/api/treasury-movements/{treasuryMovement}">
+      <errors>Nuovo 422 (messaggio "Movimento spuntato: togli la spunta per modificarlo.") se `reconciled_at` o
+        `counterpart_reconciled_at` valorizzato. Resource movimento: + `reconciled: bool`.</errors>
+    </endpoint>
+
+    <endpoint method="PUT|DELETE" path="/api/invoice-installments/{installment}/collection | /api/purchase-invoice-installments/{installment}/payment">
+      <errors>Nuovo 422 se la rata ha `reconciled_at`. Griglie scadenziari: nuova colonna `reconciled` (bool,
+        filtrabile set yes/no) nelle due `TableDefinition`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/treasury-overview">
+      <response status="200">to_verify: + `unreconciled: { count: int, accounts: [{ id, name, count }] }` (righe
+        non spuntate fino a oggi nei conti in scope, solo conti con count &gt; 0, ordinati per count decrescente).</response>
+    </endpoint>
+
+    <frontend_urls>
+      `/invoice-installments?quick=unpaid|due|overdue|paid|all` e `/purchase-invoice-installments?quick=...`
+      applicano il quick filter all'apertura (valore ignoto = default). `/account-statements?account=ID&amp;reconciled=no`
+      apre l'estratto filtrato. Quadro: Aperto -> unpaid, A scadere -> due, Scaduto e fasce -> overdue; voce non
+      spuntate -> estratto del conto con reconciled=no.
+    </frontend_urls>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un conto con un incasso, un pagamento e un movimento, quando si chiama
+      reconciliation-marks con le tre chiavi e reconciled=true, allora updated=3 e l'estratto le restituisce con
+      reconciled=true; richiamato una seconda volta, updated=0.</criterion>
+    <criterion id="AC-002">Dato un giroconto dal conto A al conto B, quando si spunta "movement:ID" sul conto B,
+      allora sull'estratto di B la riga e' spuntata e su quello di A no.</criterion>
+    <criterion id="AC-003">Dato un blocco di chiavi in cui una appartiene a un altro conto, quando si spunta, allora
+      422 e nessuna riga del blocco risulta spuntata.</criterion>
+    <criterion id="AC-004">Dato un incasso senza conto proprio su una fattura col conto A, quando lo si spunta sul
+      conto A, allora la rata ha financial_account_id = A; cambiando poi il conto della fattura la riga resta
+      nell'estratto di A.</criterion>
+    <criterion id="AC-005">Dato un movimento spuntato, quando si chiama PUT o DELETE, allora 422 e il movimento e'
+      invariato; tolta la spunta, la stessa chiamata riesce.</criterion>
+    <criterion id="AC-006">Data una rata attiva (o passiva) con incasso (pagamento) spuntato, quando si chiama DELETE
+      o PUT di collection (payment), allora 422 e la rata e' invariata.</criterion>
+    <criterion id="AC-007">Dato saldo di apertura 1000 e righe +200 (spuntata, 10/01), -50 (spuntata, 20/01), +300
+      (non spuntata, 15/01), quando si chiede l'anteprima al 31/01, allora reconciled_balance=1150.00 e
+      unreconciled_count=1; al 15/01 reconciled_balance=1200.00.</criterion>
+    <criterion id="AC-008">Dato lo scenario AC-007, quando si crea la riconciliazione al 31/01 con bank_balance 1140,
+      create_adjustment=true e un sottoconto finanziario, allora difference=-10.00, nasce una rettifica in uscita
+      di 10.00 al 31/01, spuntata, e l'anteprima al 31/01 restituisce reconciled_balance=1140.00.</criterion>
+    <criterion id="AC-009">Data una riconciliazione esistente per conto e data, quando se ne crea un'altra uguale,
+      allora 422; create_adjustment=true con differenza non zero e senza sottoconto, allora 422; con differenza zero
+      nessuna rettifica viene creata.</criterion>
+    <criterion id="AC-010">Quando si elimina una riconciliazione, allora sparisce dall'elenco e la sua rettifica
+      resta tra i movimenti, spuntata.</criterion>
+    <criterion id="AC-011">Un utente con solo `treasury-movements.view` legge estratto e storico ma riceve 403 su
+      reconciliation-marks, preview, creazione ed eliminazione; con `reconcile` ma senza `create` riceve 403 su una
+      creazione con create_adjustment=true.</criterion>
+    <criterion id="AC-012">L'estratto con reconciled=no restituisce solo le righe non spuntate con il saldo
+      progressivo reale; reconciled_balance e unreconciled_count non dipendono dai filtri.</criterion>
+    <criterion id="AC-013">Il Quadro restituisce to_verify.unreconciled con il conteggio per conto delle righe non
+      spuntate fino a oggi, rispettando il filtro societa'.</criterion>
+    <criterion id="AC-014">(FE) Nell'estratto un utente con `reconcile` seleziona righe e preme "Spunta": la chiamata
+      parte con le chiavi selezionate e la colonna Spunta si aggiorna; senza permesso checkbox e azioni non ci
+      sono.</criterion>
+    <criterion id="AC-015">(FE) Il dialog Nuova riconciliazione mostra saldo spuntato e differenza dopo data e saldo
+      banca; con differenza non zero l'opzione "Crea rettifica" richiede il sottoconto; lo storico elenca le
+      riconciliazioni con elimina.</criterion>
+    <criterion id="AC-016">(FE) Un movimento spuntato apre il dialog in sola lettura con l'avviso; sugli scadenziari
+      le azioni Annulla incasso/pagamento di una rata spuntata sono disabilitate con il motivo.</criterion>
+    <criterion id="AC-017">(FE) `/invoice-installments?quick=overdue` (e passive) apre la griglia con il quick filter
+      Scaduto attivo; un valore ignoto lascia il default. I link del Quadro portano i parametri del contratto.</criterion>
+    <criterion id="AC-018">Guide IT/EN aggiornate con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Importi in centesimi interi o bcmath, mai float (vedi nota SQLite REAL in
+      HANDOFF fase B).</item>
+    <item>Authz server-side su ogni endpoint (Policy `TreasuryMovementPolicy` + FormRequest); il blocco D-2 vive nel
+      backend, la UI lo rispecchia soltanto.</item>
+    <item>Spunta e creazione riconciliazione in transazione; la riconciliazione legge il saldo spuntato con
+      `lockForUpdate` sul conto per non perdere spunte concorrenti.</item>
+    <item>Riuso della logica di righe/saldo di `AccountStatementFacts`/`AccountStatementService`: nessun secondo
+      calcolo del saldo. File entro 300 righe: la logica di spunta va in un servizio dedicato
+      (`app/Services/Treasury/`), non in `AccountStatementService` (228 righe).</item>
+    <item>Migrazioni nuove e reversibili; indici su `(financial_account_id, statement_date)` unico.</item>
+    <item>Nomi in inglese; testi utente via i18n (backend `lang/`, frontend namespace esistenti).</item>
+  </constraints>
+
+</spec>

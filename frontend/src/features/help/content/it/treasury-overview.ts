@@ -72,6 +72,14 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'La pagina è visibile a chi ha il permesso di consultare i **Movimenti di tesoreria**, lo stesso dell’Estratto conto.' },
       ],
     },
+    {
+      id: 'unreconciled',
+      title: 'Righe non spuntate e link filtrati',
+      blocks: [
+        { type: 'paragraph', text: 'In **Da verificare** la voce **righe non spuntate** conta le righe dell\'estratto, fino a oggi, non ancora spuntate sull\'estratto della banca, con un link per conto che apre il suo estratto gia\' filtrato su **Non spuntate**.' },
+        { type: 'paragraph', text: 'Le cifre di crediti e debiti aprono gli scadenziari gia\' filtrati: **Aperto** su non incassate/pagate, **A scadere** su a scadere, **Scaduto** e le fasce su scadute.' },
+      ],
+    },
   ],
 }
 

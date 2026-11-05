@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Treasury\AccountStatementController;
+use App\Http\Controllers\Treasury\BankReconciliationController;
 use App\Http\Controllers\Treasury\TreasuryOverviewController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,3 +21,10 @@ Route::get('financial-accounts/{financialAccount}/statement/export', [AccountSta
 
 // Spec 0362: treasury overview ("Quadro finanziario"), `treasury-movements.view`.
 Route::get('treasury-overview', TreasuryOverviewController::class);
+
+// Spec 0363: ticks and bank reconciliations. Static segments before the wildcard.
+Route::post('financial-accounts/{financialAccount}/reconciliation-marks', [BankReconciliationController::class, 'mark']);
+Route::get('financial-accounts/{financialAccount}/bank-reconciliations/preview', [BankReconciliationController::class, 'preview']);
+Route::get('financial-accounts/{financialAccount}/bank-reconciliations', [BankReconciliationController::class, 'index']);
+Route::post('financial-accounts/{financialAccount}/bank-reconciliations', [BankReconciliationController::class, 'store']);
+Route::delete('bank-reconciliations/{bankReconciliation}', [BankReconciliationController::class, 'destroy']);

@@ -158,7 +158,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
     {
         return match ($columnId) {
             'status' => 'installment_status',
-            'overdue' => 'installment_overdue',
+            'overdue', 'reconciled' => 'installment_overdue',
             // Spec 0361: the frontend translates the set filter options from `enums.write_off_reason`.
             'write_off_reason' => 'write_off_reason',
             default => null,
@@ -195,6 +195,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'days_overdue' => $daysOverdue,
             'status' => $row->status()->value,
             'overdue' => $daysOverdue > 0 ? 'yes' : 'no',
+            'reconciled' => $row->reconciled_at !== null ? 'yes' : 'no',
             'customer_id' => (int) $row->getAttribute('customer_id'),
             'customer' => $row->getAttribute('customer_name'),
             'work_order' => $workOrder === null ? null : $workOrder.' - '.$row->getAttribute('work_order_title'),

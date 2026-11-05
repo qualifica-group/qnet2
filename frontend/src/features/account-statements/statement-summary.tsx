@@ -17,13 +17,18 @@ function Figure({ label, value, emphasis = false }: { label: string; value: stri
 export function StatementSummary({ statement }: { statement: Statement }) {
   const { t } = useTranslation()
   return (
-    <dl className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6">
+    <dl className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
       <Figure label={t('accountStatements.summary.accountOpening')} value={statement.opening.balance} />
       <Figure label={t('accountStatements.summary.periodOpening')} value={statement.period_opening_balance} />
       <Figure label={t('accountStatements.summary.inflow')} value={statement.totals.inflow} />
       <Figure label={t('accountStatements.summary.outflow')} value={statement.totals.outflow} />
       <Figure label={t('accountStatements.summary.closing')} value={statement.closing_balance} emphasis />
       <Figure label={t('accountStatements.summary.today')} value={statement.balance_today} emphasis />
+      <Figure label={t('accountStatements.summary.reconciled')} value={statement.reconciled_balance} />
+      <div className="flex min-w-0 flex-col gap-0.5 rounded-lg border bg-card p-3">
+        <dt className="truncate text-xs text-muted-foreground">{t('accountStatements.summary.unreconciledCount')}</dt>
+        <dd className="text-sm font-medium tabular-nums">{statement.unreconciled_count}</dd>
+      </div>
     </dl>
   )
 }

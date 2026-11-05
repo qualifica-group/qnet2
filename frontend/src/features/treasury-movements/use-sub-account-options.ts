@@ -52,3 +52,8 @@ export function useSubAccountGroups(
     }
   })
 }
+
+/** Active financial sub-accounts (the ones a balance adjustment is booked on). */
+export function useFinancialSubAccounts(): SubAccountOption[] {
+  return useKindOptions('financial', true)
+}

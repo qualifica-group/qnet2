@@ -72,6 +72,14 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'The page is visible to whoever may view the **Treasury movements**, the same permission as the Account statement.' },
       ],
     },
+    {
+      id: 'unreconciled',
+      title: 'Rows not ticked and filtered links',
+      blocks: [
+        { type: 'paragraph', text: 'In **To verify** the **rows not ticked** item counts the statement rows, up to today, not yet ticked against the bank statement, with a link per account that opens its statement already filtered on **Not ticked**.' },
+        { type: 'paragraph', text: 'The receivable and payable figures open the due dates already filtered: **Open** on unpaid, **Not yet due** on due, **Overdue** and the overdue bands on overdue.' },
+      ],
+    },
   ],
 }
 

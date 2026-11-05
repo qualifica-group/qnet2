@@ -3,7 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { STATEMENT_TYPES, type StatementFilters, type StatementType } from '@/features/account-statements/types'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  RECONCILED_FILTERS,
+  STATEMENT_TYPES,
+  type ReconciledFilter,
+  type StatementFilters,
+  type StatementType,
+} from '@/features/account-statements/types'
 
 interface StatementFiltersBarProps {
   filters: StatementFilters
@@ -16,6 +23,7 @@ export function StatementFiltersBar({ filters, onChange }: StatementFiltersBarPr
   const fromId = useId()
   const toId = useId()
   const searchId = useId()
+  const reconciledId = useId()
 
   const toggleType = (type: StatementType) => {
     const types = filters.types.includes(type)
@@ -26,7 +34,7 @@ export function StatementFiltersBar({ filters, onChange }: StatementFiltersBarPr
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-surface p-3">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <div className="flex flex-col gap-1">
           <Label htmlFor={fromId} className="text-xs text-muted-foreground">
             {t('accountStatements.filters.dateFrom')}
@@ -65,6 +73,26 @@ export function StatementFiltersBar({ filters, onChange }: StatementFiltersBarPr
               retry: t('accountStatements.retry'),
             }}
           />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={reconciledId} className="text-xs text-muted-foreground">
+            {t('accountStatements.filters.reconciled')}
+          </Label>
+          <Select
+            value={filters.reconciled}
+            onValueChange={(reconciled) => onChange({ ...filters, reconciled: reconciled as ReconciledFilter })}
+          >
+            <SelectTrigger id={reconciledId} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RECONCILED_FILTERS.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {t(`accountStatements.filters.reconciledOptions.${value}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="col-span-2 flex flex-col gap-1 lg:col-span-1">
           <Label htmlFor={searchId} className="text-xs text-muted-foreground">

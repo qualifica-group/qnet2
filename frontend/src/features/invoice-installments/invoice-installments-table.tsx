@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CalendarClock, Eye, HandCoins, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { INVOICE_INSTALLMENTS_DOMAIN } from '@/features/invoice-installments/api'
@@ -8,13 +9,19 @@ import { isBulkCollectable } from '@/features/invoice-installments/installment-b
 import { InstallmentQuickFilterToolbar } from '@/features/invoice-installments/installment-quick-filter-toolbar'
 import { InstallmentTotalsFooter } from '@/features/invoice-installments/installment-totals-footer'
 import { useInstallmentBulkCollection } from '@/features/invoice-installments/use-installment-bulk-collection'
-import { useInstallmentQuickFilter } from '@/features/invoice-installments/use-installment-quick-filter'
+import { parseQuickFilterParam, useInstallmentQuickFilter } from '@/features/invoice-installments/use-installment-quick-filter'
 import { useInstallmentRowActions } from '@/features/invoice-installments/use-installment-row-actions'
 import { InvoiceClearCollectionDialog } from '@/features/invoices/invoice-clear-collection-dialog'
 import { InvoiceCollectionDialog } from '@/features/invoices/invoice-collection-dialog'
 import { InvoiceDetailSheet } from '@/features/invoices/invoice-detail-sheet'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import { useReconciledActionState } from '@/features/treasury-movements/use-reconciled-action-state'
+
+/** Collection actions a ticked (reconciled) installment cannot take (spec 0363 D-2). */
+const RECONCILED_LOCKED_ACTIONS = ['clear_collection', 'record_collection'] as const
+/** URL parameter that opens the grid on a quick filter (the treasury overview links here). */
+const QUICK_PARAM = 'quick'
 
 /** Icon keys the backend action catalog may use for the installment-specific actions. */
 const INSTALLMENT_ACTION_ICONS: ActionIconMap = {
@@ -32,7 +39,9 @@ const INSTALLMENT_ACTION_ICONS: ActionIconMap = {
  */
 export function InvoiceInstallmentsTable() {
   const tableRef = useRef<TableViewHandle>(null)
-  const quickFilter = useInstallmentQuickFilter(tableRef)
+  const [searchParams] = useSearchParams()
+  const quickFilter = useInstallmentQuickFilter(tableRef, parseQuickFilterParam(searchParams.get(QUICK_PARAM)))
+  const resolveActionState = useReconciledActionState(RECONCILED_LOCKED_ACTIONS)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const actions = useInstallmentRowActions(refreshGrid)
   const { collection } = actions
@@ -51,6 +60,7 @@ export function InvoiceInstallmentsTable() {
         forcedFilterModel={quickFilter.forcedFilterModel}
         onFilterModelChange={quickFilter.onFilterModelChange}
         onAction={actions.handleAction}
+        resolveActionState={resolveActionState}
         isRowSelectable={isBulkCollectable}
         getBulkActions={bulkCollection.getBulkActions}
         onRowGroupColumnsChange={bulkCollection.onRowGroupColumnsChange}
