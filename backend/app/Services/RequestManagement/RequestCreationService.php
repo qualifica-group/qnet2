@@ -99,7 +99,7 @@ final class RequestCreationService
             $operationalSiteId = $data->operationalSiteId ?? $this->actorOperationalSiteId($actor);
 
             // Step 2: the Opportunity, through the shared service. The
-            // initial attribution (reporter/Sede operativa) travels
+            // initial attribution (reporter/commercial/Sede operativa) travels
             // with it; every other relation stays unset (out of scope, D-4).
             // `rewards` is withheld (see class docblock) — Step 5 syncs them
             // onto the Offerta instead. `managerSlots` is null (spec 0087,
@@ -109,7 +109,7 @@ final class RequestCreationService
             $opportunity = $this->opportunityService->create(new CreateOpportunityData(
                 registryId: $registry->id,
                 referentId: null,
-                commercialId: null,
+                commercialId: $data->commercialId,
                 reporterId: $data->reporterId,
                 supervisorId: null,
                 leadId: null,
@@ -140,7 +140,7 @@ final class RequestCreationService
             // stays the default), so coverage/aggregates/derived name are the
             // service's own concern here too, never duplicated.
             // `source_id` (spec 0332) lives on the Offerta alone.
-            // `reporter_id`/`operational_site_id` are the SAME resolved
+            // `reporter_id`/`commercial_id`/`operational_site_id` are the SAME resolved
             // values just used for the Opportunity, so the two records never
             // disagree at creation time. `supervisor_id` travels too (spec
             // 0097, D-9, user directive 2026-09-02) — as the Offerta's
@@ -170,8 +170,8 @@ final class RequestCreationService
                 opportunityId: $opportunity->id,
                 workflowStatusId: $data->workflowStatusId,
                 note: null,
-                commercialId: null,
-                commercialIdSubmitted: false,
+                commercialId: $data->commercialId,
+                commercialIdSubmitted: true,
                 reporterId: $data->reporterId,
                 reporterIdSubmitted: true,
                 supervisorId: $data->supervisorId,

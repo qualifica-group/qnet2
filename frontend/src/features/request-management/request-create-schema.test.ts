@@ -15,6 +15,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     product_lines: [{ root_category_id: null, product_category_id: 11 }],
     source_id: 30,
     reporter_id: null,
+    commercial_id: null,
     supervisor_id: null,
     // Spec 0097 D-1: the team replaces the single "Operatore" field; empty
     // here, which the schema accepts (the server then applies its own default).

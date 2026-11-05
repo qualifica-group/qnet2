@@ -16,8 +16,8 @@ use App\DataObjects\Users\ProfileData;
  * so exactly one of the two is non-null here. `productLines` is always
  * present (D-3, at least one row).
  *
- * `sourceId`/`reporterId` are the request's initial attribution (Fonte,
- * Segnalatore); `supervisorId` (spec 0097, D-9, user directive 2026-09-02)
+ * `sourceId`/`reporterId`/`commercialId` are the request's initial attribution
+ * (Fonte, Segnalatore, Commerciale - spec 0357); `supervisorId` (spec 0097, D-9, user directive 2026-09-02)
  * is the created Offerta's commission-recipient Supervisore, and carries the
  * `*Submitted` flag CreateQuoteData uses for the same field: this form
  * applies NO default of its own, so an omitted key must reach QuoteService as
@@ -82,6 +82,7 @@ final readonly class CreateRequestData
         public array $productLines,
         public ?int $sourceId = null,
         public ?int $reporterId = null,
+        public ?int $commercialId = null,
         public ?int $supervisorId = null,
         public bool $supervisorIdSubmitted = false,
         public ?array $rewards = null,

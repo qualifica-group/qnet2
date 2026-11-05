@@ -26,7 +26,8 @@ interface RequestCreateAttributionSectionProps {
 
 /**
  * The create form's attribution section (user directive 2026-07-24): the same
- * "Fonte"/"Segnalatore"/"buono" trio the work panel's view already carries,
+ * "Fonte"/"Segnalatore"/"buono" trio the work panel's view already carries
+ * (plus the "Commerciale" next to the Segnalatore, spec 0357),
  * available at creation so a request can be attributed up front. The relation
  * pickers are the plain
  * `AsyncPaginatedSelect` (not the work panel's meta-driven
@@ -60,6 +61,7 @@ export function RequestCreateAttributionSection({
 
   const sourceQuickCreate = useQuickCreateAction(SOURCES_FOR_SELECT_RESOURCE)
   const reporterQuickCreate = useQuickCreateAction(REFERENTS_FOR_SELECT_RESOURCE)
+  const commercialQuickCreate = useQuickCreateAction(REFERENTS_FOR_SELECT_RESOURCE)
 
   const selectLabels = {
     placeholder: t('requestManagement.form.create.attribution.selectPlaceholder'),
@@ -134,6 +136,31 @@ export function RequestCreateAttributionSection({
             initialAssignments={EMPTY_ASSIGNMENTS}
           />
         </div>
+
+        <FormField
+          control={control}
+          name="commercial_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('requestManagement.form.create.attribution.commercial')}</FormLabel>
+              <FormControl>
+                <AsyncPaginatedSelect
+                  resource={REFERENTS_FOR_SELECT_RESOURCE}
+                  value={field.value}
+                  onChange={field.onChange}
+                  selectedItem={commercialQuickCreate.selectedItemFor(field.value)}
+                  action={commercialQuickCreate.renderAction((ref) => field.onChange(ref.id))}
+                  labels={{
+                    ...selectLabels,
+                    searchPlaceholder: t('requestManagement.form.create.attribution.commercialSearch'),
+                    triggerLabel: t('requestManagement.form.create.attribution.commercial'),
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
       {rewardsError && (

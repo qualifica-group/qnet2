@@ -121,6 +121,9 @@ class UpdateRequestRequest extends FormRequest
             // 2026-07-29), so it is sparse but never clearable to `null`.
             'source_id' => ['sometimes', 'required', 'integer', 'exists:sources,id'],
             'reporter_id' => ['sometimes', 'nullable', 'integer', 'exists:referents,id'],
+            // "Commerciale" (spec 0357): the Offerta's own commercial
+            // Referent, sparse like the Segnalatore above.
+            'commercial_id' => ['sometimes', 'nullable', 'integer', 'exists:referents,id'],
             // "Supervisore" (spec 0097, D-9): the Offerta's commission
             // recipient, back on this channel by user directive 2026-09-02
             // with the SAME rule UpdateQuoteRequest declares for it — one

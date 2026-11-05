@@ -327,6 +327,7 @@ function RequestWorkPanelBody({ panel, onSaved }: RequestWorkPanelBodyProps) {
                 requestId={panel.id}
                 source={panel.source}
                 reporter={panel.reporter}
+                commercial={panel.commercial}
                 rewards={panel.rewards ?? []}
               />
 

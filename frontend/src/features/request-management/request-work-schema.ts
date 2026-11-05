@@ -247,6 +247,7 @@ export function buildRequestWorkSchema(
       // — existence is a server-side rule, there is nothing to mirror here.
       source_id: z.number().nullable(),
       reporter_id: z.number().nullable(),
+      commercial_id: z.number().nullable(),
       // Spec 0097 rev-2 D-9: the Offerta's Supervisore, back in this module
       // (user directive 2026-09-02) as one more attribution scalar —
       // independent of the team's operator slot (AC-014).

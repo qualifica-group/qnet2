@@ -95,7 +95,6 @@ class RequestManagementResource extends JsonResource
             'name' => $opportunity->name,
             'registry' => $this->summarizeByName($opportunity->registry),
             'referent' => $this->summarizeByName($opportunity->referent),
-            'commercial' => $this->summarizeByName($opportunity->commercial),
             // Attribution block (user directive 2026-07-22): editable from
             // this panel, so each one ships BOTH its id (the form's value)
             // and its `{id, name}` projection (the picker's hydration).
@@ -105,6 +104,10 @@ class RequestManagementResource extends JsonResource
             'source' => $this->summarizeByName($quote->source),
             'reporter_id' => $quote->reporter_id,
             'reporter' => $this->summarizeByName($quote->reporter),
+            // Spec 0357: the Offerta's own "Commerciale", next to the
+            // Segnalatore (it replaced the read-only Opportunity one).
+            'commercial_id' => $quote->commercial_id,
+            'commercial' => $this->summarizeByName($quote->commercial),
             // Spec 0086, D-4: the "abbinamento buono" chips, whose origin is
             // the Quote and whose beneficiary is the Segnalatore above — the
             // same SummarizesRewards projection QuoteResource emits, so the

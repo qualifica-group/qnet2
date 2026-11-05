@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Gestione richieste: campo Commerciale accanto al Segnalatore (spec 0357) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: il Commerciale e' quello dell'OFFERTA (`quotes.commercial_id`, Referent, destinatario
+  provvigione Commercial), modificabile in creazione e nel pannello, nella sezione Attribuzione dopo Segnalatore+buoni.
+  In creazione viene scritto anche su `opportunities.commercial_id` (come il Segnalatore); dal pannello solo l'Offerta.
+- BE: `commercial_id` (sometimes|nullable|exists:referents) in `StoreRequestRequest`/`UpdateRequestRequest`,
+  `CreateRequestData::commercialId`, `RequestCreationService` (Opportunity + Quote con `commercialIdSubmitted: true`),
+  `RequestAttributionWriter::applyQuoteAttribution` (log sull'Opportunita'), allow-list `RequestManagementController::update`,
+  `FieldDefinition('commercial_id','select')` + ceiling come `reporter_id`. Resource: `commercial_id` + `commercial`
+  ora dell'Offerta (prima `opportunity.commercial`, eager load sostituito da `commercial`).
+- FE: `RequestWorkPanel.commercial_id`, schema/defaults/payload pannello (diff sparso) e creazione (solo se scelto,
+  come `supervisor_id`); picker Referent in `request-attribution-section.tsx` e `request-create-attribution-section.tsx`;
+  riga Commerciale tolta da `RequestWorkSummary`; i18n `attribution.commercial|commercialSearch` IT/EN, rimossa
+  `workPanel.summary.commercial`. Fixture dei test FE con `commercial_id: null` (cambio contratto).
+- Test: `tests/Feature/RequestManagement/RequestManagementCommercialFieldTest.php` (11). Cartelle RequestManagement,
+  Opportunities, FieldChangeRequests verdi; Quotes verde salvo 3 test PDF (LibreOffice assente, ambientale).
+  Vitest request-management + help 664/664, ESLint, Pint, `tsc -b --force` puliti.
+- Manuale: guida in-app `request-management` IT/EN e manuale Claude Docs (creazione + "Lavorare una richiesta") aggiornati;
+  il PDF derivato va rigenerato.
+- Fuori scope, segnalato: `RequestManagementService::updateWork()` non risincronizza le provvigioni delle righe al
+  cambio di Commerciale/Segnalatore/Supervisore (lo fa solo `QuoteService::update()`): gap preesistente.
+
 ## Seeder di produzione: cambio password obbligatorio (spec 0356, emenda 0355) — VERDE, COMMITTATO (2026-11-05)
 
 - Nuova colonna `users.password_changed_at` (migrazione `2026_11_19_100300_...`, cast datetime, NON fillable): la

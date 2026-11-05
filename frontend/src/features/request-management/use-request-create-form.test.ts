@@ -190,6 +190,32 @@ describe('useRequestCreateForm', () => {
     expect(createRequestMock.mock.calls[1][0]).not.toHaveProperty('manager_slots')
   })
 
+  /** Spec 0357: the Commerciale follows the Supervisore's "only when picked" rule. */
+  it('sends commercial_id when picked, and omits the key entirely when it is not', async () => {
+    createRequestMock.mockResolvedValue({ id: 48 })
+    const { result } = renderCreateForm(vi.fn())
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('commercial_id')
+
+    act(() => {
+      result.current.form.setValue('commercial_id', 21)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ commercial_id: 21 })
+  })
+
   it('blocks submit when product_lines is empty (D-3)', async () => {
     const onSuccess = vi.fn()
     const { result } = renderCreateForm(onSuccess)

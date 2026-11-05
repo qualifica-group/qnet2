@@ -94,9 +94,10 @@ describe('Create form — the team is a section of its own (AC-010)', () => {
   /**
    * Requirement changed (user directive 2026-09-10): the Sede left this
    * section too, into a card of its own directly above the Team it scopes.
-   * "Attribution" is the Fonte/Segnalatore pair alone now.
+   * "Attribution" is the Fonte/Segnalatore pair alone now — plus the
+   * Commerciale right after the Segnalatore (requirement changed, spec 0357).
    */
-  it('leaves "Attribution" with the Fonte/Segnalatore pair alone', () => {
+  it('leaves "Attribution" with Fonte, Segnalatore and Commerciale alone', () => {
     grantedAbilities.add('request-management.assignOperator')
     grantedAbilities.add('operational-sites.viewAny')
     renderForm()
@@ -104,6 +105,7 @@ describe('Create form — the team is a section of its own (AC-010)', () => {
 
     expect(within(attribution).getByRole('button', { name: 'Source' })).toBeInTheDocument()
     expect(within(attribution).getByRole('button', { name: 'Reporter' })).toBeInTheDocument()
+    expect(within(attribution).getByRole('button', { name: 'Sales rep' })).toBeInTheDocument()
     expect(within(attribution).queryByRole('button', { name: 'Operational site' })).not.toBeInTheDocument()
     expect(within(attribution).queryByRole('button', { name: 'Supervisor' })).not.toBeInTheDocument()
     expect(within(attribution).queryByRole('button', { name: 'Account manager 2' })).not.toBeInTheDocument()

@@ -48,7 +48,8 @@ final class RequestAttributionWriter
     ) {}
 
     /**
-     * "Segnalatore" (`reporter_id`), "Sede operativa"
+     * "Segnalatore" (`reporter_id`), "Commerciale" (`commercial_id`, spec
+     * 0357), "Sede operativa"
      * (`operational_site_id`), "Supervisore" (`supervisor_id`) and "Fonte"
      * (`source_id`, spec 0332: moved here from the Opportunity), user
      * directive 2026-07-22/spec 0056/spec 0097 D-9 — all on the Quote
@@ -60,7 +61,7 @@ final class RequestAttributionWriter
      * operative ownership (AC-014). That is the whole difference from the
      * deleted RequestSupervisorWriter, which kept the two in lockstep.
      *
-     * All four ARE in Quote::$fillable, so this instance's own automatic
+     * All five ARE in Quote::$fillable, so this instance's own automatic
      * activity log is suspended (Quote::disableLogging(),
      * instance-scoped — mirrors RequestTransferService's own discipline) and
      * a genuine change is reported into $changed/$old instead, so the
@@ -75,7 +76,7 @@ final class RequestAttributionWriter
     {
         $submitted = [];
 
-        foreach (['reporter_id', 'operational_site_id', 'supervisor_id', 'source_id'] as $key) {
+        foreach (['reporter_id', 'commercial_id', 'operational_site_id', 'supervisor_id', 'source_id'] as $key) {
             if (! array_key_exists($key, $data)) {
                 continue;
             }
