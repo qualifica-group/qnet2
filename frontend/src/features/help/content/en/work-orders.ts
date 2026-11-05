@@ -101,7 +101,7 @@ const guide: HelpGuide = {
           items: [
             'Press **Force close**.',
             'Write the **reason** (required). If the work order still has open tasks, the dialog tells you how many will be closed with a negative outcome.',
-            'Pick the **Closing status** (required): the list shows the **Closed (lost)** statuses of the work order\'s set and starts on the main one.',
+            'Pick the **Closing status** (required): the list shows the **Closed (won)** and **Closed (lost)** statuses of the work order\'s set and starts on the main lost one. With a won status the work order progress goes to **100%** (an entry dated today is added, unless it was already at 100%).',
             'Press **Close work order**: the status becomes Closed, the Processing status becomes the closing status you picked and the reason appears among the work order details.',
           ],
         },
@@ -181,7 +181,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Picking by hand a **Processing status** with a **progress %** above zero raises the work order progress to that percentage (an entry dated today is added). If the status percentage is not above the progress already reached the change is refused and the field shows the error; statuses without a percentage change the status only. The same happens automatically when a task created from a template whose row is linked to a status is closed positively (see **Task Templates**): in that case the status is applied even when it comes before the current one. On a force-closed work order the progress does not change. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Closed (won), Closed (lost), also for the other closing statuses of the same group) or Open. Force-closing sets the Processing status to the **Closing status** you picked (a **Closed (lost)** status); reopening the work order sets it back to **Open** while it is still on a lost status.",
+          text: "Picking by hand a **Processing status** with a **progress %** above zero raises the work order progress to that percentage (an entry dated today is added). If the status percentage is not above the progress already reached the change is refused and the field shows the error; statuses without a percentage change the status only. The same happens automatically when a task created from a template whose row is linked to a status is closed positively (see **Task Templates**): in that case the status is applied even when it comes before the current one. On a force-closed work order the progress does not change. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Closed (won), Closed (lost), also for the other closing statuses of the same group) or Open. Force-closing sets the Processing status to the **Closing status** you picked (a **Closed (won)** status, which brings the progress to 100%, or a **Closed (lost)** one); reopening the work order sets it back to **Open** while it is still on a lost status.",
         },
       ],
     },

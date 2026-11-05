@@ -22,6 +22,35 @@
 - Manuale: guide in-app IT+EN contracts (`renewal-periods`) e manuale Claude Docs (Contratti, nuova sottosezione
   "Rinnovi e periodi del contratto") aggiornati. Da verificare a occhio in app (375/768/1024).
 
+## Chiusura forzata con stati positivi -> avanzamento 100% (spec 0324 revisione 2026-11-05) — VERDE, COMMITTATO
+
+- Decisione utente 2026-11-05: la select "Stato di chiusura" offre gli stati del gruppo `completed` (Chiusa con esito
+  positivo) e `closed` (negativo) del set risolto; default invariato = riga con chiave `closed`.
+- BE: `WorkOrderWorkflowStatusAssigner::closingStatus` accetta `CLOSING_GROUPS` (completed|closed), altrimenti 422
+  (lang `force_close_status_invalid` IT/EN aggiornato). `WorkOrderProgressEntryService::completeOnPositiveClosure`
+  (chiamato da `WorkOrderService::create/update` dopo `followForceClose`): transizione false->true su stato
+  `completed` -> `raiseTo(100)` con data di oggi; gia' a 100 nessuna registrazione. Attore ora `?User` in
+  `create/raiseTo` (`created_by` nullable): il seeder demo crea commesse senza utente autenticato.
+- Invariati (non chiesti, da confermare con l'utente se servono): task aperti chiusi sempre con esito NEGATIVO
+  (spec 0146 D-8); stato derivato/badge `closed` per ogni chiusura forzata (spec 0321 D-2).
+- FE: `closingStatuses()` in `work-order-force-close-dialog.tsx` filtra `completed`+`closed`.
+- Test: Pest work-orders 441/441 (3 nuovi + 1 REQUIREMENT CHANGED: il rifiuto ora e' su uno stato di lavoro);
+  Vitest work-orders+help 474/474 (1 REQUIREMENT CHANGED: opzioni Done/Lost/Closed); Pint, ESLint, `tsc -b --force`
+  puliti. Verificato su Chrome headless: COM-20205 mostra 3 positivi + "Chiusa con esito negativo" (nessun submit).
+- Manuale: guide in-app IT+EN (`work-orders.ts`, sezioni force-close e stato lavorazione) e manuale Claude Docs
+  (paragrafi Stato di chiusura + Stato lavorazione e avanzamento) aggiornati. PDF derivato da rigenerare.
+
+## Fix "Chiusura forzata" dal dettaglio commessa: il dialog spariva — VERDE, COMMITTATO (2026-11-05)
+
+- Sintomo: su `/work-orders/:id` il clic su "Chiusura forzata" sembrava ricaricare la pagina e il dialog non compariva.
+- Root cause: `WorkOrderForceCloseDialog` legge il record con `useQuery` sulla chiave condivisa
+  `workOrderDetailQueryKey(id)` senza `staleTime`: all'apertura rifaceva il fetch, `useEntityDetail` (skeleton anche
+  su `isFetching`) smontava il dettaglio e con esso il dialog. Stesso bug gia' risolto in `use-work-order-progress.ts`.
+- Fix: `staleTime: Infinity` sulla query del dialog (stesso pattern del popup Avanzamento). Test nuovo in
+  `work-order-force-close-dialog.test.tsx` ("reuses the cached detail"), fallito prima del fix. Vitest work-orders
+  317/317, ESLint e `tsc -b --force` puliti; verificato su Chrome headless (COM-20205: dialog aperto, nessun submit).
+- Manuale: nessun impatto (bug fix).
+
 ## Barra categorie: "Categorie madri" acceso di default — VERDE, NON COMMITTATO (2026-11-05)
 
 - Decisione utente 2026-11-05: Opportunita', Commesse, Offerte, Contratti, Gestione Richieste e Gestione Iscritti

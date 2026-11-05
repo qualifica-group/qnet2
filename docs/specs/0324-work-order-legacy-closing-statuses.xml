@@ -112,7 +112,6 @@
       <item>Scelta dello stato di chiusura nel form di creazione commessa (oggi non offre la chiusura forzata).</item>
       <item>Riclassificazione del set globale di default o dei set creati a mano in qnet-2.</item>
       <item>Aggiornamento di nomi/percentuali degli stati gia' importati al re-run.</item>
-      <item>Stati positivi nella finestra di chiusura forzata (solo gruppo closed).</item>
       <item>Le 546 righe orfane legacy e le 20 commesse non migrate (comportamento invariato).</item>
       <item>Nuove dipendenze, nuovi endpoint, migrazioni di schema.</item>
     </out>
@@ -181,4 +180,19 @@
     - Git soggetto a CLAUDE.md §3.6 (qnet-2 e legacy).
   </constraints>
 
+  <revision date="2026-11-05" reason="utente: 'chiusura forzata con il select degli stati a 100% o chiuse con esito negativo'">
+    D-6 rivista: `force_close_status_id` accetta uno stato dei gruppi `completed` (Chiusa con esito positivo) o
+    `closed` (Chiusa con esito negativo) del set risolto; altrimenti 422 (lang `force_close_status_invalid`
+    aggiornato). Nella UI le opzioni sono i due gruppi nell'ordine del set; il default resta la riga con chiave
+    `closed`. Esce dall'out of scope la voce "Stati positivi nella finestra di chiusura forzata".
+    D-11 Chiusura forzata positiva (transizione false->true su uno stato del gruppo `completed`, create o update):
+    l'avanzamento sale a 100% con una registrazione datata oggi (`WorkOrderProgressEntryService::
+    completeOnPositiveClosure` -> `raiseTo(100)`), nessuna se era gia' al 100%. La chiusura negativa non tocca
+    l'avanzamento. Invariati: task aperti chiusi con esito negativo (spec 0146 D-8), stato derivato `closed`
+    per ogni commessa chiusa forzatamente (spec 0321 D-2), riapertura D-7 (uno stato positivo resta).
+    AC-020 PATCH chiusura su stato `completed` -> 200, stato applicato, somma avanzamento 100 con registrazione
+    di oggi; gia' a 100 -> nessuna registrazione; chiusura negativa -> avanzamento invariato; stato di lavoro -> 422.
+    AC-021 FE: la select mostra stati positivi e negativi; aperto dal dettaglio il dialog non rifa' il fetch del
+    record (altrimenti `useEntityDetail` smonta il dettaglio e il dialog).
+  </revision>
 </spec>

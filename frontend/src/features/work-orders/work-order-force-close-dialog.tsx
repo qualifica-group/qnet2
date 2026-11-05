@@ -27,7 +27,8 @@ import { WorkflowStatusSwatch } from '@/features/workflow-statuses/workflow-stat
 import type { WorkOrderDetailWithPermissions, WorkOrderWorkflowStatusRef } from '@/features/work-orders/types'
 
 const FORCE_CLOSE_FORM_ID = 'work-order-force-close-form'
-const CLOSED_GROUP = 'closed'
+/** Positive and negative outcome groups (spec 0324 D-6, revision 2026-11-05). */
+const CLOSING_GROUPS: ReadonlySet<string> = new Set(['completed', 'closed'])
 const FORM_FIELDS = ['force_close_reason', 'force_close_status_id'] as const
 
 function buildForceCloseSchema(t: TFunction) {
@@ -41,9 +42,12 @@ type ForceCloseFormValues = z.infer<ReturnType<typeof buildForceCloseSchema>>
 
 const EMPTY_STATUSES: WorkOrderWorkflowStatusRef[] = []
 
-/** The statuses a forced closure may land on (spec 0324 D-6): the `closed` group of the resolved set. */
-function closedStatuses(record: WorkOrderDetailWithPermissions | undefined): WorkOrderWorkflowStatusRef[] {
-  return record?.work_order_workflow_statuses.filter((status) => status.group === CLOSED_GROUP) ?? EMPTY_STATUSES
+/**
+ * The statuses a forced closure may land on (spec 0324 D-6, revision 2026-11-05): the positive
+ * `completed` and negative `closed` groups of the resolved set; a positive one brings the progress to 100%.
+ */
+function closingStatuses(record: WorkOrderDetailWithPermissions | undefined): WorkOrderWorkflowStatusRef[] {
+  return record?.work_order_workflow_statuses.filter((status) => CLOSING_GROUPS.has(status.group)) ?? EMPTY_STATUSES
 }
 
 interface WorkOrderForceCloseDialogProps {
@@ -197,11 +201,15 @@ export function WorkOrderForceCloseDialog({
   const { t } = useTranslation()
   const open = workOrderId !== null
 
-  // The detail host shares this cache key; the set of closing statuses always comes from the record.
+  // The set of closing statuses always comes from the record. Reuses the detail
+  // the open record already holds: a refetch here would put the record screen
+  // (useEntityDetail: skeleton while fetching) into loading and unmount this
+  // dialog with it. Opened from a grid it fetches once.
   const recordQuery = useQuery({
     queryKey: workOrderDetailQueryKey(workOrderId ?? 0),
     queryFn: () => fetchWorkOrder(workOrderId as number),
     enabled: open,
+    staleTime: Infinity,
   })
   const record = recordQuery.data
   const tasksToClose = openTasksCount ?? record?.open_tasks_count ?? 0
@@ -218,7 +226,7 @@ export function WorkOrderForceCloseDialog({
           <ForceCloseForm
             key={workOrderId}
             workOrderId={workOrderId}
-            statuses={closedStatuses(record)}
+            statuses={closingStatuses(record)}
             tasksToClose={tasksToClose}
             onClose={() => onOpenChange(false)}
             onClosed={onClosed}

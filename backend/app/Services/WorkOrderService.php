@@ -243,8 +243,10 @@ class WorkOrderService
 
             // Step 2a-bis (spec 0322, D-8): the "Stato lavorazione" of the set the lines resolve to.
             $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: false);
-            // A commessa BORN force-closed starts on "Chiusa con esito negativo" (spec 0322 amendment).
+            // A commessa BORN force-closed starts on its closing status (spec 0322 amendment, spec 0324 D-6).
             $this->statusAssigner->followForceClose($workOrder, wasForceClosed: false, logChange: false, forceCloseStatusId: $data->forceCloseStatusId);
+            // No actor outside a request (the demo seeder): the entry is then authorless.
+            $this->progressEntries->completeOnPositiveClosure($workOrder, wasForceClosed: false, actor: Auth::user());
 
             // Step 2b (spec 0098, D-6): "Informazioni aggiuntive" — written
             // AFTER the quote lines, so the applicable set validated against
@@ -343,6 +345,8 @@ class WorkOrderService
 
             // Spec 0322 amendment: a force-close transition drives the status (after any explicit choice).
             $this->statusAssigner->followForceClose($workOrder, $wasForceClosed, logChange: true, forceCloseStatusId: $data->forceCloseStatusId);
+            // auth:sanctum guarantees a resolved actor on the update route.
+            $this->progressEntries->completeOnPositiveClosure($workOrder, $wasForceClosed, Auth::user());
 
             // "Informazioni aggiuntive" (spec 0098, D-6): validated against
             // the applicable set as it is AFTER any submitted
