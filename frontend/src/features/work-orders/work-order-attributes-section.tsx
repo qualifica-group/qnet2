@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList } from 'lucide-react'
 import type { Control } from 'react-hook-form'
+import { RecordSection } from '@/components/detail/record-panel'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import { AdditionalInformationSection } from '@/features/attributes/additional-information-section'
 import { AttributeLayoutField } from '@/features/attributes/attribute-layout-field'
@@ -33,6 +34,8 @@ interface WorkOrderAttributesSectionProps {
   values: Record<string, unknown>
   inline: InlineEdit
   control: Control<WorkOrderFormValues>
+  /** Create form: the operator can fold it away. Detail: a fixed column of its own (user directive 2026-11-05). */
+  collapsible?: boolean
   className?: string
 }
 
@@ -46,7 +49,8 @@ interface WorkOrderAttributesSectionProps {
  * it only keeps the value.
  *
  * The whole block follows the single `attribute_values` field permission
- * (AC-024). Absent when the quote lines resolve no Attribute.
+ * (AC-024). Absent when the quote lines resolve no Attribute. Collapsible
+ * (state remembered in the browser) unless `collapsible` is false.
  */
 export function WorkOrderAttributesSection({
   attributes,
@@ -54,6 +58,7 @@ export function WorkOrderAttributesSection({
   values,
   inline,
   control,
+  collapsible = true,
   className,
 }: WorkOrderAttributesSectionProps) {
   const { t } = useTranslation()
@@ -85,14 +90,28 @@ export function WorkOrderAttributesSection({
     )
   }
 
+  const title = t('workOrders.detail.additionalInformation')
+  const icon = <ClipboardList />
+  const content = (
+    <AttributeLayoutView layout={layout} attributes={attributes} values={values} renderField={renderField} />
+  )
+
+  if (!collapsible) {
+    return (
+      <RecordSection title={title} icon={icon} className={className}>
+        {content}
+      </RecordSection>
+    )
+  }
+
   return (
     <AdditionalInformationSection
       storageKey={WORK_ORDER_ADDITIONAL_INFORMATION_STORAGE_KEY}
-      title={t('workOrders.detail.additionalInformation')}
-      icon={<ClipboardList />}
+      title={title}
+      icon={icon}
       className={className}
     >
-      <AttributeLayoutView layout={layout} attributes={attributes} values={values} renderField={renderField} />
+      {content}
     </AdditionalInformationSection>
   )
 }

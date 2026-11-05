@@ -11,11 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati commessa** (con il link al Contratto) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisori e Partecipanti della commessa) e **Società e sedi**, poi **Documento e pagamento** e **Dati contrattuali**. Contesto, Anagrafica e contatti, Buoni, Società e sedi e Documento e pagamento vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono.",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati commessa** (con il link al Contratto) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisori e Partecipanti della commessa) e **Società e sedi**, poi **Documento e pagamento**. Se le righe prodotto prevedono **Informazioni aggiuntive**, queste sezioni stanno una sotto l'altra a sinistra e le Informazioni aggiuntive occupano la colonna di destra. In fondo, a tutta larghezza sotto le due colonne, ci sono i **Dati contrattuali**. Contesto, Anagrafica e contatti, Buoni, Società e sedi e Documento e pagamento vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono.",
         },
         {
           type: 'paragraph',
-          text: 'Non esiste una pagina di modifica separata: la commessa si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga). Una sezione legata a un campo sì/no compare solo con il campo attivo: spegnendolo, i valori della sezione vengono svuotati. Cliccando il titolo **Informazioni aggiuntive** la sezione si chiude o si riapre: la scelta resta salvata nel browser e vale per tutte le commesse, nel dettaglio e nella creazione.',
+          text: 'Non esiste una pagina di modifica separata: la commessa si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga). Una sezione legata a un campo sì/no compare solo con il campo attivo: spegnendolo, i valori della sezione vengono svuotati. Nel dettaglio le Informazioni aggiuntive restano sempre aperte. Nella creazione, invece, cliccando il titolo **Informazioni aggiuntive** la sezione si chiude o si riapre: la scelta resta salvata nel browser e vale per tutte le commesse.',
         },
         {
           type: 'steps',

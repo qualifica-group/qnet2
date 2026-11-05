@@ -7,7 +7,7 @@ import { ConfirmContext } from '@/components/confirm-dialog-context'
 import i18n from '@/i18n'
 import { WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
-import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
+import type { ApplicableAttributeSummary, WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 /**
  * Spec 0331 AC-006/AC-007/AC-009: the work order card follows the shared
@@ -107,6 +107,27 @@ beforeEach(() => {
   canMock.mockImplementation((): boolean => true)
 })
 
+const SITE_ACCESS_ATTRIBUTE: ApplicableAttributeSummary = {
+  id: 1,
+  code: 'site_access',
+  name: 'Site access',
+  type: 'text',
+  description: null,
+  help_text: null,
+  placeholder: null,
+  icon: null,
+  config: null,
+  relation_target: null,
+  is_required: false,
+  sort_order: 0,
+  options: [],
+}
+
+/** The column a section heading sits in: the parent of its `<section>`. */
+function columnOf(title: RegExp): HTMLElement | null {
+  return screen.getByRole('heading', { level: 3, name: title }).closest('section')?.parentElement ?? null
+}
+
 function sectionTitles(): string[] {
   return screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.toLowerCase() ?? '')
 }
@@ -187,5 +208,26 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     }
     expect(titles).toContain('team')
     expect(screen.queryByText('No rewards')).not.toBeInTheDocument()
+  })
+
+  it('stacks the skeleton on the left, the additional information on the right, the contract data under both (user directive 2026-11-05)', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ applicable_attributes: [SITE_ACCESS_ATTRIBUTE] })} />)
+
+    const leftColumn = columnOf(/work order data/i)
+    expect(leftColumn).not.toBeNull()
+    for (const title of [/^context$/i, /^rewards$/i, /company and sites/i]) {
+      expect(columnOf(title)).toBe(leftColumn)
+    }
+    const rightColumn = columnOf(/additional information/i)
+    expect(rightColumn).not.toBe(leftColumn)
+    expect(rightColumn?.parentElement).toBe(leftColumn?.parentElement)
+    expect(columnOf(/contract data/i)).toBe(leftColumn?.parentElement)
+  })
+
+  it('shows the additional information as a fixed section, not collapsible (user directive 2026-11-05)', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ applicable_attributes: [SITE_ACCESS_ATTRIBUTE] })} />)
+
+    expect(screen.getByRole('heading', { level: 3, name: /additional information/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^additional information$/i })).not.toBeInTheDocument()
   })
 })

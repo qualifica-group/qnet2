@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Layout dettaglio Commessa: Informazioni aggiuntive a destra — VERDE, NON COMMITTATO (2026-11-05)
+
+- Direttiva utente: nel dettaglio commessa, con attributi applicabili, lo skeleton (Dati commessa ... Documento e
+  pagamento) sta impilato a sinistra, "Informazioni aggiuntive" a destra (NON collassabile), "Dati contrattuali"
+  a tutta larghezza sotto le due colonne. Senza attributi lo skeleton resta su 2 colonne, Dati contrattuali in fondo.
+- File: `work-order-detail-sections.tsx` (colonne con `RECORD_COLUMN_CLASS`, `specific` non piu' passato a
+  `RecordSkeletonSections` per le commesse), `work-order-attributes-section.tsx` (prop `collapsible`, default true:
+  la creazione resta collassabile), test in `work-order-detail-layout.test.tsx`, guide `help/content/{it,en}/work-orders.ts`,
+  manuale Claude Docs aggiornato (nota "Commessa." sotto la tabella dello skeleton + paragrafo collassabili).
+- Verifica: vitest work-orders+help+attributes 590/590, eslint, `tsc -b --force` puliti.
+
 ## Chat nelle Commesse di Progetto (spec 0352) — PASSO 1 VERDE, IN CORSO (2026-11-04)
 
 - Spec `docs/specs/0352-project-work-order-chat.xml` approvata (commit 7271f43d). D-10 confermata: il super-admin
