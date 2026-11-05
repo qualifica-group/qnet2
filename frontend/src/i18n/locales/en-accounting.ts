@@ -17,6 +17,7 @@ import { proformaRequests } from './en-proforma-requests'
 import { purchaseInvoiceInstallments } from './en-purchase-invoice-installments'
 import { purchaseInvoices } from './en-purchase-invoices'
 import { purchaseInvoiceViews } from './en-purchase-invoice-views'
+import { writeOff } from './en-write-off'
 import { treasuryCollection } from './en-treasury-collection'
 import { treasuryMovements } from './en-treasury-movements'
 import { treasuryTypes } from './en-treasury-types'
@@ -26,6 +27,7 @@ export const accounting = {
   treasuryMovements,
   accountStatements,
   treasuryCollection,
+  writeOff,
   treasuryTypes,
   proformaRequests,
   paymentMethods,

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\PurchaseInvoices;
 
 use App\Enums\ResidualMode;
+use App\Http\Requests\Concerns\ValidatesWriteOff;
 use App\Models\FinancialAccount;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Support\Amounts\LineAmountCalculator;
@@ -18,6 +19,8 @@ use Illuminate\Validation\Rule;
  */
 class PurchaseInvoicePaymentRequest extends FormRequest
 {
+    use ValidatesWriteOff;
+
     public function authorize(): bool
     {
         return $this->user()?->can('pay', $this->installment()->loadMissing('purchaseInvoice')->purchaseInvoice) ?? false;
@@ -36,14 +39,15 @@ class PurchaseInvoicePaymentRequest extends FormRequest
             && app(LineAmountCalculator::class)->isPartial($this->input('paid_amount'), $installment->amount);
 
         return [
-            'paid_amount' => ['required', 'numeric', 'gt:0', ...($isOpen ? ['max:'.$installment->amount] : [])],
+            'paid_amount' => ['required', 'numeric', 'min:0', $this->zeroOnlyWithWriteOff(), ...($isOpen ? ['max:'.$installment->amount] : [])],
             'paid_at' => ['required', 'date'],
             'financial_account_id' => ['nullable', 'integer', Rule::exists(FinancialAccount::class, 'id')],
-            'residual_mode' => [Rule::requiredIf($isPartial), 'nullable', Rule::enum(ResidualMode::class)],
+            'residual_mode' => [Rule::requiredIf($isPartial), 'nullable', Rule::enum(ResidualMode::class), $this->writeOffNeedsPartial('paid_amount', $installment->amount)],
             'residual_due_date' => [
                 Rule::requiredIf(fn (): bool => $isPartial() && $this->input('residual_mode') === ResidualMode::NewInstallment->value),
                 'nullable', 'date', 'after_or_equal:'.$installment->purchaseInvoice->document_date->toDateString(),
             ],
+            ...$this->writeOffRules(),
         ];
     }
 
@@ -53,7 +57,7 @@ class PurchaseInvoicePaymentRequest extends FormRequest
     public function payload(): array
     {
         return array_filter(
-            $this->safe()->only(['paid_amount', 'paid_at', 'financial_account_id', 'residual_mode', 'residual_due_date']),
+            $this->safe()->only(['paid_amount', 'paid_at', 'financial_account_id', 'residual_mode', 'residual_due_date', 'write_off_reason', 'write_off_note']),
             fn (mixed $value): bool => $value !== null,
         );
     }

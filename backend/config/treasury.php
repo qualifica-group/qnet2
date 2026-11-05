@@ -17,4 +17,11 @@ return [
 
     'statement_max_rows' => 5000,
 
+    /*
+    | write_off_suggest_threshold: residual up to which the collection/payment
+    | dialog proposes a write-off instead of a new installment (spec 0361, D-5).
+    */
+
+    'write_off_suggest_threshold' => env('TREASURY_WRITE_OFF_SUGGEST_THRESHOLD', '5.00'),
+
 ];

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { formatDate } from '@/lib/formatting/date-display'
 import { formatEuro } from '@/features/invoices/invoice-format'
+import { WriteOffBadge } from '@/features/invoices/write-off-badge'
 import { LedgerInstallmentsTable } from '@/features/ledger/ledger-installments-table'
 import { LedgerStatusBadge } from '@/features/ledger/ledger-status-badge'
 import type { LedgerDocument, LedgerSide } from '@/features/ledger/types'
@@ -25,6 +26,32 @@ function documentLabel(document: LedgerDocument, proformaLabel: string, noNumber
     return document.number_label
   }
   return document.document_type === 'proforma' ? proformaLabel : noNumberLabel
+}
+
+/** Key shared by React keys and the expanded set: a write-off row carries the installment id, which can equal a document id. */
+function rowKey(document: LedgerDocument): string {
+  return `${document.document_type}:${document.id}`
+}
+
+function LedgerWriteOffRow({ document }: { document: LedgerDocument }) {
+  const reason = document.write_off_reason
+  return (
+    <tr className="border-t bg-muted/20">
+      <td className={CELL}>{formatDate(document.document_date)}</td>
+      <td className={CELL}>
+        <span className="flex min-w-0 items-center gap-1.5 pl-7">
+          <span className="truncate font-medium">{document.number_label}</span>
+          {reason ? <WriteOffBadge reason={reason} amount={document.debit || document.credit} /> : null}
+        </span>
+      </td>
+      <td className={NUMERIC_CELL}>{formatEuro(document.debit)}</td>
+      <td className={NUMERIC_CELL}>{formatEuro(document.credit)}</td>
+      <td className={NUMERIC_CELL}>{formatEuro(document.running_balance)}</td>
+      <td className={CELL}>
+        <LedgerStatusBadge status={document.status} />
+      </td>
+    </tr>
+  )
 }
 
 function LedgerDocumentRow({ document, side, expanded, onToggle }: LedgerDocumentRowProps) {
@@ -86,13 +113,13 @@ interface LedgerDocumentsTableProps {
 /** Documents of one ledger section in date order with running balance and expandable installments (D-11). */
 export function LedgerDocumentsTable({ documents, side, openingBalance, caption }: LedgerDocumentsTableProps) {
   const { t } = useTranslation()
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(new Set())
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set())
 
-  const toggle = (id: number) =>
+  const toggle = (key: string) =>
     setExpandedIds((current) => {
       const next = new Set(current)
-      if (!next.delete(id)) {
-        next.add(id)
+      if (!next.delete(key)) {
+        next.add(key)
       }
       return next
     })
@@ -121,15 +148,19 @@ export function LedgerDocumentsTable({ documents, side, openingBalance, caption 
               <td className={CELL} />
             </tr>
           ) : null}
-          {documents.map((document) => (
-            <LedgerDocumentRow
-              key={document.id}
-              document={document}
-              side={side}
-              expanded={expandedIds.has(document.id)}
-              onToggle={() => toggle(document.id)}
-            />
-          ))}
+          {documents.map((document) =>
+            document.document_type === 'write_off' ? (
+              <LedgerWriteOffRow key={rowKey(document)} document={document} />
+            ) : (
+              <LedgerDocumentRow
+                key={rowKey(document)}
+                document={document}
+                side={side}
+                expanded={expandedIds.has(rowKey(document))}
+                onToggle={() => toggle(rowKey(document))}
+              />
+            ),
+          )}
           {documents.length === 0 ? (
             <tr className="border-t">
               <td colSpan={COLUMN_COUNT} className="px-2 py-3 text-center text-sm text-muted-foreground">

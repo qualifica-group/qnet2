@@ -57,7 +57,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Pallino', 'Significato'],
           rows: [
-            ['Pagata', 'Tutte le scadenze sono incassate.'],
+            ['Pagata', 'Tutte le scadenze sono incassate (anche con un abbuono o uno stralcio: la rata mostra l’etichetta **Abbuono** o **Stralcio**).'],
             ['Non scaduta', 'Ci sono scadenze aperte, nessuna ancora scaduta.'],
             ['Scaduta fino a 21 giorni', 'Almeno una scadenza aperta è scaduta da non più di 21 giorni.'],
             ['Scaduta oltre 21 giorni', 'Almeno una scadenza aperta è scaduta da più di 21 giorni.'],

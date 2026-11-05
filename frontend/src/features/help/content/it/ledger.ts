@@ -52,6 +52,13 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'write-off',
+      title: 'Abbuono e stralcio',
+      blocks: [
+        { type: 'paragraph', text: 'Quando una rata viene chiusa con **Abbuono / stralcio**, nel Partitario compare una **riga dedicata** (Abbuono o Stralcio) con data e importo: sul lato Cliente va in **Avere**, sul lato Fornitore in **Dare**, come un incasso o un pagamento. Il **residuo** della fattura torna a **zero** e i totali quadrano.' },
+      ],
+    },
+    {
       id: 'filters',
       title: 'Filtri e periodo',
       blocks: [

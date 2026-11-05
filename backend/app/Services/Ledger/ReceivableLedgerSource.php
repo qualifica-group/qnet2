@@ -69,6 +69,8 @@ final class ReceivableLedgerSource
                 amountCents: $this->cents($row->amount),
                 settledCents: $row->collected_amount === null ? null : $this->cents($row->collected_amount),
                 settledAt: $this->day($row->collected_at),
+                writeOffCents: $this->cents($row->write_off_amount ?? 0),
+                writeOffReason: $row->write_off_reason?->value,
             ))->all(),
         );
     }

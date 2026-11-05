@@ -10,6 +10,7 @@ use App\Models\FinancialAccount;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Services\Invoices\InstallmentRebalancer;
+use App\Services\Invoices\InstallmentWriteOff;
 use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ final class PurchaseInvoicePaymentService
     ) {}
 
     /**
-     * @param  array<string, mixed>  $payload  paid_amount, paid_at, financial_account_id?, residual_mode?, residual_due_date?
+     * @param  array<string, mixed>  $payload  paid_amount, paid_at, financial_account_id?, residual_mode?, residual_due_date?, write_off_reason?, write_off_note?
      */
     public function record(PurchaseInvoiceInstallment $installment, array $payload): PurchaseInvoiceInstallment
     {
@@ -44,6 +45,10 @@ final class PurchaseInvoicePaymentService
 
             // Step 2: the output account must belong to the document company
             $accountId = $payload['financial_account_id'] ?? null;
+            // Nothing is paid by a zero write-off, so there is no account to book
+            if (bccomp($this->amounts->roundToCents($payload['paid_amount']), '0', 2) === 0) {
+                $accountId = null;
+            }
             $this->assertAccountAllowed($invoice, $accountId === null ? null : (int) $accountId);
 
             // Step 3: a full payment closes the installment, a partial one redistributes the residual
@@ -118,7 +123,7 @@ final class PurchaseInvoicePaymentService
      */
     private function clearedAttributes(): array
     {
-        return ['paid_amount' => null, 'paid_at' => null, 'financial_account_id' => null, 'redistribution_snapshot' => null];
+        return ['paid_amount' => null, 'paid_at' => null, 'financial_account_id' => null, 'redistribution_snapshot' => null, ...InstallmentWriteOff::CLEARED];
     }
 
     /**
@@ -129,6 +134,15 @@ final class PurchaseInvoicePaymentService
     {
         $mode = ResidualMode::tryFrom((string) ($payload['residual_mode'] ?? ''))
             ?? throw ValidationException::withMessages(['residual_mode' => ['The residual mode is required for a partial payment.']]);
+        InstallmentWriteOff::assertZeroAllowed($attributes['paid_amount'], $mode);
+
+        // A write-off keeps the amount and touches no other installment: no snapshot (spec 0361, D-1)
+        if ($mode === ResidualMode::WriteOff) {
+            $current->update($attributes + InstallmentWriteOff::attributes((string) $current->amount, $attributes['paid_amount'], $payload));
+
+            return;
+        }
+
         $residual = bcsub((string) $current->amount, $attributes['paid_amount'], 2);
         $following = $invoice->installments()->where('sequence', '>', $current->sequence)->orderBy('sequence')->get();
         $createdId = null;

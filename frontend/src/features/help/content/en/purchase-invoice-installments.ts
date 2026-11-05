@@ -124,6 +124,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'write-off',
+      title: 'Write-off and bad debt',
+      blocks: [
+        { type: 'paragraph', text: 'If in the **Record payment** dialog you enter an amount **lower** than the installment, the remainder is handled with three choices: **Spread over following installments**, **New due date for the remainder** or **Write-off / bad debt**, which closes the difference without paying it.' },
+        { type: 'list', items: ['**Write-off**: the difference is a rounding or a minimal gap, to be waived.', '**Bad debt**: the payable cannot be recovered and is written off.', 'Choose the **Reason** (required) and, if you wish, add a **Note (optional)**. The **Write-off amount** is not typed: it is computed as the installment minus the amount entered.', 'If the remainder is within the **threshold** (default 5 euro) **Write-off** is suggested; above it **New due date** is suggested. You can always change the choice.', 'A **total bad debt** is done with amount **0**: it is allowed only with **Write-off / bad debt**, and no account is needed.'] },
+        { type: 'paragraph', text: 'The installment shows as **Paid** with the **Write-off** or **Bad debt** label and the closed amount. **Clear payment** also removes the write-off and restores the installment.' },
+        { type: 'note', text: 'The write-off **does not move cash and bank balances**: the installment is closed but no money leaves an account. It is not available in **Bulk payment**.' },
+      ],
+    },
+    {
       id: 'bulk-payment',
       title: 'Bulk payment',
       blocks: [

@@ -92,6 +92,26 @@ it('AC-009: lists one row per document with total, paid, residual, linked orders
 });
 
 // Spec 0262 (REQUIREMENT CHANGED): edit and details moved to the record; delete keeps its rules.
+it('spec 0361: a written-off installment closes the purchase invoice: residual 0, status paid', function () {
+    Sanctum::actingAs(listActor(LIST_FULL_ABILITIES));
+    $supplier = Registry::factory()->supplier()->create();
+    $roundedOff = purchaseDocument($supplier, ['document_number' => 'W-1', 'total_amount' => '100.00']);
+    purchaseInstallmentOf($roundedOff, [
+        'due_date' => Carbon::today()->subDays(30)->toDateString(), 'amount' => '100.00', 'paid_amount' => '99.90', 'paid_at' => '2026-04-15',
+        'write_off_amount' => '0.10', 'write_off_reason' => 'rounding',
+    ]);
+    $badDebt = purchaseDocument($supplier, ['document_number' => 'W-2', 'total_amount' => '40.00']);
+    purchaseInstallmentOf($badDebt, [
+        'due_date' => Carbon::today()->subDays(30)->toDateString(), 'amount' => '40.00', 'paid_amount' => '0.00', 'paid_at' => '2026-04-15',
+        'write_off_amount' => '40.00', 'write_off_reason' => 'bad_debt',
+    ]);
+
+    $rows = collect(listRows())->keyBy('id');
+
+    expect($rows[$roundedOff->id])->toMatchArray(['paid_amount' => '99.90', 'residual_amount' => '0.00', 'payment_status' => 'paid'])
+        ->and($rows[$badDebt->id])->toMatchArray(['paid_amount' => '0.00', 'residual_amount' => '0.00', 'payment_status' => 'paid']);
+});
+
 it('AC-009: offers delete only on a proforma without payments', function () {
     Sanctum::actingAs(listActor(LIST_FULL_ABILITIES));
     $proforma = purchaseDocument(null, ['document_type' => 'proforma', 'document_number' => null]);

@@ -30,6 +30,7 @@ final class CollectionAggregator
             ->join('invoices', 'invoices.id', '=', 'invoice_installments.invoice_id')
             ->leftJoin('quotes', 'quotes.id', '=', 'invoices.quote_id')
             ->whereNotNull('invoice_installments.collected_at')
+            ->where('invoice_installments.collected_amount', '>', 0)
             ->when($filters->dateFrom !== null, fn ($q) => $q->where('invoice_installments.collected_at', '>=', $filters->dateFrom))
             ->when($filters->dateTo !== null, fn ($q) => $q->where('invoice_installments.collected_at', '<', $filters->dateToExclusive()));
 

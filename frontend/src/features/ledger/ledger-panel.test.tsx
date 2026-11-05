@@ -188,4 +188,40 @@ describe('LedgerPanel', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load the ledger.')
   })
+
+  it('spec 0361 renders the write-off row with label and amount, no collision on the same id, and the total', async () => {
+    const writeOffRow = makeDocument({
+      id: 10,
+      document_type: 'write_off',
+      number_label: 'Write-off 12/2026',
+      debit: 0,
+      credit: 0.2,
+      settled_amount: 0,
+      residual_amount: 0,
+      running_balance: 0,
+      status: 'paid',
+      installments: [],
+      write_off_reason: 'rounding',
+    })
+    const section = makeSection({ documents: [makeDocument({ id: 10 }), writeOffRow] })
+    section.summary.write_off_total = 0.2
+    mockLedger(makeLedger({ customer: section }))
+    renderPanel(<LedgerPanel registryId={7} />)
+    await screen.findByRole('heading', { name: 'Customer' })
+
+    const table = screen.getByRole('table', { name: 'Customer ledger documents' })
+    const row = within(table).getByRole('row', { name: /Write-off 12\/2026/ })
+    expect(row).toHaveTextContent('Write-off')
+    expect(row).toHaveTextContent(/0[.,]20/)
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(table).getAllByRole('button', { name: /Show the installments/ })).toHaveLength(1)
+    expect(screen.getByText('Write-offs')).toBeInTheDocument()
+  })
+
+  it('spec 0361 hides the write-off total when zero', async () => {
+    mockLedger(makeLedger())
+    renderPanel(<LedgerPanel registryId={7} />)
+    await screen.findByRole('heading', { name: 'Customer' })
+    expect(screen.queryByText('Write-offs')).not.toBeInTheDocument()
+  })
 })

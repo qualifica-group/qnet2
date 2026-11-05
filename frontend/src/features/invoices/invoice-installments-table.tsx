@@ -5,6 +5,7 @@ import { formatDate } from '@/lib/formatting/date-display'
 import { isCollected } from '@/features/invoices/invoice-collection-residual'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { InstallmentStatusBadge } from '@/features/invoices/invoice-status-badges'
+import { WriteOffBadge } from '@/features/invoices/write-off-badge'
 import type { InvoiceInstallment } from '@/features/invoices/types'
 
 const HEAD = 'px-2 py-1 text-left text-xs font-medium text-muted-foreground'
@@ -61,7 +62,16 @@ export function InvoiceInstallmentsTable({
                 <td className={NUM_CELL}>{formatEuro(installment.amount)}</td>
                 <td className={CELL}>{installment.payment_method_code ?? ''}</td>
                 <td className={CELL}>
-                  <InstallmentStatusBadge status={installment.status} />
+                  <span className="flex flex-wrap items-center gap-1">
+                    <InstallmentStatusBadge status={installment.status} />
+                    {installment.write_off ? (
+                      <WriteOffBadge
+                        reason={installment.write_off.reason}
+                        amount={installment.write_off.amount}
+                        note={installment.write_off.note}
+                      />
+                    ) : null}
+                  </span>
                 </td>
                 <td className={NUM_CELL}>{formatEuro(installment.collected_amount)}</td>
                 <td className={`${CELL} tabular-nums`}>{formatDate(installment.collected_at)}</td>

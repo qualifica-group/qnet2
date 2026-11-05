@@ -23,7 +23,7 @@ final class InstallmentDerivedQuery
     private const int MAX_VALUES = 200;
 
     /** Columns whose set filter / distinct values are an SQL expression. */
-    private const array SET_COLUMNS = ['customer', 'work_order', 'company', 'company_site', 'operational_site', 'payment_method_code', 'due_month'];
+    private const array SET_COLUMNS = ['customer', 'work_order', 'company', 'company_site', 'operational_site', 'payment_method_code', 'due_month', 'write_off_reason'];
 
     /** Grid multi-filter columns whose Set value list is read from their SQL label (the joins repeat plain names). */
     private const array LISTED_COLUMNS = ['invoice_number_label', 'invoice_document_date'];

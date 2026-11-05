@@ -87,14 +87,17 @@ describe('InvoiceCollectionDialog residual choice (spec 0196 AC-022)', () => {
     expect(body).not.toHaveProperty('residual_due_date')
   })
 
-  it('offers spread (default) and a new installment on a partial collection and sends spread', async () => {
+  // REQUIREMENT CHANGED (spec 0361, D-5): above the write-off threshold the proposal is a new installment, no longer spread.
+  it('offers spread, a new installment (proposed) and write-off on a partial collection and sends spread when picked', async () => {
     renderDialog(FIRST, PLAN)
     setAmount('200')
 
     const spread = await screen.findByRole('radio', { name: 'Spread over the later installments' })
-    expect(spread).toBeChecked()
     expect(spread).toBeEnabled()
-    expect(screen.getByRole('radio', { name: 'New due date for the residual' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'New due date for the residual' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Write-off / bad debt' })).toBeEnabled()
+    fireEvent.click(spread)
+    expect(spread).toBeChecked()
     expect(screen.getByText(/200,00/, { selector: 'p' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Record' }))

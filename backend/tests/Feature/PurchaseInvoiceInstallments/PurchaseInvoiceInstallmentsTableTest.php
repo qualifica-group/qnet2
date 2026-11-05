@@ -40,6 +40,7 @@ it('AC-003: exposes the contract columns with their sort/filter flags and the ro
         'id', 'document_type', 'document_number', 'document_date', 'purchase_orders', 'sequence', 'due_date', 'due_month',
         'days_overdue', 'status', 'overdue', 'supplier', 'cost_type', 'work_order', 'company', 'company_site',
         'operational_site', 'payment_method_code', 'amount', 'paid_amount', 'residual_amount', 'paid_at', 'financial_account',
+        'write_off_amount', 'write_off_reason',
     ])
         ->and($data['row_grouping'])->toBe([
             'enabled' => true,

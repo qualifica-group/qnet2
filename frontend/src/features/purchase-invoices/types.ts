@@ -4,7 +4,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { BankAccountRef, NamedRef, VatRateRef } from '@/features/invoices/types'
+import type { BankAccountRef, NamedRef, VatRateRef, WriteOff } from '@/features/invoices/types'
 import type { PurchaseInstallmentStatus, PurchaseInvoiceType } from '@/features/purchase-invoice-installments/types'
 
 export type { PurchaseInvoiceType }
@@ -59,6 +59,7 @@ export interface PurchaseInvoiceInstallment {
   paid_at?: string | null
   status: PurchaseInstallmentStatus
   residual_amount?: string
+  write_off?: WriteOff | null
 }
 
 /** `data` of GET/POST/PUT/PATCH purchase invoice (permissions come beside it in the envelope). */

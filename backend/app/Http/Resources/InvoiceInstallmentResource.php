@@ -57,6 +57,7 @@ class InvoiceInstallmentResource extends JsonResource
             'collected_amount' => $this->collected_amount,
             'collected_at' => $this->collected_at?->toDateString(),
             'financial_account' => $this->financialAccount === null ? null : ['id' => $this->financialAccount->id, 'name' => $this->financialAccount->name],
+            'write_off' => WriteOffPayload::from($this->resource),
             'status' => $this->status(),
             'residual_amount' => $this->residualAmount(),
             'is_overdue' => $daysOverdue > 0,

@@ -35,6 +35,8 @@ export const invoiceInstallments = {
     collected_amount: 'Collected amount',
     residual_amount: 'Residual',
     collected_at: 'Collection date',
+    write_off_amount: 'Write-off',
+    write_off_reason: 'Write-off reason',
   },
   footer: {
     label: 'Totals of the current filter',

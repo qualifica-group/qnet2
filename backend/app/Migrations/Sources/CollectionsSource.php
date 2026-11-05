@@ -170,18 +170,34 @@ class CollectionsSource extends AbstractMigrationSource
         }
 
         // Step 2: fill the open installments in order.
-        return $this->fillInstallments($invoice, $missing, $collectedAt);
+        return $this->fillInstallments($invoice, $missing, $collectedAt, $warnings);
     }
 
-    private function fillInstallments(Invoice $invoice, string $missing, string $collectedAt): string
+    /**
+     * @param  array<int, string>  $warnings
+     */
+    private function fillInstallments(Invoice $invoice, string $missing, string $collectedAt, array &$warnings): string
     {
         $recorded = '0.00';
+        $skipped = [];
 
         while (bccomp($missing, '0', 2) > 0) {
-            $installment = $invoice->installments()->whereNull('collected_amount')->orderBy('sequence')->first();
+            // An installment closed with a write-off in qnet-2 is never overwritten (spec 0361, D-9)
+            $installment = $invoice->installments()
+                ->where(fn ($query) => $query->whereNull('collected_amount')->orWhereNotNull('write_off_amount'))
+                ->whereNotIn('id', $skipped)
+                ->orderBy('sequence')
+                ->first();
 
             if (! $installment instanceof InvoiceInstallment) {
                 break;
+            }
+
+            if ($installment->write_off_amount !== null) {
+                $skipped[] = $installment->id;
+                $warnings[] = "Installment {$installment->sequence} of the document has a write-off in qnet-2: the legacy collection is not applied to it.";
+
+                continue;
             }
 
             $take = $this->minimum($missing, (string) $installment->amount);

@@ -4,6 +4,7 @@ namespace App\Tables\PurchaseInvoiceInstallments;
 
 use App\Enums\PurchaseInstallmentStatus;
 use App\Enums\PurchaseInvoiceType;
+use App\Enums\WriteOffReason;
 use App\Tables\Support\EditableColumns;
 
 /**
@@ -24,6 +25,8 @@ final class PurchaseInstallmentColumnCatalog
         'paid_amount' => 'paid_amount',
         'paid_at' => 'paid_at',
         'residual_amount' => 'residual_amount',
+        'write_off_amount' => 'paid_amount',
+        'write_off_reason' => 'paid_amount',
         'financial_account' => 'financial_account',
     ];
 
@@ -55,6 +58,8 @@ final class PurchaseInstallmentColumnCatalog
             self::column('residual_amount', 'number', sortable: true, filter: 'number'),
             self::column('paid_at', 'date', sortable: true, filter: 'date'),
             self::column('financial_account', 'text', sortable: true, filter: 'set'),
+            self::column('write_off_amount', 'number', sortable: true, filter: 'number'),
+            self::column('write_off_reason', 'text', sortable: true, filter: 'set', options: WriteOffReason::values()),
         ], ['due_date' => [], 'payment_method_code' => EditableColumns::NULLABLE]);
     }
 

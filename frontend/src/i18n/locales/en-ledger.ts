@@ -38,6 +38,7 @@ export const ledger = {
     invoiced: 'Invoiced',
     settledCustomer: 'Collected',
     settledSupplier: 'Paid',
+    writeOff: 'Write-offs',
     residual: 'Outstanding',
     overdue: 'Overdue',
     notDue: 'Not yet due',

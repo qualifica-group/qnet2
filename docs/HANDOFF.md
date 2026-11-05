@@ -3,7 +3,39 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Tesoreria fase A "Conti con saldo" (spec 0360) — VERDE, NON COMMITTATO (2026-11-05)
+## Tesoreria fase B "Abbuono / stralcio" (spec 0361) — VERDE, NON COMMITTATO (2026-11-05)
+
+- Spec `docs/specs/0361-installment-write-off.xml` (approvata). Decisioni: terza scelta del residuo `write_off` su
+  incasso (attivo) e pagamento (passivo); motivo `rounding` (Abbuono) / `bad_debt` (Stralcio) + nota; stralcio anche con
+  importo 0 (solo con write_off); nessun permesso nuovo; soglia solo proposta
+  (`config('treasury.write_off_suggest_threshold')`, default 5.00, esposta in `/api/config` come
+  `treasury.write_off_suggest_threshold`); rata "Pagata" + etichetta, nessun nuovo stato. Fuori scope: incasso/pagamento
+  multiplo, abbuono su rata gia' incassata per intero.
+- Backend:
+  - Colonne `write_off_amount/_reason/_note` su `invoice_installments` e `purchase_invoice_installments`;
+    `residual_amount` (VIRTUAL) ora sottrae l'abbuono, indice ricreato (migrazione `2026_11_20_100000`).
+  - `WriteOffReason`, `ResidualMode::WriteOff`; status Paid anche con solo abbuono; `InstallmentWriteOff` (bcmath,
+    condiviso attivo/passivo), trait `ValidatesWriteOff`, `WriteOffPayload` nelle resource; annulla azzera l'abbuono.
+  - Partitario: riga `document_type: "write_off"` (id = id rata, chiave composta lato FE), `summary.write_off_total`.
+  - Tesoreria/Controllo di gestione: incassi/pagamenti a importo 0 esclusi; provvigioni solo sull'incassato.
+  - Griglie: colonne `write_off_amount`/`write_off_reason` (enum `write_off_reason`) sugli scadenziari; griglie fatture
+    attive/passive: residuo e totali al netto degli abbuoni, "prima rata aperta" = senza abbuono. ATTENZIONE: in SQLite
+    la colonna generata somma REAL (1000-999.80-0.20 non e' 0): niente confronti aritmetici su `residual_amount`, usare
+    `write_off_amount IS NULL`.
+  - Legacy: `CollectionsSource` salta le rate con abbuono e registra un avviso.
+- Frontend: terza scelta nei dialog di incasso/pagamento (`invoices/write-off*.ts(x)`, `use-write-off-threshold.ts`),
+  `WriteOffBadge` su scadenziari e schede fattura, Partitario con righe e totale abbuoni, i18n `writeOff`,
+  `enums.write_off_reason`. Guide aggiornate: `invoice-installments`, `purchase-invoice-installments`, `ledger`,
+  `invoices`.
+- Gate finale: Pest 13.937, rossi solo 11 PREESISTENTI estranei (i 10 della fase A + `WorkOrderCategoryTabsTest`
+  instabile); Vitest 9.987 verdi (11 unhandled `toast.error` preesistenti); `tsc -b --force` 0 (serve
+  `NODE_OPTIONS=--max-old-space-size=6144`); ESLint e Pint puliti. Pest seriale su `Invoices` puo' andare in segfault:
+  usare `--parallel`.
+- Manuale Claude Docs: NON aggiornato. Sezioni: Scadenze attive e passive (Abbuono e stralcio), Partitario (righe di
+  abbuono), Fatture attive (stato Pagata con etichetta).
+- Prossimo: fase C (Quadro finanziario), fase D (riconciliazione, ricorrenti, compensazioni).
+
+## Tesoreria fase A "Conti con saldo" (spec 0360) — VERDE, COMMITTATO 67867af5 (2026-11-05)
 
 - Prospetto fasi A-D: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y. Spec `docs/specs/0360-treasury-account-balances.xml`
   (approvata). Decisioni: apertura 01/01/2026 (`config('treasury.default_opening_date')`, per conto

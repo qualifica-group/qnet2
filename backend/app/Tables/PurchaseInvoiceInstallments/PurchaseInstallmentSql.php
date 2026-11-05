@@ -16,6 +16,8 @@ final class PurchaseInstallmentSql
 {
     private const string PAID = 'purchase_invoice_installments.paid_amount';
 
+    private const string WRITE_OFF = 'purchase_invoice_installments.write_off_amount';
+
     private const string AMOUNT = 'purchase_invoice_installments.amount';
 
     private const string DUE_DATE = 'purchase_invoice_installments.due_date';
@@ -33,6 +35,8 @@ final class PurchaseInstallmentSql
         'paid_amount' => self::PAID,
         'residual_amount' => 'purchase_invoice_installments.residual_amount',
         'paid_at' => 'purchase_invoice_installments.paid_at',
+        'write_off_amount' => self::WRITE_OFF,
+        'write_off_reason' => 'purchase_invoice_installments.write_off_reason',
         'supplier' => 'registries.name',
         'cost_type' => 'cost_types.name',
         'company' => 'companies.denomination',
@@ -40,16 +44,16 @@ final class PurchaseInstallmentSql
         'financial_account' => 'financial_accounts.name',
     ];
 
-    /** No payment recorded. */
+    /** No payment and no write-off recorded. */
     public static function unpaid(): string
     {
-        return 'COALESCE('.self::PAID.', 0) <= 0';
+        return '(COALESCE('.self::PAID.', 0) <= 0 AND COALESCE('.self::WRITE_OFF.', 0) <= 0)';
     }
 
-    /** Any payment recorded: it closes the installment. */
+    /** Any payment or write-off recorded: it closes the installment (spec 0361). */
     public static function paid(): string
     {
-        return self::PAID.' > 0';
+        return '('.self::PAID.' > 0 OR COALESCE('.self::WRITE_OFF.', 0) > 0)';
     }
 
     /** Unpaid and due before the bound date (one binding). */

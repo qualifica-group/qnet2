@@ -35,6 +35,8 @@ export const invoiceInstallments = {
     collected_amount: 'Importo incassato',
     residual_amount: 'Residuo',
     collected_at: 'Data incasso',
+    write_off_amount: 'Abbuono',
+    write_off_reason: 'Motivo abbuono',
   },
   footer: {
     label: 'Totali del filtro corrente',

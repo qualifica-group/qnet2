@@ -3,6 +3,7 @@
 namespace App\Tables\InvoiceInstallments;
 
 use App\Enums\InstallmentStatus;
+use App\Enums\WriteOffReason;
 use App\Tables\Support\EditableColumns;
 
 /**
@@ -23,6 +24,8 @@ final class InstallmentColumnCatalog
         'collected_amount' => 'collected_amount',
         'collected_at' => 'collected_at',
         'residual_amount' => 'residual_amount',
+        'write_off_amount' => 'collected_amount',
+        'write_off_reason' => 'collected_amount',
     ];
 
     /**
@@ -49,6 +52,8 @@ final class InstallmentColumnCatalog
             self::column('collected_amount', 'number', sortable: true, filter: 'number'),
             self::column('residual_amount', 'number', sortable: true, filter: 'number'),
             self::column('collected_at', 'date', sortable: true, filter: 'date'),
+            self::column('write_off_amount', 'number', sortable: true, filter: 'number'),
+            self::column('write_off_reason', 'text', sortable: true, filter: 'set', options: WriteOffReason::values()),
         ], ['due_date' => [], 'payment_method_code' => EditableColumns::NULLABLE]);
     }
 

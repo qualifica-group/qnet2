@@ -28,6 +28,11 @@ class PurchaseInvoiceResource extends JsonResource
             '0.00',
         );
 
+        $writtenOff = $this->installments->reduce(
+            fn (string $sum, PurchaseInvoiceInstallment $row): string => bcadd($sum, (string) ($row->write_off_amount ?? '0'), 2),
+            '0.00',
+        );
+
         return [
             'id' => $this->id,
             'document_type' => $this->document_type,
@@ -56,7 +61,7 @@ class PurchaseInvoiceResource extends JsonResource
             'enasarco_amount' => $this->enasarco_amount,
             'payable_amount' => $this->payableAmount(),
             'paid_amount' => $paid,
-            'residual_amount' => bcsub($this->payableAmount(), $paid, 2),
+            'residual_amount' => bcsub(bcsub($this->payableAmount(), $paid, 2), $writtenOff, 2),
             'commission_settlement' => $this->commissionSettlement === null ? null : ['id' => $this->commissionSettlement->id, 'code' => $this->commissionSettlement->code()],
             'has_payments' => bccomp($paid, '0', 2) > 0,
             'purchase_orders' => $this->purchaseOrders
@@ -87,6 +92,7 @@ class PurchaseInvoiceResource extends JsonResource
             'payment_method_code' => $row->payment_method_code,
             'paid_amount' => $row->paid_amount,
             'paid_at' => $row->paid_at?->toDateString(),
+            'write_off' => WriteOffPayload::from($row),
             'status' => $row->status(),
             'residual_amount' => $row->residualAmount(),
             'is_overdue' => $daysOverdue > 0,

@@ -29,6 +29,14 @@ class PurchaseInvoiceInstallmentFactory extends Factory
         ];
     }
 
+    public function writtenOff(string $amount = '0.20', string $reason = 'rounding'): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'write_off_amount' => $amount,
+            'write_off_reason' => $reason,
+        ]);
+    }
+
     public function paid(): static
     {
         return $this->state(fn (array $attributes): array => [

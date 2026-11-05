@@ -227,3 +227,11 @@ it('reads the country code from the DEFAULT_COUNTRY_ISO2 env binding', function 
     // The value must reach the payload through config/geo.php, not a literal.
     expect(config('geo.default_country_iso2'))->toBe(env('DEFAULT_COUNTRY_ISO2'));
 });
+
+it('AC-010 exposes the treasury write-off suggestion threshold from the configuration', function () {
+    $this->getJson('/api/config')->assertOk()->assertJsonPath('data.treasury.write_off_suggest_threshold', '5.00');
+
+    config(['treasury.write_off_suggest_threshold' => '2.50']);
+
+    $this->getJson('/api/config')->assertJsonPath('data.treasury.write_off_suggest_threshold', '2.50');
+});

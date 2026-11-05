@@ -28,7 +28,7 @@ class ConfigService
      * alongside `enums`. This is the terminal serialized payload (the API
      * contract), not an internal DTO, so a plain array is the right shape here.
      *
-     * @return array{enums: array<string, array<int, array{value: string, label: string, color: string|null, icon: string|null, is_default: bool, hidden_on_form: bool}>>, localization: array{default_country_iso2: string|null}}
+     * @return array{enums: array<string, array<int, array{value: string, label: string, color: string|null, icon: string|null, is_default: bool, hidden_on_form: bool}>>, localization: array{default_country_iso2: string|null}, treasury: array{write_off_suggest_threshold: string}}
      */
     public function bootstrap(?string $acceptLanguage): array
     {
@@ -37,6 +37,7 @@ class ConfigService
         return [
             'enums' => $this->enums(),
             'localization' => $this->localization(),
+            'treasury' => $this->treasury(),
         ];
     }
 
@@ -61,6 +62,17 @@ class ConfigService
         return [
             'default_country_iso2' => $iso2 === '' ? null : $iso2,
         ];
+    }
+
+    /**
+     * Residual up to which the collection/payment dialog proposes a write-off
+     * (spec 0361, D-5). A static server-side value, safe on this PUBLIC endpoint.
+     *
+     * @return array{write_off_suggest_threshold: string}
+     */
+    private function treasury(): array
+    {
+        return ['write_off_suggest_threshold' => (string) config('treasury.write_off_suggest_threshold')];
     }
 
     /**

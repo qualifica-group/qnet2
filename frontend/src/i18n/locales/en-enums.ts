@@ -66,6 +66,10 @@ export const enums = {
     paid: 'Collected',
   },
   // Payable installment status (spec 0211 D-4) and passive document type.
+  write_off_reason: {
+    rounding: 'Write-off',
+    bad_debt: 'Bad debt',
+  },
   purchase_installment_status: {
     unpaid: 'Unpaid',
     paid: 'Paid',

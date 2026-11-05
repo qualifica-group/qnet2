@@ -20,7 +20,7 @@ interface CollectionFormProps {
 
 function CollectionForm({ installment, installments, defaultAccount, onClose, onSaved }: CollectionFormProps) {
   const { t } = useTranslation()
-  const { form, submit, isPending, isPartial, canSpread, residualMode, residualAmount, proposedAccount } =
+  const { form, submit, isPending, isPartial, isZeroAmount, canSpread, residualMode, residualAmount, proposedAccount } =
     useInvoiceCollectionForm(
       installment,
       installments,
@@ -69,18 +69,20 @@ function CollectionForm({ installment, installments, defaultAccount, onClose, on
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="financial_account_id"
-          render={({ field }) => (
-            <CollectionAccountField
-              value={field.value}
-              onChange={field.onChange}
-              selected={proposedAccount}
-              hint={t('treasuryCollection.singleHint')}
-            />
-          )}
-        />
+        {isZeroAmount ? null : (
+          <FormField
+            control={form.control}
+            name="financial_account_id"
+            render={({ field }) => (
+              <CollectionAccountField
+                value={field.value}
+                onChange={field.onChange}
+                selected={proposedAccount}
+                hint={t('treasuryCollection.singleHint')}
+              />
+            )}
+          />
+        )}
         {isPartial ? (
           <InvoiceCollectionResidualFields
             form={form}

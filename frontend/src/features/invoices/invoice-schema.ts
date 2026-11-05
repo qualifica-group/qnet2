@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { isPartialCollection } from '@/features/invoices/invoice-collection-residual'
 import { RESIDUAL_MODES } from '@/features/invoices/types'
+import { buildWriteOffShape, effectiveResidualMode, isZeroAmount } from '@/features/invoices/write-off'
 import { round2 } from '@/lib/amounts/line-amounts'
 
 /**
@@ -98,33 +99,41 @@ interface CollectionSchemaOptions {
   installmentAmount: number
   /** False when no later open installment exists: "spread" is not allowed. */
   canSpread: boolean
+  /** Residual (euros) up to which write-off is the proposed choice (spec 0361, D-5). */
+  writeOffThreshold: number
 }
 
 /**
- * Collection dialog (spec 0196): 0 < collected_amount <= the installment amount;
- * a partial amount also needs the residual choice (and its date for a new installment).
+ * Collection dialog (spec 0196, 0361): 0 <= collected_amount <= the installment amount, where 0 is only valid
+ * as a total write-off; a partial amount also needs the residual choice (and its date for a new installment).
  */
-export function buildInvoiceCollectionSchema(t: TFunction, { installmentAmount, canSpread }: CollectionSchemaOptions) {
+export function buildInvoiceCollectionSchema(
+  t: TFunction,
+  { installmentAmount, canSpread, writeOffThreshold }: CollectionSchemaOptions,
+) {
   return z
     .object({
       collected_amount: z
         .number(t('invoices.collection.errors.amountInvalid'))
-        .gt(0, t('invoices.collection.errors.amountPositive'))
+        .gte(0, t('invoices.collection.errors.amountPositive'))
         .max(installmentAmount, t('invoices.collection.errors.amountExceeds')),
       collected_at: z.string().min(1, t('invoices.collection.errors.dateRequired')),
       financial_account_id: z.number().int().nullable(),
       residual_mode: z.enum(RESIDUAL_MODES).optional(),
       residual_due_date: z.string().optional(),
+      ...buildWriteOffShape(t),
     })
     .superRefine((values, ctx) => {
       if (!isPartialCollection(values.collected_amount, installmentAmount)) {
         return
       }
-      if (values.residual_mode === undefined) {
-        ctx.addIssue({ code: 'custom', path: ['residual_mode'], message: t('invoices.collection.errors.residualModeRequired') })
-      } else if (values.residual_mode === 'spread' && !canSpread) {
+      const mode = effectiveResidualMode(values.residual_mode, values.collected_amount, installmentAmount, writeOffThreshold)
+      if (isZeroAmount(values.collected_amount) && mode !== 'write_off') {
+        ctx.addIssue({ code: 'custom', path: ['collected_amount'], message: t('writeOff.errors.zeroNeedsWriteOff') })
+      }
+      if (mode === 'spread' && !canSpread) {
         ctx.addIssue({ code: 'custom', path: ['residual_mode'], message: t('invoices.collection.errors.noLaterInstallments') })
-      } else if (values.residual_mode === 'new_installment' && !values.residual_due_date) {
+      } else if (mode === 'new_installment' && !values.residual_due_date) {
         ctx.addIssue({ code: 'custom', path: ['residual_due_date'], message: t('invoices.collection.errors.residualDateRequired') })
       }
     })

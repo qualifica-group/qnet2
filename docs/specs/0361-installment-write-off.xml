@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0361-installment-write-off" status="approved" owner="utente" date="2026-11-05">
+
+  <goal>
+    Tesoreria fase B "Abbuono / stralcio": quando un incasso o un pagamento non copre la rata, chi lo registra puo'
+    chiudere la differenza come abbuono (arrotondamento, differenza minima) o stralcio (credito/debito non
+    recuperabile) invece di spostarla su altre rate. La rata resta del suo importo e risulta chiusa; il residuo
+    sparisce da scadenziari, Partitario ed esposizione, ma i saldi di cassa e banca non cambiano.
+  </goal>
+
+  <context>
+    Prospetto: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y (fase B). Fase A: spec 0360.
+
+    Decisioni utente 2026-11-05:
+    - D-1: terza scelta del residuo accanto a "Spalma" e "Nuova rata", sia sugli incassi (rate attive) sia sui
+      pagamenti (rate passive). La rata resta del suo importo; nessun'altra rata viene toccata.
+    - D-2: motivo obbligatorio tra Abbuono (`rounding`) e Stralcio (`bad_debt`), piu' una nota facoltativa.
+    - D-3 (risposta "Si', anche a zero"): lo stralcio puo' chiudere anche una rata mai incassata/pagata: incassato
+      0 + abbuono/stralcio per l'intero importo. Un importo 0 e' ammesso SOLO con questa scelta.
+    - D-4 (risposta "Chi registra incassi/pagamenti"): nessun permesso nuovo; vale il permesso gia' richiesto per
+      registrare l'incasso o il pagamento.
+    - D-5 (risposta "Solo proposta"): soglia configurabile (default 5,00 euro): se il residuo e' entro la soglia la
+      scelta proposta e' Abbuono, sopra e' Nuova rata. Nessun vincolo tra importo e motivo.
+    - D-6 (risposta "Pagata + etichetta"): la rata chiusa con abbuono/stralcio ha stato "Pagata" (la fattura risulta
+      saldata), con un'etichetta "Abbuono" o "Stralcio" e l'importo. Nessun nuovo stato.
+    - D-7: l'abbuono non e' denaro: non entra nei saldi di tesoreria, nell'estratto conto, negli incassi del
+      Controllo di gestione ne' nelle provvigioni (che maturano solo sull'incassato).
+    - D-8: "Annulla incasso/pagamento" cancella anche l'abbuono. Il pagamento multiplo fornitori e l'incasso
+      multiplo non offrono la nuova scelta (fuori scope).
+    - D-9: nel vecchio QNet l'abbuono non esiste; la migrazione incrementale non deve mai azzerarlo.
+
+    Fatti verificati nel codice (feature/amministrazione, 2026-11-05):
+    - Rate attive `invoice_installments`: `collected_amount`, `collected_at`, `financial_account_id` (0360),
+      `redistribution_snapshot`, `residual_amount` VIRTUAL `amount - COALESCE(collected_amount, 0)` con indice
+      (`residual_amount`, `due_date`). `InvoiceInstallment::status()` = Paid se collected_amount > 0.
+    - Rate passive `purchase_invoice_installments`: `paid_amount`, `paid_at`, `financial_account_id`,
+      `residual_amount` VIRTUAL `amount - COALESCE(paid_amount, 0)` con indice (`residual_amount`, `due_date`);
+      `isPaid()` = paid_amount > 0, `status()` su `PurchaseInstallmentStatus`.
+    - Incasso: `InvoiceCollectionRequest` (collected_amount `gt:0`, `residual_mode` richiesto se parziale,
+      `residual_due_date` se new_installment) -> `InvoiceCollectionService::record()/recordPartial()/clear()`.
+      Pagamento: `PurchaseInvoicePaymentRequest` -> `PurchaseInvoicePaymentService` (stessa struttura).
+      Enum `App\Enums\ResidualMode` (spread, new_installment). Parzialita': `LineAmountCalculator::isPartial()`.
+    - Stato fattura: `InvoicePaymentStatusResolver::resolve()` (prima rata non Paid). Partitario:
+      `ReceivableLedgerSource` / `PayableLedgerSource` (`settledCents` da collected/paid), `LedgerCalculator`.
+    - Provvigioni: `CommissionAccrualSynchronizer` somma `collected_amount` (> 0). Tesoreria:
+      `AccountStatementService` / `AccountStatementFacts`, `CollectionAggregator`, `PaymentAggregator`.
+    - Legacy: incassi incrementali da `App\Migrations\Sources\CollectionsSource` via `InvoiceCollectionService::record()`;
+      `LegacyPurchaseInvoiceWriter` crea le rate passive solo alla prima importazione.
+    - Config pubblica: `GET /api/config` (`ConfigController::index` -> bootstrap), FE `features/config`.
+    - FE: `features/invoices/invoice-collection-dialog.tsx`, `invoice-collection-residual-fields.tsx`,
+      `invoice-collection-residual.ts`; finestra di pagamento in `features/purchase-invoices` /
+      `features/purchase-invoice-installments`; griglie `invoice-installments`, `purchase-invoice-installments`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Colonne `write_off_amount`, `write_off_reason`, `write_off_note` sulle due tabelle delle rate; `residual_amount` rigenerata come `amount - COALESCE(incassato/pagato, 0) - COALESCE(write_off_amount, 0)` con indice ricreato.</item>
+      <item>`ResidualMode::WriteOff` (`write_off`) nelle request e nei servizi di incasso e pagamento; importo 0 ammesso solo con write_off.</item>
+      <item>Stato rata Paid anche con solo abbuono (D-3); stato fattura di conseguenza.</item>
+      <item>Annulla incasso/pagamento azzera l'abbuono.</item>
+      <item>Risorse API: oggetto `write_off` su rata attiva e passiva (risorsa singola e rate inline delle fatture).</item>
+      <item>Partitario: riga di abbuono/stralcio per rata; residuo 0.</item>
+      <item>Esclusione degli importi 0 da estratto conto, "da verificare", aggregatori del Controllo di gestione e provvigioni.</item>
+      <item>Legacy: `CollectionsSource` non sovrascrive una rata con abbuono (avviso e salto).</item>
+      <item>Soglia `config('treasury.write_off_suggest_threshold')` esposta in `GET /api/config`.</item>
+      <item>Griglie scadenziario attivo/passivo: colonne di sola lettura `write_off_amount`, `write_off_reason`; etichetta nello stato.</item>
+      <item>Frontend: terza scelta nelle finestre di incasso e pagamento (motivo, nota, proposta da soglia, incassato 0 ammesso), etichetta su rate e scheda fattura.</item>
+      <item>Guide in-app IT/EN: `invoice-installments`, `purchase-invoice-installments`, `ledger` (e le guide fatture se descrivono l'incasso); manuale Claude Docs o elenco sezioni.</item>
+    </in>
+    <out>
+      <item>Abbuono/stralcio nell'incasso multiplo e nel pagamento multiplo fornitori.</item>
+      <item>Abbuono su una rata gia' incassata per intero, o aggiunto dopo l'incasso (si annulla e si registra di nuovo).</item>
+      <item>Note di credito/debito, compensazioni, Quadro finanziario (fase C), riconciliazione e ricorrenti (fase D).</item>
+      <item>Scritture contabili dell'abbuono (sopravvenienze, perdite su crediti): niente partita doppia.</item>
+      <item>Nuovi stati di rata o di fattura (D-6) e nuovi permessi (D-4).</item>
+      <item>Modifiche al QNet legacy.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!--
+      Enum `App\Enums\WriteOffReason`: rounding (IT "Abbuono"), bad_debt (IT "Stralcio").
+      WriteOff (shape comune): { amount: "0.20", reason: "rounding"|"bad_debt", note: string|null } | null
+    -->
+    <endpoint method="PUT" path="/api/invoice-installments/{installment}/collection (esistente)">
+      <request>{ collected_amount: decimal (gt:0, oppure 0 SOLO con residual_mode=write_off), collected_at: date,
+        financial_account_id?: int|null, residual_mode: "spread"|"new_installment"|"write_off" (obbligatorio se
+        parziale), residual_due_date (solo new_installment), write_off_reason: "rounding"|"bad_debt" (obbligatorio
+        con write_off), write_off_note?: string(255)|null }</request>
+      <response status="200">risposta esistente; ogni rata espone `write_off: WriteOff|null`; la rata chiusa ha
+        amount invariato, collected_amount = incassato, residual 0, status "paid".</response>
+      <errors>422: write_off senza motivo; motivo/nota senza write_off; importo 0 senza write_off; write_off su
+        incasso non parziale; rata gia' incassata (comportamento esistente).</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/purchase-invoice-installments/{installment}/payment (esistente, path reale da verificare)">
+      <request>gemello del precedente con paid_amount/paid_at.</request>
+      <response status="200">risposta esistente + `write_off` sulla rata.</response>
+      <errors>come sopra.</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="annulla incasso / annulla pagamento (esistenti)">
+      <response status="200">come oggi; `write_off` torna null, residual = amount.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/config (esistente)">
+      <response status="200">bootstrap esistente + `treasury: { write_off_suggest_threshold: "5.00" }`</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/registries/{registry}/ledger (esistente, spec 0266)">
+      <response status="200">per ogni rata con abbuono una riga aggiuntiva di tipo `write_off` (Avere sul
+        lato clienti, Dare sul lato fornitori) con data = data dell'incasso/pagamento, importo = write_off_amount,
+        descrizione "Abbuono"/"Stralcio" + documento; il residuo della rata scende a 0.</response>
+    </endpoint>
+    <grid domains="invoice-installments, purchase-invoice-installments">
+      colonne nuove di sola lettura: `write_off_amount` (number), `write_off_reason` (set: rounding|bad_debt);
+      filtrabili da allow-list; lo stato resta `paid`.
+    </grid>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato una rata attiva da 1000.00, quando si registra un incasso di 999.80 con residual_mode write_off e motivo rounding, allora la rata resta 1000.00, collected 999.80, write_off 0.20/rounding, residual_amount 0.00, status paid, nessun'altra rata cambia e nessuna rata viene creata. (Pest)</criterion>
+    <criterion id="AC-002">Dato una rata passiva, lo stesso scenario sul pagamento produce lo stesso risultato su paid_amount. (Pest)</criterion>
+    <criterion id="AC-003">Dato una rata mai incassata, quando si registra incassato 0 con write_off bad_debt, allora write_off = intero importo, residual 0, status paid; incassato 0 senza write_off -> 422. (Pest)</criterion>
+    <criterion id="AC-004">Data una richiesta write_off senza motivo, con motivo ma senza write_off, con motivo non valido, nota oltre 255, oppure write_off su un incasso che copre l'intera rata, allora 422 e nessuna modifica. (Pest)</criterion>
+    <criterion id="AC-005">Dato un incasso con abbuono, quando lo si annulla, allora collected e write_off tornano null e residual = importo della rata; lo stesso sul lato pagamenti. (Pest)</criterion>
+    <criterion id="AC-006">Data una fattura con tutte le rate incassate o chiuse con abbuono/stralcio, allora lo stato di pagamento della fattura e' paid. (Pest)</criterion>
+    <criterion id="AC-007">Dato un abbuono, allora l'estratto conto e i saldi (spec 0360) includono solo l'incassato reale; una rata con incassato 0 + stralcio non compare ne' nell'estratto ne' in "da verificare"; il Controllo di gestione > Conti non la conta; le provvigioni maturano solo sull'incassato. (Pest)</criterion>
+    <criterion id="AC-008">Dato il Partitario di un cliente e di un fornitore con un abbuono, allora compare la riga write_off con importo e data, il residuo della fattura e' 0 e i totali quadrano. (Pest)</criterion>
+    <criterion id="AC-009">Dato un aggiornamento incrementale dal legacy (CollectionsSource) su una rata chiusa con abbuono in qnet2, allora la rata non cambia e viene registrato un avviso. (Pest)</criterion>
+    <criterion id="AC-010">Dato /api/config, allora contiene treasury.write_off_suggest_threshold dalla configurazione (default "5.00"). (Pest)</criterion>
+    <criterion id="AC-011">Dato le griglie dello scadenziario attivo e passivo, allora espongono write_off_amount e write_off_reason, filtrabili; una rata con abbuono e' tra le pagate e non tra le residue. (Pest)</criterion>
+    <criterion id="AC-012">Data la finestra di incasso (e di pagamento) con importo minore della rata, allora c'e' la terza scelta "Abbuono / stralcio" con motivo obbligatorio e nota; residuo entro la soglia -> proposta Abbuono, sopra -> proposta Nuova rata; il payload invia residual_mode write_off, write_off_reason e write_off_note. (Vitest)</criterion>
+    <criterion id="AC-013">Data la finestra di incasso con importo 0, allora l'invio e' possibile solo con la scelta Abbuono / stralcio; altrimenti errore annunciato con la triade aria. (Vitest)</criterion>
+    <criterion id="AC-014">Data una rata con write_off, allora scadenziario e scheda fattura mostrano lo stato Pagata con l'etichetta "Abbuono" o "Stralcio" e l'importo. (Vitest)</criterion>
+    <criterion id="AC-015">Le guide in-app aggiornate IT/EN con gli stessi id di sezione; help-content-parity verde. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessun nuovo permesso; nessun throttle.</item>
+    <item>Migrazioni reversibili: la colonna generata `residual_amount` e il suo indice si ricreano su entrambe le tabelle (MySQL e SQLite); il `down` ripristina l'espressione precedente.</item>
+    <item>Aritmetica in centesimi/bcmath, nessun float; abbuono = importo rata - incassato, calcolato dal server (il client non lo invia).</item>
+    <item>La logica di write_off e' condivisa tra lato attivo e passivo dove gia' lo e' la ridistribuzione; nessuna duplicazione nuova.</item>
+    <item>Ogni scrittura di abbuono va in activitylog (aggiungere le colonne a `logOnly`).</item>
+    <item>Legacy (backend.md §9): nessun cambio ai controller legacy; qnet2 salta e avvisa.</item>
+    <item>Identificatori in inglese; testi i18n IT/EN; UI compatta; file sotto 300 righe (500 tetto).</item>
+    <item>Ramo feature/amministrazione; nessun commit senza via libera (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

@@ -3,6 +3,7 @@ import type { ICellRendererParams } from 'ag-grid-community'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { BADGE_BASE, BADGE_COLOR_CLASSES, CELL_WRAPPER, EmptyCell } from '@/features/table/cell-renderers'
+import { RowWriteOffBadge } from '@/features/invoices/write-off-badge'
 import { InstallmentStatusBadge } from '@/features/invoices/invoice-status-badges'
 import { INSTALLMENT_STATUSES, type InstallmentStatus } from '@/features/invoices/types'
 
@@ -13,10 +14,11 @@ function isInstallmentStatus(value: unknown): value is InstallmentStatus {
 }
 
 /** Derived installment status (unpaid / paid) as the shared badge. */
-export function InstallmentStatusCell({ value }: ICellRendererParams) {
+export function InstallmentStatusCell({ value, data }: ICellRendererParams) {
   return isInstallmentStatus(value) ? (
     <div className={CELL_WRAPPER}>
       <InstallmentStatusBadge status={value} />
+      <RowWriteOffBadge data={data} />
     </div>
   ) : (
     <EmptyCell />

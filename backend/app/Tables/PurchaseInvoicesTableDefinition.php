@@ -62,6 +62,8 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
 
     private const string PAID_SUM = 'installments_sum_paid_amount';
 
+    private const string WRITE_OFF_SUM = 'installments_sum_write_off_amount';
+
     private const string ORDERS_LABEL = 'purchase_orders_label';
 
     /** Row actions not offered for a registered invoice (409 on the server). */
@@ -93,6 +95,7 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
             ->selectRaw(PurchaseInstallmentSql::purchaseOrderCodes('purchase_invoices.id').' as '.self::ORDERS_LABEL)
             ->with(['supplier:id,name', 'company:id,denomination'])
             ->withSum('installments', 'paid_amount')
+            ->withSum('installments', 'write_off_amount')
             ->withCount('installments')
             ->withExists('commissionSettlement')
             ->addSelect([self::FIRST_UNPAID_DUE_DATE => PurchaseInvoiceInstallment::query()
@@ -101,6 +104,8 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
                 ->where(static function (Builder $unpaid): void {
                     $unpaid->whereNull('paid_amount')->orWhere('paid_amount', '<=', 0);
                 })
+                // Spec 0361: a write-off closes the installment, also a full one with paid_amount 0.
+                ->whereNull('write_off_amount')
                 ->orderBy('sequence')
                 ->limit(1)]);
     }
@@ -173,6 +178,7 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
     {
         /** @var PurchaseInvoice $row */
         $paid = (float) ($row->getAttribute(self::PAID_SUM) ?? 0);
+        $writtenOff = (float) ($row->getAttribute(self::WRITE_OFF_SUM) ?? 0);
 
         return [
             'id' => $row->id,
@@ -188,7 +194,7 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
             'total_amount' => $row->total_amount,
             'payable_amount' => $row->payableAmount(),
             'paid_amount' => self::money($paid),
-            'residual_amount' => self::money((float) $row->payableAmount() - $paid),
+            'residual_amount' => self::money((float) $row->payableAmount() - $paid - $writtenOff),
             'payment_status' => $this->paymentStatus($row)->value,
         ];
     }

@@ -159,6 +159,8 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'status' => 'installment_status',
             'overdue' => 'installment_overdue',
+            // Spec 0361: the frontend translates the set filter options from `enums.write_off_reason`.
+            'write_off_reason' => 'write_off_reason',
             default => null,
         };
     }
@@ -204,6 +206,8 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'collected_amount' => $row->collected_amount,
             'residual_amount' => $row->residualAmount(),
             'collected_at' => $row->collected_at?->toDateString(),
+            'write_off_amount' => $row->write_off_amount,
+            'write_off_reason' => $row->write_off_reason?->value,
         ];
 
         foreach (InstallmentColumnCatalog::FIELD_BY_COLUMN as $column => $field) {

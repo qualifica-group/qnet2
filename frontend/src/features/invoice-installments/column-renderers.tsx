@@ -1,5 +1,6 @@
 import { MoneyCell } from '@/features/invoices/invoice-cells'
 import { CodeBadgeCell, DateCell } from '@/features/table/rich-cells'
+import { WriteOffReasonCell } from '@/features/invoices/write-off-badge'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import {
   DaysOverdueCell,
@@ -19,4 +20,6 @@ export const installmentColumnRenderers: TableRendererMap = {
   amount: (params) => <MoneyCell {...params} />,
   collected_amount: (params) => <MoneyCell {...params} />,
   residual_amount: (params) => <MoneyCell {...params} />,
+  write_off_amount: (params) => <MoneyCell {...params} />,
+  write_off_reason: (params) => <WriteOffReasonCell {...params} />,
 }

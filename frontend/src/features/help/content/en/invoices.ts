@@ -57,7 +57,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Dot', 'Meaning'],
           rows: [
-            ['Paid', 'All due dates are collected.'],
+            ['Paid', 'All due dates are collected (also with a write-off or bad debt: the installment shows the **Write-off** or **Bad debt** label).'],
             ['Not overdue', 'There are open due dates, none past due yet.'],
             ['Overdue up to 21 days', 'At least one open due date is overdue by no more than 21 days.'],
             ['Overdue over 21 days', 'At least one open due date is overdue by more than 21 days.'],

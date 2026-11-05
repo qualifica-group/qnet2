@@ -4,13 +4,15 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { RESIDUAL_MODES, type ResidualMode } from '@/features/invoices/types'
+import { WriteOffFields } from '@/features/invoices/write-off-fields'
 import type { PurchasePaymentFormValues } from '@/features/purchase-invoice-installments/purchase-installment-payment'
 
 interface ResidualFieldsProps {
   form: UseFormReturn<PurchasePaymentFormValues>
   residualAmount: number
   canSpread: boolean
-  residualMode: ResidualMode | undefined
+  /** Effective choice: the user's pick or the proposal. */
+  residualMode: ResidualMode
 }
 
 /** Choice of what happens to the part not paid: spread on later installments or a new one. */
@@ -40,14 +42,14 @@ export function PurchasePaymentResidualFields({ form, residualAmount, canSpread,
                         type="radio"
                         name={field.name}
                         value={mode}
-                        checked={field.value === mode}
+                        checked={residualMode === mode}
                         disabled={disabled}
                         onChange={() => field.onChange(mode)}
                         onBlur={field.onBlur}
                         className="size-3.5 accent-primary"
                         aria-describedby={disabled ? `${inputId}-reason` : undefined}
                       />
-                      {t(`purchaseInvoiceInstallments.payment.residualModes.${mode}`)}
+                      {mode === 'write_off' ? t('writeOff.mode') : t(`purchaseInvoiceInstallments.payment.residualModes.${mode}`)}
                     </label>
                     {disabled ? (
                       <span id={`${inputId}-reason`} className="pl-5 text-xs text-muted-foreground">
@@ -76,6 +78,9 @@ export function PurchasePaymentResidualFields({ form, residualAmount, canSpread,
             </FormItem>
           )}
         />
+      ) : null}
+      {residualMode === 'write_off' ? (
+        <WriteOffFields control={form.control} writeOffAmount={residualAmount} idPrefix="purchase-residual-mode" />
       ) : null}
     </div>
   )

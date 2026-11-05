@@ -13,6 +13,8 @@ import {
   RESIDUAL_INSTALLMENT_DAYS,
 } from '@/features/invoices/invoice-collection-residual'
 import { todayIso } from '@/features/invoices/invoice-format'
+import { useWriteOffThreshold } from '@/features/invoices/use-write-off-threshold'
+import { DEFAULT_WRITE_OFF_REASON, effectiveResidualMode, isZeroAmount } from '@/features/invoices/write-off'
 import {
   buildPurchasePaymentPayload,
   buildPurchasePaymentSchema,
@@ -23,7 +25,15 @@ import { useRecordPurchasePayment } from '@/features/purchase-invoice-installmen
 import type { PurchaseInstallmentDetail } from '@/features/purchase-invoice-installments/types'
 
 const CONFLICT_STATUS = 409
-const FIELDS = ['paid_amount', 'paid_at', 'financial_account_id', 'residual_mode', 'residual_due_date'] as const
+const FIELDS = [
+  'paid_amount',
+  'paid_at',
+  'financial_account_id',
+  'residual_mode',
+  'residual_due_date',
+  'write_off_reason',
+  'write_off_note',
+] as const
 
 /** The English server message of a 422 on `financial_account_id` is replaced by its localized twin. */
 function hasAccountError(error: unknown): boolean {
@@ -42,9 +52,10 @@ export function usePurchasePaymentForm(detail: PurchaseInstallmentDetail, onDone
   const { t, i18n } = useTranslation()
   const installmentAmount = Number(detail.amount)
   const canSpread = hasLaterUnpaidInstallments(detail.sequence, detail.purchase_invoice.installments)
+  const writeOffThreshold = useWriteOffThreshold()
   const schema = useMemo(
-    () => buildPurchasePaymentSchema(t, { installmentAmount, canSpread }),
-    [t, installmentAmount, canSpread],
+    () => buildPurchasePaymentSchema(t, { installmentAmount, canSpread, writeOffThreshold }),
+    [t, installmentAmount, canSpread, writeOffThreshold],
   )
   const mutation = useRecordPurchasePayment(detail.id)
 
@@ -54,17 +65,19 @@ export function usePurchasePaymentForm(detail: PurchaseInstallmentDetail, onDone
       paid_amount: installmentAmount,
       paid_at: todayIso(),
       financial_account_id: detail.purchase_invoice.financial_account?.id ?? null,
-      residual_mode: canSpread ? 'spread' : 'new_installment',
+      write_off_reason: DEFAULT_WRITE_OFF_REASON,
+      write_off_note: '',
       residual_due_date: addDaysIso(detail.due_date, RESIDUAL_INSTALLMENT_DAYS),
     },
   })
 
   const paidAmount = useWatch({ control: form.control, name: 'paid_amount' })
-  const residualMode = useWatch({ control: form.control, name: 'residual_mode' })
+  const chosenMode = useWatch({ control: form.control, name: 'residual_mode' })
+  const residualMode = effectiveResidualMode(chosenMode, paidAmount, installmentAmount, writeOffThreshold)
   const isPartial = isPartialCollection(paidAmount, installmentAmount)
 
   const submit = form.handleSubmit((values) =>
-    mutation.mutate(buildPurchasePaymentPayload(values, installmentAmount), {
+    mutation.mutate(buildPurchasePaymentPayload(values, installmentAmount, writeOffThreshold), {
       onSuccess: () => {
         toast.success(t('purchaseInvoiceInstallments.payment.saved'))
         onDone()
@@ -88,6 +101,7 @@ export function usePurchasePaymentForm(detail: PurchaseInstallmentDetail, onDone
     submit,
     isPending: mutation.isPending,
     isPartial,
+    isZeroAmount: isZeroAmount(paidAmount),
     canSpread,
     residualMode,
     residualAmount: residualAmountOf(paidAmount, installmentAmount),

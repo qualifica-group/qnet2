@@ -42,9 +42,10 @@ export function LedgerSummaryPanel({ summary, side }: { summary: LedgerSummary; 
 
   return (
     <div className="flex flex-col gap-3">
-      <dl className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+      <dl className={summary.write_off_total > 0 ? 'grid grid-cols-2 gap-2 lg:grid-cols-6' : 'grid grid-cols-2 gap-2 lg:grid-cols-5'}>
         <Figure label={t('ledger.summary.invoiced')} value={summary.invoiced_total} />
         <Figure label={t(settledLabel)} value={summary.settled_total} />
+        {summary.write_off_total > 0 ? <Figure label={t('ledger.summary.writeOff')} value={summary.write_off_total} /> : null}
         <Figure label={t('ledger.summary.residual')} value={summary.residual_total} emphasis />
         <Figure label={t('ledger.summary.overdue')} value={summary.overdue_total} />
         <Figure label={t('ledger.summary.notDue')} value={summary.not_due_total} />

@@ -36,6 +36,12 @@ final readonly class LedgerEntry
         return array_sum(array_map(fn (LedgerInstallmentEntry $row): int => $row->settledCents ?? 0, $this->installments));
     }
 
+    /** Cents of the installments closed as write-off (abbuono/stralcio, spec 0361). */
+    public function writeOffCents(): int
+    {
+        return array_sum(array_map(fn (LedgerInstallmentEntry $row): int => $row->writeOffCents, $this->installments));
+    }
+
     /** Sum of the installment residuals; the whole total when the plan is missing. */
     public function residualCents(): int
     {

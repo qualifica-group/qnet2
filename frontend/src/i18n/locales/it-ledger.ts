@@ -38,6 +38,7 @@ export const ledger = {
     invoiced: 'Fatturato',
     settledCustomer: 'Incassato',
     settledSupplier: 'Pagato',
+    writeOff: 'Abbuoni e stralci',
     residual: 'Residuo',
     overdue: 'Scaduto',
     notDue: 'A scadere',

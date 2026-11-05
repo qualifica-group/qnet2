@@ -18,10 +18,12 @@ final readonly class LedgerInstallmentEntry
         public int $amountCents,
         public ?int $settledCents,
         public ?CarbonImmutable $settledAt,
+        public int $writeOffCents = 0,
+        public ?string $writeOffReason = null,
     ) {}
 
     public function residualCents(): int
     {
-        return $this->amountCents - ($this->settledCents ?? 0);
+        return $this->amountCents - ($this->settledCents ?? 0) - $this->writeOffCents;
     }
 }

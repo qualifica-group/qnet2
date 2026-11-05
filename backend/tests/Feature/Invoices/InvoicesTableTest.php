@@ -88,6 +88,27 @@ it('AC-007: rows carry the contract fields, the collected/residual amounts and t
         ->and($rows[$serious->id]['collected_amount'])->toBe('10.00');
 });
 
+it('spec 0361: a written-off installment closes the invoice: residual 0, status paid, footer residual net of the write-off', function () {
+    Sanctum::actingAs(invoicesTableUserWith(['viewAny']));
+    $roundedOff = invoiceOn('2026-01-10', ['number' => 1, 'total_amount' => '1000.00']);
+    InvoiceInstallment::factory()->create([
+        'invoice_id' => $roundedOff->id, 'amount' => '1000.00', 'collected_amount' => '999.80', 'collected_at' => '2026-02-01',
+        'due_date' => Carbon::today()->subDays(30)->toDateString(), 'write_off_amount' => '0.20', 'write_off_reason' => 'rounding',
+    ]);
+    $badDebt = invoiceOn('2026-01-11', ['number' => 2, 'total_amount' => '50.00']);
+    InvoiceInstallment::factory()->create([
+        'invoice_id' => $badDebt->id, 'amount' => '50.00', 'collected_amount' => '0.00', 'collected_at' => '2026-02-01',
+        'due_date' => Carbon::today()->subDays(30)->toDateString(), 'write_off_amount' => '50.00', 'write_off_reason' => 'bad_debt',
+    ]);
+
+    $response = invoiceRows();
+    $rows = collect($response['items'])->keyBy('id');
+
+    expect($rows[$roundedOff->id])->toMatchArray(['collected_amount' => '999.80', 'residual_amount' => '0.00', 'payment_status' => 'paid'])
+        ->and($rows[$badDebt->id])->toMatchArray(['collected_amount' => '0.00', 'residual_amount' => '0.00', 'payment_status' => 'paid'])
+        ->and($response['meta']['aggregates']['residual_amount'])->toBe('0.00');
+});
+
 it('AC-007: document_month=[1,3] with document_year narrows, and aggregates equal the sum of the filtered rows', function () {
     Sanctum::actingAs(invoicesTableUserWith(['viewAny']));
     $jan = invoiceOn('2026-01-15', ['net_amount' => '100.00', 'vat_amount' => '22.00', 'total_amount' => '122.00']);

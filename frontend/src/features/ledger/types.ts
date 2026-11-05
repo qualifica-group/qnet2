@@ -1,4 +1,6 @@
-/** Frozen contract of `GET /api/registries/{registry}/ledger` (spec 0266). */
+import type { WriteOffReason } from '@/features/invoices/types'
+
+/** Frozen contract of `GET /api/registries/{registry}/ledger` (spec 0266, write-off rows spec 0361). */
 
 export type LedgerDocumentType = 'all' | 'proforma' | 'invoice'
 export type LedgerStatus = 'paid' | 'not_due' | 'overdue' | 'seriously_overdue'
@@ -18,11 +20,13 @@ export interface LedgerInstallment {
   settled_at: string | null
   residual_amount: number
   days_late: number
+  write_off_amount: number | null
 }
 
 export interface LedgerDocument {
   id: number
-  document_type: 'proforma' | 'invoice'
+  /** `write_off`: a synthetic row after the document; its `id` is the installment id and may equal a document id. */
+  document_type: 'proforma' | 'invoice' | 'write_off'
   number_label: string | null
   external_number: string | null
   document_date: string
@@ -36,6 +40,7 @@ export interface LedgerDocument {
   running_balance: number
   status: LedgerStatus
   installments: LedgerInstallment[]
+  write_off_reason?: WriteOffReason
 }
 
 export interface LedgerAging {
@@ -51,6 +56,7 @@ export interface LedgerAging {
 export interface LedgerSummary {
   invoiced_total: number
   settled_total: number
+  write_off_total: number
   residual_total: number
   overdue_total: number
   not_due_total: number

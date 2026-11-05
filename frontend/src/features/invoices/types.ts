@@ -63,6 +63,13 @@ export interface InvoiceLine {
   revenue_type?: RevenueTypeRef | null
 }
 
+/** Residual closed without collection (spec 0361); the installment stays "paid". */
+export interface WriteOff {
+  amount: string
+  reason: WriteOffReason
+  note: string | null
+}
+
 export interface InvoiceInstallment {
   id: number
   sequence: number
@@ -74,6 +81,7 @@ export interface InvoiceInstallment {
   status: InstallmentStatus
   /** Account chosen at collection time (spec 0360); null = the invoice account applies. */
   financial_account?: NamedRef | null
+  write_off?: WriteOff | null
 }
 
 /** `InvoiceResource` (envelope `data`). */
@@ -164,8 +172,13 @@ export interface InvoiceDetailsPayload {
 }
 
 /** PUT `/invoice-installments/{id}/collection` body. */
-export const RESIDUAL_MODES = ['spread', 'new_installment'] as const
+export const RESIDUAL_MODES = ['spread', 'new_installment', 'write_off'] as const
 export type ResidualMode = (typeof RESIDUAL_MODES)[number]
+
+/** Why a residual is written off (spec 0361): rounding = "Abbuono", bad_debt = "Stralcio". */
+export const WRITE_OFF_REASONS = ['rounding', 'bad_debt'] as const
+export type WriteOffReason = (typeof WRITE_OFF_REASONS)[number]
+export const WRITE_OFF_NOTE_MAX = 255
 
 /** `residual_*` travel only on a partial collection (spec 0196, D-5). */
 export interface InvoiceCollectionPayload {
@@ -173,6 +186,9 @@ export interface InvoiceCollectionPayload {
   collected_at: string
   residual_mode?: ResidualMode
   residual_due_date?: string
+  /** Spec 0361: only with `residual_mode: 'write_off'`; the amount is computed by the server. */
+  write_off_reason?: WriteOffReason
+  write_off_note?: string | null
   /** Spec 0360: null = the invoice account applies. */
   financial_account_id: number | null
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\InstallmentStatus;
+use App\Enums\WriteOffReason;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Carbon\CarbonInterface;
@@ -20,6 +21,7 @@ use Spatie\Activitylog\LogOptions;
 #[Fillable([
     'invoice_id', 'sequence', 'due_date', 'amount', 'payment_method_code',
     'collected_amount', 'collected_at', 'redistribution_snapshot', 'financial_account_id',
+    'write_off_amount', 'write_off_reason', 'write_off_note',
 ])]
 class InvoiceInstallment extends BaseModel
 {
@@ -36,7 +38,7 @@ class InvoiceInstallment extends BaseModel
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['due_date', 'payment_method_code', 'collected_amount', 'collected_at', 'financial_account_id'])
+            ->logOnly(['due_date', 'payment_method_code', 'collected_amount', 'collected_at', 'financial_account_id', 'write_off_amount', 'write_off_reason', 'write_off_note'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName($this->getTable());
@@ -53,6 +55,8 @@ class InvoiceInstallment extends BaseModel
             'amount' => 'decimal:2',
             'collected_amount' => 'decimal:2',
             'collected_at' => 'date',
+            'write_off_amount' => 'decimal:2',
+            'write_off_reason' => WriteOffReason::class,
             'redistribution_snapshot' => 'array',
         ];
     }
@@ -75,15 +79,18 @@ class InvoiceInstallment extends BaseModel
 
     public function status(): InstallmentStatus
     {
-        $collected = (string) ($this->collected_amount ?? '0');
+        $collected = bccomp((string) ($this->collected_amount ?? '0'), '0', 2) > 0;
+        $writtenOff = bccomp((string) ($this->write_off_amount ?? '0'), '0', 2) > 0;
 
-        return bccomp($collected, '0', 2) > 0 ? InstallmentStatus::Paid : InstallmentStatus::Unpaid;
+        return $collected || $writtenOff ? InstallmentStatus::Paid : InstallmentStatus::Unpaid;
     }
 
-    /** Amount still to collect; negative when more than the amount was collected. */
+    /** Amount still to collect (after the write-off); negative when more than the amount was collected. */
     public function residualAmount(): string
     {
-        return bcsub((string) $this->amount, (string) ($this->collected_amount ?? '0'), 2);
+        $settled = bcadd((string) ($this->collected_amount ?? '0'), (string) ($this->write_off_amount ?? '0'), 2);
+
+        return bcsub((string) $this->amount, $settled, 2);
     }
 
     /** Whole days an open installment is past its due date, 0 when paid or not yet due. */

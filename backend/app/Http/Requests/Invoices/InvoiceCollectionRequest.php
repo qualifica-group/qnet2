@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Invoices;
 
 use App\Enums\ResidualMode;
+use App\Http\Requests\Concerns\ValidatesWriteOff;
 use App\Models\FinancialAccount;
 use App\Models\InvoiceInstallment;
 use App\Support\Amounts\LineAmountCalculator;
@@ -17,6 +18,8 @@ use Illuminate\Validation\Rule;
  */
 class InvoiceCollectionRequest extends FormRequest
 {
+    use ValidatesWriteOff;
+
     public function authorize(): bool
     {
         /** @var InvoiceInstallment $installment */
@@ -26,7 +29,7 @@ class InvoiceCollectionRequest extends FormRequest
     }
 
     /**
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
@@ -41,14 +44,15 @@ class InvoiceCollectionRequest extends FormRequest
             && app(LineAmountCalculator::class)->isPartial($this->input('collected_amount'), $installment->amount);
 
         return [
-            'collected_amount' => ['required', 'numeric', 'gt:0', ...($isOpen ? ['max:'.$installment->amount] : [])],
+            'collected_amount' => ['required', 'numeric', 'min:0', $this->zeroOnlyWithWriteOff(), ...($isOpen ? ['max:'.$installment->amount] : [])],
             'collected_at' => ['required', 'date'],
             'financial_account_id' => ['nullable', 'integer', Rule::exists(FinancialAccount::class, 'id')],
-            'residual_mode' => [Rule::requiredIf($isPartial), 'nullable', Rule::enum(ResidualMode::class)],
+            'residual_mode' => [Rule::requiredIf($isPartial), 'nullable', Rule::enum(ResidualMode::class), $this->writeOffNeedsPartial('collected_amount', $installment->amount)],
             'residual_due_date' => [
                 Rule::requiredIf(fn (): bool => $isPartial() && $this->input('residual_mode') === ResidualMode::NewInstallment->value),
                 'nullable', 'date', 'after_or_equal:'.$installment->invoice->document_date->toDateString(),
             ],
+            ...$this->writeOffRules(),
         ];
     }
 
@@ -58,7 +62,7 @@ class InvoiceCollectionRequest extends FormRequest
     public function payload(): array
     {
         return array_filter(
-            $this->safe()->only(['collected_amount', 'collected_at', 'financial_account_id', 'residual_mode', 'residual_due_date']),
+            $this->safe()->only(['collected_amount', 'collected_at', 'financial_account_id', 'residual_mode', 'residual_due_date', 'write_off_reason', 'write_off_note']),
             fn (mixed $value): bool => $value !== null,
         );
     }

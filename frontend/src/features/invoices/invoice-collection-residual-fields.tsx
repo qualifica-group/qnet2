@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import type { InvoiceCollectionFormValues } from '@/features/invoices/invoice-schema'
 import { RESIDUAL_MODES, type ResidualMode } from '@/features/invoices/types'
+import { WriteOffFields } from '@/features/invoices/write-off-fields'
 
 interface ResidualFieldsProps {
   form: UseFormReturn<InvoiceCollectionFormValues>
   residualAmount: number
   canSpread: boolean
-  residualMode: ResidualMode | undefined
+  /** Effective choice: the user's pick or the proposal. */
+  residualMode: ResidualMode
 }
 
 /** Choice of what happens to the part not collected: spread on later installments or a new one. */
@@ -40,14 +42,14 @@ export function InvoiceCollectionResidualFields({ form, residualAmount, canSprea
                         type="radio"
                         name={field.name}
                         value={mode}
-                        checked={field.value === mode}
+                        checked={residualMode === mode}
                         disabled={disabled}
                         onChange={() => field.onChange(mode)}
                         onBlur={field.onBlur}
                         className="size-3.5 accent-primary"
                         aria-describedby={disabled ? `${inputId}-reason` : undefined}
                       />
-                      {t(`invoices.collection.residualModes.${mode}`)}
+                      {mode === 'write_off' ? t('writeOff.mode') : t(`invoices.collection.residualModes.${mode}`)}
                     </label>
                     {disabled ? (
                       <span id={`${inputId}-reason`} className="pl-5 text-xs text-muted-foreground">
@@ -76,6 +78,9 @@ export function InvoiceCollectionResidualFields({ form, residualAmount, canSprea
             </FormItem>
           )}
         />
+      ) : null}
+      {residualMode === 'write_off' ? (
+        <WriteOffFields control={form.control} writeOffAmount={residualAmount} idPrefix="residual-mode" />
       ) : null}
     </div>
   )

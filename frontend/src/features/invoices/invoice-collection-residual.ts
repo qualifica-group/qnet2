@@ -1,5 +1,11 @@
 import { fromCents, toCents } from '@/lib/amounts/line-amounts'
 import type { InvoiceCollectionPayload, InvoiceInstallment, ResidualMode } from '@/features/invoices/types'
+import {
+  effectiveResidualMode,
+  isZeroAmount,
+  writeOffPayloadFields,
+  type WriteOffFormFields,
+} from '@/features/invoices/write-off'
 
 /** Days added to the due date of the closed installment to propose the date of the residual one (spec 0196, D-6). */
 export const RESIDUAL_INSTALLMENT_DAYS = 30
@@ -34,7 +40,7 @@ export function residualAmountOf(collectedAmount: number, installmentAmount: num
   return fromCents(Math.max(toCents(installmentAmount) - toCents(collectedAmount), 0))
 }
 
-interface CollectionFormFields {
+interface CollectionFormFields extends WriteOffFormFields {
   collected_amount: number
   collected_at: string
   residual_mode?: ResidualMode
@@ -42,17 +48,28 @@ interface CollectionFormFields {
   financial_account_id: number | null
 }
 
-/** Sends `residual_*` only for a partial collection; the date only for a new residual installment. */
-export function buildCollectionPayload(values: CollectionFormFields, installmentAmount: number): InvoiceCollectionPayload {
+/**
+ * Sends `residual_*` only for a partial collection (the date only for a new residual installment, the reason and
+ * note only for a write-off). A zero amount moves no money, so it never carries an account (spec 0361).
+ */
+export function buildCollectionPayload(
+  values: CollectionFormFields,
+  installmentAmount: number,
+  writeOffThreshold: number,
+): InvoiceCollectionPayload {
   const base = {
     collected_amount: values.collected_amount,
     collected_at: values.collected_at,
-    financial_account_id: values.financial_account_id,
+    financial_account_id: isZeroAmount(values.collected_amount) ? null : values.financial_account_id,
   }
-  if (!isPartialCollection(values.collected_amount, installmentAmount) || values.residual_mode === undefined) {
+  if (!isPartialCollection(values.collected_amount, installmentAmount)) {
     return base
   }
-  return values.residual_mode === 'new_installment'
+  const mode = effectiveResidualMode(values.residual_mode, values.collected_amount, installmentAmount, writeOffThreshold)
+  if (mode === 'write_off') {
+    return { ...base, ...writeOffPayloadFields(values) }
+  }
+  return mode === 'new_installment'
     ? { ...base, residual_mode: 'new_installment', residual_due_date: values.residual_due_date }
     : { ...base, residual_mode: 'spread' }
 }

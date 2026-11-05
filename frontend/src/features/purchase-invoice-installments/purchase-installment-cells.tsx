@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { RowWriteOffBadge } from '@/features/invoices/write-off-badge'
 import { BADGE_BASE, BADGE_COLOR_CLASSES, CELL_WRAPPER, EmptyCell } from '@/features/table/cell-renderers'
 import {
   PURCHASE_INSTALLMENT_STATUSES,
@@ -27,13 +28,14 @@ function isOneOf<T extends string>(options: readonly T[], value: unknown): value
 }
 
 /** Derived installment status (unpaid / paid) with the payable-side labels. */
-export function PurchaseStatusCell({ value }: ICellRendererParams) {
+export function PurchaseStatusCell({ value, data }: ICellRendererParams) {
   const { t } = useTranslation()
   return isOneOf<PurchaseInstallmentStatus>(PURCHASE_INSTALLMENT_STATUSES, value) ? (
     <div className={CELL_WRAPPER}>
       <Badge variant="secondary" className={cn(BADGE_BASE, STATUS_COLORS[value])}>
         {t(`enums.purchase_installment_status.${value}`)}
       </Badge>
+      <RowWriteOffBadge data={data} />
     </div>
   ) : (
     <EmptyCell />

@@ -18,7 +18,7 @@ interface PaymentFormProps {
 
 function PaymentForm({ detail, onClose, onSaved }: PaymentFormProps) {
   const { t } = useTranslation()
-  const { form, submit, isPending, isPartial, canSpread, residualMode, residualAmount } = usePurchasePaymentForm(
+  const { form, submit, isPending, isPartial, isZeroAmount, canSpread, residualMode, residualAmount } = usePurchasePaymentForm(
     detail,
     () => {
       onSaved()
@@ -65,25 +65,27 @@ function PaymentForm({ detail, onClose, onSaved }: PaymentFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="financial_account_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{accountLabel}</FormLabel>
-              <FormControl>
-                <PurchaseFinancialAccountSelect
-                  value={field.value}
-                  onChange={field.onChange}
-                  companyId={detail.purchase_invoice.company.id}
-                  selected={detail.purchase_invoice.financial_account}
-                  label={accountLabel}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {isZeroAmount ? null : (
+          <FormField
+            control={form.control}
+            name="financial_account_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{accountLabel}</FormLabel>
+                <FormControl>
+                  <PurchaseFinancialAccountSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    companyId={detail.purchase_invoice.company.id}
+                    selected={detail.purchase_invoice.financial_account}
+                    label={accountLabel}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         {isPartial ? (
           <PurchasePaymentResidualFields
             form={form}

@@ -39,6 +39,8 @@ export const purchaseInvoiceInstallments = {
     residual_amount: 'Residuo',
     paid_at: 'Data pagamento',
     financial_account: 'Conto di pagamento',
+    write_off_amount: 'Abbuono',
+    write_off_reason: 'Motivo abbuono',
   },
   footer: {
     label: 'Totali del filtro corrente',

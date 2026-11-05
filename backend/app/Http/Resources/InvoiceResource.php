@@ -29,6 +29,11 @@ class InvoiceResource extends JsonResource
             '0.00',
         );
 
+        $writtenOff = $this->installments->reduce(
+            fn (string $sum, InvoiceInstallment $installment): string => bcadd($sum, (string) ($installment->write_off_amount ?? '0'), 2),
+            '0.00',
+        );
+
         return [
             'id' => $this->id,
             'type' => $this->type,
@@ -55,7 +60,7 @@ class InvoiceResource extends JsonResource
             'vat_amount' => $this->vat_amount,
             'total_amount' => $this->total_amount,
             'collected_amount' => $collected,
-            'residual_amount' => bcsub((string) $this->total_amount, $collected, 2),
+            'residual_amount' => bcsub(bcsub((string) $this->total_amount, $collected, 2), $writtenOff, 2),
             'payment_status' => app(InvoicePaymentStatusResolver::class)->resolve($this->installments, now()),
             'external_number' => $this->external_number,
             'external_date' => $this->external_date,
@@ -92,6 +97,7 @@ class InvoiceResource extends JsonResource
                 'financial_account' => $installment->financialAccount === null
                     ? null
                     : ['id' => $installment->financialAccount->id, 'name' => $installment->financialAccount->name],
+                'write_off' => WriteOffPayload::from($installment),
                 'status' => $installment->status(),
             ])->all(),
             'created_by' => ['id' => $this->createdBy->id, 'name' => $this->createdBy->name],

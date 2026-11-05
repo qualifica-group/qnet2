@@ -22,7 +22,7 @@ final class PurchaseInstallmentDerivedQuery
     private const int MAX_VALUES = 200;
 
     /** Columns whose set filter / distinct values are an SQL expression. */
-    private const array SET_COLUMNS = ['supplier', 'cost_type', 'work_order', 'company', 'company_site', 'operational_site', 'payment_method_code', 'due_month', 'financial_account'];
+    private const array SET_COLUMNS = ['supplier', 'cost_type', 'work_order', 'company', 'company_site', 'operational_site', 'payment_method_code', 'due_month', 'financial_account', 'write_off_reason'];
 
     /** Columns with a dedicated filter instead of the generic one on a plain column. */
     private const array SPECIAL_COLUMNS = ['purchase_orders', 'days_overdue', 'status', 'overdue'];

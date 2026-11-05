@@ -29,7 +29,7 @@ final class InvoiceCollectionService
     ) {}
 
     /**
-     * @param  array<string, string|int>  $payload  collected_amount, collected_at, residual_mode?, residual_due_date?, financial_account_id? (int)
+     * @param  array<string, string|int>  $payload  collected_amount, collected_at, residual_mode?, residual_due_date?, financial_account_id? (int), write_off_reason?, write_off_note?
      */
     public function record(InvoiceInstallment $installment, array $payload): Invoice
     {
@@ -73,7 +73,7 @@ final class InvoiceCollectionService
             $rows = $this->restorable($invoice, $current);
 
             if ($rows === null) {
-                $current->update(['collected_amount' => null, 'collected_at' => null, 'financial_account_id' => null, 'redistribution_snapshot' => null]);
+                $current->update($this->clearedAttributes());
             } else {
                 $this->restore($current, $rows);
             }
@@ -97,7 +97,7 @@ final class InvoiceCollectionService
 
     private function isCollected(InvoiceInstallment $installment): bool
     {
-        return bccomp((string) ($installment->collected_amount ?? '0'), '0', 2) > 0;
+        return bccomp((string) ($installment->collected_amount ?? '0'), '0', 2) > 0 || $installment->write_off_amount !== null;
     }
 
     /**
@@ -108,6 +108,15 @@ final class InvoiceCollectionService
     {
         $mode = ResidualMode::tryFrom($payload['residual_mode'] ?? '')
             ?? throw ValidationException::withMessages(['residual_mode' => ['The residual mode is required for a partial collection.']]);
+        InstallmentWriteOff::assertZeroAllowed($attributes['collected_amount'], $mode);
+
+        // A write-off keeps the amount and touches no other installment: no snapshot (spec 0361, D-1)
+        if ($mode === ResidualMode::WriteOff) {
+            $this->writeOff($current, $attributes, $payload);
+
+            return;
+        }
+
         $residual = bcsub((string) $current->amount, $attributes['collected_amount'], 2);
         $following = $invoice->installments()->where('sequence', '>', $current->sequence)->orderBy('sequence')->get();
         $createdId = null;
@@ -135,6 +144,22 @@ final class InvoiceCollectionService
 
         $snapshot = ['installments' => $entries, 'created_installment_id' => $createdId];
         $current->update($attributes + ['amount' => $attributes['collected_amount'], 'redistribution_snapshot' => $snapshot]);
+    }
+
+    /**
+     * @param  array<string, string|int>  $attributes
+     * @param  array<string, string|int>  $payload
+     */
+    private function writeOff(InvoiceInstallment $current, array $attributes, array $payload): void
+    {
+        $writeOff = InstallmentWriteOff::attributes((string) $current->amount, $attributes['collected_amount'], $payload);
+
+        // Nothing was collected, so there is no account to book
+        if (bccomp($attributes['collected_amount'], '0', 2) === 0) {
+            unset($attributes['financial_account_id']);
+        }
+
+        $current->update($attributes + $writeOff);
     }
 
     /**
@@ -221,6 +246,14 @@ final class InvoiceCollectionService
             $rows->get($entry['id'])->update(['sequence' => $entry['sequence'], 'amount' => $entry['amount']]);
         }
 
-        $current->refresh()->update(['collected_amount' => null, 'collected_at' => null, 'financial_account_id' => null, 'redistribution_snapshot' => null]);
+        $current->refresh()->update($this->clearedAttributes());
+    }
+
+    /**
+     * @return array<string, null>
+     */
+    private function clearedAttributes(): array
+    {
+        return ['collected_amount' => null, 'collected_at' => null, 'financial_account_id' => null, 'redistribution_snapshot' => null, ...InstallmentWriteOff::CLEARED];
     }
 }

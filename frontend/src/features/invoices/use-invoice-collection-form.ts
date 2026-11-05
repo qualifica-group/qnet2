@@ -15,6 +15,8 @@ import {
   RESIDUAL_INSTALLMENT_DAYS,
 } from '@/features/invoices/invoice-collection-residual'
 import { todayIso } from '@/features/invoices/invoice-format'
+import { useWriteOffThreshold } from '@/features/invoices/use-write-off-threshold'
+import { DEFAULT_WRITE_OFF_REASON, effectiveResidualMode, isZeroAmount } from '@/features/invoices/write-off'
 import {
   buildInvoiceCollectionSchema,
   type InvoiceCollectionFormValues,
@@ -38,9 +40,10 @@ export function useInvoiceCollectionForm(
   const { t, i18n } = useTranslation()
   const installmentAmount = Number(installment.amount)
   const canSpread = hasLaterOpenInstallments(installment, installments)
+  const writeOffThreshold = useWriteOffThreshold()
   const schema = useMemo(
-    () => buildInvoiceCollectionSchema(t, { installmentAmount, canSpread }),
-    [t, installmentAmount, canSpread],
+    () => buildInvoiceCollectionSchema(t, { installmentAmount, canSpread, writeOffThreshold }),
+    [t, installmentAmount, canSpread, writeOffThreshold],
   )
   const mutation = useRecordCollection()
 
@@ -50,18 +53,20 @@ export function useInvoiceCollectionForm(
       collected_amount: installmentAmount,
       collected_at: todayIso(),
       financial_account_id: (installment.financial_account ?? defaultAccount)?.id ?? null,
-      residual_mode: canSpread ? 'spread' : 'new_installment',
+      write_off_reason: DEFAULT_WRITE_OFF_REASON,
+      write_off_note: '',
       residual_due_date: addDaysIso(installment.due_date, RESIDUAL_INSTALLMENT_DAYS),
     },
   })
 
   const collectedAmount = useWatch({ control: form.control, name: 'collected_amount' })
-  const residualMode = useWatch({ control: form.control, name: 'residual_mode' })
+  const chosenMode = useWatch({ control: form.control, name: 'residual_mode' })
+  const residualMode = effectiveResidualMode(chosenMode, collectedAmount, installmentAmount, writeOffThreshold)
   const isPartial = isPartialCollection(collectedAmount, installmentAmount)
 
   const submit = form.handleSubmit((values) =>
     mutation.mutate(
-      { installmentId: installment.id, body: buildCollectionPayload(values, installmentAmount) },
+      { installmentId: installment.id, body: buildCollectionPayload(values, installmentAmount, writeOffThreshold) },
       {
         onSuccess: () => {
           toast.success(t('invoices.collection.saved'))
@@ -78,6 +83,8 @@ export function useInvoiceCollectionForm(
             'financial_account_id',
             'residual_mode',
             'residual_due_date',
+            'write_off_reason',
+            'write_off_note',
           ])
           if (!mapped) {
             toast.error(apiErrorMessage(error, t('invoices.collection.genericError'), i18n))
@@ -93,6 +100,7 @@ export function useInvoiceCollectionForm(
     proposedAccount: installment.financial_account ?? defaultAccount,
     isPending: mutation.isPending,
     isPartial,
+    isZeroAmount: isZeroAmount(collectedAmount),
     canSpread,
     residualMode,
     residualAmount: residualAmountOf(collectedAmount, installmentAmount),

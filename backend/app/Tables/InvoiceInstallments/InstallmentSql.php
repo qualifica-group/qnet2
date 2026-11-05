@@ -16,6 +16,8 @@ final class InstallmentSql
 {
     private const string COLLECTED = 'invoice_installments.collected_amount';
 
+    private const string WRITE_OFF = 'invoice_installments.write_off_amount';
+
     private const string AMOUNT = 'invoice_installments.amount';
 
     private const string DUE_DATE = 'invoice_installments.due_date';
@@ -31,21 +33,23 @@ final class InstallmentSql
         'collected_amount' => self::COLLECTED,
         'residual_amount' => 'invoice_installments.residual_amount',
         'collected_at' => 'invoice_installments.collected_at',
+        'write_off_amount' => self::WRITE_OFF,
+        'write_off_reason' => 'invoice_installments.write_off_reason',
         'customer' => 'registries.name',
         'company' => 'companies.denomination',
         'company_site' => 'company_sites.name',
     ];
 
-    /** No collection recorded. */
+    /** No collection and no write-off recorded. */
     public static function unpaid(): string
     {
-        return 'COALESCE('.self::COLLECTED.', 0) <= 0';
+        return '(COALESCE('.self::COLLECTED.', 0) <= 0 AND COALESCE('.self::WRITE_OFF.', 0) <= 0)';
     }
 
-    /** Any collection recorded: it closes the installment. */
+    /** Any collection or write-off recorded: it closes the installment (spec 0361). */
     public static function paid(): string
     {
-        return self::COLLECTED.' > 0';
+        return '('.self::COLLECTED.' > 0 OR COALESCE('.self::WRITE_OFF.', 0) > 0)';
     }
 
     /** Unpaid and due before the bound date (one binding). */

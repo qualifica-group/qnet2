@@ -9,4 +9,5 @@ enum ResidualMode: string
 {
     case Spread = 'spread';
     case NewInstallment = 'new_installment';
+    case WriteOff = 'write_off';
 }

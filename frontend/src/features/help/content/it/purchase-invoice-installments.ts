@@ -124,6 +124,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'write-off',
+      title: 'Abbuono e stralcio',
+      blocks: [
+        { type: 'paragraph', text: 'Se nella finestra **Registra pagamento** scrivi un importo **minore** della rata, il residuo si gestisce con tre scelte: **Spalma sulle rate successive**, **Nuova scadenza per il residuo** oppure **Abbuono / stralcio**, che chiude la differenza senza pagarla.' },
+        { type: 'list', items: ['**Abbuono**: la differenza è un arrotondamento o una differenza minima, da perdonare.', '**Stralcio**: il debito non è recuperabile e si cancella.', 'Scegli il **Motivo** (obbligatorio) e, se vuoi, scrivi una **Nota (facoltativa)**. L’**Importo dell’abbuono** non si scrive: è calcolato da solo come differenza tra la rata e l’importo indicato.', 'Se il residuo è entro la **soglia** (predefinita 5 euro) viene proposto **Abbuono**; sopra la soglia viene proposta **Nuova scadenza**. Puoi sempre cambiare scelta.', 'Lo **stralcio totale** si fa con importo **0**: è ammesso solo con **Abbuono / stralcio**, e il conto non serve.'] },
+        { type: 'paragraph', text: 'La rata risulta **Pagata** con l’etichetta **Abbuono** o **Stralcio** e l’importo chiuso. **Annulla pagamento** cancella anche l’abbuono e ripristina la rata.' },
+        { type: 'note', text: 'L’abbuono **non muove i saldi di cassa e banca**: la rata si chiude, ma nessun denaro esce da un conto. Non è disponibile nel **Pagamento multiplo**.' },
+      ],
+    },
+    {
       id: 'bulk-payment',
       title: 'Pagamento multiplo',
       blocks: [

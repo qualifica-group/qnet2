@@ -163,6 +163,8 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'status' => 'purchase_installment_status',
             'overdue' => 'installment_overdue',
             'document_type' => 'purchase_invoice_type',
+            // Spec 0361: the frontend translates the set filter options from `enums.write_off_reason`.
+            'write_off_reason' => 'write_off_reason',
             default => null,
         };
     }
@@ -215,6 +217,8 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'paid_amount' => $row->paid_amount,
             'residual_amount' => $row->residualAmount(),
             'paid_at' => $row->paid_at?->toDateString(),
+            'write_off_amount' => $row->write_off_amount,
+            'write_off_reason' => $row->write_off_reason?->value,
             'financial_account' => $row->getAttribute('financial_account_name'),
         ];
 

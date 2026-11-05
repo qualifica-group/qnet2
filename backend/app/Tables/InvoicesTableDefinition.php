@@ -55,6 +55,8 @@ class InvoicesTableDefinition extends AbstractTableDefinition
 
     private const string COLLECTED_SUM = 'installments_sum_collected_amount';
 
+    private const string WRITE_OFF_SUM = 'installments_sum_write_off_amount';
+
     public function domain(): string
     {
         return 'invoices';
@@ -86,6 +88,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
                 'invoiceTag:id,name,color',
             ])
             ->withSum('installments', 'collected_amount')
+            ->withSum('installments', 'write_off_amount')
             ->addSelect([InvoiceReminderColumn::ID => InvoiceReminderColumn::subquery()])
             ->addSelect([self::FIRST_UNPAID_DUE_DATE => InvoiceInstallment::query()
                 ->select('due_date')
@@ -93,6 +96,8 @@ class InvoicesTableDefinition extends AbstractTableDefinition
                 ->where(static function (Builder $unpaid): void {
                     $unpaid->whereNull('collected_amount')->orWhereColumn('collected_amount', '<', 'amount');
                 })
+                // Spec 0361: a write-off closes the installment (no arithmetic: SQLite sums REALs).
+                ->whereNull('write_off_amount')
                 ->orderBy('sequence')
                 ->limit(1)]);
     }
@@ -147,6 +152,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
     {
         /** @var Invoice $row */
         $collected = (float) ($row->getAttribute(self::COLLECTED_SUM) ?? 0);
+        $writtenOff = (float) ($row->getAttribute(self::WRITE_OFF_SUM) ?? 0);
         $dueDate = $row->getAttribute(self::FIRST_UNPAID_DUE_DATE);
         $lastReminder = $row->getAttribute(InvoiceReminderColumn::ID);
 
@@ -167,7 +173,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
             'vat_amount' => $row->vat_amount,
             'total_amount' => $row->total_amount,
             'collected_amount' => self::money($collected),
-            'residual_amount' => self::money((float) $row->total_amount - $collected),
+            'residual_amount' => self::money((float) $row->total_amount - $collected - $writtenOff),
             'payment_status' => (is_string($dueDate)
                 ? app(InvoicePaymentStatusResolver::class)->forDueDate(Carbon::parse($dueDate), Carbon::today())
                 : InvoicePaymentStatus::Paid)->value,
@@ -205,7 +211,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
 
     /**
      * Footer totals over the WHOLE filtered set (spec 0156, D-3), as 2-decimal
-     * strings; residual is total minus collected.
+     * strings; residual is total minus collected minus written off (spec 0361).
      *
      * @param  Builder<Invoice>  $query
      * @return array<string, string>
@@ -216,13 +222,14 @@ class InvoicesTableDefinition extends AbstractTableDefinition
 
         $total = (float) Invoice::query()->whereIn('invoices.id', $ids)->sum('total_amount');
         $collected = (float) InvoiceInstallment::query()->whereIn('invoice_id', $ids)->sum('collected_amount');
+        $writtenOff = (float) InvoiceInstallment::query()->whereIn('invoice_id', $ids)->sum('write_off_amount');
 
         return [
             'net_amount' => self::money((float) Invoice::query()->whereIn('invoices.id', $ids)->sum('net_amount')),
             'vat_amount' => self::money((float) Invoice::query()->whereIn('invoices.id', $ids)->sum('vat_amount')),
             'total_amount' => self::money($total),
             'collected_amount' => self::money($collected),
-            'residual_amount' => self::money($total - $collected),
+            'residual_amount' => self::money($total - $collected - $writtenOff),
         ];
     }
 

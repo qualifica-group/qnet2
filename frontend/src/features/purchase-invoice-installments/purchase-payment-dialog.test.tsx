@@ -85,13 +85,15 @@ describe('PurchasePaymentDialog (spec 0211 AC-016)', () => {
     expect(recordMock.mock.calls[0][1]).toMatchObject({ financial_account_id: 11 })
   })
 
-  it('a partial payment asks how to handle the residual and defaults to spread when later installments are open', async () => {
+  // REQUIREMENT CHANGED (spec 0361, D-5): above the write-off threshold the proposal is a new installment, no longer spread.
+  it('a partial payment asks how to handle the residual and sends spread when picked', async () => {
     renderDialog()
 
     fireEvent.change(amountInput(), { target: { value: '150' } })
 
     expect(await screen.findByText(/250,00/)).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Spread over the later installments' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'New due date for the residual' })).toBeChecked()
+    fireEvent.click(screen.getByRole('radio', { name: 'Spread over the later installments' }))
     save()
 
     await waitFor(() => expect(recordMock).toHaveBeenCalled())

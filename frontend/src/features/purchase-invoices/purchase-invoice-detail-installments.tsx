@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/formatting/date-display'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { isPaid } from '@/features/purchase-invoice-installments/purchase-installment-payment'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
+import { WriteOffBadge } from '@/features/invoices/write-off-badge'
 import type { PurchaseInstallmentStatus } from '@/features/purchase-invoice-installments/types'
 import type { PurchaseInvoiceInstallment } from '@/features/purchase-invoices/types'
 
@@ -76,9 +77,18 @@ export function PurchaseInvoiceDetailInstallments({
               <td className={NUM_CELL}>{formatEuro(installment.amount)}</td>
               <td className={CELL}>{installment.payment_method_code ?? ''}</td>
               <td className={CELL}>
-                <Badge variant="secondary" className={cn(BADGE_BASE, STATUS_COLORS[installment.status])}>
-                  {t(`enums.purchase_installment_status.${installment.status}`)}
-                </Badge>
+                <span className="flex flex-wrap items-center gap-1">
+                  <Badge variant="secondary" className={cn(BADGE_BASE, STATUS_COLORS[installment.status])}>
+                    {t(`enums.purchase_installment_status.${installment.status}`)}
+                  </Badge>
+                  {installment.write_off ? (
+                    <WriteOffBadge
+                      reason={installment.write_off.reason}
+                      amount={installment.write_off.amount}
+                      note={installment.write_off.note}
+                    />
+                  ) : null}
+                </span>
               </td>
               <td className={NUM_CELL}>{formatEuro(installment.paid_amount)}</td>
               <td className={`${CELL} tabular-nums`}>{formatDate(installment.paid_at)}</td>

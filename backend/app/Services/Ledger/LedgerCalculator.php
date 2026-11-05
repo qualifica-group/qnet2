@@ -22,6 +22,9 @@ final class LedgerCalculator
     /** Upper bound in days (inclusive) => bucket, for overdue installments. */
     private const array OVERDUE_BUCKETS = [30 => 'overdue_1_30', 60 => 'overdue_31_60', 90 => 'overdue_61_90'];
 
+    /** `document_type` of the extra row of an installment closed as write-off (spec 0361). */
+    private const string WRITE_OFF_TYPE = 'write_off';
+
     private const string OVERDUE_OVER = 'overdue_over_90';
 
     /** Upper bound in days (inclusive, today counts) => bucket, for installments not yet due. */
@@ -57,6 +60,7 @@ final class LedgerCalculator
         foreach ($period as $entry) {
             $running += $entry->residualCents();
             $documents[] = $this->document($entry, $side, $running, $today);
+            array_push($documents, ...$this->writeOffRows($entry, $side, $running));
         }
 
         // Step 4: summary; the aging also covers the open installments of the opening documents
@@ -107,6 +111,46 @@ final class LedgerCalculator
     }
 
     /**
+     * One informational row per write-off (spec 0361): credit on the customer
+     * side, debit on the supplier side. It carries the running balance
+     * unchanged because the installment residual already nets the write-off.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function writeOffRows(LedgerEntry $entry, LedgerSide $side, int $runningCents): array
+    {
+        $customer = $side === LedgerSide::Customer;
+        $rows = [];
+
+        foreach ($entry->installments as $row) {
+            if ($row->writeOffCents <= 0) {
+                continue;
+            }
+
+            $rows[] = [
+                'id' => $row->id,
+                'document_type' => self::WRITE_OFF_TYPE,
+                'number_label' => trim(__('ledger.write_off.'.($row->writeOffReason ?? 'rounding')).' '.$entry->numberLabel),
+                'external_number' => null,
+                'document_date' => ($row->settledAt ?? $entry->documentDate)->toDateString(),
+                'company' => $entry->company,
+                'company_site' => $entry->companySite,
+                'operational_site' => $entry->operationalSite,
+                'debit' => $this->money($customer ? 0 : $row->writeOffCents),
+                'credit' => $this->money($customer ? $row->writeOffCents : 0),
+                'settled_amount' => $this->money(0),
+                'residual_amount' => $this->money(0),
+                'running_balance' => $this->money($runningCents),
+                'status' => 'paid',
+                'write_off_reason' => $row->writeOffReason,
+                'installments' => [],
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function installment(LedgerInstallmentEntry $row, CarbonImmutable $today): array
@@ -118,6 +162,7 @@ final class LedgerCalculator
             'amount' => $this->money($row->amountCents),
             'settled_amount' => $row->settledCents === null ? null : $this->money($row->settledCents),
             'settled_at' => $row->settledAt?->toDateString(),
+            'write_off_amount' => $this->money($row->writeOffCents),
             'residual_amount' => $this->money($row->residualCents()),
             'days_late' => $this->daysLate($row, $today),
         ];
@@ -162,6 +207,7 @@ final class LedgerCalculator
         return [
             'invoiced_total' => $this->money(array_sum(array_map(fn (LedgerEntry $entry): int => $entry->totalCents, $period))),
             'settled_total' => $this->money(array_sum(array_map(fn (LedgerEntry $entry): int => $entry->settledCents(), $period))),
+            'write_off_total' => $this->money(array_sum(array_map(fn (LedgerEntry $entry): int => $entry->writeOffCents(), $period))),
             'residual_total' => $this->money($residualCents),
             'overdue_total' => $this->money(array_sum(array_intersect_key($aging, array_flip($overdueKeys)))),
             'not_due_total' => $this->money(array_sum(array_intersect_key($aging, array_flip($dueKeys)))),

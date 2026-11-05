@@ -1,4 +1,4 @@
-import type { NamedRef, ResidualMode } from '@/features/invoices/types'
+import type { NamedRef, ResidualMode, WriteOffReason } from '@/features/invoices/types'
 
 /** Derived payable installment status (spec 0211 D-4): paid_amount > 0 means paid. */
 export const PURCHASE_INSTALLMENT_STATUSES = ['unpaid', 'paid'] as const
@@ -72,6 +72,9 @@ export interface PurchasePaymentPayload {
   financial_account_id: number | null
   residual_mode?: ResidualMode
   residual_due_date?: string
+  /** Spec 0361: only with `residual_mode: 'write_off'`; the amount is computed by the server. */
+  write_off_reason?: WriteOffReason
+  write_off_note?: string | null
 }
 
 /** One row of POST `/purchase-invoice-installments/payments`. */

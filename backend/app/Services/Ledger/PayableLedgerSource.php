@@ -70,6 +70,8 @@ final class PayableLedgerSource
                 amountCents: $this->cents($row->amount),
                 settledCents: $row->paid_amount === null ? null : $this->cents($row->paid_amount),
                 settledAt: $this->day($row->paid_at),
+                writeOffCents: $this->cents($row->write_off_amount ?? 0),
+                writeOffReason: $row->write_off_reason?->value,
             ))->all(),
         );
     }

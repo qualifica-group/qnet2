@@ -57,6 +57,7 @@ class PurchaseInvoiceInstallmentResource extends JsonResource
             'payment_method_code' => $this->payment_method_code,
             'paid_amount' => $this->paid_amount,
             'paid_at' => $this->paid_at?->toDateString(),
+            'write_off' => WriteOffPayload::from($this->resource),
             'status' => $this->status(),
             'residual_amount' => $this->residualAmount(),
             'is_overdue' => $daysOverdue > 0,
@@ -113,6 +114,7 @@ class PurchaseInvoiceInstallmentResource extends JsonResource
                     'due_date' => $row->due_date->toDateString(),
                     'amount' => $row->amount,
                     'paid_amount' => $row->paid_amount,
+                    'write_off' => WriteOffPayload::from($row),
                     'status' => $row->status(),
                 ];
 

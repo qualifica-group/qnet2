@@ -39,6 +39,8 @@ export const purchaseInvoiceInstallments = {
     residual_amount: 'Residual',
     paid_at: 'Payment date',
     financial_account: 'Payment account',
+    write_off_amount: 'Write-off',
+    write_off_reason: 'Write-off reason',
   },
   footer: {
     label: 'Totals of the current filter',

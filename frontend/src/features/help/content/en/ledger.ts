@@ -52,6 +52,13 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'write-off',
+      title: 'Write-off and bad debt',
+      blocks: [
+        { type: 'paragraph', text: 'When an installment is closed with **Write-off / bad debt**, the Ledger shows a **dedicated row** (Write-off or Bad debt) with date and amount: on the Customer side it goes in **Credit**, on the Supplier side in **Debit**, like a collection or a payment. The invoice **residual** returns to **zero** and totals balance.' },
+      ],
+    },
+    {
       id: 'filters',
       title: 'Filters and period',
       blocks: [

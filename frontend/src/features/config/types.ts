@@ -38,4 +38,6 @@ export interface AppLocalization {
 export interface AppConfig {
   enums: Record<string, EnumOption[]>
   localization: AppLocalization
+  /** Spec 0361: decimal string; a residual within it proposes "write off" (absent on older backends). */
+  treasury?: { write_off_suggest_threshold: string }
 }
