@@ -64,7 +64,8 @@ it('rows: 200 with the expected row shape when the actor has viewAny (AC-019)', 
         ->and($row['statuses_count'])->toBe(4)
         ->and($row['is_active'])->toBeTrue()
         ->and($row)->toHaveKey('updated_at')
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
+        // REQUIREMENT CHANGED (spec 0354): + "duplicate" with the create ability.
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'duplicate', 'delete']);
 });
 
 it('columns: 200 with the declared columns, 403 without viewAny', function () {
@@ -94,5 +95,7 @@ it('row actions respect the actor\'s permissions (edit hidden without update)', 
 
     expect($row['actions'])->toContain('view')
         ->and($row['actions'])->not->toContain('edit')
-        ->and($row['actions'])->not->toContain('delete');
+        ->and($row['actions'])->not->toContain('delete')
+        // Spec 0354 AC-007: no copy without the create ability.
+        ->and($row['actions'])->not->toContain('duplicate');
 });

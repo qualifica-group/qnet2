@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\Quote;
+use App\Models\QuoteWorkflow;
 use App\Models\Source;
 use App\Models\User;
 use App\Models\Workspace;
@@ -86,6 +87,18 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
         ->and(User::query()->where('email', 'jessica.virgolini@qualificagroup.com')->with('employment.reportsTo')->sole()
             ->employment->reportsTo->pluck('email')->all())->toBe(['fabrizio.aliberti@qualificagroup.com', 'rosa.falzarano@qualificagroup.com']);
 
+    // Spec 0354: after the catalogue and the "Costi" root, every root left
+    // without a stati offerta workflow gets a copy of "Consulenza".
+    $criteriaOf = fn (string $workflow): array => QuoteWorkflow::query()->where('name', $workflow)->sole()->criteria()->get()
+        ->map(fn ($criterion): array => [$criterion->field, ProductCategory::query()->whereKey($criterion->value_id)->value('name')])
+        ->all();
+
+    expect($criteriaOf('ISO'))->toBe([['product_category_branch_id', 'ISO']])
+        ->and($criteriaOf('Costi'))->toBe([['product_category_branch_id', 'Costi']])
+        ->and(QuoteWorkflow::query()->where('name', 'ISO')->sole()->statuses()->count())
+        ->toBe(QuoteWorkflow::query()->where('name', 'Consulenza')->sole()->statuses()->count())
+        ->and(QuoteWorkflow::query()->where('name', 'Formazione')->exists())->toBeFalse();
+
     // was: 'seeds the super-admin before the legacy import, so an actor always exists'
     // The import runs on behalf of a super-admin; TestUsersSeeder is the step
     // that guarantees one, which is why it precedes it.
@@ -128,6 +141,7 @@ it('seeds no fabricated row on the first run, and duplicates nothing on a re-run
         ->and(Quote::query()->count())->toBe(0);
 
     // was: 'is idempotent: a second run duplicates nothing'
+    $workflowCount = QuoteWorkflow::query()->count();
     test()->seed(QualificaProductionDataSeeder::class);
 
     expect(Source::query()->count())->toBe(10)
@@ -136,6 +150,7 @@ it('seeds no fabricated row on the first run, and duplicates nothing on a re-run
         // Before the legacy import: its products are filed by typology NAME.
         ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
+        ->and(QuoteWorkflow::query()->count())->toBe($workflowCount)
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);
 });
 

@@ -28,6 +28,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: '**New workflow** opens the same detail in creation: **Name** and **Active** are rows you confirm with **Done** (or **Revert**), while the **Criteria** and **Statuses** editors are already open. The workflow is only created with **Save**; if you leave first, QNet asks for confirmation.',
         },
+        {
+          type: 'paragraph',
+          text: "**Duplicate**, in the actions menu of a row in the list, opens the creation already filled in from the chosen workflow: name **Copy of** followed by the original name, active, with the same statuses (the fixed ones too, with their names). The criteria are empty: pick the ones of the new workflow, because two workflows cannot have the same ones. The original workflow does not change. At installation every main category without a workflow of its own, Formazione aside, gets a copy of the **Consulenza** workflow named after the category, valid for its whole branch.",
+        },
       ],
     },
     {

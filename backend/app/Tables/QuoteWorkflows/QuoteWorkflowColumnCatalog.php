@@ -102,6 +102,14 @@ final class QuoteWorkflowColumnCatalog
                 'permission' => 'quote-workflows.view',
             ],
             [
+                'key' => 'duplicate',
+                'label' => 'actions.duplicate',
+                'icon' => 'copy',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'quote-workflows.create',
+            ],
+            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

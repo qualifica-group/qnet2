@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0354-quote-workflow-clone-and-duplicate" status="implemented" owner="utente" date="2026-11-05">
+
+  <goal>
+    Ogni categoria radice nuova senza un workflow stati offerta proprio riceve una copia del workflow
+    "Consulenza" (escluso il ramo Formazione), sia nel seed di produzione sia con un seeder da lanciare una
+    volta in produzione. Nel Configuratore Stati Offerta l'azione "Duplica" permette agli utenti di copiare
+    da soli un workflow esistente.
+  </goal>
+
+  <context>
+    - Workflow stati offerta: model `QuoteWorkflow` (criteri `QuoteWorkflowCriterion`, stati
+      `QuoteWorkflowStatus`), scritti solo da `QuoteWorkflowService::create()` (unicita' di `name` e di
+      `criteria_signature`, righe di sistema open/closed_won/closed_lost aggiunte da `WorkflowStatusWriter`).
+      DTO `CreateQuoteWorkflowData` (custom `statuses` + `openStatus`/`closedWonStatus`/`closedLostStatus`).
+    - `QualificaWorkflowSeeder` crea il workflow "Consulenza" con criterio
+      `product_category_branch_id` = radice "Consulenza" (`WorkflowStatusCatalogue::WORKFLOWS`); in sviluppo
+      e' il workflow id 15, 12 stati.
+    - `QualificaProductionDataSeeder`: `QualificaCatalogSeeder` (che chiama `QualificaWorkflowSeeder`) poi
+      `QualificaCostProductSeeder` (radice "Costi"), poi l'import legacy (categorie con `old_id`, nome "[OLD] ...").
+    - Radici in sviluppo il 2026-11-05: con workflow propri APL e Consulenza; ramo Formazione coperto dai
+      workflow GOL/DIL/Autoimpiego/...; senza workflow sulla radice: Accreditamenti, Costi, Finanza Agevolata,
+      Gare, GDPR, ISO, Istruzione, No categoria, Progettazione, Sicurezza, SOA (11).
+    - Duplica esistente: azione di riga `duplicate` (TableDefinition, permesso `.create`, icona `copy`, label
+      `actions.duplicate`), `useModuleOpener().openDuplicate`, rotta `${basePath}/:id/duplicate` di
+      `ModuleFormPage`, form in modalita' `{ type: 'duplicate', id }`. Esempio: Categorie prodotto.
+    - Frontend workflow: `features/quote-workflows/` — `QuoteWorkflowFormScreen` oggi rende solo `create`;
+      `useQuoteWorkflowForm` ha gia' `statusRowsFromDetail()` per la modalita' modifica.
+    - Decisioni utente 2026-11-05: (D-1) clonare su TUTTE le radici senza uno stato specifico assegnato,
+      tranne Formazione; (D-2) si copia Consulenza come sta nel database, modifiche manuali comprese;
+      (D-3) Duplica = form di creazione precompilato, criteri scelti dall'utente.
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo `database/seeders/QualificaConsultingWorkflowCloneSeeder`: copia "Consulenza" sulle radici idonee (D-1), eseguibile da solo in produzione (`php artisan db:seed --class=QualificaConsultingWorkflowCloneSeeder`).</item>
+      <item>Chiamata del nuovo seeder in `QualificaProductionDataSeeder` subito dopo `QualificaCostProductSeeder` (tutte le radici del catalogo esistono gia').</item>
+      <item>Azione di riga "Duplica" nella griglia del Configuratore Stati Offerta (`QuoteWorkflowColumnCatalog`, `QuoteWorkflowsTableDefinition`), gated su `quote-workflows.create`.</item>
+      <item>Modalita' `duplicate` di `QuoteWorkflowFormScreen` / `useQuoteWorkflowForm`: nome "Copia di NOME", stati copiati senza id, attivo, criteri vuoti; salvataggio tramite POST /api/quote-workflows esistente.</item>
+      <item>Guide in-app `quote-workflows` IT+EN e manuale Claude Docs (sezione Configuratore Stati Offerta).</item>
+    </in>
+    <out>
+      <item>Nessun nuovo endpoint backend: il Duplica usa GET dettaglio + POST create esistenti.</item>
+      <item>Configuratore Stati Commessa (work-order-workflows): nessun Duplica in questo giro.</item>
+      <item>Pulsante Duplica nel dettaglio del workflow: solo azione di riga.</item>
+      <item>Offerte esistenti: nessun riallineamento di stato; il resolver le riassegna alla prossima modifica come oggi.</item>
+      <item>Sincronizzazione successiva: una copia gia' creata non segue le modifiche future di Consulenza.</item>
+      <item>Radici legacy (`old_id` valorizzato o nome che inizia con "[OLD] ").</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <seeder class="QualificaConsultingWorkflowCloneSeeder">
+      <source>QuoteWorkflow con name = "Consulenza" (WorkflowStatusCatalogue). Mancante: warning, nessuna scrittura.</source>
+      <eligible_root>
+        ProductCategory con parent_id NULL, old_id NULL, name non "[OLD] %", name diverso da "Formazione"
+        (costante EXCLUDED_ROOTS), e nessun QuoteWorkflowCriterion con field in
+        (product_category_id, product_category_branch_id) e value_id = id della radice (qualunque workflow,
+        attivo o no). Radici attive e non attive.
+      </eligible_root>
+      <clone>
+        QuoteWorkflowService::create(new CreateQuoteWorkflowData(
+          name: nome della radice, isActive: sorgente.is_active,
+          criteria: [{ field: "product_category_branch_id", value_id: radice.id }],
+          statuses: righe custom della sorgente in sort_order {name, description, color, group, requires_note},
+          openStatus / closedWonStatus / closedLostStatus: righe di sistema della sorgente {name, description, color, requires_note}))
+      </clone>
+      <skip>Nome workflow gia' usato da un altro workflow: warning con il nome, radice saltata. Rilancio: nessun duplicato (le radici clonate hanno ora un criterio).</skip>
+      <output>Riga console: "N workflow creati da Consulenza: radice1, radice2, ..." oppure "nessuna radice da coprire".</output>
+    </seeder>
+
+    <table_action resource="quote-workflows">
+      { key: "duplicate", label: "actions.duplicate", icon: "copy", type: "action", confirm: false, permission: "quote-workflows.create" }
+      actionsFor(): "duplicate" presente se Gate allows('create', QuoteWorkflow::class).
+    </table_action>
+
+    <frontend_mode>
+      ModuleFormScreenProps.mode = { type: "duplicate", id: number }
+      Valori iniziali dal GET /api/quote-workflows/{id} esistente:
+        name = t("quoteWorkflows.form.duplicateName", { name }) -> IT "Copia di {{name}}", EN "Copy of {{name}}"
+        is_active = true, criteria = [], statuses = statusRowsFromDetail(source) con id riscritti come righe nuove
+      Submit: createQuoteWorkflow (POST /api/quote-workflows) invariato. 422 su nome o criteri duplicati: messaggi esistenti.
+    </frontend_mode>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un catalogo con "Consulenza" (workflow branch) e radici ISO, Gare, Formazione (con figlio coperto da un workflow), APL (workflow proprio), quando gira il seeder, allora ISO e Gare hanno un workflow col loro nome, criterio unico product_category_branch_id = radice, e Formazione e APL non ne ricevono uno nuovo.</criterion>
+    <criterion id="AC-002">Gli stati della copia coincidono con quelli di Consulenza nel database al momento del seed (nome, descrizione, colore, gruppo, nota obbligatoria, ordine), righe di sistema comprese, anche dopo una modifica manuale di Consulenza.</criterion>
+    <criterion id="AC-003">Radici legacy (old_id valorizzato, oppure nome "[OLD] Costi" senza old_id) non ricevono copie; una radice non attiva nuova (No categoria) si'.</criterion>
+    <criterion id="AC-004">Una radice gia' referenziata da un criterio di qualunque workflow (anche non attivo, anche con piu' criteri) non riceve copie.</criterion>
+    <criterion id="AC-005">Rilanciando il seeder non nasce nessun workflow nuovo; senza workflow "Consulenza" il seeder non scrive nulla e avvisa; un nome gia' usato salta solo quella radice con un avviso.</criterion>
+    <criterion id="AC-006">QualificaProductionDataSeeder esegue il seeder dopo QualificaCostProductSeeder: dopo il seed di produzione, ISO e Costi hanno la copia di Consulenza.</criterion>
+    <criterion id="AC-007">La griglia del Configuratore restituisce l'azione "duplicate" a chi ha quote-workflows.create e non a chi ha solo quote-workflows.view.</criterion>
+    <criterion id="AC-008">Il form in modalita' duplicate parte con nome "Copia di NOME", attivo, criteri vuoti e gli stati della sorgente (sistema e custom) senza i loro id; salvando invia POST /api/quote-workflows con quegli stati.</criterion>
+    <criterion id="AC-009">L'azione "Duplica" della griglia apre il form duplicate del workflow della riga (Sheet in modalita' modale, pagina /quote-workflows/:id/duplicate in modalita' pagina).</criterion>
+    <criterion id="AC-010">Guide in-app quote-workflows IT/EN descrivono Duplica con gli stessi id di sezione (parity test verde).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Scrittura solo via QuoteWorkflowService::create(), mai insert grezzi.
+    - Il seeder non e' un seeder Demo: dati reali, idempotente, nessuna cancellazione o modifica di workflow esistenti.
+    - Mai db:seed/migrate sul DB di sviluppo qnet2 senza ok dell'utente; i test girano su sqlite in memoria.
+    - Authz server-side invariata: POST create gia' protetto da QuoteWorkflowPolicy::create.
+    - File entro 300 righe; i18n IT+EN per ogni nuova stringa.
+  </constraints>
+
+</spec>

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { Workflow } from 'lucide-react'
@@ -12,7 +13,7 @@ import {
 } from '@/features/quote-workflows/quote-workflow-editors'
 import { QuoteWorkflowGeneralRows } from '@/features/quote-workflows/quote-workflow-rows'
 import { useQuoteWorkflowForm } from '@/features/quote-workflows/use-quote-workflow-form'
-import type { QuoteWorkflowDetail } from '@/features/quote-workflows/types'
+import type { QuoteWorkflowDetail, QuoteWorkflowFormMode } from '@/features/quote-workflows/types'
 
 /** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
 const QUOTE_WORKFLOW_FORM_ID = 'quote-workflow-form'
@@ -21,6 +22,8 @@ const QUOTE_WORKFLOW_FORM_ID = 'quote-workflow-form'
 const CREATE_MODE = { type: 'create' } as const
 
 interface QuoteWorkflowFormBodyProps {
+  /** The workflow copied (row action "duplicate", spec 0354); absent for a bare create. */
+  source?: QuoteWorkflowDetail
   onSuccess: (quoteWorkflow: QuoteWorkflowDetail) => void
   onCancel: () => void
 }
@@ -32,9 +35,13 @@ interface QuoteWorkflowFormBodyProps {
  * are editors rather than fields (precedent: spec 0197, 0227); Salva
  * validates and creates everything at once.
  */
-export function QuoteWorkflowFormBody({ onSuccess, onCancel }: QuoteWorkflowFormBodyProps) {
+export function QuoteWorkflowFormBody({ source, onSuccess, onCancel }: QuoteWorkflowFormBodyProps) {
   const { t } = useTranslation()
-  const { form, serverError, onSubmit } = useQuoteWorkflowForm({ mode: CREATE_MODE, onSuccess })
+  const mode = useMemo<QuoteWorkflowFormMode>(
+    () => (source ? { type: 'duplicate', source } : CREATE_MODE),
+    [source],
+  )
+  const { form, serverError, onSubmit } = useQuoteWorkflowForm({ mode, onSuccess })
   const draft = useDraftInlineEdit(form)
   const name = useWatch({ control: form.control, name: 'name' })
   const heading = name.trim() || t('quoteWorkflows.form.createTitle')

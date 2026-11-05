@@ -58,6 +58,19 @@ export function statusRowsFromDetail(quoteWorkflow: QuoteWorkflowDetail): Workfl
   return statusRowsFromItems(quoteWorkflow.statuses)
 }
 
+/**
+ * The source's status rows as rows still to create (row action "duplicate",
+ * spec 0354): same order and values, pinned rows included, but no persisted id,
+ * so the create payload seeds a new set instead of pointing at the source's.
+ */
+export function duplicateStatusRows(source: QuoteWorkflowDetail): WorkflowStatusFormRow[] {
+  return statusRowsFromItems(source.statuses).map((row, index) => ({
+    ...row,
+    id: `copy-${index}`,
+    statusId: undefined,
+  }))
+}
+
 /** A fresh, still-unnamed custom row; `sequence` keeps its `<SortableList>` identity unique. */
 export function newCustomRow(sequence: number): WorkflowStatusFormRow {
   return {

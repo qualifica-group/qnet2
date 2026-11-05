@@ -39,6 +39,10 @@ use Illuminate\Database\Seeder;
  *                                    branch: the legacy
  *                                    cost items as NEW products, separate
  *                                    from step 5's "[OLD] Costi" history.
+ *      QualificaConsultingWorkflowCloneSeeder — a copy of the "Consulenza"
+ *                                    stati offerta workflow on every root
+ *                                    the steps above created without one,
+ *                                    "Formazione" aside (spec 0354).
  *   3. QualificaTaskTaxonomySeeder — the other block of hard-coded reference
  *                                    data: the four Task classification
  *                                    lookups (tipologia, categoria, priorita',
@@ -173,6 +177,7 @@ class QualificaProductionDataSeeder extends Seeder
         // needs only exists after step 4.
         $this->callWith(QualificaCatalogSeeder::class, ['askForLegacyImport' => false]);
         $this->call(QualificaCostProductSeeder::class);
+        $this->call(QualificaConsultingWorkflowCloneSeeder::class);
         $this->call(QualificaTaskTaxonomySeeder::class);
         $this->call(QualificaSectorSeeder::class);
         $this->call(QualificaAbsenceTypeSeeder::class);

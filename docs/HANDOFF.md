@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Workflow stati offerta: copia di Consulenza sulle radici + Duplica (spec 0354) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisioni utente: copia su TUTTE le radici nuove senza un workflow agganciato direttamente (criterio
+  product_category_id o product_category_branch_id sulla radice), tranne Formazione; si copia Consulenza come sta nel DB;
+  Duplica = form di creazione precompilato.
+- `database/seeders/QualificaConsultingWorkflowCloneSeeder` (costanti SOURCE, EXCLUDED_ROOTS): una copia per radice,
+  nome = radice, criterio branch, via `QuoteWorkflowService::create()`; salta radici legacy (old_id o "[OLD] "), radici
+  gia' coperte, nomi gia' usati (warning). Idempotente. In `QualificaProductionDataSeeder` dopo `QualificaCostProductSeeder`.
+  In produzione: `php artisan db:seed --class=QualificaConsultingWorkflowCloneSeeder`. In dev coprirebbe 11 radici
+  (Accreditamenti, Costi, Finanza Agevolata, Gare, GDPR, ISO, Istruzione, No categoria, Progettazione, Sicurezza, SOA).
+- Duplica: azione di riga `duplicate` (`QuoteWorkflowColumnCatalog`, `QuoteWorkflowsTableDefinition`, permesso create);
+  frontend `QuoteWorkflowFormMode` + `{type:'duplicate', source}`, `duplicateStatusRows()`, `QuoteWorkflowDuplicateLoader`
+  in `quote-workflow-screens.tsx`, prop `source` su `QuoteWorkflowForm`/`QuoteWorkflowFormBody`, i18n `form.duplicateName`.
+- Test: `QualificaConsultingWorkflowCloneSeederTest` (4), `QualificaProductionDataSeederTest` (+AC-006),
+  `QuoteWorkflowTableTest` (REQUIREMENT CHANGED: +duplicate), Vitest `quote-workflow-form-duplicate.test.tsx`,
+  `quote-workflows-table.test.tsx`. Pest QuoteWorkflows 71/71, Vitest quote-workflows 52/52, help 156/156, Pint/ESLint ok.
+- `tsc -b`: unici errori in `src/features/users/user-form.test.tsx` (import inutilizzati), lavoro non committato altrui.
+- Guide in-app quote-workflows IT+EN e manuale Claude Docs (paragrafo "Duplicare un workflow") aggiornati.
+- DB dev: seeder eseguito dall'utente il 2026-11-05. Produzione: da lanciare una volta dopo il deploy.
+
 ## Tolto il contenitore "Old category" + seeder correttivo per la produzione — VERDE, COMMITTATO (2026-11-05)
 
 - Direttiva utente: eliminare "Old category" e rendere non attive tutte le categorie che stavano sotto. Spec 0013
