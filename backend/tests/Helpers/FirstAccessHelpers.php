@@ -42,3 +42,26 @@ if (! function_exists('firstAccessCreatePayload')) {
         ], $overrides);
     }
 }
+
+if (! function_exists('configDefaultUnderEnvironment')) {
+    /**
+     * Evaluates config/{$file}.php with the given APP_ENV and the $override env
+     * variable unset, and returns its $key: the environment default of a flag.
+     */
+    function configDefaultUnderEnvironment(string $file, string $key, string $override, string $environment): mixed
+    {
+        $saved = [$_SERVER['APP_ENV'] ?? null, $_ENV['APP_ENV'] ?? null, getenv('APP_ENV')];
+
+        try {
+            $_SERVER['APP_ENV'] = $_ENV['APP_ENV'] = $environment;
+            putenv("APP_ENV={$environment}");
+            unset($_SERVER[$override], $_ENV[$override]);
+            putenv($override);
+
+            return (require config_path("{$file}.php"))[$key];
+        } finally {
+            [$_SERVER['APP_ENV'], $_ENV['APP_ENV']] = [$saved[0], $saved[1]];
+            putenv($saved[2] === false ? 'APP_ENV' : "APP_ENV={$saved[2]}");
+        }
+    }
+}

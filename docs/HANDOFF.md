@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Blocco di primo accesso solo in produzione (spec 0359) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisione utente 2026-11-05: il blocco di cambio password (0355 D-2: 403 `password_change_required` + popup)
+  vale solo in produzione; altrove il flag `must_set_password` resta scritto ma non applicato.
+- Config `auth.first_access_gate` (default `APP_ENV === 'production'`, env `AUTH_FIRST_ACCESS_GATE`, in `.env.example`).
+  Decisione unica in `User::isFirstAccessPending()` (flag AND gate), usata da `EnsureFirstPasswordSet` e da
+  `AuthController::authenticatedUserPayload()` (login + me espongono `must_set_password` gate-aware). FE invariato
+  (solo docblock di `features/auth/types.ts`). `UserResource` del modulo Utenti espone ancora il flag reale (badge).
+- Test: `tests/Feature/Spec0359/FirstAccessGateEnvironmentTest.php`; i test del gate (0355 `FirstAccessGateTest`,
+  0177 AC-007) abilitano il gate esplicitamente (REQUIREMENT CHANGED). Helper `configDefaultUnderEnvironment()`
+  spostato in `tests/Helpers/FirstAccessHelpers.php` (lo usa anche 0356 AC-004). Manuale: nessun impatto.
+
 ## Gestione richieste: campo Commerciale accanto al Segnalatore (spec 0357) — VERDE, COMMITTATO (2026-11-05)
 
 - Decisioni utente 2026-11-05: il Commerciale e' quello dell'OFFERTA (`quotes.commercial_id`, Referent, destinatario
