@@ -1,4 +1,31 @@
-/** Etichette italiane (`workOrderChat.*`) della chat delle commesse di progetto (spec 0352). Estese dalla feature chat. */
+/** Etichette italiane (`workOrders.chat.*`) della chat delle commesse di progetto (spec 0354). */
 export const workOrderChat = {
   tab: 'Chat',
+  unreadBadge: '{{count}} messaggi non letti',
+  loading: 'Caricamento della chat',
+  loadError: 'Impossibile caricare la chat.',
+  retry: 'Riprova',
+  empty: 'Nessun messaggio. Scrivi il primo.',
+  loadPrevious: 'Carica messaggi precedenti',
+  messagesLabel: 'Messaggi della chat',
+  deletedMessage: 'Messaggio eliminato',
+  edited: 'modificato',
+  unknownAuthor: 'Utente rimosso',
+  readOnly: 'Chat in sola lettura: non puoi inviare messaggi.',
+  composerLabel: 'Scrivi un messaggio',
+  composerPlaceholder: 'Scrivi un messaggio...',
+  send: 'Invia',
+  save: 'Salva',
+  cancel: 'Annulla',
+  edit: 'Modifica',
+  delete: 'Elimina',
+  confirmDelete: {
+    title: 'Eliminare il messaggio?',
+    description: 'Al suo posto restera\' la scritta "Messaggio eliminato". L\'operazione non si puo\' annullare.',
+  },
+  actionError: 'Operazione non riuscita sulla chat.',
+  validation: {
+    required: 'Scrivi un messaggio.',
+    tooLong: 'Il messaggio non puo\' superare {{max}} caratteri.',
+  },
 }

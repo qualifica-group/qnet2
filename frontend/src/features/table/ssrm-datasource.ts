@@ -78,7 +78,7 @@ export interface SsrmDatasourceOptions {
   registryId?: number
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number
-  /** Row-set scope to one work order type (spec 0352 D-2); sent as `work_order_type`; a no-op for every domain but `work-orders`. */
+  /** Row-set scope to one work order type (spec 0354 D-2); sent as `work_order_type`; a no-op for every domain but `work-orders`. */
   workOrderType?: WorkOrderTypeScope
   /** Reports each response's `meta.aggregates` (spec 0156 D-3); a no-op for a domain with no `aggregates()` override. */
   onAggregates?: (aggregates: TableRowsAggregates | undefined) => void

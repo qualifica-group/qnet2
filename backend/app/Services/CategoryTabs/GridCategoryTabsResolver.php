@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\CategoryTabs;
 
 use App\Enums\QuoteLineType;
+use App\Enums\WorkOrderType;
 use App\Models\Contract;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
@@ -157,6 +158,8 @@ final class GridCategoryTabsResolver
             ->joinSub(WorkOrderSourceQuotes::query(), 'source_quotes', 'source_quotes.work_order_id', '=', 'work_orders.id')
             ->join('quote_lines', 'quote_lines.quote_id', '=', 'source_quotes.quote_id')
             ->join('products', 'products.id', '=', 'quote_lines.product_id')
-            ->where('quote_lines.line_type', QuoteLineType::Revenue->value);
+            ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
+            // Spec 0354, D-2: project commesse have their own menu page and no strip.
+            ->where('work_orders.type', '<>', WorkOrderType::Project->value);
     }
 }

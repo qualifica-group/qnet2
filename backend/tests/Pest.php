@@ -59,6 +59,7 @@ require_once __DIR__.'/Helpers/ContractHelpers.php';
 require_once __DIR__.'/Helpers/ImportHelpers.php';
 require_once __DIR__.'/Helpers/UserHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderHelpers.php';
+require_once __DIR__.'/Helpers/ProjectWorkOrderHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderMultiQuoteHelpers.php';
 require_once __DIR__.'/Helpers/StatsHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderWorkflowHelpers.php';

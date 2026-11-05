@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\WorkOrderType;
 use App\Models\BusinessFunction;
 use App\Models\Contract;
 use App\Models\Opportunity;
@@ -91,7 +92,7 @@ if (! function_exists('categoryTabWorkOrder')) {
      */
     function categoryTabWorkOrder(array $categories, bool $cost = false): WorkOrder
     {
-        return WorkOrder::factory()->create(['quote_id' => categoryTabQuote($categories, $cost)->id]);
+        return WorkOrder::factory()->create(['quote_id' => categoryTabQuote($categories, $cost)->id, 'type' => WorkOrderType::Processing]);
     }
 }
 
@@ -101,7 +102,7 @@ if (! function_exists('categoryTabMultiWorkOrder')) {
      */
     function categoryTabMultiWorkOrder(Quote ...$quotes): WorkOrder
     {
-        $workOrder = WorkOrder::factory()->create(['quote_id' => null]);
+        $workOrder = WorkOrder::factory()->create(['quote_id' => null, 'type' => WorkOrderType::Processing]);
         $workOrder->quoteLines()->attach(QuoteLine::query()->whereIn('quote_id', array_map(static fn (Quote $quote): int => $quote->id, $quotes))->pluck('id')->all());
 
         return $workOrder;

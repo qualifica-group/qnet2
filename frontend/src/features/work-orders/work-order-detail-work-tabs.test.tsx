@@ -28,6 +28,14 @@ vi.mock('@/features/work-order-invoices/work-order-invoices-section', () => ({
   WorkOrderInvoicesSection: ({ kind }: { kind: string }) => <div>invoices-section {kind}</div>,
 }))
 
+vi.mock('@/features/work-order-chat/work-order-chat-tab-label', () => ({
+  WorkOrderChatTabLabel: () => <>Chat</>,
+}))
+
+vi.mock('@/features/work-order-chat/work-order-chat-panel', () => ({
+  WorkOrderChatPanel: ({ canWriteAction }: { canWriteAction: boolean }) => <div>chat-panel write:{String(canWriteAction)}</div>,
+}))
+
 function workOrder(actions: Record<string, boolean>): WorkOrderDetailWithPermissions {
   return {
     id: 4,
@@ -131,5 +139,21 @@ describe('WorkOrderDetailWorkTabs', () => {
 
     expect(screen.getByRole('tab', { name: 'Active proforma' })).toHaveAttribute('data-state', 'active')
     expect(screen.getByText('invoices-section active')).toBeInTheDocument()
+  })
+
+  it('adds the Chat tab last with view_chat and passes write_chat to the panel (spec 0354 AC-017)', () => {
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_chat: true, write_chat: true })} />)
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Tasks', 'Chat'])
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Chat' }))
+
+    expect(screen.getByText('chat-panel write:true')).toBeInTheDocument()
+  })
+
+  it('has no Chat tab without view_chat (spec 0354 AC-017)', () => {
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_costs: true, write_chat: true })} />)
+
+    expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument()
   })
 })

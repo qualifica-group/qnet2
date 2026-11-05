@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\WorkOrders;
 
+use App\Enums\WorkOrderType;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Products\ProductCategoryBranches;
@@ -76,6 +77,8 @@ class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCat
 
     private ?int $branchScope = null;
 
+    private ?WorkOrderType $typeScope = null;
+
     public function __construct(
         private readonly TableDefinition $inner,
         private readonly ProductCategoryBranches $branches,
@@ -108,6 +111,10 @@ class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCat
             $query->withQuoteLineOfQuote($this->quoteScope);
         }
 
+        if ($this->typeScope !== null) {
+            $query->where('work_orders.type', $this->typeScope->value);
+        }
+
         if ($this->registryScope !== null) {
             $query->withQuoteLineOfRegistry($this->registryScope);
         }
@@ -121,6 +128,16 @@ class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCat
         }
 
         return $query;
+    }
+
+    /**
+     * Spec 0354, D-2: narrows `baseQuery()` to one commessa type. Only the two
+     * menu pages send it; the Contratto and Anagrafica tabs leave it null and
+     * keep every type.
+     */
+    public function scopeToWorkOrderType(?WorkOrderType $type): void
+    {
+        $this->typeScope = $type;
     }
 
     public function scopeToProductCategory(?int $productCategoryId): void

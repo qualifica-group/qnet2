@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Table;
 
+use App\Enums\WorkOrderType;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Table\BulkDeleteTableRequest;
 use App\Http\Requests\Table\TableColumnsRequest;
@@ -239,6 +240,9 @@ class TableController extends BaseApiController
             $this->scopeToRegistry($definition, $registryId === null ? null : (int) $registryId);
             $referentId = $payload['referentId'] ?? null;
             $this->scopeToReferent($definition, $referentId === null ? null : (int) $referentId);
+            if ($definition instanceof QuoteScopedTableDefinition) {
+                $definition->scopeToWorkOrderType(WorkOrderType::tryFrom((string) ($payload['work_order_type'] ?? '')));
+            }
             $this->authorizeTreeParent($definition, $actor, $payload['treeParentId'] ?? null);
 
             $result = $this->service->rows($definition, $actor, $payload);

@@ -7,7 +7,7 @@ import ProjectWorkOrdersPage from '@/pages/project-work-orders-page'
 import { WorkOrdersTable } from '@/features/work-orders/work-orders-table'
 
 /**
- * Spec 0352 D-1/D-2: "Commesse" sends `workOrderType: 'processing'`, "Commesse di Progetto" mounts the
+ * Spec 0354 D-1/D-2: "Commesse" sends `workOrderType: 'processing'`, "Commesse di Progetto" mounts the
  * `project-work-orders` domain with no row scope and no category strip. Grid, row actions and strip are stubbed.
  */
 vi.mock('@/components/page-header', () => ({ PageHeader: () => <div /> }))
@@ -48,7 +48,7 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-describe('work orders pages (spec 0352)', () => {
+describe('work orders pages (spec 0354)', () => {
   it('"Commesse" narrows the work-orders grid to processing work orders', () => {
     render(
       <MemoryRouter>

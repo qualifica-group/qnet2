@@ -54,6 +54,8 @@ return [
             'auth/reset-password',
             'config',
             'system-health',
+            // Spec 0354: Echo's private-channel auth for the in-app realtime chat.
+            'broadcasting',
         ],
 
         // Seconds the generated OpenAPI document stays cached. The cache key already

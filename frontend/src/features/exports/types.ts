@@ -61,7 +61,7 @@ export interface CreateExportPayload {
   registryId?: number | null
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number | null
-  /** Row-set scope to one work order type (spec 0352 D-2); snake_case like the rows payload; a no-op for every domain but `work-orders`. */
+  /** Row-set scope to one work order type (spec 0354 D-2); snake_case like the rows payload; a no-op for every domain but `work-orders`. */
   work_order_type?: WorkOrderTypeScope | null
 }
 

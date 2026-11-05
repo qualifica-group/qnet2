@@ -427,6 +427,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'project-work-orders',
+      title: 'Commesse di progetto e Commesse',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "La pagina **Commesse** mostra solo le commesse di **lavorazione**. Le commesse di tipo **Progetto** stanno in **Commesse di Progetto** (stesso gruppo **Lavorazioni**), con la colonna **Non letti** e la tab **Chat** nel dettaglio: vedi la guida **Commesse di Progetto**. Dentro un **Contratto** e un'**Anagrafica**, le sezioni **Commesse** mostrano ancora le commesse di tutti i tipi.",
+        },
+        {
+          type: 'note',
+          text: "La tab **Chat** esiste solo sulle commesse di progetto: nelle commesse di lavorazione non c'è.",
+        },
+      ],
+    },
+    {
       id: 'visibility',
       title: "Quali commesse vedi",
       blocks: [
