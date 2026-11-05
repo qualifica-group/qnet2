@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tolto il contenitore "Old category" + seeder correttivo per la produzione — VERDE, COMMITTATO (2026-11-05)
+
+- Direttiva utente: eliminare "Old category" e rendere non attive tutte le categorie che stavano sotto. Spec 0013
+  emendamento "sexies", 0174 AC-008 aggiornato.
+- Nuovo `database/seeders/QualificaOldCategoryRemovalSeeder` (da lanciare in produzione:
+  `php artisan db:seed --class=QualificaOldCategoryRemovalSeeder`): in una transazione rende non attiva sul proprio
+  flag ogni categoria sotto il contenitore (a ogni livello), porta i figli diretti a radice e cancella il contenitore.
+  Idempotente (senza contenitore non fa nulla). NON incluso in `QualificaProductionDataSeeder`: e' una correzione una tantum.
+- Import: eliminato `App\Migrations\Support\LegacyCategoryContainer`; `ProductCategoriesSource`/`CostProductsSource`
+  non raccolgono piu' le radici legacy. `CostCategoryResolver` crea "[OLD] Costi" come radice e tutti i sotto-rami
+  non attivi (costante `INACTIVE`, solo alla creazione).
+- Test: nuovo `tests/Feature/Seeding/QualificaOldCategoryRemovalSeederTest`; REQUIREMENT CHANGED in
+  `ProductCategoriesSourceImportTest` (tolto il test di raccolta sotto "Old category"), `CostProductsSourceImportTest`,
+  `LegacyAplBranchImportTest`, `QualificaLegacyImportSeederTest`. Migration 749/749, Seeding 231/233.
+- `tests/TestCase::setUp` fissa `migrations.users_link_only = false`: il `.env` locale ha
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` e faceva fallire 6 test Utenti (phpunit.xml protetto dall'hook).
+- ROSSI PREESISTENTI, non toccati: 2 test di `QualificaOperatorSeederTest` sul ruolo `importatore-richieste`
+  (arrivato con spec 0348, commit 42faa78a).
+- Guide in-app migrations IT+EN e manuale Claude Docs (paragrafo [OLD] + Prodotti di costo) aggiornati.
+- DB sviluppo `qnet2`: seeder eseguito dall'utente il 2026-11-05. Produzione: da lanciare una volta dopo il deploy.
+
 ## Layout dettaglio Commessa: Informazioni aggiuntive a destra — VERDE, NON COMMITTATO (2026-11-05)
 
 - Direttiva utente: nel dettaglio commessa, con attributi applicabili, lo skeleton (Dati commessa ... Documento e

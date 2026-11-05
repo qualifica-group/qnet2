@@ -22,8 +22,7 @@ use Illuminate\Database\Seeder;
  * child MigrationRun per source, run inline via MigrationService::runMassSync.
  * No catalogue is hard-coded here: the values are whatever the legacy system
  * holds, and the run is visible in the Migrazioni history like a UI-launched
- * one. Where the legacy product taxonomy lands, the "Old category" container,
- * is the sources' own rule (LegacyCategoryContainer), not this seeder's.
+ * one.
  *
  * Idempotent by construction: every source skips a record whose `old_id` is
  * already imported, and the sources and business functions

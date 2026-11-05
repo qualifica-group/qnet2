@@ -399,6 +399,16 @@
       risolti, in aggiunta, e mantiene il suo nome. `QualificaProductionDataSeeder` non ripete piu' il
       collegamento dopo l'import. "No categoria" resta una radice a parte.
     </amendment>
+    <amendment date="2026-11-05" title="sexies - Tolto il contenitore &quot;Old category&quot;">
+      Decisione utente: il contenitore "Old category" (emendamento quinquies) non esiste piu'. Le categorie legacy
+      restano radici, non attive: `LegacyCategoryContainer` eliminato, `ProductCategoriesSource::afterImport` e
+      `CostProductsSource::afterImport` non le raccolgono piu'. `CostCategoryResolver` crea "[OLD] Costi" come radice e
+      crea non attivi anche i suoi sotto-rami ("[OLD] Articoli", "[OLD] Veicoli"... e le sotto-categorie degli
+      articoli); un nodo gia' esistente mantiene il suo flag. Per i dati gia' importati (sviluppo e produzione)
+      `QualificaOldCategoryRemovalSeeder` (`php artisan db:seed --class=QualificaOldCategoryRemovalSeeder`, in una
+      transazione, idempotente) rende non attiva ogni categoria sotto il contenitore, a ogni livello e sul proprio
+      flag, porta i figli diretti a radice e cancella il contenitore vuoto.
+    </amendment>
     <amendment date="2026-10-21" title="sexies - Utenti: il segnaposto &quot;Utente legacy&quot;">
       Decisione utente (W3 del run 2026-10-20): senza termine di ricerca l'endpoint legacy `users` chiude la lista con
       un record in piu', "Utente legacy" (`LegacyPlaceholderUser`: id riservato 999999999, email

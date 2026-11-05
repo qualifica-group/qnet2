@@ -8,11 +8,11 @@ use App\Models\ProductCategory;
 
 /**
  * Provisions the "[OLD] Costi" category branch of the legacy cost import (spec
- * 0174) on demand and returns the category a cost row lands in. The root is
- * created NOT active, under the "Old category" container (user directive
- * 2026-10-14): the legacy costs are history only, hidden with their branch
- * from every input (spec 0208, user directive 2026-10-13); an operator who
- * reactivates it later is not overridden. The root resolves by name wherever
+ * 0174) on demand and returns the category a cost row lands in. Every node is
+ * created NOT active, the root at the top level (user directive 2026-11-05):
+ * the legacy costs are history only, hidden with their branch from every input
+ * (spec 0208, user directive 2026-10-13); an operator who reactivates one later
+ * is not overridden. The root resolves by name wherever
  * it sits, so one an earlier run left at top level is reused, not doubled;
  * the rest by name + parent (firstOrCreate), never by `old_id`: that id space
  * belongs to the legacy `service_categories`. Nothing is memoized, because every row
@@ -20,14 +20,15 @@ use App\Models\ProductCategory;
  */
 final class CostCategoryResolver
 {
-    public function __construct(private readonly LegacyCategoryContainer $container) {}
+    /** Applied on creation only: an existing node keeps its own flag. */
+    private const array INACTIVE = ['is_active' => false];
 
     public function resolve(string $source, ?string $legacyCategory): int
     {
         // Step 1: the root and the branch of this legacy table.
         $root = ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->orderBy('id')->first()
-            ?? ProductCategory::create(['name' => CostProductCatalogue::ROOT, 'parent_id' => $this->container->id(), 'is_active' => false]);
-        $branch = ProductCategory::firstOrCreate(['name' => CostProductCatalogue::BRANCHES[$source], 'parent_id' => $root->id]);
+            ?? ProductCategory::create(['name' => CostProductCatalogue::ROOT, ...self::INACTIVE]);
+        $branch = ProductCategory::firstOrCreate(['name' => CostProductCatalogue::BRANCHES[$source], 'parent_id' => $root->id], self::INACTIVE);
 
         // Step 2: the branch's attributes, inherited by its sub-categories.
         $this->assignAttributes($branch, CostProductCatalogue::ATTRIBUTES[$source]);
@@ -37,7 +38,7 @@ final class CostCategoryResolver
             return $branch->id;
         }
 
-        return ProductCategory::firstOrCreate(['name' => $legacyCategory, 'parent_id' => $branch->id])->id;
+        return ProductCategory::firstOrCreate(['name' => $legacyCategory, 'parent_id' => $branch->id], self::INACTIVE)->id;
     }
 
     /**

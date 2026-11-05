@@ -68,7 +68,7 @@ use Illuminate\Database\Seeder;
  *   5. QualificaLegacyImportSeeder — the support tables pulled from the legacy
  *                                    system through the Migrazioni engine,
  *                                    the sellable products included, the
- *                                    legacy catalogue under "Old category".
+ *                                    legacy catalogue as inactive roots.
  *   6. QualificaOperatorSeeder     — the client's real operators (the
  *                                    "Mansionario Operatori"), with their
  *                                    roles, Sedi and product-category
