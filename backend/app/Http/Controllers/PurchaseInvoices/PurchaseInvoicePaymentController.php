@@ -7,6 +7,7 @@ use App\Http\Requests\PurchaseInvoices\PurchaseInvoicePaymentRequest;
 use App\Http\Resources\PurchaseInvoiceInstallmentResource;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Services\PurchaseInvoices\PurchaseInvoicePaymentService;
+use App\Services\Treasury\CompensationGuard;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -29,6 +30,7 @@ class PurchaseInvoicePaymentController extends BaseApiController
     public function store(PurchaseInvoicePaymentRequest $request, PurchaseInvoiceInstallment $installment): JsonResponse
     {
         try {
+            CompensationGuard::assertInstallmentFree($installment);
             $paid = $this->service->record($installment, $request->payload());
 
             return $this->ok(new PurchaseInvoiceInstallmentResource($paid), 'Payment recorded.');
@@ -45,6 +47,7 @@ class PurchaseInvoicePaymentController extends BaseApiController
         try {
             $installment->loadMissing('purchaseInvoice');
             $this->authorize('pay', $installment->purchaseInvoice);
+            CompensationGuard::assertInstallmentFree($installment);
 
             return $this->ok(new PurchaseInvoiceInstallmentResource($this->service->clear($installment)), 'Payment cleared.');
         } catch (Throwable $exception) {

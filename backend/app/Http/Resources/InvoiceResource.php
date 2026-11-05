@@ -99,6 +99,7 @@ class InvoiceResource extends JsonResource
                     : ['id' => $installment->financialAccount->id, 'name' => $installment->financialAccount->name],
                 'write_off' => WriteOffPayload::from($installment),
                 'reconciled' => $installment->reconciled_at !== null,
+                'compensation' => CompensationPayload::from($installment),
                 'status' => $installment->status(),
             ])->all(),
             'created_by' => ['id' => $this->createdBy->id, 'name' => $this->createdBy->name],

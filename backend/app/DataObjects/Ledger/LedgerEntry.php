@@ -42,6 +42,12 @@ final readonly class LedgerEntry
         return array_sum(array_map(fn (LedgerInstallmentEntry $row): int => $row->writeOffCents, $this->installments));
     }
 
+    /** Cents settled by compensation (spec 0364): collected/paid with no money moved. */
+    public function compensatedCents(): int
+    {
+        return array_sum(array_map(fn (LedgerInstallmentEntry $row): int => $row->compensationId === null ? 0 : ($row->settledCents ?? 0), $this->installments));
+    }
+
     /** Sum of the installment residuals; the whole total when the plan is missing. */
     public function residualCents(): int
     {

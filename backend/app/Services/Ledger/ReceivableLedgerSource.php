@@ -27,7 +27,7 @@ final class ReceivableLedgerSource
     public function entries(Registry $registry, LedgerFilters $filters): array
     {
         return $this->query($registry, $filters)
-            ->with(['company', 'quote.companySite', 'quote.operationalSite', 'installments'])
+            ->with(['company', 'quote.companySite', 'quote.operationalSite', 'installments.compensation.purchaseInvoiceInstallment.purchaseInvoice:id,document_number'])
             ->get()
             ->map(fn (Invoice $invoice): LedgerEntry => $this->entry($invoice))
             ->all();
@@ -71,6 +71,8 @@ final class ReceivableLedgerSource
                 settledAt: $this->day($row->collected_at),
                 writeOffCents: $this->cents($row->write_off_amount ?? 0),
                 writeOffReason: $row->write_off_reason?->value,
+                compensationId: $row->compensation_id,
+                compensationLabel: $row->compensation?->purchaseInvoiceInstallment->purchaseInvoice->document_number,
             ))->all(),
         );
     }

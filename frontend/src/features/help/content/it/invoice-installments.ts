@@ -205,6 +205,14 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'compensation',
+      title: 'Compensazione',
+      blocks: [
+        { type: 'paragraph', text: 'Su una rata aperta l’azione **Compensa** apre la finestra con la rata già scelta: scegli la rata passiva della stessa anagrafica e società. Serve il permesso di incasso **e** quello di pagamento. Se i residui sono diversi scegli **Spalma** o **Nuova rata** per il resto.' },
+        { type: 'paragraph', text: 'Su una rata compensata **Annulla incasso** è disabilitato e ne viene mostrato il motivo: annulla la compensazione dal **Partitario** dell’anagrafica.' },
+      ],
+    },
+    {
       id: 'link-filter',
       title: 'Aprire la pagina gia\' filtrata',
       blocks: [

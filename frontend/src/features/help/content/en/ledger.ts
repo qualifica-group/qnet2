@@ -59,6 +59,14 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'compensation',
+      title: 'Compensation',
+      blocks: [
+        { type: 'paragraph', text: 'With the **Compensate** button above the **Compensations** list you close one open receivable and one open payable installment of the same registry and company, with no bank or cash movement: the amount is the **smaller of the two residuals**. You need both the collect and the pay permissions.' },
+        { type: 'paragraph', text: 'Compensated installments show the **Compensation** label, a zero residual and count in the **Compensated** total of the summary. **Undo** (with confirmation) restores both installments as before.' },
+      ],
+    },
+    {
       id: 'filters',
       title: 'Filters and period',
       blocks: [

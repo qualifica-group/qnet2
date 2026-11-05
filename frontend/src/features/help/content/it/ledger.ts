@@ -59,6 +59,14 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'compensation',
+      title: 'Compensazione',
+      blocks: [
+        { type: 'paragraph', text: 'Dal pulsante **Compensa** sopra l’elenco **Compensazioni** chiudi una rata attiva e una passiva aperte della stessa anagrafica e società, senza movimenti di banca o cassa: l’importo è il **minore dei due residui**. Servono i permessi di incasso e di pagamento.' },
+        { type: 'paragraph', text: 'Le rate compensate mostrano l’etichetta **Compensazione**, il residuo a zero e rientrano nel totale **Compensato** del riepilogo. **Annulla** (con conferma) ripristina entrambe le rate come prima.' },
+      ],
+    },
+    {
       id: 'filters',
       title: 'Filtri e periodo',
       blocks: [

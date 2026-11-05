@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { defaultLedgerFilters } from '@/features/ledger/api'
 import { LedgerFiltersBar } from '@/features/ledger/ledger-filters-bar'
+import { LedgerCompensations } from '@/features/ledger/ledger-compensations'
 import { LedgerSection } from '@/features/ledger/ledger-section'
 import { useLedger } from '@/features/ledger/use-ledger'
 import type { LedgerFilters } from '@/features/ledger/types'
@@ -46,6 +47,7 @@ export function LedgerPanel({ registryId }: LedgerPanelProps) {
       {data?.supplier ? (
         <LedgerSection side="supplier" section={data.supplier} showOpeningBalance={filters.dateFrom !== ''} />
       ) : null}
+      <LedgerCompensations registryId={registryId} />
     </div>
   )
 }

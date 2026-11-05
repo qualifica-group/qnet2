@@ -11,6 +11,7 @@ import { financialAccounts } from './it-financial-accounts'
 import { invoiceEditor } from './it-invoice-editor'
 import { invoiceInstallments } from './it-invoice-installments'
 import { invoices, invoiceTags } from './it-invoices'
+import { compensations } from './it-compensations'
 import { ledger } from './it-ledger'
 import { managementControl } from './it-management-control'
 import { paymentMethods } from './it-payment-methods'
@@ -46,5 +47,6 @@ export const accounting = {
   enasarcoParameters,
   invoiceEditor,
   ledger,
+  compensations,
   managementControl,
 }

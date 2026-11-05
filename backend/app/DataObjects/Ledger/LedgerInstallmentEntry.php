@@ -20,6 +20,8 @@ final readonly class LedgerInstallmentEntry
         public ?CarbonImmutable $settledAt,
         public int $writeOffCents = 0,
         public ?string $writeOffReason = null,
+        public ?int $compensationId = null,
+        public ?string $compensationLabel = null,
     ) {}
 
     public function residualCents(): int

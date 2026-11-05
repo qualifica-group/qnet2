@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { apiErrorMessage } from '@/lib/forbidden-message'
+import type { CompensationTarget } from '@/features/compensations/types'
 import { getInstallment, installmentKeys } from '@/features/invoice-installments/api'
 import { getInvoice, invoiceKeys } from '@/features/invoices/api'
 import { useInvoiceCollectionActions } from '@/features/invoices/use-invoice-collection-actions'
@@ -21,6 +22,7 @@ export function useInstallmentRowActions(onChanged: () => void) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [viewInvoiceId, setViewInvoiceId] = useState<number | null>(null)
+  const [compensationTarget, setCompensationTarget] = useState<CompensationTarget | null>(null)
   const [documentInstallments, setDocumentInstallments] = useState<readonly InvoiceInstallment[]>(NO_INSTALLMENTS)
   const collection = useInvoiceCollectionActions(onChanged)
   const { openCollect, requestClear } = collection
@@ -40,7 +42,7 @@ export function useInstallmentRowActions(onChanged: () => void) {
     async (installmentId: number, knownInvoiceId?: number) => {
       if (knownInvoiceId !== undefined) {
         const invoice = await fetchInvoice(knownInvoiceId)
-        return { invoiceId: invoice.id, installments: invoice.installments }
+        return { invoiceId: invoice.id, installments: invoice.installments, invoice }
       }
       const detail = await queryClient.fetchQuery({
         queryKey: installmentKeys.detail(installmentId),
@@ -48,7 +50,7 @@ export function useInstallmentRowActions(onChanged: () => void) {
         staleTime: 0,
       })
       const invoice = await fetchInvoice(detail.invoice.id)
-      return { invoiceId: invoice.id, installments: invoice.installments }
+      return { invoiceId: invoice.id, installments: invoice.installments, invoice }
     },
     [fetchInvoice, queryClient],
   )
@@ -89,6 +91,17 @@ export function useInstallmentRowActions(onChanged: () => void) {
             openCollect(installment)
           })
           break
+        case 'compensate':
+          void resolveInstallment(id, invoiceId).then(
+            ({ invoice }) =>
+              setCompensationTarget({
+                registryId: invoice.customer.id,
+                companyId: invoice.company.id,
+                receivableId: id,
+              }),
+            (error: unknown) => toast.error(apiErrorMessage(error, t('invoiceInstallments.lookupError'), i18n)),
+          )
+          break
         case 'clear_collection':
           void openViaDocument(id, invoiceId, (installment) => requestClear(installment))
           break
@@ -104,6 +117,8 @@ export function useInstallmentRowActions(onChanged: () => void) {
     collection,
     documentInstallments,
     viewInvoiceId,
+    compensationTarget,
+    closeCompensation: useCallback(() => setCompensationTarget(null), []),
     closeView: useCallback(() => setViewInvoiceId(null), []),
   }
 }

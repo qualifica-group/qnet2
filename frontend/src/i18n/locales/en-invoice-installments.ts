@@ -37,6 +37,8 @@ export const invoiceInstallments = {
     collected_at: 'Collection date',
     write_off_amount: 'Write-off',
     write_off_reason: 'Write-off reason',
+    reconciled: 'Reconciled',
+    compensated: 'Compensated',
   },
   footer: {
     label: 'Totals of the current filter',
@@ -48,6 +50,7 @@ export const invoiceInstallments = {
     view_invoice: 'Open invoice',
     record_collection: 'Record collection',
     clear_collection: 'Clear collection',
+    compensate: 'Compensate',
   },
   lookupError: 'Unable to load the installment. Please try again.',
   bulkCollection: {

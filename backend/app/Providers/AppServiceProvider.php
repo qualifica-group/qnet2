@@ -46,6 +46,7 @@ use App\Models\EmploymentProfile;
 use App\Models\EnasarcoParameter;
 use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
+use App\Models\InstallmentCompensation;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\InvoiceTag;
@@ -283,6 +284,8 @@ class AppServiceProvider extends ServiceProvider
             'treasury_type' => TreasuryType::class,
             // spec 0363: audited subject (LogsModelActivity).
             'bank_reconciliation' => BankReconciliation::class,
+            // spec 0364: audited subject (LogsModelActivity).
+            'installment_compensation' => InstallmentCompensation::class,
             'job_role' => JobRole::class,
             'job_activity' => JobActivity::class,
             'employment_contract' => EmploymentContract::class,

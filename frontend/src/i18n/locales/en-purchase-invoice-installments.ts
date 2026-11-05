@@ -41,6 +41,8 @@ export const purchaseInvoiceInstallments = {
     financial_account: 'Payment account',
     write_off_amount: 'Write-off',
     write_off_reason: 'Write-off reason',
+    reconciled: 'Reconciled',
+    compensated: 'Compensated',
   },
   footer: {
     label: 'Totals of the current filter',
@@ -51,6 +53,7 @@ export const purchaseInvoiceInstallments = {
   actions: {
     record_payment: 'Record payment',
     clear_payment: 'Clear payment',
+    compensate: 'Compensate',
     open_document: 'Open document',
   },
   lookupError: 'Unable to load the installment. Please try again.',

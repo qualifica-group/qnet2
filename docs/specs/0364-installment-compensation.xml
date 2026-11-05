@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0364-installment-compensation" status="approved" owner="utente" date="2026-11-05">
+
+  <goal>
+    Tesoreria fase D3 "Compensazioni": quando un'anagrafica e' sia cliente sia fornitore della stessa societa',
+    l'utente chiude una rata attiva aperta con una rata passiva aperta per il minore dei due residui, senza movimenti
+    di banca o cassa. Si registra dal Partitario e dagli scadenziari, si vede su entrambe le rate e si annulla.
+  </goal>
+
+  <context>
+    Prospetto: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y (blocco 4, "Compensazione credito/debito verso la
+    stessa anagrafica: rinviata"; fase D). Dipende da 0361 (abbuoni) e 0363 (spunta, blocco delle righe).
+
+    Decisioni utente 2026-11-05:
+    - D-1 (perimetro): stessa anagrafica (cliente = fornitore) e stessa societa'. Mai tra societa' o anagrafiche
+      diverse.
+    - D-2 (importo): una rata attiva e una passiva per compensazione; importo = minore dei due residui. La rata col
+      residuo minore si chiude; sull'altra il residuo si gestisce con le scelte di oggi, Spalma o Nuova rata (non
+      Abbuono).
+    - D-3 (effetti): conta come incasso e pagamento: maturano le provvigioni sull'importo compensato e il
+      Controllo di gestione lo legge come incassato/pagato. Non e' denaro: non entra nell'Estratto conto, nei saldi,
+      in "senza conto" ne' nella liquidita' del Quadro.
+    - D-4 (ingresso): dal Partitario dell'anagrafica (pulsante Compensa) e dagli scadenziari attivo e passivo
+      (azione Compensa sulla rata aperta).
+
+    Decisioni approvate con la spec (utente 2026-11-05):
+    - D-5 (permessi): registrare e annullare richiedono ENTRAMBE le ability esistenti `collect` sulla fattura attiva
+      e `pay` sulla fattura passiva. L'elenco delle compensazioni di un'anagrafica richiede `ledger.view` (come il
+      Partitario). Nessun permesso nuovo.
+    - D-6 (Conti del Controllo di gestione): `CollectionAggregator`/`PaymentAggregator` (incassi e pagamenti per
+      conto) ESCLUDONO le compensazioni, come l'Estratto conto: raggruppano per conto (COALESCE con il conto della
+      fattura) e attribuirebbero la compensazione a una banca. Le altre letture di `collected_amount`/`paid_amount`
+      (provvigioni, esposizione, residui, Partitario) la includono senza modifiche.
+    - D-7 (blocchi): "Annulla incasso/pagamento" su una rata compensata -> 422 "Annulla la compensazione". Si
+      annulla solo la compensazione, che ripristina entrambe le rate con la logica di annullo esistente.
+    - D-8 (documenti): solo fatture attive e passive, non proforma. Data della compensazione obbligatoria, non
+      futura. Nota facoltativa (255).
+    - D-9 (legacy): nessuna modifica. `CollectionsSource` scrive solo su rate senza `collected_amount` e una rata
+      compensata ne ha uno.
+
+    Fatti verificati nel codice (feature/amministrazione @ 57352ceb):
+    - Anagrafiche: tabella unica `registries`; `invoices.customer_registry_id`, `invoices.company_id`;
+      `purchase_invoices.supplier_id`, `purchase_invoices.company_id`.
+    - Incasso/pagamento: `App\Services\Invoices\InvoiceCollectionService::record(InvoiceInstallment, array)` (payload
+      collected_amount, collected_at, residual_mode?, residual_due_date?, financial_account_id?) e `clear()`
+      (ripristina il piano precedente, ricalcola le provvigioni con `syncInvoice`); analogo
+      `App\Services\PurchaseInvoices\PurchaseInvoicePaymentService`. `ResidualMode`: spread, new_installment,
+      write_off. Ogni rata ha un solo incasso/pagamento. `ReconciliationGuard::assertInstallmentFree` (spec 0363).
+    - Autorizzazioni esistenti: `can('collect', $invoice)` in `InvoiceCollectionRequest`/`Controller`,
+      `can('pay', $purchaseInvoice)` in `PurchaseInvoicePaymentRequest`/`Controller`.
+    - Estratto: `App\Services\Treasury\AccountStatementFacts` (rate per conto effettivo, `unassigned`).
+      Controllo di gestione Conti: `App\Services\ManagementControl\Accounts\CollectionAggregator` e `PaymentAggregator`.
+    - Partitario: `GET registries/{registry}/ledger` (`RegistryLedgerController`, `ledger.view`),
+      `App\Services\Ledger\LedgerCalculator` (righe documento con `settled_amount`, riga extra `write_off`).
+      Frontend `features/ledger/` (`registry-ledger-panel.tsx`, `ledger-installments-table.tsx`).
+    - Scadenziari frontend: `features/invoice-installments/use-installment-row-actions.ts`,
+      `features/purchase-invoice-installments/use-purchase-installment-payment-actions.ts`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabella `installment_compensations` + model `InstallmentCompensation` (storico attivita');
+        `compensation_id` (FK nullOnDelete) su `invoice_installments` e `purchase_invoice_installments`.</item>
+      <item>Servizio di compensazione che riusa `record`/`clear` dei due servizi esistenti in un'unica transazione.</item>
+      <item>Endpoint candidati, registrazione, elenco per anagrafica, annullo.</item>
+      <item>Esclusione da Estratto conto, `unassigned`, saldi, Quadro (liquidita') e Conti del Controllo di gestione.</item>
+      <item>`compensation` (id, importo, controparte) nelle resource delle rate e colonna `compensated` nelle griglie
+        degli scadenziari; etichetta "Compensazione" sulle rate nel Partitario e totale compensato.</item>
+      <item>Frontend: dialog Compensa (Partitario e azione sugli scadenziari), elenco compensazioni con annulla
+        nel Partitario, azioni annulla incasso/pagamento disabilitate sulle rate compensate.</item>
+      <item>Guide in-app IT/EN: ledger, invoice-installments, purchase-invoice-installments.</item>
+    </in>
+    <out>
+      <item>Piu' rate per lato, importo libero, compensazioni tra societa' o anagrafiche diverse.</item>
+      <item>Proforma, note di credito/debito, ordini d'acquisto.</item>
+      <item>Abbuono come gestione del residuo nella compensazione.</item>
+      <item>Compensazione nell'incasso multiplo e nel pagamento multiplo.</item>
+      <item>Documento stampabile di compensazione, scritture contabili.</item>
+      <item>Modelli ricorrenti (D2, rinviata). Modifiche al QNet legacy.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data }. Importi stringa decimale "1234.56". Date YYYY-MM-DD. -->
+
+    <endpoint method="GET" path="/api/registries/{registry}/compensation-candidates">
+      <request>company_id: int (obbligatorio)</request>
+      <response status="200">data: {
+        receivables: [{ id, sequence, due_date, residual, invoice: { id, number_label, date } }],
+        payables: [{ id, sequence, due_date, residual, purchase_invoice: { id, number_label, date } }] }
+        Rate aperte (residuo &gt; 0, non incassate/pagate, senza abbuono) di fatture (non proforma) dell'anagrafica e
+        della societa', ordinate per scadenza crescente.</response>
+      <errors>403 senza `ledger.view`; 422 company_id mancante.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/installment-compensations">
+      <request>{ invoice_installment_id: int, purchase_invoice_installment_id: int, compensated_at: date (&lt;= oggi),
+        note?: string|null (max 255), residual_mode?: "spread" | "new_installment" (obbligatorio se i residui sono
+        diversi), residual_due_date?: date (obbligatoria con new_installment) }</request>
+      <response status="201">data: compensazione (shape dell'elenco). Effetto: le due rate risultano
+        incassata/pagata per `amount` = minore dei residui, con `compensation_id`, senza conto; sulla rata col residuo
+        maggiore il resto segue `residual_mode`; provvigioni ricalcolate.</response>
+      <errors>403 senza `collect` sulla fattura attiva o senza `pay` sulla passiva; 422 anagrafica o societa'
+        diverse, proforma, rata non aperta, residual_mode mancante/non ammesso, data futura, Spalma senza rate
+        successive aperte. Nessuna scrittura parziale.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/registries/{registry}/compensations">
+      <request>company_id?: int</request>
+      <response status="200">data: [{ id, company: {id, name}, compensated_at, amount, note,
+        invoice_installment: { id, sequence, invoice: { id, number_label } },
+        purchase_invoice_installment: { id, sequence, purchase_invoice: { id, number_label } },
+        created_by: {id, name}|null, created_at, can_delete: bool }] ordinate per data decrescente.</response>
+      <errors>403 senza `ledger.view`.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/installment-compensations/{installmentCompensation}">
+      <response status="200">{ success: true, message }. Annulla incasso e pagamento delle due rate con `clear()`
+        (ripristino del piano precedente), elimina la compensazione, ricalcola le provvigioni.</response>
+      <errors>403 senza `collect` + `pay`; 422 se una delle due rate e' stata nel frattempo spuntata (non puo' essere
+        in un estratto, ma il guard resta).</errors>
+    </endpoint>
+
+    <endpoint method="DELETE|PUT" path="/api/invoice-installments/{installment}/collection | /api/purchase-invoice-installments/{installment}/payment">
+      <errors>Nuovo 422 "Rata compensata: annulla la compensazione." se `compensation_id` valorizzato.</errors>
+    </endpoint>
+
+    <shared_fields>
+      Resource rate attive/passive (e righe rate di fattura e Partitario): + `compensation: { id, amount,
+      counterpart_label } | null`. Griglie scadenziari: colonna `compensated` (yes/no, filtro set). Partitario
+      summary: + `compensated_total`.
+    </shared_fields>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Data un'anagrafica con rata attiva aperta 300 e rata passiva aperta 300 della stessa societa',
+      quando si compensa, allora entrambe risultano incassata/pagata 300 con compensation_id, senza conto, e la
+      compensazione ha amount 300.</criterion>
+    <criterion id="AC-002">Rata attiva 500 e passiva 300: con residual_mode new_installment e data, la passiva si chiude
+      a 300, l'attiva e' incassata 300 e nasce una rata da 200 alla data indicata; senza residual_mode -> 422 e nulla
+      cambia.</criterion>
+    <criterion id="AC-003">Rate di anagrafiche diverse, di societa' diverse, di una proforma, o gia' incassate -> 422
+      e nessuna scrittura.</criterion>
+    <criterion id="AC-004">Le rate compensate non compaiono nell'Estratto conto del conto della fattura, ne' in
+      unassigned, ne' nella liquidita' del Quadro, ne' nei Conti del Controllo di gestione.</criterion>
+    <criterion id="AC-005">Le provvigioni della fattura attiva maturano sull'importo compensato come per un incasso;
+      annullando la compensazione si stornano.</criterion>
+    <criterion id="AC-006">Annullare la compensazione di AC-002 ripristina il piano precedente su entrambe le fatture
+      (rata da 500 aperta, rata da 300 aperta, rata da 200 eliminata).</criterion>
+    <criterion id="AC-007">DELETE/PUT collection o payment su una rata compensata -> 422 e rata invariata.</criterion>
+    <criterion id="AC-008">Senza `collect` o senza `pay` -> 403 su registra e annulla; senza `ledger.view` -> 403 su
+      candidati ed elenco.</criterion>
+    <criterion id="AC-009">I candidati restituiscono solo rate aperte di fatture dell'anagrafica e della societa'
+      richiesta, ordinate per scadenza.</criterion>
+    <criterion id="AC-010">Il Partitario mostra le rate compensate con l'etichetta Compensazione, residuo a zero e
+      `compensated_total`.</criterion>
+    <criterion id="AC-011">(FE) Dal Partitario "Compensa" apre il dialog: scelta societa', rata attiva e passiva, importo
+      calcolato (minore dei residui), scelta del residuo solo se i residui differiscono, data; la conferma invia il
+      contratto e aggiorna Partitario e scadenziari.</criterion>
+    <criterion id="AC-012">(FE) Dagli scadenziari l'azione Compensa su una rata aperta apre lo stesso dialog con quella
+      rata gia' scelta; l'azione non c'e' senza entrambi i permessi.</criterion>
+    <criterion id="AC-013">(FE) Nel Partitario l'elenco Compensazioni mostra le righe con Annulla (con conferma); sulle
+      rate compensate degli scadenziari Annulla incasso/pagamento e' disabilitato con il motivo.</criterion>
+    <criterion id="AC-014">Guide IT/EN aggiornate con gli stessi id di sezione; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Importi bcmath o centesimi interi, mai float.</item>
+    <item>Registrazione e annullo in una sola transazione con lock di entrambe le fatture in ordine stabile (prima
+      attiva poi passiva) per evitare deadlock; riuso di `record`/`clear` esistenti, nessuna logica di residuo
+      duplicata.</item>
+    <item>Authz server-side (FormRequest + ability `collect`/`pay`); blocchi solo nel backend, la UI li rispecchia.</item>
+    <item>Migrazioni nuove e reversibili; indici su `registry_id`, `company_id`.</item>
+    <item>File entro 300 righe; i servizi di incasso/pagamento (262/264 righe) non si gonfiano: la compensazione
+      vive in un servizio dedicato.</item>
+    <item>Nomi in inglese; testi utente via i18n.</item>
+  </constraints>
+
+</spec>

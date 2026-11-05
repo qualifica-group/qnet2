@@ -59,6 +59,7 @@ class PurchaseInvoiceInstallmentResource extends JsonResource
             'paid_at' => $this->paid_at?->toDateString(),
             'write_off' => WriteOffPayload::from($this->resource),
             'reconciled' => $this->reconciled_at !== null,
+            'compensation' => CompensationPayload::from($this->resource),
             'status' => $this->status(),
             'residual_amount' => $this->residualAmount(),
             'is_overdue' => $daysOverdue > 0,

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/formatting/date-display'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import type { LedgerInstallment, LedgerSide } from '@/features/ledger/types'
@@ -42,7 +43,14 @@ export function LedgerInstallmentsTable({ installments, side }: LedgerInstallmen
               <td className={CELL}>{installment.sequence}</td>
               <td className={CELL}>{formatDate(installment.due_date)}</td>
               <td className={NUMERIC_CELL}>{formatEuro(installment.amount)}</td>
-              <td className={CELL}>{installment.settled_at ? formatDate(installment.settled_at) : '-'}</td>
+              <td className={CELL}>
+                {installment.settled_at ? formatDate(installment.settled_at) : '-'}
+                {installment.compensation ? (
+                  <Badge variant="secondary" className="ml-1.5" title={installment.compensation.counterpart_label}>
+                    {t('compensations.label')}
+                  </Badge>
+                ) : null}
+              </td>
               <td className={NUMERIC_CELL}>
                 {installment.settled_amount === null ? '-' : formatEuro(installment.settled_amount)}
               </td>

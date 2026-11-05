@@ -38,14 +38,18 @@ function AgingGroup({ title, buckets, aging }: { title: string; buckets: readonl
 /** Totals of one ledger section plus the aging of its open installments (spec 0266 D-9). */
 export function LedgerSummaryPanel({ summary, side }: { summary: LedgerSummary; side: LedgerSide }) {
   const { t } = useTranslation()
+  const optionalFigures = (summary.write_off_total > 0 ? 1 : 0) + (summary.compensated_total > 0 ? 1 : 0)
   const settledLabel = side === 'customer' ? 'ledger.summary.settledCustomer' : 'ledger.summary.settledSupplier'
 
   return (
     <div className="flex flex-col gap-3">
-      <dl className={summary.write_off_total > 0 ? 'grid grid-cols-2 gap-2 lg:grid-cols-6' : 'grid grid-cols-2 gap-2 lg:grid-cols-5'}>
+      <dl className={optionalFigures > 0 ? 'grid grid-cols-2 gap-2 lg:grid-cols-6' : 'grid grid-cols-2 gap-2 lg:grid-cols-5'}>
         <Figure label={t('ledger.summary.invoiced')} value={summary.invoiced_total} />
         <Figure label={t(settledLabel)} value={summary.settled_total} />
         {summary.write_off_total > 0 ? <Figure label={t('ledger.summary.writeOff')} value={summary.write_off_total} /> : null}
+        {summary.compensated_total > 0 ? (
+          <Figure label={t('ledger.summary.compensated')} value={summary.compensated_total} />
+        ) : null}
         <Figure label={t('ledger.summary.residual')} value={summary.residual_total} emphasis />
         <Figure label={t('ledger.summary.overdue')} value={summary.overdue_total} />
         <Figure label={t('ledger.summary.notDue')} value={summary.not_due_total} />

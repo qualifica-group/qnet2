@@ -37,6 +37,8 @@ export const invoiceInstallments = {
     collected_at: 'Data incasso',
     write_off_amount: 'Abbuono',
     write_off_reason: 'Motivo abbuono',
+    reconciled: 'Spuntata',
+    compensated: 'Compensata',
   },
   footer: {
     label: 'Totali del filtro corrente',
@@ -48,6 +50,7 @@ export const invoiceInstallments = {
     view_invoice: 'Apri fattura',
     record_collection: 'Registra incasso',
     clear_collection: 'Annulla incasso',
+    compensate: 'Compensa',
   },
   lookupError: 'Impossibile caricare la scadenza. Riprova.',
   bulkCollection: {

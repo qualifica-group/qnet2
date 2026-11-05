@@ -21,7 +21,7 @@ use Spatie\Activitylog\LogOptions;
 #[Fillable([
     'purchase_invoice_id', 'sequence', 'due_date', 'amount', 'payment_method_code',
     'paid_amount', 'paid_at', 'financial_account_id', 'redistribution_snapshot',
-    'write_off_amount', 'write_off_reason', 'write_off_note', 'reconciled_at', 'reconciled_by',
+    'write_off_amount', 'write_off_reason', 'write_off_note', 'reconciled_at', 'reconciled_by', 'compensation_id',
 ])]
 class PurchaseInvoiceInstallment extends BaseModel
 {
@@ -67,6 +67,14 @@ class PurchaseInvoiceInstallment extends BaseModel
     public function purchaseInvoice(): BelongsTo
     {
         return $this->belongsTo(PurchaseInvoice::class);
+    }
+
+    /**
+     * @return BelongsTo<InstallmentCompensation, $this>
+     */
+    public function compensation(): BelongsTo
+    {
+        return $this->belongsTo(InstallmentCompensation::class);
     }
 
     /**

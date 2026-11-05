@@ -29,7 +29,7 @@ final class InstallmentDerivedQuery
     private const array LISTED_COLUMNS = ['invoice_number_label', 'invoice_document_date'];
 
     /** Columns with a dedicated filter instead of the generic one on a plain column. */
-    private const array SPECIAL_COLUMNS = ['invoice_number_label', 'days_overdue', 'status', 'overdue', 'reconciled'];
+    private const array SPECIAL_COLUMNS = ['invoice_number_label', 'days_overdue', 'status', 'overdue', 'reconciled', 'compensated'];
 
     /**
      * Handles every filterable column of the domain; false for an unknown one.
@@ -45,7 +45,8 @@ final class InstallmentDerivedQuery
             $columnId === 'days_overdue' => self::applyDaysOverdue($query, $columnConfig, $filter),
             $columnId === 'status' => self::applyStatus($query, $filter),
             $columnId === 'overdue' => self::applyOverdue($query, $filter),
-            $columnId === 'reconciled' => self::applyReconciled($query, $filter),
+            $columnId === 'reconciled' => self::applyMarked($query, $filter, 'reconciled_at', InstallmentColumnCatalog::RECONCILED_VALUES),
+            $columnId === 'compensated' => self::applyMarked($query, $filter, 'compensation_id', InstallmentColumnCatalog::COMPENSATED_VALUES),
             $columnId === 'collected_amount' => ZeroWhenEmptyAmountFilter::apply($query, 'invoice_installments', 'collected_amount', $columnConfig, $filter),
             in_array($columnId, self::SET_COLUMNS, true) => self::applySet($query, (string) InstallmentSql::label($columnId), $filter),
             isset(InstallmentSql::PLAIN_COLUMNS[$columnId]) => app(FilterApplier::class)->apply($query, InstallmentSql::PLAIN_COLUMNS[$columnId], $columnConfig, $filter),
@@ -116,6 +117,10 @@ final class InstallmentDerivedQuery
 
         if ($columnId === 'reconciled') {
             return InstallmentColumnCatalog::RECONCILED_VALUES;
+        }
+
+        if ($columnId === 'compensated') {
+            return InstallmentColumnCatalog::COMPENSATED_VALUES;
         }
 
         if (! in_array($columnId, [...self::SET_COLUMNS, ...self::LISTED_COLUMNS], true)) {
@@ -221,17 +226,19 @@ final class InstallmentDerivedQuery
     /**
      * @param  Builder<InvoiceInstallment>  $query
      * @param  array<string, mixed>  $filter
+     * @param  array<int, string>  $values
+     * @param  string  $column  a literal of the dispatch (reconciled_at, compensation_id), never input
      */
-    private static function applyReconciled(Builder $query, array $filter): void
+    private static function applyMarked(Builder $query, array $filter, string $column, array $values): void
     {
-        $selected = array_values(array_intersect(InstallmentColumnCatalog::RECONCILED_VALUES, self::stringValues($filter)));
+        $selected = array_values(array_intersect($values, self::stringValues($filter)));
 
         // Both values (or none) select everything.
         if (count($selected) !== 1) {
             return;
         }
 
-        $query->whereRaw('invoice_installments.reconciled_at IS '.($selected[0] === 'yes' ? 'NOT NULL' : 'NULL'));
+        $query->whereRaw("invoice_installments.{$column} IS ".($selected[0] === 'yes' ? 'NOT NULL' : 'NULL'));
     }
 
     /**

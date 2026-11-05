@@ -3,7 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Tesoreria fase D1 "Spunta e riconciliazione" (spec 0363) — VERDE, NON COMMITTATO (2026-11-05)
+## Tesoreria fase D3 "Compensazioni" (spec 0364) — VERDE, COMMITTATO (2026-11-05)
+
+- Spec `docs/specs/0364-installment-compensation.xml` (approvata). Una rata attiva + una passiva aperte della
+  stessa anagrafica e societa', solo fatture (no proforma); importo = minore dei residui, l'altra rata Spalma o
+  Nuova rata; conta come incasso/pagamento (provvigioni, residui, Partitario) ma NON e' denaro: esclusa da
+  Estratto, `unassigned`, saldi, Quadro e Conti del CdG (`CollectionAggregator`/`PaymentAggregator`).
+  Permessi: `invoices.collect` + `purchase-invoices.pay` (registra/annulla), `ledger.view` (candidati/elenco).
+- Backend: migrazione `2026_11_22_100000` (`installment_compensations`, `compensation_id` sulle rate);
+  `InstallmentCompensation` (`$table` esplicito, morph `installment_compensation`); `InstallmentCompensationService`
+  (riusa `record`/`clear`), `CompensationReader`, `CompensationGuard` (422 su annulla incasso/pagamento, nei
+  controller); `InstallmentCompensationController`; rotte in `routes/api/account-statements.php`; lang
+  `treasury_compensations`. Griglie: colonna `compensated` e azione `compensate`; Partitario `compensation` per rata
+  e `compensated_total`.
+- Frontend: `features/compensations/` (dialog, candidati, `use-installment-action-state.ts`),
+  `features/ledger/ledger-compensations.tsx`; guide IT/EN ledger + scadenziari.
+- ATTENZIONE: le colonne griglia `reconciled`/`compensated` valgono 'yes'|'no' (non bool): il FE confronta con
+  `GRID_YES` (`features/treasury-movements/use-reconciled-action-state.ts`). Corretto qui anche il blocco della 0363
+  nelle griglie (prima confrontava `=== true` e non scattava) e aggiunte le etichette colonna mancanti.
+- Verifiche: Pest mirati verdi (Treasury 157, Ledger 33, rate 116, fatture 222); Vitest completo 10.023 verdi;
+  `tsc -b --force` 0; suite backend completa: rossi solo i 9 PREESISTENTI.
+- Manuale Claude Docs: NON aggiornato (non accessibile). Sezioni: Partitario (Compensa, elenco), Scadenze attive
+  e passive (Compensa, annulla bloccato), piu' gli arretrati A, B, C, D1.
+- Prossimo: D2 modelli ricorrenti quando l'utente decide come registrare buste paga, affitti, leasing.
+
+## Tesoreria fase D1 "Spunta e riconciliazione" (spec 0363) — VERDE, COMMITTATO 57352ceb (2026-11-05)
 
 - Spec `docs/specs/0363-bank-reconciliation.xml` (approvata). Fase D divisa: D1 = questa; D2 modelli ricorrenti
   RINVIATA (l'utente deve decidere come registrare buste paga, affitti, leasing); D3 compensazioni = prossima spec.

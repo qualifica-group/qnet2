@@ -21,6 +21,9 @@ final class InstallmentColumnCatalog
     /** The two values of the `reconciled` column (spec 0363). */
     public const array RECONCILED_VALUES = ['yes', 'no'];
 
+    /** The two values of the `compensated` column (spec 0364). */
+    public const array COMPENSATED_VALUES = ['yes', 'no'];
+
     /** Column id => `invoice-installments` field whose visibility gates it. */
     public const array FIELD_BY_COLUMN = [
         'amount' => 'amount',
@@ -46,6 +49,7 @@ final class InstallmentColumnCatalog
             self::column('status', 'badge', sortable: true, filter: 'set', options: InstallmentStatus::values()),
             self::column('overdue', 'badge', filter: 'set', options: self::OVERDUE_VALUES),
             self::column('reconciled', 'badge', filter: 'set', options: self::RECONCILED_VALUES),
+            self::column('compensated', 'badge', filter: 'set', options: self::COMPENSATED_VALUES),
             self::column('customer', 'text', sortable: true, filter: 'set'),
             self::column('work_order', 'text', sortable: true, filter: 'set'),
             self::column('company', 'text', sortable: true, filter: 'set'),
@@ -95,6 +99,7 @@ final class InstallmentColumnCatalog
             ['key' => 'view_invoice', 'label' => 'invoiceInstallments.actions.view_invoice', 'icon' => 'eye', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.view'],
             ['key' => 'record_collection', 'label' => 'invoiceInstallments.actions.record_collection', 'icon' => 'hand-coins', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.collect'],
             ['key' => 'clear_collection', 'label' => 'invoiceInstallments.actions.clear_collection', 'icon' => 'undo-2', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.collect'],
+            ['key' => 'compensate', 'label' => 'invoiceInstallments.actions.compensate', 'icon' => 'scale', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.collect'],
         ];
     }
 

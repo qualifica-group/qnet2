@@ -7,6 +7,7 @@ use App\Http\Requests\Invoices\InvoiceCollectionRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Models\InvoiceInstallment;
 use App\Services\Invoices\InvoiceCollectionService;
+use App\Services\Treasury\CompensationGuard;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -30,6 +31,7 @@ class InvoiceCollectionController extends BaseApiController
     {
         try {
             $this->authorizeCollect($installment);
+            CompensationGuard::assertInstallmentFree($installment);
 
             return $this->ok(new InvoiceResource($this->service->record($installment, $request->payload())));
         } catch (Throwable $exception) {
@@ -44,6 +46,7 @@ class InvoiceCollectionController extends BaseApiController
     {
         try {
             $this->authorizeCollect($installment);
+            CompensationGuard::assertInstallmentFree($installment);
 
             return $this->ok(new InvoiceResource($this->service->clear($installment)));
         } catch (Throwable $exception) {

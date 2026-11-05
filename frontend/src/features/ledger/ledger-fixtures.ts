@@ -21,6 +21,7 @@ export function makeInstallment(overrides: Partial<LedgerInstallment> = {}): Led
     residual_amount: 500,
     days_late: 12,
     write_off_amount: null,
+    compensation: null,
     ...overrides,
   }
 }
@@ -53,6 +54,7 @@ export function makeSection(overrides: Partial<LedgerSection> = {}): LedgerSecti
       invoiced_total: 500,
       settled_total: 0,
       write_off_total: 0,
+      compensated_total: 0,
       residual_total: 700,
       overdue_total: 500,
       not_due_total: 0,

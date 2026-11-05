@@ -31,7 +31,7 @@ it('AC-001: exposes the contract columns with their sort/filter flags and the ro
 
     expect($columns->keys()->all())->toBe([
         'id', 'invoice_number_label', 'invoice_document_date', 'sequence', 'due_date', 'due_month', 'days_overdue', 'status',
-        'overdue', 'reconciled', 'customer', 'work_order', 'company', 'company_site', 'operational_site', 'payment_method_code',
+        'overdue', 'reconciled', 'compensated', 'customer', 'work_order', 'company', 'company_site', 'operational_site', 'payment_method_code',
         'amount', 'collected_amount', 'residual_amount', 'collected_at', 'write_off_amount', 'write_off_reason',
     ])
         ->and($data['row_grouping'])->toBe([
@@ -49,7 +49,7 @@ it('AC-001: exposes the contract columns with their sort/filter flags and the ro
         ->and($columns['overdue']['sortable'])->toBeFalse()
         ->and($columns['due_month']['sortable'])->toBeFalse()
         ->and($columns['days_overdue']['filterType'])->toBe('number')
-        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view_invoice', 'record_collection', 'clear_collection']);
+        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view_invoice', 'record_collection', 'clear_collection', 'compensate']);
 });
 
 it('AC-001: rows carry the contract fields, the customer, work order and both sites', function () {

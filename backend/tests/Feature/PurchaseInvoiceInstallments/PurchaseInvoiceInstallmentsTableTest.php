@@ -38,7 +38,7 @@ it('AC-003: exposes the contract columns with their sort/filter flags and the ro
 
     expect($columns->keys()->all())->toBe([
         'id', 'document_type', 'document_number', 'document_date', 'purchase_orders', 'sequence', 'due_date', 'due_month',
-        'days_overdue', 'status', 'overdue', 'reconciled', 'supplier', 'cost_type', 'work_order', 'company', 'company_site',
+        'days_overdue', 'status', 'overdue', 'reconciled', 'compensated', 'supplier', 'cost_type', 'work_order', 'company', 'company_site',
         'operational_site', 'payment_method_code', 'amount', 'paid_amount', 'residual_amount', 'paid_at', 'financial_account',
         'write_off_amount', 'write_off_reason',
     ])
@@ -62,7 +62,7 @@ it('AC-003: exposes the contract columns with their sort/filter flags and the ro
         ->and($columns['due_month']['sortable'])->toBeFalse()
         ->and($columns['days_overdue']['filterType'])->toBe('number')
         // Spec 0262 (REQUIREMENT CHANGED): due date and method are edited in the cells.
-        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['record_payment', 'clear_payment']);
+        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['record_payment', 'clear_payment', 'compensate']);
 });
 
 it('AC-003: rows carry the contract fields, the supplier, work order, sites, linked orders and account', function () {

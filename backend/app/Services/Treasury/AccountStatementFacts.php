@@ -151,7 +151,7 @@ final class AccountStatementFacts
                 ->join('invoices as doc', 'doc.id', '=', 'ii.invoice_id')
                 ->leftJoin('registries as reg', 'reg.id', '=', 'doc.customer_registry_id')
                 ->leftJoin('work_orders as wo', 'wo.id', '=', 'doc.work_order_id')
-                ->whereNotNull('ii.collected_at')->where('ii.collected_amount', '>', 0)
+                ->whereNotNull('ii.collected_at')->where('ii.collected_amount', '>', 0)->whereNull('ii.compensation_id')
                 ->select(['ii.id', 'ii.collected_amount as amount', 'ii.collected_at as at', 'ii.reconciled_at', 'doc.id as doc_id', 'doc.number', 'doc.year',
                     'reg.id as reg_id', 'reg.name as reg_name', 'wo.id as wo_id', 'wo.code as wo_code']);
         }
@@ -160,7 +160,7 @@ final class AccountStatementFacts
             ->join('purchase_invoices as pdoc', 'pdoc.id', '=', 'pi.purchase_invoice_id')
             ->leftJoin('registries as reg', 'reg.id', '=', 'pdoc.supplier_id')
             ->leftJoin('work_orders as wo', 'wo.id', '=', 'pdoc.work_order_id')
-            ->whereNotNull('pi.paid_at')->where('pi.paid_amount', '>', 0)
+            ->whereNotNull('pi.paid_at')->where('pi.paid_amount', '>', 0)->whereNull('pi.compensation_id')
             ->select(['pi.id', 'pi.paid_amount as amount', 'pi.paid_at as at', 'pi.reconciled_at', 'pdoc.id as doc_id', 'pdoc.document_number as number',
                 'reg.id as reg_id', 'reg.name as reg_name', 'wo.id as wo_id', 'wo.code as wo_code']);
     }

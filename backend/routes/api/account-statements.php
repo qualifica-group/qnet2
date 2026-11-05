@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Treasury\AccountStatementController;
 use App\Http\Controllers\Treasury\BankReconciliationController;
+use App\Http\Controllers\Treasury\InstallmentCompensationController;
 use App\Http\Controllers\Treasury\TreasuryOverviewController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,3 +29,9 @@ Route::get('financial-accounts/{financialAccount}/bank-reconciliations/preview',
 Route::get('financial-accounts/{financialAccount}/bank-reconciliations', [BankReconciliationController::class, 'index']);
 Route::post('financial-accounts/{financialAccount}/bank-reconciliations', [BankReconciliationController::class, 'store']);
 Route::delete('bank-reconciliations/{bankReconciliation}', [BankReconciliationController::class, 'destroy']);
+
+// Spec 0364: compensation of a receivable against a payable installment of the same registry.
+Route::get('registries/{registry}/compensation-candidates', [InstallmentCompensationController::class, 'candidates'])->whereNumber('registry')->name('registries.compensation-candidates');
+Route::get('registries/{registry}/compensations', [InstallmentCompensationController::class, 'index'])->whereNumber('registry')->name('registries.compensations');
+Route::post('installment-compensations', [InstallmentCompensationController::class, 'store']);
+Route::delete('installment-compensations/{installmentCompensation}', [InstallmentCompensationController::class, 'destroy']);

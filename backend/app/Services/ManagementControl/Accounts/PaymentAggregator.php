@@ -30,6 +30,7 @@ final class PaymentAggregator
             ->join('purchase_invoices', 'purchase_invoices.id', '=', 'purchase_invoice_installments.purchase_invoice_id')
             ->whereNotNull('purchase_invoice_installments.paid_at')
             ->where('purchase_invoice_installments.paid_amount', '>', 0)
+            ->whereNull('purchase_invoice_installments.compensation_id')
             ->when($filters->dateFrom !== null, fn ($q) => $q->where('purchase_invoice_installments.paid_at', '>=', $filters->dateFrom))
             ->when($filters->dateTo !== null, fn ($q) => $q->where('purchase_invoice_installments.paid_at', '<', $filters->dateToExclusive()));
 

@@ -161,7 +161,7 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
     {
         return match ($columnId) {
             'status' => 'purchase_installment_status',
-            'overdue', 'reconciled' => 'installment_overdue',
+            'overdue', 'reconciled', 'compensated' => 'installment_overdue',
             'document_type' => 'purchase_invoice_type',
             // Spec 0361: the frontend translates the set filter options from `enums.write_off_reason`.
             'write_off_reason' => 'write_off_reason',
@@ -207,6 +207,7 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'status' => $row->status()->value,
             'overdue' => $daysOverdue > 0 ? 'yes' : 'no',
             'reconciled' => $row->reconciled_at !== null ? 'yes' : 'no',
+            'compensated' => $row->compensation_id !== null ? 'yes' : 'no',
             'supplier' => $row->getAttribute('supplier_name'),
             'cost_type' => $this->costTypeBadge($row),
             'work_order' => $workOrder === null ? null : $workOrder.' - '.$row->getAttribute('work_order_title'),
@@ -249,7 +250,21 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             $allowed[] = 'open_document';
         }
 
+        if ($this->canCompensate($actor, $row)) {
+            $allowed[] = 'compensate';
+        }
+
         return $allowed;
+    }
+
+    /** Open installment of a registered invoice, for a user who can both collect and pay (spec 0364). */
+    private function canCompensate(User $actor, PurchaseInvoiceInstallment $row): bool
+    {
+        return $actor->can('invoices.collect') && $actor->can('purchase-invoices.pay')
+            && $row->getAttribute('doc_type') === PurchaseInvoiceType::Invoice->value
+            && ! $row->isPaid()
+            && $row->write_off_amount === null
+            && $row->compensation_id === null;
     }
 
     /**

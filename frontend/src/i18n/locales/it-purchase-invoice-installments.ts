@@ -41,6 +41,8 @@ export const purchaseInvoiceInstallments = {
     financial_account: 'Conto di pagamento',
     write_off_amount: 'Abbuono',
     write_off_reason: 'Motivo abbuono',
+    reconciled: 'Spuntata',
+    compensated: 'Compensata',
   },
   footer: {
     label: 'Totali del filtro corrente',
@@ -51,6 +53,7 @@ export const purchaseInvoiceInstallments = {
   actions: {
     record_payment: 'Registra pagamento',
     clear_payment: 'Annulla pagamento',
+    compensate: 'Compensa',
     open_document: 'Apri documento',
   },
   lookupError: 'Impossibile caricare la scadenza. Riprova.',

@@ -22,6 +22,9 @@ final class PurchaseInstallmentColumnCatalog
     /** The two values of the `reconciled` column (spec 0363). */
     public const array RECONCILED_VALUES = ['yes', 'no'];
 
+    /** The two values of the `compensated` column (spec 0364). */
+    public const array COMPENSATED_VALUES = ['yes', 'no'];
+
     /** Column id => `purchase-invoice-installments` field whose visibility gates it. */
     public const array FIELD_BY_COLUMN = [
         'amount' => 'amount',
@@ -50,6 +53,7 @@ final class PurchaseInstallmentColumnCatalog
             self::column('status', 'badge', sortable: true, filter: 'set', options: PurchaseInstallmentStatus::values()),
             self::column('overdue', 'badge', filter: 'set', options: self::OVERDUE_VALUES),
             self::column('reconciled', 'badge', filter: 'set', options: self::RECONCILED_VALUES),
+            self::column('compensated', 'badge', filter: 'set', options: self::COMPENSATED_VALUES),
             self::column('supplier', 'text', sortable: true, filter: 'set'),
             self::column('cost_type', 'badge', sortable: true, filter: 'set'),
             self::column('work_order', 'text', sortable: true, filter: 'set'),
@@ -100,6 +104,7 @@ final class PurchaseInstallmentColumnCatalog
         return [
             ['key' => 'record_payment', 'label' => 'purchaseInvoiceInstallments.actions.record_payment', 'icon' => 'hand-coins', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.pay'],
             ['key' => 'clear_payment', 'label' => 'purchaseInvoiceInstallments.actions.clear_payment', 'icon' => 'undo-2', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.pay'],
+            ['key' => 'compensate', 'label' => 'purchaseInvoiceInstallments.actions.compensate', 'icon' => 'scale', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.pay'],
             ['key' => 'open_document', 'label' => 'purchaseInvoiceInstallments.actions.open_document', 'icon' => 'file-text', 'type' => 'link', 'confirm' => false, 'permission' => 'purchase-invoices.view'],
         ];
     }

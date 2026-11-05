@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Enums\InstallmentStatus;
+use App\Enums\InvoiceType;
 use App\Http\Requests\Invoices\UpdateInvoiceInstallmentRequest;
 use App\Models\InvoiceInstallment;
 use App\Models\User;
@@ -84,7 +85,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
     {
         return InvoiceInstallment::query()
             ->select('invoice_installments.*')
-            ->selectRaw('invoices.number as invoice_number, invoices.year as invoice_year, invoices.document_date as invoice_document_date')
+            ->selectRaw('invoices.type as invoice_type, invoices.number as invoice_number, invoices.year as invoice_year, invoices.document_date as invoice_document_date')
             ->selectRaw('invoices.customer_registry_id as customer_id, registries.name as customer_name, companies.denomination as company_name, company_sites.name as company_site_name')
             ->selectRaw('work_orders.code as work_order_code, work_orders.title as work_order_title')
             ->selectRaw(InstallmentSql::operationalSiteLabel().' as operational_site_label')
@@ -158,7 +159,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
     {
         return match ($columnId) {
             'status' => 'installment_status',
-            'overdue', 'reconciled' => 'installment_overdue',
+            'overdue', 'reconciled', 'compensated' => 'installment_overdue',
             // Spec 0361: the frontend translates the set filter options from `enums.write_off_reason`.
             'write_off_reason' => 'write_off_reason',
             default => null,
@@ -196,6 +197,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'status' => $row->status()->value,
             'overdue' => $daysOverdue > 0 ? 'yes' : 'no',
             'reconciled' => $row->reconciled_at !== null ? 'yes' : 'no',
+            'compensated' => $row->compensation_id !== null ? 'yes' : 'no',
             'customer_id' => (int) $row->getAttribute('customer_id'),
             'customer' => $row->getAttribute('customer_name'),
             'work_order' => $workOrder === null ? null : $workOrder.' - '.$row->getAttribute('work_order_title'),
@@ -243,7 +245,21 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             }
         }
 
+        if ($this->canCompensate($actor, $row)) {
+            $allowed[] = 'compensate';
+        }
+
         return $allowed;
+    }
+
+    /** Open installment of a registered invoice, for a user who can both collect and pay (spec 0364). */
+    private function canCompensate(User $actor, InvoiceInstallment $row): bool
+    {
+        return $actor->can('invoices.collect') && $actor->can('purchase-invoices.pay')
+            && $row->getAttribute('invoice_type') === InvoiceType::Invoice->value
+            && $row->status() === InstallmentStatus::Unpaid
+            && $row->write_off_amount === null
+            && $row->compensation_id === null;
     }
 
     /**

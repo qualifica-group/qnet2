@@ -163,6 +163,11 @@ final class LedgerCalculator
             'settled_amount' => $row->settledCents === null ? null : $this->money($row->settledCents),
             'settled_at' => $row->settledAt?->toDateString(),
             'write_off_amount' => $this->money($row->writeOffCents),
+            'compensation' => $row->compensationId === null ? null : [
+                'id' => $row->compensationId,
+                'amount' => $this->money($row->settledCents ?? 0),
+                'counterpart_label' => $row->compensationLabel,
+            ],
             'residual_amount' => $this->money($row->residualCents()),
             'days_late' => $this->daysLate($row, $today),
         ];
@@ -208,6 +213,7 @@ final class LedgerCalculator
             'invoiced_total' => $this->money(array_sum(array_map(fn (LedgerEntry $entry): int => $entry->totalCents, $period))),
             'settled_total' => $this->money(array_sum(array_map(fn (LedgerEntry $entry): int => $entry->settledCents(), $period))),
             'write_off_total' => $this->money(array_sum(array_map(fn (LedgerEntry $entry): int => $entry->writeOffCents(), $period))),
+            'compensated_total' => $this->money(array_sum(array_map(fn (LedgerEntry $entry): int => $entry->compensatedCents(), $period))),
             'residual_total' => $this->money($residualCents),
             'overdue_total' => $this->money(array_sum(array_intersect_key($aging, array_flip($overdueKeys)))),
             'not_due_total' => $this->money(array_sum(array_intersect_key($aging, array_flip($dueKeys)))),

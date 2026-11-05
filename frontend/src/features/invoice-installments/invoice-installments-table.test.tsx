@@ -33,6 +33,10 @@ vi.mock('@/features/invoices/invoice-detail-sheet', () => ({
   InvoiceDetailSheet: ({ invoiceId }: { invoiceId: number | null }) =>
     invoiceId === null ? null : <div role="dialog" aria-label="invoice sheet">{`invoice ${invoiceId}`}</div>,
 }))
+vi.mock('@/features/compensations/compensation-dialog', () => ({
+  CompensationDialog: ({ target }: { target: unknown }) =>
+    target === null ? null : <div role="dialog" aria-label="compensation dialog">{JSON.stringify(target)}</div>,
+}))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function action(key: string): TableActionDefinition {
@@ -40,7 +44,7 @@ function action(key: string): TableActionDefinition {
 }
 
 const ROW: TableRow = { id: 21, actions: [] }
-const rowState = { reconciled: false }
+const rowState = { reconciled: false, compensated: false }
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
@@ -66,8 +70,8 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onRowGroupColumnsChange?.(['customer'])}>
           group-customer
         </button>
-        {['view_invoice', 'record_collection', 'clear_collection'].map((key) => {
-          const row = { ...ROW, reconciled: rowState.reconciled }
+        {['view_invoice', 'record_collection', 'clear_collection', 'compensate'].map((key) => {
+          const row = { ...ROW, reconciled: rowState.reconciled ? 'yes' : 'no', compensated: rowState.compensated ? 'yes' : 'no' }
           const state = resolveActionState?.(action(key), row)
           return (
             <button key={key} type="button" disabled={state?.disabled === true} onClick={() => onAction?.(action(key), row)}>
@@ -146,6 +150,7 @@ beforeEach(() => {
   clearMock.mockReset().mockResolvedValue({} as Invoice)
   canMock.mockReset().mockReturnValue(true)
   rowState.reconciled = false
+  rowState.compensated = false
 })
 
 describe('InvoiceInstallmentsTable (spec 0197 AC-018, AC-020)', () => {
@@ -240,5 +245,28 @@ describe('InvoiceInstallmentsTable reconciliation lock and ?quick= (spec 0363 AC
     expect(screen.getByRole('button', { name: /clear_collection - ticked on a bank statement/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /record_collection - ticked on a bank statement/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'view_invoice' })).toBeEnabled()
+  })
+
+  it('AC-013 disables clear collection with the reason on a compensated installment', () => {
+    rowState.compensated = true
+    renderTable()
+
+    expect(screen.getByRole('button', { name: /clear_collection - compensated/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'record_collection' })).toBeEnabled()
+  })
+
+  it('AC-012 Compensate opens the dialog on the installment, with the registry and company of its invoice', async () => {
+    getInvoiceMock.mockResolvedValue({
+      id: 3,
+      installments: [OPEN],
+      customer: { id: 9, name: 'ACME Spa' },
+      company: { id: 4, name: 'Qnet' },
+    })
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'compensate' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'compensation dialog' })
+    expect(JSON.parse(dialog.textContent ?? '{}')).toEqual({ registryId: 9, companyId: 4, receivableId: 21 })
   })
 })

@@ -205,6 +205,14 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'compensation',
+      title: 'Compensation',
+      blocks: [
+        { type: 'paragraph', text: 'On an open installment the **Compensate** action opens the dialog with that installment already chosen: pick the payable installment of the same registry and company. You need both the collect and the pay permissions. When the residuals differ choose **Spread** or **New installment** for the remainder.' },
+        { type: 'paragraph', text: 'On a compensated installment **Clear collection** is disabled and the reason is shown: undo the compensation from the registry **Ledger**.' },
+      ],
+    },
+    {
       id: 'link-filter',
       title: 'Opening the page already filtered',
       blocks: [

@@ -1,7 +1,9 @@
 import { useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CalendarClock, HandCoins, Undo2 } from 'lucide-react'
+import { CalendarClock, HandCoins, Scale, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
+import { CompensationDialog } from '@/features/compensations/compensation-dialog'
+import { useInstallmentActionState } from '@/features/compensations/use-installment-action-state'
 import { PURCHASE_INSTALLMENTS_DOMAIN } from '@/features/purchase-invoice-installments/api'
 import { purchaseInstallmentColumnRenderers } from '@/features/purchase-invoice-installments/column-renderers'
 import { PurchaseClearPaymentDialog } from '@/features/purchase-invoice-installments/purchase-clear-payment-dialog'
@@ -18,10 +20,11 @@ import {
 import { usePurchaseInstallmentRowActions } from '@/features/purchase-invoice-installments/use-purchase-installment-row-actions'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
-import { useReconciledActionState } from '@/features/treasury-movements/use-reconciled-action-state'
 
 /** Payment actions a ticked (reconciled) installment cannot take (spec 0363 D-2). */
 const RECONCILED_LOCKED_ACTIONS = ['clear_payment', 'record_payment'] as const
+/** Actions a compensated installment cannot take: it is undone from the compensation (spec 0364 D-7). */
+const COMPENSATED_LOCKED_ACTIONS = ['clear_payment'] as const
 /** URL parameter that opens the grid on a quick filter (the treasury overview links here). */
 const QUICK_PARAM = 'quick'
 
@@ -30,6 +33,7 @@ const PURCHASE_ACTION_ICONS: ActionIconMap = {
   'calendar-clock': CalendarClock,
   'hand-coins': HandCoins,
   'undo-2': Undo2,
+  scale: Scale,
 }
 
 /**
@@ -42,7 +46,7 @@ export function PurchaseInvoiceInstallmentsTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const [searchParams] = useSearchParams()
   const quickFilter = usePurchaseInstallmentQuickFilter(tableRef, parseQuickFilterParam(searchParams.get(QUICK_PARAM)))
-  const resolveActionState = useReconciledActionState(RECONCILED_LOCKED_ACTIONS)
+  const resolveActionState = useInstallmentActionState(RECONCILED_LOCKED_ACTIONS, COMPENSATED_LOCKED_ACTIONS)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const actions = usePurchaseInstallmentRowActions(refreshGrid)
   const bulkPayment = usePurchaseInstallmentBulkPayment(tableRef, refreshGrid)
@@ -67,6 +71,7 @@ export function PurchaseInvoiceInstallmentsTable() {
         renderFooter={(aggregates) => <PurchaseInstallmentTotalsFooter aggregates={aggregates} />}
       />
 
+      <CompensationDialog target={actions.compensationTarget} onClose={actions.closeCompensation} />
       <PurchasePaymentDialog detail={actions.payTarget} onClose={actions.closePay} onSaved={refreshGrid} />
       <PurchaseInstallmentBulkPaymentDialog
         targets={bulkPayment.targets}

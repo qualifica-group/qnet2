@@ -10,6 +10,7 @@ import { makeDocument, makeInstallment, makeLedger, makeSection } from '@/featur
 import type { Ledger } from '@/features/ledger/types'
 
 vi.mock('@/api/client', () => ({ apiClient: { get: vi.fn() } }))
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => false }) }))
 
 const getMock = vi.mocked(apiClient.get)
 
@@ -22,7 +23,11 @@ const EMPTY_FOR_SELECT = {
 function mockLedger(ledger: Ledger) {
   getMock.mockImplementation((url: string) =>
     Promise.resolve({
-      data: url.endsWith('/ledger') ? { success: true, message: 'OK', data: ledger } : EMPTY_FOR_SELECT,
+      data: url.endsWith('/ledger')
+        ? { success: true, message: 'OK', data: ledger }
+        : url.endsWith('/compensations')
+          ? { success: true, message: 'OK', data: [] }
+          : EMPTY_FOR_SELECT,
     }),
   )
 }
@@ -154,8 +159,10 @@ describe('LedgerPanel', () => {
     mockLedger(makeLedger({ supplier: makeSection() }))
     const { unmount } = renderPanel(<LedgerPanel registryId={7} />)
 
-    const headings = (await screen.findAllByRole('heading', { level: 3 })).map((heading) => heading.textContent)
-    expect(headings).toEqual(['Customer', 'Supplier'])
+    await screen.findByRole('heading', { name: 'Supplier' })
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)
+    // Spec 0364: the Compensations section closes the panel.
+    expect(headings).toEqual(['Customer', 'Supplier', 'Compensations'])
     expect(screen.getAllByText('Outstanding').length).toBeGreaterThanOrEqual(2)
     unmount()
 

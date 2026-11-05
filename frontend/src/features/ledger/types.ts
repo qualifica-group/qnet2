@@ -1,3 +1,4 @@
+import type { InstallmentCompensationRef } from '@/features/compensations/types'
 import type { WriteOffReason } from '@/features/invoices/types'
 
 /** Frozen contract of `GET /api/registries/{registry}/ledger` (spec 0266, write-off rows spec 0361). */
@@ -21,6 +22,8 @@ export interface LedgerInstallment {
   residual_amount: number
   days_late: number
   write_off_amount: number | null
+  /** Spec 0364: set when the installment was settled by a compensation. */
+  compensation: InstallmentCompensationRef | null
 }
 
 export interface LedgerDocument {
@@ -57,6 +60,8 @@ export interface LedgerSummary {
   invoiced_total: number
   settled_total: number
   write_off_total: number
+  /** Spec 0364: total settled by compensations. */
+  compensated_total: number
   residual_total: number
   overdue_total: number
   not_due_total: number
