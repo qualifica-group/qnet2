@@ -365,10 +365,17 @@ class Quote extends BaseModel
      * them per row (`withCount`); the thread itself is always read through the
      * Opportunity. Soft-deleted notes are excluded by `Note`'s own global scope.
      *
+     * The redundant `whereNotNull` is a query-plan guard: almost every note has
+     * `quote_id` NULL, so the index statistics report a cardinality of ~1 and
+     * the optimizer runs the per-row `withCount` subquery as a full scan of
+     * `notes`. Under a category scope the semi-join materializes every matching
+     * quote, so that scan ran thousands of times (30 s timeout in production).
+     * The NOT NULL predicate makes MariaDB/MySQL take the `quote_id` index.
+     *
      * @return HasMany<Note, $this>
      */
     public function scopedNotes(): HasMany
     {
-        return $this->hasMany(Note::class);
+        return $this->hasMany(Note::class)->whereNotNull('notes.quote_id');
     }
 }

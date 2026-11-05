@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Fix timeout griglia Offerte con tab categoria (es. APL) — VERDE, COMMITTATO (2026-11-05)
+
+- Sintomo: `POST /api/tables/quotes/rows` con `productCategoryBranchId` 26-30 s in produzione (timeout); "Tutte" veloce.
+- Root cause: `withCount('scopedNotes')` = subquery correlata su `notes.quote_id`; quasi tutte le note hanno
+  `quote_id` NULL -> cardinalita' indice ~1 -> l'ottimizzatore fa FULL SCAN di `notes` per riga. Con lo scope
+  categoria il semi-join materializza tutte le offerte del ramo (3077 per APL) prima del LIMIT -> 3077 x 110k righe.
+- Fix: `Quote::scopedNotes()` aggiunge `whereNotNull('notes.quote_id')` (ridondante, guardia di piano: forza l'indice).
+  Locale: APL 25 s -> 0,32 s; Tutte 0,57 -> 0,17 s. Vale anche per Gestione Richieste (stesso withCount).
+- Test: `tests/Unit/Models/QuoteTest.php` (predicato presente). Manuale: nessun impatto.
+
 ## Rinnovo contratti a periodi (spec 0358) — VERDE, COMMITTATO (2026-11-05)
 
 - Decisioni utente 2026-11-05: periodi di rinnovo (0 = Iniziale, N = Rinnovo N); dialog Rinnova con nuove date
