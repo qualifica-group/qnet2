@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0358-contract-renewal-periods" status="draft" owner="utente" date="2026-11-05">
+
+  <goal>
+    Rinnovo dei Contratti a periodi: con lo stesso contratto e la stessa offerta l'utente apre un nuovo periodo
+    ("Rinnovo 1", "Rinnovo 2"...) e torna a programmare commesse sulle stesse righe di ricavo, con gli stessi
+    prezzi e le stesse provvigioni. Il contratto conserva lo storico dei periodi; l'ultimo rinnovo si puo'
+    annullare finche' non ha commesse.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-05 (raccolte in chat, non rimettere in discussione):
+      U-1 Modello a PERIODI: azione "Rinnova" sul contratto apre un nuovo periodo; in ogni periodo ogni riga di
+          ricavo dell'offerta si programma UNA sola volta; le commesse nascono legate al periodo; storico dei
+          rinnovi sul contratto.
+      U-2 DATE: il dialog Rinnova chiede nuova scadenza e nuova data rinnovo, precompilate spostando le attuali
+          della stessa durata; le date precedenti restano nello storico.
+      U-3 IMPORTI: stesse righe, prezzi e provvigioni dell'offerta; nessuna copia di righe, il totale offerta non
+          cambia. Le provvigioni maturano a ogni fattura emessa sulla commessa del rinnovo.
+      U-4 STATI: rinnovabile negli stessi stati di "Programma" (ContractActionAvailability::mayProgram), anche a
+          scadenza passata.
+      U-5 ANNULLA: si puo' annullare SOLO l'ultimo rinnovo e SOLO se nel suo periodo non ci sono commesse; ripristina
+          le date precedenti dallo storico.
+      U-6 PERMESSO: lo stesso di "Programma" (`contracts.program`, ContractPolicy::program con perimetro). Nessun
+          permesso nuovo, nessuna configurazione dei ruoli.
+
+    Fatti VERIFICATI nel repo:
+      - `contracts` (Contract, 1:1 con `quotes` via `quote_id` UNIQUE) ha `renewal_date`/`expiry_date` (fillable,
+        PATCH via UpdateContractRequest con invariante renewal_date &lt;= expiry_date), `accepted_at`, `validated_at`.
+        Nessun concetto di periodo oggi. ContractAlertResolver calcola alert/days_to_* dalle due date.
+      - Pivot `quote_line_work_order`: UNIQUE(`quote_line_id`) (migrazione 2026_09_02_210000, spec 0095 D-4). Su MySQL
+        la FK `quote_line_id` si appoggia a quell'indice e la FK `work_order_id` all'indice
+        `quote_line_work_order_work_order_id_index` (errno 1553 se si droppa senza indice sostitutivo; SQLite non lo
+        intercetta).
+      - `work_order_line_payments`: `quote_line_id` UNIQUE, indice su `work_order_id`; `QuoteLine::payment()` e' un
+        HasOne per `quote_line_id`, letto da WorkOrderContractDataBuilder (LINE_RELATIONS `payment.status`,
+        paymentPayload()); UpdateWorkOrderLinePaymentRequest::currentStatusId() filtra per sola `quote_line_id`;
+        WorkOrderLinePaymentWriter usa firstOrNew per (work_order_id, quote_line_id).
+      - WorkOrderLineWriter::writeSubmitted() -> assertBelongToRevenueLines() + assertNotAlreadyProgrammed() (conflitto
+        su qualunque altra commessa) + MultiQuoteLineRules, poi `quoteLines()->sync()`. Chiamato da
+        WorkOrderService::create/update (transazione). Usato da Programma singolo (ContractWorkOrderController), batch
+        (ContractProgramBatch, spec 0215), multi-offerta (MultiQuoteWorkOrderProgrammer, spec 0267) e form commessa.
+      - Occupazione delle righe: ProgrammableQuoteLineResource::summarizeWorkOrder() (`workOrders->first()`),
+        MultiProgrammableLinesBuilder (`eligible` = `workOrders->isEmpty()`), QuoteOfferLineForSelectService::baseQuery()
+        (`whereDoesntHave('workOrders')` + `except_work_order_id`).
+      - Fatturazione: InvoiceLineGuard::invoicedElsewhere() rifiuta una riga gia' presente in QUALSIASI fattura
+        (`invoices.line_already_invoiced`); ProformaRequestBillableLines::available() esclude le righe presenti in
+        qualsiasi invoice_line. `invoices.work_order_id` esiste (nullable).
+      - Provvigioni: AccrualStateLoader ripartisce `quote_line_commissions.calculated_amount` sulle fatture di TUTTE le
+        commesse della riga (raggruppa per `quote_line_id`), con tetto il netto riga. `commission_accruals` ha
+        `invoice_id` e `quote_line_id`.
+      - Controllo di gestione: WorkOrderFigureSources legge i pivot per commessa (ricavo/budget per commessa: corretto
+        anche con piu' periodi) ma `commission_actual` somma `commission_accruals` per `quote_line_id` (contato su ogni
+        commessa che condivide la riga).
+      - Migrazione legacy: WorkOrdersSource::lineIds() considera "programmata" una riga presente nel pivot e la duplica
+        con QuoteLineDuplicator; LegacyWorkOrderLinePaymentWriter crea un pagamento per riga della commessa.
+      - Azioni contratto: ContractActionAvailability (unica fonte), ContractsAuthorization::actions() /
+        actionPermissions(), ContractsTableDefinition (row actions, `program` a :290), FE `contract-lifecycle.ts`,
+        `contract-actions-bar.tsx`, `contracts-table.tsx` (ACTIONS_OPENING_DETAIL), dialog `contract-program-dialog.tsx`,
+        tab commesse `contract-work-orders-section.tsx` (stessa TableView `work-orders` via QuoteScopedTableDefinition).
+      - Griglia commesse: WorkOrderColumnCatalog; renderer FE `features/work-orders/column-renderers.tsx`.
+      - Guide in-app: `features/help/content/{it,en}/contracts.ts` (sezione `expiry-and-renewal`) e `work-orders.ts`.
+  </context>
+
+  <decisions>
+    D-1 Periodo = numero intero `renewal_number`: 0 = periodo iniziale, N = Rinnovo N. Il periodo CORRENTE di un
+        contratto e' MAX(`contract_renewals.number`) o 0: derivato, nessuna colonna denormalizzata su `contracts`.
+    D-2 Nuova tabella `contract_renewals` (storico): id, contract_id (FK cascadeOnDelete), number (unsigned smallint),
+        starts_on (date), previous_renewal_date (date null), previous_expiry_date (date null), renewal_date (date null),
+        expiry_date (date), renewed_by (FK users nullOnDelete), timestamps. UNIQUE(contract_id, number). Model
+        `ContractRenewal`, relazione `Contract::renewals()` ordinata per number. Audit con LogsModelActivity.
+        `starts_on` = giorno successivo alla `expiry_date` precedente, oppure la data del rinnovo se la scadenza
+        precedente era vuota.
+    D-3 Il periodo vive sul PIVOT, non sulla commessa: `quote_line_work_order.renewal_number` (unsigned smallint,
+        default 0). Motivo: una commessa multi-offerta (spec 0267) raccoglie righe di contratti diversi, ciascuno nel
+        proprio periodo. Vincolo: UNIQUE(quote_line_id, renewal_number) al posto di UNIQUE(quote_line_id).
+        Tutte le righe gia' esistenti restano nel periodo 0 (default): nessun backfill.
+    D-4 Assegnazione del periodo a una riga che entra in una commessa (nuovo `RenewalPeriodResolver`, unico punto,
+        usato da writer, endpoint di occupazione e for-select): se la commessa contiene gia' righe della STESSA offerta
+        -> il loro periodo; altrimenti il periodo corrente del contratto dell'offerta (0 se l'offerta non ha contratto).
+        Le righe gia' presenti nella commessa conservano il proprio numero.
+    D-5 "Una riga, una sola commessa" diventa "una riga, una sola commessa PER PERIODO":
+        assertNotAlreadyProgrammed() cerca il conflitto solo nello stesso periodo; occupazione in programmable-lines,
+        eligible del multi-offerta e for-select calcolati sul periodo risultante da D-4. Il messaggio 422 resta
+        `work_orders.line_already_programmed` (nomina la commessa occupante).
+    D-6 Pagamenti per riga: `work_order_line_payments` passa a UNIQUE(work_order_id, quote_line_id). `QuoteLine::payment()`
+        viene RIMOSSA; WorkOrderContractDataBuilder legge i pagamenti della commessa (`$workOrder->linePayments`
+        indicizzati per quote_line_id); UpdateWorkOrderLinePaymentRequest::currentStatusId() filtra anche per commessa.
+    D-7 Fatturazione per commessa (conseguenza di U-3): una riga si fattura una sola volta PER COMMESSA.
+        InvoiceLineGuard::invoicedElsewhere() conta solo le invoice_lines di fatture con lo stesso `work_order_id`;
+        ProformaRequestBillableLines::available() esclude solo le righe gia' fatturate nella commessa della richiesta.
+    D-8 Provvigioni per commessa (U-3): AccrualStateLoader raggruppa le fatture di una riga per (`quote_line_id`,
+        `invoices.work_order_id`): la provvigione della riga matura per intero su ciascuna commessa, ripartita tra le
+        fatture di quella commessa con il tetto del netto riga, come oggi per la commessa unica. Le fatture senza
+        commessa formano un gruppo a se'. Nessun ricalcolo massivo: i maturati esistenti restano invariati
+        (oggi ogni riga ha al massimo una commessa, quindi il raggruppamento produce gli stessi bucket).
+    D-9 Controllo di gestione: `commission_actual` di WorkOrderFigureSources somma i `commission_accruals` delle fatture
+        della commessa (join `invoices.work_order_id`), non piu' per sola riga.
+    D-10 Azione "Rinnova": POST `contracts/{contract}/renewals`. Gate: `authorize('program')` AND
+        `ContractActionAvailability::mayProgram()` (U-4, U-6). Scrive nella stessa transazione la riga storico
+        (previous_* = date attuali) e le nuove `renewal_date`/`expiry_date` sul contratto. Nessun cambio di stato del
+        contratto. Logica in `App\Services\Contracts\ContractRenewalService` (handle + Step N).
+    D-11 Annulla rinnovo (U-5): DELETE `contracts/{contract}/renewals/{renewal}` con `scopeBindings()`. Ammesso solo se
+        `{renewal}` e' l'ultimo del contratto E nessuna riga dell'offerta del contratto e' nel pivot con quel
+        `renewal_number`. Ripristina `renewal_date`/`expiry_date` dai previous_* e cancella la riga storico. Stesso gate
+        di D-10. Nuova regola di disponibilita' `ContractActionAvailability::mayUndoRenewal(Contract, ContractRenewal)`.
+    D-12 Validazione Rinnova (`RenewContractRequest`): `expiry_date` required date, strettamente successiva alla
+        `expiry_date` attuale quando presente; `renewal_date` nullable date, &lt;= `expiry_date` (stessa invariante di
+        UpdateContractRequest).
+    D-13 Precompilazione del dialog (solo FE, funzione pura `contract-renewal-defaults.ts`): inizio periodo corrente =
+        `starts_on` dell'ultimo rinnovo, oppure `accepted_at` ?? `validated_at` per il periodo 0. Durata = giorni da
+        inizio a `expiry_date` inclusi. Nuova scadenza = `expiry_date` + durata; nuova data rinnovo = `renewal_date` +
+        durata (vuota se oggi vuota). Inizio o scadenza mancanti -> scadenza = oggi + 12 mesi (costante
+        `DEFAULT_RENEWAL_MONTHS`), data rinnovo vuota. L'utente puo' modificare entrambe.
+    D-14 Visibilita' del periodo: nuova colonna griglia commesse `renewal_number` (etichetta "Periodo", numero,
+        filtrabile e ordinabile, non editabile, MAX del pivot della commessa; renderer "Iniziale" / "Rinnovo N").
+        Compare quindi anche nel tab Commesse del contratto (stessa TableView). Il dialog Programma mostra il periodo
+        corrente ("Periodo: Rinnovo 2").
+    D-15 Storico nel dettaglio contratto: nuova sezione "Rinnovi" (RecordCard compatta) con una riga per periodo
+        (Iniziale + ogni rinnovo): numero, dal/al, data rinnovo, date precedenti, autore, n. commesse; bottone
+        "Annulla rinnovo" sull'ultima riga se `can_undo` e `permissions.actions.renew`.
+    D-16 Migrazione legacy: WorkOrdersSource continua a scrivere nel periodo 0 (default del pivot); il controllo
+        "gia' programmata" si restringe a `renewal_number = 0` cosi' resta identico a oggi. La mappatura dei cicli di
+        rinnovo legacy sui periodi NON e' in questa spec (vedi out).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: create `contract_renewals`; `quote_line_work_order` + `renewal_number` e UNIQUE(quote_line_id, renewal_number) (indice sostitutivo prima del drop, MySQL errno 1553); `work_order_line_payments` UNIQUE(work_order_id, quote_line_id). Tutte reversibili, con controllo esplicito del dato in down().</item>
+      <item>Model `ContractRenewal` + `Contract::renewals()` + `Contract::currentRenewalNumber()`; pivot `renewal_number` in `WorkOrder::quoteLines()`/`QuoteLine::workOrders()` (`withPivot`).</item>
+      <item>`RenewalPeriodResolver` (D-4); WorkOrderLineWriter per periodo (D-5); ProgrammableQuoteLineResource, MultiProgrammableLinesBuilder, QuoteOfferLineForSelectService sul periodo.</item>
+      <item>Pagamenti per commessa (D-6): rimozione `QuoteLine::payment()`, WorkOrderContractDataBuilder, UpdateWorkOrderLinePaymentRequest.</item>
+      <item>Fatturazione e provvigioni per commessa (D-7, D-8): InvoiceLineGuard, ProformaRequestBillableLines, AccrualStateLoader.</item>
+      <item>Controllo di gestione (D-9): WorkOrderFigureSources `commission_actual`.</item>
+      <item>Endpoint Rinnova / Annulla rinnovo (D-10, D-11, D-12) + ContractRenewalService + RenewContractRequest + ContractActionAvailability::mayUndoRenewal + ContractsAuthorization (`renew` in actions) + row action `renew` in ContractsTableDefinition.</item>
+      <item>ContractResource: `renewal_number`, `renewals[]`.</item>
+      <item>Colonna griglia commesse `renewal_number` (D-14) in WorkOrderColumnCatalog + renderer FE.</item>
+      <item>Legacy WorkOrdersSource: controllo programmata su periodo 0 (D-16).</item>
+      <item>FE: api + mutation rinnova/annulla, `contract-renew-dialog.tsx` (RHF + Zod), `contract-renewal-defaults.ts`, bottone "Rinnova" in barra azioni e lifecycle, `contract-renewals-section.tsx`, periodo nel dialog Programma, `renew` in ACTIONS_OPENING_DETAIL, i18n it/en.</item>
+      <item>Manuale: guide in-app IT/EN `contracts.ts` (nuova sezione rinnovi, stessi id), `work-orders.ts` (colonna Periodo); manuale Claude Docs (Contratti, Commesse, Fatture/Provvigioni).</item>
+      <item>Test Pest (tests/Feature/Spec0358) e Vitest eseguiti.</item>
+    </in>
+    <out>
+      <item>Prezzi o provvigioni diversi per periodo (adeguamenti ISTAT, righe di periodo): U-3.</item>
+      <item>Copia delle righe nell'offerta a ogni rinnovo; variazione del totale offerta.</item>
+      <item>Cambio automatico dello stato del contratto al rinnovo o alla scadenza; rinnovo automatico/schedulato; notifiche di rinnovo.</item>
+      <item>Programmare righe in un periodo PRECEDENTE a quello corrente da Programma (resta possibile solo aggiungendo righe a una commessa gia' esistente di quel periodo, D-4).</item>
+      <item>Annullare un rinnovo diverso dall'ultimo o con commesse nel periodo.</item>
+      <item>Permesso dedicato `contracts.renew` (U-6).</item>
+      <item>Mappatura dei cicli di rinnovo legacy sui periodi e rimozione di QuoteLineDuplicator: e' lavoro del legacy che invia (backend.md §9), da specificare a parte.</item>
+      <item>Periodo mostrato nel dettaglio commessa o in WorkOrderResource (basta la colonna griglia, D-14).</item>
+      <item>Riepiloghi economici per periodo sul contratto (fatturato/da fatturare per rinnovo).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST" path="/api/contracts/{contract}/renewals">
+      <request>
+        { renewal_date: "YYYY-MM-DD" | null, expiry_date: "YYYY-MM-DD" REQUIRED }
+        Gate: ContractPolicy::program (perimetro incluso) AND ContractActionAvailability::mayProgram.
+      </request>
+      <response status="201">
+        { success: true, message: "Created", data: &lt;ContractDetail&gt;, permissions: &lt;ResourcePermissions&gt; }
+        ContractDetail = stessa shape di GET /api/contracts/{contract}, con `renewal_number` incrementato,
+        `renewal_date`/`expiry_date` nuove e il nuovo elemento in coda a `renewals`.
+      </response>
+      <errors>
+        401; 403 senza `contracts.program` o fuori perimetro o contratto non programmabile; 404;
+        422 `expiry_date` mancante / non successiva alla scadenza attuale; 422 `renewal_date` &gt; `expiry_date`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/contracts/{contract}/renewals/{renewal}">
+      <request>route model binding con scopeBindings (il rinnovo deve appartenere al contratto). Stesso gate del POST.</request>
+      <response status="200">
+        { success: true, message: "OK", data: &lt;ContractDetail&gt;, permissions: &lt;ResourcePermissions&gt; }
+        con date ripristinate dai previous_* e `renewals` senza l'ultimo elemento.
+      </response>
+      <errors>
+        401; 403 come sopra; 404 rinnovo di un altro contratto;
+        422 `renewal` = "Only the latest renewal can be undone." (it: "Si puo' annullare solo l'ultimo rinnovo.");
+        422 `renewal` = "The renewal period already has work orders." (it: "Il periodo del rinnovo ha gia' commesse.").
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/contracts/{contract}">
+      <response status="200">
+        Campi AGGIUNTI a ContractDetail (nessun campo esistente cambia):
+        renewal_number: int                       // periodo corrente, 0 = iniziale
+        renewals: [ {                              // ordinati per number asc; vuoto se mai rinnovato
+          id: int, number: int,
+          starts_on: "YYYY-MM-DD",
+          renewal_date: "YYYY-MM-DD" | null, expiry_date: "YYYY-MM-DD",
+          previous_renewal_date: "YYYY-MM-DD" | null, previous_expiry_date: "YYYY-MM-DD" | null,
+          renewed_by: { id: int, name: string } | null,
+          created_at: ISO-8601,
+          work_orders_count: int,                  // commesse distinte con righe dell'offerta in questo periodo
+          can_undo: bool                           // mayUndoRenewal (ultimo e senza commesse); NON include il permesso
+        } ]
+        initial_period_work_orders_count: int      // commesse del periodo 0, per la riga "Iniziale" dello storico
+        permissions.actions.renew: bool            // mayProgram AND contracts.program (stessa regola di `program`)
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/contracts/{contract}/programmable-lines">
+      <response status="200">
+        Shape INVARIATA. Semantica di `work_order`: la commessa che occupa la riga nel periodo CORRENTE del contratto
+        (null se libera in quel periodo, anche se programmata in periodi precedenti).
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/contracts/multi-programmable-lines">
+      <response status="200">Shape INVARIATA. `eligible` valuta l'occupazione nel periodo corrente del contratto di ogni riga.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/quote-offer-lines/for-select">
+      <response status="200">Shape INVARIATA. Esclude le righe occupate nel periodo risultante da D-4 (con `except_work_order_id`: il periodo della commessa in modifica per quell'offerta).</response>
+    </endpoint>
+
+    <endpoint method="GET+POST" path="GET /api/tables/work-orders/columns, POST /api/tables/work-orders/rows">
+      <response status="200">
+        Nuova colonna { id: "renewal_number", label: "workOrders.columns.renewal_number", type: "number",
+        visible: true, sortable: true, filterable: true, filterType: "number", editable: false }.
+        Valore riga: int (MAX `renewal_number` del pivot della commessa; 0 se la commessa non ha righe).
+      </response>
+    </endpoint>
+
+    <endpoint method="(invariati)" path="POST /api/contracts/{contract}/work-orders, .../batch, /api/contracts/multi-quote-work-orders, PATCH /api/work-orders/{id}">
+      <request>Shape INVARIATA: il periodo NON e' un input, lo decide il server (D-4).</request>
+      <errors>422 `quote_line_ids` / `groups.N.quote_line_ids` = `work_orders.line_already_programmed` solo per conflitti nello stesso periodo.</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Rinnova -->
+    <criterion id="AC-001">Dato un contratto programmabile con expiry 2026-12-31 e renewal 2026-11-30, quando POST renewals {expiry_date: 2027-12-31, renewal_date: 2027-11-30}, allora 201, il contratto ha le nuove date, `renewal_number` = 1 e `renewals[0]` = {number 1, starts_on 2027-01-01, previous_expiry_date 2026-12-31, previous_renewal_date 2026-11-30, renewed_by = attore}.</criterion>
+    <criterion id="AC-002">Dato un contratto gia' rinnovato una volta, quando si rinnova di nuovo, allora `renewal_number` = 2 e `renewals` ha 2 elementi ordinati per numero.</criterion>
+    <criterion id="AC-003">Dato un contratto NON programmabile (closed_lost, oppure open/pending non validato, oppure sospeso), quando POST renewals, allora 403 e nessuna riga in `contract_renewals`, date invariate.</criterion>
+    <criterion id="AC-004">Dato un utente senza `contracts.program`, o fuori perimetro del contratto, quando POST renewals, allora 403.</criterion>
+    <criterion id="AC-005">Quando POST renewals senza `expiry_date`, o con `expiry_date` &lt;= scadenza attuale, o con `renewal_date` &gt; `expiry_date`, allora 422 sul campo e nessuna scrittura.</criterion>
+    <criterion id="AC-006">Dato un contratto programmabile con scadenza gia' passata, quando lo si rinnova, allora 201 (U-4).</criterion>
+    <criterion id="AC-007">Dato un contratto senza `expiry_date`, quando lo si rinnova, allora `starts_on` = data del rinnovo e `previous_expiry_date` = null.</criterion>
+    <!-- Periodi e programmazione -->
+    <criterion id="AC-008">Dato un contratto con tutte le righe programmate nel periodo 0, quando lo si rinnova e si chiama programmable-lines, allora ogni riga ha `work_order` = null; prima del rinnovo ogni riga aveva la propria commessa.</criterion>
+    <criterion id="AC-009">Dato il periodo 1 aperto, quando POST contracts/{c}/work-orders con righe gia' programmate nel periodo 0, allora 201 e il pivot ha le righe con `renewal_number` = 1; le righe del periodo 0 restano sulla commessa originale.</criterion>
+    <criterion id="AC-010">Dato il periodo 1 con una riga gia' programmata in COM-A, quando si programma la stessa riga in un'altra commessa, allora 422 `quote_line_ids` che nomina COM-A e nessuna commessa creata (singolo e batch: errore su `groups.N.quote_line_ids`).</criterion>
+    <criterion id="AC-011">Dato il periodo 1 aperto e una commessa del periodo 0 della stessa offerta, quando PATCH di quella commessa aggiunge una riga libera nel periodo 0, allora la riga entra con `renewal_number` = 0 (D-4); se la riga e' gia' in un'altra commessa del periodo 0, 422.</criterion>
+    <criterion id="AC-012">Dato il periodo 1, quando GET quote-offer-lines/for-select senza `except_work_order_id`, allora sono incluse le righe programmate solo nel periodo 0 ed escluse quelle gia' nel periodo 1; con `except_work_order_id` di una commessa del periodo 0, la disponibilita' e' valutata sul periodo 0.</criterion>
+    <criterion id="AC-013">Dati due contratti multi-offerta, uno nel periodo 1 e uno nel periodo 0, quando si programma una commessa multi-offerta, allora ogni riga entra nel pivot con il periodo del proprio contratto e `eligible` di multi-programmable-lines riflette l'occupazione nel periodo corrente di ciascun contratto.</criterion>
+    <criterion id="AC-014">Data la migrazione applicata su dati esistenti, allora ogni riga pivot ha `renewal_number` = 0, i pagamenti esistenti restano invariati e la rollback ripristina UNIQUE(quote_line_id) fallendo con messaggio esplicito se esistono righe in piu' periodi.</criterion>
+    <!-- Pagamenti, fatture, provvigioni -->
+    <criterion id="AC-015">Data la stessa riga in COM-A (periodo 0) e COM-B (periodo 1), quando si aggiorna lo stato di pagamento della riga in COM-B, allora il pagamento della riga in COM-A resta invariato e GET contract-data di ciascuna commessa mostra il proprio.</criterion>
+    <criterion id="AC-016">Data una riga gia' fatturata nella commessa del periodo 0, quando si emette la fattura della commessa del periodo 1 con la stessa riga, allora 201; quando si prova a fatturarla una seconda volta nella stessa commessa del periodo 1, allora 422 `invoices.line_already_invoiced`.</criterion>
+    <criterion id="AC-017">Data una richiesta proforma della commessa del periodo 1, quando si apre la bozza, allora le righe fatturate solo nella commessa del periodo 0 sono disponibili.</criterion>
+    <criterion id="AC-018">Data una riga con provvigione commerciale 100 e netto 1000, fatturata per intero in COM-A (periodo 0) e poi in COM-B (periodo 1), allora maturano 100 sulla fattura di COM-A e 100 sulla fattura di COM-B; i maturati di COM-A non cambiano dopo la fattura di COM-B.</criterion>
+    <criterion id="AC-019">Dato lo scenario di AC-018, quando si calcola il conto economico del controllo di gestione, allora `commission_actual` = 100 per COM-A e 100 per COM-B (non 200 ciascuna).</criterion>
+    <criterion id="AC-020">Dato un contratto mai rinnovato, allora fatture, proforma e maturati provvigionali producono gli stessi risultati di prima (suite esistenti Invoices/Commissions/ManagementControl verdi senza modifiche ai test).</criterion>
+    <!-- Annulla rinnovo -->
+    <criterion id="AC-021">Dato l'ultimo rinnovo senza commesse nel periodo, quando DELETE renewals/{id}, allora 200, date del contratto = previous_*, `renewal_number` decrementato, riga storico rimossa.</criterion>
+    <criterion id="AC-022">Quando DELETE di un rinnovo che non e' l'ultimo, allora 422 e nulla cambia; quando DELETE dell'ultimo con almeno una riga nel suo periodo, allora 422 e nulla cambia; `can_undo` e' false in entrambi i casi.</criterion>
+    <criterion id="AC-023">Quando DELETE contracts/{A}/renewals/{rinnovo di B}, allora 404. Senza `contracts.program` o contratto non programmabile, allora 403.</criterion>
+    <!-- Superfici -->
+    <criterion id="AC-024">GET contract restituisce `renewal_number`, `renewals[]` con `work_orders_count`/`can_undo`, `initial_period_work_orders_count` e `permissions.actions.renew` = stessa regola di `program`; la griglia contratti espone la row action `renew` alle stesse condizioni.</criterion>
+    <criterion id="AC-025">La griglia commesse espone la colonna `renewal_number` (filtro numerico e ordinamento funzionanti); nel tab Commesse del contratto le commesse del rinnovo hanno valore 1.</criterion>
+    <criterion id="AC-026">(Vitest) `contract-renewal-defaults`: con inizio 2026-01-01, scadenza 2026-12-31, rinnovo 2026-11-30 propone 2027-12-31 e 2027-11-30; senza data di inizio propone oggi + 12 mesi e rinnovo vuoto; senza data rinnovo la lascia vuota.</criterion>
+    <criterion id="AC-027">(Vitest) Il bottone "Rinnova" compare solo con `permissions.actions.renew`; il dialog mostra le date precompilate, blocca l'invio con scadenza vuota o rinnovo successivo alla scadenza (errore cablato aria-describedby/aria-invalid/role=alert), invia la shape del contratto e aggiorna il dettaglio.</criterion>
+    <criterion id="AC-028">(Vitest) La sezione "Rinnovi" mostra la riga "Iniziale" e una riga per rinnovo con le date e il numero di commesse; "Annulla rinnovo" appare solo sull'ultima riga con `can_undo` e permesso, chiede conferma e invia DELETE.</criterion>
+    <criterion id="AC-029">(Vitest) Il dialog Programma mostra il periodo corrente ("Periodo: Iniziale" / "Periodo: Rinnovo N"); il renderer della colonna Periodo mostra "Iniziale" per 0 e "Rinnovo N" per N.</criterion>
+    <criterion id="AC-030">Guide in-app IT/EN aggiornate con gli stessi id di sezione (`help-content-parity.test.ts` verde); manuale Claude Docs aggiornato o sezioni da aggiornare segnalate.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Solo librerie gia' presenti (Laravel, spatie, React Hook Form + Zod, TanStack Query, shadcn/ui).</item>
+    <item>Authz server-side su ogni endpoint nuovo (ContractPolicy::program con perimetro + mayProgram); la UI nasconde, il backend autorizza.</item>
+    <item>Riuso obbligatorio: la programmazione passa SEMPRE da WorkOrderService::create/update e WorkOrderLineWriter; nessuna seconda via di scrittura del pivot. Il periodo e' deciso solo da RenewalPeriodResolver.</item>
+    <item>Migrazioni reversibili, mai modificare quelle esistenti; su MySQL creare l'indice sostitutivo delle FK prima di droppare gli UNIQUE (errno 1553), non coperto da SQLite: verifica manuale dichiarata.</item>
+    <item>Envelope `{ success, message, data }`; Resource per ogni output; `$fillable` su ContractRenewal senza `renewed_by` assegnabile dal client.</item>
+    <item>Nessun throttle sui nuovi endpoint (backend.md §2).</item>
+    <item>Nessun test esistente modificato per farlo passare; se un test codifica la vecchia regola "una riga, una commessa" globale va aggiornato dichiarando REQUIREMENT CHANGED (spec 0358 D-5/D-7).</item>
+    <item>UI compatta (ui-design.md §2), responsive 375/768/1024, i18n it/en, file sotto 300 righe.</item>
+  </constraints>
+
+</spec>
