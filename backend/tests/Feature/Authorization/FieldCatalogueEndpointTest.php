@@ -93,7 +93,7 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'cost-types',
         // spec 0348 (REQUIREMENT CHANGED): the managerial chart of accounts joins the generic registry.
         'chart-accounts', 'revenue-types',
-        // spec 0355 (REQUIREMENT CHANGED): the financial sub-accounts and the treasury movements join the generic registry.
+        // spec 0360 (REQUIREMENT CHANGED): the financial sub-accounts and the treasury movements join the generic registry.
         'treasury-types', 'treasury-movements',
         // spec 0271 (REQUIREMENT CHANGED): the HR org structure catalogues are registered in the generic registry.
         'job-roles', 'job-activities',

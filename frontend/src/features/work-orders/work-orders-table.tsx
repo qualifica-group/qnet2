@@ -13,7 +13,7 @@ import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-profo
 
 const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: WORK_ORDERS_DOMAIN, apiBasePath: `/${WORK_ORDERS_DOMAIN}` }
 
-/** Only the "Commesse" page lists `processing` work orders: project ones live under "Commesse di Progetto" (spec 0354 D-2). */
+/** Only the "Commesse" page lists `processing` work orders: project ones live under "Commesse di Progetto" (spec 0359 D-2). */
 const PROCESSING_ROW_SCOPE: TableRowScope = { workOrderType: 'processing' }
 
 interface WorkOrdersGridProps {
@@ -30,7 +30,7 @@ interface WorkOrdersGridProps {
 }
 
 /**
- * The shared body of the work orders pages (spec 0354): the grid with every row action
+ * The shared body of the work orders pages (spec 0359): the grid with every row action
  * (view/delete/activity/force close/reopen/proforma, via `useWorkOrderRowActions`, spec 0095 D-9)
  * and its dialogs. Permission gating is an affordance only; the backend re-authorizes each call.
  */

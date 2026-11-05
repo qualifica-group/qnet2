@@ -69,6 +69,7 @@ function values(overrides: Record<string, unknown> = {}) {
     // Mandatory since the user directive 2026-07-29 (see the dedicated suite below).
     source_id: 30,
     reporter_id: null,
+    commercial_id: null,
     supervisor_id: null,
     // Spec 0097 D-1: the team replaces the single "Operatore" field.
     manager_slots: [null, null, null, null],

@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Account statements, balances and unassigned payments (spec 0355)
+| Account statements, balances and unassigned payments (spec 0360)
 |--------------------------------------------------------------------------
 |
 | Required from WITHIN the `auth:sanctum` group of routes/api.php.

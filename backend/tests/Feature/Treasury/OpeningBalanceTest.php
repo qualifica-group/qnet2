@@ -10,7 +10,7 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-// Spec 0355 — opening balance: AC-001, AC-002.
+// Spec 0360 — opening balance: AC-001, AC-002.
 
 function openingActor(array $permissions): User
 {

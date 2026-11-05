@@ -10,7 +10,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The single balance rule of financial accounts (spec 0355): the opening balance
+ * The single balance rule of financial accounts (spec 0360): the opening balance
  * at the account's opening date, plus every cash fact (manual movements,
  * transfers, collections, payments) dated on or after it. Used by statement,
  * export, balances and the account detail. Arithmetic in integer cents.

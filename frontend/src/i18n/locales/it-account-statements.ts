@@ -1,4 +1,4 @@
-/** Spec 0355: namespace `accountStatements` (pagina Estratto conto + saldo di apertura nella scheda conto). */
+/** Spec 0360: namespace `accountStatements` (pagina Estratto conto + saldo di apertura nella scheda conto). */
 export const accountStatements = {
   title: 'Estratto conto',
   forbidden: 'Non hai i permessi per vedere gli estratti conto.',

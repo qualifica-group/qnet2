@@ -11,7 +11,7 @@ interface CollectionAccountFieldProps {
   hint: string
 }
 
-/** Optional, clearable "Account" field of the collection dialogs (spec 0355); render inside a `FormField`. */
+/** Optional, clearable "Account" field of the collection dialogs (spec 0360); render inside a `FormField`. */
 export function CollectionAccountField({ value, onChange, selected = null, hint }: CollectionAccountFieldProps) {
   const { t } = useTranslation()
   const label = t('treasuryCollection.accountLabel')

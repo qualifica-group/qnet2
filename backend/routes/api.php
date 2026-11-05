@@ -59,8 +59,6 @@ Route::prefix('auth')->group(function () {
     Route::middleware('throttle:6,1')->group(function () {
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
-        // First access (spec 0177): consumes the invite token of the users_setup broker.
-        Route::post('set-password', [AuthController::class, 'setPassword']);
     });
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -326,9 +324,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // (file-size split, engineering.md §6) and required INSIDE this auth group.
     require __DIR__.'/api/referents.php';
     require __DIR__.'/api/accounting.php'; // Accounting: financial accounts, proforma requests, invoices
-    require __DIR__.'/api/treasury-types.php'; // Financial sub-accounts (spec 0355)
-    require __DIR__.'/api/treasury-movements.php'; // Manual treasury movements (spec 0355)
-    require __DIR__.'/api/account-statements.php'; // Account statements and balances (spec 0355)
+    require __DIR__.'/api/treasury-types.php'; // Financial sub-accounts (spec 0360)
+    require __DIR__.'/api/treasury-movements.php'; // Manual treasury movements (spec 0360)
+    require __DIR__.'/api/account-statements.php'; // Account statements and balances (spec 0360)
     require __DIR__.'/api/purchasing.php'; // Purchasing: RDA (spec 0208), cost types and ODA (spec 0210)
     require __DIR__.'/api/hr.php'; // HR: business functions, job roles, job activities (spec 0271)
     require __DIR__.'/api/rewards.php'; // Reward inline status edit (spec 0060 §4, file-size split engineering.md §6)

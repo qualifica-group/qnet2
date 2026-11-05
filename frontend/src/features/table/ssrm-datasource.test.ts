@@ -240,7 +240,7 @@ describe('createSsrmDatasource', () => {
     expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('registryId')
   })
 
-  // Spec 0354 D-2: the "Commesse" page narrows work-orders; the key is snake_case per the spec contract.
+  // Spec 0359 D-2: the "Commesse" page narrows work-orders; the key is snake_case per the spec contract.
   it('sends work_order_type when a workOrderType is given, omits it otherwise', async () => {
     fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
 

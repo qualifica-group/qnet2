@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Projection of a TreasuryMovement (spec 0355). Relations are eager loaded by
+ * Projection of a TreasuryMovement (spec 0360). Relations are eager loaded by
  * TreasuryMovementService::detail().
  *
  * @mixin TreasuryMovement

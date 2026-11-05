@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { resendWelcomeEmail } from '@/features/users/api'
 import { backendErrorMessage } from '@/features/users/user-action-errors'
 
-/** Resend-welcome action of the user detail (spec 0177): toast + detail refresh. */
+/** Send-welcome action of the user detail (spec 0177, spec 0355): toast + detail refresh. */
 export function useResendWelcomeEmail(userId: number) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()

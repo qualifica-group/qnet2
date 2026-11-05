@@ -2,7 +2,6 @@
 
 use App\Jobs\RunMigrationJob;
 use App\Migrations\Support\LegacyAplBranch;
-use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\BusinessFunction;
 use App\Models\MigrationRun;
 use App\Models\ProductCategory;
@@ -71,16 +70,17 @@ it('REQUIREMENT CHANGED (user directive 2026-10-13): imports the "[OLD] APL" tre
     expect($manualRoot->fresh()->old_id)->toBeNull()
         ->and($manualChild->fresh()->old_id)->toBeNull()
         // The twin of the manual root hangs under its legacy parent, like any
-        // other legacy node; that one under the "Old category" container.
+        // other legacy node; that one at the top level.
         ->and($legacyTop->name)->toBe(LegacyAplBranch::LEGACY_BRANCH)
         ->and($legacyTop->parent_id)->toBe(ProductCategory::query()->where('old_id', 60)->value('id'))
         ->and(ProductCategory::query()->where('old_id', 62)->first()->only(['name', 'parent_id']))
         ->toBe(['name' => '[OLD] Orientamento Specialistico', 'parent_id' => $legacyTop->id])
         ->and(ProductCategory::query()->where('old_id', 63)->first()->only(['name', 'parent_id']))
         ->toBe(['name' => '[OLD] Tirocini extracurriculari privati', 'parent_id' => $legacyTop->id])
-        // REQUIREMENT CHANGED (user directive 2026-10-14): + the container.
-        ->and(ProductCategory::query()->where('old_id', 60)->first()->parent?->name)->toBe(LegacyCategoryContainer::NAME)
-        ->and(ProductCategory::query()->count())->toBe(7)
+        // REQUIREMENT CHANGED (user directive 2026-11-05): no "Old category"
+        // container any more, the legacy root stays at the top level.
+        ->and(ProductCategory::query()->where('old_id', 60)->value('parent_id'))->toBeNull()
+        ->and(ProductCategory::query()->count())->toBe(6)
         ->and($run->fresh()->report)->toBeNull();
 });
 

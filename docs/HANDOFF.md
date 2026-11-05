@@ -3,9 +3,9 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Tesoreria fase A "Conti con saldo" (spec 0355) — VERDE, NON COMMITTATO (2026-11-05)
+## Tesoreria fase A "Conti con saldo" (spec 0360) — VERDE, NON COMMITTATO (2026-11-05)
 
-- Prospetto fasi A-D: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y. Spec `docs/specs/0355-treasury-account-balances.xml`
+- Prospetto fasi A-D: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y. Spec `docs/specs/0360-treasury-account-balances.xml`
   (approvata). Decisioni: apertura 01/01/2026 (`config('treasury.default_opening_date')`, per conto
   `opening_balance_date`); sottoconto obbligatorio; conto scelto all'incasso attivo (D-5); giroconto SOLO stessa
   societa' (D-6, rettificata dall'utente); carta = conto con saldo proprio; movimenti sempre modificabili con audit.
@@ -35,10 +35,143 @@
 - Aperti: export/import del piano senza mastri finanziari; nessun import dei saldi di apertura; data di partenza
   (01/01/2026 o go-live) da confermare per il rilascio; fasi B (abbuono), C (Quadro), D (riconciliazione).
 
-## Chat nelle Commesse di Progetto (spec 0354) — COMPLETA E VERDE (2026-11-04)
+## Gestione richieste: campo Commerciale accanto al Segnalatore (spec 0357) — VERDE, COMMITTATO (2026-11-05)
 
-- RINUMERATA 0352 -> 0354 il 2026-11-05 (decisione utente): il merge da main ha portato "Richiedi aggiornamento"
-  con lo stesso numero 0352. Spec ora `docs/specs/0354-project-work-order-chat.xml`; commenti/test della chat
+- Decisioni utente 2026-11-05: il Commerciale e' quello dell'OFFERTA (`quotes.commercial_id`, Referent, destinatario
+  provvigione Commercial), modificabile in creazione e nel pannello, nella sezione Attribuzione dopo Segnalatore+buoni.
+  In creazione viene scritto anche su `opportunities.commercial_id` (come il Segnalatore); dal pannello solo l'Offerta.
+- BE: `commercial_id` (sometimes|nullable|exists:referents) in `StoreRequestRequest`/`UpdateRequestRequest`,
+  `CreateRequestData::commercialId`, `RequestCreationService` (Opportunity + Quote con `commercialIdSubmitted: true`),
+  `RequestAttributionWriter::applyQuoteAttribution` (log sull'Opportunita'), allow-list `RequestManagementController::update`,
+  `FieldDefinition('commercial_id','select')` + ceiling come `reporter_id`. Resource: `commercial_id` + `commercial`
+  ora dell'Offerta (prima `opportunity.commercial`, eager load sostituito da `commercial`).
+- FE: `RequestWorkPanel.commercial_id`, schema/defaults/payload pannello (diff sparso) e creazione (solo se scelto,
+  come `supervisor_id`); picker Referent in `request-attribution-section.tsx` e `request-create-attribution-section.tsx`;
+  riga Commerciale tolta da `RequestWorkSummary`; i18n `attribution.commercial|commercialSearch` IT/EN, rimossa
+  `workPanel.summary.commercial`. Fixture dei test FE con `commercial_id: null` (cambio contratto).
+- Test: `tests/Feature/RequestManagement/RequestManagementCommercialFieldTest.php` (11). Cartelle RequestManagement,
+  Opportunities, FieldChangeRequests verdi; Quotes verde salvo 3 test PDF (LibreOffice assente, ambientale).
+  Vitest request-management + help 664/664, ESLint, Pint, `tsc -b --force` puliti.
+- Manuale: guida in-app `request-management` IT/EN e manuale Claude Docs (creazione + "Lavorare una richiesta") aggiornati;
+  il PDF derivato va rigenerato.
+- Fuori scope, segnalato: `RequestManagementService::updateWork()` non risincronizza le provvigioni delle righe al
+  cambio di Commerciale/Segnalatore/Supervisore (lo fa solo `QuoteService::update()`): gap preesistente.
+
+## Seeder di produzione: cambio password obbligatorio (spec 0356, emenda 0355) — VERDE, COMMITTATO (2026-11-05)
+
+- Nuova colonna `users.password_changed_at` (migrazione `2026_11_19_100300_...`, cast datetime, NON fillable): la
+  valorizzano SOLO `AuthService::changePassword()` (me/password, me/first-password) e `resetPassword()`. Creazione,
+  reinvio benvenuto e password impostata dall'admin non la toccano.
+- `QualificaPasswordChangeSeeder`: con `config('seeding.require_password_change')` (default true solo con
+  APP_ENV=production, env `SEED_REQUIRE_PASSWORD_CHANGE`) porta `must_set_password` = true su utenti attivi, non di
+  servizio, con `password_changed_at` nullo. Nessuna email, nessuna revoca token, rilanciabile. Ultimo step di
+  `QualificaProductionDataSeeder`. Rimosso il comando `users:require-legacy-password-change` (0355 AC-009).
+- PRODUZIONE, dopo il deploy di 0355+0356: `php artisan migrate`, poi
+  `php artisan db:seed --class=QualificaPasswordChangeSeeder` (o l'intero `QualificaProductionDataSeeder`). Al primo
+  lancio obbliga tutti gli utenti attivi (nessuno ha ancora `password_changed_at`).
+- Test: `tests/Feature/Spec0356` 10/10; set Spec0355/0177/Auth/Users/Mail/ApiClients 544/544; production seeder
+  e staff seeder 7/7. `QualificaOperatorSeederTest` 2 rossi preesistenti. `ApiDocs*` falliscono solo se lanciati
+  nello stesso processo dei test seeder (interferenza tra test, da soli verdi). Manuale: nessun impatto.
+
+## Benvenuto con password generata + primo accesso obbligatorio (spec 0355, emenda 0177) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: password SEMPRE generata (`Str::password(12, symbols: false)`, `UserOnboardingService::generatePassword()`)
+  e inviata nell'email di benvenuto (`WelcomeUserNotification`, `ShouldBeEncrypted`, link `/login`); cambio al primo
+  accesso OBBLIGATORIO; "Invia email di benvenuto" su ogni utente attivo (non se stessi, non account di servizio) con
+  conferma: nuova password, `must_set_password` true, tutti i token revocati; obbligo di cambio per gli utenti legacy.
+- Rimosso il flusso invito di 0177: `POST /api/auth/set-password`, `SetPasswordRequest`, `AuthService::setPassword`,
+  broker `users_setup`, pagina FE `/set-password`; migrazione `2026_11_19_100200_drop_password_setup_tokens_table`.
+  `StoreUserRequest` non accetta piu' `password` (ignorata). Modifica password di un altro utente da PATCH invariata.
+- Blocco server-side: `App\Http\Middleware\EnsureFirstPasswordSet` nel gruppo `api` (utente via `user('sanctum')`),
+  allow-list METODO+URI (login, logout, refresh, GET me, abilities, first-password, me/password, forgot/reset,
+  client-login, impersonation, stop-impersonation); altrimenti 403 `authorization.reason = "password_change_required"`
+  (`ForbiddenResponse::passwordChangeRequired()`). Impersonificazione mai bloccata.
+- FE: `ProtectedRoute` rende `FirstAccessDialog` (non chiudibile, "Esci" = logout) al posto del layout; evento
+  `PASSWORD_CHANGE_REQUIRED_EVENT` da `api/client.ts` -> `AuthProvider` invalida `authKeys.me`. Chi mocka
+  `@/api/client` deve esportare anche questo evento (vedi `config-gate.integration.test.tsx`).
+- PRODUZIONE, dopo il deploy: `php artisan migrate` (il comando legacy di questa spec e' sostituito dal seeder della
+  0356, vedi sopra). Gli inviti 0177 con link non ancora usato non funzionano piu': reinviare l'email di benvenuto
+  a quegli utenti.
+- Test: Pest `tests/Feature/Spec0355` (4 file, AC-001..010), test 0177 aggiornati con REQUIREMENT CHANGED; Vitest
+  AC-011..016. Pest mirato 534/535 (unico rosso `ApiDocsParityTest`, preesistente: `POST /api/broadcasting/auth` della
+  0352 non documentata), Vitest mirato 620/620, tsc/ESLint/Pint puliti. Suite completa: backend 11 rossi tutti
+  preesistenti (AiAssistant x4, SettlementApproval AC-006, ApiDocsParity, QuoteDocumentPdf, PermissionCatalogue AC-004,
+  QualificaOperatorSeeder x2, TableBulkDelete:131), frontend verde dopo il fix del mock.
+- Manuale: guide in-app IT+EN `users.ts`/`general.ts` aggiornate; Claude Docs "Manuale Utente QNet" aggiornato
+  (Accesso > Primo accesso, Utenti). Da rigenerare il PDF del manuale.
+
+## Avviso "solo i primi valori" del filtro di colonna: meno rumore — VERDE, NON COMMITTATO (2026-11-05)
+
+- Causa: `POST /tables/{domain}/values` restituisce max 200 valori (`TableValuesRequest::MAX_LIMIT`), `hasMore` sopra;
+  la lista ignora il filtro della colonna stessa (Excel) e si ricarica a ogni apertura (`refreshValuesOnOpen`) e al
+  ripristino dei filtri salvati -> il toast usciva a ogni apertura e a ogni reload.
+- Fix (solo frontend): `components/data-table/filter-truncation-notice.ts` (`createFilterTruncationNotice`: toast solo per
+  colonne aperte dall'utente via `onFilterOpened`, una volta per colonna per vita della griglia); `buildColDefs` riceve
+  `onFilterValuesTruncated(columnId)` (opzionale, il pannello offerte dell'opportunita' non ha filtri); `DataTable` possiede
+  il gate, toast con id fisso `FILTER_TRUNCATED_TOAST_ID`. Testo `table.filterValuesTruncated` IT/EN riscritto (rimanda a
+  Filtri testo/numero/data); guida `general` IT/EN riga "Filtro di colonna".
+- Non fatto (valutare a parte): ricerca della checklist lato server (`search` esiste nel backend, il frontend non lo invia:
+  valori oltre i primi 200 trovabili solo con la condizione).
+- Test: `filter-truncation-notice.test.ts` (4), `column-def-builder.test.ts` (+1). Vitest data-table+help 365/365, i18n
+  237/237, ESLint ok, `tsc -b --force` ok.
+
+## Workflow stati offerta: copia di Consulenza sulle radici + Duplica (spec 0354) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisioni utente: copia su TUTTE le radici nuove senza un workflow agganciato direttamente (criterio
+  product_category_id o product_category_branch_id sulla radice), tranne Formazione; si copia Consulenza come sta nel DB;
+  Duplica = form di creazione precompilato.
+- `database/seeders/QualificaConsultingWorkflowCloneSeeder` (costanti SOURCE, EXCLUDED_ROOTS): una copia per radice,
+  nome = radice, criterio branch, via `QuoteWorkflowService::create()`; salta radici legacy (old_id o "[OLD] "), radici
+  gia' coperte, nomi gia' usati (warning). Idempotente. In `QualificaProductionDataSeeder` dopo `QualificaCostProductSeeder`.
+  In produzione: `php artisan db:seed --class=QualificaConsultingWorkflowCloneSeeder`. In dev coprirebbe 11 radici
+  (Accreditamenti, Costi, Finanza Agevolata, Gare, GDPR, ISO, Istruzione, No categoria, Progettazione, Sicurezza, SOA).
+- Duplica: azione di riga `duplicate` (`QuoteWorkflowColumnCatalog`, `QuoteWorkflowsTableDefinition`, permesso create);
+  frontend `QuoteWorkflowFormMode` + `{type:'duplicate', source}`, `duplicateStatusRows()`, `QuoteWorkflowDuplicateLoader`
+  in `quote-workflow-screens.tsx`, prop `source` su `QuoteWorkflowForm`/`QuoteWorkflowFormBody`, i18n `form.duplicateName`.
+- Test: `QualificaConsultingWorkflowCloneSeederTest` (4), `QualificaProductionDataSeederTest` (+AC-006),
+  `QuoteWorkflowTableTest` (REQUIREMENT CHANGED: +duplicate), Vitest `quote-workflow-form-duplicate.test.tsx`,
+  `quote-workflows-table.test.tsx`. Pest QuoteWorkflows 71/71, Vitest quote-workflows 52/52, help 156/156, Pint/ESLint ok.
+- `tsc -b`: unici errori in `src/features/users/user-form.test.tsx` (import inutilizzati), lavoro non committato altrui.
+- Guide in-app quote-workflows IT+EN e manuale Claude Docs (paragrafo "Duplicare un workflow") aggiornati.
+- DB dev: seeder eseguito dall'utente il 2026-11-05. Produzione: da lanciare una volta dopo il deploy.
+
+## Tolto il contenitore "Old category" + seeder correttivo per la produzione — VERDE, COMMITTATO (2026-11-05)
+
+- Direttiva utente: eliminare "Old category" e rendere non attive tutte le categorie che stavano sotto. Spec 0013
+  emendamento "sexies", 0174 AC-008 aggiornato.
+- Nuovo `database/seeders/QualificaOldCategoryRemovalSeeder` (da lanciare in produzione:
+  `php artisan db:seed --class=QualificaOldCategoryRemovalSeeder`): in una transazione rende non attiva sul proprio
+  flag ogni categoria sotto il contenitore (a ogni livello), porta i figli diretti a radice e cancella il contenitore.
+  Idempotente (senza contenitore non fa nulla). NON incluso in `QualificaProductionDataSeeder`: e' una correzione una tantum.
+- Import: eliminato `App\Migrations\Support\LegacyCategoryContainer`; `ProductCategoriesSource`/`CostProductsSource`
+  non raccolgono piu' le radici legacy. `CostCategoryResolver` crea "[OLD] Costi" come radice e tutti i sotto-rami
+  non attivi (costante `INACTIVE`, solo alla creazione).
+- Test: nuovo `tests/Feature/Seeding/QualificaOldCategoryRemovalSeederTest`; REQUIREMENT CHANGED in
+  `ProductCategoriesSourceImportTest` (tolto il test di raccolta sotto "Old category"), `CostProductsSourceImportTest`,
+  `LegacyAplBranchImportTest`, `QualificaLegacyImportSeederTest`. Migration 749/749, Seeding 231/233.
+- `tests/TestCase::setUp` fissa `migrations.users_link_only = false`: il `.env` locale ha
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` e faceva fallire 6 test Utenti (phpunit.xml protetto dall'hook).
+- ROSSI PREESISTENTI, non toccati: 2 test di `QualificaOperatorSeederTest` sul ruolo `importatore-richieste`
+  (arrivato con spec 0348, commit 42faa78a).
+- Guide in-app migrations IT+EN e manuale Claude Docs (paragrafo [OLD] + Prodotti di costo) aggiornati.
+- DB sviluppo `qnet2`: seeder eseguito dall'utente il 2026-11-05. Produzione: da lanciare una volta dopo il deploy.
+
+## Layout dettaglio Commessa: Informazioni aggiuntive a destra — VERDE, NON COMMITTATO (2026-11-05)
+
+- Direttiva utente: nel dettaglio commessa, con attributi applicabili, lo skeleton (Dati commessa ... Documento e
+  pagamento) sta impilato a sinistra, "Informazioni aggiuntive" a destra (NON collassabile), "Dati contrattuali"
+  a tutta larghezza sotto le due colonne. Senza attributi lo skeleton resta su 2 colonne, Dati contrattuali in fondo.
+- File: `work-order-detail-sections.tsx` (colonne con `RECORD_COLUMN_CLASS`, `specific` non piu' passato a
+  `RecordSkeletonSections` per le commesse), `work-order-attributes-section.tsx` (prop `collapsible`, default true:
+  la creazione resta collassabile), test in `work-order-detail-layout.test.tsx`, guide `help/content/{it,en}/work-orders.ts`,
+  manuale Claude Docs aggiornato (nota "Commessa." sotto la tabella dello skeleton + paragrafo collassabili).
+- Verifica: vitest work-orders+help+attributes 590/590, eslint, `tsc -b --force` puliti.
+
+## Chat nelle Commesse di Progetto (spec 0359) — COMPLETA E VERDE (2026-11-04)
+
+- RINUMERATA 0352 -> 0354 -> 0359 il 2026-11-05 (decisione utente): il merge da main ha portato "Richiedi aggiornamento"
+  con lo stesso numero 0352; il merge del 2026-11-05 ha portato 0354 (workflow offerta) e 0355 (password di
+  benvenuto), quindi chat -> 0359 e tesoreria -> 0360. Spec ora `docs/specs/0359-project-work-order-chat.xml`; commenti/test della chat
   aggiornati. I messaggi dei commit 7271f43d, 6588bac9, 00b1fbe8, 129c0615 citano ancora "spec 0352" (storia git,
   non riscritta): si riferiscono alla chat.
 
@@ -91,7 +224,7 @@
 - Ambiente locale per il realtime: `BROADCAST_CONNECTION=reverb` + `REVERB_*` nel backend, `VITE_REVERB_*` nel frontend,
   `composer dev` (avvia `reverb:start`), riavvio di Vite. Con `QUEUE_CONNECTION=sync` il broadcast gira nella richiesta.
 
-- Spec `docs/specs/0354-project-work-order-chat.xml` approvata (commit 7271f43d). D-10 confermata: il super-admin
+- Spec `docs/specs/0359-project-work-order-chat.xml` approvata (commit 7271f43d). D-10 confermata: il super-admin
   MODERA (modifica/cancella messaggi altrui senza finestra di 15 min; blocco commessa chiusa vale anche per lui),
   risposta GET con `can_moderate`. Auth SPA = BEARER token (non cookie/CSRF): spec allineata.
 - Passo 1 fatto (B1, B2, F1, F3):

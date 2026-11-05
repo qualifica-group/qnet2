@@ -277,7 +277,7 @@ class AppServiceProvider extends ServiceProvider
             'cost_type' => CostType::class,
             'chart_account' => ChartAccount::class,
             'revenue_type' => RevenueType::class,
-            // spec 0355: treasury movements and financial sub-accounts.
+            // spec 0360: treasury movements and financial sub-accounts.
             'treasury_movement' => TreasuryMovement::class,
             'treasury_type' => TreasuryType::class,
             'job_role' => JobRole::class,

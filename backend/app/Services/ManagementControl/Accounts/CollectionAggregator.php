@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The collections of the period (spec 0271, D-6): the collected amount of the
- * active installments by collection date, on the account of the installment, else of the invoice (spec 0355, D-5). The
+ * active installments by collection date, on the account of the installment, else of the invoice (spec 0360, D-5). The
  * sites of a document are those of its offer.
  */
 final class CollectionAggregator

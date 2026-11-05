@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Manual treasury movements (spec 0355): income, expense, transfer, adjustment.
+ * Manual treasury movements (spec 0360): income, expense, transfer, adjustment.
  * Exactly one of the three sub-account columns is set (enforced by the request).
  */
 return new class extends Migration

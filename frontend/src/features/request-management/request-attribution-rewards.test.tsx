@@ -77,6 +77,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
     referent: { id: 20, name: 'Mario Rossi' },
+    commercial_id: null,
     commercial: null,
     source_id: 30,
     source: { id: 30, name: 'Web' },

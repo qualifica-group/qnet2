@@ -22,7 +22,11 @@ import {
   buildUpdateQuoteWorkflowSchema,
   type CreateQuoteWorkflowFormValues,
 } from '@/features/quote-workflows/quote-workflow-schema'
-import { initialSystemStatusRows, statusRowsFromDetail } from '@/features/quote-workflows/quote-status-rows'
+import {
+  duplicateStatusRows,
+  initialSystemStatusRows,
+  statusRowsFromDetail,
+} from '@/features/quote-workflows/quote-status-rows'
 import type { QuoteWorkflowDetail, QuoteWorkflowFormMode } from '@/features/quote-workflows/types'
 
 /** Server-side field names mapped onto the form for 422 handling. */
@@ -63,7 +67,7 @@ interface UseQuoteWorkflowFormArgs {
  * Owns every non-render concern of the opportunity workflow form: RHF/Zod
  * wiring for `name`/`is_active`, `criteria` (a field array) and `statuses`
  * (a plain value edited by the `<SortableList>` editor), server 422 mapping
- * and the create/update submit. Create backs `QuoteWorkflowForm`; edit backs
+ * and the create/update submit. Create and duplicate back `QuoteWorkflowForm`; edit backs
  * the detail's in-place rows (diff PATCH). The component stays UI-only; this
  * hook is the orchestration point (`onSubmit`).
  */
@@ -89,6 +93,15 @@ export function useQuoteWorkflowForm({ mode, onSuccess }: UseQuoteWorkflowFormAr
           value_id: criterion.value_id,
         })),
         statuses: statusRowsFromDetail(mode.quoteWorkflow),
+      }
+    }
+    // A copy matches on criteria of its own: two workflows never share them.
+    if (mode.type === 'duplicate') {
+      return {
+        name: t('quoteWorkflows.form.duplicateName', { name: mode.source.name }),
+        is_active: true,
+        criteria: [{ ...EMPTY_CRITERION_ROW }],
+        statuses: duplicateStatusRows(mode.source),
       }
     }
     return {

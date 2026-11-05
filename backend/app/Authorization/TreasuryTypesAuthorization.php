@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * ResourceAuthorization for the `treasury-types` resource (spec 0355, D-3):
+ * ResourceAuthorization for the `treasury-types` resource (spec 0360, D-3):
  * the financial sub-accounts. Every field is visible+editable when the actor may
  * write, else visible+readonly.
  */

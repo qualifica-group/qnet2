@@ -5,7 +5,6 @@ namespace App\Services;
 use App\DataObjects\Auth\LoginResult;
 use App\DataObjects\Users\ProfileData;
 use App\Models\User;
-use App\Services\Users\UserOnboardingService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -146,6 +145,7 @@ class AuthService
         $user->forceFill([
             'password' => Hash::make($newPassword),
             'must_set_password' => false,
+            'password_changed_at' => now(),
         ])->save();
 
         $user->tokens()
@@ -186,32 +186,7 @@ class AuthService
                 'password' => Hash::make($password),
                 'remember_token' => Str::random(60),
                 'must_set_password' => false,
-            ])->save();
-
-            $user->tokens()->delete();
-
-            event(new PasswordReset($user));
-        });
-    }
-
-    /**
-     * Complete the first access from an invite token (spec 0177): same effects
-     * as a reset (password, revoked sessions) plus clearing the pending flag.
-     * The token lives in the dedicated `users_setup` broker table.
-     *
-     * @param  array{email: string, password: string, password_confirmation: string, token: string}  $data
-     */
-    public function setPassword(array $data): string
-    {
-        if ($this->isServiceAccountEmail($data['email'])) {
-            return Password::INVALID_TOKEN;
-        }
-
-        return Password::broker(UserOnboardingService::BROKER)->reset($data, function (User $user, string $password): void {
-            $user->forceFill([
-                'password' => Hash::make($password),
-                'remember_token' => Str::random(60),
-                'must_set_password' => false,
+                'password_changed_at' => now(),
             ])->save();
 
             $user->tokens()->delete();

@@ -7,7 +7,7 @@ namespace App\Services\ChartOfAccounts;
 use App\Models\TreasuryType;
 
 /**
- * Wire shape of a financial sub-account reference (spec 0355, data_contract):
+ * Wire shape of a financial sub-account reference (spec 0360, data_contract):
  * { id, code, name, path: "70 Group > 70.01 Account", is_active }. Lazy loading
  * is forbidden, so callers eager-load {@see self::RELATION} first.
  */

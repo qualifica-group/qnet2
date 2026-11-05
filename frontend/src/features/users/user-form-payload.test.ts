@@ -417,19 +417,13 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
   })
 })
 
-describe('buildCreatePayload — optional password (spec 0177 AC-016)', () => {
-  it('omits password and confirmation when both are empty (invite mode)', () => {
-    const payload = buildCreatePayload({ ...formValues, password: '', password_confirmation: '' }, draft())
+// REQUIREMENT CHANGED (spec 0355 AC-011): the create payload never carries a password.
+describe('buildCreatePayload — no password (spec 0355 AC-011)', () => {
+  it('omits password and confirmation even if the form values hold them', () => {
+    const payload = buildCreatePayload(formValues, draft())
 
     expect('password' in payload).toBe(false)
     expect('password_confirmation' in payload).toBe(false)
-  })
-
-  it('sends both when a temporary password was typed', () => {
-    const payload = buildCreatePayload(formValues, draft())
-
-    expect(payload.password).toBe(TEST_PASSWORD)
-    expect(payload.password_confirmation).toBe(TEST_PASSWORD)
   })
 })
 

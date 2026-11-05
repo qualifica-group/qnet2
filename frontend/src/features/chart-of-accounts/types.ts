@@ -64,7 +64,7 @@ export interface ChartAccountsAbilities extends ResourceAbilities {
 export interface ChartTreeAbilities {
   chart_accounts: ChartAccountsAbilities
   revenue_types: ResourceAbilities
-  /** Spec 0355: financial sub-accounts. */
+  /** Spec 0360: financial sub-accounts. */
   treasury_types: ResourceAbilities
   cost_types: ResourceAbilities
 }
@@ -118,7 +118,7 @@ export interface UpdateChartAccountPayload {
   is_active?: boolean
 }
 
-/** Spec 0355: same shape as a revenue type. */
+/** Spec 0360: same shape as a revenue type. */
 export type TreasuryTypeResource = RevenueTypeResource
 
 export interface TreasuryTypePayload {

@@ -36,7 +36,7 @@ export function buildChartAccountSchema(t: TFunction, level: ChartAccountLevel) 
 }
 export type ChartAccountFormValues = z.infer<ReturnType<typeof buildChartAccountSchema>>
 
-/** Financial sub-account form (spec 0355). */
+/** Financial sub-account form (spec 0360). */
 export function buildTreasuryTypeSchema(t: TFunction) {
   return z.object({
     ...baseFields(t),

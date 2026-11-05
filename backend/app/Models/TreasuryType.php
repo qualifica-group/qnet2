@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Financial sub-account of the managerial chart of accounts (spec 0355, D-3):
+ * Financial sub-account of the managerial chart of accounts (spec 0360, D-3):
  * child of an account under a financial group.
  */
 #[Fillable(['chart_account_id', 'code', 'name', 'description', 'is_active'])]

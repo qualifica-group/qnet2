@@ -28,6 +28,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Con **Nuovo workflow** si apre lo stesso dettaglio in creazione: **Nome** e **Attivo** sono righe da confermare con **Fatto** (o **Ripristina**), mentre gli editor di **Criteri** e **Stati** sono già aperti. Il workflow nasce solo con **Salva**; se esci prima, QNet chiede conferma.',
         },
+        {
+          type: 'paragraph',
+          text: "Con **Duplica**, nel menu azioni di una riga dell'elenco, si apre la creazione già compilata dal workflow scelto: nome **Copia di** seguito dal nome originale, attivo, con gli stessi stati (anche quelli fissi, con i loro nomi). I criteri sono vuoti: scegli quelli del nuovo workflow, perché due workflow non possono avere gli stessi. Il workflow originale non cambia. All'installazione ogni categoria principale senza un workflow proprio, Formazione esclusa, riceve una copia del workflow **Consulenza** con il nome della categoria, valida per tutto il suo ramo.",
+        },
       ],
     },
     {

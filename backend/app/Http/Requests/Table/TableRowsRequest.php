@@ -141,7 +141,7 @@ class TableRowsRequest extends FormRequest
             // Referente (the Referente detail's card) — a no-op key for every other domain.
             'referentId' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
 
-            // Spec 0354, D-2: restricts `work-orders` to one commessa type (the
+            // Spec 0359, D-2: restricts `work-orders` to one commessa type (the
             // "Commesse" page sends `processing`) - a no-op key for every other domain.
             'work_order_type' => ['sometimes', 'nullable', Rule::enum(WorkOrderType::class)],
 

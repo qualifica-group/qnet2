@@ -10,7 +10,7 @@ interface SubAccountSheetProps {
   onClose: () => void
 }
 
-/** Revenue groups own revenue types, financial groups treasury types (spec 0355), cost groups cost types (spec 0348 D-3). */
+/** Revenue groups own revenue types, financial groups treasury types (spec 0360), cost groups cost types (spec 0348 D-3). */
 function isSource(state: SubAccountSheetState, kind: 'revenue' | 'financial'): boolean {
   if (state.type === 'sub-create') return state.group.kind === kind
   return state.sub.source === (kind === 'revenue' ? 'revenue_type' : 'treasury_type')

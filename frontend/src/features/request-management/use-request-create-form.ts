@@ -41,6 +41,7 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   'registry_id',
   'source_id',
   'reporter_id',
+  'commercial_id',
   'supervisor_id',
   // A per-slot 422 (`manager_slots.<n>`) has no control of its own — the team
   // editor binds the array as a whole — so the block root carries it.
@@ -129,6 +130,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       product_lines: [emptyProductLineRow()],
       source_id: null,
       reporter_id: null,
+      commercial_id: null,
       supervisor_id: null,
       // The team opens on `DEFAULT_MANAGER_SLOTS` empty cards, like the
       // Offerte form's own (spec 0097 D-1): untouched, an all-null array never
@@ -255,6 +257,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       productLines: values.product_lines,
       sourceId: values.source_id,
       reporterId: values.reporter_id,
+      commercialId: values.commercial_id,
       supervisorId: values.supervisor_id,
       managerSlots: values.manager_slots,
       operationalSiteId: values.operational_site_id,

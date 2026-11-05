@@ -52,10 +52,9 @@ return [
             'auth/me',
             'auth/forgot-password',
             'auth/reset-password',
-            'auth/set-password',
             'config',
             'system-health',
-            // Spec 0354: Echo's private-channel auth for the in-app realtime chat.
+            // Spec 0359: Echo's private-channel auth for the in-app realtime chat.
             'broadcasting',
         ],
 

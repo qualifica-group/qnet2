@@ -22,7 +22,7 @@ export const accountStatementKeys = {
 const SERIALIZER = { indexes: false } as const
 const FALLBACK_EXPORT_NAME = 'account-statement.xlsx'
 
-/** Default period: first day of the current month to today (spec 0355). */
+/** Default period: first day of the current month to today (spec 0360). */
 export function defaultStatementFilters(): StatementFilters {
   const today = todayIso()
   return { dateFrom: `${today.slice(0, 8)}01`, dateTo: today, types: [], registryId: null, search: '' }

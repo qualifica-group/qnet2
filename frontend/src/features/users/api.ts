@@ -52,7 +52,7 @@ export async function updateUser(
   return { ...data.data, permissions: data.permissions }
 }
 
-/** Re-sends the welcome (invite) email to a user awaiting first access (spec 0177). Returns the backend message. */
+/** Sends the welcome email with a new generated password to an active user (spec 0355). Returns the backend message. */
 export async function resendWelcomeEmail(id: number): Promise<string | null> {
   const { data } = await apiClient.post<ApiResponse<null>>(`/users/${id}/resend-welcome`)
   return data.message || null

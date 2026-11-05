@@ -1,4 +1,4 @@
-/** Spec 0355: namespace `treasuryCollection`, esteso dai microtask di dominio. */
+/** Spec 0360: namespace `treasuryCollection`, esteso dai microtask di dominio. */
 export const treasuryCollection = {
   title: 'Incasso',
   accountLabel: 'Conto',

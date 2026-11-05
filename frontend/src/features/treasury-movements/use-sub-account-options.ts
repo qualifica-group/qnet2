@@ -29,7 +29,7 @@ export interface SubAccountGroup {
 
 /**
  * Selectable sub-accounts of a movement type, grouped by kind. The sub-account
- * already saved on the movement is kept even when deactivated (spec 0355).
+ * already saved on the movement is kept even when deactivated (spec 0360).
  */
 export function useSubAccountGroups(
   type: TreasuryMovementType,

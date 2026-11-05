@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0357-request-management-commercial-field" status="draft" owner="nicola" date="2026-11-05">
+
+  <goal>
+    In Gestione richieste il "Commerciale" diventa un campo modificabile accanto al "Segnalatore", nella sezione
+    Attribuzione, sia nel form di nuova richiesta sia nel pannello di lavorazione.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-05: "in gestione richieste inserire il campo commerciale vicino a segnalatore".
+    Decisioni utente 2026-11-05:
+    D-1 Il Commerciale e' quello dell'Offerta (`quotes.commercial_id`, Referent, destinatario provvigione
+        `CommissionRecipientRole::Commercial`), come il Segnalatore (`quotes.reporter_id`). Alla creazione viene
+        scritto anche sull'Opportunita' (`opportunities.commercial_id`), come il Segnalatore.
+    D-2 Il campo sta sia nel form di creazione sia nel pannello di lavorazione.
+    D-3 La riga "Commerciale" del riepilogo in sola lettura (che mostrava `opportunity.commercial`) viene rimossa:
+        un campo diventato modificabile esce dal riepilogo (precedente: funzione/categoria, previsione 0313).
+        La chiave `commercial` della risorsa diventa quella dell'Offerta.
+
+    Precedente seguito 1:1: il "Supervisore" (spec 0097 D-9) e il "Segnalatore" (attribuzione 2026-07-22) -
+    `RequestAttributionWriter::applyQuoteAttribution()`, `RequestManagementAuthorization::fields()`/ceiling,
+    `UpdateRequestRequest`/`StoreRequestRequest`, `CreateRequestData`, `RequestCreationService`.
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: `commercial_id` (sometimes, nullable, exists:referents) in `StoreRequestRequest` e `UpdateRequestRequest`; `CreateRequestData::commercialId`; `RequestCreationService` passa il valore all'Opportunita' e all'Offerta (`commercialIdSubmitted: true`).</item>
+      <item>BE: `commercial_id` in `applyQuoteAttribution` (log sull'Opportunita' come gli altri), nell'allow-list del controller `update`, `FieldDefinition('commercial_id', 'select')` + ceiling come `reporter_id`.</item>
+      <item>BE: `RequestManagementResource` espone `commercial_id` e `commercial` dell'Offerta; eager load `commercial` al posto di `opportunity.commercial`.</item>
+      <item>FE: tipo `RequestWorkPanel.commercial_id`; schema/defaults/payload del pannello e della creazione; picker Referent (stessa risorsa del Segnalatore) accanto al Segnalatore nelle due sezioni Attribuzione; etichetta in `request-work-invalid-fields`; riga rimossa da `RequestWorkSummary`.</item>
+      <item>i18n IT/EN, guida in-app `requests` IT/EN, test Pest e Vitest.</item>
+    </in>
+    <out>
+      <item>Colonne/filtri della tabella Gestione richieste (nessuna colonna Commerciale aggiunta).</item>
+      <item>Ricalcolo provvigioni delle righe al cambio di Commerciale/Segnalatore/Supervisore dal pannello: oggi `RequestManagementService::updateWork()` non risincronizza le provvigioni (lo fa solo `QuoteService::update()`); gap preesistente, segnalato, non trattato qui.</item>
+      <item>Sincronizzazione del Commerciale dell'Opportunita' dopo la creazione (resta indipendente, snapshot D-3 di 0065).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/request-management/{quote}">
+      data.commercial_id: int|null (quotes.commercial_id)
+      data.commercial: {id, name}|null (Referent dell'Offerta; prima era quello dell'Opportunita')
+      permissions.fields.commercial_id: FieldPermission
+    </endpoint>
+    <endpoint method="PATCH" path="/api/request-management/{quote}">
+      commercial_id?: int|null - sparse: assente = invariato, null = svuota; exists:referents,id; gating per campo.
+    </endpoint>
+    <endpoint method="POST" path="/api/request-management">
+      commercial_id?: int|null - scritto su Opportunita' e Offerta; assente/null = nessun commerciale.
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">GET espone `commercial_id` e `commercial` {id, name} dell'Offerta (null se assente), indipendenti dal commerciale dell'Opportunita'.</criterion>
+    <criterion id="AC-002">PATCH scrive `quotes.commercial_id`, lo svuota con null, lo lascia invariato se la chiave e' assente; rifiuta (422) un id che non e' un Referent; il cambio e' registrato nel log dell'Opportunita'.</criterion>
+    <criterion id="AC-003">Un ruolo con `commercial_id` non modificabile riceve 422 su un cambio reale; il campo e' nell'envelope `permissions.fields`.</criterion>
+    <criterion id="AC-004">POST con `commercial_id` lo salva su Offerta e Opportunita' e lo restituisce; senza chiave entrambi restano null; id inesistente = 422.</criterion>
+    <criterion id="AC-005">FE: il picker Commerciale e' accanto al Segnalatore nella sezione Attribuzione di creazione e pannello; la modifica viaggia come `commercial_id` nel payload; il riepilogo non mostra piu' il Commerciale.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessuna migrazione (colonna gia' esistente).</item>
+    <item>Test Pest in `tests/Feature/RequestManagement/RequestManagementCommercialFieldTest.php`; Vitest sui file esistenti del modulo; Pint, ESLint, `tsc -b --force`.</item>
+  </constraints>
+
+</spec>

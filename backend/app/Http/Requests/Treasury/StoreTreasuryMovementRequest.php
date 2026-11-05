@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates POST /api/treasury-movements (spec 0355). Authorization is the
+ * Validates POST /api/treasury-movements (spec 0360). Authorization is the
  * controller's (TreasuryMovementPolicy::create).
  */
 class StoreTreasuryMovementRequest extends FormRequest

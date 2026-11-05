@@ -8,7 +8,7 @@ use App\Models\WorkOrder;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Base of the chat requests (spec 0354). Validation is NOT run on resolution:
+ * Base of the chat requests (spec 0359). Validation is NOT run on resolution:
  * the controller authorizes first (403/404) and then calls validatePayload(),
  * so every error, 404 and 409 included, goes through the controller's envelope.
  */

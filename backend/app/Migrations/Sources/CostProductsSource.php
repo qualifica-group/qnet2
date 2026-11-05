@@ -13,7 +13,6 @@ use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
 use App\Migrations\Support\CostCategoryResolver;
 use App\Migrations\Support\CostProductCatalogue;
 use App\Migrations\Support\ExternalApiClient;
-use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\Product;
 use App\Services\ProductService;
 use RuntimeException;
@@ -45,7 +44,6 @@ class CostProductsSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly ProductService $service,
         private readonly CostCategoryResolver $categories,
-        private readonly LegacyCategoryContainer $container,
     ) {
         parent::__construct($client);
     }
@@ -157,15 +155,6 @@ class CostProductsSource extends AbstractMigrationSource
         $product->save();
 
         return MigrationRowOutcome::created($warnings, $product);
-    }
-
-    /**
-     * An "[OLD] Costi" root an earlier run left at top level joins the "Old
-     * category" container (user directive 2026-10-14).
-     */
-    protected function afterImport(MigrationImportContext $context): void
-    {
-        $this->container->gather();
     }
 
     private function resolveSource(mixed $source): string

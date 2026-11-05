@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Starting financial group of the chart of accounts (spec 0355, D-3): group 90
+ * Starting financial group of the chart of accounts (spec 0360, D-3): group 90
  * with its accounts and one sub-account each. Reference data also needed in
  * production, so a data migration like 2026_11_03_100100. Idempotent: a code
  * already present is skipped. Plain DB facade, no model.

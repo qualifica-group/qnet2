@@ -1,4 +1,4 @@
-/** Spec 0355: namespace `treasuryMovements`. */
+/** Spec 0360: namespace `treasuryMovements`. */
 export const treasuryMovements = {
   title: 'Movimenti di tesoreria',
   type: {

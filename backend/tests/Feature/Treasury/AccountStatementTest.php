@@ -16,7 +16,7 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-// Spec 0355 — account statement: AC-010 .. AC-014.
+// Spec 0360 — account statement: AC-010 .. AC-014.
 
 function stmtActor(array $abilities = ['view']): User
 {

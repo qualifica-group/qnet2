@@ -1,4 +1,4 @@
-/** Account statement types. Source of truth: spec 0355 frozen `data_contract`. */
+/** Account statement types. Source of truth: spec 0360 frozen `data_contract`. */
 
 export const STATEMENT_TYPES = [
   'manual_income',

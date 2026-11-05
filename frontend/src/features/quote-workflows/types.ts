@@ -166,6 +166,7 @@ export interface UpdateDefaultStatusesPayload {
 /** Discriminated form mode shared by the form hook/meta-resolver and `QuoteWorkflowForm`. */
 export type QuoteWorkflowFormMode =
   | { type: 'create' }
+  | { type: 'duplicate'; source: QuoteWorkflowDetail }
   | { type: 'edit'; quoteWorkflow: QuoteWorkflowDetailWithPermissions }
 
 /**

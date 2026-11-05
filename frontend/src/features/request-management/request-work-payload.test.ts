@@ -12,6 +12,7 @@ function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
     referent: { id: 20, name: 'Mario Rossi' },
+    commercial_id: null,
     commercial: null,
     source_id: null,
     source: null,
@@ -61,6 +62,7 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     rewards: [],
     source_id: null,
     reporter_id: null,
+    commercial_id: null,
     supervisor_id: null,
     manager_slots: [],
     operational_site_id: null,
@@ -88,6 +90,15 @@ describe('buildRequestWorkPayload — attribution (user directive 2026-07-22)', 
     )
 
     expect(payload).toEqual({})
+  })
+
+  /** Spec 0357: the Offerta's Commerciale, diffed like the Segnalatore. */
+  it('sends commercial_id only when it changed, null when cleared', () => {
+    expect(buildRequestWorkPayload(formValues({ commercial_id: 12 }), panel({ commercial_id: null }))).toEqual({
+      commercial_id: 12,
+    })
+    expect(buildRequestWorkPayload(formValues(), panel({ commercial_id: 12 }))).toEqual({ commercial_id: null })
+    expect(buildRequestWorkPayload(formValues({ commercial_id: 12 }), panel({ commercial_id: 12 }))).toEqual({})
   })
 
   /** Spec 0056: the operational site is a fourth attribution field, diffed the same way. */

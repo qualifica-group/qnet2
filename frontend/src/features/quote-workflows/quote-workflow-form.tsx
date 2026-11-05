@@ -7,6 +7,8 @@ import { QuoteWorkflowFormBody } from '@/features/quote-workflows/quote-workflow
 import type { QuoteWorkflowDetail } from '@/features/quote-workflows/types'
 
 interface QuoteWorkflowFormProps {
+  /** The workflow copied (row action "duplicate", spec 0354); absent for a bare create. */
+  source?: QuoteWorkflowDetail
   /** Called after a successful create so the caller can navigate to the detail. */
   onSuccess: (quoteWorkflow: QuoteWorkflowDetail) => void
   /** Called when the user cancels the form. */
@@ -14,8 +16,8 @@ interface QuoteWorkflowFormProps {
 }
 
 /**
- * The opportunity workflow create form (there is no edit form: the detail
- * edits in place). Metadata-driven (spec 0004): resolves the create-context
+ * The opportunity workflow create form, bare or pre-filled from a copied
+ * workflow (there is no edit form: the detail edits in place). Metadata-driven (spec 0004): resolves the create-context
  * `ResourcePermissions` (`GET /meta/quote-workflows`) before rendering
  * `QuoteWorkflowFormBody`.
  */

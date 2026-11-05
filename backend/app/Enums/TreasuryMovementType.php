@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-/** Kind of a manual treasury movement (spec 0355). */
+/** Kind of a manual treasury movement (spec 0360). */
 enum TreasuryMovementType: string
 {
     case Income = 'income';

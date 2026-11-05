@@ -1,4 +1,4 @@
-/** Treasury movements types (spec 0355 data_contract, frozen). */
+/** Treasury movements types (spec 0360 data_contract, frozen). */
 
 export const TREASURY_MOVEMENT_TYPES = ['income', 'expense', 'transfer', 'adjustment'] as const
 export type TreasuryMovementType = (typeof TREASURY_MOVEMENT_TYPES)[number]
@@ -46,7 +46,7 @@ export interface TreasuryMovement {
   updated_at: string
 }
 
-/** Exactly one of the three sub-account ids is set (spec 0355 rules). */
+/** Exactly one of the three sub-account ids is set (spec 0360 rules). */
 export interface TreasuryMovementPayload {
   type: TreasuryMovementType
   direction: TreasuryDirection | null
@@ -69,7 +69,7 @@ export interface SubAccountOption {
   label: string
 }
 
-/** Sub-account kinds allowed per movement type (spec 0355 rules). */
+/** Sub-account kinds allowed per movement type (spec 0360 rules). */
 export const SUB_ACCOUNT_KINDS_BY_TYPE: Record<TreasuryMovementType, readonly SubAccountKind[]> = {
   income: ['revenue', 'financial'],
   expense: ['cost', 'financial'],

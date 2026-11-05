@@ -39,7 +39,7 @@ export interface TableRowScope {
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number
   /**
-   * Row-set scope to one work order type (spec 0354 D-2): the "Commesse" page sends `processing`, so
+   * Row-set scope to one work order type (spec 0359 D-2): the "Commesse" page sends `processing`, so
    * project work orders live only under "Commesse di Progetto". Absent = every type, as before
    * (Contratto, Anagrafica). A no-op for every domain but `work-orders`.
    */
@@ -90,7 +90,7 @@ export interface TableRowsPayload {
   registryId?: number | null
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number | null
-  /** Row-set scope to one work order type (spec 0354 D-2), same rule as above; snake_case on the wire, per the spec contract. */
+  /** Row-set scope to one work order type (spec 0359 D-2), same rule as above; snake_case on the wire, per the spec contract. */
   work_order_type?: WorkOrderTypeScope | null
   /**
    * Server-side tree data (spec 0157 D-1): `true` requests the domain's tree

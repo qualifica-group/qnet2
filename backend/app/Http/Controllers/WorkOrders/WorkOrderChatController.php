@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
 use Throwable;
 
 /**
- * The project work order chat (spec 0354). Every endpoint runs the ordered checks
+ * The project work order chat (spec 0359). Every endpoint runs the ordered checks
  * of the data_contract inside its try block (guard()), so each error answers with
  * the envelope: 403 policy, 404 not project, 403 team, 422 payload, 409 closed.
  */

@@ -151,7 +151,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // PATCH they send, exactly one of the two by the closure state.
             'force_close' => $this->mayToggleForceClose($actor, $model, false),
             'reopen' => $this->mayToggleForceClose($actor, $model, true),
-            // Spec 0354: the single chat rule, never a Gate ability.
+            // Spec 0359: the single chat rule, never a Gate ability.
             'view_chat' => $model instanceof WorkOrder && $chat->canRead($actor, $model),
             'write_chat' => $model instanceof WorkOrder && $chat->canWrite($actor, $model),
         ];

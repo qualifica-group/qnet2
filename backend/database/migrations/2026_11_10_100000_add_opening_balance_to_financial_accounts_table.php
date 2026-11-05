@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/** Opening balance of a financial account (spec 0355, D-1); a null date means the configured default. */
+/** Opening balance of a financial account (spec 0360, D-1); a null date means the configured default. */
 return new class extends Migration
 {
     public function up(): void

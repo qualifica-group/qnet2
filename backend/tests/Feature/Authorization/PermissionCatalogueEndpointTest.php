@@ -100,7 +100,7 @@ it('AC-005: no area exposes an addresses/contacts/personal_data module', functio
     expect($resources->all())->not->toContain('addresses', 'contacts', 'personal_data');
 });
 
-it('AC-006: the "shared" area exists with exactly notes, attachments, table-filter-views, legacy-ids, revenue-types (spec 0348) and treasury-types (spec 0355), fields: []', function () {
+it('AC-006: the "shared" area exists with exactly notes, attachments, table-filter-views, legacy-ids, revenue-types (spec 0348) and treasury-types (spec 0360), fields: []', function () {
     Sanctum::actingAs(actorWithRolesAbility('viewAny'));
 
     $areas = collect($this->getJson(ENDPOINT)->assertOk()->json('data.areas'));

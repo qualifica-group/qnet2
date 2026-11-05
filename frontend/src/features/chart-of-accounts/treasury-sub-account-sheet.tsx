@@ -30,7 +30,7 @@ function defaultsOf(state: SubAccountSheetState): Partial<TreasuryTypeFormValues
   return { code: code ?? '', name, description, is_active, chart_account_id: state.account?.id }
 }
 
-/** Create / edit form of a financial sub-account (spec 0355 D-3). */
+/** Create / edit form of a financial sub-account (spec 0360 D-3). */
 export function TreasurySubAccountSheet({ state, groups, onClose }: TreasurySubAccountSheetProps) {
   const { t } = useTranslation()
   const isEdit = state.type === 'sub-edit'

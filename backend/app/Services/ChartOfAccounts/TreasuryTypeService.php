@@ -6,7 +6,7 @@ use App\Models\TreasuryType;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Writes for the financial sub-accounts (spec 0355, D-3). Deletable while no
+ * Writes for the financial sub-accounts (spec 0360, D-3). Deletable while no
  * treasury movement references them.
  */
 class TreasuryTypeService

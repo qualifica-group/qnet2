@@ -10,7 +10,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\Rule;
 
 /**
- * Rules shared by the store and update requests of a treasury movement (spec 0355):
+ * Rules shared by the store and update requests of a treasury movement (spec 0360):
  * field-level rules here, cross-field rules in TreasuryMovementRuleChecker.
  */
 trait ValidatesTreasuryMovement

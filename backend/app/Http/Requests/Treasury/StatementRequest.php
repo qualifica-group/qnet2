@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * GET /api/financial-accounts/{financialAccount}/statement (spec 0355).
+ * GET /api/financial-accounts/{financialAccount}/statement (spec 0360).
  * Authorization before validation: `treasury-movements.view`.
  */
 class StatementRequest extends FormRequest

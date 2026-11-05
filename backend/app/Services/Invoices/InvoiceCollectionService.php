@@ -45,7 +45,7 @@ final class InvoiceCollectionService
             $collected = $this->amounts->roundToCents($payload['collected_amount']);
             $attributes = ['collected_amount' => $collected, 'collected_at' => $payload['collected_at']];
 
-            // The account is set only when sent: the legacy imports collections without it (spec 0355, D-5)
+            // The account is set only when sent: the legacy imports collections without it (spec 0360, D-5)
             if (isset($payload['financial_account_id'])) {
                 $attributes['financial_account_id'] = (int) $payload['financial_account_id'];
             }

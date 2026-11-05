@@ -8,7 +8,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Derived relation columns of the `treasury-movements` grid (spec 0355): sort,
+ * Derived relation columns of the `treasury-movements` grid (spec 0360): sort,
  * set filter and distinct values resolved through bound subqueries on an
  * allow-list of columns (never request input in SQL). Each entry maps the grid
  * column to the foreign key on `treasury_movements` and the label column of the

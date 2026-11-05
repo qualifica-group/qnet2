@@ -6,7 +6,7 @@ namespace App\DataObjects\Treasury;
 
 use Carbon\CarbonImmutable;
 
-/** Validated parameters of an account statement (spec 0355). */
+/** Validated parameters of an account statement (spec 0360). */
 final readonly class StatementFilters
 {
     /**

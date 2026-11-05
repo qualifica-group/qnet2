@@ -71,10 +71,11 @@ class UserController extends BaseApiController
         try {
             $this->authorize('create', User::class);
 
-            $data = $request->toData();
+            $password = $this->onboarding->generatePassword();
+            $data = $request->toData()->withPassword($password);
             $user = $this->service->create($request->user(), $data, $request->toProfile(), $request->toEmployment());
 
-            $this->startOnboarding($user, $data->password !== null);
+            $this->startOnboarding($user, $password);
 
             return $this->okWithPermissions(
                 new UserResource($user),
@@ -104,15 +105,15 @@ class UserController extends BaseApiController
     }
 
     /**
-     * POST /api/users/{user}/resend-welcome — resend the invite email while the
-     * user has not completed the first access (spec 0177).
+     * POST /api/users/{user}/resend-welcome — new generated password, forced
+     * change at next login, sessions revoked, welcome email (spec 0355).
      */
-    public function resendWelcome(User $user): JsonResponse
+    public function resendWelcome(Request $request, User $user): JsonResponse
     {
         try {
             $this->authorize('update', $user);
 
-            $this->onboarding->resendWelcome($user);
+            $this->onboarding->resendWelcome($user, $request->user());
 
             return $this->ok(null, __('auth.welcome_resent'));
         } catch (Throwable $exception) {
@@ -184,12 +185,12 @@ class UserController extends BaseApiController
     /**
      * The user is already committed: a failing email dispatch must not turn the
      * 201 into an error (the admin can resend). Only ids/class are logged, never
-     * the token or exception payload.
+     * the password or exception payload.
      */
-    private function startOnboarding(User $user, bool $temporaryPassword): void
+    private function startOnboarding(User $user, string $password): void
     {
         try {
-            $this->onboarding->start($user, $temporaryPassword);
+            $this->onboarding->start($user, $password);
         } catch (Throwable $exception) {
             Log::warning('Welcome email dispatch failed after user creation.', [
                 'user' => $user->id,

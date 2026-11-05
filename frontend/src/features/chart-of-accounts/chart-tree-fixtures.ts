@@ -30,7 +30,7 @@ export function costSub(overrides: Partial<SubAccount> = {}): SubAccount {
   }
 }
 
-/** Spec 0355: a financial group with one account and one financial sub-account. */
+/** Spec 0360: a financial group with one account and one financial sub-account. */
 export const FINANCIAL_GROUP: ChartGroup = {
   id: 3,
   code: '90',

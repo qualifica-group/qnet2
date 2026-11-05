@@ -141,7 +141,7 @@ describe('WorkOrderDetailWorkTabs', () => {
     expect(screen.getByText('invoices-section active')).toBeInTheDocument()
   })
 
-  it('adds the Chat tab last with view_chat and passes write_chat to the panel (spec 0354 AC-017)', () => {
+  it('adds the Chat tab last with view_chat and passes write_chat to the panel (spec 0359 AC-017)', () => {
     render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_chat: true, write_chat: true })} />)
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Tasks', 'Chat'])
@@ -151,7 +151,7 @@ describe('WorkOrderDetailWorkTabs', () => {
     expect(screen.getByText('chat-panel write:true')).toBeInTheDocument()
   })
 
-  it('has no Chat tab without view_chat (spec 0354 AC-017)', () => {
+  it('has no Chat tab without view_chat (spec 0359 AC-017)', () => {
     render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_costs: true, write_chat: true })} />)
 
     expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument()

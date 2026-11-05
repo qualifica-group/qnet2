@@ -14,7 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Throwable;
 
 /**
- * CRUD endpoints for the `treasury-types` resource (spec 0355): the financial
+ * CRUD endpoints for the `treasury-types` resource (spec 0360): the financial
  * sub-accounts. Thin controller (TreasuryTypePolicy + Service).
  *
  * @see TreasuryTypeService

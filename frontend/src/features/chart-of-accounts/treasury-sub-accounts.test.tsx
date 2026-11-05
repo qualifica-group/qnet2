@@ -52,7 +52,7 @@ beforeEach(() => {
   fetchChartTreeMock.mockResolvedValue({ ...base, groups: [...base.groups, FINANCIAL_GROUP] })
 })
 
-describe('ChartOfAccountsScreen - financial sub-accounts (spec 0355 AC-024)', () => {
+describe('ChartOfAccountsScreen - financial sub-accounts (spec 0360 AC-024)', () => {
   it('shows the financial group with its "Financial" badge and its sub-account', async () => {
     renderScreen()
 

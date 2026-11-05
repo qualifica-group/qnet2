@@ -106,7 +106,7 @@ interface InvoiceCollectionDialogProps {
   installment: InvoiceInstallment | null
   /** All installments of the document: they decide whether the residual can be spread. */
   installments: readonly InvoiceInstallment[]
-  /** Account of the invoice, proposed in the Account field (spec 0355). */
+  /** Account of the invoice, proposed in the Account field (spec 0360). */
   defaultAccount?: NamedRef | null
   onClose: () => void
   /** Called after a successful save (the caller refreshes its grid). */

@@ -146,7 +146,7 @@ describe('InvoiceCollectionDialog residual choice (spec 0196 AC-022)', () => {
   })
 })
 
-describe('InvoiceCollectionDialog account field (spec 0355 AC-023)', () => {
+describe('InvoiceCollectionDialog account field (spec 0360 AC-023)', () => {
   it('proposes the invoice account and sends it as financial_account_id', async () => {
     renderDialog(FIRST, PLAN, { id: 4, name: 'Main bank' })
 

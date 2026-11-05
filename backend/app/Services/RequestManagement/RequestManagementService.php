@@ -92,7 +92,6 @@ final class RequestManagementService
         'opportunity.registry.personalData.addresses.state',
         'opportunity.registry.personalData.addresses.country',
         'opportunity.referent.personalData.contacts',
-        'opportunity.commercial',
         // Attribution block (user directive 2026-07-22): "Fonte" (spec 0332),
         // "Segnalatore"/Sede operativa/GA2 Operatore ride on the Quote itself.
         'source',
@@ -100,6 +99,8 @@ final class RequestManagementService
         'opportunity.productLines.businessFunction',
         'opportunity.productLines.productCategory',
         'reporter',
+        // Spec 0357: the Offerta's "Commerciale", next to the Segnalatore.
+        'commercial',
         // Spec 0097, D-9: the "Supervisore" — the Offerta's commission
         // recipient, projected as `supervisor` by RequestManagementResource,
         // so it is loaded here like every other picker's hydration ref
@@ -174,7 +175,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_ga1_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_ga1_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array

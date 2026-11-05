@@ -87,7 +87,7 @@ class TableRegistry
 
     /**
      * Grids that show another domain's records and so share ITS custom fields
-     * (spec 0354): domain => custom-fieldable entity type. They never become an
+     * (spec 0359): domain => custom-fieldable entity type. They never become an
      * entity of their own in the custom fields configurator.
      *
      * @var array<string, string>

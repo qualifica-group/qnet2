@@ -19,7 +19,7 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-// Spec 0355 — manual treasury movements: AC-005..AC-009, AC-019 and the attachment boundary.
+// Spec 0360 — manual treasury movements: AC-005..AC-009, AC-019 and the attachment boundary.
 
 /**
  * @param  array<string, mixed>  $overrides

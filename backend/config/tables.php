@@ -170,7 +170,7 @@ return [
         'quote-workflows' => QuoteWorkflowsTableDefinition::class,
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersTableDefinition::class,
-        // spec 0354: le Commesse di Progetto (type = project) con la colonna dei messaggi chat non letti.
+        // spec 0359: le Commesse di Progetto (type = project) con la colonna dei messaggi chat non letti.
         'project-work-orders' => ProjectWorkOrdersTableDefinition::class,
         // spec 0201: the configurable payment statuses of a commessa line.
         'work-order-payment-statuses' => WorkOrderPaymentStatusesTableDefinition::class,
@@ -194,7 +194,7 @@ return [
         'purchase-request-line-statuses' => PurchaseRequestLineStatusesTableDefinition::class,
         'invoice-tags' => InvoiceTagsTableDefinition::class,
         'financial-accounts' => FinancialAccountsTableDefinition::class,
-        // spec 0355: manual treasury movements.
+        // spec 0360: manual treasury movements.
         'treasury-movements' => TreasuryMovementsTableDefinition::class,
         // spec 0212: profili fiscali degli agenti.
         'agent-fiscal-profiles' => AgentFiscalProfilesTableDefinition::class,

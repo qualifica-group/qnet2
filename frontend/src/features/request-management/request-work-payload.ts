@@ -295,6 +295,10 @@ export function buildRequestWorkPayload(
     payload.reporter_id = values.reporter_id
   }
 
+  if (values.commercial_id !== panel.commercial_id) {
+    payload.commercial_id = values.commercial_id
+  }
+
   // Spec 0097 rev-2 D-9: one more sparse attribution key, diffed on its own —
   // it shares nothing with the operator slot below (AC-014).
   if (values.supervisor_id !== panel.supervisor_id) {

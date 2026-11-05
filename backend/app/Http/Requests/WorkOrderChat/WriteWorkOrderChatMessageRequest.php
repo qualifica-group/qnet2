@@ -7,7 +7,7 @@ namespace App\Http\Requests\WorkOrderChat;
 use App\Services\WorkOrders\Chat\WorkOrderChatService;
 
 /**
- * POST and PATCH of a chat message (spec 0354): a plain text body, trimmed by
+ * POST and PATCH of a chat message (spec 0359): a plain text body, trimmed by
  * the TrimStrings middleware (blank becomes null, so `required` rejects it).
  */
 class WriteWorkOrderChatMessageRequest extends WorkOrderChatRequest

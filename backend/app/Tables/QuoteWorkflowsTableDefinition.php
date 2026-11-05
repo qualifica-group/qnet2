@@ -134,6 +134,12 @@ class QuoteWorkflowsTableDefinition extends AbstractTableDefinition
             $allowed[] = 'view';
         }
 
+        // Gated on the CREATE ability (spec 0354): the copy is a new workflow,
+        // submitted through the create path.
+        if (Gate::forUser($actor)->allows('create', QuoteWorkflow::class)) {
+            $allowed[] = 'duplicate';
+        }
+
         if (Gate::forUser($actor)->allows('delete', $row)) {
             $allowed[] = 'delete';
         }

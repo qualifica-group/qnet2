@@ -87,9 +87,6 @@ export interface ResetPasswordPayload {
   password_confirmation: string
 }
 
-/** POST /auth/set-password: same shape as the password-reset payload (spec 0177). */
-export type SetPasswordPayload = ResetPasswordPayload
-
 /** PUT /auth/me/first-password payload (spec 0177 rev. 2). */
 export interface FirstPasswordPayload {
   password: string

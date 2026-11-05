@@ -7,21 +7,18 @@
 
     <p>{{ __('An account has been created for you.') }}</p>
 
-    @if ($isInvite)
-        <p>{{ __('Click the button below to choose your password and complete your first access.') }}</p>
-    @else
-        <p>{{ __('Your temporary password will be communicated to you by the administrator. On first access you will be asked to choose a new one.') }}</p>
-    @endif
+    <p>
+        {{ __('Email') }}: <strong>{{ $email }}</strong><br>
+        {{ __('Password') }}: <strong>{{ $password }}</strong>
+    </p>
+
+    <p>{{ __('On first access you will be asked to choose a new password.') }}</p>
 
     <p>
         <a href="{{ $url }}" class="button" target="_blank" rel="noopener">
-            {{ $isInvite ? __('Set your password') : __('Sign in') }}
+            {{ __('Sign in') }}
         </a>
     </p>
-
-    @if ($isInvite)
-        <p>{{ __('This link will expire in :count hours.', ['count' => $expireHours]) }}</p>
-    @endif
 
     <p class="muted">{{ __('If the button above does not work, copy and paste this URL into your browser:') }}</p>
     <p class="muted break"><a href="{{ $url }}">{{ $url }}</a></p>

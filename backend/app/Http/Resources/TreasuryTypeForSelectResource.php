@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Item of GET /api/treasury-types/for-select (spec 0355, D-3): the sub-account
+ * Item of GET /api/treasury-types/for-select (spec 0360, D-3): the sub-account
  * reference plus its account and group, for the grouped picker. Expects
  * `chartAccount.parent` loaded.
  *

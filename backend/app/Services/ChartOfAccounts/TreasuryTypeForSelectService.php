@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * Selectable financial sub-accounts for the pickers (spec 0355, D-3): active
+ * Selectable financial sub-accounts for the pickers (spec 0360, D-3): active
  * ones under an active account and group, naturally ordered by code
  * (`70.2` before `70.10`), searched on code and name. `ids[]` hydrates
  * existing selections even when inactive and does not inflate the total. The

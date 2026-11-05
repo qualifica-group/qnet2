@@ -36,7 +36,7 @@ export function isPositiveAmount(value: string): boolean {
   return AMOUNT_PATTERN.test(trimmed) && Number(normalizeAmount(trimmed)) > 0
 }
 
-/** Zod schema of the movement form, mirroring the server rules per type (spec 0355). */
+/** Zod schema of the movement form, mirroring the server rules per type (spec 0360). */
 export function buildTreasuryMovementSchema(t: TFunction) {
   return z
     .object({

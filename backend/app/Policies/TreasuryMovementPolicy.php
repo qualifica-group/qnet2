@@ -5,7 +5,7 @@ namespace App\Policies;
 use App\Policies\Abstracts\BasePolicy;
 
 /**
- * Policy for the `treasury-movements` resource (spec 0355, D-2). Consultation is
+ * Policy for the `treasury-movements` resource (spec 0360, D-2). Consultation is
  * viewAny/view (movements, statement, balances, unassigned); management is
  * create/update/delete. Movements are never imported from a file.
  */

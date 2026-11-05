@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// Spec 0354, B4: category strip, export scope and menu entry (AC-015, AC-016).
+// Spec 0359, B4: category strip, export scope and menu entry (AC-015, AC-016).
 
 uses(RefreshDatabase::class);
 

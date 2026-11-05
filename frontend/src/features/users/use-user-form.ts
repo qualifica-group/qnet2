@@ -12,7 +12,8 @@ import {
 } from '@/features/users/user-schema'
 import type { UserFormMode } from '@/features/users/types'
 
-export type UserFormValues = CreateUserFormValues & UpdateUserFormValues
+/** Password pair: only the edit form carries it (spec 0355 D-1), hence optional on the shared shape. */
+export type UserFormValues = CreateUserFormValues & Partial<Pick<UpdateUserFormValues, 'password' | 'password_confirmation'>>
 
 interface UseUserFormArgs {
   mode: UserFormMode

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\PermissionRegistrar;
 
-// Spec 0355, AC-017 / AC-018 - the account chosen when an installment is collected.
+// Spec 0360, AC-017 / AC-018 - the account chosen when an installment is collected.
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
@@ -98,7 +98,7 @@ it('AC-017 a bulk collection with an unknown account is a 422', function () {
 });
 
 it('AC-017 the management control attributes the collection to the installment account, else to the invoice one', function () {
-    // REQUIREMENT CHANGED (spec 0355): the collection no longer follows only the invoice account.
+    // REQUIREMENT CHANGED (spec 0360): the collection no longer follows only the invoice account.
     $invoiceAccount = FinancialAccount::factory()->create(['name' => 'Cassa fattura']);
     $this->invoice->update(['financial_account_id' => $invoiceAccount->id]);
     $month = mcMonth(0);

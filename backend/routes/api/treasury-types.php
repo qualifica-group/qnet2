@@ -2,7 +2,7 @@
 
 /*
 |--------------------------------------------------------------------------
-| Treasury types / financial sub-accounts (spec 0355)
+| Treasury types / financial sub-accounts (spec 0360)
 |--------------------------------------------------------------------------
 |
 | Required from WITHIN the `auth:sanctum` group of routes/api.php.

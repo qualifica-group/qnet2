@@ -16,7 +16,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
-/** PATCH /api/financial-accounts/{financialAccount}/opening-balance (spec 0355, D-1). */
+/** PATCH /api/financial-accounts/{financialAccount}/opening-balance (spec 0360, D-1). */
 class OpeningBalanceController extends BaseApiController
 {
     use AuthorizesRequests;

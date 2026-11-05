@@ -1,4 +1,4 @@
-/** Etichette italiane (`workOrders.chat.*`) della chat delle commesse di progetto (spec 0354). */
+/** Etichette italiane (`workOrders.chat.*`) della chat delle commesse di progetto (spec 0359). */
 export const workOrderChat = {
   tab: 'Chat',
   unreadBadge: '{{count}} messaggi non letti',

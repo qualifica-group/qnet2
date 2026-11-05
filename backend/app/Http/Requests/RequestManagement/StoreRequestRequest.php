@@ -92,6 +92,9 @@ class StoreRequestRequest extends FormRequest
                 // semantics the opportunities create payload carries.
                 'source_id' => ['required', 'integer', Rule::exists('sources', 'id')],
                 'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+                // "Commerciale" (spec 0357): optional, same shape and
+                // semantics as the Segnalatore it sits next to.
+                'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
                 // "Supervisore" (spec 0097, D-9, user directive 2026-09-02):
                 // the created Offerta's commission recipient, same rule as
                 // the PATCH channel. Optional: an ABSENT key leaves the
@@ -204,6 +207,7 @@ class StoreRequestRequest extends FormRequest
             productLines: self::normalizeProductLines((array) $validated['product_lines']),
             sourceId: isset($validated['source_id']) ? (int) $validated['source_id'] : null,
             reporterId: isset($validated['reporter_id']) ? (int) $validated['reporter_id'] : null,
+            commercialId: isset($validated['commercial_id']) ? (int) $validated['commercial_id'] : null,
             supervisorId: isset($validated['supervisor_id']) ? (int) $validated['supervisor_id'] : null,
             supervisorIdSubmitted: array_key_exists('supervisor_id', $validated),
             rewards: array_key_exists('rewards', $validated) ? self::normalizeRewardTypeIds((array) $validated['rewards']) : null,

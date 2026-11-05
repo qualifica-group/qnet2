@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Table definition for the `treasury-movements` domain (spec 0355). `inflow` and
+ * Table definition for the `treasury-movements` domain (spec 0360). `inflow` and
  * `outflow` are computed from the type (income and adjustment-in inflow; expense,
  * adjustment-out and the transfer source outflow); the relation columns are derived
  * through an allow-list (TreasuryMovementRelationColumns).

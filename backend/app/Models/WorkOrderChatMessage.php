@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * One message of a work order's chat (spec 0354). Deletion is soft and the
+ * One message of a work order's chat (spec 0359). Deletion is soft and the
  * body is nulled by the service (D-5); `user_id` becomes null when the author
  * is removed. Audited through activitylog, body before/after included (AC-024).
  */

@@ -9,7 +9,7 @@ use App\Models\TreasuryMovement;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Sets the opening balance of a financial account (spec 0355, D-1). The change
+ * Sets the opening balance of a financial account (spec 0360, D-1). The change
  * is audited by the model's activity log (before/after). The opening date
  * cannot move past a manual movement already registered on the account.
  */

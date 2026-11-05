@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
 use Throwable;
 
 /**
- * CRUD endpoints for the `treasury-movements` resource (spec 0355). Thin
+ * CRUD endpoints for the `treasury-movements` resource (spec 0360). Thin
  * controller: FormRequest validation, TreasuryMovementPolicy, Service call.
  *
  * @see TreasuryMovementService

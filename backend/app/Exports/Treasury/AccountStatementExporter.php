@@ -9,7 +9,7 @@ use App\Exports\XlsxExportWriter;
 /**
  * Writes an account statement payload (AccountStatementService::statement) to
  * an xlsx file: one row per statement row with the running balance, preceded
- * by the period opening balance row (spec 0355).
+ * by the period opening balance row (spec 0360).
  */
 final class AccountStatementExporter
 {

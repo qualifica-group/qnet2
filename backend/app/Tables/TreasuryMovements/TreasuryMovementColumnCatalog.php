@@ -6,7 +6,7 @@ use App\Enums\TreasuryMovementType;
 
 /**
  * Declarative column/filter/action catalogue of the `treasury-movements` domain
- * (spec 0355). Pure data. `movement_date`, `type` and `description` are real
+ * (spec 0360). Pure data. `movement_date`, `type` and `description` are real
  * columns; the relation columns are derived (TreasuryMovementRelationColumns) and
  * `inflow`/`outflow`/`sub_account` are computed per row, never sorted or filtered.
  */

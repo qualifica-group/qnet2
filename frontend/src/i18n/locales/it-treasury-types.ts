@@ -1,4 +1,4 @@
-/** Spec 0355: namespace `treasuryTypes`, esteso dai microtask di dominio. */
+/** Spec 0360: namespace `treasuryTypes`, esteso dai microtask di dominio. */
 export const treasuryTypes = {
   title: 'Sottoconti finanziari',
   kind: {

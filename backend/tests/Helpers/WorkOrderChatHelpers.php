@@ -10,7 +10,7 @@ use Spatie\Permission\Models\Role;
 
 if (! function_exists('chatWorkOrder')) {
     /**
-     * A work order of type project (the only kind with a chat), spec 0354.
+     * A work order of type project (the only kind with a chat), spec 0359.
      *
      * @param  array<string, mixed>  $attributes
      */

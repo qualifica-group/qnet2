@@ -88,7 +88,7 @@ class InvoiceResource extends JsonResource
                 'payment_method_code' => $installment->payment_method_code,
                 'collected_amount' => $installment->collected_amount,
                 'collected_at' => $installment->collected_at,
-                // Spec 0355, D-5: the account the collection was recorded on, if chosen.
+                // Spec 0360, D-5: the account the collection was recorded on, if chosen.
                 'financial_account' => $installment->financialAccount === null
                     ? null
                     : ['id' => $installment->financialAccount->id, 'name' => $installment->financialAccount->name],

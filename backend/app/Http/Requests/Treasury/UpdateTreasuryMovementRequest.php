@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates PUT/PATCH /api/treasury-movements/{treasuryMovement} (spec 0355): the
+ * Validates PUT/PATCH /api/treasury-movements/{treasuryMovement} (spec 0360): the
  * store rules, all `sometimes`, with the cross-field checks run on the stored
  * values overlaid by the submitted ones.
  */

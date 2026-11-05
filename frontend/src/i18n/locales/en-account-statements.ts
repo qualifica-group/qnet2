@@ -1,4 +1,4 @@
-/** Spec 0355: namespace `accountStatements` (Account statement page + opening balance on the account sheet). */
+/** Spec 0360: namespace `accountStatements` (Account statement page + opening balance on the account sheet). */
 export const accountStatements = {
   title: 'Account statements',
   forbidden: 'You do not have permission to view account statements.',

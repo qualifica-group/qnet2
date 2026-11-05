@@ -176,7 +176,7 @@ return [
         'purchase_order' => PurchaseOrder::class,
         // Supplier document (spec 0250, D-3): alias in the global morph map.
         'purchase_invoice' => PurchaseInvoice::class,
-        // Treasury movement documents (spec 0355): alias in the global morph map.
+        // Treasury movement documents (spec 0360): alias in the global morph map.
         'treasury_movement' => TreasuryMovement::class,
     ],
     /*

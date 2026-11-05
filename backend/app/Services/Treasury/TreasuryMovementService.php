@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Writes of the manual treasury movements (spec 0355). Validation lives in the
+ * Writes of the manual treasury movements (spec 0360). Validation lives in the
  * requests; every change is audited by the model's activity log (D-8).
  */
 final class TreasuryMovementService

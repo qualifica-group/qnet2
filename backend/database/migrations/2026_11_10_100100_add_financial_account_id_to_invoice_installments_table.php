@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/** Account chosen when an active installment is collected (spec 0355, D-5). */
+/** Account chosen when an active installment is collected (spec 0360, D-5). */
 return new class extends Migration
 {
     public function up(): void

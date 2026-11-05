@@ -13,7 +13,7 @@ use App\Models\TreasuryType;
 use Carbon\CarbonImmutable;
 
 /**
- * Cross-field rules of a manual treasury movement (spec 0355): direction and
+ * Cross-field rules of a manual treasury movement (spec 0360): direction and
  * destination account by type, exactly one coherent and active sub-account, the
  * same-company transfer (D-6) and the opening date of both accounts. Runs on the
  * effective payload (stored values overlaid by the submitted ones on update).

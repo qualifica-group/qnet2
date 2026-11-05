@@ -40,7 +40,7 @@ export function QuoteWorkflowsTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  const { openCreate, openView, sheet } = useModuleOpener(OPPORTUNITY_WORKFLOWS_DOMAIN, {
+  const { openCreate, openView, openDuplicate, sheet } = useModuleOpener(OPPORTUNITY_WORKFLOWS_DOMAIN, {
     onSaved: refreshGrid,
   })
 
@@ -75,6 +75,9 @@ export function QuoteWorkflowsTable() {
         case 'view':
           openView(row)
           break
+        case 'duplicate':
+          openDuplicate(row)
+          break
         case 'delete':
           void runDelete(row)
           break
@@ -85,7 +88,7 @@ export function QuoteWorkflowsTable() {
           break
       }
     },
-    [openView, runDelete],
+    [openView, openDuplicate, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

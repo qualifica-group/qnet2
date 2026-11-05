@@ -52,7 +52,7 @@ export interface RequestManagerRef {
   position: number
 }
 
-/** A hydrated `{id, name}` relation projection (registry/referent/commercial). */
+/** A hydrated `{id, name}` relation projection (registry/referent/commercial/reporter). */
 export interface RequestRelationRef {
   id: number
   name: string
@@ -181,13 +181,15 @@ export interface RequestWorkPanel extends RequestForecast {
   name: string
   registry: RequestRelationRef | null
   referent: RequestRelationRef | null
-  commercial: RequestRelationRef | null
   /** "Fonte" (user directive 2026-07-22): editable from the panel's attribution section. */
   source_id: number | null
   source: RequestRelationRef | null
   /** "Segnalatore": a Referent, same picker as the opportunities form. */
   reporter_id: number | null
   reporter: RequestRelationRef | null
+  /** "Commerciale" (spec 0357): the Offerta's own commercial Referent, edited next to the Segnalatore. */
+  commercial_id: number | null
+  commercial: RequestRelationRef | null
   /**
    * Spec 0097 rev-2 D-9: the Offerta's Supervisore, editable from the panel's
    * team section again (user directive 2026-09-02, which reverses spec 0087

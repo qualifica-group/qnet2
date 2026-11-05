@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 /**
- * Read-only treasury endpoints (spec 0355): account statement (+ xlsx export),
+ * Read-only treasury endpoints (spec 0360): account statement (+ xlsx export),
  * balances and unassigned collections/payments. Authorization is in the
  * FormRequests (`treasury-movements.view` / `.export`).
  */

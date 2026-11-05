@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * ResourceAuthorization for the `treasury-movements` resource (spec 0355): every
+ * ResourceAuthorization for the `treasury-movements` resource (spec 0360): every
  * field is visible+editable when the actor may write, else visible+readonly.
  */
 class TreasuryMovementsAuthorization extends AbstractResourceAuthorization

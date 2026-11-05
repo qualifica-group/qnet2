@@ -159,7 +159,7 @@ final class GridCategoryTabsResolver
             ->join('quote_lines', 'quote_lines.quote_id', '=', 'source_quotes.quote_id')
             ->join('products', 'products.id', '=', 'quote_lines.product_id')
             ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
-            // Spec 0354, D-2: project commesse have their own menu page and no strip.
+            // Spec 0359, D-2: project commesse have their own menu page and no strip.
             ->where('work_orders.type', '<>', WorkOrderType::Project->value);
     }
 }

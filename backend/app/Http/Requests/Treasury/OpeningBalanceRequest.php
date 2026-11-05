@@ -6,7 +6,7 @@ namespace App\Http\Requests\Treasury;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-/** PATCH /api/financial-accounts/{financialAccount}/opening-balance (spec 0355, D-1). */
+/** PATCH /api/financial-accounts/{financialAccount}/opening-balance (spec 0360, D-1). */
 class OpeningBalanceRequest extends FormRequest
 {
     public const string MAX_AMOUNT = '999999999.99';

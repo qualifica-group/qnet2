@@ -32,7 +32,7 @@ export function useInvoiceCollectionForm(
   installment: InvoiceInstallment,
   installments: readonly InvoiceInstallment[],
   onDone: () => void,
-  /** Account of the invoice, proposed when the installment has none of its own (spec 0355). */
+  /** Account of the invoice, proposed when the installment has none of its own (spec 0360). */
   defaultAccount: NamedRef | null = null,
 ) {
   const { t, i18n } = useTranslation()

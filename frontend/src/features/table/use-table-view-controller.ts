@@ -30,7 +30,7 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   registryId?: number
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number
-  /** Row-set scope to one work order type (spec 0354 D-2); a no-op for every domain but `work-orders`. */
+  /** Row-set scope to one work order type (spec 0359 D-2); a no-op for every domain but `work-orders`. */
   workOrderType?: WorkOrderTypeScope
   onRowCountChanged?: (count: number | null) => void
   onAction: RowActionHandler

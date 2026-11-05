@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { UNAUTHORIZED_EVENT } from '@/api/client'
+import { PASSWORD_CHANGE_REQUIRED_EVENT, UNAUTHORIZED_EVENT } from '@/api/client'
 import { tokenStorage } from '@/api/token-storage'
 import { applyLocale } from '@/i18n'
 import { fetchMe, login as loginRequest, logout as logoutRequest } from '@/features/auth/api'
@@ -82,6 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+  }, [queryClient])
+
+  // A 403 `password_change_required` (spec 0355): refresh the user so the gate shows without a reload.
+  useEffect(() => {
+    const handlePasswordChangeRequired = () => {
+      void queryClient.invalidateQueries({ queryKey: authKeys.me })
+    }
+    window.addEventListener(PASSWORD_CHANGE_REQUIRED_EVENT, handlePasswordChangeRequired)
+    return () => window.removeEventListener(PASSWORD_CHANGE_REQUIRED_EVENT, handlePasswordChangeRequired)
   }, [queryClient])
 
   const value = useMemo<AuthContextValue>(

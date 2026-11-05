@@ -44,7 +44,7 @@ export interface FinancialAccountDetail {
   card_number_masked: string | null
   card_expiry: string | null
   notes: string | null
-  /** Spec 0355: opening balance (decimal string), effective date (default included), current balance. */
+  /** Spec 0360: opening balance (decimal string), effective date (default included), current balance. */
   opening_balance?: string
   opening_balance_date?: string
   /** Null without `treasury-movements.view`. */

@@ -40,6 +40,7 @@ export const quoteWorkflows = {
     createdAt: 'Creato il',
   },
   form: {
+    duplicateName: 'Copia di {{name}}',
     newQuoteWorkflow: 'Nuovo workflow',
     createTitle: 'Crea workflow offerta',
     createSubtitle: 'Definisci un nuovo workflow di stati di lavorazione per le offerte.',

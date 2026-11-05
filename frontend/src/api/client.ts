@@ -9,6 +9,15 @@ import { tokenStorage } from '@/api/token-storage'
  */
 export const UNAUTHORIZED_EVENT = 'auth:unauthorized'
 
+/**
+ * Dispatched when the API answers 403 `password_change_required` (spec 0355):
+ * the AuthProvider refreshes the current user so the first-access gate shows.
+ */
+export const PASSWORD_CHANGE_REQUIRED_EVENT = 'auth:password-change-required'
+
+/** `authorization.reason` of the 403 raised while a first password is pending. */
+const PASSWORD_CHANGE_REQUIRED_REASON = 'password_change_required'
+
 export const apiClient = axios.create({
   baseURL: env.apiUrl,
   headers: {
@@ -66,6 +75,13 @@ apiClient.interceptors.response.use(
         tokenStorage.clear()
         window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
       }
+    }
+    if (
+      axios.isAxiosError<{ authorization?: { reason?: string } }>(error) &&
+      error.response?.status === 403 &&
+      error.response.data?.authorization?.reason === PASSWORD_CHANGE_REQUIRED_REASON
+    ) {
+      window.dispatchEvent(new Event(PASSWORD_CHANGE_REQUIRED_EVENT))
     }
     return Promise.reject(error)
   },

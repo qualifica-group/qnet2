@@ -8,7 +8,7 @@ function normalizeAmount(raw: string): string {
   return raw.trim().replace(',', '.')
 }
 
-/** Mirrors the server rules of PATCH opening-balance (spec 0355): 2 decimals, +-999999999.99, date required. */
+/** Mirrors the server rules of PATCH opening-balance (spec 0360): 2 decimals, +-999999999.99, date required. */
 export const openingBalanceSchema = z.object({
   opening_balance: z
     .string()

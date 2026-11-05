@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0355-treasury-account-balances" status="approved" owner="utente" date="2026-11-05">
+<spec id="0360-treasury-account-balances" status="approved" owner="utente" date="2026-11-05">
 
   <goal>
     Tesoreria fase A "Conti con saldo": per ogni banca, cassa e carta l'amministrazione vede il saldo a oggi e a

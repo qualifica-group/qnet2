@@ -12,7 +12,7 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-// Spec 0355 — unassigned collections/payments: AC-015.
+// Spec 0360 — unassigned collections/payments: AC-015.
 
 function unassignedActor(bool $view = true): User
 {

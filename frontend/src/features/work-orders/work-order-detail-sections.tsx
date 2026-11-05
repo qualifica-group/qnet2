@@ -8,6 +8,7 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
+import { RECORD_COLUMN_CLASS } from '@/components/detail/record-layout'
 import { RecordSkeletonSections } from '@/components/detail/record-skeleton-sections'
 import {
   ProjectedContactsSection,
@@ -84,9 +85,11 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
  * 2026-10-06): the internal notes callout first, then the shared record
  * skeleton (spec 0331): Dati commessa (with the link to the Contratto),
  * Contesto, Anagrafica e contatti, Buoni, its own Team, Societa' e sedi,
- * Documento e pagamento and the full-width contract data; the collected
- * Attribute values close the card, each a row of its own. Everything the
- * offer owns is a read-only projection. Status and completion are computed
+ * Documento e pagamento. With Attribute values to collect, the skeleton
+ * stacks in the left column and "Informazioni aggiuntive" fills the right
+ * one (user directive 2026-11-05); without, the skeleton keeps both columns.
+ * The contract data close the card at full width, under both columns.
+ * Everything the offer owns is a read-only projection. Status and completion are computed
  * (spec 0149): they stay the header pill and the KPI strip. The forced
  * closure is an action of the header (user directive 2026-10-06), its reason
  * a read-only row of the data.
@@ -96,6 +99,84 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
   const { inline } = editor
   // Spec 0267: a multi-offer work order has no single client/contract/company; each product line names its own client.
   const hasSingleQuote = !workOrder.is_multi_quote
+  const hasAttributes = workOrder.applicable_attributes.length > 0
+
+  const skeleton = (
+    <RecordSkeletonSections
+      details={
+        <WorkOrderIdentitySection
+          title={t('workOrders.detail.sections.data')}
+          values={{
+            title: workOrder.title,
+            code: workOrder.code,
+            type: workOrder.type,
+            start_date: workOrder.start_date,
+            callback_date: workOrder.callback_date,
+            description: workOrder.description,
+            task_template: workOrder.task_template,
+            force_close_reason: workOrder.is_force_closed ? workOrder.force_close_reason : null,
+          }}
+          workflowStatus={{
+            current: workOrder.work_order_workflow_status,
+            statuses: workOrder.work_order_workflow_statuses,
+          }}
+          form={editor}
+          inline={inline}
+        >
+          {hasSingleQuote ? (
+            <LinkedField
+              label={t('workOrders.detail.contract')}
+              domain="contracts"
+              record={
+                workOrder.contract
+                  ? { id: workOrder.contract.id, name: `${workOrder.contract.code} — ${workOrder.contract.title}` }
+                  : null
+              }
+            />
+          ) : null}
+        </WorkOrderIdentitySection>
+      }
+      context={
+        hasSingleQuote ? (
+          <ProjectedContextSection source={workOrder.source} productLines={workOrder.product_lines} />
+        ) : null
+      }
+      contacts={
+        hasSingleQuote ? (
+          <ProjectedContactsSection
+            registry={workOrder.registry}
+            referent={workOrder.referent}
+            commercial={workOrder.commercial}
+            reporter={workOrder.reporter}
+          />
+        ) : null
+      }
+      rewards={
+        hasSingleQuote ? (
+          <RewardChipsSection
+            title={t('workOrders.detail.sections.rewards')}
+            rewards={workOrder.rewards ?? EMPTY_REWARDS}
+            emptyLabel={t('common.noRewards')}
+          />
+        ) : null
+      }
+      team={
+        <WorkOrderTeamSection
+          title={t('workOrders.detail.sections.detailTeam')}
+          supervisors={workOrder.supervisors}
+          participants={workOrder.participants}
+          form={editor}
+          inline={inline}
+        />
+      }
+      company={hasSingleQuote ? <WorkOrderCompanySection workOrder={workOrder} /> : null}
+      document={
+        hasSingleQuote ? (
+          <ProjectedDocumentSection layout={workOrder.layout} paymentMethod={workOrder.payment_method} />
+        ) : null
+      }
+    />
+  )
 
   return (
     <RecordSectionsGrid>
@@ -106,90 +187,26 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
         className={FULL_WIDTH_SECTION_CLASS}
       />
 
-      <RecordSkeletonSections
-        details={
-          <WorkOrderIdentitySection
-            title={t('workOrders.detail.sections.data')}
-            values={{
-              title: workOrder.title,
-              code: workOrder.code,
-              type: workOrder.type,
-              start_date: workOrder.start_date,
-              callback_date: workOrder.callback_date,
-              description: workOrder.description,
-              task_template: workOrder.task_template,
-              force_close_reason: workOrder.is_force_closed ? workOrder.force_close_reason : null,
-            }}
-            workflowStatus={{
-              current: workOrder.work_order_workflow_status,
-              statuses: workOrder.work_order_workflow_statuses,
-            }}
-            form={editor}
-            inline={inline}
-          >
-            {hasSingleQuote ? (
-              <LinkedField
-                label={t('workOrders.detail.contract')}
-                domain="contracts"
-                record={
-                  workOrder.contract
-                    ? { id: workOrder.contract.id, name: `${workOrder.contract.code} — ${workOrder.contract.title}` }
-                    : null
-                }
-              />
-            ) : null}
-          </WorkOrderIdentitySection>
-        }
-        context={
-          hasSingleQuote ? (
-            <ProjectedContextSection source={workOrder.source} productLines={workOrder.product_lines} />
-          ) : null
-        }
-        contacts={
-          hasSingleQuote ? (
-            <ProjectedContactsSection
-              registry={workOrder.registry}
-              referent={workOrder.referent}
-              commercial={workOrder.commercial}
-              reporter={workOrder.reporter}
+      {hasAttributes ? (
+        <>
+          {/* Own @container per column: the grids inside break on the column's width, not the card's. */}
+          <div className={RECORD_COLUMN_CLASS}>{skeleton}</div>
+          <div className={RECORD_COLUMN_CLASS}>
+            <WorkOrderAttributesSection
+              attributes={workOrder.applicable_attributes}
+              layout={workOrder.attribute_layout}
+              values={workOrder.attribute_values}
+              inline={inline}
+              control={editor.form.control}
+              collapsible={false}
             />
-          ) : null
-        }
-        rewards={
-          hasSingleQuote ? (
-            <RewardChipsSection
-              title={t('workOrders.detail.sections.rewards')}
-              rewards={workOrder.rewards ?? EMPTY_REWARDS}
-              emptyLabel={t('common.noRewards')}
-            />
-          ) : null
-        }
-        team={
-          <WorkOrderTeamSection
-            title={t('workOrders.detail.sections.detailTeam')}
-            supervisors={workOrder.supervisors}
-            participants={workOrder.participants}
-            form={editor}
-            inline={inline}
-          />
-        }
-        company={hasSingleQuote ? <WorkOrderCompanySection workOrder={workOrder} /> : null}
-        document={
-          hasSingleQuote ? (
-            <ProjectedDocumentSection layout={workOrder.layout} paymentMethod={workOrder.payment_method} />
-          ) : null
-        }
-        specific={<WorkOrderContractDataPanel workOrder={workOrder} />}
-      />
+          </div>
+        </>
+      ) : (
+        skeleton
+      )}
 
-      <WorkOrderAttributesSection
-        attributes={workOrder.applicable_attributes}
-        layout={workOrder.attribute_layout}
-        values={workOrder.attribute_values}
-        inline={inline}
-        control={editor.form.control}
-        className={FULL_WIDTH_SECTION_CLASS}
-      />
+      <WorkOrderContractDataPanel workOrder={workOrder} />
     </RecordSectionsGrid>
   )
 }

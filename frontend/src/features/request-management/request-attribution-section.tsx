@@ -27,13 +27,16 @@ interface RequestAttributionSectionProps {
   /** The panel's hydrated `{id, name}` projections, for the pickers' labels. */
   source: RequestRelationRef | null
   reporter: RequestRelationRef | null
+  /** "Commerciale" (spec 0357): the Offerta's commercial Referent. */
+  commercial: RequestRelationRef | null
   /** Spec 0059 D-3: the panel's persisted reward assignments, for the "abbinamento buono" control under the Segnalatore field. */
   rewards: RewardAssignmentRef[]
 }
 
 /**
  * Where the request comes from and who reports it (user directive
- * 2026-07-22): "Fonte" and "Segnalatore". Every control is metadata-driven, so
+ * 2026-07-22): "Fonte" and "Segnalatore", plus the Offerta's "Commerciale"
+ * right after the Segnalatore (spec 0357). Every control is metadata-driven, so
  * its per-field gating comes from the server-derived `permissions` block like
  * every other field here.
  *
@@ -54,6 +57,7 @@ export function RequestAttributionSection({
   requestId,
   source,
   reporter,
+  commercial,
   rewards,
 }: RequestAttributionSectionProps) {
   const { t } = useTranslation()
@@ -123,6 +127,19 @@ export function RequestAttributionSection({
             initialAssignments={rewards}
           />
         </div>
+
+        <RelationSelectField
+          control={control}
+          name="commercial_id"
+          metaKey="commercial_id"
+          label={t('requestManagement.workPanel.attribution.commercial', { defaultValue: 'Sales rep' })}
+          resource={REFERENTS_FOR_SELECT_RESOURCE}
+          searchPlaceholder={t('requestManagement.workPanel.attribution.commercialSearch', {
+            defaultValue: 'Search a sales rep',
+          })}
+          selected={commercial}
+          {...selectLabels}
+        />
       </div>
     </FormSection>
   )

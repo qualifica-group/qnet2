@@ -9,7 +9,7 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
-// Spec 0355 — `treasury-movements` grid: columns, computed inflow/outflow, allow-listed sort/filter, authz.
+// Spec 0360 — `treasury-movements` grid: columns, computed inflow/outflow, allow-listed sort/filter, authz.
 
 const TREASURY_GRID_COLUMNS = [
     'movement_date', 'type', 'account', 'counterpart_account', 'company', 'description', 'sub_account',

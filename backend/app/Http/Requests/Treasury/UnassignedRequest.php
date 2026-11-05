@@ -7,7 +7,7 @@ namespace App\Http\Requests\Treasury;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/** GET /api/account-statements/unassigned (spec 0355): `treasury-movements.view`. */
+/** GET /api/account-statements/unassigned (spec 0360): `treasury-movements.view`. */
 class UnassignedRequest extends FormRequest
 {
     public function authorize(): bool

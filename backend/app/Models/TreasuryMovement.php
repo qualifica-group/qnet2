@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Manual treasury movement (spec 0355): income, expense, transfer between two
+ * Manual treasury movement (spec 0360): income, expense, transfer between two
  * accounts of the same company, or balance adjustment. Exactly one of the three
  * sub-account columns is set. The amount is always positive; the sign comes from
  * the type (and `direction` for an adjustment).

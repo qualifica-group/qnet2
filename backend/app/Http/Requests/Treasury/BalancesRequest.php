@@ -8,7 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/** GET /api/account-statements/balances (spec 0355): `treasury-movements.view`. */
+/** GET /api/account-statements/balances (spec 0360): `treasury-movements.view`. */
 class BalancesRequest extends FormRequest
 {
     public function authorize(): bool

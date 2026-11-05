@@ -111,7 +111,7 @@ describe('InstallmentBulkCollectionDialog (spec 0198 AC-010)', () => {
     expect(await screen.findByText('This installment has already been collected.')).toBeInTheDocument()
   })
 
-  it('spec 0355 AC-023: the account is empty by default, explains it and is sent as null', async () => {
+  it('spec 0360 AC-023: the account is empty by default, explains it and is sent as null', async () => {
     renderDialog()
 
     expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('no account')
@@ -125,7 +125,7 @@ describe('InstallmentBulkCollectionDialog (spec 0198 AC-010)', () => {
     expect(bulkMock.mock.calls[0][0]).toMatchObject({ financial_account_id: null })
   })
 
-  it('spec 0355 AC-023: the chosen account is sent and can be cleared again', async () => {
+  it('spec 0360 AC-023: the chosen account is sent and can be cleared again', async () => {
     renderDialog()
 
     fireEvent.click(screen.getByRole('button', { name: 'Account' }))

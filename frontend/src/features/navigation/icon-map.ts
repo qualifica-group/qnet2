@@ -160,7 +160,7 @@ const iconMap: Record<string, LucideIcon> = {
   'layout-grid': LayoutGrid,
   // Spec 0334: "Assistenza tecnica" under Configurazione > Task.
   'life-buoy': LifeBuoy,
-  // Spec 0355: "Movimenti di tesoreria" and "Estratto conto" under Contabilita' > Finanza.
+  // Spec 0360: "Movimenti di tesoreria" and "Estratto conto" under Contabilita' > Finanza.
   'arrow-left-right': ArrowLeftRight,
   'scroll-text': ScrollText,
 }

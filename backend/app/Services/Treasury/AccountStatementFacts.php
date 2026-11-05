@@ -11,7 +11,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Reads the three sources of an account's cash facts (spec 0355): manual
+ * Reads the three sources of an account's cash facts (spec 0360): manual
  * movements, collections of invoice installments and payments of purchase
  * installments. Every fact carries a signed amount in integer cents. The
  * account of an installment is its own, else the document's (D-5).

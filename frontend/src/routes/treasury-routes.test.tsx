@@ -23,7 +23,7 @@ const ROUTES = [
   { path: 'account-statements', label: 'Account statements' },
 ]
 
-describe('treasury routes (spec 0355)', () => {
+describe('treasury routes (spec 0360)', () => {
   it.each(ROUTES)('resolves /$path', ({ path }) => {
     const matches = matchRoutes(router.routes, { pathname: `/${path}` })
     expect(matches?.at(-1)?.route.path).toBe(path)

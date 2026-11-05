@@ -110,6 +110,7 @@ function panel(): RequestWorkPanelWithPermissions {
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
     referent: null,
+    commercial_id: null,
     commercial: null,
     source_id: null,
     source: null,

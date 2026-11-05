@@ -17,6 +17,7 @@ import { AuthProvider } from '@/features/auth/auth-provider'
 vi.mock('@/api/client', () => ({
   apiClient: { get: vi.fn() },
   UNAUTHORIZED_EVENT: 'auth:unauthorized',
+  PASSWORD_CHANGE_REQUIRED_EVENT: 'auth:password-change-required',
 }))
 
 const mockedGet = vi.mocked(apiClient.get)

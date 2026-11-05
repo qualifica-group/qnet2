@@ -197,6 +197,9 @@ class RequestManagementController extends BaseApiController
                         'next_callback_at',
                         'source_id',
                         'reporter_id',
+                        // Spec 0357: the Offerta's "Commerciale", next to
+                        // the Segnalatore in the attribution block.
+                        'commercial_id',
                         // Spec 0097, D-9: the "Supervisore", the Offerta's
                         // commission recipient — an attribution scalar
                         // written like the two above, independent of the

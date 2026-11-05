@@ -5,7 +5,7 @@ namespace App\Policies;
 use App\Policies\Abstracts\BasePolicy;
 
 /**
- * Standard CRUD policy for the `treasury-types` resource (spec 0355, D-3).
+ * Standard CRUD policy for the `treasury-types` resource (spec 0360, D-3).
  */
 class TreasuryTypePolicy extends BasePolicy
 {

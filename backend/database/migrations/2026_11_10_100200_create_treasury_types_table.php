@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/** Financial sub-accounts of the chart of accounts (spec 0355, D-3): same shape as `revenue_types`. */
+/** Financial sub-accounts of the chart of accounts (spec 0360, D-3): same shape as `revenue_types`. */
 return new class extends Migration
 {
     public function up(): void

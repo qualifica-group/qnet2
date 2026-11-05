@@ -11,11 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Work order data** (with the link to the Contract) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the work order's Supervisors and Participants) and **Company and sites**, then **Document and payment** and **Contract data**. Context, Registry and contacts, Rewards, Company and sites and Document and payment come from the quote, read only; a work order with lines from several quotes does not show them.",
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Work order data** (with the link to the Contract) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the work order's Supervisors and Participants) and **Company and sites**, then **Document and payment**. When the product lines bring **Additional information**, these sections are stacked on the left and the Additional information fills the right column. At the bottom, full width under both columns, is the **Contract data**. Context, Registry and contacts, Rewards, Company and sites and Document and payment come from the quote, read only; a work order with lines from several quotes does not show them.",
         },
         {
           type: 'paragraph',
-          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section. Clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every work order, on the detail and on the create form.',
+          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section. On the detail the Additional information is always open. On the create form, clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every work order.',
         },
         {
           type: 'steps',

@@ -37,9 +37,12 @@ vi.mock('@/components/page-header', () => ({
 }))
 
 const deleteQuoteWorkflowMock = vi.fn()
-vi.mock('@/features/quote-workflows/api', () => ({
+// Never settles: the duplicate test only asserts which source is fetched.
+const fetchQuoteWorkflowMock = vi.fn(() => new Promise(() => {}))
+vi.mock('@/features/quote-workflows/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/quote-workflows/api')>()),
   deleteQuoteWorkflow: (...args: unknown[]) => deleteQuoteWorkflowMock(...args),
-  fetchQuoteWorkflow: vi.fn(),
+  fetchQuoteWorkflow: (...args: unknown[]) => fetchQuoteWorkflowMock(...(args as [])),
   fetchDefaultStatuses: vi.fn().mockResolvedValue([]),
 }))
 
@@ -60,7 +63,15 @@ const DELETE_ACTION: TableActionDefinition = {
   confirm: true,
 }
 
-const ROW: TableRow = { id: 1, actions: ['delete'], name: 'EMEA workflow' }
+const DUPLICATE_ACTION: TableActionDefinition = {
+  key: 'duplicate',
+  label: 'actions.duplicate',
+  icon: 'copy',
+  type: 'action',
+  confirm: false,
+}
+
+const ROW: TableRow = { id: 1, actions: ['delete', 'duplicate'], name: 'EMEA workflow' }
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
@@ -72,6 +83,9 @@ vi.mock('@/features/table/table-view', () => ({
       <div role="region" aria-label={`table-${domain}`}>
         <button type="button" onClick={() => onAction?.(DELETE_ACTION, ROW)}>
           delete row
+        </button>
+        <button type="button" onClick={() => onAction?.(DUPLICATE_ACTION, ROW)}>
+          duplicate row
         </button>
       </div>
     )
@@ -108,6 +122,7 @@ beforeEach(() => {
   canMock.mockReset()
   canMock.mockReturnValue(true)
   deleteQuoteWorkflowMock.mockReset()
+  fetchQuoteWorkflowMock.mockClear()
   toastSuccessMock.mockReset()
   toastErrorMock.mockReset()
 })
@@ -185,5 +200,15 @@ describe('QuoteWorkflowsTable — delete (AC-018)', () => {
     await waitFor(() =>
       expect(toastSuccessMock).toHaveBeenCalledWith('Quote workflow deleted successfully.'),
     )
+  })
+})
+
+describe('QuoteWorkflowsTable — duplicate (spec 0354 AC-009)', () => {
+  it('opens the create form pre-filled from the row\'s workflow, fetched fresh', async () => {
+    renderTable()
+    screen.getByRole('button', { name: 'duplicate row' }).click()
+
+    await waitFor(() => expect(fetchQuoteWorkflowMock).toHaveBeenCalledWith(1))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 })

@@ -15,7 +15,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
- * A chat write, pushed to the work order's private channel (spec 0354): queued
+ * A chat write, pushed to the work order's private channel (spec 0359): queued
  * and dispatched after the commit, so a rolled back write never reaches the
  * socket. The payload is frozen at dispatch time, identical to the REST shape.
  */

@@ -127,8 +127,9 @@ describe('UserForm — metadata-driven authorization (spec 0004)', () => {
     renderCreate()
 
     await screen.findByRole('button', { name: 'Edit Personal details' })
-    fireEvent.click(pencilOf('Password'))
-    expect(focusedInput('Password')).toBeEnabled()
+    // REQUIREMENT CHANGED (spec 0355): the create form has no Password row; the Email row stands in.
+    fireEvent.click(pencilOf('Email'))
+    expect(focusedInput('Email')).toBeEnabled()
   })
 
   it('AC14 — hides an action affordance gated off by metadata', async () => {

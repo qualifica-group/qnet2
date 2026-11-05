@@ -7,7 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// Spec 0354, B4: `project-work-orders` shares the `work-orders` custom fields (same columns as Commesse).
+// Spec 0359, B4: `project-work-orders` shares the `work-orders` custom fields (same columns as Commesse).
 
 uses(RefreshDatabase::class);
 

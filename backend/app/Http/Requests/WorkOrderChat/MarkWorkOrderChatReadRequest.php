@@ -7,7 +7,7 @@ namespace App\Http\Requests\WorkOrderChat;
 use Illuminate\Validation\Rule;
 
 /**
- * POST /api/work-orders/{workOrder}/chat/read (spec 0354): the message must
+ * POST /api/work-orders/{workOrder}/chat/read (spec 0359): the message must
  * belong to this work order (a soft deleted one still counts as a position).
  */
 class MarkWorkOrderChatReadRequest extends WorkOrderChatRequest

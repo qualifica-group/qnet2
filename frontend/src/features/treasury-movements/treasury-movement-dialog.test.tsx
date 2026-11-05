@@ -110,7 +110,7 @@ beforeEach(() => {
   pickerCalls.length = 0
 })
 
-describe('TreasuryMovementDialog (spec 0355 AC-020)', () => {
+describe('TreasuryMovementDialog (spec 0360 AC-020)', () => {
   it('shows only the fields of the type: destination for a transfer, direction for an adjustment', async () => {
     renderDialog()
     expect(screen.queryByRole('combobox', { name: pattern('treasuryMovements.form.counterpart') })).not.toBeInTheDocument()
@@ -202,7 +202,7 @@ describe('TreasuryMovementDialog (spec 0355 AC-020)', () => {
       registry_id: null,
       work_order_id: null,
     })
-    // REQUIREMENT CHANGED (spec 0355): the other two ids travel as null, so an update that changes the
+    // REQUIREMENT CHANGED (spec 0360): the other two ids travel as null, so an update that changes the
     // sub-account kind clears the old one (the backend merges the body over the saved movement).
     expect(payload).toMatchObject({ cost_type_id: null, treasury_type_id: null })
   })

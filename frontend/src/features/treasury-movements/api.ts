@@ -12,7 +12,7 @@ import type {
 /** Page size of the sub-account lists: the chart is small, the select shows it whole. */
 const SUB_ACCOUNT_LIMIT = 100
 
-/** Coded sub-account row of `/treasury-types/for-select`: the same shape as the revenue one (spec 0355). */
+/** Coded sub-account row of `/treasury-types/for-select`: the same shape as the revenue one (spec 0360). */
 interface TreasuryTypeForSelectData {
   items: Array<{ id: number; code: string; name: string }>
 }

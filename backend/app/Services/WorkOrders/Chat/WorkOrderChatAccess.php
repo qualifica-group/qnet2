@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * THE single chat rule of a work order (spec 0354, D-4/D-5/D-7/D-10), shared by
+ * THE single chat rule of a work order (spec 0359, D-4/D-5/D-7/D-10), shared by
  * the controller, the broadcast channel and the per-record actions.
  *
  * Deliberately NOT a Gate ability: `Gate::before` grants everything to the

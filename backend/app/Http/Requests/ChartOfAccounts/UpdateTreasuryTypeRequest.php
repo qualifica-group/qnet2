@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates PUT/PATCH /api/treasury-types/{treasuryType} (spec 0355): the same
+ * Validates PUT/PATCH /api/treasury-types/{treasuryType} (spec 0360): the same
  * fields as the store request, all `sometimes`.
  */
 class UpdateTreasuryTypeRequest extends FormRequest

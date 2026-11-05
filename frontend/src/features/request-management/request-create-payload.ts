@@ -93,6 +93,8 @@ export interface BuildRequestCreatePayloadArgs {
   offerLines: QuoteLineFormValues[]
   sourceId: number | null
   reporterId: number | null
+  /** "Commerciale" (spec 0357): the created Offerta's commercial Referent, `null` when none was picked. */
+  commercialId: number | null
   /** Spec 0097 rev-2 D-9: the created Offerta's Supervisore, `null` when none was picked. */
   supervisorId: number | null
   /**
@@ -136,6 +138,7 @@ export function buildRequestCreatePayload({
   offerLines,
   sourceId,
   reporterId,
+  commercialId,
   supervisorId,
   managerSlots,
   operationalSiteId,
@@ -160,12 +163,13 @@ export function buildRequestCreatePayload({
   // `operational_site_id` follows the same "only when set" rule for a simpler
   // reason: on create there is no persisted value a null could clear, so the
   // key would carry no information — and `supervisor_id` (spec 0097 rev-2
-  // D-9) rides with it: the create form has no `permissions` envelope to gate
+  // D-9) and `commercial_id` (spec 0357) ride with it: the create form has no `permissions` envelope to gate
   // the field against, so sending an untouched null would earn a 422 from any
   // actor who may not write it.
   const attribution = {
     source_id: sourceId,
     reporter_id: reporterId,
+    ...(commercialId !== null ? { commercial_id: commercialId } : {}),
     ...(supervisorId !== null ? { supervisor_id: supervisorId } : {}),
     ...(managerSlots.some((slot) => slot !== null) ? { manager_slots: managerSlots } : {}),
     ...(operationalSiteId !== null ? { operational_site_id: operationalSiteId } : {}),

@@ -4,7 +4,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Treasury (spec 0355)
+    | Treasury (spec 0360)
     |--------------------------------------------------------------------------
     |
     | default_opening_date: opening date of a financial account that has no own

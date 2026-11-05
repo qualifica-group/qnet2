@@ -81,7 +81,8 @@ it('gets no reset email and cannot reset or set a password', function () {
     $body = ['email' => $email, 'token' => $token, 'password' => 'NewPassw0rd!x', 'password_confirmation' => 'NewPassw0rd!x'];
 
     $this->postJson('/api/auth/reset-password', $body)->assertUnprocessable();
-    $this->postJson('/api/auth/set-password', $body)->assertUnprocessable();
+    // REQUIREMENT CHANGED (spec 0355): `set-password` no longer exists.
+    $this->postJson('/api/auth/set-password', $body)->assertNotFound();
 
     expect($client->serviceUser->fresh()->password)->toBe($before);
 });

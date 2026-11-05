@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates POST /api/treasury-types (spec 0355): the parent must be an
+ * Validates POST /api/treasury-types (spec 0360): the parent must be an
  * ACCOUNT whose group is of kind financial.
  */
 class StoreTreasuryTypeRequest extends FormRequest

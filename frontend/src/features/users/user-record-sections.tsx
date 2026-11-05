@@ -75,14 +75,18 @@ export function UserAccessRecordSection({ values, form, inline, isEdit }: UserRe
         <RecordInlineField field="email" label={t('users.form.email')} inline={inline} editor={<UserEmailField control={control} />}>
           {values.email || <DetailEmpty />}
         </RecordInlineField>
-        <RecordInlineField
-          field="password"
-          label={t('users.detail.password.label')}
-          inline={inline}
-          editor={<UserPasswordFields control={control} isEdit={isEdit} />}
-        >
-          {t(`users.detail.password.${values.password_state}`)}
-        </RecordInlineField>
+        {isEdit ? (
+          <RecordInlineField
+            field="password"
+            label={t('users.detail.password.label')}
+            inline={inline}
+            editor={<UserPasswordFields control={control} />}
+          >
+            {t(`users.detail.password.${values.password_state}`)}
+          </RecordInlineField>
+        ) : (
+          <RecordField label={t('users.detail.password.label')}>{t('users.detail.password.generated')}</RecordField>
+        )}
         <RecordInlineField
           field="roles"
           label={t('users.form.roles')}
