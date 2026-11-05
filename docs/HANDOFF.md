@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Avviso "solo i primi valori" del filtro di colonna: meno rumore — VERDE, NON COMMITTATO (2026-11-05)
+
+- Causa: `POST /tables/{domain}/values` restituisce max 200 valori (`TableValuesRequest::MAX_LIMIT`), `hasMore` sopra;
+  la lista ignora il filtro della colonna stessa (Excel) e si ricarica a ogni apertura (`refreshValuesOnOpen`) e al
+  ripristino dei filtri salvati -> il toast usciva a ogni apertura e a ogni reload.
+- Fix (solo frontend): `components/data-table/filter-truncation-notice.ts` (`createFilterTruncationNotice`: toast solo per
+  colonne aperte dall'utente via `onFilterOpened`, una volta per colonna per vita della griglia); `buildColDefs` riceve
+  `onFilterValuesTruncated(columnId)` (opzionale, il pannello offerte dell'opportunita' non ha filtri); `DataTable` possiede
+  il gate, toast con id fisso `FILTER_TRUNCATED_TOAST_ID`. Testo `table.filterValuesTruncated` IT/EN riscritto (rimanda a
+  Filtri testo/numero/data); guida `general` IT/EN riga "Filtro di colonna".
+- Non fatto (valutare a parte): ricerca della checklist lato server (`search` esiste nel backend, il frontend non lo invia:
+  valori oltre i primi 200 trovabili solo con la condizione).
+- Test: `filter-truncation-notice.test.ts` (4), `column-def-builder.test.ts` (+1). Vitest data-table+help 365/365, i18n
+  237/237, ESLint ok, `tsc -b --force` ok.
+
 ## Workflow stati offerta: copia di Consulenza sulle radici + Duplica (spec 0354) — VERDE, COMMITTATO (2026-11-05)
 
 - Decisioni utente: copia su TUTTE le radici nuove senza un workflow agganciato direttamente (criterio

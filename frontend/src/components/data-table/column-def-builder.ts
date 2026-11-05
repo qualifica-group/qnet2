@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ColDef, ICellRendererParams } from 'ag-grid-community'
 import type { TFunction } from 'i18next'
-import { toast } from 'sonner'
 import { buildColumnFilter } from '@/components/data-table/column-filters'
 import {
   defaultValueFormatter,
@@ -69,6 +68,8 @@ export interface BuildColDefsParams {
   treeGroupColumnId?: string
   /** Opt-in server-side row grouping (spec 0197); absent or disabled ⇒ columns are built exactly as before. */
   rowGrouping?: TableRowGroupingConfig
+  /** A column's Set Filter value list came back truncated; the caller decides whether to tell the user. */
+  onFilterValuesTruncated?: (columnId: string) => void
   t: TFunction
 }
 
@@ -95,6 +96,7 @@ export function buildColDefs({
   masterDetail,
   treeGroupColumnId,
   rowGrouping,
+  onFilterValuesTruncated,
   t,
 }: BuildColDefsParams): ColDef[] {
   const mapped: ColDef[] = columns.map((column) => {
@@ -114,7 +116,7 @@ export function buildColDefs({
     const { filter, filterParams } = buildColumnFilter(
       domain,
       column,
-      () => toast.info(t('table.filterValuesTruncated')),
+      () => onFilterValuesTruncated?.(column.id),
       t,
       productCategoryId,
       opportunityId,
