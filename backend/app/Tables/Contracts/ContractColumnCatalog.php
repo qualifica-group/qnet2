@@ -266,6 +266,16 @@ final class ContractColumnCatalog
                 'confirm' => false,
                 'permission' => 'contracts.view',
             ],
+            // Spec 0363: the contract's own documents, like the detail tab.
+            [
+                'key' => 'documents',
+                'label' => 'actions.documents',
+                'icon' => 'paperclip',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'contracts.view',
+                'count_field' => 'documents_count',
+            ],
             [
                 'key' => 'validate',
                 'label' => 'contracts.actions.validate',

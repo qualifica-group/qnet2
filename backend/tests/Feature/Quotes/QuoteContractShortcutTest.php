@@ -53,7 +53,8 @@ it('AC-001: declares the contract action after notes only for contracts.view', f
     Sanctum::actingAs($withContracts);
     $actions = collect($this->getJson('/api/tables/quotes/columns')->assertOk()->json('data.actions'));
 
-    expect($actions->pluck('key')->all())->toBe(['view', 'generate_document', 'notes', 'contract'])
+    // REQUIREMENT CHANGED (spec 0363 D-1): the common documents/notes lead.
+    expect($actions->pluck('key')->all())->toBe(['view', 'documents', 'notes', 'generate_document', 'contract'])
         ->and($actions->firstWhere('key', 'contract'))->toMatchArray([
             'label' => 'actions.openContract',
             'icon' => 'file-signature',

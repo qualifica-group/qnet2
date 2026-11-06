@@ -15,6 +15,7 @@ use App\Tables\Quotes\QuoteCellWriter;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
 use App\Tables\Quotes\QuoteRowActions;
+use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -118,7 +119,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
         $query = QuoteVisibilityScope::withCompetenceVerdict(Quote::query(), Auth::user());
 
         return QuoteVisibilityScope::scopeToActor($query, Auth::user())->with([
-            'opportunity', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
+            // `opportunity.managers`: the `documents` gate (Opportunity view) stays query-free.
+            'opportunity.managers', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
             // "Gestori Account" (spec 0087, D-1/T-10): the Offerta's own team,
             // rendered as an avatar stack by the `managers` column.
             'managers.avatar',
@@ -136,7 +138,9 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // whole thread — the dialog this action opens shows exactly these.
             // `offer_lines_count` (spec 0102, AC-034) drives the `alert`
             // column the same way, with zero extra queries per page.
-            ->withCount(['scopedNotes as notes_count', 'offerLines as offer_lines_count']);
+            ->withCount(['scopedNotes as notes_count', 'offerLines as offer_lines_count'])
+            // Spec 0363: the `documents` badge counts the parent opportunity's files.
+            ->addSelect(DocumentsCountColumn::ofOpportunity('quotes.opportunity_id'));
     }
 
     /**
@@ -224,6 +228,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'next_callback_at' => $row->next_callback_at?->format('Y-m-d\TH:i'),
             'follow_up_date' => $row->follow_up_date,
             'notes_count' => (int) ($row->notes_count ?? 0),
+            DocumentsCountColumn::FIELD => DocumentsCountColumn::project($row),
             // "Gestori Account" (spec 0087, D-1/T-10): avatar stack by pivot position; [] when no team.
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'alert' => $this->resolveAlert($row),

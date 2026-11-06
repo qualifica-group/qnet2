@@ -99,7 +99,7 @@ export function RegistryQuotesPanel({ registryId, onRowCountChanged }: RegistryR
   const { t } = useTranslation()
   const { can } = useAbilities()
   const { tableRef, refresh } = useRelatedGridRefresh()
-  const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, openCreateWith, sheet } =
+  const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, documentsDialog, openCreateWith, sheet } =
     useQuoteRowActions({ onMutated: refresh, forceMode: OPEN_MODE_MODAL })
 
   return (
@@ -123,6 +123,7 @@ export function RegistryQuotesPanel({ registryId, onRowCountChanged }: RegistryR
         }
       />
       {sheet}
+      {documentsDialog}
       <ResourceActivityDialog resource={QUOTES_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
       {/* Spec 0085: an Offerta's note lives on its parent Opportunita' thread, filtered on that Offerta. */}
       <NotesDialog
@@ -156,6 +157,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
     forceCloseDialog,
     progressDialog,
     requestUpdateDialog,
+    collaborationDialogs,
   } = useWorkOrderRowActions({ onMutated: refresh, forceMode: OPEN_MODE_MODAL })
 
   return (
@@ -183,6 +185,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
       {forceCloseDialog}
       {progressDialog}
       {requestUpdateDialog}
+      {collaborationDialogs}
       <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refresh} />
       <ResourceActivityDialog resource={WORK_ORDERS_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
     </>

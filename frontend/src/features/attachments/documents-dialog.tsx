@@ -20,18 +20,21 @@ export interface DocumentsDialogProps {
   /** Owner id whose documents are shown; `null` closes the dialog. */
   id: number | null
   onOpenChange: (open: boolean) => void
+  /** Another record's documents shown here (an offer's opportunity): no upload, no delete. */
+  readOnly?: boolean
+  /** Overrides the default "Documenti" heading. */
+  title?: string
 }
 
 /**
  * Row-action Dialog mounting the shared `DocumentsSection` for a single
  * polymorphic owner, mirroring `ResourceActivityDialog`'s row-action-Dialog
  * shape. Shared by every module whose table exposes a `documents` row action
- * (opportunities, request-management): the module adapter owns only the open
- * state and the grid refresh, never a dialog of its own.
+ * (spec 0363): the module adapter owns only the open state and the grid
+ * refresh, never a dialog of its own.
  */
-export function DocumentsDialog({ resource, id, onOpenChange }: DocumentsDialogProps) {
+export function DocumentsDialog({ resource, id, onOpenChange, readOnly = false, title }: DocumentsDialogProps) {
   const { t } = useTranslation()
-  const { can } = useAbilities()
 
   return (
     <Dialog open={id !== null} onOpenChange={onOpenChange}>
@@ -41,21 +44,28 @@ export function DocumentsDialog({ resource, id, onOpenChange }: DocumentsDialogP
             <FolderOpen className="size-4.5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <DialogTitle className="text-base">{t('attachments.title')}</DialogTitle>
+            <DialogTitle className="text-base">{title ?? t('attachments.title')}</DialogTitle>
             <DialogDescription className="text-xs">{t('attachments.dialogSubtitle')}</DialogDescription>
           </div>
         </DialogHeader>
-        {id !== null ? (
-          <div className="max-h-[70vh] overflow-y-auto rounded-b-lg px-5 py-4">
-            <DocumentsSection
-              resource={resource}
-              id={id}
-              canUpload={can('attachments.create')}
-              canDelete={can('attachments.delete')}
-            />
-          </div>
-        ) : null}
+        {id !== null ? <DocumentsDialogBody resource={resource} id={id} readOnly={readOnly} /> : null}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Mounted only while open, so a closed dialog in a grid reads no abilities. */
+function DocumentsDialogBody({ resource, id, readOnly }: { resource: string; id: number; readOnly: boolean }) {
+  const { can } = useAbilities()
+
+  return (
+    <div className="max-h-[70vh] overflow-y-auto rounded-b-lg px-5 py-4">
+      <DocumentsSection
+        resource={resource}
+        id={id}
+        canUpload={!readOnly && can('attachments.create')}
+        canDelete={!readOnly && can('attachments.delete')}
+      />
+    </div>
   )
 }

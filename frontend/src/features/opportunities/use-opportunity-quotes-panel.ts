@@ -34,6 +34,8 @@ export interface UseOpportunityQuotesPanelResult {
   /** The Offerta whose notes are open, `null` when the dialog is closed. */
   notesTarget: QuoteNotesTarget | null
   closeNotes: (open: boolean) => void
+  /** The `documents` row action's read-only dialog (spec 0363): the panel mounts it. */
+  documentsDialog: ReactNode
   /** Ricarica la griglia: la passa il pannello a `onThreadChanged` del dialog note. */
   refreshRows: () => void
   sheet: ReactNode
@@ -80,6 +82,7 @@ export function useOpportunityQuotesPanel(
     closeActivity,
     notesTarget,
     closeNotes,
+    documentsDialog,
     openCreateWith,
     sheet,
   } = useQuoteRowActions({ onMutated: handleMutated, forceMode: OPEN_MODE_MODAL })
@@ -106,6 +109,7 @@ export function useOpportunityQuotesPanel(
     closeActivity,
     notesTarget,
     closeNotes,
+    documentsDialog,
     refreshRows: refreshGrid,
     sheet,
   }

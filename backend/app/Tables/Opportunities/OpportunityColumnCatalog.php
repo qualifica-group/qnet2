@@ -267,20 +267,20 @@ final class OpportunityColumnCatalog
                 'count_field' => 'notes_count',
             ],
             [
-                'key' => 'delete',
-                'label' => 'actions.delete',
-                'icon' => 'trash',
-                'type' => 'danger',
-                'confirm' => true,
-                'permission' => 'opportunities.delete',
-            ],
-            [
                 'key' => 'activity',
                 'label' => 'actions.activity',
                 'icon' => 'history',
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'opportunities.viewActivity',
+            ],
+            [
+                'key' => 'delete',
+                'label' => 'actions.delete',
+                'icon' => 'trash',
+                'type' => 'danger',
+                'confirm' => true,
+                'permission' => 'opportunities.delete',
             ],
         ];
     }

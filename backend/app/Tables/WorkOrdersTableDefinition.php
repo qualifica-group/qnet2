@@ -14,6 +14,7 @@ use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
+use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
@@ -141,6 +142,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         // Spec 0243, D-1: same rule as the delete guard, as EXISTS flags.
         $query->withAccountingDocumentFlags();
+
+        // Spec 0363: badges of the `documents` and `notes` row actions.
+        $query->withCount([...DocumentsCountColumn::own(), 'notes']);
 
         return WorkOrderVisibilityScope::scopeToActor($query, Auth::user());
     }
@@ -286,6 +290,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'completion_recorded_on' => $progress->recordedOn,
             'created_at' => $row->created_at,
             'updated_at' => $row->updated_at,
+            DocumentsCountColumn::FIELD => DocumentsCountColumn::project($row),
+            'notes_count' => (int) ($row->notes_count ?? 0),
         ];
     }
 
@@ -339,6 +345,16 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         if ($visible) {
             $allowed[] = 'view';
+        }
+
+        // Spec 0363: the detail tabs' rules. Reading the notes is exactly
+        // `view` (WorkOrderNotable::authorizeRead = permission + visibility).
+        if ($visible && Gate::forUser($actor)->allows('viewDocuments', $row)) {
+            $allowed[] = 'documents';
+        }
+
+        if ($visible) {
+            $allowed[] = 'notes';
         }
 
         // Spec 0193: offered even once issued, so the row shows the yellow,

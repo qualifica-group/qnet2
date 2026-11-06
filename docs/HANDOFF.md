@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Azioni di riga allineate Opportunita'/Offerte/Contratti/Commesse (spec 0363) — VERDE, NON COMMITTATO (2026-11-06)
+
+- Spec `docs/specs/0363-aligned-row-actions.xml`. Decisioni utente: ordine comune view, documents, notes,
+  [specifiche], activity, delete (le prime 3 inline: Scarica preventivo, Proforma, Avanzamento, Valida finiscono in
+  "Altre azioni"); Contratti solo `documents` (le note del contratto non esistono: fuori scope).
+- BE: cataloghi riordinati; `documents` su quotes/contracts/work-orders, `notes` su work-orders. Contatore unico
+  `App\Tables\Shared\DocumentsCountColumn` (own() / ofOpportunity() / project()), usato anche dalle Opportunita'.
+  Gate: Offerte = `OpportunityDocumentAccess::allows` sull'opportunita' padre (eager `opportunity.managers`);
+  Contratti = `view`; Commesse documents = `view` + `viewDocuments`, notes = `view` (= WorkOrderNotable::authorizeRead).
+  `ContractsTableDefinition.php` e' a 500 righe esatte (hard limit): il prossimo cambio deve prima splittarlo.
+- FE: `DocumentsDialog` ha `readOnly`/`title` e legge le abilities solo da aperto; `useQuoteRowActions` ritorna
+  `documentsDialog` (montato in quotes-table, opportunity-quotes-detail-renderer, opportunity-quotes-section,
+  registry-related-panels); `useWorkOrderCollaborationDialogs` (nuovo) -> `collaborationDialogs` di
+  `useWorkOrderRowActions` (work-orders-table, contract-work-orders-section, registry-related-panels); ContractsTable
+  apre `DocumentsDialog` alias `contract`.
+- Test: BE `tests/Feature/Tables/AlignedRowActionsTest.php` + 3 test d'ordine aggiornati (REQUIREMENT CHANGED);
+  FE documents-dialog, use-quote-row-actions, contracts-table, use-work-order-row-actions.
+- Manuale: guida generale IT/EN (paragrafo sulla colonna Azioni) + paragrafo "Stesso ordine nei moduli commerciali"
+  nel manuale Claude Docs sotto "Azioni sulla riga".
+- Fallimenti preesistenti, estranei: `TableBulkDeleteTest` (guarded/forbidden, fallisce anche senza modifiche),
+  `QuoteDocumentPdfTest` (LibreOffice non installato), `DemoOpportunitySeederTest` (flaky, dati casuali).
+
+## Fix tooltip azione di riga "Avanzamento commessa" — VERDE, NON COMMITTATO (2026-11-06)
+
+- Bug: il tooltip dell'azione di riga `progress` nella griglia Commesse mostrava "Lista avanzamenti commessa n. {{code}}".
+  Causa: `WorkOrderColumnCatalog` usava come label `workOrders.progress.title` (titolo del popup, con parametro
+  `code`), che la riga traduce senza parametri. Ora usa `workOrders.progress.action` ("Avanzamento commessa"), la stessa
+  etichetta del pulsante nel dettaglio. Test di regressione in `WorkOrderProgressEntriesTest`. Manuale: nessun impatto
+  (la guida chiama gia' l'azione "Avanzamento commessa").
+
 ## Email ricorrenti della commessa (spec 0362) — VERDE, NON COMMITTATO (2026-11-06)
 
 - Spec `docs/specs/0362-work-order-recurring-emails.xml` (approvata; nata come 0361, rinumerata perche' 0361 = scelta

@@ -279,10 +279,29 @@ final class WorkOrderColumnCatalog
                 'confirm' => false,
                 'permission' => 'work-orders.view',
             ],
+            // Spec 0363: documents and notes, like the detail tabs.
+            [
+                'key' => 'documents',
+                'label' => 'actions.documents',
+                'icon' => 'paperclip',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'work-orders.viewDocuments',
+                'count_field' => 'documents_count',
+            ],
+            [
+                'key' => 'notes',
+                'label' => 'actions.notes',
+                'icon' => 'messages-square',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'work-orders.view',
+                'count_field' => 'notes_count',
+            ],
             [
                 // Spec 0193 (D-11, rev. 2026-10-06): the "€" proforma request,
-                // second so it stays inline; its colour and the disabled
-                // "issued" state come from the row's `proforma_status`.
+                // after the common actions (spec 0363 D-1); its colour and the
+                // disabled "issued" state come from the row's `proforma_status`.
                 'key' => 'proforma',
                 'label' => 'proformaRequests.cell.none',
                 'icon' => 'euro',
@@ -294,7 +313,7 @@ final class WorkOrderColumnCatalog
                 // Spec 0321: opens the manual progress dialog, read-only
                 // without `update` or on a force-closed work order.
                 'key' => 'progress',
-                'label' => 'workOrders.progress.title',
+                'label' => 'workOrders.progress.action',
                 'icon' => 'trending-up',
                 'type' => 'action',
                 'confirm' => false,
@@ -308,22 +327,6 @@ final class WorkOrderColumnCatalog
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'work-orders.requestUpdate',
-            ],
-            [
-                'key' => 'delete',
-                'label' => 'actions.delete',
-                'icon' => 'trash',
-                'type' => 'danger',
-                'confirm' => true,
-                'permission' => 'work-orders.delete',
-            ],
-            [
-                'key' => 'activity',
-                'label' => 'actions.activity',
-                'icon' => 'history',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'work-orders.viewActivity',
             ],
             // "Chiusura forzata" as an action, not a field (user directive
             // 2026-10-06): the client opens a reason dialog and PATCHes
@@ -344,6 +347,22 @@ final class WorkOrderColumnCatalog
                 'type' => 'action',
                 'confirm' => true,
                 'permission' => 'work-orders.update',
+            ],
+            [
+                'key' => 'activity',
+                'label' => 'actions.activity',
+                'icon' => 'history',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'work-orders.viewActivity',
+            ],
+            [
+                'key' => 'delete',
+                'label' => 'actions.delete',
+                'icon' => 'trash',
+                'type' => 'danger',
+                'confirm' => true,
+                'permission' => 'work-orders.delete',
             ],
         ];
     }

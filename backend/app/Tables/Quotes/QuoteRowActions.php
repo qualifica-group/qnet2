@@ -4,6 +4,7 @@ namespace App\Tables\Quotes;
 
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Opportunities\OpportunityDocumentAccess;
 use App\Services\RequestManagement\RequestManagementScope;
 use Illuminate\Support\Facades\Gate;
 
@@ -44,6 +45,12 @@ final class QuoteRowActions
 
         if ($this->allowsContract($actor, $quote)) {
             $allowed[] = 'contract';
+        }
+
+        // Spec 0363: the parent opportunity's documents, read-only, with the
+        // rule the attachment endpoints re-check (AttachmentPolicy owner scope).
+        if ($quote->opportunity !== null && OpportunityDocumentAccess::allows($actor, $quote->opportunity)) {
+            $allowed[] = 'documents';
         }
 
         return $allowed;
