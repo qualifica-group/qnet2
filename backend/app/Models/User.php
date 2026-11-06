@@ -98,6 +98,15 @@ class User extends Authenticatable implements HasLocalePreference
     }
 
     /**
+     * Whether the first-access gate applies (spec 0355): the user is flagged
+     * AND the gate is enabled for this environment (spec 0359, production only).
+     */
+    public function isFirstAccessPending(): bool
+    {
+        return $this->must_set_password && config('auth.first_access_gate');
+    }
+
+    /**
      * Limit the query to users that own a personal-data card — i.e. the users
      * that take part in the personal-data flow. The card is mandatory for these
      * users, so this is the canonical way to target them (e.g. in seeders),

@@ -109,6 +109,7 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
     closeActivity,
     notesTarget,
     closeNotes,
+    documentsDialog,
     createBlocked,
     refreshRows,
     sheet,
@@ -173,6 +174,8 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
       </div>
 
       {sheet}
+
+      {documentsDialog}
 
       <ResourceActivityDialog resource={QUOTES_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
 

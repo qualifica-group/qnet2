@@ -19,6 +19,10 @@ export const workOrders = {
   subtitle: 'Sfoglia, filtra e gestisci le commesse collegate alle offerte.',
   forbidden: 'Non hai i permessi per visualizzare le commesse.',
   chatUnread: '{{count}} messaggi della chat non letti',
+  period: {
+    initial: 'Iniziale',
+    renewal: 'Rinnovo {{number}}',
+  },
   progress: {
     title: 'Lista avanzamenti commessa n. {{code}}',
     action: 'Avanzamento commessa',
@@ -62,6 +66,7 @@ export const workOrders = {
     created_at: 'Creata il',
     updated_at: 'Aggiornata il',
     chat_unread_count: 'Non letti',
+    renewal_number: 'Periodo',
   },
   detail: {
     multiQuoteBadge: 'Multi-offerta',

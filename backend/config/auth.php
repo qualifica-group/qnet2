@@ -114,4 +114,18 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | First-access gate (spec 0355, 0359)
+    |--------------------------------------------------------------------------
+    |
+    | When true, a user flagged `must_set_password` is blocked (API 403 and
+    | full-screen popup) until they choose a new password. User directive
+    | 2026-11-05: production only; elsewhere the flag is kept but not enforced.
+    | Override via AUTH_FIRST_ACCESS_GATE.
+    |
+    */
+
+    'first_access_gate' => (bool) env('AUTH_FIRST_ACCESS_GATE', env('APP_ENV') === 'production'),
+
 ];

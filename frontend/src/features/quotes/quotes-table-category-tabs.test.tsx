@@ -92,6 +92,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   window.localStorage.clear()
+  // These cases drive the single-category strip; the root level is the default since 2026-11-05.
+  window.localStorage.setItem('quotes.category-tab-level', 'all')
   fetchCategoriesMock.mockReset()
   fetchCategoriesMock.mockImplementation(async (_basePath: string, level?: string) =>
     level === 'root' ? ROOT_CATEGORIES : CATEGORIES,

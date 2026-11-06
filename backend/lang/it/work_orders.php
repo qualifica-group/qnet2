@@ -16,7 +16,7 @@ return [
         'percentage_not_above_current' => 'Il totale deve essere maggiore dello stato raggiunto.',
     ],
     'workflow_status' => [
-        'force_close_status_invalid' => 'Lo stato di chiusura deve essere uno stato "Chiusa con esito negativo" dello stato lavorazione della commessa.',
+        'force_close_status_invalid' => 'Lo stato di chiusura deve essere uno stato "Chiusa con esito positivo" o "Chiusa con esito negativo" dello stato lavorazione della commessa.',
         'progress_not_above_current' => 'Lo stato porta l\'avanzamento al :percentage%, che non supera l\'avanzamento gia\' raggiunto (:current%).',
     ],
 ];

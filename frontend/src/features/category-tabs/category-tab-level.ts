@@ -5,11 +5,15 @@ function storageKey(sourceKey: string): string {
   return `${sourceKey}.category-tab-level`
 }
 
+/** Root categories unless the operator switched the strip to every category (decisione utente 2026-11-05). */
+const DEFAULT_LEVEL: CategoryTabLevel = 'root'
+
 function readStoredLevel(sourceKey: string): CategoryTabLevel {
   try {
-    return window.localStorage.getItem(storageKey(sourceKey)) === 'root' ? 'root' : 'all'
+    const stored = window.localStorage.getItem(storageKey(sourceKey))
+    return stored === 'all' || stored === 'root' ? stored : DEFAULT_LEVEL
   } catch {
-    return 'all'
+    return DEFAULT_LEVEL
   }
 }
 
@@ -29,7 +33,7 @@ export function levelRequestConfig(level: CategoryTabLevel): { params: { level: 
 
 /**
  * The operator's chosen strip level (spec 0337 D-2), kept in the browser per
- * grid: every category (default) or only the root ones.
+ * grid: only the root categories (default) or every category.
  */
 export function useCategoryTabLevel(sourceKey: string) {
   const [level, setLevelState] = useState<CategoryTabLevel>(() => readStoredLevel(sourceKey))

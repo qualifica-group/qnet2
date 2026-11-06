@@ -10,6 +10,7 @@ import type {
   MultiProgrammableLinesData,
   MultiQuoteWorkOrderPayload,
   ReactivateContractPayload,
+  RenewContractPayload,
   TerminateContractPayload,
   UpdateContractPayload,
   ValidateContractPayload,
@@ -113,6 +114,26 @@ export async function reactivateContract(
   const { data } = await apiClient.post<ApiResponseWithPermissions<ContractDetail, ResourcePermissions>>(
     `/contracts/${id}/reactivate`,
     payload,
+  )
+  return withPermissions(data)
+}
+
+/** "Rinnova" (spec 0358): opens the next renewal period of the contract. */
+export async function renewContract(
+  id: number,
+  payload: RenewContractPayload,
+): Promise<ContractDetailWithPermissions> {
+  const { data } = await apiClient.post<ApiResponseWithPermissions<ContractDetail, ResourcePermissions>>(
+    `/contracts/${id}/renewals`,
+    payload,
+  )
+  return withPermissions(data)
+}
+
+/** "Annulla rinnovo" (spec 0358): only the latest renewal, and only while its period has no work orders. */
+export async function undoContractRenewal(id: number, renewalId: number): Promise<ContractDetailWithPermissions> {
+  const { data } = await apiClient.delete<ApiResponseWithPermissions<ContractDetail, ResourcePermissions>>(
+    `/contracts/${id}/renewals/${renewalId}`,
   )
   return withPermissions(data)
 }

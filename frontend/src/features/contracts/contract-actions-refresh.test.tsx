@@ -37,6 +37,8 @@ vi.mock('@/features/contracts/api', () => ({
   changeContractStatus: vi.fn(),
   terminateContract: vi.fn(),
   reactivateContract: vi.fn(),
+  renewContract: vi.fn(),
+  undoContractRenewal: vi.fn(),
   fetchContractProgrammableLines: vi.fn(),
   createContractWorkOrdersBatch: vi.fn(),
 }))
@@ -131,6 +133,9 @@ function contract(status: ContractStatusRef, actions: Partial<ResourcePermission
     alert: null,
     days_to_expiry: null,
     days_to_renewal: null,
+    renewal_number: 0,
+    renewals: [],
+    initial_period_work_orders_count: 0,
     offer_lines: [],
     summary: {
       revenue: { net: '1000.00', vat: '220.00', gross: '1220.00' },
@@ -183,13 +188,14 @@ describe('ContractActionsBar — refresh delle azioni dopo un cambio di stato', 
     fireEvent.click(await screen.findByRole('button', { name: 'Validate' }))
 
     // Nuovo gruppo (chiuso positivo): "Programma" compare attivo,
-    // "Valida"/"Modifica stato" e le matite dei dati (spec 0219) spariscono — subito, senza reload.
+    // "Valida"/"Modifica stato" spariscono — subito, senza reload. REQUIREMENT CHANGED (spec 0360 D-2):
+    // le matite dei dati restano su Validato.
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Program' })).toBeEnabled()
     })
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Expiry' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     // Il badge di stato nell'hero segue lo stesso aggiornamento.
     expect(screen.getByText('Validato')).toBeInTheDocument()

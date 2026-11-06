@@ -6,8 +6,9 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
  *
  * - Aperto | Pending    → dati modificabili sul posto (spec 0219), "Modifica stato", "Valida", "Disdici";
  *   anche "Programma" se gia' validato e non sospeso (decisione utente 2026-11-04)
- * - Chiuso positivo     → "Disdici", "Programma" e "Riapri contratto", nient'altro
- * - Chiuso negativo     → "Riapri contratto", nient'altro
+ * - Chiuso positivo     → "Disdici", "Programma", "Riapri contratto" e la modifica sul posto
+ *   (spec 0360 D-2: titolo, righe e campi si modificano anche da Validato)
+ * - Chiuso negativo     → "Riapri contratto", nient'altro (sola lettura)
  *
  * Mirrors `App\Services\Contracts\ContractActionAvailability` verbatim: the
  * server is the authority (it gates `permissions.actions` with the same rule
@@ -30,6 +31,7 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
 export interface ContractLifecycleActions {
   validate: boolean
   program: boolean
+  renew: boolean
   terminate: boolean
   edit: boolean
   changeStatus: boolean
@@ -65,12 +67,16 @@ export function isContractClosed(contract: ContractDetail): boolean {
 export function contractLifecycleActions(contract: ContractDetail): ContractLifecycleActions {
   const working = isWorking(contract)
   const closedWon = contract.contract_status.group === 'closed_won'
+  const program = closedWon || (working && !contract.is_suspended && contract.validated_at !== null)
 
   return {
     validate: working && !contract.is_suspended && contract.validated_at === null,
-    program: closedWon || (working && !contract.is_suspended && contract.validated_at !== null),
+    program,
+    // Spec 0358: renewing is gated exactly like programming.
+    renew: program,
     terminate: working || closedWon,
-    edit: working,
+    // Mirrors ContractActionAvailability::mayEdit (spec 0360 D-2/D-6): open | pending | closed_won.
+    edit: working || closedWon,
     changeStatus: working,
     reactivate: isContractClosed(contract) || contract.is_suspended,
   }

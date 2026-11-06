@@ -1,4 +1,5 @@
 import type { HelpGuide } from '../../types'
+import { recurringEmailSections } from './parts/work-orders-recurring-emails'
 
 const guide: HelpGuide = {
   key: 'work-orders',
@@ -54,7 +55,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Stato, Avanzamento, Creata il e Aggiornata il.",
+          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). La colonna **Periodo** indica in quale periodo del contratto è stata programmata la commessa: **Iniziale** o **Rinnovo N** (vedi la guida Contratti, Rinnovare il contratto). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Periodo, Stato, Avanzamento, Creata il e Aggiornata il.",
         },
       ],
     },
@@ -76,7 +77,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
         },
         {
           type: 'paragraph',
@@ -101,7 +102,7 @@ const guide: HelpGuide = {
           items: [
             'Premi **Chiusura forzata**.',
             'Scrivi il **motivo** (obbligatorio). Se la commessa ha task ancora aperti, il dialog ti avvisa quanti verranno chiusi con esito negativo.',
-            'Scegli lo **Stato di chiusura** (obbligatorio): l\'elenco mostra gli stati **Chiusa con esito negativo** del set della commessa ed è già impostato su quello principale.',
+            'Scegli lo **Stato di chiusura** (obbligatorio): l\'elenco mostra gli stati **Chiusa con esito positivo** e **Chiusa con esito negativo** del set della commessa ed è già impostato su quello negativo principale. Con uno stato positivo l\'avanzamento della commessa sale al **100%** (viene aggiunta una registrazione con data di oggi, se non era già al 100%).',
             'Premi **Chiudi commessa**: lo stato diventa Chiusa, lo Stato lavorazione diventa lo stato di chiusura scelto e il motivo compare tra i dati della commessa.',
           ],
         },
@@ -181,7 +182,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Scegliendo a mano uno **Stato lavorazione** con una **% avanzamento** maggiore di zero, l'avanzamento della commessa sale a quella percentuale (viene aggiunta una registrazione con data di oggi). Se la percentuale dello stato non supera l'avanzamento già raggiunto il cambio non è accettato e il campo mostra l'errore; gli stati senza percentuale cambiano solo lo stato. Lo stesso avviene in automatico quando si chiude con esito positivo un task creato da un modello che ha la riga collegata a uno stato (vedi **Modelli di Task**): in quel caso lo stato viene applicato anche se è precedente a quello attuale. Su una commessa chiusa forzatamente l'avanzamento non cambia. Se i dati della commessa cambiano e il set applicabile è diverso, lo stato passa a quello equivalente (Aperta, Chiusa con esito positivo, Chiusa con esito negativo, anche per gli altri stati di chiusura dello stesso gruppo) oppure ad Aperta. La chiusura forzata porta lo Stato lavorazione sullo **Stato di chiusura** scelto (uno stato **Chiusa con esito negativo**); riaprendo la commessa torna su **Aperta** se è ancora su uno stato negativo.",
+          text: "Scegliendo a mano uno **Stato lavorazione** con una **% avanzamento** maggiore di zero, l'avanzamento della commessa sale a quella percentuale (viene aggiunta una registrazione con data di oggi). Se la percentuale dello stato non supera l'avanzamento già raggiunto il cambio non è accettato e il campo mostra l'errore; gli stati senza percentuale cambiano solo lo stato. Lo stesso avviene in automatico quando si chiude con esito positivo un task creato da un modello che ha la riga collegata a uno stato (vedi **Modelli di Task**): in quel caso lo stato viene applicato anche se è precedente a quello attuale. Su una commessa chiusa forzatamente l'avanzamento non cambia. Se i dati della commessa cambiano e il set applicabile è diverso, lo stato passa a quello equivalente (Aperta, Chiusa con esito positivo, Chiusa con esito negativo, anche per gli altri stati di chiusura dello stesso gruppo) oppure ad Aperta. La chiusura forzata porta lo Stato lavorazione sullo **Stato di chiusura** scelto (uno stato **Chiusa con esito positivo**, che porta l'avanzamento al 100%, o **Chiusa con esito negativo**); riaprendo la commessa torna su **Aperta** se è ancora su uno stato negativo.",
         },
       ],
     },
@@ -451,6 +452,7 @@ const guide: HelpGuide = {
         { type: 'tip', text: "Chi può modificare la commessa può coinvolgere un collega che non la vede menzionandolo in una nota con **Menziona chiunque**: al salvataggio diventa **Partecipante** (vedi **Note e documenti** nella guida generale)." },
       ],
     },
+    ...recurringEmailSections,
     {
       id: 'in-development',
       title: 'Modulo in sviluppo',

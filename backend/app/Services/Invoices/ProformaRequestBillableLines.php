@@ -6,6 +6,7 @@ namespace App\Services\Invoices;
 
 use App\Enums\ProformaRequestKind;
 use App\Enums\QuoteLineType;
+use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\ProformaRequest;
 use App\Models\QuoteLine;
@@ -24,14 +25,16 @@ use Illuminate\Support\Collection;
 final class ProformaRequestBillableLines
 {
     /**
-     * Billable lines not yet in any document, with what the draft renders.
+     * Billable lines not yet in a document of the request commessa (spec 0358, D-7), with what the draft renders.
      *
      * @return Collection<int, QuoteLine>
      */
     public function available(ProformaRequest $request): Collection
     {
         return $this->select($request, fn ($query) => $query
-            ->whereNotIn('quote_lines.id', InvoiceLine::query()->whereNotNull('quote_line_id')->select('quote_line_id'))
+            ->whereNotIn('quote_lines.id', InvoiceLine::query()->whereNotNull('quote_line_id')
+                ->whereIn('invoice_id', Invoice::query()->select('id')->where('work_order_id', $request->work_order_id))
+                ->select('quote_line_id'))
             ->with('product.vatRate:id,name,rate', 'vatRate:id,name,rate'));
     }
 

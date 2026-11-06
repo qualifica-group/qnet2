@@ -50,6 +50,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Recurring emails (spec 0362, D-9)
+    |--------------------------------------------------------------------------
+    |
+    | `send_at`: local time (HH:MM, app timezone) from which a due series is
+    | sent; the hourly command sends nothing earlier in the day.
+    |
+    */
+
+    'recurrence' => [
+        'send_at' => env('OUTBOUND_EMAILS_RECURRENCE_SEND_AT', '08:00'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Email owners (spec 0195, D-10)
     |--------------------------------------------------------------------------
     |

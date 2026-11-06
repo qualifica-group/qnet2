@@ -44,6 +44,7 @@ final class OutboundEmailService
     public function __construct(
         private readonly EmailHtmlSanitizer $sanitizer,
         private readonly OutboundEmailAttachmentLimitChecker $limitChecker,
+        private readonly OutboundEmailSenderAddresses $senderAddresses,
     ) {}
 
     /**
@@ -52,7 +53,7 @@ final class OutboundEmailService
     public function listForOwner(Model $owner, User $actor, int $page): LengthAwarePaginator
     {
         return $this->baseQuery($owner, $actor)
-            ->with('sender')
+            ->with(['sender', 'recurrence'])
             ->withCount(['attachments as attachments_count' => fn ($query) => $query->where('collection', OutboundEmail::ATTACHMENT_COLLECTION)])
             ->orderByDesc('updated_at')
             ->paginate(self::PER_PAGE, page: $page);
@@ -126,7 +127,7 @@ final class OutboundEmailService
 
         $this->assertSendable($email, $actor);
 
-        DB::transaction(fn () => $email->markQueued((string) $actor->email));
+        DB::transaction(fn () => $email->markQueued($this->fromAddress($email, $actor)));
 
         SendOutboundEmailJob::dispatch($email);
 
@@ -151,6 +152,9 @@ final class OutboundEmailService
     {
         return [
             'sender',
+            'recurrence',
+            'sourceRecurrence',
+            'emailable',
             'attachments' => fn ($query) => $query->where('collection', OutboundEmail::ATTACHMENT_COLLECTION),
         ];
     }
@@ -165,10 +169,12 @@ final class OutboundEmailService
     /**
      * AC-012 field-by-field (D-12): `to` empty, `subject`/`body` blank (body
      * blank AFTER stripping tags -- an empty `<p></p>` from the editor must
-     * not count as content), the actor's own mailbox missing, or the
-     * attachments already on the draft exceeding the total-size ceiling.
+     * not count as content), no sender mailbox at all, or the
+     * attachments already on the draft exceeding the total-size ceiling;
+     * spec 0361: a chosen sender no longer among the actor's addresses.
+     * Public: OutboundEmailScheduler applies the same checks when programming (D-12).
      */
-    private function assertSendable(OutboundEmail $email, User $actor): void
+    public function assertSendable(OutboundEmail $email, User $actor): void
     {
         $errors = [];
 
@@ -184,8 +190,12 @@ final class OutboundEmailService
             $errors['body'] = [__('outbound_emails.empty_body')];
         }
 
-        if (empty($actor->email)) {
+        $fromAddress = $this->fromAddress($email, $actor);
+
+        if ($fromAddress === '') {
             $errors['sender'] = [__('outbound_emails.sender_email_missing')];
+        } elseif (! $this->senderAddresses->allows($actor, $fromAddress)) {
+            $errors['from_address'] = [__('outbound_emails.sender_not_allowed')];
         }
 
         if ($this->limitChecker->currentBytes($email) > $this->limitChecker->maxBytes()) {
@@ -197,6 +207,14 @@ final class OutboundEmailService
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /**
+     * Spec 0361, D-2: the sender chosen on the draft, else the login email.
+     */
+    private function fromAddress(OutboundEmail $email, User $actor): string
+    {
+        return (string) ($email->from_address ?? $actor->email);
     }
 
     /**

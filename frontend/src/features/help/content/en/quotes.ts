@@ -123,7 +123,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
         },
         {
           type: 'paragraph',
@@ -179,6 +179,7 @@ const guide: HelpGuide = {
             "The **Supplier** commission goes to the supplier chosen on the row. If you change supplier, the commissions of the row are recalculated (if there are any, it asks for confirmation first). A commission rule dedicated to that supplier is applied automatically.",
             "Saved rows keep their own supplier even if the product changes its supplier list.",
             'To change the product of a row, remove the row and pick the new product from the catalogue.',
+            'A row **assigned to a work order** shows "Assigned to COM-..." and is locked: no field can be edited and it cannot be removed until the work order is deleted. This also holds when you edit the rows from the contract or from Request management; the row\'s commissions can still be edited from the quote.',
             'The **Costs** tab shows the whole catalogue of cost products, with no category filter, and the same product can be added more than once.',
             '**Additional description** adds text to the row, printable on the quote document.',
             "Each row's **Commissions** can only be opened and changed for that row. The popup shows the line net, imputed costs, calculation base and total commissions at the top; each role carries a label with the commission's origin (**Rule: Product**, **Rule: Category** or **Personal rule** when it comes from a Configurator rule, **Manual override** when it was changed by hand; hovering the label explains it). While editing, every role also shows the **System calculation** (what the Commission Configurator grants): if you changed the value by hand you can keep it or go back to the calculation with **Apply system calculation**. The **Supplier** row also shows the **Direction**: when the commission comes from a rule it is the rule's; when you change it by hand you choose **Received** (it is the line revenue) or **Paid** (a cost towards the supplier), and the margin updates accordingly.",

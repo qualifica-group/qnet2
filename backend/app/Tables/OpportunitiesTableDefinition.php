@@ -12,6 +12,7 @@ use App\Tables\Opportunities\OpportunityCellWriter;
 use App\Tables\Opportunities\OpportunityColumnCatalog;
 use App\Tables\Opportunities\OpportunityRelationColumns;
 use App\Tables\Opportunities\OpportunityStatusColumn;
+use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use App\Tables\Shared\ProductLinePairsColumn;
 use App\Tables\Shared\ProductsOfInterestColumn;
@@ -118,9 +119,8 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
                 // label (site has no own name, mirrors LeadsTableDefinition).
                 'operationalSite.addresses.city',
             ])
-            // Per-row count for the `documents` action badge (HasAttachments),
-            // scoped to the 'documents' collection only — never other collections.
-            ->withCount(['attachments as documents_count' => fn (Builder $q) => $q->where('collection', 'documents')])
+            // Per-row count for the `documents` action badge (spec 0363 D-4).
+            ->withCount(DocumentsCountColumn::own())
             // Per-row count for the `notes` action badge (HasNotes): roots AND
             // replies, soft-deleted excluded — same projection Gestione
             // Richieste carries.
@@ -233,7 +233,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             'start_date' => $row->start_date,
             'expected_close_date' => $row->expected_close_date,
             'created_at' => $row->created_at,
-            'documents_count' => (int) ($row->documents_count ?? 0),
+            DocumentsCountColumn::FIELD => DocumentsCountColumn::project($row),
             'notes_count' => (int) ($row->notes_count ?? 0),
         ];
     }

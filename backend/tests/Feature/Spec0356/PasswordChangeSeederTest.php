@@ -11,24 +11,6 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
-/** Evaluates config/seeding.php with the given APP_ENV and no override. */
-function requirePasswordChangeDefaultFor(string $environment): bool
-{
-    $saved = [$_SERVER['APP_ENV'] ?? null, $_ENV['APP_ENV'] ?? null, getenv('APP_ENV')];
-
-    try {
-        $_SERVER['APP_ENV'] = $_ENV['APP_ENV'] = $environment;
-        putenv("APP_ENV={$environment}");
-        unset($_SERVER['SEED_REQUIRE_PASSWORD_CHANGE'], $_ENV['SEED_REQUIRE_PASSWORD_CHANGE']);
-        putenv('SEED_REQUIRE_PASSWORD_CHANGE');
-
-        return (require config_path('seeding.php'))['require_password_change'];
-    } finally {
-        [$_SERVER['APP_ENV'], $_ENV['APP_ENV']] = [$saved[0], $saved[1]];
-        putenv($saved[2] === false ? 'APP_ENV' : "APP_ENV={$saved[2]}");
-    }
-}
-
 it('AC-001: flags only active, non-service users who never chose a password, without emails or revoked tokens', function () {
     Notification::fake();
     config(['seeding.require_password_change' => true]);
@@ -76,7 +58,7 @@ it('AC-003: with the switch off nobody is modified', function () {
 });
 
 it('AC-004: the default is on only in production', function (string $environment, bool $expected) {
-    expect(requirePasswordChangeDefaultFor($environment))->toBe($expected);
+    expect(configDefaultUnderEnvironment('seeding', 'require_password_change', 'SEED_REQUIRE_PASSWORD_CHANGE', $environment))->toBe($expected);
 })->with([
     'production' => ['production', true],
     'local' => ['local', false],

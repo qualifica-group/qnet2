@@ -113,6 +113,9 @@ final class OutboundEmailAttachmentService
     {
         return [
             'sender',
+            'recurrence',
+            'sourceRecurrence',
+            'emailable',
             'attachments' => fn ($query) => $query->where('collection', OutboundEmail::ATTACHMENT_COLLECTION),
         ];
     }

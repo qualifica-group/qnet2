@@ -168,6 +168,245 @@
 - Aperti: export/import del piano senza mastri finanziari; nessun import dei saldi di apertura; data di partenza
   (01/01/2026 o go-live) da confermare per il rilascio; fasi B (abbuono), C (Quadro), D (riconciliazione).
 
+## Azioni di riga allineate Opportunita'/Offerte/Contratti/Commesse (spec 0363) — VERDE, NON COMMITTATO (2026-11-06)
+
+- Spec `docs/specs/0363-aligned-row-actions.xml`. Decisioni utente: ordine comune view, documents, notes,
+  [specifiche], activity, delete (le prime 3 inline: Scarica preventivo, Proforma, Avanzamento, Valida finiscono in
+  "Altre azioni"); Contratti solo `documents` (le note del contratto non esistono: fuori scope).
+- BE: cataloghi riordinati; `documents` su quotes/contracts/work-orders, `notes` su work-orders. Contatore unico
+  `App\Tables\Shared\DocumentsCountColumn` (own() / ofOpportunity() / project()), usato anche dalle Opportunita'.
+  Gate: Offerte = `OpportunityDocumentAccess::allows` sull'opportunita' padre (eager `opportunity.managers`);
+  Contratti = `view`; Commesse documents = `view` + `viewDocuments`, notes = `view` (= WorkOrderNotable::authorizeRead).
+  `ContractsTableDefinition.php` e' a 500 righe esatte (hard limit): il prossimo cambio deve prima splittarlo.
+- FE: `DocumentsDialog` ha `readOnly`/`title` e legge le abilities solo da aperto; `useQuoteRowActions` ritorna
+  `documentsDialog` (montato in quotes-table, opportunity-quotes-detail-renderer, opportunity-quotes-section,
+  registry-related-panels); `useWorkOrderCollaborationDialogs` (nuovo) -> `collaborationDialogs` di
+  `useWorkOrderRowActions` (work-orders-table, contract-work-orders-section, registry-related-panels); ContractsTable
+  apre `DocumentsDialog` alias `contract`.
+- Test: BE `tests/Feature/Tables/AlignedRowActionsTest.php` + 3 test d'ordine aggiornati (REQUIREMENT CHANGED);
+  FE documents-dialog, use-quote-row-actions, contracts-table, use-work-order-row-actions.
+- Manuale: guida generale IT/EN (paragrafo sulla colonna Azioni) + paragrafo "Stesso ordine nei moduli commerciali"
+  nel manuale Claude Docs sotto "Azioni sulla riga".
+- Fallimenti preesistenti, estranei: `TableBulkDeleteTest` (guarded/forbidden, fallisce anche senza modifiche),
+  `QuoteDocumentPdfTest` (LibreOffice non installato), `DemoOpportunitySeederTest` (flaky, dati casuali).
+
+## Fix tooltip azione di riga "Avanzamento commessa" — VERDE, NON COMMITTATO (2026-11-06)
+
+- Bug: il tooltip dell'azione di riga `progress` nella griglia Commesse mostrava "Lista avanzamenti commessa n. {{code}}".
+  Causa: `WorkOrderColumnCatalog` usava come label `workOrders.progress.title` (titolo del popup, con parametro
+  `code`), che la riga traduce senza parametri. Ora usa `workOrders.progress.action` ("Avanzamento commessa"), la stessa
+  etichetta del pulsante nel dettaglio. Test di regressione in `WorkOrderProgressEntriesTest`. Manuale: nessun impatto
+  (la guida chiama gia' l'azione "Avanzamento commessa").
+
+## Email ricorrenti della commessa (spec 0362) — VERDE, NON COMMITTATO (2026-11-06)
+
+- Spec `docs/specs/0362-work-order-recurring-emails.xml` (approvata; nata come 0361, rinumerata perche' 0361 = scelta
+  mittente, committata nel frattempo). Decisioni utente: solo commesse; copie IDENTICHE (niente ricalcolo segnaposto);
+  data di inizio scelta, nessun invio immediato; data di fine OBBLIGATORIA (niente "mai"/"dopo N"); stop automatico
+  quando la commessa e' completed|closed. Assunte senza obiezioni: nessun tetto alla data di fine; le 206 regole attive
+  del legacy (`email_order_reminders`) NON migrate (le email commessa legacy non sono in qnet-2).
+- BE: tabella `outbound_email_recurrences` (1:1 con l'email programmata) + `outbound_emails.outbound_email_recurrence_id`
+  / `occurrence_on` (UNIQUE = idempotenza); stati `OutboundEmailStatus::Scheduled`/`ScheduleEnded`, enum
+  `OutboundEmailRecurrenceEndReason` (ends_on_reached, owner_closed, sender_unavailable); `EmailOwner::allowsRecurrence()`
+  (solo WorkOrder); `ScheduleOutboundEmailRequest`, `OutboundEmailScheduler`, `RecurringEmailDispatcher`, comando
+  `outbound-emails:send-recurrences` orario (dovuto se next_send_on <= oggi e ora >= `outbound_emails.recurrence.send_at`
+  08:00). Rotte POST `work-orders/{wo}/emails/{email}/schedule|unschedule`. Date SOLO da `TaskRecurrenceCalculator`
+  (ricalcolo dall'ancora starts_on). Un invio per serie per run, date perse saltate, failed non ferma la serie.
+  `OutboundEmailService::assertSendable` ora public; riprogrammare azzera `sent_count`.
+- FE: `features/outbound-emails/outbound-email-recurrence-{fields,day-fields,summary,schema}.ts(x)`,
+  `use-outbound-email-schedule.ts`; switch "Ripeti questa email" + "Programma", badge Programmata/Programmazione
+  terminata, "Riporta in bozza". Etichette campo riusano `tasks.form.recurrence.*`. Frequenza `custom` non offerta.
+  Guida: sezione `recurring-emails` in `help/content/{it,en}/parts/work-orders-recurring-emails.ts` (split per il limite).
+- Verifica (verifier indipendente): AC-001..025 PASS; Spec0362 32/32 Pest, aree email 104/104; vitest completo 9990/9990
+  (11 unhandled rejection preesistenti, es. vat-rates `toast.error`); `tsc -b --force` 0; Pint/ESLint puliti. Suite BE
+  completa 13916/13933: 10 rossi estranei (TableBulkDelete, AiAssistant mime x4, QualificaOperatorSeeder x2,
+  QuoteDocumentPdf, PermissionCatalogueEndpoint 694/677, SettlementApproval data). `composer test` va in timeout a 300 s:
+  usare `COMPOSER_PROCESS_TIMEOUT=0`.
+- Da fare a mano: AC-026 responsive 375/768/1024 della sezione Ricorrenza; cron `schedule:run` sul server; `down()`
+  delle 2 migrazioni letto ma non eseguito. Rilievo basso aperto: `ScheduleOutboundEmailRequest` valida prima
+  dell'authz (422 invece di 403 a chi non ha il permesso), come le altre request WorkOrderEmails.
+- Manuale: Claude Docs, paragrafo "Email ricorrenti" in Commesse (dopo Richiedi aggiornamento); guida in-app IT/EN.
+
+## Scelta del mittente nel composer email (spec 0361) — VERDE, NON COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: mittenti = `users.email` + contatti `email` (non PEC) dell'anagrafica della persona;
+  ultimo mittente ricordato nel BROWSER (localStorage), non sul server. Supera la D-6 della spec 0175.
+- BE: `App\Services\OutboundEmails\OutboundEmailSenderAddresses::for(User)/allows()` (login prima, poi primario, poi
+  per id, dedup case-insensitive). compose-context: `sender_options: string[]`. Draft POST/PATCH: `from_address`
+  opzionale (trait `ValidatesSenderAddress`, `Rule::in`, 422 `outbound_emails.sender_not_allowed`); `from_address`
+  ora in `#[Fillable]` di `OutboundEmail`. Send: `from_address ?? users.email`, 422 `from_address` se non piu' ammesso
+  (vale anche per il reinvio di una `failed`).
+- FE: `outbound-email-sender-field.tsx` (Select se >1 opzione), `outbound-email-last-sender.ts` (chiave
+  `outbound-emails.last-from-address:{login email}`), default applicato all'init del composer (non dirty), salvato
+  dopo un invio riuscito. `from_address` in `ComposerFormValues`/payload/MAPPED_FIELDS.
+- Test: `tests/Feature/Spec0361` + set email BE 111/111; FE outbound-emails 27/27, help 157/157; tsc -b, eslint, pint ok.
+  REQUIREMENT CHANGED: fixture AC-014 di `WorkOrderEmailSendTest` (failed con `from_address` = email dell'attore).
+- Guide: `invoices` (step Mittente) e `email-templates` (uso: paragrafo + warning) IT/EN; manuale Claude Docs: paragrafo
+  "Mittente" sotto i segnaposto dei Modelli email.
+- Fuori scope/da segnalare: cambio mittente su una email `failed` (non modificabile); `{sender.email}` resta l'email
+  di accesso; le guide `work-orders`/`purchase-orders` non descrivono il composer.
+
+## Modifica del contratto in essere come nel legacy (spec 0360) — VERDE, NON COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: dal dettaglio contratto si modificano sul posto titolo, righe servizi (aggiungi/
+  modifica/rimuovi) e rinnovo/scadenza/note pagamento/commenti; stati open, pending e closed_won (Validato);
+  closed_lost in sola lettura finche' non si riapre; authz = permesso Contratti (`contracts.update` + perimetro).
+- Riga di RICAVO assegnata a una commessa (`quote_line_work_order`) = bloccata in tutto (prodotto, fornitore,
+  quantita', prezzo, IVA, descrizione aggiuntiva; NON sort_order ne' provvigioni) e non rimovibile finche' la commessa
+  esiste. Regola unica in `App\Services\Quotes\QuoteLineWorkOrderLock`, chiamata da `QuoteLineWriter::sync()`: vale per
+  Offerte, Contratto e Gestione Richieste (il `dropUncovered` del cambio categoria ora da' 422: confermato). Prima la
+  rimozione dall'Offerta cancellava in silenzio il collegamento (FK cascade).
+- API: `PATCH /api/contracts/{c}` accetta anche `title` (null = automatico) e `offer_lines` (regole
+  `ValidatesQuoteLines::offerLinesOnlyRules()`, commissions prohibited, + `requireOfferLineOnUpdate` /
+  `enforceSingleOfferLine`); `ContractService::update($contract, $data, ?User $actor = null)` delega title/offer_lines a
+  `QuoteService::update()` (attore obbligatorio solo per quelle chiavi; i seeder passano senza). 422 `offer_lines`
+  (`quotes.line_removal_blocked_by_work_order`) e `offer_lines.{i}` (`quotes.line_locked_by_work_order`).
+  `QuoteLineResource.work_orders: [{id, code}]` (whenLoaded; eager load in DETAIL relations di Quote e Contract).
+- Stato: `ContractActionAvailability::mayEdit()` = working || closed_won, applicato nel tetto dei permessi di campo di
+  `ContractsAuthorization` (nuove FieldDefinition `title`, `offer_lines`); FE `contract-lifecycle.ts` `edit` specchio.
+  `contract_status_id` via PATCH NON toccato (accettato in ogni stato: fuori scope, segnalato).
+- FE: titolo in place in `contract-detail-header.tsx`; righe = `RecordInlineField` + `RequestOfferLinesField` in
+  `contract-detail.tsx` (form esteso in `use-contract-inline-edit.ts`, payload sparso in `use-contract-mutations.ts`);
+  riga bloccata in `quotes/line-editor/quote-line-card.tsx` (`lockedWorkOrderCodes`, "Assegnata a ..."); etichette
+  permessi di campo `contracts.form.title|offer_lines`. `contract-detail.test.tsx` diviso (nuovo
+  `contract-detail-lifecycle.test.tsx`, fixture in `contract-renewal-fixtures.ts`).
+- Test: Pest `ContractInForceEditingTest` 21, `QuoteLineWorkOrderLockTest` 8; Contracts 217/217, Seeding 235/237;
+  Contracts+Quotes+RequestManagement verdi salvo 3 `QuoteDocumentPdfTest` (manca LibreOffice). Vitest mirato
+  1435/1435, contracts 204/204, help 157/157; `tsc -b --force` ed ESLint puliti. REQUIREMENT CHANGED:
+  `ContractAuthorizationTest` AC-038 (11 campi), `contract-detail.test.tsx`/`contract-actions-refresh.test.tsx` (matita
+  su closed_won), `contract-schema.test.ts`.
+- Suite completa (verifier): rossi NON attribuibili alla 0360, in file non toccati: ManagementControl `*AccessTest`
+  (navigazione, "array offset on null"), `PermissionCatalogueEndpointTest` (694 vs 677), `TableBulkDeleteTest`
+  (super-admin guarded), `QualificaOperatorSeederTest` x2 (`importatore-richieste`), AiAssistant x4,
+  `SettlementApprovalTest` (data); FE 11 unhandled `toast.error is not a function` in form di altre feature.
+- Manuale: guide in-app IT+EN contracts (`edit-contract-in-force`), quotes, request-management; manuale Claude Docs
+  (Contratti: nuova "Modificare il contratto in essere", tabella stati; Offerte: righe assegnate a commessa).
+- Aperti: workflow Offerta dedicato con criteri sulle righe potrebbe riassegnare lo stato al cambio righe (non
+  testato, con il set globale no). `QuoteService.php` a 490 righe (split alla prossima modifica).
+
+## Pannello "Rinnovi" del contratto ridisegnato e spostato in alto — VERDE, NON COMMITTATO (2026-11-05)
+
+- Decisione utente 2026-11-05: il componente rinnovi "come i migliori CRM", in alto nella scheda sotto i bottoni.
+  `ContractRenewalsSection` ora e' una banda dentro la record card (header di `RecordBody`, subito dopo
+  `ContractActionsBar`), non piu' una card separata sotto la griglia.
+- Contenuto: periodo "In corso", conto alla rovescia scadenza da `days_to_expiry` del server (rosso se < 0, ambra con
+  `alert === 'expiring'`, nessuna soglia client), "Rinnovo entro il" (`renewal_date`, ambra con `renewal_due`), barra
+  `Progress` del periodo trascorso, timeline dei periodi (`<ol aria-label>` di bottoni `aria-pressed`), dettaglio del
+  periodo selezionato (default = corrente) con "Annulla rinnovo" solo sull'ultimo. Nessun cambio API.
+- Logica pura in `contract-renewal-periods.ts` (`useContractPeriods`, `periodElapsedPercent`, `currentPeriodStart`,
+  `dateOrDash`). Nuove chiavi i18n `contracts.renewals.*` (byValue, timeline, current, currentPeriod, elapsed,
+  expiresIn_one/_other, expiresToday, expiredAgo_one/_other, renewBy).
+- Test: `contract-renewals-section.test.tsx` riscritto (REQUIREMENT CHANGED: lista -> timeline + pannello),
+  nuovo `contract-renewal-periods.test.ts`. Vitest contracts+help 361/361, ESLint e `tsc -b --force` puliti.
+  La sezione non ha `aria-labelledby` di proposito: l'etichetta "Renewals" collideva con `getByLabelText(/^Renewal/)`
+  del campo Rinnovo in `contract-detail-inline-edit.test.tsx`.
+- Manuale: guide in-app IT+EN contracts (`renewal-periods`) e manuale Claude Docs (Contratti, nuova sottosezione
+  "Rinnovi e periodi del contratto") aggiornati. Da verificare a occhio in app (375/768/1024).
+
+## Chiusura forzata con stati positivi -> avanzamento 100% (spec 0324 revisione 2026-11-05) — VERDE, COMMITTATO
+
+- Decisione utente 2026-11-05: la select "Stato di chiusura" offre gli stati del gruppo `completed` (Chiusa con esito
+  positivo) e `closed` (negativo) del set risolto; default invariato = riga con chiave `closed`.
+- BE: `WorkOrderWorkflowStatusAssigner::closingStatus` accetta `CLOSING_GROUPS` (completed|closed), altrimenti 422
+  (lang `force_close_status_invalid` IT/EN aggiornato). `WorkOrderProgressEntryService::completeOnPositiveClosure`
+  (chiamato da `WorkOrderService::create/update` dopo `followForceClose`): transizione false->true su stato
+  `completed` -> `raiseTo(100)` con data di oggi; gia' a 100 nessuna registrazione. Attore ora `?User` in
+  `create/raiseTo` (`created_by` nullable): il seeder demo crea commesse senza utente autenticato.
+- Invariati (non chiesti, da confermare con l'utente se servono): task aperti chiusi sempre con esito NEGATIVO
+  (spec 0146 D-8); stato derivato/badge `closed` per ogni chiusura forzata (spec 0321 D-2).
+- FE: `closingStatuses()` in `work-order-force-close-dialog.tsx` filtra `completed`+`closed`.
+- Test: Pest work-orders 441/441 (3 nuovi + 1 REQUIREMENT CHANGED: il rifiuto ora e' su uno stato di lavoro);
+  Vitest work-orders+help 474/474 (1 REQUIREMENT CHANGED: opzioni Done/Lost/Closed); Pint, ESLint, `tsc -b --force`
+  puliti. Verificato su Chrome headless: COM-20205 mostra 3 positivi + "Chiusa con esito negativo" (nessun submit).
+- Manuale: guide in-app IT+EN (`work-orders.ts`, sezioni force-close e stato lavorazione) e manuale Claude Docs
+  (paragrafi Stato di chiusura + Stato lavorazione e avanzamento) aggiornati. PDF derivato da rigenerare.
+
+## Fix "Chiusura forzata" dal dettaglio commessa: il dialog spariva — VERDE, COMMITTATO (2026-11-05)
+
+- Sintomo: su `/work-orders/:id` il clic su "Chiusura forzata" sembrava ricaricare la pagina e il dialog non compariva.
+- Root cause: `WorkOrderForceCloseDialog` legge il record con `useQuery` sulla chiave condivisa
+  `workOrderDetailQueryKey(id)` senza `staleTime`: all'apertura rifaceva il fetch, `useEntityDetail` (skeleton anche
+  su `isFetching`) smontava il dettaglio e con esso il dialog. Stesso bug gia' risolto in `use-work-order-progress.ts`.
+- Fix: `staleTime: Infinity` sulla query del dialog (stesso pattern del popup Avanzamento). Test nuovo in
+  `work-order-force-close-dialog.test.tsx` ("reuses the cached detail"), fallito prima del fix. Vitest work-orders
+  317/317, ESLint e `tsc -b --force` puliti; verificato su Chrome headless (COM-20205: dialog aperto, nessun submit).
+- Manuale: nessun impatto (bug fix).
+
+## Barra categorie: "Categorie madri" acceso di default — VERDE, NON COMMITTATO (2026-11-05)
+
+- Decisione utente 2026-11-05: Opportunita', Commesse, Offerte, Contratti, Gestione Richieste e Gestione Iscritti
+  aprono la barra sul livello `root` (interruttore "Categorie madri" acceso) invece di `all`.
+- Unico punto: `frontend/src/features/category-tabs/category-tab-level.ts` (`DEFAULT_LEVEL = 'root'`). Il localStorage
+  `${key}.category-tab-level` resta la scelta dell'operatore: un `all` gia' salvato viene rispettato; solo chi non ha
+  mai toccato l'interruttore passa a `root`. Spec 0337 D-2 aggiornata.
+- Test (REQUIREMENT CHANGED): i test della barra a categoria singola salvano `all` nel `beforeEach`;
+  `use-category-tab-strip-level.test.tsx` verifica default `root` + `all` salvato rispettato. Vitest 1820/1820 verdi
+  sulle feature toccate, ESLint e `tsc -b --force` puliti.
+- Manuale: guide in-app IT+EN (opportunities, quotes, contracts, work-orders, request-management) e manuale Claude Docs
+  (Opportunita' + Gestione Richieste) aggiornati: "acceso di default".
+
+## Fix timeout griglia Offerte con tab categoria (es. APL) — VERDE, COMMITTATO (2026-11-05)
+
+- Sintomo: `POST /api/tables/quotes/rows` con `productCategoryBranchId` 26-30 s in produzione (timeout); "Tutte" veloce.
+- Root cause: `withCount('scopedNotes')` = subquery correlata su `notes.quote_id`; quasi tutte le note hanno
+  `quote_id` NULL -> cardinalita' indice ~1 -> l'ottimizzatore fa FULL SCAN di `notes` per riga. Con lo scope
+  categoria il semi-join materializza tutte le offerte del ramo (3077 per APL) prima del LIMIT -> 3077 x 110k righe.
+- Fix: `Quote::scopedNotes()` aggiunge `whereNotNull('notes.quote_id')` (ridondante, guardia di piano: forza l'indice).
+  Locale: APL 25 s -> 0,32 s; Tutte 0,57 -> 0,17 s. Vale anche per Gestione Richieste (stesso withCount).
+- Test: `tests/Unit/Models/QuoteTest.php` (predicato presente). Manuale: nessun impatto.
+
+## Rinnovo contratti a periodi (spec 0358) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: periodi di rinnovo (0 = Iniziale, N = Rinnovo N); dialog Rinnova con nuove date
+  precompilate della stessa durata; stessi prezzi/provvigioni (nessuna copia righe); stessi stati e stesso permesso di
+  Programma (`contracts.program` + `mayProgram`); "Annulla rinnovo" solo sull'ultimo e solo senza commesse nel periodo.
+- Schema: `contract_renewals` (storico: number, starts_on, previous_*/nuove date, renewed_by); periodo sul PIVOT
+  `quote_line_work_order.renewal_number` con UNIQUE(quote_line_id, renewal_number); `work_order_line_payments`
+  UNIQUE(work_order_id, quote_line_id). Migrazioni `2026_11_20_1000xx`, provate su MariaDB (migrate/rollback/migrate,
+  niente errno 1553). Periodo corrente DERIVATO: `Contract::currentRenewalNumber()` (nessuna colonna su contracts).
+- Regola: "una riga, una commessa PER PERIODO". Unico decisore del periodo: `App\Services\WorkOrders\RenewalPeriodResolver`
+  (righe nuove = periodo delle righe della stessa offerta gia' nella commessa, altrimenti il corrente). Usato da
+  WorkOrderLineWriter, programmable-lines, multi-programmable-lines, quote-offer-lines/for-select.
+- A valle: `QuoteLine::payment()` RIMOSSA (pagamenti letti dalla commessa); InvoiceLineGuard/ProformaRequestBillableLines
+  = una riga si fattura una volta PER COMMESSA; AccrualStateLoader raggruppa per (riga, invoices.work_order_id): la
+  provvigione matura per intero in ogni periodo; WorkOrderFigureSources `commission_actual` per fatture della commessa
+  (accrual senza fattura -> commessa col renewal_number piu' basso). Legacy WorkOrdersSource: "gia' programmata" solo
+  sul periodo 0.
+- API: POST `contracts/{c}/renewals` {renewal_date|null, expiry_date}; DELETE `contracts/{c}/renewals/{r}`
+  (scopeBindings) — `ContractRenewalController`, `RenewContractRequest`, `ContractRenewalService`,
+  `ContractPeriodWorkOrderCounter`, `ContractActionAvailability::mayUndoRenewal()`. ContractResource:
+  `renewal_number`, `renewals[]` (work_orders_count, can_undo), `initial_period_work_orders_count`,
+  `permissions.actions.renew`. Row action `renew` (icona `refresh-cw`) nella griglia contratti. Colonna griglia
+  commesse `renewal_number` ("Periodo", MAX del pivot).
+- FE: `contract-renew-dialog.tsx` + `contract-renew-schema.ts` + `contract-renewal-defaults.ts`,
+  `contract-renewals-section.tsx` (sempre visibile, riga Iniziale), periodo nel dialog Programma,
+  `work-orders/renewal-period-cell.tsx`. Guide in-app IT/EN: contracts (`renewal-periods`), work-orders, invoices,
+  commission-accruals.
+- Test: Spec0358 38/38; Contracts 196, WorkOrders 438; Vitest contracts/work-orders/help 662; tsc -b pulito.
+  REQUIREMENT CHANGED dichiarati: ContractAuthorizationTest (8 actions), QuoteLineWorkOrderMigrationTest,
+  WorkOrderTableTest, contract-detail.test.tsx (date ripetute nella riga Iniziale).
+- Suite completa: rossi ESTRANEI alla 0358 (preesistenti/ambiente): ManagementControl x4 (navigazione 0318),
+  SettlementApprovalTest AC-006 (data), PermissionCatalogueEndpointTest (694 vs 677), QualificaOperatorSeederTest x2,
+  TableBulkDeleteTest r.131 (utenti), AiAssistant x4, QuoteDocumentPdfTest x3 (LibreOffice); FE 11 unhandled
+  `toast.error is not a function` da `auth/form-errors.ts` (preesistente, confermato su contract-type-form.test.tsx).
+- Aperti: manuale Claude Docs non accessibile ("access") -> da aggiornare Contratti (Rinnova, periodi, storico,
+  Annulla rinnovo, Programma per periodo), Commesse (colonna Periodo), Fatture (una volta per commessa), Maturato.
+  Fuori scope: mappatura dei cicli di rinnovo legacy sui periodi (lavoro del legacy, backend.md §9),
+  QuoteLineDuplicator resta. `ContractsTableDefinition.php` a 498 righe (vicino al limite 500). `composer test` va in
+  timeout a 300s: serve `COMPOSER_PROCESS_TIMEOUT=0`. HANDOFF.md e' ~1 MB: da archiviare in `docs/handoff-archive/`.
+
+## Blocco di primo accesso solo in produzione (spec 0359) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisione utente 2026-11-05: il blocco di cambio password (0355 D-2: 403 `password_change_required` + popup)
+  vale solo in produzione; altrove il flag `must_set_password` resta scritto ma non applicato.
+- Config `auth.first_access_gate` (default `APP_ENV === 'production'`, env `AUTH_FIRST_ACCESS_GATE`, in `.env.example`).
+  Decisione unica in `User::isFirstAccessPending()` (flag AND gate), usata da `EnsureFirstPasswordSet` e da
+  `AuthController::authenticatedUserPayload()` (login + me espongono `must_set_password` gate-aware). FE invariato
+  (solo docblock di `features/auth/types.ts`). `UserResource` del modulo Utenti espone ancora il flag reale (badge).
+- Test: `tests/Feature/Spec0359/FirstAccessGateEnvironmentTest.php`; i test del gate (0355 `FirstAccessGateTest`,
+  0177 AC-007) abilitano il gate esplicitamente (REQUIREMENT CHANGED). Helper `configDefaultUnderEnvironment()`
+  spostato in `tests/Helpers/FirstAccessHelpers.php` (lo usa anche 0356 AC-004). Manuale: nessun impatto.
+
 ## Gestione richieste: campo Commerciale accanto al Segnalatore (spec 0357) — VERDE, COMMITTATO (2026-11-05)
 
 - Decisioni utente 2026-11-05: il Commerciale e' quello dell'OFFERTA (`quotes.commercial_id`, Referent, destinatario

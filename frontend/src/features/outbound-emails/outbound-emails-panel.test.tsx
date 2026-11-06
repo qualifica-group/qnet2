@@ -63,6 +63,8 @@ function listItem(overrides: Partial<OutboundEmailListItem> = {}): OutboundEmail
     to: ['client@example.com'],
     subject: 'Hello',
     attachments_count: 0,
+    next_send_on: null,
+    is_recurring_copy: false,
     sent_at: '2026-09-20T10:00:00.000Z',
     failed_at: null,
     updated_at: '2026-09-20T10:00:00.000Z',
@@ -91,7 +93,9 @@ function email(overrides: Partial<OutboundEmail> = {}): OutboundEmail {
     error_message: null,
     created_at: '2026-09-20T09:00:00.000Z',
     updated_at: '2026-09-20T09:00:00.000Z',
-    can: { update: true, delete: true, send: true },
+    recurrence: null,
+    recurrence_source_id: null,
+    can: { update: true, delete: true, send: true, schedule: false, unschedule: false },
     ...overrides,
   }
 }
@@ -99,6 +103,7 @@ function email(overrides: Partial<OutboundEmail> = {}): OutboundEmail {
 function composeContext(overrides: Partial<ComposeContext> = {}): ComposeContext {
   return {
     sender: { name: 'Mario Rossi', email: 'mario.rossi@example.com' },
+    sender_options: ['mario.rossi@example.com'],
     recipient_suggestions: [],
     documents: [],
     quote_pdf_available: false,

@@ -8,7 +8,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ProductLine } from '@/features/product-lines/types'
-import type { QuoteLine, QuoteManagerRef } from '@/features/quotes/types'
+import type { QuoteLine, QuoteLineInput, QuoteManagerRef } from '@/features/quotes/types'
 import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { WorkOrderType } from '@/features/work-orders/types'
@@ -71,6 +71,21 @@ export interface ContractSummary {
 /** Calculated at read time (D-4/BR-6), never persisted; `null` when neither threshold applies. */
 export type ContractAlert = 'expiring' | 'renewal_due' | null
 
+/** One renewal of the contract's history (spec 0358): `starts_on` opens the period, `can_undo` excludes the permission. */
+export interface ContractRenewal {
+  id: number
+  number: number
+  starts_on: string
+  renewal_date: string | null
+  expiry_date: string
+  previous_renewal_date: string | null
+  previous_expiry_date: string | null
+  renewed_by: ContractRelationRef | null
+  created_at: string
+  work_orders_count: number
+  can_undo: boolean
+}
+
 /** Single contract detail returned by GET/PATCH/action endpoints (envelope `data`). Matches `ContractResource`. */
 export interface ContractDetail {
   id: number
@@ -116,6 +131,11 @@ export interface ContractDetail {
   alert: ContractAlert
   days_to_expiry: number | null
   days_to_renewal: number | null
+  /** Current period (spec 0358): 0 = initial. */
+  renewal_number: number
+  /** Ordered by `number` asc; empty when never renewed. */
+  renewals: ContractRenewal[]
+  initial_period_work_orders_count: number
   /** The quote's revenue lines, read-only (BR-7): rendered with the shared `QuoteLinesReadOnlyList`, never edited here. */
   offer_lines: QuoteLine[]
   summary: ContractSummary
@@ -134,6 +154,10 @@ export interface ContractDetailWithPermissions extends ContractDetail {
  * the status left the "Modifica dati" form (user directive 2026-08-31).
  */
 export interface UpdateContractPayload {
+  /** `null` = back to the automatic title (spec 0360 D-7). */
+  title?: string | null
+  /** Full replace of the revenue rows, without `commissions` (prohibited on this channel, spec 0360 D-5). */
+  offer_lines?: QuoteLineInput[]
   renewal_date?: string | null
   expiry_date?: string | null
   payment_notes?: string | null
@@ -213,6 +237,12 @@ export interface ChangeContractStatusPayload {
  */
 export interface ReactivateContractPayload {
   contract_status_id?: number
+}
+
+/** Payload for POST /contracts/{id}/renewals (spec 0358): `expiry_date` is mandatory. */
+export interface RenewContractPayload {
+  renewal_date: string | null
+  expiry_date: string
 }
 
 /** Payload for POST /contracts/{id}/terminate (BR-4). `contract_status_id`, when given, must belong to group `closed_lost` (server-enforced). */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns;
 
 use App\Enums\CategoryManagementMode;
+use App\Models\Contract;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteLine;
@@ -182,7 +183,9 @@ trait ValidatesQuoteLines
      */
     private function persistedQuoteLines(string $field): Collection
     {
-        $quote = $this->route('quote');
+        // The contract detail edits the rows of its own offer (spec 0360).
+        $contract = $this->route('contract');
+        $quote = $this->route('quote') ?? ($contract instanceof Contract ? $contract->quote()->first() : null);
 
         if (! $quote instanceof Quote) {
             return new Collection;

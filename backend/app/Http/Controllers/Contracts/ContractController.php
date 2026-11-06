@@ -62,7 +62,7 @@ class ContractController extends BaseApiController
         try {
             $this->authorize('update', $contract);
 
-            $contract = $this->service->update($contract, $request->toData());
+            $contract = $this->service->update($contract, $request->toData(), $request->user());
 
             return $this->okWithPermissions(
                 new ContractResource($contract),

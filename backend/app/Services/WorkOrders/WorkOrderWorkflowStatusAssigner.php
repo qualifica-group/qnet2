@@ -32,6 +32,9 @@ final class WorkOrderWorkflowStatusAssigner
 
     private const string LOG_DESCRIPTION = 'Work order working status change';
 
+    /** The groups a forced closure may land on: positive or negative outcome. */
+    private const array CLOSING_GROUPS = [WorkOrderStatus::Completed, WorkOrderStatus::Closed];
+
     public function __construct(private readonly WorkOrderWorkflowResolver $resolver) {}
 
     /**
@@ -93,12 +96,12 @@ final class WorkOrderWorkflowStatusAssigner
     /**
      * Follow a force-close transition (spec 0322 amendment, spec 0324 D-6/D-7):
      * closing moves the commessa onto $forceCloseStatusId when given (it must
-     * be a `closed`-group row of its resolved set, else a 422) or onto the
-     * `closed` system row; reopening moves it onto `open` when it sits on ANY
+     * be a positive `completed`- or negative `closed`-group row of its
+     * resolved set, else a 422) or onto the `closed` system row; reopening moves it onto `open` when it sits on ANY
      * `closed`-group row, so a positive or working status stays. The chosen
      * status is ignored when there is no closing transition.
      *
-     * @throws ValidationException $forceCloseStatusId is not a closed-group status of the set
+     * @throws ValidationException $forceCloseStatusId is not a closing (completed/closed group) status of the set
      */
     public function followForceClose(WorkOrder $workOrder, bool $wasForceClosed, bool $logChange, ?int $forceCloseStatusId = null): void
     {
@@ -137,7 +140,7 @@ final class WorkOrderWorkflowStatusAssigner
 
         $chosen = $statuses->firstWhere('id', $forceCloseStatusId);
 
-        if ($chosen === null || $chosen->group !== WorkOrderStatus::Closed) {
+        if ($chosen === null || ! in_array($chosen->group, self::CLOSING_GROUPS, true)) {
             throw ValidationException::withMessages([
                 self::FORCE_CLOSE_FIELD => [__('work_orders.workflow_status.force_close_status_invalid')],
             ]);

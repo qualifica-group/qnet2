@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Invoices;
 
+use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\ProformaRequest;
 use App\Models\WorkOrder;
@@ -28,7 +29,7 @@ final class InvoiceLineGuard
     {
         $allowed = $this->allowedIds($request, $workOrderId, $quoteId);
         $notAllowed = $request === null ? 'The line does not belong to the work order of this request.' : __('invoices.line_not_in_request');
-        $taken = $this->invoicedElsewhere($lines, $ignoreInvoiceId);
+        $taken = $this->invoicedElsewhere($lines, $workOrderId, $ignoreInvoiceId);
         $errors = [];
 
         foreach (array_values($lines) as $index => $line) {
@@ -66,9 +67,10 @@ final class InvoiceLineGuard
 
     /**
      * @param  array<int, array<string, mixed>>  $lines
+     * @param  int|null  $workOrderId  a line is billed once per commessa (spec 0358, D-7); without a commessa the check stays global
      * @return array<int, int>
      */
-    private function invoicedElsewhere(array $lines, ?int $ignoreInvoiceId): array
+    private function invoicedElsewhere(array $lines, ?int $workOrderId, ?int $ignoreInvoiceId): array
     {
         $ids = array_filter(array_column($lines, 'quote_line_id'));
 
@@ -78,6 +80,7 @@ final class InvoiceLineGuard
 
         return InvoiceLine::query()
             ->whereIn('quote_line_id', $ids)
+            ->when($workOrderId !== null, fn ($query) => $query->whereIn('invoice_id', Invoice::query()->select('id')->where('work_order_id', $workOrderId)))
             ->when($ignoreInvoiceId !== null, fn ($query) => $query->where('invoice_id', '!=', $ignoreInvoiceId))
             ->pluck('quote_line_id')
             ->map(fn ($id): int => (int) $id)

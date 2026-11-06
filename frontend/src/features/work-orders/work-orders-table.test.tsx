@@ -40,6 +40,8 @@ vi.mock('@/components/page-header', () => ({
 const deleteWorkOrderMock = vi.fn()
 vi.mock('@/features/work-orders/api', () => ({
   WORK_ORDERS_DOMAIN: 'work-orders',
+  // Spec 0363: the documents row action's dialog names the attachable owner.
+  WORK_ORDER_ATTACHABLE_ALIAS: 'work_order',
   deleteWorkOrder: (...args: unknown[]) => deleteWorkOrderMock(...args),
   fetchWorkOrder: vi.fn(),
   // The force-close row action's dialog (user directive 2026-10-06) reads and writes the record.

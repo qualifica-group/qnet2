@@ -301,3 +301,12 @@ it('source_id is a fillable column with a BelongsTo source()', function () {
         ->and($quote->source()->getRelated())->toBeInstanceOf(Source::class)
         ->and(Schema::hasColumn('quotes', 'source_id'))->toBeTrue();
 });
+
+// Query-plan guard (production timeout on the category-scoped Offerte grid):
+// without the redundant NOT NULL predicate MariaDB/MySQL run the per-row
+// `notes_count` subquery as a full scan of `notes`.
+it('scopedNotes() carries a NOT NULL predicate on notes.quote_id', function () {
+    $sql = Quote::query()->withCount('scopedNotes as notes_count')->toSql();
+
+    expect($sql)->toContain('"notes"."quote_id" is not null');
+});

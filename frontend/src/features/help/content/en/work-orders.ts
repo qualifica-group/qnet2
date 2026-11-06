@@ -1,4 +1,5 @@
 import type { HelpGuide } from '../../types'
+import { recurringEmailSections } from './parts/work-orders-recurring-emails'
 
 const guide: HelpGuide = {
   key: 'work-orders',
@@ -54,7 +55,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). Work order no., Contract no., Linked offer, Registry, Contract expiry, Status, Progress, Created at and Updated at stay read-only.",
+          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). The **Period** column shows the contract period the work order was programmed in: **Initial** or **Renewal N** (see the Contracts guide, Renewing the contract). Work order no., Contract no., Linked offer, Registry, Contract expiry, Period, Status, Progress, Created at and Updated at stay read-only.",
         },
       ],
     },
@@ -76,7 +77,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
         },
         {
           type: 'paragraph',
@@ -101,7 +102,7 @@ const guide: HelpGuide = {
           items: [
             'Press **Force close**.',
             'Write the **reason** (required). If the work order still has open tasks, the dialog tells you how many will be closed with a negative outcome.',
-            'Pick the **Closing status** (required): the list shows the **Closed (lost)** statuses of the work order\'s set and starts on the main one.',
+            'Pick the **Closing status** (required): the list shows the **Closed (won)** and **Closed (lost)** statuses of the work order\'s set and starts on the main lost one. With a won status the work order progress goes to **100%** (an entry dated today is added, unless it was already at 100%).',
             'Press **Close work order**: the status becomes Closed, the Processing status becomes the closing status you picked and the reason appears among the work order details.',
           ],
         },
@@ -181,7 +182,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Picking by hand a **Processing status** with a **progress %** above zero raises the work order progress to that percentage (an entry dated today is added). If the status percentage is not above the progress already reached the change is refused and the field shows the error; statuses without a percentage change the status only. The same happens automatically when a task created from a template whose row is linked to a status is closed positively (see **Task Templates**): in that case the status is applied even when it comes before the current one. On a force-closed work order the progress does not change. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Closed (won), Closed (lost), also for the other closing statuses of the same group) or Open. Force-closing sets the Processing status to the **Closing status** you picked (a **Closed (lost)** status); reopening the work order sets it back to **Open** while it is still on a lost status.",
+          text: "Picking by hand a **Processing status** with a **progress %** above zero raises the work order progress to that percentage (an entry dated today is added). If the status percentage is not above the progress already reached the change is refused and the field shows the error; statuses without a percentage change the status only. The same happens automatically when a task created from a template whose row is linked to a status is closed positively (see **Task Templates**): in that case the status is applied even when it comes before the current one. On a force-closed work order the progress does not change. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Closed (won), Closed (lost), also for the other closing statuses of the same group) or Open. Force-closing sets the Processing status to the **Closing status** you picked (a **Closed (won)** status, which brings the progress to 100%, or a **Closed (lost)** one); reopening the work order sets it back to **Open** while it is still on a lost status.",
         },
       ],
     },
@@ -451,6 +452,7 @@ const guide: HelpGuide = {
         { type: 'tip', text: "Whoever can edit the work order can involve a colleague who cannot see it by mentioning them in a note with **Mention anyone**: on save they become a **Participant** (see **Notes and documents** in the general guide)." },
       ],
     },
+    ...recurringEmailSections,
     {
       id: 'in-development',
       title: 'Module in development',

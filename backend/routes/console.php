@@ -38,3 +38,7 @@ Schedule::command('absences:carry-over')->yearlyOn(1, 1, '00:45')->withoutOverla
 // Spec 0347, D-5: removes the AI assistant conversations (and their files)
 // idle for more than the retention window.
 Schedule::command('ai-assistant:prune')->dailyAt('03:30')->withoutOverlapping()->onOneServer();
+
+// Spec 0362, D-9: sends the occurrences due of the recurring work order emails
+// (from outbound_emails.recurrence.send_at on). Idempotent per series and day.
+Schedule::command('outbound-emails:send-recurrences')->hourly()->withoutOverlapping()->onOneServer();

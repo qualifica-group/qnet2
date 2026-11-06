@@ -17,6 +17,30 @@ interface FieldProps {
   control: Control<EditContractFormValues>
 }
 
+/** "Titolo": blank asks for the automatic title (spec 0360 D-7). */
+export function ContractTitleField({ control }: FieldProps) {
+  const { t } = useTranslation()
+  return (
+    <MetaField control={control} name="title" metaKey="title" label={t('contracts.detail.title')}>
+      {({ field, disabled, readOnly }) => (
+        <FormControl>
+          <Input
+            type="text"
+            maxLength={191}
+            disabled={disabled}
+            readOnly={readOnly}
+            value={field.value ?? ''}
+            onChange={(event) => field.onChange(event.target.value)}
+            onBlur={field.onBlur}
+            name={field.name}
+            ref={field.ref}
+          />
+        </FormControl>
+      )}
+    </MetaField>
+  )
+}
+
 /** "Data di rinnovo" / "Data di scadenza": a calendar date, empty = none. */
 export function ContractDateField({ control, name, label }: FieldProps & { name: 'renewal_date' | 'expiry_date'; label: string }) {
   return (

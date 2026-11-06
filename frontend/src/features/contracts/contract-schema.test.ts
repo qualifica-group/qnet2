@@ -51,17 +51,24 @@ describe('buildTerminateContractSchema', () => {
 })
 
 describe('buildEditContractSchema', () => {
-  const schema = buildEditContractSchema()
+  const schema = buildEditContractSchema(i18n.t.bind(i18n))
+  const base = {
+    title: 'Fornitura 2026',
+    product_lines: [],
+    offer_lines: [],
+    renewal_date: null,
+    expiry_date: null,
+    payment_notes: null,
+    comments: null,
+  }
 
-  it('accepts the four editable fields, all nullable — the status is not part of the form', () => {
-    expect(
-      schema.safeParse({
-        renewal_date: null,
-        expiry_date: null,
-        payment_notes: null,
-        comments: null,
-      }).success,
-    ).toBe(true)
+  it('accepts the editable fields, all nullable — the status is not part of the form', () => {
+    expect(schema.safeParse(base).success).toBe(true)
+    expect(schema.safeParse({ ...base, title: null }).success).toBe(true)
     expect(schema.safeParse({ renewal_date: '2026-12-31' }).success).toBe(false)
+  })
+
+  it('caps the title at the column length (spec 0360)', () => {
+    expect(schema.safeParse({ ...base, title: 'a'.repeat(192) }).success).toBe(false)
   })
 })

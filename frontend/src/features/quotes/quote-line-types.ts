@@ -183,6 +183,17 @@ export interface QuoteLine {
   /** Spec 0320 D-5: the line's supplier (null = the product has none). Optional for fixture compatibility. */
   supplier_id?: number | null
   supplier?: QuoteRelationRef | null
+  /**
+   * Spec 0360 D-4: the work orders a REVENUE row is assigned to (`[]` when free). While any exists the
+   * row is locked. Optional: other endpoints (Gestione Richieste) do not send it; a missing key reads as `[]`.
+   */
+  work_orders?: QuoteLineWorkOrderRef[]
+}
+
+/** A work order a revenue row is assigned to (spec 0360). */
+export interface QuoteLineWorkOrderRef {
+  id: number
+  code: string
 }
 
 /**

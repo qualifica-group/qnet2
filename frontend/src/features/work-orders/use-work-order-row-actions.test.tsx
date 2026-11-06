@@ -26,6 +26,16 @@ vi.mock('@/features/work-orders/api', async () => {
   return { ...actual, updateWorkOrder: vi.fn(), fetchWorkOrder: vi.fn(), deleteWorkOrder: vi.fn() }
 })
 
+vi.mock('@/features/attachments/documents-dialog', () => ({
+  DocumentsDialog: ({ resource, id }: { resource: string; id: number | null }) =>
+    id === null ? null : <div role="dialog" aria-label={`documents-${resource}-${id}`} />,
+}))
+
+vi.mock('@/features/notes/notes-dialog', () => ({
+  NotesDialog: ({ entityType, entityId }: { entityType: string; entityId: number | null }) =>
+    entityId === null ? null : <div role="dialog" aria-label={`notes-${entityType}-${entityId}`} />,
+}))
+
 const label = (key: string, options?: Record<string, unknown>) => i18n.t(key, options)
 const CLOSED_STATUS = { id: 31, name: 'Closed', description: null, color: null, group: 'closed', system_key: 'closed', progress_percentage: null }
 const ROW = { id: 7, actions: ['force_close', 'reopen'] }
@@ -119,5 +129,27 @@ describe('useWorkOrderRowActions — request update (spec 0352 AC-014)', () => {
     const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: wrapper() })
 
     expect(result.current.iconMap['message-square-more']).toBeDefined()
+  })
+})
+
+describe('useWorkOrderRowActions — documents and notes (spec 0363)', () => {
+  it.each([
+    ['documents', 'documents-work_order-7'],
+    ['notes', 'notes-work-orders-7'],
+  ])('opens the %s dialog of the row', (key, dialogName) => {
+    const Wrapper = wrapper()
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: Wrapper })
+
+    act(() => result.current.handleAction(action(key), ROW))
+    render(<>{result.current.collaborationDialogs}</>, { wrapper: Wrapper })
+
+    expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
+  })
+
+  it('exposes the paperclip and messages-square icons', () => {
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: wrapper() })
+
+    expect(result.current.iconMap.paperclip).toBeDefined()
+    expect(result.current.iconMap['messages-square']).toBeDefined()
   })
 })

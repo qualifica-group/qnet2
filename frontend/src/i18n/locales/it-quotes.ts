@@ -160,6 +160,7 @@ export const quotes = {
       totalRevenue: 'Totale offerta',
       totalCost: 'Totale costi',
       productMissing: 'Prodotto non più disponibile per le categorie scelte: rimuovi la riga e scegline uno dal catalogo.',
+      assignedToWorkOrders: 'Assegnata a {{codes}}',
     },
   },
   form: {

@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre (N)** l'interruttore **Categorie madri** limita le schede alle sole categorie di primo livello: la scheda di una categoria madre raccoglie anche le richieste delle sottocategorie (una richiesta conta una volta sola) e, a differenza di una singola categoria, non aggiunge le colonne **Informazioni aggiuntive** né rinomina i campi dei gestori. La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria scheda e le preferite sono separate tra le due modalità.",
+          text: "Nel menu **Altre (N)** l'interruttore **Categorie madri** limita le schede alle sole categorie di primo livello: la scheda di una categoria madre raccoglie anche le richieste delle sottocategorie (una richiesta conta una volta sola) e, a differenza di una singola categoria, non aggiunge le colonne **Informazioni aggiuntive** né rinomina i campi dei gestori. La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria scheda e le preferite sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
         },
         {
           type: 'paragraph',
@@ -122,6 +122,7 @@ const guide: HelpGuide = {
             'Senza categorie prodotto scelte il catalogo è disattivato: scegli prima la categoria.',
             'Nelle categorie semplificate la riga mostra solo gli importi: quantità, prezzo e IVA li compila il sistema.',
             'Se la categoria ha un solo prodotto, la riga si crea da sola.',
+            'Una riga **assegnata a una commessa** mostra "Assegnata a COM-..." ed è bloccata: non si modifica né si rimuove finché la commessa non viene eliminata. Se cambi la categoria di una richiesta che ha una riga bloccata, il salvataggio viene rifiutato.',
           ],
         },
       ],

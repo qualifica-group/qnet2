@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { BadgeCheck, Ban, CalendarClock, Layers, RotateCcw, Shuffle } from 'lucide-react'
+import { BadgeCheck, Ban, CalendarClock, Layers, Paperclip, RefreshCw, RotateCcw, Shuffle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/page-header'
@@ -8,6 +8,7 @@ import { CategoryTabs } from '@/features/category-tabs/category-tabs'
 import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
 import type { CategoryTabSource } from '@/features/category-tabs/types'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
+import { DocumentsDialog } from '@/features/attachments/documents-dialog'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
@@ -17,7 +18,7 @@ import type { BulkAction } from '@/features/table/use-bulk-actions-slot'
 import { ContractMultiProgramDialog } from '@/features/contracts/contract-multi-program-dialog'
 import { MULTI_PROGRAM_MAX_CONTRACTS } from '@/features/contracts/contract-multi-program-schema'
 import { contractColumnRenderers } from '@/features/contracts/column-renderers'
-import { CONTRACTS_DOMAIN } from '@/features/contracts/api'
+import { CONTRACT_ATTACHABLE_ALIAS, CONTRACTS_DOMAIN } from '@/features/contracts/api'
 
 /**
  * Row-action keys whose real UI (a dialog with inputs, gated on its own
@@ -25,11 +26,11 @@ import { CONTRACTS_DOMAIN } from '@/features/contracts/api'
  * on the detail view — never duplicated as a standalone grid dialog. The
  * backend's row-action catalog (spec 0072, MT-04; `program` renamed from
  * `schedule` in spec 0095) advertises them per-row (`change_status`,
- * `validate`, `program`, `terminate`, `reactivate`) so the grid still needs
+ * `validate`, `program`, `renew`, `terminate`, `reactivate`) so the grid still needs
  * to react to a click: it opens the detail, where the actual gated action
  * button/dialog is.
  */
-const ACTIONS_OPENING_DETAIL = new Set(['change_status', 'validate', 'program', 'terminate', 'reactivate'])
+const ACTIONS_OPENING_DETAIL = new Set(['change_status', 'validate', 'program', 'renew', 'terminate', 'reactivate'])
 
 /**
  * The icon names `ContractColumnCatalog::actions()` advertises that the
@@ -41,9 +42,11 @@ const ACTIONS_OPENING_DETAIL = new Set(['change_status', 'validate', 'program', 
 const CONTRACT_ACTION_ICONS: ActionIconMap = {
   'check-circle': BadgeCheck,
   'calendar-clock': CalendarClock,
+  'refresh-cw': RefreshCw,
   shuffle: Shuffle,
   ban: Ban,
   'rotate-ccw': RotateCcw,
+  paperclip: Paperclip,
 }
 
 const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: CONTRACTS_DOMAIN, apiBasePath: `/${CONTRACTS_DOMAIN}` }
@@ -58,7 +61,8 @@ const NO_CONTRACT_IDS: number[] = []
  * deleted by hand (D-6) — `ContractPolicy::abilities()` exposes no
  * `create`/`delete`, so the row-action catalog never advertises them either.
  * `view` and every domain-action key in `ACTIONS_OPENING_DETAIL` all open the
- * detail (see its doc); `activity` opens the shared activity dialog inline.
+ * detail (see its doc); `activity` and `documents` (spec 0363) open their
+ * shared dialog inline.
  * Permission gating is an affordance only; the backend re-authorizes each
  * call.
  */
@@ -76,6 +80,7 @@ export function ContractsTable() {
   }, [invalidateCategories])
 
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [documentsRowId, setDocumentsRowId] = useState<number | null>(null)
 
   const { openView, sheet } = useModuleOpener(CONTRACTS_DOMAIN, {
     onSaved: refreshGrid,
@@ -89,6 +94,9 @@ export function ContractsTable() {
       }
       if (action.key === 'activity') {
         setActivityRow(row)
+      }
+      if (action.key === 'documents') {
+        setDocumentsRowId(Number(row.id))
       }
     },
     [openView],
@@ -151,6 +159,18 @@ export function ContractsTable() {
       />
 
       {sheet}
+
+      {/* Edited from inside the dialog: closing it refreshes the row's documents badge. */}
+      <DocumentsDialog
+        resource={CONTRACT_ATTACHABLE_ALIAS}
+        id={documentsRowId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDocumentsRowId(null)
+            refreshGrid()
+          }
+        }}
+      />
 
       <ResourceActivityDialog
         resource={CONTRACTS_DOMAIN}

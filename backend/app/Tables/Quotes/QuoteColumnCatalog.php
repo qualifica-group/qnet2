@@ -277,16 +277,16 @@ final class QuoteColumnCatalog
                 'confirm' => false,
                 'permission' => 'quotes.view',
             ],
-            // spec 0070: generates the quote's `.docx` in-request (D-2), a
-            // pure read — gated by the same `quotes.view` as the `view`
-            // action above, not `update`.
+            // Spec 0363: the parent Opportunita's documents, READ-ONLY
+            // like the detail tab; offered per row by OpportunityDocumentAccess.
             [
-                'key' => 'generate_document',
-                'label' => 'actions.generatePdf',
-                'icon' => 'file-text',
+                'key' => 'documents',
+                'label' => 'actions.documents',
+                'icon' => 'paperclip',
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'quotes.view',
+                'count_field' => 'documents_count',
             ],
             // Spec 0085: le note dell'Offerta vivono sul thread dell'Opportunita'
             // padre, filtrate su `quote_id` — quindi il gate e' quello del modulo
@@ -303,6 +303,17 @@ final class QuoteColumnCatalog
                 'permission' => 'request-management.view',
                 'count_field' => 'notes_count',
             ],
+            // spec 0070: generates the quote's `.docx` in-request (D-2), a
+            // pure read — gated by the same `quotes.view` as the `view`
+            // action above, not `update`.
+            [
+                'key' => 'generate_document',
+                'label' => 'actions.generatePdf',
+                'icon' => 'file-text',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'quotes.view',
+            ],
             // Spec 0315: opens the Contract born from a closed-won Offerta. After
             // the three inline slots on purpose (D-4), so it lands in the menu.
             [
@@ -314,20 +325,20 @@ final class QuoteColumnCatalog
                 'permission' => 'contracts.view',
             ],
             [
-                'key' => 'delete',
-                'label' => 'actions.delete',
-                'icon' => 'trash',
-                'type' => 'danger',
-                'confirm' => true,
-                'permission' => 'quotes.delete',
-            ],
-            [
                 'key' => 'activity',
                 'label' => 'actions.activity',
                 'icon' => 'history',
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'quotes.viewActivity',
+            ],
+            [
+                'key' => 'delete',
+                'label' => 'actions.delete',
+                'icon' => 'trash',
+                'type' => 'danger',
+                'confirm' => true,
+                'permission' => 'quotes.delete',
             ],
         ];
     }

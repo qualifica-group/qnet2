@@ -6,6 +6,10 @@ import { MessageSquareMore, TrendingUp } from 'lucide-react'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
 import { deleteWorkOrder, fetchWorkOrder, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
+import {
+  COLLABORATION_ACTION_ICONS,
+  useWorkOrderCollaborationDialogs,
+} from '@/features/work-orders/use-work-order-collaboration-dialogs'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { REOPEN_PAYLOAD, useWorkOrderClosure, WORK_ORDER_ACTION_ICONS } from '@/features/work-orders/use-work-order-closure'
 import { buildWorkOrderColumnRenderers } from '@/features/work-orders/column-renderers'
@@ -34,6 +38,7 @@ const REQUEST_UPDATE_ACTION_KEY = 'request_update'
 const REQUEST_UPDATE_ACTION_ICONS: ActionIconMap = { 'message-square-more': MessageSquareMore }
 
 const ROW_ACTION_ICONS: ActionIconMap = {
+  ...COLLABORATION_ACTION_ICONS,
   ...WORK_ORDER_ACTION_ICONS,
   ...PROFORMA_ACTION_ICONS,
   ...PROGRESS_ACTION_ICONS,
@@ -79,6 +84,8 @@ export interface UseWorkOrderRowActionsResult {
   progressDialog: ReactNode
   /** The "Richiedi aggiornamento" dialog of the `request_update` row action (spec 0352): the host mounts it. */
   requestUpdateDialog: ReactNode
+  /** The documents and notes dialogs of the `documents`/`notes` row actions (spec 0363): the host mounts them. */
+  collaborationDialogs: ReactNode
 }
 
 /**
@@ -105,6 +112,7 @@ export function useWorkOrderRowActions({
   const [reopeningId, setReopeningId] = useState<number | null>(null)
   const [proformaRow, setProformaRow] = useState<TableRow | null>(null)
   const [progressId, setProgressId] = useState<number | null>(null)
+  const { openDocuments, openNotes, dialogs: collaborationDialogs } = useWorkOrderCollaborationDialogs(onMutated)
   const [requestUpdateWorkOrder, setRequestUpdateWorkOrder] = useState<WorkOrderDetailWithPermissions | null>(null)
   const { mutateAsync: changeClosure } = useWorkOrderClosure()
   const resolveActionState = useProformaActionState()
@@ -177,6 +185,12 @@ export function useWorkOrderRowActions({
         case 'activity':
           setActivityRow(row)
           break
+        case 'documents':
+          openDocuments(Number(row.id))
+          break
+        case 'notes':
+          openNotes(Number(row.id))
+          break
         case 'force_close':
           setForceCloseId(Number(row.id))
           break
@@ -200,7 +214,7 @@ export function useWorkOrderRowActions({
           break
       }
     },
-    [openView, runDelete, runReopen, openRequestUpdate],
+    [openView, runDelete, runReopen, openRequestUpdate, openDocuments, openNotes],
   )
 
   const isBusy = useCallback(
@@ -267,5 +281,6 @@ export function useWorkOrderRowActions({
     forceCloseDialog,
     progressDialog,
     requestUpdateDialog,
+    collaborationDialogs,
   }
 }

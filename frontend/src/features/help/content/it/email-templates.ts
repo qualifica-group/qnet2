@@ -78,6 +78,14 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Un modello **Attivo** è selezionabile dal composer email di una commessa (modelli del modulo Commesse) o di una fattura attiva, anche per il **Sollecito** (modelli del modulo Fatture).',
         },
+        {
+          type: 'paragraph',
+          text: "Nel composer il campo **Mittente** permette di scegliere l'indirizzo da cui inviare: la tua email di accesso oppure una delle email (non PEC) presenti nella tua anagrafica utente. QNet ricorda in questo browser l'ultimo mittente usato e lo propone alla bozza successiva; se quell'indirizzo non è più tra i tuoi, propone l'email di accesso. Le email dell'anagrafica le aggiunge chi può modificare gli utenti.",
+        },
+        {
+          type: 'warning',
+          text: "L'invio parte dalla casella Microsoft 365 scelta: se l'indirizzo non è una casella aziendale abilitata, l'email risulta **Non riuscita** con il motivo dell'errore. Il segnaposto **{sender.email}** mostra sempre l'email di accesso.",
+        },
       ],
     },
   ],

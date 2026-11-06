@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the **More (N)** menu the **Parent categories** switch limits the tabs to the first-level categories only: the tab of a parent category also gathers the requests of its subcategories (a request counts once) and, unlike a single category, it does not add the **Additional information** columns nor rename the manager fields. The choice is saved in your browser for this list, each mode remembers its own tab and the favorites are separate between the two modes.",
+          text: "In the **More (N)** menu the **Parent categories** switch limits the tabs to the first-level categories only: the tab of a parent category also gathers the requests of its subcategories (a request counts once) and, unlike a single category, it does not add the **Additional information** columns nor rename the manager fields. The choice is saved in your browser for this list, each mode remembers its own tab and the favorites are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
         },
         {
           type: 'paragraph',
@@ -122,6 +122,7 @@ const guide: HelpGuide = {
             'With no product category picked the catalogue is disabled: pick the category first.',
             'In simplified categories the row shows only the amounts: quantity, price and VAT are filled in by the system.',
             'If the category has a single product, the row is created automatically.',
+            'A row **assigned to a work order** shows "Assigned to COM-..." and is locked: it cannot be changed or removed until the work order is deleted. If you change the category of a request that has a locked row, the save is refused.',
           ],
         },
       ],

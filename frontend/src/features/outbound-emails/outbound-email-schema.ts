@@ -1,26 +1,38 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import type { OutboundEmail, OutboundEmailPayload } from '@/features/outbound-emails/types'
+import {
+  buildRecurrenceScheduleSchema,
+  EMPTY_RECURRENCE_VALUES,
+  mapRecurrenceToFormValues,
+  recurrenceFormSchema,
+  type RecurrenceFormValues,
+} from '@/features/outbound-emails/outbound-email-recurrence-schema'
 
 /** Mirrors `subject varchar(255)` (data_model). */
 const SUBJECT_MAX_LENGTH = 255
 
 export interface ComposerFormValues {
   email_template_id: number | null
+  from_address: string | null
   to: string[]
   cc: string[]
   bcc: string[]
   subject: string
   body: string | null
+  /** Not part of the draft PATCH: only "Programma" sends it (spec 0362). */
+  recurrence: RecurrenceFormValues
 }
 
 export const EMPTY_COMPOSER_VALUES: ComposerFormValues = {
   email_template_id: null,
+  from_address: null,
   to: [],
   cc: [],
   bcc: [],
   subject: '',
   body: null,
+  recurrence: EMPTY_RECURRENCE_VALUES,
 }
 
 /**
@@ -31,11 +43,13 @@ export const EMPTY_COMPOSER_VALUES: ComposerFormValues = {
 export function buildComposerSchema() {
   return z.object({
     email_template_id: z.number().nullable(),
+    from_address: z.string().nullable(),
     to: z.array(z.string()),
     cc: z.array(z.string()),
     bcc: z.array(z.string()),
     subject: z.string().max(SUBJECT_MAX_LENGTH),
     body: z.string().nullable(),
+    recurrence: recurrenceFormSchema,
   })
 }
 
@@ -61,20 +75,28 @@ export function buildSendSchema(t: TFunction) {
   })
 }
 
+/** "Programma" check (spec 0362 D-12): everything "Invia" requires, plus a complete rule with both dates. */
+export function buildScheduleSchema(t: TFunction) {
+  return buildSendSchema(t).extend({ recurrence: buildRecurrenceScheduleSchema(t) })
+}
+
 export function mapEmailToFormValues(email: OutboundEmail): ComposerFormValues {
   return {
     email_template_id: email.email_template_id,
+    from_address: email.from_address,
     to: email.to,
     cc: email.cc,
     bcc: email.bcc,
     subject: email.subject ?? '',
     body: email.body,
+    recurrence: mapRecurrenceToFormValues(email.recurrence),
   }
 }
 
 export function mapFormValuesToPayload(values: ComposerFormValues): OutboundEmailPayload {
   return {
     email_template_id: values.email_template_id,
+    from_address: values.from_address,
     to: values.to,
     cc: values.cc,
     bcc: values.bcc,

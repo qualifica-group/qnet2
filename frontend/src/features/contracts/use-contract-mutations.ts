@@ -3,18 +3,23 @@ import {
   changeContractStatus,
   contractDetailQueryKey,
   reactivateContract,
+  renewContract,
   terminateContract,
+  undoContractRenewal,
   updateContract,
   validateContract,
 } from '@/features/contracts/api'
+import { sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
 import type {
   ChangeContractStatusPayload,
   ContractDetailWithPermissions,
   ReactivateContractPayload,
+  RenewContractPayload,
   TerminateContractPayload,
   UpdateContractPayload,
   ValidateContractPayload,
 } from '@/features/contracts/types'
+import type { RenewContractFormValues } from '@/features/contracts/contract-renew-schema'
 import type {
   ChangeContractStatusFormValues,
   EditContractFormValues,
@@ -45,6 +50,11 @@ export function buildTerminatePayload(values: TerminateContractFormValues): Term
   }
 }
 
+/** An empty renewal date is sent as `null` (spec 0358). */
+export function buildRenewPayload(values: RenewContractFormValues): RenewContractPayload {
+  return { renewal_date: values.renewal_date === '' ? null : values.renewal_date, expiry_date: values.expiry_date }
+}
+
 /** `contract_status_id` is validated non-null by the schema before this runs. */
 export function buildChangeStatusPayload(values: ChangeContractStatusFormValues): ChangeContractStatusPayload {
   return { contract_status_id: values.contract_status_id as number }
@@ -57,11 +67,20 @@ export function buildReactivatePayload(values: ReactivateContractFormValues): Re
 
 /**
  * The PATCH of the in-place detail (spec 0219 D-4): only the fields that
- * changed from the persisted contract, compared as the form holds it. The status is never sent from here
+ * changed from the persisted contract, compared as the form holds it (the rows on their wire shape). The status is never sent from here
  * (user directive 2026-08-31): only the domain actions move it.
  */
 export function buildUpdatePayload(values: EditContractFormValues, original: EditContractFormValues): UpdateContractPayload {
   const payload: UpdateContractPayload = {}
+  // A blank title asks for the automatic one (spec 0360 D-7).
+  const title = (values.title ?? '').trim()
+  if (title !== (original.title ?? '').trim()) {
+    payload.title = title === '' ? null : title
+  }
+  const lines = toLineInputs(values.offer_lines)
+  if (!sameLines(lines, toLineInputs(original.offer_lines))) {
+    payload.offer_lines = lines
+  }
   if (values.renewal_date !== original.renewal_date) {
     payload.renewal_date = values.renewal_date
   }
@@ -125,6 +144,15 @@ export function useValidateContract(options: ContractMutationOptions) {
 
 export function useTerminateContract(options: ContractMutationOptions) {
   return useContractMutation(options, terminateContract)
+}
+
+export function useRenewContract(options: ContractMutationOptions) {
+  return useContractMutation(options, renewContract)
+}
+
+/** The payload is the id of the renewal to undo. */
+export function useUndoContractRenewal(options: ContractMutationOptions) {
+  return useContractMutation(options, undoContractRenewal)
 }
 
 /** Empty payload on the suspended path, destination status on the disdetto one. */

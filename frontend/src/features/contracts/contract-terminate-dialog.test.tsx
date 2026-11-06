@@ -77,6 +77,9 @@ function contract(overrides: Partial<ContractDetail> = {}): ContractDetail {
     alert: null,
     days_to_expiry: null,
     days_to_renewal: null,
+    renewal_number: 0,
+    renewals: [],
+    initial_period_work_orders_count: 0,
     offer_lines: [],
     summary: {
       revenue: { net: '0.00', vat: '0.00', gross: '0.00' },

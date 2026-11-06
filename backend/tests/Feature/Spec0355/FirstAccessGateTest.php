@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Auth;
 
 uses(RefreshDatabase::class);
 
+// REQUIREMENT CHANGED (spec 0359): the gate is on only in production, so these tests enable it.
+beforeEach(fn () => config(['auth.first_access_gate' => true]));
+
 const GATE_PASSWORD_PAYLOAD = ['password' => 'Brand-New-Pass1!', 'password_confirmation' => 'Brand-New-Pass1!'];
 
 it('AC-003: a pending user is blocked everywhere but on the allow-listed endpoints', function () {

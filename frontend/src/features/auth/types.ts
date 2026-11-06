@@ -18,7 +18,10 @@ export interface User {
   roles: { id: number; name: string }[]
   /** Absolute URL to the authenticated avatar download endpoint, or null. */
   avatar_url: string | null
-  /** True until the user completes the first access (spec 0177): forces the password change. */
+  /**
+   * True while the first-access gate applies (spec 0355): forces the password change.
+   * Server-computed, always false where the gate is off (spec 0359, production only).
+   */
   must_set_password: boolean
   /**
    * The user's personal-data card (registry + contacts + addresses), or null
