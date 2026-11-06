@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Velocita' griglie: lookup permessi indicizzato + verdetto competenza — VERDE SUI FILE TOCCATI, NON COMMITTATO (2026-11-06)
+
+- Richiesta utente, audit senza spec. Causa 1: `PermissionRegistrar::getPermissions` di Spatie scorre tutto il catalogo
+  (702 modelli) a ogni check, anche per le ability di policy che non sono permessi: 304 check su 50 righe = 91% della
+  richiesta. Fix: `App\Authorization\IndexedPermissionRegistrar` (indice nome+guard, invalidato da
+  `forgetCachedPermissions`/`clearPermissionsCollection`), legato in `PermissionServiceProvider::packageBooted()` DOPO
+  il parent, che fa il proprio bind durante il boot.
+- Causa 2: `withCompetenceVerdict` (commesse, offerte, contratti) calcolava il verdetto anche per chi ha `viewAll`, che
+  `isVisibleTo` non legge mai: ~700 ms sulla griglia commesse. Ora no-op con `viewAll` (per contratti: `contracts.viewAll`).
+- Misura (DB locale, senza HTTP): media griglie utente normale 261 -> 50 ms (34 griglie), super-admin 115 -> 25 ms (89);
+  commesse 1640 -> 153 ms. Stessi status e stessa dimensione delle risposte su tutte le griglie.
+- Test: `IndexedPermissionRegistrarTest` + AC-016 in `WorkOrder/Quote/ContractCompetenceVisibilityTest`, 40/40; Pint ok.
+  Suite completa 14140/14159: 16 falliti identici su copia senza modifiche (LibreOffice assente, ManagementControl,
+  AiAssistant, seeder Qualifica, catalogo permessi, `TableBulkDeleteTest`, `SettlementApprovalTest`). Flaky preesistenti:
+  `WorkOrderCategoryTabsTest` L23 (6 giri su 12 senza modifiche); `ContractCategoryAttributeColumnsTest` L54 (righe a
+  cavallo di un secondo con ordinamento `quote_date`, riprodotto sul codice originale con `sleep(1)`). Manuale: nessun impatto.
+- Prossimo: bundle iniziale 7 MB per `import.meta.glob` eager in `module-registry.ts` (66 `*-screens.tsx`): serve spec,
+  metadati separati dai componenti; limite teorico 2,1 MB. Minori: `tasks/for-select` full scan, `category-tab-preferences`
+  fino a 2,2 s a freddo, N+1 `company-sites` (141 query), lingue IT+EN entrambe all'avvio (909 kB).
+
 ## Statistiche + Report Vendite Agenti (spec 0365) — VERDE SUI CRITERI, COMMITTATO (2026-11-06)
 
 - Spec `docs/specs/0365-statistics-section-agent-sales-report.xml` (approvata). Scope: sezione menu `statistics` +

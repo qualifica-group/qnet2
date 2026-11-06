@@ -85,7 +85,8 @@ final class QuoteVisibilityScope
      * Projects the competence tier's verdict on each row (spec 0340, AC-016),
      * so isVisibleTo() answers a competence-only row from the attribute instead
      * of one query per row. Built from the SAME subquery as scopeToActor().
-     * No-op when the actor has no competence tier or it covers everything.
+     * No-op when the actor has no competence tier or it covers everything, and
+     * for `{resource}.viewAll`: isVisibleTo() answers before reading the verdict.
      *
      * @template TModel of Quote
      *
@@ -94,7 +95,11 @@ final class QuoteVisibilityScope
      */
     public static function withCompetenceVerdict(Builder $query, ?User $user, string $resource = self::DEFAULT_RESOURCE): Builder
     {
-        $reach = $user === null ? null : self::competenceReach($user, $resource);
+        if ($user === null || $user->can($resource.'.'.self::VIEW_ALL_ABILITY)) {
+            return $query;
+        }
+
+        $reach = self::competenceReach($user, $resource);
 
         if ($reach === null || $reach->all) {
             return $query;
