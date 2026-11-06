@@ -7,6 +7,7 @@ const SUBJECT_MAX_LENGTH = 255
 
 export interface ComposerFormValues {
   email_template_id: number | null
+  from_address: string | null
   to: string[]
   cc: string[]
   bcc: string[]
@@ -16,6 +17,7 @@ export interface ComposerFormValues {
 
 export const EMPTY_COMPOSER_VALUES: ComposerFormValues = {
   email_template_id: null,
+  from_address: null,
   to: [],
   cc: [],
   bcc: [],
@@ -31,6 +33,7 @@ export const EMPTY_COMPOSER_VALUES: ComposerFormValues = {
 export function buildComposerSchema() {
   return z.object({
     email_template_id: z.number().nullable(),
+    from_address: z.string().nullable(),
     to: z.array(z.string()),
     cc: z.array(z.string()),
     bcc: z.array(z.string()),
@@ -64,6 +67,7 @@ export function buildSendSchema(t: TFunction) {
 export function mapEmailToFormValues(email: OutboundEmail): ComposerFormValues {
   return {
     email_template_id: email.email_template_id,
+    from_address: email.from_address,
     to: email.to,
     cc: email.cc,
     bcc: email.bcc,
@@ -75,6 +79,7 @@ export function mapEmailToFormValues(email: OutboundEmail): ComposerFormValues {
 export function mapFormValuesToPayload(values: ComposerFormValues): OutboundEmailPayload {
   return {
     email_template_id: values.email_template_id,
+    from_address: values.from_address,
     to: values.to,
     cc: values.cc,
     bcc: values.bcc,

@@ -6,6 +6,7 @@ namespace App\Http\Requests\WorkOrderEmails;
 
 use App\DataObjects\WorkOrderEmails\OutboundEmailDraftData;
 use App\Http\Requests\WorkOrderEmails\Concerns\ValidatesRecipients;
+use App\Http\Requests\WorkOrderEmails\Concerns\ValidatesSenderAddress;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -21,7 +22,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class UpdateOutboundEmailRequest extends FormRequest
 {
-    use ValidatesRecipients;
+    use ValidatesRecipients, ValidatesSenderAddress;
 
     private const int SUBJECT_MAX = 255;
 
@@ -42,6 +43,7 @@ class UpdateOutboundEmailRequest extends FormRequest
     {
         return [
             ...$this->recipientRules(),
+            ...$this->senderAddressRules(),
             'email_template_id' => ['sometimes', 'nullable', 'integer', 'exists:email_templates,id'],
             'subject' => ['sometimes', 'nullable', 'string', 'max:'.self::SUBJECT_MAX],
             'body' => ['sometimes', 'nullable', 'string', 'max:'.(int) config('rich_text.html_max')],

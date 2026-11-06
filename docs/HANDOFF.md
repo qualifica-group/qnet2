@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Scelta del mittente nel composer email (spec 0361) — VERDE, NON COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: mittenti = `users.email` + contatti `email` (non PEC) dell'anagrafica della persona;
+  ultimo mittente ricordato nel BROWSER (localStorage), non sul server. Supera la D-6 della spec 0175.
+- BE: `App\Services\OutboundEmails\OutboundEmailSenderAddresses::for(User)/allows()` (login prima, poi primario, poi
+  per id, dedup case-insensitive). compose-context: `sender_options: string[]`. Draft POST/PATCH: `from_address`
+  opzionale (trait `ValidatesSenderAddress`, `Rule::in`, 422 `outbound_emails.sender_not_allowed`); `from_address`
+  ora in `#[Fillable]` di `OutboundEmail`. Send: `from_address ?? users.email`, 422 `from_address` se non piu' ammesso
+  (vale anche per il reinvio di una `failed`).
+- FE: `outbound-email-sender-field.tsx` (Select se >1 opzione), `outbound-email-last-sender.ts` (chiave
+  `outbound-emails.last-from-address:{login email}`), default applicato all'init del composer (non dirty), salvato
+  dopo un invio riuscito. `from_address` in `ComposerFormValues`/payload/MAPPED_FIELDS.
+- Test: `tests/Feature/Spec0361` + set email BE 111/111; FE outbound-emails 27/27, help 157/157; tsc -b, eslint, pint ok.
+  REQUIREMENT CHANGED: fixture AC-014 di `WorkOrderEmailSendTest` (failed con `from_address` = email dell'attore).
+- Guide: `invoices` (step Mittente) e `email-templates` (uso: paragrafo + warning) IT/EN; manuale Claude Docs: paragrafo
+  "Mittente" sotto i segnaposto dei Modelli email.
+- Fuori scope/da segnalare: cambio mittente su una email `failed` (non modificabile); `{sender.email}` resta l'email
+  di accesso; le guide `work-orders`/`purchase-orders` non descrivono il composer.
+
 ## Modifica del contratto in essere come nel legacy (spec 0360) — VERDE, NON COMMITTATO (2026-11-05)
 
 - Decisioni utente 2026-11-05: dal dettaglio contratto si modificano sul posto titolo, righe servizi (aggiungi/

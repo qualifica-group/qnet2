@@ -130,6 +130,7 @@ const guide: HelpGuide = {
           items: [
             'On the row press **Send email**: the composer opens.',
             'The **recipient** is the customer\'s **PEC**, if any, otherwise their **email**; the **PDF** is already attached.',
+            'In the **Sender** field pick the address to send from: your login email or another email of your personal record. QNet proposes the last sender you used.',
             'Complete subject and body (you can pick an **Email template** of the Invoices module) and send.',
           ],
         },

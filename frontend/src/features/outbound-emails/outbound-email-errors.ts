@@ -3,7 +3,7 @@ import type { UseFormSetError } from 'react-hook-form'
 import type { ComposerFormValues } from '@/features/outbound-emails/outbound-email-schema'
 
 /** The composer's own form fields the `/emails[/{email}]` errors list (data_contract) can target. */
-const MAPPED_FIELDS: (keyof ComposerFormValues)[] = ['to', 'cc', 'bcc', 'subject', 'body']
+const MAPPED_FIELDS: (keyof ComposerFormValues)[] = ['from_address', 'to', 'cc', 'bcc', 'subject', 'body']
 
 /**
  * Maps a 422 onto the composer form (AC-020). A whole-array error (`to`,

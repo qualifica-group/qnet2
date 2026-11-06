@@ -123,8 +123,10 @@ it('AC-014: a failed email can be resent (back to queued)', function () {
     Queue::fake();
     $workOrder = WorkOrder::factory()->create();
     $actor = workOrderEmailActor($workOrder, ['sendEmail']);
+    // REQUIREMENT CHANGED (spec 0361, D-2): a resend reuses the stored sender, which must be one of the actor's own.
     $email = OutboundEmail::factory()->forEmailable($workOrder)->failed()->create([
         'sender_user_id' => $actor->id,
+        'from_address' => $actor->email,
         'to_recipients' => ['dest@example.com'],
         'subject' => 'x',
         'body' => '<p>x</p>',

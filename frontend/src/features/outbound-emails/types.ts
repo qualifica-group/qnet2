@@ -49,7 +49,7 @@ export interface OutboundEmail {
   purpose: OutboundEmailPurpose | null
   email_template_id: number | null
   sender: OutboundEmailSender
-  /** `users.email` snapshot, valorized only at send (D-6); `null` on a draft. */
+  /** Sender chosen on the draft (`null` = login email), the mailbox actually used from `queued` on (spec 0361). */
   from_address: string | null
   to: string[]
   cc: string[]
@@ -113,6 +113,8 @@ export interface ComposeContextDocument {
  */
 export interface ComposeContext {
   sender: { name: string; email: string }
+  /** Addresses the actor may send from (spec 0361, D-1): login email first, then the card's emails. */
+  sender_options: string[]
   recipient_suggestions: RecipientSuggestion[]
   documents: ComposeContextDocument[]
   quote_pdf_available: boolean
@@ -132,6 +134,8 @@ export interface RenderTemplateResult {
 /** Shared shape of POST (create) and PATCH (update) — every field optional, a draft can be saved empty (D-2). */
 export interface OutboundEmailPayload {
   email_template_id?: number | null
+  /** One of `ComposeContext.sender_options`; `null` = login email (spec 0361, D-2). */
+  from_address?: string | null
   to?: string[]
   cc?: string[]
   bcc?: string[]

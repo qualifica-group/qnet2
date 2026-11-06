@@ -21,14 +21,16 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * commessa's activity log carries no entry for a send, the "Email" tab IS the
  * history.
  *
- * `status`/`sender_user_id`/`from_address`/`queued_at`/`sent_at`/`failed_at`/
+ * `status`/`sender_user_id`/`queued_at`/`sent_at`/`failed_at`/
  * `error_message` are ALL service-managed state, deliberately absent from
  * #[Fillable] — never reachable through a raw mass-assignment of request
  * data, only ever written by `OutboundEmailService`'s own transitions
  * (create as draft, queue, mark sent/failed), mirroring `WorkOrder::code`.
- * Only the composer's own content fields are client-writable.
+ * Only the composer's own content fields are client-writable, `from_address`
+ * included (spec 0361, D-2): the draft's chosen sender, validated against the
+ * actor's own addresses by the FormRequest, finalized by markQueued().
  */
-#[Fillable(['email_template_id', 'to_recipients', 'cc_recipients', 'bcc_recipients', 'subject', 'body', 'purpose'])]
+#[Fillable(['email_template_id', 'to_recipients', 'cc_recipients', 'bcc_recipients', 'subject', 'body', 'purpose', 'from_address'])]
 class OutboundEmail extends BaseModel
 {
     /** @use HasFactory<OutboundEmailFactory> */
@@ -111,8 +113,8 @@ class OutboundEmail extends BaseModel
 
     /**
      * OutboundEmailService::send()'s transition into the queue (D-12):
-     * `from_address` is the snapshot of the sender's OWN mailbox at send
-     * time (D-6); `error_message` is cleared so a resent `failed` email
+     * `from_address` is the mailbox actually used at send time (spec 0361,
+     * D-2: the draft's chosen sender, else the login email); `error_message` is cleared so a resent `failed` email
      * does not keep showing its previous failure once it is queued again.
      */
     public function markQueued(string $fromAddress): void

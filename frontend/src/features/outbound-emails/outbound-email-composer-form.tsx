@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { EmailRecipientsInput, type EmailRecipientSuggestion } from '@/components/ui/email-recipients-input'
 import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
-import { UserAvatar } from '@/components/user-avatar'
+import { OutboundEmailSenderField } from '@/features/outbound-emails/outbound-email-sender-field'
 import { useApplyOutboundEmailTemplate } from '@/features/outbound-emails/use-apply-outbound-email-template'
 import { EMAIL_OWNER_TEMPLATE_MODULE, type ComposeContext, type EmailOwnerRef } from '@/features/outbound-emails/types'
 import type { ComposerFormValues } from '@/features/outbound-emails/outbound-email-schema'
@@ -44,7 +44,7 @@ interface OutboundEmailComposerFormProps {
 
 /**
  * Pure fields of the composer (AC-020): template picker, then the envelope
- * (From readonly, A/CC/CCN, Oggetto) and the body. CC/CCN stay folded behind
+ * (Da, A/CC/CCN, Oggetto) and the body. CC/CCN stay folded behind
  * two toggles until used, as in mail clients; a field that already holds
  * addresses is always shown. All business logic (template render + overwrite
  * confirm) lives in `useApplyOutboundEmailTemplate` — this component only
@@ -126,18 +126,14 @@ export function OutboundEmailComposerForm({
         </div>
 
         <div className="divide-y divide-border rounded-lg border bg-card shadow-xs">
-          <div className={ENVELOPE_ROW_CLASS}>
-            <span className={ENVELOPE_LABEL_CLASS}>{t('outboundEmails.composer.from')}</span>
-            <div className="flex min-h-9 min-w-0 items-center gap-2 text-sm">
-              {composeContext ? (
-                <>
-                  <UserAvatar name={composeContext.sender.name} size="sm" />
-                  <span className="truncate font-medium">{composeContext.sender.name}</span>
-                  <span className="truncate text-muted-foreground">{composeContext.sender.email}</span>
-                </>
-              ) : null}
-            </div>
-          </div>
+          <OutboundEmailSenderField
+            control={form.control}
+            composeContext={composeContext}
+            disabled={isFieldDisabled}
+            rowClassName={ENVELOPE_ROW_CLASS}
+            labelClassName={ENVELOPE_LABEL_CLASS}
+            hintClassName={ENVELOPE_HINT_CLASS}
+          />
 
           <FormField
             control={form.control}

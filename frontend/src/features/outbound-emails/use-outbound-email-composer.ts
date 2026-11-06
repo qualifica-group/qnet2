@@ -14,6 +14,7 @@ import {
 } from '@/features/outbound-emails/use-outbound-email-draft'
 import { useOutboundEmailComposeContext } from '@/features/outbound-emails/use-outbound-email-compose-context'
 import { applyComposerValidationErrors } from '@/features/outbound-emails/outbound-email-errors'
+import { defaultSender, storeLastSender } from '@/features/outbound-emails/outbound-email-last-sender'
 import {
   buildComposerSchema,
   buildSendSchema,
@@ -75,21 +76,27 @@ export function useOutboundEmailComposer({
   // attachment mutation (same query key) must NOT fight whatever the user is
   // mid-typing into subject/body (same guard rationale as `RichTextEditor`'s
   // own `lastEmittedRef`).
-  // A brand-new draft waits for the compose context so `default_to` (invoices:
-  // customer PEC/email, D-12) can prefill the To field; any other draft keeps
-  // its own recipients untouched.
+  // It waits for the compose context: a draft without a sender gets the last
+  // one used (spec 0361, D-3), and a brand-new draft gets `default_to`
+  // (invoices: customer PEC/email, D-12) in the To field; any other draft
+  // keeps its own recipients untouched.
   useEffect(() => {
     if (initializedRef.current || !emailQuery.data) {
       return
     }
-    if (prefillDefaultTo && !composeContextQuery.data && !composeContextQuery.isError) {
+    const context = composeContextQuery.data
+    if (!context && !composeContextQuery.isError) {
       return
     }
     const values = mapEmailToFormValues(emailQuery.data)
-    const defaultTo = composeContextQuery.data?.default_to ?? []
+    const defaultTo = context?.default_to ?? []
     // Not dirty on purpose: an untouched prefilled draft is still silently discarded on close.
     const shouldPrefill = prefillDefaultTo && values.to.length === 0 && defaultTo.length > 0
-    form.reset(shouldPrefill ? { ...values, to: defaultTo } : values)
+    form.reset({
+      ...values,
+      to: shouldPrefill ? defaultTo : values.to,
+      from_address: values.from_address ?? (context ? defaultSender(context) : null),
+    })
     initializedRef.current = true
   }, [emailQuery.data, composeContextQuery.data, composeContextQuery.isError, prefillDefaultTo, form])
 
@@ -122,6 +129,9 @@ export function useOutboundEmailComposer({
       await save.mutateAsync(mapFormValuesToPayload(values))
       // Step 2: flip draft -> queued
       const sent = await send.mutateAsync()
+      if (composeContextQuery.data && sent.from_address) {
+        storeLastSender(composeContextQuery.data.sender.email, sent.from_address)
+      }
       form.reset(mapEmailToFormValues(sent))
       toast.success(t('outboundEmails.composer.sent'))
       onOpenChange(false)

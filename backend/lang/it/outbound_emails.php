@@ -25,6 +25,7 @@ return [
     'empty_subject' => 'L\'oggetto è obbligatorio per inviare l\'email.',
     'empty_body' => 'Il corpo dell\'email è obbligatorio per l\'invio.',
     'sender_email_missing' => 'Il tuo utente non ha un indirizzo email: impossibile inviare.',
+    'sender_not_allowed' => 'Il mittente scelto non è tra i tuoi indirizzi email: scegline un altro.',
     'too_many_recipients' => 'Puoi indicare al massimo :max destinatari complessivi (A + CC + CCN).',
     'attachments_limit_exceeded' => 'Il totale degli allegati supera il limite di :max_kb KB.',
     'template_not_available' => 'Il modello selezionato non è disponibile per questo modulo.',

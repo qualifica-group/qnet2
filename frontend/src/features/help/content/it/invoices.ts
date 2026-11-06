@@ -130,6 +130,7 @@ const guide: HelpGuide = {
           items: [
             'Sulla riga premi **Invia email**: si apre il composer.',
             'Il **destinatario** è la **PEC** del cliente, se presente, altrimenti la sua **email**; il **PDF** è già allegato.',
+            'Nel campo **Mittente** scegli da quale indirizzo inviare: la tua email di accesso o un\'altra email della tua anagrafica. QNet propone l\'ultimo mittente che hai usato.',
             'Completa oggetto e corpo (puoi scegliere un **Modello email** del modulo Fatture) e invia.',
           ],
         },

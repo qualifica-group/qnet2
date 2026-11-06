@@ -99,6 +99,7 @@ function email(overrides: Partial<OutboundEmail> = {}): OutboundEmail {
 function composeContext(overrides: Partial<ComposeContext> = {}): ComposeContext {
   return {
     sender: { name: 'Mario Rossi', email: 'mario.rossi@example.com' },
+    sender_options: ['mario.rossi@example.com'],
     recipient_suggestions: [],
     documents: [],
     quote_pdf_available: false,

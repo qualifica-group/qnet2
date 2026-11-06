@@ -25,6 +25,7 @@ return [
     'empty_subject' => 'The subject is required to send the email.',
     'empty_body' => 'The email body is required to send.',
     'sender_email_missing' => 'Your user has no email address: cannot send.',
+    'sender_not_allowed' => 'The chosen sender is not one of your email addresses: pick another one.',
     'too_many_recipients' => 'You can list at most :max recipients in total (To + Cc + Bcc).',
     'attachments_limit_exceeded' => 'The total attachments size exceeds the :max_kb KB limit.',
     'template_not_available' => 'The selected template is not available for this module.',
