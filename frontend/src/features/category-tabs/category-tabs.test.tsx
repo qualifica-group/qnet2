@@ -49,6 +49,33 @@ beforeAll(async () => {
 })
 
 describe('CategoryTabs', () => {
+  it('shows placeholder chips next to "All" and the menu while the categories load', () => {
+    const { container } = render(
+      <CategoryTabs
+        categories={[]}
+        selectedCategoryId={null}
+        onSelect={vi.fn()}
+        favoriteCategoryIds={[]}
+        showOnlyFavorites={false}
+        onToggleFavorite={vi.fn()}
+        onShowOnlyFavoritesChange={vi.fn()}
+        isLoading
+      />,
+    )
+
+    expect(screen.getByRole('tablist', { busy: true })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['All'])
+    expect(categoryButton(/./)).toBeInTheDocument()
+    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0)
+  })
+
+  it('shows no placeholder once the categories are there', () => {
+    renderTabs()
+
+    expect(screen.queryByRole('tablist', { busy: true })).not.toBeInTheDocument()
+    expect(document.querySelector('[data-slot="skeleton"]')).toBeNull()
+  })
+
   it('renders "All" first and selected by default, plus one tab per category with its count', () => {
     renderTabs()
 

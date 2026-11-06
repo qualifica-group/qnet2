@@ -81,6 +81,7 @@ export function useCategoryTabStrip(
       favoritesAreDefault: preferences.preferences.is_default,
       onToggleFavorite: preferences.toggleFavorite,
       onShowOnlyFavoritesChange: preferences.setShowOnlyFavorites,
+      isLoading: categoriesQuery.isPending,
     },
   }
 }

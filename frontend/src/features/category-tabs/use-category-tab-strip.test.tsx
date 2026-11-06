@@ -55,6 +55,13 @@ afterEach(() => {
 })
 
 describe('useCategoryTabStrip selection (spec 0335 AC-014/015)', () => {
+  it('flags the strip as loading only until the categories arrive', async () => {
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+
+    expect(result.current.tabsProps.isLoading).toBe(true)
+    await waitFor(() => expect(result.current.tabsProps.isLoading).toBe(false))
+  })
+
   it('selects the persisted category once it is confirmed in the live list', async () => {
     window.localStorage.setItem('quotes.category-tab', '12')
     const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })

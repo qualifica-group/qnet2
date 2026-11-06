@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Skeleton di caricamento sui tab categoria — VERDE, COMMITTATO (2026-11-06)
+
+- Richiesta utente, senza spec (solo presentazione, nessun contratto). `CategoryTabs` ha la prop `isLoading`, valorizzata da
+  `useCategoryTabStrip` in `tabsProps` con `categoriesQuery.isPending`: copre Opportunita', Offerte, Contratti, Commesse,
+  Gestione Richieste e Iscritti, senza toccare le griglie.
+- Durante il caricamento "Tutte" e il menu restano montati (il selettore di livello nel popover aperto non si deve
+  smontare) e le 4 chip `Skeleton` (`h-6`, stessa altezza del tab) stanno fuori dal `TabsList`, `aria-hidden`; il
+  `TabsList` ha `aria-busy`. Con copia in cache `isPending` e' false: il rientro nella griglia non mostra lo skeleton.
+- Test: `category-tabs.test.tsx`, `use-category-tab-strip.test.tsx`. Manuale: nessun impatto. Non verificato nel browser.
+
 ## Tesoreria fase D3 "Compensazioni" (spec 0364) — VERDE, COMMITTATO (2026-11-05)
 
 - Spec `docs/specs/0364-installment-compensation.xml` (approvata). Una rata attiva + una passiva aperte della
