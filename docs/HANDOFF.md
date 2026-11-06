@@ -25,6 +25,8 @@
   `tsc -b --force` 0; suite backend completa: rossi solo i 9 PREESISTENTI.
 - Manuale Claude Docs: NON aggiornato (non accessibile). Sezioni: Partitario (Compensa, elenco), Scadenze attive
   e passive (Compensa, annulla bloccato), piu' gli arretrati A, B, C, D1.
+- Migrazione `2026_11_22_100000` corretta dopo il commit (eccezione alla regola: su MySQL non era mai riuscita): nome FK di
+  65 caratteri, limite 64, invisibile ai test SQLite. Per nomi lunghi passare `indexName:` a `constrained()`.
 - Prossimo: D2 modelli ricorrenti quando l'utente decide come registrare buste paga, affitti, leasing.
 
 ## Tesoreria fase D1 "Spunta e riconciliazione" (spec 0363) — VERDE, COMMITTATO 57352ceb (2026-11-05)

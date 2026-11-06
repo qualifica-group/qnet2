@@ -12,14 +12,21 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    /** The default name is 65 characters, over the 64 allowed by MySQL. */
+    private const string PURCHASE_INSTALLMENT_FOREIGN = 'installment_compensations_purchase_installment_foreign';
+
     public function up(): void
     {
+        // MySQL DDL is not transactional: the first release of this migration failed on that name and left an
+        // empty table behind. Unrecorded here means it can only be that leftover.
+        Schema::dropIfExists('installment_compensations');
+
         Schema::create('installment_compensations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies')->restrictOnDelete();
             $table->foreignId('registry_id')->constrained('registries')->restrictOnDelete();
             $table->foreignId('invoice_installment_id')->constrained('invoice_installments')->restrictOnDelete();
-            $table->foreignId('purchase_invoice_installment_id')->constrained('purchase_invoice_installments')->restrictOnDelete();
+            $table->foreignId('purchase_invoice_installment_id')->constrained('purchase_invoice_installments', indexName: self::PURCHASE_INSTALLMENT_FOREIGN)->restrictOnDelete();
             $table->decimal('amount', 15, 2);
             $table->date('compensated_at');
             $table->string('note', 255)->nullable();
