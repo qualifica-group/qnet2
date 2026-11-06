@@ -93,7 +93,10 @@
       description obbligatori; payment_method_id, general_notes, is_internal_user ("Fruitore
       interno"), customer_id, work_order_id, quote_id ("Contratto/Offerta"), opportunity_id,
       sector_ids[] + sector_notes ("Specifica") facoltativi. Allegati come RDA 0208 D-15
-      (alias `purchase_order`, coda in creazione).
+      (alias `purchase_order`, coda in creazione). Aggiunta 2026-11-06 (richiesta utente): con
+      customer_id valorizzato il picker Commessa chiama `work-orders/for-select?registry_id=`
+      (filtro additivo gia' esistente, spec 0122 D-5) e il cambio di cliente azzera work_order_id;
+      vale sia in creazione sia nella modifica in-place del dettaglio. Nessuna modifica server.
     - D-15 Fornitore non qualificato: solo avviso UI (modale Abbandona = svuota il campo / Forza =
       prosegue), nessun blocco server. `registries/for-select` espone in modo additivo
       `meta.is_qualified_supplier`; il Resource espone `supplier.is_qualified_supplier`; nel form

@@ -28,8 +28,20 @@ interface PurchaseOrderFormProps {
  */
 export function PurchaseOrderForm({ onSaved, onCancel }: PurchaseOrderFormProps) {
   const { t } = useTranslation()
-  const { form, lineArray, lines, companyId, supplierId, supplierQualified, formErrors, addLine, proposeWorkOrder, submit, isSaving } =
-    usePurchaseOrderForm({ onSaved })
+  const {
+    form,
+    lineArray,
+    lines,
+    companyId,
+    supplierId,
+    supplierQualified,
+    customerId,
+    formErrors,
+    addLine,
+    proposeWorkOrder,
+    submit,
+    isSaving,
+  } = usePurchaseOrderForm({ onSaved })
   const description = form.watch('description')
   const title = description.trim() === '' ? t('purchaseOrderForm.createTitle') : description
 
@@ -54,6 +66,7 @@ export function PurchaseOrderForm({ onSaved, onCancel }: PurchaseOrderFormProps)
               companyId={companyId}
               supplierId={supplierId}
               supplierQualified={supplierQualified}
+              customerId={customerId}
               onWorkOrderChange={proposeWorkOrder}
             />
           </RecordSection>

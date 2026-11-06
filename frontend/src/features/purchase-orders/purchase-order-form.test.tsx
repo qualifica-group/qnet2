@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { fetchForSelect } from '@/features/for-select/api'
 import { createPurchaseOrder } from '@/features/purchase-orders/api'
 import { makePurchaseOrder } from '@/features/purchase-orders/purchase-order-fixtures'
 import { PurchaseOrderForm } from '@/features/purchase-orders/purchase-order-form'
@@ -120,6 +121,22 @@ describe('PurchaseOrderForm lines (AC-020)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add line' }))
 
     await waitFor(() => expect(screen.getByRole('combobox', { name: /Work order 2/ })).toHaveTextContent('WO-31'))
+    delete FOR_SELECT_ITEMS['work-orders']
+  })
+
+  it('lists only the work orders of the chosen customer and clears the pick when the customer changes', async () => {
+    renderForm()
+    FOR_SELECT_ITEMS['work-orders'] = [{ id: 31, label: 'WO-31' }]
+
+    await pick(/^Customer$/, /Acme Supplies/)
+    await pick(/^Work order$/, /WO-31/)
+
+    expect(vi.mocked(fetchForSelect)).toHaveBeenCalledWith('work-orders', expect.objectContaining({ params: { registry_id: 8 } }))
+    expect(screen.getByRole('combobox', { name: /^Work order$/ })).toHaveTextContent('WO-31')
+
+    await pick(/^Customer$/, /Shady Ltd/)
+
+    expect(screen.getByRole('combobox', { name: /^Work order$/ })).not.toHaveTextContent('WO-31')
     delete FOR_SELECT_ITEMS['work-orders']
   })
 })

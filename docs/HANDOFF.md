@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ODA: picker Commessa filtrato per Cliente — VERDE, NON COMMITTATO (2026-11-06)
+
+- Solo frontend: `work-orders/for-select` accettava gia' `registry_id` (spec 0122 D-5). In
+  `use-purchase-order-form.ts` (`usePurchaseOrderFormState`) nuovo `customerId` (watch di `customer_id`);
+  `purchase-order-header-fields.tsx` prop `customerId` -> `params={{ registry_id }}` sul campo `work_order_id`
+  e il cambio di `customer_id` azzera `work_order_id`; `purchase-order-record-sections.tsx` stesso filtro
+  nella modifica in-place del dettaglio (`linkParams`). Nota in spec 0210 D-14.
+- Test: `purchase-order-form.test.tsx` nuovo caso (filtro + azzeramento). Vitest purchase-orders+help 25 file /
+  262 test verdi, ESLint ok, `tsc -b --force` EXIT=0. Guide IT/EN `purchase-orders` (sezione create) aggiornate.
+  Manuale Claude Docs NON aggiornato (documento non condiviso con la sessione): sezione "ODA > Creare una ODA".
+
+## Conti finanziari demo per ogni societa' — VERDE, NON COMMITTATO (2026-11-06)
+
+- Nuovo `database/seeders/DemoCompanyFinancialAccountSeeder.php`: per OGNI `Company` due conti bancari (IBAN
+  finti validi, seed `1000 + id*10 + slot`, fuori dai seed 1/2 di `DemoFinancialAccountSeeder`) e una cassa,
+  con `opening_balance`/`opening_balance_date` (1 gennaio) deterministici. Idempotente: banca per IBAN, cassa
+  per `type+name+company_id`. Registrato in `DemoDataSeeder` subito dopo `DemoFinancialAccountSeeder`.
+- Test `tests/Feature/FinancialAccounts/DemoCompanyFinancialAccountSeederTest.php` (2 test, verdi); Pint ok.
+- Eseguito sul DB locale (dati reali migrati dal legacy, 22 societa'): 66 conti (44 banche + 22 casse).
+  Stesso giorno eseguito anche `QualificaSampleDataSeeder` (additivo) e `npm ci` dopo la pull che ha
+  aggiunto `laravel-echo`/`pusher-js`. Manuale: nessun impatto (solo dati di seed).
+
 ## Tesoreria fase D3 "Compensazioni" (spec 0364) — VERDE, COMMITTATO (2026-11-05)
 
 - Spec `docs/specs/0364-installment-compensation.xml` (approvata). Una rata attiva + una passiva aperte della

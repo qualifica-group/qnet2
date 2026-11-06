@@ -28,6 +28,8 @@ interface PurchaseOrderHeaderFieldsProps {
   companyId: number | null
   supplierId: number | null
   supplierQualified: boolean
+  /** Narrows the work order picker to the customer's commesse. */
+  customerId: number | null
   /** A new header work order is proposed to the new lines without one. */
   onWorkOrderChange: (workOrderId: number | null) => void
 }
@@ -40,6 +42,7 @@ export function PurchaseOrderHeaderFields({
   companyId,
   supplierId,
   supplierQualified,
+  customerId,
   onWorkOrderChange,
 }: PurchaseOrderHeaderFieldsProps) {
   return (
@@ -88,12 +91,14 @@ export function PurchaseOrderHeaderFields({
         name="customer_id"
         resource={REGISTRIES_FOR_SELECT_RESOURCE}
         selected={refs.customer_id}
+        onValueChange={() => setValue('work_order_id', null, { shouldDirty: true })}
       />
       <OrderRelationField
         control={control}
         name="work_order_id"
         resource={WORK_ORDERS_FOR_SELECT_RESOURCE}
         selected={refs.work_order_id}
+        params={customerId === null ? undefined : { registry_id: customerId }}
         onValueChange={onWorkOrderChange}
       />
       <OrderRelationField

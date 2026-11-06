@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Press **New ODA** and fill in the **Header**: **Supplier**, **Company**, **Company/Site**, **Order date** and **Description** are required; **Operational site**, **Payment method**, **Internal user**, **Customer**, **Work order**, **Contract/Offer**, **Opportunity**, **EA tags** with **Specification** and **General notes** are optional. **Company/Site** only lists the sites of the chosen company.',
+            'Press **New ODA** and fill in the **Header**: **Supplier**, **Company**, **Company/Site**, **Order date** and **Description** are required; **Operational site**, **Payment method**, **Internal user**, **Customer**, **Work order**, **Contract/Offer**, **Opportunity**, **EA tags** with **Specification** and **General notes** are optional. **Company/Site** only lists the sites of the chosen company; with a **Customer** set, **Work order** lists only that customer\'s work orders and changing the customer clears the chosen one.',
             'Add at least one line (see **Lines**) and, if needed, the **Documents**: they stay queued and are uploaded right after saving.',
             'Optional: in the **Copies** field enter 1 to 12 (see below), then press **Save** (at the top or at the bottom of the record). Leaving without saving asks for confirmation.',
           ],

@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Premi **Nuova ODA** e compila la **Testata**: **Fornitore**, **Società**, **Società/Sede**, **Data ordine** e **Descrizione** sono obbligatori; **Sede operativa**, **Metodo di pagamento**, **Fruitore interno**, **Cliente**, **Commessa**, **Contratto/Offerta**, **Opportunità**, **Tag EA** con **Specifica** e **Note generali** sono facoltativi. **Società/Sede** mostra solo le sedi della società scelta.',
+            'Premi **Nuova ODA** e compila la **Testata**: **Fornitore**, **Società**, **Società/Sede**, **Data ordine** e **Descrizione** sono obbligatori; **Sede operativa**, **Metodo di pagamento**, **Fruitore interno**, **Cliente**, **Commessa**, **Contratto/Offerta**, **Opportunità**, **Tag EA** con **Specifica** e **Note generali** sono facoltativi. **Società/Sede** mostra solo le sedi della società scelta; se indichi un **Cliente**, **Commessa** elenca solo le sue commesse e cambiando cliente la commessa scelta si azzera.',
             'Aggiungi almeno una riga (vedi **Le righe**) e, se serve, i **Documenti**: restano in coda e si caricano subito dopo il salvataggio.',
             'Facoltativo: nel campo **Copie** indica da 1 a 12 (vedi sotto), poi premi **Salva** (in alto o in fondo alla scheda). Se esci senza salvare ti viene chiesta conferma.',
           ],

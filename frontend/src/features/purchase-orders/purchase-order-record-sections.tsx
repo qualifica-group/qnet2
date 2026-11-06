@@ -128,8 +128,11 @@ function OrderSection({ order, editor }: SectionProps) {
 /** "Organizzazione e collegamenti": the company (locked once created) and its site, then the optional links. */
 function OrganizationSection({ order, editor }: SectionProps) {
   const { t } = useTranslation()
-  const { form, inline } = editor
+  const { form, inline, customerId } = editor
   const { control } = form
+  // The work order picker lists only the commesse of the customer being edited.
+  const linkParams = (name: OrderRelationFieldName) =>
+    name === 'work_order_id' && customerId !== null ? { registry_id: customerId } : undefined
   const refs = orderRefs(order)
   const label = (field: string) => t(`purchaseOrderForm.fields.${field}`)
 
@@ -164,7 +167,9 @@ function OrganizationSection({ order, editor }: SectionProps) {
               field={name}
               label={label(name)}
               inline={inline}
-              editor={<OrderRelationField control={control} name={name} resource={resource} selected={ref} />}
+              editor={
+                <OrderRelationField control={control} name={name} resource={resource} selected={ref} params={linkParams(name)} />
+              }
             >
               {ref === null ? (
                 <DetailEmpty />

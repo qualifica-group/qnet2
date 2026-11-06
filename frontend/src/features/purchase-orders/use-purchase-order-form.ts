@@ -39,6 +39,7 @@ export function usePurchaseOrderFormState(order?: PurchaseOrder) {
   const companyId = useWatch({ control, name: 'company_id' })
   const supplierId = useWatch({ control, name: 'supplier_id' })
   const supplierQualified = useWatch({ control, name: 'supplier_qualified' })
+  const customerId = useWatch({ control, name: 'customer_id' })
 
   /** A new row inherits the VAT of the last one and the header work order (D-13). */
   const addLine = useCallback(() => {
@@ -52,7 +53,7 @@ export function usePurchaseOrderFormState(order?: PurchaseOrder) {
     )
   }, [append, getValues])
 
-  return { form, lineArray, lines, companyId, supplierId, supplierQualified, addLine }
+  return { form, lineArray, lines, companyId, supplierId, supplierQualified, customerId, addLine }
 }
 
 interface UsePurchaseOrderFormArgs {
