@@ -17,6 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
  * read through `user('sanctum')` (same scheme as ThrottleApiClientRequests). A
  * missing or invalid token resolves to no user and proceeds to the route's 401.
  * Impersonation tokens are never blocked: the admin must keep working.
+ * Outside production the gate is off (spec 0359, `auth.first_access_gate`).
  */
 class EnsureFirstPasswordSet
 {
@@ -52,7 +53,7 @@ class EnsureFirstPasswordSet
         $user = $request->user('sanctum');
 
         return $user instanceof User
-            && $user->must_set_password
+            && $user->isFirstAccessPending()
             && $user->currentAccessToken()?->impersonated_by === null;
     }
 

@@ -25,6 +25,7 @@ final class QuoteLineWriter
         private readonly CostLineAllocationResolver $allocationResolver,
         private readonly SupplierCommissionEnablement $enablement,
         private readonly SupplierCommissionLookup $supplierCommissions,
+        private readonly QuoteLineWorkOrderLock $workOrderLock,
     ) {}
 
     /**
@@ -51,6 +52,11 @@ final class QuoteLineWriter
                     __('commission_configurations.invalid_quote_line_id'),
                 ],
             ]);
+        }
+
+        // Spec 0360, D-4: before any write, so a refused save leaves every row as it was.
+        if ($type === QuoteLineType::Revenue) {
+            $this->workOrderLock->assertRespected($lines, $existing);
         }
 
         $this->assertProductsUsable($type, $lines, $existing);

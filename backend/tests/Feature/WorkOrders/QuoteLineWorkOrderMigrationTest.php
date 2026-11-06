@@ -32,7 +32,23 @@ if (! function_exists('quoteLineWorkOrderMigration')) {
     }
 }
 
+/*
+ * REQUIREMENT CHANGED (spec 0358 D-3): the pivot UNIQUE(quote_line_id) was
+ * replaced by UNIQUE(quote_line_id, renewal_number), so the schema this test
+ * starts from is first rolled back to the pre-0358 one.
+ */
+if (! function_exists('renewalNumberPivotMigration')) {
+    function renewalNumberPivotMigration(): Migration
+    {
+        /** @var Migration $migration */
+        $migration = require database_path('migrations/2026_11_20_100100_add_renewal_number_to_quote_line_work_order_table.php');
+
+        return $migration;
+    }
+}
+
 it('AC-041: up() aborts with a readable exception naming the conflicting quote_line_id, schema left untouched', function () {
+    renewalNumberPivotMigration()->down();
     $migration = quoteLineWorkOrderMigration();
     $migration->down();
 
@@ -55,6 +71,7 @@ it('AC-041: up() aborts with a readable exception naming the conflicting quote_l
 });
 
 it('up() succeeds and enforces the new constraint once no conflicting data remains', function () {
+    renewalNumberPivotMigration()->down();
     $migration = quoteLineWorkOrderMigration();
     $migration->down();
 

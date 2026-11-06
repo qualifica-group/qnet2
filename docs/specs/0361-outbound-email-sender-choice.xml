@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0361-outbound-email-sender-choice" status="implemented" owner="utente" date="2026-11-05">
+
+  <goal>
+    Nel composer email (commesse, fatture, ODA) l'utente sceglie il mittente tra la propria email di accesso e le
+    altre email di contatto della propria anagrafica. Il composer propone l'ultimo mittente usato.
+  </goal>
+
+  <context>
+    Nomi verificati il 2026-11-05.
+    - Spec 0175 D-6: mittente = `users.email`, non modificabile, snapshot in `outbound_emails.from_address` al send.
+      Questa spec SUPERA la D-6 (decisione utente 2026-11-05).
+    - `OutboundEmailService::send()` -> `OutboundEmail::markQueued($fromAddress)`; `OutboundEmailMessage` usa
+      `from_address` come From; il transport Graph invia da `/users/{from}/messages`.
+    - `OutboundEmailComposeContextBuilder::build()` (comune a tutti gli owner) restituisce `sender {name, email}`.
+    - Contatti della persona: `User` -> `personalData` (HasPersonalData) -> `contacts` (HasContacts), tipo
+      `ContactTypeEnum::Email`. Li modifica solo chi ha il permesso di modificare l'utente.
+    - Draft payload condiviso: `StoreOutboundEmailRequest`/`UpdateOutboundEmailRequest` -> `OutboundEmailDraftData`.
+  </context>
+
+  <decisions>
+    D-1 (utente) Mittenti ammessi = `users.email` dell'utente + i contatti di tipo `email` della sua anagrafica
+        (personali e aziendali; PEC esclusa). Ordine: email di accesso, poi contatto primario, poi gli altri per id.
+        Doppioni tolti senza distinzione di maiuscole. Nessun indirizzo libero.
+    D-2 Il mittente scelto si salva sulla bozza (`from_address` nel payload POST/PATCH, `null` = email di accesso).
+        Al send: `from_address` della bozza se presente, altrimenti `users.email`; se l'indirizzo non e' piu' tra
+        quelli ammessi -> 422 `from_address`. Una email `failed` si reinvia col mittente gia' salvato.
+    D-3 (utente) L'ultimo mittente usato si ricorda nel browser (localStorage), chiave legata all'email di accesso
+        dell'utente. Il composer lo propone su una bozza senza mittente se e' ancora tra quelli ammessi, altrimenti
+        propone l'email di accesso. Si aggiorna a ogni invio riuscito.
+    D-4 Graph accetta solo caselle Microsoft 365 su cui l'app ha i permessi: un indirizzo non valido produce lo stato
+        `failed` con il messaggio "casella mittente non valida" gia' esistente. Nessun controllo preventivo.
+  </decisions>
+
+  <data_contract>
+    GET .../emails/compose-context: aggiunge `sender_options: string[]` (D-1, primo = `sender.email`).
+    POST/PATCH .../emails[/{email}]: campo opzionale `from_address: string|null`, deve essere uno di
+      `sender_options` dell'attore -> altrimenti 422 `from_address` (`outbound_emails.sender_not_allowed`).
+    OutboundEmail.from_address: mittente scelto sulla bozza (o null), mittente effettivo da queued in poi.
+    POST .../send: 422 `from_address` se il mittente salvato non e' piu' ammesso.
+  </data_contract>
+
+  <scope>
+    <out>
+      <item>Indirizzi liberi come mittente.</item>
+      <item>Cambio mittente su una email `failed` (non e' modificabile, D-2 della 0175).</item>
+      <item>Segnaposto `{sender.email}` dei modelli: resta l'email di accesso.</item>
+    </out>
+  </scope>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">compose-context restituisce `sender_options` con l'email di accesso per prima, i contatti email dell'anagrafica (non le PEC), senza doppioni.</criterion>
+    <criterion id="AC-002">PATCH di una bozza con `from_address` tra quelli ammessi lo salva; con un indirizzo non ammesso -> 422 `from_address`.</criterion>
+    <criterion id="AC-003">send usa il `from_address` della bozza; senza, usa `users.email`; con un indirizzo non piu' ammesso -> 422 `from_address`.</criterion>
+    <criterion id="AC-004">FE: il campo Da mostra un selettore quando ci sono piu' mittenti, propone l'ultimo usato (localStorage) se ammesso, e lo salva nella bozza.</criterion>
+  </acceptance_criteria>
+
+</spec>

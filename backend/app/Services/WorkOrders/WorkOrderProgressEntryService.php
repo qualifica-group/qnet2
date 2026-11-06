@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
+use App\Enums\WorkOrderStatus;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderProgressEntry;
@@ -18,6 +19,8 @@ use Illuminate\Validation\ValidationException;
  */
 final class WorkOrderProgressEntryService
 {
+    private const int FULL_PROGRESS = 100;
+
     /**
      * @return Collection<int, WorkOrderProgressEntry>
      */
@@ -28,15 +31,16 @@ final class WorkOrderProgressEntryService
 
     /**
      * @param  int  $total  the new total progress ("% Stato attuale"), above the current SUM
+     * @param  ?User  $actor  null only outside a request (seeders, imports)
      */
-    public function create(WorkOrder $workOrder, int $total, string $recordedOn, User $actor): WorkOrderProgressEntry
+    public function create(WorkOrder $workOrder, int $total, string $recordedOn, ?User $actor): WorkOrderProgressEntry
     {
         $current = $this->currentTotal($workOrder);
 
         $entry = $workOrder->progressEntries()->create([
             'percentage' => $total - $current,
             'recorded_on' => $recordedOn,
-            'created_by' => $actor->id,
+            'created_by' => $actor?->id,
         ]);
 
         return $entry->load('creator');
@@ -47,13 +51,29 @@ final class WorkOrderProgressEntryService
      * or does nothing when the commessa already reached it (a null/lower
      * target never produces a negative or zero entry).
      */
-    public function raiseTo(WorkOrder $workOrder, ?int $total, User $actor): ?WorkOrderProgressEntry
+    public function raiseTo(WorkOrder $workOrder, ?int $total, ?User $actor): ?WorkOrderProgressEntry
     {
         if ($total === null || $total <= $this->currentTotal($workOrder)) {
             return null;
         }
 
         return $this->create($workOrder, $total, now()->toDateString(), $actor);
+    }
+
+    /**
+     * Spec 0324 revision 2026-11-05: a forced closure that just landed on a
+     * positive (`completed`-group) status brings the progress to 100% with an
+     * entry dated today; a negative closure, or no closing transition, leaves it.
+     */
+    public function completeOnPositiveClosure(WorkOrder $workOrder, bool $wasForceClosed, ?User $actor): void
+    {
+        if ($wasForceClosed
+            || ! $workOrder->is_force_closed
+            || $workOrder->workOrderWorkflowStatus()->value('group') !== WorkOrderStatus::Completed) {
+            return;
+        }
+
+        $this->raiseTo($workOrder, self::FULL_PROGRESS, $actor);
     }
 
     /**

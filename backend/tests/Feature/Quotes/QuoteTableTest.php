@@ -58,7 +58,7 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     ]);
 });
 
-it('columns: the action catalogue leads with view/generate_document/notes, the three inline slots', function () {
+it('columns: the action catalogue leads with view/documents/notes, the three inline slots', function () {
     // L'ordine del catalogo DECIDE cosa e' inline: il frontend rende le prime
     // INLINE_ACTION_LIMIT (3) azioni permesse e manda le altre nell'overflow
     // (direttiva utente 2026-08-06). Un riordino accidentale sposterebbe le
@@ -72,7 +72,9 @@ it('columns: the action catalogue leads with view/generate_document/notes, the t
         ->pluck('key')
         ->all();
 
-    expect($keys)->toBe(['view', 'generate_document', 'notes', 'delete', 'activity']);
+    // REQUIREMENT CHANGED (spec 0363 D-1): the actions common to the four
+    // commercial grids lead, delete last.
+    expect($keys)->toBe(['view', 'documents', 'notes', 'generate_document', 'activity', 'delete']);
 });
 
 it('rows: view/delete/activity actions gated by QuotePolicy', function () {

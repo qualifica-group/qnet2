@@ -6,6 +6,7 @@ namespace App\Http\Requests\Contracts;
 
 use App\DataObjects\Contracts\UpdateContractData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Models\Contract;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,7 @@ use Illuminate\Validation\Rule;
 class UpdateContractRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesQuoteLines;
 
     public function authorize(): bool
     {
@@ -56,6 +58,10 @@ class UpdateContractRequest extends FormRequest
                 'integer',
                 Rule::exists('contract_statuses', 'id')->where(fn ($query) => $query->where('is_active', true)),
             ],
+            // Spec 0360, D-7: null/empty/automatic text turns the quote title back to automatic.
+            'title' => ['sometimes', 'nullable', 'string', 'max:191'],
+            // Spec 0360, D-3/D-5: the offer's REVENUE rows, no commissions on this channel.
+            ...$this->offerLinesOnlyRules(),
             'renewal_date' => ['sometimes', 'nullable', 'date'],
             'expiry_date' => ['sometimes', 'nullable', 'date'],
             'payment_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
@@ -67,6 +73,8 @@ class UpdateContractRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->requireOfferLineOnUpdate($validator);
+            $this->enforceSingleOfferLine($validator, $this->currentContract()->quote()->first());
             $this->assertRenewalNotAfterExpiry($validator);
         });
     }

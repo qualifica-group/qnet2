@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Trash2 } from 'lucide-react'
+import { Lock, Trash2 } from 'lucide-react'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +37,8 @@ interface QuoteLineCardProps {
   categoryPath: string | null
   knownVatRate?: QuoteLineVatRateRef
   disabled: boolean
+  /** Spec 0360 D-4: codes of the work orders the saved row is assigned to; non-null locks every control of the row. */
+  lockedWorkOrderCodes?: string[] | null
   /** Spec 0114: amounts only, the server congeals quantity/price/VAT. */
   simplified: boolean
   error?: QuoteLineRowErrors
@@ -82,7 +84,8 @@ export function QuoteLineCard({
   product,
   categoryPath,
   knownVatRate,
-  disabled,
+  disabled: editorDisabled,
+  lockedWorkOrderCodes = null,
   simplified,
   error,
   vatRatePercentFor,
@@ -96,6 +99,9 @@ export function QuoteLineCard({
 }: QuoteLineCardProps) {
   const { t } = useTranslation()
   const rowId = useId()
+  const locked = lockedWorkOrderCodes !== null
+  const disabled = editorDisabled || locked
+  const lockedNoteId = `${rowId}-locked`
   const vatPercent = row.vat_rate_id === null ? null : vatRatePercentFor(row.vat_rate_id)
   const amounts = computeLineAmounts(row.quantity ?? 0, row.unit_price ?? 0, vatPercent)
   const quantityErrorId = `${rowId}-quantity-error`
@@ -126,6 +132,11 @@ export function QuoteLineCard({
             <span id={productErrorId} role="alert" className="text-[11px] text-destructive">
               {error.product_id.message}
             </span>
+          ) : locked ? (
+            <span id={lockedNoteId} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Lock className="size-3" aria-hidden="true" />
+              {t('quotes.lineEditor.rows.assignedToWorkOrders', { codes: lockedWorkOrderCodes.join(', ') })}
+            </span>
           ) : null
         }
       >
@@ -135,6 +146,7 @@ export function QuoteLineCard({
           variant="ghost"
           size="icon-sm"
           aria-label={t('quotes.form.lineRemove', { n: position })}
+          aria-describedby={locked ? lockedNoteId : undefined}
           disabled={disabled}
           onClick={onRemove}
         >

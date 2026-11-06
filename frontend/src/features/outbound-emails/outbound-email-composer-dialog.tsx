@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, Loader2, MailPlus, PenLine, Save, Send, Trash2 } from 'lucide-react'
+import { useWatch } from 'react-hook-form'
+import { AlertCircle, CalendarClock, Loader2, MailPlus, PenLine, Save, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOutboundEmailComposer } from '@/features/outbound-emails/use-outbound-email-composer'
 import { OutboundEmailComposerForm } from '@/features/outbound-emails/outbound-email-composer-form'
+import { OutboundEmailRecurrenceFields } from '@/features/outbound-emails/outbound-email-recurrence-fields'
 import { OutboundEmailAttachmentsSection } from '@/features/outbound-emails/outbound-email-attachments-section'
 import { OutboundEmailDialogFooter, OutboundEmailDialogHeader } from '@/features/outbound-emails/outbound-email-dialog-chrome'
 import { OutboundEmailStatusBadge } from '@/features/outbound-emails/outbound-email-status-badge'
@@ -47,14 +49,19 @@ export function OutboundEmailComposerDialog({
     composeContext,
     isSaving,
     isSending,
+    isScheduling,
     isDeleting,
     handleSaveDraft,
     handleSend,
+    handleSchedule,
     handleDeleteDraft,
     handleOpenChange,
   } = useOutboundEmailComposer({ owner, emailId, justCreated, prefillDefaultTo, open, onOpenChange })
 
-  const isBusy = isSaving || isSending
+  const isBusy = isSaving || isSending || isScheduling
+  const isRecurring = useWatch({ control: form.control, name: 'recurrence.enabled' })
+  const showRecurrence = email?.can.schedule === true
+  const isScheduleAction = showRecurrence && isRecurring
 
   return (
     <Dialog open={open} onOpenChange={(next) => void handleOpenChange(next)}>
@@ -82,6 +89,7 @@ export function OutboundEmailComposerDialog({
                 composeContext={composeContext}
                 disabled={isBusy}
               />
+              {showRecurrence ? <OutboundEmailRecurrenceFields form={form} disabled={isBusy} /> : null}
               <OutboundEmailAttachmentsSection
                 owner={owner}
                 emailId={emailId}
@@ -127,14 +135,25 @@ export function OutboundEmailComposerDialog({
               )}
               {isSaving ? t('outboundEmails.composer.saving') : t('outboundEmails.composer.saveDraft')}
             </Button>
-            <Button type="button" size="sm" onClick={() => void handleSend()} disabled={isBusy || !email?.can.send}>
-              {isSending ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Send className="size-3.5" aria-hidden="true" />
-              )}
-              {isSending ? t('outboundEmails.composer.sending') : t('outboundEmails.composer.send')}
-            </Button>
+            {isScheduleAction ? (
+              <Button type="button" size="sm" onClick={() => void handleSchedule()} disabled={isBusy || !email?.can.schedule}>
+                {isScheduling ? (
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <CalendarClock className="size-3.5" aria-hidden="true" />
+                )}
+                {isScheduling ? t('outboundEmails.recurrence.scheduling') : t('outboundEmails.recurrence.schedule')}
+              </Button>
+            ) : (
+              <Button type="button" size="sm" onClick={() => void handleSend()} disabled={isBusy || !email?.can.send}>
+                {isSending ? (
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Send className="size-3.5" aria-hidden="true" />
+                )}
+                {isSending ? t('outboundEmails.composer.sending') : t('outboundEmails.composer.send')}
+              </Button>
+            )}
           </div>
         </OutboundEmailDialogFooter>
       </DialogContent>

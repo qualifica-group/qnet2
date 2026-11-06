@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Contract data** (Offer, Opportunity, Offer date) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the quote's Supervisor and Account managers) and **Company and sites**, then **Document and payment** and **Lifecycle**. The quote's data are read only and changed from the quote; Payment notes, Renewal, Expiry and Comments are edited here.",
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Contract data** (Offer, Opportunity, Offer date) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the quote's Supervisor and Account managers) and **Company and sites**, then **Document and payment** and **Lifecycle**. The quote's data are read only and changed from the quote; Title, service lines, Payment notes, Renewal, Expiry and Comments are edited here.",
         },
       ],
     },
@@ -27,9 +27,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Current status', 'Available actions'],
           rows: [
-            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract** (only if never validated), **Program** (only if already validated), **Terminate contract**'],
-            ['Closed (positive)', '**Program**, **Terminate contract**, **Reopen contract**'],
-            ['Closed (negative)', '**Reopen contract**'],
+            ['Open or Pending', 'Title, lines and data editable in place, **Change status**, **Validate contract** (only if never validated), **Program** and **Renew** (only if already validated), **Terminate contract**'],
+            ['Closed (positive)', 'Title, lines and data editable in place, **Program**, **Renew**, **Terminate contract**, **Reopen contract**'],
+            ['Closed (negative)', '**Reopen contract** (card is read only)'],
             ['"Sospeso"', '**Reopen contract**'],
           ],
         },
@@ -38,13 +38,42 @@ const guide: HelpGuide = {
           items: [
             '**Validate contract**: set the **Validation date** (not in the future). It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza"): those contracts show **Program** instead, unless suspended.',
             '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**.',
-            'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open or Pending: press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
+            'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open, Pending or Closed (positive) (Validated): press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
             '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status. Reopening a Closed (positive) or Closed (negative) contract also clears the validation date and author, so the contract can be validated again; the previous values stay in **Activity history**.',
           ],
         },
         {
           type: 'note',
-          text: "The **Program** action creates one or more work orders from the offer's product lines: see the **Programming work orders** section.",
+          text: "The **Program** action creates one or more work orders from the offer's product lines: see the **Programming work orders** section. The **Renew** action opens a new period of the same contract: see the **Renewing the contract** section.",
+        },
+      ],
+    },
+    {
+      id: 'edit-contract-in-force',
+      title: 'Editing the contract in force',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "From the contract card you can change the **Title** and the **Lines** (the services) straight in place, like the other data, even when the contract is **Validated**. You need the Contracts **Edit** permission and an editable field for your role: when missing, the pencil does not appear. The allowed statuses are **Open**, **Pending** and **Validated**; a **Cancelled** or **Terminated** contract stays read only until you reopen it with **Reopen contract**.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'For the title, press the pencil next to the title at the top, type the new text and press **Save**. If you leave it empty the contract goes back to the automatic title.',
+            'For the services, press the pencil on the **Offer lines** box: pick more products from the catalogue to add lines, change quantity, price, VAT and supplier, or remove a line, then press **Save**.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Changes are written to the source quote: totals and margins are recalculated, while the status of the contract and of the quote do not change.',
+            '**Commissions** cannot be edited from here: they stay as set on the quote and their amounts are recalculated on the new lines.',
+            'A line **assigned to a work order** (it shows "Assigned to COM-...") is locked: it cannot be changed or removed until the work order is deleted. The same rule applies from the quote and from Request management.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'If the save is refused (for example because of a locked line) the message appears on the line and your changes stay in the edit box, so you can fix them.',
         },
       ],
     },
@@ -54,7 +83,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "**Program** opens a two-panel window: the **offer lines** on the left, the **work orders to create** (groups) on the right. A single **Create N work orders** saves all the groups together.",
+          text: "**Program** opens a two-panel window: the **offer lines** on the left, the **work orders to create** (groups) on the right. A single **Create N work orders** saves all the groups together. At the top the window shows the **Period** (Initial or Renewal N) the work orders are created in.",
         },
         {
           type: 'steps',
@@ -76,7 +105,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Saving is **all or nothing**: if one group has an error, no work order is created. The group with the error opens and shows the field to fix. Lines already in another work order stay visible but cannot be selected; lines you leave free are not an error. Closing with unsaved groups asks for confirmation. At most 50 work orders at a time.',
+          text: 'Saving is **all or nothing**: if one group has an error, no work order is created. The group with the error opens and shows the field to fix. Lines already in another work order **of the current period** stay visible but cannot be selected (after a renewal they are free again); lines you leave free are not an error. Closing with unsaved groups asks for confirmation. At most 50 work orders at a time.',
         },
         {
           type: 'tip',
@@ -105,7 +134,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order cannot be reused. If at least one selected contract cannot be programmed yet (not validated, for example **Da validare**, or suspended) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows which contracts, with their customer, must be removed from the selection.',
+          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order in the current period of its contract cannot be reused. If at least one selected contract cannot be programmed yet (not validated, for example **Da validare**, or suspended) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows which contracts, with their customer, must be removed from the selection.',
         },
       ],
     },
@@ -120,6 +149,37 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: 'Always fill in **Expiry** and **Renewal** in the contract card: without these dates, the alerts never appear.',
+        },
+      ],
+    },
+    {
+      id: 'renewal-periods',
+      title: 'Renewing the contract',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "**Renew** opens a new period of the same contract (Renewal 1, Renewal 2...): with the same offer and the same lines you program more work orders. Prices and commissions stay those of the offer and the offer total does not change. The action is available in the same statuses as **Program**, even when the expiry date has already passed, and requires the same permission.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Press **Renew** in the contract action bar (or from the row action in the Contracts list).',
+            'Check **New expiry date** (required, later than the current one) and **New renewal date** (optional, not later than the expiry date). They are already proposed by moving the current dates by the length of the period; when the starting dates are missing, an expiry date 12 months from today is proposed.',
+            'Press **Renew**: the contract takes the new dates and the current period becomes the new renewal. The contract status does not change.',
+            'Use **Program** to create the work orders of the new period: in each period an offer line is programmed only once.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'The work orders of the previous periods stay unchanged; when you edit an existing work order, the lines you add go into **its** period.',
+            'In each work order the line is invoiced once and its commission accrues in full: the same product is invoiced again in the renewal work order.',
+            'In the detail, the **Renewals** panel sits at the top, right under the action buttons: it shows the period **in force**, how many days are left to the expiry (red once it has passed, amber when it is close), the date to renew by and a bar with the share of the period already elapsed. Below it is the line of periods (**Initial**, **Renewal 1**, **Renewal 2**...): click a period to see its **From**, **To**, **Renewal date**, **Previous dates**, **Renewed by** (who and when) and the number of **Work orders**. In the Work orders list (and in the contract Work orders tab) the **Period** column shows Initial or Renewal N.',
+          ],
+        },
+        {
+          type: 'note',
+          text: '**Undo renewal** appears only in the details of the latest renewal and only while its period has no work orders: after confirming, the contract dates go back to those before the renewal.',
         },
       ],
     },
@@ -141,7 +201,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
         },
         {
           type: 'paragraph',

@@ -15,7 +15,10 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class OutboundEmailComposeContextBuilder
 {
-    public function __construct(private readonly EmailOwnerRegistry $owners) {}
+    public function __construct(
+        private readonly EmailOwnerRegistry $owners,
+        private readonly OutboundEmailSenderAddresses $senderAddresses,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -27,6 +30,7 @@ final class OutboundEmailComposeContextBuilder
 
         return [
             'sender' => ['name' => (string) $actor->name, 'email' => (string) $actor->email],
+            'sender_options' => $this->senderAddresses->for($actor),
             'recipient_suggestions' => $emailOwner->recipientSuggestions($owner, $actor),
             ...($defaultTo === [] ? [] : ['default_to' => $defaultTo]),
             ...$emailOwner->composeContextExtras($owner, $actor),

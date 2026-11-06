@@ -51,6 +51,14 @@ const VIEW_ACTION: TableActionDefinition = {
   confirm: false,
 }
 
+const DOCUMENTS_ACTION: TableActionDefinition = {
+  key: 'documents',
+  label: 'actions.documents',
+  icon: 'paperclip',
+  type: 'action',
+  confirm: false,
+}
+
 const VALIDATE_ACTION: TableActionDefinition = {
   key: 'validate',
   label: 'contracts.actions.validate',
@@ -65,6 +73,11 @@ const ROW: TableRow = {
   title: 'Contratto Acme',
   code: 'QUO-0007',
 }
+
+vi.mock('@/features/attachments/documents-dialog', () => ({
+  DocumentsDialog: ({ resource, id }: { resource: string; id: number | null }) =>
+    id === null ? null : <div role="dialog" aria-label={`documents-${resource}-${id}`} />,
+}))
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
@@ -85,6 +98,9 @@ vi.mock('@/features/table/table-view', () => ({
         </button>
         <button type="button" onClick={() => onAction?.(VALIDATE_ACTION, ROW)}>
           validate row
+        </button>
+        <button type="button" onClick={() => onAction?.(DOCUMENTS_ACTION, ROW)}>
+          documents row
         </button>
         {bulk.map((action) => (
           <button
@@ -144,6 +160,16 @@ describe('ContractsTable — domain wiring', () => {
     renderTable()
     screen.getByRole('button', { name: 'validate row' }).click()
     expect(openViewMock).toHaveBeenCalledWith(ROW)
+  })
+})
+
+describe('ContractsTable — documents row action (spec 0363)', () => {
+  it('opens the contract documents in the shared dialog, without opening the detail', () => {
+    renderTable()
+    fireEvent.click(screen.getByRole('button', { name: 'documents row' }))
+
+    expect(screen.getByRole('dialog', { name: 'documents-contract-7' })).toBeInTheDocument()
+    expect(openViewMock).not.toHaveBeenCalled()
   })
 })
 

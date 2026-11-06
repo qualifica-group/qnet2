@@ -28,6 +28,8 @@ interface ContractProgramDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   contractId: number
+  /** Current period of the contract (spec 0358): 0 = initial; omitted hides the period line. */
+  renewalNumber?: number
   /** Called after a successful save with the created work orders (group order): the caller refreshes the Commesse tab. */
   onCreated: (workOrders: WorkOrderDetail[]) => void
 }
@@ -42,7 +44,7 @@ interface ContractProgramDialogProps {
  * compaiono qui (decisione utente 2026-09-04): si compilano dopo, dal form
  * della commessa generata.
  */
-export function ContractProgramDialog({ open, onOpenChange, contractId, onCreated }: ContractProgramDialogProps) {
+export function ContractProgramDialog({ open, onOpenChange, contractId, renewalNumber, onCreated }: ContractProgramDialogProps) {
   const { t } = useTranslation()
   const dialog = useContractProgramDialog({ contractId, open, onOpenChange, onCreated })
   const { form, groups, lines, linesQuery, selected } = dialog
@@ -57,6 +59,18 @@ export function ContractProgramDialog({ open, onOpenChange, contractId, onCreate
           <DialogHeader className="shrink-0 rounded-t-lg border-b bg-surface p-4">
             <DialogTitle>{t('contracts.actions.program')}</DialogTitle>
             <DialogDescription>{t('contracts.actions.programDialog.description')}</DialogDescription>
+            {renewalNumber !== undefined ? (
+              <p className="text-xs font-medium text-foreground">
+                {t('contracts.actions.programDialog.period', {
+                  period: t(
+                    renewalNumber === 0
+                      ? 'contracts.actions.programDialog.periodInitial'
+                      : 'contracts.actions.programDialog.periodRenewal',
+                    { number: renewalNumber },
+                  ),
+                })}
+              </p>
+            ) : null}
           </DialogHeader>
 
           <Form {...form}>

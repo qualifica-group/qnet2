@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { fetchWorkOrder, updateWorkOrder } from '@/features/work-orders/api'
+import { fetchWorkOrder, updateWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderForceCloseDialog } from '@/features/work-orders/work-order-force-close-dialog'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -30,8 +30,9 @@ const RECORD = {
   ],
 }
 
-function renderDialog() {
+function renderDialog(seed?: (client: QueryClient) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  seed?.(client)
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
@@ -52,7 +53,7 @@ beforeEach(() => {
 })
 
 describe('WorkOrderForceCloseDialog — closing status', () => {
-  it('preselects the keyed closed row and offers only closed-group statuses', async () => {
+  it('preselects the keyed closed row and offers the positive and negative closing statuses', async () => {
     renderDialog()
 
     const combobox = await statusCombobox()
@@ -60,7 +61,7 @@ describe('WorkOrderForceCloseDialog — closing status', () => {
 
     fireEvent.click(combobox)
     const options = within(await screen.findByRole('listbox')).getAllByRole('option')
-    expect(options.map((option) => option.textContent)).toEqual(['Lost', 'Closed'])
+    expect(options.map((option) => option.textContent)).toEqual(['Done', 'Lost', 'Closed'])
   })
 
   it('sends force_close_status_id with the reason', async () => {
@@ -107,5 +108,16 @@ describe('WorkOrderForceCloseDialog — closing status', () => {
 
     expect(await screen.findByText(label('workOrders.form.forceCloseStatusRequired'))).toBeInTheDocument()
     expect(updateWorkOrder).not.toHaveBeenCalled()
+  })
+})
+
+describe('WorkOrderForceCloseDialog — opened from the record detail', () => {
+  it('reuses the cached detail instead of refetching it', async () => {
+    // A refetch of the shared detail key puts the record screen (useEntityDetail:
+    // skeleton while fetching) into loading, unmounting the host and this dialog.
+    renderDialog((client) => client.setQueryData(workOrderDetailQueryKey(7), RECORD))
+
+    expect(await statusCombobox()).toHaveTextContent('Closed')
+    expect(fetchWorkOrder).not.toHaveBeenCalled()
   })
 })

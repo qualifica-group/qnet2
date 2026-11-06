@@ -1,5 +1,10 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import type { ProductLineRow } from '@/features/product-lines/types'
+import { MAX_LINES_PER_TAB, quoteLineRowSchema } from '@/features/quotes/quote-schema'
+
+/** Backend `quotes.title` column limit (`max:191`). */
+const TITLE_MAX_LENGTH = 191
 
 /** Backend `termination_reason` column limit (`max:2000`). */
 const TERMINATION_REASON_MAX_LENGTH = 2000
@@ -106,14 +111,19 @@ export function reactivateContractDefaultValues(): ReactivateContractFormValues 
 }
 
 /**
- * "Modifica dati" — the PATCH-editable subset (data_contract): dates,
- * payment notes and comments. Per-field visibility/editability is enforced
+ * "Modifica dati" — the PATCH-editable subset (data_contract): title, revenue
+ * rows (spec 0360), dates, payment notes and comments. `product_lines` is
+ * watched only (it scopes the row editor's catalogue) and never travels.
+ * Per-field visibility/editability is enforced
  * by `MetaField` at render time (AC-039), not here. The contract status is
  * NOT part of this form (user directive 2026-08-31): it is driven by the
  * domain actions alone, so nothing here can leave the NOT NULL FK empty.
  */
-export function buildEditContractSchema() {
+export function buildEditContractSchema(t: TFunction) {
   return z.object({
+    title: z.string().max(TITLE_MAX_LENGTH, t('contracts.detail.titleMax')).nullable(),
+    product_lines: z.array(z.custom<ProductLineRow>()),
+    offer_lines: z.array(quoteLineRowSchema(t)).max(MAX_LINES_PER_TAB, t('quotes.form.linesMax')),
     renewal_date: z.string().nullable(),
     expiry_date: z.string().nullable(),
     payment_notes: z.string().nullable(),

@@ -25,6 +25,8 @@ function firstAccessSetPayload(User $user, string $token, array $overrides = [])
 // removed with the endpoint; the first access is now enforced server-side (AC-007).
 
 it('AC-007: a pending user is blocked everywhere but can choose a password via first-password', function () {
+    // REQUIREMENT CHANGED (spec 0359): the gate is on only in production.
+    config(['auth.first_access_gate' => true]);
     $user = firstAccessPendingUser();
     $token = $user->createToken('api')->plainTextToken;
     $other = $user->createToken('other');

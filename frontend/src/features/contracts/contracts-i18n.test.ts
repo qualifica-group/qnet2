@@ -93,6 +93,7 @@ const BACKEND_ADVANCED_FILTER_LABEL_KEYS = [
 const BACKEND_ROW_ACTION_LABEL_KEYS = [
   'contracts.actions.validate',
   'contracts.actions.program',
+  'contracts.actions.renew',
   'contracts.actions.changeStatus',
   'contracts.actions.terminate',
   'contracts.actions.reactivate',

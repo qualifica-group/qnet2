@@ -144,17 +144,56 @@ it('rejects a closing status outside the set and saves nothing', function () {
         ->and($workOrder->work_order_workflow_status_id)->toBe($before);
 });
 
-it('rejects an in-set closing status that is not in the closed group', function () {
+it('rejects an in-set closing status that is a working status', function () {
     [$workOrder, $workflow] = workOrderOnOwnWorkflow();
     Sanctum::actingAs(workOrderUserWith(['update']));
 
     $this->patchJson("/api/work-orders/{$workOrder->id}", [
         'is_force_closed' => true,
         'force_close_reason' => 'Lost',
-        'force_close_status_id' => $workflow->statuses()->where('system_key', 'completed')->value('id'),
+        'force_close_status_id' => $workflow->statuses()->where('name', 'Working')->value('id'),
     ])->assertUnprocessable()->assertJsonValidationErrors('force_close_status_id');
 
     expect($workOrder->refresh()->is_force_closed)->toBeFalse();
+});
+
+it('force-closing on a positive status lands on it and raises the progress to 100%', function () {
+    [$workOrder, $workflow] = workOrderOnOwnWorkflow();
+    $workOrder->progressEntries()->create(['percentage' => 40, 'recorded_on' => '2026-10-01']);
+    $positive = $workflow->statuses()->where('system_key', 'completed')->value('id');
+    Sanctum::actingAs(workOrderUserWith(['update']));
+
+    $this->patchJson("/api/work-orders/{$workOrder->id}", ['is_force_closed' => true, 'force_close_reason' => 'Done', 'force_close_status_id' => $positive])
+        ->assertOk()
+        ->assertJsonPath('data.work_order_workflow_status_id', $positive);
+
+    expect((int) $workOrder->progressEntries()->sum('percentage'))->toBe(100)
+        ->and($workOrder->progressEntries()->get()->last()->recorded_on->toDateString())->toBe(now()->toDateString());
+});
+
+it('a positive closure of a commessa already at 100% adds no progress entry', function () {
+    [$workOrder, $workflow] = workOrderOnOwnWorkflow();
+    $workOrder->progressEntries()->create(['percentage' => 100, 'recorded_on' => '2026-10-01']);
+    Sanctum::actingAs(workOrderUserWith(['update']));
+
+    $this->patchJson("/api/work-orders/{$workOrder->id}", [
+        'is_force_closed' => true,
+        'force_close_reason' => 'Done',
+        'force_close_status_id' => $workflow->statuses()->where('system_key', 'completed')->value('id'),
+    ])->assertOk();
+
+    expect($workOrder->progressEntries()->count())->toBe(1);
+});
+
+it('a negative closure leaves the progress untouched', function () {
+    [$workOrder] = workOrderOnOwnWorkflow();
+    $workOrder->progressEntries()->create(['percentage' => 40, 'recorded_on' => '2026-10-01']);
+    Sanctum::actingAs(workOrderUserWith(['update']));
+
+    $this->patchJson("/api/work-orders/{$workOrder->id}", ['is_force_closed' => true, 'force_close_reason' => 'Lost'])
+        ->assertOk();
+
+    expect((int) $workOrder->progressEntries()->sum('percentage'))->toBe(40);
 });
 
 it('ignores the closing status when there is no closing transition', function () {

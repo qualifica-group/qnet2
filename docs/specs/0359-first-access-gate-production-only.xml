@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0359-first-access-gate-production-only" status="draft" owner="nicola" date="2026-11-05">
+
+  <goal>
+    Il blocco di primo accesso (spec 0355: 403 `password_change_required` sulle API e popup a schermo intero)
+    e' attivo solo in produzione. Negli altri ambienti un utente con `must_set_password` = true entra e lavora
+    normalmente, senza popup; il flag resta salvato e torna a valere dove il blocco e' attivo.
+  </goal>
+
+  <context>
+    Decisione utente 2026-11-05: "voglio che questo controllo ci sia solo in produzione e non in altri ambienti
+    anche se e' predisposto ad essere cambiato". Interpretazione: si spegne l'APPLICAZIONE del flag, non la sua
+    scrittura. Creazione utente, reinvio benvenuto, password impostata dall'admin, seed (`seeding.force_password_change`,
+    0177) e `QualificaPasswordChangeSeeder` (0356) continuano a scrivere `must_set_password` come oggi.
+
+    Codice reale verificato 2026-11-05: `App\Http\Middleware\EnsureFirstPasswordSet` (gruppo `api`),
+    `AuthController::authenticatedUserPayload()` (payload di `POST auth/login` e `GET auth/me`, base `UserResource`),
+    FE `routes/protected-route.tsx` (cancello su `user.must_set_password`), `config/seeding.php`
+    (`require_password_change`, stesso schema di default per ambiente).
+  </context>
+
+  <scope>
+    <in>
+      <item>Config `auth.first_access_gate` = `(bool) env('AUTH_FIRST_ACCESS_GATE', env('APP_ENV') === 'production')`; voce in `.env.example`.</item>
+      <item>`User::isFirstAccessPending()` = `must_set_password` AND gate attivo: unico punto della decisione.</item>
+      <item>`EnsureFirstPasswordSet` blocca solo se `isFirstAccessPending()` (e token non di impersonificazione, invariato).</item>
+      <item>Payload utente autenticato (login + me): `must_set_password` = `isFirstAccessPending()`. Il FE non cambia logica: il cancello non compare dove il gate e' spento.</item>
+      <item>Test del gate (0355 `FirstAccessGateTest`, 0177 AC-007) abilitano il gate esplicitamente (REQUIREMENT CHANGED).</item>
+    </in>
+    <out>
+      <item>`UserResource` del modulo Utenti: espone ancora il flag reale (badge "In attesa di primo accesso" invariato).</item>
+      <item>`PUT auth/me/first-password` (`SetFirstPasswordRequest`): resta legato al flag reale; fuori produzione non e' raggiungibile dalla UI.</item>
+      <item>Scrittura del flag e seeder: invariati.</item>
+      <item>Manuale utente: nessun impatto (descrive il comportamento di produzione, invariato).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <config>auth.first_access_gate: bool (default APP_ENV === 'production'; env AUTH_FIRST_ACCESS_GATE)</config>
+    <endpoint method="GET" path="/api/auth/me">`data.must_set_password` = flag AND gate.</endpoint>
+    <endpoint method="POST" path="/api/auth/login">`data.user.must_set_password` = flag AND gate.</endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Il default di `auth.first_access_gate` e' true solo con APP_ENV=production (local, staging, testing -> false).</criterion>
+    <criterion id="AC-002">Gate spento: un utente con flag raggiunge le API, `me` e login rispondono `must_set_password` false, il flag in DB resta true.</criterion>
+    <criterion id="AC-003">Gate acceso: lo stesso utente riceve 403 `password_change_required`, `me` e login rispondono `must_set_password` true.</criterion>
+    <criterion id="AC-004">Gate spento: `GET /api/users/{user}` espone ancora il flag reale.</criterion>
+  </acceptance_criteria>
+
+</spec>

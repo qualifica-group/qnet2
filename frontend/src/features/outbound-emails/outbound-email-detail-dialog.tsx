@@ -2,7 +2,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
-import { AlertCircle, Clock, Download, Loader2, Mail, Paperclip, RotateCw } from 'lucide-react'
+import { AlertCircle, Clock, Download, Loader2, Mail, Paperclip, PenLine, Repeat, RotateCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -13,7 +13,10 @@ import { formatDateTime } from '@/lib/formatting/date-display'
 import { saveBlob } from '@/lib/download'
 import { downloadOutboundEmailAttachment } from '@/features/outbound-emails/api'
 import { useSendOutboundEmail, useOutboundEmail } from '@/features/outbound-emails/use-outbound-email-draft'
+import { useUnscheduleOutboundEmail } from '@/features/outbound-emails/use-outbound-email-schedule'
+import { OutboundEmailRecurrenceSummary } from '@/features/outbound-emails/outbound-email-recurrence-summary'
 import { OutboundEmailStatusBadge } from '@/features/outbound-emails/outbound-email-status-badge'
+import { conflictMessage } from '@/features/outbound-emails/outbound-email-errors'
 import { OutboundEmailAttachmentTile } from '@/features/outbound-emails/outbound-email-attachment-tile'
 import { OutboundEmailDialogFooter, OutboundEmailDialogHeader } from '@/features/outbound-emails/outbound-email-dialog-chrome'
 import type { EmailOwnerRef, OutboundEmailAttachment } from '@/features/outbound-emails/types'
@@ -23,6 +26,8 @@ export interface OutboundEmailDetailDialogProps {
   emailId: number
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Called after "Riporta in bozza" succeeded, so the owner can open the composer on the now-draft email. */
+  onUnscheduled?: (emailId: number) => void
 }
 
 /**
@@ -31,10 +36,11 @@ export interface OutboundEmailDetailDialogProps {
  * commessa-scoped endpoint (D-8). A `failed` email with `can.send` offers
  * "Reinvia" straight from here — no need to reopen the composer.
  */
-export function OutboundEmailDetailDialog({ owner, emailId, open, onOpenChange }: OutboundEmailDetailDialogProps) {
+export function OutboundEmailDetailDialog({ owner, emailId, open, onOpenChange, onUnscheduled }: OutboundEmailDetailDialogProps) {
   const { t, i18n } = useTranslation()
   const { data: email, isLoading, isError, refetch } = useOutboundEmail(owner, emailId)
   const resend = useSendOutboundEmail(owner, emailId)
+  const unschedule = useUnscheduleOutboundEmail(owner, emailId)
   const attachmentsTitleId = useId()
 
   const handleResend = async () => {
@@ -43,6 +49,17 @@ export function OutboundEmailDetailDialog({ owner, emailId, open, onOpenChange }
       toast.success(t('outboundEmails.composer.sent'))
     } catch (error) {
       toast.error(apiErrorMessage(error, t('outboundEmails.composer.genericError'), i18n))
+    }
+  }
+
+  const handleUnschedule = async () => {
+    try {
+      await unschedule.mutateAsync()
+      toast.success(t('outboundEmails.recurrence.unscheduled'))
+      onOpenChange(false)
+      onUnscheduled?.(emailId)
+    } catch (error) {
+      toast.error(conflictMessage(error) ?? apiErrorMessage(error, t('outboundEmails.recurrence.unscheduleError'), i18n))
     }
   }
 
@@ -103,6 +120,15 @@ export function OutboundEmailDetailDialog({ owner, emailId, open, onOpenChange }
                 </dl>
               </div>
 
+              {email.recurrence ? <OutboundEmailRecurrenceSummary recurrence={email.recurrence} /> : null}
+
+              {email.recurrence_source_id !== null ? (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Repeat className="size-3.5" aria-hidden="true" />
+                  {t('outboundEmails.recurrence.copyNote')}
+                </p>
+              ) : null}
+
               {email.status === 'failed' && email.error_message ? (
                 <div
                   role="alert"
@@ -159,6 +185,16 @@ export function OutboundEmailDetailDialog({ owner, emailId, open, onOpenChange }
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             {t('common.close')}
           </Button>
+          {email?.can.unschedule ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => void handleUnschedule()} disabled={unschedule.isPending}>
+              {unschedule.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <PenLine className="size-3.5" aria-hidden="true" />
+              )}
+              {t('outboundEmails.recurrence.unschedule')}
+            </Button>
+          ) : null}
           {email?.status === 'failed' && email.can.send ? (
             <Button type="button" size="sm" onClick={() => void handleResend()} disabled={resend.isPending}>
               {resend.isPending ? (

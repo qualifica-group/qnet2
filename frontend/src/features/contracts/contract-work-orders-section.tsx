@@ -75,6 +75,7 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
       forceCloseDialog,
     progressDialog,
     requestUpdateDialog,
+    collaborationDialogs,
     } = useWorkOrderRowActions({ onMutated: refreshGrid, forceMode: OPEN_MODE_MODAL })
 
     const count = rowCount ?? 0
@@ -110,6 +111,7 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
         {forceCloseDialog}
         {progressDialog}
         {requestUpdateDialog}
+        {collaborationDialogs}
 
         <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refreshGrid} />
 

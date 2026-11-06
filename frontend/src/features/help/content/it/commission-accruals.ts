@@ -27,7 +27,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'La provvigione di una riga d’offerta **matura quando la fattura che la contiene viene incassata**, in proporzione all’incassato: con metà fattura incassata matura metà della provvigione.',
-            'Se la riga d’offerta è fatturata in più fatture, ogni fattura porta la sua quota; non si matura mai **più del 100%** della provvigione della riga.',
+            'Se la riga d’offerta è fatturata in più fatture della stessa commessa, ogni fattura porta la sua quota; in una commessa non si matura mai **più del 100%** della provvigione della riga. Nella commessa di un rinnovo del contratto la provvigione della riga matura di nuovo per intero.',
             'Se un incasso viene **annullato**, il sistema registra uno **storno** dello stesso importo. I movimenti già registrati non si modificano mai: la correzione è sempre un nuovo movimento.',
             'Lo storno cade alla **data di oggi**, anche se l’incasso annullato era di un periodo passato.',
             'Si maturano le provvigioni di **Commerciale, Segnalatore e Supervisore**; le provvigioni del Fornitore sono escluse.',

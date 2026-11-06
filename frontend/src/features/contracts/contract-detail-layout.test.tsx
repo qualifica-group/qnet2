@@ -89,6 +89,9 @@ function contract(overrides: Partial<ContractDetailWithPermissions> = {}): Contr
     alert: null,
     days_to_expiry: null,
     days_to_renewal: null,
+    renewal_number: 0,
+    renewals: [],
+    initial_period_work_orders_count: 0,
     offer_lines: [],
     summary: {
       revenue: { net: '1000.00', vat: '220.00', gross: '1220.00' },

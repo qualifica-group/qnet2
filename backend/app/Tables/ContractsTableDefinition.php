@@ -15,6 +15,7 @@ use App\Services\Quotes\QuoteVisibilityScope;
 use App\Tables\Contracts\ContractAdvancedFilterCatalog;
 use App\Tables\Contracts\ContractColumnCatalog;
 use App\Tables\Contracts\ContractRelationColumns;
+use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -105,7 +106,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
             'quote.managers.avatar',
             'quote.offerLines.product.category',
             'contractStatus',
-        ]);
+        ])->withCount(DocumentsCountColumn::own());
 
         // Record visibility (spec 0316, D-3): own / own site / all, through the quote.
         return ContractVisibilityScope::scopeToActor($query, Auth::user());
@@ -205,6 +206,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
             'revenue_vat' => $quote?->revenue_vat,
             'revenue_gross' => $this->grossOf($quote?->revenue_net, $quote?->revenue_vat),
             'alert' => $this->alertResolver->resolve($row),
+            DocumentsCountColumn::FIELD => DocumentsCountColumn::project($row),
         ];
     }
 
@@ -280,7 +282,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
         $allowed = [];
 
         if (Gate::forUser($actor)->allows('view', $row)) {
-            $allowed[] = 'view';
+            array_push($allowed, 'view', 'documents');
         }
 
         if ($this->actionAvailability->mayValidate($row) && Gate::forUser($actor)->allows('validate', $row)) {
@@ -289,6 +291,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
 
         if ($this->actionAvailability->mayProgram($row) && Gate::forUser($actor)->allows('program', $row)) {
             $allowed[] = 'program';
+            $allowed[] = 'renew';
         }
 
         if ($this->actionAvailability->mayChangeStatus($row) && Gate::forUser($actor)->allows('changeStatus', $row)) {

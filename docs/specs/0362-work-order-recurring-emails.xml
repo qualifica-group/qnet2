@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0362-work-order-recurring-emails" status="approved" owner="utente" date="2026-11-05">
+
+  <goal>
+    Dal tab Email della commessa l'utente prepara una volta un'email (destinatari, oggetto, corpo,
+    allegati) e la programma con una regola di ripetizione, una data di inizio e una data di fine
+    obbligatoria: il sistema la reinvia da solo, identica, a ogni data della regola, come il
+    promemoria email delle commesse del QNet legacy.
+  </goal>
+
+  <context>
+    <legacy>
+      - `/Users/Repository/qnet`: `email_order_reminders` (model `EmailOrderReminder`, job
+        `App\Jobs\EmailOrderReminders`, UI `App\Livewire\Quotations\InviaEmail`). Reinvia la STESSA
+        email della commessa (title/body/send_to) dalle 8:00, frequenze day/week/month/year/custom,
+        fine `no` | `date` | `iterations`.
+      - Dati reali (letti 2026-11-05): 562 regole, 206 attive (203 settimanali, 3 giornaliere;
+        194 fine dopo N invii, 12 senza fine). `email_quotation_reminders` e
+        `email_opportunity_reminders` vuote: nell'uso reale la ricorrenza esiste solo sulle commesse.
+    </legacy>
+    <qnet2>
+      - Email in uscita (spec 0175/0195): tabella `outbound_emails` (morph `emailable`, `status`
+        string(16), `sender_user_id`, `from_address` snapshot all'invio, `to/cc/bcc_recipients`
+        JSON, `subject`, `body` HTML gia' risolto, `purpose`), model `OutboundEmail`
+        (`markQueued/markSent/markFailed`, `scopeVisibleTo`: bozze visibili solo all'autore),
+        enum `OutboundEmailStatus` (draft, queued, sent, failed), `OutboundEmailService`
+        (createDraft/updateDraft/deleteDraft/send + `assertSendable`), `SendOutboundEmailJob`
+        (tries=1, guard su `queued`), `OutboundEmailAttachmentService::copyAll()`,
+        `OutboundEmailResource` (`can.update/delete/send`), `OutboundEmailListItemResource`.
+      - Proprietari: `config('outbound_emails.owners')` = work_order, invoice, purchase_order
+        (`EmailOwnerRegistry`, interfaccia `EmailOwner`, `WorkOrderEmailOwner`). Rotte commessa
+        `backend/routes/api/work-order-emails.php` (`WorkOrderEmailController`), permessi
+        `work-orders.viewEmails` / `work-orders.sendEmail` + perimetro commessa (WorkOrderPolicy).
+      - I segnaposto del modello (`{work_order.code}`...) sono risolti al momento dell'applicazione
+        del modello nel composer: il `body` salvato e' testo finale. Nessun ricalcolo all'invio.
+      - Stato commessa CALCOLATO, mai persistito: `WorkOrderStatusResolver::progress($wo)->status`
+        (`WorkOrderStatus` open, in_progress, completed, closed; `acceptsUpdateRequest()` = open|in_progress).
+      - Motore ricorrenza dei Task (spec 0120/0155/0160): `App\Services\Tasks\TaskRecurrenceCalculator`
+        (puro, `nextDates(TaskRecurrenceData, from, limit, alreadyGenerated, horizon)`, shift
+        `workdays_only` via `WorkCalendar`), DTO `App\DataObjects\Tasks\TaskRecurrenceData`, enum
+        `TaskRecurrenceFrequency` (daily, weekly, monthly, yearly, custom), `TaskRecurrenceMonthMode`
+        (fixed, ordinal), `TaskRecurrenceEnd` (qui sempre `on_date`). Validazione di riferimento
+        `App\Http\Requests\Tasks\TaskRecurrenceRules`. Schedule in `backend/routes/console.php`.
+      - FE: `frontend/src/features/outbound-emails/*` (composer dialog/form, detail dialog, list,
+        status badge, `types.ts`, `api.ts`), helper puri dei task riusabili:
+        `features/tasks/task-recurrence-format.ts` (`formatTaskRecurrenceRule`),
+        `task-recurrence-weekdays.ts`, `task-recurrence-types.ts`. I componenti editor dei task
+        (`task-recurrence-section.tsx` e figli) sono legati a `TaskFormValues` + `MetaField`.
+      - Le email di commessa del legacy NON sono migrate in qnet-2.
+    </qnet2>
+    <decisions>
+      D-1 (utente 2026-11-05): solo email delle COMMESSE. Il meccanismo resta generico
+          (`EmailOwner::allowsRecurrence()`), fatture e ODA rispondono `false`.
+      D-2 (utente): ogni invio automatico e' IDENTICO all'email programmata: stesso oggetto, corpo,
+          destinatari (to/cc/bcc) e allegati. Nessun ricalcolo dei segnaposto.
+      D-3 (utente): l'utente sceglie la DATA DI INIZIO; nessun invio immediato. Il primo invio
+          avviene il giorno `starts_on`, i successivi alle date della regola calcolate da
+          `TaskRecurrenceCalculator` con ancora `starts_on`.
+      D-4 (utente): DATA DI FINE OBBLIGATORIA (`ends_on` >= `starts_on`). Niente "mai" ne'
+          "dopo N invii". L'ultimo invio possibile e' alla data `ends_on` (inclusa).
+      D-5 (utente): la serie si ferma da sola quando la commessa non e' piu' in lavorazione,
+          cioe' stato calcolato `completed` o `closed` (`! acceptsUpdateRequest()`), anche prima
+          di `ends_on`. Lo stesso controllo blocca la programmazione (409).
+      D-6: l'email programmata e' una riga `outbound_emails` con stato nuovo `scheduled`; non viene
+          mai inviata lei stessa. Ogni invio crea una COPIA (`outbound_emails` nuova, stessi campi,
+          allegati copiati con `copyAll`, `sender_user_id` = autore) che percorre il ciclo
+          queued -> sent/failed esistente e compare nello storico come una normale email inviata.
+      D-7: stato `schedule_ended` = serie terminata dal sistema, con `end_reason`:
+          `ends_on_reached` | `owner_closed` | `sender_unavailable` (autore disattivato o senza
+          email). Nessuna riattivazione automatica.
+      D-8: l'autore puo' "Riportare in bozza" un'email `scheduled` o `schedule_ended` (POST
+          unschedule): torna `draft` con la regola conservata, modificabile, riprogrammabile o
+          eliminabile. E' anche il modo per interrompere la serie. Solo l'autore, come per bozze e
+          reinvio (`not_author`). Gli invii gia' fatti restano nello storico.
+      D-9: orario invio `config('outbound_emails.recurrence.send_at')` = '08:00' (come il legacy).
+          Comando `outbound-emails:send-recurrences` ogni ora, `withoutOverlapping()->onOneServer()`:
+          una serie e' dovuta quando `next_send_on` &lt;= oggi e l'ora corrente &gt;= `send_at`.
+      D-10: al massimo UN invio per serie per esecuzione. Date passate non inviate (server fermo)
+          NON si recuperano: si invia una volta e `next_send_on` avanza alla prima data della
+          regola strettamente dopo oggi. Idempotenza: UNIQUE(`outbound_email_recurrence_id`,
+          `occurrence_on`) sulle copie.
+      D-11: un invio fallito (`failed`) non ferma la serie. La copia fallita si reinvia a mano
+          come oggi (stesso autore).
+      D-12: `starts_on` >= oggi alla programmazione. Al momento di programmare valgono gli stessi
+          controlli dell'invio (`assertSendable`: destinatari, oggetto, corpo, mailbox autore,
+          limite allegati).
+    </decisions>
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `outbound_email_recurrences` (regola + stato serie) e colonne
+        `outbound_emails.outbound_email_recurrence_id` / `occurrence_on` sulle copie.</item>
+      <item>Stati `scheduled` e `schedule_ended` in `OutboundEmailStatus`; `scopeVisibleTo` invariato
+        (non sono bozze: visibili a chi vede le email della commessa).</item>
+      <item>Endpoint schedule / unschedule sulle email della commessa; `recurrence` nel dettaglio,
+        `next_send_on` nella lista; `can.schedule` / `can.unschedule`.</item>
+      <item>Comando schedulato che crea e accoda le copie, avanza `next_send_on`, chiude la serie
+        (D-5, D-7).</item>
+      <item>FE: sezione "Ricorrenza" nel composer (switch, regola, data inizio, data fine obbligatoria,
+        anteprima frase), pulsante "Programma" al posto di "Invia" quando la ricorrenza e' attiva;
+        badge "Programmata" / "Programmazione terminata"; riepilogo nel dettaglio (regola, prossimo
+        invio, invii fatti, motivo fine) e azione "Riporta in bozza".</item>
+      <item>Guida in-app work-orders IT+EN: nuova sezione `recurring-emails`; manuale Claude Docs
+        sezione Commesse &gt; Email.</item>
+    </in>
+    <out>
+      <item>Ricorrenza su email di fatture, ODA, offerte, opportunita' (D-1).</item>
+      <item>Ricalcolo dei segnaposto a ogni invio (D-2).</item>
+      <item>Fine "mai" o "dopo N invii" (D-4).</item>
+      <item>Migrazione dal legacy delle 206 regole attive: le email di commessa legacy non esistono
+        in qnet-2 (spec futura, insieme alla migrazione delle email).</item>
+      <item>Notifiche in-app all'autore a ogni invio o a fine serie.</item>
+      <item>Refactor dell'editor ricorrenza dei Task in componente condiviso (si riusano solo gli
+        helper puri; la generalizzazione e' un follow-up da segnalare).</item>
+      <item>Orario di invio scelto dall'utente; recupero degli invii persi.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Tutte le rotte sotto il gruppo di
+         work-order-emails.php, stessa authz delle altre: authorize sendEmail sulla commessa
+         (perimetro) + email risolta con resolveVisibleOrFail (404 cross-commessa / bozza altrui). -->
+
+    <shape name="RecurrenceRuleInput">
+      frequency: 'daily'|'weekly'|'monthly'|'yearly'|'custom'      (required)
+      interval: int >= 1                                           (required)
+      weekdays: int[1..7] distinct, min 1                          (required se weekly, vietato altrimenti)
+      month_mode: 'fixed'|'ordinal'|null                           (solo monthly|yearly)
+      month_day: int 1..31                                         (monthly|yearly con month_mode != ordinal)
+      ordinal: int 1..5, ordinal_weekday: int 1..7                 (solo month_mode = ordinal)
+      year_month: int 1..12                                        (solo yearly)
+      workdays_only: bool                                          (default false)
+      starts_on: 'YYYY-MM-DD' >= oggi                              (required)
+      ends_on: 'YYYY-MM-DD' >= starts_on                           (required, D-4)
+      <!-- Stesse regole di accoppiamento di TaskRecurrenceRules, senza ends/occurrence_count. -->
+    </shape>
+
+    <shape name="OutboundEmailRecurrence">
+      frequency, interval, weekdays|null, month_mode|null, month_day|null, ordinal|null,
+      ordinal_weekday|null, year_month|null, workdays_only: bool,
+      starts_on: string, ends_on: string,
+      next_send_on: string|null      (null quando la serie e' terminata)
+      last_sent_on: string|null
+      sent_count: int                (copie create, qualunque esito)
+      end_reason: 'ends_on_reached'|'owner_closed'|'sender_unavailable'|null
+    </shape>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/emails/{email}/schedule">
+      <request>{ recurrence: RecurrenceRuleInput }</request>
+      <response status="200">data: OutboundEmail con status 'scheduled', recurrence: OutboundEmailRecurrence
+        (next_send_on = starts_on, sent_count 0). Nessun invio immediato, nessuna copia creata.</response>
+      <errors>
+        403 senza work-orders.sendEmail o fuori perimetro; 403 `outbound_emails.not_author`;
+        404 email di altra commessa o bozza altrui;
+        409 `outbound_emails.not_draft` se status != draft;
+        409 `outbound_emails.recurrence_owner_not_active` se la commessa e' completed|closed;
+        422 campi di RecurrenceRuleInput (`recurrence.*`) e gli stessi di send (`to`, `subject`,
+        `body`, `sender`, `attachments`).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/emails/{email}/unschedule">
+      <request>nessun body</request>
+      <response status="200">data: OutboundEmail con status 'draft'; recurrence conservata (stessi valori
+        della regola, next_send_on null, end_reason invariato); can.update/delete/send/schedule true.</response>
+      <errors>403 come sopra / not_author; 404 come sopra;
+        409 `outbound_emails.not_scheduled` se status non e' scheduled|schedule_ended.</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH|DELETE|POST send" path="/api/work-orders/{workOrder}/emails/{email}[...]">
+      <response>Invariati. Su status scheduled|schedule_ended: PATCH/DELETE 409 not_draft, send 409
+        not_sendable_status (gia' cosi' per costruzione). DELETE di una bozza con regola: elimina anche
+        la regola; le copie gia' inviate restano (FK nullOnDelete).</response>
+    </endpoint>
+
+    <shape name="OutboundEmailResource (delta)">
+      status: + 'scheduled' | 'schedule_ended'
+      recurrence: OutboundEmailRecurrence | null       (null se l'email non ha mai avuto una regola)
+      recurrence_source_id: int | null                 (sulle COPIE: id dell'email programmata)
+      can.schedule: bool    (bozza propria, proprietario che ammette ricorrenza)
+      can.unschedule: bool  (scheduled|schedule_ended proprio)
+    </shape>
+    <shape name="OutboundEmailListItemResource (delta)">
+      status: + 'scheduled' | 'schedule_ended'
+      next_send_on: string | null
+      is_recurring_copy: bool
+    </shape>
+
+    <shape name="DB">
+      outbound_email_recurrences: id, outbound_email_id FK UNIQUE cascadeOnDelete, frequency string(16),
+        interval smallint, weekdays json null, month_mode string(16) null, month_day tinyint null,
+        ordinal tinyint null, ordinal_weekday tinyint null, year_month tinyint null,
+        workdays_only bool, starts_on date, ends_on date, next_send_on date null INDEX,
+        last_sent_on date null, sent_count int default 0, end_reason string(32) null, timestamps.
+      outbound_emails: + outbound_email_recurrence_id FK null nullOnDelete, + occurrence_on date null,
+        UNIQUE(outbound_email_recurrence_id, occurrence_on).
+    </shape>
+
+    <command name="outbound-emails:send-recurrences {--dry-run}">
+      Ogni ora (routes/console.php). Per ogni regola con email `scheduled` e next_send_on &lt;= oggi,
+      dopo `send_at`: Step 1 commessa non attiva -> schedule_ended/owner_closed; Step 2 autore
+      inattivo o senza email -> schedule_ended/sender_unavailable; Step 3 crea copia (occurrence_on =
+      oggi) + allegati + markQueued(autore) + SendOutboundEmailJob; Step 4 sent_count++, last_sent_on,
+      next_send_on = prima data regola &gt; oggi; se &gt; ends_on o nessuna -> schedule_ended/ends_on_reached.
+    </command>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato una bozza propria valida su commessa aperta, quando POST schedule con regola
+      settimanale (lun) starts_on lunedi' prossimo e ends_on tra 3 settimane, allora 200, status
+      `scheduled`, recurrence.next_send_on = starts_on, nessun job dispatchato, nessuna copia creata.</criterion>
+    <criterion id="AC-002">Dato POST schedule senza `recurrence.ends_on` (o ends_on &lt; starts_on, o starts_on
+      nel passato), allora 422 su `recurrence.ends_on` / `recurrence.starts_on` e la bozza resta `draft`.</criterion>
+    <criterion id="AC-003">Dato regole di accoppiamento violate (weekdays su daily, weekly senza weekdays,
+      month_day con ordinal, interval 0), allora 422 sul campo `recurrence.*` corrispondente.</criterion>
+    <criterion id="AC-004">Dato bozza senza destinatari / oggetto / corpo, quando POST schedule, allora 422
+      `to`/`subject`/`body` come per send.</criterion>
+    <criterion id="AC-005">Authz: utente senza work-orders.sendEmail o fuori perimetro -> 403; non autore
+      di un'email `scheduled` -> 403 su unschedule; bozza di un altro utente -> 404; email di un'altra
+      commessa -> 404.</criterion>
+    <criterion id="AC-006">Dato commessa con stato calcolato completed o closed, quando POST schedule,
+      allora 409 `recurrence_owner_not_active`.</criterion>
+    <criterion id="AC-007">Dato email non in draft (sent, queued, scheduled), quando POST schedule, allora
+      409 not_draft. Dato email `scheduled`, PATCH e DELETE -> 409, send -> 409.</criterion>
+    <criterion id="AC-008">Dato serie con next_send_on = oggi e ora &gt;= 08:00, quando gira il comando,
+      allora nasce UNA copia queued con stessi to/cc/bcc/subject/body, allegati copiati (stessi nomi e
+      dimensioni, file distinti), sender = autore, from_address = email autore, occurrence_on = oggi,
+      recurrence_source_id = id programmata; SendOutboundEmailJob dispatchato; sent_count 1,
+      last_sent_on oggi, next_send_on = data successiva della regola.</criterion>
+    <criterion id="AC-009">Dato lo stesso giorno, quando il comando gira una seconda volta, allora nessuna
+      nuova copia (idempotenza, UNIQUE recurrence+occurrence_on).</criterion>
+    <criterion id="AC-010">Dato next_send_on = oggi e ora &lt; 08:00, quando gira il comando, allora nessuna copia.</criterion>
+    <criterion id="AC-011">Dato l'ultimo invio alla data ends_on, quando il comando lo esegue, allora la copia
+      parte e l'email programmata passa a `schedule_ended`, end_reason `ends_on_reached`, next_send_on null.
+      Se la data successiva supera ends_on gia' dopo un invio intermedio, idem.</criterion>
+    <criterion id="AC-012">Dato commessa diventata completed o closed, quando il comando trova la serie dovuta,
+      allora nessuna copia e status `schedule_ended`, end_reason `owner_closed`.</criterion>
+    <criterion id="AC-013">Dato autore disattivato (is_active false) o senza email, quando il comando trova la
+      serie dovuta, allora nessuna copia e `schedule_ended` / `sender_unavailable`.</criterion>
+    <criterion id="AC-014">Dato next_send_on 10 giorni fa su regola giornaliera (server fermo), quando gira il
+      comando, allora una sola copia (occurrence_on = oggi) e next_send_on = domani (D-10).</criterion>
+    <criterion id="AC-015">Dato `workdays_only` e una data della regola di sabato, allora l'invio avviene il
+      lunedi' successivo (shift di TaskRecurrenceCalculator, festivita' incluse).</criterion>
+    <criterion id="AC-016">Dato una copia fallita (job in errore), la serie resta `scheduled` e il giorno
+      della data successiva parte la copia seguente (D-11).</criterion>
+    <criterion id="AC-017">Dato email `scheduled` o `schedule_ended` propria, quando POST unschedule, allora
+      200 status `draft`, regola conservata con next_send_on null; il comando non la considera piu';
+      PATCH torna possibile; una nuova schedule riparte da starts_on aggiornato. Su un draft -> 409 not_scheduled.</criterion>
+    <criterion id="AC-018">Dato una bozza riportata con regola, quando DELETE, allora email e regola eliminate,
+      le copie inviate restano con outbound_email_recurrence_id null.</criterion>
+    <criterion id="AC-019">Dato GET lista e dettaglio, allora `scheduled`/`schedule_ended` visibili a chi ha
+      viewEmails (non solo all'autore), lista con next_send_on e is_recurring_copy, dettaglio con
+      recurrence e can.schedule/can.unschedule coerenti con AC-001/AC-017.</criterion>
+    <criterion id="AC-020">Dato fattura o ODA, `can.schedule` e' false (EmailOwner::allowsRecurrence false) e
+      non esiste rotta schedule per quei proprietari.</criterion>
+    <criterion id="AC-021">FE composer: con lo switch "Ricorrenza" attivo compaiono frequenza, intervallo,
+      giorni, data inizio e data fine (obbligatorie, errore accessibile se mancanti), anteprima della regola
+      in frase, e il pulsante primario diventa "Programma" (chiama schedule, non send). Switch spento =
+      comportamento attuale invariato.</criterion>
+    <criterion id="AC-022">FE: errori 422 `recurrence.*` e 409 recurrence_owner_not_active mostrati sul campo /
+      come messaggio, senza chiudere il composer.</criterion>
+    <criterion id="AC-023">FE lista e dettaglio: badge "Programmata" / "Programmazione terminata"; dettaglio con
+      regola in frase, periodo, prossimo invio, invii fatti, motivo fine; "Riporta in bozza" solo con
+      can.unschedule; le copie mostrano un'icona di ripetizione.</criterion>
+    <criterion id="AC-024">i18n IT+EN di tutte le stringhe nuove; guida work-orders sezione `recurring-emails`
+      IT+EN con stessi id; help-content-parity.test.ts verde.</criterion>
+    <criterion id="AC-025">`php artisan schedule:list` mostra `outbound-emails:send-recurrences` orario.
+      Manuale: il cron `schedule:run` deve girare sul server (gia' richiesto da 0120).</criterion>
+    <criterion id="AC-026">Responsive della sezione Ricorrenza nel composer a 375/768/1024 (verifica manuale).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Calcolo date SOLO con `TaskRecurrenceCalculator` + `TaskRecurrenceData`
+      (ends = on_date), mai una seconda implementazione del calendario.
+    - Authz server-side su ogni endpoint (WorkOrderPolicy sendEmail + perimetro + autore). FormRequest
+      dedicata `ScheduleOutboundEmailRequest` con regole `recurrence.*`.
+    - `status`, `outbound_email_recurrence_id`, `occurrence_on` fuori da #[Fillable] (forceFill come markQueued).
+    - Il comando non tocca bozze, non invia mai l'email programmata stessa, transazione per serie
+      (copia + allegati + avanzamento), dispatch del job dopo la transazione.
+    - `OutboundEmailService.php` e' a 215 righe: la logica di programmazione va in una classe nuova
+      (`OutboundEmailScheduler`), il comando delega a una classe `RecurringEmailDispatcher` (Step N).
+    - Componenti FE: niente modifiche ai componenti editor dei task; helper puri riusati per import.
+      File FE &lt; 300 righe; composer-form oggi 254: la sezione va in un file nuovo.
+    - Test: Pest in `tests/Feature/Spec0362`, Vitest accanto ai file FE; esecuzione mirata, suite completa
+      una volta a fine feature (backend.md §6). Mai comandi distruttivi sul DB dev.
+  </constraints>
+
+  <plan>
+    <!-- Contratto congelato sopra = punto di sincronizzazione: BE e FE in parallelo dopo l'approvazione. -->
+    <task id="MT-1" owner="backend" lane="seq (base BE)" deps="-">Migrazioni (`outbound_email_recurrences`,
+      colonne su `outbound_emails`), model `OutboundEmailRecurrence` (+factory), enum stati
+      `scheduled`/`schedule_ended`, enum `OutboundEmailRecurrenceEndReason`, relazioni su `OutboundEmail`,
+      config `outbound_emails.recurrence.send_at`. Verifica: Pest schema/model.</task>
+    <task id="MT-2" owner="backend" lane="seq dopo MT-1" deps="MT-1">`EmailOwner::allowsRecurrence()` (3 owner),
+      `ScheduleOutboundEmailRequest`, `OutboundEmailScheduler` (schedule/unschedule), azioni nel
+      `WorkOrderEmailController` + 2 rotte, delta `OutboundEmailResource`/`ListItemResource`, lang IT/EN.
+      Verifica: AC-001..007, 017..020.</task>
+    <task id="MT-3" owner="backend" lane="parallelo a MT-2" deps="MT-1">`RecurringEmailDispatcher` + comando
+      `outbound-emails:send-recurrences` + `routes/console.php`. Write surface disgiunta da MT-2
+      (Services/OutboundEmails/RecurringEmailDispatcher.php, Console/Commands, console.php).
+      Verifica: AC-008..016, 025.</task>
+    <task id="MT-4" owner="frontend" lane="parallelo a MT-1..3" deps="contratto">`types.ts`/`api.ts` delta,
+      hook `use-outbound-email-schedule.ts`, nuova `outbound-email-recurrence-fields.tsx` + schema Zod
+      (helper puri task riusati), integrazione nel composer (pulsante Programma). Verifica: AC-021, 022 (Vitest).</task>
+    <task id="MT-5" owner="frontend" lane="seq dopo MT-4" deps="MT-4">Badge stati, riepilogo ricorrenza nel
+      dettaglio + "Riporta in bozza", icona copie nella lista, i18n IT/EN. Verifica: AC-023, 024 (Vitest).</task>
+    <task id="MT-6" owner="frontend" lane="parallelo a MT-5" deps="contratto">Guida in-app work-orders sezione
+      `recurring-emails` IT+EN (solo `features/help/content/*/work-orders.ts`). Verifica: parity test.</task>
+    <task id="MT-7" owner="verifier" lane="gated" deps="MT-1..6">Pest Spec0362 + set OutboundEmails/WorkOrderEmails/
+      InvoiceEmails/PurchaseOrderEmails, Vitest outbound-emails + help, Pint, ESLint, `tsc -b --force`,
+      schedule:list, AC-001..025; AC-026 manuale. Poi manuale Claude Docs + HANDOFF, stop prima del commit.</task>
+  </plan>
+
+</spec>

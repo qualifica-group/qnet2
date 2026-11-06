@@ -2,6 +2,8 @@ import { createElement, Fragment, useCallback, useState, type ReactNode } from '
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { apiErrorMessage } from '@/lib/forbidden-message'
+import { DocumentsDialog } from '@/features/attachments/documents-dialog'
+import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { OPEN_MODE_MODAL, type ModuleCreateParams, type OpenMode } from '@/features/modules/types'
 import { deleteQuote, QUOTES_DOMAIN } from '@/features/quotes/api'
@@ -45,6 +47,8 @@ export interface UseQuoteRowActionsResult {
   /** The Offerta whose notes are open, `null` when the dialog is closed. */
   notesTarget: QuoteNotesTarget | null
   closeNotes: (open: boolean) => void
+  /** The parent Opportunity's documents, read-only (spec 0363): the host mounts it. */
+  documentsDialog: ReactNode
   sheet: ReactNode
   /** Opens an empty create form (safe to bind straight to an `onClick`). */
   openCreate: () => void
@@ -101,6 +105,7 @@ export function useQuoteRowActions({
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const [notesTarget, setNotesTarget] = useState<QuoteNotesTarget | null>(null)
+  const [documentsOpportunityId, setDocumentsOpportunityId] = useState<number | null>(null)
 
   const { openCreate, openCreateWith, openView, sheet } = useModuleOpener(QUOTES_DOMAIN, {
     onSaved: onMutated,
@@ -153,6 +158,10 @@ export function useQuoteRowActions({
           }
           break
         }
+        case 'documents':
+          // Spec 0363: an offer owns no file, it shows its Opportunity's.
+          setDocumentsOpportunityId(resolveOpportunityId(row))
+          break
         case 'contract': {
           const contractId = resolveContractId(row)
           if (contractId !== null) {
@@ -203,6 +212,13 @@ export function useQuoteRowActions({
     closeActivity,
     notesTarget,
     closeNotes,
+    documentsDialog: createElement(DocumentsDialog, {
+      resource: OPPORTUNITY_ATTACHABLE_ALIAS,
+      id: documentsOpportunityId,
+      readOnly: true,
+      title: t('quotes.detail.tabs.opportunityDocuments'),
+      onOpenChange: (open: boolean) => (open ? undefined : setDocumentsOpportunityId(null)),
+    }),
     // One node for the callers to mount: the Offerta's own Sheet and the contract's.
     sheet: createElement(Fragment, null, sheet, contractSheet),
     openCreate,

@@ -47,6 +47,8 @@ class ContractsAuthorization extends AbstractResourceAuthorization
     {
         return [
             new FieldDefinition('contract_status_id', 'select', mandatory: true),
+            new FieldDefinition('title', 'text'),
+            new FieldDefinition('offer_lines', 'lines'),
             new FieldDefinition('accepted_at', 'date'),
             new FieldDefinition('validated_at', 'date'),
             new FieldDefinition('renewal_date', 'date'),
@@ -63,7 +65,7 @@ class ContractsAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['validate', 'terminate', 'program', 'change_status', 'reactivate', 'export', 'view_activity'];
+        return ['validate', 'terminate', 'program', 'renew', 'change_status', 'reactivate', 'export', 'view_activity'];
     }
 
     /**
@@ -72,18 +74,23 @@ class ContractsAuthorization extends AbstractResourceAuthorization
     protected function fieldPermissionCeiling(User $actor, ?Model $model): array
     {
         $mayWrite = $this->actorMayWrite($actor, $model);
+        // Spec 0360, D-6: the data fields also need a contract state that admits editing.
+        $mayEditData = $mayWrite && (! $model instanceof Contract || $this->actionAvailability->mayEdit($model));
+        $editableData = $mayEditData ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly();
 
         return [
             'contract_status_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'title' => $editableData,
+            'offer_lines' => $editableData,
             // Written only by the domain actions (MT-03), never by a PATCH.
             'accepted_at' => FieldPermission::visibleReadonly(),
             'validated_at' => FieldPermission::visibleReadonly(),
-            'renewal_date' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'expiry_date' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'renewal_date' => $editableData,
+            'expiry_date' => $editableData,
             'terminated_at' => FieldPermission::visibleReadonly(),
             'termination_reason' => FieldPermission::visibleReadonly(),
-            'payment_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'comments' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'payment_notes' => $editableData,
+            'comments' => $editableData,
         ];
     }
 
@@ -96,6 +103,7 @@ class ContractsAuthorization extends AbstractResourceAuthorization
             'validate' => $model instanceof Contract && $this->actionAvailability->mayValidate($model) && $actor->can('contracts.validate'),
             'terminate' => $model instanceof Contract && $this->actionAvailability->mayTerminate($model) && $actor->can('contracts.terminate'),
             'program' => $model instanceof Contract && $this->actionAvailability->mayProgram($model) && $actor->can('contracts.program'),
+            'renew' => $model instanceof Contract && $this->actionAvailability->mayProgram($model) && $actor->can('contracts.program'),
             'change_status' => $model instanceof Contract && $this->actionAvailability->mayChangeStatus($model) && $actor->can('contracts.changeStatus'),
             'reactivate' => $model instanceof Contract && $this->actionAvailability->mayReactivate($model) && $actor->can('contracts.reactivate'),
             'export' => $actor->can('contracts.export'),

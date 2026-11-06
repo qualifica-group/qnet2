@@ -8,6 +8,7 @@ use App\Enums\OutboundEmailStatus;
 use App\Models\Attachment;
 use App\Models\OutboundEmail;
 use App\Models\User;
+use App\Services\OutboundEmails\EmailOwnerRegistry;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,6 +20,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * relation ALREADY eager-loaded and pre-filtered to
  * `OutboundEmail::ATTACHMENT_COLLECTION` by the caller (OutboundEmailService)
  * -- this resource never queries.
+ *
+ * Spec 0362: `recurrence`/`sourceRecurrence`/`emailable` must be eager-loaded
+ * too (OutboundEmailService::detailRelations()).
  *
  * `can` mirrors the per-instance authorization BE-05's own visibility/
  * ownership rules already resolved (D-2/D-3/D-6), so the composer gates its
@@ -37,6 +41,8 @@ class OutboundEmailResource extends JsonResource
         $actor = $request->user();
         $isOwnDraft = $this->status === OutboundEmailStatus::Draft && $actor !== null && $this->sender_user_id === $actor->id;
         $isOwnFailed = $this->status === OutboundEmailStatus::Failed && $actor !== null && $this->sender_user_id === $actor->id;
+        $isOwnProgrammed = in_array($this->status, [OutboundEmailStatus::Scheduled, OutboundEmailStatus::ScheduleEnded], true)
+            && $actor !== null && $this->sender_user_id === $actor->id;
 
         return [
             'id' => $this->id,
@@ -59,12 +65,16 @@ class OutboundEmailResource extends JsonResource
             'sent_at' => $this->sent_at,
             'failed_at' => $this->failed_at,
             'error_message' => $this->error_message,
+            'recurrence' => $this->recurrence === null ? null : (new OutboundEmailRecurrenceResource($this->recurrence))->resolve($request),
+            'recurrence_source_id' => $this->sourceRecurrence?->outbound_email_id,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'can' => [
                 'update' => $isOwnDraft,
                 'delete' => $isOwnDraft,
                 'send' => $isOwnDraft || $isOwnFailed,
+                'schedule' => $isOwnDraft && app(EmailOwnerRegistry::class)->for($this->emailable)->allowsRecurrence($this->emailable),
+                'unschedule' => $isOwnProgrammed,
             ],
         ];
     }

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
@@ -21,14 +22,18 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * commessa's activity log carries no entry for a send, the "Email" tab IS the
  * history.
  *
- * `status`/`sender_user_id`/`from_address`/`queued_at`/`sent_at`/`failed_at`/
+ * `status`/`sender_user_id`/`queued_at`/`sent_at`/`failed_at`/
  * `error_message` are ALL service-managed state, deliberately absent from
  * #[Fillable] — never reachable through a raw mass-assignment of request
  * data, only ever written by `OutboundEmailService`'s own transitions
  * (create as draft, queue, mark sent/failed), mirroring `WorkOrder::code`.
- * Only the composer's own content fields are client-writable.
+ * Only the composer's own content fields are client-writable, `from_address`
+ * included (spec 0361, D-2): the draft's chosen sender, validated against the
+ * actor's own addresses by the FormRequest, finalized by markQueued().
+ * Spec 0362: `outbound_email_recurrence_id`/`occurrence_on` (set on the copies
+ * a recurring series sends) are service-managed too, written via forceFill.
  */
-#[Fillable(['email_template_id', 'to_recipients', 'cc_recipients', 'bcc_recipients', 'subject', 'body', 'purpose'])]
+#[Fillable(['email_template_id', 'to_recipients', 'cc_recipients', 'bcc_recipients', 'subject', 'body', 'purpose', 'from_address'])]
 class OutboundEmail extends BaseModel
 {
     /** @use HasFactory<OutboundEmailFactory> */
@@ -54,6 +59,7 @@ class OutboundEmail extends BaseModel
             'to_recipients' => 'array',
             'cc_recipients' => 'array',
             'bcc_recipients' => 'array',
+            'occurrence_on' => 'date:Y-m-d',
             'queued_at' => 'datetime',
             'sent_at' => 'datetime',
             'failed_at' => 'datetime',
@@ -89,6 +95,28 @@ class OutboundEmail extends BaseModel
     }
 
     /**
+     * The recurrence rule and series state of a programmed email (spec 0362);
+     * kept after unschedule, so the rule can be edited and reprogrammed.
+     *
+     * @return HasOne<OutboundEmailRecurrence, $this>
+     */
+    public function recurrence(): HasOne
+    {
+        return $this->hasOne(OutboundEmailRecurrence::class);
+    }
+
+    /**
+     * On a copy sent by a series: the series it came from (its `email` is the
+     * programmed email).
+     *
+     * @return BelongsTo<OutboundEmailRecurrence, $this>
+     */
+    public function sourceRecurrence(): BelongsTo
+    {
+        return $this->belongsTo(OutboundEmailRecurrence::class, 'outbound_email_recurrence_id');
+    }
+
+    /**
      * The actor-visibility rule (spec 0175, D-3): a `draft` is visible ONLY
      * to its own author; `queued`/`sent`/`failed` are visible to anyone the
      * caller already knows holds `work-orders.viewEmails` on this commessa
@@ -111,8 +139,8 @@ class OutboundEmail extends BaseModel
 
     /**
      * OutboundEmailService::send()'s transition into the queue (D-12):
-     * `from_address` is the snapshot of the sender's OWN mailbox at send
-     * time (D-6); `error_message` is cleared so a resent `failed` email
+     * `from_address` is the mailbox actually used at send time (spec 0361,
+     * D-2: the draft's chosen sender, else the login email); `error_message` is cleared so a resent `failed` email
      * does not keep showing its previous failure once it is queued again.
      */
     public function markQueued(string $fromAddress): void

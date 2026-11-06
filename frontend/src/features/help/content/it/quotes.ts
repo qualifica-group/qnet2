@@ -123,7 +123,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
         },
         {
           type: 'paragraph',
@@ -179,6 +179,7 @@ const guide: HelpGuide = {
             "La commissione **Fornitore** va al fornitore scelto sulla riga. Se cambi fornitore, le commissioni della riga si ricalcolano (se ce ne sono, prima chiede conferma). Una regola provvigionale dedicata a quel fornitore si applica in automatico.",
             "Le righe già salvate tengono il proprio fornitore anche se il prodotto cambia la sua lista di fornitori.",
             'Per cambiare il prodotto di una riga, rimuovila e scegli il nuovo prodotto dal catalogo.',
+            'Una riga **assegnata a una commessa** mostra "Assegnata a COM-..." ed è bloccata: nessun campo è modificabile e non si può rimuovere finché la commessa non viene eliminata. Vale anche quando modifichi le righe dal contratto o da Gestione Richieste; le provvigioni della riga si modificano comunque dall\'offerta.',
             'La scheda **Costi** mostra tutto il catalogo dei prodotti di costo, senza filtro per categoria, e lo stesso prodotto si può aggiungere più volte.',
             '**Descrizione aggiuntiva** aggiunge un testo alla riga, stampabile nel preventivo.',
             "Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga. Il popup mostra in alto imponibile della riga, costi imputati, base di calcolo e totale commissioni; per ogni ruolo un'etichetta indica l'origine della commissione (**Regola: Prodotto**, **Regola: Categoria** o **Regola personale** se viene da una regola del Configuratore, **Modifica manuale** se è stata cambiata a mano; passando sopra l'etichetta compare la spiegazione). In modifica, ogni ruolo mostra anche il **Calcolo di sistema** (quanto prevede il Configuratore Commissioni): se hai cambiato il valore a mano puoi tenerlo oppure tornare al calcolo con **Applica calcolo di sistema**. La riga **Fornitore** mostra anche il **Verso**: se la commissione viene da una regola è quello della regola; se la modifichi a mano scegli tu **Ricevuta** (è il ricavo della riga) o **Pagata** (costo verso il fornitore), e il margine si aggiorna di conseguenza.",

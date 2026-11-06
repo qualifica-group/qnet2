@@ -8,8 +8,11 @@ use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Company;
 use App\Models\Contract;
+use App\Models\ContractRenewal;
 use App\Models\Quote;
+use App\Services\Contracts\ContractActionAvailability;
 use App\Services\Contracts\ContractAlertResolver;
+use App\Services\Contracts\ContractPeriodWorkOrderCounter;
 use App\Services\Quotes\QuoteManagerLabelResolver;
 use App\Support\OperationalSiteLabel;
 use App\Support\ReferentRef;
@@ -46,6 +49,9 @@ class ContractResource extends JsonResource
 {
     use SummarizesProductLines;
     use SummarizesRewards;
+
+    /** @var array<int, int>|null */
+    private ?array $periodCounts = null;
 
     /**
      * @return array<string, mixed>
@@ -96,11 +102,52 @@ class ContractResource extends JsonResource
             'alert' => $alertResolver->resolve($this->resource),
             'days_to_expiry' => $alertResolver->daysToExpiry($this->resource),
             'days_to_renewal' => $alertResolver->daysToRenewal($this->resource),
+            'renewal_number' => $this->currentRenewalNumber(),
+            'renewals' => $this->summarizeRenewals(),
+            'initial_period_work_orders_count' => $this->periodCounts()[0] ?? 0,
             'offer_lines' => QuoteLineResource::collection($quote->offerLines),
             'summary' => $this->summarizeTotals($quote),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
+    }
+
+    /**
+     * Renewal history (spec 0358, D-15). `can_undo` is computed only for the
+     * latest renewal (the only one that can ever be undone): one query.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function summarizeRenewals(): array
+    {
+        $this->resource->loadMissing('renewals.renewedBy');
+        $availability = app(ContractActionAvailability::class);
+        $counts = $this->periodCounts();
+        $latest = $this->currentRenewalNumber();
+
+        return $this->renewals->map(fn (ContractRenewal $renewal): array => [
+            'id' => $renewal->id,
+            'number' => $renewal->number,
+            'starts_on' => $renewal->starts_on?->toDateString(),
+            'renewal_date' => $renewal->renewal_date?->toDateString(),
+            'expiry_date' => $renewal->expiry_date?->toDateString(),
+            'previous_renewal_date' => $renewal->previous_renewal_date?->toDateString(),
+            'previous_expiry_date' => $renewal->previous_expiry_date?->toDateString(),
+            'renewed_by' => $this->summarizeByName($renewal->renewedBy),
+            'created_at' => $renewal->created_at,
+            'work_orders_count' => $counts[$renewal->number] ?? 0,
+            'can_undo' => $renewal->number === $latest && $availability->mayUndoRenewal($this->resource, $renewal),
+        ])->values()->all();
+    }
+
+    /**
+     * Distinct work orders per renewal period, one grouped query per resource.
+     *
+     * @return array<int, int>
+     */
+    private function periodCounts(): array
+    {
+        return $this->periodCounts ??= app(ContractPeriodWorkOrderCounter::class)->countByPeriod($this->resource);
     }
 
     /**

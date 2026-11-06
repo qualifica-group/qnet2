@@ -38,6 +38,8 @@ final readonly class OutboundEmailDraftData
         public bool $subjectSubmitted = false,
         public ?string $body = null,
         public bool $bodySubmitted = false,
+        public ?string $fromAddress = null,
+        public bool $fromAddressSubmitted = false,
     ) {}
 
     /**
@@ -59,6 +61,8 @@ final readonly class OutboundEmailDraftData
             subjectSubmitted: array_key_exists('subject', $data),
             body: array_key_exists('body', $data) ? $data['body'] : null,
             bodySubmitted: array_key_exists('body', $data),
+            fromAddress: array_key_exists('from_address', $data) ? $data['from_address'] : null,
+            fromAddressSubmitted: array_key_exists('from_address', $data),
         );
     }
 
@@ -96,6 +100,10 @@ final readonly class OutboundEmailDraftData
 
         if ($this->bodySubmitted) {
             $attributes['body'] = $this->body;
+        }
+
+        if ($this->fromAddressSubmitted) {
+            $attributes['from_address'] = $this->fromAddress;
         }
 
         return $attributes;

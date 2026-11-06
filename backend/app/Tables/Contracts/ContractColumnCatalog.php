@@ -266,6 +266,16 @@ final class ContractColumnCatalog
                 'confirm' => false,
                 'permission' => 'contracts.view',
             ],
+            // Spec 0363: the contract's own documents, like the detail tab.
+            [
+                'key' => 'documents',
+                'label' => 'actions.documents',
+                'icon' => 'paperclip',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'contracts.view',
+                'count_field' => 'documents_count',
+            ],
             [
                 'key' => 'validate',
                 'label' => 'contracts.actions.validate',
@@ -282,6 +292,14 @@ final class ContractColumnCatalog
                 'key' => 'program',
                 'label' => 'contracts.actions.program',
                 'icon' => 'calendar-clock',
+                'type' => 'action',
+                'confirm' => true,
+                'permission' => 'contracts.program',
+            ],
+            [
+                'key' => 'renew',
+                'label' => 'contracts.actions.renew',
+                'icon' => 'refresh-cw',
                 'type' => 'action',
                 'confirm' => true,
                 'permission' => 'contracts.program',

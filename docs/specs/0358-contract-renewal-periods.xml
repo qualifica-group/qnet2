@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0358-contract-renewal-periods" status="draft" owner="utente" date="2026-11-05">
+<spec id="0358-contract-renewal-periods" status="approved" owner="utente" date="2026-11-05">
 
   <goal>
     Rinnovo dei Contratti a periodi: con lo stesso contratto e la stessa offerta l'utente apre un nuovo periodo

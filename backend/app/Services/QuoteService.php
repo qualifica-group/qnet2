@@ -94,6 +94,8 @@ class QuoteService
         'paymentMethod',
         'offerLines.product.category',
         'offerLines.supplier:id,name',
+        // Spec 0360, D-4: the work orders a REVENUE row is assigned to (frozen row).
+        'offerLines.workOrders:work_orders.id,work_orders.code',
         // Spec 0099, D-5: the typology is read live through the product by
         // QuoteLineResource, so it is eager-loaded like the category above.
         'offerLines.product.productTypology',

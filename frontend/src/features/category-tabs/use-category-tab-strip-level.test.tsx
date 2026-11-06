@@ -56,7 +56,19 @@ afterEach(() => {
 })
 
 describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
-  it('defaults to the all level: today\'s call, today\'s scope', async () => {
+  it('defaults to the root level when the operator never chose one (decisione utente 2026-11-05)', async () => {
+    window.localStorage.setItem('quotes.category-tab.root', '3')
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+
+    await waitFor(() => expect(result.current.scope).toEqual({ productCategoryBranchId: 3 }))
+    expect(result.current.tabsProps.level).toBe('root')
+    expect(result.current.tableKey).toBe('root-3')
+    expect(categoriesMock).toHaveBeenCalledWith('/quotes', 'root')
+    expect(categoriesMock).not.toHaveBeenCalledWith('/quotes')
+  })
+
+  it('keeps the all level the operator chose: the call and scope of a single category', async () => {
+    window.localStorage.setItem('quotes.category-tab-level', 'all')
     window.localStorage.setItem('quotes.category-tab', '12')
     const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
 
@@ -67,6 +79,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
   })
 
   it('switching to root reads the root categories, persists the level and scopes the grid by branch', async () => {
+    window.localStorage.setItem('quotes.category-tab-level', 'all')
     window.localStorage.setItem('quotes.category-tab.root', '3')
     const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.isPending).toBe(false))
@@ -92,6 +105,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
   })
 
   it('each level remembers its own tab; going back to all restores the earlier one', async () => {
+    window.localStorage.setItem('quotes.category-tab-level', 'all')
     const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.isPending).toBe(false))
     act(() => result.current.tabsProps.onSelect(12))

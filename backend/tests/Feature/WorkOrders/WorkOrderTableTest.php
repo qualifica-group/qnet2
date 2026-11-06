@@ -24,9 +24,9 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
 
     $data = $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data');
 
-    // Spec 0322 appends `work_order_workflow_status` (REQUIREMENT CHANGED).
+    // Spec 0322 appends `work_order_workflow_status` (REQUIREMENT CHANGED); spec 0358 D-14 adds `renewal_number` after `contract_expiry_date` (REQUIREMENT CHANGED).
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors', 'work_order_workflow_status']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'renewal_number', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors', 'work_order_workflow_status']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()

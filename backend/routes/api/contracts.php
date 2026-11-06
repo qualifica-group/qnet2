@@ -8,6 +8,7 @@ use App\Http\Controllers\Contracts\ContractMultiProgrammableLinesController;
 use App\Http\Controllers\Contracts\ContractMultiQuoteWorkOrderController;
 use App\Http\Controllers\Contracts\ContractProgrammableLinesController;
 use App\Http\Controllers\Contracts\ContractReactivationController;
+use App\Http\Controllers\Contracts\ContractRenewalController;
 use App\Http\Controllers\Contracts\ContractStatusChangeController;
 use App\Http\Controllers\Contracts\ContractTerminationController;
 use App\Http\Controllers\Contracts\ContractValidationController;
@@ -73,3 +74,8 @@ Route::post('contracts/{contract}/work-orders', ContractWorkOrderController::cla
 
 // Spec 0215: several commesse in one all-or-nothing request (one group each).
 Route::post('contracts/{contract}/work-orders/batch', ContractWorkOrderBatchController::class);
+
+// Spec 0358 (D-10/D-11): open / undo a renewal period. Same gate as "Programma";
+// scopeBindings so a renewal of another contract is a 404.
+Route::post('contracts/{contract}/renewals', [ContractRenewalController::class, 'store']);
+Route::delete('contracts/{contract}/renewals/{renewal}', [ContractRenewalController::class, 'destroy'])->scopeBindings();

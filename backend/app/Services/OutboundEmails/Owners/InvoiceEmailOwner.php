@@ -62,6 +62,11 @@ final class InvoiceEmailOwner implements EmailOwner
         return EmailTemplateModule::Invoices;
     }
 
+    public function allowsRecurrence(Model $owner): bool
+    {
+        return false;
+    }
+
     /**
      * Primary PEC of the customer, else its primary email (D-12).
      */

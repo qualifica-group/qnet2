@@ -76,3 +76,15 @@ describe('workOrderColumnRenderers date columns', () => {
     expect(screen.queryByText('—')).not.toBeInTheDocument()
   })
 })
+
+describe('workOrderColumnRenderers.renewal_number (spec 0358 AC-029)', () => {
+  it('renders "Initial" for period 0', () => {
+    renderCell('renewal_number', 0)
+    expect(screen.getByText('Initial')).toBeInTheDocument()
+  })
+
+  it('renders "Renewal N" for a renewed period', () => {
+    renderCell('renewal_number', 2)
+    expect(screen.getByText('Renewal 2')).toBeInTheDocument()
+  })
+})

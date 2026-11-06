@@ -51,6 +51,9 @@ class AuthController extends BaseApiController
 
         $payload = $this->withCustomFields($resource);
         $payload = $payload instanceof JsonResource ? $payload->resolve() : $payload;
+        // The client shows the first-access gate from this field: it reflects the
+        // gate, not the raw flag, so it stays false where the gate is off (spec 0359).
+        $payload['must_set_password'] = $user->isFirstAccessPending();
 
         if ($user->employment !== null) {
             $payload['employment'] = ['primary_operational_site_id' => $user->employment->primary_operational_site_id];

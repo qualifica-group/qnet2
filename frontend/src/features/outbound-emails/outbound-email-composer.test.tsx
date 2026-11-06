@@ -75,7 +75,9 @@ function email(overrides: Partial<OutboundEmail> = {}): OutboundEmail {
     error_message: null,
     created_at: '2026-09-20T09:00:00.000Z',
     updated_at: '2026-09-20T09:00:00.000Z',
-    can: { update: true, delete: true, send: true },
+    recurrence: null,
+    recurrence_source_id: null,
+    can: { update: true, delete: true, send: true, schedule: false, unschedule: false },
     ...overrides,
   }
 }
@@ -83,6 +85,7 @@ function email(overrides: Partial<OutboundEmail> = {}): OutboundEmail {
 function composeContext(overrides: Partial<ComposeContext> = {}): ComposeContext {
   return {
     sender: { name: 'Mario Rossi', email: 'mario.rossi@example.com' },
+    sender_options: ['mario.rossi@example.com'],
     recipient_suggestions: [],
     documents: [],
     quote_pdf_available: false,
@@ -137,6 +140,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks()
+  window.localStorage.clear()
 })
 
 describe('OutboundEmailComposerDialog', () => {
@@ -194,6 +198,59 @@ describe('OutboundEmailComposerDialog', () => {
     await waitFor(() => expect(updateOutboundEmailMock).toHaveBeenCalledWith(WORK_ORDER_OWNER, 1, expect.any(Object)))
     await waitFor(() => expect(sendOutboundEmailMock).toHaveBeenCalledWith(WORK_ORDER_OWNER, 1))
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
+  it('proposes the last sender used, saves it on the draft and remembers the sender of the send (spec 0361)', async () => {
+    window.localStorage.setItem('outbound-emails.last-from-address:mario.rossi@example.com', 'shared@example.com')
+    fetchOutboundEmailComposeContextMock.mockResolvedValue(
+      composeContext({ sender_options: ['mario.rossi@example.com', 'shared@example.com', 'mario.personal@example.com'] }),
+    )
+    const ready = { to: ['client@example.com'], subject: 'Hello', body: '<p>Hi</p>' }
+    fetchOutboundEmailMock.mockResolvedValue(email(ready))
+    updateOutboundEmailMock.mockResolvedValue(email({ ...ready, from_address: 'mario.personal@example.com' }))
+    sendOutboundEmailMock.mockResolvedValue(email({ ...ready, status: 'queued', from_address: 'mario.personal@example.com' }))
+
+    renderComposer()
+
+    const picker = await screen.findByRole('combobox', { name: 'Sender' })
+    expect(picker).toHaveTextContent('shared@example.com')
+    fireEvent.click(picker)
+    fireEvent.click(await screen.findByRole('option', { name: 'mario.personal@example.com' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    await waitFor(() =>
+      expect(updateOutboundEmailMock).toHaveBeenCalledWith(
+        WORK_ORDER_OWNER,
+        1,
+        expect.objectContaining({ from_address: 'mario.personal@example.com' }),
+      ),
+    )
+    await waitFor(() =>
+      expect(window.localStorage.getItem('outbound-emails.last-from-address:mario.rossi@example.com')).toBe(
+        'mario.personal@example.com',
+      ),
+    )
+  })
+
+  it('falls back to the login email when the remembered sender is no longer allowed, without a picker for one address', async () => {
+    window.localStorage.setItem('outbound-emails.last-from-address:mario.rossi@example.com', 'old@example.com')
+    fetchOutboundEmailMock.mockResolvedValue(email())
+    updateOutboundEmailMock.mockResolvedValue(email({ subject: 'Hello' }))
+
+    renderComposer()
+
+    const subject = await screen.findByLabelText('Subject')
+    expect(screen.queryByRole('combobox', { name: 'Sender' })).not.toBeInTheDocument()
+    fireEvent.change(subject, { target: { value: 'Hello' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+
+    await waitFor(() =>
+      expect(updateOutboundEmailMock).toHaveBeenCalledWith(
+        WORK_ORDER_OWNER,
+        1,
+        expect.objectContaining({ from_address: 'mario.rossi@example.com' }),
+      ),
+    )
   })
 
   it('maps a 422 from the save onto the subject field', async () => {

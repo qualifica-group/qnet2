@@ -69,6 +69,7 @@ final class WorkOrderDerivedColumns
         private readonly FilterApplier $filterApplier,
         private readonly WorkOrderRegistryColumn $registryColumn,
         private readonly WorkOrderContractExpiryColumn $contractExpiryColumn,
+        private readonly WorkOrderRenewalColumn $renewalColumn,
         private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
     ) {}
 
@@ -105,6 +106,12 @@ final class WorkOrderDerivedColumns
 
         if ($columnId === WorkOrderContractExpiryColumn::COLUMN) {
             $this->contractExpiryColumn->applyFilter($query, $columnConfig, $filter);
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderRenewalColumn::COLUMN) {
+            $this->renewalColumn->applyFilter($query, $columnConfig, $filter);
 
             return true;
         }
@@ -186,6 +193,12 @@ final class WorkOrderDerivedColumns
 
         if ($columnId === WorkOrderContractExpiryColumn::COLUMN) {
             $this->contractExpiryColumn->applySort($query, $direction);
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderRenewalColumn::COLUMN) {
+            $this->renewalColumn->applySort($query, $direction);
 
             return true;
         }

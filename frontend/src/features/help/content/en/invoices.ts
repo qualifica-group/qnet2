@@ -23,7 +23,7 @@ const guide: HelpGuide = {
           headers: ['Part', 'What to do'],
           rows: [
             ['**Header**', 'Document date, issuing company (locked when editing), addressee, payment method, company bank, optional **tag** (picked from the **Invoice tags** catalog), notes and internal notes.'],
-            ['**Available lines**', 'The work order lines not used yet: **Add** one line or **Add all**. A quote line is invoiced **only once**: lines already in another invoice do not appear. Only the lines of the request appear (Consultancy, or Institution of its supplier) and saving refuses the others. In **Institution** requests the amount is the **supplier commission**, with the **Commission** column and the **No commission rule** warning when the rule is missing (see the Proforma requests guide).'],
+            ['**Available lines**', 'The work order lines not used yet: **Add** one line or **Add all**. A quote line is invoiced **only once per work order**: lines already in another invoice of the same work order do not appear (in the work order of a contract renewal the same line is invoiced again). Only the lines of the request appear (Consultancy, or Institution of its supplier) and saving refuses the others. In **Institution** requests the amount is the **supplier commission**, with the **Commission** column and the **No commission rule** warning when the rule is missing (see the Proforma requests guide).'],
             ['**Document lines**', 'You can edit quantity, price and VAT; each line is a catalog product or a free description. The unit price can have at most 2 decimals.'],
             ['**Due dates**', 'Preview of the installments computed from the payment method (see the Payment Methods guide).'],
             ['**Totals**', 'Taxable amount, VAT and document total. VAT is computed once per rate on the taxable amount of the lines, as in the electronic invoice, and split over the lines: the sum of the line VAT equals the document VAT.'],
@@ -130,6 +130,7 @@ const guide: HelpGuide = {
           items: [
             'On the row press **Send email**: the composer opens.',
             'The **recipient** is the customer\'s **PEC**, if any, otherwise their **email**; the **PDF** is already attached.',
+            'In the **Sender** field pick the address to send from: your login email or another email of your personal record. QNet proposes the last sender you used.',
             'Complete subject and body (you can pick an **Email template** of the Invoices module) and send.',
           ],
         },

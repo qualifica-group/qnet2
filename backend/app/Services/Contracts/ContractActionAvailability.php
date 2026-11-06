@@ -6,6 +6,8 @@ namespace App\Services\Contracts;
 
 use App\Enums\ContractStatusGroup;
 use App\Models\Contract;
+use App\Models\ContractRenewal;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Which domain actions a contract admits, driven by the GROUP of its CURRENT
@@ -14,9 +16,9 @@ use App\Models\Contract;
  *
  * - open | pending → "Modifica dati", "Modifica stato", "Valida", "Disdici";
  *   also "Programma" once the contract is validated and not suspended
- * - closed_won     → "Disdici", "Programma" (spec 0095: generates work
- *   orders from the offer's lines, no longer sets dates) and "Riapri
- *   contratto", nothing else
+ * - closed_won     → "Modifica dati" (spec 0360), "Disdici", "Programma" (spec
+ *   0095: generates work orders from the offer's lines, no longer sets
+ *   dates) and "Riapri contratto", nothing else
  * - closed_lost    → "Riapri contratto", nothing else
  *
  * Single source of truth for both surfaces that offer those actions —
@@ -62,15 +64,37 @@ class ContractActionAvailability
         return $this->isWorking($contract) && ! $contract->isSuspended() && $contract->validated_at !== null;
     }
 
+    /**
+     * "Annulla rinnovo" (spec 0358, D-11): only the latest renewal, and only
+     * while no line of the contract's offer sits in its period. Does not
+     * include the actor's ability nor mayProgram (the caller ANDs them).
+     */
+    public function mayUndoRenewal(Contract $contract, ContractRenewal $renewal): bool
+    {
+        if ($renewal->contract_id !== $contract->id || $renewal->number !== $contract->currentRenewalNumber()) {
+            return false;
+        }
+
+        return ! DB::table('quote_line_work_order')
+            ->join('quote_lines', 'quote_lines.id', '=', 'quote_line_work_order.quote_line_id')
+            ->where('quote_lines.quote_id', $contract->quote_id)
+            ->where('quote_line_work_order.renewal_number', $renewal->number)
+            ->exists();
+    }
+
     public function mayTerminate(Contract $contract): bool
     {
         return $this->isWorking($contract) || $this->group($contract) === ContractStatusGroup::ClosedWon;
     }
 
-    /** "Modifica dati": the PATCH-editable fields, only while the contract is still working. */
+    /**
+     * "Modifica dati": the PATCH-editable fields (title, service lines, renewal
+     * and expiry dates, payment notes, comments) while the contract is working
+     * or validated (spec 0360, D-2); a lost closure is read-only until reopened.
+     */
     public function mayEdit(Contract $contract): bool
     {
-        return $this->isWorking($contract);
+        return $this->isWorking($contract) || $this->group($contract) === ContractStatusGroup::ClosedWon;
     }
 
     /** "Modifica stato": moves the contract WITHIN the open/pending groups, never across a closure. */

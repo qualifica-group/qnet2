@@ -3,6 +3,7 @@ import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import { ChatUnreadCell } from '@/features/work-orders/chat-unread-cell'
+import { RenewalPeriodCell } from '@/features/work-orders/renewal-period-cell'
 import { RegistryCell } from '@/features/work-orders/registry-cell'
 import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progress-cell'
 
@@ -46,6 +47,7 @@ export function buildWorkOrderColumnRenderers(openProgress: (workOrderId: number
     supervisors: (params) => <UserStackCell {...params} />,
     completion_percentage: (params) => <WorkOrderProgressCell {...params} onOpen={openProgress} />,
     chat_unread_count: (params) => <ChatUnreadCell {...params} />,
+    renewal_number: (params) => <RenewalPeriodCell {...params} />,
     created_at: (params) => <DateTimeCell {...params} />,
     updated_at: (params) => <DateTimeCell {...params} />,
   }

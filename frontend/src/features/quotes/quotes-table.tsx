@@ -42,7 +42,7 @@ export function QuotesTable() {
     invalidateCategories()
   }, [invalidateCategories])
 
-  const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, sheet, openCreate } =
+  const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, documentsDialog, sheet, openCreate } =
     useQuoteRowActions({ onMutated: refreshGrid })
 
   return (
@@ -74,6 +74,8 @@ export function QuotesTable() {
       />
 
       {sheet}
+
+      {documentsDialog}
 
       <ResourceActivityDialog
         resource={QUOTES_DOMAIN}

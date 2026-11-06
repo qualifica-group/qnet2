@@ -197,6 +197,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   window.localStorage.clear()
+  // These cases drive the single-category strip; the root level is the default since 2026-11-05.
+  window.localStorage.setItem('request-management.category-tab-level', 'all')
   requestManagementOpenMode = 'page'
   navigateMock.mockReset()
   capturedOnAction = null

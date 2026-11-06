@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0360-contract-in-force-editing" status="approved" owner="utente" date="2026-11-05">
+
+  <goal>
+    Il contratto in essere si modifica dal suo dettaglio come nel QNet legacy: titolo, righe dei servizi
+    (aggiungere, modificare, rimuovere) e i quattro campi gia' modificabili (rinnovo, scadenza, note di
+    pagamento, commenti), anche quando il contratto e' Validato. Una riga gia' assegnata a una commessa resta
+    intoccabile finche' la commessa esiste, sia dal Contratto sia dall'Offerta.
+  </goal>
+
+  <context>
+    - Legacy (`../qnet`): `app/Livewire/Contracts/Detail.php` (`storeContractTitle`, `storeRenewalDate`, matita in
+      place) + `app/Livewire/Contracts/Service.php` ("+ Servizio", `Quotationservice::create`), in qualunque stato.
+    - D-1 (utente 2026-11-05): dal dettaglio contratto si modificano sul posto titolo, righe servizi e i 4 campi
+      esistenti (spec 0219).
+    - D-2 (utente 2026-11-05): stati ammessi = gruppi `open`, `pending`, `closed_won` (Validato). `closed_lost`
+      (Annullato/Disdetto) resta in sola lettura finche' non si riapre ("Riapri contratto").
+    - D-3 (utente 2026-11-05): autorizza il permesso del Contratto (`contracts.update` + visibilita' del
+      contratto, `ContractVisibilityScope`), non quello dell'Offerta. Il server scrive sull'Offerta di origine
+      (`contracts.quote_id`) passando da `QuoteService::update()` con un DTO ridotto, come gia' fa
+      `App\Services\RequestManagement\RequestOfferLineWriter` (totali, copertura categorie opportunita',
+      titolo automatico, nome opportunita', workflow: un'unica sequenza, nessuna seconda implementazione).
+    - D-4 (utente 2026-11-05): una riga di RICAVO collegata a una commessa (`quote_line_work_order`, relazione
+      `QuoteLine::workOrders()`) NON si rimuove e NON si modifica in nessun campo finche' la commessa esiste.
+      La regola vale su ogni canale che scrive le righe (Contratto, Offerte, Gestione Richieste): vive in
+      `App\Services\Quotes\QuoteLineWriter::sync()`, l'unico scrittore. Oggi la rimozione dall'Offerta
+      cancella in silenzio il collegamento (FK `cascadeOnDelete` su `quote_line_id`).
+    - D-5: le provvigioni non viaggiano sul canale Contratto (`ValidatesQuoteLines::offerLinesOnlyRules()`,
+      `commissions` prohibited): quelle impostate nell'Offerta restano, gli importi si ricalcolano. Il blocco
+      D-4 riguarda i campi della riga (prodotto, fornitore, quantita', prezzo, aliquota, descrizione
+      aggiuntiva), non le provvigioni modificate dall'Offerta (confermato utente 2026-11-05, "approvo").
+      La Gestione Richieste che toglie una riga bloccata (cambio categoria, `dropUncovered`) riceve 422: confermato.
+    - D-6: la regola di stato vive nel tetto dei permessi di campo di `App\Authorization\ContractsAuthorization`
+      (`fieldPermissionCeiling`): fuori dagli stati D-2 i campi modificabili diventano `visibleReadonly`, quindi
+      `EnforcesFieldPermissions` risponde 422 al PATCH (oggi il PATCH non verifica lo stato) e il dettaglio non
+      mostra matite. `ContractActionAvailability::mayEdit()` passa a `open|pending|closed_won`; specchio FE
+      `contract-lifecycle.ts` (`edit`).
+    - D-7: titolo = `quotes.title` con la semantica di `QuoteTitleWriter` (vuoto o uguale al titolo automatico =
+      torna automatico, `title_is_manual`).
+    - Riuso FE: l'editor righe e' `RequestOfferLinesField` (`features/request-management/request-offer-lines-section.tsx`,
+      generico su ogni form con `product_lines` + `offer_lines`, catalogo + righe `QuoteLineEditor`, senza
+      provvigioni). Il dettaglio contratto ha gia' `product_lines` e `offer_lines` (`ContractResource`);
+      oggi le mostra con `QuoteLinesReadOnlyList`. In place con `RecordInlineField` come spec 0219.
+  </context>
+
+  <scope>
+    <in>
+      <item>PATCH /api/contracts/{contract} accetta anche `title` e `offer_lines` e li scrive sull'Offerta di origine via QuoteService::update().</item>
+      <item>Regola di stato server-side (D-2/D-6) su tutti i campi modificabili del contratto, nuovi e vecchi.</item>
+      <item>Blocco riga collegata a commessa (D-4) in QuoteLineWriter: vale per Contratto, Offerte e Gestione Richieste.</item>
+      <item>`work_orders: [{id, code}]` su ogni riga di ricavo nella risposta di Contratto e Offerta, per mostrare il blocco.</item>
+      <item>Dettaglio contratto: matita su titolo (intestazione) e su "Righe" (editor catalogo + righe), righe collegate bloccate con il codice della commessa.</item>
+      <item>Editor righe dell'Offerta (QuoteLineEditor condiviso): stessa riga bloccata con il codice commessa.</item>
+      <item>Guide in-app IT/EN `contracts` (e `quotes` per il blocco) + manuale Claude Docs sezione Contratti/Offerte.</item>
+    </in>
+    <out>
+      <item>Provvigioni e righe di costo dal Contratto (restano nell'Offerta).</item>
+      <item>Modifica di cliente, opportunita', referenti, metodo di pagamento e altri campi dell'Offerta dal Contratto.</item>
+      <item>`contract_status_id` via PATCH (oggi accettato in ogni stato, lo stato passa dalle azioni di dominio): segnalato, non toccato.</item>
+      <item>Propagazione delle modifiche delle righe alle commesse gia' generate (le righe collegate sono bloccate, D-4).</item>
+      <item>Modifica dalla griglia Contratti (celle): solo dettaglio.</item>
+      <item>Spostamento di `RequestOfferLinesField` in una cartella condivisa: riuso per import, nessun refactor.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="PATCH" path="/api/contracts/{contract}">
+      <request>
+        Parziale, ogni chiave `sometimes`. Invariate: contract_status_id, renewal_date, expiry_date, payment_notes, comments.
+        Nuove:
+        title: string|null, max 191 (null = titolo automatico, D-7)
+        offer_lines: array, full-replace delle righe di RICAVO dell'Offerta, stessa shape e stesse regole di
+          PATCH /api/quotes/{quote} (`ValidatesQuoteLines::offerLinesOnlyRules()`):
+          [{ id?: int, product_id: int, supplier_id?: int|null, quantity: number, unit_price: number,
+             vat_rate_id: int|null, additional_description?: string|null, sort_order?: int }]
+          `offer_lines.*.commissions` -> prohibited. Riga senza `id` = nuova; riga esistente assente = rimossa.
+      </request>
+      <response status="200">
+        { success, message, data: ContractDetail, permissions } — come oggi. Novita':
+        data.offer_lines[].work_orders: [{ id: int, code: string }] ([] se la riga non e' assegnata)
+        data.quote.title aggiornato; data.quote / summary ricalcolati.
+        permissions.fields.title e permissions.fields.offer_lines: { visible, editable } (nuove FieldDefinition
+        `title` 'text' e `offer_lines` 'lines' di ContractsAuthorization).
+      </response>
+      <errors>
+        403 senza contracts.update o contratto fuori perimetro (invariato).
+        422 su contratto `closed_lost`: ogni campo inviato e' readonly (EnforcesFieldPermissions).
+        422 `offer_lines`: riga collegata a commessa assente dal payload ->
+          "La riga {prodotto} e' assegnata alla commessa {code}: elimina prima la commessa."
+        422 `offer_lines.{i}`: riga collegata a commessa con un campo cambiato ->
+          "La riga e' assegnata alla commessa {code} e non si puo' modificare."
+        422 `offer_lines.*.commissions`: prohibited.
+        422 `offer_lines` vuoto (`quotes.offer_line_required`) e regola categoria `single`: stesse regole del PATCH
+          Offerta (`requireOfferLineOnUpdate`, `enforceSingleOfferLine`), aggiunte in build per parita' di canale.
+      </errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/quotes/{quote}">
+      <request>Invariata.</request>
+      <response status="200">data.offer_lines[].work_orders: [{ id, code }] aggiunto.</response>
+      <errors>Nuovi 422 `offer_lines` / `offer_lines.{i}` del blocco D-4, stessi messaggi.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un contratto Validato (closed_won) e un utente con contracts.update, quando invia PATCH con `title`, allora l'Offerta di origine ha quel titolo e `title_is_manual` = true; con `title: null` torna al titolo automatico.</criterion>
+    <criterion id="AC-002">Dato un contratto pending o closed_won, quando invia PATCH con `offer_lines` che aggiunge una riga, allora l'Offerta ha la nuova riga e i totali del contratto (summary) sono ricalcolati.</criterion>
+    <criterion id="AC-003">Dato un contratto con una riga non assegnata a commesse, quando la riga e' omessa da `offer_lines`, allora la riga e' eliminata; se modificata (quantita'/prezzo), i valori sono salvati.</criterion>
+    <criterion id="AC-004">Dato un contratto closed_lost (Disdetto o Annullato), quando invia PATCH con uno qualsiasi tra title, offer_lines, renewal_date, expiry_date, payment_notes, comments, allora 422 e nulla e' persistito; `permissions.fields` li riporta non editabili.</criterion>
+    <criterion id="AC-005">Dato un contratto closed_won, quando invia PATCH con renewal_date/expiry_date/payment_notes/comments, allora 200 e i valori sono salvati (prima era bloccato solo lato UI).</criterion>
+    <criterion id="AC-006">Dato una riga assegnata a una commessa, quando PATCH (Contratto o Offerta) la omette, allora 422 su `offer_lines` con il codice della commessa e la riga e il collegamento `quote_line_work_order` restano.</criterion>
+    <criterion id="AC-007">Dato una riga assegnata a una commessa, quando PATCH (Contratto o Offerta) ne cambia prodotto, fornitore, quantita', prezzo, aliquota o descrizione aggiuntiva, allora 422 su `offer_lines.{i}` e nulla cambia; reinviata identica, allora 200.</criterion>
+    <criterion id="AC-008">Dato una riga la cui commessa e' stata eliminata, quando la si rimuove, allora 200.</criterion>
+    <criterion id="AC-009">Dato un utente senza contracts.update (anche con quotes.update), quando invia PATCH al contratto con title/offer_lines, allora 403; con contracts.update ma contratto fuori perimetro, 403/404 come oggi.</criterion>
+    <criterion id="AC-010">Dato PATCH contratto con `offer_lines.*.commissions`, allora 422; dato PATCH senza commissions, allora le provvigioni personalizzate della riga esistente restano.</criterion>
+    <criterion id="AC-011">Dato un'Offerta contrattualizzata, quando il contratto cambia le righe, allora l'Offerta resta nel suo stato vinto e il contratto non cambia stato (nessuna chiusura/riapertura indotta da ContractLifecycleManager).</criterion>
+    <criterion id="AC-012">GET /api/contracts/{c} e GET /api/quotes/{q} riportano `offer_lines[].work_orders` [{id, code}] ([] se libera).</criterion>
+    <criterion id="AC-013">(FE) Dettaglio contratto pending/closed_won con permesso: matite su titolo e "Righe"; salva invia solo il campo cambiato; su closed_lost o senza permesso nessuna matita.</criterion>
+    <criterion id="AC-014">(FE) Nell'editor righe (Contratto e Offerta) una riga assegnata a commessa ha campi e pulsante rimuovi disabilitati e mostra "Assegnata a {code}".</criterion>
+    <criterion id="AC-015">(FE) Un 422 del blocco D-4 o di stato e' mostrato nell'editor aperto senza perdere le modifiche.</criterion>
+    <criterion id="AC-016">Guide in-app IT/EN `contracts` e `quotes` aggiornate con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Nessuna migrazione (le tabelle servono gia').
+    - Authz server-side: ContractPolicy::update + ContractsAuthorization (campi), mai il solo gate UI.
+    - Una sola sequenza di scrittura delle righe: QuoteService::update() / QuoteLineWriter, nessun parser parallelo.
+    - Eager load di `offerLines.workOrders:id,code` nei DETAIL_RELATIONS di ContractService e QuoteService (preventLazyLoading).
+    - File sotto 500 righe: `ContractsTableDefinition.php` gia' a 498, non va toccato.
+    - Test Pest mirati (`XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/Contracts tests/Feature/Quotes tests/Feature/RequestManagement`), Vitest feature contracts/quotes/request-management/help, ESLint, Pint, `tsc -b --force`.
+    - Mai comandi distruttivi sul DB dev.
+  </constraints>
+
+</spec>

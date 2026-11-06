@@ -50,7 +50,9 @@ function email(overrides: Partial<OutboundEmail> = {}): OutboundEmail {
     error_message: null,
     created_at: '2026-09-20T09:00:00.000Z',
     updated_at: '2026-09-20T10:00:00.000Z',
-    can: { update: false, delete: false, send: false },
+    recurrence: null,
+    recurrence_source_id: null,
+    can: { update: false, delete: false, send: false, schedule: false, unschedule: false },
     ...overrides,
   }
 }
@@ -105,7 +107,7 @@ describe('OutboundEmailDetailDialog', () => {
 
   it('shows the error reason and a resend action for a failed email the actor can send', async () => {
     fetchOutboundEmailMock.mockResolvedValue(
-      email({ status: 'failed', error_message: 'Mailbox not found.', can: { update: false, delete: false, send: true } }),
+      email({ status: 'failed', error_message: 'Mailbox not found.', can: { update: false, delete: false, send: true, schedule: false, unschedule: false } }),
     )
     sendOutboundEmailMock.mockResolvedValue(email({ status: 'queued' }))
 
@@ -119,7 +121,7 @@ describe('OutboundEmailDetailDialog', () => {
 
   it('does not offer a resend action for a failed email the actor cannot send', async () => {
     fetchOutboundEmailMock.mockResolvedValue(
-      email({ status: 'failed', error_message: 'Mailbox not found.', can: { update: false, delete: false, send: false } }),
+      email({ status: 'failed', error_message: 'Mailbox not found.', can: { update: false, delete: false, send: false, schedule: false, unschedule: false } }),
     )
 
     renderDetail()

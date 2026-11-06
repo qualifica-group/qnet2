@@ -15,7 +15,7 @@ use Throwable;
 /**
  * GET /api/contracts/{contract}/programmable-lines (spec 0095, D-6):
  * the offer's REVENUE lines feeding the "Programma" dialog, each carrying
- * the work order that already occupies it (or null). Gate: `contracts.program`
+ * the work order that occupies it in the contract's current renewal period (or null). Gate: `contracts.program`
  * AND the contract's lifecycle
  * (ContractActionAvailability::mayProgram) — 403 on either, mirroring
  * ContractActionAvailability's own doubled-gate convention (each caller ANDs
@@ -34,9 +34,14 @@ class ContractProgrammableLinesController extends BaseApiController
             abort_unless($this->availability->mayProgram($contract), 403, __('You cannot program this contract: it is not validated, or it is suspended or closed negatively.'));
 
             $contract->loadMissing('quote');
+            $period = $contract->currentRenewalNumber();
 
+            // Spec 0358, D-5: a line is occupied only by the commessa of the CURRENT period.
             $lines = $contract->quote->offerLines()
-                ->with(['product.category', 'product.unitOfMeasure', 'unitOfMeasure', 'workOrders'])
+                ->with([
+                    'product.category', 'product.unitOfMeasure', 'unitOfMeasure',
+                    'workOrders' => fn ($workOrders) => $workOrders->wherePivot('renewal_number', $period),
+                ])
                 ->get();
 
             return $this->ok(ProgrammableQuoteLineResource::collection($lines));

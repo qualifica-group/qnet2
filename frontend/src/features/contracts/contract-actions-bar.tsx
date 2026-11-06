@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { apiErrorMessage } from '@/lib/forbidden-message'
-import { BadgeCheck, CalendarClock, RotateCcw, Shuffle, XOctagon } from 'lucide-react'
+import { BadgeCheck, CalendarClock, RefreshCw, RotateCcw, Shuffle, XOctagon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
 import { ContractValidateDialog } from '@/features/contracts/contract-validate-dialog'
 import { ContractProgramDialog } from '@/features/contracts/contract-program-dialog'
+import { ContractRenewDialog } from '@/features/contracts/contract-renew-dialog'
 import { ContractTerminateDialog } from '@/features/contracts/contract-terminate-dialog'
 import { ContractChangeStatusDialog } from '@/features/contracts/contract-change-status-dialog'
 import { ContractReactivateDialog } from '@/features/contracts/contract-reactivate-dialog'
@@ -17,7 +18,7 @@ import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 import type { WorkOrderDetail } from '@/features/work-orders/types'
 
 /** Which action dialog (if any) is currently open. */
-type OpenDialog = 'none' | 'validate' | 'program' | 'terminate' | 'reactivate' | 'change-status'
+type OpenDialog = 'none' | 'validate' | 'program' | 'renew' | 'terminate' | 'reactivate' | 'change-status'
 
 interface ContractActionsBarProps {
   contract: ContractDetailWithPermissions
@@ -114,6 +115,19 @@ export function ContractActionsBar({ contract, onChanged, onWorkOrderCreated }: 
         </Button>
       ) : null}
 
+      {lifecycle.renew && contract.permissions.actions.renew ? (
+        <Button
+          type="button"
+          variant={ACTION_BUTTON_VARIANT.action}
+          className="bg-card"
+          size="sm"
+          onClick={() => setOpenDialog('renew')}
+        >
+          <RefreshCw aria-hidden="true" />
+          {t('contracts.actions.renew')}
+        </Button>
+      ) : null}
+
       {lifecycle.terminate && contract.permissions.actions.terminate ? (
         <Button type="button" variant={ACTION_BUTTON_VARIANT.danger} size="sm" onClick={() => setOpenDialog('terminate')}>
           <XOctagon aria-hidden="true" />
@@ -152,7 +166,14 @@ export function ContractActionsBar({ contract, onChanged, onWorkOrderCreated }: 
         open={openDialog === 'program'}
         onOpenChange={(open) => setOpenDialog(open ? 'program' : 'none')}
         contractId={contract.id}
+        renewalNumber={contract.renewal_number}
         onCreated={onWorkOrderCreated}
+      />
+      <ContractRenewDialog
+        open={openDialog === 'renew'}
+        onOpenChange={(open) => setOpenDialog(open ? 'renew' : 'none')}
+        contract={contract}
+        onRenewed={(updated) => onChanged({ ...contract, ...updated })}
       />
       <ContractTerminateDialog
         open={openDialog === 'terminate'}

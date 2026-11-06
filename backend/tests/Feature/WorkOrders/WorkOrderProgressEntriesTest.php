@@ -189,3 +189,13 @@ it('offers the progress row action to whoever may view the work order', function
     expect(collect($items)->firstWhere('title', 'Visibile')['actions'])->toContain('progress')
         ->and($keys)->toContain('progress');
 });
+
+it('labels the progress row action without the dialog title placeholder', function () {
+    Sanctum::actingAs(workOrderUserWith(['viewAny', 'view']));
+
+    $actions = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.actions'));
+
+    // The row tooltip translates the label with no params: the dialog title
+    // (`n. {{code}}`) would leak its placeholder.
+    expect($actions->firstWhere('key', 'progress')['label'])->toBe('workOrders.progress.action');
+});

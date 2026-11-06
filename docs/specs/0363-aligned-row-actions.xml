@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0363-aligned-row-actions" status="approved" owner="utente" date="2026-11-06">
+
+  <goal>
+    Le azioni di riga comuni delle griglie Opportunita', Offerte, Contratti e Commesse sono allineate:
+    stesse azioni dove l'entita' le possiede gia' nel dettaglio, stessa posizione, stessa icona,
+    stessa etichetta e stesso contatore. Le azioni specifiche di ogni tabella restano, dopo le comuni.
+  </goal>
+
+  <decisions>
+    - D-1 (utente 2026-11-06): ordine comune = view, documents, notes, [azioni specifiche nell'ordine
+      attuale], activity, delete. Le prime tre (INLINE_ACTION_LIMIT) restano icone visibili, quindi
+      Proforma, Avanzamento e Valida passano nel menu.
+    - D-2 (utente 2026-11-06): i Contratti ricevono solo `documents`; non hanno note e le note del
+      contratto restano fuori scope (funzione nuova, da pianificare a parte).
+    - D-3: ogni azione nuova riusa la regola di accesso che il dettaglio (e l'API) gia' applica, mai
+      un permesso nuovo:
+      Offerte `documents` = documenti dell'Opportunita' padre in SOLA LETTURA (come il tab
+      "Documenti opportunita'" del dettaglio), offerta se OpportunityDocumentAccess::allows;
+      Contratti `documents` = documenti del contratto, offerta se Gate `view` sul contratto;
+      Commesse `documents` = Gate `viewDocuments` (come il tab del dettaglio);
+      Commesse `notes` = WorkOrderNotable::authorizeRead (la stessa regola delle rotte note).
+    - D-4: ogni `documents`/`notes` porta il contatore come sulle Opportunita'
+      (`count_field` documents_count / notes_count, collection `documents`, note non cancellate).
+  </decisions>
+
+  <contract>
+    - Catalogo azioni (GET /api/tables/{domain}/columns, `data.actions`):
+      opportunities: view, documents, notes, activity, delete
+      quotes: view, documents, notes, generate_document, contract, activity, delete
+      contracts: view, documents, validate, program, renew, change_status, terminate, reactivate, activity
+      work-orders: view, documents, notes, proforma, progress, request_update, force_close, reopen, activity, delete
+    - `documents`: label `actions.documents`, icon `paperclip`, count_field `documents_count`.
+      `notes`: label `actions.notes`, icon `messages-square`, count_field `notes_count`.
+    - Righe (POST /api/tables/{domain}/rows): quotes + `documents_count` (documenti dell'opportunita'
+      padre); contracts + `documents_count`; work-orders + `documents_count`, `notes_count`.
+    - Frontend: `DocumentsDialog` accetta `readOnly` e `title`; i dialog note/documenti delle
+      Commesse e quello documenti delle Offerte vivono negli hook di riga condivisi, cosi' ogni
+      superficie che rende quelle azioni li monta.
+  </contract>
+
+  <acceptance>
+    - AC-1: l'ordine delle azioni nei quattro cataloghi e' quello del contratto.
+    - AC-2: Offerte, Contratti e Commesse offrono `documents` (e Commesse `notes`) solo a chi li puo'
+      leggere, con il contatore corretto.
+    - AC-3: il dialog documenti aperto da un'Offerta e' in sola lettura.
+  </acceptance>
+</spec>

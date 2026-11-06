@@ -78,6 +78,14 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "An **Active** template is selectable from a work order's email composer (Work orders templates) or an active invoice's, including the **Reminder** (Invoices templates).",
         },
+        {
+          type: 'paragraph',
+          text: 'In the composer the **Sender** field lets you pick the address to send from: your login email or one of the emails (not PEC) in your user personal record. QNet remembers the last sender used in this browser and proposes it on the next draft; if that address is no longer yours, it proposes the login email. Personal record emails are added by whoever can edit users.',
+        },
+        {
+          type: 'warning',
+          text: 'The email is sent from the chosen Microsoft 365 mailbox: if the address is not an enabled company mailbox, the email ends up **Failed** with the error reason. The **{sender.email}** placeholder always shows the login email.',
+        },
       ],
     },
   ],

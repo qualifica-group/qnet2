@@ -199,7 +199,7 @@ export function OpportunityQuotesDetailRenderer({
     }
   }, [opportunityId, queryClient])
 
-  const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, sheet } =
+  const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, documentsDialog, sheet } =
     useQuoteRowActions({
       onMutated: handleMutated,
       forceMode: OPEN_MODE_MODAL,
@@ -281,6 +281,8 @@ export function OpportunityQuotesDetailRenderer({
       ) : null}
 
       {sheet}
+
+      {documentsDialog}
 
       <ResourceActivityDialog
         resource={QUOTES_DOMAIN}
