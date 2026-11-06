@@ -7,6 +7,7 @@
 
 import type { EmailTemplateModule } from '@/features/email-templates/types'
 import type { EmailRecipientSuggestion } from '@/components/ui/email-recipients-input'
+import type { TaskRecurrenceFrequency, TaskRecurrenceMonthMode } from '@/features/tasks/task-recurrence-types'
 
 /** Parent record an email thread hangs off: the URL segment is the REST resource name (spec 0195 D-10/D-14). */
 export type EmailOwnerRef = { type: 'work-orders' | 'invoices' | 'purchase-orders'; id: number }
@@ -20,7 +21,53 @@ export const EMAIL_OWNER_TEMPLATE_MODULE: Record<EmailOwnerRef['type'], EmailTem
 
 export type OutboundEmailPurpose = 'document' | 'reminder'
 
-export type OutboundEmailStatus = 'draft' | 'queued' | 'sent' | 'failed'
+export type OutboundEmailStatus = 'draft' | 'queued' | 'sent' | 'failed' | 'scheduled' | 'schedule_ended'
+
+/** Why a recurring series stopped on its own (spec 0362, D-7). */
+export type OutboundEmailRecurrenceEndReason = 'ends_on_reached' | 'owner_closed' | 'sender_unavailable'
+
+/**
+ * Recurrence rule + series state of a scheduled email (spec 0362
+ * `OutboundEmailRecurrence`): not-pertinent rule fields come back as `null`.
+ */
+export interface OutboundEmailRecurrence {
+  frequency: TaskRecurrenceFrequency
+  interval: number
+  weekdays: number[] | null
+  month_mode: TaskRecurrenceMonthMode | null
+  month_day: number | null
+  ordinal: number | null
+  ordinal_weekday: number | null
+  year_month: number | null
+  workdays_only: boolean
+  starts_on: string
+  ends_on: string
+  /** `null` once the series has ended. */
+  next_send_on: string | null
+  last_sent_on: string | null
+  /** Copies created so far, whatever their outcome. */
+  sent_count: number
+  end_reason: OutboundEmailRecurrenceEndReason | null
+}
+
+/**
+ * POST `.../schedule` `recurrence` (spec 0362 `RecurrenceRuleInput`): fields
+ * not pertinent to the picked frequency/month_mode are OMITTED (the server
+ * prohibits them), `ends_on` is always required.
+ */
+export interface OutboundEmailRecurrenceInput {
+  frequency: TaskRecurrenceFrequency
+  interval: number
+  weekdays?: number[]
+  month_mode?: TaskRecurrenceMonthMode
+  month_day?: number
+  ordinal?: number
+  ordinal_weekday?: number
+  year_month?: number
+  workdays_only: boolean
+  starts_on: string
+  ends_on: string
+}
 
 /** One file copied onto the email (D-7): upload, documents, document bundle or quote PDF. */
 export interface OutboundEmailAttachment {
@@ -65,7 +112,11 @@ export interface OutboundEmail {
   error_message: string | null
   created_at: string
   updated_at: string
-  can: { update: boolean; delete: boolean; send: boolean }
+  /** `null` when the email never had a rule (spec 0362). */
+  recurrence: OutboundEmailRecurrence | null
+  /** On the copies a series sends: id of the scheduled email they come from. */
+  recurrence_source_id: number | null
+  can: { update: boolean; delete: boolean; send: boolean; schedule: boolean; unschedule: boolean }
 }
 
 /** Row projection of the history list (`GET .../emails`). */
@@ -79,6 +130,8 @@ export interface OutboundEmailListItem {
   sent_at: string | null
   failed_at: string | null
   updated_at: string
+  next_send_on: string | null
+  is_recurring_copy: boolean
 }
 
 /** Laravel paginator metadata, as returned alongside `data` (not nested under it). */

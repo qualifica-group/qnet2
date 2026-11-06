@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { CircleAlert, CircleCheck, Clock, PenLine, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, CalendarClock, CircleAlert, CircleCheck, Clock, PenLine, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import type { OutboundEmailStatus } from '@/features/outbound-emails/types'
 
@@ -15,6 +15,8 @@ const STATUS_APPEARANCE: Record<OutboundEmailStatus, StatusAppearance> = {
   queued: { variant: 'secondary', icon: Clock },
   sent: { variant: 'default', icon: CircleCheck, className: 'bg-success/15 text-success' },
   failed: { variant: 'destructive', icon: CircleAlert },
+  scheduled: { variant: 'default', icon: CalendarClock },
+  schedule_ended: { variant: 'outline', icon: CalendarCheck },
 }
 
 export function OutboundEmailStatusBadge({ status }: { status: OutboundEmailStatus }) {

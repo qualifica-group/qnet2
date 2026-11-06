@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Email ricorrenti della commessa (spec 0362) — VERDE, NON COMMITTATO (2026-11-06)
+
+- Spec `docs/specs/0362-work-order-recurring-emails.xml` (approvata; nata come 0361, rinumerata perche' 0361 = scelta
+  mittente, committata nel frattempo). Decisioni utente: solo commesse; copie IDENTICHE (niente ricalcolo segnaposto);
+  data di inizio scelta, nessun invio immediato; data di fine OBBLIGATORIA (niente "mai"/"dopo N"); stop automatico
+  quando la commessa e' completed|closed. Assunte senza obiezioni: nessun tetto alla data di fine; le 206 regole attive
+  del legacy (`email_order_reminders`) NON migrate (le email commessa legacy non sono in qnet-2).
+- BE: tabella `outbound_email_recurrences` (1:1 con l'email programmata) + `outbound_emails.outbound_email_recurrence_id`
+  / `occurrence_on` (UNIQUE = idempotenza); stati `OutboundEmailStatus::Scheduled`/`ScheduleEnded`, enum
+  `OutboundEmailRecurrenceEndReason` (ends_on_reached, owner_closed, sender_unavailable); `EmailOwner::allowsRecurrence()`
+  (solo WorkOrder); `ScheduleOutboundEmailRequest`, `OutboundEmailScheduler`, `RecurringEmailDispatcher`, comando
+  `outbound-emails:send-recurrences` orario (dovuto se next_send_on <= oggi e ora >= `outbound_emails.recurrence.send_at`
+  08:00). Rotte POST `work-orders/{wo}/emails/{email}/schedule|unschedule`. Date SOLO da `TaskRecurrenceCalculator`
+  (ricalcolo dall'ancora starts_on). Un invio per serie per run, date perse saltate, failed non ferma la serie.
+  `OutboundEmailService::assertSendable` ora public; riprogrammare azzera `sent_count`.
+- FE: `features/outbound-emails/outbound-email-recurrence-{fields,day-fields,summary,schema}.ts(x)`,
+  `use-outbound-email-schedule.ts`; switch "Ripeti questa email" + "Programma", badge Programmata/Programmazione
+  terminata, "Riporta in bozza". Etichette campo riusano `tasks.form.recurrence.*`. Frequenza `custom` non offerta.
+  Guida: sezione `recurring-emails` in `help/content/{it,en}/parts/work-orders-recurring-emails.ts` (split per il limite).
+- Verifica (verifier indipendente): AC-001..025 PASS; Spec0362 32/32 Pest, aree email 104/104; vitest completo 9990/9990
+  (11 unhandled rejection preesistenti, es. vat-rates `toast.error`); `tsc -b --force` 0; Pint/ESLint puliti. Suite BE
+  completa 13916/13933: 10 rossi estranei (TableBulkDelete, AiAssistant mime x4, QualificaOperatorSeeder x2,
+  QuoteDocumentPdf, PermissionCatalogueEndpoint 694/677, SettlementApproval data). `composer test` va in timeout a 300 s:
+  usare `COMPOSER_PROCESS_TIMEOUT=0`.
+- Da fare a mano: AC-026 responsive 375/768/1024 della sezione Ricorrenza; cron `schedule:run` sul server; `down()`
+  delle 2 migrazioni letto ma non eseguito. Rilievo basso aperto: `ScheduleOutboundEmailRequest` valida prima
+  dell'authz (422 invece di 403 a chi non ha il permesso), come le altre request WorkOrderEmails.
+- Manuale: Claude Docs, paragrafo "Email ricorrenti" in Commesse (dopo Richiedi aggiornamento); guida in-app IT/EN.
+
 ## Scelta del mittente nel composer email (spec 0361) — VERDE, NON COMMITTATO (2026-11-05)
 
 - Decisioni utente 2026-11-05: mittenti = `users.email` + contatti `email` (non PEC) dell'anagrafica della persona;

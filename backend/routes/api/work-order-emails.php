@@ -55,6 +55,10 @@ Route::delete('work-orders/{workOrder}/emails/{email}', [WorkOrderEmailControlle
     ->whereNumber('email')->scopeBindings();
 Route::post('work-orders/{workOrder}/emails/{email}/send', [WorkOrderEmailController::class, 'send'])
     ->whereNumber('email')->scopeBindings();
+Route::post('work-orders/{workOrder}/emails/{email}/schedule', [WorkOrderEmailController::class, 'schedule'])
+    ->whereNumber('email')->scopeBindings();
+Route::post('work-orders/{workOrder}/emails/{email}/unschedule', [WorkOrderEmailController::class, 'unschedule'])
+    ->whereNumber('email')->scopeBindings();
 
 Route::post('work-orders/{workOrder}/emails/{email}/attachments', [WorkOrderEmailAttachmentController::class, 'store'])
     ->whereNumber('email')->scopeBindings();

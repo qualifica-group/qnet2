@@ -27,7 +27,7 @@ use Throwable;
  */
 abstract class OwnerEmailController extends AbstractOwnerEmailController
 {
-    public function __construct(EmailOwnerRegistry $owners, private readonly OutboundEmailService $service)
+    public function __construct(EmailOwnerRegistry $owners, protected readonly OutboundEmailService $service)
     {
         parent::__construct($owners);
     }

@@ -21,6 +21,9 @@ return [
     'not_draft' => 'Questa email non è più una bozza: non è più modificabile.',
     'not_author' => 'Solo l\'autore di questa email può inviarla.',
     'not_sendable_status' => 'Questa email non può essere inviata dal suo stato attuale.',
+    // Spec 0362: recurring (programmed) emails.
+    'not_scheduled' => 'Questa email non è programmata: non c\'è nulla da riportare in bozza.',
+    'recurrence_owner_not_active' => 'La commessa non è più in lavorazione: non è possibile programmare l\'invio ripetuto.',
     'no_recipients' => 'Aggiungi almeno un destinatario in "A".',
     'empty_subject' => 'L\'oggetto è obbligatorio per inviare l\'email.',
     'empty_body' => 'Il corpo dell\'email è obbligatorio per l\'invio.',

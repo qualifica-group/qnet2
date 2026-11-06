@@ -72,7 +72,9 @@ function email(overrides: Partial<OutboundEmail> = {}): OutboundEmail {
     error_message: null,
     created_at: '2026-09-20T09:00:00.000Z',
     updated_at: '2026-09-20T09:00:00.000Z',
-    can: { update: true, delete: true, send: true },
+    recurrence: null,
+    recurrence_source_id: null,
+    can: { update: true, delete: true, send: true, schedule: false, unschedule: false },
     ...overrides,
   }
 }

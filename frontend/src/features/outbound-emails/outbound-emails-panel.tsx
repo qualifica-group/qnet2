@@ -84,6 +84,10 @@ export function OutboundEmailsPanel({ owner, canSend, newDraftPayload }: Outboun
               setDetailEmailId(null)
             }
           }}
+          onUnscheduled={(emailId) => {
+            setJustCreatedDraft(false)
+            setComposerEmailId(emailId)
+          }}
         />
       ) : null}
     </div>

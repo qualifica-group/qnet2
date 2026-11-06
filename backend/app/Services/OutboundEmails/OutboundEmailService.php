@@ -53,7 +53,7 @@ final class OutboundEmailService
     public function listForOwner(Model $owner, User $actor, int $page): LengthAwarePaginator
     {
         return $this->baseQuery($owner, $actor)
-            ->with('sender')
+            ->with(['sender', 'recurrence'])
             ->withCount(['attachments as attachments_count' => fn ($query) => $query->where('collection', OutboundEmail::ATTACHMENT_COLLECTION)])
             ->orderByDesc('updated_at')
             ->paginate(self::PER_PAGE, page: $page);
@@ -152,6 +152,9 @@ final class OutboundEmailService
     {
         return [
             'sender',
+            'recurrence',
+            'sourceRecurrence',
+            'emailable',
             'attachments' => fn ($query) => $query->where('collection', OutboundEmail::ATTACHMENT_COLLECTION),
         ];
     }
@@ -169,8 +172,9 @@ final class OutboundEmailService
      * not count as content), no sender mailbox at all, or the
      * attachments already on the draft exceeding the total-size ceiling;
      * spec 0361: a chosen sender no longer among the actor's addresses.
+     * Public: OutboundEmailScheduler applies the same checks when programming (D-12).
      */
-    private function assertSendable(OutboundEmail $email, User $actor): void
+    public function assertSendable(OutboundEmail $email, User $actor): void
     {
         $errors = [];
 

@@ -1,4 +1,5 @@
 import type { HelpGuide } from '../../types'
+import { recurringEmailSections } from './parts/work-orders-recurring-emails'
 
 const guide: HelpGuide = {
   key: 'work-orders',
@@ -451,6 +452,7 @@ const guide: HelpGuide = {
         { type: 'tip', text: "Chi può modificare la commessa può coinvolgere un collega che non la vede menzionandolo in una nota con **Menziona chiunque**: al salvataggio diventa **Partecipante** (vedi **Note e documenti** nella guida generale)." },
       ],
     },
+    ...recurringEmailSections,
     {
       id: 'in-development',
       title: 'Modulo in sviluppo',

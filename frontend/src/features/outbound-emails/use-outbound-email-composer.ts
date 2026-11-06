@@ -12,11 +12,14 @@ import {
   useSendOutboundEmail,
   useOutboundEmail,
 } from '@/features/outbound-emails/use-outbound-email-draft'
+import { useScheduleOutboundEmail } from '@/features/outbound-emails/use-outbound-email-schedule'
+import { toRecurrenceInput } from '@/features/outbound-emails/outbound-email-recurrence-schema'
 import { useOutboundEmailComposeContext } from '@/features/outbound-emails/use-outbound-email-compose-context'
-import { applyComposerValidationErrors } from '@/features/outbound-emails/outbound-email-errors'
+import { applyComposerValidationErrors, applySchemaIssues, conflictMessage } from '@/features/outbound-emails/outbound-email-errors'
 import { defaultSender, storeLastSender } from '@/features/outbound-emails/outbound-email-last-sender'
 import {
   buildComposerSchema,
+  buildScheduleSchema,
   buildSendSchema,
   EMPTY_COMPOSER_VALUES,
   isEmptyDraft,
@@ -60,6 +63,7 @@ export function useOutboundEmailComposer({
   const save = useSaveOutboundEmailDraft(owner, emailId)
   const send = useSendOutboundEmail(owner, emailId)
   const remove = useDeleteOutboundEmailDraft(owner, emailId)
+  const schedule = useScheduleOutboundEmail(owner, emailId)
 
   const form = useForm<ComposerFormValues>({
     resolver: zodResolver(buildComposerSchema()),
@@ -142,6 +146,36 @@ export function useOutboundEmailComposer({
     }
   }
 
+  // 409 (`not_draft`, `recurrence_owner_not_active`) is not a field error: it surfaces as a toast and the composer stays open.
+  const handleSchedule = async () => {
+    const values = form.getValues()
+    const result = buildScheduleSchema(t).safeParse(values)
+    const recurrence = result.success ? toRecurrenceInput(result.data.recurrence) : null
+    if (!result.success || !recurrence) {
+      if (!result.success) {
+        applySchemaIssues(result.error.issues, form.setError)
+      }
+      return
+    }
+
+    try {
+      // Step 1: persist the draft (the server schedules the saved state)
+      await save.mutateAsync(mapFormValuesToPayload(values))
+      // Step 2: draft -> scheduled, no immediate send
+      const scheduled = await schedule.mutateAsync(recurrence)
+      if (composeContextQuery.data && scheduled.from_address) {
+        storeLastSender(composeContextQuery.data.sender.email, scheduled.from_address)
+      }
+      form.reset(mapEmailToFormValues(scheduled))
+      toast.success(t('outboundEmails.recurrence.scheduled'))
+      onOpenChange(false)
+    } catch (error) {
+      if (!applyComposerValidationErrors(error, form.setError)) {
+        toast.error(conflictMessage(error) ?? apiErrorMessage(error, t('outboundEmails.recurrence.scheduleError'), i18n))
+      }
+    }
+  }
+
   const handleDeleteDraft = async () => {
     const confirmed = await confirm({
       tone: 'destructive',
@@ -195,9 +229,11 @@ export function useOutboundEmailComposer({
     composeContext: composeContextQuery.data,
     isSaving: save.isPending,
     isSending: send.isPending,
+    isScheduling: schedule.isPending,
     isDeleting: remove.isPending,
     handleSaveDraft,
     handleSend,
+    handleSchedule,
     handleDeleteDraft,
     handleOpenChange,
   }

@@ -9,6 +9,7 @@ import type {
   OutboundEmailListItem,
   OutboundEmailListMeta,
   OutboundEmailPayload,
+  OutboundEmailRecurrenceInput,
   RenderTemplateResult,
 } from '@/features/outbound-emails/types'
 
@@ -91,6 +92,28 @@ export async function deleteOutboundEmail(owner: EmailOwnerRef, emailId: number)
 export async function sendOutboundEmail(owner: EmailOwnerRef, emailId: number): Promise<OutboundEmail> {
   const { data } = await apiClient.post<ApiResponse<OutboundEmail>>(
     `${emailsBase(owner)}/${emailId}/send`,
+    {},
+  )
+  return data.data
+}
+
+/** Draft -> `scheduled` (spec 0362): no immediate send, the series starts on `starts_on`. */
+export async function scheduleOutboundEmail(
+  owner: EmailOwnerRef,
+  emailId: number,
+  recurrence: OutboundEmailRecurrenceInput,
+): Promise<OutboundEmail> {
+  const { data } = await apiClient.post<ApiResponse<OutboundEmail>>(
+    `${emailsBase(owner)}/${emailId}/schedule`,
+    { recurrence },
+  )
+  return data.data
+}
+
+/** `scheduled`/`schedule_ended` -> draft (spec 0362, D-8): the rule is kept, the series stops. */
+export async function unscheduleOutboundEmail(owner: EmailOwnerRef, emailId: number): Promise<OutboundEmail> {
+  const { data } = await apiClient.post<ApiResponse<OutboundEmail>>(
+    `${emailsBase(owner)}/${emailId}/unschedule`,
     {},
   )
   return data.data

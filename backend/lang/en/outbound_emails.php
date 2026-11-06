@@ -21,6 +21,9 @@ return [
     'not_draft' => 'This email is no longer a draft: it can no longer be edited.',
     'not_author' => 'Only this email\'s author can send it.',
     'not_sendable_status' => 'This email cannot be sent from its current status.',
+    // Spec 0362: recurring (programmed) emails.
+    'not_scheduled' => 'This email is not scheduled: there is nothing to move back to draft.',
+    'recurrence_owner_not_active' => 'The work order is no longer in progress: recurring sending cannot be scheduled.',
     'no_recipients' => 'Add at least one recipient in "To".',
     'empty_subject' => 'The subject is required to send the email.',
     'empty_body' => 'The email body is required to send.',

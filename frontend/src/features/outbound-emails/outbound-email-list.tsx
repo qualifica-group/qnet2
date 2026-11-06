@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, Loader2, MailOpen, Paperclip } from 'lucide-react'
+import { AlertCircle, Loader2, MailOpen, Paperclip, Repeat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatDateTime } from '@/lib/formatting/date-display'
+import { formatDate, formatDateTime } from '@/lib/formatting/date-display'
 import { useOutboundEmailsList } from '@/features/outbound-emails/use-outbound-emails-list'
 import { OutboundEmailStatusBadge } from '@/features/outbound-emails/outbound-email-status-badge'
 import type { EmailOwnerRef, OutboundEmailListItem } from '@/features/outbound-emails/types'
@@ -83,9 +83,20 @@ export function OutboundEmailList({ owner, onSelect }: OutboundEmailListProps) {
               className="flex w-full flex-col gap-1 rounded-lg border bg-card p-2.5 text-left text-xs shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-[2px] focus-visible:ring-ring/50"
             >
               <div className="flex items-center justify-between gap-2">
-                <OutboundEmailStatusBadge status={item.status} />
+                <span className="flex items-center gap-1.5">
+                  <OutboundEmailStatusBadge status={item.status} />
+                  {item.is_recurring_copy ? (
+                    <Repeat
+                      className="size-3.5 text-muted-foreground"
+                      role="img"
+                      aria-label={t('outboundEmails.recurrence.copyIcon')}
+                    />
+                  ) : null}
+                </span>
                 <span className="text-muted-foreground">
-                  {formatDateTime(item.sent_at ?? item.failed_at ?? item.updated_at)}
+                  {item.status === 'scheduled' && item.next_send_on
+                    ? t('outboundEmails.recurrence.nextSendOn', { date: formatDate(item.next_send_on) })
+                    : formatDateTime(item.sent_at ?? item.failed_at ?? item.updated_at)}
                 </span>
               </div>
               <span className="truncate font-medium text-foreground">

@@ -32,6 +32,12 @@ interface EmailOwner
     public function templateModule(): EmailTemplateModule;
 
     /**
+     * Spec 0362, D-1: whether an email of this owner may be programmed as a
+     * recurring series right now (the work order: still in progress).
+     */
+    public function allowsRecurrence(Model $owner): bool;
+
+    /**
      * @return array<int, array{email: string, label: string, source: string}>
      */
     public function recipientSuggestions(Model $owner, User $actor): array;

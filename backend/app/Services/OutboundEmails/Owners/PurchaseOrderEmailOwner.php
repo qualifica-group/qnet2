@@ -65,6 +65,11 @@ final class PurchaseOrderEmailOwner implements EmailOwner
         return EmailTemplateModule::PurchaseOrders;
     }
 
+    public function allowsRecurrence(Model $owner): bool
+    {
+        return false;
+    }
+
     /**
      * Primary email of the supplier, else its primary PEC.
      */
