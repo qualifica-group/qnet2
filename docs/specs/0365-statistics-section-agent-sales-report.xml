@@ -12,8 +12,9 @@
     Decisioni utente 2026-11-06:
     - Scope: solo sezione Statistiche e Report Vendite. KPI, Opportunita', Offerte, Commesse e Dashboard Formazione
       del legacy (`app/Livewire/Graphs/*`) vanno in spec successive, una per pagina.
-    - Nuova sezione di primo livello "Statistiche" in cui si spostano anche "Statistiche richieste"
-      (`request-statistics`) e "Gestione Iscritti" (`enrollee-management`), oggi sotto Commerciale.
+    - Nuova sezione di primo livello "Statistiche" in cui si sposta anche "Statistiche richieste"
+      (`request-statistics`), oggi sotto Commerciale. "Gestione Iscritti" (`enrollee-management`) resta sotto
+      Commerciale (direttiva utente 2026-11-06, supera la scelta iniziale di spostarla).
     - Tutti e tre gli export del legacy; "Dettagli" a blocchi come nel legacy.
     - Data accettazione: nuovo campo `quotes.accepted_at` = data in cui l'offerta e' entrata in uno stato vinto,
       storico recuperato da `quotations.accepted_data` del legacy.
@@ -70,8 +71,8 @@
     <decision id="D-1">Nuovo file `config/navigation/statistics.php`: `key` `statistics`, `label`
       `navigation.statistics`, `type` `section`, `route`/`permission`/`icon` null; incluso in `config/navigation.php`
       dopo `personnel.php` e prima di `configuration.php`. Figli, in ordine: `agent-sales-report` (nuovo),
-      `request-statistics`, `enrollee-management` (spostati da `commercial.php` con chiave, label, icona, route e
-      permesso invariati).</decision>
+      `request-statistics` (spostato da `commercial.php` con chiave, label, icona, route e permesso invariati).
+      `enrollee-management` resta in `commercial.php`.</decision>
     <decision id="D-2">Voce `agent-sales-report`: label `navigation.agentSalesReport`, icona `trending-up` (aggiunta
       a `icon-map.ts` se assente), route `/agent-sales-report`, permesso `agent-sales-report.view`.</decision>
     <decision id="D-3">Nuovo permesso `agent-sales-report.view` tramite `AgentSalesReportAuthorization` (come
@@ -120,7 +121,7 @@
 
   <scope>
     <in>
-      <item>Sezione di menu `statistics` con `agent-sales-report`, `request-statistics`, `enrollee-management` (D-1, D-2).</item>
+      <item>Sezione di menu `statistics` con `agent-sales-report` e `request-statistics` (D-1, D-2).</item>
       <item>Permesso `agent-sales-report.view` e sua creazione nelle installazioni esistenti (D-3).</item>
       <item>TableDefinition `agent-sales-report` di sola lettura con visibilita' 0316 (D-4, D-5).</item>
       <item>Colonna `quotes.accepted_at` con il suo invariante su tutti i canali (D-6).</item>
@@ -128,7 +129,7 @@
       <item>Export Sommario (generico), Dettagli (a blocchi), Righe dettaglio (D-8, D-9).</item>
       <item>Pagina frontend `/agent-sales-report` con griglia e menu Export a tre voci.</item>
       <item>i18n IT/EN (menu, colonne, export, permesso); guida in-app nuova `agent-sales-report` IT/EN +
-        `HELP_GUIDE_KEYS`; guide `request-statistics`, `enrollee-management` e `general` aggiornate se citano il
+        `HELP_GUIDE_KEYS`; guide `request-statistics` e `general` aggiornate se citano il
         percorso di menu; manuale Claude Docs (sezione Statistiche).</item>
       <item>App di menu `sales` (D-11).</item>
     </in>
@@ -244,9 +245,9 @@
 
   <acceptance_criteria>
     <criterion id="AC-001">Dato un utente con `agent-sales-report.view`, quando legge il menu, allora trova la sezione
-      `statistics` con figli `agent-sales-report`, `request-statistics`, `enrollee-management` (se ha i rispettivi
-      permessi) e `commercial` non contiene piu' `request-statistics` ne' `enrollee-management`.</criterion>
-    <criterion id="AC-002">Dato un utente senza nessuno dei tre permessi, quando legge il menu, allora la sezione
+      `statistics` con figli `agent-sales-report`, `request-statistics` (se ha i rispettivi permessi), `commercial` non
+      contiene piu' `request-statistics` e contiene ancora `enrollee-management`.</criterion>
+    <criterion id="AC-002">Dato un utente senza nessuno dei due permessi, quando legge il menu, allora la sezione
       `statistics` non c'e'.</criterion>
     <criterion id="AC-003">Dato un utente senza `agent-sales-report.view`, quando chiama columns, rows,
       `/exports/details`, `/exports/lines` o `POST /api/exports/agent-sales-report`, allora riceve 403.</criterion>

@@ -1,8 +1,8 @@
 <?php
 
 // Spec 0365 (menu on the legacy QNet "Statistiche" area). "Statistiche": read-only reports and
-// dashboards over the sales and request data. Request statistics and enrollee management moved
-// here from Commerciale with key, label, icon, route and permission unchanged.
+// dashboards over the sales and request data. Request statistics moved here from Commerciale with
+// key, label, icon, route and permission unchanged.
 return [
     'key' => 'statistics',
     'label' => 'navigation.statistics',
@@ -24,13 +24,6 @@ return [
             'icon' => 'chart-column',
             'route' => '/request-statistics',
             'permission' => 'request-statistics.view',
-        ],
-        [
-            'key' => 'enrollee-management',
-            'label' => 'navigation.enrolleeManagement',
-            'icon' => 'user-plus',
-            'route' => '/enrollee-management',
-            'permission' => 'enrollee-management.view',
         ],
     ],
 ];

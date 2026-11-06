@@ -80,6 +80,13 @@ return [
             ],
         ],
         [
+            'key' => 'enrollee-management',
+            'label' => 'navigation.enrolleeManagement',
+            'icon' => 'user-plus',
+            'route' => '/enrollee-management',
+            'permission' => 'enrollee-management.view',
+        ],
+        [
             'key' => 'rewarded-referents',
             'label' => 'navigation.rewardedReferents',
             'icon' => 'handshake',

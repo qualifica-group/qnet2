@@ -15,7 +15,6 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-// REQUIREMENT CHANGED (spec 0365): `enrollee-management` moved from the `commercial` section to `statistics`.
 it('the enrollee-management item is present under opportunities-group only with enrollee-management.view (AC-011)', function () {
     Permission::findOrCreate('enrollee-management.view');
     $actor = User::factory()->create();
@@ -24,7 +23,7 @@ it('the enrollee-management item is present under opportunities-group only with 
     Sanctum::actingAs($actor);
 
     $groups = collect($this->getJson('/api/navigation')->assertOk()->json('data'));
-    $opportunitiesGroup = $groups->firstWhere('key', 'statistics');
+    $opportunitiesGroup = $groups->firstWhere('key', 'commercial');
 
     expect($opportunitiesGroup)->not->toBeNull();
 

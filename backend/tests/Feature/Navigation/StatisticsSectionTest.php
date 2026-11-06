@@ -30,7 +30,8 @@ function statisticsMenuUser(string ...$permissions): User
     return User::factory()->create()->givePermissionTo($permissions);
 }
 
-it('AC-001: groups the three statistics entries and removes two from commercial', function () {
+// REQUIREMENT CHANGED (spec 0365, user directive 2026-11-06): Gestione Iscritti stays under Commerciale.
+it('AC-001: groups the two statistics entries and keeps enrollee management in commercial', function () {
     Sanctum::actingAs(statisticsMenuUser(
         'agent-sales-report.view', 'request-statistics.view', 'enrollee-management.view', 'quotes.view',
     ));
@@ -39,12 +40,11 @@ it('AC-001: groups the three statistics entries and removes two from commercial'
     $commercialKeys = collect(statisticsMenuSection('commercial')['children'])->pluck('key')->all();
 
     expect(collect($statistics['children'])->pluck('key')->all())
-        ->toBe(['agent-sales-report', 'request-statistics', 'enrollee-management'])
+        ->toBe(['agent-sales-report', 'request-statistics'])
         ->and(collect($statistics['children'])->firstWhere('key', 'agent-sales-report'))
         ->toMatchArray(['route' => '/agent-sales-report', 'icon' => 'trending-up', 'label' => 'navigation.agentSalesReport'])
-        ->and($commercialKeys)->toContain('quotes')
-        ->not->toContain('request-statistics')
-        ->not->toContain('enrollee-management');
+        ->and($commercialKeys)->toContain('quotes', 'enrollee-management')
+        ->not->toContain('request-statistics');
 });
 
 it('AC-001: a holder of only agent-sales-report.view sees just that child', function () {
@@ -53,7 +53,7 @@ it('AC-001: a holder of only agent-sales-report.view sees just that child', func
     expect(collect(statisticsMenuSection('statistics')['children'])->pluck('key')->all())->toBe(['agent-sales-report']);
 });
 
-it('AC-002: a user with none of the three permissions has no statistics section', function () {
+it('AC-002: a user with neither statistics permission has no statistics section', function () {
     Sanctum::actingAs(statisticsMenuUser('quotes.view'));
 
     expect(statisticsMenuSection('statistics'))->toBeNull();
