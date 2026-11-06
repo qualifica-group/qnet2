@@ -56,6 +56,7 @@ return [
         require __DIR__.'/navigation/warehouse.php',
         require __DIR__.'/navigation/accounting.php',
         require __DIR__.'/navigation/personnel.php',
+        require __DIR__.'/navigation/statistics.php',
         require __DIR__.'/navigation/configuration.php',
         require __DIR__.'/navigation/develop.php',
     ],

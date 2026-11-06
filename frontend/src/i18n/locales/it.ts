@@ -70,6 +70,7 @@ import { workOrderPaymentStatuses } from './it-work-order-payment-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
 import { dashboard } from './it-dashboard'
+import { agentSalesReport } from './it-agent-sales-report'
 import { requestManagement } from './it-request-management'
 import { categoryTabs } from './it-category-tabs'
 import { enrolleeManagement } from './it-enrollee-management'
@@ -465,6 +466,7 @@ export const it: TranslationResources = {
   taskImportances,
   timeEntries,
   commissionConfigurations,
+  agentSalesReport,
   requestManagement,
   categoryTabs,
   enrolleeManagement,

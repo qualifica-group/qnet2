@@ -116,6 +116,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0213 `commission-settlements` (CommissionSettlementsAuthorization: notes editable on a draft,
         // computed amounts visible-readonly) and `enasarco-parameters` (EnasarcoParametersAuthorization).
         'commission-settlements', 'enasarco-parameters',
+        // REQUIREMENT CHANGED (spec 0365): `agent-sales-report` (AgentSalesReportAuthorization: a view-only
+        // table, no field — registered so `agent-sales-report.view` is assignable from the Role form).
+        'agent-sales-report',
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',

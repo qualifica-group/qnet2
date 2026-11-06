@@ -84,6 +84,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       pinnedRowSlot,
       interceptCellCommit,
       treeData,
+      exportMenu,
     },
     ref,
   ) {
@@ -227,6 +228,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       registryId,
       referentId,
       workOrderType,
+      exportMenu,
     })
 
     return (

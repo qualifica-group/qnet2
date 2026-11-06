@@ -6,7 +6,19 @@ import type { RowActionHandler, RowActionsOptions } from '@/features/table/row-a
 import type { CellCommitInterceptor } from '@/features/table/use-table-cell-edit'
 import type { TableConfigScope } from '@/features/table/use-table-config'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
-import type { TableRow, TableRowsAggregates, TableRowScope } from '@/features/table/types'
+import type { GridApi } from 'ag-grid-community'
+import type { FilterRules, TableColumn, TableRow, TableRowsAggregates, TableRowScope } from '@/features/table/types'
+
+/** Live grid state handed to a domain's own export menu (spec 0365). */
+export interface TableExportMenuContext {
+  gridApi: GridApi<TableRow> | null
+  columns: TableColumn[]
+  search: string
+  advancedFilters: AdvancedFilterValues
+  customFilterRules: FilterRules | null
+  /** Opens the generic export dialog (`POST /exports/{domain}`). */
+  openGenericExport: () => void
+}
 
 /**
  * Props of the generic `TableView` (extracted from `table-view.tsx` purely to
@@ -147,4 +159,11 @@ export interface TableViewProps extends RowActionsOptions {
    * `tasks`'s "Sintetica" view.
    */
   treeData?: boolean
+  /**
+   * Replaces the toolbar's single generic Export item with the domain's own
+   * menu entries (spec 0365: Sommario / Dettagli / Righe dettaglio). The
+   * adapter owns the permission gate: when supplied, the generic
+   * `{domain}.export` ability is not required. Omitted, nothing changes.
+   */
+  exportMenu?: (context: TableExportMenuContext) => ReactNode
 }

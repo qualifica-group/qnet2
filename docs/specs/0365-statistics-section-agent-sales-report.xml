@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0365-statistics-section-agent-sales-report" status="approved" owner="utente" date="2026-11-06">
+
+  <goal>
+    Portare in qnet-2 la sezione di menu "Statistiche" del QNet legacy e, dentro, il "Report Vendite Agenti"
+    (legacy `agent-sale-report`): elenco filtrabile delle offerte con anagrafica, commerciale, segnalatore, fase e
+    imponibile, con i tre export Excel del legacy (Sommario, Dettagli, Righe dettaglio). Serve a chi segue le
+    vendite per vedere e scaricare il venduto per commerciale, cliente e periodo.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-06:
+    - Scope: solo sezione Statistiche e Report Vendite. KPI, Opportunita', Offerte, Commesse e Dashboard Formazione
+      del legacy (`app/Livewire/Graphs/*`) vanno in spec successive, una per pagina.
+    - Nuova sezione di primo livello "Statistiche" in cui si spostano anche "Statistiche richieste"
+      (`request-statistics`) e "Gestione Iscritti" (`enrollee-management`), oggi sotto Commerciale.
+    - Tutti e tre gli export del legacy; "Dettagli" a blocchi come nel legacy.
+    - Data accettazione: nuovo campo `quotes.accepted_at` = data in cui l'offerta e' entrata in uno stato vinto,
+      storico recuperato da `quotations.accepted_data` del legacy.
+
+    Legacy (fonte, sola lettura): `app/Livewire/AgentSaleQuotes/AgentSalesReport.php`,
+    `resources/views/livewire/agent-sale-quotes/agent-sales-report.blade.php`, export
+    `app/Exports/QuotationsExport.php`, `QuotationsDetailExport.php` (vista `exports/quotations.blade.php`),
+    `QuotationsSingleDetailExport.php` (vista `exports/detail_quotations.blade.php`). Permesso legacy
+    `statistics view`. La pagina legacy mostra la tabella solo con un filtro attivo e al massimo 200 righe.
+
+    Fatti verificati in qnet-2:
+    - Menu da config: `backend/config/navigation.php` (`items`, un file per sezione in `config/navigation/`),
+      filtrato per permesso da NavigationService; `type: 'section'` = gruppo etichettato
+      (`frontend/src/features/navigation/nav-blocks.ts`). `request-statistics` ed `enrollee-management` stanno in
+      `config/navigation/commercial.php`. Le app di menu (spec 0317) referenziano chiavi foglia
+      (`database/seeders/QualificaCatalog/WorkspaceCatalogue.php`, app `sales`): spostare le voci non cambia le chiavi.
+    - Offerte: model `Quote`, tabella `quotes`. Mappatura legacy -> qnet-2 del report:
+      `id` -> `quotes.code`; `datequotation` -> `quotes.quote_date`; cliente (`customer_id`) -> anagrafica
+      dell'opportunita' (`opportunities.registry_id` -> `Registry`); `business_unit` -> `quotes.company_site_id`
+      (`CompanySite`, mappato cosi' da `QuoteMigrationController` del legacy); `agent_id` -> `quotes.commercial_id`
+      (`Referent`); `signaler_id` -> `quotes.reporter_id` (`Referent`); `supervisor_id` -> `quotes.supervisor_id`
+      (`User`); responsabile opportunita' -> gestori account `quote_user` (colonna `managers`); `status_quotation`
+      -> `quote_workflow_status_id` (`QuoteWorkflowStatus.name`, gruppo `WorkflowStatusGroup`);
+      `total` -> `quotes.revenue_net`.
+    - Indirizzo/contatti dell'anagrafica: scheda `personalData` (`HasPersonalData`) con `addresses`
+      (`line1`, `line2`, `postal_code`, `city_id` -> `cities`, `is_primary`) e `contacts` (`type`
+      phone/email, `value`, `is_primary`); colonna condivisa `PrimaryContactColumn`.
+    - Righe d'offerta: `QuoteLine` (`line_type` REVENUE/COST, `product_id`, `quantity`, `unit_price`,
+      `net_amount`); provvigioni per riga `QuoteLineCommission` (`recipient_role` COMMERCIAL/REPORTER/SUPERVISOR/
+      SUPPLIER, `calculated_amount`). Tipo legacy Consulenza/Ente (`services.folder`) -> tipologia prodotto
+      `product_typologies` (`consultancy` = Consulenza, `institution` = Ente). Categoria madre: radice di
+      `product_categories.parent_id` (logica gia' in `RootCategoriesColumn`).
+    - `quotes` non ha oggi alcuna data di cambio stato (spec 0170). Il log attivita' dei cambi stato
+      (`QuoteStatusChangeLogger`, `RequestWorkflowStatusWriter`) sta sull'opportunita' e non porta l'id
+      dell'offerta; in sviluppo le 28.563 offerte sono tutte migrate e il log non ha nessun cambio stato.
+      Lo stato si scrive da piu' punti: `QuoteWorkflowStatusWriter`, `QuoteWorkflowResolver`,
+      `QuoteWorkflowStatusAssigner`, `QuoteService::create`, `ResyncQuoteWorkflowStatuses`,
+      `LegacyQuoteStatusApplier` (quest'ultimo con `saveQuietly`).
+    - Legacy: `accepted_data` valorizzata su tutte le offerte in stato 1/2/3/4/8, mai su 0/6, su meta' delle 5.
+    - Visibilita' record (spec 0316): vale anche per statistiche ed export -> `QuoteVisibilityScope`
+      (`withCompetenceVerdict` + `scopeToActor`), gia' usata da `QuotesTableDefinition::baseQuery()`.
+    - Framework tabellare: `TableDefinition` registrate in `TableRegistry`; endpoint generici
+      `GET /api/tables/{domain}/columns`, `POST /api/tables/{domain}/rows`, filtri salvati
+      (`filter-views`), conteggio righe nella toolbar (`table.rowCount`), export generico asincrono
+      `POST /api/exports/{domain}` (ExportService + TableQueryBuilder, cap `config('exports.max_rows')`).
+    - Export sincrono con download: precedente `AbsenceBalanceOverviewController::export` +
+      `AbsenceBalanceOverviewExporter` (ExportWriterFactory, file temporaneo, `deleteFileAfterSend`).
+    - Permessi di sola pagina: precedente `RequestStatisticsAuthorization` registrata in `config/authorization.php`.
+    - Migrazione verso record gia' migrati: precedente `WorkOrderProgressSource` (sorgente dedicata).
+      `QuotesSource` salta le offerte gia' importate, quindi non puo' riempire `accepted_at` sulle esistenti.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Nuovo file `config/navigation/statistics.php`: `key` `statistics`, `label`
+      `navigation.statistics`, `type` `section`, `route`/`permission`/`icon` null; incluso in `config/navigation.php`
+      dopo `personnel.php` e prima di `configuration.php`. Figli, in ordine: `agent-sales-report` (nuovo),
+      `request-statistics`, `enrollee-management` (spostati da `commercial.php` con chiave, label, icona, route e
+      permesso invariati).</decision>
+    <decision id="D-2">Voce `agent-sales-report`: label `navigation.agentSalesReport`, icona `trending-up` (aggiunta
+      a `icon-map.ts` se assente), route `/agent-sales-report`, permesso `agent-sales-report.view`.</decision>
+    <decision id="D-3">Nuovo permesso `agent-sales-report.view` tramite `AgentSalesReportAuthorization` (come
+      `RequestStatisticsAuthorization`: nessun campo, nessuna azione), registrata in `config/authorization.php`.
+      Creato nelle installazioni esistenti da una migrazione dati sul precedente di
+      `2026_10_01_100000_move_request_report_permissions_to_request_statistics.php`. Il permesso apre la pagina;
+      le offerte visibili restano quelle di `QuoteVisibilityScope` (spec 0316).</decision>
+    <decision id="D-4">Il report e' una `TableDefinition` di sola lettura, dominio `agent-sales-report`, sopra
+      `quotes`, con `baseQuery()` scoped da `QuoteVisibilityScope`. Niente modifica in griglia, niente
+      eliminazione massiva, niente creazione; il N. offerta e' un link che apre l'offerta (`/quotes/{id}`), perche' il
+      framework tabellare non ha un clic di riga generico. Diversamente
+      dal legacy la tabella e' sempre visibile e paginata (SSRM), senza il tetto di 200 righe.</decision>
+    <decision id="D-5">I filtri del legacy si coprono col framework: azienda = filtro set su `registry`,
+      commerciale = filtro set su `commercial`, ricerca titolo = ricerca globale su `title` e `code`, filtro
+      salvato = viste filtro (`filter-views`) del dominio. Il conteggio "N offerte" e' il conteggio righe della
+      toolbar.</decision>
+    <decision id="D-6">`quotes.accepted_at` (date, nullable, indicizzata), fuori da `#[Fillable]`, cast `date`.
+      Invariante: quando un salvataggio porta l'offerta da uno stato NON `closed_won` a uno `closed_won`,
+      `accepted_at` = data odierna (timezone app); quando la porta fuori da `closed_won`, `accepted_at` = null;
+      tra due stati `closed_won` resta invariata. Scritta in un solo punto per tutti i canali: hook `saving` di
+      `Quote` che delega a `App\Services\Quotes\QuoteAcceptedDateStamper`. I salvataggi `saveQuietly` (importazione
+      legacy) non la toccano.</decision>
+    <decision id="D-7">Storico: nuovo endpoint legacy `GET /api/v2/migration/quote-accepted-dates`
+      (`QuoteAcceptedDateMigrationController`, stessa paginazione di `WorkOrderProgressMigrationController`) che
+      invia `{ id, accepted_at }` (Y-m-d) per ogni quotation con `accepted_data` valorizzata. In qnet-2 nuova sorgente
+      `QuoteAcceptedDatesSource` (chiave `quote-accepted-dates`, dipendenza `quotes`): lookup `old_id`; scrive
+      `accepted_at` solo se l'offerta e' oggi in uno stato `closed_won` e `accepted_at` e' null, altrimenti
+      `skipped`; offerta non migrata = warning. Scrittura `saveQuietly`, senza log attivita'.</decision>
+    <decision id="D-8">Export "Sommario" = export generico del dominio (`POST /api/exports/agent-sales-report`,
+      formato xlsx): colonne visibili della griglia, che di default sono quelle del Sommario legacy nello stesso
+      ordine (vedi data_contract). Nessun codice nuovo lato backend oltre alla TableDefinition, salvo il gate di
+      `ExportController::authorizeExport`, che per questo dominio usa `agent-sales-report.view`. Il dialog generico
+      offre anche CSV e l'export generico scrive ogni cella come testo: limiti del motore comune, non ritoccati qui.</decision>
+    <decision id="D-9">Export "Dettagli" e "Righe dettaglio" = due endpoint sincroni (download diretto, xlsx) che
+      ricevono lo stato griglia e selezionano le offerte con `TableQueryBuilder::build()` sul dominio
+      `agent-sales-report`: stesse righe, filtri, ricerca, ordinamento e visibilita' della griglia. Oltre
+      `config('exports.max_rows')` offerte filtrate -> 422. Sono considerate solo le righe REVENUE; importi da
+      `quote_lines.net_amount`; provvigioni = somma di `calculated_amount` per ruolo SUPERVISOR, COMMERCIAL,
+      REPORTER (SUPPLIER escluso); Netto = importo - le tre provvigioni.</decision>
+    <decision id="D-10">La colonna legacy "Data Sc." (data offerta + `services.months_expiration`) non ha
+      equivalente in qnet-2 (i prodotti non hanno una durata in mesi): omessa.</decision>
+    <decision id="D-11">App di menu (spec 0317): `agent-sales-report` aggiunta all'app `sales` in
+      `WorkspaceCatalogue` e, con una migrazione dati idempotente (`insertOrIgnore`), alla workspace `sales` gia'
+      esistente.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Sezione di menu `statistics` con `agent-sales-report`, `request-statistics`, `enrollee-management` (D-1, D-2).</item>
+      <item>Permesso `agent-sales-report.view` e sua creazione nelle installazioni esistenti (D-3).</item>
+      <item>TableDefinition `agent-sales-report` di sola lettura con visibilita' 0316 (D-4, D-5).</item>
+      <item>Colonna `quotes.accepted_at` con il suo invariante su tutti i canali (D-6).</item>
+      <item>Recupero storico `accepted_at` dal legacy: endpoint legacy + sorgente qnet-2 (D-7).</item>
+      <item>Export Sommario (generico), Dettagli (a blocchi), Righe dettaglio (D-8, D-9).</item>
+      <item>Pagina frontend `/agent-sales-report` con griglia e menu Export a tre voci.</item>
+      <item>i18n IT/EN (menu, colonne, export, permesso); guida in-app nuova `agent-sales-report` IT/EN +
+        `HELP_GUIDE_KEYS`; guide `request-statistics`, `enrollee-management` e `general` aggiornate se citano il
+        percorso di menu; manuale Claude Docs (sezione Statistiche).</item>
+      <item>App di menu `sales` (D-11).</item>
+    </in>
+    <out>
+      <item>Pagine legacy KPI, Opportunita', Opportunita' azioni, Offerte, Commesse, Dashboard Formazione,
+        Monitoraggio Corsi (spec successive).</item>
+      <item>Mostrare `accepted_at` nella griglia Offerte, nel dettaglio offerta o in Gestione Richieste.</item>
+      <item>Ricalcolo di `accepted_at` quando nel configuratore si cambia il gruppo di uno stato esistente.</item>
+      <item>Ricostruzione di date dal log attivita'; la colonna "Data Sc." (D-10).</item>
+      <item>Formati export diversi da xlsx; export asincroni per Dettagli/Righe dettaglio.</item>
+      <item>Modifiche alla griglia `quotes` o al suo export.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/tables/agent-sales-report/columns">
+      <request>Nessun parametro. Authz: `agent-sales-report.view` (TableDefinition::viewAny).</request>
+      <response status="200">
+        Envelope del framework tabellare (invariato). Colonne, in quest'ordine, tutte `visible: true`:
+        | id | label (i18n) | type | sortable | filterable / filterType | searchable |
+        | `code` | agentSalesReport.columns.code ("N. offerta") | text | si | text | si |
+        | `quote_date` | agentSalesReport.columns.quoteDate ("Data creazione") | date | si | date | no |
+        | `accepted_at` | agentSalesReport.columns.acceptedAt ("Data accettazione") | date | si | date | no |
+        | `registry` | agentSalesReport.columns.registry ("Azienda") | text | si | set | no |
+        | `title` | agentSalesReport.columns.title ("Titolo") | text | si | text | si |
+        | `address` | agentSalesReport.columns.address ("Indirizzo") | text | no | no | no |
+        | `postal_code` | agentSalesReport.columns.postalCode ("CAP") | text | no | no | no |
+        | `city` | agentSalesReport.columns.city ("Citta'") | text | si | text | no |
+        | `phone` | agentSalesReport.columns.phone ("Telefono") | text | no | no | no |
+        | `email` | agentSalesReport.columns.email ("Email") | text | no | no | no |
+        | `company_site` | agentSalesReport.columns.companySite ("Unita' aziendale") | text | si | set | no |
+        | `managers` | agentSalesReport.columns.managers ("Responsabili") | text | no | set | no |
+        | `quote_workflow_status` | agentSalesReport.columns.quoteWorkflowStatus ("Fase") | text | si | set | no |
+        | `revenue_net` | agentSalesReport.columns.revenueNet ("Imponibile") | number | si | number | no |
+        | `commercial` | agentSalesReport.columns.commercial ("Commerciale") | text | si | set | no |
+        | `reporter` | agentSalesReport.columns.reporter ("Segnalatore") | text | si | set | no |
+        Nessuna colonna `editable`, nessuna azione di riga, nessuna bulk action. Ordinamento di default
+        `quote_date` desc, poi `id` desc.
+      </response>
+      <errors>401 non autenticato; 403 senza `agent-sales-report.view`.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/agent-sales-report/rows">
+      <request>Body SSRM del framework (invariato): startRow, endRow, sortModel, filterModel, advancedFilters, search.</request>
+      <response status="200">
+        Envelope del framework (invariato). Ogni riga: `id` (quote id) + i campi delle colonne sopra.
+        Valori: `quote_date`/`accepted_at` "Y-m-d" o null; `registry` nome anagrafica; `address` = `line1` (+ ", "
+        + `line2` se presente) dell'indirizzo primario della scheda dell'anagrafica; `postal_code`, `city`
+        (`cities.name`) dallo stesso indirizzo; `phone`/`email` = `value` del contatto primario di quel tipo;
+        `company_site`, `commercial`, `reporter`, `quote_workflow_status`, `managers` con la stessa proiezione delle
+        colonne omonime del dominio `quotes`; `revenue_net` numero. Righe limitate da `QuoteVisibilityScope`.
+      </response>
+      <errors>401; 403 senza `agent-sales-report.view`; 422 colonna di filtro/ordinamento non in allow-list.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/exports/agent-sales-report">
+      <request>Export generico esistente (Sommario), `format: "xlsx"`, stato griglia `buildExportGridState`.</request>
+      <response status="200">Flusso ExportRun esistente, invariato.</response>
+      <errors>Come l'export generico; 403 senza `agent-sales-report.view`.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/agent-sales-report/exports/details">
+      <request>
+        Body = stato griglia come l'export generico: `sortModel` array&lt;{colId, sort: asc|desc}&gt;,
+        `filterModel` object, `search` string|null, `advancedFilters` object opzionale, `customFilterRules`
+        object|null opzionale, `columns` opzionale e ignorato. FormRequest `ExportAgentSalesReportRequest`
+        (colId in allow-list del dominio).
+      </request>
+      <response status="200">
+        File xlsx, `Content-Disposition: attachment; filename="report-vendite-dettagli-YYYYMMDD.xlsx"`.
+        Un foglio. Prima riga: intestazione con le etichette del blocco (a), come nel legacy. Poi per ogni offerta,
+        nell'ordine della griglia, un blocco:
+        (a) riga offerta: N. offerta, Data, Accettazione, Titolo, Azienda, Indirizzo, "CAP - Citta'", Telefono,
+            Email, Unita' aziendale, Fase, Imponibile, Consulenza, Ente, Responsabili, Supervisore, Commerciale,
+            Segnalatore. Consulenza/Ente = somma `net_amount` delle righe REVENUE con prodotto di tipologia
+            `consultancy`/`institution`.
+        (b) riga intestazione: Cat. madre, Categoria, Prodotto, Quantita', Prezzo, Totale, Tipo, Provv. supervisore,
+            Provv. commerciale, Provv. segnalatore, Netto.
+        (c) una riga per riga REVENUE (ordine `sort_order`): categoria radice, categoria, nome prodotto
+            (`additional_description` se senza prodotto), `quantity`, `unit_price`, `net_amount`, nome tipologia,
+            le tre provvigioni, Netto.
+        (d) riga totali: "Totale provvigioni", somma provv. supervisore, commerciale, segnalatore, Netto totale
+            (= `revenue_net` - somma delle tre).
+        Intestazioni dalle stringhe `lang/{it,en}/agent_sales_report.php`. Date d/m/Y, importi numerici.
+      </response>
+      <errors>401; 403 senza `agent-sales-report.view`; 422 stato non valido; 422 con `message` = testo tradotto di
+        `agent_sales_report.export.too_many` se le offerte filtrate superano `config('exports.max_rows')`.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/agent-sales-report/exports/lines">
+      <request>Identica a `/exports/details`.</request>
+      <response status="200">
+        File xlsx `report-vendite-righe-YYYYMMDD.xlsx`, un foglio, riga di intestazione + una riga piatta per ogni
+        riga REVENUE delle offerte filtrate (offerte senza righe REVENUE: nessuna riga). Colonne: N. offerta, Data,
+        Azienda, Cat. madre, Categoria, Prodotto, Quantita', Prezzo, Totale, Tipo, Supervisore, Provv. supervisore,
+        Commerciale, Provv. commerciale, Segnalatore, Provv. segnalatore, Netto.
+      </response>
+      <errors>Come `/exports/details`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="(legacy) /api/v2/migration/quote-accepted-dates">
+      <request>Paginazione standard delle API di migrazione legacy (come `work-order-progress`).</request>
+      <response status="200">Pagina di record `{ id: int (quotations.id), accepted_at: "Y-m-d" }`, solo quotation con
+        `accepted_data` non null, ordinate per id.</response>
+      <errors>Come le altre API di migrazione legacy.</errors>
+    </endpoint>
+
+    <schema>
+      Migrazione `add_accepted_at_to_quotes_table`: `quotes.accepted_at` date nullable + index; `down` la rimuove.
+      Migrazione dati permesso `agent-sales-report.view` (D-3) e workspace `sales` (D-11), entrambe reversibili.
+    </schema>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con `agent-sales-report.view`, quando legge il menu, allora trova la sezione
+      `statistics` con figli `agent-sales-report`, `request-statistics`, `enrollee-management` (se ha i rispettivi
+      permessi) e `commercial` non contiene piu' `request-statistics` ne' `enrollee-management`.</criterion>
+    <criterion id="AC-002">Dato un utente senza nessuno dei tre permessi, quando legge il menu, allora la sezione
+      `statistics` non c'e'.</criterion>
+    <criterion id="AC-003">Dato un utente senza `agent-sales-report.view`, quando chiama columns, rows,
+      `/exports/details`, `/exports/lines` o `POST /api/exports/agent-sales-report`, allora riceve 403.</criterion>
+    <criterion id="AC-004">Dato `agent-sales-report.view`, quando chiama columns, allora riceve le 16 colonne del
+      contratto nell'ordine indicato, nessuna editable.</criterion>
+    <criterion id="AC-005">Data un'offerta con anagrafica con indirizzo e contatti primari, sede aziendale, commerciale,
+      segnalatore, gestori e stato, quando chiama rows, allora la riga riporta tutti i valori del contratto
+      (address, postal_code, city, phone, email inclusi).</criterion>
+    <criterion id="AC-006">Dato un utente la cui visibilita' 0316 e' "solo le proprie", quando chiama rows o un export,
+      allora non riceve offerte fuori dalla sua visibilita'.</criterion>
+    <criterion id="AC-007">Quando filtra per `registry`, per `commercial` o cerca un testo del titolo, allora riceve
+      solo le offerte corrispondenti e il conteggio righe corrisponde.</criterion>
+    <criterion id="AC-008">Data un'offerta in stato `open`, quando passa a uno stato `closed_won` (dal servizio Offerte,
+      dalla modifica in griglia o da Gestione Richieste), allora `accepted_at` = oggi.</criterion>
+    <criterion id="AC-009">Data un'offerta `closed_won` con `accepted_at` valorizzata, quando passa a un altro stato
+      `closed_won`, allora `accepted_at` resta invariata; quando passa a uno stato non `closed_won`, allora diventa null.</criterion>
+    <criterion id="AC-010">Data un'offerta migrata in stato `closed_won` senza `accepted_at`, quando la sorgente
+      `quote-accepted-dates` importa `{id: old_id, accepted_at}`, allora `accepted_at` assume quel valore; se l'offerta
+      non e' `closed_won` o ha gia' una data l'esito e' `skipped`; se l'old_id non esiste l'esito porta un warning.
+      Una seconda esecuzione non cambia nulla.</criterion>
+    <criterion id="AC-011">Date due offerte filtrate con righe REVENUE, COST e provvigioni per ruolo, quando chiama
+      `/exports/details`, allora il file ha per ogni offerta i blocchi (a)-(d) con Consulenza/Ente, provvigioni e
+      Netto calcolati come da contratto e nessuna riga COST.</criterion>
+    <criterion id="AC-012">Quando chiama `/exports/lines`, allora il file ha l'intestazione e una riga per ogni riga
+      REVENUE delle offerte filtrate, con le colonne del contratto; un'offerta senza righe REVENUE non produce righe.</criterion>
+    <criterion id="AC-013">Dato un filtro attivo in griglia, quando chiama `/exports/details` o `/exports/lines` con lo
+      stesso stato, allora il file contiene solo le offerte della griglia, nello stesso ordine.</criterion>
+    <criterion id="AC-014">Quando le offerte filtrate superano `exports.max_rows`, allora `/exports/details` e
+      `/exports/lines` rispondono 422 con il testo tradotto di `agent_sales_report.export.too_many`, il frontend lo
+      mostra cosi' com'e', e non viene prodotto alcun file.</criterion>
+    <criterion id="AC-015">Frontend: la pagina `/agent-sales-report` monta la griglia del dominio, mostra il conteggio
+      righe e un menu Export con tre voci; "Sommario" apre l'export generico, "Dettagli" e "Righe dettaglio" scaricano
+      il file dall'endpoint con lo stato griglia corrente; senza permesso la pagina mostra il messaggio di accesso negato.</criterion>
+    <criterion id="AC-016">Frontend: guida `agent-sales-report` IT/EN presente con gli stessi id di sezione, chiave in
+      `HELP_GUIDE_KEYS`, `help-content-parity.test.ts` e `permissions-i18n-parity.test.ts` verdi.</criterion>
+    <criterion id="AC-017">Legacy: `GET /api/v2/migration/quote-accepted-dates` restituisce solo quotation con
+      `accepted_data` non null, nel formato del contratto (verifica tinker sui dati reali + `php -l`).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: export con `ExportWriterFactory`/`XlsxExportWriter` esistenti.</item>
+    <item>Authz server-side su ogni endpoint (`agent-sales-report.view`) + `QuoteVisibilityScope`; ordinamenti e
+      filtri solo da allow-list (TableQueryBuilder), mai `orderByRaw` da input.</item>
+    <item>Niente N+1 nelle righe e negli export: eager loading di anagrafica, scheda, indirizzo primario, contatti
+      primari, righe, prodotti, categorie, tipologie, provvigioni; offerte lette a blocchi.</item>
+    <item>Migrazione dati dal legacy secondo `backend.md §9`: il legacy invia solo quotation con data; qnet-2 fa
+      solo lookup, regola `closed_won` e scrittura idempotente.</item>
+    <item>Mai `migrate:fresh`/rollback/seed sul DB di sviluppo; solo `php artisan migrate` delle nuove migrazioni.</item>
+    <item>File sotto 300 righe; identificatori in inglese; stringhe UI via i18n; UI compatta (`ui-design.md`).</item>
+    <item>Test toccati da requisito cambiato (es. ordine menu Commerciale) marcati `REQUIREMENT CHANGED (spec 0365)`.</item>
+  </constraints>
+
+</spec>

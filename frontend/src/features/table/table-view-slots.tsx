@@ -8,7 +8,10 @@ import { SavedViewsSlot } from '@/features/table/saved-views-slot'
 import { RuleBuilderDialog } from '@/features/table/custom-filters/rule-builder-dialog'
 import type { UseTableCustomFiltersResult } from '@/features/table/custom-filters/use-table-custom-filters'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
-import type { TableConfig, TableRow, WorkOrderTypeScope } from '@/features/table/types'
+import type { TableExportMenuContext } from '@/features/table/table-view-props'
+import type { TableColumn, TableConfig, TableRow, WorkOrderTypeScope } from '@/features/table/types'
+
+const NO_COLUMNS: TableColumn[] = []
 
 interface TableViewSlotsArgs {
   domain: string
@@ -29,6 +32,7 @@ interface TableViewSlotsArgs {
   registryId?: number
   referentId?: number
   workOrderType?: WorkOrderTypeScope
+  exportMenu?: (context: TableExportMenuContext) => ReactNode
 }
 
 interface TableViewSlots {
@@ -63,6 +67,7 @@ export function buildTableViewSlots({
   registryId,
   referentId,
   workOrderType,
+  exportMenu,
 }: TableViewSlotsArgs): TableViewSlots {
   const savedViewsSlot = (
     <SavedViewsSlot
@@ -79,7 +84,8 @@ export function buildTableViewSlots({
     />
   )
 
-  const exportSlot = canExport ? (
+  const exportEnabled = canExport || exportMenu !== undefined
+  const genericExportItem = canExport ? (
     <DropdownMenuItem
       onSelect={(event) => {
         event.preventDefault()
@@ -91,9 +97,20 @@ export function buildTableViewSlots({
     </DropdownMenuItem>
   ) : null
 
+  const exportSlot = exportMenu
+    ? exportMenu({
+        gridApi,
+        columns: config?.columns ?? NO_COLUMNS,
+        search: getSearchTerm(),
+        advancedFilters: advancedFilters.activeValues,
+        customFilterRules: customFilters.active.state?.rules ?? null,
+        openGenericExport: onExportOpen,
+      })
+    : genericExportItem
+
   const dialogs = (
     <>
-      {canExport && config ? (
+      {exportEnabled && config ? (
         <ExportDialog
           domain={domain}
           open={exportOpen}

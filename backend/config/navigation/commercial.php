@@ -80,25 +80,11 @@ return [
             ],
         ],
         [
-            'key' => 'enrollee-management',
-            'label' => 'navigation.enrolleeManagement',
-            'icon' => 'user-plus',
-            'route' => '/enrollee-management',
-            'permission' => 'enrollee-management.view',
-        ],
-        [
             'key' => 'rewarded-referents',
             'label' => 'navigation.rewardedReferents',
             'icon' => 'handshake',
             'route' => '/rewarded-referents',
             'permission' => 'rewarded-referents.view',
-        ],
-        [
-            'key' => 'request-statistics',
-            'label' => 'navigation.requestStatistics',
-            'icon' => 'chart-column',
-            'route' => '/request-statistics',
-            'permission' => 'request-statistics.view',
         ],
     ],
 ];

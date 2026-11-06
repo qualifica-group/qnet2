@@ -3,6 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Statistiche + Report Vendite Agenti (spec 0365) — VERDE SUI CRITERI, NON COMMITTATO (2026-11-06)
+
+- Spec `docs/specs/0365-statistics-section-agent-sales-report.xml` (approvata). Scope: sezione menu `statistics` +
+  report; KPI/Opportunita'/Offerte/Commesse/Dashboard Formazione del legacy restano per spec successive, una per pagina.
+- Menu: `config/navigation/statistics.php` (dopo personnel) con `agent-sales-report`, `request-statistics`,
+  `enrollee-management`, gli ultimi due spostati da Commerciale con le stesse chiavi. App `sales` aggiornata.
+- Report: `AgentSalesReportTableDefinition` (dominio `agent-sales-report`, 16 colonne, sola lettura, in
+  `config/tables.php`), `QuoteVisibilityScope` (0316), permesso `agent-sales-report.view`: nessuno lo riceve in
+  automatico, va assegnato ai ruoli. `ExportController::authorizeExport` gestisce questo dominio con il permesso view.
+- Export: Sommario = export generico; Dettagli a blocchi e Righe dettaglio = `POST /api/agent-sales-report/exports/{details,lines}`
+  (`app/Exports/AgentSalesReport/`, sincroni, xlsx, 422 col testo tradotto oltre `exports.max_rows`).
+- `quotes.accepted_at`: invariante nel solo hook `saving` di `Quote` (`QuoteAcceptedDateStamper`); `saveQuietly` non la tocca.
+- Legacy: `QuoteAcceptedDateMigrationController` + rotta `/quote-accepted-dates` (`../qnet`, non committati);
+  qnet-2: sorgente `quote-accepted-dates` (`QuoteAcceptedDatesSource`, dipendenza `quotes`).
+- Frontend: `features/agent-sales-report/`, prop opzionale `exportMenu` di `TableView`, guida `agent-sales-report` IT/EN.
+- DA FARE: (1) eseguire la sorgente `quote-accepted-dates`: finche' non gira le offerte gia' vinte hanno `accepted_at`
+  vuota; (2) manuale Claude Docs non aggiornato (documento non accessibile dalla sessione): sezione Statistiche, voce
+  Report Vendite Agenti, nuovi percorsi di Statistiche richieste e Gestione Iscritti; (3) assegnare il permesso ai ruoli.
+- Limiti noti: Sommario con importi come testo e dialog che offre anche CSV (motore export comune); link sul N. offerta,
+  non sull'intera riga. Verificato solo con test e mock: nessuna prova a browser del report.
+- Suite completa (2026-11-06): backend 14144 test, 14126 passati, 17 non verdi tutti estranei alla spec e presenti anche
+  su HEAD o d'ambiente (LibreOffice assente 3; `.env` AI 4; `PermissionCatalogueEndpointTest`, `QualificaOperatorSeederTest`
+  x2, `TableBulkDeleteTest`, `SettlementApprovalTest` legato alla data, `ManagementControl*` x4; `WorkOrderCategoryTabsTest`
+  instabile sull'ordine delle chiavi). Frontend 10101/10101, ma exit 1 per 11 unhandled `toast.error is not a function`.
+
 ## Skeleton di caricamento sui tab categoria — VERDE, COMMITTATO (2026-11-06)
 
 - Richiesta utente, senza spec (solo presentazione, nessun contratto). `CategoryTabs` ha la prop `isLoading`, valorizzata da

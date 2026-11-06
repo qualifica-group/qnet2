@@ -354,6 +354,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require __DIR__.'/api/contracts.php'; // Contracts show/update + domain actions (spec 0072)
     require __DIR__.'/api/commission-configurations.php';
     require __DIR__.'/api/request-management.php'; // Work-panel show/update (spec 0049)
+    require __DIR__.'/api/agent-sales-report.php'; // Report Vendite Agenti sync exports (spec 0365)
     require __DIR__.'/api/notes.php'; // Agnostic collaborative notes (spec 0052)
     require __DIR__.'/api/field-change-requests.php'; // Generic field-change-request lifecycle (spec 0078)
     // Attributes CRUD (spec 0017): the global, reusable dynamic-attribute

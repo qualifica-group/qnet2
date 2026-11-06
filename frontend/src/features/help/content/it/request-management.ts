@@ -230,7 +230,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le statistiche non sono più nella tabella di Gestione Richieste né in quella di Gestione Iscritti: hanno una pagina propria, **Commerciale › Statistiche Gestione Richieste** (vedi la relativa guida). Gestione Iscritti non ha più statistiche.',
+          text: 'Le statistiche non sono più nella tabella di Gestione Richieste né in quella di Gestione Iscritti: hanno una pagina propria, **Statistiche › Statistiche Gestione Richieste** (vedi la relativa guida). Gestione Iscritti non ha più statistiche.',
         },
       ],
     },

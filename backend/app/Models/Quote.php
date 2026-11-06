@@ -7,6 +7,7 @@ use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasFieldChangeRequests;
 use App\Models\Concerns\HasRewards;
 use App\Models\Concerns\LogsModelActivity;
+use App\Services\Quotes\QuoteAcceptedDateStamper;
 use Carbon\CarbonImmutable;
 use Database\Factories\QuoteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -92,6 +93,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * `supervisor_id` as the Gestione Richieste ownership column (D-9); the
  * former column keeps its own commission-recipient role only (D-13/D-14).
  *
+ * `accepted_at` (spec 0365, D-6): the day the offer entered a won status, absent
+ * from #[Fillable] and written only by QuoteAcceptedDateStamper (and the legacy
+ * `quote-accepted-dates` import).
+ *
  * `next_callback_at`/`next_callback_reminded_at` (user directive
  * 2026-09-04, migrated off the Opportunity): the "Prossimo richiamo" is
  * per-OFFER now, no longer one shared cell per deal. DELIBERATELY absent
@@ -133,6 +138,11 @@ class Quote extends BaseModel
         static::creating(function (Quote $quote): void {
             $quote->quote_date ??= CarbonImmutable::today();
         });
+
+        // Spec 0365, D-6: `accepted_at` follows the workflow status on every channel.
+        static::saving(function (Quote $quote): void {
+            app(QuoteAcceptedDateStamper::class)->stamp($quote);
+        });
     }
 
     /**
@@ -152,6 +162,7 @@ class Quote extends BaseModel
             'is_transferred' => 'boolean',
             'title_is_manual' => 'boolean',
             'quote_date' => 'date',
+            'accepted_at' => 'date',
             'follow_up_date' => 'date',
         ];
     }

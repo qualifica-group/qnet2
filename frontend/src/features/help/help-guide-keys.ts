@@ -29,6 +29,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'contracts',
   'request-management',
   'request-statistics',
+  'agent-sales-report',
   'field-change-requests',
   'enrollee-management',
   'tasks',

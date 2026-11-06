@@ -1,0 +1,29 @@
+/** Spec 0365: namespace `agentSalesReport` (Agent Sales Report page, grid and exports). */
+export const agentSalesReport = {
+  forbidden: 'You do not have permission to view the agent sales report.',
+  columns: {
+    code: 'Quote no.',
+    quoteDate: 'Created on',
+    acceptedAt: 'Accepted on',
+    registry: 'Company',
+    title: 'Title',
+    address: 'Address',
+    postalCode: 'Postal code',
+    city: 'City',
+    phone: 'Phone',
+    email: 'Email',
+    companySite: 'Company site',
+    managers: 'Managers',
+    quoteWorkflowStatus: 'Stage',
+    revenueNet: 'Net revenue',
+    commercial: 'Sales agent',
+    reporter: 'Reporter',
+  },
+  export: {
+    menu: 'Export',
+    summary: 'Summary',
+    details: 'Details',
+    lines: 'Detail lines',
+    error: 'Export failed. Try again.',
+  },
+}

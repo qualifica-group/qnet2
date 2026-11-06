@@ -80,6 +80,8 @@ export const navigation = {
   requestManagement: 'Gestione Richieste',
   enrolleeManagement: 'Gestione Iscritti',
   requestStatistics: 'Statistiche Gestione Richieste',
+  statistics: 'Statistiche',
+  agentSalesReport: 'Report Vendite Agenti',
   fieldChangeRequests: 'Richieste di modifica',
   rewardTypes: 'Buoni, Premi e Incentivi',
   rewardStatuses: 'Stati Buoni Collegati',
