@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## ODA: picker Commessa filtrato per Cliente — VERDE, NON COMMITTATO (2026-11-06)
+## ODA: picker Commessa filtrato per Cliente — VERDE, COMMITTATO e17f3c8f (2026-11-06)
 
 - Solo frontend: `work-orders/for-select` accettava gia' `registry_id` (spec 0122 D-5). In
   `use-purchase-order-form.ts` (`usePurchaseOrderFormState`) nuovo `customerId` (watch di `customer_id`);
@@ -14,7 +14,7 @@
   262 test verdi, ESLint ok, `tsc -b --force` EXIT=0. Guide IT/EN `purchase-orders` (sezione create) aggiornate.
   Manuale Claude Docs NON aggiornato (documento non condiviso con la sessione): sezione "ODA > Creare una ODA".
 
-## Conti finanziari demo per ogni societa' — VERDE, NON COMMITTATO (2026-11-06)
+## Conti finanziari demo per ogni societa' — VERDE, COMMITTATO 8ad28260 (2026-11-06)
 
 - Nuovo `database/seeders/DemoCompanyFinancialAccountSeeder.php`: per OGNI `Company` due conti bancari (IBAN
   finti validi, seed `1000 + id*10 + slot`, fuori dai seed 1/2 di `DemoFinancialAccountSeeder`) e una cassa,
