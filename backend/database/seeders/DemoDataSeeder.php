@@ -101,6 +101,9 @@ class DemoDataSeeder extends Seeder
         // Bank accounts/cards/cash (spec 0189): optionally tied to a company,
         // so it runs after DemoCompanySeeder.
         $this->call(DemoFinancialAccountSeeder::class);
+        // Two banks and a cash box on EVERY company, so the treasury pages have
+        // an account per society to work on; keyed by IBAN, re-runs add nothing.
+        $this->call(DemoCompanyFinancialAccountSeeder::class);
         $this->call(DemoBusinessFunctionSeeder::class);
         // Purchase requests (spec 0208): need companies, sites, functions, users.
         $this->call(DemoPurchaseRequestSeeder::class);
