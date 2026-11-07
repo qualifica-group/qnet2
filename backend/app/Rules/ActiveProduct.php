@@ -11,17 +11,17 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Translation\PotentiallyTranslatedString;
 
 /**
- * The product id must exist and its category must be EFFECTIVELY active
- * (spec 0208 D-4/D-9): a product of an inactive branch cannot be linked to a
- * NEW record.
+ * The product id must exist and be EFFECTIVELY active: its own flag (spec
+ * 0366) and its category, inactive branch included (spec 0208 D-4/D-9). An
+ * inactive product cannot be linked to a NEW record.
  *
  * REPLACES `Rule::exists('products', 'id')` on those fields (one message per
- * field). `$exemptProductIds` carries spec 0208 D-2: products already
- * persisted on the record being updated stay valid.
+ * field: existence, then own flag, then category). `$exemptIds` carries spec
+ * 0208 D-2: products already persisted on the record being updated stay valid.
  *
  * A blank value passes: whether the field is required is the caller's call.
  */
-final class ActiveCategoryProduct implements ValidationRule
+final class ActiveProduct implements ValidationRule
 {
     /** Resolved once per rule instance: a request validates many rows with one rule. */
     private ?CategoryActivity $activity = null;
@@ -43,7 +43,7 @@ final class ActiveCategoryProduct implements ValidationRule
         $productId = is_numeric($value) ? (int) $value : 0;
 
         /** @var Product|null $product */
-        $product = $productId > 0 ? Product::query()->find($productId, ['id', 'category_id']) : null;
+        $product = $productId > 0 ? Product::query()->find($productId, ['id', 'category_id', 'is_active']) : null;
 
         if ($product === null) {
             $fail('validation.exists')->translate();
@@ -52,6 +52,12 @@ final class ActiveCategoryProduct implements ValidationRule
         }
 
         if (in_array($productId, $this->exemptIds, true)) {
+            return;
+        }
+
+        if (! $product->is_active) {
+            $fail(__('This product is not active.'));
+
             return;
         }
 

@@ -436,6 +436,7 @@ const guide: HelpGuide = {
             ['"Inherited from \'…\'. To change it, act on that category."', 'Rule or function decided higher up.', 'Edit the indicated category.'],
             ['"This product category is not selectable."', 'A container category was chosen in another module.', 'Choose a subcategory or turn on Selectable.'],
             ['"This product category is not active."', 'An inactive category (or one in an inactive branch) was chosen in another module.', 'Choose another category or turn on Active.'],
+            ['"This product is not active."', 'A product switched off (Active) was chosen in another module.', 'Choose another product or switch Active back on from its card or in bulk from the grid.'],
             ['"This product belongs to an inactive category."', 'A product from an inactive branch was chosen.', 'Choose another product or reactivate the category.'],
             ['"This opportunity is managed on a single product category…"', 'Branch in Single mode.', 'Use a single row or switch the root to Multiple.'],
             ['"This opportunity\'s product category allows only one offer: one already exists."', 'Single offer per opportunity is on.', 'Edit the existing offer.'],

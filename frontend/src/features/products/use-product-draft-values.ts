@@ -74,6 +74,7 @@ export function useProductDraftValues(
   return {
     code: draft.code ?? '',
     name: draft.name ?? '',
+    is_active: draft.is_active ?? true,
     description: draft.description ?? null,
     cost: draft.cost ?? null,
     price: draft.price ?? null,

@@ -125,6 +125,7 @@ class ProductService
         $product = DB::transaction(function () use ($data): Product {
             $product = new Product([
                 'name' => $data->name,
+                'is_active' => $data->isActive,
                 'description' => $data->description,
                 // Spec 0320, D-20: every product has a price and a cost; absent = 0.
                 'cost' => $data->cost ?? 0,
@@ -350,8 +351,11 @@ class ProductService
             $base->whereJsonContains('usages', $query->productUsage->value);
         }
 
-        // Spec 0208 D-4: products of an effectively inactive category are not
-        // offered for a new link; `ids[]` hydration below stays exempt.
+        // Spec 0366 D-1 / spec 0208 D-4: an inactive product, or one of an
+        // effectively inactive category, is not offered for a new link;
+        // `ids[]` hydration below stays exempt.
+        $base->where('is_active', true);
+
         $inactiveCategoryIds = $this->categoryActivity->inactiveCategoryIds();
 
         if ($inactiveCategoryIds !== []) {

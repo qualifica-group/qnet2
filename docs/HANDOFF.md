@@ -3,6 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Prodotti: stato Attivo / Non attivo (spec 0366) — VERDE, NON COMMITTATO, MIGRAZIONE NON ESEGUITA SU DEV (2026-11-07)
+
+- Decisioni utente: un prodotto non attivo si comporta come quelli di una categoria non attiva (spec 0208): sparisce
+  da `products/for-select`, non si collega a NUOVI record (esenti gli id gia' salvati); griglia Prodotti li mostra tutti.
+  Comando: switch "Attivo" in scheda/form + azione massiva Attiva/Disattiva in griglia. I "[OLD] " sono non attivi.
+- Backend: migrazione `2026_11_25_100000_add_is_active_to_products_table` (default true, backfill `name LIKE '[OLD] %'`
+  -> false: 2007 prodotti su 3007 sul DB dev); model/DTO/request/resource/`ProductsAuthorization` (campo `is_active`
+  boolean); `ProductService::forSelect` filtra `is_active`; colonna griglia `is_active` (boolean, filtrabile).
+  Regola RINOMINATA `ActiveCategoryProduct` -> `App\Rules\ActiveProduct` (esistenza, flag proprio "This product is
+  not active.", poi categoria). Massiva `POST /api/products/activation` `{product_ids (max 500), is_active}` ->
+  `{updated}`, gate `products.update` + field-permission `is_active` (`SetProductsActivationRequest`,
+  `ProductActivationService`, `ProductActivationController`).
+- Migrazione legacy: `ProductsSource`/`CostProductsSource` scrivono `is_active` dal record (assente = true); legacy
+  `ProductMigrationController` e `CostProductMigrationController` inviano `is_active: false` (verificato con tinker).
+- Frontend: `ProductActiveField` (Anagrafica), `use-product-bulk-activation.ts`, renderer `BooleanBadgeCell`, i18n
+  `products.columns.is_active`/`products.form.isActive`/`products.bulkActivation.*`; guide `products` (sezione
+  `active-state`) e `product-categories` (nuovo messaggio) IT/EN.
+- Verifiche: Pest Products 306 (+1 requisito cambiato: `ProductTableTest` 15 -> 16 colonne), ProductCategories 357,
+  Migration 754, Imports 319, Leads 156, Opportunities 288, CommissionConfigurations 66, test inactive-category di
+  Quotes/RequestManagement/WorkOrders 9; Authorization 171/172 (rosso preesistente `PermissionCatalogueEndpointTest`).
+  Pint ok. Vitest products+help 330/330, ESLint ok, `tsc -b --force` 0.
+- Da fare: `php artisan migrate` su dev (insieme alla migrazione `is_legacy` dell'altra sessione, ancora non
+  committata); manuale Claude Docs (non raggiungibile dalla sessione): sezione Prodotti + messaggi errore righe.
+- Nota git: la rinomina della regola e' stata fatta con `git mv`, quindi risulta gia' in stage (nessun commit).
+
 ## Seeder richieste da Excel (6 file, seeder unico) + regole opp. offerta unica e categorie storiche — VERDE, COMMITTATO, SEEDER NON ESEGUITO SU DEV (2026-11-07)
 
 - Richiesta utente: un SEEDER (non il wizard import 0348) per caricare in Gestione Richieste le trattative dei 6 Excel in

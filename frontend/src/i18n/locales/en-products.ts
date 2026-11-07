@@ -310,6 +310,7 @@ export const products = {
   marginPercent: '{{percent}}% of the price',
   columns: {
     name: 'Name',
+    is_active: 'Active',
     description: 'Description',
     cost: 'Cost',
     price: 'Price',
@@ -330,6 +331,13 @@ export const products = {
     FIXED_AMOUNT: 'Fixed commission {{value}} {{direction}}',
     direction: { PAID: 'paid', RECEIVED: 'received' },
     hint: "This supplier's cost is the Supplier commission: the cost stays at 0.",
+  },
+  bulkActivation: {
+    activate: 'Activate',
+    deactivate: 'Deactivate',
+    activated: '{{count}} product(s) activated.',
+    deactivated: '{{count}} product(s) deactivated.',
+    error: 'Unable to change the active state. No product was changed.',
   },
   bulkCostType: {
     bulkAction: 'Set cost sub-account',
@@ -356,6 +364,7 @@ export const products = {
     createTitle: 'Create product',
     createSubtitle: 'Add a new product.',
     code: 'Code',
+    isActive: 'Active',
     codePlaceholder: 'Suggested code, editable',
     codeMax: 'Code must be at most 32 characters.',
     codeRequired: 'Code is required.',
@@ -451,6 +460,7 @@ export const products = {
       },
     },
     hints: {
+      isActive: 'An inactive product no longer appears in the product pickers and cannot be linked to new records; records already linked keep it.',
       code: 'Prefilled with the next sequential code; edit it if you need a custom one.',
     },
     dynamicFields: {

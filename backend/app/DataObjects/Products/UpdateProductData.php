@@ -32,6 +32,7 @@ use App\Enums\ProductUsage;
  * `usages` (spec 0142) is never a legitimate null (min:1), so absent = null
  * needs no `*Submitted` flag, like `attributeValues`. `suppliers` (spec 0320)
  * is likewise an array or absent (null = untouched; [] = all removed).
+ * `isActive` (spec 0366) is never a legitimate null either: null = untouched.
  */
 final readonly class UpdateProductData
 {
@@ -65,6 +66,7 @@ final readonly class UpdateProductData
         public ?array $suppliers = null,
         public ?int $revenueTypeId = null,
         public bool $revenueTypeIdSubmitted = false,
+        public ?bool $isActive = null,
     ) {}
 
     /**
@@ -99,6 +101,7 @@ final readonly class UpdateProductData
             suppliers: array_key_exists('suppliers', $data) ? ProductSupplierData::listFromValidated((array) $data['suppliers']) : null,
             revenueTypeId: array_key_exists('revenue_type_id', $data) && $data['revenue_type_id'] !== null ? (int) $data['revenue_type_id'] : null,
             revenueTypeIdSubmitted: array_key_exists('revenue_type_id', $data),
+            isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
         );
     }
 
@@ -119,6 +122,10 @@ final readonly class UpdateProductData
 
         if ($this->name !== null) {
             $attributes['name'] = $this->name;
+        }
+
+        if ($this->isActive !== null) {
+            $attributes['is_active'] = $this->isActive;
         }
 
         if ($this->descriptionSubmitted) {

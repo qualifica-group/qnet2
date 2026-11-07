@@ -436,6 +436,7 @@ const guide: HelpGuide = {
             ['"Ereditata da …. Per modificarla, agisci su quella categoria."', 'Regola o funzione decisa più in alto.', 'Modifica la categoria indicata.'],
             ['"Questa categoria prodotto non è selezionabile."', 'Scelta una categoria contenitore in un altro modulo.', 'Scegli una sottocategoria o attiva Selezionabile.'],
             ['"Questa categoria prodotto non è attiva."', 'Scelta una categoria non attiva (o di un ramo non attivo) in un altro modulo.', 'Scegli un\'altra categoria o attiva Attiva.'],
+            ['"Questo prodotto non è attivo."', 'Scelto in un altro modulo un prodotto con Attivo spento.', 'Scegli un altro prodotto oppure riaccendi Attivo dalla scheda o in massa dalla griglia.'],
             ['"Questo prodotto appartiene a una categoria non attiva."', 'Scelto un prodotto di un ramo non attivo.', 'Scegli un altro prodotto o riattiva la categoria.'],
             ['"Questa opportunità è gestita su una singola categoria prodotto…"', 'Ramo in modalità Singola.', 'Usa una sola riga o passa la radice a Multipla.'],
             ['"La categoria prodotto di questa opportunità ammette una sola offerta: ne esiste già una."', 'Offerta unica per opportunità attiva.', "Modifica l'offerta esistente."],

@@ -12,7 +12,7 @@ use App\Enums\CommissionType;
 use App\Enums\SupplierCommissionDirection;
 use App\Models\CommissionConfiguration;
 use App\Models\User;
-use App\Rules\ActiveCategoryProduct;
+use App\Rules\ActiveProduct;
 use App\Rules\ActiveProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -42,7 +42,7 @@ trait CommissionConfigurationRules
                 Rule::prohibitedIf(fn () => $this->scopeExcludesCategory()),
             ],
             'product_id' => [
-                'nullable', 'integer', new ActiveCategoryProduct($this->exemptProductIds()),
+                'nullable', 'integer', new ActiveProduct($this->exemptProductIds()),
                 Rule::requiredIf(fn () => $this->input('application_scope') === CommissionApplicationScope::Product->value),
                 Rule::prohibitedIf(fn () => $this->scopeExcludesProduct()),
             ],

@@ -35,6 +35,7 @@ const NO_SUPPLIERS: ProductRecordSupplier[] = []
 export interface ProductRecordValues {
   code: string
   name: string
+  is_active: boolean
   description: string | null
   cost: string | number | null
   price: string | number | null
@@ -80,6 +81,7 @@ export function persistedProductValues(product: ProductDetail): ProductRecordVal
   return {
     code: product.code,
     name: product.name,
+    is_active: product.is_active,
     description: product.description,
     cost: product.cost,
     price: product.price,

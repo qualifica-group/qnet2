@@ -45,8 +45,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * `usages` (spec 0142) is the set of App\Enums\ProductUsage values deciding
  * which Offerta tab may pick the product; it defaults to Sellable only.
+ *
+ * `is_active` (spec 0366): an inactive product leaves the product pickers and
+ * cannot be linked to a new record (App\Rules\ActiveProduct).
  */
-#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id', 'cost_type_id', 'revenue_type_id'])]
+#[Fillable(['name', 'is_active', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id', 'cost_type_id', 'revenue_type_id'])]
 class Product extends BaseModel
 {
     /** @use HasFactory<ProductFactory> */
@@ -85,6 +88,7 @@ class Product extends BaseModel
         return [
             'cost' => 'decimal:2',
             'price' => 'decimal:2',
+            'is_active' => 'boolean',
             'product_type' => ProductType::class,
             'usages' => AsEnumCollection::of(ProductUsage::class),
             'attribute_values' => 'array',

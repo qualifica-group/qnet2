@@ -13,6 +13,7 @@ import { formatDecimal } from '@/features/products/column-renderers'
 import {
   ProductCategoryField,
   ProductCodeField,
+  ProductActiveField,
   ProductCostTypeField,
   ProductDescriptionField,
   ProductNameField,
@@ -53,6 +54,14 @@ export function ProductIdentityRecordSection({ values, form, inline }: ProductRe
           editor={<ProductNameField control={control} />}
         >
           <TextValue value={values.name} />
+        </RecordInlineField>
+        <RecordInlineField
+          field="is_active"
+          label={t('products.form.isActive')}
+          inline={inline}
+          editor={<ProductActiveField control={control} />}
+        >
+          <span>{values.is_active ? t('common.yes') : t('common.no')}</span>
         </RecordInlineField>
         <RecordInlineField
           field="description"

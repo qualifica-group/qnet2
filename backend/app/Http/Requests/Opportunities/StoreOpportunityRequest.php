@@ -9,7 +9,7 @@ use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Models\Lead;
-use App\Rules\ActiveCategoryProduct;
+use App\Rules\ActiveProduct;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -104,7 +104,7 @@ class StoreOpportunityRequest extends FormRequest
             // OpportunityProductInterestWriter, once the lines are persisted,
             // so it cannot be expressed as a rule here.
             'products_of_interest' => ['sometimes', 'array'],
-            'products_of_interest.*' => ['integer', new ActiveCategoryProduct],
+            'products_of_interest.*' => ['integer', new ActiveProduct],
         ], $this->managerSlotsRules(), $this->productLinesRules(required: true), $this->rewardsRules());
     }
 

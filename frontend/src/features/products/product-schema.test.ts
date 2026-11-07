@@ -23,6 +23,7 @@ function baseValues() {
   return {
     code: 'PRD-0001',
     name: 'ThinkPad X1',
+    is_active: true,
     description: null,
     cost: 800,
     price: 1200,

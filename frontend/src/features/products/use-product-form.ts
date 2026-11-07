@@ -47,6 +47,7 @@ export function editDefaults(
   return {
     code: product.code,
     name: product.name,
+    is_active: product.is_active,
     description: product.description,
     cost: normalizeDecimal(product.cost),
     price: normalizeDecimal(product.price),
@@ -68,6 +69,7 @@ function createDefaults(customFields: Record<string, CustomFieldValue>, initialC
   return {
     code: initialCode ?? '',
     name: '',
+    is_active: true,
     description: null,
     cost: 0,
     price: 0,

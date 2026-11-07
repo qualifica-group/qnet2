@@ -2,6 +2,7 @@ import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
+  BulkProductActivationPayload,
   BulkProductCostTypePayload,
   BulkProductCostTypeResult,
   BulkProductRevenueTypePayload,
@@ -78,5 +79,11 @@ export async function setProductsCostType(payload: BulkProductCostTypePayload): 
 /** Bulk "Set revenue sub-account" (spec 0350): one sub-account (or none) for every selected product. */
 export async function setProductsRevenueType(payload: BulkProductRevenueTypePayload): Promise<BulkProductCostTypeResult> {
   const { data } = await apiClient.post<ApiResponse<BulkProductCostTypeResult>>('/products/revenue-type', payload)
+  return data.data
+}
+
+/** Bulk "Activate / Deactivate" (spec 0366 D-6): the flag set on every selected product. */
+export async function setProductsActivation(payload: BulkProductActivationPayload): Promise<BulkProductCostTypeResult> {
+  const { data } = await apiClient.post<ApiResponse<BulkProductCostTypeResult>>('/products/activation', payload)
   return data.data
 }
