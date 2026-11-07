@@ -40,6 +40,7 @@ export const migrations = {
     registries: 'Registries',
     opportunities: 'Opportunities',
     quotes: 'Quotes',
+    'quote-accepted-dates': 'Quotes — acceptance date',
     'work-orders': 'Work orders',
     tasks: 'Tasks',
     'work-order-progress': 'Work orders — progress',

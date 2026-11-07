@@ -39,6 +39,7 @@ export const migrations = {
     registries: 'Anagrafiche',
     opportunities: 'Opportunità',
     quotes: 'Offerte',
+    'quote-accepted-dates': 'Offerte — data accettazione',
     'work-orders': 'Commesse',
     tasks: 'Task',
     'work-order-progress': 'Commesse — avanzamento',

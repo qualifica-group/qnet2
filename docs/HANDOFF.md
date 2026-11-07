@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Traduzioni sorgente `quote-accepted-dates` — VERDE SUI FILE TOCCATI, NON COMMITTATO (2026-11-07)
+
+- Richiesta utente, senza spec (solo testi). La sorgente della spec 0365 non aveva etichetta ne' testo "Cosa serve per
+  migrare bene": la pagina Migrazioni mostrava l'inglese del backend. Etichette `Offerte — data accettazione` /
+  `Quotes — acceptance date` in `{it,en}-migrations.ts`, testo in `{it,en}-migration-requirements.ts`, nota nella guida
+  `migrations` IT/EN. `migration-requirements-parity.test.ts` ora confronta anche le etichette IT/EN.
+- Test: `src/features/migrations` + `src/features/help` 200/200; ESLint ok; `tsc -b --force` exit 0.
+- Sorgente non ancora eseguita (nessuna riga in `migration_runs`, `accepted_at` vuota sulle 11.555 offerte vinte): NON
+  e' bloccante, nessuna sorgente dipende da lei e il report funziona con la colonna vuota. Va lanciata dopo l'ultimo
+  import `quotes`, altrimenti le offerte importate dopo restano senza data.
+- DA FARE: manuale Claude Docs (documento non accessibile dalla sessione, verificato: access denied): voce della nuova
+  sorgente nel capitolo Migrazioni. Fuori scope: `attachments` non ha il testo requisiti; i nomi colonna del template
+  e gli avvisi del report import sono in inglese su tutte le sorgenti.
+
 ## Velocita' griglie: lookup permessi indicizzato + verdetto competenza — VERDE SUI FILE TOCCATI, NON COMMITTATO (2026-11-06)
 
 - Richiesta utente, audit senza spec. Causa 1: `PermissionRegistrar::getPermissions` di Spatie scorre tutto il catalogo
@@ -35,7 +49,7 @@
 - Export: Sommario = export generico; Dettagli a blocchi e Righe dettaglio = `POST /api/agent-sales-report/exports/{details,lines}`
   (`app/Exports/AgentSalesReport/`, sincroni, xlsx, 422 col testo tradotto oltre `exports.max_rows`).
 - `quotes.accepted_at`: invariante nel solo hook `saving` di `Quote` (`QuoteAcceptedDateStamper`); `saveQuietly` non la tocca.
-- Legacy: `QuoteAcceptedDateMigrationController` + rotta `/quote-accepted-dates` (`../qnet`, non committati);
+- Legacy: `QuoteAcceptedDateMigrationController` + rotta `/quote-accepted-dates` (`../qnet`, commit `c3d23c39`);
   qnet-2: sorgente `quote-accepted-dates` (`QuoteAcceptedDatesSource`, dipendenza `quotes`).
 - Frontend: `features/agent-sales-report/`, prop opzionale `exportMenu` di `TableView`, guida `agent-sales-report` IT/EN.
 - DA FARE: (1) eseguire la sorgente `quote-accepted-dates`: finche' non gira le offerte gia' vinte hanno `accepted_at`
