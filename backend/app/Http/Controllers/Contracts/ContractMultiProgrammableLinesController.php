@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Contracts;
 
+use App\Enums\HttpStatusEnum;
+use App\Exceptions\Contracts\MultiQuoteContractsRefusedException;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Contracts\MultiProgrammableLinesRequest;
 use App\Models\Contract;
@@ -34,6 +36,8 @@ class ContractMultiProgrammableLinesController extends BaseApiController
                 'contracts' => $contracts->map(fn (Contract $contract): array => $this->summarize($contract))->all(),
                 'lines' => $this->builder->build($contracts),
             ]);
+        } catch (MultiQuoteContractsRefusedException $refused) {
+            return $this->fail($refused->getMessage(), HttpStatusEnum::UNPROCESSABLE_ENTITY->value, $refused->errors());
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

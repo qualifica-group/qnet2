@@ -36,8 +36,9 @@ interface UseContractMultiProgramDialogArgs {
 
 /**
  * Orchestrates "Programma commessa unica" (spec 0267 D-2/D-3): the lines query,
- * the same-branch selection, the single all-or-nothing POST and the 422
- * `quote_line_ids` mapping onto the lines panel. The component only renders.
+ * the same-branch selection, the single all-or-nothing POST, the 422
+ * `quote_line_ids` mapping onto the lines panel and the drop of the contracts
+ * the server refuses (D-14). The component only renders.
  */
 export function useContractMultiProgramDialog({ contractIds, open, onOpenChange }: UseContractMultiProgramDialogArgs) {
   const { t, i18n } = useTranslation()
@@ -48,20 +49,26 @@ export function useContractMultiProgramDialog({ contractIds, open, onOpenChange 
     defaultValues: multiProgramDefaultValues(),
   })
   const [selected, setSelectedState] = useState<number[]>([])
+  // Contracts the user dropped after a refusal (D-14): the grid selection itself is left untouched.
+  const [excludedIds, setExcludedIds] = useState<number[]>([])
+  const activeIds = contractIds.filter((id) => !excludedIds.includes(id))
 
   const linesQuery = useQuery({
-    queryKey: multiProgrammableLinesQueryKey(contractIds),
-    queryFn: () => fetchMultiProgrammableLines(contractIds),
-    enabled: open && contractIds.length >= MIN_OFFERS,
+    queryKey: multiProgrammableLinesQueryKey(activeIds),
+    queryFn: () => fetchMultiProgrammableLines(activeIds),
+    enabled: open && activeIds.length >= MIN_OFFERS,
     // A refusal of the selection is the server's final answer: never retried.
     retry: (failureCount, error) => multiProgramRefusal(error) === undefined && failureCount < 1,
   })
+  const linesRefusal = multiProgramRefusal(linesQuery.error)
+  const refusedIds = linesRefusal?.contracts.map((contract) => contract.id) ?? []
+  const remainingAfterRefusal = activeIds.filter((id) => !refusedIds.includes(id)).length
   const lines = linesQuery.data?.lines ?? EMPTY_LINES
   const selectableIds = selectableLineIds(lines, selected)
   const offersCount = distinctQuoteCount(lines, selected)
 
   const createMutation = useMutation({
-    mutationFn: (values: ContractProgramFormValues) => createMultiQuoteWorkOrder(toMultiPayload(values, contractIds)),
+    mutationFn: (values: ContractProgramFormValues) => createMultiQuoteWorkOrder(toMultiPayload(values, activeIds)),
   })
 
   const setSelected = (next: number[]) => {
@@ -72,8 +79,11 @@ export function useContractMultiProgramDialog({ contractIds, open, onOpenChange 
   const close = () => {
     form.reset(multiProgramDefaultValues())
     setSelectedState([])
+    setExcludedIds([])
     onOpenChange(false)
   }
+
+  const excludeRefused = () => setExcludedIds((current) => [...current, ...refusedIds])
 
   const requestClose = () => {
     if (!createMutation.isPending) {
@@ -107,7 +117,11 @@ export function useContractMultiProgramDialog({ contractIds, open, onOpenChange 
   return {
     form,
     linesQuery,
-    linesRefusal: multiProgramRefusal(linesQuery.error),
+    linesRefusal,
+    // The refused contracts can be dropped only if at least two contracts remain to group.
+    canExcludeRefused: refusedIds.length > 0 && remainingAfterRefusal >= MIN_OFFERS,
+    excludeRefused,
+    excludedCount: excludedIds.length,
     data: linesQuery.data,
     selected,
     setSelected,

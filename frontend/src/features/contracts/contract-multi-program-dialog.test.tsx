@@ -8,7 +8,12 @@ import { contracts as contractsEn } from '@/i18n/locales/en-contracts'
 import { workOrders as workOrdersEn } from '@/i18n/locales/en-work-orders'
 import { ContractMultiProgramDialog } from '@/features/contracts/contract-multi-program-dialog'
 import { createMultiQuoteWorkOrder, fetchMultiProgrammableLines } from '@/features/contracts/api'
-import type { MultiProgrammableLine, MultiProgrammableLinesData } from '@/features/contracts/types'
+import type {
+  MultiProgrammableLine,
+  MultiProgrammableLinesData,
+  MultiProgramRefusal,
+  MultiProgramRefusedContract,
+} from '@/features/contracts/types'
 import type { WorkOrderDetail } from '@/features/work-orders/types'
 
 // The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
@@ -90,17 +95,24 @@ const DATA: MultiProgrammableLinesData = {
   ],
 }
 
-function renderDialog() {
+function renderDialog(contractIds = [1, 2]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const onOpenChange = vi.fn()
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <ContractMultiProgramDialog open onOpenChange={onOpenChange} contractIds={[1, 2]} />
+        <ContractMultiProgramDialog open onOpenChange={onOpenChange} contractIds={contractIds} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
   return { onOpenChange }
+}
+
+function refusalError(reason: MultiProgramRefusal['reason'], contracts: MultiProgramRefusedContract[]) {
+  return Object.assign(new Error('Unprocessable'), {
+    isAxiosError: true,
+    response: { status: 422, data: { errors: { contract_ids: ['Refused.'], reason, refused_contracts: contracts } } },
+  })
 }
 
 const box = (name: string) => screen.getByRole('checkbox', { name: `Select ${name}` })
@@ -210,6 +222,35 @@ describe('ContractMultiProgramDialog (spec 0267)', () => {
     expect(fetchMultiProgrammableLines).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
     expect(submitButton()).toBeDisabled()
+  })
+
+  it('AC-019: lists the refused contracts and continues without them', async () => {
+    vi.mocked(fetchMultiProgrammableLines).mockImplementation((ids) =>
+      ids.includes(3) ? Promise.reject(refusalError('not_allowed', [{ id: 3, quote_code: 'QUO-0018', registry_name: 'Rossi Srl' }])) : Promise.resolve(DATA),
+    )
+    renderDialog([1, 2, 3])
+
+    const alert = within(await screen.findByRole('alert'))
+    expect(alert.getByText('1 contract cannot be grouped')).toBeInTheDocument()
+    expect(alert.getByRole('list', { name: 'Contracts to remove' })).toHaveTextContent('QUO-0018Rossi Srl')
+
+    fireEvent.click(alert.getByRole('button', { name: 'Continue without this contract' }))
+
+    expect(await screen.findByText('Corso base')).toBeInTheDocument()
+    expect(fetchMultiProgrammableLines).toHaveBeenLastCalledWith([1, 2])
+    expect(screen.getByText('1 contract left out of this work order.')).toBeInTheDocument()
+  })
+
+  it('AC-019: does not offer to continue when fewer than 2 contracts would remain', async () => {
+    vi.mocked(fetchMultiProgrammableLines).mockRejectedValue(
+      refusalError('not_won', [{ id: 2, quote_code: 'QUO-0002', registry_name: 'Beta' }]),
+    )
+    renderDialog()
+
+    const alert = within(await screen.findByRole('alert'))
+    expect(alert.getByText('1 contract cannot be programmed yet')).toBeInTheDocument()
+    expect(alert.queryByRole('button')).not.toBeInTheDocument()
+    expect(alert.getByText(/fewer than 2 would remain/)).toBeInTheDocument()
   })
 
   it('shows the server reason of a 403 in the toast', async () => {

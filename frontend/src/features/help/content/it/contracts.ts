@@ -134,7 +134,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa nel periodo corrente del suo contratto non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno che non si può ancora programmare (non validato, per esempio **Da validare**, oppure sospeso) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra quali contratti, con il cliente, vanno tolti dalla selezione.',
+          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa nel periodo corrente del suo contratto non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno che non si può ancora programmare (non validato, per esempio **Da validare**, oppure sospeso) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra un avviso con il motivo e l\'elenco di quei contratti, con il cliente. Se ne restano almeno due, il pulsante **Continua senza questi contratti** li toglie da questa commessa e carica le righe degli altri (la selezione nella griglia non cambia); altrimenti chiudi la finestra e scegli nella griglia altri contratti.',
         },
       ],
     },

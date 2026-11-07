@@ -134,7 +134,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order in the current period of its contract cannot be reused. If at least one selected contract cannot be programmed yet (not validated, for example **Da validare**, or suspended) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows which contracts, with their customer, must be removed from the selection.',
+          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order in the current period of its contract cannot be reused. If at least one selected contract cannot be programmed yet (not validated, for example **Da validare**, or suspended) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows a warning with the reason and the list of those contracts, with their customer. If at least two remain, the **Continue without these contracts** button leaves them out of this work order and loads the lines of the others (the grid selection does not change); otherwise close the window and choose other contracts in the grid.',
         },
       ],
     },

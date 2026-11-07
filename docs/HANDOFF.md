@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Rifiuto contratti multi-offerta: elenco strutturato + "Continua senza" — VERDE SUI FILE TOCCATI, NON COMMITTATO (2026-11-07)
+
+- Richiesta utente (spec 0267 D-14/AC-019): il 422 "Questi contratti non si possono cumulare..." era un testo rosso unico.
+  Backend: `App\Exceptions\Contracts\MultiQuoteContractsRefusedException` (lanciata da `MultiQuoteContractGate::refuse`,
+  catturata in `ContractMultiProgrammableLinesController` e `ContractMultiQuoteWorkOrderController`). `errors.contract_ids`
+  invariato (stessa frase tradotta) + `errors.reason` (`not_won`|`not_allowed`) + `errors.refused_contracts`
+  (`id`, `quote_code`, `registry_name`). Spec 0267 aggiornata (errors del GET + D-14).
+- Frontend: `contract-multi-program-refusal.tsx` (icona, titolo per motivo con conteggio, elenco codice offerta + cliente,
+  pulsante "Continua senza questi contratti" se ne restano >= 2, altrimenti indicazione di cambiare selezione; senza
+  corpo strutturato mostra la frase del server). Hook: `excludedIds` locale al popup (la selezione della griglia non
+  cambia), `activeIds` usati per query e POST, nota "N contratti tolti da questa commessa". `multiProgramRefusal` ora
+  restituisce `MultiProgramRefusal` (types.ts). i18n `contracts.actions.multiProgramDialog.refusal.*` IT/EN; guida
+  `contracts` IT/EN aggiornata.
+- Test: Pest `tests/Feature/Contracts/MultiQuote` 21/21 (nuovo test sulla forma strutturata); Vitest
+  `src/features/contracts` + `src/features/help` 368/368 (2 nuovi test nel dialog); ESLint ok; Pint ok; `tsc -b --force` 0.
+- DA FARE: manuale Claude Docs (access denied da questa sessione): capitolo Contratti, "Programma commessa unica",
+  paragrafo sui contratti non programmabili/non cumulabili -> riquadro con elenco e pulsante "Continua senza".
+  `it-contracts.ts` ora 308 righe (soglia soft 300, file di sole traduzioni).
+
 ## Traduzioni sorgente `quote-accepted-dates` — VERDE SUI FILE TOCCATI, NON COMMITTATO (2026-11-07)
 
 - Richiesta utente, senza spec (solo testi). La sorgente della spec 0365 non aveva etichetta ne' testo "Cosa serve per

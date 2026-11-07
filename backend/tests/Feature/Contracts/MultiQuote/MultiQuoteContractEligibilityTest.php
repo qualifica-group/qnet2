@@ -57,3 +57,25 @@ it('AC-019: the refusal explains in the user language which contracts and why', 
         ->assertStatus(422)
         ->assertJsonPath('errors.contract_ids.0', __('work_orders.multi_quote.contracts_not_allowed', ['codes' => $refused->quote->code.' ('.$refused->quote->opportunity->registry->name.')'], 'it'));
 });
+
+it('AC-019: the refusal carries the reason and the refused contracts for the dialog', function () {
+    [$allowed] = multiQuoteProgramContract();
+    [$refused] = multiQuoteProgramContract(plainBranchProduct());
+    [$notWon] = multiQuoteProgramContract(plainBranchProduct(), 'new');
+    Sanctum::actingAs(multiQuoteProgramActor());
+    $url = '/api/contracts/multi-programmable-lines?';
+
+    $this->getJson($url.http_build_query(['contract_ids' => [$allowed->id, $refused->id]]))
+        ->assertStatus(422)
+        ->assertJsonPath('errors.reason', 'not_allowed')
+        ->assertJsonPath('errors.refused_contracts', [[
+            'id' => $refused->id,
+            'quote_code' => $refused->quote->code,
+            'registry_name' => $refused->quote->opportunity->registry->name,
+        ]]);
+
+    $this->getJson($url.http_build_query(['contract_ids' => [$allowed->id, $notWon->id]]))
+        ->assertStatus(422)
+        ->assertJsonPath('errors.reason', 'not_won')
+        ->assertJsonPath('errors.refused_contracts.0.id', $notWon->id);
+});

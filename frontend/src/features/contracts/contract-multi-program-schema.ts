@@ -4,7 +4,12 @@ import {
   contractProgramDefaultValues,
   type ContractProgramFormValues,
 } from '@/features/contracts/contract-program-schema'
-import type { MultiProgrammableLine, MultiQuoteWorkOrderPayload } from '@/features/contracts/types'
+import type {
+  MultiProgrammableLine,
+  MultiProgramRefusal,
+  MultiProgramRefusedContract,
+  MultiQuoteWorkOrderPayload,
+} from '@/features/contracts/types'
 
 /** Upper bound of contracts in one selection (spec 0267: `contract_ids` max 50). */
 export const MULTI_PROGRAM_MAX_CONTRACTS = 50
@@ -64,15 +69,32 @@ export function distinctQuoteCount(lines: MultiProgrammableLine[], selected: num
   return new Set(lines.filter((line) => selected.includes(line.id)).map((line) => line.quote_id)).size
 }
 
+interface RefusalBody {
+  message?: string
+  errors?: {
+    contract_ids?: string[]
+    reason?: MultiProgramRefusal['reason']
+    refused_contracts?: MultiProgramRefusedContract[]
+  }
+}
+
 /**
- * The server's explanation when it refuses the selected contracts (spec 0267,
- * D-14: a 422 on `contract_ids` naming the contracts that cannot be grouped),
- * or undefined for any other failure.
+ * The server's refusal of the selected contracts (spec 0267, D-14: a 422 on
+ * `contract_ids` naming the contracts that cannot be grouped, with the reason
+ * and the refused contracts), or undefined for any other failure.
  */
-export function multiProgramRefusal(error: unknown): string | undefined {
+export function multiProgramRefusal(error: unknown): MultiProgramRefusal | undefined {
   if (!axios.isAxiosError(error) || error.response?.status !== 422) {
     return undefined
   }
-  const data = error.response.data as { message?: string; errors?: Record<string, string[]> } | undefined
-  return data?.errors?.contract_ids?.[0] ?? data?.message
+  const data = error.response.data as RefusalBody | undefined
+  const message = data?.errors?.contract_ids?.[0] ?? data?.message
+  if (message === undefined) {
+    return undefined
+  }
+  return {
+    message,
+    reason: data?.errors?.reason ?? null,
+    contracts: data?.errors?.refused_contracts ?? [],
+  }
 }
