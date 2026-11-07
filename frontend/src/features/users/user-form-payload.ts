@@ -77,6 +77,8 @@ function completeProductLines(
     .map((row) => ({
       business_function_id: row.business_function_id as number,
       product_category_id: row.all_categories === true ? null : row.product_category_id,
+      covers_current_categories: row.all_categories !== true || row.covers_current_categories !== false,
+      covers_legacy_categories: row.all_categories !== true || row.covers_legacy_categories !== false,
       share_percentage: row.share_percentage ?? 0,
     }))
 }

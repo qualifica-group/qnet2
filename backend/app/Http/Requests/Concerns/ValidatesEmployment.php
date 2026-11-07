@@ -154,6 +154,40 @@ trait ValidatesEmployment
     }
 
     /**
+     * Spec 0367: fills the "Nuove"/"Vecchie" flags of each competence row
+     * BEFORE validation, so the field-permission diff compares like with like:
+     * an absent flag (an older client) reads as true, the column default, and
+     * a row on a specific category always carries both true, as stored. Without
+     * this a read-only actor resubmitting unchanged rows would get a 422.
+     */
+    protected function normalizeCompetenceRowAges(): void
+    {
+        $lines = $this->input('employment.product_lines');
+
+        if (! is_array($lines)) {
+            return;
+        }
+
+        $input = $this->all();
+
+        Arr::set($input, 'employment.product_lines', array_map(static function (mixed $line): mixed {
+            if (! is_array($line)) {
+                return $line;
+            }
+
+            $specific = ($line['product_category_id'] ?? null) !== null;
+
+            return [
+                ...$line,
+                'covers_current_categories' => $specific || ($line['covers_current_categories'] ?? true),
+                'covers_legacy_categories' => $specific || ($line['covers_legacy_categories'] ?? true),
+            ];
+        }, $lines));
+
+        $this->replace($input);
+    }
+
+    /**
      * Refuses, with a 403, any attempt to write the payment data without
      * `users.manageCompensation` (spec 0272 D-5). Called first from each host
      * request's withValidator(), so the refusal wins over every value-level
@@ -377,7 +411,10 @@ trait ValidatesEmployment
      * this checks key PRESENCE (`array_key_exists`), not `isset()`, which would
      * silently drop a null value.
      *
-     * @return array<int, array{business_function_id: int, product_category_id: int|null, share_percentage: int}>
+     * Spec 0367: the "Nuove"/"Vecchie" flags arrive filled by
+     * normalizeCompetenceRowAges().
+     *
+     * @return array<int, array{business_function_id: int, product_category_id: int|null, covers_current_categories: bool, covers_legacy_categories: bool, share_percentage: int}>
      */
     private function submittedProductLines(): array
     {
@@ -388,6 +425,8 @@ trait ValidatesEmployment
             ->map(fn (array $line): array => [
                 'business_function_id' => (int) $line['business_function_id'],
                 'product_category_id' => $line['product_category_id'] === null ? null : (int) $line['product_category_id'],
+                'covers_current_categories' => filter_var($line['covers_current_categories'], FILTER_VALIDATE_BOOL),
+                'covers_legacy_categories' => filter_var($line['covers_legacy_categories'], FILTER_VALIDATE_BOOL),
                 'share_percentage' => (int) $line['share_percentage'],
             ])
             ->values()

@@ -129,7 +129,7 @@ beforeEach(() => {
 const CONFIGURED_EMPLOYMENT: EmploymentDetail = employmentFixture({
   primary_operational_site_id: 8,
   remote_operational_site_ids: [9, 10],
-  product_lines: [{ id: 91, business_function: { id: 4, name: 'Sales' }, product_category: { id: 21, name: 'Photovoltaic' }, share_percentage: 100 }],
+  product_lines: [{ id: 91, business_function: { id: 4, name: 'Sales' }, product_category: { id: 21, name: 'Photovoltaic' }, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 100 }],
   primary_operational_site: { id: 8, label: 'Via Roma 1' },
   remote_operational_sites: [
     { id: 9, label: 'Via Milano 2' },

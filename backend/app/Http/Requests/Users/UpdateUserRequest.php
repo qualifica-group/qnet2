@@ -42,6 +42,7 @@ class UpdateUserRequest extends FormRequest
     {
         $this->prepareProfileInput();
         $this->discardReadOnlyEmploymentInput();
+        $this->normalizeCompetenceRowAges();
     }
 
     public function authorize(): bool

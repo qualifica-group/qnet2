@@ -2,7 +2,9 @@
 
 namespace App\Services\Assignment;
 
+use App\Models\EmploymentProductLine;
 use App\Models\EmploymentProfile;
+use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Database\Eloquent\Builder;
@@ -38,11 +40,17 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class OperatorCompetence
 {
+    /** The competence-row columns every profile query loads (spec 0367 adds the two category-age flags). */
+    private const string LINE_COLUMNS = 'id,employment_profile_id,business_function_id,product_category_id,covers_current_categories,covers_legacy_categories';
+
     /** @var array<int, CompetenceProfile>|null */
     private ?array $configuredProfiles = null;
 
     /** @var array<int, int|null>|null */
     private ?array $effectiveFunctionByCategory = null;
+
+    /** @var array<int, true>|null */
+    private ?array $legacyCategoryIds = null;
 
     /**
      * Memo of childIdMap()'s single inversion of the parent map.
@@ -205,7 +213,7 @@ class OperatorCompetence
         $profile = EmploymentProfile::query()
             ->select(['id', 'user_id', 'covers_all_product_categories'])
             ->where('user_id', $userId)
-            ->with('productLines:id,employment_profile_id,business_function_id,product_category_id')
+            ->with('productLines:'.self::LINE_COLUMNS)
             ->first();
 
         if ($profile === null || $profile->covers_all_product_categories) {
@@ -236,7 +244,7 @@ class OperatorCompetence
         $profile = EmploymentProfile::query()
             ->select(['id', 'user_id', 'covers_all_product_categories'])
             ->where('user_id', $user->getKey())
-            ->with('productLines:id,employment_profile_id,business_function_id,product_category_id')
+            ->with('productLines:'.self::LINE_COLUMNS)
             ->first();
 
         if ($profile === null) {
@@ -272,7 +280,7 @@ class OperatorCompetence
             ->where(static fn (Builder $query): Builder => $query
                 ->where('covers_all_product_categories', true)
                 ->orWhereHas('productLines'))
-            ->with('productLines:id,employment_profile_id,business_function_id,product_category_id');
+            ->with('productLines:'.self::LINE_COLUMNS);
     }
 
     private function profileOf(EmploymentProfile $profile): CompetenceProfile
@@ -289,7 +297,9 @@ class OperatorCompetence
      * covered category id => true": rows sharing a function merge their
      * closures, which is exactly what covers() asks of them. A row with a
      * null category (spec 0129 D-3) carries no closure of its own — it feeds
-     * wildcardFunctionIds() instead — so it is skipped here.
+     * wildcardFunctionIds() instead — so it is skipped here, unless it keeps
+     * only the new or only the legacy categories (spec 0367): then it is
+     * expanded here to those categories of its function.
      *
      * @return array<int, array<int, true>>
      */
@@ -299,6 +309,10 @@ class OperatorCompetence
 
         foreach ($profile->productLines as $line) {
             if ($line->product_category_id === null) {
+                foreach ($this->partialWildcardCategoryIds($line) as $categoryId) {
+                    $covered[(int) $line->business_function_id][$categoryId] = true;
+                }
+
                 continue;
             }
 
@@ -325,12 +339,52 @@ class OperatorCompetence
         $wildcards = [];
 
         foreach ($profile->productLines as $line) {
-            if ($line->product_category_id === null) {
+            if ($line->product_category_id === null && $line->covers_current_categories && $line->covers_legacy_categories) {
                 $wildcards[(int) $line->business_function_id] = true;
             }
         }
 
         return $wildcards;
+    }
+
+    /**
+     * Spec 0367: the categories a null-category row reaches when it keeps
+     * only the new (`covers_current_categories`) or only the legacy
+     * (`covers_legacy_categories`) ones — those whose effective function is
+     * the row's. A row keeping both is a plain wildcard (wildcardFunctionIds).
+     *
+     * @return array<int, int>
+     */
+    private function partialWildcardCategoryIds(EmploymentProductLine $line): array
+    {
+        if ($line->covers_current_categories === $line->covers_legacy_categories) {
+            return [];
+        }
+
+        $functionId = (int) $line->business_function_id;
+        $legacyIds = $this->legacyCategoryIds();
+        $wantsLegacy = $line->covers_legacy_categories;
+
+        return array_keys(array_filter(
+            $this->effectiveFunctionByCategory(),
+            static fn (?int $categoryFunctionId, int $categoryId): bool => $categoryFunctionId === $functionId
+                && isset($legacyIds[$categoryId]) === $wantsLegacy,
+            ARRAY_FILTER_USE_BOTH,
+        ));
+    }
+
+    /**
+     * The legacy catalogue (`product_categories.is_legacy`), memoized like the
+     * other taxonomy maps of this instance.
+     *
+     * @return array<int, true>
+     */
+    private function legacyCategoryIds(): array
+    {
+        return $this->legacyCategoryIds ??= array_fill_keys(
+            ProductCategory::query()->where('is_legacy', true)->pluck('id')->map(intval(...))->all(),
+            true,
+        );
     }
 
     /**

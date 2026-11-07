@@ -209,6 +209,8 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
       id: 91,
       business_function: { id: SALES_FUNCTION, name: 'Sales' },
       product_category: { id: PHOTOVOLTAIC_CATEGORY, name: 'Photovoltaic' },
+      covers_current_categories: true,
+      covers_legacy_categories: true,
       share_percentage: 100,
     },
   ],
@@ -271,7 +273,7 @@ describe('UserDetailView — is_assignable row (spec 0194)', () => {
     expect(employment.is_assignable).toBe(false)
     expect(employment.covers_all_product_categories).toBe(false)
     expect(employment.product_lines).toEqual([
-      { business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY, share_percentage: 100 },
+      { business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 100 },
     ])
   })
 })
@@ -307,16 +309,16 @@ describe('UserDetailView — covers_all_product_categories & "all categories" ro
 
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
     fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${SALES_FUNCTION}` }))
-    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'All categories, row 1' }))
 
-    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'All categories, row 1' })).toBeChecked()
     expect(screen.getByLabelText('Product category 1 disabled')).toHaveTextContent('true')
 
     confirmOpenRow('Save')
 
     // Spec 0346 D-7: the first row opens on the whole 100%.
     expect((await submittedEmployment()).product_lines).toEqual([
-      { business_function_id: SALES_FUNCTION, product_category_id: null, share_percentage: 100 },
+      { business_function_id: SALES_FUNCTION, product_category_id: null, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 100 },
     ])
   })
 
@@ -333,11 +335,11 @@ describe('UserDetailView — covers_all_product_categories & "all categories" ro
       'Assignment scope',
       userWithCompetence({
         ...BASE_EMPLOYMENT,
-        product_lines: [{ id: 93, business_function: { id: SALES_FUNCTION, name: 'Sales' }, product_category: null, share_percentage: 100 }],
+        product_lines: [{ id: 93, business_function: { id: SALES_FUNCTION, name: 'Sales' }, product_category: null, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 100 }],
       }),
     )
 
-    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'All categories, row 1' })).toBeChecked()
     expect(screen.getByLabelText('Product category 1 disabled')).toHaveTextContent('true')
   })
 

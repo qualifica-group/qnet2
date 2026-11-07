@@ -38,6 +38,14 @@ export const productLines = {
   allCategories: 'All categories, row {{n}}',
   /** Visible label next to the checkbox. */
   allCategoriesShort: 'All',
+  /** Spec 0367: on an "All" row, the new categories and the legacy [OLD] ones. */
+  currentCategoriesShort: 'New',
+  currentCategories: 'New categories, row {{n}}',
+  legacyCategoriesShort: 'Old',
+  legacyCategories: 'Old [OLD] categories, row {{n}}',
+  /** Spec 0367: read-only rendering of a restricted "All" row. */
+  currentCategoriesOnlyReadOnly: 'All new categories',
+  legacyCategoriesOnlyReadOnly: 'All old [OLD] categories',
   /** Spec 0346: accessible name, per row, of the share input (CompetenceLinesField). */
   sharePercentage: 'Row {{n}} percentage',
   /** Spec 0346: running total of the shares under the rows. */

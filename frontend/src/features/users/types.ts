@@ -65,6 +65,9 @@ export interface EmploymentProductLine {
   id: number
   business_function: ProductLineRelationRef
   product_category: ProductLineRelationRef | null
+  /** Spec 0367: on a null-category row, whether it keeps the new and/or the legacy [OLD] categories (both true otherwise). */
+  covers_current_categories: boolean
+  covers_legacy_categories: boolean
   /** Spec 0346: the person's informative share on the row, 1..100. */
   share_percentage: number
 }
@@ -138,6 +141,9 @@ export interface EmploymentDetail {
 export interface EmploymentProductLineInput {
   business_function_id: number
   product_category_id: number | null
+  /** Spec 0367: always sent; both true on a row with a category. */
+  covers_current_categories: boolean
+  covers_legacy_categories: boolean
   share_percentage: number
 }
 

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0367-competence-legacy-categories-switch" status="approved" owner="nicola" date="2026-11-07">
+
+  <goal>
+    Nell'ambito di assegnazione della scheda dipendente, una riga "Tutte" sceglie quale parte del catalogo della
+    funzione copre: le categorie **Nuove**, le **Vecchie** (storiche [OLD]) o entrambe. Cosi' chi lavora solo sul
+    nuovo non vede le richieste delle categorie vecchie, e chi deve vederle le tiene.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-11-07.
+
+    - Caso: Simona Chiacchio, riga "Formazione - Tutte", vede in Gestione Richieste le 10.943 offerte di
+      "[OLD] FOR_Iscritti GOL (solo iscritti)", che eredita Formazione dalla radice "[OLD] FOR_ALUNNI-".
+    - Riga di competenza: `employment_product_lines` (business_function_id, product_category_id nullable = "Tutte",
+      share_percentage). `OperatorCompetence` la ripiega in `CompetenceProfile` (righe "Tutte" ->
+      `wildcardFunctionIds`, righe con categoria -> chiusura discendenti). La stessa regola serve le assegnazioni
+      (`covers()`, pool operatori) e la visibilita' "Visualizza per competenza" (`reachOf()`, spec 0340).
+    - Categorie storiche: `product_categories.is_legacy` (188 categorie, 35 radici, nessuna sotto un ramo nuovo).
+
+    Decisioni utente 2026-11-07:
+    D-1 La scelta sta sulla RIGA "Tutte" dell'ambito, non sulla scheda: due caselle "Nuove" e "Vecchie",
+        selezionabili entrambe. (Sostituisce la prima versione con interruttore sulla scheda, mai committata.)
+    D-2 Default entrambe spuntate: ogni riga esistente continua a coprire tutta la funzione.
+
+    Decisioni di progetto:
+    D-3 Vale per assegnazioni e visibilita' insieme: e' l'ambito della persona. Una riga con una sola eta' viene
+        espansa in `OperatorCompetence` nelle categorie della funzione di quell'eta'; `CompetenceProfile::covers()`
+        non cambia. Una riga con entrambe resta un jolly.
+    D-4 Almeno una casella resta spuntata (UI la blocca, server 422). Una riga su una categoria specifica salva
+        sempre entrambe true. Una riga esplicita su una categoria [OLD] resta coperta.
+    D-5 Il flag "Ambito su tutte le categorie" (spec 0129 D-1) non cambia.
+    D-6 Le righe in ingresso vengono normalizzate prima della validazione (flag assente = true; categoria specifica =
+        entrambi true): un client vecchio o un utente in sola lettura che rimanda righe invariate non riceve 422.
+  </context>
+
+  <data_contract>
+    <db>`employment_product_lines.covers_current_categories` e `covers_legacy_categories` BOOLEAN NOT NULL DEFAULT
+      true, dopo `product_category_id`, reversibile.</db>
+    <endpoint method="POST|PUT|PATCH" path="/api/users[/{user}]">
+      <request>`employment.product_lines.*.covers_current_categories` / `covers_legacy_categories`: `sometimes|boolean`,
+        assenti = true. Riga senza categoria con entrambi false -> 422 su `...covers_current_categories`
+        ("Choose the new categories, the old ones or both." / "Scegli le categorie nuove, le vecchie o entrambe.").</request>
+      <response status="200|201">Ogni riga di `employment.product_lines` espone i due flag.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Una riga "Tutte" salva le eta' scelte e la risorsa le espone; una riga con categoria salva entrambe true.</criterion>
+    <criterion id="AC-002">Riga "Tutte" senza nessuna eta' -> 422; flag assenti -> entrambe true.</criterion>
+    <criterion id="AC-003">La portata segue le eta': entrambe = nuove + vecchie; solo nuove = nuove; solo vecchie = vecchie.</criterion>
+    <criterion id="AC-004">Una riga esplicita su una radice [OLD] copre il suo ramo accanto a una riga "solo nuove".</criterion>
+    <criterion id="AC-005">Il pool di assegnazione segue le stesse eta'.</criterion>
+    <criterion id="AC-006">Gestione Richieste: con "solo nuove" un'offerta su categoria [OLD] non e' visibile per competenza; resta visibile se la persona ne e' l'operatore.</criterion>
+    <criterion id="AC-007">(FE) Spuntando "Tutte" compaiono "Nuove" e "Vecchie" spuntate; l'ultima spuntata non si toglie; il payload le invia.</criterion>
+    <criterion id="AC-008">(FE) La resa in sola lettura dice "Tutte le categorie nuove" / "Tutte le categorie vecchie [OLD]"; guida `users` IT/EN aggiornata.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. `OperatorCompetence` a 472 righe (hard limit 500): prossima aggiunta = split.</item>
+    <item>Manuale Claude Docs: sezione Utenti / ambito di assegnazione (non raggiungibile dalla sessione: segnalare).</item>
+  </constraints>
+
+</spec>
