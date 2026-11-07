@@ -3,21 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Ambito di assegnazione: "Nuove" / "Vecchie" sulla riga "Tutte" (spec 0367) — VERDE, NON COMMITTATO (2026-11-07)
+## Ambito di assegnazione: "Nuove" / "Vecchie" sulla riga "Tutte" (spec 0367) — COMMITTATO 24b9fd1f (2026-11-07)
 
 - Caso: Simona Chiacchio ("Formazione - Tutte") vedeva in Gestione Richieste le 10.943 offerte di
   "[OLD] FOR_Iscritti GOL", che eredita Formazione dalla radice "[OLD] FOR_ALUNNI-". Decisione utente: sulla riga
   "Tutte" dell'ambito due caselle "Nuove" e "Vecchie" (categorie `is_legacy`), default entrambe.
 - DB: `employment_product_lines.covers_current_categories` / `covers_legacy_categories` (migrazione
-  `2026_11_26_100100`, NON ancora eseguita su dev). `OperatorCompetence`: riga con una sola eta' espansa nelle
+  `2026_11_26_100100`). `OperatorCompetence`: riga con una sola eta' espansa nelle
   categorie della funzione di quell'eta' (`partialWildcardCategoryIds`), riga con entrambe = jolly; vale per
   assegnazioni e visibilita' per competenza. `ValidatesEmployment::normalizeCompetenceRowAges()` (flag assente =
   true, categoria specifica = entrambi true) evita il 422 "field not editable" su resubmit in sola lettura.
 - FE: `CompetenceCategoryAgeToggles` (`product-lines/competence-category-age.tsx`), flag in tipi/payload/defaults/
   draft, resa "Tutte le categorie nuove/vecchie [OLD]", guida `users` IT/EN.
-- ATTENZIONE dev: la prima versione (interruttore sulla scheda) e' stata smontata, ma la sua migrazione
-  `2026_11_26_100000_add_sees_legacy_categories_to_employment_profiles_table` e' gia' stata eseguita su dev: il file
-  resta finche' l'utente non autorizza il rollback di quel solo step, poi va cancellato. Non committarlo.
+- Dev pulito (2026-11-07): la migrazione della prima versione (interruttore sulla scheda,
+  `2026_11_26_100000_add_sees_legacy_categories...`) e' stata annullata a mano (suo `down()` + riga in `migrations`)
+  e il file cancellato; `2026_11_26_100100` risulta eseguita su dev.
 - Test: `tests/Feature/Assignment/CompetenceCategoryAgeTest.php` (8). Requisito cambiato: fixture/attese FE con i due
   flag, query della checkbox "Tutte" per nome. Verdi: Assignment 82, Users 292, RequestManagement 885, Enrollee 92,
   Opportunities 288, Leads 156, Imports 319, Hr 47, BusinessFunctions 108, EmploymentContracts 33, WorkOrders 444,
