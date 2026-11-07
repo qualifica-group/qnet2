@@ -201,6 +201,56 @@ it('keeps blocking on an open opportunity managed on multiple categories', funct
         ->assertJsonValidationErrors(['registry_id']);
 });
 
+it('creates a single-category opportunity beside an open multiple-mode one', function () {
+    Sanctum::actingAs(openPerRegistryActor());
+    $registry = Registry::factory()->create();
+    opportunityOnCategory($registry, CategoryManagementMode::Multiple);
+
+    $payload = openPerRegistryPayload($registry);
+    ProductCategory::query()->whereKey($payload['product_lines'][0]['product_category_id'])
+        ->update(['management_mode' => CategoryManagementMode::Single]);
+
+    $this->postJson('/api/opportunities', $payload)->assertCreated();
+    expect(Opportunity::query()->where('registry_id', $registry->id)->count())->toBe(2);
+});
+
+it('lets the anagrafica open another opportunity beside one on legacy categories only, whatever their name', function () {
+    Sanctum::actingAs(openPerRegistryActor());
+    $registry = Registry::factory()->create();
+    $legacy = opportunityOnCategory($registry, CategoryManagementMode::Multiple);
+    $legacy->productLines()->first()->productCategory->forceFill(['is_legacy' => true, 'name' => 'Catalogo storico 9001'])->save();
+
+    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))->assertCreated();
+});
+
+it('keeps blocking when the open opportunity has a current category beside a legacy one', function () {
+    Sanctum::actingAs(openPerRegistryActor());
+    $registry = Registry::factory()->create();
+    $mixed = opportunityOnCategory($registry, CategoryManagementMode::Multiple);
+    $legacyCategory = ProductCategory::factory()->create();
+    $legacyCategory->forceFill(['is_legacy' => true])->save();
+    OpportunityProductLine::create([
+        'opportunity_id' => $mixed->id,
+        'business_function_id' => $legacyCategory->business_function_id ?? BusinessFunction::factory()->create()->id,
+        'product_category_id' => $legacyCategory->id,
+    ]);
+
+    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['registry_id']);
+});
+
+it('keeps blocking on a current category named like a legacy one', function () {
+    Sanctum::actingAs(openPerRegistryActor());
+    $registry = Registry::factory()->create();
+    $current = opportunityOnCategory($registry, CategoryManagementMode::Multiple);
+    $current->productLines()->first()->productCategory->update(['name' => '[OLD] rinominata']);
+
+    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['registry_id']);
+});
+
 it('blocks on the multiple-mode one even when a single-mode one sits beside it', function () {
     Sanctum::actingAs(openPerRegistryActor());
     $registry = Registry::factory()->create();

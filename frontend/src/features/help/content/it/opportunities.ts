@@ -137,7 +137,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**.",
+          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie a offerta unica: un'opportunità a offerta unica non blocca le altre e si crea anche se l'anagrafica ne ha già una aperta. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD]).",
         },
       ],
     },

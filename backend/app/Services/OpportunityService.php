@@ -140,7 +140,10 @@ class OpportunityService
             // Checked AFTER the lead derivation (the lead is what supplies
             // `registry_id` on a conversion) and inside the transaction, so
             // the whole create — bulk conversion included — rolls back.
-            $this->openOpportunityGuard->assertNoOpenOpportunity((int) $attributes['registry_id']);
+            $this->openOpportunityGuard->assertNoOpenOpportunity(
+                (int) $attributes['registry_id'],
+                array_map(intval(...), array_column($data->productLines ?? [], 'product_category_id')),
+            );
 
             [$opportunity, $attachedManagers] = $this->persist($data, $attributes);
 

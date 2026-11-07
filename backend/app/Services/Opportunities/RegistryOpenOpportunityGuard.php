@@ -31,6 +31,13 @@ use Illuminate\Validation\ValidationException;
  * open opportunity in `multiple` mode (or one whose mode is indeterminate,
  * which is never PROVEN to be single) blocks.
  *
+ * User directive 2026-11-07: an open opportunity whose product lines all sit on
+ * legacy categories (`product_categories.is_legacy`) does not block either.
+ *
+ * User directive 2026-11-07: the exemption is symmetric — a NEW opportunity
+ * whose product lines resolve to `single` mode is created even beside an open
+ * `multiple` one, for the same one-shot reason.
+ *
  * Enforced inside OpportunityService::create(), the single write point every
  * creation path funnels through (form, lead conversion, import auto-convert),
  * so no path can bypass it. The bulk conversion pre-checks the same predicate
@@ -56,10 +63,16 @@ final class RegistryOpenOpportunityGuard
     public function __construct(private readonly OpportunityProductLineCoverage $coverage) {}
 
     /**
+     * @param  array<int, int>  $newCategoryIds  the product categories of the opportunity being created
+     *
      * @throws ValidationException when $registryId already owns a blocking open opportunity
      */
-    public function assertNoOpenOpportunity(int $registryId): void
+    public function assertNoOpenOpportunity(int $registryId, array $newCategoryIds = []): void
     {
+        if ($this->coverage->managementModeOfCategories($newCategoryIds) === CategoryManagementMode::Single) {
+            return;
+        }
+
         $existing = $this->openOpportunityFor($registryId);
 
         if ($existing === null) {
@@ -119,7 +132,14 @@ final class RegistryOpenOpportunityGuard
             return $empty;
         }
 
-        $opportunities = Opportunity::query()->whereIn('registry_id', $registryIds);
+        // User directive 2026-11-07: an opportunity whose product lines all sit on
+        // legacy categories (`is_legacy`, the migrated catalogue) is history, not
+        // running business, so it never blocks. One with no line still does.
+        $opportunities = Opportunity::query()
+            ->whereIn('registry_id', $registryIds)
+            ->where(static fn ($query) => $query
+                ->whereDoesntHave('productLines')
+                ->orWhereHas('productLines.productCategory', static fn ($category) => $category->where('is_legacy', false)));
 
         // The quote-less branch resolves a workflow per row (it is the row's
         // own product category that decides it), so it is handed the SAME

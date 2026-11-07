@@ -3,6 +3,102 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Seeder richieste da Excel (6 file, seeder unico) + regole opp. offerta unica e categorie storiche — VERDE, COMMITTATO, SEEDER NON ESEGUITO SU DEV (2026-11-07)
+
+- Richiesta utente: un SEEDER (non il wizard import 0348) per caricare in Gestione Richieste le trattative dei 6 Excel in
+  `~/Downloads/file da importare`. Fatto il primo: `APL_Orientamento Specialistico Trattative 06_11_26.xlsx` (77 righe).
+  Eseguire: `php artisan db:seed --class=QualificaAplOrientationRequestSeeder` (idempotente: salta chi ha gia' una
+  richiesta sulla categoria). NON lanciato su qnet2: solo prova in transazione annullata (77 create, rerun 0 create).
+- File: dati puliti in `database/seeders/QualificaCatalog/AplOrientationRequestCatalogue.php` (nomi divisi a mano,
+  telefoni in cifre, date Y-m-d, nomi esatti di Fonte/Stato/Comune DB "Naples"/Segnalatore/Commerciale); motore
+  riusabile per i prossimi file `database/seeders/Support/RequestSheetLookups.php` (nome->id, miss = RuntimeException) e
+  `RequestSheetWriter.php` (Anagrafica + RequestCreationService + trasferimento gia' avvenuto); seeder
+  `QualificaAplOrientationRequestSeeder` (aggancia attributi quote `data_scelta_cpi`/`cpi` alla categoria + sezione
+  layout `apl-orientation-cpi`, crea segnalatori mancanti tipo Segnalatore, notifiche mute).
+- Decisioni utente 2026-11-07: operatore = utente CRM (GA2, sede = sede principale dell'operatore); "Non Risponde" ->
+  "Da Richiamare" + nota "Non risponde"; Data App CPI/CPI -> Informazioni aggiuntive; riga senza nome -> "Contatto <tel>";
+  segnalatori abbinati per somiglianza (grumo nevano caf, RAFFAELLA CAF PATRONATO AFRAGOLA, . CAF MULTISERVIZI
+  PALLADINO_FRATTAMAGGIORE, . CAF COLDIRETTI_CARDITO, Caivano CAF SENAS, NUNZIA/LEA CAF AFRAGOLA/PASQUALE), creati
+  Deborah Green e Svitlana Nikolaychuk; "Trasferito da Altra Sede" = trasferimento concluso (is_transferred + sede
+  origine + voce di storico come RequestTransferService, senza notifiche); fonte vuota -> "No fonte" (creata dall'utente).
+- Anagrafica esistente: per codice fiscale, oppure telefono E nome (Rosa Lazzaro ha il telefono di Giustina Lazzaro:
+  anagrafica nuova). Le anagrafiche esistenti non vengono aggiornate (RequestCreationService non tocca l'anagrafica).
+- REGOLA CAMBIATA (decisione utente 2026-11-07, vale per tutti): `RegistryOpenOpportunityGuard::assertNoOpenOpportunity`
+  riceve le categorie della NUOVA opportunita' (da `OpportunityService::create`) e non blocca se sono a offerta unica
+  (`OpportunityProductLineCoverage::managementModeOfCategories`). Sbloccava 13 righe con opp [OLD] aperte dal legacy.
+  Non toccato: pre-check della conversione massiva lead (`ConvertLeadsToOpportunities::blockers`) che usa ancora solo
+  l'opportunita' esistente.
+- Test: `tests/Feature/Seeding/RequestSheetWriterTest.php` (6), nuovo caso in `OpportunityOpenPerRegistryTest` (16/16).
+  Verdi: Opportunities 285, RequestManagement 885, Imports 319, Leads 156, Seeding 241/243 (2 rossi preesistenti
+  QualificaOperatorSeederTest `importatore-richieste`). Pint ok, Vitest help 161/161, ESLint ok, `tsc -b --force` 0.
+- Manuale: guida in-app `opportunities` IT/EN (eccezione offerta unica). Manuale Claude Docs: vedi riepilogo sessione.
+- Secondo file FATTO: `Autofinanziato Campania_Trattative 06-11-26.xlsx` (119 righe) ->
+  `QualificaCatalog/SelfFundedCampaniaRequestCatalogue.php` + `QualificaSelfFundedCampaniaRequestSeeder`
+  (`php artisan db:seed --class=QualificaSelfFundedCampaniaRequestSeeder`). Prova annullata: 119 create, rerun 0.
+  Decisioni utente: 17 righe "Corso Gare d'Appalto - 2026" (Lidia Russo) restano in Autofinanziato senza riga prodotto +
+  nota; doppio prodotto (OSA/ASACOM, ASO + AGG. ASO) -> primo prodotto + secondo in nota; "operatore agenzia viaggi"
+  senza prodotto + nota; nomi completati dall'email dove evidente (Ilaria Battista, Matteo Renzullo, Giusy Polise,
+  Federica); segnalatore "Corsidia" creato come azienda; attributi `course_time_preference`/`price`.
+- Motore: base astratta `Support/RequestSheetSeeder` (run, conteggi, riepilogo); prodotto ora PER RIGA (`product`,
+  nome esatto nella categoria, assente = offerta senza riga); i cataloghi sono verificati riga per riga sui file
+  (telefono + operatore) con uno script di confronto.
+- BUG CORRETTO (fuori dal seeder, bloccante): `CategoryBranchResolver` memorizzava le distanze per `spl_object_id`;
+  PHP riusa l'id di un oggetto liberato, quindi in un processo lungo (seeder, job d'import con molte righe) un'offerta
+  nuova ereditava il ramo di categoria di una vecchia e risolveva il workflow sbagliato ("status does not belong to
+  the offer's resolved workflow" a caso). Ora `WeakMap`. Test `tests/Feature/QuoteWorkflows/CategoryBranchResolverMemoTest.php`
+  (rosso prima, verde dopo). Verdi: QuoteWorkflows 72, RequestManagement 885, Imports 319, Opportunities 285,
+  WorkOrders 444, Quotes 471/472 (rosso preesistente QuoteDocumentPdfTest, LibreOffice).
+- Terzo file FATTO: `Consulenza_Presa Appuntamenti Trattative 06_11_26 1.xlsx` (19 aziende, Francesca Forgione) ->
+  `QualificaCatalog/AppointmentSettingRequestCatalogue.php` + `QualificaAppointmentSettingRequestSeeder`
+  (categoria "Presa Appuntamenti", nessun prodotto). Prova annullata: 19 create, rerun 0. Decisioni utente: "Referente
+  Azienda" -> nuovo referente interno senza tipo collegato all'azienda (titolo nelle note del referente,
+  `RequestSheetLookups::addContactPerson`); Citta' -> note (manca la via per l'indirizzo); azienda esistente riusata
+  SOLO per telefono + nome (quindi doppioni possibili con GESIL S.R.L., EFFECOSTRUZIONI..., UNA CONSULTING... gia' in
+  anagrafica con altri telefoni). Motore: chiave riga `company` (anagrafica tipo azienda) e `contact_person`.
+- Quarto file FATTO: `Corsi E Campus_trattative 06_11_26.xlsx` (44 righe) -> `QualificaCatalog/ECampusRequestCatalogue.php`
+  + `QualificaECampusRequestSeeder` (categoria "Corsi E-Campus"). Prova annullata: 44 create, rerun 0. Decisione
+  utente: nessuna riga prodotto (prodotti per anno, il file ha solo il corso) -> corso nelle note; attributi
+  `degree_level` (solo se il corso ha il codice L-/LM-/LMG) e `faculty` (solo dalla colonna Facolta'). Telefono
+  illeggibile di Edoardo Tolu tolto (nota), numero marocchino +212 tenuto, "senas (lucia argiiuolo)" -> Caivano CAF
+  SENAS + nota. Motore: anagrafica riconosciuta anche per EMAIL + nome (serve a chi non ha telefono, idempotenza).
+- Quinto file FATTO: `DIL_Lombardia_Sede Milano Trattative 06_11_26.xlsx` (228 righe) ->
+  `QualificaCatalog/DilLombardyRequestCatalogue.php` (GENERATO da script di pulizia + revisione: nomi divisi col codice
+  fiscale dove c'e', a mano gli altri; email con refusi ovvi corrette) + `QualificaDilLombardyRequestSeeder`. Prova
+  annullata: 226 create + 2 doppioni interni al file (La Ele, Ivan Ramos: resta la prima riga), rerun 0. Decisioni
+  utente: "Operatore APL" -> Gestore Account 5 (etichetta "Operatore APL" creata dall'utente; chiave riga `team`,
+  saltata se coincide con l'Operatore); solo prodotti certi (70 Segreteria Studio Medico, 44 Gestione Magazzino, ...),
+  make-up e vaghi in nota; `course_site` = Sede di Milano (risolta dal seeder per citta'); trasferimento concluso da
+  Bergamo (3 righe); creati commerciale "Samantha Egle Castagna" (tipo Commerciale) e segnalatori "CPI Milano",
+  "CPI Cinisello". Motore: `ensureReferents(actor, referents, tipo)` + hook `newCommercials()`.
+- Sesto e ultimo file FATTO: `Servizi_Consulenza Trattative 06_11_26.xlsx` (367 aziende) ->
+  `QualificaCatalog/ConsultingServicesRequestCatalogue.php` (GENERATO + revisionato, 411 righe: catalogo dati, oltre
+  il soft limit di proposito) + `QualificaConsultingServicesRequestSeeder`. Prova annullata: 362 create + 5 offerte
+  aggiunte a opportunita' aperte, rerun 367 gia' presenti. Regole utente: nessuna riga prodotto, "Note Marketing" in
+  nota ("Servizio: ...") e decide la CATEGORIA PER RIGA (mappatura approvata, chiave riga `category`); azienda =
+  anagrafica con telefono/email; Referente -> referente dell'azienda con gli stessi telefoni (mai doppio per nome);
+  azienda senza nome -> nome del referente + " - DA AGGIORNARE"; fonte assente -> "No fonte"; "Antimo Dalvini" ->
+  utente disattivato "[OLD] Antimo Dalvini" (nessuna funzione aziendale ne' impiego: richieste da riassegnare).
+- REGOLA CAMBIATA (decisioni utente 2026-11-07, vale per tutti): un'opportunita' aperta con TUTTE le linee su categorie
+  STORICHE non blocca (`RegistryOpenOpportunityGuard::blockingOpportunities`); senza linee blocca ancora. Storica =
+  flag `product_categories.is_legacy` (NON il nome, su richiesta utente: i nomi "[OLD]" possono cambiare). Migrazione
+  `2026_11_24_100000_add_is_legacy_to_product_categories_table` (additiva, backfill old_id non nullo o nome "[OLD] %":
+  188 oggi) - APPLICATA su qnet2 dall'utente il 2026-11-07. Non mass-assignable: lo scrivono `ProductCategoriesSource`
+  (import legacy) e `CostCategoryResolver` (ramo "[OLD] Costi"). Test: OpportunityOpenPerRegistryTest 19 (storica
+  rinominata non blocca; attuale chiamata "[OLD]" blocca), ProductCategoriesSourceImportTest, CostProductsSourceImportTest.
+- Decisione utente "Offerta sull'esistente": riga di un cliente con opportunita' aperta (non OLD, categoria multipla)
+  -> `Support/RequestSheetOfferAppender`: aggiunge la categoria alle linee (RequestProductLineWriter), crea l'Offerta
+  (QuoteService), stato per nome nel workflow risolto dell'offerta (QuoteWorkflowStatusWriter), note accodate alle
+  note dell'opportunita' sotto il codice offerta. Esito `appended` nel riepilogo.
+- Motore anche: riconoscimento per nome esatto se la riga non ha telefono/email/CF; telefoni al referente.
+- Test: RequestSheetWriterTest 11, OpportunityOpenPerRegistryTest 18 (2 nuovi OLD). Verdi: Opportunities 287, Leads 156,
+  RequestManagement 885, Imports 319; Vitest help 161; ESLint; Pint; `tsc -b --force` 0. Guida `opportunities` IT/EN
+  aggiornata (eccezione OLD). Manuale Claude Docs: non raggiungibile (access denied) -> capitolo Opportunita'.
+- SEEDER UNICO (richiesta utente): `QualificaRequestSheetsSeeder` chiama i 6 in ordine (APL, Autofinanziato, Presa
+  Appuntamenti, E-Campus, DIL, Servizi Consulenza). Idempotente. Prova annullata: 847 create + 5 aggiunte, rerun 0.
+  NON eseguito su qnet2: `php artisan db:seed --class=QualificaRequestSheetsSeeder` (migrazione is_legacy gia' applicata).
+  Report avvertenze per riga: ~/Downloads/Report_import_trattative_2026-11-07.pdf (847 create, 5 aggiunte, 2 doppioni). Verdi: Migration 754, Opportunities 288, Leads 156,
+  RequestManagement 885, ProductCategories 357, RequestSheetWriterTest 11, Vitest help 161, Pint, ESLint.
+
 ## Rifiuto contratti multi-offerta: elenco strutturato + "Continua senza" — VERDE SUI FILE TOCCATI, NON COMMITTATO (2026-11-07)
 
 - Richiesta utente (spec 0267 D-14/AC-019): il 422 "Questi contratti non si possono cumulare..." era un testo rosso unico.

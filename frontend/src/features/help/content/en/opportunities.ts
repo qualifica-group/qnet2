@@ -137,7 +137,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**.',
+          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Single-offer categories are the exception: a single-offer opportunity never blocks the others and is created even when the registry already has an open one. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either.',
         },
       ],
     },

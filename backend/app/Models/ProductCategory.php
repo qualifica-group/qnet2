@@ -67,6 +67,9 @@ class ProductCategory extends BaseModel
             // the EFFECTIVE activity (an inactive ancestor deactivates the
             // whole subtree, D-1) is resolved at read time by CategoryActivity.
             'is_active' => 'boolean',
+            // Legacy catalogue marker (user directive 2026-11-07), set by the
+            // migration writers only, never mass-assignable.
+            'is_legacy' => 'boolean',
             // Spec 0131 — whether the category is a row of the Gestione
             // Richieste / Iscritti report. Nullable OWN override (user
             // directive 2026-09-18): null inherits the parent's effective
