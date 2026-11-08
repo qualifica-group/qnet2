@@ -39,6 +39,8 @@ it('exposes order and width on every column in the default config', function () 
     $ids = collect(columnsConfig($this))->pluck('id')->all();
     expect($ids)->toBe([
         'id', 'avatar_url', 'name', 'email', 'roles', 'locale', 'is_active', 'created_at',
+        // spec 0370 — last credential login (REQUIREMENT CHANGED).
+        'last_login_at',
         'user_type', 'primary_address', 'country', 'region', 'province', 'city', 'primary_contact',
         // spec 0015 — the 9 employment-derived columns, plus spec 0271's job_roles spec 0290's contract_type and spec 0291's working_time/contract_expires_on (REQUIREMENT CHANGED).
         'business_function', 'company', 'operational_site', 'relationship_type', 'contract_type',

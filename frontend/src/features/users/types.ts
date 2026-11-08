@@ -176,6 +176,8 @@ export interface UserDetail {
   /** Functions this user manages (spec 0275 D-6), read only, ordered by name; [] when none. */
   managed_business_functions: NamedRef[]
   created_at: string | null
+  /** Last credential login (spec 0370), null until one is recorded. */
+  last_login_at: string | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
 }

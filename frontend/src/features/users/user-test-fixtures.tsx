@@ -120,6 +120,7 @@ export function userFixture(overrides: Partial<UserDetailWithPermissions> = {}):
     employment: null,
     managed_business_functions: [],
     created_at: null,
+    last_login_at: null,
     permissions: permissionsFor(),
     ...overrides,
   }

@@ -68,7 +68,10 @@ export const usersFormEmployment = {
   terminatedBeforeHiredAt: 'La data di cessazione deve essere successiva o uguale a quella di assunzione.',
 }
 
-/** Nuove colonne della griglia utenti (spec 0015). */
+/**
+ * Colonne della griglia utenti tenute fuori da `it.ts` (limite di dimensione):
+ * rapporto di lavoro (spec 0015) e ultimo accesso (spec 0370).
+ */
 export const usersColumnsEmployment = {
   business_function: 'Funzione aziendale',
   company: 'Società',
@@ -82,6 +85,7 @@ export const usersColumnsEmployment = {
   reports_to: 'Risponde a',
   hired_at: 'Assunto il',
   terminated_at: 'Cessato il',
+  last_login_at: 'Ultimo accesso',
 }
 
 /** Etichette in sola lettura per le sezioni del rapporto di lavoro (spec 0015). */

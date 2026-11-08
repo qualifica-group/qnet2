@@ -23,11 +23,27 @@ class AuthService
      */
     public function login(string $email, string $password, string $deviceName): LoginResult
     {
+        // Step 1: check the credentials.
         $user = $this->authenticate($email, $password);
 
+        // Step 2: record the login (spec 0370).
+        $this->recordLogin($user);
+
+        // Step 3: issue the token.
         $token = $user->createToken($deviceName)->plainTextToken;
 
         return new LoginResult(user: $user, token: $token);
+    }
+
+    /**
+     * A login is not an edit of the record: `updated_at` stays put and no model
+     * event fires, so the activity log gets no entry (spec 0370 D-4).
+     */
+    private function recordLogin(User $user): void
+    {
+        User::withoutTimestamps(
+            static fn (): bool => $user->forceFill(['last_login_at' => now()])->saveQuietly(),
+        );
     }
 
     /**

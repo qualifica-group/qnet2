@@ -108,6 +108,17 @@ final class UserColumnCatalog
                 'filterType' => 'date',
             ],
             [
+                // Spec 0370: last credential login (real column, indexed).
+                'id' => 'last_login_at',
+                'label' => 'users.columns.last_login_at',
+                'type' => 'datetime',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'date',
+                'hasFilterValues' => false,
+            ],
+            [
                 // Person vs company, derived from personalData.type. Rendered as a
                 // BADGE whose label/color/icon come entirely from the enum (see
                 // UsersTableDefinition::badgesFor). Sortable via a correlated
@@ -345,6 +356,7 @@ final class UserColumnCatalog
             ['columnId' => 'locale', 'type' => 'set', 'options' => LocaleEnum::values()],
             ['columnId' => 'is_active', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
+            ['columnId' => 'last_login_at', 'type' => 'date'],
             ['columnId' => 'user_type', 'type' => 'set', 'options' => $userTypeValues],
             ['columnId' => 'primary_address', 'type' => 'text'],
             // Geo set filters: options resolved dynamically in optionsFor().

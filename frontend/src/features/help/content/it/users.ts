@@ -154,6 +154,7 @@ const guide: HelpGuide = {
         { type: 'steps', items: ['Apri la scheda dell’utente.', 'Nella barra delle azioni sotto il nome fai clic su **Invia email di benvenuto** (serve il permesso di modifica sugli utenti; l’utente deve essere attivo e diverso da te).', 'Conferma: viene generata una nuova password e inviata all’email dell’utente.', 'Compare il messaggio "Email di benvenuto inviata."'] },
         { type: 'list', items: ['La password precedente smette di funzionare e le sessioni aperte dell’utente vengono chiuse.', 'Ad ogni nuovo invio l’utente deve scegliere di nuovo la propria password al primo accesso.', 'Gli utenti importati dal vecchio QNet devono cambiare la password al primo accesso.', 'In alternativa l’utente può usare **Password dimenticata?** nella pagina di accesso.'] },
         { type: 'note', text: 'L’etichetta **In attesa di primo accesso** sparisce quando l’utente sceglie la propria password; il pulsante resta disponibile per i reinvii.' },
+        { type: 'paragraph', text: 'L’etichetta **Ultimo accesso** nell’intestazione della scheda e l’omonima colonna dell’elenco utenti (ordinabile e filtrabile per data) mostrano data e ora dell’ultimo accesso riuscito con email e password. Non contano l’impersonificazione né gli accessi da integrazioni esterne. Gli accessi precedenti all’introduzione della funzione non sono registrati: finché l’utente non rientra, l’etichetta non compare e la colonna resta vuota.' },
       ],
     },
     {

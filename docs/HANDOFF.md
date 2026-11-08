@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ultimo accesso utente (spec 0370) — VERDE, NON COMMITTATO (2026-11-08)
+
+- `users.last_login_at` (migrazione `2026_11_29_100000`, indicizzata, nessun backfill), guarded: scritta SOLO da
+  `AuthService::recordLogin()` dentro `login()` con `User::withoutTimestamps` + `saveQuietly` (niente `updated_at`,
+  niente activity log). NON la aggiornano impersonificazione, refresh token, `auth/client-login` (usa solo `authenticate()`).
+- Esposta in `UserResource` e nella griglia Utenti (`UserColumnCatalog` datetime visibile/ordinabile/filtro data,
+  `UsersTableDefinition::mapRow`). FE: `UserDetail.last_login_at` obbligatorio (4 fixture aggiornate), badge
+  "Ultimo accesso: <data ora>" in `user-detail-header.tsx` solo se valorizzato.
+- i18n: `users.columns.last_login_at` sta in `{it,en}-users-employment.ts` (`usersColumnsEmployment`) perche' `en.ts`
+  supera le 500 righe e l'hook blocca ogni modifica. Guida in-app: paragrafo in `users.ts` sezione `welcome-email`.
+- Test: `tests/Feature/Auth/LastLoginTest.php` (6), `TablePreferencesTest` ordine colonne (REQUIREMENT CHANGED),
+  `user-detail-header.test.tsx`. Da fare: manuale Claude Docs (non raggiungibile dalla sessione).
+- Fallimento preesistente, NON legato: `TableBulkDeleteTest` "guards the last super-admin" (atteso `guarded`, ricevuto `forbidden`).
+
 ## Tour di benvenuto (spec 0368) — VERDE, NON COMMITTATO (2026-11-07)
 
 - Tour guidato dell'interfaccia (menu laterale + icone dell'header), obbligatorio la prima volta, riavviabile da

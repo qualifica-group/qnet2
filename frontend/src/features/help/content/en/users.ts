@@ -154,6 +154,7 @@ const guide: HelpGuide = {
         { type: 'steps', items: ["Open the user's record.", 'In the actions bar under the name, click **Send welcome email** (you need the edit permission on users; the user must be active and not yourself).', 'Confirm: a new password is generated and sent to the user\'s email.', 'The message "Welcome email sent." appears.'] },
         { type: 'list', items: ['The previous password stops working and the user\'s open sessions are closed.', 'Every new send makes the user choose their own password again at first sign-in.', 'Users imported from the old QNet must change their password at first sign-in.', 'Alternatively the user can use **Forgot your password?** on the sign-in page.'] },
         { type: 'note', text: 'The **Awaiting first sign-in** label disappears once the user chooses their own password; the button stays available for resends.' },
+        { type: 'paragraph', text: 'The **Last sign-in** label in the record header and the column of the same name in the users list (sortable and filterable by date) show the date and time of the last successful sign-in with email and password. Impersonation and sign-ins from external integrations do not count. Sign-ins before this feature was introduced are not recorded: until the user signs in again, the label does not appear and the column stays empty.' },
       ],
     },
     {

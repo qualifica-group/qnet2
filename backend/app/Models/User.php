@@ -237,6 +237,9 @@ class User extends Authenticatable implements HasLocalePreference
             // Spec 0369 — welcome email marker. Guarded: written only via
             // forceFill() by UserOnboardingService.
             'welcome_sent_at' => 'datetime',
+            // Spec 0370 — last credential login. Guarded: written only via
+            // forceFill() by AuthService::login().
+            'last_login_at' => 'datetime',
             // Spec 0013 — external data migration: the source system's id for
             // a migrated user, guarded (not in $fillable) so it is only ever
             // set by property assignment post-create, never mass-assigned.
