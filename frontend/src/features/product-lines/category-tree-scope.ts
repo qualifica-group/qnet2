@@ -22,6 +22,7 @@
  * unrelated to the retired INV-1 branch confinement — see
  * `selectableIdsUnderRoot`/`rootCategoryIdFor` below.
  */
+import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { collectSelectableIds } from '@/features/product-categories/flatten-tree'
 import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
 
@@ -228,6 +229,35 @@ function findNode(
   }
 
   return null
+}
+
+/**
+ * The tree a CARD picker lists (root, filter and category steps): the active
+ * tree of spec 0208, minus what cannot classify a row. A category with no
+ * EFFECTIVE business function (own or inherited) is refused on save
+ * (`ProductLineSetValidator`, "no business function of reference"): it is the
+ * "Costi" branch, whose cost-only products belong on the offer and work order
+ * Costi tabs, never on a request. Such a node is no longer selectable, and a
+ * branch left with nothing selectable disappears, root included; a
+ * functionless ancestor of a classifiable node stays as context.
+ */
+export function cardCategoryTree(
+  nodes: ProductCategoryTreeNode[],
+  keepIds: readonly number[],
+): ProductCategoryTreeNode[] {
+  function prune(candidates: ProductCategoryTreeNode[], inheritedFunctionId: number | null): ProductCategoryTreeNode[] {
+    return candidates.flatMap((node) => {
+      const functionId = node.business_function_id ?? inheritedFunctionId
+      const children = prune(node.children, functionId)
+      const selectable = node.is_selectable && functionId !== null
+      if (!selectable && children.length === 0) {
+        return []
+      }
+      return [{ ...node, children, is_selectable: selectable }]
+    })
+  }
+
+  return prune(activeCategoryTree(nodes, keepIds), null)
 }
 
 /**

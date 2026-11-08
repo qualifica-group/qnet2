@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Card "Linee di prodotto": niente categorie di costo — VERDE, NON COMMITTATO (2026-11-07)
+
+- Caso utente: in Gestione Richieste la card proponeva la radice "Costi" (Note spese, Articoli: prodotti solo
+  `COST`), il catalogo righe offerta (`usage: SALE`) restava vuoto e il server rifiutava comunque la riga
+  (`ProductLineSetValidator::CATEGORY_WITHOUT_BUSINESS_FUNCTION_MESSAGE`).
+- Solo FE, nessun cambio di contratto: `cardCategoryTree(tree, keepIds)` in `product-lines/category-tree-scope.ts`
+  = `activeCategoryTree` + nodi senza funzione aziendale EFFETTIVA resi non selezionabili e rami rimasti vuoti
+  rimossi (radice inclusa; una radice senza funzione con figli classificabili, es. Consulenza, resta come contesto).
+  Usato da root/filter select, cell picker e tree-select con `scope.kind === 'root'` (competenze invariate).
+- Su dev l'unica radice attiva colpita e' Costi (166). Le tab categorie di Gestione Richieste non c'entrano:
+  85 offerte legacy su `[OLD] COSTI*` hanno prodotti SALE, categorie inattive, non toccate.
+- Requisito cambiato (dichiarato): fixture `node()` di `active-pickers`, `product-lines-cell-editor`,
+  `product-lines-field`, `product-lines-field-management-mode` con `business_function_id: 1` di default.
+- Verdi: vitest product-lines/request-management/opportunities/projects/campaigns (1108), products/users/
+  data-table/quotes/leads (1241), help (161); eslint e `tsc -b --force` puliti. Guida `product-categories` IT/EN aggiornata.
+
 ## Ambito di assegnazione: "Nuove" / "Vecchie" sulla riga "Tutte" (spec 0367) — COMMITTATO 24b9fd1f (2026-11-07)
 
 - Caso: Simona Chiacchio ("Formazione - Tutte") vedeva in Gestione Richieste le 10.943 offerte di

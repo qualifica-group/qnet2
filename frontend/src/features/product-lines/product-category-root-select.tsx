@@ -2,9 +2,8 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
 import { CATEGORY_POPUP_WIDTH_CLASS } from '@/features/product-lines/category-popup-width'
-import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import { isSingleRootBlocked } from '@/features/product-lines/category-tree-scope'
+import { cardCategoryTree, isSingleRootBlocked } from '@/features/product-lines/category-tree-scope'
 
 const EMPTY_IDS: readonly number[] = []
 
@@ -41,7 +40,7 @@ export function ProductCategoryRootSelect({
     if (!tree) {
       return []
     }
-    return activeCategoryTree(tree, value === null ? EMPTY_IDS : [value]).map((root) => ({
+    return cardCategoryTree(tree, value === null ? EMPTY_IDS : [value]).map((root) => ({
       id: root.id,
       name: root.name,
       depth: 0,
