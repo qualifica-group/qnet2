@@ -46,6 +46,17 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'onboarding-tour',
+      title: 'The welcome tour',
+      blocks: [
+        { type: 'paragraph', text: 'At your first sign-in QNet shows a short **welcome tour**: the screen dims and, one element at a time, lights up the parts of the **side menu** and the header icons with a card explaining what they are for. The card shows where you are (for example **Step 3 of 10**).' },
+        { type: 'list', items: ['Press **Next** and **Back**, or the right and left arrow keys.', 'On the last step press **Start using QNet**: the tour is completed.', 'Elements you do not see (for example the AI assistant when it is not enabled for you) are skipped.'] },
+        { type: 'note', text: 'The first time the tour must be completed: there is no **Skip the tour** and Esc does not close it. Reloading the page restarts it. When the tour is updated with new content, it is offered once more, but you can skip it.' },
+        { type: 'steps', items: ['To replay it open **Settings** › **System settings**.', 'In the **Welcome tour** card press **Start tour**.', 'Close it at any time with **Skip the tour** or Esc.'] },
+        { type: 'tip', text: 'While you impersonate another user the tour does not start and **Start tour** is disabled: the tour is personal and is never marked as seen for the impersonated user.' },
+      ],
+    },
+    {
       id: 'apps-launcher',
       title: 'Apps and the launcher',
       blocks: [
@@ -118,7 +129,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Profile**', 'Upload or remove your avatar, choose the **Language** (Italian or English), update your personal details.'],
             ['**Password**', 'Change your password.'],
-            ['**System settings**', 'Choose **Module opening mode**, **Interface scale**, **Date format** and **Theme color**.'],
+            ['**System settings**', 'Choose **Module opening mode**, **Interface scale**, **Date format** and **Theme color**; replay the **Welcome tour**.'],
           ],
         },
         { type: 'paragraph', text: '**Interface scale** enlarges or shrinks the whole application (100% is the normal size). **Date format** decides how you see dates and times, for example **Day/Month/Year** and **24-hour (14:30)**, with a preview. **Theme color** changes the palette of buttons, highlights and the side menu: pick one of the eight combinations (for example **Classic blue**, **Forest green**, **Graphite mono**), each previewing its colors; it applies to both the light and the dark theme. Save with **Save changes**.' },

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0368-onboarding-tour" status="approved" owner="nicola" date="2026-11-07">
+
+  <goal>
+    Chi entra in QNet riceve un tour guidato dell'interfaccia (come nei migliori CRM: benvenuto, riflettore sugli
+    elementi reali con fumetto, contatore passi, avanti/indietro, chiusura finale) che spiega il menu laterale e le
+    icone dell'header. Obbligatorio la prima volta, riavviabile da Impostazioni e saltabile le volte successive.
+    Durante l'impersonificazione non parte mai e non puo' essere segnato come fatto per l'utente impersonificato.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-11-07.
+
+    - Shell: `frontend/src/layouts/app-layout.tsx`. Header (sinistra -> destra): `SidebarSeamToggle` (comprime il
+      menu), `WorkspaceLauncher`, poi `SupportRequestButton`, `HelpButton`, `NotificationBell`, `ThemeToggle`,
+      `NavUserHeader` (menu utente: Impostazioni, Esci). `FloatingAiAssistant` in basso.
+    - Menu laterale: `frontend/src/components/app-sidebar.tsx` (`Sidebar collapsible="icon"`): `SidebarHeader` con
+      `WorkspaceBrand`, `SidebarContent` con `NavMain` (albero da backend, gruppi/sezioni), `SidebarFooter` con i link
+      fissi Notifiche e Impostazioni. Sotto `md` il menu e' un pannello a scomparsa (shadcn `useSidebar().openMobile`).
+    - Gate di primo accesso (spec 0355/0359): `ProtectedRoute` mostra `FirstAccessDialog` al posto dell'app se
+      `user.must_set_password && !impersonator`; `EnsureFirstPasswordSet` non blocca mai i token di impersonificazione.
+    - Impersonificazione (spec 0050): token Sanctum con `personal_access_tokens.impersonated_by`; lato FE
+      `useAuth().impersonator` (null fuori impersonificazione).
+    - `GET /api/auth/me` e `PATCH /api/auth/me` rispondono `AuthController::authenticatedUserPayload()` (UserResource +
+      campi calcolati, es. `must_set_password` = `isFirstAccessPending()`), envelope `{ success, message, data }`.
+    - Preferenze utente gia' in `users` (`ui_scale`, `date_format`, `color_preset`, `module_open_preferences`);
+      Impostazioni: `frontend/src/pages/settings-page.tsx`, sezione `system` con sotto-card.
+    - Nessuna libreria di tour in `package.json`; disponibili `radix-ui`, `lucide-react`, i18next. Locali FE per
+      feature: `frontend/src/i18n/locales/{it,en}-<feature>.ts` con test di parita'.
+    - Guide in-app (spec 0143): `frontend/src/features/help/content/{it,en}/general.ts` (sezione `interface-overview`).
+
+    Decisioni utente 2026-11-07:
+    D-1 Destinatari: TUTTI gli utenti attivi che non hanno mai visto il tour, compresi esistenti e migrati dal legacy:
+        al primo accesso dopo il rilascio il tour parte obbligatorio. Nessun backfill "gia' visto".
+    D-2 Contenuto: icone dell'header e STRUTTURA del menu laterale (non un passo per modulo: per i moduli c'e' la Guida).
+    D-3 Stile "migliori CRM", costruito in casa senza nuove dipendenze (overlay con ritaglio + fumetto su token del
+        design system: tema chiaro/scuro, preset colore, scala UI).
+    D-4 Versionamento: si salva la versione vista; quando il tour cambia (versione corrente maggiore) riparte da solo
+        una volta, ma saltabile. Obbligatorio solo la prima volta in assoluto.
+
+    Decisioni di progetto (proposte):
+    D-5 La versione corrente vive nel backend (`config('auth.onboarding_version')`, intero, oggi 1): il backend calcola
+        lo stato, il frontend lo legge. Chi cambia il tour in modo sostanziale alza la versione.
+    D-6 Stato calcolato `onboarding_status`: `required` (mai visto) | `outdated` (visto una versione precedente) |
+        `completed` (vista la versione corrente). Solo nel payload dell'utente autenticato (`/auth/me`), non in
+        UserResource (la scheda Utenti non lo mostra).
+    D-7 Ordine: prima il cambio password di primo accesso, poi il tour. Il tour parte sulla pagina in cui l'utente
+        atterra (nessun redirect).
+    D-8 Impersonificazione, doppio presidio: il FE non avvia il tour (ne' automatico ne' da Impostazioni: pulsante
+        disabilitato con spiegazione); il BE rifiuta con 403 la registrazione fatta con un token di impersonificazione.
+    D-9 Obbligatorio = nessun "Salta", Esc non chiude, clic fuori ignorato; ricaricare la pagina lo fa ripartire dal
+        passo 1 (nessun avanzamento parziale salvato). Esci resta possibile dal browser/logout a fine tour.
+    D-10 Un passo il cui elemento non e' presente (permesso, modulo spento, es. assistente AI) viene saltato da solo.
+    D-11 Durante i passi del menu il tour lo rende visibile (desktop: espanso; mobile: pannello aperto) e alla fine
+        ripristina lo stato precedente.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `users`: `onboarding_seen_version` SMALLINT UNSIGNED NULL, `onboarding_seen_at` TIMESTAMP NULL; reversibile; colonne guarded (forceFill).</item>
+      <item>`config/auth.php`: `onboarding_version` (int, env `AUTH_ONBOARDING_VERSION`, default 1).</item>
+      <item>`User::onboardingStatus()` + campo `onboarding_status` in `authenticatedUserPayload()`.</item>
+      <item>Endpoint `PUT /api/auth/me/onboarding` (FormRequest, regole D-8/AC-004/AC-005), service dedicato.</item>
+      <item>FE feature `features/onboarding/`: definizione passi (versione 1), motore del tour (overlay con ritaglio, fumetto ancorato, contatore, avanti/indietro, tastiera, focus trap, riposizionamento su resize/scroll, prefers-reduced-motion), schermata di benvenuto e finale, hook di avvio automatico, mutation.</item>
+      <item>Ancore `data-onboarding="..."` sugli elementi di header e menu laterale (solo attributo, nessun cambio di comportamento).</item>
+      <item>Montaggio in `AppLayout` (dopo il gate di primo accesso); avvio automatico secondo `onboarding_status` e `impersonator`.</item>
+      <item>Impostazioni: card "Tour di benvenuto" nella sezione `system` con "Avvia tour" (disabilitato in impersonificazione).</item>
+      <item>i18n `it-onboarding.ts` / `en-onboarding.ts` + parity; guida in-app `general` IT/EN (nuova sezione `onboarding-tour`); manuale Claude Docs.</item>
+      <item>Test Pest (endpoint, stato, impersonificazione) e Vitest (motore, avvio, impostazioni).</item>
+    </in>
+    <out>
+      <item>Passi per singolo modulo / tour contestuali per pagina (D-2).</item>
+      <item>Checklist "primi passi" persistente, video, gamification.</item>
+      <item>Contenuto del tour diverso per ruolo/permessi oltre al salto automatico dei passi senza elemento (D-10).</item>
+      <item>Reset del tour di un altro utente da parte di un amministratore; colonna/filtro nella griglia Utenti.</item>
+      <item>Salvataggio dell'avanzamento parziale; statistiche di completamento; log attivita' dedicato.</item>
+      <item>Nuove dipendenze (D-3). Modifiche al gate di primo accesso (spec 0355) e a `EnsureFirstPasswordSet`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/auth/me">
+      <response status="200">
+        data: payload utente attuale + `onboarding_status: "required" | "outdated" | "completed"`.
+        Regola: seen_version null -> required; seen_version &lt; config -> outdated; altrimenti completed.
+        Lo stesso campo compare in ogni risposta che restituisce `authenticatedUserPayload` (PATCH /auth/me, PUT onboarding).
+      </response>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/auth/me/onboarding">
+      <request>
+        { "outcome": "completed" | "skipped" }  (required, in:completed,skipped)
+      </request>
+      <response status="200">
+        { success: true, message: "Tour di benvenuto registrato." (i18n auth.onboarding_saved),
+          data: payload utente autenticato (come GET /auth/me) con onboarding_status = "completed" }
+        Effetto: onboarding_seen_version = config('auth.onboarding_version'), onboarding_seen_at = now().
+        Idempotente: ripetere la chiamata non cambia la versione.
+      </response>
+      <errors>
+        401 non autenticato.
+        403 { success:false, message: auth.onboarding_impersonation } se il token corrente ha impersonated_by: nessuna scrittura.
+        422 errors.outcome se outcome manca/non valido, oppure outcome = "skipped" con stato "required"
+            (auth.onboarding_required_not_skippable): nessuna scrittura.
+      </errors>
+    </endpoint>
+
+    <frontend>
+      User.onboarding_status: 'required' | 'outdated' | 'completed' (features/auth/types.ts).
+      Passi v1 (ancora data-onboarding -> chiave i18n onboarding.steps.&lt;id&gt;.{title,body}), nell'ordine:
+        welcome (centrato) - sidebar-brand - sidebar-nav - sidebar-footer - sidebar-toggle - workspace-launcher -
+        support-request - help - notifications - theme - user-menu - ai-assistant - finish (centrato).
+      Modalita': mandatory (status required) | skippable (status outdated, oppure avvio da Impostazioni).
+      Registrazione: a "Fine" -> PUT outcome=completed; a "Salta" -> PUT outcome=skipped solo se status = outdated
+        (avvio manuale con status completed: Salta chiude senza chiamate).
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con onboarding_seen_version null, quando chiama GET /auth/me, allora onboarding_status = "required"; con versione minore della config "outdated"; uguale "completed". (Pest)</criterion>
+    <criterion id="AC-002">Dato un utente con stato required, quando invia PUT /auth/me/onboarding outcome=completed, allora 200, seen_version = versione corrente, seen_at valorizzato, data.onboarding_status = "completed". (Pest)</criterion>
+    <criterion id="AC-003">Dato un utente con stato outdated, quando invia outcome=skipped, allora 200 e stato completed. (Pest)</criterion>
+    <criterion id="AC-004">Dato un utente con stato required, quando invia outcome=skipped, allora 422 su outcome e le colonne restano invariate. (Pest)</criterion>
+    <criterion id="AC-005">Dato un super-admin che impersonifica un utente required, quando invia PUT /auth/me/onboarding (completed o skipped), allora 403 e le colonne dell'utente impersonificato restano null. (Pest)</criterion>
+    <criterion id="AC-006">Outcome assente o diverso da completed/skipped -> 422; chiamata non autenticata -> 401. (Pest)</criterion>
+    <criterion id="AC-007">Dato un utente required (non impersonificato, password gia' impostata), quando apre l'app, allora parte il tour in modalita' obbligatoria: nessun pulsante Salta/chiudi, Esc e clic sull'overlay non lo chiudono. (Vitest)</criterion>
+    <criterion id="AC-008">Dato un utente outdated, quando apre l'app, allora il tour parte con il pulsante Salta; Salta invia outcome=skipped e chiude. (Vitest)</criterion>
+    <criterion id="AC-009">Dato un utente completed, quando apre l'app, allora il tour non parte. (Vitest)</criterion>
+    <criterion id="AC-010">Dato impersonator presente e utente impersonificato required, quando l'app si apre, allora il tour non parte e nessuna PUT viene inviata; in Impostazioni "Avvia tour" e' disabilitato con il testo esplicativo. (Vitest)</criterion>
+    <criterion id="AC-011">Dato must_set_password true, allora si vede solo il gate di primo accesso e il tour non parte finche' la password non e' impostata. (Vitest)</criterion>
+    <criterion id="AC-012">Navigazione: Avanti/Indietro e frecce tastiera cambiano passo, il contatore mostra "N di M" sui soli passi con elemento presente; un passo senza elemento (es. ai-assistant assente) viene saltato; all'ultimo passo "Fine" invia outcome=completed. (Vitest)</criterion>
+    <criterion id="AC-013">Il fumetto e' un dialog accessibile (role=dialog, aria-modal, titolo collegato, focus sul pulsante primario, focus trap) e il ritaglio evidenzia l'elemento del passo (data-onboarding corrispondente). (Vitest)</criterion>
+    <criterion id="AC-014">Durante i passi del menu laterale il menu e' visibile (desktop espanso / mobile pannello aperto) e a fine tour torna allo stato precedente. (Vitest)</criterion>
+    <criterion id="AC-015">Da Impostazioni, con utente completed, "Avvia tour" lo avvia in modalita' saltabile; Salta chiude senza PUT, Fine invia outcome=completed. (Vitest)</criterion>
+    <criterion id="AC-016">i18n IT/EN in parita' (chiavi onboarding.*) e guida general IT/EN con sezione onboarding-tour (help-content-parity verde). (Vitest)</criterion>
+    <criterion id="AC-017">Verifica manuale a 375 / 768 / 1024: fumetto mai fuori schermo, nessuna scrollbar orizzontale, tema chiaro e scuro. (manuale)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: Radix (gia' presente), lucide, i18next, TanStack Query (mutation su PUT, aggiornamento della query dell'utente autenticato).</item>
+    <item>Authz server-side: rifiuto in impersonificazione nel backend, non solo nascosto in UI. Nessun throttle (backend.md §2).</item>
+    <item>Colonne guarded, scritte solo via forceFill nel service. Envelope `{ success, message, data }`; messaggi i18n.</item>
+    <item>Stile solo da token (`bg-card`, `bg-popover`, `border-border`, scrim come i Dialog esistenti), UI compatta (ui-design.md §2), mobile-first.</item>
+    <item>Ancore via attributo `data-onboarding` (non testid): nessuna modifica di comportamento ai componenti dell'header/menu.</item>
+    <item>File &lt; 300 righe: motore, passi, overlay, fumetto e hook in file separati.</item>
+  </constraints>
+
+</spec>

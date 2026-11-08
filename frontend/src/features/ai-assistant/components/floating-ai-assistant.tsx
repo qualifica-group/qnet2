@@ -9,6 +9,7 @@ import { AI_ASSISTANT_PERMISSION, AI_ASSISTANT_ROUTE } from '@/features/ai-assis
 import { stripWorkspacePrefix } from '@/features/workspaces/workspace-path'
 import { cn } from '@/lib/utils'
 import { lazyRoute } from '@/routes/lazy-route'
+import { onboardingAnchor } from '@/features/onboarding/steps'
 
 const FloatingAiPanel = lazyRoute(() => import('@/features/ai-assistant/components/floating-ai-panel'))
 
@@ -49,6 +50,7 @@ function FloatingAiAssistantLauncher() {
         size="icon-lg"
         aria-label={open ? t('aiAssistant.closeButton') : t('aiAssistant.openButton')}
         aria-expanded={open}
+        {...onboardingAnchor('ai-assistant')}
         className={cn('fixed right-4 bottom-4 z-40 rounded-full shadow-lg', open && 'max-sm:hidden')}
         onClick={() => {
           setHasOpened(true)

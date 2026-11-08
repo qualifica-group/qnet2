@@ -3,6 +3,7 @@ import type { PersonalDataCard } from '@/features/personal-data/types'
 import type { ModuleOpenPreferences } from '@/features/modules/types'
 import type { DateFormat, TimeFormat } from '@/lib/formatting/date-display'
 import type { ColorPreset } from '@/features/appearance/color-preset'
+import type { OnboardingStatus } from '@/features/onboarding/types'
 
 export interface User {
   id: number
@@ -23,6 +24,12 @@ export interface User {
    * Server-computed, always false where the gate is off (spec 0359, production only).
    */
   must_set_password: boolean
+  /**
+   * Welcome tour state (spec 0368), computed server-side against the current tour
+   * version: `required` never seen (mandatory), `outdated` an older version seen
+   * (offered once, skippable), `completed` current version seen.
+   */
+  onboarding_status: OnboardingStatus
   /**
    * The user's personal-data card (registry + contacts + addresses), or null
    * when none has been created yet. Same shape as the Users module (ADR 0013).

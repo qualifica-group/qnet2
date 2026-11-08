@@ -78,6 +78,9 @@ Route::prefix('auth')->group(function () {
         // password asked, accepted only while `must_set_password` is true.
         Route::middleware('throttle:6,1')->put('me/first-password', [AuthController::class, 'setFirstPassword']);
 
+        // Welcome tour seen (spec 0368). No throttle: not a credential endpoint.
+        Route::put('me/onboarding', [AuthController::class, 'updateOnboarding']);
+
         // Self-service avatar (settings page): any authenticated user manages
         // their own avatar; no extra permission required.
         Route::post('me/avatar', [AuthController::class, 'uploadAvatar']);

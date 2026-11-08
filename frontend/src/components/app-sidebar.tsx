@@ -24,6 +24,7 @@ import { useUnreadBadge } from '@/features/notifications/use-unread-badge'
 import { WorkspaceBrand } from '@/features/workspaces/components/workspace-brand'
 import { useWorkspaceNav } from '@/features/workspaces/use-workspace-nav'
 import { env } from '@/config/env'
+import { onboardingAnchor } from '@/features/onboarding/steps'
 
 const NOTIFICATIONS_ROUTE = '/notifications'
 const SETTINGS_ROUTE = '/settings'
@@ -60,7 +61,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="border-b border-sidebar-border" {...onboardingAnchor('sidebar-brand')}>
         <SidebarMenu>
           <SidebarMenuItem>
             <WorkspaceBrand productName={env.appNameSidebar} />
@@ -68,7 +69,7 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent {...onboardingAnchor('sidebar-nav')}>
         {(navigation.isPending || navigation.isError) && (
           <SidebarGroup>
             <NavSkeleton />
@@ -78,7 +79,7 @@ export function AppSidebar() {
         {navigation.data && <NavMain items={navigation.data} badges={{ absences: absencesBadge }} />}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border" {...onboardingAnchor('sidebar-footer')}>
         <SidebarMenu>
           {/* Fixed FE-only link (spec 0150 D-4, revised 2026-09-23): NOT part
               of the backend-driven navigation tree, unlike every entry in

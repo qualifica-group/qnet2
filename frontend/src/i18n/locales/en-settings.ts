@@ -23,6 +23,12 @@ export const settings = {
     title: 'System settings',
     subtitle: 'System-wide preferences for the application.',
   },
+  onboardingTour: {
+    title: 'Welcome tour',
+    subtitle: 'Replay the walkthrough of the side menu and the header icons.',
+    start: 'Start tour',
+    impersonating: 'Not available while you impersonate another user: the tour is personal.',
+  },
   uiScale: {
     title: 'Interface scale',
     subtitle:

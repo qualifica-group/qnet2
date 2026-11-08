@@ -46,6 +46,17 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'onboarding-tour',
+      title: 'Il tour di benvenuto',
+      blocks: [
+        { type: 'paragraph', text: 'Al primo accesso QNet ti mostra un breve **tour di benvenuto**: lo schermo si scurisce e, un elemento alla volta, illumina le parti del **menu laterale** e le icone dell’intestazione con un fumetto che spiega a cosa servono. Il fumetto indica a che punto sei (per esempio **Passo 3 di 10**).' },
+        { type: 'list', items: ['Premi **Avanti** e **Indietro**, oppure le frecce destra e sinistra della tastiera.', 'All’ultimo passo premi **Inizia a usare QNet**: il tour risulta completato.', 'Gli elementi che non vedi (per esempio l’assistente AI se non è attivo per te) vengono saltati.'] },
+        { type: 'note', text: 'La prima volta il tour va completato: non c’è **Salta il tour** e il tasto Esc non lo chiude. Se ricarichi la pagina riparte dall’inizio. Se il tour viene aggiornato con contenuti nuovi, ti viene riproposto una volta, ma puoi saltarlo.' },
+        { type: 'steps', items: ['Per rivederlo apri **Impostazioni** › **Impostazioni sistema**.', 'Nella scheda **Tour di benvenuto** premi **Avvia tour**.', 'Puoi chiuderlo quando vuoi con **Salta il tour** o con Esc.'] },
+        { type: 'tip', text: 'Mentre impersoni un altro utente il tour non parte e **Avvia tour** è disabilitato: il tour è personale e non viene segnato come visto per l’utente impersonato.' },
+      ],
+    },
+    {
       id: 'apps-launcher',
       title: 'Le app e il launcher',
       blocks: [
@@ -118,7 +129,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Profilo**', 'Caricare o togliere l’avatar, scegliere la **Lingua** (Italiano o Inglese), aggiornare i tuoi dati anagrafici.'],
             ['**Password**', 'Cambiare la password.'],
-            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia**, **Formato data** e **Colore tema**.'],
+            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia**, **Formato data** e **Colore tema**; rivedere il **Tour di benvenuto**.'],
           ],
         },
         { type: 'paragraph', text: '**Risoluzione interfaccia** ingrandisce o rimpicciolisce tutta l’applicazione (100% è la dimensione normale). **Formato data** decide come vedi date e orari, per esempio **Giorno/Mese/Anno** e **24 ore (14:30)**, con anteprima. **Colore tema** cambia la palette di pulsanti, evidenziazioni e menu laterale: scegli una delle otto combinazioni (per esempio **Blu classico**, **Verde foresta**, **Grafite**), ognuna con l’anteprima dei suoi colori; vale sia col tema chiaro sia con quello scuro. Salva con **Salva modifiche**.' },

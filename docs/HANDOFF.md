@@ -3,7 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Card "Linee di prodotto": niente categorie di costo — VERDE, NON COMMITTATO (2026-11-07)
+## Tour di benvenuto (spec 0368) — VERDE, NON COMMITTATO (2026-11-07)
+
+- Tour guidato dell'interfaccia (menu laterale + icone dell'header), obbligatorio la prima volta, riavviabile da
+  Impostazioni › Impostazioni sistema › "Tour di benvenuto", saltabile dalle volte successive. Mai avviato ne'
+  registrato in impersonificazione (FE non lo avvia, BE 403).
+- BE: `users.onboarding_seen_version` / `onboarding_seen_at` (migrazione `2026_11_27_100000`, guarded, solo
+  `forceFill` in `OnboardingService::markSeen`); `config('auth.onboarding_version')` (env `AUTH_ONBOARDING_VERSION`,
+  default 1): CHI CAMBIA I PASSI IN MODO SOSTANZIALE ALZA LA VERSIONE. `User::onboardingStatus()` ->
+  `OnboardingStatusEnum` (`required|outdated|completed`), esposto SOLO in `authenticatedUserPayload` come
+  `onboarding_status`. `PUT /api/auth/me/onboarding {outcome: completed|skipped}`: 403 impersonificazione in
+  `UpdateOnboardingRequest::authorize()` (prima del 422), 422 `skipped` su stato `required`. Nessun throttle.
+- FE: `features/onboarding/` (passi in `steps.ts`, regole in `tour-rules.ts`, posizione in `card-position.ts`,
+  `OnboardingProvider` montato in `AppLayout` dentro `SidebarProvider`, quindi mai sotto il gate di primo accesso).
+  Ancore `data-onboarding="<step id>"` su header (wrapper `flex empty:hidden`), `SidebarHeader/Content/Footer`,
+  `SidebarSeamToggle`, bottone assistente AI. Un passo senza ancora visibile viene saltato. i18n namespace separato
+  `onboarding` (`en.ts`/`it.ts` oltre 500 righe), card Impostazioni in `settings.onboardingTour.*`.
+  `User.onboarding_status` obbligatorio: 14 fixture di test aggiornate (REQUIREMENT CHANGED).
+- Guida in-app `general` IT/EN: nuova sezione `onboarding-tour` + riga Impostazioni sistema.
+- Verde: `tests/Feature/Auth` 133 (OnboardingTest 10); Vitest onboarding 23, aree vicine 730, help 161; suite
+  completa BE 14196/14215 (18 rossi tutti PREESISTENTI noti), FE 10140 verdi (11 unhandled `toast.error`
+  preesistenti); `tsc -b --force` 0; Pint/ESLint puliti.
+- Da fare: verifica manuale AC-017 (375/768/1024, chiaro/scuro); manuale Claude Docs NON aggiornato (doc non
+  raggiungibile dalla sessione): aggiungere "Tour di benvenuto" in Primi passi + riga in Impostazioni sistema.
+  Sul DB dev la migrazione `2026_11_27_100000` NON e' stata eseguita (serve `php artisan migrate` con ok utente).
+
+## Card "Linee di prodotto": niente categorie di costo — COMMITTATO a55fcb6a (2026-11-07)
 
 - Caso utente: in Gestione Richieste la card proponeva la radice "Costi" (Note spese, Articoli: prodotti solo
   `COST`), il catalogo righe offerta (`usage: SALE`) restava vuoto e il server rifiutava comunque la riga
@@ -18,6 +43,18 @@
   `product-lines-field`, `product-lines-field-management-mode` con `business_function_id: 1` di default.
 - Verdi: vitest product-lines/request-management/opportunities/projects/campaigns (1108), products/users/
   data-table/quotes/leads (1241), help (161); eslint e `tsc -b --force` puliti. Guida `product-categories` IT/EN aggiornata.
+
+## Benvenuto massivo one-shot (spec 0369) — VERDE, NON COMMITTATO (2026-11-07)
+
+- Comando `php artisan users:send-welcome [--dry-run] [--force]`: a ogni utente attivo non di servizio con
+  `users.welcome_sent_at` nullo genera una nuova password, forza il cambio, revoca i token, invia
+  `WelcomeUserNotification` (in coda: in produzione serve il queue worker). Idempotente via `welcome_sent_at`.
+- `UserOnboardingService::reissueWelcome(User)` (nuovo, senza controllo di idoneita': lo fa il chiamante);
+  `resendWelcome()` = `assertEligible()` + `reissueWelcome()`; `start()` (creazione) valorizza anche `welcome_sent_at`.
+- Migrazione `2026_11_28_100000_add_welcome_sent_at_to_users_table` NON eseguita su dev (la 0368
+  `2026_11_27_100000` e' ancora pending: `migrate` le eseguirebbe entrambe).
+- Test: `tests/Feature/Spec0369/SendWelcomeCommandTest.php` (6). Verdi: Spec0369/0355/0177/0356 45, Users 292, Auth 133.
+- Manuale: nessun impatto (comando da terminale).
 
 ## Ambito di assegnazione: "Nuove" / "Vecchie" sulla riga "Tutte" (spec 0367) — COMMITTATO 24b9fd1f (2026-11-07)
 
@@ -158,7 +195,10 @@
   aggiornata (eccezione OLD). Manuale Claude Docs: non raggiungibile (access denied) -> capitolo Opportunita'.
 - SEEDER UNICO (richiesta utente): `QualificaRequestSheetsSeeder` chiama i 6 in ordine (APL, Autofinanziato, Presa
   Appuntamenti, E-Campus, DIL, Servizi Consulenza). Idempotente. Prova annullata: 847 create + 5 aggiunte, rerun 0.
-  NON eseguito su qnet2: `php artisan db:seed --class=QualificaRequestSheetsSeeder` (migrazione is_legacy gia' applicata).
+  ESEGUITO su qnet2 dall'utente il 2026-11-07 (847 opportunita' + 852 offerte create quel giorno). Doppio controllo
+  Excel -> DB riga per riga (script in sola lettura, letto dai file, non dai cataloghi): 854/854 righe presenti,
+  operatore/stato/richiamo/fonte/segnalatore/commerciale/trasferimento coerenti con le decisioni; prodotti non
+  abbinati tutti in nota. Unico residuo: anagrafica "ɢɪᴜꜱʏ ɢᴜɪʀɪɴᴏ" (DIL r95) in caratteri decorativi, da ripulire a mano.
   Report avvertenze per riga: ~/Downloads/Report_import_trattative_2026-11-07.pdf (847 create, 5 aggiunte, 2 doppioni). Verdi: Migration 754, Opportunities 288, Leads 156,
   RequestManagement 885, ProductCategories 357, RequestSheetWriterTest 11, Vitest help 161, Pint, ESLint.
 
