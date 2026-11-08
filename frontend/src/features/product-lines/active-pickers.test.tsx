@@ -49,6 +49,12 @@ const TREE: ProductCategoryTreeNode[] = [
   ]),
   node(6, { is_active: false }, [node(7, { parent_id: 6 })]),
   node(8),
+  // A legacy root: structural (not selectable on its own) and inactive, like its whole branch.
+  node(9, { is_selectable: false, is_active: false }, [
+    node(10, { parent_id: 9, is_active: false }),
+    // Saved on migrated rows although neither selectable nor carrying a business function of its own.
+    node(11, { parent_id: 9, is_active: false, is_selectable: false, business_function_id: null }),
+  ]),
 ]
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
@@ -79,6 +85,19 @@ describe('destination pickers drop inactive branches (spec 0208 AC-019)', () => 
 
     render(<ProductCategoryRootSelect value={6} onChange={vi.fn()} triggerLabel="root" />)
     expect(lastIds()).toEqual(['1', '6', '8'])
+  })
+
+  it('root select: keeps an inactive structural root when the row holds a category under it', () => {
+    render(<ProductCategoryRootSelect value={9} categoryId={10} onChange={vi.fn()} triggerLabel="root" />)
+    expect(lastIds()).toEqual(['1', '8', '9'])
+  })
+
+  it('keeps a saved category that is no longer selectable, and its root (spec 0074 D-3b)', () => {
+    render(<ProductCategoryRootSelect value={9} categoryId={11} onChange={vi.fn()} triggerLabel="root" />)
+    expect(lastIds()).toEqual(['1', '8', '9'])
+
+    render(<ProductCategoryTreeSelect value={11} onChange={vi.fn()} scope={{ kind: 'root', rootCategoryId: 9 }} triggerLabel="category" />)
+    expect(lastIds()).toContain('11')
   })
 
   it('filter select: omits an inactive grouping child', () => {

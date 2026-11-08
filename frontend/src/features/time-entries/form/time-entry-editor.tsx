@@ -33,7 +33,7 @@ interface TimeEntryEditorProps {
 /** The header chip: the currently picked type's icon/color, `Clock` while unpicked (D-2). */
 function EditorHeaderIcon({ control }: { control: Control<TimeEntryEditorFieldValues> }) {
   const taskTypeId = useWatch({ control, name: 'task_type_id' })
-  const { options } = useTimeEntryTypeOptions()
+  const { options } = useTimeEntryTypeOptions(taskTypeId ?? null)
   const selected = options.find((option) => option.id === taskTypeId)
 
   return <TimeEntryTypeChip type={selected ? selected.meta : null} />

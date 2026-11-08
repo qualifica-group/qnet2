@@ -113,6 +113,20 @@ describe('TimeEntryDetail — rows (AC-001, AC-002)', () => {
     expect(await savedPayload()).toEqual({ ...UNCHANGED_PAYLOAD, notes: 'Chiamata di follow-up' })
   })
 
+  it('keeps a saved type deactivated since checked in the picker (ADR 0011)', async () => {
+    const retired = { id: 9, label: 'Sopralluogo', meta: { color: 'amber', icon: 'map-pin' } }
+    fetchForSelectMock.mockImplementation(async (resource: string, params: { ids?: number[] }) =>
+      resource === 'task-types' && params.ids?.includes(9)
+        ? { items: [retired], pagination: { offset: 0, limit: 1, total: 1 }, export_link: null }
+        : defaultForSelect(resource),
+    )
+    renderDetail(buildEntry({ task_type: { id: 9, name: 'Sopralluogo', color: 'amber', icon: 'map-pin' } }))
+
+    openRow('timeEntries.form.type')
+
+    expect(await screen.findByRole('radio', { name: 'Sopralluogo' })).toHaveAttribute('aria-checked', 'true')
+  })
+
   it('Annulla and Esc restore the row without calling the API', () => {
     renderDetail(buildEntry())
 

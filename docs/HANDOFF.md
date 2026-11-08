@@ -3,7 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Ultimo accesso utente (spec 0370) — VERDE, NON COMMITTATO (2026-11-08)
+## Linea di prodotto: radice legacy vuota nel picker (2026-11-08) — VERDE, NON COMMITTATO
+
+- Bug (es. richiesta 28588, migrata): riga su "[OLD] Sic_Formazione" (disattiva) sotto la radice "[OLD] SICUREZZA 81/08"
+  (disattiva, `is_selectable=0`): `ProductCategoryRootSelect` teneva in vita solo la radice (`keepIds=[value]`), la figlia
+  disattiva veniva potata e la radice, rimasta senza figli e non selezionabile, spariva -> campo madre vuoto.
+- Fix: nuova prop `categoryId` (la categoria della riga) aggiunta ai `keepIds`; `ProductLinesField` la passa. Test in
+  `active-pickers.test.tsx`. La cella griglia (`product-lines-cell-editor`) non usa il componente. Manuale: nessun impatto.
+- Secondo caso (offerta 28582, `/request-management/:id` = id OFFERTA): categoria salvata "[OLD] PAL-..." (245) con
+  `is_selectable=0`: `cardCategoryTree` la potava. Ora un id in `keepIds` resta selezionabile qualunque siano i flag
+  (specchio dell'esenzione server spec 0074 D-3b). Verificato sull'albero reale (`/product-categories/tree`) per 245/319/249.
+- Audit valori salvati poi disattivati (ADR 0011), backend 64 endpoint + frontend ~200 selettori. Corretti:
+  - `product-category-filter-select.tsx`: anche il filtro intermedio riceve `categoryId` della riga.
+  - `absence-types/for-select`: nuovo `AbsenceTypeForSelectRequest` (`ids[]`), `AbsenceTypeService::forSelect($ids)`
+    serve gli id richiesti anche se inattivi (dopo gli attivi), risposta sempre lista piatta. FE:
+    `fetchAbsenceTypeOptions(savedTypeId)`, `useAbsenceTypeOptions(savedTypeId)`, chiave `absenceKeys.typeOptions(id)`;
+    il modulo richiesta passa `request.absence_type.id`.
+  - `useTimeEntryTypeOptions(savedTypeId)`: tipo salvato risolto con `useForSelectLabels` e aggiunto se manca
+    (picker, riepilogo `time-entry-record`, icona intestazione).
+  - `task-template-item-status-select.tsx`: stato salvato via `useForSelectLabels` (chiave per id: la lista e' condivisa
+    tra le righe) e mai scartato dal filtro gruppi open/pending.
+- APERTO (scelta UI da fare con l'utente): la bacheca task "per stato" costruisce le colonne dai soli stati attivi
+  (`use-task-kanban-statuses.ts`): i task in uno stato disattivato non compaiono in nessuna colonna.
+- Noto, non bug di idratazione: `users/for-select` non filtra `is_active` (gli utenti disattivi sono proponibili).
+
+## Seeder fogli richieste: operatore Antimo Dalvini (2026-11-08) — VERDE, NON COMMITTATO
+
+- L'utente legacy (id 201, inattivo) e' stato rinominato da "[OLD] Antimo Dalvini" ad "Antimo Dalvini": le 29 righe di
+  `ConsultingServicesRequestCatalogue` ora usano il nuovo nome (il lookup `RequestSheetLookups::userId` e' per nome esatto).
+
+## Ultimo accesso utente (spec 0370) — COMMITTATO deb4a551 (2026-11-08)
 
 - `users.last_login_at` (migrazione `2026_11_29_100000`, indicizzata, nessun backfill), guarded: scritta SOLO da
   `AuthService::recordLogin()` dentro `login()` con `User::withoutTimestamps` + `saveQuietly` (niente `updated_at`,

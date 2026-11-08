@@ -128,8 +128,12 @@ export async function exportAbsenceBalanceOverview(
 }
 
 /** Active types for the request form (authentication only). */
-export async function fetchAbsenceTypeOptions(): Promise<AbsenceTypeOption[]> {
-  const { data } = await apiClient.get<ApiResponse<AbsenceTypeOption[]>>('/absence-types/for-select')
+export async function fetchAbsenceTypeOptions(savedTypeId: number | null = null): Promise<AbsenceTypeOption[]> {
+  // The saved type is hydrated by id (ADR 0011): an inactive one would otherwise leave the edit form blank.
+  const { data } = await apiClient.get<ApiResponse<AbsenceTypeOption[]>>('/absence-types/for-select', {
+    params: savedTypeId === null ? {} : { ids: [savedTypeId] },
+    paramsSerializer: { indexes: true },
+  })
   return data.data
 }
 

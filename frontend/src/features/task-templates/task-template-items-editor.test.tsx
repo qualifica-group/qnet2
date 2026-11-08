@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { TaskTemplateItemRowContent } from '@/features/task-templates/task-template-items-editor'
 import type { TaskTemplateItemFormRow } from '@/features/task-templates/types'
@@ -15,7 +16,13 @@ import type { TaskTemplateItemFormRow } from '@/features/task-templates/types'
  */
 
 const useTaskStatusesForSelectMock = vi.fn()
-vi.mock('@/features/task-statuses/for-select-api', () => ({
+// The saved status is labelled on its own query (useForSelectLabels): no row here needs one.
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn().mockResolvedValue({ items: [], export_link: null, pagination: { total: 0, offset: 0, limit: 25 } }),
+}))
+vi.mock('@/features/task-statuses/for-select-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/task-statuses/for-select-api')>()),
   useTaskStatusesForSelect: (...args: unknown[]) => useTaskStatusesForSelectMock(...args),
 }))
 
@@ -75,8 +82,10 @@ const ROW: TaskTemplateItemFormRow = {
 
 function renderRow(row: TaskTemplateItemFormRow, errors = {}, options: { canAddSubtask?: boolean; onAddSubtask?: () => void } = {}) {
   const onUpdateRow = vi.fn()
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <TaskTemplateItemRowContent
+    <QueryClientProvider client={client}>
+      <TaskTemplateItemRowContent
       row={row}
       errors={errors}
       stagedFiles={[]}
@@ -87,7 +96,8 @@ function renderRow(row: TaskTemplateItemFormRow, errors = {}, options: { canAddS
       onAddStagedFiles={vi.fn()}
       onRemoveStagedFile={vi.fn()}
       disabled={false}
-    />,
+      />
+    </QueryClientProvider>,
   )
   return onUpdateRow
 }

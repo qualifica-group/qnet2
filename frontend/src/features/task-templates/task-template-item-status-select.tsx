@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { flattenForSelectPages } from '@/features/for-select/use-for-select'
-import { useTaskStatusesForSelect } from '@/features/task-statuses/for-select-api'
+import { flattenForSelectPages, useForSelectLabels } from '@/features/for-select/use-for-select'
+import { TASK_STATUSES_FOR_SELECT_RESOURCE, useTaskStatusesForSelect } from '@/features/task-statuses/for-select-api'
 import type { TaskStatusForSelectItem } from '@/features/task-statuses/for-select-api'
 
 /** Row initial-status groups a template may target (spec 0124 D-4): the backend enforces the same allow-list on save. */
@@ -30,7 +30,10 @@ interface TaskTemplateItemStatusSelectProps {
  * `onSearchChange`, infinite scroll via `hasNextPage`/`onLoadMore`). A
  * dedicated clear button rides the `action` slot: the field is nullable
  * (D-4), but `SearchableSelect` itself has no clear affordance once a value
- * is picked.
+ * is picked. The saved status is resolved on its own cache entry (ADR 0011,
+ * `useForSelectLabels`): the list's entry is shared by every row, so only the
+ * first row's ids would reach the server, and the group filter must never
+ * blank a status saved before it was deactivated or moved to another group.
  */
 export function TaskTemplateItemStatusSelect({
   value,
@@ -44,17 +47,22 @@ export function TaskTemplateItemStatusSelect({
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search.trim())
 
-  const query = useTaskStatusesForSelect({
-    search: debouncedSearch,
-    ids: value !== null ? [value] : undefined,
-  })
+  const query = useTaskStatusesForSelect({ search: debouncedSearch })
+  const selectedIds = useMemo(() => (value !== null ? [value] : []), [value])
+  const selectedLabels = useForSelectLabels({ resource: TASK_STATUSES_FOR_SELECT_RESOURCE, ids: selectedIds })
 
-  const options = flattenForSelectPages(query.data?.pages)
-    .filter(
-      (item): item is TaskStatusForSelectItem =>
-        'meta' in item && ALLOWED_STATUS_GROUPS.has((item as TaskStatusForSelectItem).meta.group),
-    )
-    .map((item) => ({ id: item.id, name: item.label }))
+  const options = useMemo(() => {
+    const listed = flattenForSelectPages(query.data?.pages)
+      .filter(
+        (item): item is TaskStatusForSelectItem =>
+          'meta' in item && ALLOWED_STATUS_GROUPS.has((item as TaskStatusForSelectItem).meta.group),
+      )
+      .map((item) => ({ id: item.id, name: item.label }))
+    const saved = [...selectedLabels.values()]
+      .filter((item) => !listed.some((option) => option.id === item.id))
+      .map((item) => ({ id: item.id, name: item.label }))
+    return [...listed, ...saved]
+  }, [query.data?.pages, selectedLabels])
 
   const clearAction =
     value !== null && !disabled ? (

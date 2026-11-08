@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\AbsenceTypes;
 
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\AbsenceTypes\AbsenceTypeForSelectRequest;
 use App\Services\AbsenceTypeService;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -15,10 +16,10 @@ class AbsenceTypeForSelectController extends BaseApiController
 {
     public function __construct(private readonly AbsenceTypeService $service) {}
 
-    public function __invoke(): JsonResponse
+    public function __invoke(AbsenceTypeForSelectRequest $request): JsonResponse
     {
         try {
-            return $this->ok($this->service->forSelect());
+            return $this->ok($this->service->forSelect($request->ids()));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

@@ -8,28 +8,39 @@
 /* eslint-disable react-refresh/only-export-components -- `useTimeEntryTypeOptions`
    is the shared data hook behind both this picker and the editor's header icon. */
 
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { badgeColorClass } from '@/features/table/cell-renderers'
 import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
-import { flattenForSelectPages, useForSelect } from '@/features/for-select/use-for-select'
+import { flattenForSelectPages, useForSelect, useForSelectLabels } from '@/features/for-select/use-for-select'
 import {
   TASK_TYPES_FOR_SELECT_RESOURCE,
   type TaskTypeForSelectItem,
 } from '@/features/task-types/for-select-api'
 import { cn } from '@/lib/utils'
 
+const NO_IDS: number[] = []
+
 /**
  * The full catalog (D-2 seed: 7 rows), shared by the picker's own buttons and
  * the editor's header icon so both read the same list without a duplicate
  * network request (identical `useForSelect` query key, deduplicated by
- * TanStack Query).
+ * TanStack Query). The list holds active types only: the entry's saved type is
+ * resolved by id on its own cache entry (ADR 0011) and appended when missing,
+ * so a type deactivated since never blanks out.
  */
-export function useTimeEntryTypeOptions() {
+export function useTimeEntryTypeOptions(savedTypeId: number | null = null) {
   const query = useForSelect({ resource: TASK_TYPES_FOR_SELECT_RESOURCE, search: '' })
-  const options = flattenForSelectPages(query.data?.pages) as TaskTypeForSelectItem[]
+  const savedIds = useMemo(() => (savedTypeId === null ? NO_IDS : [savedTypeId]), [savedTypeId])
+  const saved = useForSelectLabels({ resource: TASK_TYPES_FOR_SELECT_RESOURCE, ids: savedIds })
+  const options = useMemo(() => {
+    const listed = flattenForSelectPages(query.data?.pages) as TaskTypeForSelectItem[]
+    const missing = [...saved.values()].filter((item) => !listed.some((option) => option.id === item.id))
+    return [...listed, ...(missing as TaskTypeForSelectItem[])]
+  }, [query.data?.pages, saved])
   return { options, isPending: query.isPending, isError: query.isError, refetch: query.refetch }
 }
 
@@ -51,7 +62,7 @@ export function TimeEntryTypePicker({
   'aria-invalid': ariaInvalid,
 }: TimeEntryTypePickerProps) {
   const { t } = useTranslation()
-  const { options, isPending, isError, refetch } = useTimeEntryTypeOptions()
+  const { options, isPending, isError, refetch } = useTimeEntryTypeOptions(value)
 
   if (isPending) {
     return (

@@ -42,14 +42,18 @@ class AbsenceTypeService
     }
 
     /**
-     * Active types in catalogue order, as the options of the request form.
+     * Active types in catalogue order, as the options of the request form; the
+     * requested `$ids` (edit-mode hydration, ADR 0011) are served even when
+     * inactive, after the active ones, so a saved type never blanks out.
      *
+     * @param  array<int, int>  $ids
      * @return Collection<int, array<string, mixed>>
      */
-    public function forSelect(): Collection
+    public function forSelect(array $ids = []): Collection
     {
         return AbsenceType::query()
-            ->where('is_active', true)
+            ->where(static fn ($query) => $query->where('is_active', true)->orWhereIn('id', $ids))
+            ->orderByDesc('is_active')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get(['id', 'name', 'deducts_balance', 'requires_approval', 'allows_full_day', 'allows_half_day', 'allows_hourly', 'min_notice_days', 'color'])
