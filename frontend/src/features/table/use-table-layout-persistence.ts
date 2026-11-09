@@ -11,7 +11,7 @@ import {
   useSaveTablePreferences,
 } from '@/features/table/use-table-preferences'
 import { useResetTableFilters, useSaveTableFilters } from '@/features/table/use-table-filters'
-import type { TableConfigScope } from '@/features/table/use-table-config'
+import { tableConfigTab, type TableConfigScope } from '@/features/table/use-table-config'
 
 /** Debounce window for persisting layout changes after the user stops editing. */
 const PERSIST_DEBOUNCE_MS = 500
@@ -189,7 +189,9 @@ export function useTableLayoutPersistence({
   // browser completes after the page is gone. Their outcome is ignored because
   // no page is left to report it on.
   const productCategoryId = scope?.productCategoryId
+  const productCategoryBranchId = scope?.productCategoryBranchId
   useEffect(() => {
+    const tab = tableConfigTab({ productCategoryId, productCategoryBranchId })
     const handlePageHide = () => {
       clearTimer(debounceRef)
       clearTimer(filterDebounceRef)
@@ -198,15 +200,15 @@ export function useTableLayoutPersistence({
       pendingLayoutRef.current = null
       pendingFilterRef.current = null
       if (columns) {
-        saveTablePreferences(domain, columns, productCategoryId, { keepalive: true }).catch(ignoreUnloadFailure)
+        saveTablePreferences(domain, columns, tab, { keepalive: true }).catch(ignoreUnloadFailure)
       }
       if (filterModel) {
-        saveTableFilters(domain, { filterModel }, productCategoryId, { keepalive: true }).catch(ignoreUnloadFailure)
+        saveTableFilters(domain, { filterModel }, tab, { keepalive: true }).catch(ignoreUnloadFailure)
       }
     }
     window.addEventListener('pagehide', handlePageHide)
     return () => window.removeEventListener('pagehide', handlePageHide)
-  }, [domain, productCategoryId])
+  }, [domain, productCategoryId, productCategoryBranchId])
 
   const handleResetLayout = useCallback(async () => {
     try {

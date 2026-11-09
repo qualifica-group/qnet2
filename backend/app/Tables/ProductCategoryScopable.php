@@ -20,7 +20,8 @@ interface ProductCategoryScopable
 
     /**
      * The rows of one root category's whole branch (the root and every
-     * descendant, spec 0337, D-1); null = no scope. Mutually exclusive with
+     * descendant, spec 0337, D-1), with the root's own `attr.*` columns where
+     * the grid has them (spec 0350 D-4, rev.3); null = no scope. Mutually exclusive with
      * `scopeToProductCategory`: the callers never set both.
      */
     public function scopeToProductCategoryBranch(?int $rootId): void;

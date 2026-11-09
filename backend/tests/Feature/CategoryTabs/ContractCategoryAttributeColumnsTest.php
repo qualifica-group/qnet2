@@ -30,6 +30,7 @@ function contractAttrRows(array $extra = []): array
     return test()->postJson('/api/tables/contracts/rows', ['startRow' => 0, 'endRow' => 25, ...$extra])->assertOk()->json('items');
 }
 
+// REQUIREMENT CHANGED (user directive 2026-11-09): a parent tab carries its own attributes, see RootCategoryAttributeColumnsTest.
 it('lists the offer attributes as read-only columns, only with a category tab (AC-006)', function () {
     [$category] = categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'durata', 'name' => 'Durata']);
     Sanctum::actingAs(categoryTabGridActor('contracts'));
@@ -37,8 +38,7 @@ it('lists the offer attributes as read-only columns, only with a category tab (A
     $columns = $this->getJson("/api/tables/contracts/columns?product_category_id={$category->id}")->assertOk()->json('data.columns');
 
     expect(categoryTabColumn($columns, 'attr.durata'))->toMatchArray(['label' => 'Durata', 'editable' => false, 'visible' => true])
-        ->and(array_column($this->getJson('/api/tables/contracts/columns')->json('data.columns'), 'id'))->not->toContain('attr.durata')
-        ->and(array_column($this->getJson("/api/tables/contracts/columns?product_category_branch_id={$category->id}")->json('data.columns'), 'id'))->not->toContain('attr.durata');
+        ->and(array_column($this->getJson('/api/tables/contracts/columns')->json('data.columns'), 'id'))->not->toContain('attr.durata');
 });
 
 it('shows the offer values and filters, sorts and lists distinct values on them (AC-006)', function () {

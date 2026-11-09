@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre (N)** l'interruttore **Categorie madri** limita le schede alle sole categorie di primo livello: la scheda di una categoria madre raccoglie anche le richieste delle sottocategorie (una richiesta conta una volta sola) e, a differenza di una singola categoria, non aggiunge le colonne **Informazioni aggiuntive** né rinomina i campi dei gestori. La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria scheda e le preferite sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
+          text: "Nel menu **Altre (N)** l'interruttore **Categorie madri** limita le schede alle sole categorie di primo livello: la scheda di una categoria madre raccoglie anche le richieste delle sottocategorie (una richiesta conta una volta sola) e aggiunge le colonne **Informazioni aggiuntive** assegnate alla categoria madre (quelle delle sole sottocategorie compaiono solo nella loro scheda). A differenza di una singola categoria, non rinomina i campi dei gestori. La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria scheda e le preferite sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
         },
         {
           type: 'paragraph',

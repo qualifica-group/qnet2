@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bulkDeleteTableRows,
   fetchTableColumnValues,
+  fetchTableConfig,
   resetTableFilters,
   saveTableFilters,
   saveTablePreferences,
@@ -9,7 +10,7 @@ import {
 import { apiClient } from '@/api/client'
 
 vi.mock('@/api/client', () => ({
-  apiClient: { post: vi.fn(), delete: vi.fn() },
+  apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
 }))
 
 const postMock = vi.mocked(apiClient.post)
@@ -18,6 +19,19 @@ const deleteMock = vi.mocked(apiClient.delete)
 beforeEach(() => {
   postMock.mockReset()
   deleteMock.mockReset()
+})
+
+describe('fetchTableConfig', () => {
+  it('asks a parent tab config by branch and a single category by id', async () => {
+    const getMock = vi.mocked(apiClient.get)
+    getMock.mockReset().mockResolvedValue({ data: { success: true, message: 'ok', data: { resource: 'quotes' } } })
+
+    await fetchTableConfig('quotes', { branchId: 3 })
+    await fetchTableConfig('quotes', 12)
+
+    expect(getMock).toHaveBeenNthCalledWith(1, '/tables/quotes/columns', { params: { product_category_branch_id: 3 } })
+    expect(getMock).toHaveBeenNthCalledWith(2, '/tables/quotes/columns', { params: { product_category_id: 12 } })
+  })
 })
 
 describe('fetchTableColumnValues', () => {
@@ -63,6 +77,19 @@ describe('saveTableFilters', () => {
     expect(postMock).toHaveBeenCalledWith('/tables/request-management/filters', {
       filterModel: {},
       product_category_id: 12,
+    })
+  })
+
+  it('carries a parent tab so the response keeps its attr.* columns', async () => {
+    postMock.mockResolvedValue({
+      data: { success: true, message: 'ok', data: { resource: 'quotes' } },
+    })
+
+    await saveTableFilters('quotes', { filterModel: {} }, { branchId: 3 })
+
+    expect(postMock).toHaveBeenCalledWith('/tables/quotes/filters', {
+      filterModel: {},
+      product_category_branch_id: 3,
     })
   })
 

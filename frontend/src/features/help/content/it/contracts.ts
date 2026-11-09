@@ -205,7 +205,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Scegliendo la tab di una categoria, in fondo all'elenco compaiono le colonne dei campi flessibili dell'**offerta di origine** del contratto, in sola lettura. Puoi filtrarle e ordinarle, ma per modificarle devi aprire l'offerta.",
+          text: "Scegliendo la tab di una categoria, in fondo all'elenco compaiono le colonne dei campi flessibili dell'**offerta di origine** del contratto, in sola lettura. Nella tab di una categoria madre sono i campi assegnati alla madre: quelli delle sole sottocategorie compaiono solo nella loro tab. Puoi filtrarle e ordinarle, ma per modificarle devi aprire l'offerta.",
         },
         {
           type: 'note',

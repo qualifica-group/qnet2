@@ -205,7 +205,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "When you choose a category tab, the columns of the flexible fields of the contract's **source quote** appear at the end of the list, read-only. You can filter and sort them, but to edit them you must open the quote.",
+          text: "When you choose a category tab, the columns of the flexible fields of the contract's **source quote** appear at the end of the list, read-only. On a parent category tab they are the fields assigned to the parent: those of a subcategory appear only in its own tab. You can filter and sort them, but to edit them you must open the quote.",
         },
         {
           type: 'note',

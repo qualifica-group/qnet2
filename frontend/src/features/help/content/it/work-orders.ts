@@ -81,7 +81,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Scegliendo la tab di una categoria (non **Tutte** e non una tab di **Categorie madri**), in fondo all'elenco compaiono le colonne dei campi flessibili della **commessa** di quella categoria (non quelli dell'offerta). Puoi filtrarle e ordinarle. Se hai il permesso di modificarle, le cambi direttamente nella cella. I campi di tipo tabella si modificano solo dal dettaglio.",
+          text: "Scegliendo la tab di una categoria (non **Tutte**), in fondo all'elenco compaiono le colonne dei campi flessibili della **commessa** di quella categoria (non quelli dell'offerta). Nella tab di una categoria madre sono i campi assegnati alla madre: quelli delle sole sottocategorie compaiono solo nella loro tab. Puoi filtrarle e ordinarle. Se hai il permesso di modificarle, le cambi direttamente nella cella. I campi di tipo tabella si modificano solo dal dettaglio.",
         },
         {
           type: 'note',

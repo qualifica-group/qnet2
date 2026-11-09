@@ -75,7 +75,7 @@ export interface TableRowsPayload {
   productCategoryId?: number | null
   /**
    * A ROOT Product Category tab (spec 0337): the rows of that category's whole branch. Mutually exclusive
-   * with `productCategoryId`; adds no `attr.*` column.
+   * with `productCategoryId`; carries the root's own `attr.*` columns.
    */
   productCategoryBranchId?: number | null
   /**

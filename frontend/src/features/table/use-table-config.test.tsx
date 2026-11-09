@@ -51,6 +51,12 @@ describe('tableKeys.config', () => {
       tableKeys.config('request-management', { productCategoryId: 12 }),
     )
   })
+
+  it('keeps a parent tab apart from the same category at the all level', () => {
+    expect(tableKeys.config('quotes', { productCategoryBranchId: 12 })).not.toEqual(
+      tableKeys.config('quotes', { productCategoryId: 12 }),
+    )
+  })
 })
 
 describe('useTableConfig', () => {
@@ -71,5 +77,15 @@ describe('useTableConfig', () => {
 
     await waitFor(() => expect(result.current.data).toEqual(CONFIG))
     expect(fetchTableConfigMock).toHaveBeenCalledWith('request-management', 12)
+  })
+
+  it('asks a parent tab config with its own branch scope', async () => {
+    const { result } = renderHook(
+      () => useTableConfig('quotes', { productCategoryBranchId: 3 }),
+      { wrapper: wrapper() },
+    )
+
+    await waitFor(() => expect(result.current.data).toEqual(CONFIG))
+    expect(fetchTableConfigMock).toHaveBeenCalledWith('quotes', { branchId: 3 })
   })
 })

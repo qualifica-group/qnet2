@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the **More (N)** menu the **Parent categories** switch limits the tabs to the first-level categories only: the tab of a parent category also gathers the requests of its subcategories (a request counts once) and, unlike a single category, it does not add the **Additional information** columns nor rename the manager fields. The choice is saved in your browser for this list, each mode remembers its own tab and the favorites are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
+          text: "In the **More (N)** menu the **Parent categories** switch limits the tabs to the first-level categories only: the tab of a parent category also gathers the requests of its subcategories (a request counts once) and adds the **Additional information** columns assigned to the parent category (those of a subcategory appear only in its own tab). Unlike a single category, it does not rename the manager fields. The choice is saved in your browser for this list, each mode remembers its own tab and the favorites are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
         },
         {
           type: 'paragraph',

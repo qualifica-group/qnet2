@@ -75,7 +75,7 @@ class TableController extends BaseApiController
             /** @var User $actor */
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
-            $this->scopeToProductCategory($definition, $request->productCategoryId());
+            $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
             $this->scopeToOpportunity($definition, $request->opportunityId());
             $this->scopeToQuote($definition, $request->quoteId());
             $this->scopeToRegistry($definition, $request->registryId());
@@ -108,7 +108,7 @@ class TableController extends BaseApiController
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
             $this->preferences->save($definition, $actor, $request->columnsState());
-            $this->scopeToProductCategory($definition, $request->productCategoryId());
+            $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
 
             return $this->ok($this->resolvedConfig($definition, $actor), 'Preferences saved');
         } catch (Throwable $exception) {
@@ -160,7 +160,7 @@ class TableController extends BaseApiController
             $this->scopeToAllProductCategories($definition);
 
             $this->filters->save($definition, $actor, $request->filterModel(), $request->advancedFilters());
-            $this->scopeToProductCategory($definition, $request->productCategoryId());
+            $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
 
             return $this->ok($this->resolvedConfig($definition, $actor), 'Filters saved');
         } catch (Throwable $exception) {
@@ -394,7 +394,7 @@ class TableController extends BaseApiController
      * the tab the client sent: those responses are read straight into the
      * client's per-tab config cache, so they must carry the same `attr.*`
      * columns the GET does. It reaches nothing already persisted. `$branchId`
-     * (spec 0337) comes only from rows/values: a root tab filters rows, never config.
+     * is a root tab (spec 0337): its rows and the root's `attr.*` columns.
      */
     private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId, ?int $branchId = null): void
     {

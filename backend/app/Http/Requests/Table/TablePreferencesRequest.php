@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Table;
 
 use App\DataObjects\Table\ColumnState;
+use App\Http\Requests\Table\Concerns\ValidatesCategoryBranchScope;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,6 +31,8 @@ use Illuminate\Validation\Rule;
  */
 class TablePreferencesRequest extends FormRequest
 {
+    use ValidatesCategoryBranchScope;
+
     private ?TableDefinition $resolvedDefinition = null;
 
     public function authorize(): bool
@@ -52,6 +55,7 @@ class TablePreferencesRequest extends FormRequest
             'columns.*.width' => ['sometimes', 'integer', 'min:50', 'max:1000'],
             'columns.*.order' => ['sometimes', 'integer', 'min:0'],
             'product_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
+            ...$this->categoryBranchRules(),
         ];
     }
 

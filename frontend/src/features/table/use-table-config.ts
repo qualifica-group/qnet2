@@ -1,15 +1,20 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
-import { fetchTableConfig } from '@/features/table/api'
+import { fetchTableConfig, type TableConfigTab } from '@/features/table/api'
 
 /** Optional scope narrowing a domain's config (spec 0064: request-management's category tabs). */
 export interface TableConfigScope {
   /** The selected Product Category tab. Absent/`undefined` ⇒ the "Tutte" tab. */
   productCategoryId?: number
   /**
-   * A ROOT Product Category tab (spec 0337). Rows and distinct values follow it, but the config, saved layout,
-   * saved filters and export stay those of "Tutte": it never enters the config key or the requests.
+   * A ROOT Product Category tab (spec 0337): rows and distinct values of its whole branch, and the config with
+   * that root's own `attr.*` columns. Saved layout, saved filters and export are not per-tab.
    */
   productCategoryBranchId?: number
+}
+
+/** The scope as the config endpoints take it; a root tab wins over a single category, which it excludes anyway. */
+export function tableConfigTab(scope?: TableConfigScope): TableConfigTab | undefined {
+  return scope?.productCategoryBranchId != null ? { branchId: scope.productCategoryBranchId } : scope?.productCategoryId
 }
 
 /** Query keys for the generic table feature, namespaced by domain (and scope, when given). */
@@ -17,7 +22,13 @@ export const tableKeys = {
   /** Prefix of every scope's config entry for one domain. */
   configs: (domain: string) => ['table', domain, 'config'] as const,
   config: (domain: string, scope?: TableConfigScope) =>
-    ['table', domain, 'config', scope?.productCategoryId ?? null] as const,
+    [
+      'table',
+      domain,
+      'config',
+      // A root tab and the same category at the "all" level have different configs (no manager relabel on the root).
+      scope?.productCategoryBranchId != null ? `root-${scope.productCategoryBranchId}` : (scope?.productCategoryId ?? null),
+    ] as const,
 }
 
 /**
@@ -50,16 +61,16 @@ export function removeOtherScopeConfigs(queryClient: QueryClient, domain: string
  * mount while the grid streams rows separately via the SSRM datasource. The
  * query key includes the domain so each table caches independently.
  *
- * `scope.productCategoryId` (spec 0064) narrows the config to one Product
- * Category tab: the backend appends that category's `attr.<code>` columns and
- * the query key isolates the cache per category so switching tabs never shows
- * a stale column set.
+ * `scope` (spec 0064) narrows the config to one Product Category tab, single
+ * or root: the backend appends that category's `attr.<code>` columns and the
+ * query key isolates the cache per tab so switching tabs never shows a stale
+ * column set.
  */
 export function useTableConfig(domain: string, scope?: TableConfigScope) {
-  const productCategoryId = scope?.productCategoryId
+  const tab = tableConfigTab(scope)
   return useQuery({
     queryKey: tableKeys.config(domain, scope),
-    queryFn: () => fetchTableConfig(domain, productCategoryId),
+    queryFn: () => fetchTableConfig(domain, tab),
     staleTime: 10 * 60 * 1000,
   })
 }

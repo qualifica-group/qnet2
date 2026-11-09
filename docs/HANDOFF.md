@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Linguette categorie madri: colonne dei campi flessibili (spec 0350 rev.3, 0337 D-3) (2026-11-09) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente: la tab di una categoria madre (es. ISO) mostra anche le colonne flessibili di quella madre. Decisione utente: solo l'insieme effettivo della radice, NON l'unione del ramo (in dev ISO 48 colonne; APL e Gare nessuna, perche' i campi stanno sulle figlie). Vale per Gestione Richieste/Iscritti, Offerte, Commesse, Contratti (sola lettura). La rinomina Gestori resta esclusa sulle madri.
+- Contratto: `product_category_branch_id` su `GET /tables/{domain}/columns` e nel body di `POST .../preferences|filters` (`prohibits:product_category_id`, trait `Http\Requests\Table\Concerns\ValidatesCategoryBranchScope`). Backend: `categoryAttributes()` usa `categoryScope ?? branchScope` (`AppendsCategoryAttributeColumns`, `RequestManagementScopedTableDefinition`). Frontend: `tableConfigTab(scope)` e tipo `TableConfigTab = number | { branchId }` in `features/table`; chiave cache `root-<id>`.
+- REQUIREMENT CHANGED nei test: `RootLevelCategoryScopeTest` AC-006, `QuoteCategoryAttributeColumnsTest` e `ContractCategoryAttributeColumnsTest` (AC-001/AC-006). Nuovo `RootCategoryAttributeColumnsTest`.
+- Verifica: Pest CategoryTabs + RequestManagement + EnrolleeManagement + Table 1439/1441 (rossi noti: `WorkOrderCategoryTabsTest` AC-024, `TableBulkDeleteTest`:131), Pint, `tsc -b --force` puliti, ESLint senza errori. Vitest help + table + category-tabs + data-table + quotes + contracts + work-orders + request-management 2308/2316: gli 8 rossi (work panel, creazione offerta) passano 41/41 rilanciati da soli, in concorrenza con altra sessione. Suite completa e browser non eseguiti.
+- Da sapere: l'export non segue la tab (spec 0335/0337). Da lettura del codice, non provato: da una tab con colonne `attr.*` (ora anche madri, livello di default) le colonne escono vuote e un filtro/ordinamento su `attr.*` da' 422 su `POST` export. Stesso comportamento gia' presente sulle tab di singola categoria. Non corretto, fuori scope.
+- Guide IT/EN (Gestione Richieste, Offerte, Commesse, Contratti) e manuale Claude Docs aggiornati; il PDF derivato va rigenerato. `TableController.php` resta a 497 righe (hard limit 500).
+
 ## Header: mansione sotto il nome al posto del ruolo (2026-11-09) — VERDE MIRATO
 
 - Richiesta utente. `NavUserHeader` mostra le mansioni (`employment.job_roles`, in ordine alfabetico, separate da virgola); senza mansioni l'email. Il ruolo non compare piu'.

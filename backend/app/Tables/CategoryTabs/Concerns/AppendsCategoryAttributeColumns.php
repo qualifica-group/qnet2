@@ -20,9 +20,10 @@ use Illuminate\Support\Collection;
  *
  * The using class must expose `private readonly TableDefinition $inner`,
  * `private readonly AttributeGridColumns $attributeColumns` (already bound to
- * its `AttributeGridTarget`) and `private ?int $categoryScope`. The "Tutte"
- * tab and a root (branch) tab leave `categoryScope` null, hence no `attr.*`
- * (D-4). Where the values live, how they are filtered and whether they are
+ * its `AttributeGridTarget`), `private ?int $categoryScope` and
+ * `private ?int $branchScope`. The "Tutte" tab sets neither, hence no `attr.*`;
+ * a root (branch) tab shows the root's own set, the one its subcategories
+ * inherit (D-4, rev.3). Where the values live, how they are filtered and whether they are
  * editable are protected hooks with the own-column default; the contracts grid
  * overrides them to read its source offer's JSON (D-3, D-8).
  *
@@ -266,13 +267,13 @@ trait AppendsCategoryAttributeColumns
     }
 
     /**
-     * The scoped category's effective attributes ("Tutte"/root tab -> none).
+     * The effective attributes of the scoped category or root ("Tutte" -> none).
      *
      * @return Collection<int, array<string, mixed>>
      */
     private function categoryAttributes(): Collection
     {
-        return $this->attributeColumns->forCategory($this->categoryScope);
+        return $this->attributeColumns->forCategory($this->categoryScope ?? $this->branchScope);
     }
 
     /**

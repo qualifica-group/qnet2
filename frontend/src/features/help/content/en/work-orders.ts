@@ -81,7 +81,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "When you choose a category tab (not **All** and not a **Parent categories** tab), the columns of that category's flexible fields of the **work order** (not those of the quote) appear at the end of the list. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
+          text: "When you choose a category tab (not **All**), the columns of that category's flexible fields of the **work order** (not those of the quote) appear at the end of the list. On a parent category tab they are the fields assigned to the parent: those of a subcategory appear only in its own tab. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
         },
         {
           type: 'note',

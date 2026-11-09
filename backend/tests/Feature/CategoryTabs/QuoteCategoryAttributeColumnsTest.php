@@ -18,9 +18,9 @@ function quoteAttrRows(array $extra = []): array
     return test()->postJson('/api/tables/quotes/rows', [...QUOTE_ATTR_PAGE, ...$extra])->assertOk()->json('items');
 }
 
+// REQUIREMENT CHANGED (user directive 2026-11-09): a parent tab carries its own attributes, see RootCategoryAttributeColumnsTest.
 it('appends the category attribute after the native columns, only with a category tab (AC-001)', function () {
     [$category] = categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'durata', 'name' => 'Durata']);
-    $root = $category;
     Sanctum::actingAs(categoryTabGridActor('quotes'));
 
     $tab = $this->getJson("/api/tables/quotes/columns?product_category_id={$category->id}")->assertOk()->json('data.columns');
@@ -30,9 +30,8 @@ it('appends the category attribute after the native columns, only with a categor
         ->and(array_search('attr.durata', $ids, true))->toBe(count($ids) - 1);
 
     $without = array_column($this->getJson('/api/tables/quotes/columns')->assertOk()->json('data.columns'), 'id');
-    $branch = array_column($this->getJson("/api/tables/quotes/columns?product_category_branch_id={$root->id}")->assertOk()->json('data.columns'), 'id');
 
-    expect($without)->not->toContain('attr.durata')->and($branch)->not->toContain('attr.durata');
+    expect($without)->not->toContain('attr.durata');
 });
 
 it('ignores attributes of another context (AC-001)', function () {
