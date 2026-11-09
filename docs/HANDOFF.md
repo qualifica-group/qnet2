@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Dashboard ripristinata (2026-11-09) — COMMITTATO
+
+- Decisione utente: annullati `70c03670`, `c4c412d2`, `17596763`. Otto file identici allo stato di `70c03670~1` (`dashboard-screen`, `dashboard-tasks-section` e relativi test, guide IT/EN `dashboard`, locale `it/en-dashboard`): tornano tutti i blocchi, i riquadri `GET /api/dashboard/tasks` e il pannello `ModuleStatsPanel domain="tasks"`. Spec 0151 AC-011 di nuovo valido; le voci sotto sullo spegnimento sono superate.
+- `general.ts` IT/EN: corretta solo la frase sulla Dashboard, con un testo nuovo (quello storico, "non ancora disponibile", era gia' inesatto). Manuale Claude Docs: gia' allineato, descriveva ancora la dashboard completa.
+- Vitest dashboard + help + i18n 422/422, Pest `Dashboard` 6/6, ESLint e `tsc -b --force` puliti.
+- RISCHIO APERTO: la causa dell'emergenza non e' chiusa. In `TaskVisibilityScope::scopeToActor` il ramo sede/squadra resta in `OR` e fa scansione di `tasks`; non misurato su MySQL reale. Prima del deploy portarlo nella `UNION` o accettare il rischio; se la produzione si satura, il primo da rispegnere e' `ModuleStatsPanel` in `dashboard-tasks-section.tsx`.
+
 ## "Commesse di Progetto" nascosta dal menu (2026-11-09) — VERDE, NON COMMITTATO
 
 - Richiesta utente, temporanea. Voce con `feature` => `navigation.project_work_orders_enabled` (env `NAVIGATION_PROJECT_WORK_ORDERS_ENABLED`, default false). Per riattivarla: env a true. Rotta `/project-work-orders`, griglia, permessi e guida restano; la guida sparisce dall'elenco insieme alla voce.

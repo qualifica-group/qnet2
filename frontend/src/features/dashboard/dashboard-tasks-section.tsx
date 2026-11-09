@@ -11,7 +11,7 @@ import {
   DASHBOARD_TASK_TO_VALIDATE_HREF,
 } from '@/features/dashboard/dashboard-task-card-config'
 import { useDashboardTaskCounters } from '@/features/dashboard/use-dashboard-task-counters'
-// import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
+import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 
 const TASK_CARDS_GRID_CLASS = 'grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
 
@@ -79,8 +79,7 @@ export function DashboardTasksSection() {
         </div>
       ) : null}
 
-      {/* Temporarily disabled 2026-11-09: its aggregates saturated production at peak time. */}
-      {/* <ModuleStatsPanel domain="tasks" isOpen showCharts={false} /> */}
+      <ModuleStatsPanel domain="tasks" isOpen showCharts={false} />
     </section>
   )
 }

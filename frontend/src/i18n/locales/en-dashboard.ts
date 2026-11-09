@@ -53,8 +53,8 @@ export const dashboard = {
     leads: 'Leads',
     registries: 'Registries',
   },
-  underConstruction: {
-    title: 'Dashboard under construction',
-    description: 'We are setting up this page. Tasks, time entries, absences and statistics remain available from the menu.',
+  empty: {
+    title: 'No content available',
+    description: "You don't have permission to view any block of this page.",
   },
 }

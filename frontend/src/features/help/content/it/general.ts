@@ -151,7 +151,7 @@ const guide: HelpGuide = {
       id: 'dashboard-and-statistics',
       title: 'Dashboard e statistiche',
       blocks: [
-        { type: 'paragraph', text: 'La **Dashboard** è la prima pagina dopo l’accesso; al momento è in allestimento. I numeri principali si trovano nei singoli moduli, nel pannello **Statistiche** (per esempio in **Utenti**, **Anagrafiche**, **Società sedi**, **Prodotti**, **Categorie Prodotto**, **Progetti**, **Lead** e **Opportunità**).' },
+        { type: 'paragraph', text: 'La **Dashboard** è la prima pagina dopo l’accesso: riassume i tuoi task aperti, il segnatempo, le assenze e i numeri principali dei moduli. Il dettaglio si trova nei singoli moduli, nel pannello **Statistiche** (per esempio in **Utenti**, **Anagrafiche**, **Società sedi**, **Prodotti**, **Categorie Prodotto**, **Progetti**, **Lead** e **Opportunità**).' },
         { type: 'steps', items: ['Apri il modulo.', 'Premi il pulsante con l’icona del grafico (**Mostra statistiche**).', 'Per chiudere premi di nuovo (**Nascondi statistiche**).'] },
         { type: 'paragraph', text: 'Il pannello mostra totali e indicatori (per esempio il budget allocato), distribuzioni come "Per stato" e andamenti mensili come "Nuovi progetti per mese". QNet ricorda se lo hai lasciato aperto.' },
       ],

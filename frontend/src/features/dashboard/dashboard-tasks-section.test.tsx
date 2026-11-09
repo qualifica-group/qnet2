@@ -49,14 +49,12 @@ function renderSection() {
 }
 
 describe('DashboardTasksSection (AC-009)', () => {
-  // REQUIREMENT CHANGED (user decision 2026-11-09): the Task statistics panel is
-  // temporarily off the dashboard because its aggregates saturated production.
-  it('does not request the Task statistics while the panel is disabled', async () => {
+  it('shows the Task statistics inside the same block as the cards', async () => {
     renderSection()
 
-    await screen.findByText('All')
-    expect(screen.queryByRole('region', { name: i18n.t('statsPanel.regionLabel') })).not.toBeInTheDocument()
-    expect(fetchModuleStatsMock).not.toHaveBeenCalled()
+    const section = await screen.findByRole('region', { name: 'Activities to complete' })
+    expect(section).toContainElement(screen.getByRole('region', { name: i18n.t('statsPanel.regionLabel') }))
+    expect(fetchModuleStatsMock).toHaveBeenCalledWith('tasks')
   })
 
   it('renders the skeleton tiles while loading', () => {
