@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Valida contratto**: indica la **Data di validazione** (non futura). Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza): su quei contratti compare invece **Programma**, se non sono sospesi.',
+            '**Valida contratto**: indica la **Data di validazione** (non futura). Serve almeno una riga prodotto: se il contratto non ne ha, aggiungila dalla scheda prima di validare. Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza): su quei contratti compare invece **Programma**, se non sono sospesi.',
             '**Disdici contratto**: indica **Data di disdetta**, **Motivazione** e **Stato di destinazione**.',
             'Dati del contratto: **Scadenza**, **Rinnovo**, **Note di pagamento** e **Commenti** si modificano direttamente nella scheda, finché il contratto è Aperto, In attesa o Chiuso positivo (Validato): premi la matita accanto al campo (o fai clic sul valore), cambia il valore e premi **Salva** (Annulla, Esc o un clic fuori chiudono senza salvare). I Commenti si scrivono dentro il loro riquadro in cima alla scheda.',
             '**Riapri contratto**: riporta il contratto in lavorazione; se era sospeso, torna allo stato precedente. Riaprendo un contratto Chiuso positivo o Chiuso negativo si azzerano anche la data e l\'autore della validazione, così il contratto si può validare di nuovo; i valori precedenti restano in **Cronologia attività**.',

@@ -52,18 +52,16 @@ if (! function_exists('lineGateQuote')) {
     }
 }
 
-it('AC-010: zero REVENUE lines blocks a transition into closed_won -> 422 on offer_lines, status unchanged', function () {
+// REQUIREMENT CHANGED (decisione utente 2026-11-09): the product line is demanded when the contract is validated.
+it('AC-010: zero REVENUE lines do not block a transition into closed_won', function () {
     $actor = lineGateActor();
     $quote = lineGateQuote();
-    $originalStatusId = $quote->quote_workflow_status_id;
     $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $closedWon->id])
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('offer_lines');
+    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $closedWon->id])->assertOk();
 
-    expect($quote->fresh()->quote_workflow_status_id)->toBe($originalStatusId);
+    expect($quote->fresh()->quote_workflow_status_id)->toBe($closedWon->id);
 });
 
 it('AC-011: zero REVENUE lines do not block a transition into closed_lost', function () {
@@ -117,15 +115,16 @@ it('AC-014: a REVENUE line lets a zero-cost offer close won', function () {
     expect($quote->fresh()->quote_workflow_status_id)->toBe($closedWon->id);
 });
 
+// REQUIREMENT CHANGED (decisione utente 2026-11-09): closed_won no longer gates, validated still does.
 it('AC-015: COST lines alone do not satisfy the gate -> 422 on offer_lines', function () {
     $actor = lineGateActor();
     $quote = lineGateQuote();
     QuoteLine::factory()->for($quote)->cost()->create();
     $originalStatusId = $quote->quote_workflow_status_id;
-    $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
+    $validated = QuoteWorkflowStatus::factory()->global()->create(['group' => WorkflowStatusGroup::Validated]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $closedWon->id])
+    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $validated->id])
         ->assertStatus(422)
         ->assertJsonValidationErrors('offer_lines');
 

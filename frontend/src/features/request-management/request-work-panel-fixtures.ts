@@ -66,6 +66,7 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     opportunity_id: 8001,
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
+    registry_lock_reason: null,
     referent: { id: 20, name: 'Mario Rossi' },
     // Mandatory since the user directive 2026-07-29: a savable request always
     // carries a Fonte, so the shared fixture does too (a suite that needs the

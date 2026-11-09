@@ -151,6 +151,7 @@ export const contracts = {
       genericError: 'Unable to validate the contract. Please try again.',
       dateRequired: 'Validation date is required.',
       dateFuture: 'Validation date cannot be in the future.',
+      offerLineRequired: 'The contract needs at least one product line on the offer to be validated. Add it on the contract, then try again.',
     },
     renewDialog: {
       description: 'Open a new period: the offer lines become programmable again and the previous work orders stay untouched.',

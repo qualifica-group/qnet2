@@ -39,17 +39,16 @@ final class QuoteWorkflowStatusWriter
 
     /**
      * Spec 0102, D-3: the destination `group`s that gate a transition on at
-     * least one REVENUE line — the groups that validate or positively close
-     * the Offerta. `open`/`pending` are deliberately absent (spec 0102
-     * scope/out): a rinvio within the working phase never demands one.
-     * `closed_lost` is absent too (decisione utente 2026-11-09): a contact
-     * that only asked for information or never answered has no product to
-     * record.
+     * least one REVENUE line. `open`/`pending` are deliberately absent (spec
+     * 0102 scope/out): a rinvio within the working phase never demands one.
+     * Neither closure demands one (decisioni utente 2026-11-09): a contact
+     * that only asked for information has no product to record, and on a
+     * positive close the product line is demanded later, when the contract
+     * is validated (ContractActionService::validate()).
      *
      * @var list<WorkflowStatusGroup>
      */
     private const array LINE_REQUIRED_GROUPS = [
-        WorkflowStatusGroup::ClosedWon,
         WorkflowStatusGroup::Validated,
     ];
 

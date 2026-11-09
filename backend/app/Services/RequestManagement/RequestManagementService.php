@@ -150,6 +150,7 @@ final class RequestManagementService
 
     public function __construct(
         private readonly RequestClientProfileWriter $clientProfileWriter,
+        private readonly RequestRegistryWriter $registryWriter,
         private readonly ProductCategoryCoherence $coherence,
         private readonly RequestProductLineWriter $productLineWriter,
         private readonly RequestOfferLineWriter $offerLineWriter,
@@ -205,6 +206,11 @@ final class RequestManagementService
             // is added, which would double-log it. Persisted by the shared
             // `$opportunity->save()` below.
             $opportunity->fill(Arr::only($data, self::OPPORTUNITY_SCALAR_FIELDS));
+
+            // Step 0-ter: the client select (decisione utente 2026-11-09),
+            // before the status step: a positive close in this same request
+            // is checked against the new client's fiscal identity.
+            $this->registryWriter->apply($opportunity, $data);
 
             // Step 1: funzione aziendale + categoria prodotto (user directive
             // 2026-07-31), still an Opportunity-level classification (D-2).

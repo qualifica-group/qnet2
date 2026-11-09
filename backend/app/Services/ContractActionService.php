@@ -14,6 +14,7 @@ use App\Models\ContractStatus;
 use App\Models\User;
 use App\Services\Contracts\ContractStatusResolver;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The domain actions that move a contract FORWARD (spec 0072, BR-3/BR-4,
@@ -47,6 +48,7 @@ class ContractActionService
         DB::transaction(function () use ($contract, $data, $actor): void {
             $this->assertNotClosed($contract);
             $this->assertNotSuspended($contract);
+            $this->assertHasOfferLine($contract);
 
             $validatedAt = $data->validatedAtSubmitted ? $data->validatedAt : now()->toDateString();
 
@@ -161,6 +163,25 @@ class ContractActionService
         if ($group === ContractStatusGroup::ClosedLost) {
             abort(422, 'This contract is closed: reactivate it first.');
         }
+    }
+
+    /**
+     * Decisione utente 2026-11-09: an offer may close positively without a
+     * product line, its contract cannot be validated without one. A
+     * ValidationException rather than abort(): only a 422 carrying `errors`
+     * reaches the operator with its own message.
+     *
+     * @throws ValidationException the contract's offer carries no REVENUE line
+     */
+    private function assertHasOfferLine(Contract $contract): void
+    {
+        if ($contract->quote()->firstOrFail()->offerLines()->exists()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'offer_lines' => [__('quotes.offer_line_required_to_validate_contract')],
+        ]);
     }
 
     private function assertWorking(Contract $contract): void

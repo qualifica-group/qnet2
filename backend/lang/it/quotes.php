@@ -7,6 +7,7 @@ return [
     'no_layout_available' => 'Nessun layout disponibile per generare il documento: crea o attiva un layout predefinito per i Preventivi.',
     'offer_line_required' => "L'offerta deve contenere almeno una riga prodotto.",
     'offer_line_required_for_status' => "Non puoi portare l'offerta a questo stato senza almeno una riga prodotto.",
+    'offer_line_required_to_validate_contract' => "Non puoi validare il contratto senza almeno una riga prodotto nell'offerta.",
     // Spec 0360, D-4: a REVENUE row assigned to a work order is frozen.
     'line_removal_blocked_by_work_order' => 'La riga :product è assegnata alla commessa :code: elimina prima la commessa.',
     'line_locked_by_work_order' => 'La riga è assegnata alla commessa :code e non si può modificare.',

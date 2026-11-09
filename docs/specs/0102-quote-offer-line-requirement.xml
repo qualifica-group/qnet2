@@ -81,7 +81,7 @@
       <item>Colonna calcolata `alert` sulla tabella Offerte, valorizzata `missing_offer_lines` quando l'Offerta non ha righe REVENUE; filtrabile, non ordinabile, visibile di default.</item>
       <item>Obbligo di almeno una riga REVENUE sul canale Offerte: `POST /api/quotes` sempre; `PATCH /api/quotes/{quote}` solo quando `offer_lines` viaggia ed e' vuoto.</item>
       <item>Mirror client dell'obbligo negli schemi Zod di creazione e modifica Offerta, con errore a livello di collezione sul campo `offer_lines`.</item>
-      <item>Gate di transizione: nessuno stato di destinazione con `group` in {`closed_won`, `validated`} (`closed_lost` escluso, AC-011) e' raggiungibile se l'Offerta non ha almeno una riga REVENUE. Enforcement in `QuoteWorkflowStatusWriter::apply()`, valido per ogni canale incluso l'inline edit.</item>
+      <item>Gate di transizione: nessuno stato di destinazione con `group = validated` (`closed_lost` escluso, AC-011; `closed_won` escluso, AC-010 emendato) e' raggiungibile se l'Offerta non ha almeno una riga REVENUE. Enforcement in `QuoteWorkflowStatusWriter::apply()`, valido per ogni canale incluso l'inline edit.</item>
       <item>Mirror del gate nel FormRequest del pannello Gestione Richieste (422 keyed, non solo toast) e nello schema Zod del pannello.</item>
       <item>La conversione da Lead crea sempre l'Offerta, anche senza prodotti di interesse (D-1), con conseguente riscrittura di spec 0094 AC-065 e del suo test.</item>
       <item>Messaggi server in `lang/it/quotes.php` e `lang/en/quotes.php`; label client in `it-quotes.ts`/`en-quotes.ts`.</item>
@@ -129,7 +129,7 @@
     <endpoint method="PATCH" path="/api/request-management/{quote}">
       <request>
         Invariato. Nuovo vincolo incrociato: se `quote_workflow_status_id` punta a uno
-        stato con `group` in {closed_won, validated} (closed_lost escluso, AC-011), allora l'Offerta deve
+        stato con `group = validated` (closed_lost e closed_won esclusi, AC-011/AC-010), allora l'Offerta deve
         avere almeno una riga REVENUE considerando le `offer_lines` SOTTOMESSE nella
         stessa richiesta se presenti, altrimenti quelle persistite.
       </request>
@@ -191,7 +191,7 @@
     <criterion id="AC-006">Dato un'Offerta storica con zero righe, quando si invia `PATCH` con una riga REVENUE valida, allora 200 e l'Offerta ha una riga.</criterion>
     <criterion id="AC-007">Dato `POST /api/request-management` senza `offer_lines`, allora 201 e l'Offerta nasce con zero righe: spec 0086 AC-028 resta verde, invariata.</criterion>
 
-    <criterion id="AC-010">Dato un'Offerta con zero righe REVENUE e uno stato di destinazione con `group = closed_won`, quando un qualsiasi canale tenta la transizione, allora 422 con `offer_line_required_for_status` e `quote_workflow_status_id` invariato.</criterion>
+    <criterion id="AC-010">Emendato (decisione utente 2026-11-09): dato un'Offerta con zero righe REVENUE e uno stato di destinazione con `group = closed_won`, quando un qualsiasi canale effettua la transizione, allora 200 e lo stato cambia. La riga prodotto e' obbligatoria alla validazione del contratto (`ContractActionService::validate()`, 422 su `offer_lines`).</criterion>
     <criterion id="AC-011">Emendato (decisione utente 2026-11-09): dato un'Offerta con zero righe REVENUE e uno stato di destinazione con `group = closed_lost`, quando un qualsiasi canale effettua la transizione, allora 200 e lo stato cambia. Un contatto che chiede solo informazioni o non risponde non ha un prodotto da indicare.</criterion>
     <criterion id="AC-012">Come AC-010 con `group = validated`.</criterion>
     <criterion id="AC-013">Dato un'Offerta con zero righe REVENUE e uno stato di destinazione con `group` in {`open`, `pending`}, quando si effettua la transizione, allora 200: il gate non scatta fuori dalle tre condizioni bersaglio.</criterion>

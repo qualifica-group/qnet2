@@ -43,7 +43,6 @@ trait ValidatesQuoteWorkflowStatus
      * @var list<WorkflowStatusGroup>
      */
     private const array LINE_REQUIRED_GROUPS = [
-        WorkflowStatusGroup::ClosedWon,
         WorkflowStatusGroup::Validated,
     ];
 

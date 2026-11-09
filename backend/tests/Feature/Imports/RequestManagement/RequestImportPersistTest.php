@@ -259,7 +259,8 @@ it('AC-009 / AC-007: attribute values land on the Offerta and the operator falls
     expect(Quote::query()->sole()->operator_id)->toBe($actor->id);
 });
 
-it('a closing status on a row with no offer line fails that row alone, with the reason reported', function () {
+// REQUIREMENT CHANGED (decisione utente 2026-11-09): a positive close no longer demands a product line, on any channel.
+it('a positive close on a row with no offer line is imported', function () {
     ['category' => $category, 'statuses' => $statuses] = requestImportScenario();
     $csv = RI_HEADER.",Chiusa,,Anna,Verdi,3331112222,,,\n";
 
@@ -267,7 +268,7 @@ it('a closing status on a row with no offer line fails that row alone, with the 
         'Chiusa' => ['id' => $statuses['won']->id],
     ])));
 
-    expect($run->error_count)->toBe(1)->and($run->imported_rows)->toBe(0)->and(Quote::query()->count())->toBe(0)->and(Registry::query()->count())->toBe(0);
+    expect($run->error_count)->toBe(0)->and($run->imported_rows)->toBe(1)->and(Quote::query()->sole()->quote_workflow_status_id)->toBe($statuses['won']->id);
 });
 
 const RI_REPORTER_MAPPING = ['Nome' => 'first_name', 'Cognome' => 'last_name', 'Cell' => 'phone', 'Segnalatore' => 'reporter_name'];

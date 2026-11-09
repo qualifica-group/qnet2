@@ -151,6 +151,7 @@ export const contracts = {
       genericError: 'Impossibile validare il contratto. Riprova.',
       dateRequired: 'La data di validazione è obbligatoria.',
       dateFuture: 'La data di validazione non può essere futura.',
+      offerLineRequired: 'Per validare il contratto serve almeno una riga prodotto nell\'offerta. Aggiungila nel contratto, poi riprova.',
     },
     renewDialog: {
       description: 'Apri un nuovo periodo: le righe dell\'offerta tornano programmabili e le commesse precedenti restano invariate.',

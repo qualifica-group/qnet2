@@ -117,20 +117,48 @@ if (! function_exists('lineGateRequestStatus')) {
 // AC-044/045 — the panel FormRequest's own mirror
 // ---------------------------------------------------------------------------
 
-it('AC-044: the panel FormRequest rejects a closing destination on a zero-line offer -> 422 on offer_lines', function () {
+// REQUIREMENT CHANGED (decisione utente 2026-11-09): only the validated group still demands a line here.
+it('AC-044: the panel FormRequest rejects a validated destination on a zero-line offer -> 422 on offer_lines', function () {
     $actor = lineGateRequestActor();
     $quote = lineGateRequestQuote($actor);
     $originalStatusId = $quote->quote_workflow_status_id;
-    $closedWon = lineGateRequestStatus(WorkflowStatusGroup::ClosedWon);
+    $validated = lineGateRequestStatus(WorkflowStatusGroup::Validated);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [
-        'quote_workflow_status_id' => $closedWon->id,
+        'quote_workflow_status_id' => $validated->id,
     ])
         ->assertStatus(422)
         ->assertJsonValidationErrors('offer_lines');
 
     expect($quote->fresh()->quote_workflow_status_id)->toBe($originalStatusId);
+});
+
+it('AC-010: the panel FormRequest lets a zero-line request close with a positive outcome', function () {
+    $actor = lineGateRequestActor();
+    $quote = lineGateRequestQuote($actor);
+    $closedWon = lineGateRequestStatus(WorkflowStatusGroup::ClosedWon);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'quote_workflow_status_id' => $closedWon->id,
+    ])->assertOk();
+
+    expect($quote->fresh()->quote_workflow_status_id)->toBe($closedWon->id);
+});
+
+it('AC-010: the inline cell edit lets a zero-line request close with a positive outcome', function () {
+    $actor = lineGateRequestActor();
+    $quote = lineGateRequestQuote($actor);
+    $closedWon = lineGateRequestStatus(WorkflowStatusGroup::ClosedWon);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'quote_workflow_status',
+        'value' => $closedWon->id,
+    ])->assertOk();
+
+    expect($quote->fresh()->quote_workflow_status_id)->toBe($closedWon->id);
 });
 
 it('AC-045: the panel FormRequest raises no error on an open/pending destination with zero lines', function () {
@@ -242,11 +270,11 @@ it('AC-019: on a zero-line offer the line gate wins over requires_note, no note 
     $actor = lineGateRequestActor(canCreateNotes: false);
     $quote = lineGateRequestQuote($actor);
     $originalStatusId = $quote->quote_workflow_status_id;
-    $closedWon = lineGateRequestStatus(WorkflowStatusGroup::ClosedWon, requiresNote: true);
+    $validated = lineGateRequestStatus(WorkflowStatusGroup::Validated, requiresNote: true);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [
-        'quote_workflow_status_id' => $closedWon->id,
+        'quote_workflow_status_id' => $validated->id,
         'note' => 'Attempted note without permission.',
     ])
         ->assertStatus(422)
@@ -259,11 +287,11 @@ it('AC-019: on a zero-line offer the line gate wins over requires_note, no note 
 it('AC-019: the same gate wins over requires_note even for an actor WHO CAN create notes', function () {
     $actor = lineGateRequestActor();
     $quote = lineGateRequestQuote($actor);
-    $closedWon = lineGateRequestStatus(WorkflowStatusGroup::ClosedWon, requiresNote: true);
+    $validated = lineGateRequestStatus(WorkflowStatusGroup::Validated, requiresNote: true);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [
-        'quote_workflow_status_id' => $closedWon->id,
+        'quote_workflow_status_id' => $validated->id,
         'note' => 'Cliente confermato.',
     ])
         ->assertStatus(422)

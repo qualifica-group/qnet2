@@ -78,6 +78,7 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     // can be typed in.
     general_notes: panel.general_notes ?? '',
     ...toForecastValues(panel),
+    registry_id: panel.registry?.id ?? null,
     client_identity: panel.client_identity ? toIdentityDraft(panel.client_identity) : null,
     client_contacts: panel.client_contacts.items.map(toContactDraft),
     // 0-or-1 array: the shape `AddressCreateField` reads, empty when the
@@ -140,6 +141,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSav
             panel.applicable_attributes,
             toAttributeValuesMap(panel.attribute_values),
           ),
+          registry_id: panel.registry?.id ?? null,
           quote_workflow_status_id: panel.quote_workflow_status_id,
           client_identity: panel.client_identity,
           client_contacts: panel.client_contacts.items,
@@ -151,6 +153,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSav
         panel.attribute_layout,
       ),
     [
+      panel.registry,
       panel.product_lines,
       panel.applicable_attributes,
       panel.attribute_layout,
@@ -189,6 +192,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSav
     'estimated_value' as Path<RequestWorkFormValues>,
     'expected_close_date' as Path<RequestWorkFormValues>,
     'success_probability' as Path<RequestWorkFormValues>,
+    'registry_id' as Path<RequestWorkFormValues>,
     // The client block is submitted as a whole: a per-row 422
     // (`client_contacts.0.value`) has no matching control here, so the block
     // root carries the message.

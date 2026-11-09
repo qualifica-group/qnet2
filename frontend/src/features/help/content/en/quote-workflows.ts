@@ -83,7 +83,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'a quote can only move to the statuses of the workflow that currently matches it;',
-            'the Validated and Closed (won) statuses require at least one product row ("You cannot move the quote to this status without at least one product row."); Closed (lost) does not;',
+            'the Validated statuses require at least one product row ("You cannot move the quote to this status without at least one product row."); Closed (won) and Closed (lost) do not;',
             'if the status requires a note, it must be written; it is saved among the notes of the opportunity;',
             'entering Closed (won) generates the contract, unless the category has **Generates a contract** turned off;',
             'if the quote leaves Closed (won), the contract moves to **Suspended** (it is not deleted);',
