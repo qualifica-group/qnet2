@@ -29,6 +29,7 @@ const ADVANCED_FILTER_KEYS = [
   'quoteWorkflowStatus',
   'commercial',
   'supervisor',
+  'managers',
   'createdRange',
 ] as const
 

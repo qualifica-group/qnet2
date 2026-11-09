@@ -16,6 +16,7 @@ use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
+use App\Tables\WorkOrders\WorkOrderAdvancedFilterCatalog;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
@@ -107,11 +108,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        // `supervisors.avatar` is eager-loaded so the Responsabili cell can
-        // render real avatars and not just initials (spec 0096, AC-052),
-        // mirroring QuotesTableDefinition's own managers eager load.
-        // `participants` carries no column of its own: it is loaded so
-        // WorkOrderVisibilityScope::isVisibleTo() answers actionsFor()'s
+        // `supervisors.avatar`/`participants.avatar` are eager-loaded so the
+        // Responsabili and Partecipanti cells can render real avatars and not
+        // just initials (spec 0096, AC-052), mirroring QuotesTableDefinition's
+        // own managers eager load. The loaded `participants` also let
+        // WorkOrderVisibilityScope::isVisibleTo() answer actionsFor()'s
         // per-row Gate calls in memory instead of querying (user
         // directive 2026-09-02).
         // `quote.opportunity.registry` feeds the Anagrafica column,
@@ -122,7 +123,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'quote.opportunity.registry',
             'quote.contract',
             'supervisors.avatar',
-            'participants',
+            'participants.avatar',
             // Spec 0322: the "Stato lavorazione" cell, and its per-row set
             // (WorkOrderWorkflowResolver reads `quoteLines.product`).
             'workOrderWorkflowStatus',
@@ -188,6 +189,14 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     public function actions(): array
     {
         return WorkOrderColumnCatalog::actions();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function advancedFilters(): array
+    {
+        return WorkOrderAdvancedFilterCatalog::advancedFilters();
     }
 
     /**
@@ -282,6 +291,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'type' => $row->type?->value,
             'start_date' => $row->start_date,
             'supervisors' => $row->supervisors->map(fn (User $user): array => $this->userSummary($user))->all(),
+            'participants' => $row->participants->map(fn (User $user): array => $this->userSummary($user))->all(),
             'callback_date' => $row->callback_date,
             'is_force_closed' => $row->is_force_closed,
             'status' => $progress->status->value,

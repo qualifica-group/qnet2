@@ -51,11 +51,21 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Titolo, Tipo commessa, Data richiamo, Data inizio, Responsabili) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: per esempio il Titolo e la Data inizio sono obbligatori, mentre i Responsabili si possono anche togliere tutti; un valore non valido viene rifiutato e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Titolo, Tipo commessa, Data richiamo, Data inizio, Responsabili, Partecipanti) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: per esempio il Titolo e la Data inizio sono obbligatori, mentre Responsabili e Partecipanti si possono anche togliere tutti; un valore non valido viene rifiutato e la cella torna al valore di prima.",
         },
         {
           type: 'note',
           text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). La colonna **Periodo** indica in quale periodo del contratto è stata programmata la commessa: **Iniziale** o **Rinnovo N** (vedi la guida Contratti, Rinnovare il contratto). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Periodo, Stato, Avanzamento, Creata il e Aggiornata il.",
+        },
+      ],
+    },
+    {
+      id: 'people-filters',
+      title: "Filtrare per persona",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Nel pannello **Filtri avanzati** (pulsante nella barra sopra l'elenco) i campi **Responsabili** e **Partecipanti** permettono di scegliere una o più persone: compaiono le commesse in cui almeno una di loro ha quel ruolo. Se compili entrambi i campi, la commessa deve soddisfarli tutti e due. Le colonne **Responsabili** e **Partecipanti** dell'elenco hanno anche il proprio filtro per nome, con la voce **(Vuoti)** per le commesse senza nessuno in quel ruolo.",
         },
       ],
     },

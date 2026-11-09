@@ -426,3 +426,23 @@ it('advanced filters: product_category forwards source.params.include_inactive (
         'params' => ['include_inactive' => 1],
     ]);
 });
+
+it('advanced filters: managers and supervisor pick people by id, each on its own role', function () {
+    Sanctum::actingAs(opportunityTableUserWith(['viewAny']));
+    $person = User::factory()->create();
+    $managed = Opportunity::factory()->create();
+    $managed->managers()->attach($person->id, ['position' => 1]);
+    $supervised = Opportunity::factory()->create(['supervisor_id' => $person->id]);
+    Opportunity::factory()->create();
+
+    $filters = collect($this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.advancedFilters'))->keyBy('name');
+
+    expect($filters['managers'])->toMatchArray(['type' => 'relation', 'multiple' => true, 'source' => ['resource' => 'users']]);
+
+    $idsFor = fn (string $filter): array => collect($this->postJson('/api/tables/opportunities/rows', [
+        'startRow' => 0, 'endRow' => 25, 'advancedFilters' => [$filter => [$person->id]],
+    ])->assertOk()->json('items'))->pluck('id')->all();
+
+    expect($idsFor('managers'))->toBe([$managed->id])
+        ->and($idsFor('supervisor'))->toBe([$supervised->id]);
+});

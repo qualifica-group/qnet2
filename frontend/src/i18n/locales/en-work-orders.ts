@@ -67,6 +67,11 @@ export const workOrders = {
     updated_at: 'Updated at',
     chat_unread_count: 'Unread',
     renewal_number: 'Period',
+    participants: 'Participants',
+  },
+  advancedFilters: {
+    supervisors: 'Supervisors',
+    participants: 'Participants',
   },
   detail: {
     multiQuoteBadge: 'Multi-offer',

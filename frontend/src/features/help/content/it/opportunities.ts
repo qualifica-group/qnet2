@@ -84,6 +84,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'people-filters',
+      title: "Filtrare per persona",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Nel pannello **Filtri avanzati** (pulsante nella barra sopra l'elenco) i campi **Supervisore** e **Gestori account** permettono di scegliere una o più persone: compaiono le opportunità in cui almeno una di loro ha quel ruolo. Se compili entrambi i campi, l'opportunità deve soddisfarli tutti e due.",
+        },
+      ],
+    },
+    {
       id: 'category-tabs',
       title: "Filtrare per categoria prodotto",
       blocks: [

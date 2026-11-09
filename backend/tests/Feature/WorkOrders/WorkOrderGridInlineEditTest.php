@@ -25,7 +25,8 @@ it('declares exactly the columns the form edits as single fields', function () {
         ->where('editable', true)->pluck('id')->sort()->values()->all();
 
     // REQUIREMENT CHANGED (spec 0322): the "Stato lavorazione" select joins the inline-editable columns.
-    expect($editable)->toBe(['callback_date', 'start_date', 'supervisors', 'title', 'type', 'work_order_workflow_status']);
+    // REQUIREMENT CHANGED (user request 2026-11-09): so does the new Partecipanti column.
+    expect($editable)->toBe(['callback_date', 'participants', 'start_date', 'supervisors', 'title', 'type', 'work_order_workflow_status']);
 });
 
 it('saves title, type, dates and supervisors through the form path', function () {

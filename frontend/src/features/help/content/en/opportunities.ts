@@ -84,6 +84,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'people-filters',
+      title: "Filtering by person",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In the **Advanced filters** panel (button in the bar above the list) the **Supervisor** and **Account managers** fields let you pick one or more people: the list shows the opportunities where at least one of them holds that role. If you fill in both fields, an opportunity must satisfy both.",
+        },
+      ],
+    },
+    {
       id: 'category-tabs',
       title: "Filtering by product category",
       blocks: [

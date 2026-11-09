@@ -181,3 +181,23 @@ it('rows: a quote with every nullable relation absent projects null summaries, n
         ->and($row['reporter'])->toBeNull()
         ->and($row['supervisor'])->toBeNull();
 });
+
+it('advanced filters: managers and supervisor pick people by id, each on its own role', function () {
+    Sanctum::actingAs(quoteTableUserWith(['viewAny']));
+    $person = User::factory()->create();
+    $managed = Quote::factory()->create();
+    $managed->managers()->attach($person->id, ['position' => 1]);
+    $supervised = Quote::factory()->create(['supervisor_id' => $person->id]);
+    Quote::factory()->create();
+
+    $filters = collect($this->getJson('/api/tables/quotes/columns')->assertOk()->json('data.advancedFilters'))->keyBy('name');
+
+    expect($filters['managers'])->toMatchArray(['type' => 'relation', 'multiple' => true, 'source' => ['resource' => 'users']]);
+
+    $idsFor = fn (string $filter): array => collect($this->postJson('/api/tables/quotes/rows', [
+        'startRow' => 0, 'endRow' => 25, 'advancedFilters' => [$filter => [$person->id]],
+    ])->assertOk()->json('items'))->pluck('id')->all();
+
+    expect($idsFor('managers'))->toBe([$managed->id])
+        ->and($idsFor('supervisor'))->toBe([$supervised->id]);
+});

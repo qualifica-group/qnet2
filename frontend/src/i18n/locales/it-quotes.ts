@@ -41,6 +41,7 @@ export const quotes = {
     quoteWorkflowStatus: 'Stato',
     commercial: 'Commerciale',
     supervisor: 'Supervisore',
+    managers: 'Gestori account',
     createdRange: 'Creato il',
   },
   calculationHints: {

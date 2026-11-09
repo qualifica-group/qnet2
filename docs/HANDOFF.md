@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse/Offerte/Opportunita': colonna Partecipanti e filtri avanzati per persona (2026-11-09) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente. Commesse: nuova colonna `participants` subito dopo `supervisors` (avatar, filtro `set` per nome con "(Vuoti)", modifica in cella come lista di persone: `WorkOrderCellWriter` la converte in `participant_slots` con `ManagerPositions::slotsFromIds`). Eredita anche Commesse Progetto e la sezione Commesse del Contratto.
+- Filtri avanzati come Task (`relation`, multipli, per id, `source: users`): nuovo `WorkOrderAdvancedFilterCatalog` (`supervisors`, `participants`, target = relazione omonima); `managers` aggiunto a `QuoteAdvancedFilterCatalog` e `OpportunityAdvancedFilterCatalog` (il `supervisor` c'era gia', le colonne Supervisore/Gestori account pure). Contratti fuori perimetro: non hanno il filtro Gestori account.
+- `WorkOrderDerivedColumns`: `TEAM_PIVOTS` (id colonna = nome relazione => pivot) sostituisce le costanti e i metodi dei soli Responsabili. `editableField` non e' esposto nella config.
+- REQUIREMENT CHANGED nei test: `WorkOrderTableTest` (elenco colonne) e `WorkOrderGridInlineEditTest` (colonne modificabili). Nuovo `WorkOrderTeamColumnsTest`.
+- Pest WorkOrders + ProjectWorkOrders + Quotes + Opportunities + Contracts + Table + Unit/Tables 1764/1768: rossi `TableBulkDeleteTest` r.131 (preesistente, utenti) e `QuoteDocumentPdfTest` x3 (LibreOffice assente). Vitest help + column-renderers + quotes-i18n + advanced-filters 217/217, Pint, ESLint, `tsc -b --force` puliti. Non provato nel browser, suite completa non eseguita.
+- Guide IT/EN (sezione `people-filters` in work-orders/quotes/opportunities, `list-editing` di work-orders) e manuale Claude Docs aggiornati; il PDF derivato va rigenerato. Nel working tree ci sono modifiche di altri lavori (Gestione Richieste, CategoryTabs, Contratti, Table requests): non fanno parte di questa voce.
+
 ## Linguette categorie madri: colonne dei campi flessibili (spec 0350 rev.3, 0337 D-3) (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: la tab di una categoria madre (es. ISO) mostra anche le colonne flessibili di quella madre. Decisione utente: solo l'insieme effettivo della radice, NON l'unione del ramo (in dev ISO 48 colonne; APL e Gare nessuna, perche' i campi stanno sulle figlie). Vale per Gestione Richieste/Iscritti, Offerte, Commesse, Contratti (sola lettura). La rinomina Gestori resta esclusa sulle madri.

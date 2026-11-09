@@ -36,6 +36,7 @@ export const opportunities = {
     referent: 'Referente',
     commercial: 'Commerciale',
     supervisor: 'Supervisore',
+    managers: 'Gestori account',
     operationalSite: 'Sede operativa',
     productCategory: 'Categoria prodotto',
     businessFunction: 'Funzione aziendale',

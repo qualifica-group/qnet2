@@ -51,11 +51,21 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Title, Work order type, Callback date, Start date, Supervisors) edits it **directly in the list**, with the **same rules as the detail**: for example the Title and the Start date are mandatory, while the Supervisors can all be removed; an invalid value is refused and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Title, Work order type, Callback date, Start date, Supervisors, Participants) edits it **directly in the list**, with the **same rules as the detail**: for example the Title and the Start date are mandatory, while the Supervisors and Participants can all be removed; an invalid value is refused and the cell goes back to its previous value.",
         },
         {
           type: 'note',
           text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). The **Period** column shows the contract period the work order was programmed in: **Initial** or **Renewal N** (see the Contracts guide, Renewing the contract). Work order no., Contract no., Linked offer, Registry, Contract expiry, Period, Status, Progress, Created at and Updated at stay read-only.",
+        },
+      ],
+    },
+    {
+      id: 'people-filters',
+      title: "Filtering by person",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In the **Advanced filters** panel (button in the bar above the list) the **Supervisors** and **Participants** fields let you pick one or more people: the list shows the work orders where at least one of them holds that role. If you fill in both fields, a work order must satisfy both. The **Supervisors** and **Participants** columns of the list also have their own filter by name, with a **(Blanks)** entry for the work orders with nobody in that role.",
         },
       ],
     },
