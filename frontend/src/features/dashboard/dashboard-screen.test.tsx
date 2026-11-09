@@ -1,29 +1,15 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import i18n from '@/i18n'
 import { DashboardScreen } from '@/features/dashboard/dashboard-screen'
-import type { DashboardTaskCounters } from '@/features/dashboard/types'
-import type { ModuleStats } from '@/features/stats/types'
 
 /**
- * Spec 0151 AC-011: each block is present iff its `frontend_gates` permission
- * is granted, no request fires for a hidden block, and the empty state covers
- * the "every gate closed" case.
+ * REQUIREMENT CHANGED (user decision 2026-11-09, replaces spec 0151 AC-011): the
+ * home is an empty page that reads no data, whatever the user's permissions.
  */
 
-let grantedPermissions: string[] = []
-vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({
-    can: (permission: string) => grantedPermissions.includes(permission),
-    hasRole: () => false,
-    roles: [],
-    isLoading: false,
-  }),
-}))
-
-const fetchDashboardTaskCountersMock = vi.fn<() => Promise<DashboardTaskCounters>>()
+const fetchDashboardTaskCountersMock = vi.fn()
 vi.mock('@/features/dashboard/api', () => ({
   fetchDashboardTaskCounters: () => fetchDashboardTaskCountersMock(),
 }))
@@ -38,37 +24,14 @@ vi.mock('@/features/time-entries/api', () => ({
 const getAbsenceSummaryMock = vi.fn()
 vi.mock('@/features/absences/api', () => ({ getAbsenceSummary: () => getAbsenceSummaryMock() }))
 
-const fetchModuleStatsMock = vi.fn<(domain: string) => Promise<ModuleStats>>()
+const fetchModuleStatsMock = vi.fn()
 vi.mock('@/features/stats/api', () => ({
   moduleStatsQueryKey: (domain: string) => ['stats', domain],
   fetchModuleStats: (domain: string) => fetchModuleStatsMock(domain),
 }))
 
-const COUNTERS: DashboardTaskCounters = {
-  not_completed: { count: 1, total_minutes: 0 },
-  assigned_to_me: { count: 1, total_minutes: 0 },
-  assigned_by_me: { count: 1, total_minutes: 0, to_validate: { count: 0, total_minutes: 0 } },
-  created_by_me: { count: 1, total_minutes: 0 },
-  observed_by_me: { count: 1, total_minutes: 0 },
-}
-
-beforeAll(async () => {
-  await i18n.changeLanguage('en')
-})
-
 beforeEach(() => {
-  grantedPermissions = []
-  fetchDashboardTaskCountersMock.mockReset().mockResolvedValue(COUNTERS)
-  fetchTimeEntriesOverviewMock.mockReset().mockResolvedValue({})
-  fetchTimeEntriesPulseMock.mockReset().mockResolvedValue({})
-  fetchModuleStatsMock.mockReset().mockResolvedValue({ widgets: [] })
-  getAbsenceSummaryMock.mockReset().mockResolvedValue({
-    to_approve_count: 0,
-    my_pending_count: 0,
-    daily_minutes: 480,
-    my_upcoming: [],
-    absent_today: [],
-  })
+  vi.clearAllMocks()
 })
 
 function renderScreen() {
@@ -82,81 +45,21 @@ function renderScreen() {
   )
 }
 
-describe('DashboardScreen (AC-011)', () => {
+describe('DashboardScreen', () => {
   it('shows no breadcrumb on the home', () => {
     renderScreen()
 
     expect(screen.queryByRole('navigation', { name: 'breadcrumb' })).not.toBeInTheDocument()
   })
 
-  it('shows the empty state and issues no request when every gate is closed', async () => {
+  it('renders no block and issues no data request', () => {
     renderScreen()
 
-    expect(await screen.findByText('No content available')).toBeInTheDocument()
-    expect(screen.queryByText('Activities to complete')).not.toBeInTheDocument()
-    expect(screen.queryByText('Time tracking')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
     expect(fetchDashboardTaskCountersMock).not.toHaveBeenCalled()
     expect(fetchTimeEntriesOverviewMock).not.toHaveBeenCalled()
-    expect(fetchModuleStatsMock).not.toHaveBeenCalled()
-  })
-
-  it('shows only the blocks gated by tasks.viewAny when it is the only permission granted', async () => {
-    grantedPermissions = ['tasks.viewAny']
-    renderScreen()
-
-    expect(await screen.findByText('Activities to complete')).toBeInTheDocument()
-    expect(fetchDashboardTaskCountersMock).toHaveBeenCalledTimes(1)
-    // REQUIREMENT CHANGED (user decision 2026-11-09): the Task statistics panel is temporarily off.
-    expect(fetchModuleStatsMock).not.toHaveBeenCalled()
-    expect(screen.queryByText('No content available')).not.toBeInTheDocument()
-    expect(screen.queryByText('Time tracking')).not.toBeInTheDocument()
-    expect(screen.queryByText('Opportunities')).not.toBeInTheDocument()
-    expect(fetchTimeEntriesOverviewMock).not.toHaveBeenCalled()
-  })
-
-  it('shows every block, in D-9 order, without the temporarily disabled Task statistics', async () => {
-    grantedPermissions = [
-      'tasks.viewAny',
-      'time-entries.viewAny',
-      'opportunities.viewAny',
-      'quotes.viewAny',
-      'leads.viewAny',
-      'registries.viewAny',
-    ]
-    renderScreen()
-
-    const headings = await screen.findAllByRole('heading', { level: 2 })
-    expect(headings.map((heading) => heading.textContent)).toEqual([
-      'Activities to complete',
-      'Time tracking',
-      'Opportunities',
-      'Quotes',
-      'Leads',
-      'Registries',
-    ])
-    expect(screen.queryByRole('heading', { name: 'Request management' })).not.toBeInTheDocument()
-    expect(fetchDashboardTaskCountersMock).toHaveBeenCalledTimes(1)
-    expect(fetchTimeEntriesOverviewMock).toHaveBeenCalledWith({ period_preset: 'day' })
-    // REQUIREMENT CHANGED (user decision 2026-11-09): the Task statistics panel is temporarily off.
-    expect(fetchModuleStatsMock).not.toHaveBeenCalledWith('tasks')
-    expect(fetchModuleStatsMock).toHaveBeenCalledWith('opportunities')
-    expect(fetchModuleStatsMock).toHaveBeenCalledWith('quotes')
-    expect(fetchModuleStatsMock).toHaveBeenCalledWith('leads')
-    expect(fetchModuleStatsMock).toHaveBeenCalledWith('registries')
-  })
-
-  it('mounts the Absences block only with absence-requests.viewAny', async () => {
-    renderScreen()
-    expect(await screen.findByText('No content available')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Absences' })).not.toBeInTheDocument()
+    expect(fetchTimeEntriesPulseMock).not.toHaveBeenCalled()
     expect(getAbsenceSummaryMock).not.toHaveBeenCalled()
-  })
-
-  it('shows the Absences block when absence-requests.viewAny is granted', async () => {
-    grantedPermissions = ['absence-requests.viewAny']
-    renderScreen()
-
-    expect(await screen.findByRole('heading', { name: 'Absences' })).toBeInTheDocument()
-    expect(getAbsenceSummaryMock).toHaveBeenCalledTimes(1)
+    expect(fetchModuleStatsMock).not.toHaveBeenCalled()
   })
 })

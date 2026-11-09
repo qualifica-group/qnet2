@@ -3,58 +3,14 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'dashboard',
   title: 'Dashboard',
-  summary: 'La Dashboard è la prima pagina dopo l’accesso: riassume i tuoi task aperti, il segnatempo e i numeri principali dei moduli.',
+  summary: 'La Dashboard è la prima pagina dopo l’accesso. Al momento è vuota.',
   sections: [
     {
       id: 'overview',
       title: 'Cosa trovi',
       blocks: [
-        { type: 'paragraph', text: 'La **Dashboard** si apre subito dopo aver premuto **Accedi**. È divisa in blocchi, dall’alto verso il basso: **Attività da completare**, **Segnatempo**, **Assenze** e le statistiche di **Opportunità**, **Offerte**, **Lead** e **Anagrafiche**.' },
-        { type: 'note', text: 'Vedi solo i blocchi dei moduli per cui hai il permesso. Se non ne hai nessuno, la pagina mostra “Nessun contenuto disponibile”.' },
-      ],
-    },
-    {
-      id: 'tasks-to-complete',
-      title: 'Attività da completare',
-      blocks: [
-        { type: 'paragraph', text: 'Cinque riquadri contano i task **aperti** che puoi vedere, sotto-task compresi. Ogni riquadro mostra anche il **tempo stimato** complessivo.' },
-        {
-          type: 'table',
-          headers: ['Riquadro', 'Cosa conta'],
-          rows: [
-            ['Tutti', 'Tutti i task aperti che puoi vedere: i tuoi e, se hai il permesso Visualizza tutti o Visualizza sede, anche quelli dei colleghi. Il link apre l’elenco con **Tutti i visibili**.'],
-            ['Assegnati a me', 'I task di cui sei assegnatario.'],
-            ['Assegnati da me', 'I task di cui sei richiedente, se non sei anche assegnatario.'],
-            ['Creati da me', 'I task che hai creato, quando non sei anche il richiedente, un assegnatario o un osservatore.'],
-            ['Osservati da me', 'I task che segui come osservatore.'],
-          ],
-        },
-        { type: 'paragraph', text: 'Nel riquadro **Assegnati da me** compare il contrassegno **Da validare** quando alcuni di quei task aspettano la tua validazione.' },
-        { type: 'steps', items: ['Premi un riquadro: si apre la lista **Task** già filtrata con gli stessi criteri.', 'Premi il contrassegno **Da validare** per vedere solo i task in validazione assegnati da te.'] },
-        { type: 'tip', text: 'Il filtro aperto dalla Dashboard vale solo per quella visita: i filtri che avevi salvato nella lista Task non cambiano, finché non premi **Applica** o **Reimposta**.' },
-        { type: 'paragraph', text: 'I numeri dei Task (Scaduti, In scadenza oggi, Stimato ed Effettivo) e i grafici per stato, per priorità e dei nuovi task per mese sono nel pannello **Statistiche** della lista Task.' },
-      ],
-    },
-    {
-      id: 'time-entries',
-      title: 'Segnatempo',
-      blocks: [
-        { type: 'paragraph', text: 'Mostra il riepilogo del tuo segnatempo e il polso operativo, come nella pagina **Segnatempo**. Scegli il periodo con **Giornaliero** (preimpostato), **Settimanale**, **Mensile** o **Annuale**.' },
-      ],
-    },
-    {
-      id: 'absences',
-      title: 'Assenze',
-      blocks: [
-        { type: 'paragraph', text: 'Mostra quante richieste di assenza tocca a te decidere (**Da approvare**, con il link alla pagina), chi è **assente oggi** tra le persone che vedi nel calendario (con il tipo e fino a quando) e **Le mie prossime assenze**. Vedi la guida **Assenze**.' },
-      ],
-    },
-    {
-      id: 'module-statistics',
-      title: 'Statistiche dei moduli',
-      blocks: [
-        { type: 'paragraph', text: 'I blocchi **Opportunità**, **Offerte**, **Lead** e **Anagrafiche** mostrano gli stessi numeri e grafici del pannello **Statistiche** di ciascun modulo, sempre aperti.' },
-        { type: 'paragraph', text: 'Il blocco **Offerte** mostra il numero di offerte, i **Ricavi netti**, il **Margine netto**, le offerte **Vinte**, la ripartizione per stato e le nuove offerte per mese.' },
+        { type: 'paragraph', text: 'La **Dashboard** si apre subito dopo aver premuto **Accedi**. Al momento la pagina non mostra contenuti: riquadri e statistiche sono temporaneamente disattivati.' },
+        { type: 'note', text: 'Task, segnatempo, assenze e statistiche restano disponibili nelle pagine dei rispettivi moduli, che apri dal menu.' },
       ],
     },
   ],
