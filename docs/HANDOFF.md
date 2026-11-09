@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Comando one-shot di riallineamento dal legacy (spec 0375) (2026-11-09) — VERDE SULLA SPEC, COMMITTATO, MAI ESEGUITO CON --apply
+
+- Richiesta utente: allineare i record gia' su qnet-2 alle modifiche legacy dal 23/10. `php artisan migrations:realign-legacy --since=2026-10-23 [--apply] [--sources=a,b] [--output=path]`. Senza `--apply` simula con rollback per record e scrive l'Excel a cinque fogli in `storage/app/private/realign/` (dati personali). Supera la voce sotto "solo da elenco approvato" (decisione utente).
+- Decisioni utente: toccati su qnet-2 saltati e listati; cancellati nel legacy lasciati e listati; nessun record principale creato (le righe figlie si'). Moduli: 13 sorgenti in `App\Migrations\Realign\LegacyRealignTargets::BY_SOURCE`, target in `Migrations/Realign/Targets/`.
+- Legacy (`../qnet`, committato, va deployato PRIMA): `GET migration/changed-records/{source}?since=`, parametro `only_ids` su 13 endpoint, `updated_at` su `lines[]`/`cost_lines[]` (`LegacyChangedRecords`, `LegacyOnlyIds`). Il commit legacy include anche le modifiche della spec 0372.
+- Falsi positivi eliminati: `updated_at` di ordini/opportunita' (segnali reali in `LegacyChangedRecords`); `id` dei repeater generato da `TableFieldSchema` (`LegacyAttributeValueApplier::keepUnchangedTableRows`, vale anche per la casella `update_existing`); "toccato" = evento diverso da `created` (per il referente solo voci con autore: l'import ne scrive una `updated` senza autore); ODA evase e righe RDA ricevute per fatture/ricevimenti su qnet-2 non tornano indietro (AC-025).
+- Simulazione su copia locale del 9/11, MySQL reale: 0 errori, 5.381 differenze campo, DB invariato su conteggi e `max(updated_at)`. Aggiornerebbe: task 1.284, commesse 389, offerte 285, segnatempo 209, RDA 38, opportunita' 27, anagrafiche 19, ODA 17, proforma 6, fatture acquisto 2. Report: `~/Downloads/Simulazione_riallineamento_dal_2026-10-23.xlsx`.
+- Verifica (verifier indipendente): Realign 94/94, `tests/Feature/Migration` 914/914, Pint pulito, AC-001..025 PASS. Suite backend 14.487: 18 rossi fuori perimetro (17 noti + `CampaignCrudTest` flaky, da solo 17/17). Suite frontend non eseguita (nessun file frontend). Manuale: nessun impatto.
+- Limiti: `orderiso_details`/`orderiso_verificas` senza date; costo sparito dal legacy non segnalato (nessuna ancora); provvigioni non ricalcolate (elenco nel Riepilogo, poi `commissions:sync-accruals`).
+- DA FARE, in ordine: dump DB produzione; deploy legacy; deploy qnet-2; simulazione in produzione; revisione Excel; `--apply`.
+
+## Riallineamento dal legacy: analisi e lista da approvare (2026-11-09) — SOLO ANALISI, NESSUNA MODIFICA AI DATI NE' AL CODICE
+
+- Decisione utente: modificare solo i record che devono cambiare, da un elenco approvato. NON lanciare la casella `update_existing` senza filtro: su dati reali proporrebbe 7.485 opportunita', 7.868 offerte, 3.960 commesse.
+- Motivi: le righe repeater (`orderiso_verificas`, `orderiso_details`, `orderiso_pals`) ricevono un `id` casuale a ogni lettura, quindi risultano sempre diverse (3.519 commesse e 69 offerte solo per questo; origine non ancora individuata); circa 7.400 opportunita' e offerte hanno gestori mai agganciati perche' importate il 23/10 prima di 105 utenti; il riallineamento offerte creerebbe anche lo stato di configurazione `[OLD] Stand-by`.
+- Esito: simulazione con transazione annullata sui dump delle 19:08 del 9/11, tabelle collegate incluse. Gruppo A (modificati nel legacy dal 1/11): task 1.076, commesse 244, offerte 156, opportunita' 17, RDA 29, ODA 9, fatture acquisto 1, richieste proforma 5. Elenco per campo: `~/Downloads/Riallineamento_legacy_2026-11-09.xlsx`. Escluse 1.459 differenze di prezzo su righe offerta mai toccate nel legacy (conversione d'import). La casella `update_existing` non copre RDA, ODA, fatture, proforma, righe offerta, costi e task: il comando dovra' includerli.
+- Ambiente locale: `EXTERNAL_MIGRATION_TOKEN` in `backend/.env` sostituito con un token creato sul legacy locale (utente 449), vecchio valore commentato. Un nuovo dump legacy puo' invalidarlo.
+- DA FARE: decisioni utente sui gruppi, poi spec del comando che applica solo l'elenco approvato (task inclusi). Nessun comando scritto finora.
+- Censimento modifiche legacy dal 1/11 (sola lettura, dump `qualifica_crm_2026-11-09_17-54-46.sql`): 75 tabelle, 60.861 record, elenco in `~/Downloads/Modifiche_legacy_dal_2026-11-01.xlsx`.
+- Attenzione nel leggere le date del legacy: `updated_at` di `orders` e `opportunities` non indica una modifica reale, perche' `UltimaNotaSyncJob` lo riscrive ogni notte su quasi tutte le righe con una nota: usare `activity_log`. Sul DB locale le colonne `timestamp` scritte da Laravel appaiono un'ora avanti rispetto al dump: per l'orario reale leggere con `SET time_zone = "+00:00"`. `orderiso_details` e `orderiso_verificas` non hanno date, quindi le loro modifiche non sono databili.
+
 ## Offerte: colonna Anagrafica (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: colonna Anagrafica in Opportunita', Offerte, Commesse, solo dove manca. Opportunita' e Commesse l'avevano gia': non toccate.

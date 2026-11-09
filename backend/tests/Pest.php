@@ -31,6 +31,7 @@ require_once __DIR__.'/Helpers/MigrationStepHelpers.php';
 require_once __DIR__.'/Helpers/QuoteMigrationHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderMigrationHelpers.php';
 require_once __DIR__.'/Helpers/TaskMigrationHelpers.php';
+require_once __DIR__.'/Helpers/LegacyRealignHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseRequestMigrationHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseOrderMigrationHelpers.php';
 require_once __DIR__.'/Helpers/TaskHelpers.php';

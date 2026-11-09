@@ -27,9 +27,32 @@ use Spatie\Activitylog\Models\Activity;
  */
 final class LegacyRecordTouchGuard
 {
+    private static bool $ignoring = false;
+
+    /**
+     * Runs the callback with the work order, offer and opportunity checks off, for a
+     * caller that has applied its own rule (spec 0375 D-8). Contracts stay guarded.
+     *
+     * @template TResult
+     *
+     * @param  Closure(): TResult  $callback
+     * @return TResult
+     */
+    public static function ignoring(Closure $callback): mixed
+    {
+        $previous = self::$ignoring;
+        self::$ignoring = true;
+
+        try {
+            return $callback();
+        } finally {
+            self::$ignoring = $previous;
+        }
+    }
+
     public function isWorkOrderTouched(WorkOrder $workOrder): bool
     {
-        return $this->hasActivity([
+        return ! self::$ignoring && $this->hasActivity([
             [WorkOrder::class, $workOrder->getKey()],
             [WorkOrderStage::class, WorkOrderStage::query()->where('work_order_id', $workOrder->getKey())->select('id')],
             [WorkOrderLinePayment::class, WorkOrderLinePayment::query()->where('work_order_id', $workOrder->getKey())->select('id')],
@@ -38,12 +61,12 @@ final class LegacyRecordTouchGuard
 
     public function isOpportunityTouched(Opportunity $opportunity): bool
     {
-        return $this->hasActivity([[Opportunity::class, $opportunity->getKey()]]);
+        return ! self::$ignoring && $this->hasActivity([[Opportunity::class, $opportunity->getKey()]]);
     }
 
     public function isQuoteTouched(Quote $quote): bool
     {
-        return $this->hasActivity([
+        return ! self::$ignoring && $this->hasActivity([
             [Quote::class, $quote->getKey()],
             [Opportunity::class, $quote->opportunity_id],
         ]);

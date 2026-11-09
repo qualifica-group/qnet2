@@ -46,7 +46,7 @@ trait MapsLegacyQuoteCostLines
      * @param  array<int, int>  $legacyLineIds
      * @param  array<int, string>  $warnings
      */
-    private function legacyCostLine(array $externalLine, int $sortOrder, array $legacyLineIds, array &$warnings): QuoteLineData
+    public function legacyCostLine(array $externalLine, int $sortOrder, array $legacyLineIds, array &$warnings): QuoteLineData
     {
         $lineRef = $externalLine['id'] ?? '?';
         $product = $this->costProduct($externalLine['product_source'] ?? CostProductCatalogue::EXPENSE_REPORTS, $externalLine['product_id'] ?? null, $lineRef);

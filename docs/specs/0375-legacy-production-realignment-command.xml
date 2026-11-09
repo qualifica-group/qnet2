@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0375-legacy-production-realignment-command" status="approved" owner="nicola" date="2026-11-09">
+
+  <goal>
+    Un comando da lanciare una sola volta in produzione allinea i record gia' presenti su qnet-2 alle modifiche fatte nel
+    QNet legacy dal 23/10/2026 a oggi, tabelle collegate comprese. Il primo lancio non scrive nulla e produce un Excel con
+    ogni campo che cambierebbe; il rilancio con l'opzione di scrittura applica le stesse regole.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-09 (domande in sessione):
+    D-1 Conflitti: un record modificato anche su qnet-2 non si tocca e va nel report.
+    D-2 Cancellazioni: un record cancellato nel legacy resta su qnet-2 e va in un elenco a parte. Nessuna cancellazione.
+    D-3 Esecuzione: simulazione di default, poi rilancio con `--apply`. Supera la decisione precedente "solo da elenco
+        approvato" (HANDOFF, voce 2026-11-09): il motivo di quella decisione erano i falsi positivi, rimossi da D-6 e D-7.
+    D-4 Moduli: task, segnatempo, opportunita', offerte, commesse con le tabelle collegate; inoltre righe offerta e costi,
+        RDA, ODA, fatture di acquisto, proforma e fatture, richieste di proforma, anagrafiche e referenti.
+    D-5 Nessun record principale nuovo: un `old_id` assente su qnet-2 viene ignorato (li porta l'import incrementale).
+
+    Proposte di progetto, da validare con questa spec:
+    D-6 "Cambiato" lo decide il legacy (backend.md 9), con segnali reali e non `orders.updated_at` /
+        `opportunities.updated_at`, riscritti ogni notte da `UltimaNotaSyncJob`:
+        - tasks: `tasks.updated_at`, tabelle persone lette da `LegacyTaskPeople`, `activity_log` subject `task` evento `updated`.
+        - time-entries: `working_activity_intervals.updated_at` oppure `working_activity_days.updated_at`.
+        - opportunities: `activity_log` subject `opportunity` (`updated`), `responsabile_opportunities`.
+        - quotes: `quotations.updated_at`, `quotationservices`, `quotationexpensereports`, `quotationemployees`,
+          `activity_log` subject `App\Models\Quotation` (`updated`).
+        - work-orders e work-order-workflow-statuses: `activity_log` subject `order` (`updated`), `orderisos`, `orderservices`,
+          `responsabile_services`, `partecipant_services`, `ordermilestones`.
+        - purchase-requests: `rda`, `rda_detail`. purchase-orders: `proformfora_heads`, `proformforas`. purchase-invoices:
+          filtro gia' in `LegacyPurchaseInvoiceGroups`, `schedule_suppliers`. proforma-requests: `orderrequestproformas`.
+          invoices: `proformas`, `proforma_ente`, `schedules` (`document_type` PFR), `schedule_ente`. registries: `companies`. referents: `contacts`.
+        Limite noto: `orderiso_details` e `orderiso_verificas` non hanno date. Una loro modifica entra solo se la commessa e'
+        comunque tra le cambiate; le altre restano fuori e il riepilogo lo dichiara.
+    D-7 Differenza reale: si scrive solo se il valore cambia. Nelle righe dei campi tabella (repeater) si ignora la chiave
+        `id`: la genera qnet-2 (`TableFieldSchema`, UUID a ogni normalizzazione) ed e' l'origine delle 3.519 false
+        differenze. A righe uguali resta il valore attuale con i suoi `id`.
+    D-8 "Toccato su qnet-2" = voce in `activity_log` sul record con evento diverso da `created`. Regola nuova rispetto a
+        `LegacyRecordTouchGuard` (spec 0372 D-6): i referenti passano dal servizio all'import e hanno tutti una voce
+        `created` (14.440 su 14.440), quindi con la regola attuale risulterebbero tutti toccati. Soggetti come spec 0372, piu':
+        task, segnatempo, RDA, ODA, fatture di acquisto, fatture, richieste proforma, anagrafica con `personal_data`,
+        `contact`, `address` collegati, referente con gli stessi.
+        Limite noto (0372 D-7): i cambi a persone e campi flessibili fatti prima di `PeopleChangeLog` non si riconoscono.
+    D-9 Le righe figlie sono allineate anche se nuove (fase, gestore, riga offerta aggiunta su un'offerta gia' presente): D-5
+        riguarda solo i record principali. Una riga figlia sparita dal legacy resta e va nel report (D-2).
+    D-10 Scrittura come spec 0372: quieta, senza notifiche ne' voci di attivita', `updated_at` = quello legacy, una transazione
+        per record. Idempotente: un secondo lancio non trova differenze.
+    D-11 Campi per modulo:
+        - Task: titolo, descrizione, stato, tipo, categoria, priorita', importanza, date e orari, `completion_date`,
+          `estimated_minutes`, flag, `closure_feedback`, richiedente, assegnatari, osservatori, collegamenti (anagrafica,
+          referente, opportunita', commessa, fase), `work_order_workflow_status_id`. Fissi: `creator_id`, `parent_id`, serie di ricorrenza.
+        - Segnatempo: data, titolo, tipo, orari, minuti, note, collegamenti, fase. Fisso: `user_id`.
+        - Opportunita', offerte, commesse, contratti: spec 0372 D-5, D-10, D-11, D-13, D-14, D-15.
+        - RDA e ODA: testata, stato, chiusura, righe per `old_id`. Fissi: numero ODA, societa', creatore.
+          (emersa in simulazione) Uno stato che su qnet-2 nasce da ricevimenti o fatture non torna indietro: nel legacy `stato_oda`
+          resta fermo e la riga RDA non arriva mai a "ricevuta". Stato attuale conservato, avviso nel report.
+        - Fatture e fatture di acquisto: note, numero e data esterni, scadenze e pagamento. Fissi: numero, importi e righe.
+        - Richieste proforma: stato, `issued_at`, nota, assegnatari.
+        - Anagrafiche e referenti: dati della scheda, supervisore, gestori, settori, tag, contatti e indirizzi principali.
+          Un valore vuoto nel legacy non svuota mai un contatto o un indirizzo su qnet-2.
+    D-12 Righe offerta (`quote_lines.old_id`): si aggiornano prodotto, quantita', prezzo, IVA, descrizione aggiuntiva solo per le
+        righe con `updated_at` legacy dal 23/10. Evita le 1.459 false differenze di prezzo dovute alla conversione d'import.
+        Una riga gia' fatturata resta com'e' e va nel report. Totali ricalcolati come fa l'offerta.
+    D-13 Costi di offerta e commessa non hanno un'ancora legacy su qnet-2. Abbinamento per prodotto e riga imputata: uno a uno =
+        aggiornato; assente = creato; ambiguo = solo report. I costi inseriti a mano su qnet-2 non si toccano.
+    D-14 Fatture: le righe di documenti emessi non si riscrivono (classificazione contabile, incassi). Righe diverse = solo report.
+    D-15 Provvigioni: il comando non le ricalcola. L'elenco delle offerte con importi cambiati va nel riepilogo; l'eventuale
+        ricalcolo si lancia a parte con `commissions:sync-accruals`.
+    D-16 Stati di configurazione `[OLD]` creati dal riallineamento offerte (`[OLD] Stand-by`): ammessi, elencati nel riepilogo.
+
+    Verificato in qnet-2:
+    - `work-orders`, `quotes`, `opportunities`, `work-order-workflow-statuses`: `supportsUpdateExisting()` e riallineatori
+      `Legacy{WorkOrder,Quote,Opportunity}Realigner`. Le altre sorgenti saltano su `existsByOldId`.
+    - `quote_lines`, `purchase_request_lines`, `purchase_order_lines` hanno `old_id`; `work_order_costs`, `invoice_lines`,
+      `purchase_invoice_lines`, `work_order_stages`, `work_order_line_payments` no.
+    - `AbstractMigrationSource` e' a 450 righe, `QuotesSource` a 407, `OpportunitiesSource` a 377, `WorkOrdersSource` a 362.
+    - `openspout/openspout` e `phpoffice/phpspreadsheet` gia' in `composer.json`.
+    - Precedente: `quotes:realign-legacy-status --dry-run`.
+
+    Misure su copia locale del 9/11 (record gia' su qnet-2, dal 23/10): task 6.833, segnatempo 7.410 + 31 per sola giornata,
+    commesse 748, opportunita' 381, offerte 444 per attivita' legacy. Toccati su qnet-2: task 57, commesse 28, opportunita' 3,
+    offerta 1. Cancellati nel legacy e presenti su qnet-2: task 114, commesse 4, opportunita' 1.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: endpoint `changed-records/{source}`, parametro `only_ids` sugli endpoint delle 13 sorgenti, `updated_at` su `lines[]` e `cost_lines[]` delle offerte.</item>
+      <item>qnet-2: comando `migrations:realign-legacy` e classi in `App\Migrations\Realign\`.</item>
+      <item>qnet-2: un target per sorgente che riusa mappatura e riallineatori esistenti.</item>
+      <item>qnet-2: confronto che ignora `id` nei repeater (D-7) e nuova regola "toccato" solo per questo comando (D-8).</item>
+      <item>Report Excel a cinque fogli.</item>
+    </in>
+    <out>
+      <item>Creazione di record principali (D-5) e qualunque cancellazione (D-2).</item>
+      <item>Interfaccia in pagina Migrazioni: il comando e' solo da console.</item>
+      <item>Note, allegati, avanzamento commesse, cataloghi e configurazioni (prodotti, stati, utenti).</item>
+      <item>Ricalcolo provvigioni (D-15).</item>
+      <item>Righe e importi di fatture e fatture di acquisto (D-14).</item>
+      <item>Serie di ricorrenza dei task, promemoria (`TaskReminder`).</item>
+      <item>Modifica del comportamento della casella `update_existing` (spec 0372): la regola "toccato" nuova non si applica li'.</item>
+      <item>Correzione del dato a monte per `orderiso_details` e `orderiso_verificas` (senza date).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy, routes/apiV2-migration.php, gruppo migration) changed-records/{source}">
+      <request>Query: `since` (obbligatorio, `Y-m-d`). `{source}` e' una delle chiavi di sorgente di D-6.</request>
+      <response status="200">
+        `{ "source": string, "since": "Y-m-d", "changed": list, "deleted": list }`. Gli elementi sono gli `id` che l'endpoint
+        della sorgente invia come `id`; per `invoices` la stringa `{source}:{id}` con `source` in `proformas`, `proforma_ente`.
+        `changed` esclude gli id in `deleted`. `deleted` viene da `activity_log` evento `deleted` senza riga corrispondente.
+      </response>
+      <errors>401 token non valido. 404 sorgente sconosciuta. 422 `since` assente o non valido.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="(legacy) gli endpoint delle 13 sorgenti">
+      <request>Nuovo parametro facoltativo `only_ids`: id separati da virgola, massimo 100, stesso formato di `changed`. Con `only_ids`, `updated_since` e le righe orfane sono ignorati.</request>
+      <response status="200">Envelope e shape invariati. In `quotes`, aggiunta additiva di `updated_at` a ogni elemento di `lines[]` e `cost_lines[]`.</response>
+      <errors>422 piu' di 100 id o formato non valido.</errors>
+    </endpoint>
+
+    <command signature="migrations:realign-legacy">
+      <options>
+        `--since=` data `Y-m-d`, obbligatoria, nessun default.
+        `--apply` scrive; senza, simulazione con rollback di ogni record.
+        `--sources=` elenco separato da virgole, default tutte, nell'ordine: registries, referents, opportunities, quotes,
+        work-orders, work-order-workflow-statuses, tasks, time-entries, purchase-requests, purchase-orders, purchase-invoices,
+        proforma-requests, invoices.
+        `--output=` percorso del file, default `storage/app/private/realign/realign-{Ymd-His}-{dry|apply}.xlsx`.
+      </options>
+      <exit_codes>0 eseguito, anche con righe in errore (contate a video). 1 legacy non raggiungibile, opzioni non valide, sorgente sconosciuta.</exit_codes>
+      <output>
+        Fogli del file:
+        `Riepilogo`: per sorgente i contatori `changed_in_legacy`, `not_on_qnet2`, `aligned`, `unchanged`, `skipped_touched`, `failed`, `deleted_in_legacy`; poi stati `[OLD]` creati, offerte con importi cambiati, limite noto di D-6.
+        `Modifiche`: `module`, `legacy_id`, `qnet2_id`, `code_or_title`, `field`, `current_value`, `legacy_value`.
+        `Modificati su qnet-2`: `module`, `legacy_id`, `qnet2_id`, `code_or_title`, `last_change_at`, `last_change_by`, piu' il diff che sarebbe stato applicato.
+        `Cancellati nel legacy`: `module`, `legacy_id`, `qnet2_id`, `code_or_title`, `deleted_at`.
+        `Avvisi ed errori`: `module`, `legacy_id`, `level`, `message`.
+      </output>
+    </command>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un task diverso dal legacy, quando il comando gira senza `--apply`, allora il foglio Modifiche ha una riga per campo e il DB resta identico, `updated_at` compreso.</criterion>
+    <criterion id="AC-002">Dato lo stesso task, con `--apply` i campi sono aggiornati, `updated_at` e' quello legacy, nessuna voce di attivita', nessuna notifica, e il foglio Modifiche coincide con quello della simulazione.</criterion>
+    <criterion id="AC-003">Un secondo lancio con `--apply` non scrive nulla e conta tutto in `unchanged`.</criterion>
+    <criterion id="AC-004">Un id in `changed` senza record su qnet-2 non crea nulla e conta in `not_on_qnet2`.</criterion>
+    <criterion id="AC-005">Un record con voce di attivita' `updated` su qnet-2 non cambia e compare in `Modificati su qnet-2` col diff.</criterion>
+    <criterion id="AC-006">Un referente con la sola voce `created` dell'import non e' considerato toccato.</criterion>
+    <criterion id="AC-007">Un id in `deleted` lascia il record invariato e compare in `Cancellati nel legacy`.</criterion>
+    <criterion id="AC-008">Una commessa con le sole righe repeater uguali salvo `id` non genera differenze e non scrive.</criterion>
+    <criterion id="AC-009">Task: assegnatari e osservatori diversi sono allineati; `creator_id`, `parent_id`, `task_recurrence_id` non cambiano.</criterion>
+    <criterion id="AC-010">Segnatempo: cambio di minuti, orari, note o collegamenti allineato; `user_id` invariato; non si creano nuove righe.</criterion>
+    <criterion id="AC-011">Commessa: stato di pagamento, responsabili, partecipanti, fasi e campi flessibili allineati come spec 0372 AC-003, AC-006, AC-007, AC-008.</criterion>
+    <criterion id="AC-012">Offerta e opportunita': gestori, stato e contratto allineati come spec 0372 AC-011, AC-013, AC-014, AC-015, AC-016, AC-030.</criterion>
+    <criterion id="AC-013">Riga offerta con `updated_at` legacy dal 23/10 e prezzo diverso: aggiornata con totali ricalcolati. Riga con `updated_at` precedente e prezzo diverso: invariata.</criterion>
+    <criterion id="AC-014">Riga offerta nuova nel legacy: creata con `old_id`. Riga sparita: resta, avviso nel report. Riga gia' fatturata: invariata, avviso.</criterion>
+    <criterion id="AC-015">Costo con abbinamento unico aggiornato, assente creato, ambiguo solo avviso; costo manuale su qnet-2 invariato.</criterion>
+    <criterion id="AC-016">RDA e ODA: testata, stato e righe per `old_id` allineati; numero ODA invariato.</criterion>
+    <criterion id="AC-025">ODA evasa o parzialmente evasa con ricevimenti o fatture su qnet-2 e stato legacy precedente: stato invariato, altri campi allineati, avviso. Riga RDA ricevuta con stato legacy precedente: stato invariato, avviso.</criterion>
+    <criterion id="AC-017">Fattura: note, numero e data esterni e scadenze allineati; righe diverse non scritte, avviso.</criterion>
+    <criterion id="AC-018">Anagrafica e referente: dati allineati; un telefono vuoto nel legacy non svuota quello su qnet-2.</criterion>
+    <criterion id="AC-019">Utente non migrato tra le persone: record in errore, nessuna scrittura parziale, gli altri record proseguono.</criterion>
+    <criterion id="AC-020">`--since` assente o non valido, sorgente sconosciuta, legacy non raggiungibile: exit 1 e nessuna scrittura.</criterion>
+    <criterion id="AC-021">(Legacy, tinker) `changed-records/work-orders?since=2026-10-23` non contiene una commessa con il solo `orders.updated_at` recente.</criterion>
+    <criterion id="AC-022">(Legacy, tinker) `only_ids` restituisce solo quegli id; senza parametro il totale resta quello di oggi; `lines[]` e `cost_lines[]` hanno `updated_at`.</criterion>
+    <criterion id="AC-023">(Legacy, tinker) `deleted` contiene un task eliminato di cui resta la voce `deleted` in `activity_log`.</criterion>
+    <criterion id="AC-024">Il comando non cambia il comportamento della casella `update_existing`: la suite `tests/Feature/Migration` resta verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Excel con `openspout` (scrittura a flusso).</item>
+    <item>Legacy: nessun cambio di shape salvo l'aggiunta additiva di AC-022. Verifica con `php -l` e tinker. Pulizia e decisioni sui dati restano nel legacy (backend.md 9). Non toccare le modifiche locali dell'utente; git soggetto a CLAUDE.md 3.6.</item>
+    <item>Prerequisiti in produzione, in quest'ordine: dump completo del DB qnet-2; deploy del legacy con i controller modificati (inclusi quelli non committati della spec 0372); deploy di qnet-2 con la migrazione `2026_11_30_100000_add_update_existing_to_migration_runs_tables`; simulazione; revisione dell'Excel; `--apply`.</item>
+    <item>Autorizzazione: il comando si esegue solo da console sul server. Gli endpoint legacy stanno nel gruppo `migration`, con lo stesso token degli altri.</item>
+    <item>Il report contiene dati personali: resta sul server in `storage/app/private`, mai nei log. Il token non viene stampato.</item>
+    <item>Ogni record nella propria transazione. La regola "toccato" si rilegge subito prima di scrivere.</item>
+    <item>Niente servizi di dominio che notificano, chiudono task o ricalcolano premi. La simulazione e `--apply` usano lo stesso codice: cambia solo commit o rollback.</item>
+    <item>Test: Pest con `Http::fake` e fixture che rispecchiano il contratto legacy, su sqlite. Mai `migrate:fresh`, `rollback`, `db:seed` su `qnet2` e `qnet`; nei brief dei teammate il divieto va scritto in chiaro.</item>
+    <item>File: 300 soft, 500 hard. La logica nuova non entra in `AbstractMigrationSource` ne' nelle sorgenti oltre l'esposizione del riallineamento esistente.</item>
+    <item>Manuale: nessun impatto su guide e manuale utente, il comando non cambia menu, campi o flussi.</item>
+  </constraints>
+
+</spec>

@@ -41,7 +41,7 @@ class PurchaseInvoicesSource extends AbstractMigrationSource
 {
     use MapsLegacyOperationalRecord, RequiresLegacyAnchors;
 
-    private const int NUMBER_MAX = 30;
+    public const int NUMBER_MAX = 30;
 
     public function __construct(
         ExternalApiClient $client,
@@ -219,7 +219,7 @@ class PurchaseInvoicesSource extends AbstractMigrationSource
     /**
      * @param  array<string, mixed>  $record
      */
-    private function paidAt(array $record): string
+    public function paidAt(array $record): string
     {
         return ($this->legacyTimestamp($record['paid_at'] ?? null) ?? $this->legacyTimestamp($record['updated_at'] ?? null) ?? CarbonImmutable::now())->toDateString();
     }

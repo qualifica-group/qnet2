@@ -133,6 +133,17 @@ abstract class AbstractMigrationSource implements MigrationSource
      */
     abstract protected function processRow(MigrationImportContext $context, array $record): MigrationRowOutcome;
 
+    /**
+     * Realigns one record already imported, for a caller that has found it and
+     * handles the transaction itself (spec 0375). Requires an `update_existing` run.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    public function realignExistingRecord(MigrationImportContext $context, array $record): MigrationRowOutcome
+    {
+        return $this->processRow($context, $record);
+    }
+
     public function preview(MigrationQuery $query): MigrationPage
     {
         $payload = $this->fetchPage($query->page, $query->perPage);
