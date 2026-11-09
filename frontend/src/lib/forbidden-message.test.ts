@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
-import { apiErrorMessage, forbiddenMessage } from '@/lib/forbidden-message'
+import { apiErrorMessage, forbiddenMessage, refusedActionMessage } from '@/lib/forbidden-message'
 
 function httpError(status: number, data?: unknown): AxiosError {
   return new AxiosError('failed', undefined, undefined, undefined, { status, data } as AxiosResponse)
@@ -45,6 +45,17 @@ describe('forbiddenMessage', () => {
     expect(forbiddenMessage(new AxiosError('Network Error'), i18n)).toBeNull()
     expect(forbiddenMessage(new Error('boom'), i18n)).toBeNull()
     expect(forbiddenMessage('403', i18n)).toBeNull()
+  })
+})
+
+describe('refusedActionMessage', () => {
+  it('shows the reason of a refused write', () => {
+    expect(refusedActionMessage(httpError(409, { message: 'Stato in uso.' }), 'Errore', i18n)).toBe('Stato in uso.')
+  })
+
+  it('falls back on an empty 409 and on any other failure', () => {
+    expect(refusedActionMessage(httpError(409, { message: ' ' }), 'Errore', i18n)).toBe('Errore')
+    expect(refusedActionMessage(httpError(500, { message: 'Boom' }), 'Errore', i18n)).toBe('Errore')
   })
 })
 

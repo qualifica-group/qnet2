@@ -72,7 +72,7 @@ const guide: HelpGuide = {
             'Una nuova commessa parte dallo stato **Aperta** del set che le corrisponde.',
             'Una commessa può passare solo agli stati del set che le corrisponde in quel momento.',
             'Se le righe programmate della commessa cambiano e il set applicabile è un altro, lo stato resta se esiste anche nel nuovo set, altrimenti diventa lo stato fisso equivalente o **Aperta**.',
-            'Eliminando un set, le sue commesse passano al set corrispondente o agli stati di default.',
+            'Uno stato usato da una commessa, da un task o da una riga di un Modello di Task non si può eliminare, e nemmeno il set che lo contiene: prima sposta quei record su un altro stato.',
           ],
         },
         {

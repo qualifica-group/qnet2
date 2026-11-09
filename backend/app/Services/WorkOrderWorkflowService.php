@@ -6,11 +6,10 @@ namespace App\Services;
 
 use App\DataObjects\WorkOrderWorkflows\CreateWorkOrderWorkflowData;
 use App\DataObjects\WorkOrderWorkflows\UpdateWorkOrderWorkflowData;
-use App\Models\WorkOrder;
 use App\Models\WorkOrderWorkflow;
 use App\Models\WorkOrderWorkflowCriterion;
 use App\Models\WorkOrderWorkflowStatus;
-use App\Services\WorkOrders\WorkOrderWorkflowResolver;
+use App\Services\WorkOrderWorkflows\WorkOrderWorkflowStatusUsageGuard;
 use App\Services\WorkOrderWorkflows\WorkOrderWorkflowStatusWriter;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
@@ -20,17 +19,12 @@ use Illuminate\Support\Facades\DB;
  * 0322, D-6): create/update/delete of a workflow plus its criteria/statuses
  * child collections, and the global default status set. Twin of
  * QuoteWorkflowService.
- *
- * create()/update() only ever write THIS workflow's own rows; delete() uses
- * the resolver to re-resolve every work order left referencing one of the
- * deleted workflow's statuses — the SAME resolver the work order service
- * uses, never duplicated here.
  */
 class WorkOrderWorkflowService
 {
     public function __construct(
         private readonly WorkOrderWorkflowStatusWriter $statusWriter,
-        private readonly WorkOrderWorkflowResolver $resolver,
+        private readonly WorkOrderWorkflowStatusUsageGuard $statusUsageGuard,
     ) {}
 
     public function loadDetail(WorkOrderWorkflow $workflow): WorkOrderWorkflow
@@ -94,40 +88,14 @@ class WorkOrderWorkflowService
     }
 
     /**
-     * Deletes the workflow (cascading its criteria/statuses at the DB layer),
-     * after RE-RESOLVING every work order that referenced one of its
-     * statuses onto whatever set now applies to it, so none is left
-     * orphaned.
-     *
-     * `quoteLines.product` is eager-loaded UP FRONT: the resolver's own
-     * `resolve()` only `loadMissing()`s it, a query PER ROW otherwise.
+     * Deletes the workflow, cascading its criteria/statuses at the DB layer.
+     * Refused while one of its statuses is in use (spec 0377).
      */
     public function delete(WorkOrderWorkflow $workflow): void
     {
-        DB::transaction(function () use ($workflow): void {
-            $impactedIds = WorkOrder::query()
-                ->whereIn('work_order_workflow_status_id', $workflow->statuses()->pluck('id'))
-                ->pluck('id');
+        $this->statusUsageGuard->assertUnused($workflow->statuses()->get());
 
-            // Step 1: take the workflow out of the candidate set BEFORE
-            // reassigning, so the resolver cannot hand its work orders
-            // straight back to the workflow that is about to disappear.
-            $workflow->update(['is_active' => false]);
-            $this->resolver->forgetCaches();
-
-            // Step 2: move every impacted work order off the doomed status
-            // rows. This MUST precede the delete: the column is NOT NULL and
-            // `restrictOnDelete`, so the DB refuses to cascade the status rows
-            // away while a work order still points at one.
-            WorkOrder::query()
-                ->whereIn('id', $impactedIds)
-                ->with('quoteLines.product')
-                ->get()
-                ->each(fn (WorkOrder $workOrder) => $this->resolver->resolveAndAssign($workOrder));
-
-            // Step 3: nothing references the set any more.
-            $workflow->delete();
-        });
+        $workflow->delete();
     }
 
     /**

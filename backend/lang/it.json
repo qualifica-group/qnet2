@@ -241,6 +241,8 @@
     "This VAT rate is used by an agent fiscal profile.": "L'aliquota IVA è usata da un profilo fiscale agente.",
     "The documentation is being prepared, try again in a few seconds.": "La documentazione è in preparazione, riprova tra qualche secondo.",
     "A contract cannot be deleted manually.": "Un contratto non può essere eliminato manualmente.",
+    "These statuses are used by quotes and cannot be deleted: :statuses": "Questi stati sono usati da offerte e non si possono eliminare: :statuses",
+    "These statuses are used by work orders or tasks and cannot be deleted: :statuses": "Questi stati sono usati da commesse o task e non si possono eliminare: :statuses",
     "You cannot read the notes of this record.": "Non puoi leggere le note di questo record.",
     "You cannot edit the commissions of this quote.": "Non puoi modificare le commissioni di questo preventivo.",
     "You cannot program this contract: it is not validated, or it is suspended or closed negatively.": "Non puoi programmare questo contratto: non è validato, oppure è sospeso o chiuso negativo.",

@@ -240,24 +240,3 @@ it('falls back to the set open row when the quote has no current status', functi
 
     expect($target->id)->toBe($open->id);
 });
-
-// ---------------------------------------------------------------------------
-// resolveAndAssign()
-// ---------------------------------------------------------------------------
-
-it('resolveAndAssign() persists only quote_workflow_status_id, to the global open row absent any match', function () {
-    $quote = quoteForNewOpportunity();
-
-    workflowResolver()->resolveAndAssign($quote);
-
-    $globalOpen = QuoteWorkflowStatus::query()
-        ->whereNull('quote_workflow_id')
-        ->where('system_key', 'open')
-        ->sole();
-
-    expect($quote->quote_workflow_status_id)->toBe($globalOpen->id);
-    $this->assertDatabaseHas('quotes', [
-        'id' => $quote->id,
-        'quote_workflow_status_id' => $globalOpen->id,
-    ]);
-});

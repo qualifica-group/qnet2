@@ -88,7 +88,7 @@ const guide: HelpGuide = {
             'entrando in Chiuso con esito positivo nasce il contratto, salvo che la categoria abbia **Prevede un contratto** spento;',
             "se l'offerta esce da Chiuso con esito positivo, il contratto passa a **Sospeso** (non viene cancellato);",
             "se i dati dell'offerta cambiano, QNet ricalcola il workflow: lo stato resta se esiste anche nel nuovo, altrimenti diventa lo stato fisso equivalente o **Aperto**;",
-            'eliminando un workflow, le sue offerte passano al workflow corrispondente o agli stati di default.',
+            "uno stato usato da almeno un'offerta non si può eliminare, e nemmeno il workflow che lo contiene: prima sposta le offerte su un altro stato.",
           ],
         },
         {

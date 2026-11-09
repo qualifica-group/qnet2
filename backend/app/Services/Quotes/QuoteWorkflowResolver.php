@@ -18,8 +18,7 @@ use Illuminate\Support\Collection;
  * 0083 D-1/D-3): the SINGLE point that decides which QuoteWorkflow (or the
  * global default set, when null) applies to a Quote, and which
  * QuoteWorkflowStatus row it should carry — consumed by
- * QuoteService::create()/update() and, via resolveAndAssign(), by the
- * configurator's delete-reassign flow. Never duplicated at either call site.
+ * QuoteService::create()/update(). Never duplicated at either call site.
  *
  * Both `activeWorkflows()` (the domain-wide candidate set) and
  * `statusesFor()`'s result per workflow are memoized on THIS instance:
@@ -105,10 +104,7 @@ final class QuoteWorkflowResolver
     /**
      * Drops both memos so the next resolve() re-reads from the database.
      *
-     * Needed by the one caller that CHANGES the candidate set mid-request:
-     * QuoteWorkflowService::delete() deactivates the workflow before
-     * reassigning its quotes, and without this the reassignment would keep
-     * resolving onto the very workflow being removed.
+     * Needed by the request import, which adds statuses to a set mid-run.
      */
     public function forgetCaches(): void
     {
@@ -191,21 +187,6 @@ final class QuoteWorkflowResolver
         }
 
         return $open;
-    }
-
-    /**
-     * Resolve $quote's workflow/status and PERSIST only the
-     * `quote_workflow_status_id` column — the configurator's delete-reassign
-     * flow relies on this plain, note-free reassignment (never a user-driven
-     * advance, so QuoteWorkflowStatusWriter is never involved here).
-     */
-    public function resolveAndAssign(Quote $quote): void
-    {
-        $workflow = $this->resolve($quote);
-        $target = $this->targetStatus($quote, $workflow);
-
-        $quote->quote_workflow_status_id = $target->id;
-        $quote->save();
     }
 
     /**
