@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PASSWORD_CHANGE_REQUIRED_EVENT, UNAUTHORIZED_EVENT } from '@/api/client'
+import { isMaintenanceError } from '@/api/maintenance-state'
 import { tokenStorage } from '@/api/token-storage'
 import { applyLocale } from '@/i18n'
 import { fetchMe, login as loginRequest, logout as logoutRequest } from '@/features/auth/api'
@@ -62,11 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // and let ProtectedRoute redirect to /login. 401s are already handled by the
   // UNAUTHORIZED_EVENT below; this covers the other failures (5xx, network)
   // that would otherwise leave the app rendered with no authenticated user.
+  // Maintenance says nothing about the session (spec 0376): the token is kept.
+  const isMeInMaintenance = isMaintenanceError(meQuery.error)
   useEffect(() => {
-    if (token && meQuery.isError) {
+    if (token && meQuery.isError && !isMeInMaintenance) {
       void logout()
     }
-  }, [token, meQuery.isError, logout])
+  }, [token, meQuery.isError, isMeInMaintenance, logout])
 
   // Sync the UI language to the authenticated user's preferred locale.
   const userLocale = meQuery.data?.locale
@@ -97,14 +100,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user: meQuery.data ?? null,
       isAuthenticated: Boolean(token),
-      isInitializing: Boolean(token) && meQuery.isPending,
+      isInitializing: Boolean(token) && (meQuery.isPending || (isMeInMaintenance && !meQuery.data)),
       login,
       logout,
       impersonator,
       impersonate,
       stopImpersonation,
     }),
-    [token, meQuery.data, meQuery.isPending, login, logout, impersonator, impersonate, stopImpersonation],
+    [token, meQuery.data, meQuery.isPending, isMeInMaintenance, login, logout, impersonator, impersonate, stopImpersonation],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

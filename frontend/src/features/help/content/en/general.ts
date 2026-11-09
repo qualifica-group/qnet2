@@ -229,6 +229,7 @@ const guide: HelpGuide = {
             ["I closed a quote as won but don't see the contract.", 'The product category may have **Generates a contract** turned off. Check it in **Product Categories**.'],
             ["An operator doesn't receive assignments.", "Their user record is missing the assignment scope on the category or the site: the module flags it at the top with **Not assignable**."],
             ["I can't convert a lead.", 'The lead already has an opportunity, the campaign has no business function or category, or the registry already has an open opportunity.'],
+            ['The **Site under maintenance** screen appears.', 'Maintenance is in progress and access is temporarily suspended. There is no need to reload: the page checks by itself every few seconds, or press **Retry**. If you were filling in a form, you find it as you left it when maintenance ends, and your session stays valid.'],
             ['The quote PDF gives an error.', 'At least one active layout is needed for Quotes: check **Configuration › Documents › Layouts** and the **Default** layout.'],
             ["I don't receive the password reset email.", 'Check the spam folder; if the link expired, request a new one.'],
           ],

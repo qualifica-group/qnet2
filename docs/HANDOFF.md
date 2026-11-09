@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Manutenzione da env (spec 0376) (2026-11-09) — VERDE SUI TEST MIRATI, SUITE COMPLETE NON ESEGUITE, COMMITTATO
+
+- Richiesta utente: manutenzione solo da `.env`, con gli ID esclusi sempre in `.env`. Nessun attivatore su errore DB (scartato dall'utente).
+- `APP_MAINTENANCE_ENABLED`, `APP_MAINTENANCE_EXCLUDED_USER_IDS` (`users.id` separati da virgola) -> `config('app.maintenance.*')`. Con `config:cache` il cambio richiede di rigenerare la cache.
+- Backend: `App\Support\Maintenance\MaintenanceMode`, middleware `EnsureNotInMaintenance` (gruppo `api`, dopo `SetLocale`), `GET /api/availability`, controllo in `AuthService::login`. Risposta 503 `{ success:false, message, maintenance:true }`. Aperti `api/config` e `api/auth/login`, per far accedere gli esclusi senza sessione.
+- Frontend: `api/maintenance-state.ts`, interceptor in `api/client.ts`, `features/maintenance/` (`MaintenanceGate` sovrapposta all'app, poll 15 s), `AuthProvider` non chiude la sessione sul 503 col marker, namespace i18n `maintenance`.
+- Verificato: Pest 276/276 (`tests/Feature/{ApiClients,Auth,Config,System}`), Vitest 231/231 (`features/{maintenance,auth,config,help}`, `api`), Pint, ESLint, `tsc -b --force`. Guida generale IT/EN e manuale Claude Docs aggiornati (FAQ).
+- DA FARE: suite complete backend e frontend, interrotte su richiesta utente per un'altra sessione in corso. La backend si era fermata al timeout Composer di 300 s: rilanciarla con `COMPOSER_PROCESS_TIMEOUT=0`.
+
 ## Ripristino workflow Orientamento specialistico (2026-11-09) — VERDE SUI TEST DEL SEEDER, NON COMMITTATO, MAI ESEGUITO SU DATI REALI
 
 - Incidente: il 9/11 alle 17:05 (ora italiana) il workflow #20 "Orientamento specialistico" e' stato eliminato e sostituito dal #33. `QuoteWorkflowService::delete` -> `QuoteWorkflowResolver::resolveAndAssign` ha portato 74 richieste sullo stato iniziale, senza voce nel log. Le voci "di Ciro" sono quelle dell'import dell'8/11. Gli altri 5 file importati non sono stati toccati.

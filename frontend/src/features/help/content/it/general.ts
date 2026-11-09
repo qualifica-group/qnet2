@@ -229,6 +229,7 @@ const guide: HelpGuide = {
             ['Ho chiuso positivamente un’offerta ma non vedo il contratto.', 'La categoria prodotto può avere **Prevede un contratto** spento. Verificalo in **Categorie Prodotto**.'],
             ['Un operatore non riceve assegnazioni.', 'Nella sua scheda utente mancano l’ambito di assegnazione sulla categoria o la sede: in alto il modulo lo segnala con **Non assegnabile**.'],
             ['Non posso convertire un lead.', 'Il lead ha già un’opportunità, la campagna non ha funzione aziendale o categoria, oppure l’anagrafica ha già un’opportunità aperta.'],
+            ['Compare la schermata **Sito in manutenzione**.', 'È in corso un intervento di manutenzione e l’accesso è temporaneamente sospeso. Non serve ricaricare: la pagina controlla da sola ogni pochi secondi, oppure premi **Riprova**. Se stavi compilando un form, al termine lo ritrovi com’era e la sessione resta valida.'],
             ['Il preventivo PDF dà errore.', 'Serve almeno un layout attivo per i Preventivi: controlla **Configurazione › Documenti › Layout** e il layout **Predefinito**.'],
             ['Non ricevo la mail di reset password.', 'Controlla la cartella spam; se il link è scaduto, richiedine uno nuovo.'],
           ],

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0376-env-maintenance-mode" status="approved" owner="nicola" date="2026-11-09">
+
+  <goal>
+    Il sito si mette in manutenzione da `.env`, con un elenco di utenti, sempre da `.env`, che continuano a lavorare.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-09: attivazione solo da env. Nessun attivatore automatico su errore di connessione al DB.
+    D-2 `APP_MAINTENANCE_ENABLED` accende la manutenzione; `APP_MAINTENANCE_EXCLUDED_USER_IDS` e' l'elenco, separato da virgole,
+        degli `users.id` esclusi. Un valore non numerico viene ignorato: non esclude nessuno.
+    D-3 Il blocco e' un middleware del gruppo `api`, subito dopo `SetLocale`. Con l'elenco vuoto non legge il DB.
+    D-4 Restano aperti `GET /api/config` e `POST /api/auth/login`, altrimenti un escluso senza sessione non potrebbe accedere.
+        Il login verifica prima le credenziali: password errata = risposta consueta, password giusta di un non escluso = 503,
+        senza token e senza registrare l'accesso.
+    D-5 Un token di impersonificazione passa anche se e' escluso l'utente che impersona (`impersonated_by`).
+    D-6 Il frontend riconosce il 503 dal marker `maintenance: true`: il 503 del timeout query (senza marker) resta un errore normale.
+    D-7 La schermata si sovrappone all'app senza smontarla, cosi' un form aperto non perde i dati, e controlla `GET /api/availability`
+        ogni 15 secondi. Un 503 di manutenzione su `me` non chiude la sessione.
+    D-8 `php artisan down` resta il meccanismo nativo di Laravel, fuori da questa spec.
+  </context>
+
+  <scope>
+    <in>
+      <item>`config/app.php`, `.env.example`, `MaintenanceMode`, middleware `EnsureNotInMaintenance`, `AvailabilityController`, `AuthService::login`.</item>
+      <item>Stato `api/maintenance-state.ts`, interceptor axios, `MaintenanceGate`, `AuthProvider`, namespace i18n `maintenance`.</item>
+      <item>Guida generale IT/EN e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Attivatore su errore DB (D-1), attivazione da interfaccia, banner per gli utenti esclusi.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    `GET /api/availability` pubblico: 200 `{ success: true, message, data: null }` se il chiamante puo' lavorare.
+    Qualsiasi endpoint `api/*` bloccato: 503 `{ success: false, message, maintenance: true }`.
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">A manutenzione spenta `GET /api/availability` risponde 200.</criterion>
+    <criterion id="AC-002">A manutenzione accesa un ospite riceve 503 col marker, anche su una rotta protetta (non 401).</criterion>
+    <criterion id="AC-003">A manutenzione accesa `GET /api/config` resta 200.</criterion>
+    <criterion id="AC-004">Un token di un utente escluso passa, quello di un non escluso riceve 503.</criterion>
+    <criterion id="AC-005">Un escluso fa login; un non escluso con password giusta riceve 503, nessun token, nessun `last_login_at`.</criterion>
+    <criterion id="AC-006">Una password errata riceve la risposta consueta anche in manutenzione.</criterion>
+    <criterion id="AC-007">Un token impersonato da un utente escluso passa.</criterion>
+    <criterion id="AC-008">Con l'elenco vuoto la richiesta non legge il DB.</criterion>
+    <criterion id="AC-009">Il frontend mostra la schermata sul 503 col marker, non su un 503 senza marker.</criterion>
+    <criterion id="AC-010">Quando `availability` torna 200 la schermata sparisce e i figli restano montati.</criterion>
+    <criterion id="AC-011">Un 503 di manutenzione su `me` non chiude la sessione.</criterion>
+  </acceptance>
+</spec>

@@ -28,6 +28,7 @@ use App\Http\Controllers\ReferentTypes\ReferentTypeForSelectController;
 use App\Http\Controllers\Roles\RoleController;
 use App\Http\Controllers\Roles\RoleForSelectController;
 use App\Http\Controllers\Stats\StatsController;
+use App\Http\Controllers\System\AvailabilityController;
 use App\Http\Controllers\System\PresenceHeartbeatController;
 use App\Http\Controllers\System\SystemHealthController;
 use App\Http\Controllers\Table\TableController;
@@ -51,6 +52,7 @@ use Illuminate\Support\Facades\Route;
 // The exposed surface is a fixed server-side allowlist (config/config.php),
 // never request input, so no arbitrary class can be reflected. See ADR 0008.
 Route::get('config', [ConfigController::class, 'index']);
+Route::get('availability', AvailabilityController::class); // Spec 0376.
 
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
