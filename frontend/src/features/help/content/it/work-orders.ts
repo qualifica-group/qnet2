@@ -445,7 +445,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "La pagina **Commesse** mostra solo le commesse di **lavorazione**. Le commesse di tipo **Progetto** stanno in **Commesse di Progetto** (stesso gruppo **Lavorazioni**), con la colonna **Non letti** e la tab **Chat** nel dettaglio: vedi la guida **Commesse di Progetto**. Dentro un **Contratto** e un'**Anagrafica**, le sezioni **Commesse** mostrano ancora le commesse di tutti i tipi.",
+          text: "La pagina **Commesse** mostra solo le commesse di **lavorazione**. Le commesse di tipo **Progetto** hanno una pagina propria, **Commesse di Progetto**, con la colonna **Non letti** e la tab **Chat** nel dettaglio; per ora quella pagina non compare nel menu. Dentro un **Contratto** e un'**Anagrafica**, le sezioni **Commesse** mostrano ancora le commesse di tutti i tipi: da lì trovi anche quelle di progetto.",
         },
         {
           type: 'note',

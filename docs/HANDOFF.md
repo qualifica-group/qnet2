@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## "Commesse di Progetto" nascosta dal menu (2026-11-09) — VERDE, NON COMMITTATO
+
+- Richiesta utente, temporanea. Voce con `feature` => `navigation.project_work_orders_enabled` (env `NAVIGATION_PROJECT_WORK_ORDERS_ENABLED`, default false). Per riattivarla: env a true. Rotta `/project-work-orders`, griglia, permessi e guida restano; la guida sparisce dall'elenco insieme alla voce.
+- Nel frattempo le commesse di tipo Progetto si vedono solo dalle sezioni Commesse di Contratto e Anagrafica, o via URL diretto. Il catalogo voci degli spazi di lavoro continua a elencarla (non filtra `feature`, come per l'assistente AI), ma non compare comunque nel menu.
+- Spec 0359 AC-016, guide IT/EN `work-orders` e manuale Claude Docs aggiornati. DA FARE: rigenerare il PDF del manuale.
+
 ## Riallineamento dal legacy dei record gia' importati (spec 0372) (2026-11-09) — VERDE SULLA SPEC, NON COMMITTATO, MIGRAZIONE NON APPLICATA
 
 - Richiesta utente. Casella "Aggiorna anche i record gia' importati" (`update_existing`, spenta) nell'import singolo di `work-orders`, `quotes`, `opportunities`, `work-order-workflow-statuses` e in "Importa tutto"; contatore `updated_rows`; `supports_update_existing` su `GET /migrations`. I contratti seguono le offerte.

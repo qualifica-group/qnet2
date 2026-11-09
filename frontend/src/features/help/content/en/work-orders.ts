@@ -445,7 +445,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Work Orders** page shows only **processing** work orders. Work orders of type **Project** live in **Project Work Orders** (same **Operations** group), with the **Unread** column and the **Chat** tab in the detail: see the **Project Work Orders** guide. Inside a **Contract** and a **Registry**, the **Work orders** sections still show work orders of every type.',
+          text: 'The **Work Orders** page shows only **processing** work orders. Work orders of type **Project** have their own page, **Project Work Orders**, with the **Unread** column and the **Chat** tab in the detail; for now that page does not appear in the menu. Inside a **Contract** and a **Registry**, the **Work orders** sections still show work orders of every type: you can reach project work orders from there.',
         },
         {
           type: 'note',

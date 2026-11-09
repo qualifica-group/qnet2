@@ -113,8 +113,9 @@ it('0299 AC-003: shows the six modules and the proforma requests in the menu nex
     // REQUIREMENT CHANGED (2026-10-27): seeing opportunities and quotes opens the request modules.
     // REQUIREMENT CHANGED (spec 0359 D-1/D-2): project work orders left /work-orders for their own
     // entry, gated by the same work-orders.view, so the role keeps seeing them there.
+    // REQUIREMENT CHANGED (2026-11-09): that entry is hidden while its navigation switch is off.
     expect(visibleRoutes(commercialBackOfficeUser()))->toEqualCanonicalizing([
-        '/dashboard', '/opportunities', '/quotes', '/work-orders', '/project-work-orders', '/tasks', '/time-entries', '/absences',
+        '/dashboard', '/opportunities', '/quotes', '/work-orders', '/tasks', '/time-entries', '/absences',
         '/registries', '/referents', '/contracts', '/proforma-requests', '/request-management', '/enrollee-management',
     ]);
 });
