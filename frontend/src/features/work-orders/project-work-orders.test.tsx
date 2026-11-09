@@ -57,7 +57,8 @@ describe('work orders pages (spec 0359)', () => {
     )
 
     expect(screen.getByRole('region', { name: 'table-work-orders-processing' })).toBeInTheDocument()
-    expect(screen.getByRole('tablist', { name: 'categories' })).toBeInTheDocument()
+    // REQUIREMENT CHANGED (user decision 2026-11-09): the category strip is temporarily disabled.
+    expect(screen.queryByRole('tablist', { name: 'categories' })).not.toBeInTheDocument()
   })
 
   it('"Commesse di Progetto" mounts the project-work-orders grid, unscoped and without the category strip', () => {

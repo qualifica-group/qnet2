@@ -89,7 +89,8 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-describe('WorkOrdersTable category tabs (spec 0335 AC-027)', () => {
+// REQUIREMENT CHANGED (user decision 2026-11-09): the strip is temporarily disabled; re-enable with it.
+describe.skip('WorkOrdersTable category tabs (spec 0335 AC-027)', () => {
   it('shows "All" plus one tab per category with its count, read from /work-orders', async () => {
     renderTable()
 

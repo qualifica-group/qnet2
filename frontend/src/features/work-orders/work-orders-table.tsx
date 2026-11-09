@@ -1,9 +1,10 @@
 import { useCallback, useRef, type ReactNode } from 'react'
 import { PageHeader } from '@/components/page-header'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
-import { CategoryTabs } from '@/features/category-tabs/category-tabs'
-import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
-import type { CategoryTabSource } from '@/features/category-tabs/types'
+// Category strip temporarily disabled 2026-11-09: its counts overloaded production.
+// import { CategoryTabs } from '@/features/category-tabs/category-tabs'
+// import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
+// import type { CategoryTabSource } from '@/features/category-tabs/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { TableConfigScope } from '@/features/table/use-table-config'
 import type { TableRowScope } from '@/features/table/types'
@@ -11,7 +12,7 @@ import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 
-const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: WORK_ORDERS_DOMAIN, apiBasePath: `/${WORK_ORDERS_DOMAIN}` }
+// const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: WORK_ORDERS_DOMAIN, apiBasePath: `/${WORK_ORDERS_DOMAIN}` }
 
 /** Only the "Commesse" page lists `processing` work orders: project ones live under "Commesse di Progetto" (spec 0359 D-2). */
 const PROCESSING_ROW_SCOPE: TableRowScope = { workOrderType: 'processing' }
@@ -100,16 +101,16 @@ export function WorkOrdersGrid({ domain, rowScope, scope, tableKey, onMutated, s
  * category strip above it (spec 0335 rev.3) scoping its rows to the source offers' revenue categories.
  */
 export function WorkOrdersTable() {
-  const { scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
+  // const { scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
 
   return (
     <WorkOrdersGrid
       domain={WORK_ORDERS_DOMAIN}
       rowScope={PROCESSING_ROW_SCOPE}
-      scope={scope}
-      tableKey={tableKey}
-      onMutated={invalidateCategories}
-      strip={<CategoryTabs {...tabsProps} />}
+      // scope={scope}
+      // tableKey={tableKey}
+      // onMutated={invalidateCategories}
+      // strip={<CategoryTabs {...tabsProps} />}
     />
   )
 }

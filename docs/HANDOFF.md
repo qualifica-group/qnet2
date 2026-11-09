@@ -3,7 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Dashboard: pannello statistiche Task spento temporaneamente (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+## Linguette categoria spente temporaneamente (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+
+- Emergenza produzione, decisione utente: hook `useCategoryTabStrip` e `<CategoryTabs>` COMMENTATI in `opportunities-table`, `quotes-table`,
+  `contracts-table` e `work-orders-table` (deroga temporanea alla regola sul dead code). Nessuna chiamata a `{grid}/product-categories`
+  e alle preferenze; `scope`/`tableKey` commentati, quindi la griglia mostra tutti i record anche con una categoria salvata nel browser.
+- Gestione Richieste ha un resolver suo e NON e' stata toccata.
+- Test: 4 file `*-table-category-tabs.test.tsx` in `describe.skip` (20 test), `project-work-orders.test` aggiornato (REQUIREMENT CHANGED).
+  Guide `category-tabs` IT/EN con nota "temporaneamente disattivata" in cima (testo originale intatto, togliere solo la nota).
+  Vitest moduli toccati 1496 passati, 20 saltati; ESLint e `tsc -b --force` puliti.
+- Per ripristinare: togliere i commenti, `invalidateCategories` nelle dipendenze dei `useCallback`, `describe.skip` e le note. Cura vera
+  proposta: cache condivisa per chi ha visibilita' completa (`GridCategoryTabsResolver`, chiave oggi per utente).
+
+## Dashboard: pagina vuota, nessuna lettura di dati (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+
+- Emergenza produzione, decisione utente: `DashboardScreen` non monta piu' alcun blocco, `/dashboard` non fa chiamate dati.
+- Motivo residuo: il ramo squadra/sede di `TaskVisibilityScope::scopeToActor` resta in `OR` e fa ancora scansione completa di `tasks`
+  (query dei riquadri per l'utente 14, responsabile). Da portare nella `UNION` di `membershipTaskIds()`, poi misurare su MySQL reale.
+- I file dei blocchi (`dashboard-*-section`, `use-dashboard-task-counters`, `api.ts`) e `GET /api/dashboard/tasks` restano, non montati e
+  non chiamati: dead code temporaneo, da ripristinare da `git` o cancellare quando l'utente decide.
+- `dashboard-screen.test.tsx` riscritto (REQUIREMENT CHANGED, sostituisce AC-011 della spec 0151); guide IT/EN `dashboard` e `general`
+  aggiornate. Vitest dashboard + help verdi, ESLint e `tsc -b --force` puliti. Manuale Claude Docs da allineare se dura.
+
+## Dashboard: pannello statistiche Task spento temporaneamente (2026-11-09) — COMMITTATO
 
 - Emergenza produzione: `dashboard-tasks-section.tsx` aveva `ModuleStatsPanel domain="tasks"` sempre aperto (`GET /api/stats/tasks`,
   almeno 8 aggregati per utente). Decisione utente: riga e import COMMENTATI, deroga temporanea alla regola sul dead code e alla spec 0151.

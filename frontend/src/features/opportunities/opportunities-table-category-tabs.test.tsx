@@ -109,7 +109,8 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-describe('OpportunitiesTable category tabs (spec 0335 AC-014)', () => {
+// REQUIREMENT CHANGED (user decision 2026-11-09): the strip is temporarily disabled; re-enable with it.
+describe.skip('OpportunitiesTable category tabs (spec 0335 AC-014)', () => {
   it('shows "All" plus one tab per category with its count, read from /opportunities', async () => {
     renderTable()
 
@@ -144,7 +145,7 @@ describe('OpportunitiesTable category tabs (spec 0335 AC-014)', () => {
   })
 })
 
-describe('OpportunitiesTable category tabs refresh (spec 0335 AC-017)', () => {
+describe.skip('OpportunitiesTable category tabs refresh (spec 0335 AC-017)', () => {
   it('re-reads the counts after a grid mutation (a write in the notes dialog)', async () => {
     renderTable()
     await screen.findByRole('tab', { name: /ISO 9001/ })

@@ -84,7 +84,8 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-describe('ContractsTable category tabs (spec 0335 AC-023)', () => {
+// REQUIREMENT CHANGED (user decision 2026-11-09): the strip is temporarily disabled; re-enable with it.
+describe.skip('ContractsTable category tabs (spec 0335 AC-023)', () => {
   it('shows "All" plus one tab per category with its count, read from /contracts', async () => {
     renderTable()
 
@@ -119,7 +120,7 @@ describe('ContractsTable category tabs (spec 0335 AC-023)', () => {
   })
 })
 
-describe('ContractsTable category tabs refresh (spec 0335 AC-023)', () => {
+describe.skip('ContractsTable category tabs refresh (spec 0335 AC-023)', () => {
   it('re-reads the counts after a save from the detail', async () => {
     renderTable()
     await screen.findByRole('tab', { name: /ISO 9001/ })

@@ -109,6 +109,7 @@ const guide: HelpGuide = {
       id: 'category-tabs',
       title: "Filtrare per categoria prodotto",
       blocks: [
+        { type: 'note', text: "La barra delle categorie è temporaneamente disattivata: l'elenco mostra tutte le offerte. Usa la ricerca e i filtri dell'elenco." },
         {
           type: 'paragraph',
           text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di offerte. Cliccando una tab l'elenco mostra solo le offerte di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
