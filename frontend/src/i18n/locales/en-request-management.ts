@@ -20,6 +20,7 @@ export const requestManagement = {
     expectedCloseDate: 'Expected close date',
     operator: 'Operator',
     managerGa1: 'Tutor',
+    managerGa5: 'APL operator',
     managers: 'Account managers',
     operationalSite: 'Operational site',
     firstName: 'First name',

@@ -112,6 +112,8 @@ final class RequestRowMapper
             // and it needs none: the team is eager-loaded by the definition
             // for the whole page, so this costs no per-row query.
             'manager_ga1' => $this->userSummary($this->managerAt($row, ManagerPositions::GA1)),
+            // Spec 0373 D-10: "Operatore APL", same pivot read as the GA1.
+            RequestManagerColumns::GA5_COLUMN_ID => $this->userSummary($this->managerAt($row, ManagerPositions::GA5)),
             // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
             // FK — the site has no own name, so its label is composed
             // server-side from its primary address.

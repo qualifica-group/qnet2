@@ -10,6 +10,23 @@
 - Le larghezze fisse dei chiamanti (`contentClassName`: `PRODUCT_POPUP_WIDTH_CLASS`, `CATEGORY_POPUP_WIDTH_CLASS`, `TASK_TEMPLATE_POPUP_WIDTH_CLASS`) vincono ancora: non cambiate.
 - Da verificare nel browser (non provato, solo test e CSS generato): la larghezza varia mentre si digita nella ricerca, perche' segue le opzioni visibili; negli editor di griglia un testo caricato in ritardo su una cella vicina al bordo destro puo' essere tagliato dal bordo della griglia (AG Grid riposiziona il popup solo per 200 ms). Manuale: nessun impatto.
 
+## Gestione Richieste/Iscritti: colonna Operatore APL (spec 0373 D-10) (2026-11-09) — NON COMMITTATO
+
+- Richiesta utente: colonna APL come Operatore e Tutor. Posizione 5 di `quote_user` (`ManagerPositions::GA5`, etichetta `manager_labels[5]` di Formazione). Colonna `manager_ga5` (`RequestManagerColumns::GA5_COLUMN_ID`), visibile dopo il Tutor, larghezza 177, ordinabile, filtro set con "Vuoti", editabile, rinominata per tab. Chiave permesso propria `manager_ga5_id`: la riga della matrice ruoli e' indipendente da `manager_slots`. Scrittura `RequestOperatorWriter::applyGa5` (corpo condiviso con `applyGa1` in `applySingleSlot`), nessuna notifica.
+- Intestazione predefinita "Operatore APL" / "APL operator" (`requestManagement.columns.managerGa5`). Nessuna azione massiva di assegnazione (fuori scope). `RequestManagementTableDefinition.php` non toccato: resta a 500 righe.
+- REQUIREMENT CHANGED: `RequestManagementDefaultColumnsTest` (diciassette colonne visibili). Nuovo `RequestManagementManagerGa5ColumnTest`. Non provato nel browser.
+- Guide IT/EN Gestione Richieste e manuale Claude Docs aggiornati. DA FARE: rigenerare il PDF del manuale.
+
+## Gestione Richieste/Iscritti: visibilita' per team e colonna Gestori account (spec 0373) (2026-11-09) — VERDE SULLA SPEC, NON COMMITTATO
+
+- Richiesta utente. In `RequestManagementScope` il livello "proprie" e' il team: Operatore (`operator_id`), Supervisore (`supervisor_id`), Gestori di ogni posizione (`quote_user`). Il Supervisore supera la INV-5 della spec 0087 per la sola visibilita'. `isOperatorOf` -> `isOnTeamOf` (statico). Apre la riga, non concede azioni. Allineati menzioni (`RequestManagementNotable::teamMemberIds`), azione Note nelle griglie Offerte e Opportunita' (`widensRequestScope` ora vale per ogni attore non `viewAll`), messaggio di diniego in `lang/it.json`.
+- Colonna `managers` (`RequestManagerColumns::MANAGERS_COLUMN_ID`) visibile, pila di avatar, filtro set a qualunque posizione (`RequestManagerSlotColumn`, posizione null = tutto il team), non ordinabile, editabile dalla cella. Condivide la chiave `manager_slots` con la cella Operatore: `WritesInlineEditableCells` distingue dal valore (lista = team, id singolo = slot 2). `RequestTeamCellWriter` passa da `UpdateRequestRequest` via `FormRequestCellValidator`, che accetta ora `routeDefaults` per portare il modulo.
+- `RequestManagementTableDefinition.php` e' a 500 righe, il limite duro: la prossima aggiunta richiede uno split. `RequestManagementScope.php` resta oltre il soft limit.
+- REQUIREMENT CHANGED: `RequestManagementDefaultColumnsTest` (sedici colonne visibili). Nuovi `RequestTeamVisibilityTest`, `RequestManagersColumnTest`.
+- Verifica: RequestManagement 936/936, EnrolleeManagement 92/92, Vitest request-management + help + i18n 925/925, Pint, ESLint, `tsc -b --force` puliti. Suite backend completa 14.314/14.332: 17 rossi fuori dal perimetro (LibreOffice assente, AI assistant, seeder Qualifica, catalogo permessi, management control, `TableBulkDeleteTest`, `SettlementApprovalTest`, `EmploymentProductLineTest`), identici nella corsa prima della colonna; non confrontati con un albero pulito. Non provato nel browser.
+- Con `composer test` serve `COMPOSER_PROCESS_TIMEOUT=0` (la suite supera i 300 s di Composer); con altro carico sulla macchina un worker puo' cadere per il limite di 150 s.
+- Guide IT/EN Gestione Richieste e Iscritti e manuale Claude Docs aggiornati. DA FARE: rigenerare il PDF del manuale.
+
 ## Descrizione aggiuntiva sulle righe di costo dell'offerta (2026-11-09) — VERDE MIRATO
 
 - Richiesta utente. `QuoteCostsTab` monta nel `footer` della card lo stesso `QuoteLineAdditionalDescription` della scheda Offerta. Contratto e backend invariati: `cost_lines.*.additional_description` era gia' accettato, salvato e mostrato in sola lettura. Spec 0269 AC-014.

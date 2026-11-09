@@ -12,10 +12,10 @@ use App\Support\ManagerPositions;
 /**
  * Writes an offer's Gestori Account from the request-management module —
  * apply() moves the GA2 "Operatore" slot alone (the grid cell, the bulk
- * assign, the transfer), applyGa1() the GA1 slot alone (its own grid cell,
- * direttiva utente 2026-09-07), applySlots() replaces the WHOLE team (the
- * work panel, spec 0097). All three funnel into the same single writer, so
- * the channels can never grow divergent rules.
+ * assign, the transfer), applyGa1() and applyGa5() one other slot alone (their
+ * own grid cells, direttiva utente 2026-09-07 and spec 0373 D-10), applySlots()
+ * replaces the WHOLE team (the work panel, spec 0097). All of them funnel into
+ * the same single writer, so the channels can never grow divergent rules.
  *
  * apply() (spec 0087, D-9) moves the `quote_user` OPERATOR slot
  * (`App\Support\ManagerPositions::OPERATOR`) onto the given user and lets
@@ -54,6 +54,9 @@ final class RequestOperatorWriter
      * reads with the vocabulary the write channel used.
      */
     private const string GA1_FIELD = 'manager_ga1_id';
+
+    /** The same wire-facing key for the "Operatore APL" slot (spec 0373 D-10). */
+    private const string GA5_FIELD = 'manager_ga5_id';
 
     public function __construct(private readonly QuoteManagerWriter $managerWriter) {}
 
@@ -113,17 +116,37 @@ final class RequestOperatorWriter
      */
     public function applyGa1(Quote $quote, ?int $userId, array &$changed, array &$old): void
     {
-        $current = $this->currentPositions($quote)[ManagerPositions::GA1] ?? null;
+        $this->applySingleSlot($quote, ManagerPositions::GA1, self::GA1_FIELD, $userId, $changed, $old);
+    }
+
+    /**
+     * The "Operatore APL" slot alone (spec 0373 D-10), on the terms of applyGa1().
+     *
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    public function applyGa5(Quote $quote, ?int $userId, array &$changed, array &$old): void
+    {
+        $this->applySingleSlot($quote, ManagerPositions::GA5, self::GA5_FIELD, $userId, $changed, $old);
+    }
+
+    /**
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    private function applySingleSlot(Quote $quote, int $position, string $field, ?int $userId, array &$changed, array &$old): void
+    {
+        $current = $this->currentPositions($quote)[$position] ?? null;
 
         if ($current === $userId) {
             return;
         }
 
-        $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, ManagerPositions::GA1, $userId), promoteToOpportunity: true);
+        $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, $position, $userId), promoteToOpportunity: true);
         $quote->unsetRelation('managers');
 
-        $old[self::GA1_FIELD] = $current;
-        $changed[self::GA1_FIELD] = $userId;
+        $old[$field] = $current;
+        $changed[$field] = $userId;
     }
 
     /**

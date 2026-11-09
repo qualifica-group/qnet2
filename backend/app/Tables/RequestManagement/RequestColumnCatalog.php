@@ -94,6 +94,7 @@ final class RequestColumnCatalog
         'general_notes' => 239,
         'source' => 127,
         RequestManagerColumns::GA1_COLUMN_ID => 177,
+        RequestManagerColumns::GA5_COLUMN_ID => 177,
         RequestManagerColumns::MANAGERS_COLUMN_ID => 140,
     ];
 
@@ -104,7 +105,7 @@ final class RequestColumnCatalog
      * visible columns, in this order: Categoria prodotto, Operatore, Stato di
      * lavorazione, Prossimo richiamo, Linee di prodotto, Nome, Cognome,
      * Ragione sociale, Telefono, Email, Partita IVA, Codice fiscale, Note
-     * generali, Fonte, Tutor (GA1). Every other column is
+     * generali, Fonte, Tutor (GA1), Operatore APL (GA5). Every other column is
      * declared after them with `visible: false` — still in the column chooser,
      * never removed — and the category tab's `attr.*` columns follow the whole
      * catalogue (RequestManagementScopedTableDefinition), as before.
@@ -298,6 +299,7 @@ final class RequestColumnCatalog
             // "Fonte"); see RequestManagerColumns for how it differs from the
             // Operatore slot.
             RequestManagerColumns::column(RequestManagerColumns::GA1_COLUMN_ID),
+            RequestManagerColumns::column(RequestManagerColumns::GA5_COLUMN_ID),
             RequestManagerColumns::column(RequestManagerColumns::MANAGERS_COLUMN_ID),
             // ----- Hidden by default (direttiva utente 2026-09-17) -----
             // "Richieste di modifica in attesa" (spec 0078, AC-037): a

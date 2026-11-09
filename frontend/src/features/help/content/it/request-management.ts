@@ -52,6 +52,7 @@ const guide: HelpGuide = {
             ['Richieste di modifica', 'Proposte di modifica ancora in attesa.'],
             ['Linee di prodotto', "Prodotti presenti nell'offerta; la cella apre l'editor con il catalogo prodotti."],
             ['Operatore', 'Persona che lavora la richiesta.'],
+            ['Operatore APL', 'Il Gestore account in quinta posizione del team. Si ordina e si filtra per nome e si modifica dalla cella.'],
             ['Gestori account', 'Tutte le persone del team, operatore compreso. Si filtra per nome e si modifica dalla cella.'],
             ['Sede operativa', 'Sede a cui è assegnata la richiesta.'],
             ['Prossimo richiamo', 'Data della prossima chiamata al cliente.'],

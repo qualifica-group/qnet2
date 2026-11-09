@@ -26,6 +26,11 @@
         Il valore distingue le due scritture: un elenco e' il team, un singolo id e' lo slot Operatore (spec 0097 D-3b).
     D-9 La scrittura segue le regole del form: `ManagerPositions::slotsFor` e `UpdateRequestRequest` tramite
         `FormRequestCellValidator`, con il modulo della riga (la rotta fittizia della cella non lo porta da sola).
+    D-10 Richiesta utente 2026-11-09: colonna "Operatore APL" in entrambi i moduli, come Operatore e Tutor. E' la posizione 5
+        di `quote_user` (`manager_labels[5]` di Formazione, HANDOFF import DIL Lombardia). Colonna `manager_ga5`, gemella di
+        `manager_ga1`: visibile dopo il Tutor, ordinabile, filtro set per nome con "Vuoti", modificabile dalla cella,
+        intestazione rinominata per tab da `manager_labels[5]`, chiave permesso propria `manager_ga5_id`, nessuna notifica.
+        Fuori scope: azione massiva di assegnazione.
   </context>
 
   <scope>
@@ -33,6 +38,7 @@
       <item>`RequestManagementScope`: record, query, messaggio di diniego.</item>
       <item>`RequestManagementNotable::mentionableUsersQuery`, `QuoteRowActions::allowsNotes`, `OpportunitiesTableDefinition::allowsNotes`.</item>
       <item>Colonna `managers` della griglia (D-7..D-9).</item>
+      <item>Colonna `manager_ga5` della griglia (D-10).</item>
       <item>Guide IT/EN di Gestione Richieste e Gestione Iscritti, manuale Claude Docs.</item>
     </in>
     <out>
@@ -59,5 +65,10 @@
     <criterion id="AC-011">Dalla cella si modifica il team: chi resta tiene la posizione, l'Operatore segue lo slot 2, anche su Iscritti.</criterion>
     <criterion id="AC-012">La cella passa dalle regole del form e dal permesso: senza `manager_slots` scrivibile 403, chi ha solo l'aggiunta al team resta fuori dalla cella.</criterion>
     <criterion id="AC-013">La cella Operatore continua a scrivere il solo slot 2.</criterion>
+    <criterion id="AC-014">La colonna `manager_ga5` e' nel catalogo di entrambi i moduli, visibile, ordinabile, con filtro set, e la riga porta l'occupante della posizione 5 o null.</criterion>
+    <criterion id="AC-015">Una tab categoria rinomina la colonna da `manager_labels[5]`.</criterion>
+    <criterion id="AC-016">Dalla cella si scrive o si svuota la sola posizione 5, anche su Iscritti; chi e' gia' nel team viene spostato, non duplicato.</criterion>
+    <criterion id="AC-017">Con `manager_ga5_id` non modificabile per il ruolo la cella risponde 403.</criterion>
+    <criterion id="AC-018">Ordinamento, filtro e valori distinti leggono la sola posizione 5, con la voce "Vuoti".</criterion>
   </acceptance>
 </spec>

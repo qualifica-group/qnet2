@@ -109,6 +109,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   expected_close_date: (params) => <DateCell {...params} />,
   operator_ga2: (params) => <UserCell {...params} />,
   manager_ga1: (params) => <UserCell {...params} />,
+  manager_ga5: (params) => <UserCell {...params} />,
   managers: (params) => <UserStackCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   // Spec 0079: a system flag, not auto-mounted by `resolveCellRenderer`

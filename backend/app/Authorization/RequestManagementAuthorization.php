@@ -139,6 +139,8 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // restricting `manager_slots` does NOT restrict this key, the two
             // rows of the matrix are independent.
             new FieldDefinition('manager_ga1_id', 'select'),
+            // Spec 0373 D-10: the "Operatore APL" cell, on the same terms.
+            new FieldDefinition('manager_ga5_id', 'select'),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block (see OpportunitiesAuthorization's docblock for
             // the operational-sites.viewAny ceiling rule this field shares).
@@ -215,6 +217,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_ga1_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'manager_ga5_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0056: readonly unless the actor ALSO holds
             // operational-sites.viewAny (mirrors OpportunitiesAuthorization).
             'operational_site_id' => $mayWrite && $actor->can('operational-sites.viewAny') ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

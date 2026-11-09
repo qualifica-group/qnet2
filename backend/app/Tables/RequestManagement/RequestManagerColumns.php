@@ -38,6 +38,9 @@ final class RequestManagerColumns
     /** The GA1 column id (direttiva utente 2026-09-07). */
     public const string GA1_COLUMN_ID = 'manager_ga1';
 
+    /** The "Operatore APL" column id (spec 0373 D-10). */
+    public const string GA5_COLUMN_ID = 'manager_ga5';
+
     /** The whole team as a list of people, the twin of the Offerte column (spec 0373). */
     public const string MANAGERS_COLUMN_ID = 'managers';
 
@@ -50,10 +53,11 @@ final class RequestManagerColumns
     public const array POSITIONS = [
         ManagerPositions::OPERATOR => self::OPERATOR_COLUMN_ID,
         ManagerPositions::GA1 => self::GA1_COLUMN_ID,
+        ManagerPositions::GA5 => self::GA5_COLUMN_ID,
     ];
 
     /**
-     * One slot column by id: RequestColumnCatalog places the two slots apart
+     * One slot column by id: RequestColumnCatalog places the slots apart
      * (direttiva utente 2026-09-17: Operatore second, GA1 after "Fonte").
      *
      * @return array<string, mixed>
@@ -168,6 +172,22 @@ final class RequestManagerColumns
                 'filterType' => 'set',
                 'editable' => true,
                 'editableField' => 'manager_ga1_id',
+                'relation' => ['resource' => 'users'],
+                'nullable' => true,
+            ],
+            [
+                // Spec 0373 D-10: position 5, "Operatore APL". The twin of the
+                // GA1 column above, for the same reasons and with its own
+                // field key.
+                'id' => self::GA5_COLUMN_ID,
+                'label' => 'requestManagement.columns.managerGa5',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+                'editable' => true,
+                'editableField' => 'manager_ga5_id',
                 'relation' => ['resource' => 'users'],
                 'nullable' => true,
             ],

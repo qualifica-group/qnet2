@@ -52,6 +52,7 @@ const guide: HelpGuide = {
             ['Change requests', 'Change proposals still awaiting a decision.'],
             ['Product lines', 'Products present in the quote; the cell opens the editor with the product catalogue.'],
             ['Operator', 'The person working the request.'],
+            ['APL operator', 'The account manager in the fifth team position. It can be sorted and filtered by name and edited from the cell.'],
             ['Account managers', 'Everyone on the team, operator included. It can be filtered by name and edited from the cell.'],
             ['Operational site', 'The site the request is assigned to.'],
             ['Next callback', 'Date of the next call to the client.'],

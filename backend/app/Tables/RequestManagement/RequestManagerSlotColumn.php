@@ -14,8 +14,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Sort, set filter and distinct values of the Gestore Account columns that
- * read a `quote_user` pivot POSITION instead of a column of `quotes`: today
- * the GA1 "Tutor" (direttiva utente 2026-09-24). The GA2 "Operatore" is not
+ * read a `quote_user` pivot POSITION instead of a column of `quotes`: the GA1
+ * "Tutor" (direttiva utente 2026-09-24) and the GA5 "Operatore APL" (spec 0373
+ * D-10). The GA2 "Operatore" is not
  * here: it is denormalized onto `quotes.operator_id`, so RequestRelationColumns
  * handles it as an own FK. The `managers` column (spec 0373) shares the filter
  * and the distinct values with no position: it matches every slot.
@@ -36,6 +37,7 @@ final class RequestManagerSlotColumn
      */
     private const array SLOT_POSITIONS = [
         RequestManagerColumns::GA1_COLUMN_ID => ManagerPositions::GA1,
+        RequestManagerColumns::GA5_COLUMN_ID => ManagerPositions::GA5,
     ];
 
     /**

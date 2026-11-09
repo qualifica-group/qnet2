@@ -419,8 +419,8 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
 
     /**
      * The scoped category's EFFECTIVE labels, restricted to the positions the
-     * grid exposes as their own column (RequestManagerColumns::POSITIONS —
-     * `ManagerPositions::OPERATOR` and `::GA1`). Empty when there is no scope,
+     * grid exposes as their own column (RequestManagerColumns::POSITIONS).
+     * Empty when there is no scope,
      * the category no longer exists, or it defines no label for any of them.
      *
      * Spec 0087, D-10: the positions come from `ManagerPositions`, never the

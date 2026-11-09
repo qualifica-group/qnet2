@@ -21,6 +21,7 @@ export const requestManagement = {
     expectedCloseDate: 'Data chiusura prevista',
     operator: 'Operatore',
     managerGa1: 'Tutor',
+    managerGa5: 'Operatore APL',
     managers: 'Gestori account',
     operationalSite: 'Sede operativa',
     firstName: 'Nome',
