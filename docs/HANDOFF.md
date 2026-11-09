@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Dashboard: pannello statistiche Task spento temporaneamente (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+
+- Emergenza produzione: `dashboard-tasks-section.tsx` aveva `ModuleStatsPanel domain="tasks"` sempre aperto (`GET /api/stats/tasks`,
+  almeno 8 aggregati per utente). Decisione utente: riga e import COMMENTATI, deroga temporanea alla regola sul dead code e alla spec 0151.
+- Test (`dashboard-tasks-section`, `dashboard-screen`) marcati REQUIREMENT CHANGED; guide `help/content/{it,en}/dashboard.ts` aggiornate.
+  Vitest dashboard + help 178/178, ESLint e `tsc -b --force` puliti.
+- NON basta da solo: `GET /api/dashboard/tasks` (`TaskDashboardCounters`, 6 query) usa lo stesso filtro e va in errore 3024 in produzione.
+  La cura e' `TaskVisibilityScope::membershipTaskIds()` (voce sotto).
+- Da fare: verificati i tempi in produzione, ripristinare riga, import, test e guide. Manuale Claude Docs da allineare se lo spegnimento dura.
+
+## Task: filtro di visibilita' senza lettura di tutta la tabella (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+
+- Bug in produzione: `GET /api/stats/tasks` oltre il limite di 25 s (errore MySQL 3024, utenti 22 e 173). Il ramo membership di
+  `TaskVisibilityScope::scopeToActor` (OR su colonne + due EXISTS) leggeva tutta `tasks` in ognuna delle query del pannello.
+- Fix: `membershipTaskIds()`, UNION dagli indici per utente in una tabella derivata, `tasks.id IN (...)`. Vale per tutti gli 8
+  chiamanti. Chi ha `viewAll`/`viewSite`/team resta su uno scan: i suoi rami sono in OR.
+- Misure locali (MariaDB con `exists_to_in=off`, conteggi identici): utente 22 637 -> 4 ms, 173 605 -> 9 ms, 101 (109.780 task)
+  485 -> 166 ms. NON verificato su MySQL reale: dopo il deploy controllare `EXPLAIN` e tempi.
+- Test: `TaskVisibilityTest` + sede + team 39/39 (nuovo guard sulla forma della query), Pint pulito. Suite completa con la
+  modifica: 14.204 passati, 12 falliti, 8 errori, nessuno nei Task. Rilanciando quei 15 file con e senza modifica: 17 falliscono
+  in entrambi i casi (AI assistant, permessi, seeder, LibreOffice assente, ...), `WorkOrderCategoryTabsTest` e' intermittente, i
+  2 `ProcessImportJobTest` falliscono solo in parallelo. Quei fallimenti restano da sistemare, fuori scope.
+- Aperto: il timeout 3024 risponde 500 invece di 503, il `try/catch` dei controller lo intercetta prima di `bootstrap/app.php`.
+- Manuale: nessun impatto.
+- Nota: `composer test` richiede `COMPOSER_PROCESS_TIMEOUT=0`, altrimenti Composer lo interrompe a 300 s (dura circa 8,5 min).
+
 ## Task: chiusura negativa da elenco e Kanban (2026-11-09) — COMMITTATO
 
 - Bug: scegliendo uno stato `closed_negative` nella cella Stato o trascinando la card nel Kanban si apriva "Completa"

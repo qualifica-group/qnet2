@@ -106,15 +106,15 @@ describe('DashboardScreen (AC-011)', () => {
 
     expect(await screen.findByText('Activities to complete')).toBeInTheDocument()
     expect(fetchDashboardTaskCountersMock).toHaveBeenCalledTimes(1)
-    expect(fetchModuleStatsMock).toHaveBeenCalledWith('tasks')
-    expect(fetchModuleStatsMock).toHaveBeenCalledTimes(1)
+    // REQUIREMENT CHANGED (user decision 2026-11-09): the Task statistics panel is temporarily off.
+    expect(fetchModuleStatsMock).not.toHaveBeenCalled()
     expect(screen.queryByText('No content available')).not.toBeInTheDocument()
     expect(screen.queryByText('Time tracking')).not.toBeInTheDocument()
     expect(screen.queryByText('Opportunities')).not.toBeInTheDocument()
     expect(fetchTimeEntriesOverviewMock).not.toHaveBeenCalled()
   })
 
-  it('shows every block, in D-9 order, with Task statistics inside the activities block', async () => {
+  it('shows every block, in D-9 order, without the temporarily disabled Task statistics', async () => {
     grantedPermissions = [
       'tasks.viewAny',
       'time-entries.viewAny',
@@ -137,7 +137,8 @@ describe('DashboardScreen (AC-011)', () => {
     expect(screen.queryByRole('heading', { name: 'Request management' })).not.toBeInTheDocument()
     expect(fetchDashboardTaskCountersMock).toHaveBeenCalledTimes(1)
     expect(fetchTimeEntriesOverviewMock).toHaveBeenCalledWith({ period_preset: 'day' })
-    expect(fetchModuleStatsMock).toHaveBeenCalledWith('tasks')
+    // REQUIREMENT CHANGED (user decision 2026-11-09): the Task statistics panel is temporarily off.
+    expect(fetchModuleStatsMock).not.toHaveBeenCalledWith('tasks')
     expect(fetchModuleStatsMock).toHaveBeenCalledWith('opportunities')
     expect(fetchModuleStatsMock).toHaveBeenCalledWith('quotes')
     expect(fetchModuleStatsMock).toHaveBeenCalledWith('leads')

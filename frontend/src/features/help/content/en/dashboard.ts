@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'What you find',
       blocks: [
-        { type: 'paragraph', text: 'The **Dashboard** opens right after you press **Sign in**. It is split into blocks, top to bottom: **Activities to complete** (with the Task statistics), **Time tracking**, **Absences** and the statistics of **Opportunities**, **Quotes**, **Leads** and **Registries**.' },
+        { type: 'paragraph', text: 'The **Dashboard** opens right after you press **Sign in**. It is split into blocks, top to bottom: **Activities to complete**, **Time tracking**, **Absences** and the statistics of **Opportunities**, **Quotes**, **Leads** and **Registries**.' },
         { type: 'note', text: 'You only see the blocks of the modules you have permission for. If you have none, the page shows “No content available”.' },
       ],
     },
@@ -32,7 +32,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'The **Assigned by me** tile shows a **To validate** badge when some of those tasks are waiting for your validation.' },
         { type: 'steps', items: ['Press a tile: the **Tasks** list opens already filtered with the same criteria.', 'Press the **To validate** badge to see only the tasks in validation assigned by you.'] },
         { type: 'tip', text: 'The filter opened from the Dashboard applies to that visit only: the filters you saved on the Tasks list stay as they were until you press **Apply** or **Reset**.' },
-        { type: 'paragraph', text: 'Below the tiles, in the same block, you find the Task figures: Overdue, Due today, Estimated and Actual. The charts by status, by priority and of new tasks per month stay in the **Statistics** panel of the Tasks list.' },
+        { type: 'paragraph', text: 'The Task figures (Overdue, Due today, Estimated and Actual) and the charts by status, by priority and of new tasks per month are in the **Statistics** panel of the Tasks list.' },
       ],
     },
     {
