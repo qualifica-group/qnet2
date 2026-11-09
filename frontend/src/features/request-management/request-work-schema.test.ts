@@ -150,9 +150,10 @@ describe('buildRequestWorkSchema — source (Fonte)', () => {
 /**
  * Spec 0102 AC-044/045: mirrors the server gate in
  * `QuoteWorkflowStatusWriter::apply()` — a transition into a status whose
- * `group` is `closed_won`/`closed_lost`/`validated` demands at least one
- * REVENUE row; `open`/`pending` do not, and neither does reissuing the
- * status the request already holds (spec 0083 AC-026/AC-018).
+ * `group` is `closed_won`/`validated` demands at least one REVENUE row;
+ * `open`/`pending`/`closed_lost` do not (the last by decisione utente
+ * 2026-11-09), and neither does reissuing the status the request already
+ * holds (spec 0083 AC-026/AC-018).
  */
 describe('buildRequestWorkSchema — offer lines required for status', () => {
   const OPEN: QuoteWorkflowStatusRef = {
@@ -208,14 +209,11 @@ describe('buildRequestWorkSchema — offer lines required for status', () => {
     }
   })
 
-  it('rejects a transition to closed_lost with no offer lines (AC-044)', () => {
+  it('accepts a transition to closed_lost with no offer lines (AC-011)', () => {
     const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
     const result = schema.safeParse(values({ quote_workflow_status_id: CLOSED_LOST.id }))
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'offer_lines')).toBe(true)
-    }
+    expect(result.success).toBe(true)
   })
 
   it('rejects a transition to validated with no offer lines (AC-044)', () => {

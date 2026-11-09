@@ -39,10 +39,11 @@ const MAX_OFFER_LINES = 200
 /**
  * Spec 0102: the `WorkflowStatusGroup` values a transition into requires at
  * least one REVENUE row for, mirroring `QuoteWorkflowStatusWriter::apply()`.
- * `pending` is deliberately absent (AC-045/AC-013): the gate only guards the
- * three closing/validating groups.
+ * `pending` is deliberately absent (AC-045/AC-013), and so is `closed_lost`
+ * (decisione utente 2026-11-09): a contact that only asked for information or
+ * never answered has no product to record.
  */
-const OFFER_LINES_REQUIRED_STATUS_GROUPS = new Set(['closed_won', 'closed_lost', 'validated'])
+const OFFER_LINES_REQUIRED_STATUS_GROUPS = new Set(['closed_won', 'validated'])
 
 /**
  * Direttiva utente 2026-09-09: the `WorkflowStatusGroup` a POSITIVE close
@@ -312,7 +313,7 @@ export function buildRequestWorkSchema(
 
       // Spec 0102 AC-044/045: mirror of the server gate in
       // `QuoteWorkflowStatusWriter::apply()` — a transition into a status
-      // whose `group` is one of the three closing/validating ones is
+      // whose `group` is in `OFFER_LINES_REQUIRED_STATUS_GROUPS` is
       // blocked unless at least one REVENUE row is present. Same guard as
       // the note rule above (a reissued status is not a transition, spec
       // 0083 AC-026/AC-018); pristine rows do not count (`isPristineLineRow`).

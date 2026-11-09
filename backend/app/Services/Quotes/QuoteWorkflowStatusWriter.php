@@ -39,15 +39,17 @@ final class QuoteWorkflowStatusWriter
 
     /**
      * Spec 0102, D-3: the destination `group`s that gate a transition on at
-     * least one REVENUE line — every group that closes or validates the
-     * Offerta's outcome. `open`/`pending` are deliberately absent (spec 0102
+     * least one REVENUE line — the groups that validate or positively close
+     * the Offerta. `open`/`pending` are deliberately absent (spec 0102
      * scope/out): a rinvio within the working phase never demands one.
+     * `closed_lost` is absent too (decisione utente 2026-11-09): a contact
+     * that only asked for information or never answered has no product to
+     * record.
      *
      * @var list<WorkflowStatusGroup>
      */
     private const array LINE_REQUIRED_GROUPS = [
         WorkflowStatusGroup::ClosedWon,
-        WorkflowStatusGroup::ClosedLost,
         WorkflowStatusGroup::Validated,
     ];
 
@@ -67,7 +69,7 @@ final class QuoteWorkflowStatusWriter
      * destination demands a note, and creating it (inside the CALLER's
      * transaction) requires `notes.create`.
      *
-     * @throws ValidationException the target status is outside the resolved workflow (AC-021), or its `group` demands a REVENUE line and none exists (spec 0102 AC-010/011/012), or it `requires_note` and none was given (AC-023)
+     * @throws ValidationException the target status is outside the resolved workflow (AC-021), or its `group` demands a REVENUE line and none exists (spec 0102 AC-010/012), or it `requires_note` and none was given (AC-023)
      * @throws AuthorizationException the actor cannot create the note (AC-024)
      */
     public function apply(Quote $quote, int $newStatusId, User $actor, ?string $note): void
@@ -98,8 +100,8 @@ final class QuoteWorkflowStatusWriter
     }
 
     /**
-     * Spec 0102, D-3/AC-010-015/017: refuses a transition into a closing/
-     * validating `group` when the Offerta carries zero REVENUE lines — on
+     * Spec 0102, D-3/AC-010-015/017: refuses a transition into a `group` of
+     * LINE_REQUIRED_GROUPS when the Offerta carries zero REVENUE lines — on
      * EVERY channel, including the inline grid edit
      * (WritesInlineEditableCells::updateCell()) that bypasses every
      * FormRequest, which is why this lives at the writer's own choke point

@@ -141,7 +141,7 @@ const guide: HelpGuide = {
             "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto.",
             '**Righe offerta**: prodotti scelti dal **Catalogo prodotti**, con quantità, prezzi e IVA.',
             "**Previsione commerciale**: data chiusura prevista, valore stimato e probabilità di successo. Sono i valori dell'opportunità: se cambiano qui, cambiano anche in **Opportunità** e nelle altre richieste della stessa opportunità.",
-            '**Stato**: alcuni stati richiedono una **Nota**.',
+            "**Stato**: alcuni stati richiedono una **Nota**. Per uno stato validato o chiuso con esito positivo serve almeno una riga offerta; per chiudere con esito negativo non serve, ad esempio se il contatto chiedeva solo informazioni o non ha mai risposto.",
             '**Anagrafica**, **Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**) e **Team** (**Supervisore** e **Gestori account**). Il **Commerciale** modificato qui vale solo per questa richiesta (l\'offerta): quello dell\'opportunità non cambia.',
             'Le **Informazioni aggiuntive**, che dipendono dalle categorie scelte.',
           ],

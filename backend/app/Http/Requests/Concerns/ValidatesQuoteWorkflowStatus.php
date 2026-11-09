@@ -44,7 +44,6 @@ trait ValidatesQuoteWorkflowStatus
      */
     private const array LINE_REQUIRED_GROUPS = [
         WorkflowStatusGroup::ClosedWon,
-        WorkflowStatusGroup::ClosedLost,
         WorkflowStatusGroup::Validated,
     ];
 
@@ -77,7 +76,7 @@ trait ValidatesQuoteWorkflowStatus
     /**
      * Spec 0102, D-3/AC-044/045: the panel's own mirror of
      * QuoteWorkflowStatusWriter::assertOfferLineForStatus() — same predicate
-     * (a closing/validating `group` demands a REVENUE line), evaluated
+     * (a `group` of LINE_REQUIRED_GROUPS demands a REVENUE line), evaluated
      * against the SUBMITTED `offer_lines` when this payload carries them,
      * else $current's persisted ones (resolutionQuote()'s own fallback). The
      * writer stays the enforcing gate for every channel (spec 0102 D-3); this

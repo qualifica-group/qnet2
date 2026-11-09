@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Esito negativo senza riga prodotto (2026-11-09) — VERDE MIRATO, COMMITTATO
+
+- Decisione utente: la chiusura con esito negativo (`closed_lost`) non richiede piu' una riga REVENUE: un contatto che chiede solo informazioni o non
+  risponde non ha un prodotto da indicare. `closed_lost` tolto dai tre mirror del gate: `QuoteWorkflowStatusWriter::LINE_REQUIRED_GROUPS`,
+  `ValidatesQuoteWorkflowStatus::LINE_REQUIRED_GROUPS`, `OFFER_LINES_REQUIRED_STATUS_GROUPS` (`request-work-schema.ts`). Restano `closed_won` e `validated`.
+- Vale per ogni canale (pannello e cella di Gestione Richieste, modulo Offerte), perche' il gate e' condiviso. Spec 0102 AC-011 emendata (REQUIREMENT CHANGED nei test).
+- Invariati: "Linee di prodotto" obbligatorie alla creazione della richiesta; nota degli stati `requires_note`. L'avviso **Righe offerta mancanti** in Offerte compare
+  anche sulle offerte chiuse negative senza righe (non chiesto, da decidere).
+- Pest Quotes/RequestManagement/QuoteWorkflows 1429 ok; 3 ko solo `QuoteDocumentPdfTest` (LibreOffice non installato in locale). Vitest request-management/help/quotes
+  1155/1155, Pint, ESLint e `tsc -b --force` puliti. Guide IT/EN `quote-workflows` e `request-management` e manuale Claude Docs aggiornati; il PDF derivato va rigenerato.
+
 ## Menzioni nelle note dei task: errore imprevisto su MySQL (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Bug in produzione: `GET /api/notes/mentionable-users?entity_type=tasks` risponde "errore imprevisto". `TaskNotable::assigneeSiteIds()` partiva da

@@ -146,6 +146,35 @@ it('AC-045: the panel FormRequest raises no error on an open/pending destination
     expect($quote->fresh()->quote_workflow_status_id)->toBe($pending->id);
 });
 
+it('AC-011: the panel FormRequest lets a zero-line request close with a negative outcome', function () {
+    $actor = lineGateRequestActor();
+    $quote = lineGateRequestQuote($actor);
+    $closedLost = lineGateRequestStatus(WorkflowStatusGroup::ClosedLost);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'quote_workflow_status_id' => $closedLost->id,
+    ])->assertOk();
+
+    expect($quote->fresh()->quote_workflow_status_id)->toBe($closedLost->id);
+});
+
+it('AC-011: a zero-line negative close still demands the note of a requires_note status', function () {
+    $actor = lineGateRequestActor();
+    $quote = lineGateRequestQuote($actor);
+    $originalStatusId = $quote->quote_workflow_status_id;
+    $closedLost = lineGateRequestStatus(WorkflowStatusGroup::ClosedLost, requiresNote: true);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'quote_workflow_status_id' => $closedLost->id,
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('note');
+
+    expect($quote->fresh()->quote_workflow_status_id)->toBe($originalStatusId);
+});
+
 // ---------------------------------------------------------------------------
 // AC-016 — the same-request line write feeds the SAME request's status gate
 // ---------------------------------------------------------------------------
@@ -189,6 +218,20 @@ it('AC-017: the inline cell edit into a validated status on a zero-line offer ->
         ->assertJsonValidationErrors('offer_lines');
 
     expect($quote->fresh()->quote_workflow_status_id)->toBe($originalStatusId);
+});
+
+it('AC-011: the inline cell edit lets a zero-line request close with a negative outcome', function () {
+    $actor = lineGateRequestActor();
+    $quote = lineGateRequestQuote($actor);
+    $closedLost = lineGateRequestStatus(WorkflowStatusGroup::ClosedLost);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'quote_workflow_status',
+        'value' => $closedLost->id,
+    ])->assertOk();
+
+    expect($quote->fresh()->quote_workflow_status_id)->toBe($closedLost->id);
 });
 
 // ---------------------------------------------------------------------------

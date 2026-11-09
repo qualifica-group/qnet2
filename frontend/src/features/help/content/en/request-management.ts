@@ -141,7 +141,7 @@ const guide: HelpGuide = {
             '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again.',
             '**Offer rows**: products picked from the **Product catalogue**, with quantities, prices and VAT.',
             "**Sales forecast**: expected close date, estimated value and success probability. They are the opportunity's values: changing them here changes them in **Opportunities** and in the other requests of the same opportunity too.",
-            '**Status**: some statuses require a **Note**.',
+            '**Status**: some statuses require a **Note**. A validated or positively closed status requires at least one offer row; a negative close does not, for example when the contact only asked for information or never answered.',
             '**Client details**, **Attribution** (**Source**, **Reporter**, **Sales rep**) and **Team** (**Supervisor** and **Account managers**). A **Sales rep** changed here applies to this request (the quote) only: the opportunity\'s one does not change.',
             'The **Additional information**, which depends on the categories picked.',
           ],

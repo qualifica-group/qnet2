@@ -13,8 +13,8 @@ use Spatie\Permission\Models\Permission;
 /**
  * The closing/validating transition gate (spec 0102, D-3/AC-010..015/018):
  * QuoteWorkflowStatusWriter::apply() refuses a transition into a `group` in
- * {closed_won, closed_lost, validated} when the Offerta carries zero REVENUE
- * lines. This file exercises the Offerte channel (PATCH /api/quotes/
+ * {closed_won, validated} when the Offerta carries zero REVENUE lines;
+ * `closed_lost` is exempt (decisione utente 2026-11-09). This file exercises the Offerte channel (PATCH /api/quotes/
  * {quote}), the SAME choke point QuoteService::update() reaches whenever the
  * client submits a `quote_workflow_status_id` override. The inline-edit
  * bypass and the same-request line+status interaction are the Gestione
@@ -66,18 +66,15 @@ it('AC-010: zero REVENUE lines blocks a transition into closed_won -> 422 on off
     expect($quote->fresh()->quote_workflow_status_id)->toBe($originalStatusId);
 });
 
-it('AC-011: zero REVENUE lines blocks a transition into closed_lost -> 422 on offer_lines', function () {
+it('AC-011: zero REVENUE lines do not block a transition into closed_lost', function () {
     $actor = lineGateActor();
     $quote = lineGateQuote();
-    $originalStatusId = $quote->quote_workflow_status_id;
     $closedLost = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_lost')->sole();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $closedLost->id])
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('offer_lines');
+    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $closedLost->id])->assertOk();
 
-    expect($quote->fresh()->quote_workflow_status_id)->toBe($originalStatusId);
+    expect($quote->fresh()->quote_workflow_status_id)->toBe($closedLost->id);
 });
 
 it('AC-012: zero REVENUE lines blocks a transition into a validated status -> 422 on offer_lines', function () {

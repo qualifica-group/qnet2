@@ -83,7 +83,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             "un'offerta può passare solo agli stati del workflow che le corrisponde in quel momento;",
-            'per gli stati Validato o Chiuso serve almeno una riga prodotto ("Non puoi portare l\'offerta a questo stato senza almeno una riga prodotto.");',
+            'per gli stati Validato o Chiuso con esito positivo serve almeno una riga prodotto ("Non puoi portare l\'offerta a questo stato senza almeno una riga prodotto."); Chiuso con esito negativo non la richiede;',
             "se lo stato richiede una nota, va scritta; viene salvata tra le note dell'opportunità;",
             'entrando in Chiuso con esito positivo nasce il contratto, salvo che la categoria abbia **Prevede un contratto** spento;',
             "se l'offerta esce da Chiuso con esito positivo, il contratto passa a **Sospeso** (non viene cancellato);",
