@@ -3,17 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Linguette categoria spente temporaneamente (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+## Linguette categoria ripristinate (2026-11-09) — VERDE MIRATO, NON COMMITTATO
 
-- Emergenza produzione, decisione utente: hook `useCategoryTabStrip` e `<CategoryTabs>` COMMENTATI in `opportunities-table`, `quotes-table`,
-  `contracts-table` e `work-orders-table` (deroga temporanea alla regola sul dead code). Nessuna chiamata a `{grid}/product-categories`
-  e alle preferenze; `scope`/`tableKey` commentati, quindi la griglia mostra tutti i record anche con una categoria salvata nel browser.
-- Gestione Richieste ha un resolver suo e NON e' stata toccata.
-- Test: 4 file `*-table-category-tabs.test.tsx` in `describe.skip` (20 test), `project-work-orders.test` aggiornato (REQUIREMENT CHANGED).
-  Guide `category-tabs` IT/EN con nota "temporaneamente disattivata" in cima (testo originale intatto, togliere solo la nota).
-  Vitest moduli toccati 1496 passati, 20 saltati; ESLint e `tsc -b --force` puliti.
-- Per ripristinare: togliere i commenti, `invalidateCategories` nelle dipendenze dei `useCallback`, `describe.skip` e le note. Cura vera
-  proposta: cache condivisa per chi ha visibilita' completa (`GridCategoryTabsResolver`, chiave oggi per utente).
+- Decisione utente: annullato `6e99a451` sui 17 file di tabelle, test e guide (Opportunita', Offerte, Commesse, Contratti). I file sono identici
+  allo stato precedente a quel commit. Vitest moduli toccati 1516/1516, ESLint e `tsc -b --force` puliti.
+- Il costo resta: ogni utente con visibilita' completa ricalcola gli stessi `count(distinct)`, e al livello radice parte una query per
+  ogni categoria radice (tutte e quattro le griglie). Cura proposta: cache condivisa per chi vede tutto (`GridCategoryTabsResolver`, chiave oggi per utente).
 
 ## Dashboard: pagina vuota, nessuna lettura di dati (2026-11-09) — VERDE MIRATO, NON COMMITTATO
 

@@ -105,8 +105,7 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-// REQUIREMENT CHANGED (user decision 2026-11-09): the strip is temporarily disabled; re-enable with it.
-describe.skip('QuotesTable category tabs (spec 0335 AC-015)', () => {
+describe('QuotesTable category tabs (spec 0335 AC-015)', () => {
   it('shows "All" plus one tab per category with its count, read from /quotes', async () => {
     renderTable()
 
@@ -141,7 +140,7 @@ describe.skip('QuotesTable category tabs (spec 0335 AC-015)', () => {
   })
 })
 
-describe.skip('QuotesTable category tabs refresh (spec 0335 AC-017)', () => {
+describe('QuotesTable category tabs refresh (spec 0335 AC-017)', () => {
   it('re-reads the counts after a grid mutation', async () => {
     deleteQuoteMock.mockResolvedValue(undefined)
     renderTable()
@@ -156,7 +155,7 @@ describe.skip('QuotesTable category tabs refresh (spec 0335 AC-017)', () => {
   })
 })
 
-describe.skip('QuotesTable root-level category tabs (spec 0337 AC-008)', () => {
+describe('QuotesTable root-level category tabs (spec 0337 AC-008)', () => {
   it('the menu switch lists the root categories, scopes the grid by branch and survives a reload', async () => {
     const first = renderTable()
     await screen.findByRole('tab', { name: /ISO 9001/ })

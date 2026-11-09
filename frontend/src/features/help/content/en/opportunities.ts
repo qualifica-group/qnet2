@@ -87,7 +87,6 @@ const guide: HelpGuide = {
       id: 'category-tabs',
       title: "Filtering by product category",
       blocks: [
-        { type: 'note', text: "The category bar is temporarily disabled: the list shows all opportunities. Use the search and the filters of the list." },
         {
           type: 'paragraph',
           text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of opportunities. Clicking a tab shows only the opportunities of that category. Your choice is kept after reloading the page.",

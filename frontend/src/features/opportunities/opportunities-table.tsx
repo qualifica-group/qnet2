@@ -9,10 +9,9 @@ import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
-// Category strip temporarily disabled 2026-11-09: its counts overloaded production.
-// import { CategoryTabs } from '@/features/category-tabs/category-tabs'
-// import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
-// import type { CategoryTabSource } from '@/features/category-tabs/types'
+import { CategoryTabs } from '@/features/category-tabs/category-tabs'
+import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
+import type { CategoryTabSource } from '@/features/category-tabs/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { OPPORTUNITIES_ACTION_ICONS } from '@/features/opportunities/action-icons'
 import { opportunityColumnRenderers } from '@/features/opportunities/column-renderers'
@@ -20,7 +19,7 @@ import { OpportunityQuotesDetailRenderer } from '@/features/opportunities/opport
 import { OPPORTUNITIES_DOMAIN } from '@/features/opportunities/api'
 import { useOpportunityRowActions } from '@/features/opportunities/use-opportunity-row-actions'
 
-// const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: OPPORTUNITIES_DOMAIN, apiBasePath: `/${OPPORTUNITIES_DOMAIN}` }
+const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: OPPORTUNITIES_DOMAIN, apiBasePath: `/${OPPORTUNITIES_DOMAIN}` }
 
 /**
  * Thin Opportunities adapter over the generic table (spec 0040, mirrors
@@ -48,7 +47,7 @@ export function OpportunitiesTable() {
   const stats = useStatsPanel(OPPORTUNITIES_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(OPPORTUNITIES_DOMAIN)
 
-  // const { scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
+  const { scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
 
   const tableRef = useRef<TableViewHandle>(null)
 
@@ -57,9 +56,9 @@ export function OpportunitiesTable() {
   // it. The detail query is invalidated inside `OpportunityFormScreen`.
   const handleMutated = useCallback(() => {
     tableRef.current?.refresh()
-    // invalidateCategories()
+    invalidateCategories()
     invalidateStats()
-  }, [invalidateStats])
+  }, [invalidateCategories, invalidateStats])
 
   const { handleAction, isBusy, openCreate, sheet, dialogs } = useOpportunityRowActions({ onMutated: handleMutated })
 
@@ -85,15 +84,15 @@ export function OpportunitiesTable() {
 
       <ModuleStatsPanel domain={OPPORTUNITIES_DOMAIN} isOpen={stats.isOpen} />
 
-      {/* <CategoryTabs {...tabsProps} /> */}
+      <CategoryTabs {...tabsProps} />
 
       <TableView
         // Keyed by the selection: a tab change remounts the table so search,
         // filters and layout restart from the scoped config (as in Gestione Richieste).
-        // key={tableKey}
+        key={tableKey}
         ref={tableRef}
         domain={OPPORTUNITIES_DOMAIN}
-        // scope={scope}
+        scope={scope}
         renderers={opportunityColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}
