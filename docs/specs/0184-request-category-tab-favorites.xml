@@ -46,7 +46,7 @@
     </endpoint>
     <endpoint method="PUT" path="/api/{module}/category-tab-preferences">
       <request>
-        { favorite_category_ids: int[] (required, present anche vuoto, max 200, distinct, exists product_categories.id),
+        { favorite_category_ids: int[] (required, present anche vuoto, max 1000 (emendato 2026-11-09: "Seleziona tutte" invia tutte le categorie dello strip), distinct, exists product_categories.id),
           show_only_favorites: bool (required) } — sostituzione completa.
       </request>
       <response status="200">Stessa shape del GET, dopo il salvataggio.</response>

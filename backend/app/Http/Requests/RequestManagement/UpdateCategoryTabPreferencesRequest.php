@@ -19,8 +19,8 @@ use Illuminate\Validation\Rule;
  */
 class UpdateCategoryTabPreferencesRequest extends CategoryTabLevelRequest
 {
-    /** Upper bound on the stored list: far above any real strip, well below an abusive payload. */
-    private const int MAX_FAVORITES = 200;
+    /** Upper bound on the stored list: "select all" sends every category of the strip, an abusive payload is far larger. */
+    private const int MAX_FAVORITES = 1000;
 
     /**
      * @return array<string, array<int, mixed>>

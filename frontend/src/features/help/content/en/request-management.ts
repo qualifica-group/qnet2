@@ -24,7 +24,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'To keep the categories you use at hand, mark them as favorites: in the menu (**More (N)**, or the star to the right of the tabs when they all fit) tap the star next to the category. Favorites come first among the tabs and at the top of the menu. Turn on **Show favorites only** to keep only them among the tabs (plus the category you are viewing); the others stay in the menu. Favorites are saved on your user, even on another computer, and are separate for Request Management and Enrollee Management.',
+          text: 'To keep the categories you use at hand, mark them as favorites: in the menu (**More (N)**, or the star to the right of the tabs when they all fit) tap the star next to the category. Favorites come first among the tabs and at the top of the menu. Turn on **Show favorites only** to keep only them among the tabs (plus the category you are viewing); the others stay in the menu. With **Select all** and **Deselect all**, in the menu, you add every category to your favorites or remove them all at once; the two buttons are hidden while you are searching. Favorites are saved on your user, even on another computer, and are separate for Request Management and Enrollee Management.',
         },
         {
           type: 'paragraph',

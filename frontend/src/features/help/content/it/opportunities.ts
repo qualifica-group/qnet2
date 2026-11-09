@@ -97,7 +97,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'steps',
-          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Con **Seleziona tutte** e **Deseleziona tutte**, nel menu, aggiungi o togli in un colpo solo tutte le categorie dalle preferite. I due pulsanti non compaiono mentre stai cercando.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
         },
         {
           type: 'paragraph',

@@ -68,6 +68,10 @@ export function useCategoryTabPreferences({ key, apiBasePath }: CategoryTabSourc
     })
   }
 
+  const setFavorites = (categoryIds: number[]) => {
+    mutation.mutate({ favorite_category_ids: categoryIds, show_only_favorites: current().show_only_favorites })
+  }
+
   const setShowOnlyFavorites = (showOnlyFavorites: boolean) => {
     mutation.mutate({ favorite_category_ids: current().favorite_category_ids, show_only_favorites: showOnlyFavorites })
   }
@@ -75,6 +79,7 @@ export function useCategoryTabPreferences({ key, apiBasePath }: CategoryTabSourc
   return {
     preferences: query.data ?? NO_PREFERENCES,
     toggleFavorite,
+    setFavorites,
     setShowOnlyFavorites,
   }
 }

@@ -41,6 +41,8 @@ interface CategoryTabsProps {
   /** The favourites are the ones proposed from the actor's competence, not saved yet (spec 0193). */
   favoritesAreDefault?: boolean
   onToggleFavorite: (categoryId: number) => void
+  /** Replaces the whole favourite list: the menu's "select all" and "deselect all". */
+  onSetFavorites: (categoryIds: number[]) => void
   onShowOnlyFavoritesChange: (showOnlyFavorites: boolean) => void
   /** Spec 0337: which categories the strip lists, and the switch in its menu that changes it. */
   level?: CategoryTabLevel
@@ -75,6 +77,7 @@ export function CategoryTabs({
   showOnlyFavorites,
   favoritesAreDefault = false,
   onToggleFavorite,
+  onSetFavorites,
   onShowOnlyFavoritesChange,
   level,
   onLevelChange,
@@ -135,6 +138,7 @@ export function CategoryTabs({
             selectedCategoryId={selectedCategoryId}
             onSelect={onSelect}
             onToggleFavorite={onToggleFavorite}
+            onSetFavorites={onSetFavorites}
             onShowOnlyFavoritesChange={onShowOnlyFavoritesChange}
             level={level}
             onLevelChange={onLevelChange}

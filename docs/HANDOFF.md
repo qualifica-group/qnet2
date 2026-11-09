@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Linguette categoria: seleziona/deseleziona tutte le preferite (2026-11-09) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente su Commesse e Opportunita'; il menu e' condiviso, quindi vale anche per Offerte, Contratti, Gestione Richieste e Iscritti. Nuovo
+  `CategoryFavoritesBulkActions` nel menu (`category-tabs-picker.tsx`), prop `onSetFavorites`, `setFavorites` in `useCategoryTabPreferences`: stessa PUT a sostituzione completa,
+  nessun endpoint nuovo. Interruttore "Mostra solo preferite" invariato. Pulsanti nascosti durante la ricerca. "Seleziona tutte" conserva le preferite non presenti nella barra.
+- `UpdateCategoryTabPreferencesRequest::MAX_FAVORITES` da 200 a 1000 (361 categorie in dev), spec 0184 emendata.
+- Pest CategoryTabs + preferenze Gestione Richieste 126/127, Vitest 258/258, Pint, ESLint, `tsc -b --force` puliti. Non provato nel browser.
+- Il rosso e' `WorkOrderCategoryTabsTest` AC-024, flaky e preesistente (`toBe` sull'ordine degli id con nomi casuali della factory; endpoint ordinato per nome). Non corretto, fuori scope.
+- `category-tabs-picker.tsx` a 312 righe (soft limit 300): valutare di spostare `CategoryGroup`/`CategoryRow`. Guide IT/EN dei 5 moduli e manuale Claude Docs aggiornati; il PDF derivato va rigenerato.
+
 ## Esito negativo senza riga prodotto (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Decisione utente: la chiusura con esito negativo (`closed_lost`) non richiede piu' una riga REVENUE: un contatto che chiede solo informazioni o non

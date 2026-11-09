@@ -119,7 +119,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'steps',
-          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","With **Select all** and **Deselect all**, in the menu, you add every category to your favorites or remove them all at once. The two buttons are hidden while you are searching.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
         },
         {
           type: 'paragraph',

@@ -72,3 +72,25 @@ it('saves per grid, leaves the other modules untouched and rejects unknown ids (
         'show_only_favorites' => false,
     ])->assertUnprocessable()->assertJsonValidationErrors('favorite_category_ids.0');
 });
+
+it('accepts every category as a favourite, beyond the former cap of 200', function () {
+    $actor = categoryTabGridActor('opportunities');
+    $ids = ProductCategory::factory()->count(201)->create()->modelKeys();
+    Sanctum::actingAs($actor);
+
+    $this->putJson('/api/opportunities/category-tab-preferences', [
+        'favorite_category_ids' => $ids,
+        'show_only_favorites' => false,
+    ])->assertOk();
+
+    expect(UserCategoryTabPreference::query()->where('user_id', $actor->id)->sole()->favorite_category_ids)->toHaveCount(201);
+});
+
+it('still rejects an abusive favourites payload', function () {
+    Sanctum::actingAs(categoryTabGridActor('opportunities'));
+
+    $this->putJson('/api/opportunities/category-tab-preferences', [
+        'favorite_category_ids' => range(1, 1001),
+        'show_only_favorites' => false,
+    ])->assertUnprocessable()->assertJsonValidationErrors('favorite_category_ids');
+});

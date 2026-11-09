@@ -80,6 +80,7 @@ export function useCategoryTabStrip(
       showOnlyFavorites: preferences.preferences.show_only_favorites,
       favoritesAreDefault: preferences.preferences.is_default,
       onToggleFavorite: preferences.toggleFavorite,
+      onSetFavorites: preferences.setFavorites,
       onShowOnlyFavoritesChange: preferences.setShowOnlyFavorites,
       isLoading: categoriesQuery.isPending,
     },

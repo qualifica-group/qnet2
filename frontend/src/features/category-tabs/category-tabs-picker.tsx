@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch'
 import { TABS_TRIGGER_CLASS } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { CategoryFavoritesBulkActions } from '@/features/category-tabs/category-favorites-bulk-actions'
 import { filterCategoriesByName } from '@/features/category-tabs/category-tab-fit'
 import type { CategoryTabItem, CategoryTabLevel } from '@/features/category-tabs/types'
 
@@ -62,6 +63,7 @@ interface CategoryTabsPickerProps {
   selectedCategoryId: number | null
   onSelect: (categoryId: number) => void
   onToggleFavorite: (categoryId: number) => void
+  onSetFavorites: (categoryIds: number[]) => void
   onShowOnlyFavoritesChange: (showOnlyFavorites: boolean) => void
   /** Spec 0337: the strip level and its switch; the switch is absent when the parent gives no handler. */
   level?: CategoryTabLevel
@@ -74,7 +76,8 @@ interface CategoryTabsPickerProps {
  * type-ahead filter, a star per category to keep it among the favourites
  * (spec 0184) and the "only favourites" switch. The favourites group is
  * taken when the menu opens, so a star clicked while it is open fills at once
- * but never moves the row from under the pointer. Arrow keys move from the
+ * but never moves the row from under the pointer; the bulk actions, whose
+ * pointer is not on a row, regroup at once. Arrow keys move from the
  * search into the list and through it; Enter in the search picks the first
  * match. The "Categorie madri" switch narrows the whole strip to the root
  * categories (spec 0337).
@@ -88,6 +91,7 @@ export function CategoryTabsPicker({
   selectedCategoryId,
   onSelect,
   onToggleFavorite,
+  onSetFavorites,
   onShowOnlyFavoritesChange,
   level = 'all',
   onLevelChange,
@@ -112,6 +116,13 @@ export function CategoryTabsPicker({
     setOpen(next)
     setSearch('')
     setGroupedFavoriteIds(favoriteCategoryIds)
+  }
+
+  const applyFavorites = (next: number[]) => {
+    onSetFavorites(next)
+    setGroupedFavoriteIds(next)
+    // The pressed button may turn disabled, which would drop the keyboard focus.
+    searchRef.current?.focus()
   }
 
   const pick = (categoryId: number) => {
@@ -194,6 +205,14 @@ export function CategoryTabsPicker({
             <ul aria-label={t('categoryTabs.pickerLabel')}>{renderRows(matches)}</ul>
           )}
         </div>
+        {search.trim() === '' ? (
+          <CategoryFavoritesBulkActions
+            canSelectAll={categories.some((category) => !isFavorite(category))}
+            canDeselectAll={favoriteCategoryIds.length > 0}
+            onSelectAll={() => applyFavorites([...new Set([...favoriteCategoryIds, ...categories.map(({ id }) => id)])])}
+            onDeselectAll={() => applyFavorites([])}
+          />
+        ) : null}
         {onLevelChange ? (
           <div className="flex items-center justify-between gap-2 border-t border-border px-2 py-2">
             <Label htmlFor={levelSwitchId} className="text-xs font-normal">
