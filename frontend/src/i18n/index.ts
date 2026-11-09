@@ -31,6 +31,13 @@ export function applyLocale(locale: string | null | undefined): void {
   }
 }
 
+// Chrome offers to translate the page when <html lang> disagrees with its text.
+i18n.on('languageChanged', (locale) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = locale
+  }
+})
+
 void i18n.use(initReactI18next).init({
   resources: {
     // `migrations` is registered as its own namespace (not merged into the

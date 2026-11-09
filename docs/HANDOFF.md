@@ -3,6 +3,10 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Niente proposta di traduzione di Chrome (2026-11-09) — VERDE MIRATO, COMMITTATO
+
+- Come in `q-net` (qtask, commit `2a5fe8c`): `frontend/index.html` con `lang="it"` (era `en`) e `<meta name="google" content="notranslate">`; listener `languageChanged` in `src/i18n/index.ts` tiene `<html lang>` allineato alla lingua attiva (guardia su `document`: i `.test.ts` girano in node). Test `src/i18n/document-language.test.ts`. Da verificare a mano in Chrome: il popup non deve comparire dopo il nuovo build. Manuale: nessun impatto.
+
 ## Commesse: via le linguette categorie, filtri avanzati precompilati come Task (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente. Pagina Commesse senza strip categorie (`WorkOrdersGrid` perde `scope`/`tableKey`/`onMutated`/`strip`). Filtri avanzati aggiunti: `assignment`, `parent_category`, `product_category`, `registry` (`WorkOrderAdvancedFilterCatalog`, applicati da `WorkOrderAdvancedFilterApplier`).
