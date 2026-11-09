@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ripristino workflow Orientamento specialistico (2026-11-09) — VERDE SUI TEST DEL SEEDER, NON COMMITTATO, MAI ESEGUITO SU DATI REALI
+
+- Incidente: il 9/11 alle 17:05 (ora italiana) il workflow #20 "Orientamento specialistico" e' stato eliminato e sostituito dal #33. `QuoteWorkflowService::delete` -> `QuoteWorkflowResolver::resolveAndAssign` ha portato 74 richieste sullo stato iniziale, senza voce nel log. Le voci "di Ciro" sono quelle dell'import dell'8/11. Gli altri 5 file importati non sono stati toccati.
+- Richiesta utente: deve tornare il workflow eliminato, con un seeder che ripristina gli stati. `php artisan db:seed --class=QualificaAplOrientationWorkflowRestoreSeeder`: ricrea il #20 con i 19 stati e gli id originali 354-372 (dal backup `BK_PRODUCTION_CROMO.sql`), riporta le richieste sull'ultimo stato del log, elimina il #33. Log senza autore, descrizione `Quote working status restored`. Idempotente.
+- Anteprima in sola lettura sul dump delle 19:05: 80 richieste spostate (38 Da Richiamare, 15 OK App. Fissato CPI, 6 Attesa _ App. CPI, 5 Attesa esito SFL/ADI, 4 Non interessato/a, 4 Da convocare, 2 senza log su stato iniziale, 6 gia' lavorate sul #33 riportate sull'equivalente).
+- Verificato: `QualificaAplOrientationWorkflowRestoreSeederTest` 6/6, Pint. Copia DB per la prova su dati reali non creata (fermata dall'utente). Manuale: nessun impatto.
+- DA FARE: deploy, backup, lancio in produzione. Fuori scope, segnalato: l'eliminazione di un workflow azzera ancora gli stati personalizzati senza log.
+
 ## Comando one-shot di riallineamento dal legacy (spec 0375) (2026-11-09) — VERDE SULLA SPEC, COMMITTATO, MAI ESEGUITO CON --apply
 
 - Richiesta utente: allineare i record gia' su qnet-2 alle modifiche legacy dal 23/10. `php artisan migrations:realign-legacy --since=2026-10-23 [--apply] [--sources=a,b] [--output=path]`. Senza `--apply` simula con rollback per record e scrive l'Excel a cinque fogli in `storage/app/private/realign/` (dati personali). Supera la voce sotto "solo da elenco approvato" (decisione utente).
