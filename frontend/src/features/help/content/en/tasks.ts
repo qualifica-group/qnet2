@@ -100,7 +100,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Drag a card onto another column to move it.',
-            'By status: moving between two open statuses updates it right away; moving into a closing status opens the **Complete** window, just like the list — cancelling it puts the card back; moving from a closed status to an open one reopens the task.',
+            'By status: moving between two open statuses updates it right away; moving into a positive closing status opens the **Complete** window, just like the list — cancelling it puts the card back; moving into a negative closing status closes the task right away with that status, with no time entry; moving from a closed status to an open one reopens the task.',
             'By due date: dropping onto Today, Tomorrow, This week, This month or Later sets the end date accordingly (today, tomorrow, this week\'s Sunday, the last day of the month, the 1st of next month, respectively).',
           ],
         },
@@ -359,7 +359,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Changing **Status** to a closing one opens the same **Complete** dialog as the detail; cancelling it reverts the cell to its previous value. Changing a closed status to an open one reopens the task right away, same as the Reopen action.',
+          text: 'Changing **Status** to a positive closing one opens the same **Complete** dialog as the detail; cancelling it reverts the cell to its previous value. Picking a negative closing status closes the task right away with that status, with no time entry and no completion date; if the task requires a closure feedback or validation, the change is refused with a message. Changing a closed status to an open one reopens the task right away, same as the Reopen action.',
         },
         {
           type: 'paragraph',

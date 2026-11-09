@@ -103,7 +103,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Trascina una card su un\'altra colonna per spostarla.',
-            'Per stato: tra due stati aperti lo stato cambia subito; verso uno stato di chiusura si apre la finestra **Completa**, come nell\'elenco — annullandola la card torna al suo posto; da uno stato chiuso a uno aperto il task viene riaperto.',
+            'Per stato: tra due stati aperti lo stato cambia subito; verso uno stato di chiusura con esito positivo si apre la finestra **Completa**, come nell\'elenco — annullandola la card torna al suo posto; verso uno stato di chiusura con esito negativo il task si chiude subito con quello stato, senza segnatempo; da uno stato chiuso a uno aperto il task viene riaperto.',
             'Per scadenza: trascinare su Oggi, Domani, Questa settimana, Questo mese o Più avanti imposta la data fine di conseguenza (rispettivamente oggi, domani, la domenica di questa settimana, l\'ultimo giorno del mese, il primo giorno del mese successivo).',
           ],
         },
@@ -362,7 +362,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Cambiando lo **Stato** verso uno di chiusura si apre la finestra **Completa**, la stessa del dettaglio: annullandola, la cella torna al valore di prima. Cambiando uno stato chiuso a uno aperto, il task viene riaperto subito, come con l\'azione Riapri.',
+          text: 'Cambiando lo **Stato** verso uno di chiusura con esito positivo si apre la finestra **Completa**, la stessa del dettaglio: annullandola, la cella torna al valore di prima. Scegliendo uno stato di chiusura con esito negativo il task si chiude subito con quello stato, senza segnatempo e senza data di completamento; se il task richiede il feedback di chiusura o la validazione, il cambio viene rifiutato con un messaggio. Cambiando uno stato chiuso a uno aperto, il task viene riaperto subito, come con l\'azione Riapri.',
         },
         {
           type: 'paragraph',

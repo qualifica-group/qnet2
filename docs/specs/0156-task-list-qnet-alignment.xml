@@ -48,8 +48,9 @@
     D-8  Modifica diretta nelle celle: titolo, stato, tipo, priorita', importanza, data inizio, scadenza,
          richiedente, assegnatari, osservatori, minuti stimati, commessa, fase commessa. La scrittura passa da
          `TaskService::update` (override di `updateCell` in TasksTableDefinition) con tutte le guardie. Lo stato
-         in cella: verso uno stato di chiusura apre la finestra di completamento (come 0157 D-3), da chiuso ad
-         aperto chiama riapri. Fase modificabile solo con commessa impostata.
+         in cella: verso uno stato closed_positive apre la finestra di completamento (come 0157 D-3), verso
+         closed_negative fa il PATCH normale (rettifica utente 2026-11-09: Completa chiude sempre in positivo,
+         spec 0126 D-4), da chiuso ad aperto chiama riapri. Fase modificabile solo con commessa impostata.
   </decisions>
 
   <scope>

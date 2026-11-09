@@ -50,7 +50,18 @@ describe('useTaskKanbanStatusMove (spec 0157 D-3, spec 0164 D-3: onMutated trave
     expect(uncompleteTask).not.toHaveBeenCalled()
   })
 
-  it('opens "Completa" (fetches the task) on a move INTO a closing status, without writing anything yet', async () => {
+  it('PATCHes the picked status on a move INTO a negative closing status, never opening "Completa"', () => {
+    vi.mocked(updateTask).mockResolvedValue({} as never)
+    const { result } = renderHook(() => useTaskKanbanStatusMove())
+
+    act(() => result.current.moveToStatus(row(1, 'open'), 4, 'closed_negative', vi.fn()))
+
+    expect(updateTask).toHaveBeenCalledWith(1, { task_status_id: 4 })
+    expect(fetchTask).not.toHaveBeenCalled()
+    expect(result.current.completingTask).toBeNull()
+  })
+
+  it('opens "Completa" (fetches the task) on a move INTO a positive closing status, without writing anything yet', async () => {
     const task = { id: 1 } as TaskDetailWithPermissions
     vi.mocked(fetchTask).mockResolvedValue(task)
     const onMutated = vi.fn()

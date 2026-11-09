@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Task: chiusura negativa da elenco e Kanban (2026-11-09) — COMMITTATO
+
+- Bug: scegliendo uno stato `closed_negative` nella cella Stato o trascinando la card nel Kanban si apriva "Completa"
+  (segnatempo obbligatorio) e il task finiva su `closed_positive` ("Esecuzione validata" nel catalogo Qualifica): l'id scelto
+  veniva scartato e `TaskCompletionService::complete()` chiude sempre in positivo.
+- Fix: `resolveTaskStatusInterceptDecision` restituisce `open_complete` solo verso `closed_positive`; `closed_negative` cade
+  nel PATCH normale, come gia' dal dettaglio (spec 0126 D-4). Backend invariato. Rettificate spec 0156 D-8 e 0157 D-3.
+- Limite: la cella non raccoglie il feedback. Con feedback obbligatorio mancante o validazione richiesta il PATCH da' 422 e
+  la cella torna indietro con il messaggio del server (in inglese). Le righe gia' chiuse per errore non sono state corrette.
+- Test: `task-status-intercept-decision.test.ts` (REQUIREMENT CHANGED: `pending -> closed_negative` non apre piu' Completa),
+  Kanban, 2 Pest su PATCH cella in `TaskQnetListAlignmentTest`. Vitest `features/tasks` + `features/help` 682/682, Pest mirati
+  33/33, ESLint, Pint, `tsc -b --force` puliti. Suite completa non eseguita.
+- Manuale: guide `tasks` IT/EN e Claude Docs (Kanban ed elenco) aggiornati; PDF derivato da rigenerare.
+
 ## Linea di prodotto: radice legacy vuota nel picker (2026-11-08) — VERDE, NON COMMITTATO
 
 - Bug (es. richiesta 28588, migrata): riga su "[OLD] Sic_Formazione" (disattiva) sotto la radice "[OLD] SICUREZZA 81/08"
