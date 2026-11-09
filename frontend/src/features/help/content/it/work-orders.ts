@@ -70,32 +70,24 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtrare per categoria prodotto",
+      id: 'list-filters',
+      title: "Filtri predefiniti, categoria e anagrafica",
       blocks: [
         {
           type: 'paragraph',
-          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di commesse. Cliccando una tab l'elenco mostra solo le commesse di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+          text: "All'apertura la pagina **Commesse** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Responsabile** e **Partecipante** (le commesse dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme: una commessa deve soddisfarli entrambi. Per vedere anche le altre commesse che puoi consultare, scegli **Tutte le visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata.",
         },
         {
           type: 'paragraph',
-          text: "Una commessa compare nella tab di ogni categoria dei prodotti presenti nelle **righe di ricavo delle offerte da cui nasce**: l'offerta collegata e, per una commessa multi-offerta, le offerte delle righe che contiene (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; una commessa senza righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quante commesse, tra quelle che puoi vedere, rientrano nella categoria.",
-        },
-        {
-          type: 'steps',
-          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Con **Seleziona tutte** e **Deseleziona tutte**, nel menu, aggiungi o togli in un colpo solo tutte le categorie dalle preferite. I due pulsanti non compaiono mentre stai cercando.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**.",
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
-        },
-        {
-          type: 'paragraph',
-          text: "Scegliendo la tab di una categoria (non **Tutte**), in fondo all'elenco compaiono le colonne dei campi flessibili della **commessa** di quella categoria (non quelli dell'offerta). Nella tab di una categoria madre sono i campi assegnati alla madre: quelli delle sole sottocategorie compaiono solo nella loro tab. Puoi filtrarle e ordinarle. Se hai il permesso di modificarle, le cambi direttamente nella cella. I campi di tipo tabella si modificano solo dal dettaglio.",
+          text: "Nello stesso pannello puoi scegliere una o più voci anche in **Categoria prodotto** (solo quella categoria) e **Anagrafica** (il cliente). I filtri non allargano ciò che puoi vedere: restano valide le regole di visibilità del tuo profilo. Una commessa rientra in una categoria se la categoria è tra i prodotti delle **righe di ricavo delle offerte da cui nasce**: l'offerta collegata e, per una commessa multi-offerta, le offerte delle righe che contiene. Le righe di costo non contano. Per una commessa multi-offerta vale anche il cliente di ciascuna offerta.",
         },
         {
           type: 'note',
-          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le commesse. La tab **Commesse** del dettaglio di un contratto non ha la barra.",
+          text: "Il campo **Assegnazione** e la **Categoria madre** precompilata esistono solo nella pagina **Commesse**: in **Commesse di Progetto** la **Categoria madre** parte vuota, e nelle sezioni **Commesse** di un contratto o di un'anagrafica non compare. L'esportazione segue i filtri attivi.",
         },
       ],
     },

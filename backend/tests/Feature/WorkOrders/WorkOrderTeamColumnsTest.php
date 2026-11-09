@@ -68,7 +68,10 @@ it('returns the participants in the row in their position order, with the avatar
 it('offers supervisors and participants as multi-value person pickers in the advanced filters', function () {
     Sanctum::actingAs(workOrderUserWith(['viewAny']));
 
-    $filters = $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters');
+    $filters = array_values(array_filter(
+        $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'),
+        static fn (array $filter): bool => in_array($filter['name'], ['supervisors', 'participants'], true),
+    ));
 
     expect(array_column($filters, 'name'))->toBe(['supervisors', 'participants'])
         ->and(array_column($filters, 'label'))->toBe(['workOrders.advancedFilters.supervisors', 'workOrders.advancedFilters.participants']);

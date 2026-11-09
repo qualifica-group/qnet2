@@ -7,6 +7,7 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
+import { WORK_ORDER_PERSONAL_VIEW_FILTERS } from '@/features/work-orders/types'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 
@@ -98,6 +99,7 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
             ref={tableRef}
             domain={WORK_ORDERS_DOMAIN}
             rowScope={{ quoteId }}
+            hiddenAdvancedFilters={WORK_ORDER_PERSONAL_VIEW_FILTERS}
             renderers={renderers}
             onAction={handleAction}
             isBusy={isBusy}

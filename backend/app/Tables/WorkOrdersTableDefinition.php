@@ -16,6 +16,7 @@ use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
+use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
 use App\Tables\WorkOrders\WorkOrderAdvancedFilterCatalog;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
@@ -69,6 +70,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderSourceQuotes $sourceQuotes,
         private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
         private readonly WorkOrderRenewalColumn $renewalColumn,
+        private readonly WorkOrderAdvancedFilterApplier $advancedFilterApplier,
     ) {}
 
     /**
@@ -196,7 +198,20 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return WorkOrderAdvancedFilterCatalog::advancedFilters();
+        return WorkOrderAdvancedFilterCatalog::commessePageFilters($this->advancedFilterApplier->defaultParentCategories(Auth::user()));
+    }
+
+    /**
+     * @param  Builder<WorkOrder>  $query
+     * @param  array<string, mixed>  $descriptor
+     */
+    public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
+    {
+        /** @var User|null $actor */
+        $actor = Auth::user();
+
+        return $this->advancedFilterApplier->apply($query, $name, $value, $actor)
+            || parent::applyAdvancedFilter($query, $name, $descriptor, $value);
     }
 
     /**

@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse: via le linguette categorie, filtri avanzati precompilati come Task (2026-11-09) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente. Pagina Commesse senza strip categorie (`WorkOrdersGrid` perde `scope`/`tableKey`/`onMutated`/`strip`). Filtri avanzati aggiunti: `assignment`, `parent_category`, `product_category`, `registry` (`WorkOrderAdvancedFilterCatalog`, applicati da `WorkOrderAdvancedFilterApplier`).
+- Default all'apertura (come `assignment` di Task: `required` + `defaultValue`, il FE omette il valore uguale al default e il motore lo riapplica): `assignment` = `[supervisor, participant]` (OR; `visible` toglie il vincolo, enum `WorkOrderAssignmentScope`), `parent_category` = radici dei rami toccati dalla competenza (`defaultParentCategories`); jolly o senza competenza = `[0]`. I due filtri sono in AND.
+- "Tutte" = id sentinella `ProductCategoryForSelectResolver::ALL_ROOTS_ID` (0), prima voce della prima pagina di `GET /product-category-roots/for-select` (nuova, radici incluse container e inattive); si trova cercando tutte/tutti/all, non conta nel total, si idrata con `ids[]=0`.
+- Valgono solo sulla pagina Commesse: `QuoteScopedTableDefinition::applyAdvancedFilter` li salta se il tipo non e' `processing`; Contratto e Anagrafica li nascondono con `hiddenAdvancedFilters` (`WORK_ORDER_PERSONAL_VIEW_FILTERS`, nuova prop generica di `TableView`). Commesse di Progetto: niente `assignment`, `parent_category` vuota.
+- REQUIREMENT CHANGED nei test: `ProjectWorkOrdersGridTest`, `ProjectWorkOrdersCategoryExportMenuTest` (AC-015, inviano `assignment: [visible]`), `WorkOrderTeamColumnsTest` (elenco filtri), `project-work-orders.test.tsx`; rimosso `work-orders-table-category-tabs.test.tsx`. Nuovi `WorkOrderListFiltersTest`, `use-table-advanced-filters.test.ts`.
+- DA DECIDERE: senza linguetta non compaiono piu' le colonne `attr.*` su Commesse. Il backend delle tab Commesse (`work-orders/product-categories`, preferenze, `scopeToProductCategory*`, attr columns) e' stato lasciato in attesa di questa decisione.
+- Pest WorkOrders + ProjectWorkOrders + CategoryTabs + ProductCategories + Registries + Contracts + Table + Unit/Tables 1662/1664: rossi noti `WorkOrderCategoryTabsTest` AC-024 e `TableBulkDeleteTest`:131. Vitest help + work-orders + table + contracts + registries + category-tabs + i18n + components/ui 1697/1697, Pint, ESLint, `tsc -b --force` puliti. Non provato nel browser, suite completa non eseguita.
+- Guide IT/EN (sezione `list-filters` di work-orders al posto di `category-tabs`; tolta Commesse dalla frase sulle preferite in contracts/opportunities/quotes) e manuale Claude Docs aggiornati (paragrafo "Filtri predefiniti, categoria e anagrafica" in Commesse); il PDF derivato va rigenerato.
+
 ## Header: mansione sotto il nome al posto del ruolo (2026-11-09) — VERDE MIRATO
 
 - Richiesta utente. `NavUserHeader` mostra le mansioni (`employment.job_roles`, in ordine alfabetico, separate da virgola); senza mansioni l'email. Il ruolo non compare piu'.

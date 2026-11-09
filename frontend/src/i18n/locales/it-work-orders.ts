@@ -72,6 +72,10 @@ export const workOrders = {
   advancedFilters: {
     supervisors: 'Responsabili',
     participants: 'Partecipanti',
+    assignment: 'Assegnazione',
+    parentCategory: 'Categoria madre',
+    productCategory: 'Categoria prodotto',
+    registry: 'Anagrafica',
   },
   detail: {
     multiQuoteBadge: 'Multi-offerta',

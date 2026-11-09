@@ -22,6 +22,8 @@ interface UseTableAdvancedFiltersArgs {
   override?: AdvancedFilterValues | null
   /** Forwarded verbatim to `useAdvancedFilters` (spec 0151 D-2). */
   onOverrideCleared?: () => void
+  /** Names of the filters this grid does not offer: never shown, never sent. */
+  hidden?: readonly string[]
 }
 
 export interface TableAdvancedFiltersState {
@@ -44,8 +46,12 @@ export function useTableAdvancedFilters({
   onApplied,
   override,
   onOverrideCleared,
+  hidden,
 }: UseTableAdvancedFiltersArgs): TableAdvancedFiltersState {
-  const resolvedDescriptors = useMemo(() => descriptors ?? [], [descriptors])
+  const resolvedDescriptors = useMemo(
+    () => (descriptors ?? []).filter((descriptor) => !hidden?.includes(descriptor.name)),
+    [descriptors, hidden],
+  )
   const filters = useAdvancedFilters({
     domain,
     productCategoryId,

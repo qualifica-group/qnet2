@@ -229,6 +229,11 @@ export const enums = {
     all: 'All',
     visible: 'All visible',
   },
+  work_order_assignment_scope: {
+    supervisor: 'Supervisor',
+    participant: 'Participant',
+    visible: 'All visible',
+  },
   // Spec 0284: outcome of a staff training (grid, filter, detail, form).
   staff_training_outcome: {
     passed: 'Passed',

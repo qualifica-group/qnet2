@@ -47,6 +47,7 @@ export interface UseTableViewGridStateArgs {
   disableBuiltinDelete?: boolean
   advancedFiltersOverride?: AdvancedFilterValues | null
   onAdvancedFiltersOverrideCleared?: () => void
+  hiddenAdvancedFilters?: readonly string[]
   treeData?: boolean
   /** The loaded config (or `undefined` while pending/erroring). */
   config: TableConfig | undefined
@@ -105,6 +106,7 @@ export function useTableViewGridState(
     disableBuiltinDelete,
     advancedFiltersOverride,
     onAdvancedFiltersOverrideCleared,
+    hiddenAdvancedFilters,
     treeData,
     config,
   } = args
@@ -238,6 +240,7 @@ export function useTableViewGridState(
       },
       override: advancedFiltersOverride,
       onOverrideCleared: onAdvancedFiltersOverrideCleared,
+      hidden: hiddenAdvancedFilters,
     })
 
   // The domain's own aggregate figures over the WHOLE filtered set (spec

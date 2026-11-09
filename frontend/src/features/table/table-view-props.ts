@@ -126,6 +126,8 @@ export interface TableViewProps extends RowActionsOptions {
    * `useAdvancedFilters`'s `override`. `null`/omitted ⇒ today's behavior.
    */
   advancedFiltersOverride?: AdvancedFilterValues | null
+  /** Names of the domain's advanced filters this grid does not offer: never shown, never sent. Keep the array stable. */
+  hiddenAdvancedFilters?: readonly string[]
   /**
    * Invoked once the user exercises the normal Apply/Reset flow in the
    * advanced-filters panel, so the caller can drop `advancedFiltersOverride`

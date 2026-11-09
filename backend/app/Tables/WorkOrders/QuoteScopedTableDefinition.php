@@ -159,6 +159,23 @@ class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCat
         $this->registryScope = $registryId;
     }
 
+    /**
+     * The personal view belongs to the Commesse page alone, the only caller
+     * sending the `processing` type: the Contratto and Anagrafica tabs list
+     * that record's commesse whoever they are assigned to.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $descriptor
+     */
+    public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
+    {
+        if ($this->typeScope !== WorkOrderType::Processing && in_array($name, WorkOrderAdvancedFilterCatalog::PERSONAL_VIEW_FILTERS, true)) {
+            return true;
+        }
+
+        return $this->inner->applyAdvancedFilter($query, $name, $descriptor, $value);
+    }
+
     protected function writeAttributeValue(Model $row, string $code, mixed $value, User $actor): Model
     {
         /** @var WorkOrder $row */

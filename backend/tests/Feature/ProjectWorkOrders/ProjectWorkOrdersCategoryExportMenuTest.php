@@ -32,7 +32,7 @@ it('AC-015: exporting work-orders with work_order_type=processing leaves project
     Sanctum::actingAs(projectWorkOrderViewer());
     $payload = ['format' => 'csv', 'columns' => [['colId' => 'code', 'header' => 'Code']]];
 
-    $response = $this->postJson('/api/exports/work-orders', [...$payload, 'work_order_type' => 'processing'])->assertCreated();
+    $response = $this->postJson('/api/exports/work-orders', [...$payload, 'work_order_type' => 'processing', 'advancedFilters' => ['assignment' => ['visible']]])->assertCreated();
     $run = ExportRun::findOrFail($response->json('data.export_run.id'));
 
     expect($run->state['work_order_type'])->toBe('processing')

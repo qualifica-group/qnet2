@@ -19,6 +19,7 @@ use App\Enums\SupplierCommissionDirection;
 use App\Enums\TaskAssignmentScope;
 use App\Enums\TaskDueWindow;
 use App\Enums\TaskListStatus;
+use App\Enums\WorkOrderAssignmentScope;
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
 
@@ -94,6 +95,8 @@ return [
         'task_list_status' => TaskListStatus::class,
         'task_due_window' => TaskDueWindow::class,
         'task_assignment_scope' => TaskAssignmentScope::class,
+        // The Commesse page's preset filter (same model as the Task `assignment`).
+        'work_order_assignment_scope' => WorkOrderAssignmentScope::class,
         // Product typology Supplier commission direction (spec 0202): the
         // typology form's Received/Paid select and the grid's badge column.
         'supplier_commission_direction' => SupplierCommissionDirection::class,

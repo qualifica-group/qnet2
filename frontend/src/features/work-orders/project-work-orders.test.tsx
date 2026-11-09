@@ -8,16 +8,12 @@ import { WorkOrdersTable } from '@/features/work-orders/work-orders-table'
 
 /**
  * Spec 0359 D-1/D-2: "Commesse" sends `workOrderType: 'processing'`, "Commesse di Progetto" mounts the
- * `project-work-orders` domain with no row scope and no category strip. Grid, row actions and strip are stubbed.
+ * `project-work-orders` domain with no row scope. Neither page has the category strip. Grid and row actions are stubbed.
  */
 vi.mock('@/components/page-header', () => ({ PageHeader: () => <div /> }))
 vi.mock('@/features/work-orders/work-order-proforma-dialog', () => ({ WorkOrderProformaDialog: () => null }))
 vi.mock('@/features/activity-log/resource-activity-dialog', () => ({ ResourceActivityDialog: () => null }))
 vi.mock('@/features/auth/can', () => ({ Can: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
-vi.mock('@/features/category-tabs/category-tabs', () => ({ CategoryTabs: () => <div role="tablist" aria-label="categories" /> }))
-vi.mock('@/features/category-tabs/use-category-tab-strip', () => ({
-  useCategoryTabStrip: () => ({ scope: undefined, tableKey: 'all', tabsProps: {}, invalidateCategories: vi.fn() }),
-}))
 vi.mock('@/features/work-orders/use-work-order-row-actions', () => ({
   useWorkOrderRowActions: () => ({
     handleAction: vi.fn(),
@@ -49,7 +45,7 @@ beforeAll(async () => {
 })
 
 describe('work orders pages (spec 0359)', () => {
-  it('"Commesse" narrows the work-orders grid to processing work orders', () => {
+  it('"Commesse" narrows the work-orders grid to processing work orders, without the category strip', () => {
     render(
       <MemoryRouter>
         <WorkOrdersTable />
@@ -57,7 +53,7 @@ describe('work orders pages (spec 0359)', () => {
     )
 
     expect(screen.getByRole('region', { name: 'table-work-orders-processing' })).toBeInTheDocument()
-    expect(screen.getByRole('tablist', { name: 'categories' })).toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 
   it('"Commesse di Progetto" mounts the project-work-orders grid, unscoped and without the category strip', () => {
@@ -68,6 +64,6 @@ describe('work orders pages (spec 0359)', () => {
     )
 
     expect(screen.getByRole('region', { name: 'table-project-work-orders-unscoped' })).toBeInTheDocument()
-    expect(screen.queryByRole('tablist', { name: 'categories' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 })

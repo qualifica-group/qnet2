@@ -199,21 +199,24 @@ class WorkOrder extends BaseModel
      * lines' offers (quotes.opportunity_id -> opportunities.registry_id).
      *
      * @param  Builder<WorkOrder>  $query
+     * @param  int|array<int, int>  $registryIds
      */
-    public function scopeWithQuoteLineOfRegistry(Builder $query, int $registryId): void
+    public function scopeWithQuoteLineOfRegistry(Builder $query, int|array $registryIds): void
     {
-        $query->where(function (Builder $query) use ($registryId): void {
+        $registryIds = (array) $registryIds;
+
+        $query->where(function (Builder $query) use ($registryIds): void {
             $query->whereExists(
                 DB::table('quotes')
                     ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
                     ->whereColumn('quotes.id', 'work_orders.quote_id')
-                    ->where('opportunities.registry_id', $registryId)
+                    ->whereIn('opportunities.registry_id', $registryIds)
                     ->select(DB::raw(1))
             )->orWhereExists(
                 self::pivotLinesQuery()
                     ->join('quotes', 'quotes.id', '=', 'quote_lines.quote_id')
                     ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
-                    ->where('opportunities.registry_id', $registryId)
+                    ->whereIn('opportunities.registry_id', $registryIds)
             );
         });
     }

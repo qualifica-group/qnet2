@@ -19,6 +19,12 @@ use Illuminate\Support\Collection;
  */
 class ProductCategoryForSelectResolver
 {
+    /** The "Tutte" option of the root picker: no category has this id. */
+    public const int ALL_ROOTS_ID = 0;
+
+    /** What a user types to find that option, whatever its label's gender or language. */
+    private const array ALL_ROOTS_SEARCH_TERMS = ['tutte', 'tutti', 'all'];
+
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
         private readonly CategoryActivity $activity,
@@ -148,14 +154,57 @@ class ProductCategoryForSelectResolver
     }
 
     /**
-     * Active-only, searchable, paginated `{id, name}` page plus the `ids[]`
-     * hydration, without the business-function / management-mode meta.
+     * The ROOT picker of the grids' "Categoria madre" filter: first-level
+     * categories only, `is_selectable` ignored because a root is usually a
+     * container. Inactive ones stay listed, as in the other grid filters
+     * (spec 0208 D-7), so history remains searchable. The "Tutte" option
+     * leads the first page and, like a hydrated id, does not count in the total.
+     */
+    public function resolveRoots(ForSelectQuery $query): ForSelectResult
+    {
+        $result = $this->resolvePlain(ProductCategory::query()->select(['id', 'name'])->whereNull('parent_id'), $query, includeInactive: true);
+
+        if (! $this->offersAllRoots($query)) {
+            return $result;
+        }
+
+        $allRoots = (new ProductCategory)->forceFill(['id' => self::ALL_ROOTS_ID, 'name' => __('product_categories.all_roots')]);
+
+        return new ForSelectResult(
+            items: collect([$allRoots])->concat($result->items),
+            total: $result->total,
+            offset: $result->offset,
+            limit: $result->limit,
+        );
+    }
+
+    private function offersAllRoots(ForSelectQuery $query): bool
+    {
+        if (in_array(self::ALL_ROOTS_ID, $query->ids, true)) {
+            return true;
+        }
+
+        if ($query->offset !== 0) {
+            return false;
+        }
+
+        $search = mb_strtolower((string) $query->search);
+
+        return $search === '' || array_filter(self::ALL_ROOTS_SEARCH_TERMS, static fn (string $term): bool => str_starts_with($term, $search)) !== [];
+    }
+
+    /**
+     * Searchable, paginated `{id, name}` page plus the `ids[]` hydration,
+     * without the business-function / management-mode meta. Active-only unless
+     * the caller opts out.
      *
      * @param  Builder<ProductCategory>  $base
      */
-    private function resolvePlain(Builder $base, ForSelectQuery $query): ForSelectResult
+    private function resolvePlain(Builder $base, ForSelectQuery $query, bool $includeInactive = false): ForSelectResult
     {
-        $this->excludeInactive($base);
+        if (! $includeInactive) {
+            $this->excludeInactive($base);
+        }
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');

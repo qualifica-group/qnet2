@@ -27,6 +27,7 @@ import { useTaskDomainRowActions } from '@/features/tasks/use-task-domain-row-ac
 import { useTaskRowActions } from '@/features/tasks/use-task-row-actions'
 import { useTaskStatusCellIntercept } from '@/features/tasks/use-task-status-cell-intercept'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
+import { WORK_ORDER_PERSONAL_VIEW_FILTERS } from '@/features/work-orders/types'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 import type { RowActionHandler } from '@/features/table/row-actions'
@@ -166,6 +167,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
         ref={tableRef}
         domain={WORK_ORDERS_DOMAIN}
         rowScope={{ registryId }}
+        hiddenAdvancedFilters={WORK_ORDER_PERSONAL_VIEW_FILTERS}
         renderers={renderers}
         iconMap={iconMap}
         onAction={handleAction}

@@ -228,6 +228,11 @@ export const enums = {
     all: 'Tutti',
     visible: 'Tutti i visibili',
   },
+  work_order_assignment_scope: {
+    supervisor: 'Responsabile',
+    participant: 'Partecipante',
+    visible: 'Tutte le visibili',
+  },
   // Spec 0284: esito di una formazione del personale (griglia, filtro, dettaglio, form).
   staff_training_outcome: {
     passed: 'Superato',
