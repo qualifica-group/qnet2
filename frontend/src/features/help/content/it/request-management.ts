@@ -43,6 +43,10 @@ const guide: HelpGuide = {
           text: "Il campo **Cerca** trova le richieste per nome, cognome, codice fiscale, partita IVA, telefono o email principali del cliente. Parte dal terzo carattere e cerca le parole che **iniziano** con quanto scrivi: \"ros\" trova Rossi, \"ssi\" no. Con più parole (per esempio \"mario rossi\") devono esserci tutte. Le parole di una o due lettere vengono ignorate. Con termini molto generici l'elenco può non essere completo: aggiungi una parola per restringere.",
         },
         {
+          type: 'paragraph',
+          text: "Tutte le colonne si ordinano con un clic sull'intestazione e si filtrano dal menu dell'intestazione. **Categoria prodotto** e **Linee di prodotto**, che possono contenere più voci, si ordinano per la prima voce in ordine alfabetico. **Richieste di modifica** si filtra per numero (ad esempio maggiore di 0 per vedere solo le richieste con proposte in attesa) e **Caricato il**, nascosta all'inizio, per data.",
+        },
+        {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [

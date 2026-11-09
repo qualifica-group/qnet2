@@ -425,7 +425,11 @@ it('rows: an unknown sort column is rejected (allow-list, no raw SQL escape hatc
     ])->assertStatus(422);
 });
 
-it('rows: product_categories is not sortable (AGGREGATED to-many column)', function () {
+// Requirement change 2026-11-09 (direttiva utente: ogni colonna di Gestione
+// Richieste si ordina e si filtra): the AGGREGATED to-many column used to be
+// refused with 422, now it sorts by the alphabetically first category name
+// (ordering asserted in RequestManagementAllColumnsSortFilterTest).
+it('rows: product_categories is sortable', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
     Sanctum::actingAs($actor);
 
@@ -433,5 +437,5 @@ it('rows: product_categories is not sortable (AGGREGATED to-many column)', funct
         'startRow' => 0,
         'endRow' => 25,
         'sortModel' => [['colId' => 'product_categories', 'sort' => 'asc']],
-    ])->assertStatus(422);
+    ])->assertOk();
 });

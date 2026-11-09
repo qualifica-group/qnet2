@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Quote;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -39,9 +40,12 @@ use Illuminate\Support\Facades\DB;
  * column otherwise, so a domain adopting this column without that key gets a
  * 422, never a silent write.
  *
- * Not sortable (no single related row to order by), `set`-filterable by the
- * related product's own `name`, same bound/never-raw discipline as
- * ProductsOfInterestColumn (backend.md §8).
+ * `set`-filterable by the related product's own `name`, same bound/never-raw
+ * discipline as ProductsOfInterestColumn (backend.md §8). Sortable on the
+ * `request-management` grid only (user directive 2026-11-09: every column of
+ * that worklist sorts) by the alphabetically FIRST revenue-line product name
+ * (sortSubquery()); the read-only variant on Contratti/Offerte keeps
+ * `sortable: false`, as neither definition wires the sort.
  */
 final class OfferLinesColumn
 {
@@ -71,7 +75,10 @@ final class OfferLinesColumn
      */
     public static function readOnlyDeclaration(string $label): array
     {
-        return array_diff_key(self::declaration($label), array_flip(['editable', 'editor', 'editableField']));
+        return [
+            ...array_diff_key(self::declaration($label), array_flip(['editable', 'editor', 'editableField'])),
+            'sortable' => false,
+        ];
     }
 
     /**
@@ -84,7 +91,7 @@ final class OfferLinesColumn
             'label' => $label,
             'type' => 'text',
             'visible' => true,
-            'sortable' => false,
+            'sortable' => true,
             'filterable' => true,
             'filterType' => 'set',
             'editable' => true,
@@ -130,6 +137,20 @@ final class OfferLinesColumn
                 $group->orWhereDoesntHave($quoteRelation.'offerLines.product');
             }
         });
+    }
+
+    /**
+     * ORDER BY operand (user directive 2026-11-09): the alphabetically first
+     * REVENUE-line product name of each quote, correlated against
+     * `$quoteIdColumn` — one scalar per row, never a row-multiplying join.
+     */
+    public static function sortSubquery(string $quoteIdColumn = self::QUOTES_ID_COLUMN): QueryBuilder
+    {
+        return DB::table(self::LINES_TABLE)
+            ->join('products', 'products.id', '=', self::LINES_TABLE.'.'.self::PRODUCT_FK)
+            ->selectRaw('min(products.name)')
+            ->where(self::LINES_TABLE.'.line_type', QuoteLineType::Revenue->value)
+            ->whereColumn(self::LINES_TABLE.'.quote_id', $quoteIdColumn);
     }
 
     /**

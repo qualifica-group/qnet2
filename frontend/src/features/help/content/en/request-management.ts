@@ -43,6 +43,10 @@ const guide: HelpGuide = {
           text: "The **Search** box finds requests by the client's first name, last name, tax code, VAT number, or primary phone or email. It starts from the third character and matches words that **begin** with what you type: \"ros\" finds Rossi, \"ssi\" does not. With several words (for example \"mario rossi\") all of them must match. One- and two-letter words are ignored. With very generic terms the list may be incomplete: add a word to narrow it down.",
         },
         {
+          type: 'paragraph',
+          text: 'Every column sorts with a click on its header and filters from the header menu. **Product category** and **Product lines**, which can hold several entries, sort by their alphabetically first entry. **Change requests** filters by number (for example greater than 0 to see only requests with pending proposals) and **Created at**, hidden at first, by date.',
+        },
+        {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [

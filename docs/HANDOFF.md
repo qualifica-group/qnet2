@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Gestione Richieste: tutte le colonne ordinabili e filtrabili — VERDE, COMMITTATO (2026-11-09)
+
+- Direttiva utente: ogni colonna dell'elenco si ordina e si filtra. Solo backend + guide; nessun cambio di shape
+  delle righe, frontend invariato (legge i flag `sortable`/`filterable`/`filterType`).
+  - `product_categories` e `offer_lines`: `sortable: true`, ordinamento per il primo nome correlato in ordine
+    alfabetico (sottoquery `min()` correlata). `RequestRelationColumns::aggregatedSubquery()` e il nuovo
+    `OfferLinesColumn::sortSubquery()`; la variante `readOnlyDeclaration()` (Contratti/Offerte) resta
+    `sortable: false` perche' quelle definizioni non cablano il sort.
+  - `pending_change_requests`: sortable + filtro `number` (`hasFilterValues: false`), nuova classe
+    `App\Tables\RequestManagement\RequestPendingChangeRequestsColumn` (conteggio pendenti dell'offerta come
+    sottoquery correlata, semantica number di FilterApplier incl. inRange e condizioni AND/OR), instradata da
+    `RequestRelationColumns` (RequestManagementTableDefinition e' a 499 righe: non toccato).
+  - `created_at`: `filterable: true`, `filterType: date`, motore generico.
+  - La colonna `id` e' il default del motore (`InjectsDefaultIdColumn`, nascosta, sortable, volutamente NON
+    filtrabile su tutti i domini): lasciata com'e'. Se la si vuole filtrabile va dichiarata nel catalogo.
+- Test: nuovo `tests/Feature/RequestManagement/RequestManagementAllColumnsSortFilterTest.php` (contratto colonne,
+  sort categorie/linee, sort+filtro pendenti, filtro data). REQUIREMENT CHANGED in tre test esistenti:
+  `RequestManagementOfferLinesTest` (`offer_lines` sortable), `RequestManagementInlineEditorsTest` e
+  `RequestManagementTableTest` (`product_categories` sortable, prima 422). Verdi: intera cartella
+  `tests/Feature/RequestManagement` (891 test, gli unici 2 rossi erano i test del vecchio requisito, poi
+  aggiornati e riverificati) + Contracts/Quotes che toccano `offer_lines`; Pint ok; Vitest help 160 ok; ESLint ok;
+  `tsc -b --force` EXIT=0.
+- Spec 0086: nota "Direttiva utente 2026-11-09" nelle decisioni. Guide IT/EN `request-management` (overview):
+  paragrafo su ordinamento/filtri. Manuale Claude Docs NON aggiornato (documento non raggiungibile dalla sessione):
+  sezione "Gestione Richieste > Elenco".
+- Ambiente Windows: i test Pest vanno lanciati da PowerShell (`php` = Herd 8.4.8 con `pdo_sqlite`); il php di Laragon
+  8.4.19 non ha il driver SQLite. La cartella RequestManagement intera richiede `php -d memory_limit=1024M`; tsc
+  richiede `NODE_OPTIONS=--max-old-space-size=8192`.
+
 ## ODA: picker Commessa filtrato per Cliente — VERDE, COMMITTATO e17f3c8f (2026-11-06)
 
 - Solo frontend: `work-orders/for-select` accettava gia' `registry_id` (spec 0122 D-5). In

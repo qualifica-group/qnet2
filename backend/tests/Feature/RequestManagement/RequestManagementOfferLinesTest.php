@@ -70,7 +70,10 @@ it('AC-008: the config exposes offer_lines, inline editable, and no longer produ
     $column = $columns['offer_lines'];
     expect($column['label'])->toBe('requestManagement.columns.offerLines')
         ->and($column['type'])->toBe('text')
-        ->and($column['sortable'])->toBeFalse()
+        // Requirement change 2026-11-09 (direttiva utente: ogni colonna di
+        // Gestione Richieste si ordina e si filtra): sortable by the first
+        // revenue-line product name, see RequestManagementAllColumnsSortFilterTest.
+        ->and($column['sortable'])->toBeTrue()
         ->and($column['filterable'])->toBeTrue()
         ->and($column['filterType'])->toBe('set')
         // Requirement change 2026-09-07: editable, and carrying the editor

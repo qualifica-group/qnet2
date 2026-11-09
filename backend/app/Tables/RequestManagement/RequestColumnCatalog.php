@@ -23,9 +23,11 @@ use App\Tables\Shared\OfferLinesColumn;
  *    sortable + text-filterable via RequestRelationColumns, display-only
  *    (this module never writes it).
  *  - `product_categories` ("Categoria prodotto") — AGGREGATED to-many via
- *    `quote.opportunity.productLines.productCategory`, filterable (set) but
- *    never sortable (no single related row to order by), and inline-editable
- *    (spec 0075) through the `product_lines` collection it projects.
+ *    `quote.opportunity.productLines.productCategory`, filterable (set),
+ *    sortable by the alphabetically first category name (user directive
+ *    2026-11-09: every column of this worklist sorts and filters), and
+ *    inline-editable (spec 0075) through the `product_lines` collection it
+ *    projects.
  *  - `offer_lines` ("Linee di prodotto", spec 0086 D-7) — the offer's own
  *    REVENUE lines' products (`quote.offerLines.product`), read-only
  *    (AC-021/AC-022), replacing `products_of_interest` on this domain ONLY.
@@ -278,15 +280,21 @@ final class RequestColumnCatalog
             // per-record pending-count badge/alert. A real aggregated value
             // (withCount on the HasFieldChangeRequests relation,
             // RequestManagementTableDefinition::baseQuery()), display-only —
-            // never editable, and not sortable/filterable (no operative need
-            // for either in this microtask).
+            // never editable. Sortable + `number`-filterable since the user
+            // directive 2026-11-09, both DERIVED: the count is rebuilt as a
+            // correlated subquery by RequestPendingChangeRequestsColumn (no
+            // `quotes` column to ORDER BY / WHERE on), and
+            // `hasFilterValues: false` skips the generic distinct-values
+            // fallback for the same reason.
             [
-                'id' => 'pending_change_requests',
+                'id' => RequestPendingChangeRequestsColumn::COLUMN_ID,
                 'label' => 'requestManagement.columns.pendingChangeRequests',
                 'type' => 'number',
                 'visible' => false,
-                'sortable' => false,
-                'filterable' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'number',
+                'hasFilterValues' => false,
             ],
             // Inline-editable (user directive 2026-07-23): the site is picked
             // in-cell so the Operatore picker can be narrowed to that site's
@@ -332,13 +340,16 @@ final class RequestColumnCatalog
                 // default "most recently loaded first" ordering (defaultSort,
                 // user directive 2026-08-03: intake order, NOT last-touched)
                 // resolves against a valid catalogue column — the generic
-                // engine 422s an unknown sort colId.
+                // engine 422s an unknown sort colId. `date`-filterable since
+                // the user directive 2026-11-09, served by the generic engine
+                // like `next_callback_at` (a real `quotes` column).
                 'id' => 'created_at',
                 'label' => 'requestManagement.columns.createdAt',
                 'type' => 'datetime',
                 'visible' => false,
                 'sortable' => true,
-                'filterable' => false,
+                'filterable' => true,
+                'filterType' => 'date',
             ],
         ];
     }
@@ -365,8 +376,9 @@ final class RequestColumnCatalog
 
     /**
      * A to-many AGGREGATED (via `productLines`) column declaration:
-     * filterable via `set` (whereHas on the related row's name) but never
-     * sortable — no single related row to order by.
+     * filterable via `set` (whereHas on the related row's name) and sortable
+     * by the alphabetically first related name (RequestRelationColumns'
+     * `min()` correlated subquery, user directive 2026-11-09).
      *
      * @return array<string, mixed>
      */
@@ -377,7 +389,7 @@ final class RequestColumnCatalog
             'label' => $label,
             'type' => 'text',
             'visible' => true,
-            'sortable' => false,
+            'sortable' => true,
             'filterable' => true,
             'filterType' => 'set',
         ];
