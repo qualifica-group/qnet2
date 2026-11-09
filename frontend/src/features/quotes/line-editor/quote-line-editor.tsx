@@ -50,12 +50,13 @@ export interface QuoteLineEditorProps {
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
   commissions?: QuoteLineCommissionsAdapter
   onProductsPicked?: (items: QuoteCatalogProduct[]) => void
-  /** A channel's own extras on each card; `position` is the row's 1-based number. */
+  /** A channel's own extras on each card; `position` is the row's 1-based number, `locked` a row assigned to a work order (spec 0360 D-4). */
   renderRowSlots?: (
     row: QuoteLineFormValues,
     index: number,
     position: number,
     product: QuoteLineProductView | undefined,
+    locked: boolean,
   ) => QuoteLineCardSlots
   /** Height cap of the catalogue list: the dialog grants it more room than a page section. */
   catalogListClassName?: string
@@ -156,7 +157,7 @@ export function QuoteLineEditor({
             supplierAmount={variant === 'revenue' ? 'price' : 'cost'}
             onChangeSupplier={(option) => void editor.changeSupplier(index, option)}
             onRemove={() => editor.removeRow(index)}
-            slots={renderRowSlots?.(row, index, position + 1, product)}
+            slots={renderRowSlots?.(row, index, position + 1, product, editor.lockedCodesOf(row) !== null)}
           />
         )
       })}

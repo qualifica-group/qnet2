@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Descrizione aggiuntiva sulle righe di costo dell'offerta (2026-11-09) — VERDE MIRATO
+
+- Richiesta utente. `QuoteCostsTab` monta nel `footer` della card lo stesso `QuoteLineAdditionalDescription` della scheda Offerta. Contratto e backend invariati: `cost_lines.*.additional_description` era gia' accettato, salvato e mostrato in sola lettura. Spec 0269 AC-014.
+- Test: cambiato per REQUIREMENT CHANGED `AC-009` in `quote-costs-tab.test.tsx` (fissava l'assenza del campo). Guide IT/EN `quotes` e manuale Claude Docs aggiornati. DA FARE: rigenerare il PDF del manuale.
+- Corretto insieme: sulla scheda Offerta il campo e' disabilitato su una riga bloccata da commessa (`renderRowSlots` riceve `locked`); prima restava modificabile e il server rifiutava il salvataggio (`QuoteLineWorkOrderLock`). Le righe di costo non hanno il blocco.
+
 ## Dashboard ripristinata (2026-11-09) — COMMITTATO
 
 - Decisione utente: annullati `70c03670`, `c4c412d2`, `17596763`. Otto file identici allo stato di `70c03670~1` (`dashboard-screen`, `dashboard-tasks-section` e relativi test, guide IT/EN `dashboard`, locale `it/en-dashboard`): tornano tutti i blocchi, i riquadri `GET /api/dashboard/tasks` e il pannello `ModuleStatsPanel domain="tasks"`. Spec 0151 AC-011 di nuovo valido; le voci sotto sullo spegnimento sono superate.
