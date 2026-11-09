@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Header: mansione sotto il nome al posto del ruolo (2026-11-09) — VERDE MIRATO
+
+- Richiesta utente. `NavUserHeader` mostra le mansioni (`employment.job_roles`, in ordine alfabetico, separate da virgola); senza mansioni l'email. Il ruolo non compare piu'.
+- Contratto: `employment.job_roles: {id, name}[]` nel payload utente corrente (`AuthController::authenticatedUserPayload`) e in start/stop impersonificazione (`ImpersonationController::loginPayload`, via `EmploymentResource`).
+- Guide in-app IT+EN (`general.ts`, riga "Nome e avatar") e manuale Claude Docs aggiornati; il PDF derivato no.
+- Pest `tests/Feature/Auth` 142/142, Vitest nav-user-header + help + auth 210/210, Pint, ESLint, `tsc -b --force` puliti. Non provato nel browser, suite completa non eseguita.
+
 ## Gestione Richieste/Iscritti: colonne Ragione sociale e Partita IVA (2026-11-09) — colonne COMMITTATE (99907037), spostamento Partita IVA NON COMMITTATO
 
 - Richiesta utente. Nuova colonna `company_name` (scheda anagrafica del cliente), visibile, ordinabile, filtrabile, in sola lettura. `vat_number`

@@ -38,13 +38,16 @@ export interface User {
   /**
    * Employment slice of the connected actor (spec 0015 `employment`), narrowed
    * to what the app reads from it: the Sede operativa the request-management
-   * create form defaults to (user directive 2026-08-04). Since spec 0103 the
-   * Sede lives on the pivot rather than a column, hence the renamed field —
-   * the field itself stays the FISICA site only. Absent when the actor has no
-   * employment profile — the full profile stays the Users module's own
-   * `EmploymentDetail`.
+   * create form defaults to (user directive 2026-08-04) and the job roles shown
+   * under the name in the app header. Since spec 0103 the Sede lives on the
+   * pivot rather than a column, hence the renamed field — the field itself
+   * stays the FISICA site only. Absent when the actor has no employment
+   * profile — the full profile stays the Users module's own `EmploymentDetail`.
    */
-  employment?: { primary_operational_site_id: number | null } | null
+  employment?: {
+    primary_operational_site_id: number | null
+    job_roles: { id: number; name: string }[]
+  } | null
   created_at: string | null
   /** Per-user modal-vs-page open mode preference (spec 0042). Never null on the wire. */
   module_open_preferences: ModuleOpenPreferences

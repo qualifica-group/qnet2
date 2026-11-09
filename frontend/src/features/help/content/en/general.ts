@@ -39,7 +39,7 @@ const guide: HelpGuide = {
             ['Grid (**Apps**)', 'Appears when apps are set up: opens the launcher to switch app.'],
             ['Bell', 'Opens notifications.'],
             ['Sun/moon (**Change theme**)', 'Picks the **Light**, **Dark** or **System** theme.'],
-            ['Name and avatar', 'Opens the user menu with **Settings** and **Sign out**.'],
+            ['Name and avatar', 'Your job role appears under the name (your email if you have none). Opens the user menu with **Settings** and **Sign out**.'],
           ],
         },
         { type: 'paragraph', text: 'Below the header, every page except the home shows the navigation path; to its right is the button to create a new record. If **New version available** appears, press **Update now**.' },

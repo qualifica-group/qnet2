@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\EmploymentProfile;
+use App\Models\JobRole;
 use App\Models\User;
 use App\Services\RoleAssignmentGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -111,6 +113,18 @@ it('AC-001: starts a session; /auth/me under the new token returns the target', 
         ->getJson('/api/auth/me')
         ->assertOk()
         ->assertJsonPath('data.id', $target->id);
+});
+
+it('returns the target job roles when starting a session, as the client swaps the current user', function () {
+    $actor = actorWithImpersonatePermission();
+    $target = User::factory()->create();
+    $jobRole = JobRole::factory()->create();
+    EmploymentProfile::factory()->create(['user_id' => $target->id])->jobRoles()->attach($jobRole);
+
+    asToken($this, tokenFor($actor))
+        ->postJson("/api/users/{$target->id}/impersonate")
+        ->assertOk()
+        ->assertJsonPath('data.user.employment.job_roles', [['id' => $jobRole->id, 'name' => $jobRole->name]]);
 });
 
 it('AC-002: /auth/me/abilities under the impersonation token reflects the target, not the actor', function () {

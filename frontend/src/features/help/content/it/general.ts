@@ -39,7 +39,7 @@ const guide: HelpGuide = {
             ['Griglia (**App**)', 'Appare se sono configurate delle app: apre il launcher per cambiare app.'],
             ['Campanella', 'Apre le notifiche.'],
             ['Sole/luna (**Cambia tema**)', 'Sceglie il tema **Chiaro**, **Scuro** o **Sistema**.'],
-            ['Nome e avatar', 'Apre il menu utente con **Impostazioni** ed **Esci**.'],
+            ['Nome e avatar', 'Sotto il nome compare la tua mansione (l’email, se non ne hai una). Apre il menu utente con **Impostazioni** ed **Esci**.'],
           ],
         },
         { type: 'paragraph', text: 'Sotto l’intestazione ogni pagina, tranne la home, mostra il percorso di navigazione; alla sua destra c’è il pulsante per creare un nuovo record. Se compare **Nuova versione disponibile**, premi **Aggiorna ora**.' },

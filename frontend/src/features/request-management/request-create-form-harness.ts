@@ -54,7 +54,7 @@ const TEST_ACTOR: User = {
   avatar_url: null,
   must_set_password: false,
   onboarding_status: 'completed',
-  employment: { primary_operational_site_id: TEST_ACTOR_SITE_ID },
+  employment: { primary_operational_site_id: TEST_ACTOR_SITE_ID, job_roles: [] },
   created_at: null,
   module_open_preferences: { mode: 'custom', overrides: {} },
   ui_scale: 40,
