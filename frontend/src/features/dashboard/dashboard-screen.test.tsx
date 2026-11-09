@@ -1,12 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
+import i18n from '@/i18n'
 import { DashboardScreen } from '@/features/dashboard/dashboard-screen'
 
 /**
  * REQUIREMENT CHANGED (user decision 2026-11-09, replaces spec 0151 AC-011): the
- * home is an empty page that reads no data, whatever the user's permissions.
+ * home only shows an "under construction" message and reads no data, whatever
+ * the user's permissions.
  */
 
 const fetchDashboardTaskCountersMock = vi.fn()
@@ -30,6 +32,10 @@ vi.mock('@/features/stats/api', () => ({
   fetchModuleStats: (domain: string) => fetchModuleStatsMock(domain),
 }))
 
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+})
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -52,9 +58,10 @@ describe('DashboardScreen', () => {
     expect(screen.queryByRole('navigation', { name: 'breadcrumb' })).not.toBeInTheDocument()
   })
 
-  it('renders no block and issues no data request', () => {
+  it('shows the under construction message, no block and issues no data request', () => {
     renderScreen()
 
+    expect(screen.getByText('Dashboard under construction')).toBeInTheDocument()
     expect(screen.queryByRole('heading')).not.toBeInTheDocument()
     expect(fetchDashboardTaskCountersMock).not.toHaveBeenCalled()
     expect(fetchTimeEntriesOverviewMock).not.toHaveBeenCalled()

@@ -151,7 +151,7 @@ const guide: HelpGuide = {
       id: 'dashboard-and-statistics',
       title: 'Dashboard and statistics',
       blocks: [
-        { type: 'paragraph', text: 'The **Dashboard** is the first page after signing in; right now it is empty. The main numbers are found inside each module, in the **Statistics** panel (for example in **Users**, **Registries**, **Company Sites**, **Products**, **Product Categories**, **Projects**, **Leads** and **Opportunities**).' },
+        { type: 'paragraph', text: 'The **Dashboard** is the first page after signing in; right now it is under construction. The main numbers are found inside each module, in the **Statistics** panel (for example in **Users**, **Registries**, **Company Sites**, **Products**, **Product Categories**, **Projects**, **Leads** and **Opportunities**).' },
         { type: 'steps', items: ['Open the module.', 'Press the button with the chart icon (**Show statistics**).', 'To close it, press it again (**Hide statistics**).'] },
         { type: 'paragraph', text: 'The panel shows totals and indicators (for example the allocated budget), distributions such as "By status" and monthly trends such as "New projects per month". qnet remembers if you left it open.' },
       ],

@@ -3,7 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Linguette categoria ripristinate (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+## Dashboard in allestimento (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+
+- Decisione utente: `DashboardScreen` mostra il messaggio `dashboard.underConstruction.{title,description}` (chiavi al posto di
+  `dashboard.empty`, non piu' usate) e continua a non fare chiamate dati. Guide IT/EN `dashboard` e `general` aggiornate.
+  Vitest dashboard + help + i18n 415/415, ESLint e `tsc -b --force` puliti.
+
+## Linguette categoria ripristinate (2026-11-09) — COMMITTATO (`897f4861`)
 
 - Decisione utente: annullato `6e99a451` sui 17 file di tabelle, test e guide (Opportunita', Offerte, Commesse, Contratti). I file sono identici
   allo stato precedente a quel commit. Vitest moduli toccati 1516/1516, ESLint e `tsc -b --force` puliti.

@@ -54,8 +54,8 @@ export const dashboard = {
     leads: 'Lead',
     registries: 'Anagrafiche',
   },
-  empty: {
-    title: 'Nessun contenuto disponibile',
-    description: 'Non hai i permessi per visualizzare alcun blocco di questa pagina.',
+  underConstruction: {
+    title: 'Dashboard in allestimento',
+    description: 'Stiamo preparando questa pagina. Task, segnatempo, assenze e statistiche restano disponibili dal menu.',
   },
 }
