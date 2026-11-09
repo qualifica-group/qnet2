@@ -11,6 +11,7 @@ import { Popover as PopoverPrimitive } from 'radix-ui'
 import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { SELECT_POPOVER_WIDTH_CLASS } from '@/components/ui/select-popup-width'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserAvatar } from '@/components/user-avatar'
 import { cn } from '@/lib/utils'
@@ -351,7 +352,10 @@ export function AsyncPaginatedMultiSelect({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={4}
-          className="z-50 w-(--radix-popover-trigger-width) rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"
+          className={cn(
+            'z-50 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            SELECT_POPOVER_WIDTH_CLASS,
+          )}
           onOpenAutoFocus={(event) => {
             // Keep focus on the search input rather than the first option.
             event.preventDefault()

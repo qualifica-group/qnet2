@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Select: popup largo quanto l'opzione piu' lunga (2026-11-09) — COMMITTATO
+
+- Richiesta utente: nei select con testi lunghi le opzioni devono allargarsi. Nuovo `components/ui/select-popup-width.ts`: `SELECT_POPUP_FIT_CONTENT_CLASS` (`w-max`, tetto `min(48rem, 100vw-2rem)`) e `SELECT_POPOVER_WIDTH_CLASS` (in piu' il minimo `max(15rem, larghezza trigger)`). Oltre il tetto le righe restano troncate.
+- Applicato a `SearchableSelect`, `AsyncPaginatedSelect`, `AsyncPaginatedMultiSelect`, `SearchableMultiSelect`, `MultiSelect`, `RevenueTypeSelect`, `reward-assignment-field` e agli editor di cella AG Grid (select, multi-select, relation, product-lines, work-order-stage), che tengono il loro `min-w-*` precedente. `Select` Radix e `<select>` nativi gia' si adattano al contenuto: non toccati.
+- Le larghezze fisse dei chiamanti (`contentClassName`: `PRODUCT_POPUP_WIDTH_CLASS`, `CATEGORY_POPUP_WIDTH_CLASS`, `TASK_TEMPLATE_POPUP_WIDTH_CLASS`) vincono ancora: non cambiate.
+- Da verificare nel browser (non provato, solo test e CSS generato): la larghezza varia mentre si digita nella ricerca, perche' segue le opzioni visibili; negli editor di griglia un testo caricato in ritardo su una cella vicina al bordo destro puo' essere tagliato dal bordo della griglia (AG Grid riposiziona il popup solo per 200 ms). Manuale: nessun impatto.
+
 ## Descrizione aggiuntiva sulle righe di costo dell'offerta (2026-11-09) — VERDE MIRATO
 
 - Richiesta utente. `QuoteCostsTab` monta nel `footer` della card lo stesso `QuoteLineAdditionalDescription` della scheda Offerta. Contratto e backend invariati: `cost_lines.*.additional_description` era gia' accettato, salvato e mostrato in sola lettura. Spec 0269 AC-014.

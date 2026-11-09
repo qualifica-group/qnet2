@@ -14,6 +14,7 @@ import {
   AsyncSelectOptionRow,
   OptionsSkeleton,
 } from '@/components/ui/async-paginated-select-option'
+import { SELECT_POPOVER_WIDTH_CLASS } from '@/components/ui/select-popup-width'
 import { UserAvatar } from '@/components/user-avatar'
 import { cn } from '@/lib/utils'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
@@ -92,8 +93,8 @@ interface AsyncPaginatedSelectProps {
   disabled?: boolean
   className?: string
   /**
-   * Merged onto the popup. Default width = the trigger's; a caller whose
-   * labels outgrow a narrow column widens it here (e.g. the product picker).
+   * Merged onto the popup. It already fits its longest option; a caller that
+   * wants a fixed width sets it here (e.g. the product picker).
    */
   contentClassName?: string
   /**
@@ -418,7 +419,8 @@ export function AsyncPaginatedSelect({
           align="start"
           sideOffset={4}
           className={cn(
-            'z-50 w-(--radix-popover-trigger-width) min-w-60 max-w-[calc(100vw-2rem)] rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            'z-50 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            SELECT_POPOVER_WIDTH_CLASS,
             contentClassName,
           )}
           onOpenAutoFocus={(event) => {

@@ -47,6 +47,7 @@ import { resolveRowSetManagementMode } from '@/features/product-lines/category-t
 import { ProductLineCellPath } from '@/features/product-lines/product-line-cell-path'
 import { useProductLineCellPicker, type PickedCategory } from '@/features/product-lines/use-product-line-cell-picker'
 import type { TableRow } from '@/features/table/types'
+import { SELECT_POPUP_FIT_CONTENT_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 
 /**
@@ -170,7 +171,7 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
   }
 
   return (
-    <div className="w-80 rounded-md border border-border bg-popover shadow-md">
+    <div className={cn('min-w-80 rounded-md border border-border bg-popover shadow-md', SELECT_POPUP_FIT_CONTENT_CLASS)}>
       <ul aria-label={t('table.productLinesEditor.selected')} className="flex flex-col gap-1 border-b border-border p-1.5">
         {pairs.length === 0 ? (
           <li className="px-1 py-1 text-xs text-muted-foreground">{t('table.productLinesEditor.none')}</li>
