@@ -87,9 +87,9 @@ final class RequestColumnCatalog
         'first_name' => 120,
         'last_name' => 137,
         'company_name' => 206,
-        'vat_number' => 145,
         'phone' => 145,
         'email' => 206,
+        'vat_number' => 145,
         'tax_code' => 171,
         'general_notes' => 239,
         'source' => 127,
@@ -102,7 +102,7 @@ final class RequestColumnCatalog
      * 2026-09-17 and 2026-11-09 fixed the default worklist to exactly these
      * visible columns, in this order: Categoria prodotto, Operatore, Stato di
      * lavorazione, Prossimo richiamo, Linee di prodotto, Nome, Cognome,
-     * Ragione sociale, Partita IVA, Telefono, Email, Codice fiscale, Note
+     * Ragione sociale, Telefono, Email, Partita IVA, Codice fiscale, Note
      * generali, Fonte, Tutor (GA1). Every other column is
      * declared after them with `visible: false` — still in the column chooser,
      * never removed — and the category tab's `attr.*` columns follow the whole
@@ -242,18 +242,18 @@ final class RequestColumnCatalog
                 'filterable' => true,
                 'filterType' => 'text',
             ],
-            // "Partita IVA" (direttiva utente 2026-09-09): the codice fiscale's
-            // alternative in the positive-close gate (RequestWorkflowStatusWriter),
-            // so it stays editable in-cell. Same card, same sparse `client_*`
-            // write key, and the `vat_number` format so a typed
-            // `IT 007431 10157` lands canonical like the card form's own.
-            self::clientColumn('vat_number', 'requestManagement.columns.vatNumber', 'client_vat_number', [new VatNumber], 'vat_number'),
             self::clientColumn('phone', 'requestManagement.columns.phone', 'client_phone', format: 'phone'),
             // "Email" (direttiva utente 2026-09-17): the card's primary email
             // contact, the twin of "Telefono" in every respect — its own
             // `client_email` key, the rule and canonical shape ContactTypeEnum
             // already imposes on an email contact written anywhere else.
             self::clientColumn('email', 'requestManagement.columns.email', 'client_email', ContactTypeEnum::Email->valueRules(), 'email'),
+            // "Partita IVA" (direttiva utente 2026-09-09): the codice fiscale's
+            // alternative in the positive-close gate (RequestWorkflowStatusWriter),
+            // so it stays editable in-cell. Same card, same sparse `client_*`
+            // write key, and the `vat_number` format so a typed
+            // `IT 007431 10157` lands canonical like the card form's own.
+            self::clientColumn('vat_number', 'requestManagement.columns.vatNumber', 'client_vat_number', [new VatNumber], 'vat_number'),
             // The inline editor sends the cell alone, so TaxCode can only check
             // format + control character here: the anagraphic-consistency check
             // needs the whole card and lives in ValidatesRequestClientProfile.

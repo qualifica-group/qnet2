@@ -3,10 +3,10 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Gestione Richieste/Iscritti: colonne Ragione sociale e Partita IVA (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+## Gestione Richieste/Iscritti: colonne Ragione sociale e Partita IVA (2026-11-09) — colonne COMMITTATE (99907037), spostamento Partita IVA NON COMMITTATO
 
 - Richiesta utente. Nuova colonna `company_name` (scheda anagrafica del cliente), visibile, ordinabile, filtrabile, in sola lettura. `vat_number`
-  esisteva nascosta: ora e' visibile e spostata accanto a Ragione sociale. Ordine: ... Cognome, Ragione sociale, Partita IVA, Telefono, Email, Codice fiscale, Note generali ... Iscritti eredita da `RequestColumnCatalog`.
+  esisteva nascosta: ora e' visibile, subito prima di Codice fiscale (richiesta utente). Ordine: ... Cognome, Ragione sociale, Telefono, Email, Partita IVA, Codice fiscale, Note generali ... Iscritti eredita da `RequestColumnCatalog`.
 - Vincolo da rispettare: `RequestClientColumns::SEARCHABLE_CARD_COLUMNS` deve coincidere con l'indice FULLTEXT `personal_data_search_fulltext` (MATCH su MySQL; SQLite non lo rileva). Per cercare anche per ragione
   sociale serve una migrazione di quell'indice, per questo `company_name` sta solo in `CARD_COLUMNS`.
 - REQUIREMENT CHANGED nei test: `RequestManagementDefaultColumnsTest` (15 colonne visibili) e `RequestManagementTableSearchTest` (ordine di `searchable`). Il vincolo "Note generali dopo Codice fiscale" e' intatto.

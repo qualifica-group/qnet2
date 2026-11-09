@@ -56,10 +56,10 @@ it('columns: exposes the client anagraphic columns as searchable', function () {
     Sanctum::actingAs(requestManagementUserWith(['viewAny', 'viewAll']));
 
     // REQUIREMENT CHANGED (direttiva utente 2026-11-09): the list follows the
-    // declaration order, and Partita IVA moved next to Ragione sociale.
+    // declaration order, and Partita IVA moved right before Codice fiscale.
     $this->getJson('/api/tables/request-management/columns')
         ->assertOk()
-        ->assertJsonPath('data.searchable', ['first_name', 'last_name', 'vat_number', 'phone', 'email', 'tax_code']);
+        ->assertJsonPath('data.searchable', ['first_name', 'last_name', 'phone', 'email', 'vat_number', 'tax_code']);
 });
 
 // ---------------------------------------------------------------------------

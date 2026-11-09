@@ -88,9 +88,9 @@ it('shows exactly the requested columns, in the requested order, and hides the r
         // REQUIREMENT CHANGED (direttiva utente 2026-11-09): Ragione sociale
         // and Partita IVA join the default worklist.
         'company_name',
-        'vat_number',
         'phone',
         'email',
+        'vat_number',
         'tax_code',
         'general_notes',
         'source',
@@ -124,9 +124,9 @@ it('gives every visible column its requested default width, and none to the hidd
         'first_name' => 120,
         'last_name' => 137,
         'company_name' => 206,
-        'vat_number' => 145,
         'phone' => 145,
         'email' => 206,
+        'vat_number' => 145,
         'tax_code' => 171,
         'general_notes' => 239,
         'source' => 127,
