@@ -9,12 +9,14 @@ use App\Models\User;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
+use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\Quotes\Concerns\WritesQuoteCells;
 use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
 use App\Tables\Quotes\QuoteCellWriter;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
 use App\Tables\Quotes\QuoteRowActions;
+use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
@@ -82,6 +84,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
         private readonly QuoteCellWriter $cellWriter,
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly QuoteRowActions $rowActions,
+        private readonly CommercialListFilterApplier $listFilters,
     ) {}
 
     public function domain(): string
@@ -172,7 +175,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return QuoteAdvancedFilterCatalog::advancedFilters();
+        return [...$this->listFilters->presetFilters('quotes', Auth::user(), QuoteVisibilityScope::seesBeyondOwnRecords(Auth::user())), ...QuoteAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**
@@ -366,6 +369,14 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
     {
+        $applyCategories = static function (Builder $quotes, array $categoryIds): void {
+            $quotes->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($categoryIds));
+        };
+
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), $applyCategories)) {
+            return true;
+        }
+
         if ($name === self::WORKFLOW_STATUS_ADVANCED_FILTER) {
             $values = array_slice(array_values(array_filter(
                 is_array($value) ? $value : [$value],

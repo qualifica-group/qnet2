@@ -15,10 +15,6 @@ const ROOT_SCOPE_PAGE = ['startRow' => 0, 'endRow' => 25];
 const ROOT_SCOPE_VALUE_COLUMN = [
     'request-management' => 'quote_workflow_status',
     'enrollee-management' => 'quote_workflow_status',
-    'opportunities' => 'name',
-    'quotes' => 'code',
-    'contracts' => 'registry',
-    'work-orders' => 'code',
 ];
 
 it('returns the rows of the whole branch once each, matching the strip count (AC-005)', function (string $module) {
@@ -32,7 +28,7 @@ it('returns the rows of the whole branch once each, matching the strip count (AC
     $strip = $this->getJson("/api/{$module}/product-categories?level=root")->json('data.categories');
 
     expect(collect($rows->json('items'))->pluck('id')->sort()->values()->all())->toBe([$a->id, $b->id])
-        ->and($rows->json('pagination.total'))->toBe(collect($strip)->firstWhere('id', $root->id)[categoryTabCountKey($module)])
+        ->and($rows->json('pagination.total'))->toBe(collect($strip)->firstWhere('id', $root->id)['requests_count'])
         ->and($this->postJson("/api/tables/{$module}/rows", ROOT_SCOPE_PAGE)->json('pagination.total'))->toBe(3);
 })->with(categoryTabModules());
 
@@ -51,12 +47,8 @@ it('rejects a branch sent together with a single category and an unknown branch 
 it('computes distinct values only on the branch rows (AC-005)', function (string $module) {
     [$root, , $grandchild, $other] = categoryTabTree();
     categoryTabRecord($module, [$grandchild]);
-    // The request modules list the workflow status: the record outside the branch gets another one.
-    if (in_array($module, ['request-management', 'enrollee-management'], true)) {
-        categoryTabRequestQuote([$other], 'validated');
-    } else {
-        categoryTabRecord($module, [$other]);
-    }
+    // The value column is the workflow status: the record outside the branch gets another one.
+    categoryTabRequestQuote([$other], 'validated');
     Sanctum::actingAs(categoryTabGridActor($module));
     $column = ROOT_SCOPE_VALUE_COLUMN[$module];
 

@@ -6,6 +6,7 @@ namespace App\Tables\WorkOrders;
 
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
+use App\Enums\WorkOrderWorkPhase;
 use App\Services\Table\FilterApplier;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Tables\Concerns\HandlesBlankSetFilter;
@@ -74,6 +75,7 @@ final class WorkOrderDerivedColumns
         private readonly WorkOrderContractExpiryColumn $contractExpiryColumn,
         private readonly WorkOrderRenewalColumn $renewalColumn,
         private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
+        private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
     ) {}
 
     /**
@@ -85,6 +87,12 @@ final class WorkOrderDerivedColumns
     {
         if ($columnId === self::STATUS_COLUMN) {
             $this->statusResolver->applyFilter($query, $this->setFilterValues($filter));
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderWorkPhaseColumn::COLUMN) {
+            $this->workPhaseColumn->applyFilter($query, $this->setFilterValues($filter));
 
             return true;
         }
@@ -246,6 +254,7 @@ final class WorkOrderDerivedColumns
             self::TYPE_COLUMN => $this->filterOptions($search, WorkOrderType::values()),
             self::IS_FORCE_CLOSED_COLUMN => $this->filterOptions($search, ['true', 'false']),
             self::STATUS_COLUMN => $this->filterOptions($search, WorkOrderStatus::values()),
+            WorkOrderWorkPhaseColumn::COLUMN => $this->filterOptions($search, WorkOrderWorkPhase::values()),
             self::SUPERVISORS_COLUMN, self::PARTICIPANTS_COLUMN => $this->withBlankEntry(
                 $this->distinctTeamNames(self::TEAM_PIVOTS[$columnId], $search, $query, $limit),
                 $search,

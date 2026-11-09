@@ -37,7 +37,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Validate contract**: set the **Validation date** (not in the future). At least one product line is required: if the contract has none, add it from the card before validating. It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza"): those contracts show **Program** instead, unless suspended.',
-            '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**.',
+            '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**. With the **Cancelled** status every work order of the contract is closed, completed ones too, and stays closed if you reopen the contract. With any other status only the work orders still open are closed, and **Reopen contract** puts them back on the status they had. The work orders\' tasks do not change.',
             'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open, Pending or Closed (positive) (Validated): press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
             '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status. Reopening a Closed (positive) or Closed (negative) contract also clears the validation date and author, so the contract can be validated again; the previous values stay in **Activity history**.',
           ],
@@ -184,32 +184,24 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtering by product category",
+      id: 'list-filters',
+      title: "Default filters and category",
       blocks: [
         {
           type: 'paragraph',
-          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of contracts. Clicking a tab shows only the contracts of that category. Your choice is kept after reloading the page.",
+          text: "When it opens, the **Contracts** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Account manager** (the contracts where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together. To widen the list choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved.",
         },
         {
           type: 'paragraph',
-          text: "A contract appears under the tab of every category among the products on the **revenue rows of the contract's quote** (it counts once even with several rows of the same category). Cost rows do not count; a contract whose quote has no revenue rows appears only under **All**. The number next to the name is how many contracts, among those you can see, fall under that category.",
-        },
-        {
-          type: 'steps',
-          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","With **Select all** and **Deselect all**, in the menu, you add every category to your favorites or remove them all at once. The two buttons are hidden while you are searching.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
-        },
-        {
-          type: 'paragraph',
-          text: "When you choose a category tab, the columns of the flexible fields of the contract's **source quote** appear at the end of the list, read-only. On a parent category tab they are the fields assigned to the parent: those of a subcategory appear only in its own tab. You can filter and sort them, but to edit them you must open the quote.",
+          text: "In the same panel there is also **Product category** (that category only). A contract falls under a category when it is among the **revenue rows** of the contract's quote.",
         },
         {
           type: 'note',
-          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the contracts.",
+          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Contracts** page: they do not appear inside a record. The export follows the active filters. Flexible fields are read and edited from the detail.",
         },
       ],
     },

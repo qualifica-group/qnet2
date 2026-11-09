@@ -134,6 +134,7 @@ export const migrations = {
     summary: {
       total: 'Righe totali',
       created: 'Creati',
+      updated: 'Aggiornati',
       skipped: 'Saltati',
       failed: 'Falliti',
     },
@@ -173,11 +174,19 @@ export const migrations = {
       notRun: 'Non eseguita',
     },
     perSourceCounts: '{{created}} creati · {{skipped}} saltati · {{failed}} falliti',
+    perSourceUpdated: '{{updated}} aggiornati',
+    updateExistingHelp:
+      'Vale solo per Commesse, Offerte, Opportunità e Stati commessa. Si aggiornano solo i record su cui nessuno ha lavorato in QNet; righe e costi non cambiano.',
   },
   updatedSince: {
     label: 'Importa solo i record creati o modificati dal',
     help: 'Facoltativo. Lascia vuoto per importare tutto.',
     since: 'Dal {{date}}',
+  },
+  updateExisting: {
+    label: 'Aggiorna anche i record già importati',
+    help: 'Si aggiornano solo i record su cui nessuno ha lavorato in QNet; quelli modificati in QNet restano come sono e vengono segnalati nel report. Righe e costi non cambiano.',
+    active: 'Aggiorna record esistenti',
   },
   background: {
     hint: 'L’operazione prosegue sul server anche se chiudi questa finestra.',

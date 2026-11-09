@@ -385,10 +385,10 @@ class TableController extends BaseApiController
     }
 
     /**
-     * Spec 0064/0335: narrows a `ProductCategoryScopable` definition
-     * (`request-management`, `opportunities`, `quotes`) to one product
-     * category — its rows and, for Gestione Richieste only, its `attr.*`
-     * columns and the GA2 relabel. A no-op for every other domain.
+     * Spec 0064/0130: narrows a `ProductCategoryScopable` definition
+     * (`request-management`, `enrollee-management`) to one product category —
+     * its rows, its `attr.*` columns and the GA2 relabel. A no-op for every
+     * other domain.
      *
      * Also called by `savePreferences()`/`saveFilters()` AFTER their write, on
      * the tab the client sent: those responses are read straight into the

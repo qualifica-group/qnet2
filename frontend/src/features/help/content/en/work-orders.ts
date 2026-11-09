@@ -70,6 +70,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'work-phase-tabs',
+      title: "Working phases",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top right of the **Work orders** page you find the tabs **All**, **To plan**, **In progress**, **Completed**, **Cancelled** and **Terminated**. Each tab filters the list on the group of the **Working status**: a negative outcome means **Cancelled**, or **Terminated** when the work order's contract was terminated. **All** removes the filter. Each tab shows how many work orders it holds: the number follows the search and the active filters, so it matches what you see when you open the tab. The tab adds up with the other filters and with **Assignment**: if a work order is missing, check those too.",
+        },
+      ],
+    },
+    {
       id: 'list-filters',
       title: "Default filters, category and client",
       blocks: [
@@ -79,7 +89,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**.",
+          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing.",
         },
         {
           type: 'paragraph',
@@ -87,7 +97,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The **Assignment** field and the pre-filled **Parent category** exist only on the **Work orders** page: on **Project work orders** the **Parent category** starts empty, and it does not appear in the **Work orders** sections of a contract or a client. The export follows the active filters.",
+          text: "The **Assignment** field and the pre-filled **Parent category** exist only on the **Work orders** page: on **Project work orders** the **Parent category** starts empty, and it does not appear in the **Work orders** sections of a contract or a client. The export follows the active filters. Flexible fields are read and edited from the detail.",
         },
       ],
     },

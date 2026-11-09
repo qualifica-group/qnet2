@@ -129,7 +129,7 @@ class MigrationController extends BaseApiController
             /** @var User $actor */
             $actor = $request->user();
 
-            $run = $this->service->start($actor, $source, $request->updatedSince());
+            $run = $this->service->start($actor, $source, $request->updatedSince(), $request->updateExisting());
 
             return $this->created(['migration_run' => new MigrationRunResource($run)]);
         } catch (Throwable $exception) {

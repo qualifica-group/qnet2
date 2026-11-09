@@ -12,8 +12,10 @@ use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyWorkOrderFields;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\LegacyAttributeValueApplier;
+use App\Migrations\Support\LegacyRecordTouchGuard;
 use App\Migrations\Support\LegacyWorkOrderCostWriter;
 use App\Migrations\Support\LegacyWorkOrderLinePaymentWriter;
+use App\Migrations\Support\LegacyWorkOrderRealigner;
 use App\Migrations\Support\LegacyWorkOrderStageWriter;
 use App\Migrations\Support\QuoteLineDuplicator;
 use App\Models\Quote;
@@ -53,6 +55,8 @@ class WorkOrdersSource extends AbstractMigrationSource
 
     private const string CODE_FORMAT = 'COM-%04d';
 
+    public const string TOUCHED_WARNING = 'Changed in qnet-2 after the import; not updated.';
+
     public function __construct(
         ExternalApiClient $client,
         private readonly WorkOrderService $service,
@@ -61,6 +65,8 @@ class WorkOrdersSource extends AbstractMigrationSource
         private readonly LegacyWorkOrderStageWriter $stageWriter,
         private readonly LegacyWorkOrderLinePaymentWriter $linePaymentWriter,
         private readonly LegacyWorkOrderCostWriter $costWriter,
+        private readonly LegacyRecordTouchGuard $touchGuard,
+        private readonly LegacyWorkOrderRealigner $realigner,
     ) {
         parent::__construct($client);
     }
@@ -85,6 +91,11 @@ class WorkOrdersSource extends AbstractMigrationSource
             MigrationDependency::optional('users'),
             MigrationDependency::optional('product-category-attributes'),
         ];
+    }
+
+    public function supportsUpdateExisting(): bool
+    {
+        return true;
     }
 
     public function endpoint(): string
@@ -136,7 +147,9 @@ class WorkOrdersSource extends AbstractMigrationSource
         }
 
         if ($this->existsByOldId(WorkOrder::class, $externalId)) {
-            return MigrationRowOutcome::skipped();
+            return $this->updatesExisting($context)
+                ? $this->realignExisting($externalId, $record)
+                : MigrationRowOutcome::skipped();
         }
 
         return activity()->withoutLogs(fn (): MigrationRowOutcome => $this->importRecord($externalId, $record));
@@ -173,6 +186,54 @@ class WorkOrdersSource extends AbstractMigrationSource
         $this->finalizeLegacyRecord($workOrder, $externalId, $record);
 
         return MigrationRowOutcome::created($warnings, $workOrder);
+    }
+
+    /**
+     * Spec 0372: realigns an imported commessa with the legacy, quietly and
+     * muted. Touched in qnet-2 -> skipped with a warning; nothing different
+     * -> skipped without warnings (D-8).
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function realignExisting(int|string $externalId, array $record): MigrationRowOutcome
+    {
+        $workOrder = WorkOrder::query()->where('old_id', $externalId)->firstOrFail();
+
+        // Step 1: a commessa worked on in qnet-2 is left as it is.
+        if ($this->touchGuard->isWorkOrderTouched($workOrder)) {
+            return MigrationRowOutcome::skipped([self::TOUCHED_WARNING]);
+        }
+
+        // Step 2: no person may be dropped silently (D-12).
+        $this->assertUsersMigrated($record['supervisor_user_ids'] ?? [], 'Supervisor');
+        $this->assertUsersMigrated($record['participant_user_ids'] ?? [], 'Participant');
+
+        // Step 3: the mapped legacy values, written only where different.
+        $warnings = [];
+        $forceCloseReason = $this->blankToNull($record['force_close_reason'] ?? null);
+        $values = [
+            'title' => $this->legacyTitle($record['title'] ?? null, $warnings),
+            'start_date' => $this->startDate($record['start_date'] ?? null),
+            'callback_date' => $this->legacyTimestamp($record['callback_date'] ?? null)?->toDateString(),
+            'description' => $this->blankToNull($record['description'] ?? null),
+            'internal_notes' => $this->blankToNull($record['internal_notes'] ?? null),
+            'force_close_reason' => $forceCloseReason,
+            'supervisor_ids' => $this->remapLegacyIds(User::class, $record['supervisor_user_ids'] ?? [], 'supervisor_user_ids', $warnings),
+            'participant_slots' => $this->legacyManagerSlots($record['participant_user_ids'] ?? [], $warnings, 'participant_user_ids'),
+        ];
+        $updatedAt = $this->legacyTimestamp($record['updated_at'] ?? null) ?? $this->legacyTimestamp($record['created_at'] ?? null);
+
+        $changed = AssignmentNotifier::muted(function () use ($workOrder, $values, $record, $updatedAt, &$warnings): bool {
+            return activity()->withoutLogs(function () use ($workOrder, $values, $record, $updatedAt, &$warnings): bool {
+                return $this->realigner->handle($workOrder, $values, $record, $updatedAt, $warnings);
+            });
+        });
+
+        // Step 4: mapping warnings only together with a write, so an identical row is no
+        // noise; a stage the legacy no longer sends is a conflict and is always reported (D-10).
+        return $changed
+            ? MigrationRowOutcome::updated($warnings)
+            : MigrationRowOutcome::skipped(LegacyWorkOrderStageWriter::keptStageWarnings($warnings));
     }
 
     private function resolveQuote(mixed $externalQuoteId): int

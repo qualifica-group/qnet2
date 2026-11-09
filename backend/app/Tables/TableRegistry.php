@@ -4,8 +4,6 @@ namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\RequestManagement\RequestModule;
-use App\Tables\Contracts\ContractCategoryScopedTableDefinition;
-use App\Tables\Opportunities\OpportunityCategoryScopedTableDefinition;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\Referents\ReferentScopedTableDefinition;
 use App\Tables\Registries\RegistryScopedTableDefinition;
@@ -42,18 +40,6 @@ class TableRegistry
      * table-framework one.
      */
     private const string WORK_ORDERS_DOMAIN = 'work-orders';
-
-    /**
-     * The only domain wrapped in `OpportunityCategoryScopedTableDefinition`
-     * (spec 0335), on top of its registry scope.
-     */
-    private const string OPPORTUNITIES_DOMAIN = 'opportunities';
-
-    /**
-     * The only domain wrapped in `ContractCategoryScopedTableDefinition`
-     * (spec 0335, D-8).
-     */
-    private const string CONTRACTS_DOMAIN = 'contracts';
 
     /**
      * Domains wrapped in `ReferentScopedTableDefinition` (spec 0336), each
@@ -120,11 +106,8 @@ class TableRegistry
         $definition = $this->wrapIfQuoteScoped($domain, $definition);
 
         $definition = $this->wrapIfRegistryScoped($domain, $definition);
-        $definition = $this->wrapIfReferentScoped($domain, $definition);
 
-        $definition = $this->wrapIfOpportunityCategoryScoped($domain, $definition);
-
-        return $this->wrapIfContractCategoryScoped($domain, $definition);
+        return $this->wrapIfReferentScoped($domain, $definition);
     }
 
     /**
@@ -268,43 +251,6 @@ class TableRegistry
             'inner' => $definition,
             'referentColumn' => $columns[0],
             'morphTypeColumn' => $columns[1],
-        ]);
-
-        return $wrapped;
-    }
-
-    /**
-     * Wrap in `OpportunityCategoryScopedTableDefinition` (spec 0335) for
-     * `opportunities` only, OUTSIDE the registry decorator: it must be the
-     * outermost one, the one callers' `instanceof` checks see.
-     */
-    private function wrapIfOpportunityCategoryScoped(string $domain, TableDefinition $definition): TableDefinition
-    {
-        if ($domain !== self::OPPORTUNITIES_DOMAIN) {
-            return $definition;
-        }
-
-        /** @var OpportunityCategoryScopedTableDefinition $wrapped */
-        $wrapped = $this->container->make(OpportunityCategoryScopedTableDefinition::class, [
-            'inner' => $definition,
-        ]);
-
-        return $wrapped;
-    }
-
-    /**
-     * Wrap in `ContractCategoryScopedTableDefinition` (spec 0335, D-8) for
-     * `contracts` only; outermost, like the opportunities one.
-     */
-    private function wrapIfContractCategoryScoped(string $domain, TableDefinition $definition): TableDefinition
-    {
-        if ($domain !== self::CONTRACTS_DOMAIN) {
-            return $definition;
-        }
-
-        /** @var ContractCategoryScopedTableDefinition $wrapped */
-        $wrapped = $this->container->make(ContractCategoryScopedTableDefinition::class, [
-            'inner' => $definition,
         ]);
 
         return $wrapped;

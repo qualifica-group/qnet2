@@ -189,6 +189,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'La **Cronologia attività** mostra chi ha cambiato cosa e quando. Si apre dall’azione **Attività** nella riga o dentro la scheda.' },
         { type: 'list', items: ['Il tipo: **Creazione**, **Modifica**, **Eliminazione** o **Ripristino**.', 'La parte interessata, per esempio **Contatto**, **Indirizzo**, **Nota** o **Documento**.', 'Chi l’ha fatta (**Sistema** se è automatica).', 'I campi cambiati, con il valore precedente barrato e il nuovo valore.'] },
         { type: 'paragraph', text: 'Filtra con **Tutto**, **Solo creazione** o **Solo modifica**; **Carica altro** mostra le operazioni più vecchie.' },
+        { type: 'paragraph', text: 'Su commesse, offerte e opportunità la cronologia registra anche i cambi di **Responsabili**, **Partecipanti**, **Gestori account** e campi aggiuntivi.' },
       ],
     },
     {

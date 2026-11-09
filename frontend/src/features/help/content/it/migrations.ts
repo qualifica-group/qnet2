@@ -53,8 +53,23 @@ const guide: HelpGuide = {
       title: 'Importare solo i record recenti',
       blocks: [
         { type: 'paragraph', text: 'In **Importa questa sorgente** e in **Importa tutto** c’è il campo facoltativo **Importa solo i record creati o modificati dal**. Se lo lasci vuoto l’import è completo, come sempre. Se scegli un giorno vengono letti dal sistema esterno solo i record creati o modificati da quel giorno in poi; nel riepilogo compare **Dal gg/mm/aaaa**.' },
-        { type: 'note', text: 'I record già migrati restano saltati: le modifiche fatte dopo a un record già importato non vengono riportate in QNet, e le cancellazioni nel sistema esterno non vengono rilevate.' },
+        { type: 'note', text: 'Di norma i record già migrati restano saltati: le modifiche fatte dopo a un record già importato non vengono riportate in QNet, a meno che tu spunti **Aggiorna anche i record già importati** (vedi la sezione dedicata). Le cancellazioni nel sistema esterno non vengono mai rilevate.' },
         { type: 'paragraph', text: 'Il filtro vale per tutte le sorgenti. Le poche tabelle di configurazione senza data di modifica vengono comunque lette per intero.' },
+      ],
+    },
+    {
+      id: 'update-existing',
+      title: 'Aggiornare anche i record già importati',
+      blocks: [
+        { type: 'paragraph', text: 'Per le sorgenti **Commesse**, **Offerte** e **Opportunità** (e **Stati commessa**, vedi sotto) trovi la casella **Aggiorna anche i record già importati**, spenta di default. Spenta, un record già importato viene saltato. Accesa, QNet lo confronta con il sistema esterno e lo riallinea alle ultime modifiche. In **Importa tutto** la casella c’è sempre e vale solo per le sorgenti che la supportano; si può combinare con **Importa solo i record creati o modificati dal**. Nel riepilogo compaiono **Aggiorna record esistenti** e il contatore **Aggiornati**.' },
+        { type: 'list', items: [
+          '**Commesse**: titolo, date, descrizione, note, chiusura, responsabili, partecipanti, campi flessibili, fasi e pagamenti.',
+          '**Offerte**: titolo, data, note, richiamo, supervisore, gestori, campi flessibili, stato e contratto.',
+          '**Opportunità**: nome, date, valore, note, supervisore e gestori. Un gestore ancora presente su una sua offerta resta anche sull’opportunità.',
+        ] },
+        { type: 'paragraph', text: 'Non vengono mai aggiornati le **righe** e i **costi**, e non viene mai cancellato nulla: le fasi non vengono rimosse e un contratto non viene mai tolto.' },
+        { type: 'note', text: 'Un record su cui qualcuno ha già lavorato in QNet (per esempio con attività registrate) viene lasciato com’è e segnalato nel report, così non si perdono le modifiche fatte a mano. Un record identico al sistema esterno conta come saltato.' },
+        { type: 'paragraph', text: 'Lo stato della commessa si riallinea solo se importi anche la sorgente **Stati commessa** (oppure usi **Importa tutto**) con la casella accesa.' },
       ],
     },
     {

@@ -41,6 +41,16 @@ final class OpportunityVisibilityScope
     public const VIEW_COMPETENCE_PERMISSION = 'opportunities.viewCompetence';
 
     /**
+     * Whether the actor can see records beyond the ones where they hold a role:
+     * the same tiers as scopeToActor(), read by the "Assegnazione" filter.
+     */
+    public static function seesBeyondOwnRecords(?User $user): bool
+    {
+        return $user !== null
+            && ($user->can(self::VIEW_ALL_PERMISSION) || ! self::competenceReachOf($user)->isEmpty());
+    }
+
+    /**
      * @template TModel of Opportunity
      *
      * @param  Builder<TModel>  $query

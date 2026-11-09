@@ -26,6 +26,7 @@ class MassMigrationRun extends BaseModel
         'sources',
         'status',
         'updated_since',
+        'update_existing',
     ];
 
     /**
@@ -37,6 +38,7 @@ class MassMigrationRun extends BaseModel
             'sources' => 'array',
             'status' => MigrationStatus::class,
             'updated_since' => 'date',
+            'update_existing' => 'bool',
         ];
     }
 

@@ -19,6 +19,15 @@ export const workOrders = {
   subtitle: 'Sfoglia, filtra e gestisci le commesse collegate alle offerte.',
   forbidden: 'Non hai i permessi per visualizzare le commesse.',
   chatUnread: '{{count}} messaggi della chat non letti',
+  workPhaseTabs: {
+    label: 'Fasi di lavorazione',
+    all: 'Tutte',
+    to_plan: 'Da pianificare',
+    in_progress: 'In lavorazione',
+    completed: 'Concluse',
+    cancelled: 'Annullate',
+    terminated: 'Disdette',
+  },
   period: {
     initial: 'Iniziale',
     renewal: 'Rinnovo {{number}}',
@@ -61,6 +70,7 @@ export const workOrders = {
     supervisors: 'Responsabili',
     is_force_closed: 'Chiusura forzata',
     status: 'Stato',
+    work_phase: 'Fase',
     work_order_workflow_status: 'Stato lavorazione',
     completion_percentage: 'Avanzamento',
     created_at: 'Creata il',

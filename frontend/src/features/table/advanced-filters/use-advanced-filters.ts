@@ -64,6 +64,20 @@ function computeActiveValues(
   return active
 }
 
+/** What a grid or export request carries: the active values plus the presets the server does not fall back to. */
+function computeRequestValues(
+  descriptors: AdvancedFilterDescriptor[],
+  values: AdvancedFilterValues,
+): AdvancedFilterValues {
+  const request = computeActiveValues(descriptors, values)
+  for (const descriptor of descriptors) {
+    if (descriptor.sendDefault && request[descriptor.name] === undefined) {
+      request[descriptor.name] = values[descriptor.name] ?? null
+    }
+  }
+  return request
+}
+
 interface UseAdvancedFiltersArgs {
   domain: string
   /** The category tab the table is scoped to (spec 0064), so a save refreshes that tab's cached config. */
@@ -105,6 +119,8 @@ export interface UseAdvancedFiltersResult {
   activeValues: AdvancedFilterValues
   /** `Object.keys(activeValues).length`. */
   activeCount: number
+  /** The applied filters as a grid or export request sends them. */
+  requestValues: AdvancedFilterValues
   apply: () => void
   reset: () => void
   /**
@@ -168,7 +184,7 @@ export function useAdvancedFilters({
     descriptorsRef.current = descriptors
   }, [descriptors])
   const getApplied = useCallback(
-    () => computeActiveValues(descriptorsRef.current, appliedRef.current),
+    () => computeRequestValues(descriptorsRef.current, appliedRef.current),
     [],
   )
 
@@ -273,6 +289,7 @@ export function useAdvancedFilters({
     [descriptors, applied],
   )
   const activeCount = useMemo(() => Object.keys(activeValues).length, [activeValues])
+  const requestValues = useMemo(() => computeRequestValues(descriptors, applied), [descriptors, applied])
 
   const persist = useCallback(
     (values: AdvancedFilterValues) => {
@@ -338,6 +355,7 @@ export function useAdvancedFilters({
     canApply,
     activeValues,
     activeCount,
+    requestValues,
     apply,
     reset,
     clearField,

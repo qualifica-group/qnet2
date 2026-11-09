@@ -432,3 +432,17 @@ describe('useAdvancedFilters', () => {
     })
   })
 })
+
+describe('useAdvancedFilters sendDefault', () => {
+  it('sends a preset at its default without counting it as active', () => {
+    const descriptors = [descriptor({ name: 'assignment', type: 'enum', required: true, sendDefault: true, defaultValue: ['mine'] })]
+
+    const { result } = renderHook(() =>
+      useAdvancedFilters({ domain: 'work-orders', descriptors, applied: null, onApplied: vi.fn() }),
+    )
+
+    expect(result.current.getApplied()).toEqual({ assignment: ['mine'] })
+    expect(result.current.requestValues).toEqual({ assignment: ['mine'] })
+    expect(result.current.activeCount).toBe(0)
+  })
+})

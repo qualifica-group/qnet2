@@ -70,6 +70,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'work-phase-tabs',
+      title: "Fasi di lavorazione",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In alto a destra nella pagina **Commesse** trovi i tab **Tutte**, **Da pianificare**, **In lavorazione**, **Concluse**, **Annullate** e **Disdette**. Ogni tab filtra l'elenco in base al gruppo dello **Stato lavorazione**: esito negativo significa **Annullate**, oppure **Disdette** se il contratto della commessa è stato disdetto. **Tutte** toglie il filtro. Accanto a ogni tab c'è il numero di commesse: tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Il tab si combina con gli altri filtri e con **Assegnazione**: se non vedi una commessa, controlla anche quelli.",
+        },
+      ],
+    },
+    {
       id: 'list-filters',
       title: "Filtri predefiniti, categoria e anagrafica",
       blocks: [
@@ -79,7 +89,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**.",
+          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutte le visibili** non compare: non aggiungerebbe nulla.",
         },
         {
           type: 'paragraph',
@@ -87,7 +97,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Il campo **Assegnazione** e la **Categoria madre** precompilata esistono solo nella pagina **Commesse**: in **Commesse di Progetto** la **Categoria madre** parte vuota, e nelle sezioni **Commesse** di un contratto o di un'anagrafica non compare. L'esportazione segue i filtri attivi.",
+          text: "Il campo **Assegnazione** e la **Categoria madre** precompilata esistono solo nella pagina **Commesse**: in **Commesse di Progetto** la **Categoria madre** parte vuota, e nelle sezioni **Commesse** di un contratto o di un'anagrafica non compare. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
         },
       ],
     },

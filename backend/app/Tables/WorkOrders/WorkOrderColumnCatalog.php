@@ -164,6 +164,16 @@ final class WorkOrderColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // Hidden: it only backs the status tabs of the Commesse page (WorkOrderWorkPhaseColumn).
+                'id' => WorkOrderWorkPhaseColumn::COLUMN,
+                'label' => 'workOrders.columns.work_phase',
+                'type' => 'badge',
+                'visible' => false,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 // Computed (spec 0321, D-1), its date rides in the row as `completion_recorded_on`, never a real column.
                 'id' => 'completion_percentage',
                 'label' => 'workOrders.columns.completion_percentage',
@@ -273,6 +283,7 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'callback_date', 'type' => 'date'],
             ['columnId' => 'is_force_closed', 'type' => 'set'],
             ['columnId' => 'status', 'type' => 'set'],
+            ['columnId' => WorkOrderWorkPhaseColumn::COLUMN, 'type' => 'set'],
             ['columnId' => 'work_order_workflow_status', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
             ['columnId' => 'updated_at', 'type' => 'date'],

@@ -13,6 +13,7 @@ use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\User;
 use App\Services\Contracts\ContractStatusResolver;
+use App\Services\WorkOrders\ContractWorkOrderClosure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -31,6 +32,7 @@ class ContractActionService
     public function __construct(
         private readonly ContractService $contractService,
         private readonly ContractStatusResolver $statusResolver,
+        private readonly ContractWorkOrderClosure $workOrderClosure,
     ) {}
 
     /**
@@ -127,6 +129,8 @@ class ContractActionService
             $contract->terminated_by = $actor->id;
             $contract->contract_status_id = $statusId;
             $contract->save();
+
+            $this->workOrderClosure->close($contract, ContractStatus::query()->findOrFail($statusId));
 
             activity($contract->getTable())
                 ->performedOn($contract)

@@ -49,9 +49,26 @@ it('offers assignment and parent category preset like the Task assignment, then 
     $filters = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'));
 
     expect($filters->pluck('name')->all())->toBe(['assignment', 'supervisors', 'participants', 'parent_category', 'product_category', 'registry'])
-        ->and($filters->firstWhere('name', 'assignment'))->toMatchArray(['type' => 'enum', 'multiple' => true, 'required' => true, 'enumKey' => 'work_order_assignment_scope', 'defaultValue' => ['supervisor', 'participant']])
-        ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['type' => 'relation', 'multiple' => true, 'required' => true, 'defaultValue' => [$root->id]])
+        ->and($filters->firstWhere('name', 'assignment'))->toMatchArray(['type' => 'enum', 'multiple' => true, 'required' => true, 'sendDefault' => true, 'enumKey' => 'work_order_assignment_scope', 'defaultValue' => ['supervisor', 'participant']])
+        ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['type' => 'relation', 'multiple' => true, 'required' => true, 'sendDefault' => true, 'defaultValue' => [$root->id]])
         ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots']);
+});
+
+it('offers "all visible" only to who sees more than their own commesse', function () {
+    $excluded = fn (): array => collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'))->firstWhere('name', 'assignment')['excludedValues'];
+
+    Sanctum::actingAs(categoryTabGridActor('work-orders', viewAll: false));
+    expect($excluded())->toBe(['visible']);
+
+    Sanctum::actingAs(categoryTabGridActor('work-orders'));
+    expect($excluded())->toBe([]);
+});
+
+it('does not narrow a request that omits the presets, as the grids inside a record and API clients do', function () {
+    $workOrder = categoryTabWorkOrder([ProductCategory::factory()->create()]);
+    Sanctum::actingAs(categoryTabGridActor('work-orders'));
+
+    expect(commessePageIds())->toBe([$workOrder->id]);
 });
 
 it('presets "Tutte" for an actor without competence or with every category', function () {
@@ -76,7 +93,7 @@ it('opens on the commesse where the actor is a supervisor or a participant, even
     $other = WorkOrder::factory()->create(['type' => WorkOrderType::Processing]);
     Sanctum::actingAs($actor);
 
-    expect(commessePageIds())->toBe([$supervised->id, $joined->id])
+    expect(commessePageIds(['assignment' => ['supervisor', 'participant']]))->toBe([$supervised->id, $joined->id])
         ->and(commessePageIds(['assignment' => ['supervisor']]))->toBe([$supervised->id])
         ->and(commessePageIds(['assignment' => ['participant']]))->toBe([$joined->id])
         ->and(commessePageIds(['assignment' => ['visible']]))->toBe([$supervised->id, $joined->id, $other->id]);
@@ -96,22 +113,12 @@ it('opens on the whole branch of the competence parents, in AND with the commess
     $notMine = categoryTabWorkOrder([$competent]);
     Sanctum::actingAs($actor);
 
-    expect(commessePageIds())->toBe([$inBranch->id])
-        ->and(commessePageIds(['parent_category' => [0]]))->toBe([$inBranch->id, $outOfBranch->id])
-        ->and(commessePageIds(['parent_category' => [$foreignRoot->id]]))->toBe([$outOfBranch->id])
-        ->and(commessePageIds(['assignment' => ['visible']]))->toBe([$inBranch->id, $notMine->id]);
-});
+    $mine = ['assignment' => ['supervisor', 'participant']];
 
-it('applies the personal view only on the Commesse page, never on the record tabs', function () {
-    $workOrder = categoryTabWorkOrder([ProductCategory::factory()->create()]);
-    Sanctum::actingAs(categoryTabGridActor('work-orders'));
-
-    $ids = fn (array $scope): array => collect(
-        $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, ...$scope])->assertOk()->json('items')
-    )->pluck('id')->all();
-
-    expect($ids(['quoteId' => $workOrder->quote_id]))->toBe([$workOrder->id])
-        ->and($ids(['registryId' => $workOrder->quote->opportunity->registry_id]))->toBe([$workOrder->id]);
+    expect(commessePageIds([...$mine, 'parent_category' => [$root->id]]))->toBe([$inBranch->id])
+        ->and(commessePageIds([...$mine, 'parent_category' => [0]]))->toBe([$inBranch->id, $outOfBranch->id])
+        ->and(commessePageIds([...$mine, 'parent_category' => [$foreignRoot->id]]))->toBe([$outOfBranch->id])
+        ->and(commessePageIds(['assignment' => ['visible'], 'parent_category' => [$root->id]]))->toBe([$inBranch->id, $notMine->id]);
 });
 
 it('filters by parent category through the whole branch and by product category on that category alone', function () {

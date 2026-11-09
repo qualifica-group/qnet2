@@ -43,6 +43,8 @@ class MigrationRunResource extends JsonResource
             'total_rows' => $run->total_rows,
             'created_rows' => $run->created_rows,
             'skipped_rows' => $run->skipped_rows,
+            'updated_rows' => $run->updated_rows,
+            'update_existing' => $run->update_existing,
             'failed_rows' => $run->failed_rows,
             'updated_since' => $run->updated_since?->format('Y-m-d'),
             'created_at' => $run->created_at,

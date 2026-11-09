@@ -17,6 +17,7 @@ function stubAdvancedFilters(reset: () => void): UseAdvancedFiltersResult {
     canApply: true,
     activeValues: {},
     activeCount: 0,
+    requestValues: {},
     apply: vi.fn(),
     reset,
     clearField: vi.fn(),

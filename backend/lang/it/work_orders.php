@@ -19,4 +19,8 @@ return [
         'force_close_status_invalid' => 'Lo stato di chiusura deve essere uno stato "Chiusa con esito positivo" o "Chiusa con esito negativo" dello stato lavorazione della commessa.',
         'progress_not_above_current' => 'Lo stato porta l\'avanzamento al :percentage%, che non supera l\'avanzamento gia\' raggiunto (:current%).',
     ],
+    'contract_closure' => [
+        'cancelled' => 'Contratto annullato',
+        'terminated' => 'Contratto disdetto',
+    ],
 ];

@@ -6,10 +6,10 @@ namespace App\Tables;
 
 /**
  * A table definition whose rows can be narrowed to one product category, for
- * the category tab strip (spec 0064 for Gestione Richieste, spec 0335 for
- * `opportunities` and `quotes`). Implemented by the outermost row-scope
- * decorator of each supported domain; callers test
- * `instanceof ProductCategoryScopable`, never a concrete class.
+ * the category tab strip of Gestione Richieste and Gestione Iscritti (spec
+ * 0064, 0130). Implemented by the outermost row-scope decorator of each
+ * supported domain; callers test `instanceof ProductCategoryScopable`, never
+ * a concrete class.
  */
 interface ProductCategoryScopable
 {
@@ -20,8 +20,8 @@ interface ProductCategoryScopable
 
     /**
      * The rows of one root category's whole branch (the root and every
-     * descendant, spec 0337, D-1), with the root's own `attr.*` columns where
-     * the grid has them (spec 0350 D-4, rev.3); null = no scope. Mutually exclusive with
+     * descendant, spec 0337, D-1), with the root's own `attr.*` columns (spec
+     * 0350 D-4, rev.3); null = no scope. Mutually exclusive with
      * `scopeToProductCategory`: the callers never set both.
      */
     public function scopeToProductCategoryBranch(?int $rootId): void;

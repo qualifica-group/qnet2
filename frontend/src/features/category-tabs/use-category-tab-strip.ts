@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchGridCategoryTabs } from '@/features/category-tabs/api'
 import { levelArgs, useCategoryTabLevel } from '@/features/category-tabs/category-tab-level'
 import { categoryTabKeys } from '@/features/category-tabs/query-keys'
 import { useCategoryTabPreferences } from '@/features/category-tabs/use-category-tab-preferences'
@@ -15,8 +14,7 @@ const EMPTY_CATEGORIES: CategoryTabItem[] = []
  * the persisted selection reconciled with them, the favourites, and the
  * callback that re-reads the counts after a write.
  *
- * `fetchCategories` is only passed by Gestione Richieste, whose endpoint names
- * the count `requests_count`; it must be a module-level function (stable).
+ * `fetchCategories` must be a module-level function (stable).
  *
  * The categories are never held fresh: a write on a row moves its counts, so
  * they are re-read each time the grid mounts while the cached copy paints the
@@ -33,7 +31,7 @@ const EMPTY_CATEGORIES: CategoryTabItem[] = []
  */
 export function useCategoryTabStrip(
   source: CategoryTabSource,
-  fetchCategories: (apiBasePath: string, level?: CategoryTabLevel) => Promise<CategoryTabItem[]> = fetchGridCategoryTabs,
+  fetchCategories: (apiBasePath: string, level?: CategoryTabLevel) => Promise<CategoryTabItem[]>,
 ) {
   const queryClient = useQueryClient()
   const sourceKey = source.key

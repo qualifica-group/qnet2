@@ -102,7 +102,7 @@ export function buildTableViewSlots({
         gridApi,
         columns: config?.columns ?? NO_COLUMNS,
         search: getSearchTerm(),
-        advancedFilters: advancedFilters.activeValues,
+        advancedFilters: advancedFilters.requestValues,
         customFilterRules: customFilters.active.state?.rules ?? null,
         openGenericExport: onExportOpen,
       })
@@ -118,7 +118,7 @@ export function buildTableViewSlots({
           gridApi={gridApi}
           columns={config.columns}
           search={getSearchTerm()}
-          advancedFilters={advancedFilters.activeValues}
+          advancedFilters={advancedFilters.requestValues}
           customFilterRules={customFilters.active.state?.rules ?? null}
           opportunityId={opportunityId}
           quoteId={quoteId}

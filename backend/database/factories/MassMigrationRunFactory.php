@@ -23,6 +23,7 @@ class MassMigrationRunFactory extends Factory
             'user_id' => User::factory(),
             'sources' => ['companies', 'users'],
             'status' => MigrationStatus::Pending,
+            'update_existing' => false,
         ];
     }
 }

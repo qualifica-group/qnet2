@@ -7,6 +7,7 @@ namespace App\Tables;
 use App\Enums\ProformaRequestStatus;
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
+use App\Enums\WorkOrderWorkPhase;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -17,12 +18,12 @@ use App\Services\WorkOrderService;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
-use App\Tables\WorkOrders\WorkOrderAdvancedFilterCatalog;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
 use App\Tables\WorkOrders\WorkOrderRenewalColumn;
 use App\Tables\WorkOrders\WorkOrderWorkflowStatusColumn;
+use App\Tables\WorkOrders\WorkOrderWorkPhaseColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -71,6 +72,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
         private readonly WorkOrderRenewalColumn $renewalColumn,
         private readonly WorkOrderAdvancedFilterApplier $advancedFilterApplier,
+        private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
     ) {}
 
     /**
@@ -123,7 +125,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // `completion_recorded_on` (spec 0321) without one query per row.
         $query = $this->statusResolver->withProgress(WorkOrderVisibilityScope::withCompetenceVerdict(WorkOrder::query(), Auth::user())->with([
             'quote.opportunity.registry',
-            'quote.contract',
+            'quote.contract.contractStatus',
             'supervisors.avatar',
             'participants.avatar',
             // Spec 0322: the "Stato lavorazione" cell, and its per-row set
@@ -198,7 +200,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return WorkOrderAdvancedFilterCatalog::commessePageFilters($this->advancedFilterApplier->defaultParentCategories(Auth::user()));
+        return $this->advancedFilterApplier->commessePageFilters(Auth::user());
     }
 
     /**
@@ -212,6 +214,23 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         return $this->advancedFilterApplier->apply($query, $name, $value, $actor)
             || parent::applyAdvancedFilter($query, $name, $descriptor, $value);
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     * @return array<string, int>
+     */
+    public function aggregates(Builder $query): array
+    {
+        return $this->workPhaseColumn->counts($query);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function filtersIgnoredByAggregates(): array
+    {
+        return [WorkOrderWorkPhaseColumn::COLUMN];
     }
 
     /**
@@ -244,6 +263,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'type' => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderType::options()),
             'status' => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderStatus::options()),
+            WorkOrderWorkPhaseColumn::COLUMN => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderWorkPhase::options()),
             default => null,
         };
     }
@@ -271,6 +291,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'type' => 'work_order_type',
             'status' => 'work_order_status',
+            WorkOrderWorkPhaseColumn::COLUMN => 'work_order_work_phase',
             default => null,
         };
     }
@@ -310,6 +331,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'callback_date' => $row->callback_date,
             'is_force_closed' => $row->is_force_closed,
             'status' => $progress->status->value,
+            WorkOrderWorkPhaseColumn::COLUMN => $this->workPhaseColumn->project($row),
             ...$this->workflowStatusColumn->project($row),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,

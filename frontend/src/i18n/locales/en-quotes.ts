@@ -37,6 +37,10 @@ export const quotes = {
     missingOfferLines: 'Missing offer rows',
   },
   advancedFilters: {
+    assignment: 'Assignment',
+    parentCategory: 'Parent category',
+    productCategory: 'Product category',
+    registry: 'Client',
     opportunity: 'Opportunity',
     quoteWorkflowStatus: 'Status',
     commercial: 'Commercial',

@@ -14,6 +14,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -38,9 +39,17 @@ class MigrationService
         private readonly MigrationPlanService $planService,
     ) {}
 
-    public function start(User $actor, string $source, ?CarbonInterface $updatedSince = null): MigrationRun
+    public function start(User $actor, string $source, ?CarbonInterface $updatedSince = null, bool $updateExisting = false): MigrationRun
     {
-        abort_unless($this->registry->resolve($source)->isAvailable(), 422, 'This source is not available on this installation.');
+        $definition = $this->registry->resolve($source);
+
+        abort_unless($definition->isAvailable(), 422, 'This source is not available on this installation.');
+
+        if ($updateExisting && ! $definition->supportsUpdateExisting()) {
+            throw ValidationException::withMessages([
+                'update_existing' => 'This source cannot update the records already imported.',
+            ]);
+        }
 
         /** @var MigrationRun $run */
         $run = DB::transaction(fn (): MigrationRun => MigrationRun::create([
@@ -50,14 +59,21 @@ class MigrationService
             'total_rows' => 0,
             'created_rows' => 0,
             'skipped_rows' => 0,
+            'updated_rows' => 0,
             'failed_rows' => 0,
             'report' => null,
             'updated_since' => $updatedSince,
+            'update_existing' => $updateExisting,
         ]));
 
         RunMigrationJob::dispatch($run->id);
 
         return $run;
+    }
+
+    public function supportsUpdateExisting(string $source): bool
+    {
+        return $this->registry->resolve($source)->supportsUpdateExisting();
     }
 
     /**
@@ -89,9 +105,9 @@ class MigrationService
      * Start a mass import from the saved plan: snapshot the enabled sources (in
      * order) onto a MassMigrationRun (pending) and dispatch the orchestrator.
      */
-    public function startMass(User $actor, ?CarbonInterface $updatedSince = null): MassMigrationRun
+    public function startMass(User $actor, ?CarbonInterface $updatedSince = null, bool $updateExisting = false): MassMigrationRun
     {
-        $run = $this->createMassRun($actor, $this->planService->enabledSources(), $updatedSince);
+        $run = $this->createMassRun($actor, $this->planService->enabledSources(), $updatedSince, $updateExisting);
 
         RunMassMigrationJob::dispatch($run->id);
 
@@ -148,7 +164,7 @@ class MigrationService
     /**
      * @param  list<string>  $sources
      */
-    private function createMassRun(User $actor, array $sources, ?CarbonInterface $updatedSince = null): MassMigrationRun
+    private function createMassRun(User $actor, array $sources, ?CarbonInterface $updatedSince = null, bool $updateExisting = false): MassMigrationRun
     {
         /** @var MassMigrationRun $run */
         $run = DB::transaction(fn (): MassMigrationRun => MassMigrationRun::create([
@@ -156,6 +172,7 @@ class MigrationService
             'sources' => $sources,
             'status' => MigrationStatus::Pending,
             'updated_since' => $updatedSince,
+            'update_existing' => $updateExisting,
         ]));
 
         return $run;

@@ -53,8 +53,23 @@ const guide: HelpGuide = {
       title: 'Importing only recent records',
       blocks: [
         { type: 'paragraph', text: 'In **Import this source** and in **Import all** there is the optional field **Import only records created or modified since**. When left empty the import is complete, as usual. When you pick a day, only the records created or modified from that day onward are read from the external system; the summary shows **Since dd/mm/yyyy**.' },
-        { type: 'note', text: 'Records already migrated stay skipped: later changes to a record already imported are not carried over to QNet, and deletions in the external system are not detected.' },
+        { type: 'note', text: 'Records already migrated are normally skipped: later changes to a record already imported are not carried over to QNet unless you tick **Also update records already imported** (see its own section). Deletions in the external system are never detected.' },
         { type: 'paragraph', text: 'The filter applies to every source. The few configuration tables without a modification date are still read in full.' },
+      ],
+    },
+    {
+      id: 'update-existing',
+      title: 'Also updating records already imported',
+      blocks: [
+        { type: 'paragraph', text: 'For the **Work orders**, **Quotes** and **Opportunities** sources (and **Work order statuses**, see below) you find the **Also update records already imported** checkbox, off by default. When off, a record already imported is skipped. When on, QNet compares it with the external system and realigns it to the latest changes. In **Import all** the checkbox is always there and only applies to the sources that support it; it can be combined with **Import only records created or modified since**. The summary shows **Update existing records** and the **Updated** counter.' },
+        { type: 'list', items: [
+          '**Work orders**: title, dates, description, notes, closure, managers, participants, flexible fields, phases and payments.',
+          '**Quotes**: title, date, notes, callback, supervisor, handlers, flexible fields, status and contract.',
+          '**Opportunities**: name, dates, value, notes, supervisor and handlers. A handler still on one of its quotes also stays on the opportunity.',
+        ] },
+        { type: 'paragraph', text: '**Lines** and **costs** are never updated, and nothing is ever deleted: phases are not removed and a contract is never taken away.' },
+        { type: 'note', text: 'A record somebody has already worked on in QNet (for example with logged activity) is left as it is and flagged in the report, so manual changes are not lost. A record identical to the external system counts as skipped.' },
+        { type: 'paragraph', text: 'The work order status is only realigned if you also import the **Work order statuses** source (or use **Import all**) with the checkbox on.' },
       ],
     },
     {

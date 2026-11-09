@@ -19,6 +19,15 @@ export const workOrders = {
   subtitle: 'Browse, filter and manage the work orders linked to your offers.',
   forbidden: "You don't have permission to view work orders.",
   chatUnread: '{{count}} unread chat messages',
+  workPhaseTabs: {
+    label: 'Working phases',
+    all: 'All',
+    to_plan: 'To plan',
+    in_progress: 'In progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    terminated: 'Terminated',
+  },
   period: {
     initial: 'Initial',
     renewal: 'Renewal {{number}}',
@@ -61,6 +70,7 @@ export const workOrders = {
     supervisors: 'Supervisors',
     is_force_closed: 'Force closed',
     status: 'Status',
+    work_phase: 'Phase',
     work_order_workflow_status: 'Work status',
     completion_percentage: 'Progress',
     created_at: 'Created at',

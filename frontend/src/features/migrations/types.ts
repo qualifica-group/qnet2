@@ -17,6 +17,8 @@ export interface MigrationSourceSummary {
   label: string
   phase: number | null
   available: boolean
+  /** Whether the source can realign records already imported (spec 0372). */
+  supports_update_existing: boolean
   last_run: MigrationLastRun | null
   migrated_at: string | null
 }
@@ -103,6 +105,9 @@ export interface MigrationRunCreated {
   has_report: boolean
   /** Start day (YYYY-MM-DD) of an import limited to recent records; null for a full one. */
   updated_since: string | null
+  /** True when the run also realigns records already imported (spec 0372). */
+  update_existing: boolean
+  updated_rows: number
   created_at: string
 }
 
@@ -148,6 +153,7 @@ export interface MassMigrationRun {
   status: MigrationRunStatus
   sources: string[]
   updated_since: string | null
+  update_existing: boolean
   created_at: string
   runs: MigrationRun[]
 }
@@ -163,5 +169,13 @@ export interface MigrationRun {
   failed_rows: number
   report: MigrationReportEntry[] | null
   updated_since: string | null
+  update_existing: boolean
+  updated_rows: number
   created_at: string
+}
+
+/** What the start step of an import sends: the optional start day and the realign flag. */
+export interface MigrationStartOptions {
+  updatedSince: string | null
+  updateExisting: boolean
 }

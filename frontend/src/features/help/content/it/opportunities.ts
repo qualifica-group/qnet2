@@ -94,28 +94,24 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtrare per categoria prodotto",
+      id: 'list-filters',
+      title: "Filtri predefiniti e categoria",
       blocks: [
         {
           type: 'paragraph',
-          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di opportunità. Cliccando una tab l'elenco mostra solo le opportunità di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+          text: "All'apertura la pagina **Opportunità** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Supervisore** e **Gestore account** (le opportunità dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme. Per allargare l'elenco scegli **Tutti i visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata.",
         },
         {
           type: 'paragraph',
-          text: "Un'opportunità compare nella tab di ogni categoria delle sue linee di prodotto (conta una volta sola anche se ha più linee della stessa categoria). Il numero accanto al nome è quante opportunità, tra quelle che puoi vedere, rientrano nella categoria.",
-        },
-        {
-          type: 'steps',
-          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Con **Seleziona tutte** e **Deseleziona tutte**, nel menu, aggiungi o togli in un colpo solo tutte le categorie dalle preferite. I due pulsanti non compaiono mentre stai cercando.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutti i visibili** non compare: non aggiungerebbe nulla. I filtri non allargano ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
+          text: "Nello stesso pannello c'è anche **Categoria prodotto** (solo quella categoria). Rientra in una categoria un'opportunità che la ha tra le **linee di prodotto** dell'opportunità.",
         },
         {
           type: 'note',
-          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. Il pannello delle statistiche e l'esportazione non seguono la tab: considerano sempre tutte le opportunità.",
+          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Opportunità**: non compaiono dentro una scheda e nella sezione Opportunità di un'anagrafica. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
         },
       ],
     },

@@ -4,24 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tables\Quotes;
 
-use App\Models\Quote;
-use App\Models\User;
-use App\Products\ProductCategoryBranches;
-use App\Quotes\QuoteAttributeResolver;
-use App\Tables\CategoryTabs\AttributeColumnsScopable;
-use App\Tables\CategoryTabs\AttributeGridTarget;
-use App\Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns;
-use App\Tables\CategoryTabs\Concerns\WritesCategoryAttributeCells;
-use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
+use App\Tables\CategoryTabs\DelegatesRowScopedTableMethods;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
-use App\Tables\ProductCategoryScopable;
 use App\Tables\RegistryScopable;
-use App\Tables\RequestManagement\AttributeColumnBuilder;
-use App\Tables\RequestManagement\AttributeGridColumns;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -51,43 +39,17 @@ use Illuminate\Support\Facades\DB;
  * Offerta is its Opportunity's, so the scope is a `whereIn` on the client's
  * opportunities, in AND with the Opportunity scope. This is the outermost
  * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
- *
- * And its `ProductCategoryScopable` (spec 0335, D-1): an Offerta shows in the
- * tab of every category of its REVENUE lines' products, with no fallback on
- * the Opportunity's lines (an Offerta without revenue lines is only in "Tutte").
- *
- * And the `attr.<code>` columns of the tab's category (spec 0350, D-1): the
- * Quote-context flexible fields of `quotes.attribute_values`, editable in the
- * cell, via the two `*CategoryAttribute*` traits.
  */
-class OpportunityScopedTableDefinition implements AttributeColumnsScopable, ProductCategoryScopable, RegistryScopable, TableDefinition
+class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinition
 {
-    use AppendsCategoryAttributeColumns, DelegatesUnaugmentedTableMethods, WritesCategoryAttributeCells {
-        // Both declare editableColumnIds()/updateCell(); the attr.* aware pair
-        // delegates to $this->inner for every other column.
-        WritesCategoryAttributeCells::editableColumnIds insteadof DelegatesUnaugmentedTableMethods;
-        WritesCategoryAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
-    }
-
-    private readonly AttributeGridColumns $attributeColumns;
+    use DelegatesRowScopedTableMethods;
+    use DelegatesUnaugmentedTableMethods;
 
     private ?int $opportunityScope = null;
 
     private ?int $registryScope = null;
 
-    private ?int $categoryScope = null;
-
-    private ?int $branchScope = null;
-
-    public function __construct(
-        private readonly TableDefinition $inner,
-        private readonly ProductCategoryBranches $branches,
-        AttributeGridColumns $attributeColumns,
-        private readonly QuoteCellWriter $cellWriter,
-        private readonly QuoteAttributeResolver $attributeResolver,
-    ) {
-        $this->attributeColumns = $attributeColumns->forTarget(AttributeGridTarget::quote());
-    }
+    public function __construct(private readonly TableDefinition $inner) {}
 
     /**
      * Narrows `baseQuery()` to one Opportunity's Offerte (null = no scope,
@@ -116,25 +78,7 @@ class OpportunityScopedTableDefinition implements AttributeColumnsScopable, Prod
             );
         }
 
-        if ($this->categoryScope !== null) {
-            $query->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($this->categoryScope));
-        }
-
-        if ($this->branchScope !== null) {
-            $query->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($this->branches->branchIds($this->branchScope)));
-        }
-
         return $query;
-    }
-
-    public function scopeToProductCategory(?int $productCategoryId): void
-    {
-        $this->categoryScope = $productCategoryId;
-    }
-
-    public function scopeToProductCategoryBranch(?int $rootId): void
-    {
-        $this->branchScope = $rootId;
     }
 
     /**
@@ -144,20 +88,5 @@ class OpportunityScopedTableDefinition implements AttributeColumnsScopable, Prod
     public function scopeToRegistry(?int $registryId): void
     {
         $this->registryScope = $registryId;
-    }
-
-    protected function writeAttributeValue(Model $row, string $code, mixed $value, User $actor): Model
-    {
-        /** @var Quote $row */
-        return $this->cellWriter->write($row, AttributeColumnBuilder::EDITABLE_FIELD, [$code => $value], $actor, null);
-    }
-
-    /**
-     * @return Collection<int, array<string, mixed>>
-     */
-    protected function applicableAttributesOf(Model $row): Collection
-    {
-        /** @var Quote $row */
-        return $this->attributeColumns->fromApplicable($this->attributeResolver->resolve($row));
     }
 }

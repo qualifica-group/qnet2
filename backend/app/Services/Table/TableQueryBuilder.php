@@ -206,6 +206,7 @@ class TableQueryBuilder
         foreach ($catalog as $name => $descriptor) {
             if (
                 ($descriptor['required'] ?? false) === true
+                && ($descriptor['sendDefault'] ?? false) !== true
                 && ! array_key_exists($name, $advancedFilters)
                 && array_key_exists('defaultValue', $descriptor)
                 && $descriptor['defaultValue'] !== null

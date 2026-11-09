@@ -51,7 +51,7 @@ class RunMassMigrationJob implements ShouldQueue
 
         // Step 1: run each source in order; the first failure stops the chain.
         foreach ($massRun->sources as $source) {
-            $child = $this->makeChildRun($massRun, (string) $source);
+            $child = $this->makeChildRun($massRun, (string) $source, $service);
 
             try {
                 $service->runSource($child);
@@ -89,7 +89,7 @@ class RunMassMigrationJob implements ShouldQueue
             ->update(['status' => MigrationStatus::Failed]);
     }
 
-    private function makeChildRun(MassMigrationRun $massRun, string $source): MigrationRun
+    private function makeChildRun(MassMigrationRun $massRun, string $source, MigrationService $service): MigrationRun
     {
         return MigrationRun::create([
             'source' => $source,
@@ -99,9 +99,12 @@ class RunMassMigrationJob implements ShouldQueue
             'total_rows' => 0,
             'created_rows' => 0,
             'skipped_rows' => 0,
+            'updated_rows' => 0,
             'failed_rows' => 0,
             'report' => null,
             'updated_since' => $massRun->updated_since,
+            // Only the sources that can realign records inherit the flag (spec 0372).
+            'update_existing' => $massRun->update_existing && $service->supportsUpdateExisting($source),
         ]);
     }
 }

@@ -2,28 +2,15 @@
 
 use App\Enums\WorkOrderType;
 use App\Models\ExportRun;
-use App\Models\ProductCategory;
 use App\Models\User;
-use App\Models\WorkOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// Spec 0359, B4: category strip, export scope and menu entry (AC-015, AC-016).
+// Spec 0359, B4: export scope and menu entry (AC-015, AC-016).
 
 uses(RefreshDatabase::class);
-
-it('AC-015: the Commesse category strip does not count project work orders', function () {
-    $category = ProductCategory::factory()->create();
-    WorkOrder::factory()->create(['quote_id' => categoryTabQuote([$category])->id, 'type' => WorkOrderType::Processing]);
-    WorkOrder::factory()->create(['quote_id' => categoryTabQuote([$category])->id, 'type' => WorkOrderType::Project]);
-    Sanctum::actingAs(categoryTabGridActor('work-orders'));
-
-    $counts = collect($this->getJson('/api/work-orders/product-categories')->assertOk()->json('data.categories'))->pluck('records_count', 'id')->all();
-
-    expect($counts)->toBe([$category->id => 1]);
-});
 
 it('AC-015: exporting work-orders with work_order_type=processing leaves project out and freezes the scope', function () {
     Storage::fake('local');
@@ -32,7 +19,7 @@ it('AC-015: exporting work-orders with work_order_type=processing leaves project
     Sanctum::actingAs(projectWorkOrderViewer());
     $payload = ['format' => 'csv', 'columns' => [['colId' => 'code', 'header' => 'Code']]];
 
-    $response = $this->postJson('/api/exports/work-orders', [...$payload, 'work_order_type' => 'processing', 'advancedFilters' => ['assignment' => ['visible']]])->assertCreated();
+    $response = $this->postJson('/api/exports/work-orders', [...$payload, 'work_order_type' => 'processing'])->assertCreated();
     $run = ExportRun::findOrFail($response->json('data.export_run.id'));
 
     expect($run->state['work_order_type'])->toBe('processing')

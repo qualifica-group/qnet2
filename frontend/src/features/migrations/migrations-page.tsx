@@ -221,6 +221,7 @@ export default function MigrationsPage() {
         <ImportDialog
           source={selectedSource}
           sourceLabel={selectedSourceLabel}
+          supportsUpdateExisting={selectedSourceMatch?.supports_update_existing ?? false}
           open={importOpen}
           onOpenChange={setImportOpen}
         />

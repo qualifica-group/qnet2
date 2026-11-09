@@ -134,7 +134,7 @@ it('AC-015: work-orders with work_order_type=processing hides project, absent sc
     Sanctum::actingAs(projectWorkOrderViewer());
     $body = ['startRow' => 0, 'endRow' => 50];
 
-    $scoped = $this->postJson('/api/tables/work-orders/rows', [...$body, 'work_order_type' => 'processing', 'advancedFilters' => ['assignment' => ['visible']]])->assertOk();
+    $scoped = $this->postJson('/api/tables/work-orders/rows', [...$body, 'work_order_type' => 'processing'])->assertOk();
     $projectOnly = $this->postJson('/api/tables/work-orders/rows', [...$body, 'work_order_type' => 'project'])->assertOk();
     $unscoped = $this->postJson('/api/tables/work-orders/rows', $body)->assertOk();
     $nullScope = $this->postJson('/api/tables/work-orders/rows', [...$body, 'work_order_type' => null])->assertOk();

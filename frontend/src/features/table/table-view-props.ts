@@ -144,6 +144,8 @@ export interface TableViewProps extends RowActionsOptions {
    * footer renders and no domain sees any change.
    */
   renderFooter?: (aggregates: TableRowsAggregates | undefined) => ReactNode
+  /** Reports the same `meta.aggregates` to a caller that shows them outside the grid (keep it stable). */
+  onAggregatesChange?: (aggregates: TableRowsAggregates | undefined) => void
   /**
    * A generic, opt-in slot rendered directly below the grid's rows (spec 0156
    * D-7's quick-create bar): the adapter owns everything about it (fields,

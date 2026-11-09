@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AgreementStatusEnum;
+use App\Enums\CommercialAssignmentScope;
 use App\Enums\ContactTypeEnum;
 use App\Enums\CostTypeNature;
 use App\Enums\DocumentLayoutModule;
@@ -22,6 +23,7 @@ use App\Enums\TaskListStatus;
 use App\Enums\WorkOrderAssignmentScope;
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
+use App\Enums\WorkOrderWorkPhase;
 
 return [
 
@@ -97,6 +99,9 @@ return [
         'task_assignment_scope' => TaskAssignmentScope::class,
         // The Commesse page's preset filter (same model as the Task `assignment`).
         'work_order_assignment_scope' => WorkOrderAssignmentScope::class,
+        // The status tabs of the Commesse page (never persisted).
+        'work_order_work_phase' => WorkOrderWorkPhase::class,
+        'commercial_assignment_scope' => CommercialAssignmentScope::class,
         // Product typology Supplier commission direction (spec 0202): the
         // typology form's Received/Paid select and the grid's badge column.
         'supplier_commission_direction' => SupplierCommissionDirection::class,

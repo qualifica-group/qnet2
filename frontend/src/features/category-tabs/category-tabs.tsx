@@ -52,7 +52,7 @@ interface CategoryTabsProps {
 }
 
 /**
- * Category tab strip above the grid (spec 0064, shared with Opportunities and Quotes by spec 0335): "Tutte"
+ * Category tab strip above the grid (spec 0064): "Tutte"
  * always first and selected by default, then one tab per Product Category
  * actually present in the operator's visible requests, each carrying its own
  * request count. Presentation only — the parent owns persistence and derives

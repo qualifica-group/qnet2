@@ -189,6 +189,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'The **Activity history** shows who changed what and when. It opens from the **Activity** action on the row or inside the record.' },
         { type: 'list', items: ['The type: **Creation**, **Update**, **Deletion** or **Restore**.', 'The affected part, for example **Contact**, **Address**, **Note** or **Document**.', 'Who did it (**System** if it was automatic).', 'The fields changed, with the previous value struck through and the new value.'] },
         { type: 'paragraph', text: 'Filter by **All**, **Creation only** or **Update only**; **Load more** shows older operations.' },
+        { type: 'paragraph', text: 'On work orders, quotes and opportunities the history also records changes to **Supervisors**, **Participants**, **Account managers** and additional fields.' },
       ],
     },
     {

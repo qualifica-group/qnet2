@@ -116,32 +116,24 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtering by product category",
+      id: 'list-filters',
+      title: "Default filters and category",
       blocks: [
         {
           type: 'paragraph',
-          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of quotes. Clicking a tab shows only the quotes of that category. Your choice is kept after reloading the page.",
+          text: "When it opens, the **Quotes** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Account manager** (the quotes where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together. To widen the list choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved.",
         },
         {
           type: 'paragraph',
-          text: "A quote appears under the tab of every category among the products on its **revenue rows** (it counts once even with several rows of the same category). Cost rows do not count; a quote without revenue rows appears only under **All**. The number next to the name is how many quotes, among those you can see, fall under that category.",
-        },
-        {
-          type: 'steps',
-          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","With **Select all** and **Deselect all**, in the menu, you add every category to your favorites or remove them all at once. The two buttons are hidden while you are searching.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
-        },
-        {
-          type: 'paragraph',
-          text: "When you choose a category tab (not **All**), the columns of that category's flexible fields (**Additional information**) appear at the end of the list. On a parent category tab they are the fields assigned to the parent: those of a subcategory appear only in its own tab. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
+          text: "In the same panel there is also **Product category** (that category only). A quote falls under a category when it is among the **revenue rows** of the quote.",
         },
         {
           type: 'note',
-          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the quotes.",
+          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Quotes** page: they do not appear inside a record and in the Quotes sections of opportunities and clients. The export follows the active filters. Flexible fields are read and edited from the detail.",
         },
       ],
     },

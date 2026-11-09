@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\AttributeContext;
 use App\Models\ProductCategory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
@@ -12,29 +11,20 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
-dataset('root attribute grids', ['request-management', 'enrollee-management', 'quotes', 'work-orders', 'contracts']);
+dataset('root attribute grids', ['request-management', 'enrollee-management']);
 
 /**
  * Root with `durata`, child with `child_only` on top of what it inherits.
  *
  * @return array{0: ProductCategory, 1: ProductCategory}
  */
-function rootAttrTree(string $grid): array
+function rootAttrTree(): array
 {
     [$root, $child] = categoryTabTree();
-    $context = $grid === 'work-orders' ? AttributeContext::WorkOrder : AttributeContext::Quote;
-    categoryTabAttribute($context, 'text', ['code' => 'durata', 'name' => 'Durata'], $root);
-    categoryTabAttribute($context, 'text', ['code' => 'child_only'], $child);
+    categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'durata', 'name' => 'Durata'], $root);
+    categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'child_only'], $child);
 
     return [$root, $child];
-}
-
-/**
- * @param  array<string, mixed>  $values
- */
-function rootAttrStore(string $grid, Model $record, array $values): void
-{
-    ($grid === 'contracts' ? $record->quote : $record)->forceFill(['attribute_values' => $values])->save();
 }
 
 /**
@@ -46,7 +36,7 @@ function rootAttrColumnIds(array $columns): array
 }
 
 it('lists the root attributes on a parent tab and not those of a subcategory only', function (string $grid) {
-    [$root] = rootAttrTree($grid);
+    [$root] = rootAttrTree();
     Sanctum::actingAs(categoryTabGridActor($grid));
 
     $columns = $this->getJson("/api/tables/{$grid}/columns?product_category_branch_id={$root->id}")->assertOk()->json('data.columns');
@@ -57,7 +47,7 @@ it('lists the root attributes on a parent tab and not those of a subcategory onl
 
 it('adds no column for a parent whose fields live only on its subcategories', function (string $grid) {
     [, $child] = categoryTabTree();
-    categoryTabAttribute($grid === 'work-orders' ? AttributeContext::WorkOrder : AttributeContext::Quote, 'text', ['code' => 'child_only'], $child);
+    categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'child_only'], $child);
     Sanctum::actingAs(categoryTabGridActor($grid));
 
     $columns = $this->getJson("/api/tables/{$grid}/columns?product_category_branch_id={$child->parent_id}")->assertOk()->json('data.columns');
@@ -66,11 +56,11 @@ it('adds no column for a parent whose fields live only on its subcategories', fu
 })->with('root attribute grids');
 
 it('reads, filters, sorts and lists the values of records on a subcategory', function (string $grid) {
-    [$root, $child] = rootAttrTree($grid);
+    [$root, $child] = rootAttrTree();
     $beta = categoryTabRecord($grid, [$child]);
     $alpha = categoryTabRecord($grid, [$child]);
-    rootAttrStore($grid, $beta, ['durata' => 'beta']);
-    rootAttrStore($grid, $alpha, ['durata' => 'alpha']);
+    $beta->forceFill(['attribute_values' => ['durata' => 'beta']])->save();
+    $alpha->forceFill(['attribute_values' => ['durata' => 'alpha']])->save();
     Sanctum::actingAs(categoryTabGridActor($grid));
     $page = ['startRow' => 0, 'endRow' => 25, 'productCategoryBranchId' => $root->id];
     $rowsOf = fn (array $extra = []): array => $this->postJson("/api/tables/{$grid}/rows", [...$page, ...$extra])->assertOk()->json('items');
@@ -86,7 +76,7 @@ it('reads, filters, sorts and lists the values of records on a subcategory', fun
 })->with('root attribute grids');
 
 it('keeps the root columns in the config returned by a save, and a hidden one stays hidden', function (string $grid) {
-    [$root] = rootAttrTree($grid);
+    [$root] = rootAttrTree();
     Sanctum::actingAs(categoryTabGridActor($grid));
 
     $saved = $this->postJson("/api/tables/{$grid}/preferences", [
@@ -105,8 +95,8 @@ it('keeps the root columns in the config returned by a save, and a hidden one st
 })->with('root attribute grids');
 
 it('rejects a branch sent with a single category or pointing nowhere', function (string $method, string $path, array $body) {
-    [$root] = rootAttrTree('quotes');
-    Sanctum::actingAs(categoryTabGridActor('quotes'));
+    [$root] = rootAttrTree();
+    Sanctum::actingAs(categoryTabGridActor('request-management'));
     $both = ['product_category_id' => $root->id, 'product_category_branch_id' => $root->id];
     $missing = ['product_category_branch_id' => 999999];
 
@@ -120,29 +110,7 @@ it('rejects a branch sent with a single category or pointing nowhere', function 
     $this->postJson($path, [...$body, ...$both])->assertUnprocessable();
     $this->postJson($path, [...$body, ...$missing])->assertUnprocessable();
 })->with([
-    'columns' => ['get', '/api/tables/quotes/columns', []],
-    'preferences' => ['post', '/api/tables/quotes/preferences', ['columns' => [['id' => 'code', 'visible' => true, 'order' => 1]]]],
-    'filters' => ['post', '/api/tables/quotes/filters', ['filterModel' => []]],
+    'columns' => ['get', '/api/tables/request-management/columns', []],
+    'preferences' => ['post', '/api/tables/request-management/preferences', ['columns' => [['id' => 'code', 'visible' => true, 'order' => 1]]]],
+    'filters' => ['post', '/api/tables/request-management/filters', ['filterModel' => []]],
 ]);
-
-it('edits a root attribute in the cell for a record on a subcategory', function () {
-    [$root, $child] = rootAttrTree('quotes');
-    $quote = categoryTabQuote([$child]);
-    Sanctum::actingAs(quoteTableUserWith(['viewAny', 'view', 'update']));
-
-    $columns = $this->getJson("/api/tables/quotes/columns?product_category_branch_id={$root->id}")->assertOk()->json('data.columns');
-    expect(categoryTabColumn($columns, 'attr.durata')['editable'])->toBeTrue();
-
-    $this->patchJson("/api/tables/quotes/rows/{$quote->id}", ['column' => 'attr.durata', 'value' => 'gamma'])->assertOk();
-
-    expect($quote->fresh()->attribute_values)->toBe(['durata' => 'gamma']);
-});
-
-it('keeps the contracts columns read-only on a parent tab', function () {
-    [$root] = rootAttrTree('contracts');
-    Sanctum::actingAs(categoryTabGridActor('contracts'));
-
-    $columns = $this->getJson("/api/tables/contracts/columns?product_category_branch_id={$root->id}")->assertOk()->json('data.columns');
-
-    expect(categoryTabColumn($columns, 'attr.durata')['editable'])->toBeFalse();
-});

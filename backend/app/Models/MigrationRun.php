@@ -32,6 +32,8 @@ class MigrationRun extends BaseModel
         'failed_rows',
         'report',
         'updated_since',
+        'update_existing',
+        'updated_rows',
     ];
 
     protected $casts = [
@@ -40,6 +42,8 @@ class MigrationRun extends BaseModel
         'total_rows' => 'int',
         'created_rows' => 'int',
         'skipped_rows' => 'int',
+        'updated_rows' => 'int',
+        'update_existing' => 'bool',
         'failed_rows' => 'int',
         'report' => 'array',
         'updated_since' => 'date',

@@ -82,6 +82,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       onAdvancedFiltersOverrideCleared,
       hiddenAdvancedFilters,
       renderFooter,
+      onAggregatesChange,
       pinnedRowSlot,
       interceptCellCommit,
       treeData,
@@ -140,6 +141,10 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     useEffect(() => {
       onFilterModelChange?.(filterModel)
     }, [filterModel, onFilterModelChange])
+
+    useEffect(() => {
+      onAggregatesChange?.(view.aggregates)
+    }, [onAggregatesChange, view.aggregates])
 
     // Keyed on the joined ids: the hook hands out a fresh array on every render while grouped.
     const { groupedIds } = useRowGroupColumns(view.gridApi, config?.row_grouping?.max_depth ?? 0)

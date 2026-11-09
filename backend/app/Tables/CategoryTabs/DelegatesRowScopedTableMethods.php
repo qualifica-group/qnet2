@@ -9,10 +9,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * The `TableDefinition` read/filter methods a category-scope decorator
- * (spec 0335) forwards untouched to its wrapped `$inner`: only the row set
- * changes with a category, never columns, config or layout (D-3). The using
- * class declares `TableDefinition $inner` as a promoted constructor property.
+ * The `TableDefinition` read/filter methods a row-scope decorator forwards
+ * untouched to its wrapped `$inner`: only the row set changes with the scope,
+ * never columns, config or layout. The using class declares
+ * `TableDefinition $inner` as a promoted constructor property.
  */
 trait DelegatesRowScopedTableMethods
 {

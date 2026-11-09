@@ -91,6 +91,16 @@ final class WorkOrderVisibilityScope
     }
 
     /**
+     * Whether the actor can see records beyond the ones where they hold a role:
+     * the same tiers as scopeToActor(), read by the "Assegnazione" filter.
+     */
+    public static function seesBeyondOwnRecords(?User $user): bool
+    {
+        return $user !== null
+            && ($user->can(self::VIEW_ALL_PERMISSION) || self::siteIds($user) !== [] || self::competenceReach($user) !== null);
+    }
+
+    /**
      * Projects the competence tier's verdict on each row (spec 0340, AC-016),
      * so isVisibleTo() answers a competence-only row from the attribute instead
      * of one query per row. Built from the SAME subquery as scopeToActor().

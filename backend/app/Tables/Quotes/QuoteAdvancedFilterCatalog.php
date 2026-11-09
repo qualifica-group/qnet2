@@ -4,6 +4,7 @@ namespace App\Tables\Quotes;
 
 use App\Enums\AdvancedFilterType;
 use App\Models\QuoteWorkflowStatus;
+use App\Tables\Shared\PresetListFilters;
 
 /**
  * Advanced-filter catalogue for the `quotes` domain (spec 0065, MT-05).
@@ -102,6 +103,19 @@ final class QuoteAdvancedFilterCatalog
                 'multiple' => false,
                 'target' => 'created_at',
             ],
+            [
+                'name' => 'registry',
+                'label' => 'quotes.advancedFilters.registry',
+                'type' => AdvancedFilterType::Relation,
+                'order' => 7,
+                'required' => false,
+                'visible' => true,
+                'width' => 'md',
+                'multiple' => true,
+                'source' => ['resource' => 'registries'],
+                'target' => 'opportunity.registry',
+            ],
+            PresetListFilters::productCategoryFilter('quotes', 8),
         ];
     }
 

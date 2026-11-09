@@ -5,24 +5,12 @@ declare(strict_types=1);
 namespace App\Tables\WorkOrders;
 
 use App\Enums\WorkOrderType;
-use App\Models\User;
-use App\Models\WorkOrder;
-use App\Products\ProductCategoryBranches;
-use App\Tables\CategoryTabs\AttributeColumnsScopable;
-use App\Tables\CategoryTabs\AttributeGridTarget;
-use App\Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns;
-use App\Tables\CategoryTabs\Concerns\WritesCategoryAttributeCells;
-use App\Tables\CategoryTabs\WorkOrderSourceQuotes;
+use App\Tables\CategoryTabs\DelegatesRowScopedTableMethods;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
-use App\Tables\ProductCategoryScopable;
 use App\Tables\RegistryScopable;
-use App\Tables\RequestManagement\AttributeColumnBuilder;
-use App\Tables\RequestManagement\AttributeGridColumns;
 use App\Tables\TableDefinition;
-use App\WorkOrders\WorkOrderAttributeResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
 
 /**
  * Decorator that scopes the `work-orders` domain to a single Quote (spec
@@ -50,44 +38,19 @@ use Illuminate\Support\Collection;
  * Commessa is its Offerta's Opportunity's, so the scope is a `whereIn` on the
  * client's Offerte, in AND with the Quote scope. This is the outermost
  * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
- *
- * And its `ProductCategoryScopable` (spec 0335 rev.3, D-9): a Commessa shows in
- * the tab of every category of the REVENUE lines of its source offers.
- *
- * And the `attr.<code>` columns of the tab's category (spec 0350, D-2): the
- * WorkOrder-context flexible fields of `work_orders.attribute_values` (never
- * the offer's), editable in the cell, via the two `*CategoryAttribute*` traits.
  */
-class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCategoryScopable, RegistryScopable, TableDefinition
+class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
 {
-    use AppendsCategoryAttributeColumns, DelegatesUnaugmentedTableMethods, WritesCategoryAttributeCells {
-        // Both declare editableColumnIds()/updateCell(); the attr.* aware pair
-        // delegates to $this->inner for every other column.
-        WritesCategoryAttributeCells::editableColumnIds insteadof DelegatesUnaugmentedTableMethods;
-        WritesCategoryAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
-    }
-
-    private readonly AttributeGridColumns $attributeColumns;
+    use DelegatesRowScopedTableMethods;
+    use DelegatesUnaugmentedTableMethods;
 
     private ?int $quoteScope = null;
 
     private ?int $registryScope = null;
 
-    private ?int $categoryScope = null;
-
-    private ?int $branchScope = null;
-
     private ?WorkOrderType $typeScope = null;
 
-    public function __construct(
-        private readonly TableDefinition $inner,
-        private readonly ProductCategoryBranches $branches,
-        AttributeGridColumns $attributeColumns,
-        private readonly WorkOrderCellWriter $cellWriter,
-        private readonly WorkOrderAttributeResolver $attributeResolver,
-    ) {
-        $this->attributeColumns = $attributeColumns->forTarget(AttributeGridTarget::workOrder());
-    }
+    public function __construct(private readonly TableDefinition $inner) {}
 
     /**
      * Narrows `baseQuery()` to one Quote's own work orders (null = no scope,
@@ -119,14 +82,6 @@ class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCat
             $query->withQuoteLineOfRegistry($this->registryScope);
         }
 
-        if ($this->categoryScope !== null) {
-            $query->whereIn('work_orders.id', WorkOrderSourceQuotes::withRevenueCategory($this->categoryScope));
-        }
-
-        if ($this->branchScope !== null) {
-            $query->whereIn('work_orders.id', WorkOrderSourceQuotes::withRevenueCategory($this->branches->branchIds($this->branchScope)));
-        }
-
         return $query;
     }
 
@@ -140,14 +95,16 @@ class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCat
         $this->typeScope = $type;
     }
 
-    public function scopeToProductCategory(?int $productCategoryId): void
+    /**
+     * The figures of the status tabs, which only the "Commesse" page shows:
+     * every other grid of the domain is spared the query.
+     *
+     * @param  Builder<Model>  $query
+     * @return array<string, int|float|string|null>
+     */
+    public function aggregates(Builder $query): array
     {
-        $this->categoryScope = $productCategoryId;
-    }
-
-    public function scopeToProductCategoryBranch(?int $rootId): void
-    {
-        $this->branchScope = $rootId;
+        return $this->typeScope === WorkOrderType::Processing ? $this->inner->aggregates($query) : [];
     }
 
     /**
@@ -157,37 +114,5 @@ class QuoteScopedTableDefinition implements AttributeColumnsScopable, ProductCat
     public function scopeToRegistry(?int $registryId): void
     {
         $this->registryScope = $registryId;
-    }
-
-    /**
-     * The personal view belongs to the Commesse page alone, the only caller
-     * sending the `processing` type: the Contratto and Anagrafica tabs list
-     * that record's commesse whoever they are assigned to.
-     *
-     * @param  Builder<Model>  $query
-     * @param  array<string, mixed>  $descriptor
-     */
-    public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
-    {
-        if ($this->typeScope !== WorkOrderType::Processing && in_array($name, WorkOrderAdvancedFilterCatalog::PERSONAL_VIEW_FILTERS, true)) {
-            return true;
-        }
-
-        return $this->inner->applyAdvancedFilter($query, $name, $descriptor, $value);
-    }
-
-    protected function writeAttributeValue(Model $row, string $code, mixed $value, User $actor): Model
-    {
-        /** @var WorkOrder $row */
-        return $this->cellWriter->write($row, AttributeColumnBuilder::EDITABLE_FIELD, [$code => $value], $actor);
-    }
-
-    /**
-     * @return Collection<int, array<string, mixed>>
-     */
-    protected function applicableAttributesOf(Model $row): Collection
-    {
-        /** @var WorkOrder $row */
-        return $this->attributeColumns->fromApplicable($this->attributeResolver->resolve($row));
     }
 }

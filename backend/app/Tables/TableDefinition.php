@@ -370,6 +370,15 @@ interface TableDefinition
     public function aggregates(Builder $query): array;
 
     /**
+     * The `filterModel` column ids aggregates() must ignore, for figures that
+     * sit beside the filter they describe (a count on each status tab must not
+     * drop to 0 when another tab is active). Default (AbstractTableDefinition): none.
+     *
+     * @return array<int, string>
+     */
+    public function filtersIgnoredByAggregates(): array;
+
+    /**
      * Whether this domain supports tree/hierarchical row scoping (spec
      * 0157, D-1) — the allow-list `TableRowsRequest` checks before
      * accepting `tree`/`treeParentId` in POST /tables/{domain}/rows: either

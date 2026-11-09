@@ -3,14 +3,10 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
-import {
-  fetchCategoryTabPreferences,
-  fetchGridCategoryTabs,
-  saveCategoryTabPreferences,
-} from '@/features/category-tabs/api'
+import type { CategoryTabItem, CategoryTabLevel } from '@/features/category-tabs/types'
+import { fetchCategoryTabPreferences, saveCategoryTabPreferences } from '@/features/category-tabs/api'
 
 vi.mock('@/features/category-tabs/api', () => ({
-  fetchGridCategoryTabs: vi.fn(),
   fetchCategoryTabPreferences: vi.fn(),
   saveCategoryTabPreferences: vi.fn(),
 }))
@@ -29,7 +25,7 @@ const ROOT_CATEGORIES = [{ id: 3, name: 'Qualita', count: 9 }]
 const ALL_FAVORITES = { favorite_category_ids: [7], show_only_favorites: false, is_default: false }
 const ROOT_FAVORITES = { favorite_category_ids: [3], show_only_favorites: false, is_default: false }
 
-const categoriesMock = vi.mocked(fetchGridCategoryTabs)
+const categoriesMock = vi.fn<(apiBasePath: string, level?: CategoryTabLevel) => Promise<CategoryTabItem[]>>()
 const fetchPreferencesMock = vi.mocked(fetchCategoryTabPreferences)
 const saveMock = vi.mocked(saveCategoryTabPreferences)
 
@@ -58,7 +54,7 @@ afterEach(() => {
 describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
   it('defaults to the root level when the operator never chose one (decisione utente 2026-11-05)', async () => {
     window.localStorage.setItem('quotes.category-tab.root', '3')
-    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE, categoriesMock), { wrapper: wrapper() })
 
     await waitFor(() => expect(result.current.scope).toEqual({ productCategoryBranchId: 3 }))
     expect(result.current.tabsProps.level).toBe('root')
@@ -70,7 +66,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
   it('keeps the all level the operator chose: the call and scope of a single category', async () => {
     window.localStorage.setItem('quotes.category-tab-level', 'all')
     window.localStorage.setItem('quotes.category-tab', '12')
-    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE, categoriesMock), { wrapper: wrapper() })
 
     await waitFor(() => expect(result.current.scope).toEqual({ productCategoryId: 12 }))
     expect(result.current.tabsProps.level).toBe('all')
@@ -81,7 +77,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
   it('switching to root reads the root categories, persists the level and scopes the grid by branch', async () => {
     window.localStorage.setItem('quotes.category-tab-level', 'all')
     window.localStorage.setItem('quotes.category-tab.root', '3')
-    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE, categoriesMock), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.isPending).toBe(false))
 
     act(() => result.current.tabsProps.onLevelChange('root'))
@@ -98,7 +94,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
   it('restores the persisted level on mount', async () => {
     window.localStorage.setItem('quotes.category-tab-level', 'root')
     window.localStorage.setItem('quotes.category-tab.root', '3')
-    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE, categoriesMock), { wrapper: wrapper() })
 
     await waitFor(() => expect(result.current.scope).toEqual({ productCategoryBranchId: 3 }))
     expect(categoriesMock).toHaveBeenCalledWith('/quotes', 'root')
@@ -106,7 +102,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
 
   it('each level remembers its own tab; going back to all restores the earlier one', async () => {
     window.localStorage.setItem('quotes.category-tab-level', 'all')
-    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE, categoriesMock), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.isPending).toBe(false))
     act(() => result.current.tabsProps.onSelect(12))
 
@@ -124,7 +120,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
   it('falls back to "Tutte" when the stored root tab is not in the root bar', async () => {
     window.localStorage.setItem('quotes.category-tab-level', 'root')
     window.localStorage.setItem('quotes.category-tab.root', '12')
-    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE, categoriesMock), { wrapper: wrapper() })
 
     await waitFor(() => expect(result.current.isPending).toBe(false))
     expect(result.current.scope).toBeUndefined()
@@ -132,7 +128,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
   })
 
   it('re-reads both levels when invalidated', async () => {
-    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE, categoriesMock), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.isPending).toBe(false))
     act(() => result.current.tabsProps.onLevelChange('root'))
     await waitFor(() => expect(categoriesMock).toHaveBeenCalledWith('/quotes', 'root'))
@@ -147,7 +143,7 @@ describe('useCategoryTabStrip level (spec 0337 AC-008)', () => {
 describe('useCategoryTabStrip favorites per level (spec 0337 AC-009)', () => {
   it('reads and writes the root favorites with level=root, leaving the all level untouched', async () => {
     window.localStorage.setItem('quotes.category-tab-level', 'root')
-    const { result } = renderHook(() => useCategoryTabStrip(SOURCE), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabStrip(SOURCE, categoriesMock), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.tabsProps.favoriteCategoryIds).toEqual([3]))
     expect(fetchPreferencesMock).toHaveBeenCalledWith('/quotes', 'root')
 

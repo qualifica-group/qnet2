@@ -331,6 +331,3 @@ export interface RequestWorkOrderUpdatePayload {
   target: WorkOrderRequestUpdateTarget
   message: string
 }
-
-/** The filters only the "Commesse" page honours: hidden where the same grid lists one record's work orders. */
-export const WORK_ORDER_PERSONAL_VIEW_FILTERS: readonly string[] = ['assignment', 'parent_category']
