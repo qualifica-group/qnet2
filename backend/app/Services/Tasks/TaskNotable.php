@@ -227,13 +227,16 @@ final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
 
     /**
      * Every Sede of the Task's assignees, physical or remote (spec 0148): the
-     * set a `viewSite` reader must share one of.
+     * set a `viewSite` reader must share one of. The relation's own ordering
+     * is dropped because MySQL rejects a DISTINCT ordered by a column it does
+     * not select (error 3065).
      *
      * @return array<int, int>
      */
     private function assigneeSiteIds(Task $task): array
     {
         return $task->assignees()
+            ->reorder()
             ->join('employment_profiles', 'employment_profiles.user_id', '=', 'users.id')
             ->join('employment_profile_operational_site', 'employment_profile_operational_site.employment_profile_id', '=', 'employment_profiles.id')
             ->distinct()

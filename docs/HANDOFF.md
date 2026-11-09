@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Menzioni nelle note dei task: errore imprevisto su MySQL (2026-11-09) — VERDE MIRATO, COMMITTATO
+
+- Bug in produzione: `GET /api/notes/mentionable-users?entity_type=tasks` risponde "errore imprevisto". `TaskNotable::assigneeSiteIds()` partiva da
+  `assignees()`, che ha `orderBy('users.name')`, e faceva `distinct()->pluck(operational_site_id)`: MySQL rifiuta un DISTINCT ordinato su una colonna non selezionata (3065).
+  MariaDB locale e SQLite lo accettano, per questo non si riproduce qui. Fix: `->reorder()`.
+- Test in `TaskSiteVisibilityTest` sullo statement eseguito. Pest task/note 165/165, Pint pulito. NON verificato su MySQL reale (non installato in locale):
+  dopo il deploy riprovare la menzione. Se persiste, serve la riga `[BACKEND] API internal error` del log di produzione. Manuale: nessun impatto.
+
 ## Dashboard in allestimento (2026-11-09) — VERDE MIRATO, NON COMMITTATO
 
 - Decisione utente: `DashboardScreen` mostra il messaggio `dashboard.underConstruction.{title,description}` (chiavi al posto di
