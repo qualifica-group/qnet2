@@ -15,6 +15,7 @@ export const quotes = {
     code: 'Code',
     title: 'Title',
     opportunity: 'Opportunity',
+    registry: 'Registry',
     quoteWorkflowStatus: 'Status',
     commercial: 'Commercial',
     reporter: 'Reporter',

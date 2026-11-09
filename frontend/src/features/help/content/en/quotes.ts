@@ -151,6 +151,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "The **Registry** column shows the client of the linked opportunity: it can be filtered and sorted but not edited.",
+        },
+        {
+          type: 'paragraph',
           text: "Removing or adding people in **Account managers** keeps everyone else in their position. Code, Opportunity, Net revenue/cost/margin, Created at, Next callback, Alert and Product lines (the products of the revenue lines, with their category in brackets) and Parent category (the macro-category of the products, for example Formazione; filterable) stay read-only.",
         },
       ],

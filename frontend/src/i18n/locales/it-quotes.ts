@@ -15,6 +15,7 @@ export const quotes = {
     code: 'Codice',
     title: 'Titolo',
     opportunity: 'Opportunità',
+    registry: 'Anagrafica',
     quoteWorkflowStatus: 'Stato',
     commercial: 'Commerciale',
     reporter: 'Segnalatore',

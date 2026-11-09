@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Offerte: colonna Anagrafica (2026-11-09) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente: colonna Anagrafica in Opportunita', Offerte, Commesse, solo dove manca. Opportunita' e Commesse l'avevano gia': non toccate.
+- Offerte: colonna `registry` subito dopo `opportunity`, `{id, name}` via `quote.opportunity.registry`, sola lettura, ordinabile, filtro set senza "Vuoti" (catena NOT NULL). Nuovo `Quotes/QuoteRegistryColumn` (delegato da `QuoteRelationColumns`), renderer `RelationCell` con `Building2`, chiave `quotes.columns.registry`.
+- Test: nuovo `QuoteRegistryColumnTest`; REQUIREMENT CHANGED in `QuoteTableTest` (ordine colonne). Non provato nel browser.
+- Suite backend completa con tutto il lavoro non committato: 14.406 test, 11 falliti + 6 errori, nessuno sulla nuova colonna (AI Assistant, catalogo permessi, ManagementControl, seeder Qualifica, `TableBulkDeleteTest`, `SettlementApprovalTest`, `EmploymentProductLineTest`, `QuoteDocumentPdfTest` per LibreOffice assente). Non confrontati con un albero pulito.
+- Guide IT/EN Offerte e manuale Claude Docs aggiornati. DA FARE: rigenerare il PDF del manuale.
+
 ## Select: popup largo quanto l'opzione piu' lunga (2026-11-09) — COMMITTATO
 
 - Richiesta utente: nei select con testi lunghi le opzioni devono allargarsi. Nuovo `components/ui/select-popup-width.ts`: `SELECT_POPUP_FIT_CONTENT_CLASS` (`w-max`, tetto `min(48rem, 100vw-2rem)`) e `SELECT_POPOVER_WIDTH_CLASS` (in piu' il minimo `max(15rem, larghezza trigger)`). Oltre il tetto le righe restano troncate.

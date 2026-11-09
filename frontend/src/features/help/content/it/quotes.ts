@@ -151,6 +151,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "La colonna **Anagrafica** mostra il cliente dell'opportunità collegata: si può filtrare e ordinare ma non modificare.",
+        },
+        {
+          type: 'paragraph',
           text: "Togliendo o aggiungendo persone nei **Gestori account** gli altri restano nella loro posizione. Restano in sola lettura Codice, Opportunità, Ricavo/Costo/Margine netto, Creato il, Prossimo richiamo, Avviso e Linee di prodotto (i prodotti delle righe di ricavo, con la categoria tra parentesi) e Categoria madre (la macrocategoria dei prodotti, ad esempio Formazione; filtrabile).",
         },
       ],
