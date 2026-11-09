@@ -82,11 +82,12 @@ const refreshMock = vi.fn()
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
     { refresh: () => void },
-    { domain: string; onAction?: (action: TableActionDefinition, row: TableRow) => void }
-  >(function TableViewStub({ domain, onAction }, ref) {
+    { domain: string; scope?: { attributeColumnsFromFilters?: boolean }; onAction?: (action: TableActionDefinition, row: TableRow) => void }
+  >(function TableViewStub({ domain, scope, onAction }, ref) {
     useImperativeHandle(ref, () => ({ refresh: refreshMock }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
+        <p>{scope?.attributeColumnsFromFilters ? 'attr-columns-from-filters' : 'no-attr-columns'}</p>
         <button type="button" onClick={() => onAction?.(DELETE_ACTION, ROW)}>
           delete row
         </button>
@@ -128,6 +129,11 @@ describe('QuotesTable — domain wiring (AC-078)', () => {
   it('mounts <TableView domain="quotes"> with no client-declared columns', () => {
     renderTable()
     expect(screen.getByRole('region', { name: 'table-quotes' })).toBeInTheDocument()
+  })
+
+  it('asks for the filter-driven attribute columns (AC-017)', () => {
+    renderTable()
+    expect(screen.getByText('attr-columns-from-filters')).toBeInTheDocument()
   })
 })
 

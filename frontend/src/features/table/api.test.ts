@@ -34,6 +34,36 @@ describe('fetchTableConfig', () => {
   })
 })
 
+describe('attribute columns from filters (spec 0374, AC-015)', () => {
+  const FROM_FILTERS = { attributeColumnsFromFilters: true } as const
+
+  it('sends the flag as the number 1 on the config GET, nothing without it', async () => {
+    const getMock = vi.mocked(apiClient.get)
+    getMock.mockReset().mockResolvedValue({ data: { success: true, message: 'ok', data: { resource: 'quotes' } } })
+
+    await fetchTableConfig('quotes', FROM_FILTERS)
+    await fetchTableConfig('quotes')
+
+    expect(getMock).toHaveBeenNthCalledWith(1, '/tables/quotes/columns', { params: { attribute_columns_from_filters: 1 } })
+    expect(getMock).toHaveBeenNthCalledWith(2, '/tables/quotes/columns', undefined)
+  })
+
+  it('sends it on preferences and filters saves, keepalive ones included', async () => {
+    postMock.mockResolvedValue({ data: { success: true, message: 'ok', data: { resource: 'quotes' } } })
+
+    await saveTablePreferences('quotes', [], FROM_FILTERS)
+    await saveTableFilters('quotes', { filterModel: {} }, FROM_FILTERS, { keepalive: true })
+
+    expect(postMock).toHaveBeenNthCalledWith(1, '/tables/quotes/preferences', { columns: [], attribute_columns_from_filters: 1 })
+    expect(postMock).toHaveBeenNthCalledWith(
+      2,
+      '/tables/quotes/filters',
+      { filterModel: {}, attribute_columns_from_filters: 1 },
+      expect.objectContaining({ fetchOptions: { keepalive: true } }),
+    )
+  })
+})
+
 describe('fetchTableColumnValues', () => {
   it('posts the payload and unwraps the ok() envelope', async () => {
     postMock.mockResolvedValue({

@@ -9,6 +9,7 @@ use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\RequestAttributeResolver;
+use App\Tables\CategoryTabs\AttributeGridTarget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -40,16 +41,38 @@ final class AttributeGridColumns
     /** The two attribute types whose contract `filterType` is `date` (see applyFilter). */
     private const array DATE_TYPES = ['date', 'datetime'];
 
-    /** A server constant, never request input (backend.md §8). */
-    private const string VALUES_COLUMN = 'quotes.attribute_values';
+    private readonly AttributeGridTarget $target;
 
+    /**
+     * `$target` defaults to Gestione Richieste's own (quotes JSON column,
+     * Quote context); the other grids bind theirs via forTarget() (spec 0374).
+     */
     public function __construct(
         private readonly AttributeScopeResolver $scopeResolver,
         private readonly AttributeColumnBuilder $columnBuilder,
         private readonly AttributeDateFilterApplier $dateFilterApplier,
         private readonly AuthorizationRegistry $authorizationRegistry,
         private readonly RequestAttributeResolver $attributesResolver,
-    ) {}
+        ?AttributeGridTarget $target = null,
+    ) {
+        $this->target = $target ?? AttributeGridTarget::quote();
+    }
+
+    /**
+     * The same collaborators bound to another target, with a resolver (and
+     * memo) of the target's own context.
+     */
+    public function forTarget(AttributeGridTarget $target): self
+    {
+        return new self(
+            $this->scopeResolver->forContext($target->context),
+            $this->columnBuilder,
+            $this->dateFilterApplier,
+            $this->authorizationRegistry,
+            $this->attributesResolver,
+            $target,
+        );
+    }
 
     /**
      * One category's effective attributes (null scope = the "Tutte" tab, D-3:
@@ -60,6 +83,26 @@ final class AttributeGridColumns
     public function forCategory(?int $categoryId): Collection
     {
         return $this->scopeResolver->forCategory($categoryId);
+    }
+
+    /**
+     * The effective attributes of several categories, deduplicated by `code`:
+     * the first category's set first, then what each next one adds (spec 0374, D-10).
+     *
+     * @param  array<int, int>  $categoryIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function forCategories(array $categoryIds): Collection
+    {
+        $merged = [];
+
+        foreach ($categoryIds as $categoryId) {
+            foreach ($this->scopeResolver->forCategory($categoryId) as $row) {
+                $merged[$row['code']] ??= $row;
+            }
+        }
+
+        return collect(array_values($merged));
     }
 
     /**
@@ -83,8 +126,19 @@ final class AttributeGridColumns
      */
     public function rowAttributes(Quote $quote): Collection
     {
-        return $this->attributesResolver->resolve($quote)
-            ->map(static fn (ApplicableAttribute $attribute): array => $attribute->toArray());
+        return $this->fromApplicable($this->attributesResolver->resolve($quote));
+    }
+
+    /**
+     * A record's resolved applicable attributes (any context) reshaped to the
+     * plain-array shape this class expects.
+     *
+     * @param  Collection<int, ApplicableAttribute>  $applicable
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function fromApplicable(Collection $applicable): Collection
+    {
+        return $applicable->map(static fn (ApplicableAttribute $attribute): array => $attribute->toArray());
     }
 
     /**
@@ -140,7 +194,20 @@ final class AttributeGridColumns
      */
     public function rowValues(Model $row, Collection $attributes): array
     {
-        $values = $row->attribute_values ?? [];
+        return $this->mapValues($row->attribute_values, $attributes);
+    }
+
+    /**
+     * Same as rowValues() for values read from elsewhere than the row itself
+     * (the contracts grid reads its source offer's).
+     *
+     * @param  array<string, mixed>|null  $storedValues
+     * @param  Collection<int, array<string, mixed>>  $attributes
+     * @return array<string, mixed>
+     */
+    public function mapValues(?array $storedValues, Collection $attributes): array
+    {
+        $values = $storedValues ?? [];
         $mapped = [];
 
         foreach ($attributes as $attributeRow) {
@@ -168,7 +235,7 @@ final class AttributeGridColumns
         if (in_array($attributeRow['type'], self::DATE_TYPES, true)) {
             $this->dateFilterApplier->apply(
                 $query,
-                self::VALUES_COLUMN.'->'.$attributeRow['code'],
+                $this->target->valuesColumn.'->'.$attributeRow['code'],
                 $attributeRow['type'] === 'datetime',
                 $filter,
             );
@@ -176,7 +243,7 @@ final class AttributeGridColumns
             return;
         }
 
-        $this->columnBuilder->handlerFor($attributeRow)->applyFilter($query, self::VALUES_COLUMN, $attributeRow['code'], $filter);
+        $this->columnBuilder->handlerFor($attributeRow)->applyFilter($query, $this->target->valuesColumn, $attributeRow['code'], $filter);
     }
 
     /**
@@ -185,7 +252,7 @@ final class AttributeGridColumns
      */
     public function applySort(Builder $query, array $attributeRow, string $direction): void
     {
-        $this->columnBuilder->handlerFor($attributeRow)->applySort($query, self::VALUES_COLUMN, $attributeRow['code'], $direction);
+        $this->columnBuilder->handlerFor($attributeRow)->applySort($query, $this->target->valuesColumn, $attributeRow['code'], $direction);
     }
 
     /**
@@ -199,7 +266,7 @@ final class AttributeGridColumns
      */
     public function distinctValues(Builder $query, array $attributeRow, ?string $search, int $limit): array
     {
-        $values = $this->columnBuilder->handlerFor($attributeRow)->distinctValues($query, self::VALUES_COLUMN, $attributeRow['code']);
+        $values = $this->columnBuilder->handlerFor($attributeRow)->distinctValues($query, $this->target->valuesColumn, $attributeRow['code']);
 
         if ($search !== null && $search !== '') {
             $needle = mb_strtolower($search);
@@ -245,6 +312,6 @@ final class AttributeGridColumns
             return false;
         }
 
-        return $authorization->fieldPermissions($actor, new Quote)[AttributeColumnBuilder::EDITABLE_FIELD]->editable ?? false;
+        return $authorization->fieldPermissions($actor, new ($this->target->gateModel))[AttributeColumnBuilder::EDITABLE_FIELD]->editable ?? false;
     }
 }

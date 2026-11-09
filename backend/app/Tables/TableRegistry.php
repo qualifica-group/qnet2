@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\RequestManagement\RequestModule;
+use App\Tables\Contracts\ContractAttributeColumnsTableDefinition;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\Referents\ReferentScopedTableDefinition;
 use App\Tables\Registries\RegistryScopedTableDefinition;
@@ -40,6 +41,12 @@ class TableRegistry
      * table-framework one.
      */
     private const string WORK_ORDERS_DOMAIN = 'work-orders';
+
+    /**
+     * The only domain wrapped in `ContractAttributeColumnsTableDefinition`
+     * (spec 0374).
+     */
+    private const string CONTRACTS_DOMAIN = 'contracts';
 
     /**
      * Domains wrapped in `ReferentScopedTableDefinition` (spec 0336), each
@@ -94,7 +101,8 @@ class TableRegistry
      * `work-orders`, THEN in `RegistryScopedTableDefinition` (spec 0199) for
      * `opportunities`/`tasks`/`commission-configurations` (spec 0204), THEN
      * in `ReferentScopedTableDefinition` (spec 0336) for
-     * `commission-configurations` — one line each here, zero per-module code.
+     * `commission-configurations`, THEN in `ContractAttributeColumnsTableDefinition`
+     * (spec 0374) for `contracts` — one line each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
@@ -107,7 +115,9 @@ class TableRegistry
 
         $definition = $this->wrapIfRegistryScoped($domain, $definition);
 
-        return $this->wrapIfReferentScoped($domain, $definition);
+        $definition = $this->wrapIfReferentScoped($domain, $definition);
+
+        return $this->wrapIfContractAttributeColumns($domain, $definition);
     }
 
     /**
@@ -251,6 +261,24 @@ class TableRegistry
             'inner' => $definition,
             'referentColumn' => $columns[0],
             'morphTypeColumn' => $columns[1],
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `ContractAttributeColumnsTableDefinition` (spec 0374) for
+     * `contracts` only; outermost.
+     */
+    private function wrapIfContractAttributeColumns(string $domain, TableDefinition $definition): TableDefinition
+    {
+        if ($domain !== self::CONTRACTS_DOMAIN) {
+            return $definition;
+        }
+
+        /** @var ContractAttributeColumnsTableDefinition $wrapped */
+        $wrapped = $this->container->make(ContractAttributeColumnsTableDefinition::class, [
+            'inner' => $definition,
         ]);
 
         return $wrapped;

@@ -6,6 +6,7 @@ use App\Enums\WorkOrderType;
 use App\Http\Requests\Table\TableRowsRequest;
 use App\Services\Table\AdvancedFilterApplier;
 use App\Services\Table\CustomFilterRuleValidator;
+use App\Tables\CategoryTabs\FilterScopedAttributeColumns;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -176,7 +177,14 @@ class CreateExportRequest extends FormRequest
     {
         if ($this->resolvedDefinition === null) {
             $domain = (string) $this->route('domain');
-            $this->resolvedDefinition = app(TableRegistry::class)->resolve($domain);
+            $definition = app(TableRegistry::class)->resolve($domain);
+
+            if ($definition instanceof FilterScopedAttributeColumns) {
+                $advancedFilters = $this->input('advancedFilters');
+                $definition->scopeAttributeColumnsForRows(is_array($advancedFilters) ? $advancedFilters : []);
+            }
+
+            $this->resolvedDefinition = $definition;
         }
 
         return $this->resolvedDefinition;

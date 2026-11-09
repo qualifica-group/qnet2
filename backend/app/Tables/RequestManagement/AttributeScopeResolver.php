@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
  * TableRegistry::resolve()) so repeated calls within one request never re-walk
  * the hierarchy.
  *
- * The context is `AttributeContext::Quote` (user directive 2026-08-31, NOT
+ * The default context is `AttributeContext::Quote` (user directive 2026-08-31, NOT
  * the `Opportunity` context spec 0064 originally read): spec 0084 D-1 moved
  * "Informazioni aggiuntive" onto the Offerta, and the row of this grid IS an
  * Offerta since spec 0086 — so the grid's flexible columns must resolve
@@ -32,15 +32,30 @@ use Illuminate\Support\Collection;
  */
 final class AttributeScopeResolver
 {
-    private const AttributeContext CONTEXT = AttributeContext::Quote;
-
     /** @var array<int, Collection<int, array<string, mixed>>> */
     private array $byCategory = [];
 
     /** @var Collection<int, array<string, mixed>>|null */
     private ?Collection $union = null;
 
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    /**
+     * `$context` defaults to Quote (Gestione Richieste, quotes grid); the
+     * work-orders grid reads the WorkOrder context (spec 0350, D-2).
+     */
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly AttributeContext $context = AttributeContext::Quote,
+    ) {}
+
+    /**
+     * A resolver of another context with its OWN memo: the per-instance
+     * memos below are keyed by category only, so two contexts must never
+     * share one instance.
+     */
+    public function forContext(AttributeContext $context): self
+    {
+        return new self($this->hierarchy, $context);
+    }
 
     /**
      * @return Collection<int, array<string, mixed>>
@@ -81,7 +96,7 @@ final class AttributeScopeResolver
         // ITS OWN inheritance contract; spec 0064 (AC-005) requires a
         // strict [sort_order, code] order for the columns endpoint,
         // regardless of which level an attribute is inherited from.
-        return self::sortBySortOrderThenCode($this->hierarchy->effectiveAttributes($category, self::CONTEXT));
+        return self::sortBySortOrderThenCode($this->hierarchy->effectiveAttributes($category, $this->context));
     }
 
     /**
@@ -94,7 +109,7 @@ final class AttributeScopeResolver
         // One batched read for the whole catalogue (the per-category walk cost
         // ~5 queries per category on every grid request), seeding the
         // per-category memo on the way so forCategory() never re-reads it.
-        foreach ($this->hierarchy->effectiveAttributesByCategory(self::CONTEXT) as $categoryId => $attributes) {
+        foreach ($this->hierarchy->effectiveAttributesByCategory($this->context) as $categoryId => $attributes) {
             $this->byCategory[$categoryId] ??= self::sortBySortOrderThenCode($attributes);
 
             foreach ($this->byCategory[$categoryId] as $row) {

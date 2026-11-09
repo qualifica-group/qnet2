@@ -12,6 +12,7 @@ use App\Jobs\GenerateExportJob;
 use App\Models\ExportRun;
 use App\Models\User;
 use App\Services\Table\TableQueryBuilder;
+use App\Tables\CategoryTabs\FilterScopedAttributeColumns;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\ReferentScopable;
 use App\Tables\RegistryScopable;
@@ -113,6 +114,11 @@ class ExportService
 
         if ($definition instanceof ReferentScopable && ($state['referentId'] ?? null) !== null) {
             $definition->scopeToReferent($state['referentId']);
+        }
+
+        // The flexible columns follow the saved filters' category (spec 0374, D-3).
+        if ($definition instanceof FilterScopedAttributeColumns) {
+            $definition->scopeAttributeColumnsForRows($state['advancedFilters'] ?? []);
         }
 
         // Step 3: build the query exactly as the grid would (allow-listed

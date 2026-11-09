@@ -110,6 +110,12 @@ export const productCategories = {
     businessFunctionSearch: 'Cerca funzioni aziendali…',
     businessFunctionEmpty: 'Nessuna funzione aziendale trovata.',
     businessFunctionError: 'Impossibile caricare le funzioni aziendali.',
+    currentCategory: 'Categoria attuale',
+    currentCategoryPlaceholder: 'Seleziona la categoria attuale…',
+    currentCategorySearch: 'Cerca categorie madri attuali…',
+    currentCategoryEmpty: 'Nessuna categoria madre attuale trovata.',
+    currentCategoryError: 'Impossibile caricare le categorie madri attuali.',
+    currentCategoryHint: 'La categoria madre attuale che ha preso il posto di questa. Le collega nei filtri e nelle colonne dei campi flessibili.',
     businessFunctionInheritedHint:
       'Ereditata da "{{category}}". Per modificarla, agisci su quella categoria.',
     businessFunctionResetTitle: 'Le sottocategorie perderanno la loro funzione aziendale',

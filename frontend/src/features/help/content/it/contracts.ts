@@ -200,8 +200,12 @@ const guide: HelpGuide = {
           text: "Nello stesso pannello c'è anche **Categoria prodotto** (solo quella categoria). Rientra in una categoria un contratto che la ha tra le **righe di ricavo** dell'offerta del contratto.",
         },
         {
+          type: 'paragraph',
+          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria (una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola in **Categoria madre**), oppure più categorie madri collegate tra loro, per esempio ISO e [OLD] ISO: in quel caso prima le colonne della categoria attuale, poi quelle delle vecchie. Con categorie non collegate o con **Tutte** non compaiono. Un campo con lo stesso nome in più categorie può comparire due volte. Mostrano i campi dell'offerta di origine del contratto, in sola lettura: si ordinano, si filtrano e si esportano, mentre i valori si modificano dall'offerta.",
+        },
+        {
           type: 'note',
-          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Contratti**: non compaiono dentro una scheda. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
+          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Contratti**: non compaiono dentro una scheda. L'esportazione segue i filtri attivi.",
         },
       ],
     },

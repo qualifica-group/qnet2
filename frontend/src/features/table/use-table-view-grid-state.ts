@@ -6,6 +6,7 @@ import { resolveRowGrouping } from '@/features/table/row-grouping'
 import { createSsrmDatasource, type SsrmDatasource } from '@/features/table/ssrm-datasource'
 import { useTableToolbarState, type TableToolbarState } from '@/features/table/use-table-toolbar-state'
 import { useTableLocalFilters } from '@/features/table/use-table-local-filters'
+import type { TableConfigScope } from '@/features/table/use-table-config'
 import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
 import type { AdvancedFilterDescriptor, AdvancedFilterValues } from '@/features/table/advanced-filters/types'
@@ -29,6 +30,7 @@ export interface TableViewHandle {
 
 export interface UseTableViewGridStateArgs {
   domain: string
+  scope?: TableConfigScope
   productCategoryId?: number
   productCategoryBranchId?: number
   opportunityId?: number
@@ -92,6 +94,7 @@ export function useTableViewGridState(
 ): UseTableViewGridStateResult {
   const {
     domain,
+    scope,
     productCategoryId,
     productCategoryBranchId,
     opportunityId,
@@ -231,7 +234,7 @@ export function useTableViewGridState(
   const { descriptors: advancedFilterDescriptors, filters: advancedFilters } =
     useTableAdvancedFilters({
       domain,
-      productCategoryId,
+      scope,
       descriptors: config?.advancedFilters,
       applied: config?.appliedAdvancedFilters,
       onApplied: () => {

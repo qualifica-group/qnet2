@@ -10,11 +10,30 @@ export interface TableConfigScope {
    * that root's own `attr.*` columns. Saved layout, saved filters and export are not per-tab.
    */
   productCategoryBranchId?: number
+  /**
+   * The page's grid takes the flexible-field columns of the category its saved filters select (spec 0374): the
+   * config is asked with `attribute_columns_from_filters`. Only the list pages set it, never a grid inside a record.
+   */
+  attributeColumnsFromFilters?: boolean
 }
+
+/** Stable scope of the list pages whose `attr.*` columns follow the category filter (spec 0374). */
+export const ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE: TableConfigScope = { attributeColumnsFromFilters: true }
+
+const ATTRIBUTE_COLUMNS_CACHE_KEY = 'filter-attributes'
 
 /** The scope as the config endpoints take it; a root tab wins over a single category, which it excludes anyway. */
 export function tableConfigTab(scope?: TableConfigScope): TableConfigTab | undefined {
-  return scope?.productCategoryBranchId != null ? { branchId: scope.productCategoryBranchId } : scope?.productCategoryId
+  if (scope?.productCategoryBranchId != null) return { branchId: scope.productCategoryBranchId }
+  if (scope?.productCategoryId != null) return scope.productCategoryId
+  return scope?.attributeColumnsFromFilters ? { attributeColumnsFromFilters: true } : undefined
+}
+
+/** The cache-key segment that tells one scope's config from another's. */
+function scopeCacheKey(scope?: TableConfigScope): string | number | null {
+  if (scope?.productCategoryBranchId != null) return `root-${scope.productCategoryBranchId}`
+  if (scope?.productCategoryId != null) return scope.productCategoryId
+  return scope?.attributeColumnsFromFilters ? ATTRIBUTE_COLUMNS_CACHE_KEY : null
 }
 
 /** Query keys for the generic table feature, namespaced by domain (and scope, when given). */
@@ -22,13 +41,8 @@ export const tableKeys = {
   /** Prefix of every scope's config entry for one domain. */
   configs: (domain: string) => ['table', domain, 'config'] as const,
   config: (domain: string, scope?: TableConfigScope) =>
-    [
-      'table',
-      domain,
-      'config',
-      // A root tab and the same category at the "all" level have different configs (no manager relabel on the root).
-      scope?.productCategoryBranchId != null ? `root-${scope.productCategoryBranchId}` : (scope?.productCategoryId ?? null),
-    ] as const,
+    // A root tab and the same category at the "all" level have different configs (no manager relabel on the root).
+    ['table', domain, 'config', scopeCacheKey(scope)] as const,
 }
 
 /**

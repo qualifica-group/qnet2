@@ -53,6 +53,28 @@ class TableFilterStateService
     }
 
     /**
+     * The advanced filter values the page opens with for the actor: the
+     * descriptors' `defaultValue`s overlaid by the saved ones. Values equal to
+     * the default are never stored, so a saved row alone is not the whole state.
+     *
+     * @return array<string, mixed>
+     */
+    public function effectiveAdvancedFilters(TableDefinition $definition, User $actor): array
+    {
+        $defaults = [];
+
+        foreach ($definition->advancedFilters() as $descriptor) {
+            if (($descriptor['defaultValue'] ?? null) !== null) {
+                $defaults[$descriptor['name']] = $descriptor['defaultValue'];
+            }
+        }
+
+        $saved = $this->allowlistAdvanced($definition, $this->rowFor($definition, $actor)?->advanced_filters ?? []);
+
+        return [...$defaults, ...$saved];
+    }
+
+    /**
      * Persist the actor's applied filterModel and/or advanced filters for
      * this domain (idempotent upsert on (user_id, domain)). Keys outside the
      * respective allow-list are dropped defensively (the FormRequest already

@@ -59,6 +59,7 @@ function mapCategoryToFormValues(
     })),
     business_function_id: category.business_function_id,
     revenue_type_id: category.revenue_type_id ?? null,
+    current_category_id: category.current_category_id ?? null,
     requires_quote: category.requires_quote,
     is_selectable: category.is_selectable,
     is_active: category.is_active,
@@ -144,6 +145,7 @@ export function useProductCategoryForm({ mode }: UseProductCategoryFormArgs) {
       attributes: [],
       business_function_id: null,
       revenue_type_id: null,
+      current_category_id: null,
       requires_quote: false,
       // Spec 0074: a new category is a usable destination unless the
       // operator explicitly turns it into a container.

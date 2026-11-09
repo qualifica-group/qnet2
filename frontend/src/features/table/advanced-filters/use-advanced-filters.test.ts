@@ -35,12 +35,12 @@ beforeEach(() => {
 })
 
 describe('useAdvancedFilters', () => {
-  it('saves against the category tab the table is scoped to', () => {
+  it('saves against the scope the table is keyed by, whole (specs 0064, 0374)', () => {
     const descriptors = [descriptor({ name: 'status', type: 'text' })]
     renderHook(() =>
       useAdvancedFilters({
         domain: 'request-management',
-        productCategoryId: 12,
+        scope: { productCategoryId: 12 },
         descriptors,
         applied: null,
         onApplied: vi.fn(),

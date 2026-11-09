@@ -8,6 +8,7 @@ import { ResourceActivityDialog } from '@/features/activity-log/resource-activit
 import { DocumentsDialog } from '@/features/attachments/documents-dialog'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE } from '@/features/table/use-table-config'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
@@ -132,6 +133,7 @@ export function ContractsTable() {
       <TableView
         ref={tableRef}
         domain={CONTRACTS_DOMAIN}
+        scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE}
         renderers={contractColumnRenderers}
         iconMap={CONTRACT_ACTION_ICONS}
         onAction={handleAction}

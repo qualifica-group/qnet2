@@ -3,14 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Manutenzione da env (spec 0376) (2026-11-09) — VERDE SUI TEST MIRATI, SUITE COMPLETE NON ESEGUITE, COMMITTATO
+## Colonne dei campi flessibili guidate dal filtro categoria, categorie collegate (spec 0374 rev.2) (2026-11-09) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
 
-- Richiesta utente: manutenzione solo da `.env`, con gli ID esclusi sempre in `.env`. Nessun attivatore su errore DB (scartato dall'utente).
-- `APP_MAINTENANCE_ENABLED`, `APP_MAINTENANCE_EXCLUDED_USER_IDS` (`users.id` separati da virgola) -> `config('app.maintenance.*')`. Con `config:cache` il cambio richiede di rigenerare la cache.
-- Backend: `App\Support\Maintenance\MaintenanceMode`, middleware `EnsureNotInMaintenance` (gruppo `api`, dopo `SetLocale`), `GET /api/availability`, controllo in `AuthService::login`. Risposta 503 `{ success:false, message, maintenance:true }`. Aperti `api/config` e `api/auth/login`, per far accedere gli esclusi senza sessione.
-- Frontend: `api/maintenance-state.ts`, interceptor in `api/client.ts`, `features/maintenance/` (`MaintenanceGate` sovrapposta all'app, poll 15 s), `AuthProvider` non chiude la sessione sul 503 col marker, namespace i18n `maintenance`.
-- Verificato: Pest 276/276 (`tests/Feature/{ApiClients,Auth,Config,System}`), Vitest 231/231 (`features/{maintenance,auth,config,help}`, `api`), Pint, ESLint, `tsc -b --force`. Guida generale IT/EN e manuale Claude Docs aggiornati (FAQ).
-- DA FARE: suite complete backend e frontend, interrotte su richiesta utente per un'altra sessione in corso. La backend si era fermata al timeout Composer di 300 s: rilanciarla con `COMPOSER_PROCESS_TIMEOUT=0`.
+- Richiesta utente: le colonne `attr.*` tornano su Offerte, Commesse e Contratti senza linguette, export compreso. Supera la voce "via le colonne flessibili dagli elenchi" (commit 53a27f00), linguette e filtri precompilati restano com'erano. Opportunita', Commesse di Progetto e griglie dentro un record restano senza colonne.
+- Regola: `Tables\CategoryTabs\AttributeColumnCategories::fromFilters` (selezione = `product_category` se non vuoto, altrimenti `parent_category`; "Tutte" = nessuna; un id = quello; piu' id = solo se tutti nello stesso gruppo collegato). Ordine: categoria attuale, poi vecchie per id.
+- Collegamento: `product_categories.current_category_id`, solo da radice `is_legacy` a radice non `is_legacy`, molti-a-uno (Gare ha due vecchie). Campo "Categoria attuale" nel dettaglio delle radici vecchie. Migrazione `2026_12_02_100000` eseguita in dev con `--path`: 11 vecchie su 10 attuali, per nome una tantum piu' la costante `[OLD] SICUREZZA 81/08` -> Sicurezza. Il nome non si usa a runtime. Categorie importate dopo la migrazione vanno collegate a mano.
+- Contratto: `attribute_columns_from_filters=1` su `GET /tables/{domain}/columns` e nel body di `POST .../preferences|filters` (solo le tre pagine: le griglie dentro un record condividono il dominio); `attributeCategoryIds: number[]` nel config (cambia -> `DataTable` si rimonta, `gridMountKey`); `POST /rows` ed export deducono le categorie da `advancedFilters`; `POST /values` cerca nell'unione. `attr.*` dell'unione ma fuori categoria viene ignorato, fuori unione 422. `GET /product-category-roots/for-select?current_only=1`.
+- Backend: interfaccia `FilterScopedAttributeColumns` (`scopeAttributeColumnsForRows|ForConfig|ForValues`), trait `AppendsCategoryAttributeColumns`/`WritesCategoryAttributeCells`, `AttributeGridTarget`, `ContractAttributeColumnsTableDefinition`; `scopeTo*` di `TableController` spostati in `ScopesTableDefinitions`.
+- Verifica: verifier AC-001..AC-023 PASS. Suite completa backend 14506 test, 19 rossi: 2 erano di questa spec (helper in file sbagliato, corretto: `LinkedCategoriesAttributeColumnsTest` 4/4, `tests/Feature/CategoryTabs` 72/72), 17 estranei gia' visti prima (AiAssistant, permessi, LibreOffice, ManagementControl, seeder Qualifica, Settlement, Employment, TableBulkDelete); preesistenza non provata con un confronto su HEAD. Vitest 10196 verdi con 11 unhandled `toast.error is not a function` in file non toccati. Pint, ESLint, `tsc -b --force` puliti. Dati reali dev (sola lettura): ISO + [OLD] ISO = 89 colonne offerte, 60 commesse, 89 contratti.
+- Da provare a mano: cambio categoria su AG Grid reale (ricostruzione colonne, filtri non risalvati da soli). Viste filtro salvate su `attr.*` danno 422: limite gia' presente, fuori scope.
+- Da sapere: durante il lavoro un subagent ha eseguito `git checkout -- backend/app/Tables/ProductCategoriesTableDefinition.php` su una propria modifica; file identico a HEAD. `2026_11_30_100000_add_update_existing_to_migration_runs_tables` risulta eseguita in dev da altra sessione.
+- Guide IT/EN (`quotes`, `work-orders`, `contracts` sezione `list-filters`, `product-categories`) e manuale Claude Docs aggiornati; il PDF derivato va rigenerato.
 
 ## Ripristino workflow Orientamento specialistico (2026-11-09) — VERDE SUI TEST DEL SEEDER, NON COMMITTATO, MAI ESEGUITO SU DATI REALI
 
@@ -19,6 +22,15 @@
 - Anteprima in sola lettura sul dump delle 19:05: 80 richieste spostate (38 Da Richiamare, 15 OK App. Fissato CPI, 6 Attesa _ App. CPI, 5 Attesa esito SFL/ADI, 4 Non interessato/a, 4 Da convocare, 2 senza log su stato iniziale, 6 gia' lavorate sul #33 riportate sull'equivalente).
 - Verificato: `QualificaAplOrientationWorkflowRestoreSeederTest` 6/6, Pint. Copia DB per la prova su dati reali non creata (fermata dall'utente). Manuale: nessun impatto.
 - DA FARE: deploy, backup, lancio in produzione. Fuori scope, segnalato: l'eliminazione di un workflow azzera ancora gli stati personalizzati senza log.
+
+## Manutenzione da env (spec 0376) (2026-11-09) — VERDE SUI TEST MIRATI, SUITE COMPLETE NON ESEGUITE, COMMITTATO
+
+- Richiesta utente: manutenzione solo da `.env`, con gli ID esclusi sempre in `.env`. Nessun attivatore su errore DB (scartato dall'utente).
+- `APP_MAINTENANCE_ENABLED`, `APP_MAINTENANCE_EXCLUDED_USER_IDS` (`users.id` separati da virgola) -> `config('app.maintenance.*')`. Con `config:cache` il cambio richiede di rigenerare la cache.
+- Backend: `App\Support\Maintenance\MaintenanceMode`, middleware `EnsureNotInMaintenance` (gruppo `api`, dopo `SetLocale`), `GET /api/availability`, controllo in `AuthService::login`. Risposta 503 `{ success:false, message, maintenance:true }`. Aperti `api/config` e `api/auth/login`, per far accedere gli esclusi senza sessione.
+- Frontend: `api/maintenance-state.ts`, interceptor in `api/client.ts`, `features/maintenance/` (`MaintenanceGate` sovrapposta all'app, poll 15 s), `AuthProvider` non chiude la sessione sul 503 col marker, namespace i18n `maintenance`.
+- Verificato: Pest 276/276 (`tests/Feature/{ApiClients,Auth,Config,System}`), Vitest 231/231 (`features/{maintenance,auth,config,help}`, `api`), Pint, ESLint, `tsc -b --force`. Guida generale IT/EN e manuale Claude Docs aggiornati (FAQ).
+- DA FARE: suite complete backend e frontend, interrotte su richiesta utente per un'altra sessione in corso. La backend si era fermata al timeout Composer di 300 s: rilanciarla con `COMPOSER_PROCESS_TIMEOUT=0`.
 
 ## Comando one-shot di riallineamento dal legacy (spec 0375) (2026-11-09) — VERDE SULLA SPEC, COMMITTATO, MAI ESEGUITO CON --apply
 

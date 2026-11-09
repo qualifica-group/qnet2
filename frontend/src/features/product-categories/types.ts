@@ -143,6 +143,11 @@ export interface ProductCategoryDetail {
   business_function: ProductCategoryBusinessFunction | null
   /** Own or inherited business function; invariant: `inherited === true` implies `business_function_id === null`. */
   effective_business_function: EffectiveBusinessFunction | null
+  /** Whether this is a legacy root (spec 0374 D-9); only those carry a "current category". */
+  is_legacy?: boolean
+  /** The current root a legacy root points to (spec 0374 D-9), with its hydrated projection. */
+  current_category_id?: number | null
+  current_category?: { id: number; name: string } | null
   /** The category's OWN revenue sub-account (spec 0350); `effective_revenue_type` adds the one inherited from an ancestor. */
   revenue_type_id?: number | null
   revenue_type?: RevenueTypeRef | null
@@ -292,6 +297,8 @@ export interface CreateProductCategoryPayload {
   business_function_id?: number | null
   /** Own revenue sub-account (spec 0350); null removes it so the category inherits. */
   revenue_type_id?: number | null
+  /** Legacy roots only (spec 0374 D-9): the current root they point to; null removes the link. */
+  current_category_id?: number | null
   /** Only ever sent for a ROOT category (`parent_id: null`): a child inherits the flag and the server refuses a divergent value. */
   requires_quote?: boolean
   /** Whether the category may be picked as a classification target (spec 0074); omitted on create means selectable. */

@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 namespace App\Tables\Quotes;
 
-use App\Tables\CategoryTabs\DelegatesRowScopedTableMethods;
+use App\Models\User;
+use App\Quotes\QuoteAttributeResolver;
+use App\Tables\CategoryTabs\AttributeColumnCategories;
+use App\Tables\CategoryTabs\AttributeGridTarget;
+use App\Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns;
+use App\Tables\CategoryTabs\Concerns\WritesCategoryAttributeCells;
+use App\Tables\CategoryTabs\FilterScopedAttributeColumns;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\RegistryScopable;
+use App\Tables\RequestManagement\AttributeColumnBuilder;
+use App\Tables\RequestManagement\AttributeGridColumns;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -39,17 +48,37 @@ use Illuminate\Support\Facades\DB;
  * Offerta is its Opportunity's, so the scope is a `whereIn` on the client's
  * opportunities, in AND with the Opportunity scope. This is the outermost
  * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
+ *
+ * It also adds the `attr.<code>` columns of the Quote context (spec 0374) for
+ * the category the advanced filters select (`FilterScopedAttributeColumns`):
+ * no row logic of its own, the filters already narrow the rows. The "columns /
+ * filters / sort-filter-search allow-lists" passthrough above holds for every
+ * other column.
  */
-class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinition
+class OpportunityScopedTableDefinition implements FilterScopedAttributeColumns, RegistryScopable, TableDefinition
 {
-    use DelegatesRowScopedTableMethods;
-    use DelegatesUnaugmentedTableMethods;
+    use AppendsCategoryAttributeColumns, DelegatesUnaugmentedTableMethods, WritesCategoryAttributeCells {
+        // Both declare editableColumnIds()/updateCell(); the attr.* aware pair
+        // delegates to $this->inner for every other column.
+        WritesCategoryAttributeCells::editableColumnIds insteadof DelegatesUnaugmentedTableMethods;
+        WritesCategoryAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
+    }
+
+    private readonly AttributeGridColumns $attributeColumns;
 
     private ?int $opportunityScope = null;
 
     private ?int $registryScope = null;
 
-    public function __construct(private readonly TableDefinition $inner) {}
+    public function __construct(
+        private readonly TableDefinition $inner,
+        AttributeGridColumns $attributeColumns,
+        private readonly AttributeColumnCategories $columnCategories,
+        private readonly QuoteCellWriter $cellWriter,
+        private readonly QuoteAttributeResolver $attributeResolver,
+    ) {
+        $this->attributeColumns = $attributeColumns->forTarget(AttributeGridTarget::quote());
+    }
 
     /**
      * Narrows `baseQuery()` to one Opportunity's Offerte (null = no scope,
@@ -88,5 +117,15 @@ class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinit
     public function scopeToRegistry(?int $registryId): void
     {
         $this->registryScope = $registryId;
+    }
+
+    protected function writeAttributeValue(Model $row, string $code, mixed $value, User $actor): Model
+    {
+        return $this->cellWriter->write($row, AttributeColumnBuilder::EDITABLE_FIELD, [$code => $value], $actor, null);
+    }
+
+    protected function applicableAttributesOf(Model $row): Collection
+    {
+        return $this->attributeColumns->fromApplicable($this->attributeResolver->resolve($row));
     }
 }

@@ -5,12 +5,21 @@ declare(strict_types=1);
 namespace App\Tables\WorkOrders;
 
 use App\Enums\WorkOrderType;
-use App\Tables\CategoryTabs\DelegatesRowScopedTableMethods;
+use App\Models\User;
+use App\Tables\CategoryTabs\AttributeColumnCategories;
+use App\Tables\CategoryTabs\AttributeGridTarget;
+use App\Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns;
+use App\Tables\CategoryTabs\Concerns\WritesCategoryAttributeCells;
+use App\Tables\CategoryTabs\FilterScopedAttributeColumns;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\RegistryScopable;
+use App\Tables\RequestManagement\AttributeColumnBuilder;
+use App\Tables\RequestManagement\AttributeGridColumns;
 use App\Tables\TableDefinition;
+use App\WorkOrders\WorkOrderAttributeResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * Decorator that scopes the `work-orders` domain to a single Quote (spec
@@ -38,11 +47,21 @@ use Illuminate\Database\Eloquent\Model;
  * Commessa is its Offerta's Opportunity's, so the scope is a `whereIn` on the
  * client's Offerte, in AND with the Quote scope. This is the outermost
  * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
+ *
+ * It also adds the `attr.<code>` columns of the WorkOrder context (spec 0374)
+ * for the category the advanced filters select (`FilterScopedAttributeColumns`):
+ * no row logic of its own, the filters already narrow the rows.
  */
-class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
+class QuoteScopedTableDefinition implements FilterScopedAttributeColumns, RegistryScopable, TableDefinition
 {
-    use DelegatesRowScopedTableMethods;
-    use DelegatesUnaugmentedTableMethods;
+    use AppendsCategoryAttributeColumns, DelegatesUnaugmentedTableMethods, WritesCategoryAttributeCells {
+        // Both declare editableColumnIds()/updateCell(); the attr.* aware pair
+        // delegates to $this->inner for every other column.
+        WritesCategoryAttributeCells::editableColumnIds insteadof DelegatesUnaugmentedTableMethods;
+        WritesCategoryAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
+    }
+
+    private readonly AttributeGridColumns $attributeColumns;
 
     private ?int $quoteScope = null;
 
@@ -50,7 +69,15 @@ class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
 
     private ?WorkOrderType $typeScope = null;
 
-    public function __construct(private readonly TableDefinition $inner) {}
+    public function __construct(
+        private readonly TableDefinition $inner,
+        AttributeGridColumns $attributeColumns,
+        private readonly AttributeColumnCategories $columnCategories,
+        private readonly WorkOrderCellWriter $cellWriter,
+        private readonly WorkOrderAttributeResolver $attributeResolver,
+    ) {
+        $this->attributeColumns = $attributeColumns->forTarget(AttributeGridTarget::workOrder());
+    }
 
     /**
      * Narrows `baseQuery()` to one Quote's own work orders (null = no scope,
@@ -114,5 +141,15 @@ class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
     public function scopeToRegistry(?int $registryId): void
     {
         $this->registryScope = $registryId;
+    }
+
+    protected function writeAttributeValue(Model $row, string $code, mixed $value, User $actor): Model
+    {
+        return $this->cellWriter->write($row, AttributeColumnBuilder::EDITABLE_FIELD, [$code => $value], $actor);
+    }
+
+    protected function applicableAttributesOf(Model $row): Collection
+    {
+        return $this->attributeColumns->fromApplicable($this->attributeResolver->resolve($row));
     }
 }

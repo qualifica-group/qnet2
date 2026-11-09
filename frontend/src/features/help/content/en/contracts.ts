@@ -200,8 +200,12 @@ const guide: HelpGuide = {
           text: "In the same panel there is also **Product category** (that category only). A contract falls under a category when it is among the **revenue rows** of the contract's quote.",
         },
         {
+          type: 'paragraph',
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category (a single value in **Product category** or, if that is empty, a single one in **Parent category**), or to several parent categories linked to each other, for example ISO and [OLD] ISO: then the columns of the current category come first, followed by those of the legacy ones. With unlinked categories or with **All** they do not appear. A field with the same name in several categories can appear twice. They show the fields of the contract's originating quote, read-only: they can be sorted, filtered and exported, while the values are edited from the quote.",
+        },
+        {
           type: 'note',
-          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Contracts** page: they do not appear inside a record. The export follows the active filters. Flexible fields are read and edited from the detail.",
+          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Contracts** page: they do not appear inside a record. The export follows the active filters.",
         },
       ],
     },

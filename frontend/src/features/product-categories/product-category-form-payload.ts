@@ -135,6 +135,10 @@ export function buildUpdatePayload(
     payload.revenue_type_id = values.revenue_type_id ?? null
   }
 
+  if ((values.current_category_id ?? null) !== (original.current_category_id ?? null)) {
+    payload.current_category_id = values.current_category_id ?? null
+  }
+
   // Sent only while the category stays (or becomes) a ROOT: on a child the
   // field is read-only and merely mirrors the root, so a diff there would be
   // an override attempt the server refuses. A reparent alone is enough — the

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSaveTableFilters } from '@/features/table/use-table-filters'
+import type { TableConfigScope } from '@/features/table/use-table-config'
 import type {
   AdvancedFilterDescriptor,
   AdvancedFilterValue,
@@ -80,8 +81,8 @@ function computeRequestValues(
 
 interface UseAdvancedFiltersArgs {
   domain: string
-  /** The category tab the table is scoped to (spec 0064), so a save refreshes that tab's cached config. */
-  productCategoryId?: number
+  /** The scope the config query is keyed by (spec 0064, 0374), so a save refreshes the entry the grid reads. */
+  scope?: TableConfigScope
   /** The domain's advanced filter catalog (`TableConfig.advancedFilters`), ordered by `order`. */
   descriptors: AdvancedFilterDescriptor[]
   /** Persisted state replayed from `TableConfig.appliedAdvancedFilters`. */
@@ -152,14 +153,14 @@ export interface UseAdvancedFiltersResult {
  */
 export function useAdvancedFilters({
   domain,
-  productCategoryId,
+  scope,
   descriptors,
   applied: appliedFromServer,
   onApplied,
   override,
   onOverrideCleared,
 }: UseAdvancedFiltersArgs): UseAdvancedFiltersResult {
-  const saveFilters = useSaveTableFilters(domain, { productCategoryId })
+  const saveFilters = useSaveTableFilters(domain, scope)
 
   const defaults = useMemo(() => buildDefaults(descriptors), [descriptors])
   const initial = useMemo(

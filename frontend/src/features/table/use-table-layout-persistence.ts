@@ -190,8 +190,9 @@ export function useTableLayoutPersistence({
   // no page is left to report it on.
   const productCategoryId = scope?.productCategoryId
   const productCategoryBranchId = scope?.productCategoryBranchId
+  const attributeColumnsFromFilters = scope?.attributeColumnsFromFilters
   useEffect(() => {
-    const tab = tableConfigTab({ productCategoryId, productCategoryBranchId })
+    const tab = tableConfigTab({ productCategoryId, productCategoryBranchId, attributeColumnsFromFilters })
     const handlePageHide = () => {
       clearTimer(debounceRef)
       clearTimer(filterDebounceRef)
@@ -208,7 +209,7 @@ export function useTableLayoutPersistence({
     }
     window.addEventListener('pagehide', handlePageHide)
     return () => window.removeEventListener('pagehide', handlePageHide)
-  }, [domain, productCategoryId, productCategoryBranchId])
+  }, [domain, productCategoryId, productCategoryBranchId, attributeColumnsFromFilters])
 
   const handleResetLayout = useCallback(async () => {
     try {

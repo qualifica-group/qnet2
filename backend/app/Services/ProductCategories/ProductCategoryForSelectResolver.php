@@ -159,10 +159,18 @@ class ProductCategoryForSelectResolver
      * container. Inactive ones stay listed, as in the other grid filters
      * (spec 0208 D-7), so history remains searchable. The "Tutte" option
      * leads the first page and, like a hydrated id, does not count in the total.
+     * `$currentOnly` (spec 0374) keeps the non-legacy roots and drops "Tutte".
      */
-    public function resolveRoots(ForSelectQuery $query): ForSelectResult
+    public function resolveRoots(ForSelectQuery $query, bool $currentOnly = false): ForSelectResult
     {
-        $result = $this->resolvePlain(ProductCategory::query()->select(['id', 'name'])->whereNull('parent_id'), $query, includeInactive: true);
+        $roots = ProductCategory::query()->select(['id', 'name'])->whereNull('parent_id');
+
+        // Spec 0374: the "Categoria attuale" picker lists the roots that are not legacy, without "Tutte".
+        if ($currentOnly) {
+            return $this->resolvePlain($roots->where('is_legacy', false), $query, includeInactive: true);
+        }
+
+        $result = $this->resolvePlain($roots, $query, includeInactive: true);
 
         if (! $this->offersAllRoots($query)) {
             return $result;

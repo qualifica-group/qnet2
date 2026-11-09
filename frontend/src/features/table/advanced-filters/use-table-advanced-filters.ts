@@ -3,6 +3,7 @@ import {
   useAdvancedFilters,
   type UseAdvancedFiltersResult,
 } from '@/features/table/advanced-filters/use-advanced-filters'
+import type { TableConfigScope } from '@/features/table/use-table-config'
 import type {
   AdvancedFilterDescriptor,
   AdvancedFilterValues,
@@ -10,8 +11,8 @@ import type {
 
 interface UseTableAdvancedFiltersArgs {
   domain: string
-  /** Forwarded verbatim to `useAdvancedFilters` (spec 0064 category tab). */
-  productCategoryId?: number
+  /** Forwarded verbatim to `useAdvancedFilters` (spec 0064 category tab, 0374 attribute columns). */
+  scope?: TableConfigScope
   /** `TableConfig.advancedFilters`, undefined until the config loads. */
   descriptors: AdvancedFilterDescriptor[] | undefined
   /** `TableConfig.appliedAdvancedFilters`. */
@@ -40,7 +41,7 @@ export interface TableAdvancedFiltersState {
  */
 export function useTableAdvancedFilters({
   domain,
-  productCategoryId,
+  scope,
   descriptors,
   applied,
   onApplied,
@@ -54,7 +55,7 @@ export function useTableAdvancedFilters({
   )
   const filters = useAdvancedFilters({
     domain,
-    productCategoryId,
+    scope,
     descriptors: resolvedDescriptors,
     applied,
     onApplied,

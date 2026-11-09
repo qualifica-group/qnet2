@@ -8,6 +8,7 @@ import { ResourceActivityDialog } from '@/features/activity-log/resource-activit
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE } from '@/features/table/use-table-config'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { QUOTES_DOMAIN } from '@/features/quotes/api'
@@ -52,6 +53,7 @@ export function QuotesTable() {
       <TableView
         ref={tableRef}
         domain={QUOTES_DOMAIN}
+        scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE}
         renderers={quoteColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}

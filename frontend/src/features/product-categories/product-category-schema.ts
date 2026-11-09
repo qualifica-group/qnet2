@@ -78,6 +78,8 @@ function baseFields(t: TFunction) {
     business_function_id: z.number().nullable(),
     // Spec 0350: own revenue sub-account; optional so a missing key behaves as "none".
     revenue_type_id: z.number().nullable().optional(),
+    // Spec 0374 D-9: only a legacy root carries it; optional so a missing key behaves as "none".
+    current_category_id: z.number().nullable().optional(),
     requires_quote: z.boolean(),
     is_selectable: z.boolean(),
     is_active: z.boolean(),

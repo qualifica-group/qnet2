@@ -96,8 +96,12 @@ const guide: HelpGuide = {
           text: "In the same panel you can also pick one or more values in **Product category** (that category only) and **Client**. The filters never widen what you can see: your profile's visibility rules still apply. A work order falls under a category if the category is among the products on the **revenue rows of the offers it comes from**: the linked offer and, for a multi-offer work order, the offers of the rows it holds. Cost rows do not count. For a multi-offer work order the client of each offer counts too.",
         },
         {
+          type: 'paragraph',
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category (a single value in **Product category** or, if that is empty, a single one in **Parent category**), or to several parent categories linked to each other, for example ISO and [OLD] ISO: then the columns of the current category come first, followed by those of the legacy ones. With unlinked categories or with **All** they do not appear. A field with the same name in several categories can appear twice. They are the work order's own fields: they can be sorted, filtered and exported; if you may edit work orders they are edited in the cell, except when the field does not concern that work order (the cell stays read-only). The values can still be read in the detail too.",
+        },
+        {
           type: 'note',
-          text: "The **Assignment** field and the pre-filled **Parent category** exist only on the **Work orders** page: on **Project work orders** the **Parent category** starts empty, and it does not appear in the **Work orders** sections of a contract or a client. The export follows the active filters. Flexible fields are read and edited from the detail.",
+          text: "The **Assignment** field and the pre-filled **Parent category** exist only on the **Work orders** page: on **Project work orders** the **Parent category** starts empty, and it does not appear in the **Work orders** sections of a contract or a client. The export follows the active filters.",
         },
       ],
     },

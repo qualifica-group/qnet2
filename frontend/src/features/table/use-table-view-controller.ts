@@ -131,6 +131,7 @@ export function useTableViewController(
   const grid = useTableViewGridState(
     {
       domain,
+      scope,
       productCategoryId,
       productCategoryBranchId,
       opportunityId,

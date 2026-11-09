@@ -19,6 +19,7 @@ import { useRowGroupColumns } from '@/features/table/use-row-group-columns'
 import { ActiveFilterChips } from '@/features/table/custom-filters/active-filter-chips'
 import { buildTableViewSlots } from '@/features/table/table-view-slots'
 import { useTableViewController, type TableViewHandle } from '@/features/table/use-table-view-controller'
+import { gridMountKey } from '@/features/table/grid-mount-key'
 import type { TableViewProps } from '@/features/table/table-view-props'
 
 export type { TableViewHandle } from '@/features/table/use-table-view-controller'
@@ -180,7 +181,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     } else {
       content = (
         <DataTable
-          key={view.layoutVersion}
+          key={gridMountKey(view.layoutVersion, config.attributeCategoryIds)}
           domain={domain}
           productCategoryId={productCategoryId}
           productCategoryBranchId={productCategoryBranchId}

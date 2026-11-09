@@ -15,9 +15,10 @@ import type { AdvancedFilterValues } from '@/features/table/advanced-filters/typ
 
 /**
  * The category tab a config is built for: an id is one category, `branchId` a
- * parent-category tab (spec 0337), which shows that parent's `attr.*` columns.
+ * parent-category tab (spec 0337), which shows that parent's `attr.*` columns, and
+ * `attributeColumnsFromFilters` asks for the `attr.*` columns of the category the saved filters select (spec 0374).
  */
-export type TableConfigTab = number | { branchId: number }
+export type TableConfigTab = number | { branchId: number } | { attributeColumnsFromFilters: true }
 
 /**
  * Fetches a domain's table schema (columns, filters, action catalog, defaults).
@@ -62,9 +63,15 @@ export async function fetchTableRows(
  * per-domain — only the SHAPE of the config they return, which the caller
  * writes straight into its per-tab cache entry.
  */
-function categoryTabBody(tab?: TableConfigTab): { product_category_id?: number; product_category_branch_id?: number } {
+function categoryTabBody(tab?: TableConfigTab): {
+  product_category_id?: number
+  product_category_branch_id?: number
+  attribute_columns_from_filters?: 1
+} {
   if (tab == null) return {}
-  return typeof tab === 'number' ? { product_category_id: tab } : { product_category_branch_id: tab.branchId }
+  if (typeof tab === 'number') return { product_category_id: tab }
+  // A number, not `true`: the config GET sends it in the query string and Laravel's `boolean` rejects "true".
+  return 'branchId' in tab ? { product_category_branch_id: tab.branchId } : { attribute_columns_from_filters: 1 }
 }
 
 /**

@@ -132,8 +132,12 @@ const guide: HelpGuide = {
           text: "In the same panel there is also **Product category** (that category only). A quote falls under a category when it is among the **revenue rows** of the quote.",
         },
         {
+          type: 'paragraph',
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category (a single value in **Product category** or, if that is empty, a single one in **Parent category**), or to several parent categories linked to each other, for example ISO and [OLD] ISO: then the columns of the current category come first, followed by those of the legacy ones. With unlinked categories or with **All** they do not appear. A field with the same name in several categories can appear twice. The columns can be sorted, filtered and exported; if you may edit quotes they are edited in the cell, except when the field does not concern that quote (the cell stays read-only). The values can still be read in the detail too.",
+        },
+        {
           type: 'note',
-          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Quotes** page: they do not appear inside a record and in the Quotes sections of opportunities and clients. The export follows the active filters. Flexible fields are read and edited from the detail.",
+          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Quotes** page: they do not appear inside a record and in the Quotes sections of opportunities and clients. The export follows the active filters.",
         },
       ],
     },

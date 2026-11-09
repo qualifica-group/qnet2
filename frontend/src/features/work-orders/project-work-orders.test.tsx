@@ -32,10 +32,14 @@ vi.mock('@/features/work-orders/use-work-order-row-actions', () => ({
 }))
 
 vi.mock('@/features/table/table-view', () => ({
-  TableView: forwardRef<{ refresh: () => void }, { domain: string; rowScope?: { workOrderType?: string } }>(
-    function TableViewStub({ domain, rowScope }, ref) {
+  TableView: forwardRef<{ refresh: () => void }, { domain: string; rowScope?: { workOrderType?: string }; scope?: { attributeColumnsFromFilters?: boolean } }>(
+    function TableViewStub({ domain, rowScope, scope }, ref) {
       useImperativeHandle(ref, () => ({ refresh: vi.fn() }))
-      return <div role="region" aria-label={`table-${domain}-${rowScope?.workOrderType ?? 'unscoped'}`} />
+      return (
+        <div role="region" aria-label={`table-${domain}-${rowScope?.workOrderType ?? 'unscoped'}`}>
+          <p>{scope?.attributeColumnsFromFilters ? 'attr-columns-from-filters' : 'no-attr-columns'}</p>
+        </div>
+      )
     },
   ),
 }))
@@ -53,6 +57,7 @@ describe('work orders pages (spec 0359)', () => {
     )
 
     expect(screen.getByRole('region', { name: 'table-work-orders-processing' })).toBeInTheDocument()
+    expect(screen.getByText('attr-columns-from-filters')).toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 
@@ -64,6 +69,7 @@ describe('work orders pages (spec 0359)', () => {
     )
 
     expect(screen.getByRole('region', { name: 'table-project-work-orders-unscoped' })).toBeInTheDocument()
+    expect(screen.getByText('no-attr-columns')).toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 })

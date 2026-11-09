@@ -109,6 +109,12 @@ export const productCategories = {
     businessFunctionSearch: 'Search business functions…',
     businessFunctionEmpty: 'No business functions found.',
     businessFunctionError: 'Unable to load business functions.',
+    currentCategory: 'Current category',
+    currentCategoryPlaceholder: 'Select the current category…',
+    currentCategorySearch: 'Search current parent categories…',
+    currentCategoryEmpty: 'No current parent category found.',
+    currentCategoryError: 'Unable to load the current parent categories.',
+    currentCategoryHint: 'The current parent category that replaced this one. It links them in the filters and in the flexible-field columns.',
     businessFunctionInheritedHint:
       'Inherited from "{{category}}". To change it, edit that category instead.',
     businessFunctionResetTitle: 'Subcategories will lose their own business function',

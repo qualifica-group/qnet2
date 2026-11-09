@@ -96,8 +96,12 @@ const guide: HelpGuide = {
           text: "Nello stesso pannello puoi scegliere una o più voci anche in **Categoria prodotto** (solo quella categoria) e **Anagrafica** (il cliente). I filtri non allargano ciò che puoi vedere: restano valide le regole di visibilità del tuo profilo. Una commessa rientra in una categoria se la categoria è tra i prodotti delle **righe di ricavo delle offerte da cui nasce**: l'offerta collegata e, per una commessa multi-offerta, le offerte delle righe che contiene. Le righe di costo non contano. Per una commessa multi-offerta vale anche il cliente di ciascuna offerta.",
         },
         {
+          type: 'paragraph',
+          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria (una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola in **Categoria madre**), oppure più categorie madri collegate tra loro, per esempio ISO e [OLD] ISO: in quel caso prima le colonne della categoria attuale, poi quelle delle vecchie. Con categorie non collegate o con **Tutte** non compaiono. Un campo con lo stesso nome in più categorie può comparire due volte. Sono i campi della commessa: si ordinano, si filtrano e si esportano; se hai il permesso di modificare le commesse si modificano nella cella, tranne quando il campo non riguarda quella commessa (la cella resta in sola lettura). I valori restano leggibili anche nel dettaglio.",
+        },
+        {
           type: 'note',
-          text: "Il campo **Assegnazione** e la **Categoria madre** precompilata esistono solo nella pagina **Commesse**: in **Commesse di Progetto** la **Categoria madre** parte vuota, e nelle sezioni **Commesse** di un contratto o di un'anagrafica non compare. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
+          text: "Il campo **Assegnazione** e la **Categoria madre** precompilata esistono solo nella pagina **Commesse**: in **Commesse di Progetto** la **Categoria madre** parte vuota, e nelle sezioni **Commesse** di un contratto o di un'anagrafica non compare. L'esportazione segue i filtri attivi.",
         },
       ],
     },

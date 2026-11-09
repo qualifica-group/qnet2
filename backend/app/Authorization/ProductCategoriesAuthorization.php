@@ -53,6 +53,8 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('business_function_id', 'select'),
             new FieldDefinition('revenue_type_id', 'select'),
+            // Spec 0374: the current root a legacy root continues.
+            new FieldDefinition('current_category_id', 'select'),
             new FieldDefinition('requires_quote', 'boolean'),
             new FieldDefinition('is_selectable', 'boolean'),
             new FieldDefinition('is_active', 'boolean'),
@@ -97,6 +99,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'business_function_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'revenue_type_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'current_category_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'requires_quote' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'is_selectable' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
