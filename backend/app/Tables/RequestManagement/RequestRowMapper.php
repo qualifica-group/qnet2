@@ -180,6 +180,7 @@ final class RequestRowMapper
         return [
             'first_name' => $card?->first_name,
             'last_name' => $card?->last_name,
+            'company_name' => $card?->company_name,
             'tax_code' => $card?->tax_code,
             'vat_number' => $card?->vat_number,
             'phone' => $this->primaryContact($card?->contacts, [ContactTypeEnum::Phone]),

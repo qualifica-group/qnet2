@@ -41,7 +41,7 @@ final class RequestClientSearch
     public function apply(Builder $query, array $columnIds, string $term): array
     {
         // Step 1: which client columns the engine asked for
-        $searchesCard = array_intersect($columnIds, array_keys(RequestClientColumns::CARD_COLUMNS)) !== [];
+        $searchesCard = array_intersect($columnIds, array_keys(RequestClientColumns::SEARCHABLE_CARD_COLUMNS)) !== [];
         $contactTypes = $this->contactTypes($columnIds);
         if (! $searchesCard && $contactTypes === []) {
             return [];
@@ -61,7 +61,7 @@ final class RequestClientSearch
         );
 
         return array_values(array_intersect($columnIds, [
-            ...array_keys(RequestClientColumns::CARD_COLUMNS),
+            ...array_keys(RequestClientColumns::SEARCHABLE_CARD_COLUMNS),
             ...array_keys(RequestClientColumns::CONTACT_COLUMNS),
         ]));
     }
@@ -90,7 +90,7 @@ final class RequestClientSearch
     private function cardRegistryIds(array $words): array
     {
         $query = PersonalData::query()->where('personable_type', (new Registry)->getMorphClass());
-        $this->matcher->whereWordsStart($query, array_values(RequestClientColumns::CARD_COLUMNS), $words);
+        $this->matcher->whereWordsStart($query, array_values(RequestClientColumns::SEARCHABLE_CARD_COLUMNS), $words);
 
         return $query->limit($this->cap())->pluck('personable_id')->map(static fn (mixed $id): int => (int) $id)->all();
     }

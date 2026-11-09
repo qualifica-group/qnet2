@@ -116,6 +116,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   is_transferred: (params) => <BooleanBadgeCell {...params} />,
   first_name: (params) => <TextCell {...params} />,
   last_name: (params) => <TextCell {...params} />,
+  company_name: (params) => <TextCell {...params} />,
   tax_code: (params) => <TextCell {...params} />,
   vat_number: (params) => <TextCell {...params} />,
   phone: (params) => <TextCell {...params} />,

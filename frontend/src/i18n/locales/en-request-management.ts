@@ -23,6 +23,7 @@ export const requestManagement = {
     operationalSite: 'Operational site',
     firstName: 'First name',
     lastName: 'Last name',
+    companyName: 'Company name',
     taxCode: 'Tax code',
     vatNumber: 'VAT number',
     phone: 'Phone',

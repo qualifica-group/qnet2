@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Gestione Richieste/Iscritti: colonne Ragione sociale e Partita IVA (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+
+- Richiesta utente. Nuova colonna `company_name` (scheda anagrafica del cliente), visibile, ordinabile, filtrabile, in sola lettura. `vat_number`
+  esisteva nascosta: ora e' visibile e spostata accanto a Ragione sociale. Ordine: ... Cognome, Ragione sociale, Partita IVA, Telefono, Email, Codice fiscale, Note generali ... Iscritti eredita da `RequestColumnCatalog`.
+- Vincolo da rispettare: `RequestClientColumns::SEARCHABLE_CARD_COLUMNS` deve coincidere con l'indice FULLTEXT `personal_data_search_fulltext` (MATCH su MySQL; SQLite non lo rileva). Per cercare anche per ragione
+  sociale serve una migrazione di quell'indice, per questo `company_name` sta solo in `CARD_COLUMNS`.
+- REQUIREMENT CHANGED nei test: `RequestManagementDefaultColumnsTest` (15 colonne visibili) e `RequestManagementTableSearchTest` (ordine di `searchable`). Il vincolo "Note generali dopo Codice fiscale" e' intatto.
+- Pest RequestManagement + EnrolleeManagement + CategoryTabs 1098/1099 (rosso: AC-024 di `WorkOrderCategoryTabsTest`, flaky preesistente), Vitest help + request-management 668/668, Pint, ESLint, `tsc -b --force` puliti. Non provato nel browser, suite completa non eseguita.
+- Guide IT/EN Gestione Richieste e manuale Claude Docs aggiornati; il PDF derivato va rigenerato. `RequestColumnCatalog.php` e `RequestClientColumns.php` restano oltre il soft limit di 300 righe.
+
 ## Linguette categoria: seleziona/deseleziona tutte le preferite (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente su Commesse e Opportunita'; il menu e' condiviso, quindi vale anche per Offerte, Contratti, Gestione Richieste e Iscritti. Nuovo

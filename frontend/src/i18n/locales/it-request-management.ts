@@ -24,6 +24,7 @@ export const requestManagement = {
     operationalSite: 'Sede operativa',
     firstName: 'Nome',
     lastName: 'Cognome',
+    companyName: 'Ragione sociale',
     taxCode: 'Codice fiscale',
     vatNumber: 'Partita IVA',
     phone: 'Telefono',

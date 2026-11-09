@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The CLIENT anagraphic columns of the `request-management` domain — Nome,
- * Cognome, Codice fiscale, Partita IVA, Telefono, Email — as a single column
+ * Cognome, Ragione sociale, Codice fiscale, Partita IVA, Telefono, Email — as a single column
  * contract: column filter, sort and Excel-like distinct values (spec
  * 0004/0005). The quick-search over them is RequestClientSearch's (spec 0179),
  * which reads the two column maps below.
@@ -46,16 +46,28 @@ final class RequestClientColumns
     use HandlesBlankSetFilter;
 
     /**
+     * The card columns the quick-search reads. On MySQL/MariaDB MATCH needs
+     * exactly the column list of a FULLTEXT index (`personal_data_search_fulltext`),
+     * so a column joins this list only together with a migration of that index.
+     *
+     * @var array<string, string>
+     */
+    public const array SEARCHABLE_CARD_COLUMNS = [
+        'first_name' => 'first_name',
+        'last_name' => 'last_name',
+        'tax_code' => 'tax_code',
+        'vat_number' => 'vat_number',
+    ];
+
+    /**
      * PersonalData card columns, keyed by the table column id they back
      * (identical names, but the map keeps the allow-list explicit).
      *
      * @var array<string, string>
      */
     public const array CARD_COLUMNS = [
-        'first_name' => 'first_name',
-        'last_name' => 'last_name',
-        'tax_code' => 'tax_code',
-        'vat_number' => 'vat_number',
+        ...self::SEARCHABLE_CARD_COLUMNS,
+        'company_name' => 'company_name',
     ];
 
     /**

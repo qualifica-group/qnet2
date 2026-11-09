@@ -46,6 +46,8 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [
+            ['Ragione sociale', "Denominazione del cliente azienda, dalla sua scheda anagrafica. Si ordina e si filtra; si modifica dal pannello, non dalla cella, e il campo **Cerca** non la considera."],
+            ['Partita IVA', 'Partita IVA del cliente. Si ordina, si filtra e si modifica dalla cella.'],
             ['Fonte', "Canale da cui arriva la richiesta (è un campo dell'offerta)."],
             ['Richieste di modifica', 'Proposte di modifica ancora in attesa.'],
             ['Linee di prodotto', "Prodotti presenti nell'offerta; la cella apre l'editor con il catalogo prodotti."],
