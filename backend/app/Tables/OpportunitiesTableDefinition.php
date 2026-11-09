@@ -147,15 +147,13 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Whether the actor reaches Offerte beyond the ones they operate (site or
-     * competence tier) without seeing them all: the only case where the
-     * EXISTS above can change allowsNotes()' verdict.
+     * Whether the actor is scoped to some Offerte without seeing them all
+     * (team, site or competence tier): the only case where the EXISTS above
+     * can change allowsNotes()' verdict.
      */
     private function widensRequestScope(User $actor): bool
     {
-        return $actor->can('request-management.view')
-            && ! $actor->can('request-management.viewAll')
-            && ($actor->can('request-management.viewSite') || $actor->can('request-management.viewCompetence'));
+        return $actor->can('request-management.view') && ! $actor->can('request-management.viewAll');
     }
 
     /**
@@ -329,7 +327,8 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      * The SAME rule RequestManagementNotable::authorizeRead applies when the
      * note endpoints re-check the thread: `request-management.view` AND one of
      * `request-management.viewAll`, being that opportunity's GA2 Operatore, or
-     * (spec 0105) reaching one of its Offerte through `viewSite`.
+     * reaching one of its Offerte through the team (spec 0373) or `viewSite`
+     * (spec 0105).
      * The full rule is evaluated here — unlike the request-management table,
      * this list is NOT already scoped to the actor's own opportunities, so
      * checking only `request-management.view` would offer the action on rows
@@ -337,9 +336,9 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      * eager-loaded `managers` collection via `operatorManager()`, the single
      * expression of the "position 2 = operator" rule: no per-row query.
      *
-     * Spec 0105, spec 0340: the site and competence tiers read
+     * Spec 0105, spec 0340, spec 0373: the team, site and competence tiers read
      * `request_scoped_quote_exists`, the EXISTS flag baseQuery() projects for
-     * a `viewSite`/`viewCompetence` holder — absent (hence false) otherwise.
+     * a scoped actor — absent (hence false) otherwise.
      */
     private function allowsNotes(User $actor, Opportunity $row): bool
     {

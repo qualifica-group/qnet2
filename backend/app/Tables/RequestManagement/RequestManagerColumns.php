@@ -38,6 +38,9 @@ final class RequestManagerColumns
     /** The GA1 column id (direttiva utente 2026-09-07). */
     public const string GA1_COLUMN_ID = 'manager_ga1';
 
+    /** The whole team as a list of people, the twin of the Offerte column (spec 0373). */
+    public const string MANAGERS_COLUMN_ID = 'managers';
+
     /**
      * The `manager_labels` position each column is named after: the single
      * source of the per-tab relabel (spec 0080, AC-045).
@@ -167,6 +170,22 @@ final class RequestManagerColumns
                 'editableField' => 'manager_ga1_id',
                 'relation' => ['resource' => 'users'],
                 'nullable' => true,
+            ],
+            [
+                // Spec 0373 D-7/D-8: shares `manager_slots` with the Operatore
+                // slot, the same permission on the same team;
+                // WritesInlineEditableCells tells the two apart by the value.
+                'id' => self::MANAGERS_COLUMN_ID,
+                'label' => 'requestManagement.columns.managers',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'multiselect',
+                'relation' => ['resource' => 'users'],
+                'editableField' => 'manager_slots',
             ],
         ];
     }

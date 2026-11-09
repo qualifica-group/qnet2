@@ -21,6 +21,7 @@ export const requestManagement = {
     expectedCloseDate: 'Data chiusura prevista',
     operator: 'Operatore',
     managerGa1: 'Tutor',
+    managers: 'Gestori account',
     operationalSite: 'Sede operativa',
     firstName: 'Nome',
     lastName: 'Cognome',

@@ -94,6 +94,7 @@ final class RequestColumnCatalog
         'general_notes' => 239,
         'source' => 127,
         RequestManagerColumns::GA1_COLUMN_ID => 177,
+        RequestManagerColumns::MANAGERS_COLUMN_ID => 140,
     ];
 
     /**
@@ -297,6 +298,7 @@ final class RequestColumnCatalog
             // "Fonte"); see RequestManagerColumns for how it differs from the
             // Operatore slot.
             RequestManagerColumns::column(RequestManagerColumns::GA1_COLUMN_ID),
+            RequestManagerColumns::column(RequestManagerColumns::MANAGERS_COLUMN_ID),
             // ----- Hidden by default (direttiva utente 2026-09-17) -----
             // "Richieste di modifica in attesa" (spec 0078, AC-037): a
             // per-record pending-count badge/alert. A real aggregated value

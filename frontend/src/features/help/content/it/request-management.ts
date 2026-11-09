@@ -20,7 +20,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Cosa vedi dipende dai permessi. Senza altri permessi vedi le richieste di cui sei operatore. **Visualizza per sede** aggiunge quelle delle tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Se crei una richiesta fuori dal tuo ambito, non la vedrai più a meno di avere uno di questi permessi.',
+          text: 'Cosa vedi dipende dai permessi. Senza altri permessi vedi le richieste del cui **Team** fai parte: come operatore, Supervisore o Gestore account. **Visualizza per sede** aggiunge quelle delle tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Se crei una richiesta fuori dal tuo ambito, non la vedrai più a meno di avere uno di questi permessi.',
         },
         {
           type: 'paragraph',
@@ -52,6 +52,7 @@ const guide: HelpGuide = {
             ['Richieste di modifica', 'Proposte di modifica ancora in attesa.'],
             ['Linee di prodotto', "Prodotti presenti nell'offerta; la cella apre l'editor con il catalogo prodotti."],
             ['Operatore', 'Persona che lavora la richiesta.'],
+            ['Gestori account', 'Tutte le persone del team, operatore compreso. Si filtra per nome e si modifica dalla cella.'],
             ['Sede operativa', 'Sede a cui è assegnata la richiesta.'],
             ['Prossimo richiamo', 'Data della prossima chiamata al cliente.'],
             ['Trasferito', "Se il contatto è stato trasferito da un'altra sede."],

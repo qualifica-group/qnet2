@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\Auth;
  * unchanged: every editable column still routes through ONE service call.
  *
  * The using class must expose `private readonly RequestManagementService
- * $service` (declared there, not here, to avoid a readonly-modifier
+ * $service` and `private readonly RequestTeamCellWriter $teamCellWriter`
+ * (declared there, not here, to avoid a readonly-modifier
  * conflict with the trait — mirrors DelegatesUnaugmentedTableMethods'
  * documented convention for `$inner`).
  *
@@ -79,7 +80,11 @@ trait WritesInlineEditableCells
         /** @var User $actor */
         $actor = Auth::user();
 
-        $data = [$this->writeKeyFor($columnId) => $value];
+        // Spec 0373 D-8: a list is the `managers` column, the whole team; the
+        // Operatore cell under the same key holds a single id.
+        $data = $columnId === self::MANAGER_SLOTS_FIELD && is_array($value)
+            ? $this->teamCellWriter->payload($row, $actor, $this->module(), $value)
+            : [$this->writeKeyFor($columnId) => $value];
 
         // `note` is not part of this contract method's signature (spec 0053)
         // and is read from the ambient request the same way `$actor` is read

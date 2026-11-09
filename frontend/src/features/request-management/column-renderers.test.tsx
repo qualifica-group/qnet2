@@ -166,4 +166,13 @@ describe('request-management G.A. slot cells (GA2 + GA1)', () => {
 
     expect(screen.getByText('—')).toBeInTheDocument()
   })
+
+  it('renders the managers column as an avatar stack, em dash when the team is empty', () => {
+    const { unmount } = renderManagerCell('managers', [{ id: 21, name: 'Mackenzie Stanton', avatar_url: null }])
+    expect(screen.queryByText('—')).not.toBeInTheDocument()
+    unmount()
+
+    renderManagerCell('managers', [])
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
 })

@@ -10,8 +10,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// Direttiva utente 2026-09-17 (2026-11-09: two more): the grid's default
-// worklist is exactly fifteen visible columns, in a fixed order, "Email" among
+// Direttiva utente 2026-09-17 (2026-11-09: three more): the grid's default
+// worklist is exactly sixteen visible columns, in a fixed order, "Email" among
 // them (a new client column, the twin of "Telefono"); every other column stays
 // in the catalogue, hidden.
 
@@ -95,6 +95,8 @@ it('shows exactly the requested columns, in the requested order, and hides the r
         'general_notes',
         'source',
         'manager_ga1',
+        // REQUIREMENT CHANGED (spec 0373 D-7): the whole team, as in Offerte.
+        'managers',
     ])->and($columns->where('visible', false)->pluck('id')->all())->toBe([
         // The engine's own hidden row-id column (AbstractTableDefinition).
         'id',
@@ -131,6 +133,7 @@ it('gives every visible column its requested default width, and none to the hidd
         'general_notes' => 239,
         'source' => 127,
         'manager_ga1' => 177,
+        'managers' => 140,
     ])->and($columns->where('visible', false)->pluck('width')->unique()->all())->toBe([null]);
 });
 

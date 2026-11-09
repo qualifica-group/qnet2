@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0373-request-team-visibility" status="approved" owner="nicola" date="2026-11-09">
+
+  <goal>
+    In Gestione Richieste e Gestione Iscritti l'utente vede anche le richieste di cui non e' operatore,
+    purche' faccia parte del loro team.
+  </goal>
+
+  <context>
+    La regola e' una sola, `RequestManagementScope`, parametrizzata sul modulo (spec 0130).
+    Oggi il livello "proprie" e' il solo Operatore (`quotes.operator_id`, spec 0087 D-9).
+    D-1 Richiesta utente 2026-11-09: il livello "proprie" diventa il team della richiesta.
+    D-2 Team = Supervisore (`quotes.supervisor_id`) + Gestori account di ogni posizione (`quote_user`), cioe' la sezione
+        Team del pannello e la stessa regola delle Offerte (`QuoteVisibilityScope`). Supera la INV-5 della spec 0087 per la
+        sola visibilita': `quotes.supervisor_id` torna a contare come appartenenza al team, l'Operatore resta `operator_id`.
+    D-3 `quotes.operator_id` resta nel predicato accanto al pivot: e' la colonna letta finora e un dato storico senza
+        riga pivot non deve perdere visibilita'.
+    D-4 Il team e' in UNIONE con sede e competenza (spec 0105 D-6, spec 0340) e, come loro, apre la RIGA e non concede
+        azioni: ogni scrittura continua a chiedere il proprio permesso. Il filtro stati di Iscritti resta (spec 0130 D-2).
+    D-5 Note: chi vede la riga legge il thread, quindi i membri del team sono anche menzionabili e l'azione Note e'
+        offerta nelle griglie Offerte e Opportunita', che ripetono la stessa regola.
+    D-6 Nessun nuovo permesso e nessuna migrazione.
+    D-7 Richiesta utente 2026-11-09: colonna "Gestori account" come in Offerte, in entrambi i moduli: visibile di default,
+        pila di avatar, filtro per nome (con "Vuoti"), non ordinabile, modificabile dalla cella come elenco di persone.
+    D-8 La colonna condivide con l'Operatore la chiave permesso `manager_slots`: e' il team, nessuna riga nuova nella matrice.
+        Il valore distingue le due scritture: un elenco e' il team, un singolo id e' lo slot Operatore (spec 0097 D-3b).
+    D-9 La scrittura segue le regole del form: `ManagerPositions::slotsFor` e `UpdateRequestRequest` tramite
+        `FormRequestCellValidator`, con il modulo della riga (la rotta fittizia della cella non lo porta da sola).
+  </context>
+
+  <scope>
+    <in>
+      <item>`RequestManagementScope`: record, query, messaggio di diniego.</item>
+      <item>`RequestManagementNotable::mentionableUsersQuery`, `QuoteRowActions::allowsNotes`, `OpportunitiesTableDefinition::allowsNotes`.</item>
+      <item>Colonna `managers` della griglia (D-7..D-9).</item>
+      <item>Guide IT/EN di Gestione Richieste e Gestione Iscritti, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Notifiche: il solo Operatore continua a ricevere quella di assegnazione (spec 0097 D-6).</item>
+      <item>Report e statistiche per operatore: il raggruppamento resta su `operator_id`, cambia solo l'insieme di righe.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Nessun cambio di shape: stessi endpoint, cambia solo l'insieme di righe restituite.
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Un Gestore account non Operatore (qualunque posizione) vede la richiesta in griglia e la apre, in entrambi i moduli.</criterion>
+    <criterion id="AC-002">Il Supervisore non Operatore vede la richiesta in griglia e la apre, in entrambi i moduli.</criterion>
+    <criterion id="AC-003">Chi non e' nel team, senza altri permessi, non la vede (griglia vuota, apertura 403).</criterion>
+    <criterion id="AC-004">In Gestione Iscritti un membro del team non vede le richieste fuori dagli stati del modulo.</criterion>
+    <criterion id="AC-005">Appartenere al team non concede scritture: senza `update` la modifica resta 403.</criterion>
+    <criterion id="AC-006">La disgiunzione non esce da una query gia' filtrata: il team su un'opportunita' non apre le altre.</criterion>
+    <criterion id="AC-007">I membri del team sono menzionabili nelle note della richiesta.</criterion>
+    <criterion id="AC-008">L'azione Note compare nella griglia Offerte e Opportunita' per un membro del team.</criterion>
+    <criterion id="AC-009">La colonna `managers` e' nel catalogo di entrambi i moduli, visibile, non ordinabile, e la riga porta tutti i gestori in ordine di posizione.</criterion>
+    <criterion id="AC-010">Il filtro per nome trova le richieste con quel gestore a qualunque posizione; "Vuoti" quelle senza team; i valori distinti elencano i gestori.</criterion>
+    <criterion id="AC-011">Dalla cella si modifica il team: chi resta tiene la posizione, l'Operatore segue lo slot 2, anche su Iscritti.</criterion>
+    <criterion id="AC-012">La cella passa dalle regole del form e dal permesso: senza `manager_slots` scrivibile 403, chi ha solo l'aggiunta al team resta fuori dalla cella.</criterion>
+    <criterion id="AC-013">La cella Operatore continua a scrivere il solo slot 2.</criterion>
+  </acceptance>
+</spec>

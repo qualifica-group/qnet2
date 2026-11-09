@@ -37,11 +37,12 @@ final class FormRequestCellValidator
      *
      * @param  class-string<TRequest>  $requestClass
      * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $routeDefaults  what the form's real route declares and its rules read
      * @return TRequest the validated request, ready for its own `toData()`
      *
      * @throws ValidationException
      */
-    public function validate(string $requestClass, string $routeParameter, Model $row, User $actor, array $payload): FormRequest
+    public function validate(string $requestClass, string $routeParameter, Model $row, User $actor, array $payload, array $routeDefaults = []): FormRequest
     {
         $request = $requestClass::create(
             self::CELL_URI,
@@ -55,6 +56,7 @@ final class FormRequestCellValidator
 
         $route = (new Route('PATCH', self::CELL_URI, []))->bind($request);
         $route->setParameter($routeParameter, $row);
+        $route->setDefaults($routeDefaults);
         $request->setRouteResolver(static fn (): Route => $route);
 
         $request->validateResolved();

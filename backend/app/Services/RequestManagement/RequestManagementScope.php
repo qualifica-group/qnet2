@@ -11,6 +11,7 @@ use App\Services\Assignment\ActorCompetenceReach;
 use App\Services\Assignment\CompetenceReach;
 use App\Services\Opportunities\OpportunityVisibilityScope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -23,8 +24,10 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * Spec 0105 turned the rule from binary into three tiers, evaluated in this
  * order:
  *  1. `request-management.viewAll` — sees every offer, nothing else evaluated.
- *  2. the actor IS that offer's GA2 "Operatore" (`quotes.operator_id`, spec
- *     0087 D-9).
+ *  2. the actor is on that offer's team (spec 0373): its GA2 "Operatore"
+ *     (`quotes.operator_id`, spec 0087 D-9), its Supervisore
+ *     (`quotes.supervisor_id`) or a Gestore account of any position
+ *     (`quote_user`).
  *  3. `request-management.viewSite` (D-1) — the offer's Sede operativa
  *     (`quotes.operational_site_id`) is one of the actor's own memberships,
  *     physical or remote alike (spec 0103 D-1, D-4 here).
@@ -49,11 +52,6 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * tier 3 for everyone (D-3) — `whereIn` never matches NULL, and the record
  * shape asserts it explicitly.
  *
- * Spec 0087, D-9: the ownership column moves from `quotes.supervisor_id` to
- * `quotes.operator_id` — the Offerta's own GA2, denormalized from `quote_user`
- * (D-3). `quotes.supervisor_id` is no longer read here or anywhere else for
- * authorization (INV-5): `isSupervisorOf` -> `isOperatorOf`.
- *
  * Spec 0340 adds tier 4, `{module}.viewCompetence`: the offer's opportunity
  * carries a product line in a category of the actor's assignment competence
  * (every offer when the competence covers all categories), on every Sede (D-1).
@@ -74,9 +72,9 @@ final class RequestManagementScope
 {
     /**
      * @throws HttpException 403 when $quote's status is out of $module's
-     *                       filter, or $user is neither $quote's GA2
-     *                       Operatore nor a member of its Sede under the
-     *                       viewSite grant, nor holds the viewAll ability
+     *                       filter, or $user is neither on $quote's team nor
+     *                       a member of its Sede under the viewSite grant,
+     *                       nor holds the viewAll ability
      */
     public function assertInScope(User $user, Quote $quote, RequestModule $module = RequestModule::Requests): void
     {
@@ -88,7 +86,7 @@ final class RequestManagementScope
             return;
         }
 
-        if ($this->isOperatorOf($user, $quote)) {
+        if (self::isOnTeamOf($user, $quote)) {
             return;
         }
 
@@ -100,18 +98,19 @@ final class RequestManagementScope
             return;
         }
 
-        abort(403, __('You cannot see this request: you are neither its operator nor a member of its site, and it is outside your assignment scope.'));
+        abort(403, __('You cannot see this request: you are neither on its team nor a member of its site, and it is outside your assignment scope.'));
     }
 
     /**
-     * Whether $user is $quote's GA2 Operatore (`quotes.operator_id`) — the
-     * D-9 scoping rule, isolated so it can be asserted directly (or filtered
-     * over a collection, e.g. the bulk assign/transfer in-scope checks)
-     * without triggering the abort side effect.
+     * Whether $user is on $quote's team (spec 0373), the record shape of the
+     * team branch of scopeToActor(). Static for the per-row note affordances,
+     * which have `managers` eager-loaded, so the loadMissing costs no query there.
      */
-    public function isOperatorOf(User $user, Quote $quote): bool
+    public static function isOnTeamOf(User $user, Quote $quote): bool
     {
-        return $quote->operator_id === $user->id;
+        return $quote->operator_id === $user->id
+            || $quote->supervisor_id === $user->id
+            || $quote->loadMissing('managers')->managers->contains('id', $user->id);
     }
 
     /**
@@ -233,7 +232,7 @@ final class RequestManagementScope
     /**
      * Applies the SAME rule to a query builder rooted on (or joined to)
      * `quotes`: unrestricted for a viewAll actor, otherwise the union of
-     * "I am the Operatore" and "the Sede is mine" (spec 0105, D-6). A null
+     * "I am on the team" and "the Sede is mine" (spec 0105, D-6). A null
      * $user — fail-closed — is scoped to a condition that can never match a
      * row, never left unrestricted.
      *
@@ -280,12 +279,13 @@ final class RequestManagementScope
             return $query;
         }
 
-        if ($siteIds === [] && $reach->isEmpty()) {
-            return $query->where('quotes.operator_id', $user->id);
-        }
-
         return $query->where(function (Builder $scoped) use ($user, $siteIds, $reach): void {
-            $scoped->where('quotes.operator_id', $user->id);
+            $scoped->where('quotes.operator_id', $user->id)
+                ->orWhere('quotes.supervisor_id', $user->id)
+                ->orWhereIn('quotes.id', static fn (QueryBuilder $team) => $team
+                    ->select('quote_id')
+                    ->from('quote_user')
+                    ->where('user_id', $user->id));
 
             if ($siteIds !== []) {
                 $scoped->orWhereIn('quotes.operational_site_id', $siteIds);
@@ -325,7 +325,7 @@ final class RequestManagementScope
      * which never equals a real actor's fingerprint.
      *
      * It MUST change together with scopeToActor(): both encode the same
-     * tiers (viewAll / operator / visibleSiteIds() / competence reach) and a drift would let a
+     * tiers (viewAll / team / visibleSiteIds() / competence reach) and a drift would let a
      * cached aggregate leak rows across scopes.
      */
     public static function scopeFingerprint(?User $user, RequestModule $module): string

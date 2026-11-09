@@ -20,6 +20,7 @@ use App\Tables\RequestManagement\RequestClientSearch;
 use App\Tables\RequestManagement\RequestColumnCatalog;
 use App\Tables\RequestManagement\RequestRelationColumns;
 use App\Tables\RequestManagement\RequestRowMapper;
+use App\Tables\RequestManagement\RequestTeamCellWriter;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -42,12 +43,11 @@ use Illuminate\Support\Facades\Auth;
  *    QuotePolicy -> `quotes.viewAny`, the WRONG permission for this domain. A
  *    direct `request-management.viewAny` permission check replaces it
  *    (fail-closed: no permission registered -> false, never fail-open).
- *  - `baseQuery()` scopes to the offers the actor operates (`quotes.operator_id`)
+ *  - `baseQuery()` scopes to the offers whose team includes the actor (spec 0373)
  *    or whose Sede is theirs (spec 0105), UNLESS `request-management.viewAll`; via
  *    `App\Services\RequestManagement\RequestManagementScope::scopeToActor()`,
- *    THE single implementation of this rule shared by every one of the six
- *    callers the spec enumerates (context, "Scoping non-supervisore riscritto
- *    ... in tutti e 6 i punti"). Fail-closed by construction: a null actor
+ *    THE single implementation of this rule, shared by all its callers (spec
+ *    0049). Fail-closed by construction: a null actor
  *    degrades to an always-empty result, never to "sees everything".
  *
  * The category tabs' row scope (spec 0064 D-2/D-3) and the GA2 operator
@@ -99,6 +99,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly RequestRelationColumns $relationColumns,
         private readonly RequestAssignmentScope $assignmentScope,
+        private readonly RequestTeamCellWriter $teamCellWriter,
     ) {}
 
     /**

@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
  * read a `quote_user` pivot POSITION instead of a column of `quotes`: today
  * the GA1 "Tutor" (direttiva utente 2026-09-24). The GA2 "Operatore" is not
  * here: it is denormalized onto `quotes.operator_id`, so RequestRelationColumns
- * handles it as an own FK.
+ * handles it as an own FK. The `managers` column (spec 0373) shares the filter
+ * and the distinct values with no position: it matches every slot.
  *
  * The cell shows the occupant's `name`, so every hook addresses `users.name`
  * of the user in that slot; an empty slot is the blank entry "(Vuoti)". The
@@ -43,12 +44,11 @@ final class RequestManagerSlotColumn
      */
     public function applyFilter(Builder $query, string $columnId, array $filter): bool
     {
-        $position = self::SLOT_POSITIONS[$columnId] ?? null;
-
-        if ($position === null) {
+        if (! self::handles($columnId)) {
             return false;
         }
 
+        $position = self::SLOT_POSITIONS[$columnId] ?? null;
         $values = $this->filterValues($filter);
         $matchesBlank = $this->matchesBlankEntry($filter);
 
@@ -59,7 +59,8 @@ final class RequestManagerSlotColumn
         $query->where(function (Builder $group) use ($position, $values, $matchesBlank): void {
             if ($values !== []) {
                 $group->whereHas('managers', static function (Builder $managers) use ($position, $values): void {
-                    $managers->where('quote_user.position', $position)->whereIn('users.name', $values);
+                    self::inSlot($position)($managers);
+                    $managers->whereIn('users.name', $values);
                 });
             }
 
@@ -99,12 +100,11 @@ final class RequestManagerSlotColumn
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
-        $position = self::SLOT_POSITIONS[$columnId] ?? null;
-
-        if ($position === null) {
+        if (! self::handles($columnId)) {
             return null;
         }
 
+        $position = self::SLOT_POSITIONS[$columnId] ?? null;
         $names = $this->slotUsers($position)
             ->whereIn('quote_user.quote_id', (clone $query)->select('quotes.id'))
             ->when($search !== null && $search !== '', function (QueryBuilder $builder) use ($search): void {
@@ -124,21 +124,29 @@ final class RequestManagerSlotColumn
         );
     }
 
+    private static function handles(string $columnId): bool
+    {
+        return isset(self::SLOT_POSITIONS[$columnId]) || $columnId === RequestManagerColumns::MANAGERS_COLUMN_ID;
+    }
+
     /**
-     * Narrows a `managers` relation query to the occupant of one position.
+     * Narrows a `managers` relation query to the occupant of one position;
+     * a null position is the whole team.
      */
-    private static function inSlot(int $position): Closure
+    private static function inSlot(?int $position): Closure
     {
         return static function (Builder $managers) use ($position): void {
-            $managers->where('quote_user.position', $position);
+            if ($position !== null) {
+                $managers->where('quote_user.position', $position);
+            }
         };
     }
 
-    private function slotUsers(int $position): QueryBuilder
+    private function slotUsers(?int $position): QueryBuilder
     {
         return DB::table('users')
             ->join('quote_user', 'quote_user.user_id', '=', 'users.id')
-            ->where('quote_user.position', $position);
+            ->when($position !== null, static fn (QueryBuilder $users) => $users->where('quote_user.position', $position));
     }
 
     /**

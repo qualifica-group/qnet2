@@ -21,7 +21,7 @@ import {
   RelationCell,
   StatusBadgeCell,
 } from '@/features/table/rich-cells'
-import { UserCell } from '@/features/table/user-cell'
+import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
@@ -109,6 +109,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   expected_close_date: (params) => <DateCell {...params} />,
   operator_ga2: (params) => <UserCell {...params} />,
   manager_ga1: (params) => <UserCell {...params} />,
+  managers: (params) => <UserStackCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   // Spec 0079: a system flag, not auto-mounted by `resolveCellRenderer`
   // (only `type: 'badge'`/`enum` are) — without this row the cell would show

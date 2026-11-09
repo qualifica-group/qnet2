@@ -103,6 +103,8 @@ final class RequestRowMapper
             // real FK on `quotes` (`operator_id`), denormalized from the
             // `quote_user` pivot.
             'operator_ga2' => $this->userSummary($row->operator),
+            // Spec 0373 D-7: the whole team, in `managers()` position order.
+            RequestManagerColumns::MANAGERS_COLUMN_ID => $row->managers->map(fn (User $user): ?array => $this->userSummary($user))->all(),
             // GA1 (direttiva utente 2026-09-08, which moved this column off
             // position 3): the slot right before the Operatore, read from the
             // `quote_user` pivot itself — unlike GA2

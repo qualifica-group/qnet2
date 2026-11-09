@@ -258,7 +258,7 @@
     "You cannot access skills.": "Non puoi accedere alle competenze.",
     "You cannot edit the skills of this person.": "Non puoi modificare le competenze di questa persona.",
     "This request is outside the scope of this section.": "Questa richiesta è fuori dall'ambito di questa sezione.",
-    "You cannot see this request: you are neither its operator nor a member of its site, and it is outside your assignment scope.": "Non puoi vedere questa richiesta: non ne sei l'operatore, non fai parte della sua sede e non rientra nel tuo ambito di assegnazione.",
+    "You cannot see this request: you are neither on its team nor a member of its site, and it is outside your assignment scope.": "Non puoi vedere questa richiesta: non fai parte del suo team né della sua sede e non rientra nel tuo ambito di assegnazione.",
     "You have no team members to show.": "Non hai membri del team da mostrare.",
     "You cannot see the time entries of this person.": "Non puoi vedere le ore registrate di questa persona.",
     "You cannot edit this field.": "Non puoi modificare questo campo.",

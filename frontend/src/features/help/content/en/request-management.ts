@@ -20,7 +20,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'What you see depends on your permissions. With no other permission you see the requests you operate. **View by site** adds those of your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. If you create a request outside your scope, you will no longer see it unless you have one of these permissions.',
+          text: 'What you see depends on your permissions. With no other permission you see the requests whose **Team** you belong to: as operator, Supervisor or Account Manager. **View by site** adds those of your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. If you create a request outside your scope, you will no longer see it unless you have one of these permissions.',
         },
         {
           type: 'paragraph',
@@ -52,6 +52,7 @@ const guide: HelpGuide = {
             ['Change requests', 'Change proposals still awaiting a decision.'],
             ['Product lines', 'Products present in the quote; the cell opens the editor with the product catalogue.'],
             ['Operator', 'The person working the request.'],
+            ['Account managers', 'Everyone on the team, operator included. It can be filtered by name and edited from the cell.'],
             ['Operational site', 'The site the request is assigned to.'],
             ['Next callback', 'Date of the next call to the client.'],
             ['Transferred', 'Whether the contact was transferred from another site.'],
