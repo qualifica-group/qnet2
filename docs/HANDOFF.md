@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## "Offerta unica per opportunita'" ignora le categorie storiche (task 427485, 2026-11-10) — VERDE MIRATO, COMMITTATO
+
+- Caso: anagrafica 9312, opportunita' importate tutte su categorie `[OLD]` con `single_quote_per_opportunity` = 1 (ereditato come default: 177 storiche su 189 in dev). La regola "opportunita' gia' aperta" le ignorava gia' (4e9d6f1f, 2026-11-07; in dev 9312 non blocca), ma "offerta unica" no: nessuna nuova offerta possibile.
+- Decisione utente: le categorie storiche non contano nemmeno per l'offerta unica. `OpportunityQuoteLimit::isSingleQuoteBranch()` filtra `is_legacy = false`: vale per la validazione (`ValidatesSingleQuotePerOpportunity`), per `single_quote_per_opportunity` di `OpportunityResource` (bottone "Crea Offerta") e per `QuoteManagerSyncMode`. Una categoria attuale con il flag limita ancora anche se l'opportunita' copre pure una storica. Il flag sulle categorie storiche NON e' stato toccato.
+- Test: `QuoteSingleQuotePerOpportunityTest` 8/8 (2 nuovi + caso legacy nel GET). Pest mirato Quotes/Opportunities/ProductCategories/Unit Quotes: 1163 verdi, rossi estranei: 3 LibreOffice (soffice assente) e `OpportunityRelationDeleteGuardTest` AC-008 (409 dal lavoro in corso non committato `InUseGuard` in `OperationalSiteService`). Verifica dati dev: opp 2414/7582/30378 ora accettano un'altra offerta. Help vitest 161/161, ESLint, `tsc -b --force` puliti.
+- Manuale: guide `product-categories` IT+EN (riga "Offerta unica per opportunita'" nelle regole) e manuale Claude Docs, stessa riga.
+- Da verificare in produzione: che 4e9d6f1f sia deployato (la task dice anche che la nuova opportunita' era bloccata).
+
 ## Email di notifica: bottone del modulo, scheda dettagli, una sola grafica (spec 0381, 2026-11-10) — VERDE, NON COMMITTATO
 
 - Richiesta utente: in ogni email il bottone per entrare nel modulo e il dettaglio di cio' di cui si parla (anagrafica soprattutto); all'approvazione: "allinea tutta la grafica di tutte le email". Decisioni utente: anagrafica + Partita IVA/Codice fiscale/Codice SDI (non sede/contatti/classificazione/persone); etichetta col nome del modulo; UN SOLO bottone, in basso dopo la scheda (U-2 rivista dopo le anteprime: prima era in alto e in fondo).

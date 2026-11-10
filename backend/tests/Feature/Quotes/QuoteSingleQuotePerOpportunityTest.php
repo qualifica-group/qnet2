@@ -139,6 +139,43 @@ it('an opportunity with no product line is never capped (rule indeterminate)', f
     ])->assertCreated();
 });
 
+// User directive 2026-11-10 (task 427485): legacy categories (`is_legacy`)
+// inherited the flag as a default; an imported opportunity on them must still
+// take a new offer, the same exemption the open-opportunity rule applies.
+it('a flagged LEGACY category never caps the opportunity', function () {
+    singleQuoteActor();
+    $opportunity = singleQuoteOpportunity(true);
+    $opportunity->productLines()->first()->productCategory->forceFill(['is_legacy' => true])->save();
+    Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+
+    $this->postJson('/api/quotes', [
+        'title' => 'Seconda offerta',
+        'opportunity_id' => $opportunity->id,
+        'offer_lines' => singleQuoteOfferLine($opportunity),
+    ])->assertCreated();
+
+    expect(Quote::where('opportunity_id', $opportunity->id)->count())->toBe(2);
+});
+
+it('a flagged CURRENT category still caps an opportunity that also covers a legacy one', function () {
+    singleQuoteActor();
+    $opportunity = singleQuoteOpportunity(true);
+    $legacy = ProductCategory::factory()->create([
+        'business_function_id' => BusinessFunction::factory()->create()->id,
+        'single_quote_per_opportunity' => true,
+    ]);
+    $legacy->forceFill(['is_legacy' => true])->save();
+    $opportunity->productLines()->create([
+        'business_function_id' => $legacy->business_function_id,
+        'product_category_id' => $legacy->id,
+    ]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+
+    $this->postJson('/api/quotes', ['title' => 'Seconda offerta', 'opportunity_id' => $opportunity->id])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('opportunity_id');
+});
+
 it('grandfathering: an already-multi-quote opportunity stays editable once the flag is turned on', function () {
     singleQuoteActor();
     $opportunity = singleQuoteOpportunity(true);
@@ -163,6 +200,8 @@ it('GET opportunity exposes single_quote_per_opportunity, true only on a capped 
     $capped = singleQuoteOpportunity(true);
     $free = singleQuoteOpportunity(false);
     $bare = Opportunity::factory()->create();
+    $legacy = singleQuoteOpportunity(true);
+    $legacy->productLines()->first()->productCategory->forceFill(['is_legacy' => true])->save();
 
     $this->getJson("/api/opportunities/{$capped->id}")
         ->assertOk()
@@ -174,6 +213,11 @@ it('GET opportunity exposes single_quote_per_opportunity, true only on a capped 
 
     // No product line at all: the rule is indeterminate, never applied.
     $this->getJson("/api/opportunities/{$bare->id}")
+        ->assertOk()
+        ->assertJsonPath('data.single_quote_per_opportunity', false);
+
+    // Legacy category: exempt, so the "Crea Offerta" button stays enabled.
+    $this->getJson("/api/opportunities/{$legacy->id}")
         ->assertOk()
         ->assertJsonPath('data.single_quote_per_opportunity', false);
 });
