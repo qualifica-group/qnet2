@@ -141,6 +141,32 @@ it('imports a private person as an individual card', function () {
         ->and($registry->personalData->tax_code)->toBe('RSSMRA80A01H501U');
 });
 
+it('imports the extra contacts split by the legacy as non-primary, with their label', function () {
+    fakeLegacyRegistries([[
+        'id' => 42, 'is_private' => false, 'company_name' => 'Extra Srl',
+        'email' => 'info@extra.test', 'phone' => '081 5435163', 'phone2' => '081 5434440',
+        'extra_contacts' => [
+            ['type' => 'phone', 'value' => '0645436579', 'label' => 'SARA CONTABILITA'],
+            ['type' => 'email', 'value' => 'amministrazione@extra.test', 'label' => null],
+            ['type' => 'unknown', 'value' => 'x', 'label' => null],
+            ['type' => 'fax', 'value' => 'not a number', 'label' => null],
+        ],
+    ]]);
+
+    $run = runRegistriesMigration();
+
+    $contacts = Registry::query()->where('old_id', 42)->firstOrFail()->personalData->contacts;
+    $extraPhone = $contacts->firstWhere('value', '0645436579');
+
+    expect($contacts)->toHaveCount(5)
+        ->and($contacts->where('type', 'phone')->where('is_primary', true)->pluck('value')->all())->toBe(['081 5435163'])
+        ->and($extraPhone->is_primary)->toBeFalse()
+        ->and($extraPhone->label)->toBe('SARA CONTABILITA')
+        ->and($contacts->firstWhere('value', 'amministrazione@extra.test')->is_primary)->toBeFalse()
+        ->and($contacts->firstWhere('value', 'info@extra.test')->is_primary)->toBeTrue()
+        ->and(registriesRunWarnings($run))->toContain("Unknown extra contact type 'unknown', skipped.", 'Invalid extra_contacts.fax value, skipped.');
+});
+
 it('skips an additional address with an unknown site type, with a warning', function () {
     fakeLegacyRegistries([[
         'id' => 42, 'is_private' => false, 'company_name' => 'Typed Spa',

@@ -8,6 +8,7 @@ use App\Models\PersonalData;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Sector;
+use App\Services\Attachments\LegacyRecordLink;
 use App\Support\ReferentRef;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,8 @@ use Illuminate\Support\Collection;
  */
 class RegistryResource extends JsonResource
 {
+    private const string LEGACY_ALIAS = 'registry';
+
     /**
      * @return array<string, mixed>
      */
@@ -64,6 +67,8 @@ class RegistryResource extends JsonResource
             'personal_data' => $this->personalData !== null
                 ? new PersonalDataResource($this->personalData)
                 : null,
+            // Spec 0378: "can't find a contact? check the legacy QNet", null when not migrated.
+            'legacy_url' => app(LegacyRecordLink::class)->forRecord(self::LEGACY_ALIAS, $this->old_id),
             'created_at' => $this->created_at,
         ];
     }

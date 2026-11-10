@@ -16,7 +16,7 @@ const handleAction: RowActionHandler = () => {}
  * domain-specific wiring is the count/date renderers and the master/detail
  * expansion (D-4), whose detail panel is `RewardDetailRenderer`. No CRUD, no
  * row actions, no sheet — the module has neither a create/edit form nor a
- * detail screen (D-6), so it does not register a `moduleScreen`.
+ * detail screen (D-6), so it does not register a `moduleDefinition`.
  */
 export function RewardedReferentsTable() {
   return (

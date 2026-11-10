@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -13,12 +13,11 @@ import {
   QUOTE_CREATE_REGISTRY_PARAM,
 } from '@/features/quotes/quote-create-params'
 import { parseEntityId } from '@/routes/entity-id'
-import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
   ModuleCreateParams,
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { QuoteDetail } from '@/features/quotes/types'
 
@@ -131,18 +130,8 @@ export function QuoteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenP
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'quotes',
-  basePath: '/quotes',
-  defaultMode: OPEN_MODE_PAGE,
-  labelKey: 'navigation.quotes',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: QuoteDetailScreen,
   FormScreen: QuoteFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

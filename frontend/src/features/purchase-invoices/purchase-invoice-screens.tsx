@@ -1,11 +1,10 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import { PURCHASE_INVOICES_DOMAIN } from '@/features/purchase-invoices/api'
 import { PurchaseInvoiceDeleteDialog } from '@/features/purchase-invoices/purchase-invoice-delete-dialog'
@@ -69,14 +68,8 @@ export function PurchaseInvoiceFormScreen({ onSuccess, onCancel }: ModuleFormScr
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: PURCHASE_INVOICES_DOMAIN,
-  basePath: BASE_PATH,
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.purchaseInvoices',
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: PurchaseInvoiceDetailScreen,
   FormScreen: PurchaseInvoiceFormScreen,
 }

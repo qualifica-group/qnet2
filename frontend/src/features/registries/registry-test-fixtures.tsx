@@ -80,6 +80,7 @@ export function registryCard(overrides: Partial<PersonalDataCard> = {}): Persona
 export function registryFixture(overrides: Partial<RegistryDetailWithPermissions> = {}): RegistryDetailWithPermissions {
   return {
     id: 7,
+    legacy_url: null,
     name: 'Ada Lovelace',
     source_id: null,
     source: null,

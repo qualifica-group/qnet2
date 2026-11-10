@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -14,11 +14,11 @@ import { taskAccessDeniedInfo } from '@/features/tasks/task-access-denied-info'
 import { TaskDetailView } from '@/features/tasks/task-detail'
 import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { TaskForm } from '@/features/tasks/task-form'
-import { OPEN_MODE_MODAL, OPEN_MODE_PAGE } from '@/features/modules/types'
+import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { TableRow } from '@/features/table/types'
 import type { TaskDetail } from '@/features/tasks/types'
@@ -211,18 +211,8 @@ function TaskDuplicateScreen({ taskId, onSuccess, onCancel }: TaskDuplicateScree
   return <TaskForm mode={{ type: 'duplicate', source: task }} onSuccess={onSuccess} onCancel={onCancel} />
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: TASKS_DOMAIN,
-  basePath: '/tasks',
-  defaultMode: OPEN_MODE_PAGE,
-  labelKey: 'navigation.tasks',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: TaskDetailScreen,
   FormScreen: TaskFormScreen,
-  // Spec 0195: the detail IS the edit form — no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own sticky identity bar (heading + actions), so the
-  // hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -8,11 +8,10 @@ import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/
 import { WorkOrderForm } from '@/features/work-orders/work-order-form'
 import { parseEntityId } from '@/routes/entity-id'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
-import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { WorkOrderDetail } from '@/features/work-orders/types'
 
@@ -98,18 +97,8 @@ export function WorkOrderFormScreen({ mode, onSuccess, onCancel }: ModuleFormScr
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'work-orders',
-  basePath: '/work-orders',
-  defaultMode: OPEN_MODE_PAGE,
-  labelKey: 'navigation.workOrders',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: WorkOrderDetailScreen,
   FormScreen: WorkOrderFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { AbsenceTypeDetailView } from '@/features/absence-types/absence-type-detail'
-import { moduleScreen } from '@/features/absence-types/absence-type-screens'
+import { moduleDefinition } from '@/features/absence-types/absence-type-module'
 import type { AbsenceTypeDetail } from '@/features/absence-types/types'
 
 /** Spec 0278: the detail edits every row in place, each save a PATCH of that field alone. */
@@ -98,7 +98,7 @@ describe('AbsenceTypeDetailView (spec 0278)', () => {
   })
 
   it('registers as a no-edit-route module in the registry', () => {
-    expect(moduleScreen.domain).toBe('absence-types')
-    expect(moduleScreen.generateEditRoute).toBe(false)
+    expect(moduleDefinition.domain).toBe('absence-types')
+    expect(moduleDefinition.generateEditRoute).toBe(false)
   })
 })

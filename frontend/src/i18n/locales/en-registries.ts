@@ -8,6 +8,8 @@ export const registries = {
   title: 'Registries',
   subtitle: 'Browse, filter and manage the customer/supplier registries of your organization.',
   forbidden: "You don't have permission to view registries.",
+  /** Under the contacts of a migrated anagrafica, before the link to its legacy page (spec 0378). */
+  contactsLegacyNote: "Can't find a contact?",
   columns: {
     name: 'Name',
     registry_type: 'Type',

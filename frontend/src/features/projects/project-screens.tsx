@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -8,11 +8,10 @@ import { ProjectForm } from '@/features/projects/project-form'
 import { ProjectDuplicateLoader } from '@/features/projects/project-duplicate-loader'
 import { ProjectDetailView } from '@/features/projects/project-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { ProjectDetail } from '@/features/projects/types'
 
@@ -101,18 +100,8 @@ export function ProjectFormScreen({ mode, onSuccess, onCancel }: ModuleFormScree
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'projects',
-  basePath: '/projects',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.projects',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: ProjectDetailScreen,
   FormScreen: ProjectFormScreen,
-  // The detail IS the edit form (spec 0220): no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

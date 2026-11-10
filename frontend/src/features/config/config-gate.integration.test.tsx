@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import i18n from '@/i18n'
 import { apiClient } from '@/api/client'
+import { BOOT_REQUEST_TIMEOUT_MS } from '@/api/boot-request'
 import { tokenStorage } from '@/api/token-storage'
 import { ConfigGate } from '@/features/config/config-gate'
 import { fetchConfig } from '@/features/config/api'
@@ -83,7 +84,7 @@ describe('ConfigGate order guarantee (integration)', () => {
     expect(screen.queryByText('app-children')).not.toBeInTheDocument()
     // ...and crucially the auth `me` fetch has NOT started.
     expect(meWasCalled()).toBe(false)
-    expect(mockedGet).toHaveBeenCalledWith('/config')
+    expect(mockedGet).toHaveBeenCalledWith('/config', { timeout: BOOT_REQUEST_TIMEOUT_MS })
   })
 
   it('does not fetch /auth/me when the config load errors (after retries)', async () => {

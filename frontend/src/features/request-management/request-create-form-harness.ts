@@ -86,6 +86,8 @@ export function renderCreateForm(onSuccess: () => void, permissions: string[] = 
     user: TEST_ACTOR,
     isAuthenticated: true,
     isInitializing: false,
+    hasInitTimedOut: false,
+    retryInit: () => undefined,
     login: NOT_CALLED,
     logout: NOT_CALLED,
     impersonator: null,

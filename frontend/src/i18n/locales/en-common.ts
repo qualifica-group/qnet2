@@ -56,6 +56,9 @@ export const common = {
   noRewards: 'No rewards',
   /** Badge next to a record title: its legacy id, shown only to who may see it (`legacy-ids.view`). */
   legacyIdBadge: 'OLD ID #{{id}}',
+  /** The link of a migrated record to its legacy page (specs 0343, 0378), after a question such as "Can't find a document?". */
+  legacyRecordLink: 'Check the old QNet',
+  legacyRecordLinkNewTab: '(opens in a new tab)',
   /** In-place editing of a record's rows (spec 0195): the pencil, and the open row's confirm/cancel. */
   inlineEdit: {
     edit: 'Edit {{field}}',

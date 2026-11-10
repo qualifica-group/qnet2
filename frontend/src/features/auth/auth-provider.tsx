@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PASSWORD_CHANGE_REQUIRED_EVENT, UNAUTHORIZED_EVENT } from '@/api/client'
+import { isTimeoutError } from '@/api/boot-request'
 import { isMaintenanceError } from '@/api/maintenance-state'
 import { tokenStorage } from '@/api/token-storage'
 import { applyLocale } from '@/i18n'
@@ -64,12 +65,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // UNAUTHORIZED_EVENT below; this covers the other failures (5xx, network)
   // that would otherwise leave the app rendered with no authenticated user.
   // Maintenance says nothing about the session (spec 0376): the token is kept.
+  // Neither does a timeout: the server is slow, and ProtectedRoute offers a retry.
   const isMeInMaintenance = isMaintenanceError(meQuery.error)
+  const isMeTimedOut = isTimeoutError(meQuery.error)
   useEffect(() => {
-    if (token && meQuery.isError && !isMeInMaintenance) {
+    if (token && meQuery.isError && !isMeInMaintenance && !isMeTimedOut) {
       void logout()
     }
-  }, [token, meQuery.isError, isMeInMaintenance, logout])
+  }, [token, meQuery.isError, isMeInMaintenance, isMeTimedOut, logout])
+
+  const { refetch: refetchMe } = meQuery
+  const retryInit = useCallback(() => {
+    void refetchMe()
+  }, [refetchMe])
 
   // Sync the UI language to the authenticated user's preferred locale.
   const userLocale = meQuery.data?.locale
@@ -100,14 +108,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user: meQuery.data ?? null,
       isAuthenticated: Boolean(token),
-      isInitializing: Boolean(token) && (meQuery.isPending || (isMeInMaintenance && !meQuery.data)),
+      // A retry after a timeout counts as initializing again: the loader shows
+      // until `me` answers or times out once more.
+      isInitializing:
+        Boolean(token) &&
+        (meQuery.isPending ||
+          (isMeInMaintenance && !meQuery.data) ||
+          (isMeTimedOut && meQuery.isFetching)),
+      hasInitTimedOut: Boolean(token) && isMeTimedOut && !meQuery.isFetching && !meQuery.data,
+      retryInit,
       login,
       logout,
       impersonator,
       impersonate,
       stopImpersonation,
     }),
-    [token, meQuery.data, meQuery.isPending, isMeInMaintenance, login, logout, impersonator, impersonate, stopImpersonation],
+    [token, meQuery.data, meQuery.isPending, meQuery.isFetching, isMeInMaintenance, isMeTimedOut, retryInit, login, logout, impersonator, impersonate, stopImpersonation],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

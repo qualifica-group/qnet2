@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- module registry adapter: exports the `moduleScreen` descriptor alongside its screen components (spec 0042 pattern, same as `project-screens.tsx`) */
+/* eslint-disable react-refresh/only-export-components -- module registry adapter: exports the `moduleScreens` map alongside its screen components (spec 0042 pattern, same as `project-screens.tsx`) */
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -6,11 +6,10 @@ import { userDetailQueryKey } from '@/features/users/api'
 import { UserForm } from '@/features/users/user-form'
 import { UserDetailView } from '@/features/users/user-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { UserDetail } from '@/features/users/types'
 import type { UserLeaveReason } from '@/features/users/use-user-record-actions'
@@ -86,18 +85,8 @@ export function UserFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'users',
-  basePath: '/users',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.users',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: UserDetailScreen,
   FormScreen: UserFormScreen,
-  // The detail IS the edit form (spec 0222): no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -7,9 +7,7 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { companyClosureKeys, fetchCompanyClosure } from '@/features/company-closures/api'
 import { CompanyClosureDetailView } from '@/features/company-closures/company-closure-detail'
 import { CompanyClosureFormBody } from '@/features/company-closures/company-closure-form-body'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
-import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
-import { COMPANY_CLOSURES_DOMAIN } from '@/features/company-closures/types'
+import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleScreens } from '@/features/modules/types'
 
 /** Content-only `company-closures` screens for the module registry (spec 0042). */
 export function CompanyClosureDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
@@ -82,14 +80,8 @@ export function CompanyClosureFormScreen({ mode, onSuccess, onCancel }: ModuleFo
   return <CompanyClosureFormBody closure={detail.data} onDone={handleDone} onCancel={onCancel} />
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: COMPANY_CLOSURES_DOMAIN,
-  basePath: `/${COMPANY_CLOSURES_DOMAIN}`,
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.companyClosures',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: CompanyClosureDetailScreen,
   FormScreen: CompanyClosureFormScreen,
-  // The form renders its own identity band (title + actions on one row).
-  formOwnsHeader: true,
 }

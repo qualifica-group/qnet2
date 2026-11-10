@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import i18n from '@/i18n'
 import { ProtectedRoute } from '@/routes/protected-route'
@@ -9,13 +9,15 @@ import { ProtectedRoute } from '@/routes/protected-route'
 interface AuthState {
   isAuthenticated: boolean
   isInitializing: boolean
+  hasInitTimedOut: boolean
   user: { name: string; must_set_password: boolean } | null
   impersonator: { id: number } | null
 }
 let authState: AuthState
+const retryInit = vi.fn()
 
 vi.mock('@/features/auth/use-auth', () => ({
-  useAuth: () => ({ ...authState, logout: vi.fn() }),
+  useAuth: () => ({ ...authState, retryInit, logout: vi.fn() }),
 }))
 
 vi.mock('@/features/auth/first-access-dialog', () => ({
@@ -39,6 +41,7 @@ function stateWith(overrides: Partial<AuthState>): AuthState {
   return {
     isAuthenticated: true,
     isInitializing: false,
+    hasInitTimedOut: false,
     user: { name: 'Ada', must_set_password: false },
     impersonator: null,
     ...overrides,
@@ -78,5 +81,16 @@ describe('ProtectedRoute first-access gate', () => {
     renderRoute()
 
     expect(screen.getByText('login page')).toBeInTheDocument()
+  })
+
+  it('offers a retry instead of the app when validating the session timed out', () => {
+    authState = stateWith({ hasInitTimedOut: true, user: null })
+    renderRoute()
+
+    expect(screen.getByText('The server did not respond in time. Please try again in a moment.')).toBeInTheDocument()
+    expect(screen.queryByText('app layout')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(retryInit).toHaveBeenCalledTimes(1)
   })
 })

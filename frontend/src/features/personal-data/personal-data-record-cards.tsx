@@ -65,6 +65,8 @@ interface PersonalDataChildCardsProps {
   showWorkFlag?: boolean
   contactsBoxProps?: CardBoxProps
   addressesBoxProps?: CardBoxProps
+  /** Shown under the contacts, e.g. the link of a migrated record to its legacy page (spec 0378). */
+  contactsFooter?: ReactNode
   /** Bare sections for a `RecordSectionsGrid` inside the record card, instead of two cards of their own. */
   asSections?: boolean
 }
@@ -90,6 +92,7 @@ export function PersonalDataChildCards({
   showWorkFlag = false,
   contactsBoxProps,
   addressesBoxProps,
+  contactsFooter,
   asSections = false,
 }: PersonalDataChildCardsProps) {
   const permission = onChange && fieldPermission ? fieldPermission : READ_ONLY_FIELD_PERMISSION
@@ -117,6 +120,7 @@ export function PersonalDataChildCards({
             ) : (
               <DetailEmpty />
             )}
+            {contactsFooter}
           </RecordSection>
         </BlockFrame>
       </div>
@@ -165,6 +169,7 @@ interface PersonalDataRecordSectionsProps {
   showSiteType?: boolean
   showWorkFlag?: boolean
   editing?: PersonalDataCardsEditing
+  contactsFooter?: ReactNode
 }
 
 /**

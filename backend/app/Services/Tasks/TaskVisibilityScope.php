@@ -37,8 +37,12 @@ use WeakMap;
  * The chain is resolved at most once per actor instance (memoized below), as
  * isVisibleTo() runs once per grid row.
  *
+ * Spec 0379 adds the commessa tier (TaskWorkOrderTier): whoever sees a
+ * Commessa sees its Tasks, even with no role on them (the migrated Tasks
+ * mostly have no assignee). UNION with the others, absorbed by `viewAll`, read-only.
+ *
  * Spec 0154 D-2 adds `is_private`: a PRIVATE Task narrows ALL the wider tiers at
- * once — `viewAll`, `viewSite` and the team tier see it ONLY through the membership tier,
+ * once — `viewAll`, `viewSite`, the team and the commessa tier see it ONLY through the membership tier,
  * never through the resource permission or the shared-Sede bypass — while
  * leaving the membership tier itself untouched (creator/requester/assignee/
  * watcher always see their own Task, private or not). The super-admin is the
@@ -94,18 +98,24 @@ final class TaskVisibilityScope
         $hasViewAll = $user->can(self::VIEW_ALL_PERMISSION);
         $siteIds = $hasViewAll ? [] : self::actorSiteIds($user);
         $teamIds = $hasViewAll ? [] : self::actorTeamIds($user);
+        $everyWorkOrder = ! $hasViewAll && TaskWorkOrderTier::seesEveryWorkOrder($user);
+        $someWorkOrders = ! $hasViewAll && ! $everyWorkOrder && TaskWorkOrderTier::applies($user);
 
-        return $query->where(function (Builder $scoped) use ($user, $siteIds, $teamIds, $hasViewAll): void {
-            $scoped->whereIn('tasks.id', self::membershipTaskIds($user));
+        return $query->where(function (Builder $scoped) use ($user, $siteIds, $teamIds, $hasViewAll, $everyWorkOrder, $someWorkOrders): void {
+            $scoped->whereIn('tasks.id', self::membershipTaskIds($user, $someWorkOrders));
 
             // D-2 (spec 0154): the wider tiers below see a PRIVATE Task
             // ONLY through the membership branch above — never through
-            // `viewAll`, the shared-Sede bypass nor the team tier.
+            // `viewAll`, the shared-Sede bypass, the team nor the commessa tier.
             if ($hasViewAll) {
                 $scoped->orWhere('tasks.is_private', false);
-            } elseif ($siteIds !== [] || $teamIds !== []) {
-                $scoped->orWhere(function (Builder $wide) use ($siteIds, $teamIds): void {
-                    $wide->where('tasks.is_private', false)->where(function (Builder $tiers) use ($siteIds, $teamIds): void {
+            } elseif ($siteIds !== [] || $teamIds !== [] || $everyWorkOrder) {
+                $scoped->orWhere(function (Builder $wide) use ($siteIds, $teamIds, $everyWorkOrder): void {
+                    $wide->where('tasks.is_private', false)->where(function (Builder $tiers) use ($siteIds, $teamIds, $everyWorkOrder): void {
+                        if ($everyWorkOrder) {
+                            $tiers->orWhereNotNull('tasks.work_order_id');
+                        }
+
                         if ($siteIds !== []) {
                             $tiers->orWhereHas(
                                 'assignees.employment.operationalSites',
@@ -150,7 +160,7 @@ final class TaskVisibilityScope
                 return false;
             }
 
-            if ($user->can(self::VIEW_ALL_PERMISSION)) {
+            if ($user->can(self::VIEW_ALL_PERMISSION) || TaskWorkOrderTier::reaches($user, $task)) {
                 return true;
             }
 
@@ -173,14 +183,19 @@ final class TaskVisibilityScope
      * indexes, because the equivalent OR of columns and EXISTS cannot use them:
      * it read the whole `tasks` table for each query and made the statistics
      * panel exceed the statement timeout in production. The derived table is
-     * what lets the optimizer drive the outer query from these ids.
+     * what lets the optimizer drive the outer query from these ids. The
+     * commessa tier joins the same UNION for the same reason (spec 0379 D-7).
      */
-    private static function membershipTaskIds(User $user): QueryBuilder
+    private static function membershipTaskIds(User $user, bool $withWorkOrderTasks): QueryBuilder
     {
         $membership = DB::table('tasks')->select('id')->where('creator_id', $user->id)
             ->union(DB::table('tasks')->select('id')->where('requester_id', $user->id))
             ->union(DB::table('task_assignee')->select('task_id')->where('user_id', $user->id))
             ->union(DB::table('task_watcher')->select('task_id')->where('user_id', $user->id));
+
+        if ($withWorkOrderTasks) {
+            $membership->union(TaskWorkOrderTier::visibleTaskIds($user));
+        }
 
         return DB::query()->fromSub($membership, 'membership_tasks')->select('id');
     }

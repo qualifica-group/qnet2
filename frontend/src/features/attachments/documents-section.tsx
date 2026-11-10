@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { AttachmentTile } from '@/features/attachments/attachment-tile'
-import { LegacyDocumentsNote } from '@/features/attachments/legacy-documents-note'
+import { LegacyRecordNote } from '@/components/detail/legacy-record-note'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { useAttachments } from '@/features/attachments/use-attachments'
 import type { Attachment } from '@/features/attachments/types'
@@ -199,7 +199,7 @@ export function DocumentsSection({
         </ul>
       )}
 
-      <LegacyDocumentsNote url={legacyUrl} />
+      <LegacyRecordNote url={legacyUrl} note={t('attachments.legacyNote')} />
     </div>
   )
 }

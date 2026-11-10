@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ContractTypeDetailView } from '@/features/contract-types/contract-type-detail'
-import { moduleScreen } from '@/features/contract-types/contract-type-screens'
+import { moduleDefinition } from '@/features/contract-types/contract-type-module'
 import type { ContractTypeDetail } from '@/features/contract-types/types'
 
 /** Spec 0290: the detail edits every row in place, each save a PATCH of that field alone. */
@@ -90,7 +90,7 @@ describe('ContractTypeDetailView (spec 0290)', () => {
   })
 
   it('registers as a no-edit-route module in the registry', () => {
-    expect(moduleScreen.domain).toBe('contract-types')
-    expect(moduleScreen.generateEditRoute).toBe(false)
+    expect(moduleDefinition.domain).toBe('contract-types')
+    expect(moduleDefinition.generateEditRoute).toBe(false)
   })
 })

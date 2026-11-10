@@ -52,6 +52,7 @@ function original(
 ): RegistryDetailWithPermissions {
   return {
     id: 7,
+    legacy_url: null,
     name: 'Ada Lovelace',
     source_id: 1,
     source: { id: 1, name: 'Website' },
