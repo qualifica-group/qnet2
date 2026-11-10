@@ -12,7 +12,7 @@ import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE } from '@/features/table/use-table
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { QUOTES_DOMAIN } from '@/features/quotes/api'
-import { useQuoteRowActions } from '@/features/quotes/use-quote-row-actions'
+import { quoteActionHref, useQuoteRowActions } from '@/features/quotes/use-quote-row-actions'
 
 /**
  * Thin Quotes adapter over the generic table (spec 0065, mirrors
@@ -56,6 +56,7 @@ export function QuotesTable() {
         scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE}
         renderers={quoteColumnRenderers}
         onAction={handleAction}
+        resolveActionHref={quoteActionHref}
         isBusy={isBusy}
         iconMap={QUOTES_ACTION_ICONS}
       />

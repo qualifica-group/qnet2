@@ -8,7 +8,7 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { OPEN_MODE_MODAL, type ModuleCreateParams, type OpenMode } from '@/features/modules/types'
 import { deleteQuote, QUOTES_DOMAIN } from '@/features/quotes/api'
 import { useQuoteDocument } from '@/features/quotes/use-quote-document'
-import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionHrefResolver, RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 export interface UseQuoteRowActionsOptions {
@@ -67,6 +67,15 @@ const CONTRACTS_DOMAIN = 'contracts'
 /** Reads the row's `contract_id` (spec 0315), `null` when the Offerta has no contract. */
 function resolveContractId(row: TableRow): number | null {
   return typeof row.contract_id === 'number' ? row.contract_id : null
+}
+
+/**
+ * The page of the `contract` row action, the Offerta's contract (Ctrl/Cmd+click
+ * opens it in a new tab); `view` is resolved by the generic table itself.
+ */
+export const quoteActionHref: ActionHrefResolver = (action, row) => {
+  const contractId = action.key === 'contract' ? resolveContractId(row) : null
+  return contractId === null ? undefined : `/${CONTRACTS_DOMAIN}/${contractId}`
 }
 
 /**

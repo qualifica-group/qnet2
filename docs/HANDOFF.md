@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Azioni di riga AG Grid: Ctrl/Cmd+clic apre la pagina in una nuova scheda (2026-11-10) — VERDE, COMMITTATO, DA PUBBLICARE
+
+- Richiesta utente: in ogni tabella l'occhio e le altre icone che portano a una pagina si aprono in una nuova scheda con Ctrl/Cmd+clic. Il clic normale resta com'era (modale o pagina secondo la preferenza).
+- Meccanismo: `RowActionsOptions.resolveActionHref` (`ActionHrefResolver`, `features/table/row-actions.tsx`). Un'azione con href diventa un vero `<Link>` (`features/table/row-action-link.tsx`: `RowActionButton` inline, `RowActionMenuItem` nel menu tre puntini; nel menu il `preventDefault` si fa dentro `onSelect`, perche' Radix ignora un click gia' prevenuto). Ctrl/Cmd, Shift/Alt e il clic centrale li gestisce il browser (`lib/modified-click.ts`, condiviso con `use-record-modal-link`). Un'azione disabilitata non e' mai un link.
+- Default automatico: `TableView` compone `withModuleActionHref(domain, resolveActionHref)` (`features/modules/module-action-href.ts`): per un dominio registrato `view` -> `${basePath}/:id`, `duplicate` -> `${basePath}/:id/duplicate` (solo moduli con route generate). Copre circa 70 tabelle senza modifiche.
+- Resolver espliciti (domini non registrati o pagine diverse): richieste d'acquisto, righe RDA (-> richiesta madre), ordini d'acquisto, storico import (`leadImportPath`), scadenze passive `open_document`, liquidazioni provvigioni, commesse di progetto (`moduleActionHref('work-orders')`), offerte `contract` (`quoteActionHref`: tabella Offerte, pannello opportunita', detail renderer, tab anagrafica via nuova prop `RegistryRelatedGrid.resolveActionHref`).
+- Restano solo modali (nessuna pagina): attivita', note, documenti, PDF, email, fatture attive (nessuna route `/invoices/:id`), movimenti di tesoreria, esecuzioni di liquidazione.
+- Test: nuovi `row-action-link.test.tsx` (8) + `module-action-href.test.ts` (5); `opportunity-quotes-detail-renderer.test.tsx` ora cerca l'occhio come `link` (REQUIREMENT CHANGED). Suite frontend completa 1365 file / 10225 test verdi; `tsc -b --force` e ESLint puliti.
+- Manuale: guida `general` IT/EN (sezione `using-lists-and-export`, tip) + manuale Claude Docs (paragrafo "Aprire in una nuova scheda" dopo "Azioni sulla riga").
+- `row-actions.tsx` e' a 326 righe (soft limit 300, era gia' 309).
+
 ## Dati contrattuali senza il permesso costi + tecnici senza costi (spec 0380) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 
 - Regola (decisione utente): senza `WorkOrderPolicy::viewCosts` il GET/PATCH `contract-data` non manda numeri. `WorkOrderContractDataBuilder` azzera `quantity`, `unit_price`, `net_amount`, commissioni, `effective_revenue`, svuota `warnings`, `totals` = null, nuovo flag `figures_visible`. Restano prodotto e pagamento (decisione utente: Pagamento visibile, matita per chi ha `managePayments`).

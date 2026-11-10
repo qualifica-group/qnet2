@@ -116,6 +116,7 @@ export function useTableViewController(
     labeledActions,
     inlineAllActions,
     resolveActionState,
+    resolveActionHref,
     getBulkActions,
     disableBuiltinDelete,
     advancedFiltersOverride,
@@ -176,6 +177,7 @@ export function useTableViewController(
     labeledActions,
     inlineAllActions,
     resolveActionState,
+    resolveActionHref,
     t,
   })
 

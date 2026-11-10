@@ -14,6 +14,7 @@ import { TableView } from '@/features/table/table-view'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
 import { QUOTES_DOMAIN } from '@/features/quotes/api'
+import { quoteActionHref } from '@/features/quotes/use-quote-row-actions'
 import { useOpportunityQuotesPanel } from '@/features/opportunities/use-opportunity-quotes-panel'
 import type { OpportunityDetail } from '@/features/opportunities/types'
 
@@ -168,6 +169,7 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
             hiddenAdvancedFilters={PRESET_LIST_FILTERS}
             renderers={quoteColumnRenderers}
             onAction={handleAction}
+            resolveActionHref={quoteActionHref}
             isBusy={isBusy}
             iconMap={QUOTES_ACTION_ICONS}
             onRowCountChanged={handleRowCountChanged}

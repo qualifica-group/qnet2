@@ -8,11 +8,20 @@ import { bulkDeleteTableRows } from '@/features/table/api'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { isConcludedImportRun } from '@/features/imports/lead-import-status'
 import { importRunColumnRenderers } from '@/features/imports/column-renderers'
-import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionHrefResolver, RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 /** Domain key selecting the server-side import-runs table definition. */
 const IMPORT_RUNS_DOMAIN = 'import-runs'
+
+/** The page a run opens on: the summary of a concluded run, the wizard of an open one. */
+function leadImportPath(row: TableRow): string {
+  return isConcludedImportRun(String(row.status)) ? `/imports/${row.id}` : `/imports/new?runId=${row.id}`
+}
+
+/** The `view` row action leads to the run's page (Ctrl/Cmd+click opens it in a new tab). */
+const leadImportActionHref: ActionHrefResolver = (action, row) =>
+  action.key === 'view' ? leadImportPath(row) : undefined
 
 /**
  * Thin adapter mounting the generic table for the lead import history
@@ -63,11 +72,7 @@ export function LeadImportsTable() {
     (action: TableActionDefinition, row: TableRow) => {
       switch (action.key) {
         case 'view':
-          if (isConcludedImportRun(String(row.status))) {
-            void navigate(`/imports/${row.id}`)
-          } else {
-            void navigate(`/imports/new?runId=${row.id}`)
-          }
+          void navigate(leadImportPath(row))
           break
         case 'delete':
           void runDelete(row)
@@ -87,6 +92,7 @@ export function LeadImportsTable() {
       domain={IMPORT_RUNS_DOMAIN}
       renderers={importRunColumnRenderers}
       onAction={handleAction}
+      resolveActionHref={leadImportActionHref}
       isBusy={isBusy}
     />
   )

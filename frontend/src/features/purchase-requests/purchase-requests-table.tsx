@@ -11,7 +11,7 @@ import { ResourceActivityDialog } from '@/features/activity-log/resource-activit
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
-import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionHrefResolver, RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { purchaseRequestColumnRenderers } from '@/features/purchase-requests/column-renderers'
 import { LineStatusTabs } from '@/features/purchase-requests/line-status-tabs'
@@ -28,6 +28,13 @@ const LINE_STATUS_FILTER_KEY = 'line_status'
 
 /** Icon names the backend catalog uses beyond the shared defaults (`notes`, `notify_manager`, `close`). */
 const PURCHASE_ACTION_ICONS: ActionIconMap = { 'messages-square': MessagesSquare, send: Send, lock: Lock }
+
+function purchaseRequestPath(row: TableRow): string {
+  return `/${PURCHASE_REQUESTS_DOMAIN}/${row.id}`
+}
+
+/** The `view` row action leads to the request's own page (Ctrl/Cmd+click opens it in a new tab). */
+const purchaseRequestActionHref: ActionHrefResolver = (action, row) => (action.key === 'view' ? purchaseRequestPath(row) : undefined)
 
 /**
  * Thin RDA list adapter over the generic table: status tabs write into the
@@ -74,7 +81,7 @@ export function PurchaseRequestsTable() {
     (action: TableActionDefinition, row: TableRow) => {
       switch (action.key) {
         case 'view':
-          void navigate(`/${PURCHASE_REQUESTS_DOMAIN}/${row.id}`)
+          void navigate(purchaseRequestPath(row))
           break
         case 'notify_manager':
           void notifyManager(Number(row.id))
@@ -125,6 +132,7 @@ export function PurchaseRequestsTable() {
         renderers={purchaseRequestColumnRenderers}
         iconMap={PURCHASE_ACTION_ICONS}
         onAction={handleAction}
+        resolveActionHref={purchaseRequestActionHref}
         inlineAllActions
         onFilterModelChange={tabs.onFilterModelChange}
         isBusy={isBusy}

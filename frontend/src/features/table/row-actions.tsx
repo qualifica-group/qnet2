@@ -9,7 +9,6 @@ import { useConfirm } from '@/components/confirm-dialog-context'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -23,6 +22,7 @@ import {
   type ActionIconMap,
 } from '@/features/table/action-icon-map'
 import { ACTION_ICON_CLASS, actionMenuVariant } from '@/features/table/action-tone'
+import { RowActionButton, RowActionMenuItem } from '@/features/table/row-action-link'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 /**
@@ -50,6 +50,9 @@ export type RowActionHandler = (
   action: TableActionDefinition,
   row: TableRow,
 ) => void
+
+/** The page an action leads to for a row, or `undefined` when it opens no page. */
+export type ActionHrefResolver = (action: TableActionDefinition, row: TableRow) => string | undefined
 
 /**
  * Per-row presentation of one action, decided by the owning domain: a tint, a
@@ -87,6 +90,13 @@ export interface RowActionsOptions {
    * over the menu. Opt-in; every other domain keeps INLINE_ACTION_LIMIT.
    */
   inlineAllActions?: boolean
+  /**
+   * The page an action leads to. An action with a page renders as a real
+   * link: a plain click still runs `onAction`, Ctrl/Cmd+click and middle click
+   * open the page in a new browser tab. `TableView` already resolves the
+   * registered module's `view`/`duplicate` pages (`withModuleActionHref`).
+   */
+  resolveActionHref?: ActionHrefResolver
 }
 
 interface RowActionsProps extends RowActionsOptions {
@@ -147,6 +157,7 @@ function RowActions({
   labeledActions,
   inlineAllActions,
   resolveActionState,
+  resolveActionHref,
 }: RowActionsProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
@@ -200,20 +211,22 @@ function RowActions({
           const state = resolveActionState?.(action, effectiveRow)
           const label = state?.label ?? t(action.label)
           const disabled = busy || state?.disabled === true
+          const href = disabled ? undefined : resolveActionHref?.(action, effectiveRow)
           if (labeledActions) {
             const Icon = resolveActionIcon(action.icon, iconMap)
             return (
-              <Button
+              <RowActionButton
                 key={action.key}
                 variant="outline"
                 size="xs"
                 disabled={disabled}
-                onClick={() => handleSelect(action)}
+                href={href}
+                onSelect={() => void handleSelect(action)}
                 className={state?.className}
               >
                 <Icon aria-hidden="true" />
                 {label}
-              </Button>
+              </RowActionButton>
             )
           }
           const Icon = resolveActionIcon(action.icon, iconMap)
@@ -221,17 +234,18 @@ function RowActions({
           return (
             <Tooltip key={action.key}>
               <TooltipTrigger asChild>
-                <Button
+                <RowActionButton
                   variant="ghost"
                   size="icon-xs"
                   aria-label={count !== null ? `${label} (${count})` : label}
                   disabled={disabled}
-                  onClick={() => handleSelect(action)}
+                  href={href}
+                  onSelect={() => void handleSelect(action)}
                   className={cn('relative', ACTION_ICON_CLASS[action.type], state?.className)}
                 >
                   <Icon aria-hidden="true" />
                   {count !== null && <ActionCountBadge count={count} />}
-                </Button>
+                </RowActionButton>
               </TooltipTrigger>
               <TooltipContent>{label}</TooltipContent>
             </Tooltip>
@@ -256,19 +270,21 @@ function RowActions({
               const Icon = resolveActionIcon(action.icon, iconMap)
               const count = resolveActionCount(action, effectiveRow)
               const state = resolveActionState?.(action, effectiveRow)
+              const disabled = state?.disabled === true
               return (
-                <DropdownMenuItem
+                <RowActionMenuItem
                   key={action.key}
                   variant={actionMenuVariant(action.type)}
-                  disabled={state?.disabled === true}
-                  onSelect={() => handleSelect(action)}
+                  disabled={disabled}
+                  href={disabled ? undefined : resolveActionHref?.(action, effectiveRow)}
+                  onSelect={() => void handleSelect(action)}
                 >
                   <Icon aria-hidden="true" className={state?.className} />
                   {state?.label ?? t(action.label)}
                   {count !== null && (
                     <span className="text-muted-foreground">({count})</span>
                   )}
-                </DropdownMenuItem>
+                </RowActionMenuItem>
               )
             })}
           </DropdownMenuContent>
@@ -303,6 +319,7 @@ export function createRowActionsRenderer(
         labeledActions={options.labeledActions}
         inlineAllActions={options.inlineAllActions}
         resolveActionState={options.resolveActionState}
+        resolveActionHref={options.resolveActionHref}
       />
     )
   }

@@ -6,6 +6,7 @@ import { useUiScale } from '@/features/appearance/ui-scale-context'
 import { useViewportTableHeight } from '@/features/table/use-viewport-table-height'
 import type { AdvancedFilterDescriptor } from '@/features/table/advanced-filters/types'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
+import { withModuleActionHref } from '@/features/modules/module-action-href'
 import { createRowActionsRenderer, type RowActionHandler, type RowActionsOptions } from '@/features/table/row-actions'
 import type { TableConfigScope } from '@/features/table/use-table-config'
 import { useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
@@ -91,6 +92,7 @@ export function useTableViewFiltersState(
     labeledActions,
     inlineAllActions,
     resolveActionState,
+    resolveActionHref,
     t,
   } = args
 
@@ -188,8 +190,9 @@ export function useTableViewFiltersState(
       labeledActions,
       inlineAllActions,
       resolveActionState,
+      resolveActionHref: withModuleActionHref(domain, resolveActionHref),
     })
-  }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions, inlineAllActions, resolveActionState])
+  }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions, inlineAllActions, resolveActionState, domain, resolveActionHref])
 
   // Fit the grid to the screen instead of a fixed height: it takes what is
   // left of the viewport below this module's chrome, never taller than the

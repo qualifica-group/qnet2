@@ -5,7 +5,7 @@ import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
-import type { RowActionHandler, RowActionState } from '@/features/table/row-actions'
+import type { ActionHrefResolver, RowActionHandler, RowActionState } from '@/features/table/row-actions'
 import type { TableRowScope } from '@/features/table/rows-types'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { CellCommitInterceptor } from '@/features/table/use-table-cell-edit'
@@ -25,6 +25,8 @@ interface RegistryRelatedGridProps {
   isBusy?: (row: TableRow) => boolean
   /** Per-row tint/label/disabled of an action, forwarded to `TableView` (e.g. the Commesse "€"). */
   resolveActionState?: (action: TableActionDefinition, row: TableRow) => RowActionState | undefined
+  /** The page of a domain action the module registry cannot know (e.g. an Offerta's contract), forwarded to `TableView`. */
+  resolveActionHref?: ActionHrefResolver
   onRowCountChanged: (count: number | null) => void
   /** The "Nuovo" affordance; `null` without the module's `create` permission. */
   create: RegistryRelatedCreate | null
@@ -51,6 +53,7 @@ export const RegistryRelatedGrid = forwardRef<TableViewHandle, RegistryRelatedGr
     onAction,
     isBusy,
     resolveActionState,
+    resolveActionHref,
     onRowCountChanged,
     create,
     interceptCellCommit,
@@ -78,6 +81,7 @@ export const RegistryRelatedGrid = forwardRef<TableViewHandle, RegistryRelatedGr
         onAction={onAction}
         isBusy={isBusy}
         resolveActionState={resolveActionState}
+        resolveActionHref={resolveActionHref}
         iconMap={iconMap}
         onRowCountChanged={onRowCountChanged}
         interceptCellCommit={interceptCellCommit}
