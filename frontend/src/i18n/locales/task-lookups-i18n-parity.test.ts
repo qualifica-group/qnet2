@@ -89,7 +89,6 @@ const SHARED_KEYS = [
   'form.created',
   'form.deleted',
   'form.deleteError',
-  'form.deleteInUse',
   'form.description',
   'form.descriptionMax',
   'form.genericError',

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -55,7 +55,7 @@ export function CustomFieldsTable() {
         toast.success(t('customFields.form.deleted'))
         refreshGrid()
       } catch (error) {
-        toast.error(apiErrorMessage(error, t('customFields.form.deleteError'), i18n))
+        toast.error(refusedActionMessage(error, t('customFields.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

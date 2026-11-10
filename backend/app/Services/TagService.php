@@ -7,6 +7,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\Tags\CreateTagData;
 use App\DataObjects\Tags\UpdateTagData;
 use App\Models\Tag;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 
 /**
@@ -17,6 +18,8 @@ use Illuminate\Support\Collection;
  */
 class TagService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(CreateTagData $data): Tag
     {
         return Tag::create($data->attributes());
@@ -40,6 +43,8 @@ class TagService
      */
     public function delete(Tag $tag): void
     {
+        $this->inUseGuard->assertUnused($tag);
+
         $tag->delete();
     }
 

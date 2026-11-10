@@ -40,7 +40,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'A type already used by a contract condition cannot be deleted: deactivate it. Deactivated types cannot be chosen in new conditions; the conditions already saved stay as they were.',
+          text: 'A type already used by a contract condition or by a person’s record cannot be deleted: deactivate it. Deactivated types cannot be chosen in new conditions; the conditions already saved stay as they were.',
         },
       ],
     },

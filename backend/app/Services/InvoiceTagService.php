@@ -9,6 +9,7 @@ use App\DataObjects\InvoiceTags\UpdateInvoiceTagData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\InvoiceTag;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -24,7 +25,10 @@ class InvoiceTagService
     /** @var array<int, string> */
     private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'is_active'];
 
-    public function __construct(private readonly LookupOrderManager $orderManager) {}
+    public function __construct(
+        private readonly LookupOrderManager $orderManager,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(CreateInvoiceTagData $data): InvoiceTag
     {
@@ -50,9 +54,7 @@ class InvoiceTagService
      */
     public function delete(InvoiceTag $invoiceTag): void
     {
-        if ($invoiceTag->invoices()->exists()) {
-            abort(409, __('invoice_tags.in_use'));
-        }
+        $this->inUseGuard->assertUnused($invoiceTag);
 
         $invoiceTag->delete();
     }

@@ -43,6 +43,7 @@ require_once __DIR__.'/Helpers/CommissionRecalculationHelpers.php';
 require_once __DIR__.'/Helpers/ProjectHelpers.php';
 require_once __DIR__.'/Helpers/RoleAbilityHelpers.php';
 require_once __DIR__.'/Helpers/PaymentMethodHelpers.php';
+require_once __DIR__.'/Helpers/DeletionHelpers.php';
 require_once __DIR__.'/Helpers/RequestManagementHelpers.php';
 require_once __DIR__.'/Helpers/CampaignHelpers.php';
 require_once __DIR__.'/Helpers/CategoryTabHelpers.php';

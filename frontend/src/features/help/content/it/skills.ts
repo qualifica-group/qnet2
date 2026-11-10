@@ -42,7 +42,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Una competenza già assegnata ad almeno una persona non si può eliminare: disattivala. Le competenze disattivate non si assegnano più e non compaiono nella Copertura; quelle già assegnate restano com’erano.',
+          text: 'Una competenza già assegnata ad almeno una persona o richiesta da una mansione non si può eliminare: disattivala. Le competenze disattivate non si assegnano più e non compaiono nella Copertura; quelle già assegnate restano com’erano.',
         },
       ],
     },

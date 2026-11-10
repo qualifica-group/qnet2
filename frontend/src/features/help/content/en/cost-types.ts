@@ -68,7 +68,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'You cannot delete a cost type already used by purchase order lines, purchase invoices, products or work order costs: deactivate it instead. In the grid the Delete action is not available for types in use.',
+          text: 'You cannot delete a cost type already used by purchase order lines, purchase invoices and their lines, products, work order costs, treasury movements or agent fiscal profiles: deactivate it instead. In the grid the Delete action is not available for types used by purchase orders, purchase invoices, products or work order costs; in the other cases the message says what uses it.',
         },
       ],
     },

@@ -3,12 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Pannello "Colonne" di AG Grid non si chiude piu' a ogni spunta (2026-11-10) — VERDE MIRATO, COMMITTATO
+## Configurazioni in uso non eliminabili (spec 0384) (2026-11-10) — VERDE, COMMITTATO
 
-- Causa: spuntare una colonna salva il layout; `useSaveTablePreferences` fa `setQueryData` con la config restituita -> nuovo array `config.columns` -> `gridOptions` (dipende da `columns`) si ricalcolava e creava un nuovo oggetto `sideBar`. AG Grid (`AgSideBar.setState`, listener sulla prop `sideBar`) ricostruisce la barra a ogni cambio di riferimento e riapre `defaultToolPanel` (undefined) = pannello chiuso.
-- Fix: `data-table.tsx` memorizza `sideBar` a parte, solo su `rowGrouping?.enabled`. Non rimettere `buildSideBar(...)` inline dentro `gridOptions`.
-- Test: `column-state-persistence.test.tsx` nuovo caso "keeps the columns tool panel open when the saved config comes back" (rosso prima del fix). Vitest `components/data-table` + `features/table` 585/585, ESLint, `tsc -b --force` puliti.
-- Manuale: nessun impatto (il pannello ora si comporta come gia' descritto).
+- Richiesta utente: template, modelli task e moduli di contorno non eliminabili se usati (dopo la 0377 sugli stati di lavorazione). Piano approvato; template email bloccati anche se usati solo da email inviate (D-5).
+- BE: `App\Services\Deletion\InUseGuard` (`assertUnused($model)`, `assertNoUsage(counts)`, `usageCounts($model)`) legge `UsageMap::USAGES` (tabella -> `tabella.colonna` => etichetta `deletion.usages.*`) e risponde 409 `{success:false,message}` con l'elenco degli usi ("3 fatture, 1 anagrafica"). `UsageMap::OWNED` = parti che si eliminano con la voce (pivot proprie, opzioni, permessi del ruolo, richieste generate dalla chiusura aziendale). Tabella non in mappa -> LogicException.
+- Collegato in ~35 service `delete()` (settori, ruoli, IVA, UM, metodi pagamento, conti finanziari, sedi, fonti, tipi referente, template email, funzioni aziendali, tipi ricavo...): rimossi i vecchi controlli FK ad-hoc e i loro messaggi. Attributi: anche valori JSON `attribute_values->code` su prodotti/offerte/commesse. Campi personalizzati: rifiuto se ci sono valori (rimosso il purge della spec 0021). Skills/corsi da 422 a 409. `deleteModel()` aggiunto a ReferentTypes/Sources/Tags/Attributes/CustomFields (il bulk faceva delete nudo). Rimosso `BusinessFunctionMembershipGuard::assertCanDelete`.
+- Rete: `tests/Feature/Deletion/UsageMapSchemaTest.php` fallisce se una FK verso una tabella di configurazione non e' dichiarata in USAGES/OWNED o fra i controlli dedicati (0377 workflow, task statuses/templates, layout, piano dei conti, configurazioni provvigionali, campagne). Nuova FK verso una configurazione -> aggiungerla alla mappa.
+- FE: i delete handler di ~40 moduli usano `refusedActionMessage` (messaggio del server sul 409); rimosse le chiavi fisse `deleteInUse`/`deleteInUseFallback`. Bulk delete invariato (conteggio).
+- Manuale: guide in-app IT/EN di 22 moduli + general; manuale Claude Docs aggiornato (tabelle di configurazione, ruoli, campi personalizzati, attributi, settori, funzioni aziendali, FAQ).
+- Verifica: `tests/Feature/Deletion` 17/17; aree toccate verdi; suite completa 14616/14637, i 14 falliti estranei (LibreOffice assente, date, seeder ruoli, catalogo permessi, fillable EmploymentProductLine, TableBulkDelete last super-admin forbidden vs guarded, AI assistant). Vitest mirati verdi, `tsc -b --force` pulito.
+- Note: 7 unhandled `toast.error is not a function` nei test form (skill-form ecc.) preesistenti. La guida `tags` dice che un tag associato non si elimina, ma i tag non hanno piu' associazioni.
 
 ## Sotto-task senza assegnatari: li vede e li completa chi ha il task padre (spec 0383) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 
@@ -18,6 +22,21 @@
 - Test: `tests/Feature/Tasks/TaskInheritedAssigneeTest.php` (6), suite `tests/Feature/Tasks` 700/700 + 251 test di altre aree che toccano i task. Pint, ESLint, `tsc -b --force` puliti; guida `tasks` IT/EN (people-and-roles) + manuale Claude Docs aggiornati.
 - Prestazioni (DB locale): utente tipico +5-25 ms; l'utente con 10.490 assegnazioni +~0,5 s (MySQL scorre l'indice `parent_task_id`, stima falsata dai NULL). Da tenere d'occhio.
 - Fuori scope, segnalato: spiegazione "sotto-task aperti" sul cerchio sbiadito dell'ELENCO (il dettaglio la mostra gia', `task-actions-bar.tsx:187`; servirebbe `open_subtasks_count` nella riga griglia).
+
+## Pannello "Colonne" di AG Grid non si chiude piu' a ogni spunta (2026-11-10) — VERDE MIRATO, COMMITTATO
+
+- Causa: spuntare una colonna salva il layout; `useSaveTablePreferences` fa `setQueryData` con la config restituita -> nuovo array `config.columns` -> `gridOptions` (dipende da `columns`) si ricalcolava e creava un nuovo oggetto `sideBar`. AG Grid (`AgSideBar.setState`, listener sulla prop `sideBar`) ricostruisce la barra a ogni cambio di riferimento e riapre `defaultToolPanel` (undefined) = pannello chiuso.
+- Fix: `data-table.tsx` memorizza `sideBar` a parte, solo su `rowGrouping?.enabled`. Non rimettere `buildSideBar(...)` inline dentro `gridOptions`.
+- Test: `column-state-persistence.test.tsx` nuovo caso "keeps the columns tool panel open when the saved config comes back" (rosso prima del fix). Vitest `components/data-table` + `features/table` 585/585, ESLint, `tsc -b --force` puliti.
+- Manuale: nessun impatto (il pannello ora si comporta come gia' descritto).
+
+## "Offerta unica per opportunita'" ignora le categorie storiche (task 427485, 2026-11-10) — VERDE MIRATO, COMMITTATO
+
+- Caso: anagrafica 9312, opportunita' importate tutte su categorie `[OLD]` con `single_quote_per_opportunity` = 1 (ereditato come default: 177 storiche su 189 in dev). La regola "opportunita' gia' aperta" le ignorava gia' (4e9d6f1f, 2026-11-07; in dev 9312 non blocca), ma "offerta unica" no: nessuna nuova offerta possibile.
+- Decisione utente: le categorie storiche non contano nemmeno per l'offerta unica. `OpportunityQuoteLimit::isSingleQuoteBranch()` filtra `is_legacy = false`: vale per la validazione (`ValidatesSingleQuotePerOpportunity`), per `single_quote_per_opportunity` di `OpportunityResource` (bottone "Crea Offerta") e per `QuoteManagerSyncMode`. Una categoria attuale con il flag limita ancora anche se l'opportunita' copre pure una storica. Il flag sulle categorie storiche NON e' stato toccato.
+- Test: `QuoteSingleQuotePerOpportunityTest` 8/8 (2 nuovi + caso legacy nel GET). Pest mirato Quotes/Opportunities/ProductCategories/Unit Quotes: 1163 verdi, rossi estranei: 3 LibreOffice (soffice assente) e `OpportunityRelationDeleteGuardTest` AC-008 (409 dal lavoro in corso non committato `InUseGuard` in `OperationalSiteService`). Verifica dati dev: opp 2414/7582/30378 ora accettano un'altra offerta. Help vitest 161/161, ESLint, `tsc -b --force` puliti.
+- Manuale: guide `product-categories` IT+EN (riga "Offerta unica per opportunita'" nelle regole) e manuale Claude Docs, stessa riga.
+- Da verificare in produzione: che 4e9d6f1f sia deployato (la task dice anche che la nuova opportunita' era bloccata).
 
 ## Gestione Richieste/Iscritti: una colonna per posizione dei Gestori account (spec 0382, 2026-11-10) — prima parte COMMITTATA (8c807745), D-11 VERDE MIRATO NON COMMITTATO, NON PROVATO NEL BROWSER
 
@@ -31,14 +50,6 @@
 - Test: `RequestManagerPositionColumnsTest` (AC-001..009), nuovo FE `use-table-cell-edit-tab.test.tsx`; REQUIREMENT CHANGED in `RequestManagementManagerGa1ColumnTest`, `RequestManagementOperatorLabelColumnTest` (posizioni senza etichetta senza colonna).
 - Verifica D-11: Pest RequestManagement 965/967 (rossi: `AllColumnsSortFilterTest` "managers is not sortable", gia' rosso su HEAD; `ReportJobTrapsTest` flaky in parallelo, da solo 4/4), EnrolleeManagement 92/92, Table 303/304 (`TableBulkDeleteTest` noto). Vitest table+data-table+request-management+help+i18n 1514/1514 piu' 2 nuovi, ESLint, Pint, `tsc -b --force` puliti. Suite complete non eseguite.
 - Guide IT/EN `request-management` e manuale Claude Docs aggiornati. DA FARE: rigenerare il PDF; prova nel browser; numero spec 0382 in conflitto con `0382-configuration-delete-in-use-guard.xml` di un'altra sessione.
-
-## "Offerta unica per opportunita'" ignora le categorie storiche (task 427485, 2026-11-10) — VERDE MIRATO, COMMITTATO
-
-- Caso: anagrafica 9312, opportunita' importate tutte su categorie `[OLD]` con `single_quote_per_opportunity` = 1 (ereditato come default: 177 storiche su 189 in dev). La regola "opportunita' gia' aperta" le ignorava gia' (4e9d6f1f, 2026-11-07; in dev 9312 non blocca), ma "offerta unica" no: nessuna nuova offerta possibile.
-- Decisione utente: le categorie storiche non contano nemmeno per l'offerta unica. `OpportunityQuoteLimit::isSingleQuoteBranch()` filtra `is_legacy = false`: vale per la validazione (`ValidatesSingleQuotePerOpportunity`), per `single_quote_per_opportunity` di `OpportunityResource` (bottone "Crea Offerta") e per `QuoteManagerSyncMode`. Una categoria attuale con il flag limita ancora anche se l'opportunita' copre pure una storica. Il flag sulle categorie storiche NON e' stato toccato.
-- Test: `QuoteSingleQuotePerOpportunityTest` 8/8 (2 nuovi + caso legacy nel GET). Pest mirato Quotes/Opportunities/ProductCategories/Unit Quotes: 1163 verdi, rossi estranei: 3 LibreOffice (soffice assente) e `OpportunityRelationDeleteGuardTest` AC-008 (409 dal lavoro in corso non committato `InUseGuard` in `OperationalSiteService`). Verifica dati dev: opp 2414/7582/30378 ora accettano un'altra offerta. Help vitest 161/161, ESLint, `tsc -b --force` puliti.
-- Manuale: guide `product-categories` IT+EN (riga "Offerta unica per opportunita'" nelle regole) e manuale Claude Docs, stessa riga.
-- Da verificare in produzione: che 4e9d6f1f sia deployato (la task dice anche che la nuova opportunita' era bloccata).
 
 ## Email di notifica: bottone del modulo, scheda dettagli, una sola grafica (spec 0381, 2026-11-10) — VERDE, NON COMMITTATO
 

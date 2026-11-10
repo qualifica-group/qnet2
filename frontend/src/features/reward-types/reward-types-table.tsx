@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -12,7 +11,6 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { ApiErrorResponse } from '@/api/types'
 import { rewardTypeColumnRenderers } from '@/features/reward-types/column-renderers'
 import { deleteRewardType } from '@/features/reward-types/api'
 
@@ -52,21 +50,7 @@ export function RewardTypesTable() {
         toast.success(t('rewardTypes.form.deleted'))
         refreshGrid()
       } catch (error) {
-        if (!axios.isAxiosError<ApiErrorResponse>(error)) {
-          toast.error(t('rewardTypes.form.deleteError'))
-          return
-        }
-        const status = error.response?.status
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden) {
-          toast.error(forbidden)
-        } else if (status === 409) {
-          // BR-3: no delete-guard exists yet, but the branch is prewired so a
-          // future FK reference degrades to a toast, not a silent failure.
-          toast.error(error.response?.data?.message ?? t('rewardTypes.form.deleteInUseFallback'))
-        } else {
-          toast.error(t('rewardTypes.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('rewardTypes.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

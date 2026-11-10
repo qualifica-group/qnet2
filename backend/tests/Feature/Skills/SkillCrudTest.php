@@ -63,13 +63,14 @@ it('0286 AC-002: validation rejects a duplicated name, a level out of 1..4 and a
         ->assertStatus(422)->assertJsonValidationErrors('job_roles.0.min_level');
 });
 
-it('0286 AC-002: deleting an assigned skill is 422 with the translated message, a free one 204', function () {
+it('0286 AC-002: deleting an assigned skill is 409 with the in-use message, a free one 204', function () {
     Sanctum::actingAs(hrCatalogUserWith('skills', ['delete']));
     $used = Skill::factory()->create();
     UserSkill::factory()->create(['skill_id' => $used->id]);
     $free = Skill::factory()->create();
 
-    $this->deleteJson("/api/skills/{$used->id}")->assertStatus(422)->assertJsonPath('message', __('skills.in_use'));
+    // REQUIREMENT CHANGED (spec 0384): 422 becomes 409 and the message lists the uses via the shared in-use guard.
+    $this->deleteJson("/api/skills/{$used->id}")->assertStatus(409)->assertJsonPath('success', false);
     $this->deleteJson("/api/skills/{$free->id}")->assertNoContent();
 
     expect(Skill::find($used->id))->not->toBeNull()->and(Skill::find($free->id))->toBeNull();

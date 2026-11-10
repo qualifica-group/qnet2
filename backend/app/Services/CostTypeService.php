@@ -7,6 +7,7 @@ use App\DataObjects\CostTypes\UpdateCostTypeData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\CostType;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -21,7 +22,10 @@ class CostTypeService
     /** Relation path the placement (account > group) of a for-select item reads. */
     public const string PLACEMENT_RELATION = 'chartAccount.parent';
 
-    public function __construct(private readonly LookupOrderManager $orderManager) {}
+    public function __construct(
+        private readonly LookupOrderManager $orderManager,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(CreateCostTypeData $data): CostType
     {
@@ -59,12 +63,7 @@ class CostTypeService
      */
     public function delete(CostType $costType): void
     {
-        if ($costType->purchaseOrderLines()->exists()
-            || $costType->purchaseInvoices()->exists()
-            || $costType->products()->exists()
-            || $costType->workOrderCosts()->exists()) {
-            abort(409, __('cost_types.in_use'));
-        }
+        $this->inUseGuard->assertUnused($costType);
 
         $costType->delete();
     }

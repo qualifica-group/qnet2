@@ -155,14 +155,15 @@ describe('JobActivitiesTable - delete', () => {
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('server message'))
   })
 
-  it('shows a distinct "in use" toast on a 409', async () => {
+  // REQUIREMENT CHANGED (spec 0384): the 409 toast is the server message, not a fixed sentence.
+  it('shows the server message on a 409', async () => {
     deleteJobActivityMock.mockRejectedValue(axiosError(409))
 
     renderWith(<JobActivitiesTable />)
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('Cannot delete: the activity is linked to a job role.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('server message'),
     )
   })
 

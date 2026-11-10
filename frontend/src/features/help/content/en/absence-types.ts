@@ -42,7 +42,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'A type already used by a request cannot be deleted: deactivate it. Deactivated types cannot be chosen in new requests; existing ones stay as they were.',
+          text: 'A type already used by a request, by an allowance set for a person or by a company closure cannot be deleted: deactivate it. Deactivated types cannot be chosen in new requests; existing ones stay as they were.',
         },
       ],
     },

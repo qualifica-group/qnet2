@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Solo i modelli **Attivi** compaiono nel selettore del composer; un modello disattivato resta comunque modificabile ed eliminabile da qui.',
+          text: 'Solo i modelli **Attivi** compaiono nel selettore del composer; un modello disattivato resta comunque modificabile da qui. Un modello usato da almeno un’email inviata non si può eliminare, anche se l’email conserva il proprio testo: disattivalo.',
         },
       ],
     },

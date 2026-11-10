@@ -137,9 +137,8 @@ describe('TaskStatusesTable — mount', () => {
 
 describe('TaskStatusesTable — delete', () => {
   it("surfaces the backend's own message on a 409 (row used by a task, D-8b)", async () => {
-    // Deliberately NOT the wording of `taskStatuses.form.deleteInUse`: that static
-    // fallback says "used by a task", so a fixture identical to it would pass
-    // whether the code surfaced the server's message or silently fell back.
+    // REQUIREMENT CHANGED (spec 0384): no static in-use sentence exists any more;
+    // the server message, which names what uses the row, is what the toast shows.
     const message = 'This task status is used by 3 tasks and cannot be deleted.'
     deleteTaskStatusMock.mockRejectedValue(
       new AxiosError('Conflict', '409', undefined, undefined, {

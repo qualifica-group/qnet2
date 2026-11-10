@@ -256,7 +256,6 @@ export const productCategories = {
     deleted: 'Categoria eliminata con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare la categoria. Riprova.',
-    deleteInUse: 'Questa categoria ha sottocategorie o prodotti.',
     sections: {
       identity: {
         title: 'Dettagli',

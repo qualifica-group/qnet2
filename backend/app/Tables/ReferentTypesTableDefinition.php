@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\Models\ReferentType;
 use App\Models\User;
+use App\Services\ReferentTypeService;
 use App\Tables\ReferentTypes\ReferentTypeColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class ReferentTypesTableDefinition extends AbstractTableDefinition
 {
+    public function __construct(private readonly ReferentTypeService $service) {}
+
     public function domain(): string
     {
         return 'referent-types';
@@ -123,5 +126,15 @@ class ReferentTypesTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
+    }
+
+    /**
+     * Delegate to ReferentTypeService::delete() so the generic bulk-delete endpoint
+     * respects the SAME in-use guard as the single DELETE (spec 0384).
+     */
+    public function deleteModel(Model $model): void
+    {
+        /** @var ReferentType $model */
+        $this->service->delete($model);
     }
 }

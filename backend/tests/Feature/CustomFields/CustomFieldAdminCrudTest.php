@@ -296,7 +296,8 @@ it('update: is_indexed already true does NOT re-dispatch on an unrelated change'
 // delete — DELETE /api/custom-fields/{customField}
 // ---------------------------------------------------------------------------
 
-it('delete: 204 and purges recorded values for that key only', function () {
+// REQUIREMENT CHANGED (spec 0384 D-6, supersedes the purge of spec 0021): a field with recorded values is refused (409) and its values stay.
+it('delete: 409 when a record holds a value for that key, the values stay', function () {
     $actor = customFieldUserWith(['delete']);
     $definition = CustomFieldDefinition::factory()->forEntity('companies')->create(['key' => 'notes']);
     CustomFieldValue::factory()->create([
@@ -304,11 +305,22 @@ it('delete: 204 and purges recorded values for that key only', function () {
     ]);
     Sanctum::actingAs($actor);
 
+    $this->deleteJson("/api/custom-fields/{$definition->id}")->assertStatus(409)->assertJsonPath('success', false);
+
+    $this->assertDatabaseHas('custom_field_definitions', ['id' => $definition->id]);
+    $row = CustomFieldValue::where('entity_type', 'companies')->where('entity_id', 1)->first();
+    expect($row->values)->toBe(['notes' => 'hello', 'other' => 'kept']);
+});
+
+it('delete: 204 when no record holds a value for that key', function () {
+    $actor = customFieldUserWith(['delete']);
+    $definition = CustomFieldDefinition::factory()->forEntity('companies')->create(['key' => 'notes']);
+    CustomFieldValue::factory()->create(['entity_type' => 'companies', 'entity_id' => 1, 'values' => ['other' => 'kept']]);
+    Sanctum::actingAs($actor);
+
     $this->deleteJson("/api/custom-fields/{$definition->id}")->assertNoContent();
 
     $this->assertDatabaseMissing('custom_field_definitions', ['id' => $definition->id]);
-    $row = CustomFieldValue::where('entity_type', 'companies')->where('entity_id', 1)->first();
-    expect($row->values)->toBe(['other' => 'kept']);
 });
 
 it('delete: 403 without custom-fields.delete', function () {

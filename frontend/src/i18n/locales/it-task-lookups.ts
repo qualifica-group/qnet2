@@ -84,7 +84,6 @@ function lookupBundle({ singular, Singular, plural }: LookupCopy) {
       // Solo FALLBACK: sul 409 il modulo mostra verbatim il messaggio del
       // backend, che nomina la risorsa. Questa si vede solo se il body non ne
       // porta uno.
-      deleteInUse: `Questa ${singular} è usata da un task e non può essere eliminata.`,
       leaveConfirm: {
         title: 'Uscire senza salvare?',
         description: `La ${singular} non è ancora stata creata: i dati inseriti andranno persi.`,
@@ -186,7 +185,6 @@ export const taskCategories = {
     // Spec 0154 D-1: il 409 ora ha DUE cause (usata da un task, o ha
     // sotto-categorie) — `runDelete` mostra sempre il messaggio del backend;
     // questo è il fallback generico solo per il caso (raro) in cui manchi.
-    deleteInUse: 'Questa categoria non può essere eliminata: verifica che non sia usata da un task o abbia sotto-categorie.',
   },
 }
 
@@ -272,7 +270,6 @@ export const taskStatuses = {
     iconInvalid: "Scegli un'icona dal catalogo.",
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare lo stato task. Riprova.',
-    deleteInUse: 'Questo stato task è usato da un task e non può essere eliminato.',
     completionPercentage: 'Percentuale di completamento',
     completionPercentageRequired: 'La percentuale di completamento è obbligatoria.',
     completionPercentageInvalid: 'La percentuale deve essere un numero intero.',

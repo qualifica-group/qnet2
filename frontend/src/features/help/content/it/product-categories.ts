@@ -393,7 +393,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Elimina funziona solo se la categoria non ha sottocategorie, prodotti o opportunità collegate; altrimenti compare "Questa categoria ha sottocategorie o prodotti." Sposta prima sottocategorie e prodotti. Per nasconderla soltanto, spegni Selezionabile.',
+          text: 'Elimina funziona solo se la categoria non è usata: niente sottocategorie, prodotti, righe prodotto di opportunità, progetti o campagne, ambiti di assegnazione degli utenti, configurazioni provvigionali o categorie [OLD] che la indicano come Categoria attuale. Altrimenti il messaggio dice da cosa è usata. Sposta prima sottocategorie e prodotti. Per nasconderla soltanto, spegni Selezionabile.',
         },
       ],
     },
@@ -429,7 +429,7 @@ const guide: HelpGuide = {
           headers: ['Messaggio', 'Causa', 'Cosa fare'],
           rows: [
             ['"Il nome è obbligatorio."', 'Nome vuoto.', 'Scrivi il nome.'],
-            ['"Questa categoria ha sottocategorie o prodotti."', 'Eliminazione di una categoria in uso.', 'Sposta sottocategorie e prodotti, oppure spegni Attiva.'],
+            ['"Impossibile eliminare: è ancora usato da …"', 'Eliminazione di una categoria in uso: il messaggio elenca gli usi.', 'Sposta sottocategorie e prodotti e togli gli altri collegamenti, oppure spegni Attiva.'],
             ['"La destinazione è una delle categorie selezionate…"', 'Destinazione uguale a una categoria da spostare.', "Scegli un'altra destinazione."],
             ['"La selezione contiene categorie annidate…"', 'Hai selezionato un padre e un suo figlio.', 'Deseleziona il figlio: segue il padre.'],
             ['"La destinazione si trova dentro una delle categorie selezionate…"', 'Sposteresti una categoria sotto una sua discendente.', 'Scegli una destinazione fuori dal ramo.'],

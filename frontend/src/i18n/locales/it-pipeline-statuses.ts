@@ -56,7 +56,6 @@ export const pipelineStatuses = {
     colorMax: 'Il colore può contenere al massimo 32 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare lo stato progetto. Riprova.',
-    deleteInUseFallback: 'Questo stato è usato da un progetto o una campagna e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',

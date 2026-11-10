@@ -274,11 +274,12 @@ describe('RewardTypesTable — delete outcome toasts (AC-019)', () => {
     )
   })
 
-  it('shows the in-use fallback toast on a 409 (BR-3, prewired branch)', async () => {
+    // REQUIREMENT CHANGED (spec 0384): the 409 toast is the server message, not a fixed sentence.
+  it('shows the server message on a 409', async () => {
     deleteRewardTypeMock.mockRejectedValue(
       new AxiosError('Conflict', '409', undefined, undefined, {
         status: 409,
-        data: { success: false },
+        data: { success: false, message: 'Cannot delete: used by 2 rewards.' },
       } as never),
     )
 
@@ -286,7 +287,7 @@ describe('RewardTypesTable — delete outcome toasts (AC-019)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('This reward type is in use and cannot be deleted.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('Cannot delete: used by 2 rewards.'),
     )
   })
 

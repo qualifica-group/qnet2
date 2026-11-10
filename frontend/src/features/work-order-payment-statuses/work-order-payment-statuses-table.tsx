@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -11,11 +10,10 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { ApiErrorResponse } from '@/api/types'
 import { workOrderPaymentStatusColumnRenderers } from '@/features/work-order-payment-statuses/column-renderers'
 import { deleteWorkOrderPaymentStatus } from '@/features/work-order-payment-statuses/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for work order payment statuses. */
 const WORK_ORDER_PAYMENT_STATUSES_DOMAIN = 'work-order-payment-statuses'
@@ -55,23 +53,7 @@ export function WorkOrderPaymentStatusesTable() {
         toast.success(t('workOrderPaymentStatuses.form.deleted'))
         refreshGrid()
       } catch (error) {
-        if (!axios.isAxiosError<ApiErrorResponse>(error)) {
-          toast.error(t('workOrderPaymentStatuses.form.deleteError'))
-          return
-        }
-        const status = error.response?.status
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden !== null) {
-          toast.error(forbidden)
-        } else if (status === 409) {
-          // BR-4: the status is still referenced by a work order line. Surface the
-          // backend's own message rather than a generic one.
-          toast.error(
-            error.response?.data?.message ?? t('workOrderPaymentStatuses.form.deleteInUseFallback'),
-          )
-        } else {
-          toast.error(t('workOrderPaymentStatuses.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('workOrderPaymentStatuses.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

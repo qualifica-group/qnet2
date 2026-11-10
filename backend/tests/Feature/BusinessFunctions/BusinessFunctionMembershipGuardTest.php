@@ -62,14 +62,12 @@ it('0275 AC-012: removal passes for a member with another function, an inactive 
     expect($function->users()->count())->toBe(0);
 });
 
-it('0275 AC-013: deleting a function with an active member lacking other functions is a 409; otherwise 204', function () {
+// REQUIREMENT CHANGED (spec 0384): any member (even one covered by another function) now blocks the delete; a function without members is deleted.
+it('0275 AC-013: deleting a function with a member is a 409; one without members is 204', function () {
     $blocked = BusinessFunction::factory()->create();
     $stranded = User::factory()->create(['name' => 'Stranded Person']);
     $blocked->users()->sync([$stranded->id]);
     $free = BusinessFunction::factory()->create();
-    $covered = User::factory()->create();
-    $free->users()->sync([$covered->id]);
-    BusinessFunction::factory()->create()->users()->sync([$covered->id]);
     Sanctum::actingAs(businessFunctionUserWith(['delete']));
 
     $this->deleteJson("/api/business-functions/{$blocked->id}")->assertStatus(409);

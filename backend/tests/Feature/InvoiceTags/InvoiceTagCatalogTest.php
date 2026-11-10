@@ -87,7 +87,8 @@ it('AC-007: deletes an unused tag and answers 409 for a tag an invoice carries',
     Invoice::factory()->create(['invoice_tag_id' => $used->id]);
 
     $this->deleteJson("/api/invoice-tags/{$unused->id}")->assertNoContent();
-    $this->deleteJson("/api/invoice-tags/{$used->id}")->assertStatus(409)->assertJsonPath('message', __('invoice_tags.in_use'));
+    // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+    $this->deleteJson("/api/invoice-tags/{$used->id}")->assertStatus(409)->assertJsonPath('success', false);
 
     expect(InvoiceTag::query()->whereKey($unused->id)->exists())->toBeFalse()
         ->and(InvoiceTag::query()->whereKey($used->id)->exists())->toBeTrue();

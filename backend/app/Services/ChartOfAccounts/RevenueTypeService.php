@@ -3,14 +3,17 @@
 namespace App\Services\ChartOfAccounts;
 
 use App\Models\RevenueType;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Writes for the revenue sub-accounts (spec 0348). Deletable while no invoice line,
- * product or category references them (spec 0350).
+ * Writes for the revenue sub-accounts (spec 0348). Deletable while nothing uses them
+ * (spec 0350, spec 0384).
  */
 class RevenueTypeService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     /**
      * @param  array<string, mixed>  $attributes  validated payload
      */
@@ -40,20 +43,8 @@ class RevenueTypeService
 
     public function delete(RevenueType $revenueType): void
     {
-        if ($this->isReferenced($revenueType)) {
-            abort(409, __('chart_accounts.revenue_type_in_use'));
-        }
+        $this->inUseGuard->assertUnused($revenueType);
 
         $revenueType->delete();
-    }
-
-    /**
-     * Invoice lines, products and categories reference the sub-account (spec 0350).
-     */
-    private function isReferenced(RevenueType $revenueType): bool
-    {
-        return DB::table('invoice_lines')->where('revenue_type_id', $revenueType->id)->exists()
-            || DB::table('products')->where('revenue_type_id', $revenueType->id)->exists()
-            || DB::table('product_categories')->where('revenue_type_id', $revenueType->id)->exists();
     }
 }

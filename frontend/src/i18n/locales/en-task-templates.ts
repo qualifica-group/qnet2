@@ -48,7 +48,6 @@ export const taskTemplates = {
     nameMax: 'Name may contain at most 191 characters.',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the task template. Please retry.',
-    deleteInUse: 'This task template was used to generate Commesse and cannot be deleted. Deactivate it instead.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The task template has not been created yet: what you entered will be lost.',

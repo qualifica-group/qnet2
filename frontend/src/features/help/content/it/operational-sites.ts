@@ -54,6 +54,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'Per una sede che non usi più, spegni Sede attiva (matita sulla riga) invece di eliminarla.',
         },
+        {
+          type: 'note',
+          text: 'Una sede usata da qualche record (lead, opportunità, offerte, progetti, campagne, RDA, ODA, fatture passive, magazzino, persone, funzioni aziendali o chiusure aziendali) non si può eliminare: il messaggio dice da cosa è usata.',
+        },
       ],
     },
   ],

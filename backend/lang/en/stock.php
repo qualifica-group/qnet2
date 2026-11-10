@@ -11,6 +11,5 @@ return [
     'filter_required' => 'Pass at least one filter: product, user or site.',
     'product_has_stock' => 'The product has stock: it cannot stop being a tracked physical good.',
     'product_has_movements' => 'The product has stock movements and cannot be deleted.',
-    'site_has_movements' => 'The site has stock movements and cannot be deleted.',
     'user_has_movements' => 'The user has stock movements and cannot be deleted.',
 ];

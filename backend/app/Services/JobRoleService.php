@@ -6,6 +6,7 @@ use App\DataObjects\JobRoles\JobRoleData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\JobRole;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Shared\NamedCatalogForSelect;
 use Illuminate\Support\Facades\DB;
 
@@ -14,7 +15,10 @@ use Illuminate\Support\Facades\DB;
  */
 class JobRoleService
 {
-    public function __construct(private readonly NamedCatalogForSelect $forSelect) {}
+    public function __construct(
+        private readonly NamedCatalogForSelect $forSelect,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(JobRoleData $data): JobRole
     {
@@ -42,9 +46,7 @@ class JobRoleService
      */
     public function delete(JobRole $jobRole): void
     {
-        if ($jobRole->employmentProfiles()->exists()) {
-            abort(409, __('job_roles.in_use'));
-        }
+        $this->inUseGuard->assertUnused($jobRole);
 
         $jobRole->delete();
     }

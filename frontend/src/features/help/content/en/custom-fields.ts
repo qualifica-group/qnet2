@@ -102,8 +102,8 @@ const guide: HelpGuide = {
       id: 'edit-deactivate-delete',
       title: 'Editing, deactivating and deleting',
       blocks: [
-        { type: 'list', items: ['**Edit:** open the record with **View** and edit the rows in place (see the previous section).', '**Deactivate:** turn off **Active**. The field disappears everywhere, but the values already entered remain.', '**Delete:** choose **Delete** and confirm.'] },
-        { type: 'warning', text: "Once a field already holds values, you can no longer change its **Module**, **Type** and **Key**. Deleting a field also deletes all its values: when in doubt, deactivate it instead." },
+        { type: 'list', items: ['**Edit:** open the record with **View** and edit the rows in place (see the previous section).', '**Deactivate:** turn off **Active**. The field disappears everywhere, but the values already entered remain.', '**Delete:** choose **Delete** and confirm. Only a field with no recorded values can be deleted.'] },
+        { type: 'warning', text: "Once a field already holds values, you can no longer change its **Module**, **Type** and **Key**, nor delete it: the message says how many records have a value. If you no longer need it, deactivate it: the values remain." },
       ],
     },
   ],

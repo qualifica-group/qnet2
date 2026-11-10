@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\DataObjects\SupportTopics\SupportTopicData;
 use App\Models\SupportTopic;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
  */
 class SupportTopicService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(SupportTopicData $data): SupportTopic
     {
         return DB::transaction(function () use ($data): SupportTopic {
@@ -40,6 +43,8 @@ class SupportTopicService
 
     public function delete(SupportTopic $topic): void
     {
+        $this->inUseGuard->assertUnused($topic);
+
         $topic->delete();
     }
 

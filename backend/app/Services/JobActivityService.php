@@ -6,6 +6,7 @@ use App\DataObjects\JobActivities\JobActivityData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\JobActivity;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Shared\NamedCatalogForSelect;
 
 /**
@@ -14,7 +15,10 @@ use App\Services\Shared\NamedCatalogForSelect;
  */
 class JobActivityService
 {
-    public function __construct(private readonly NamedCatalogForSelect $forSelect) {}
+    public function __construct(
+        private readonly NamedCatalogForSelect $forSelect,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(JobActivityData $data): JobActivity
     {
@@ -34,9 +38,7 @@ class JobActivityService
      */
     public function delete(JobActivity $jobActivity): void
     {
-        if ($jobActivity->jobRoles()->exists()) {
-            abort(409, __('job_activities.in_use'));
-        }
+        $this->inUseGuard->assertUnused($jobActivity);
 
         $jobActivity->delete();
     }

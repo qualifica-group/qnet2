@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -13,7 +12,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { taskTemplateColumnRenderers } from '@/features/task-templates/column-renderers'
 import { deleteTaskTemplate } from '@/features/task-templates/api'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for task templates. */
 const TASK_TEMPLATES_DOMAIN = 'task-templates'
@@ -50,16 +49,7 @@ export function TaskTemplatesTable() {
         toast.success(t('taskTemplates.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const serverMessage = axios.isAxiosError(error) ? error.response?.data?.message : undefined
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden !== null) {
-          toast.error(forbidden)
-        } else if (status === 409) {
-          toast.error(serverMessage ?? t('taskTemplates.form.deleteInUse'))
-        } else {
-          toast.error(t('taskTemplates.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('taskTemplates.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

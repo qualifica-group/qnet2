@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -11,10 +10,9 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { ApiErrorResponse } from '@/api/types'
 import { supportTopicColumnRenderers } from '@/features/support-topics/column-renderers'
 import { deleteSupportTopic } from '@/features/support-topics/api'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for support topics. */
 const SUPPORT_TOPICS_DOMAIN = 'support-topics'
@@ -41,8 +39,7 @@ export function SupportTopicsTable() {
         toast.success(t('supportTopics.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const forbidden = axios.isAxiosError<ApiErrorResponse>(error) ? forbiddenMessage(error, i18n) : null
-        toast.error(forbidden ?? t('supportTopics.form.deleteError'))
+        toast.error(refusedActionMessage(error, t('supportTopics.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

@@ -17,7 +17,8 @@ it('AC-001: a cost type used by a purchase invoice cannot be deleted', function 
 
     $this->deleteJson("/api/cost-types/{$costType->id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', __('cost_types.in_use'));
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('success', false);
 
     expect($invoice->fresh()->cost_type_id)->toBe($costType->id);
 });
@@ -28,7 +29,8 @@ it('AC-002: a cost type used by a purchase order line cannot be deleted', functi
 
     $this->deleteJson("/api/cost-types/{$line->cost_type_id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', __('cost_types.in_use'));
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('success', false);
 });
 
 it('AC-006: a cost type used by a product or a commessa cost cannot be deleted', function () {
@@ -41,7 +43,8 @@ it('AC-006: a cost type used by a product or a commessa cost cannot be deleted',
     foreach ([$byProduct, $byCost] as $costType) {
         $this->deleteJson("/api/cost-types/{$costType->id}")
             ->assertStatus(409)
-            ->assertJsonPath('message', __('cost_types.in_use'));
+            // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+            ->assertJsonPath('success', false);
     }
 
     $rows = collect($this->postJson('/api/tables/cost-types/rows', ['startRow' => 0, 'endRow' => 50])

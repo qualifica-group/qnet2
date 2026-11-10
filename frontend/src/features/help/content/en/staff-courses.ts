@@ -49,7 +49,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'A course with recorded trainings cannot be deleted: deactivate it. Deactivated courses cannot be chosen in new records; trainings already done stay as they were.',
+          text: 'A course with recorded trainings or required by a job role cannot be deleted: deactivate it. Deactivated courses cannot be chosen in new records; trainings already done stay as they were.',
         },
       ],
     },

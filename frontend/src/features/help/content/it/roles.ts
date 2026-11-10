@@ -81,7 +81,7 @@ const guide: HelpGuide = {
       id: 'delete-role',
       title: 'Eliminare un ruolo',
       blocks: [
-        { type: 'paragraph', text: 'Scegli **Elimina** sulla riga del ruolo e conferma. Gli utenti che lo avevano perdono i permessi che ne derivavano.' },
+        { type: 'paragraph', text: 'Scegli **Elimina** sulla riga del ruolo e conferma. Un ruolo assegnato ad almeno un utente non si può eliminare: il messaggio dice a quanti utenti è assegnato. Toglilo prima a quegli utenti.' },
       ],
     },
     {

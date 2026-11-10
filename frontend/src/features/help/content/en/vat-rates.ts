@@ -52,6 +52,10 @@ const guide: HelpGuide = {
             'Any custom fields appear as separate rows and are edited the same way.',
           ],
         },
+        {
+          type: 'note',
+          text: 'A rate used by products, offer lines, RDA or ODA lines, invoices, purchase invoices, work order costs or agent fiscal profiles cannot be deleted: the message says what uses it.',
+        },
       ],
     },
   ],

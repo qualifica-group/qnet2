@@ -9,6 +9,7 @@ use App\DataObjects\EmailTemplates\UpdateEmailTemplateData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\EmailTemplate;
+use App\Services\Deletion\InUseGuard;
 use App\Services\OutboundEmails\EmailHtmlSanitizer;
 use Illuminate\Support\Collection;
 
@@ -25,7 +26,10 @@ class EmailTemplateService
     /** @var array<int, string> */
     private const array FOR_SELECT_COLUMNS = ['id', 'name', 'module', 'is_active'];
 
-    public function __construct(private readonly EmailHtmlSanitizer $sanitizer) {}
+    public function __construct(
+        private readonly EmailHtmlSanitizer $sanitizer,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(CreateEmailTemplateData $data): EmailTemplate
     {
@@ -55,6 +59,8 @@ class EmailTemplateService
 
     public function delete(EmailTemplate $emailTemplate): void
     {
+        $this->inUseGuard->assertUnused($emailTemplate);
+
         $emailTemplate->delete();
     }
 

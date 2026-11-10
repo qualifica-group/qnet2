@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Only **Active** templates show up in the composer picker; a deactivated template can still be edited and deleted from here.',
+          text: 'Only **Active** templates show up in the composer picker; a deactivated template can still be edited from here. A template used by at least one sent email cannot be deleted, even though the email keeps its own text: deactivate it.',
         },
       ],
     },

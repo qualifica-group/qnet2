@@ -1,17 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import type { ApiErrorResponse } from '@/api/types'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { deleteChartAccount, deleteRevenueType, deleteTreasuryType } from '@/features/chart-of-accounts/api'
 import { chartOfAccountsKeys } from '@/features/chart-of-accounts/query-keys'
 import type { TreeRow } from '@/features/chart-of-accounts/tree-model'
 import type { SubAccountSource } from '@/features/chart-of-accounts/types'
 import { deleteCostType } from '@/features/cost-types/api'
-import { apiErrorMessage } from '@/lib/forbidden-message'
-
-const HTTP_CONFLICT = 409
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 function subDeleteRequest(source: SubAccountSource, id: number): () => Promise<void> {
   if (source === 'revenue_type') return () => deleteRevenueType(id)
@@ -43,11 +39,7 @@ export function useDeleteEntry() {
       toast.success(t('chartOfAccounts.deleted'))
     },
     onError: (error) => {
-      if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.status === HTTP_CONFLICT) {
-        toast.error(error.response.data?.message ?? t('chartOfAccounts.deleteConflict'))
-        return
-      }
-      toast.error(apiErrorMessage(error, t('chartOfAccounts.deleteError'), i18n))
+      toast.error(refusedActionMessage(error, t('chartOfAccounts.deleteError'), i18n))
     },
   })
 

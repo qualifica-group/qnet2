@@ -184,15 +184,15 @@ describe('SectorsTable — adapter (AC-020)', () => {
     expect(toast.success).toHaveBeenCalledWith('Sector deleted successfully.')
   })
 
-  it('maps a 409 delete failure to the "has sub-sectors" message', async () => {
-    deleteSectorMock.mockRejectedValue(axiosErrorWithStatus(409))
+  // REQUIREMENT CHANGED (spec 0384, AC-010): a 409 shows the server message, not a fixed sentence.
+  it('shows the server message of a 409 delete failure', async () => {
+    const message = 'Cannot delete: it is still used by 3 invoices, 1 registry. Remove these links first.'
+    deleteSectorMock.mockRejectedValue(axiosErrorWithStatus(409, { success: false, message }))
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-delete'))
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('This sector has sub-sectors and cannot be deleted.'),
-    )
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message))
   })
 
   it('maps a 403 delete failure to the specific permission sentence', async () => {

@@ -42,7 +42,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Un tipo già usato da una richiesta non si può eliminare: disattivalo. I tipi disattivati non si scelgono nelle nuove richieste; quelle già fatte restano com’erano.',
+          text: 'Un tipo già usato da una richiesta, da una spettanza impostata a una persona o da una chiusura aziendale non si può eliminare: disattivalo. I tipi disattivati non si scelgono nelle nuove richieste; quelle già fatte restano com’erano.',
         },
       ],
     },

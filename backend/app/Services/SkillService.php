@@ -6,6 +6,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\Skills\SkillData;
 use App\Models\Skill;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
  */
 class SkillService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(SkillData $data): Skill
     {
         return DB::transaction(function () use ($data): Skill {
@@ -40,9 +43,7 @@ class SkillService
      */
     public function delete(Skill $skill): void
     {
-        if ($skill->userSkills()->exists()) {
-            abort(422, __('skills.in_use'));
-        }
+        $this->inUseGuard->assertUnused($skill);
 
         $skill->delete();
     }

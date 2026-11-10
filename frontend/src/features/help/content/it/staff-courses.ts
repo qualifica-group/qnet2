@@ -49,7 +49,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Un corso con formazioni registrate non si può eliminare: disattivalo. I corsi disattivati non si scelgono nelle nuove registrazioni; le formazioni già fatte restano com’erano.',
+          text: 'Un corso con formazioni registrate o richiesto da una mansione non si può eliminare: disattivalo. I corsi disattivati non si scelgono nelle nuove registrazioni; le formazioni già fatte restano com’erano.',
         },
       ],
     },

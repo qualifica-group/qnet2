@@ -15,7 +15,7 @@ import type {
 } from '@/features/table/types'
 import { roleColumnRenderers } from '@/features/roles/column-renderers'
 import { deleteRole } from '@/features/roles/api'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for roles. */
 const ROLES_DOMAIN = 'roles'
@@ -58,7 +58,7 @@ export function RolesTable() {
         toast.success(t('roles.form.deleted'))
         refreshGrid()
       } catch (error) {
-        toast.error(apiErrorMessage(error, t('roles.form.deleteError'), i18n))
+        toast.error(refusedActionMessage(error, t('roles.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

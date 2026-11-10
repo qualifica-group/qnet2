@@ -133,7 +133,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'The code and the field type cannot be changed after creation. An attribute assigned to a category or with values on products cannot be deleted.',
+          text: 'The code and the field type cannot be changed after creation. An attribute assigned to a category or with a value on a product, an offer or a work order cannot be deleted: the message says what uses it.',
         },
         {
           type: 'note',

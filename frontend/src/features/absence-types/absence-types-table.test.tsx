@@ -152,16 +152,15 @@ describe('AbsenceTypesTable - delete', () => {
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('server message'))
   })
 
-  it('shows a distinct "in use" message on a 409', async () => {
+  // REQUIREMENT CHANGED (spec 0384): the 409 toast is the server message, not a fixed sentence.
+  it('shows the server message on a 409', async () => {
     deleteMock.mockRejectedValue(axiosError(409))
 
     renderWith(<AbsenceTypesTable />)
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith(
-        'Cannot delete: the type is used by at least one request. Deactivate it instead.',
-      ),
+      expect(toastErrorMock).toHaveBeenCalledWith('server message'),
     )
   })
 

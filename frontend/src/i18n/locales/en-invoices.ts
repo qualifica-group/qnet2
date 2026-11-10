@@ -241,7 +241,6 @@ export const invoiceTags = {
     colorInvalid: 'Pick a color from the palette.',
     genericError: 'Something went wrong. Try again.',
     deleteError: 'Unable to delete the invoice tag. Try again.',
-    deleteInUse: 'This invoice tag is used by an invoice and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The invoice tag has not been created yet: the data you entered will be lost.',

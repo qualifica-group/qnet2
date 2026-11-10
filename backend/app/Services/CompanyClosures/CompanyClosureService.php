@@ -7,6 +7,7 @@ namespace App\Services\CompanyClosures;
 use App\Enums\CompanyClosureKind;
 use App\Models\CompanyClosure;
 use App\Models\User;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,7 +20,10 @@ final class CompanyClosureService
     /** Relations the CompanyClosureResource reads (lazy loading is forbidden). */
     public const array RELATIONS = ['absenceType:id,name', 'operationalSites.addresses.city'];
 
-    public function __construct(private readonly CollectiveLeaveGenerator $generator) {}
+    public function __construct(
+        private readonly CollectiveLeaveGenerator $generator,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $attributes  validated payload
@@ -55,6 +59,7 @@ final class CompanyClosureService
         DB::transaction(function () use ($closure): void {
             $closure = CompanyClosure::query()->lockForUpdate()->findOrFail($closure->id);
             $this->assertEditable($closure);
+            $this->inUseGuard->assertUnused($closure);
 
             $this->generator->purge($closure);
             $closure->operationalSites()->detach();

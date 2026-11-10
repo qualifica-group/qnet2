@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -13,9 +12,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteJobActivity } from '@/features/job-activities/api'
 import { JOB_ACTIVITIES_DOMAIN } from '@/features/job-activities/types'
-import { forbiddenMessage } from '@/lib/forbidden-message'
-
-const CONFLICT_STATUS = 409
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /**
  * Thin job-activities adapter over the generic table (domain `job-activities`). Open
@@ -42,15 +39,7 @@ export function JobActivitiesTable() {
         toast.success(t('jobActivities.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden !== null) {
-          toast.error(forbidden)
-        } else if (status === CONFLICT_STATUS) {
-          toast.error(t('jobActivities.form.deleteInUse'))
-        } else {
-          toast.error(t('jobActivities.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('jobActivities.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

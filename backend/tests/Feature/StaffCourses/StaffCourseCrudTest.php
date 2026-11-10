@@ -70,8 +70,9 @@ it('0284 AC-001: deleting a course with trainings is 422 with the translated mes
     $free = StaffCourse::factory()->create();
 
     $this->deleteJson("/api/staff-courses/{$used->id}")
-        ->assertStatus(422)
-        ->assertJsonPath('message', __('staff_courses.in_use'));
+        // REQUIREMENT CHANGED (spec 0384): 422 becomes 409 and the message lists the uses via the shared in-use guard.
+        ->assertStatus(409)
+        ->assertJsonPath('success', false);
     $this->deleteJson("/api/staff-courses/{$free->id}")->assertNoContent();
 
     expect(StaffCourse::find($used->id))->not->toBeNull()

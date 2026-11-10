@@ -53,7 +53,6 @@ export const unitsOfMeasure = {
     descriptionMax: 'Description must be at most 500 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the unit of measure. Please try again.',
-    deleteInUse: 'Cannot delete: the unit of measure is used by a product or a quote line.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The unit of measure has not been created yet: what you entered will be lost.',

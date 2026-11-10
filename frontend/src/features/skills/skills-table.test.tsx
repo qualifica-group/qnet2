@@ -56,8 +56,11 @@ function renderPage() {
   )
 }
 
-function rejection(status: number) {
-  return new AxiosError('error', String(status), undefined, undefined, { status, data: {} } as never)
+function rejection(status: number, message?: string) {
+  return new AxiosError('error', String(status), undefined, undefined, {
+    status,
+    data: message ? { success: false, message } : {},
+  } as never)
 }
 
 const label = (key: string) => i18n.t(key)
@@ -105,16 +108,18 @@ describe('SkillsPage', () => {
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith(label('skills.form.deleted')))
   })
 
-  it('tells to deactivate when the skill has people (422), distinct from 403 and generic', async () => {
+  // REQUIREMENT CHANGED (spec 0384): 409 shows the server message, not a fixed sentence.
+  it('shows the server message on a 409, distinct from 403 and generic', async () => {
+    const message = 'Impossibile eliminare: è ancora usato da 2 persone. Rimuovi prima questi collegamenti.'
     renderPage()
-    for (const [status, key] of [
-      [422, 'skills.form.deleteInUse'],
-      [403, 'common.forbidden'],
-      [500, 'skills.form.deleteError'],
+    for (const [error, expected] of [
+      [rejection(409, message), message],
+      [rejection(403), label('common.forbidden')],
+      [rejection(500), label('skills.form.deleteError')],
     ] as const) {
-      deleteMock.mockRejectedValueOnce(rejection(status))
+      deleteMock.mockRejectedValueOnce(error)
       fireEvent.click(screen.getByRole('button', { name: 'delete-row' }))
-      await waitFor(() => expect(toastErrorMock).toHaveBeenLastCalledWith(label(key)))
+      await waitFor(() => expect(toastErrorMock).toHaveBeenLastCalledWith(expected))
     }
   })
 })

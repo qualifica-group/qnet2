@@ -17,7 +17,6 @@ export const chartOfAccounts = {
   collapseAll: 'Comprimi tutto',
   rowActions: 'Azioni per {{label}}',
   deleted: 'Voce eliminata con successo.',
-  deleteConflict: 'Impossibile eliminare: la voce ha voci collegate. Disattivala o eliminale prima.',
   deleteError: 'Impossibile eliminare la voce. Riprova.',
   deleteConfirm: {
     title: 'Eliminare la voce?',

@@ -1,10 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { FolderTree, LayoutGrid, Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -117,15 +116,7 @@ export function ProductCategoriesTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden) {
-          toast.error(forbidden)
-        } else if (status === 409 || status === 422) {
-          toast.error(t('productCategories.form.deleteInUse'))
-        } else {
-          toast.error(t('productCategories.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('productCategories.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

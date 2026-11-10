@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -11,11 +10,10 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { ApiErrorResponse } from '@/api/types'
 import { taskPriorityColumnRenderers } from '@/features/task-priorities/column-renderers'
 import { deleteTaskPriority } from '@/features/task-priorities/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for task priorities. */
 const TASK_PRIORITIES_DOMAIN = 'task-priorities'
@@ -55,21 +53,7 @@ export function TaskPrioritiesTable() {
         toast.success(t('taskPriorities.form.deleted'))
         refreshGrid()
       } catch (error) {
-        if (!axios.isAxiosError<ApiErrorResponse>(error)) {
-          toast.error(t('taskPriorities.form.deleteError'))
-          return
-        }
-        const status = error.response?.status
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden !== null) {
-          toast.error(forbidden)
-        } else if (status === 409) {
-          // The row is still referenced by a Task. Surface the
-          // backend's own message rather than a generic one.
-          toast.error(error.response?.data?.message ?? t('taskPriorities.form.deleteInUse'))
-        } else {
-          toast.error(t('taskPriorities.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('taskPriorities.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

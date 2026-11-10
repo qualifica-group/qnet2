@@ -34,18 +34,6 @@ class BusinessFunctionMembershipGuard
     }
 
     /**
-     * Deleting $function must not strand a member (409, like the other delete constraints).
-     */
-    public function assertCanDelete(BusinessFunction $function): void
-    {
-        $names = $this->strandedNames($function, []);
-
-        if ($names !== []) {
-            abort(409, __('business_functions.delete_members_would_be_unassigned', ['names' => implode(self::NAMES_SEPARATOR, $names)]));
-        }
-    }
-
-    /**
      * Names of the active, non-service members of $function that are not in
      * $keptUserIds and belong to no other function.
      *

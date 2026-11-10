@@ -133,7 +133,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Codice e tipo di campo non si cambiano dopo la creazione. Un attributo assegnato a una categoria o con valori sui prodotti non si può eliminare.',
+          text: 'Codice e tipo di campo non si cambiano dopo la creazione. Un attributo assegnato a una categoria o con un valore su un prodotto, un’offerta o una commessa non si può eliminare: il messaggio dice da cosa è usato.',
         },
         {
           type: 'note',

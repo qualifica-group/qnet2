@@ -173,7 +173,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Deletion is restrictive: you cannot delete a group that has accounts, an account that has sub-accounts, or a cost type already used by orders, invoices or products. The reason appears in a message; deactivate the entry or delete the linked entries first.',
+          text: 'Deletion is restrictive: you cannot delete a group that has accounts, an account that has sub-accounts, or a cost or revenue sub-account already in use (for example by orders, invoices, products, product categories or treasury movements). The reason appears in a message, which for sub-accounts says what uses them; deactivate the entry or delete the linked entries first.',
         },
       ],
     },

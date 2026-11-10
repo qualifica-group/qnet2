@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Financial account (spec 0189): a bank account, a card or a cash box, in one
@@ -63,16 +62,6 @@ class FinancialAccount extends BaseModel
     public function linkedAccount(): BelongsTo
     {
         return $this->belongsTo(self::class, 'linked_account_id');
-    }
-
-    /**
-     * The cards associated with this bank account (the delete guard's set).
-     *
-     * @return HasMany<FinancialAccount, $this>
-     */
-    public function linkedCards(): HasMany
-    {
-        return $this->hasMany(self::class, 'linked_account_id');
     }
 
     /**

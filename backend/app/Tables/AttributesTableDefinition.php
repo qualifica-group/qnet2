@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\CustomFields\FieldTypeRegistry;
 use App\Models\Attribute;
 use App\Models\User;
+use App\Services\AttributeService;
 use App\Tables\Attributes\AttributeColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -25,7 +26,10 @@ use Illuminate\Support\Facades\Gate;
  */
 class AttributesTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly FieldTypeRegistry $fieldTypeRegistry) {}
+    public function __construct(
+        private readonly FieldTypeRegistry $fieldTypeRegistry,
+        private readonly AttributeService $service,
+    ) {}
 
     public function domain(): string
     {
@@ -177,5 +181,15 @@ class AttributesTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
+    }
+
+    /**
+     * Delegate to AttributeService::delete() so the generic bulk-delete endpoint
+     * respects the SAME in-use guard as the single DELETE (spec 0384).
+     */
+    public function deleteModel(Model $model): void
+    {
+        /** @var Attribute $model */
+        $this->service->delete($model);
     }
 }

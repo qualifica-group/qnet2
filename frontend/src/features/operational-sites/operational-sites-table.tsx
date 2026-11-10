@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -66,7 +66,7 @@ export function OperationalSitesTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        toast.error(apiErrorMessage(error, t('operationalSites.form.deleteError'), i18n))
+        toast.error(refusedActionMessage(error, t('operationalSites.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

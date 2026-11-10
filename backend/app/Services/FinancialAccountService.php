@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\FinancialAccountType;
 use App\Models\FinancialAccount;
 use App\Models\User;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -32,6 +33,8 @@ class FinancialAccountService
 
     private const string REVEAL_EVENT = 'card_number_revealed';
 
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(CreateFinancialAccountData $data): FinancialAccount
     {
         $attributes = ['type' => $data->type, ...$data->attributes];
@@ -53,9 +56,7 @@ class FinancialAccountService
      */
     public function delete(FinancialAccount $account): void
     {
-        if ($account->linkedCards()->exists()) {
-            abort(409, 'This account has linked cards and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($account);
 
         $account->delete();
     }

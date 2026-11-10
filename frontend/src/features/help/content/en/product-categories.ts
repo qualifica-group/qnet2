@@ -393,7 +393,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Delete only works if the category has no subcategories, products or linked opportunities; otherwise "This category has subcategories or products." appears. Move subcategories and products first. To only hide it, turn off Selectable.',
+          text: 'Delete only works if the category is not in use: no subcategories, products, product lines of opportunities, projects or campaigns, user assignment scopes, commission configurations or [OLD] categories pointing to it as Current category. Otherwise the message says what uses it. Move subcategories and products first. To only hide it, turn off Selectable.',
         },
       ],
     },
@@ -429,7 +429,7 @@ const guide: HelpGuide = {
           headers: ['Message', 'Cause', 'What to do'],
           rows: [
             ['"Name is required."', 'Empty name.', 'Write the name.'],
-            ['"This category has subcategories or products."', 'Deleting a category in use.', 'Move subcategories and products, or turn off Active.'],
+            ['"Cannot delete: it is still used by …"', 'Deleting a category in use: the message lists the uses.', 'Move subcategories and products and remove the other links, or turn off Active.'],
             ['"The destination is one of the selected categories…"', 'Destination equal to a category being moved.', 'Choose another destination.'],
             ['"The selection contains nested categories…"', 'You selected a parent and one of its children.', 'Deselect the child: it follows the parent.'],
             ['"The destination is inside one of the selected categories…"', 'You would move a category under one of its descendants.', 'Choose a destination outside the branch.'],

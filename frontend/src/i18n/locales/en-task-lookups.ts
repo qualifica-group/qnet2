@@ -84,7 +84,6 @@ function lookupBundle({ singular, plural }: LookupCopy) {
       deleteError: `Unable to delete the ${singular}. Please retry.`,
       // Fallback only: on a 409 the module shows the backend message verbatim,
       // which names the resource. This shows only if the body carries none.
-      deleteInUse: `This ${singular} is used by a task and cannot be deleted.`,
       leaveConfirm: {
         title: 'Leave without saving?',
         description: `The ${singular} has not been created yet: what you entered will be lost.`,
@@ -177,7 +176,6 @@ export const taskCategories = {
     // Spec 0154 D-1: the 409 now has TWO causes (used by a task, or has
     // sub-categories) — `runDelete` always shows the backend's own message;
     // this is the generic fallback for the (rare) case it is missing.
-    deleteInUse: 'This category cannot be deleted: check that it is not used by a task and has no sub-categories.',
   },
 }
 
@@ -255,7 +253,6 @@ export const taskStatuses = {
     iconInvalid: 'Pick an icon from the catalogue.',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the task status. Please retry.',
-    deleteInUse: 'This task status is used by a task and cannot be deleted.',
     completionPercentage: 'Completion percentage',
     completionPercentageRequired: 'Completion percentage is required.',
     completionPercentageInvalid: 'Completion percentage must be a whole number.',

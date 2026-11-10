@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\TagService;
 use App\Tables\Tags\TagColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class TagsTableDefinition extends AbstractTableDefinition
 {
+    public function __construct(private readonly TagService $service) {}
+
     public function domain(): string
     {
         return 'tags';
@@ -122,5 +125,15 @@ class TagsTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
+    }
+
+    /**
+     * Delegate to TagService::delete() so the generic bulk-delete endpoint
+     * respects the SAME in-use guard as the single DELETE (spec 0384).
+     */
+    public function deleteModel(Model $model): void
+    {
+        /** @var Tag $model */
+        $this->service->delete($model);
     }
 }

@@ -173,7 +173,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'L’eliminazione è restrittiva: non puoi eliminare un mastro che ha conti, un conto che ha sottoconti, né un tipo di costo già usato da ordini, fatture o prodotti. Il motivo compare in un messaggio; disattiva la voce oppure elimina prima le voci collegate.',
+          text: 'L’eliminazione è restrittiva: non puoi eliminare un mastro che ha conti, un conto che ha sottoconti, né un sottoconto di costo o di ricavo già usato (per esempio da ordini, fatture, prodotti, categorie prodotto o movimenti di tesoreria). Il motivo compare in un messaggio, che per i sottoconti dice da cosa sono usati; disattiva la voce oppure elimina prima le voci collegate.',
         },
       ],
     },

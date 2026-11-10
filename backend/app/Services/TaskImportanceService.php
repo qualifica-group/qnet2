@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\TaskImportances\CreateTaskImportanceData;
 use App\DataObjects\TaskImportances\UpdateTaskImportanceData;
 use App\Models\TaskImportance;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Lookups\DefaultRowManager;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -41,6 +42,7 @@ class TaskImportanceService
     public function __construct(
         private readonly LookupOrderManager $orderManager,
         private readonly DefaultRowManager $defaultRow,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     public function create(CreateTaskImportanceData $data): TaskImportance
@@ -94,9 +96,7 @@ class TaskImportanceService
      */
     public function delete(TaskImportance $taskImportance): void
     {
-        if ($taskImportance->tasks()->exists()) {
-            abort(409, 'This task importance is used by a task and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($taskImportance);
 
         $taskImportance->delete();
     }

@@ -146,7 +146,8 @@ it('delete: 409 with an explanatory message when a product uses it, and NO produ
     $this->deleteJson("/api/product-typologies/{$typology->id}")
         ->assertStatus(409)
         ->assertJsonPath('success', false)
-        ->assertJsonPath('message', 'This product typology is used by a product and cannot be deleted.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 product']));
 
     $this->assertDatabaseHas('product_typologies', ['id' => $typology->id]);
     $this->assertDatabaseHas('products', ['id' => $product->id]);

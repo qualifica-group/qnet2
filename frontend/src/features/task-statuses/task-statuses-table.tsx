@@ -1,8 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import axios from 'axios'
+import type { ApiErrorResponse } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -11,14 +12,15 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { ApiErrorResponse } from '@/api/types'
 import { taskStatusColumnRenderers } from '@/features/task-statuses/column-renderers'
 import { deleteTaskStatus } from '@/features/task-statuses/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for task statuses. */
 const TASK_STATUSES_DOMAIN = 'task-statuses'
+
+const HTTP_UNPROCESSABLE = 422
 
 /**
  * Thin TaskStatuses adapter over the generic table. It mounts `<TableView>` with the
@@ -51,21 +53,12 @@ export function TaskStatusesTable() {
         toast.success(t('taskStatuses.form.deleted'))
         refreshGrid()
       } catch (error) {
-        if (!axios.isAxiosError<ApiErrorResponse>(error)) {
-          toast.error(t('taskStatuses.form.deleteError'))
-          return
-        }
-        const status = error.response?.status
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden !== null) {
-          toast.error(forbidden)
-        } else if (status === 409 || status === 422) {
-          // The row is still referenced by a Task, or is a system status. Surface the
-          // backend's own message rather than a generic one.
-          toast.error(error.response?.data?.message ?? t('taskStatuses.form.deleteInUse'))
-        } else {
-          toast.error(t('taskStatuses.form.deleteError'))
-        }
+        // 422 = system status guard (D-8c): its server message is the reason; 409 and the rest go through the helper.
+        const systemRowMessage =
+          axios.isAxiosError<ApiErrorResponse>(error) && error.response?.status === HTTP_UNPROCESSABLE
+            ? error.response.data?.message
+            : undefined
+        toast.error(systemRowMessage ?? refusedActionMessage(error, t('taskStatuses.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

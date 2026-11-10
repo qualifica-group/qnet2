@@ -231,7 +231,6 @@
     "The settlement must be a draft of the same agent and company.": "L'estratto deve essere una bozza dello stesso agente e della stessa società.",
     "The adjustment amount cannot be zero.": "L'importo della rettifica non può essere zero.",
     "This fiscal profile is used by a commission settlement.": "Il profilo fiscale è usato da un estratto provvigioni.",
-    "This VAT rate is used by an agent fiscal profile.": "L'aliquota IVA è usata da un profilo fiscale agente.",
     "The documentation is being prepared, try again in a few seconds.": "La documentazione è in preparazione, riprova tra qualche secondo.",
     "A contract cannot be deleted manually.": "Un contratto non può essere eliminato manualmente.",
     "These statuses are used by quotes and cannot be deleted: :statuses": "Questi stati sono usati da offerte e non si possono eliminare: :statuses",

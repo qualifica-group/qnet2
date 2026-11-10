@@ -50,7 +50,6 @@ export const purchaseRequestPriorities = {
     iconInvalid: 'Scegli un’icona dal catalogo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare la priorità RDA. Riprova.',
-    deleteInUse: 'Questa priorità è usata da una RDA e non può essere eliminata.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'La priorità RDA non è ancora stata creata: i dati inseriti andranno persi.',

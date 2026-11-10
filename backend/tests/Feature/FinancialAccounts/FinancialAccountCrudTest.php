@@ -173,7 +173,8 @@ it('AC-012: a bank account with linked cards answers 409; without cards it is de
     $this->deleteJson("/api/financial-accounts/{$bank->id}")
         ->assertStatus(409)
         ->assertJsonPath('success', false)
-        ->assertJsonPath('message', 'This account has linked cards and cannot be deleted.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 linked card']));
     $this->assertDatabaseHas('financial_accounts', ['id' => $bank->id]);
 
     $this->deleteJson("/api/financial-accounts/{$free->id}")->assertNoContent();

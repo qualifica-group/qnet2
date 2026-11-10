@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -13,9 +12,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteAbsenceType } from '@/features/absence-types/api'
 import { ABSENCE_TYPES_DOMAIN } from '@/features/absence-types/types'
-import { forbiddenMessage } from '@/lib/forbidden-message'
-
-const CONFLICT_STATUS = 409
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /**
  * Thin absence-types adapter over the generic table (domain `absence-types`). Open mode of
@@ -41,15 +38,7 @@ export function AbsenceTypesTable() {
         toast.success(t('absenceTypes.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden !== null) {
-          toast.error(forbidden)
-        } else if (status === CONFLICT_STATUS) {
-          toast.error(t('absenceTypes.form.deleteInUse'))
-        } else {
-          toast.error(t('absenceTypes.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('absenceTypes.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

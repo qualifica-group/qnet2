@@ -7,6 +7,7 @@ use App\DataObjects\Sectors\UpdateSectorData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Sector;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Sectors\SectorActivity;
 use App\Services\Sectors\SectorHierarchy;
 use Illuminate\Support\Collection;
@@ -24,6 +25,7 @@ class SectorService
     public function __construct(
         private readonly SectorHierarchy $hierarchy,
         private readonly SectorActivity $activity,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     public function create(CreateSectorData $data): Sector
@@ -66,9 +68,7 @@ class SectorService
      */
     public function delete(Sector $sector): void
     {
-        if ($sector->children()->exists()) {
-            abort(409, 'This sector has sub-sectors and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($sector);
 
         $sector->delete();
     }

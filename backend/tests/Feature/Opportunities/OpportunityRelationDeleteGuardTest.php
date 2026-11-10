@@ -222,16 +222,17 @@ it('an unreferenced operational site still deletes cleanly (AC-025)', function (
 // cleared
 // ---------------------------------------------------------------------------
 
-it('deleting an operational site referenced by an opportunity: no 409, the opportunity survives with the field cleared (AC-008)', function () {
+// REQUIREMENT CHANGED (spec 0384): a site referenced by an opportunity is no longer deleted with the field cleared: it is refused (409).
+it('deleting an operational site referenced by an opportunity: 409, the opportunity keeps the site (AC-008)', function () {
     $actor = grantDeleteAbility('operational-sites');
     $site = OperationalSite::factory()->withAddress()->create();
     $opportunity = Opportunity::factory()->create(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);
 
-    $this->deleteJson("/api/operational-sites/{$site->id}")->assertNoContent();
+    $this->deleteJson("/api/operational-sites/{$site->id}")->assertStatus(409)->assertJsonPath('success', false);
 
-    $this->assertDatabaseMissing('operational_sites', ['id' => $site->id]);
-    $this->assertDatabaseHas('opportunities', ['id' => $opportunity->id, 'operational_site_id' => null]);
+    $this->assertDatabaseHas('operational_sites', ['id' => $site->id]);
+    $this->assertDatabaseHas('opportunities', ['id' => $opportunity->id, 'operational_site_id' => $site->id]);
 });
 
 it('an unreferenced business function still deletes cleanly (AC-025)', function () {

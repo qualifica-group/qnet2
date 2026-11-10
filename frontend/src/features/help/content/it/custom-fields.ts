@@ -102,8 +102,8 @@ const guide: HelpGuide = {
       id: 'edit-deactivate-delete',
       title: 'Modificare, disattivare ed eliminare',
       blocks: [
-        { type: 'list', items: ['**Modificare:** apri la scheda con **Visualizza** e modifica le righe sul posto (vedi la sezione precedente).', '**Disattivare:** spegni **Attivo**. Il campo sparisce ovunque, ma i valori già inseriti restano.', '**Eliminare:** scegli **Elimina** e conferma.'] },
-        { type: 'warning', text: 'Quando un campo contiene già dei valori, non puoi più cambiarne **Modulo**, **Tipo** e **Chiave**. Eliminando un campo cancelli anche tutti i suoi valori: nel dubbio, disattivalo.' },
+        { type: 'list', items: ['**Modificare:** apri la scheda con **Visualizza** e modifica le righe sul posto (vedi la sezione precedente).', '**Disattivare:** spegni **Attivo**. Il campo sparisce ovunque, ma i valori già inseriti restano.', '**Eliminare:** scegli **Elimina** e conferma. Si elimina solo un campo senza valori registrati.'] },
+        { type: 'warning', text: 'Quando un campo contiene già dei valori, non puoi più cambiarne **Modulo**, **Tipo** e **Chiave**, né eliminarlo: il messaggio dice quanti record hanno un valore. Se non ti serve più, disattivalo: i valori restano.' },
       ],
     },
   ],

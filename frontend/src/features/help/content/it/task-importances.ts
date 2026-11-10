@@ -66,7 +66,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Una voce in uso su un task non si può eliminare: disattivala invece di eliminarla.',
+          text: 'Una voce usata da un task o da un tipo di **Assistenza tecnica** non si può eliminare: disattivala invece di eliminarla.',
         },
       ],
     },

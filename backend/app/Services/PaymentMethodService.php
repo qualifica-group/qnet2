@@ -7,6 +7,7 @@ use App\DataObjects\PaymentMethods\UpdatePaymentMethodData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\PaymentMethod;
+use App\Services\Deletion\InUseGuard;
 use App\Services\PaymentMethods\PaymentMethodOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -20,7 +21,10 @@ use Illuminate\Support\Collection;
  */
 class PaymentMethodService
 {
-    public function __construct(private readonly PaymentMethodOrderManager $orderManager) {}
+    public function __construct(
+        private readonly PaymentMethodOrderManager $orderManager,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     /**
      * Shared by show (controller)/create/update — a hook point kept for
@@ -61,9 +65,7 @@ class PaymentMethodService
      */
     public function delete(PaymentMethod $paymentMethod): void
     {
-        if ($paymentMethod->quotes()->exists()) {
-            abort(409, 'This payment method is used by a quote and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($paymentMethod);
 
         $paymentMethod->delete();
     }

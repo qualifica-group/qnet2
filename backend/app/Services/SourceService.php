@@ -7,6 +7,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\Sources\CreateSourceData;
 use App\DataObjects\Sources\UpdateSourceData;
 use App\Models\Source;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 
 /**
@@ -16,6 +17,8 @@ use Illuminate\Support\Collection;
  */
 class SourceService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(CreateSourceData $data): Source
     {
         return Source::create($data->attributes());
@@ -40,17 +43,7 @@ class SourceService
      */
     public function delete(Source $source): void
     {
-        if ($source->leads()->exists()) {
-            abort(409, 'This source has leads and cannot be deleted.');
-        }
-
-        if ($source->quotes()->exists()) {
-            abort(409, 'This source has quotes and cannot be deleted.');
-        }
-
-        if ($source->campaigns()->exists()) {
-            abort(409, 'This source has campaigns and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($source);
 
         $source->delete();
     }
