@@ -66,6 +66,9 @@ class TableCellUpdateService
         // field-permission key are `editableField`, not the display id.
         $column = $this->declaredEditableColumn($definition, $columnId);
         $fieldKey = $column['editableField'] ?? $columnId;
+        // Spec 0382 D-6: a column may be gated by another field's permission
+        // (`permissionField`) while still writing under its own key.
+        $permissionKey = $column['permissionField'] ?? $fieldKey;
 
         // Step 3.5 (spec 0054, D-5): `note` is only accepted on a column that
         // explicitly opts in (`notable` => true) — anywhere else, a submitted
@@ -79,7 +82,7 @@ class TableCellUpdateService
         // Step 4: per-field DB permission (D-3, role_field_permissions) —
         // 403, kept SEPARATE from step 3 so the two failure reasons never
         // collapse onto the same status code.
-        $permission = $this->assertFieldEditable($definition, $actor, $row, $fieldKey);
+        $permission = $this->assertFieldEditable($definition, $actor, $row, $permissionKey);
 
         // Step 4.5 (mandatory-field enforcement, user directive): derived
         // from FieldPermission::$required — a property of the RESOLVED FIELD,
@@ -150,9 +153,9 @@ class TableCellUpdateService
             ]);
         }
 
-        $fieldKey = $column['editableField'] ?? $columnId;
+        $permissionKey = $column['permissionField'] ?? $column['editableField'] ?? $columnId;
 
-        if (! $this->fieldKeyRegistered($definition, $fieldKey)) {
+        if (! $this->fieldKeyRegistered($definition, $permissionKey)) {
             throw ValidationException::withMessages([
                 'column' => [__('Column [:column] is not editable.', ['column' => $columnId])],
             ]);

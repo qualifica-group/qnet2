@@ -259,7 +259,7 @@ trait ResolvesColumnConfig
             return null;
         }
 
-        $fieldKey = $column['editableField'] ?? $column['id'];
+        $fieldKey = $column['permissionField'] ?? $column['editableField'] ?? $column['id'];
 
         $protected = app(ProtectedFieldRegistry::class)->find($this->resource(), $fieldKey);
 

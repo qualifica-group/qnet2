@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0382-request-manager-position-columns" status="approved" owner="nicola" date="2026-11-10">
+
+  <goal>
+    In Gestione Richieste e Gestione Iscritti le colonne fisse Tutor, Operatore e Operatore APL lasciano il posto a una
+    colonna per ogni posizione del team dei gestori account, nominata per linguetta.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-10: via le colonne Tutor (posizione 1), Operatore (2) e Operatore APL (5, spec 0373 D-10);
+        al loro posto una colonna per posizione di `quote_user`. La visibilita' per team (spec 0373) resta com'e'.
+    D-2 Linguetta "Tutte": colonne "Gestore account 1..N", N = posizione piu' alta occupata in `quote_user` (decisione
+        utente), mai sotto la posizione 2 dell'Operatore (senza team in archivio si deve poter assegnare dalla cella), al
+        massimo `ManagerPositions::MAX`. Tutte visibili.
+    D-3 Linguetta di categoria: posizioni 1..max(N, ultima etichetta). Una posizione con etichetta nelle `manager_labels`
+        effettive della categoria (spec 0080) prende quel nome ed e' visibile; le altre si chiamano "Gestore account N" e
+        sono nascoste, selezionabili dal selettore colonne (decisione utente). Una categoria senza alcuna etichetta si
+        comporta come "Tutte". Le linguette di radice (spec 0337) usano le etichette della radice: prima non rinominavano.
+    D-4 Ogni colonna di posizione e' selezionabile dal selettore colonne, ordinabile, filtrabile per nome con "Vuoti" e
+        modificabile dalla cella. Le colonne sono raggruppate dopo "Fonte", in ordine di posizione, prima di "Gestori
+        account" (che resta).
+    D-5 Id stabili per non rompere viste e filtri salvati: posizione 2 = `operator_ga2`, le altre `manager_ga{n}`
+        (`manager_ga1`, `manager_ga5` invariati). La posizione 2 tiene tutto il comportamento dell'Operatore: selettore
+        filtrato per sede e competenza, `quotes.operator_id`, notifica di assegnazione, ordinamento e filtro via
+        RequestRelationColumns. Cambia solo l'intestazione.
+    D-6 Permesso (decisione utente): ogni colonna di posizione segue la riga "Gestori account" (`manager_slots`) della
+        matrice ruoli. Spariscono le righe `manager_ga1_id` e `manager_ga5_id`; le configurazioni gia' salvate su quelle
+        chiavi restano nel DB senza effetto. Il motore celle accetta una chiave di permesso separata (`permissionField`,
+        opzionale, default `editableField`): la chiave di scrittura resta per posizione.
+    D-7 Scrittura: `updateWork` riceve `manager_positions` = [posizione => utente|null], una posizione per volta come la
+        cella, con la stessa regola di applyGa1 (chi e' gia' nel team viene spostato, nessuna notifica). La voce di
+        cronologia resta `manager_ga{n}_id`.
+    D-8 Preferenze colonne: restano per modulo, ma il default di visibilita' delle colonne di posizione e' quello della
+        linguetta aperta (D-2/D-3), cosi' mostrare una posizione senza etichetta in una categoria si salva. Il salvataggio
+        applica la linguetta prima di calcolare il delta.
+    D-9 Fuori scope: azione massiva "Assegna Tutor" (spec 0104, resta sulla posizione 1), report e statistiche per operatore,
+        notifiche.
+  </context>
+
+  <data_contract>
+    `GET /tables/{request-management|enrollee-management}/columns`: le colonne `operator_ga2` e `manager_ga{n}` compaiono per
+    n = 1..N (D-2/D-3) con `label` gia' risolta (testo, non chiave i18n), `visible`, `sortable: true`, `filterType: set`,
+    `editable`, `relation: {resource: users}`. Le righe portano `manager_ga{n}` = {id, name, ...} | null per n = 1..MAX, n != 2.
+    `PATCH .../cells` su `manager_ga{n}`: valore id utente | null. Nessuna migrazione.
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">In "Tutte" la config porta "Gestore account 1..N" con N = posizione massima occupata, tutte visibili, nessuna colonna Tutor/Operatore/Operatore APL.</criterion>
+    <criterion id="AC-002">In una categoria le posizioni con etichetta prendono l'etichetta e sono visibili; le altre fino a N sono "Gestore account N" nascoste.</criterion>
+    <criterion id="AC-003">La riga porta l'occupante di ogni posizione; ordinamento, filtro set con "Vuoti" e valori distinti leggono quella posizione.</criterion>
+    <criterion id="AC-004">Dalla cella si scrive o si svuota una posizione qualunque, anche su Iscritti; la posizione 2 continua ad aggiornare `operator_id`.</criterion>
+    <criterion id="AC-005">Con `manager_slots` non modificabile per il ruolo ogni colonna di posizione e' in sola lettura (403 in scrittura); `manager_ga1_id`/`manager_ga5_id` non sono piu' nel catalogo permessi.</criterion>
+    <criterion id="AC-006">Mostrare in una categoria una posizione nascosta e salvare le preferenze la lascia visibile al ricaricamento.</criterion>
+    <criterion id="AC-007">L'azione massiva "Assegna Tutor" scrive ancora la posizione 1.</criterion>
+  </acceptance>
+</spec>

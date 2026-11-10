@@ -13,12 +13,11 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Sort, set filter and distinct values of the Gestore Account columns that
- * read a `quote_user` pivot POSITION instead of a column of `quotes`: the GA1
- * "Tutor" (direttiva utente 2026-09-24) and the GA5 "Operatore APL" (spec 0373
- * D-10). The GA2 "Operatore" is not
- * here: it is denormalized onto `quotes.operator_id`, so RequestRelationColumns
- * handles it as an own FK. The `managers` column (spec 0373) shares the filter
+ * Sort, set filter and distinct values of the Gestore Account position
+ * columns that read a `quote_user` pivot POSITION instead of a column of
+ * `quotes` (direttiva utente 2026-09-24, every position since spec 0382). The
+ * Operatore position is not here: it is denormalized onto `quotes.operator_id`,
+ * so RequestRelationColumns handles it as an own FK. The `managers` column (spec 0373) shares the filter
  * and the distinct values with no position: it matches every slot.
  *
  * The cell shows the occupant's `name`, so every hook addresses `users.name`
@@ -33,14 +32,6 @@ final class RequestManagerSlotColumn
     private const int MAX_FILTER_VALUES = 200;
 
     /**
-     * @var array<string, int>
-     */
-    private const array SLOT_POSITIONS = [
-        RequestManagerColumns::GA1_COLUMN_ID => ManagerPositions::GA1,
-        RequestManagerColumns::GA5_COLUMN_ID => ManagerPositions::GA5,
-    ];
-
-    /**
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
@@ -50,7 +41,7 @@ final class RequestManagerSlotColumn
             return false;
         }
 
-        $position = self::SLOT_POSITIONS[$columnId] ?? null;
+        $position = self::slotPosition($columnId);
         $values = $this->filterValues($filter);
         $matchesBlank = $this->matchesBlankEntry($filter);
 
@@ -79,7 +70,7 @@ final class RequestManagerSlotColumn
      */
     public function applySort(Builder $query, string $columnId, string $direction): bool
     {
-        $position = self::SLOT_POSITIONS[$columnId] ?? null;
+        $position = self::slotPosition($columnId);
 
         if ($position === null) {
             return false;
@@ -106,7 +97,7 @@ final class RequestManagerSlotColumn
             return null;
         }
 
-        $position = self::SLOT_POSITIONS[$columnId] ?? null;
+        $position = self::slotPosition($columnId);
         $names = $this->slotUsers($position)
             ->whereIn('quote_user.quote_id', (clone $query)->select('quotes.id'))
             ->when($search !== null && $search !== '', function (QueryBuilder $builder) use ($search): void {
@@ -128,7 +119,18 @@ final class RequestManagerSlotColumn
 
     private static function handles(string $columnId): bool
     {
-        return isset(self::SLOT_POSITIONS[$columnId]) || $columnId === RequestManagerColumns::MANAGERS_COLUMN_ID;
+        return self::slotPosition($columnId) !== null || $columnId === RequestManagerColumns::MANAGERS_COLUMN_ID;
+    }
+
+    /**
+     * The pivot position a column reads, null for the Operatore (an own FK)
+     * and for any non-position column.
+     */
+    private static function slotPosition(string $columnId): ?int
+    {
+        $position = RequestManagerColumns::positionOf($columnId);
+
+        return $position === ManagerPositions::OPERATOR ? null : $position;
     }
 
     /**

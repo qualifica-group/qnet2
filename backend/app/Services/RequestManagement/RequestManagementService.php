@@ -176,7 +176,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_ga1_id?: int|null, manager_ga5_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_positions?: array<int, int|null>, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
@@ -307,17 +307,11 @@ final class RequestManagementService
                 $this->attributionWriter->applyOperator($quote, $data['operator_id'], $actor, $changed, $old);
             }
 
-            // Step 3-bis: the GA1 slot (direttiva utente 2026-09-07) — a THIRD
-            // vocabulary onto the same pivot, and the only one that composes
-            // with the two above instead of excluding them: it addresses a
-            // different position, so a payload carrying both is coherent. The
-            // grid cell is its only channel today and sends it alone.
-            if (array_key_exists('manager_ga1_id', $data)) {
-                $this->attributionWriter->applyManagerGa1($quote, $data['manager_ga1_id'], $changed, $old);
-            }
-
-            if (array_key_exists('manager_ga5_id', $data)) {
-                $this->attributionWriter->applyManagerGa5($quote, $data['manager_ga5_id'], $changed, $old);
+            // Step 3-bis: single positions other than the Operatore (spec 0382
+            // D-7, the grid's position columns) — they address other slots of
+            // the same pivot, so they compose with the two keys above.
+            foreach ((array) ($data['manager_positions'] ?? []) as $position => $userId) {
+                $this->attributionWriter->applyManagerPosition($quote, (int) $position, $userId, $changed, $old);
             }
 
             // Step 4: reward assignments (spec 0059, AC-023; D-4/D-12) —

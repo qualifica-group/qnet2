@@ -83,7 +83,8 @@ it('declares manager_ga1 as an editable users relation, unscoped by the Sede unl
     $ga1 = $columns['manager_ga1'];
 
     expect($ga1['editable'])->toBeTrue()
-        ->and($ga1['label'])->toBe('requestManagement.columns.managerGa1')
+        // REQUIREMENT CHANGED (spec 0382 D-2): "Gestore account 1" in "Tutte".
+        ->and($ga1['label'])->toBe('Account manager 1')
         ->and($ga1['sortable'])->toBeTrue()
         ->and($ga1['filterable'])->toBeTrue()
         ->and($ga1['relation']['resource'])->toBe('users')
@@ -113,7 +114,9 @@ it('a category tab relabels BOTH G.A. columns from its own manager_labels', func
         ->and($columns['manager_ga1']['label'])->toBe('Back Office');
 });
 
-it('a category defining only the level-1 label leaves operator_ga2 on its i18n key', function (): void {
+// REQUIREMENT CHANGED (spec 0382 D-3): an unlabelled position keeps
+// "Gestore account N" and starts hidden, instead of its former i18n key.
+it('a category defining only the level-1 label leaves operator_ga2 as a hidden "Gestore account 2"', function (): void {
     $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Back Office']]);
     Sanctum::actingAs(ga1ColumnActor());
 
@@ -121,18 +124,7 @@ it('a category defining only the level-1 label leaves operator_ga2 on its i18n k
         ->assertOk()->json('data.columns'))->keyBy('id');
 
     expect($columns['manager_ga1']['label'])->toBe('Back Office')
-        ->and($columns['operator_ga2']['label'])->toBe('requestManagement.columns.operator');
-});
-
-it('a label configured on a position with no column of its own relabels nothing', function (): void {
-    $category = ProductCategory::factory()->create(['manager_labels' => ['4' => 'Quarto Livello']]);
-    Sanctum::actingAs(ga1ColumnActor());
-
-    $columns = collect($this->getJson("/api/tables/request-management/columns?product_category_id={$category->id}")
-        ->assertOk()->json('data.columns'))->keyBy('id');
-
-    expect($columns['operator_ga2']['label'])->toBe('requestManagement.columns.operator')
-        ->and($columns['manager_ga1']['label'])->toBe('requestManagement.columns.managerGa1');
+        ->and($columns['operator_ga2'])->toMatchArray(['label' => 'Account manager 2', 'visible' => false]);
 });
 
 // ---------------------------------------------------------------------------
@@ -219,13 +211,15 @@ it('assigning the current Operatore to GA1 MOVES them instead of duplicating the
         ->and($quote->operator_id)->toBeNull();
 });
 
-it('a role with manager_ga1_id non-editable is refused the write', function (): void {
+// REQUIREMENT CHANGED (spec 0382 D-6): the GA1 cell follows the team key,
+// `manager_ga1_id` no longer exists in the role matrix.
+it('a role with manager_slots non-editable is refused the GA1 write', function (): void {
     $actor = ga1ColumnActor();
     $role = Role::create(['name' => 'ga1-restricted-'.uniqid()]);
     $role->givePermissionTo(['request-management.viewAny', 'request-management.update', 'request-management.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'request-management',
-        'field' => 'manager_ga1_id',
+        'field' => 'manager_slots',
         'visible' => true,
         'editable' => false,
         'required' => false,

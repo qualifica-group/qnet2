@@ -99,21 +99,15 @@ final class RequestRowMapper
             // lines' products, replacing "Prodotti di interesse" on this
             // domain only (AC-021).
             ...OfferLinesColumn::project($row),
-            // "Operatore": spec 0087, D-9 — the offer's own GA2 Operatore, a
-            // real FK on `quotes` (`operator_id`), denormalized from the
-            // `quote_user` pivot.
-            'operator_ga2' => $this->userSummary($row->operator),
+            // Position 2, the Operatore: spec 0087, D-9 — a real FK on
+            // `quotes` (`operator_id`), denormalized from the pivot.
+            RequestManagerColumns::OPERATOR_COLUMN_ID => $this->userSummary($row->operator),
             // Spec 0373 D-7: the whole team, in `managers()` position order.
             RequestManagerColumns::MANAGERS_COLUMN_ID => $row->managers->map(fn (User $user): ?array => $this->userSummary($user))->all(),
-            // GA1 (direttiva utente 2026-09-08, which moved this column off
-            // position 3): the slot right before the Operatore, read from the
-            // `quote_user` pivot itself — unlike GA2
-            // it has no denormalized column on `quotes` to shortcut through,
-            // and it needs none: the team is eager-loaded by the definition
-            // for the whole page, so this costs no per-row query.
-            'manager_ga1' => $this->userSummary($this->managerAt($row, ManagerPositions::GA1)),
-            // Spec 0373 D-10: "Operatore APL", same pivot read as the GA1.
-            RequestManagerColumns::GA5_COLUMN_ID => $this->userSummary($this->managerAt($row, ManagerPositions::GA5)),
+            // Every other position (spec 0382), read from the `quote_user`
+            // pivot: the team is eager-loaded for the whole page, so this
+            // costs no per-row query.
+            ...$this->positionOccupants($row),
             // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
             // FK — the site has no own name, so its label is composed
             // server-side from its primary address.
@@ -197,6 +191,22 @@ final class RequestRowMapper
      * is empty — read off the ALREADY-LOADED relation (this mapper never
      * queries, see the class docblock).
      */
+    /**
+     * @return array<string, array{id: int, name: string, avatar_url: string|null}|null>
+     */
+    private function positionOccupants(Quote $row): array
+    {
+        $occupants = [];
+
+        foreach (RequestManagerColumns::positions() as $position => $columnId) {
+            if ($position !== ManagerPositions::OPERATOR) {
+                $occupants[$columnId] = $this->userSummary($this->managerAt($row, $position));
+            }
+        }
+
+        return $occupants;
+    }
+
     private function managerAt(Quote $row, int $position): ?User
     {
         return $row->managers->first(

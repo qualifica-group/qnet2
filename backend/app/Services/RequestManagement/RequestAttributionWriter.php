@@ -198,30 +198,18 @@ final class RequestAttributionWriter
     }
 
     /**
-     * The GA1 slot (direttiva utente 2026-09-07, moved onto position 1 by
-     * the direttiva utente 2026-09-08): the grid's other Gestore Account cell, delegated to the SAME RequestOperatorWriter as the
-     * Operatore above. NO notification follows it, deliberately — GA1 scopes
-     * no visibility and assigns nobody, exactly like a reshuffle of the other
-     * slots in applyTeam() (spec 0097, D-6/AC-007).
+     * One Gestore Account position other than the Operatore (spec 0382 D-7,
+     * the grid's position columns), delegated to the SAME RequestOperatorWriter
+     * as the Operatore above. NO notification follows it, deliberately: it
+     * assigns nobody, exactly like a reshuffle of the other slots in
+     * applyTeam() (spec 0097, D-6/AC-007).
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      */
-    public function applyManagerGa1(Quote $quote, mixed $value, array &$changed, array &$old): void
+    public function applyManagerPosition(Quote $quote, int $position, mixed $value, array &$changed, array &$old): void
     {
-        $this->operatorWriter->applyGa1($quote, $value === null ? null : (int) $value, $changed, $old);
-    }
-
-    /**
-     * The "Operatore APL" slot (spec 0373 D-10): same terms as the GA1 above,
-     * no notification.
-     *
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    public function applyManagerGa5(Quote $quote, mixed $value, array &$changed, array &$old): void
-    {
-        $this->operatorWriter->applyGa5($quote, $value === null ? null : (int) $value, $changed, $old);
+        $this->operatorWriter->applyPosition($quote, $position, $value === null ? null : (int) $value, $changed, $old);
     }
 
     /**

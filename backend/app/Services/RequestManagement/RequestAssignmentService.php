@@ -268,7 +268,7 @@ final class RequestAssignmentService
      * One offer's GA1 slot, through the SAME writer the grid cell uses, so
      * the bulk channel can never grow a rule the per-row channel lacks. An
      * offer already carrying $userId in that slot writes nothing at all
-     * (applyGa1's own no-op guard) and therefore logs nothing.
+     * (applyPosition's own no-op guard) and therefore logs nothing.
      *
      * The activity entry is anchored on the Opportunity, like assignOne()'s:
      * D-9 keeps the module's whole history there, and the pivot slot is not
@@ -280,7 +280,7 @@ final class RequestAssignmentService
         $changed = [];
         $old = [];
 
-        $this->operatorWriter->applyGa1($quote, $userId, $changed, $old);
+        $this->operatorWriter->applyPosition($quote, ManagerPositions::GA1, $userId, $changed, $old);
 
         if ($changed === []) {
             return;

@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tables\RequestManagement;
 
-use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
 use App\Products\ProductCategoryBranches;
-use App\Services\ProductCategoryService;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\CategoryTabs\AttributeColumnsScopable;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
@@ -24,11 +22,8 @@ use Illuminate\Support\Collection;
  * Decorator that scopes the `request-management`/`enrollee-management`
  * domains (spec 0130: the SAME decorator, `$inner->domain()` tells it which)
  * to a single product category (spec 0064's category tab strip), appends that
- * category's `attr.<code>` flexible columns, and relabels its Gestore Account
- * columns
- * (`operator_ga2`/`manager_ga1`) for it (spec 0080, extended to GA1 by the
- * direttiva utente 2026-09-07, which named position 3 until the direttiva
- * utente 2026-09-08 moved the column onto position 1).
+ * category's `attr.<code>` flexible columns, and shapes its Gestore Account
+ * position columns for it (spec 0382, RequestManagerPositionLayout).
  *
  * The `attr.*` half was removed by spec 0084 D-1, which moved "Informazioni
  * aggiuntive" from the Opportunity to the Offerta, and is RESTORED by the
@@ -42,7 +37,8 @@ use Illuminate\Support\Collection;
  * THREE scope-driven concerns: WHICH rows the tab shows (`baseQuery()`),
  * WHICH flexible columns it carries (`resolveConfig()`/`mapRow()` and the
  * derived filter/sort/distinct hooks, delegated to AttributeGridColumns),
- * and WHAT the Gestore Account columns are called (`resolveConfig()`).
+ * and WHICH Gestore Account columns it shows and under what name
+ * (`resolveConfig()`/`defaultColumnLayout()`).
  *
  * TWO independent scope concepts, set explicitly by the caller
  * (`TableController` for the request-scoped case, the Table FormRequests for
@@ -57,7 +53,8 @@ use Illuminate\Support\Collection;
  *
  * `columns()`/`defaultColumnLayout()` are UNSCOPED by design (always the
  * union): they back `TableCellUpdateService`'s structural PATCH lookup and
- * the preferences default baseline, neither of which is a per-tab concept.
+ * the preferences default baseline. One exception: the default VISIBILITY of
+ * the Gestore Account position columns follows the tab (spec 0382 D-8).
  *
  * Composed OUTSIDE `CustomFieldAwareTableDefinition` in
  * `TableRegistry::resolve()` (`request-management` is custom-fieldable,
@@ -90,8 +87,9 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
     private ?int $categoryScope = null;
 
     /**
-     * A root tab leaves `categoryScope` null, so it carries no GA relabel, but
-     * it shows the root's own `attr.*` columns (spec 0350 D-4, rev.3).
+     * A root tab leaves `categoryScope` null: it shows the root's own
+     * `attr.*` columns (spec 0350 D-4, rev.3) and names the Gestore Account
+     * columns with the root's labels (spec 0382 D-3).
      */
     private ?int $branchScope = null;
 
@@ -110,14 +108,14 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
 
     public function __construct(
         private readonly TableDefinition $inner,
-        private readonly ProductCategoryService $productCategoryService,
         private readonly AttributeGridColumns $attributeColumns,
         private readonly RequestManagementService $service,
         private readonly ProductCategoryBranches $branches,
+        private readonly RequestManagerPositionLayout $positionLayout,
     ) {}
 
     /**
-     * Narrows `baseQuery()`, the `attr.*` columns and the G.A. relabel to ONE
+     * Narrows `baseQuery()`, the `attr.*` columns and the G.A. labels to ONE
      * product category (null = D-3 "Tutte", every row and zero `attr.*`
      * columns).
      */
@@ -128,7 +126,7 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
 
     /**
      * Narrows `baseQuery()` to the rows of a root category's branch (spec
-     * 0337) and the `attr.*` columns to the root's own set: no G.A. relabel.
+     * 0337), the `attr.*` columns and the G.A. labels to the root's own set.
      */
     public function scopeToProductCategoryBranch(?int $rootId): void
     {
@@ -237,19 +235,16 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
     }
 
     /**
-     * Spec 0080 (extended to GA1, direttiva utente 2026-09-07/2026-09-08): rewrites the
-     * `label` of each Gestore Account column to the scoped category's RAW
-     * TEXT for the position it names — every other column, and every other
-     * property of these two, stay untouched. The "Tutte" tab
-     * (`categoryScope` null), or a category defining no label for a position,
-     * leaves that column on its own i18n key.
+     * Spec 0382: the Gestore Account position columns are trimmed, named
+     * and shown per tab (RequestManagerPositionLayout); every other column
+     * stays untouched.
      *
      * @return array<string, mixed>
      */
     public function resolveConfig(User $actor): array
     {
         $config = $this->inner->resolveConfig($actor);
-        $config['columns'] = $this->relabelManagerColumns($config['columns']);
+        $config['columns'] = $this->positionLayout->shape($config['columns'], $this->labelCategoryId());
         $attributes = $this->categoryAttributes();
 
         if ($attributes->isEmpty()) {
@@ -260,7 +255,9 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
             ...$config['columns'],
             ...$this->attributeColumns->resolvedColumns(
                 $attributes,
-                count($config['columns']),
+                // The last native order, not the count: the position columns
+                // trimmed by the layout leave gaps (spec 0382).
+                (int) max([0, ...array_column($config['columns'], 'order')]),
                 $this->attributeColumns->valuesEditable($actor, $this->inner->domain()),
             ),
         ];
@@ -274,6 +271,15 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
     public function defaultColumnLayout(): array
     {
         $layout = $this->inner->defaultColumnLayout();
+
+        // Spec 0382 D-8: the position columns start shown or hidden per tab,
+        // so a choice saved in one tab is a delta of THAT tab's default.
+        foreach ($this->positionLayout->visibility($this->labelCategoryId()) as $columnId => $visible) {
+            if (isset($layout[$columnId])) {
+                $layout[$columnId]['visible'] = $visible;
+            }
+        }
+
         $attributes = $this->attributeColumns->union();
 
         if ($attributes->isEmpty()) {
@@ -387,64 +393,11 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $columns
-     * @return array<int, array<string, mixed>>
+     * The category whose labels name the Gestore Account columns (spec 0382
+     * D-3): the open tab, or the root of a root-level tab (spec 0337).
      */
-    private function relabelManagerColumns(array $columns): array
+    private function labelCategoryId(): ?int
     {
-        $labels = $this->scopedManagerLabels();
-
-        if ($labels === []) {
-            return $columns;
-        }
-
-        $byColumnId = [];
-
-        foreach (RequestManagerColumns::POSITIONS as $position => $columnId) {
-            if (isset($labels[$position])) {
-                $byColumnId[$columnId] = $labels[$position];
-            }
-        }
-
-        return array_map(static function (array $column) use ($byColumnId): array {
-            $label = $byColumnId[$column['id'] ?? ''] ?? null;
-
-            if ($label !== null) {
-                $column['label'] = $label;
-            }
-
-            return $column;
-        }, $columns);
-    }
-
-    /**
-     * The scoped category's EFFECTIVE labels, restricted to the positions the
-     * grid exposes as their own column (RequestManagerColumns::POSITIONS).
-     * Empty when there is no scope,
-     * the category no longer exists, or it defines no label for any of them.
-     *
-     * Spec 0087, D-10: the positions come from `ManagerPositions`, never the
-     * `Opportunity::OPERATOR_MANAGER_POSITION` alias — the labels these
-     * columns name belong to the OFFERTA's own team (D-9), not the
-     * Opportunity's.
-     *
-     * @return array<int, string>
-     */
-    private function scopedManagerLabels(): array
-    {
-        if ($this->categoryScope === null) {
-            return [];
-        }
-
-        $category = ProductCategory::find($this->categoryScope);
-
-        if ($category === null) {
-            return [];
-        }
-
-        return array_intersect_key(
-            $this->productCategoryService->effectiveManagerLabels($category),
-            RequestManagerColumns::POSITIONS,
-        );
+        return $this->categoryScope ?? $this->branchScope;
     }
 }

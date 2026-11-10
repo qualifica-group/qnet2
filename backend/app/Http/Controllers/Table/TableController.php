@@ -91,9 +91,10 @@ class TableController extends BaseApiController
      * layout for {domain}. Self-scoped (always auth user; the client never sends
      * a user_id). Returns the freshly merged config. See ADR-0004.
      *
-     * `product_category_id` (spec 0064) does NOT change what is stored — the
-     * layout is saved per-domain, and `defaultColumnLayout()` stays the
-     * unscoped union either way — it selects the SHAPE of the RETURNED config,
+     * `product_category_id` (spec 0064) does not change WHERE the layout is
+     * stored (per domain) — only the default visibility of the Gestore
+     * Account position columns of Gestione Richieste/Iscritti follows the tab
+     * (spec 0382 D-8). It selects the SHAPE of the RETURNED config,
      * so the client refreshes its per-tab cache entry with a config that still
      * carries that category's `attr.*` columns. Without it the response is the
      * "Tutte" shape and the open tab loses them until the next reload.
@@ -107,8 +108,10 @@ class TableController extends BaseApiController
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
-            $this->preferences->save($definition, $actor, $request->columnsState());
+            // Spec 0382 D-8: scoped first, so a tab-dependent default
+            // visibility is the baseline of the delta being saved.
             $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
+            $this->preferences->save($definition, $actor, $request->columnsState());
             $this->scopeAttributeColumnsForConfig($definition, $actor, $request->attributeColumnsFromFilters());
 
             return $this->ok($this->resolvedConfig($definition, $actor), 'Preferences saved');

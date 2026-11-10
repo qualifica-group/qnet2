@@ -270,5 +270,6 @@
     "The document exceeds the maximum allowed size.": "Il documento supera la dimensione massima consentita.",
     "The new expiry date must be after the current one.": "La nuova scadenza deve essere successiva a quella attuale.",
     "Only the latest renewal can be undone.": "Si può annullare solo l'ultimo rinnovo.",
-    "The renewal period already has work orders.": "Il periodo del rinnovo ha già commesse."
+    "The renewal period already has work orders.": "Il periodo del rinnovo ha già commesse.",
+    "Account manager :position": "Gestore account :position"
 }

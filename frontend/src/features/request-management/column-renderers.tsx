@@ -21,6 +21,7 @@ import {
   RelationCell,
   StatusBadgeCell,
 } from '@/features/table/rich-cells'
+import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -76,17 +77,30 @@ function PendingChangeRequestsCell({ value }: ICellRendererParams) {
   )
 }
 
+/** Position 2 kept the former "Operatore" id for saved views (spec 0382 D-5). */
+const OPERATOR_POSITION = 2
+
+function managerPositionColumnId(position: number): string {
+  return position === OPERATOR_POSITION ? 'operator_ga2' : `manager_ga${position}`
+}
+
+const MANAGER_POSITION_RENDERERS: TableRendererMap = Object.fromEntries(
+  Array.from({ length: MAX_MANAGER_SLOTS }, (_, index) => [
+    managerPositionColumnId(index + 1),
+    (params: ICellRendererParams) => <UserCell {...params} />,
+  ]),
+)
+
 /**
  * Custom cell renderers keyed by the backend column `id` (spec 0049). `source`
  * ("Fonte", user directive 2026-07-31) is a plain `{id, name}` relation, so it
  * reuses the shared `RelationCell` exactly as the leads grid does for the same
  * entity; `general_notes` is free text, truncated by the local `TextCell` with
- * the full note as its native tooltip. The two Gestore
- * Account slot columns, `operator_ga2` (GA2) and `manager_ga1` (GA1,
- * direttiva utente 2026-09-07), render as the shared `UserCell` (avatar +
- * hover-card that opens the user's profile Sheet — same component as the
- * opportunities `supervisor` column); their HEADER is relabelled server-side
- * per category tab, the cell itself is identical for both. `operational_site` (spec 0056) has no `name`, only the
+ * the full note as its native tooltip. The Gestore Account position columns
+ * (spec 0382: `manager_ga{n}`, position 2 keeps the id `operator_ga2`) render
+ * as the shared `UserCell` (avatar + hover-card that opens the user's profile
+ * Sheet — same component as the opportunities `supervisor` column); which of
+ * them a tab shows, and their header, are decided server-side. `operational_site` (spec 0056) has no `name`, only the
  * server-composed `label`, which `RelationCell` reads. The client's
  * PersonalData anagraphic fields are display-only text, while the product
  * categories render their own pair projection (spec 0075). `next_callback_at`
@@ -107,9 +121,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   estimated_value: (params) => <CurrencyCell {...params} />,
   success_probability: (params) => <ProbabilityCell {...params} />,
   expected_close_date: (params) => <DateCell {...params} />,
-  operator_ga2: (params) => <UserCell {...params} />,
-  manager_ga1: (params) => <UserCell {...params} />,
-  manager_ga5: (params) => <UserCell {...params} />,
+  ...MANAGER_POSITION_RENDERERS,
   managers: (params) => <UserStackCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   // Spec 0079: a system flag, not auto-mounted by `resolveCellRenderer`

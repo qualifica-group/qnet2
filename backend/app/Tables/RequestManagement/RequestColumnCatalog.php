@@ -38,11 +38,10 @@ use App\Tables\Shared\OfferLinesColumn;
  *    same `note`-carrying path spec 0054 D-5 built for the Opportunity's
  *    former `workflow_status` column (removed by spec 0083 D-2 with the
  *    dimension it addressed, restored here on the record this module now IS).
- *  - `operator_ga2` ("Operatore") and `manager_ga1` (direttiva utente
- *    2026-09-07) — the offer's own GA2/GA1 Gestori Account, two slots of the
- *    `quote_user` pivot, inline-editable and relabelled per category tab.
- *    Declared in RequestManagerColumns (see its docblock for the write-key
- *    and scoping rules that differ between the two).
+ *  - one column per Gestore Account position plus the whole team (spec
+ *    0382, spec 0373), inline-editable and named per category tab. Declared
+ *    in RequestManagerColumns (see its docblock for the write-key and
+ *    scoping rules of the Operatore position).
  *  - `first_name`/`last_name`/`tax_code`/`vat_number`/`phone`/`email` — the
  *    CLIENT's anagraphic fields, read from the Registry's PersonalData card
  *    through `quote.opportunity.registry` (phone/email = its primary
@@ -82,7 +81,6 @@ final class RequestColumnCatalog
      */
     private const array DEFAULT_WIDTHS = [
         'product_categories' => 214,
-        RequestManagerColumns::OPERATOR_COLUMN_ID => 201,
         'quote_workflow_status' => 212,
         'next_callback_at' => 198,
         OfferLinesColumn::COLUMN_ID => 214,
@@ -95,19 +93,18 @@ final class RequestColumnCatalog
         'tax_code' => 171,
         'general_notes' => 239,
         'source' => 127,
-        RequestManagerColumns::GA1_COLUMN_ID => 177,
-        RequestManagerColumns::GA5_COLUMN_ID => 177,
-        RequestManagerColumns::MANAGERS_COLUMN_ID => 140,
     ];
 
     /**
      * Declaration order IS the default column order (spec 0001's persisted
      * layout is a sparse delta over this baseline). Direttive utente
      * 2026-09-17 and 2026-11-09 fixed the default worklist to exactly these
-     * visible columns, in this order: Categoria prodotto, Operatore, Stato di
+     * visible columns, in this order: Categoria prodotto, Stato di
      * lavorazione, Prossimo richiamo, Linee di prodotto, Nome, Cognome,
      * Ragione sociale, Telefono, Email, Partita IVA, Codice fiscale, Note
-     * generali, Fonte, Tutor (GA1), Operatore APL (GA5). Every other column is
+     * generali, Fonte, the Gestore Account positions and Gestori account
+     * (spec 0382: RequestManagerPositionLayout trims the positions per tab,
+     * superseding the Operatore second and Tutor/APL after Fonte). Every other column is
      * declared after them with `visible: false` — still in the column chooser,
      * never removed — and the category tab's `attr.*` columns follow the whole
      * catalogue (RequestManagementScopedTableDefinition), as before.
@@ -149,12 +146,6 @@ final class RequestColumnCatalog
                 'editor' => 'product_lines',
                 'editableField' => 'product_lines',
             ],
-            // The GA2 "Operatore" slot (RequestManagerColumns owns its
-            // declaration and the position->column map the per-tab header
-            // relabel reads). Its picker scope still reads the row's
-            // `operational_site`, which the row carries whether that column
-            // is visible or not.
-            RequestManagerColumns::column(RequestManagerColumns::OPERATOR_COLUMN_ID),
             [
                 // "Stato di lavorazione" (user directive 2026-08-31).
                 //
@@ -297,12 +288,7 @@ final class RequestColumnCatalog
                 'editableField' => 'source_id',
                 'relation' => ['resource' => 'sources'],
             ],
-            // GA1, labelled "Tutor" (direttiva utente 2026-09-17: right after
-            // "Fonte"); see RequestManagerColumns for how it differs from the
-            // Operatore slot.
-            RequestManagerColumns::column(RequestManagerColumns::GA1_COLUMN_ID),
-            RequestManagerColumns::column(RequestManagerColumns::GA5_COLUMN_ID),
-            RequestManagerColumns::column(RequestManagerColumns::MANAGERS_COLUMN_ID),
+            ...RequestManagerColumns::columns(),
             // ----- Hidden by default (direttiva utente 2026-09-17) -----
             // "Richieste di modifica in attesa" (spec 0078, AC-037): a
             // per-record pending-count badge/alert. A real aggregated value

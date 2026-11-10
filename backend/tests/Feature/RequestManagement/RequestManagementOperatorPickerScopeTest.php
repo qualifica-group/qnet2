@@ -111,7 +111,8 @@ it('declares the Operatore picker scope as {Sede of the offer, required categori
         // 2026-09-10), covered by its own tests.
         ->and($column['relation'])->not->toHaveKey('lockScope')
         // Everything else about the column is untouched.
-        ->and($column['label'])->toBe('requestManagement.columns.operator')
+        // REQUIREMENT CHANGED (spec 0382 D-2): "Gestore account 2" in "Tutte".
+        ->and($column['label'])->toBe('Account manager 2')
         ->and($column['type'])->toBe('text')
         ->and($column['editable'])->toBeTrue()
         ->and($column['editor'])->toBe('relation')

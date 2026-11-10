@@ -12,9 +12,9 @@ use App\Support\ManagerPositions;
 /**
  * Writes an offer's Gestori Account from the request-management module —
  * apply() moves the GA2 "Operatore" slot alone (the grid cell, the bulk
- * assign, the transfer), applyGa1() and applyGa5() one other slot alone (their
- * own grid cells, direttiva utente 2026-09-07 and spec 0373 D-10), applySlots()
- * replaces the WHOLE team (the work panel, spec 0097). All of them funnel into
+ * assign, the transfer), applyPosition() any other slot alone (its grid
+ * column and the bulk GA1 assign, spec 0382), applySlots() replaces the WHOLE
+ * team (the work panel, spec 0097). All of them funnel into
  * the same single writer, so the channels can never grow divergent rules.
  *
  * apply() (spec 0087, D-9) moves the `quote_user` OPERATOR slot
@@ -48,15 +48,12 @@ use App\Support\ManagerPositions;
 final class RequestOperatorWriter
 {
     /**
-     * The wire-facing key the GA1 transition is reported under — the same key
-     * the grid column declares as its `editableField` and
-     * RequestManagementAuthorization catalogues, so the operational history
-     * reads with the vocabulary the write channel used.
+     * The wire-facing key a single-slot transition is reported under
+     * (`manager_ga1_id`, `manager_ga5_id`, ...): the same key the grid column
+     * writes under (RequestManagerColumns), so the operational history reads
+     * with the vocabulary of the write channel and older entries keep theirs.
      */
-    private const string GA1_FIELD = 'manager_ga1_id';
-
-    /** The same wire-facing key for the "Operatore APL" slot (spec 0373 D-10). */
-    private const string GA5_FIELD = 'manager_ga5_id';
+    private const string POSITION_FIELD = 'manager_ga%d_id';
 
     public function __construct(private readonly QuoteManagerWriter $managerWriter) {}
 
@@ -74,8 +71,8 @@ final class RequestOperatorWriter
      * (TableCellUpdateService::update() falls back to the in-memory $quote
      * when the post-write re-fetch comes back empty). That fallback instance
      * must already reflect the new team, or the response ships the OLD one
-     * under a 200 — `managers` included, being what the `manager_ga1` column
-     * projects.
+     * under a 200 — `managers` included, being what the position columns
+     * project.
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
@@ -96,45 +93,29 @@ final class RequestOperatorWriter
         $changed['operator_id'] = $operatorId;
     }
 
+    public static function positionField(int $position): string
+    {
+        return sprintf(self::POSITION_FIELD, $position);
+    }
+
     /**
-     * The GA1 slot alone (direttiva utente 2026-09-07, the grid's
-     * `manager_ga1` cell): the same single-slot move apply() performs on the
-     * Operatore, through the same writer and the same
+     * One slot alone (spec 0382 D-7): the same single-slot move apply()
+     * performs on the Operatore, through the same writer and the same
      * `promoteToOpportunity: true` this module always opts into — every other
-     * slot, the Operatore included, survives untouched.
+     * slot survives untouched, and a user already elsewhere in the team is
+     * moved, not duplicated.
      *
-     * THREE things apply() does that this deliberately does not: it reads the
-     * current occupant off the pivot rather than a denormalized column (GA1
-     * has none, and needs none), it drops the `managers` relation instead of
-     * `operator` (the projection the GA1 cell re-renders from), and its
-     * caller sends no assignment notification — GA1 scopes no visibility, and
-     * a move that leaves the Operatore in place assigns nobody, the rule
-     * applySlots() already follows (spec 0097, D-6/AC-007).
-     *
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    public function applyGa1(Quote $quote, ?int $userId, array &$changed, array &$old): void
-    {
-        $this->applySingleSlot($quote, ManagerPositions::GA1, self::GA1_FIELD, $userId, $changed, $old);
-    }
-
-    /**
-     * The "Operatore APL" slot alone (spec 0373 D-10), on the terms of applyGa1().
+     * What apply() does and this deliberately does not: it reads the current
+     * occupant off the pivot rather than a denormalized column, drops the
+     * `managers` relation instead of `operator`, and its caller sends no
+     * assignment notification — a move that leaves the Operatore in place
+     * assigns nobody (spec 0097, D-6/AC-007). The Operatore position itself
+     * never comes here: it goes through apply().
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      */
-    public function applyGa5(Quote $quote, ?int $userId, array &$changed, array &$old): void
-    {
-        $this->applySingleSlot($quote, ManagerPositions::GA5, self::GA5_FIELD, $userId, $changed, $old);
-    }
-
-    /**
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    private function applySingleSlot(Quote $quote, int $position, string $field, ?int $userId, array &$changed, array &$old): void
+    public function applyPosition(Quote $quote, int $position, ?int $userId, array &$changed, array &$old): void
     {
         $current = $this->currentPositions($quote)[$position] ?? null;
 
@@ -145,6 +126,7 @@ final class RequestOperatorWriter
         $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, $position, $userId), promoteToOpportunity: true);
         $quote->unsetRelation('managers');
 
+        $field = self::positionField($position);
         $old[$field] = $current;
         $changed[$field] = $userId;
     }
