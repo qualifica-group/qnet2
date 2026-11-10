@@ -5,7 +5,6 @@ use App\Models\ProductCategory;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderWorkflow;
 use App\Services\WorkOrders\WorkOrderWorkflowResolver;
-use App\Services\WorkOrderWorkflowService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -109,29 +108,26 @@ it('resolves a batch with a single eager load and no lazy loading', function () 
 });
 
 // AC-008 resolver part
-it('assigns the open row of the resolved set, then remaps by system key or falls back to open when the set changes', function () {
+it('picks the open row of the resolved set, then remaps by system key or falls back to open when the set changes', function () {
     $function = BusinessFunction::factory()->create();
     $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
     $workflow = workOrderWorkflowFor('By function', ['business_function_id' => $function->id]);
     $resolver = app(WorkOrderWorkflowResolver::class);
+    $target = fn (WorkOrder $workOrder) => $resolver->targetStatus($workOrder, $resolver->resolve($workOrder));
 
     $workOrder = workOrderWithRevenueIn([$category]);
-    $resolver->resolveAndAssign($workOrder);
-    expect($workOrder->fresh()->workOrderWorkflowStatus->work_order_workflow_id)->toBe($workflow->id)
-        ->and($workOrder->fresh()->workOrderWorkflowStatus->system_key)->toBe('open');
+    expect($target($workOrder)->work_order_workflow_id)->toBe($workflow->id)
+        ->and($target($workOrder)->system_key)->toBe('open');
 
     // Completed in the workflow's own set, then the lines go away: the global
     // row with the same system key is chosen.
     $workOrder->forceFill(['work_order_workflow_status_id' => $workflow->statuses->firstWhere('system_key', 'completed')->id])->save();
     $workOrder->quoteLines()->detach();
-    $resolver->resolveAndAssign($workOrder->fresh());
-    expect($workOrder->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('completed')->id);
+    expect($target($workOrder->fresh())->id)->toBe(globalWorkOrderStatus('completed')->id);
 
     // A custom status of a set that no longer applies falls back to open.
-    $custom = $workflow->statuses->firstWhere('name', 'Working');
-    $workOrder->forceFill(['work_order_workflow_status_id' => $custom->id])->save();
-    $resolver->resolveAndAssign($workOrder->fresh());
-    expect($workOrder->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('open')->id);
+    $workOrder->forceFill(['work_order_workflow_status_id' => $workflow->statuses->firstWhere('name', 'Working')->id])->save();
+    expect($target($workOrder->fresh())->id)->toBe(globalWorkOrderStatus('open')->id);
 });
 
 it('keeps the current status when it already belongs to the resolved set', function () {
@@ -141,41 +137,7 @@ it('keeps the current status when it already belongs to the resolved set', funct
     $custom = $workflow->statuses->firstWhere('name', 'Working');
     $workOrder = workOrderWithRevenueIn([$category]);
     $workOrder->forceFill(['work_order_workflow_status_id' => $custom->id])->save();
+    $resolver = app(WorkOrderWorkflowResolver::class);
 
-    app(WorkOrderWorkflowResolver::class)->resolveAndAssign($workOrder->fresh());
-
-    expect($workOrder->fresh()->work_order_workflow_status_id)->toBe($custom->id);
-});
-
-// AC-009
-it('delete: reassigns the impacted work orders by system key, or open, and removes the workflow', function () {
-    $function = BusinessFunction::factory()->create();
-    $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
-    $workflow = workOrderWorkflowFor('Doomed', ['business_function_id' => $function->id]);
-
-    $onCompleted = workOrderWithRevenueIn([$category]);
-    $onCompleted->forceFill(['work_order_workflow_status_id' => $workflow->statuses->firstWhere('system_key', 'completed')->id])->save();
-    $onCustom = workOrderWithRevenueIn([$category]);
-    $onCustom->forceFill(['work_order_workflow_status_id' => $workflow->statuses->firstWhere('name', 'Working')->id])->save();
-    $untouched = WorkOrder::factory()->create();
-
-    app(WorkOrderWorkflowService::class)->delete($workflow);
-
-    expect(WorkOrderWorkflow::query()->count())->toBe(0)
-        ->and($onCompleted->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('completed')->id)
-        ->and($onCustom->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('open')->id)
-        ->and($untouched->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('open')->id);
-});
-
-it('delete: moves a work order onto the next matching workflow when one exists', function () {
-    $function = BusinessFunction::factory()->create();
-    $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
-    $doomed = workOrderWorkflowFor('Doomed', ['product_category_id' => $category->id]);
-    $fallback = workOrderWorkflowFor('Fallback', ['business_function_id' => $function->id]);
-    $workOrder = workOrderWithRevenueIn([$category]);
-    $workOrder->forceFill(['work_order_workflow_status_id' => $doomed->statuses->firstWhere('system_key', 'open')->id])->save();
-
-    app(WorkOrderWorkflowService::class)->delete($doomed);
-
-    expect($workOrder->fresh()->workOrderWorkflowStatus->work_order_workflow_id)->toBe($fallback->id);
+    expect($resolver->targetStatus($workOrder->fresh(), $resolver->resolve($workOrder->fresh()))->id)->toBe($custom->id);
 });

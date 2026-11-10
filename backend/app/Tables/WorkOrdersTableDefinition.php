@@ -7,6 +7,7 @@ namespace App\Tables;
 use App\Enums\ProformaRequestStatus;
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
+use App\Enums\WorkOrderWorkPhase;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -16,11 +17,13 @@ use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
+use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
 use App\Tables\WorkOrders\WorkOrderRenewalColumn;
 use App\Tables\WorkOrders\WorkOrderWorkflowStatusColumn;
+use App\Tables\WorkOrders\WorkOrderWorkPhaseColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -68,6 +71,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderSourceQuotes $sourceQuotes,
         private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
         private readonly WorkOrderRenewalColumn $renewalColumn,
+        private readonly WorkOrderAdvancedFilterApplier $advancedFilterApplier,
+        private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
     ) {}
 
     /**
@@ -107,11 +112,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        // `supervisors.avatar` is eager-loaded so the Responsabili cell can
-        // render real avatars and not just initials (spec 0096, AC-052),
-        // mirroring QuotesTableDefinition's own managers eager load.
-        // `participants` carries no column of its own: it is loaded so
-        // WorkOrderVisibilityScope::isVisibleTo() answers actionsFor()'s
+        // `supervisors.avatar`/`participants.avatar` are eager-loaded so the
+        // Responsabili and Partecipanti cells can render real avatars and not
+        // just initials (spec 0096, AC-052), mirroring QuotesTableDefinition's
+        // own managers eager load. The loaded `participants` also let
+        // WorkOrderVisibilityScope::isVisibleTo() answer actionsFor()'s
         // per-row Gate calls in memory instead of querying (user
         // directive 2026-09-02).
         // `quote.opportunity.registry` feeds the Anagrafica column,
@@ -120,9 +125,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // `completion_recorded_on` (spec 0321) without one query per row.
         $query = $this->statusResolver->withProgress(WorkOrderVisibilityScope::withCompetenceVerdict(WorkOrder::query(), Auth::user())->with([
             'quote.opportunity.registry',
-            'quote.contract',
+            'quote.contract.contractStatus',
             'supervisors.avatar',
-            'participants',
+            'participants.avatar',
             // Spec 0322: the "Stato lavorazione" cell, and its per-row set
             // (WorkOrderWorkflowResolver reads `quoteLines.product`).
             'workOrderWorkflowStatus',
@@ -191,6 +196,44 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function advancedFilters(): array
+    {
+        return $this->advancedFilterApplier->commessePageFilters(Auth::user());
+    }
+
+    /**
+     * @param  Builder<WorkOrder>  $query
+     * @param  array<string, mixed>  $descriptor
+     */
+    public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
+    {
+        /** @var User|null $actor */
+        $actor = Auth::user();
+
+        return $this->advancedFilterApplier->apply($query, $name, $value, $actor)
+            || parent::applyAdvancedFilter($query, $name, $descriptor, $value);
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     * @return array<string, int>
+     */
+    public function aggregates(Builder $query): array
+    {
+        return $this->workPhaseColumn->counts($query);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function filtersIgnoredByAggregates(): array
+    {
+        return [WorkOrderWorkPhaseColumn::COLUMN];
+    }
+
+    /**
      * @return array<int, array{columnId: string, direction: string}>
      */
     public function defaultSort(): array
@@ -220,6 +263,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'type' => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderType::options()),
             'status' => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderStatus::options()),
+            WorkOrderWorkPhaseColumn::COLUMN => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderWorkPhase::options()),
             default => null,
         };
     }
@@ -247,6 +291,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'type' => 'work_order_type',
             'status' => 'work_order_status',
+            WorkOrderWorkPhaseColumn::COLUMN => 'work_order_work_phase',
             default => null,
         };
     }
@@ -282,9 +327,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'type' => $row->type?->value,
             'start_date' => $row->start_date,
             'supervisors' => $row->supervisors->map(fn (User $user): array => $this->userSummary($user))->all(),
+            'participants' => $row->participants->map(fn (User $user): array => $this->userSummary($user))->all(),
             'callback_date' => $row->callback_date,
             'is_force_closed' => $row->is_force_closed,
             'status' => $progress->status->value,
+            WorkOrderWorkPhaseColumn::COLUMN => $this->workPhaseColumn->project($row),
             ...$this->workflowStatusColumn->project($row),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Contracts;
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
 use App\Enums\HttpStatusEnum;
+use App\Exceptions\Contracts\MultiQuoteContractsRefusedException;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Contracts\MultiQuoteWorkOrderRequest;
 use App\Http\Resources\WorkOrderResource;
@@ -44,6 +45,8 @@ class ContractMultiQuoteWorkOrderController extends BaseApiController
                 'Created',
                 HttpStatusEnum::CREATED,
             );
+        } catch (MultiQuoteContractsRefusedException $refused) {
+            return $this->fail($refused->getMessage(), HttpStatusEnum::UNPROCESSABLE_ENTITY->value, $refused->errors());
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

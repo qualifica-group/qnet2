@@ -62,6 +62,9 @@ export function ContractMultiProgramDialog({ open, onOpenChange, contractIds }: 
                   ? t(`${prefix}.selectionSummary`, { lines: dialog.selected.length, offers: dialog.offersCount })
                   : t(`${prefix}.hint`)}
               </p>
+              {dialog.excludedCount > 0 ? (
+                <p className="text-xs text-muted-foreground">{t(`${prefix}.refusal.excluded`, { count: dialog.excludedCount })}</p>
+              ) : null}
               <FormField
                 control={form.control}
                 name={`${MULTI_GROUP_PREFIX}.quote_line_ids`}
@@ -72,6 +75,8 @@ export function ContractMultiProgramDialog({ open, onOpenChange, contractIds }: 
                       isPending={dialog.linesQuery.isPending}
                       isError={dialog.linesQuery.isError}
                       refusal={dialog.linesRefusal}
+                      canExcludeRefused={dialog.canExcludeRefused}
+                      onExcludeRefused={dialog.excludeRefused}
                       onRetry={() => void dialog.linesQuery.refetch()}
                       selected={dialog.selected}
                       selectableIds={dialog.selectableIds}

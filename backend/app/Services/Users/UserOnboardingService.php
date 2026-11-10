@@ -31,33 +31,45 @@ class UserOnboardingService
      */
     public function start(User $user, string $password): void
     {
-        // Step 1: pending first-access flag (guarded column, forceFill only)
-        $user->forceFill(['must_set_password' => true])->save();
+        // Step 1: pending first-access flag and welcome marker (guarded columns, forceFill only)
+        $user->forceFill(['must_set_password' => true, 'welcome_sent_at' => now()])->save();
 
         // Step 2: queued welcome email
         $user->notify(new WelcomeUserNotification($password));
     }
 
     /**
-     * Replace the user's password with a new generated one, force the choice of
-     * a new password, close every open session and email the new password.
+     * Admin resend from the user sheet: eligibility check, then reissueWelcome().
      *
      * @throws ValidationException when the user is inactive, a service account or the actor
      */
     public function resendWelcome(User $user, User $actor): void
     {
-        // Step 1: eligibility
         $this->assertEligible($user, $actor);
 
-        // Step 2: new password, flag and session revocation, atomically
+        $this->reissueWelcome($user);
+    }
+
+    /**
+     * Replace the user's password with a new generated one, force the choice of
+     * a new password, close every open session and email the new password. The
+     * caller selects eligible users (resendWelcome(), `users:send-welcome`).
+     */
+    public function reissueWelcome(User $user): void
+    {
+        // Step 1: new password, flag, welcome marker and session revocation, atomically
         $password = $this->generatePassword();
 
         DB::transaction(function () use ($user, $password): void {
-            $user->forceFill(['password' => $password, 'must_set_password' => true])->save();
+            $user->forceFill([
+                'password' => $password,
+                'must_set_password' => true,
+                'welcome_sent_at' => now(),
+            ])->save();
             $user->tokens()->delete();
         });
 
-        // Step 3: email after the commit
+        // Step 2: email after the commit
         $user->notify(new WelcomeUserNotification($password));
     }
 

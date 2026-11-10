@@ -8,6 +8,7 @@ use App\Http\Controllers\PipelineStatuses\PipelineStatusForSelectController;
 use App\Http\Controllers\ProductCategories\ProductCategoryBranchForSelectController;
 use App\Http\Controllers\ProductCategories\ProductCategoryForSelectController;
 use App\Http\Controllers\ProductCategories\ProductCategoryNodeForSelectController;
+use App\Http\Controllers\ProductCategories\ProductCategoryRootForSelectController;
 use App\Http\Controllers\Projects\ProjectController;
 use App\Http\Controllers\Projects\ProjectForSelectController;
 use App\Http\Controllers\Projects\ProjectSummaryController;
@@ -117,4 +118,6 @@ Route::get('product-category-branches/for-select', ProductCategoryBranchForSelec
 // Every active category, containers included (spec 0223 D-5): the commission
 // configurator's picker, again a separate segment for the same reason.
 Route::get('product-category-nodes/for-select', ProductCategoryNodeForSelectController::class);
+// First-level categories only: the "Categoria madre" grid filter.
+Route::get('product-category-roots/for-select', ProductCategoryRootForSelectController::class);
 Route::get('states/for-select', StateForSelectController::class);

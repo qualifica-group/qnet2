@@ -1,9 +1,12 @@
 <?php
 
 use App\Models\Contract;
+use App\Models\Quote;
 use App\Services\Contracts\ContractVisibilityScope;
+use App\Services\Quotes\QuoteVisibilityScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
 
 /**
  * The `contracts.viewCompetence` tier (spec 0340): a contract follows its
@@ -83,4 +86,18 @@ it('AC-020: a null actor matches no contract', function () {
     categoryTabContract([competenceVisibilityCategory()[1]]);
 
     expect(ContractVisibilityScope::scopeToActor(Contract::query(), null)->count())->toBe(0);
+});
+
+it('AC-016: the verdict on the contract quote is skipped only by contracts.viewAll', function () {
+    [$function, $covered] = competenceVisibilityCategory();
+    $bounded = competenceVisibilityActor('contracts');
+    grantCompetence($bounded, $function, $covered);
+    $bounded->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+    $seesAll = competenceVisibilityActor('contracts', ['viewAny', 'view', 'viewCompetence', 'viewAll']);
+    grantCompetence($seesAll, $function, $covered);
+
+    expect(QuoteVisibilityScope::withCompetenceVerdict(Quote::query(), $bounded, ContractVisibilityScope::RESOURCE)->toSql())
+        ->toContain(QuoteVisibilityScope::COMPETENCE_VERDICT_ATTRIBUTE)
+        ->and(QuoteVisibilityScope::withCompetenceVerdict(Quote::query(), $seesAll, ContractVisibilityScope::RESOURCE)->toSql())
+        ->not->toContain(QuoteVisibilityScope::COMPETENCE_VERDICT_ATTRIBUTE);
 });

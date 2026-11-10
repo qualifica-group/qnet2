@@ -13,13 +13,15 @@ function run(overrides: Partial<MigrationLastRun> = {}): MigrationLastRun {
     failed_rows: 0,
     has_report: false,
     updated_since: null,
+    update_existing: false,
+    updated_rows: 0,
     created_at: '2026-10-12T09:00:00.000000Z',
     ...overrides,
   }
 }
 
 function source(lastRun: MigrationLastRun | null): MigrationSourceSummary {
-  return { key: 'roles', label: 'Roles', phase: 1, available: true, last_run: lastRun, migrated_at: null }
+  return { key: 'roles', label: 'Roles', phase: 1, available: true, supports_update_existing: false, last_run: lastRun, migrated_at: null }
 }
 
 describe('resolveMigrationSourceState', () => {

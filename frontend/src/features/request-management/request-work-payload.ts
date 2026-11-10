@@ -225,13 +225,21 @@ export function buildRequestWorkPayload(
     payload.general_notes = generalNotes === '' ? null : generalNotes
   }
 
+  // The client select (decisione utente 2026-11-09). A different client
+  // leaves the buffered blocks behind: they hold the data of the one being
+  // left, and the server refuses them next to a change of client.
+  const registryChanged = values.registry_id !== null && values.registry_id !== (panel.registry?.id ?? null)
+  if (registryChanged && values.registry_id !== null) {
+    payload.registry_id = values.registry_id
+  }
+
   // Sent only when the client actually has a card: without one there is no
   // identity to replace and the server has nothing to resolve the write on.
-  if (values.client_identity && clientIdentityChanged(values.client_identity, panel.client_identity)) {
+  if (!registryChanged && values.client_identity && clientIdentityChanged(values.client_identity, panel.client_identity)) {
     payload.client_identity = toClientIdentityPayload(values.client_identity)
   }
 
-  if (clientContactsChanged(values.client_contacts, panel.client_contacts.items)) {
+  if (!registryChanged && clientContactsChanged(values.client_contacts, panel.client_contacts.items)) {
     payload.client_contacts = values.client_contacts.map(toClientContactPayload)
   }
 
@@ -322,7 +330,7 @@ export function buildRequestWorkPayload(
   // leaves the persisted one untouched — this panel has no delete affordance
   // for it, and the write path never deletes an address.
   const address = values.client_address[0]
-  if (address && clientAddressChanged(values.client_address, panel.client_address)) {
+  if (!registryChanged && address && clientAddressChanged(values.client_address, panel.client_address)) {
     payload.client_address = toClientAddressPayload(address)
   }
 

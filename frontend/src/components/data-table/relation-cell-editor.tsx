@@ -34,6 +34,7 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useForSelect } from '@/features/for-select/use-for-select'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { TableRow } from '@/features/table/types'
+import { SELECT_POPUP_FIT_CONTENT_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 
 /** A relation column's cell value: the related row's `{id, name}` projection, or `null`. */
@@ -176,7 +177,7 @@ export function RelationCellEditor(
   }
 
   return (
-    <div className="w-72 rounded-md border border-border bg-popover shadow-md">
+    <div className={cn('min-w-72 rounded-md border border-border bg-popover shadow-md', SELECT_POPUP_FIT_CONTENT_CLASS)}>
       <div className="p-1">
         <Input
           ref={inputRef}

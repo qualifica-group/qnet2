@@ -175,6 +175,9 @@ class ProductCategoriesSource extends AbstractMigrationSource
         ));
 
         $category->old_id = $externalId;
+        // A legacy category (user directive 2026-11-07): the one-open-opportunity
+        // rule ignores opportunities sitting only on these.
+        $category->is_legacy = true;
         $category->save();
         $this->createdIds[] = $category->id;
 

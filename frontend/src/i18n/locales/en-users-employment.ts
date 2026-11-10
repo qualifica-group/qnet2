@@ -68,7 +68,10 @@ export const usersFormEmployment = {
   terminatedBeforeHiredAt: 'Termination date must be on or after the hire date.',
 }
 
-/** New grid columns for the users table (spec 0015). */
+/**
+ * Users grid columns kept out of `en.ts` (size limit): employment
+ * (spec 0015) and last sign-in (spec 0370).
+ */
 export const usersColumnsEmployment = {
   business_function: 'Business function',
   company: 'Company',
@@ -82,6 +85,7 @@ export const usersColumnsEmployment = {
   reports_to: 'Reports to',
   hired_at: 'Hired at',
   terminated_at: 'Terminated at',
+  last_login_at: 'Last sign-in',
 }
 
 /** Read-only detail labels for the employment sections (spec 0015). */

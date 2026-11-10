@@ -74,6 +74,8 @@ final readonly class UpdateProductCategoryData
         /** Spec 0350: own default revenue sub-account; submitted null = back to inherit. */
         public ?int $revenueTypeId = null,
         public bool $revenueTypeIdSubmitted = false,
+        public ?int $currentCategoryId = null,
+        public bool $currentCategoryIdSubmitted = false,
     ) {}
 
     /**
@@ -126,6 +128,8 @@ final readonly class UpdateProductCategoryData
             inheritsManagerLabelsSubmitted: array_key_exists('inherits_manager_labels', $data),
             revenueTypeId: array_key_exists('revenue_type_id', $data) && $data['revenue_type_id'] !== null ? (int) $data['revenue_type_id'] : null,
             revenueTypeIdSubmitted: array_key_exists('revenue_type_id', $data),
+            currentCategoryId: array_key_exists('current_category_id', $data) && $data['current_category_id'] !== null ? (int) $data['current_category_id'] : null,
+            currentCategoryIdSubmitted: array_key_exists('current_category_id', $data),
         );
     }
 
@@ -267,6 +271,10 @@ final readonly class UpdateProductCategoryData
 
         if ($this->revenueTypeIdSubmitted) {
             $attributes['revenue_type_id'] = $this->revenueTypeId;
+        }
+
+        if ($this->currentCategoryIdSubmitted) {
+            $attributes['current_category_id'] = $this->currentCategoryId;
         }
 
         return $attributes;

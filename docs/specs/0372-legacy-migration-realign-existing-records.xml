@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0372-legacy-migration-realign-existing-records" status="approved" owner="nicola" date="2026-11-09">
+
+  <goal>
+    Il super-admin puo' scegliere, dalla pagina Migrazioni, di aggiornare anche le commesse, le opportunita', le offerte
+    e i contratti gia' importati e poi modificati nel QNet legacy. Un record su cui si e' lavorato in qnet-2 non viene
+    sovrascritto. Senza la scelta, l'import resta identico a oggi.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-09 (domande in sessione):
+    D-1 Conflitti: si aggiornano solo i record senza attivita' in qnet-2 dopo l'import. Gli altri restano com'e' e
+        finiscono nel report con un avviso. Stessa regola di `quotes:realign-legacy-status`.
+    D-2 Dati aggiornati: dati principali, campi flessibili, fasi commessa e dati di pagamento. Righe offerta, righe di
+        costo e costi commessa restano esclusi.
+    D-3 Avvio: casella "Aggiorna anche i record gia' importati", spenta di default, nell'import singolo e in "Importa
+        tutto", combinabile con la data "dal". Contatore "aggiornati" separato.
+    D-4 Contratti: se l'offerta risulta vinta dopo l'import il contratto si crea con la logica dell'import e se ne
+        allineano date e stato. Mai cancellato: un contratto la cui offerta non risulta piu' vinta resta e il report
+        lo segnala.
+
+    Decisioni di progetto (proposte, da validare con la spec):
+    D-5 Campi per entita':
+        - Commessa: `title`, `start_date`, `callback_date`, `description`, `internal_notes`, `is_force_closed`,
+          `force_close_reason`, responsabili (`supervisors`), partecipanti (`participants`), `attribute_values`, fasi
+          (`stages`), dati di pagamento (`work_order_line_payments`). Restano fissi `code`, `quote_id`, `type`, righe.
+        - Offerta: `title`, `quote_date`, `internal_notes`, `next_callback_at`, `supervisor_id`, gestori,
+          `attribute_values`, stato (`quote_workflow_status_id`), contratto. Restano fissi `code`, `opportunity_id`,
+          segnalatore, commerciale (legati a provvigioni e premi), sede, modalita' di pagamento, fonte, righe.
+        - Opportunita': `name`, `start_date`, `expected_close_date`, `estimated_value`, `general_notes`,
+          `supervisor_id`, gestori. Restano fissi anagrafica, referente, commerciale, segnalatore, sede, categorie.
+          Lo stato non si scrive: e' calcolato dalle offerte (spec 0082).
+        - Contratto: `accepted_at`, `validated_at`, `renewal_date`, `terminated_at`, `contract_status_id`
+          (gli stessi di `LegacyQuoteStatusApplier::alignContract`).
+    D-6 "Toccato" = esiste una voce in `activity_log` (l'import gira senza log). Sul DB dev: 0 commesse su 16.499,
+        0 offerte su 28.602, 1 opportunita' su 30.874, 0 contratti su 11.572.
+        - Commessa: voce su `WorkOrder`, su una sua `WorkOrderStage` o su una sua `WorkOrderLinePayment`.
+        - Opportunita': voce su `Opportunity`.
+        - Offerta: voce su `Quote` o sulla sua `Opportunity`, perche' `QuoteStatusChangeLogger` e i servizi di
+          Gestione Richieste registrano le azioni sull'offerta sull'opportunita'. Effetto voluto, prudente: una
+          modifica di stato di un'offerta protegge l'opportunita' e tutte le sue offerte.
+        - Contratto: voce su `Contract`. Se solo il contratto e' toccato, l'offerta si aggiorna e il contratto no.
+    D-7 Limite di D-6 (confermata dall'utente 2026-11-09, microtask M7): le modifiche in qnet-2 a responsabili, partecipanti, gestori
+        (pivot) e `attribute_values` (fuori da `#[Fillable]`, quindi fuori da `logFillable`) non lasciano voci. Oggi
+        non sarebbero riconosciute e verrebbero sovrascritte. Proposta: da questa spec in poi queste modifiche
+        registrano una voce di attivita'. Vale solo per le modifiche future.
+    D-8 Si scrive solo se c'e' una differenza reale. Sul DB legacy locale `updated_at` e' recente per moltissime righe
+        (dal 2026-10-01: 9.920 `orders`, 14.321 `quotations`, 15.782 `opportunities`), quindi una riga riproposta non e'
+        per forza cambiata. Nessuna differenza = `skipped`, nessuna scrittura.
+    D-9 Scrittura silenziosa come l'import: `activity()->withoutLogs`, `saveQuietly`, nessuna notifica, `updated_at`
+        impostato a quello legacy, cosi' un record aggiornato resta riallineabile. Non si passa da `WorkOrderService::update`,
+        `QuoteService::update`, `OpportunityService::update`: notificano, ritarano i premi, chiudono i task e
+        ricalcolano titoli e stati. I task della commessa non vengono chiusi: arrivano con il loro stato da `tasks`.
+    D-10 Fasi: confronto per nome. Fase assente = creata; fase presente = aggiornati `sort_order`, `closed_at`,
+        `closed_by_id`. Mai cancellata (`time_entries.work_order_stage_id` la referenzia): una fase non piu' inviata dal
+        legacy resta, con avviso. Un nome cambiato nel legacy produce quindi una fase nuova e lascia la vecchia.
+    D-11 Campi flessibili: merge come l'import (`LegacyAttributeValueApplier`). Un valore che il legacy non invia piu'
+        resta in qnet-2. Pagamenti: `updateOrCreate` sulla coppia (`work_order_id`, `quote_line_id`) per le righe attuali.
+    D-12 Utente non migrato tra responsabili o partecipanti: la riga fallisce e non scrive nulla, come
+        `WorkOrdersSource::assertUsersMigrated`. Decisione utente 2026-10-14: nulla viene perso in silenzio.
+    D-13 Stato commessa: resta nella sorgente `work-order-workflow-statuses`, che con la casella attiva rispetta D-6.
+        Senza casella si comporta come oggi. Con l'import singolo di "Commesse" lo stato non cambia finche' non si lancia
+        anche quella sorgente; "Importa tutto" le esegue entrambe.
+    D-15 (emersa in verifica) Un gestore di un'offerta resta gestore dell'opportunita' (regola di qnet-2, spec 0186 D-6):
+        il riallineamento dell'opportunita' non scollega chi e' gestore su una sua offerta, altrimenti i gestori promossi
+        all'import dalle offerte sparirebbero a ogni giro. Chi e' tolto nel legacy e resta su un'offerta esce al giro
+        successivo a quello che lo toglie dall'offerta.
+    D-16 (emersa in verifica) Precisazione di D-8: i soli avvisi di mappatura stanno con una scrittura. Gli avvisi di
+        conflitto (fase non piu' inviata, contratto toccato o tenuto) restano nel report anche su una riga senza scritture.
+    D-14 Stato offerta: `LegacyQuoteStatusApplier::apply` riusato. Outcome `open`: stato invariato. Il contratto si
+        allinea anche quando lo stato non cambia (oggi `apply` esce prima).
+
+    Verificato in qnet-2:
+    - `WorkOrdersSource::processRow` e `QuotesSource::processRow` saltano su `existsByOldId`;
+      `OpportunitiesSource::backfillExisting` riempie solo categorie e note mancanti (resta invariato senza casella).
+    - `AbstractMigrationSource::importRow` conta `created_rows`/`skipped_rows`; `MigrationRowOutcome` ha `created`/`skipped`.
+    - `MigrationImportContext::$run`; `MigrationService::start`, `startMass`, `createMassRun`; `RunMassMigrationJob` (figli);
+      `StartMigrationImportRequest`; `MigrationRunResource`, `MassMigrationRunResource`, `MigrationSourceResource`.
+    - `LegacyWorkOrderStageWriter` e `LegacyWorkOrderLinePaymentWriter` creano soltanto: da soli non sono rieseguibili.
+    - I contratti non hanno una sorgente: nascono da `QuotesSource` via `LegacyQuoteStatusApplier`.
+    - Frontend `features/migrations/`: `api.ts`, `types.ts`, `use-migration-import.ts`, `use-mass-migration.ts`,
+      `migration-import-start.tsx`, `mass-import-dialog.tsx`, `migration-import-progress.tsx`, `mass-import-progress.tsx`,
+      `migration-updated-since-field.tsx`. Namespace i18n `migrations`. Guida `help/content/{it,en}/migrations.ts`.
+
+    Verificato nel legacy (`/Users/Repository/qnet`):
+    - Gli endpoint inviano gia' tutti i campi di D-5: nessun cambio di shape.
+    - Il filtro incrementale guarda solo `orders.updated_at`, `quotations.updated_at`, `opportunities.updated_at`.
+      Sul DB locale, dal 2026-10-01, nessuna commessa ha `orderisos`, `responsabile_services`, `partecipant_services` o
+      `ordermilestones` cambiati senza `orders.updated_at`. Il dato non esclude il caso futuro: i collegamenti si aggiungono (scope).
+    - `outcome`, gestori e `callback_date` dell'offerta dipendono dall'opportunita' (gia' in join nella query).
+  </context>
+
+  <scope>
+    <in>
+      <item>qnet-2: colonne `update_existing` (boolean, default false) su `migration_runs` e `mass_migration_runs`,
+        `updated_rows` (unsigned int, default 0) su `migration_runs`.</item>
+      <item>qnet-2: `MigrationSource::supportsUpdateExisting()`, default false in `AbstractMigrationSource`, true per
+        `work-orders`, `quotes`, `opportunities`, `work-order-workflow-statuses`.</item>
+      <item>qnet-2: `MigrationRowOutcome::updated()`, contatore `updated_rows` in `importRow` (nessun `$model`: i custom field non si riscrivono).</item>
+      <item>qnet-2: `LegacyRecordTouchGuard` (D-6) e un riallineatore per entita' sotto `App\Migrations\Support\`:
+        `LegacyWorkOrderRealigner`, `LegacyQuoteRealigner`, `LegacyOpportunityRealigner`, allineamento contratto in `LegacyQuoteStatusApplier`.</item>
+      <item>qnet-2: `LegacyWorkOrderStageWriter` e `LegacyWorkOrderLinePaymentWriter` rieseguibili (D-10, D-11).</item>
+      <item>qnet-2: guardia D-6 in `WorkOrderWorkflowStatusesSource` solo con `update_existing` (D-13).</item>
+      <item>qnet-2: `update_existing` in FormRequest, `MigrationService`, job di massa, resource.</item>
+      <item>Legacy: filtro incrementale esteso. `work-orders`: `orderisos`, `responsabile_services`, `partecipant_services`,
+        `ordermilestones`. `quotes`: `opportunities.updated_at`. `opportunities`: `responsabile_opportunities`.</item>
+      <item>Frontend: casella condivisa nei due dialog, contatore "Aggiornati", indicazione nelle viste di avanzamento, i18n IT/EN.</item>
+      <item>Guida in-app `migrations` IT/EN (nuova sezione `update-existing`) e manuale Claude Docs (sezione Migrazioni).</item>
+      <item>Voce di attivita' per modifiche a persone e `attribute_values` (D-7).</item>
+    </in>
+    <out>
+      <item>Righe offerta, righe di costo, costi commessa e righe assegnate alla commessa (D-2).</item>
+      <item>Cancellazioni: un record o una fase eliminati nel legacy non vengono rimossi in qnet-2.</item>
+      <item>Aggiornamento campo per campo sui record toccati.</item>
+      <item>Altre sorgenti: anagrafiche, referenti, task, avanzamento, note, allegati, fatture, ordini restano come oggi.</item>
+      <item>Riconoscimento retroattivo delle modifiche a persone e campi flessibili gia' fatte prima di D-7.</item>
+      <item>Filtro incrementale sulle tabelle dei campi flessibili (`pre_info_*`, `classi` e simili) e sulle altre offerte
+        della stessa opportunita': quei cambiamenti entrano con un passaggio senza data.</item>
+      <item>Seeder `QualificaLegacyImportSeeder` e `MigrationService::runMassSync`: restano senza casella. Anteprima invariata.</item>
+      <item>Il comando `quotes:realign-legacy-status` resta com'e'.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/migrations">
+      <response status="200">Ogni sorgente aggiunge `supports_update_existing: boolean`.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/migrations/{source}/import">
+      <request>
+        Body JSON opzionale: `{ "updated_since": "YYYY-MM-DD" | null, "update_existing": boolean }`.
+        `update_existing` assente = false. Regole: `sometimes`, `boolean`.
+      </request>
+      <response status="201">`data.migration_run` = shape attuale + `update_existing: boolean`, `updated_rows: number`.</response>
+      <errors>
+        403 non super-admin. 404 sorgente sconosciuta. 422 sorgente non disponibile. 422 `errors.updated_since`.
+        422 `errors.update_existing` se la sorgente non lo supporta o il valore non e' booleano.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/migrations/{source}/runs/{migrationRun}">
+      <response status="200">`data.migration_run` aggiunge `update_existing: boolean`, `updated_rows: number`.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/migrations/mass-runs">
+      <request>Body JSON opzionale: `{ "updated_since": "YYYY-MM-DD" | null, "update_existing": boolean }`.</request>
+      <response status="201">
+        `data.mass_migration_run` = shape attuale + `update_existing: boolean`. Ogni `runs[]` porta `updated_rows` e
+        `update_existing`, che e' true solo per le sorgenti che lo supportano.
+      </response>
+      <errors>403 non super-admin. 422 piano senza sorgenti abilitate. 422 `errors.updated_since`, `errors.update_existing`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/migrations/mass-runs/{massMigrationRun}">
+      <response status="200">Come sopra.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="(legacy, routes/apiV2-migration.php) migration/work-orders, migration/quotes, migration/opportunities">
+      <request>Nessun parametro nuovo. `updated_since` include anche le righe delle tabelle collegate in scope.</request>
+      <response status="200">Envelope e shape degli `items` invariati.</response>
+    </endpoint>
+
+    <report>
+      Avvisi per riga in `report` con livello `warning` (testi inglesi come gli altri):
+      "Changed in qnet-2 after the import; not updated." (record toccato, conta come `skipped`).
+      "Contract changed in qnet-2 after the import; not updated."
+      "The contract's offer is no longer won in the legacy; the contract was kept."
+      "Stage {name} is no longer in the legacy; kept."
+    </report>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un import senza `update_existing`, quando una riga ha un `old_id` gia' presente, allora
+      commesse e offerte sono saltate senza scritture e le opportunita' fanno solo il backfill di oggi (regressione).</criterion>
+    <criterion id="AC-002">Dato `update_existing=true` e una commessa non toccata con titolo, date, descrizione, note e
+      chiusura forzata diversi nel legacy, allora i campi sono aggiornati, `updated_rows` vale 1, `updated_at` e' quello
+      legacy, non nascono voci di attivita'.</criterion>
+    <criterion id="AC-003">Dato lo stesso caso con responsabili e partecipanti diversi, allora i pivot coincidono col
+      legacy e nessuna notifica viene inviata.</criterion>
+    <criterion id="AC-004">Data una commessa non toccata che passa a chiusa nel legacy, allora `is_force_closed` e
+      `force_close_reason` sono scritti e i suoi task aperti non cambiano stato.</criterion>
+    <criterion id="AC-005">Dato un responsabile non migrato, allora la riga fallisce con il motivo e la commessa non cambia.</criterion>
+    <criterion id="AC-006">Date fasi legacy con una nuova, una chiusa e una non piu' inviata, allora la nuova e' creata, la
+      chiusa ha `closed_at`, la mancante resta con avviso, il numero di fasi non diminuisce mai.</criterion>
+    <criterion id="AC-007">Dato uno `stato_pagamento` diverso, allora ogni riga della commessa ha il nuovo valore, senza
+      righe doppie su (`work_order_id`, `quote_line_id`).</criterion>
+    <criterion id="AC-008">Dato un campo flessibile diverso, allora il valore e' aggiornato e un codice non inviato dal legacy resta.</criterion>
+    <criterion id="AC-009">Data una commessa con una voce di attivita' su di se', su una fase o su un pagamento, allora non
+      cambia, conta come `skipped` e il report ha l'avviso.</criterion>
+    <criterion id="AC-010">Dato un record non toccato identico al legacy, allora nessuna scrittura, `updated_at` invariato, conta come `skipped`.</criterion>
+    <criterion id="AC-011">Data un'offerta non toccata con campi, gestori e campi flessibili diversi, allora sono aggiornati e
+      le righe offerta, il `code` e il segnalatore non cambiano.</criterion>
+    <criterion id="AC-012">Data un'offerta con una voce di attivita' sulla sua opportunita', allora l'offerta non cambia e il report ha l'avviso.</criterion>
+    <criterion id="AC-013">Data un'offerta non toccata aperta in qnet-2 e vinta nel legacy, allora lo stato passa a vinta, il
+      contratto viene creato con date e stato legacy, nessuna voce di attivita' e nessuna notifica.</criterion>
+    <criterion id="AC-014">Data un'offerta vinta con contratto non toccato e stato invariato, quando date o stato contratto
+      cambiano nel legacy, allora il contratto si allinea.</criterion>
+    <criterion id="AC-015">Dato un contratto toccato e un'offerta non toccata, allora l'offerta si aggiorna, il contratto no, il report ha l'avviso.</criterion>
+    <criterion id="AC-016">Data un'offerta vinta in qnet-2 con contratto e non piu' vinta nel legacy, allora il contratto
+      resta invariato e il report ha l'avviso.</criterion>
+    <criterion id="AC-017">Data un'opportunita' non toccata con nome, date, valore, note, supervisore e gestori diversi, allora
+      sono aggiornati e anagrafica e categorie non cambiano.</criterion>
+    <criterion id="AC-018">Data un'opportunita' toccata, allora non cambia e il report ha l'avviso.</criterion>
+    <criterion id="AC-019">Con `update_existing=true`, `work-order-workflow-statuses` non cambia lo stato di una commessa
+      toccata; senza, si comporta come oggi.</criterion>
+    <criterion id="AC-020">`update_existing=true` su una sorgente non supportata da' 422 su `errors.update_existing`;
+      un non super-admin riceve 403.</criterion>
+    <criterion id="AC-021">In un import di massa con `update_existing=true` la run lo salva, i figli supportati lo ereditano, gli altri no.</criterion>
+    <criterion id="AC-022">Le resource espongono `update_existing` e `updated_rows`; `GET /migrations` espone `supports_update_existing`.</criterion>
+    <criterion id="AC-023">Una modifica da app a responsabili, partecipanti, gestori o `attribute_values`
+      crea una voce di attivita' sul record; durante un import non ne crea.</criterion>
+    <criterion id="AC-024">(Frontend) La casella compare nell'import singolo solo per le sorgenti che la supportano, spenta di
+      default; attivandola la chiamata parte con `update_existing: true`.</criterion>
+    <criterion id="AC-025">(Frontend) In "Importa tutto" c'e' la stessa casella, combinabile con la data.</criterion>
+    <criterion id="AC-026">(Frontend) Riepilogo e avanzamento mostrano "Aggiornati" quando la run ha `update_existing`.</criterion>
+    <criterion id="AC-027">(Legacy, verifica tinker) Con `updated_since`, `pagination.total` dei tre endpoint coincide col
+      conteggio diretto che include le tabelle collegate; senza parametro resta quello di oggi.</criterion>
+    <criterion id="AC-029">Data una commessa identica salvo una fase non piu' inviata dal legacy, allora nessuna
+      scrittura, conta come `skipped` e il report ha l'avviso della fase (D-16).</criterion>
+    <criterion id="AC-030">Data un'opportunita' non toccata con un gestore assente dal legacy ma presente su una sua offerta e
+      un altro su nessuna offerta, allora il primo resta, il secondo esce, e un secondo giro identico e' `skipped` (D-15).</criterion>
+    <criterion id="AC-028">Guida in-app `migrations` IT/EN con la sezione `update-existing`; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Checkbox dal design system (`components/ui`), nessuna stringa hard-coded.</item>
+    <item>Authz invariata: gate `super-admin` sul gruppo di route; input solo da FormRequest validata.</item>
+    <item>Migrazione nuova e reversibile, dopo `2026_11_29_100000`. Mai modificare quelle esistenti. Nessun comando
+      distruttivo sul DB dev: solo `migrate` in avanti, su ordine.</item>
+    <item>Legacy: nessun cambio di shape; verifica con `php -l` e tinker (backend.md §9). Nessuna riparazione dati in
+      qnet-2. Non toccare le modifiche locali dell'utente nel legacy. Git soggetto a CLAUDE.md §3.6.</item>
+    <item>Nessuna notifica e nessuna voce di attivita' durante il riallineamento (`AssignmentNotifier::muted`, `withoutLogs`).</item>
+    <item>Ogni riga nella propria transazione (`importRow`): un errore non lascia scritture parziali.</item>
+    <item>Test con `Http::fake` e fixture che rispecchiano il contratto reale del legacy. Cambio fixture = REQUIREMENT CHANGED.</item>
+    <item>`QuotesSource` e' gia' a 360 righe e `WorkOrdersSource` a 301: la logica nuova sta nei riallineatori. Hard limit 500.</item>
+  </constraints>
+
+</spec>

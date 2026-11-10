@@ -63,11 +63,11 @@ final class QuoteRowActions
      * only scopes it with `quote_id`, so reading an Offerta's notes is
      * reading its Opportunity's thread — never a `quotes.*` permission.
      *
-     * Spec 0087, D-10: the gate evaluates the OFFERTA's own GA2 Operatore
-     * (`quote.operator_id`, a real column — no eager-load needed), not the
-     * parent Opportunity's — the two can diverge since the Offerta acquired
-     * its own team (D-1). Mirrors OpportunitiesTableDefinition::allowsNotes'
-     * shape, not its source.
+     * Spec 0087, D-10 + spec 0373: the gate evaluates the OFFERTA's own team
+     * (`managers` is eager-loaded by the Offerte grid), not the parent
+     * Opportunity's — the two can diverge since the Offerta acquired its own
+     * team (D-1). Mirrors OpportunitiesTableDefinition::allowsNotes' shape,
+     * not its source.
      *
      * Spec 0105: the third tier is delegated to RequestManagementScope rather
      * than re-spelled here — `operational_site_id` is a real column on the
@@ -82,7 +82,7 @@ final class QuoteRowActions
         }
 
         return $actor->can('request-management.viewAll')
-            || $quote->operator_id === $actor->id
+            || RequestManagementScope::isOnTeamOf($actor, $quote)
             || RequestManagementScope::isInActorSites($actor, $quote)
             || RequestManagementScope::isInActorCompetence($actor, $quote);
     }

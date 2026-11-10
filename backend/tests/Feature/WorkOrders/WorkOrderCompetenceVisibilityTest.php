@@ -152,3 +152,27 @@ it('AC-020: a null actor matches no commessa', function () {
 
     expect(WorkOrderVisibilityScope::scopeToActor(WorkOrder::query(), null)->count())->toBe(0);
 });
+
+it('AC-016: projects the competence verdict only for an actor it can decide', function () {
+    [$function, $covered] = competenceVisibilityCategory();
+    $bounded = competenceVisibilityActor('work-orders');
+    grantCompetence($bounded, $function, $covered);
+    $seesAll = competenceVisibilityActor('work-orders', ['viewAny', 'view', 'viewCompetence', 'viewAll']);
+    grantCompetence($seesAll, $function, $covered);
+
+    expect(WorkOrderVisibilityScope::withCompetenceVerdict(WorkOrder::query(), $bounded)->toSql())
+        ->toContain(WorkOrderVisibilityScope::COMPETENCE_VERDICT_ATTRIBUTE)
+        ->and(WorkOrderVisibilityScope::withCompetenceVerdict(WorkOrder::query(), $seesAll)->toSql())
+        ->not->toContain(WorkOrderVisibilityScope::COMPETENCE_VERDICT_ATTRIBUTE);
+});
+
+it('AC-016: an actor who sees every commessa still gets rows outside the competence', function () {
+    [$function, $covered] = competenceVisibilityCategory();
+    $inside = categoryTabWorkOrder([$covered]);
+    $outside = categoryTabWorkOrder([competenceVisibilityCategory()[1]]);
+    $actor = competenceVisibilityActor('work-orders', ['viewAny', 'view', 'viewCompetence', 'viewAll']);
+    grantCompetence($actor, $function, $covered);
+    Sanctum::actingAs($actor);
+
+    expect(competenceWorkOrderIds())->toBe([$inside->id, $outside->id]);
+});

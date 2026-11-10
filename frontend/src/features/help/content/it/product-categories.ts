@@ -19,7 +19,7 @@ const guide: HelpGuide = {
           headers: ['Impostazione della categoria', 'Dove ha effetto'],
           rows: [
             ["Categoria padre (posizione nell'albero)", 'Decide cosa la categoria eredita. Nelle righe prodotto di progetti, campagne, opportunità e lead scegli prima la Categoria genitore (una radice) e poi una sua discendente; con Filtro, facoltativo, restringi la scelta a una figlia diretta che raggruppa altre categorie (es. Consulenza › ISO › ISO 9001).'],
-            ['Funzione aziendale', "Ricavata in automatico nelle righe prodotto; serve per gli ambiti di assegnazione degli utenti e l'assegnazione di lead e richieste. Il prodotto la mostra in sola lettura."],
+            ['Funzione aziendale', "Ricavata in automatico nelle righe prodotto; serve per gli ambiti di assegnazione degli utenti e l'assegnazione di lead e richieste. Una categoria senza funzione, propria o ereditata (ad esempio Costi), non compare nelle righe prodotto: i suoi prodotti si usano solo nei costi di offerta e commessa. Il prodotto la mostra in sola lettura."],
             ['Attributi Prodotto', 'Campi aggiuntivi nella scheda Prodotto.'],
             ['Attributi Offerta', "Campi nelle Informazioni aggiuntive dell'Offerta e colonne nelle schede per categoria di Gestione Richieste."],
             ['Attributi Commessa', 'Campi nelle Informazioni aggiuntive della Commessa.'],
@@ -210,6 +210,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            'La riga Categoria attuale compare solo sulle categorie madri vecchie (quelle con il prefisso [OLD]): serve a dire quale categoria madre attuale ha preso il suo posto, scegliendola tra le sole categorie madri attuali. Nel filtro **Categoria madre** delle liste le categorie vecchie collegate non compaiono come voci a parte: scegliendo la categoria attuale entrano anche i loro record e, in Offerte, Commesse e Contratti, le colonne dei campi flessibili. Si cambia o si toglie dal dettaglio con la matita.',
             'Le quattro regole decise dalla radice (Prevede preventivo, Modalità di gestione, Offerta unica per opportunità, Prevede un contratto) e la Funzione aziendale ereditata non hanno la matita sulle sottocategorie: mostrano il valore con il badge Ereditata da …; per cambiarle apri la categoria indicata.',
             'La riga Colonne report compare solo se la categoria è visibile nei report.',
             'Se assegni una funzione aziendale a una categoria con sottocategorie che ne hanno una propria, prima di salvare compare la richiesta di conferma.',
@@ -436,6 +437,7 @@ const guide: HelpGuide = {
             ['"Ereditata da …. Per modificarla, agisci su quella categoria."', 'Regola o funzione decisa più in alto.', 'Modifica la categoria indicata.'],
             ['"Questa categoria prodotto non è selezionabile."', 'Scelta una categoria contenitore in un altro modulo.', 'Scegli una sottocategoria o attiva Selezionabile.'],
             ['"Questa categoria prodotto non è attiva."', 'Scelta una categoria non attiva (o di un ramo non attivo) in un altro modulo.', 'Scegli un\'altra categoria o attiva Attiva.'],
+            ['"Questo prodotto non è attivo."', 'Scelto in un altro modulo un prodotto con Attivo spento.', 'Scegli un altro prodotto oppure riaccendi Attivo dalla scheda o in massa dalla griglia.'],
             ['"Questo prodotto appartiene a una categoria non attiva."', 'Scelto un prodotto di un ramo non attivo.', 'Scegli un altro prodotto o riattiva la categoria.'],
             ['"Questa opportunità è gestita su una singola categoria prodotto…"', 'Ramo in modalità Singola.', 'Usa una sola riga o passa la radice a Multipla.'],
             ['"La categoria prodotto di questa opportunità ammette una sola offerta: ne esiste già una."', 'Offerta unica per opportunità attiva.', "Modifica l'offerta esistente."],

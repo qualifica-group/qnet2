@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { fetchDefaultStatuses, updateDefaultStatuses, workOrderWorkflowKeys } from '@/features/work-order-workflows/api'
 import { buildDefaultStatusesPayload } from '@/features/work-order-workflows/work-order-workflow-form-payload'
 import { newCustomRow, statusRowsFromItems } from '@/features/work-order-workflows/work-order-status-rows'
@@ -85,7 +85,7 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
       toast.success(labels.saved)
       return true
     } catch (caughtError) {
-      toast.error(apiErrorMessage(caughtError, labels.genericError, i18n))
+      toast.error(refusedActionMessage(caughtError, labels.genericError, i18n))
       return false
     } finally {
       setIsSaving(false)

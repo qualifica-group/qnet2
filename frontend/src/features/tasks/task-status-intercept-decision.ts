@@ -14,12 +14,15 @@ function isClosingGroup(group: TaskStatusGroupValue | undefined): boolean {
 export type TaskStatusInterceptDecision = 'open_complete' | 'uncomplete' | null
 
 /**
- * `open_complete`: the picked status closes the task and it was not closed
- * already — opens "Completa" instead of writing the id directly.
+ * `open_complete`: the picked status closes the task positively and it was
+ * not closed already — opens "Completa" instead of writing the id directly.
  * `uncomplete`: the task was closed and the picked status is not — calls
  * `uncomplete` directly.
- * `null`: every other transition (open<->open, or an already-closed row
- * staying closed, e.g. a super-admin override) — PATCHes normally.
+ * `null`: every other transition (open<->open, a negative closure, or an
+ * already-closed row staying closed, e.g. a super-admin override) — PATCHes
+ * normally. A negative closure must stay out of "Completa": that action
+ * always lands on the `closed_positive` status, whatever was picked here
+ * (spec 0126 D-4: `closed_negative` is a manual status change).
  */
 export function resolveTaskStatusInterceptDecision(
   oldGroup: TaskStatusGroupValue | undefined,
@@ -28,7 +31,7 @@ export function resolveTaskStatusInterceptDecision(
   const wasClosed = isClosingGroup(oldGroup)
   const willClose = isClosingGroup(newGroup)
 
-  if (willClose && !wasClosed) {
+  if (newGroup === 'closed_positive' && !wasClosed) {
     return 'open_complete'
   }
   if (wasClosed && !willClose) {

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { fetchDefaultStatuses, updateDefaultStatuses } from '@/features/quote-workflows/api'
 import { buildDefaultStatusesPayload } from '@/features/quote-workflows/quote-workflow-form-payload'
 import { newCustomRow, statusRowsFromItems } from '@/features/quote-workflows/quote-status-rows'
@@ -93,7 +93,7 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
       toast.success(labels.saved)
       return true
     } catch (caughtError) {
-      toast.error(apiErrorMessage(caughtError, labels.genericError, i18n))
+      toast.error(refusedActionMessage(caughtError, labels.genericError, i18n))
       return false
     } finally {
       setIsSaving(false)

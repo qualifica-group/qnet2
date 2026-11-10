@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { UNASSIGNED_STAGE_CONTAINER_ID } from '@/features/task-templates/task-template-item-stage-grouping'
 import { TaskTemplateStagesEditor } from '@/features/task-templates/task-template-stages-editor'
@@ -32,7 +33,8 @@ vi.mock('@/components/rich-text/rich-text-editor', () => ({
     <textarea id={p.id} value={p.value ?? ''} onChange={(event) => p.onChange(event.target.value || null)} />
   ),
 }))
-vi.mock('@/features/task-statuses/for-select-api', () => ({
+vi.mock('@/features/task-statuses/for-select-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/task-statuses/for-select-api')>()),
   useTaskStatusesForSelect: () => ({
     data: { pages: [{ items: [] }] },
     isPending: false,
@@ -77,16 +79,20 @@ function renderEditor(props: Partial<ComponentProps<typeof TaskTemplateStagesEdi
     onAddStagedFiles: vi.fn(),
     onRemoveStagedFile: vi.fn(),
   }
+  // A row's saved status is labelled on its own query (useForSelectLabels).
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <TaskTemplateStagesEditor
-      itemRows={[]}
-      stageRows={[]}
-      itemErrors={{}}
-      stageErrors={{}}
-      stagedFilesByRow={{}}
-      {...handlers}
-      {...props}
-    />,
+    <QueryClientProvider client={client}>
+      <TaskTemplateStagesEditor
+        itemRows={[]}
+        stageRows={[]}
+        itemErrors={{}}
+        stageErrors={{}}
+        stagedFilesByRow={{}}
+        {...handlers}
+        {...props}
+      />
+    </QueryClientProvider>,
   )
   return handlers
 }

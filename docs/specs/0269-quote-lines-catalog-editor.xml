@@ -173,6 +173,9 @@
       Claude Docs aggiornato. (Vitest + review)</criterion>
     <criterion id="AC-013">Typecheck `tsc -b --force` e ESLint puliti; ogni file nuovo o toccato sotto le
       300 righe. (comandi)</criterion>
+    <criterion id="AC-014">(Richiesta utente 2026-11-09) Anche ogni card della scheda Costi ha la Descrizione
+      aggiuntiva, con lo stesso controllo della scheda Offerta; il testo viaggia su
+      `cost_lines.*.additional_description`, contratto invariato. (Vitest + Pest)</criterion>
   </acceptance_criteria>
 
   <constraints>

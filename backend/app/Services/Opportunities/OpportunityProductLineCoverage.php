@@ -58,6 +58,18 @@ final class OpportunityProductLineCoverage
     }
 
     /**
+     * The management mode a set of product categories resolves to, for an
+     * opportunity not written yet (the one-open-opportunity guard judges the
+     * NEW opportunity's mode before its insert). Same rule as managementModeOf().
+     *
+     * @param  array<int, int>  $categoryIds
+     */
+    public function managementModeOfCategories(array $categoryIds): ?CategoryManagementMode
+    {
+        return $this->resolvedManagementMode($categoryIds);
+    }
+
+    /**
      * Creates the missing funzione-aziendale + categoria-prodotto rows for
      * the categories of $products the opportunity does not already carry.
      * Existing rows are never touched (the pair is unique, so a duplicate is

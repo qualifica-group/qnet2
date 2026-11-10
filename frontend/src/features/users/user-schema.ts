@@ -82,6 +82,9 @@ function buildEmploymentSchema(t: TFunction) {
           business_function_id: z.number().nullable(),
           product_category_id: z.number().nullable(),
           all_categories: z.boolean().optional(),
+          // Spec 0367: "Nuove" / "Vecchie" of an all-categories row.
+          covers_current_categories: z.boolean().optional(),
+          covers_legacy_categories: z.boolean().optional(),
           // Spec 0346: informative share, 1..100; checked on the collection below.
           share_percentage: z.number().nullable().optional(),
         }),

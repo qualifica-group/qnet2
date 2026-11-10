@@ -19,6 +19,7 @@ const guide: HelpGuide = {
         { type: 'note', text: 'La sorgente **Utenti** riconosce gli utenti già presenti in QNet, ad esempio quelli creati all’installazione: prima per email, poi per nome e cognome tra gli utenti non ancora collegati al legacy. L’utente riconosciuto riceve l’id legacy, così le sorgenti successive lo collegano; si completano solo società, sede e responsabile vuoti, mentre ruolo, password, email e contatti restano quelli di QNet. Se più utenti hanno lo stesso nome la riga fallisce con i nomi trovati; gli utenti non riconosciuti vengono creati. Un utente **attivo** non riconosciuto ha **[OLD]** davanti al nome, ad esempio **[OLD] Mario Rossi**: è un account del legacy, separato da quelli di QNet. Se una persona ha più utenti nel legacy, viene collegato per primo quello attivo.' },
         { type: 'note', text: 'Se l’installazione è configurata per il **solo abbinamento**, la sorgente **Utenti** collega gli utenti già presenti: l’utente riconosciuto riceve l’id legacy e nient’altro, cioè società, sede e responsabile non vengono completati. Gli utenti non riconosciuti vengono creati come nell’import completo ma sempre disattivati, con un avviso nel report. In questa modalità la sorgente **Funzioni aziendali — collega responsabile e operatori** non è disponibile: responsabili e operatori delle funzioni si gestiscono in QNet, quindi il pulsante **Importa questa sorgente** è disabilitato e **Importa tutto** la salta anche se è inclusa nell’ordine.' },
         { type: 'note', text: 'La sorgente **Modelli di task** importa modello, fasi, attività e sotto-attività. Un modello col titolo che contiene "non attivo" arriva disattivato. Un titolo già usato da un altro modello riceve il suffisso "(old_id N)". Una sotto-attività con un problema (padre inesistente, padre in un altro modello, ciclo) diventa un\'attività principale, con un avviso nel report. Ogni attività arriva con il suo **Stato lavorazione commessa** (esegui prima **Commesse — workflow**). Se rilanci l\'import, i modelli già importati ricevono gli stati che mancano; uno stato già scelto in QNet non viene sovrascritto, e un modello le cui attività sono cambiate in QNet non viene toccato, con un avviso.' },
+        { type: 'note', text: 'La sorgente **Offerte — data accettazione** recupera dal legacy la data di accettazione delle offerte già importate, usata dalla colonna **Data accettazione** del **Report Vendite Agenti**. Esegui prima **Offerte**. La data viene scritta solo sulle offerte che oggi sono in uno stato vinto (chiuso con esito positivo) e non ne hanno ancora una: le altre vengono saltate e una data già presente non viene sovrascritta. Puoi rilanciarla: le date già scritte non cambiano.' },
       ],
     },
     {
@@ -52,8 +53,23 @@ const guide: HelpGuide = {
       title: 'Importare solo i record recenti',
       blocks: [
         { type: 'paragraph', text: 'In **Importa questa sorgente** e in **Importa tutto** c’è il campo facoltativo **Importa solo i record creati o modificati dal**. Se lo lasci vuoto l’import è completo, come sempre. Se scegli un giorno vengono letti dal sistema esterno solo i record creati o modificati da quel giorno in poi; nel riepilogo compare **Dal gg/mm/aaaa**.' },
-        { type: 'note', text: 'I record già migrati restano saltati: le modifiche fatte dopo a un record già importato non vengono riportate in QNet, e le cancellazioni nel sistema esterno non vengono rilevate.' },
+        { type: 'note', text: 'Di norma i record già migrati restano saltati: le modifiche fatte dopo a un record già importato non vengono riportate in QNet, a meno che tu spunti **Aggiorna anche i record già importati** (vedi la sezione dedicata). Le cancellazioni nel sistema esterno non vengono mai rilevate.' },
         { type: 'paragraph', text: 'Il filtro vale per tutte le sorgenti. Le poche tabelle di configurazione senza data di modifica vengono comunque lette per intero.' },
+      ],
+    },
+    {
+      id: 'update-existing',
+      title: 'Aggiornare anche i record già importati',
+      blocks: [
+        { type: 'paragraph', text: 'Per le sorgenti **Commesse**, **Offerte** e **Opportunità** (e **Stati commessa**, vedi sotto) trovi la casella **Aggiorna anche i record già importati**, spenta di default. Spenta, un record già importato viene saltato. Accesa, QNet lo confronta con il sistema esterno e lo riallinea alle ultime modifiche. In **Importa tutto** la casella c’è sempre e vale solo per le sorgenti che la supportano; si può combinare con **Importa solo i record creati o modificati dal**. Nel riepilogo compaiono **Aggiorna record esistenti** e il contatore **Aggiornati**.' },
+        { type: 'list', items: [
+          '**Commesse**: titolo, date, descrizione, note, chiusura, responsabili, partecipanti, campi flessibili, fasi e pagamenti.',
+          '**Offerte**: titolo, data, note, richiamo, supervisore, gestori, campi flessibili, stato e contratto.',
+          '**Opportunità**: nome, date, valore, note, supervisore e gestori. Un gestore ancora presente su una sua offerta resta anche sull’opportunità.',
+        ] },
+        { type: 'paragraph', text: 'Non vengono mai aggiornati le **righe** e i **costi**, e non viene mai cancellato nulla: le fasi non vengono rimosse e un contratto non viene mai tolto.' },
+        { type: 'note', text: 'Un record su cui qualcuno ha già lavorato in QNet (per esempio con attività registrate) viene lasciato com’è e segnalato nel report, così non si perdono le modifiche fatte a mano. Un record identico al sistema esterno conta come saltato.' },
+        { type: 'paragraph', text: 'Lo stato della commessa si riallinea solo se importi anche la sorgente **Stati commessa** (oppure usi **Importa tutto**) con la casella accesa.' },
       ],
     },
     {

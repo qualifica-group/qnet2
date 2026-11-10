@@ -22,6 +22,7 @@ use App\Services\ProductLines\ProductLineWriter;
 use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Support\ManagerPositions;
+use App\Support\PeopleChangeLog;
 use App\Support\PositionalPivotSync;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -140,7 +141,10 @@ class OpportunityService
             // Checked AFTER the lead derivation (the lead is what supplies
             // `registry_id` on a conversion) and inside the transaction, so
             // the whole create — bulk conversion included — rolls back.
-            $this->openOpportunityGuard->assertNoOpenOpportunity((int) $attributes['registry_id']);
+            $this->openOpportunityGuard->assertNoOpenOpportunity(
+                (int) $attributes['registry_id'],
+                array_map(intval(...), array_column($data->productLines ?? [], 'product_category_id')),
+            );
 
             [$opportunity, $attachedManagers] = $this->persist($data, $attributes);
 
@@ -262,9 +266,12 @@ class OpportunityService
             $attachedManagers = [];
 
             if ($data->hasManagerSlots()) {
+                // Spec 0372, D-7: Gestori are invisible to the model log; a synchronized category copies them onto the quote.
+                $peopleBefore = PeopleChangeLog::capture($opportunity, ...$opportunity->quotes()->limit(1)->get()->all());
                 $syncMap = ManagerPositions::syncMap($data->managerSlots);
                 $attachedManagers = ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($opportunity->managers(), $syncMap));
                 $this->propagateManagersToQuote($opportunity, $syncMap, $actor);
+                PeopleChangeLog::log($peopleBefore);
             }
 
             if ($data->hasProductLines()) {

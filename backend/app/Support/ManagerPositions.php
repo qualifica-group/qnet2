@@ -50,6 +50,12 @@ final class ManagerPositions
     public const int GA1 = 1;
 
     /**
+     * The "Operatore APL" slot (spec 0373 D-10): a plain position like GA1,
+     * with its own grid column (`manager_ga5`) in Gestione Richieste.
+     */
+    public const int GA5 = 5;
+
+    /**
      * The subset of a `sync()` map that was genuinely ATTACHED, as
      * `userId => position` (spec 0081). A manager who merely MOVED between
      * slots comes back under sync()'s `updated` key and is deliberately left

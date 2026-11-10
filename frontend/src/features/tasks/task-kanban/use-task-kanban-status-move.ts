@@ -2,10 +2,10 @@
  * Resolves a "per stato" Kanban drop into the right mutation (spec 0157 D-3),
  * reusing the SAME decision the grid's status-cell intercept already makes
  * (`resolveTaskStatusInterceptDecision`) so the two surfaces never disagree:
- * open<->open PATCHes `task_status_id` directly; a move INTO a closing status
- * opens "Completa" (the picked status id is never written directly — the
- * dialog derives the real destination server-side); a move OUT of a closed
- * status calls `uncomplete`. Cancelling the dialog applies NOTHING, so the
+ * open<->open and a negative closure PATCH `task_status_id` directly; a move
+ * INTO a positive closing status opens "Completa" (the picked status id is
+ * never written directly — the dialog derives the real destination
+ * server-side); a move OUT of a closed status calls `uncomplete`. Cancelling the dialog applies NOTHING, so the
  * card falls back to its current column on the next render for free — there
  * is no local "pending move" state to revert.
  *

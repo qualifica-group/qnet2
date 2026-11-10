@@ -9,6 +9,7 @@ import {
 import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import {
+  cardCategoryTree,
   pickableCategoryIdsFor,
   selectableIdsUnderRoot,
 } from '@/features/product-lines/category-tree-scope'
@@ -78,8 +79,10 @@ export function ProductCategoryTreeSelect({
     if (!tree || !scopeReady) {
       return []
     }
-    // Step 0 (spec 0208): inactive branches drop out, the saved value stays.
-    const visibleTree = activeCategoryTree(tree, value === null ? EMPTY_IDS : [value])
+    // Step 0 (spec 0208): inactive branches drop out, the saved value stays;
+    // a card row also drops the categories it cannot be classified by.
+    const keepIds = value === null ? EMPTY_IDS : [value]
+    const visibleTree = scope.kind === 'root' ? cardCategoryTree(tree, keepIds) : activeCategoryTree(tree, keepIds)
     // Step 1: what this row may actually target, per the scope kind.
     const pickableIds =
       scope.kind === 'root'

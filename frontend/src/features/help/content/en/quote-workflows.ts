@@ -83,12 +83,12 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'a quote can only move to the statuses of the workflow that currently matches it;',
-            'the Validated or Closed statuses require at least one product row ("You cannot move the quote to this status without at least one product row.");',
+            'the Validated statuses require at least one product row ("You cannot move the quote to this status without at least one product row."); Closed (won) and Closed (lost) do not;',
             'if the status requires a note, it must be written; it is saved among the notes of the opportunity;',
             'entering Closed (won) generates the contract, unless the category has **Generates a contract** turned off;',
             'if the quote leaves Closed (won), the contract moves to **Suspended** (it is not deleted);',
             "if the quote's data changes, QNet recalculates the workflow: the status stays if it also exists in the new one, otherwise it becomes the equivalent fixed status or **Open**;",
-            'deleting a workflow moves its quotes to the matching workflow or to the default statuses.',
+            'a status used by at least one quote cannot be deleted, nor can the workflow that holds it: move the quotes to another status first.',
           ],
         },
         {

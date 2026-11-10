@@ -91,10 +91,22 @@ final class WorkOrderVisibilityScope
     }
 
     /**
+     * Whether the actor can see records beyond the ones where they hold a role:
+     * the same tiers as scopeToActor(), read by the "Assegnazione" filter.
+     */
+    public static function seesBeyondOwnRecords(?User $user): bool
+    {
+        return $user !== null
+            && ($user->can(self::VIEW_ALL_PERMISSION) || self::siteIds($user) !== [] || self::competenceReach($user) !== null);
+    }
+
+    /**
      * Projects the competence tier's verdict on each row (spec 0340, AC-016),
      * so isVisibleTo() answers a competence-only row from the attribute instead
      * of one query per row. Built from the SAME subquery as scopeToActor().
-     * No-op when the actor has no competence tier or it covers everything.
+     * No-op when the actor has no competence tier or it covers everything, and
+     * for `work-orders.viewAll`: isVisibleTo() answers before reading the verdict,
+     * and this subquery is the most expensive part of the page.
      *
      * @template TModel of WorkOrder
      *
@@ -103,7 +115,11 @@ final class WorkOrderVisibilityScope
      */
     public static function withCompetenceVerdict(Builder $query, ?User $user): Builder
     {
-        $reach = $user === null ? null : self::competenceReach($user);
+        if ($user === null || $user->can(self::VIEW_ALL_PERMISSION)) {
+            return $query;
+        }
+
+        $reach = self::competenceReach($user);
 
         if ($reach === null || $reach->all) {
             return $query;

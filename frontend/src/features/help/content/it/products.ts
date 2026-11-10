@@ -59,6 +59,7 @@ const guide: HelpGuide = {
           rows: [
             ['Codice', 'QNet propone il codice successivo della numerazione, ma puoi cambiarlo. Obbligatorio, al massimo 32 caratteri.'],
             ['Nome', 'Il nome del prodotto. Obbligatorio.'],
+            ['Attivo', 'Acceso di default. Spegnilo per mandare un prodotto fuori catalogo: non compare più nei menu di scelta (offerte, richieste, opportunità, lead, provvigioni, importazioni) e non si collega a nuovi record.'],
             ['Descrizione', 'Una descrizione libera. Nei menu di scelta del prodotto compare accanto alla categoria e si può cercare.'],
           ],
         },
@@ -95,6 +96,27 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Alcune categorie compaiono nell'elenco ma non si possono scegliere: servono solo a raggruppare le sottocategorie. In quel caso scegli una sottocategoria. Le categorie non attive (con tutto il loro ramo) non compaiono tra le scelte; in modifica, la categoria già salvata resta visibile. La Funzione aziendale del prodotto deriva dalla categoria e nella scheda è in sola lettura.",
+        },
+      ],
+    },
+    {
+      id: 'active-state',
+      title: 'Prodotti attivi e non attivi',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Un prodotto non attivo sparisce dai menu di scelta di offerte, richieste, opportunità, lead, provvigioni e importazioni e non si collega a nuovi record. I record già collegati restano validi. La griglia elenca comunque tutti i prodotti: la colonna Attivo è ordinabile e filtrabile (filtra No per vedere i non attivi).',
+        },
+        {
+          type: 'paragraph',
+          text: 'I prodotti marcati [OLD], migrati dal vecchio QNet, nascono non attivi. Un prodotto vale come non attivo anche quando lo è la sua categoria (o una categoria padre).',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Per un solo prodotto apri la scheda, clicca la riga Attivo, cambia l’interruttore e premi Salva.',
+            'Per più prodotti insieme seleziona le righe in Prodotti e scegli **Attiva** o **Disattiva** dal menu delle azioni sulla selezione (compare solo se puoi modificare i prodotti).',
+          ],
         },
       ],
     },

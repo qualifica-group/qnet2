@@ -56,6 +56,12 @@ interface MigrationSource
     public function isAvailable(): bool;
 
     /**
+     * Whether the source can realign the records it already imported when the run sets
+     * `update_existing` (spec 0372). A source that does not, ignores the flag.
+     */
+    public function supportsUpdateExisting(): bool;
+
+    /**
      * Relative path (under config('migrations.base_url')) of this resource's
      * list endpoint on the external system — the single source of truth also
      * used internally to fetch every page (preview and import alike), and

@@ -160,7 +160,7 @@ describe('CompetenceLinesField — "all categories" checkbox (spec 0129 AC-021)'
     renderHarness()
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
 
-    expect(screen.getByRole('checkbox')).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'All categories, row 1' })).toBeDisabled()
   })
 
   it('checking "All categories" disables and clears the category, and writes a null-category row', async () => {
@@ -169,9 +169,9 @@ describe('CompetenceLinesField — "all categories" checkbox (spec 0129 AC-021)'
     fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }))
     await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
 
-    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'All categories, row 1' }))
 
-    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'All categories, row 1' })).toBeChecked()
     expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
     expect(screen.getByTestId('value-Product category 1')).toBeEmptyDOMElement()
   })
@@ -188,5 +188,49 @@ describe('CompetenceLinesField — no `single`-mode row cap (spec 0111 D-5, AC-0
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
 
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'Remove product line' })).toHaveLength(2))
+  })
+})
+
+describe('CompetenceLinesField — "New" / "Old" on an "all categories" row (spec 0367)', () => {
+  const current = () => screen.queryByRole('checkbox', { name: 'New categories, row 1' })
+  const legacy = () => screen.queryByRole('checkbox', { name: 'Old [OLD] categories, row 1' })
+
+  it('shows both checked only once "All" is checked, and never lets the last one be cleared', async () => {
+    renderHarness()
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }))
+    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
+
+    expect(current()).toBeNull()
+    expect(legacy()).toBeNull()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'All categories, row 1' }))
+
+    expect(current()).toBeChecked()
+    expect(legacy()).toBeChecked()
+
+    fireEvent.click(legacy() as HTMLElement)
+
+    expect(legacy()).not.toBeChecked()
+    expect(current()).toBeChecked()
+    expect(current()).toBeDisabled()
+  })
+
+  it('opens a persisted "new only" row with "Old" unchecked', () => {
+    renderHarness({
+      defaultValue: [
+        {
+          business_function_id: TEST_BUSINESS_FUNCTION_A,
+          product_category_id: null,
+          all_categories: true,
+          covers_current_categories: true,
+          covers_legacy_categories: false,
+          share_percentage: 100,
+        },
+      ],
+    })
+
+    expect(current()).toBeChecked()
+    expect(legacy()).not.toBeChecked()
   })
 })

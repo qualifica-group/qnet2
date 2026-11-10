@@ -39,10 +39,21 @@ const guide: HelpGuide = {
             ['Griglia (**App**)', 'Appare se sono configurate delle app: apre il launcher per cambiare app.'],
             ['Campanella', 'Apre le notifiche.'],
             ['Sole/luna (**Cambia tema**)', 'Sceglie il tema **Chiaro**, **Scuro** o **Sistema**.'],
-            ['Nome e avatar', 'Apre il menu utente con **Impostazioni** ed **Esci**.'],
+            ['Nome e avatar', 'Sotto il nome compare la tua mansione (l’email, se non ne hai una). Apre il menu utente con **Impostazioni** ed **Esci**.'],
           ],
         },
         { type: 'paragraph', text: 'Sotto l’intestazione ogni pagina, tranne la home, mostra il percorso di navigazione; alla sua destra c’è il pulsante per creare un nuovo record. Se compare **Nuova versione disponibile**, premi **Aggiorna ora**.' },
+      ],
+    },
+    {
+      id: 'onboarding-tour',
+      title: 'Il tour di benvenuto',
+      blocks: [
+        { type: 'paragraph', text: 'Al primo accesso QNet ti mostra un breve **tour di benvenuto**: lo schermo si scurisce e, un elemento alla volta, illumina le parti del **menu laterale** e le icone dell’intestazione con un fumetto che spiega a cosa servono. Il fumetto indica a che punto sei (per esempio **Passo 3 di 10**).' },
+        { type: 'list', items: ['Premi **Avanti** e **Indietro**, oppure le frecce destra e sinistra della tastiera.', 'All’ultimo passo premi **Inizia a usare QNet**: il tour risulta completato.', 'Gli elementi che non vedi (per esempio l’assistente AI se non è attivo per te) vengono saltati.'] },
+        { type: 'note', text: 'La prima volta il tour va completato: non c’è **Salta il tour** e il tasto Esc non lo chiude. Se ricarichi la pagina riparte dall’inizio. Se il tour viene aggiornato con contenuti nuovi, ti viene riproposto una volta, ma puoi saltarlo.' },
+        { type: 'steps', items: ['Per rivederlo apri **Impostazioni** › **Impostazioni sistema**.', 'Nella scheda **Tour di benvenuto** premi **Avvia tour**.', 'Puoi chiuderlo quando vuoi con **Salta il tour** o con Esc.'] },
+        { type: 'tip', text: 'Mentre impersoni un altro utente il tour non parte e **Avvia tour** è disabilitato: il tour è personale e non viene segnato come visto per l’utente impersonato.' },
       ],
     },
     {
@@ -118,7 +129,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Profilo**', 'Caricare o togliere l’avatar, scegliere la **Lingua** (Italiano o Inglese), aggiornare i tuoi dati anagrafici.'],
             ['**Password**', 'Cambiare la password.'],
-            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia**, **Formato data** e **Colore tema**.'],
+            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia**, **Formato data** e **Colore tema**; rivedere il **Tour di benvenuto**.'],
           ],
         },
         { type: 'paragraph', text: '**Risoluzione interfaccia** ingrandisce o rimpicciolisce tutta l’applicazione (100% è la dimensione normale). **Formato data** decide come vedi date e orari, per esempio **Giorno/Mese/Anno** e **24 ore (14:30)**, con anteprima. **Colore tema** cambia la palette di pulsanti, evidenziazioni e menu laterale: scegli una delle otto combinazioni (per esempio **Blu classico**, **Verde foresta**, **Grafite**), ognuna con l’anteprima dei suoi colori; vale sia col tema chiaro sia con quello scuro. Salva con **Salva modifiche**.' },
@@ -140,7 +151,7 @@ const guide: HelpGuide = {
       id: 'dashboard-and-statistics',
       title: 'Dashboard e statistiche',
       blocks: [
-        { type: 'paragraph', text: 'La **Dashboard** è la prima pagina dopo l’accesso; al momento mostra "Questa sezione non è ancora disponibile." I numeri principali si trovano nei singoli moduli, nel pannello **Statistiche** (per esempio in **Utenti**, **Anagrafiche**, **Società sedi**, **Prodotti**, **Categorie Prodotto**, **Progetti**, **Lead** e **Opportunità**).' },
+        { type: 'paragraph', text: 'La **Dashboard** è la prima pagina dopo l’accesso: riassume i tuoi task aperti, il segnatempo, le assenze e i numeri principali dei moduli. Il dettaglio si trova nei singoli moduli, nel pannello **Statistiche** (per esempio in **Utenti**, **Anagrafiche**, **Società sedi**, **Prodotti**, **Categorie Prodotto**, **Progetti**, **Lead** e **Opportunità**).' },
         { type: 'steps', items: ['Apri il modulo.', 'Premi il pulsante con l’icona del grafico (**Mostra statistiche**).', 'Per chiudere premi di nuovo (**Nascondi statistiche**).'] },
         { type: 'paragraph', text: 'Il pannello mostra totali e indicatori (per esempio il budget allocato), distribuzioni come "Per stato" e andamenti mensili come "Nuovi progetti per mese". QNet ricorda se lo hai lasciato aperto.' },
       ],
@@ -178,6 +189,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'La **Cronologia attività** mostra chi ha cambiato cosa e quando. Si apre dall’azione **Attività** nella riga o dentro la scheda.' },
         { type: 'list', items: ['Il tipo: **Creazione**, **Modifica**, **Eliminazione** o **Ripristino**.', 'La parte interessata, per esempio **Contatto**, **Indirizzo**, **Nota** o **Documento**.', 'Chi l’ha fatta (**Sistema** se è automatica).', 'I campi cambiati, con il valore precedente barrato e il nuovo valore.'] },
         { type: 'paragraph', text: 'Filtra con **Tutto**, **Solo creazione** o **Solo modifica**; **Carica altro** mostra le operazioni più vecchie.' },
+        { type: 'paragraph', text: 'Su commesse, offerte e opportunità la cronologia registra anche i cambi di **Responsabili**, **Partecipanti**, **Gestori account** e campi aggiuntivi.' },
       ],
     },
     {
@@ -217,6 +229,7 @@ const guide: HelpGuide = {
             ['Ho chiuso positivamente un’offerta ma non vedo il contratto.', 'La categoria prodotto può avere **Prevede un contratto** spento. Verificalo in **Categorie Prodotto**.'],
             ['Un operatore non riceve assegnazioni.', 'Nella sua scheda utente mancano l’ambito di assegnazione sulla categoria o la sede: in alto il modulo lo segnala con **Non assegnabile**.'],
             ['Non posso convertire un lead.', 'Il lead ha già un’opportunità, la campagna non ha funzione aziendale o categoria, oppure l’anagrafica ha già un’opportunità aperta.'],
+            ['Compare la schermata **Sito in manutenzione**.', 'È in corso un intervento di manutenzione e l’accesso è temporaneamente sospeso. Non serve ricaricare: la pagina controlla da sola ogni pochi secondi, oppure premi **Riprova**. Se stavi compilando un form, al termine lo ritrovi com’era e la sessione resta valida.'],
             ['Il preventivo PDF dà errore.', 'Serve almeno un layout attivo per i Preventivi: controlla **Configurazione › Documenti › Layout** e il layout **Predefinito**.'],
             ['Non ricevo la mail di reset password.', 'Controlla la cartella spam; se il link è scaduto, richiedine uno nuovo.'],
           ],

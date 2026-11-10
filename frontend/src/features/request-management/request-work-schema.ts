@@ -39,10 +39,11 @@ const MAX_OFFER_LINES = 200
 /**
  * Spec 0102: the `WorkflowStatusGroup` values a transition into requires at
  * least one REVENUE row for, mirroring `QuoteWorkflowStatusWriter::apply()`.
- * `pending` is deliberately absent (AC-045/AC-013): the gate only guards the
- * three closing/validating groups.
+ * `pending` is deliberately absent (AC-045/AC-013), and so are both closures
+ * (decisioni utente 2026-11-09): on a positive close the product line is
+ * demanded later, when the contract is validated.
  */
-const OFFER_LINES_REQUIRED_STATUS_GROUPS = new Set(['closed_won', 'closed_lost', 'validated'])
+const OFFER_LINES_REQUIRED_STATUS_GROUPS = new Set(['validated'])
 
 /**
  * Direttiva utente 2026-09-09: the `WorkflowStatusGroup` a POSITIVE close
@@ -188,6 +189,8 @@ export interface RequestWorkOriginalState {
    * diffs against, so the schema validates exactly what is going to travel.
    */
   attribute_values: Record<string, unknown>
+  /** The client the request currently holds: picking another one sets the buffered client blocks aside. */
+  registry_id: number | null
   /** The status the request currently holds: an unchanged one demands no note (spec 0083 AC-026). */
   quote_workflow_status_id: number | null
   /** The client blocks as the panel loaded them (`ValidatesRequestClientProfile` only sees what travels). */
@@ -218,6 +221,9 @@ export function buildRequestWorkSchema(
       // "Previsione commerciale" (spec 0313): the Opportunity's forecast trio,
       // under the Opportunities form's own rules.
       ...requestForecastSchemaShape(t),
+      // The client select (decisione utente 2026-11-09). The server refuses a
+      // clear; the refinement below says so before the request goes out.
+      registry_id: z.number().nullable(),
       // The three buffered client blocks carry no field-level rule: they are
       // checked by the refinement below, which alone knows whether they travel.
       client_identity: z.custom<PersonalDataDraft | null>(),
@@ -297,6 +303,18 @@ export function buildRequestWorkSchema(
       // `buildUpdateQuoteSchema` exactly: demanded only when the TARGET row
       // differs from the one the request holds AND carries `requires_note`.
       const targetStatusId = values.quote_workflow_status_id
+      // A different client sets the blocks below aside: they describe the one
+      // being left, and none of them is going to travel.
+      const registryChanged = values.registry_id !== original.registry_id
+
+      if (values.registry_id === null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['registry_id'],
+          message: t('requestManagement.workPanel.validation.registryRequired'),
+        })
+      }
+
       if (
         targetStatusId !== null &&
         targetStatusId !== original.quote_workflow_status_id &&
@@ -312,7 +330,7 @@ export function buildRequestWorkSchema(
 
       // Spec 0102 AC-044/045: mirror of the server gate in
       // `QuoteWorkflowStatusWriter::apply()` — a transition into a status
-      // whose `group` is one of the three closing/validating ones is
+      // whose `group` is in `OFFER_LINES_REQUIRED_STATUS_GROUPS` is
       // blocked unless at least one REVENUE row is present. Same guard as
       // the note rule above (a reissued status is not a transition, spec
       // 0083 AC-026/AC-018); pristine rows do not count (`isPristineLineRow`).
@@ -340,6 +358,7 @@ export function buildRequestWorkSchema(
       // in, not about what this submit happens to edit.
       if (
         targetStatusId !== null &&
+        !registryChanged &&
         statuses.find((status) => status.id === targetStatusId)?.group === CLOSED_WON_STATUS_GROUP &&
         !hasFiscalIdentity(values.client_identity)
       ) {
@@ -376,6 +395,10 @@ export function buildRequestWorkSchema(
       // whose tax code or VAT number does not pass the fiscal rules would
       // otherwise block every unrelated edit of the panel — while the server,
       // never receiving the block, has nothing to complain about.
+      if (registryChanged) {
+        return
+      }
+
       if (clientIdentityChanged(values.client_identity, original.client_identity)) {
         addClientIdentityIssues(values.client_identity, ctx, t)
       }

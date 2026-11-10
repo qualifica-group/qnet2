@@ -155,15 +155,24 @@ describe('request-management G.A. slot cells (GA2 + GA1)', () => {
     return render(<>{renderer({ value } as ICellRendererParams)}</>)
   }
 
-  it.each(['operator_ga2', 'manager_ga1'])('renders the person behind %s', (columnId) => {
+  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5'])('renders the person behind %s', (columnId) => {
     renderManagerCell(columnId, { id: 21, name: 'Mackenzie Stanton', avatar_url: null })
 
     expect(screen.getByText('Mackenzie Stanton')).toBeInTheDocument()
   })
 
-  it.each(['operator_ga2', 'manager_ga1'])('renders an em dash when %s is unassigned', (columnId) => {
+  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5'])('renders an em dash when %s is unassigned', (columnId) => {
     renderManagerCell(columnId, null)
 
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  it('renders the managers column as an avatar stack, em dash when the team is empty', () => {
+    const { unmount } = renderManagerCell('managers', [{ id: 21, name: 'Mackenzie Stanton', avatar_url: null }])
+    expect(screen.queryByText('—')).not.toBeInTheDocument()
+    unmount()
+
+    renderManagerCell('managers', [])
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })

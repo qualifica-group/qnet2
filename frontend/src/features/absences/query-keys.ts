@@ -12,7 +12,8 @@ export const absenceKeys = {
   balances: (params: AbsenceBalancesParams = {}) => ['absences', 'balances', params] as const,
   balancesAll: ['absences', 'balances'] as const,
   balanceOverview: (params: AbsenceBalanceOverviewParams) => ['absences', 'balances', 'overview', params] as const,
-  typeOptions: ['absences', 'type-options'] as const,
+  /** The saved type (edit mode) is part of the key: it is hydrated even when inactive. */
+  typeOptions: (savedTypeId: number | null) => ['absences', 'type-options', savedTypeId] as const,
   calendar: (params: AbsenceCalendarParams) => ['absences', 'calendar', params] as const,
   calendarAll: ['absences', 'calendar'] as const,
   insight: (id: number) => ['absences', 'insight', id] as const,

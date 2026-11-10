@@ -303,6 +303,8 @@ export interface TableConfig {
    * query.
    */
   filterState?: Record<string, unknown>
+  /** The categories whose `attr.*` columns the config carries, ordered (spec 0374 D-5); empty when it has none. */
+  attributeCategoryIds?: number[]
   /**
    * Whether the current user has saved filters for this table, so the UI can
    * offer "reset filters" only when there is something to reset. Mirrors

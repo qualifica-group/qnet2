@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Table;
 
 use App\Enums\WorkOrderType;
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Controllers\Table\Concerns\ScopesTableDefinitions;
 use App\Http\Requests\Table\BulkDeleteTableRequest;
 use App\Http\Requests\Table\TableColumnsRequest;
 use App\Http\Requests\Table\TableFilterStateRequest;
@@ -19,11 +20,7 @@ use App\Services\TableFilterStateService;
 use App\Services\TablePreferenceService;
 use App\Services\TableService;
 use App\Support\Cache\AggregateCache;
-use App\Tables\CategoryTabs\AttributeColumnsScopable;
-use App\Tables\ProductCategoryScopable;
-use App\Tables\Quotes\OpportunityScopedTableDefinition;
-use App\Tables\ReferentScopable;
-use App\Tables\RegistryScopable;
+use App\Tables\CategoryTabs\FilterScopedAttributeColumns;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
@@ -47,6 +44,8 @@ use Throwable;
  */
 class TableController extends BaseApiController
 {
+    use ScopesTableDefinitions;
+
     public function __construct(
         private readonly TableRegistry $registry,
         private readonly TableService $service,
@@ -75,10 +74,11 @@ class TableController extends BaseApiController
             /** @var User $actor */
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
-            $this->scopeToProductCategory($definition, $request->productCategoryId());
+            $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
             $this->scopeToOpportunity($definition, $request->opportunityId());
             $this->scopeToQuote($definition, $request->quoteId());
             $this->scopeToRegistry($definition, $request->registryId());
+            $this->scopeAttributeColumnsForConfig($definition, $actor, $request->attributeColumnsFromFilters());
 
             return $this->ok($this->resolvedConfig($definition, $actor));
         } catch (Throwable $exception) {
@@ -108,7 +108,8 @@ class TableController extends BaseApiController
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
             $this->preferences->save($definition, $actor, $request->columnsState());
-            $this->scopeToProductCategory($definition, $request->productCategoryId());
+            $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
+            $this->scopeAttributeColumnsForConfig($definition, $actor, $request->attributeColumnsFromFilters());
 
             return $this->ok($this->resolvedConfig($definition, $actor), 'Preferences saved');
         } catch (Throwable $exception) {
@@ -160,7 +161,8 @@ class TableController extends BaseApiController
             $this->scopeToAllProductCategories($definition);
 
             $this->filters->save($definition, $actor, $request->filterModel(), $request->advancedFilters());
-            $this->scopeToProductCategory($definition, $request->productCategoryId());
+            $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
+            $this->scopeAttributeColumnsForConfig($definition, $actor, $request->attributeColumnsFromFilters());
 
             return $this->ok($this->resolvedConfig($definition, $actor), 'Filters saved');
         } catch (Throwable $exception) {
@@ -243,6 +245,9 @@ class TableController extends BaseApiController
             if ($definition instanceof QuoteScopedTableDefinition) {
                 $definition->scopeToWorkOrderType(WorkOrderType::tryFrom((string) ($payload['work_order_type'] ?? '')));
             }
+            if ($definition instanceof FilterScopedAttributeColumns) {
+                $definition->scopeAttributeColumnsForRows($payload['advancedFilters'] ?? []);
+            }
             $this->authorizeTreeParent($definition, $actor, $payload['treeParentId'] ?? null);
 
             $result = $this->service->rows($definition, $actor, $payload);
@@ -321,6 +326,10 @@ class TableController extends BaseApiController
             $this->scopeToRegistry($definition, $payload['registryId']);
             $this->scopeToReferent($definition, $payload['referentId']);
 
+            if ($definition instanceof FilterScopedAttributeColumns) {
+                $definition->scopeAttributeColumnsForValues();
+            }
+
             // Per actor always: grid visibility rules are evaluated per user (spec
             // 0178, D-5). The column id goes into the hash too: an `attr.*` id is
             // user-defined and could push the key past the store's 255 chars. The
@@ -375,6 +384,21 @@ class TableController extends BaseApiController
     }
 
     /**
+     * Spec 0374, D-2: when the page asks for it, the `attr.*` columns of the
+     * config follow the category of the actor's effective filters (saved over
+     * defaults). Without the flag the config carries none. Called AFTER any
+     * write so the config reflects what was just saved.
+     */
+    private function scopeAttributeColumnsForConfig(TableDefinition $definition, User $actor, bool $fromFilters): void
+    {
+        if ($definition instanceof FilterScopedAttributeColumns) {
+            $definition->scopeAttributeColumnsForConfig(
+                $fromFilters ? $this->filters->effectiveAdvancedFilters($definition, $actor) : [],
+            );
+        }
+    }
+
+    /**
      * Single enforcement point: deny → AuthorizationException → 403.
      *
      * @throws AuthorizationException
@@ -382,93 +406,6 @@ class TableController extends BaseApiController
     private function authorizeViewAny(bool $allowed): void
     {
         Gate::allowIf($allowed);
-    }
-
-    /**
-     * Spec 0064/0335: narrows a `ProductCategoryScopable` definition
-     * (`request-management`, `opportunities`, `quotes`) to one product
-     * category — its rows and, for Gestione Richieste only, its `attr.*`
-     * columns and the GA2 relabel. A no-op for every other domain.
-     *
-     * Also called by `savePreferences()`/`saveFilters()` AFTER their write, on
-     * the tab the client sent: those responses are read straight into the
-     * client's per-tab config cache, so they must carry the same `attr.*`
-     * columns the GET does. It reaches nothing already persisted. `$branchId`
-     * (spec 0337) comes only from rows/values: a root tab filters rows, never config.
-     */
-    private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId, ?int $branchId = null): void
-    {
-        if ($definition instanceof ProductCategoryScopable) {
-            $definition->scopeToProductCategory($productCategoryId);
-            $definition->scopeToProductCategoryBranch($branchId);
-        }
-    }
-
-    /**
-     * Spec 0064, D-4 (restored with the `attr.*` columns, user directive
-     * 2026-08-31): widens an `AttributeColumnsScopable` definition's SSRM
-     * allow-lists to the union of every category's `attr.*` columns, so
-     * saving filter preferences from any tab never 422s. A no-op for every
-     * other domain.
-     */
-    private function scopeToAllProductCategories(TableDefinition $definition): void
-    {
-        if ($definition instanceof AttributeColumnsScopable) {
-            $definition->scopeToAllProductCategories();
-        }
-    }
-
-    /**
-     * Spec 0067: narrows an `OpportunityScopedTableDefinition` (only
-     * `quotes`) to one Opportunity's Offerte. A no-op for every other
-     * domain. Never called from `savePreferences()`/`saveFilters()`/
-     * `resetPreferences()`/`resetFilters()`/`bulkDelete()`/`updateRow()`
-     * (D-4/D-1: those endpoints are not Opportunity-scoped).
-     */
-    private function scopeToOpportunity(TableDefinition $definition, ?int $opportunityId): void
-    {
-        if ($definition instanceof OpportunityScopedTableDefinition) {
-            $definition->scopeToOpportunity($opportunityId);
-        }
-    }
-
-    /**
-     * Spec 0095: narrows a `QuoteScopedTableDefinition` (only `work-orders`)
-     * to one Quote's own Commesse. A no-op for every other domain. Never
-     * called from `savePreferences()`/`saveFilters()`/`resetPreferences()`/
-     * `resetFilters()`/`bulkDelete()`/`updateRow()`, mirroring
-     * `scopeToOpportunity()`.
-     */
-    private function scopeToQuote(TableDefinition $definition, ?int $quoteId): void
-    {
-        if ($definition instanceof QuoteScopedTableDefinition) {
-            $definition->scopeToQuote($quoteId);
-        }
-    }
-
-    /**
-     * Spec 0199: narrows a `RegistryScopable` definition (`opportunities`,
-     * `quotes`, `work-orders`, `tasks`) to one client's records. A no-op for
-     * every other domain, and never called from the persistence endpoints,
-     * mirroring `scopeToQuote()`.
-     */
-    private function scopeToRegistry(TableDefinition $definition, ?int $registryId): void
-    {
-        if ($definition instanceof RegistryScopable) {
-            $definition->scopeToRegistry($registryId);
-        }
-    }
-
-    /**
-     * Spec 0336: narrows a `ReferentScopable` definition
-     * (`commission-configurations`) to one Referente's rules, mirroring
-     * `scopeToRegistry()`.
-     */
-    private function scopeToReferent(TableDefinition $definition, ?int $referentId): void
-    {
-        if ($definition instanceof ReferentScopable) {
-            $definition->scopeToReferent($referentId);
-        }
     }
 
     /**

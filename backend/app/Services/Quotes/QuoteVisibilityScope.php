@@ -44,6 +44,16 @@ final class QuoteVisibilityScope
     public const COMPETENCE_VERDICT_ATTRIBUTE = 'competence_scoped';
 
     /**
+     * Whether the actor can see records beyond the ones where they hold a role:
+     * the same tiers as scopeToActor(), read by the "Assegnazione" filter.
+     */
+    public static function seesBeyondOwnRecords(?User $user, string $resource = self::DEFAULT_RESOURCE): bool
+    {
+        return $user !== null
+            && ($user->can($resource.'.'.self::VIEW_ALL_ABILITY) || self::siteIds($user, $resource) !== [] || self::competenceReach($user, $resource) !== null);
+    }
+
+    /**
      * @template TModel of Quote
      *
      * @param  Builder<TModel>  $query  rooted on (or nested under) `quotes`
@@ -85,7 +95,8 @@ final class QuoteVisibilityScope
      * Projects the competence tier's verdict on each row (spec 0340, AC-016),
      * so isVisibleTo() answers a competence-only row from the attribute instead
      * of one query per row. Built from the SAME subquery as scopeToActor().
-     * No-op when the actor has no competence tier or it covers everything.
+     * No-op when the actor has no competence tier or it covers everything, and
+     * for `{resource}.viewAll`: isVisibleTo() answers before reading the verdict.
      *
      * @template TModel of Quote
      *
@@ -94,7 +105,11 @@ final class QuoteVisibilityScope
      */
     public static function withCompetenceVerdict(Builder $query, ?User $user, string $resource = self::DEFAULT_RESOURCE): Builder
     {
-        $reach = $user === null ? null : self::competenceReach($user, $resource);
+        if ($user === null || $user->can($resource.'.'.self::VIEW_ALL_ABILITY)) {
+            return $query;
+        }
+
+        $reach = self::competenceReach($user, $resource);
 
         if ($reach === null || $reach->all) {
             return $query;

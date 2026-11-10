@@ -59,6 +59,7 @@ const guide: HelpGuide = {
           rows: [
             ['Code', 'QNet proposes the next code in the numbering, but you can change it. Required, at most 32 characters.'],
             ['Name', "The product's name. Required."],
+            ['Active', 'On by default. Switch it off to retire a product: it no longer appears in the product pickers (offers, requests, opportunities, leads, commissions, imports) and cannot be linked to new records.'],
             ['Description', 'Free text. In the product pickers it shows next to the category and is searchable.'],
           ],
         },
@@ -95,6 +96,27 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Some categories appear in the list but cannot be chosen: they only group subcategories. In that case choose a subcategory. Inactive categories (with their whole branch) are not offered; when editing, the category already saved stays visible. The product's Business function derives from the category and is read-only on the card.",
+        },
+      ],
+    },
+    {
+      id: 'active-state',
+      title: 'Active and inactive products',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'An inactive product disappears from the choice menus of offers, requests, opportunities, leads, commissions and imports, and cannot be linked to new records. Records already linked to it stay valid. The grid still lists every product: the Active column can be sorted and filtered (filter No to see the inactive ones).',
+        },
+        {
+          type: 'paragraph',
+          text: 'Products marked [OLD], migrated from the old QNet, are created inactive. A product also counts as inactive when its category (or a parent category) is inactive.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'To change a single product, open its card, click the Active row, flip the switch and press Save.',
+            'To change many at once, select the rows in Products and choose **Activate** or **Deactivate** from the selection actions menu (it only appears if you can edit products).',
+          ],
         },
       ],
     },

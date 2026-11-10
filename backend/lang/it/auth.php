@@ -32,4 +32,8 @@ return [
     'impersonation_started' => 'Impersonificazione avviata.',
     'impersonation_stopped' => 'Impersonificazione terminata.',
 
+    // Welcome tour (spec 0368).
+    'onboarding_saved' => 'Tour di benvenuto registrato.',
+    'onboarding_impersonation' => 'Il tour di benvenuto non può essere registrato durante l\'impersonificazione.',
+    'onboarding_required_not_skippable' => 'Il tour di benvenuto va completato almeno una volta.',
 ];

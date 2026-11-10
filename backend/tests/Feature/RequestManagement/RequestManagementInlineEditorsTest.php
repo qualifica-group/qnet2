@@ -146,7 +146,9 @@ it('AC-002 (superseded by 0075 AC-001): product_categories edits the product_lin
 
     expect($column['editable'])->toBeTrue()
         ->and($column['editor'])->toBe('product_lines')
-        ->and($column['sortable'])->toBeFalse();
+        // Requirement change 2026-11-09 (direttiva utente: ogni colonna si
+        // ordina e si filtra): sortable by the first category name.
+        ->and($column['sortable'])->toBeTrue();
 });
 
 it('AC-002: PATCH product_categories with a plain string -> 422, never a silent write', function () {

@@ -10,7 +10,8 @@ import type { RequestWorkPanel } from '@/features/request-management/types'
  *
  * The funzione/categoria rows left this summary when they became editable
  * (user directive 2026-07-31), and so did the forecast trio (spec 0313) and
- * the Commerciale (spec 0357, now the Offerta's own, in the attribution section):
+ * the Commerciale (spec 0357, now the Offerta's own, in the attribution section)
+ * and the client (decisione utente 2026-11-09, the select in the client section):
  * showing the persisted value next to the field that edits it would
  * contradict it until the next save.
  */
@@ -27,9 +28,6 @@ export function RequestWorkSummary({ panel }: { panel: RequestWorkPanel }) {
       className="min-w-0"
     >
       <dl className={SUMMARY_LIST_CLASS}>
-        <SummaryRow label={t('requestManagement.workPanel.summary.registry', { defaultValue: 'Client' })}>
-          {panel.registry?.name ?? EMPTY_VALUE}
-        </SummaryRow>
         <SummaryRow label={t('requestManagement.workPanel.summary.referent', { defaultValue: 'Contact' })}>
           {panel.referent?.name ?? EMPTY_VALUE}
         </SummaryRow>

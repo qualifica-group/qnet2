@@ -133,6 +133,12 @@ return [
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
+
+        // Spec 0376: site-wide maintenance switched from the environment.
+        'enabled' => (bool) env('APP_MAINTENANCE_ENABLED', false),
+        'excluded_user_ids' => array_values(array_filter(
+            array_map('intval', explode(',', (string) env('APP_MAINTENANCE_EXCLUDED_USER_IDS', '')))
+        )),
     ],
 
 ];

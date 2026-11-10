@@ -56,6 +56,7 @@ class StoreProductRequest extends FormRequest
             ...$this->supplierRules(),
             'code' => ['nullable', 'string', 'max:32', Rule::unique('products', 'code')],
             'name' => ['required', 'string', 'max:191'],
+            'is_active' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
             'cost' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'price' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],

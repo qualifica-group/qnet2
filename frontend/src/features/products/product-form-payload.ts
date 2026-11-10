@@ -59,6 +59,7 @@ export function buildCreatePayload(
   return {
     ...submittedCode(values.code, suggestedCode),
     name: values.name,
+    is_active: values.is_active,
     description: values.description,
     // Every usage has both amounts (rev.3 D-20); the standard ones are hidden (so null) when suppliers carry them.
     cost: values.cost ?? 0,
@@ -92,6 +93,9 @@ export function buildUpdatePayload(
 
   if (values.name !== original.name) {
     payload.name = values.name
+  }
+  if (values.is_active !== original.is_active) {
+    payload.is_active = values.is_active
   }
   if (values.description !== original.description) {
     payload.description = values.description

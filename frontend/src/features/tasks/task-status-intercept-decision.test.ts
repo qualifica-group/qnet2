@@ -2,10 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { resolveTaskStatusInterceptDecision } from '@/features/tasks/task-status-intercept-decision'
 
 describe('resolveTaskStatusInterceptDecision (spec 0156 D-8)', () => {
-  it('opens "Completa" when the picked status closes an open task', () => {
+  it('opens "Completa" when the picked status closes an open task positively', () => {
     expect(resolveTaskStatusInterceptDecision('open', 'closed_positive')).toBe('open_complete')
-    expect(resolveTaskStatusInterceptDecision('pending', 'closed_negative')).toBe('open_complete')
+    expect(resolveTaskStatusInterceptDecision('pending', 'closed_positive')).toBe('open_complete')
     expect(resolveTaskStatusInterceptDecision('in_validation', 'closed_positive')).toBe('open_complete')
+  })
+
+  it('does not intercept a negative closure: "Completa" can only close positively', () => {
+    expect(resolveTaskStatusInterceptDecision('open', 'closed_negative')).toBeNull()
+    expect(resolveTaskStatusInterceptDecision('pending', 'closed_negative')).toBeNull()
   })
 
   it('calls uncomplete when the picked status reopens a closed task', () => {

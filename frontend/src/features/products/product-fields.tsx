@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { AttributeLayoutField } from '@/features/attributes/attribute-layout-field'
 import { MetaField } from '@/features/authorization/MetaField'
@@ -73,6 +74,28 @@ export function ProductNameField({ control }: FieldProps) {
       {({ field, disabled, readOnly }) => (
         <FormControl>
           <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
+        </FormControl>
+      )}
+    </MetaField>
+  )
+}
+
+/** "Attivo" (spec 0366): the product's own flag; an inactive product leaves the pickers of the other modules. */
+export function ProductActiveField({ control }: FieldProps) {
+  const { t } = useTranslation()
+  return (
+    <MetaField
+      control={control}
+      name="is_active"
+      metaKey="is_active"
+      layout="inline"
+      label={t('products.form.isActive')}
+      hint={t('products.form.hints.isActive')}
+      hintLabel={t('products.form.isActive')}
+    >
+      {({ field, disabled }) => (
+        <FormControl>
+          <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
         </FormControl>
       )}
     </MetaField>

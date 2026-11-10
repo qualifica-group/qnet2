@@ -45,7 +45,7 @@ final class AttributeGridColumns
 
     /**
      * `$target` defaults to Gestione Richieste's own (quotes JSON column,
-     * Quote context); the other grids bind theirs via forTarget() (spec 0350).
+     * Quote context); the other grids bind theirs via forTarget() (spec 0374).
      */
     public function __construct(
         private readonly AttributeScopeResolver $scopeResolver,
@@ -83,6 +83,26 @@ final class AttributeGridColumns
     public function forCategory(?int $categoryId): Collection
     {
         return $this->scopeResolver->forCategory($categoryId);
+    }
+
+    /**
+     * The effective attributes of several categories, deduplicated by `code`:
+     * the first category's set first, then what each next one adds (spec 0374, D-10).
+     *
+     * @param  array<int, int>  $categoryIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function forCategories(array $categoryIds): Collection
+    {
+        $merged = [];
+
+        foreach ($categoryIds as $categoryId) {
+            foreach ($this->scopeResolver->forCategory($categoryId) as $row) {
+                $merged[$row['code']] ??= $row;
+            }
+        }
+
+        return collect(array_values($merged));
     }
 
     /**
@@ -179,7 +199,7 @@ final class AttributeGridColumns
 
     /**
      * Same as rowValues() for values read from elsewhere than the row itself
-     * (the contracts grid reads its source offer's, spec 0350 D-3).
+     * (the contracts grid reads its source offer's).
      *
      * @param  array<string, mixed>|null  $storedValues
      * @param  Collection<int, array<string, mixed>>  $attributes

@@ -15,10 +15,6 @@ const ROOT_SCOPE_PAGE = ['startRow' => 0, 'endRow' => 25];
 const ROOT_SCOPE_VALUE_COLUMN = [
     'request-management' => 'quote_workflow_status',
     'enrollee-management' => 'quote_workflow_status',
-    'opportunities' => 'name',
-    'quotes' => 'code',
-    'contracts' => 'registry',
-    'work-orders' => 'code',
 ];
 
 it('returns the rows of the whole branch once each, matching the strip count (AC-005)', function (string $module) {
@@ -32,7 +28,7 @@ it('returns the rows of the whole branch once each, matching the strip count (AC
     $strip = $this->getJson("/api/{$module}/product-categories?level=root")->json('data.categories');
 
     expect(collect($rows->json('items'))->pluck('id')->sort()->values()->all())->toBe([$a->id, $b->id])
-        ->and($rows->json('pagination.total'))->toBe(collect($strip)->firstWhere('id', $root->id)[categoryTabCountKey($module)])
+        ->and($rows->json('pagination.total'))->toBe(collect($strip)->firstWhere('id', $root->id)['requests_count'])
         ->and($this->postJson("/api/tables/{$module}/rows", ROOT_SCOPE_PAGE)->json('pagination.total'))->toBe(3);
 })->with(categoryTabModules());
 
@@ -51,12 +47,8 @@ it('rejects a branch sent together with a single category and an unknown branch 
 it('computes distinct values only on the branch rows (AC-005)', function (string $module) {
     [$root, , $grandchild, $other] = categoryTabTree();
     categoryTabRecord($module, [$grandchild]);
-    // The request modules list the workflow status: the record outside the branch gets another one.
-    if (in_array($module, ['request-management', 'enrollee-management'], true)) {
-        categoryTabRequestQuote([$other], 'validated');
-    } else {
-        categoryTabRecord($module, [$other]);
-    }
+    // The value column is the workflow status: the record outside the branch gets another one.
+    categoryTabRequestQuote([$other], 'validated');
     Sanctum::actingAs(categoryTabGridActor($module));
     $column = ROOT_SCOPE_VALUE_COLUMN[$module];
 
@@ -66,9 +58,10 @@ it('computes distinct values only on the branch rows (AC-005)', function (string
         ->and($values([]))->toHaveCount(2);
 })->with(categoryTabModules());
 
-it('leaves Gestione Richieste without attr columns and relabels at a root tab (AC-006)', function () {
+// REQUIREMENT CHANGED (user directive 2026-11-09): a root tab now carries the root's attr columns; the GA labels stay untouched.
+it('shows the root attr columns without relabelling the managers at a root tab (AC-006)', function () {
     [$root, $child] = categoryTabTree();
-    $attribute = Attribute::factory()->ofType('text')->create();
+    $attribute = Attribute::factory()->ofType('text')->create(['code' => 'root_field']);
     $root->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     $quote = categoryTabRecord('request-management', [$child]);
     $actor = categoryTabGridActor('request-management');
@@ -85,13 +78,13 @@ it('leaves Gestione Richieste without attr columns and relabels at a root tab (A
     $unscoped = $configOf(static fn () => null);
     $branch = $configOf(static fn ($definition) => $definition->scopeToProductCategoryBranch($root->id));
 
-    expect($attrIds($configOf(static fn ($definition) => $definition->scopeToProductCategory($root->id))))->not->toBe([])
-        ->and($attrIds($branch))->toBe([])
-        ->and($branch)->toBe($unscoped);
+    $native = array_values(array_filter($branch, static fn (array $column): bool => ! str_starts_with($column['id'], 'attr.')));
+
+    expect($attrIds($branch))->toBe(['attr.root_field'])
+        ->and($native)->toBe($unscoped);
 
     $rows = $this->postJson('/api/tables/request-management/rows', [...ROOT_SCOPE_PAGE, 'productCategoryBranchId' => $root->id])->assertOk();
-    $keys = array_keys($rows->json('items.0'));
 
     expect($rows->json('items.0.id'))->toBe($quote->id)
-        ->and(array_filter($keys, static fn (string $key): bool => str_starts_with($key, 'attr.')))->toBe([]);
+        ->and(array_keys($rows->json('items.0')))->toContain('attr.root_field');
 });

@@ -14,21 +14,27 @@ import type {
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 /**
+ * The category tab a config is built for: an id is one category, `branchId` a
+ * parent-category tab (spec 0337), which shows that parent's `attr.*` columns, and
+ * `attributeColumnsFromFilters` asks for the `attr.*` columns of the category the saved filters select (spec 0374).
+ */
+export type TableConfigTab = number | { branchId: number } | { attributeColumnsFromFilters: true }
+
+/**
  * Fetches a domain's table schema (columns, filters, action catalog, defaults).
  * Wrapped in the standard `ok()` envelope → config lives in `data`.
  * One endpoint serves every domain; the `{domain}` segment selects the schema.
  *
- * `productCategoryId` (spec 0064, request-management's category tabs) is sent
- * as `?product_category_id=` only when given; every other domain never passes
- * it and sees no change.
+ * `tab` (spec 0064) is sent as a query parameter only when given; every other
+ * domain never passes it and sees no change.
  */
 export async function fetchTableConfig(
   domain: string,
-  productCategoryId?: number,
+  tab?: TableConfigTab,
 ): Promise<TableConfig> {
   const { data } = await apiClient.get<ApiResponse<TableConfig>>(
     `/tables/${domain}/columns`,
-    productCategoryId != null ? { params: { product_category_id: productCategoryId } } : undefined,
+    tab != null ? { params: categoryTabBody(tab) } : undefined,
   )
   return data.data
 }
@@ -51,14 +57,21 @@ export async function fetchTableRows(
 }
 
 /**
- * The category scope both write endpoints carry back (spec 0064), omitted
+ * The category tab the config endpoints carry (spec 0064), omitted
  * entirely when there is none so every other domain's body is unchanged. It
  * never affects what is stored — the layout and the filters are saved
  * per-domain — only the SHAPE of the config they return, which the caller
  * writes straight into its per-tab cache entry.
  */
-function productCategoryBody(productCategoryId?: number): { product_category_id?: number } {
-  return productCategoryId != null ? { product_category_id: productCategoryId } : {}
+function categoryTabBody(tab?: TableConfigTab): {
+  product_category_id?: number
+  product_category_branch_id?: number
+  attribute_columns_from_filters?: 1
+} {
+  if (tab == null) return {}
+  if (typeof tab === 'number') return { product_category_id: tab }
+  // A number, not `true`: the config GET sends it in the query string and Laravel's `boolean` rejects "true".
+  return 'branchId' in tab ? { product_category_branch_id: tab.branchId } : { attribute_columns_from_filters: 1 }
 }
 
 /**
@@ -86,19 +99,18 @@ function saveRequestArgs(options?: TableSaveOptions): [] | [AxiosRequestConfig] 
  * domain. Self-scoped server-side (the user_id is never sent). Returns the
  * freshly merged config so the cache can stay in sync. See 0003.
  *
- * `productCategoryId` must be the tab the layout was edited from, so the
- * returned config still carries that category's `attr.*` columns instead of
- * the unscoped "Tutte" shape.
+ * `tab` must be the tab the layout was edited from, so the returned config
+ * still carries its `attr.*` columns instead of the unscoped "Tutte" shape.
  */
 export async function saveTablePreferences(
   domain: string,
   columns: ColumnPreferenceInput[],
-  productCategoryId?: number,
+  tab?: TableConfigTab,
   options?: TableSaveOptions,
 ): Promise<TableConfig> {
   const { data } = await apiClient.post<ApiResponse<TableConfig>>(
     `/tables/${domain}/preferences`,
-    { columns, ...productCategoryBody(productCategoryId) },
+    { columns, ...categoryTabBody(tab) },
     ...saveRequestArgs(options),
   )
   return data.data
@@ -161,17 +173,17 @@ export interface SaveTableFiltersPayload {
  * one leaves it unchanged. Returns the freshly merged config so the cache can
  * stay in sync.
  *
- * `productCategoryId` carries the same meaning as in `saveTablePreferences`.
+ * `tab` carries the same meaning as in `saveTablePreferences`.
  */
 export async function saveTableFilters(
   domain: string,
   payload: SaveTableFiltersPayload,
-  productCategoryId?: number,
+  tab?: TableConfigTab,
   options?: TableSaveOptions,
 ): Promise<TableConfig> {
   const { data } = await apiClient.post<ApiResponse<TableConfig>>(
     `/tables/${domain}/filters`,
-    { ...payload, ...productCategoryBody(productCategoryId) },
+    { ...payload, ...categoryTabBody(tab) },
     ...saveRequestArgs(options),
   )
   return data.data

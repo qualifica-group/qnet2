@@ -23,7 +23,10 @@ use App\Services\PurchaseOrders\PurchaseRequestLineLinker;
  */
 final class LegacyPurchaseOrderLineWriter
 {
-    use BuildsLegacyDocumentLines;
+    use BuildsLegacyDocumentLines {
+        lineDescription as public;
+        optionalOldId as public;
+    }
 
     public const string RECEIPT_NOTE = 'Ricezione generata dalla migrazione';
 
@@ -113,7 +116,7 @@ final class LegacyPurchaseOrderLineWriter
      *
      * @param  array<int, string>  $warnings
      */
-    private function requestLineId(mixed $legacyId, int|string $lineId, array &$warnings): ?int
+    public function requestLineId(mixed $legacyId, int|string $lineId, array &$warnings): ?int
     {
         $id = $this->optionalOldId(PurchaseRequestLine::class, $legacyId, "Line {$lineId}: purchase request line", $warnings);
 
@@ -130,7 +133,7 @@ final class LegacyPurchaseOrderLineWriter
      * @param  array<int, mixed>  $legacyLines
      * @return array<int, string> vat_rate_id => rate
      */
-    private function vatRates(array $legacyLines): array
+    public function vatRates(array $legacyLines): array
     {
         $legacyIds = array_filter(array_map(fn (mixed $line): mixed => ((array) $line)['vat_rate_id'] ?? null, $legacyLines));
 

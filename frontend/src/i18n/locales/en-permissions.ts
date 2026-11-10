@@ -125,6 +125,7 @@ export const permissions = {
     'email-templates': 'Email templates',
     'document-bundles': 'Document bundles',
     // Spec 0130: validated/closed-won subset of Request Management, own permissions.
+    'agent-sales-report': 'Agent Sales Report',
     'enrollee-management': 'Enrollee Management',
     'field-change-requests': 'Change Requests',
     leads: 'Leads',

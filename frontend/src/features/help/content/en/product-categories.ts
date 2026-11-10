@@ -19,7 +19,7 @@ const guide: HelpGuide = {
           headers: ['Category setting', 'Where it applies'],
           rows: [
             ['Parent category (position in the tree)', 'Decides what the category inherits. On product lines of projects, campaigns, opportunities and leads you first choose the Parent category (a root) and then one of its descendants; with the optional Filter you narrow the choice to a direct child that groups other categories (e.g. Consulting › ISO › ISO 9001).'],
-            ['Business function', 'Derived automatically on product lines; used for user assignment scopes and lead/request assignment. The product shows it read-only.'],
+            ['Business function', 'Derived automatically on product lines; used for user assignment scopes and lead/request assignment. A category with no function, own or inherited (e.g. Costs), is not offered on product lines: its products are used only in quote and work order costs. The product shows it read-only.'],
             ['Product Attributes', 'Extra fields on the Product card.'],
             ['Offer Attributes', "Fields in the Offer's Additional information, and columns in the per-category cards of Request Management."],
             ['Work Order Attributes', "Fields in the Work Order's Additional information."],
@@ -210,6 +210,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            'The Current category row appears only on legacy parent categories (the ones prefixed [OLD]): it says which current parent category replaced it, picked among current parent categories only. In the **Parent category** filter of the lists the linked legacy categories do not appear as separate options: choosing the current category also brings in their records and, in Quotes, Work orders and Contracts, the flexible-field columns. It is changed or removed from the detail with the pencil.',
             'The four rules decided by the root (Generates quote, Management mode, Single offer per opportunity, Generates a contract) and an inherited Business function have no pencil on subcategories: they show the value with the Inherited from … badge; to change them open the indicated category.',
             'The Report columns row appears only if the category is reportable.',
             'If you assign a business function to a category whose subcategories have their own, a confirmation is asked before saving.',
@@ -436,6 +437,7 @@ const guide: HelpGuide = {
             ['"Inherited from \'…\'. To change it, act on that category."', 'Rule or function decided higher up.', 'Edit the indicated category.'],
             ['"This product category is not selectable."', 'A container category was chosen in another module.', 'Choose a subcategory or turn on Selectable.'],
             ['"This product category is not active."', 'An inactive category (or one in an inactive branch) was chosen in another module.', 'Choose another category or turn on Active.'],
+            ['"This product is not active."', 'A product switched off (Active) was chosen in another module.', 'Choose another product or switch Active back on from its card or in bulk from the grid.'],
             ['"This product belongs to an inactive category."', 'A product from an inactive branch was chosen.', 'Choose another product or reactivate the category.'],
             ['"This opportunity is managed on a single product category…"', 'Branch in Single mode.', 'Use a single row or switch the root to Multiple.'],
             ['"This opportunity\'s product category allows only one offer: one already exists."', 'Single offer per opportunity is on.', 'Edit the existing offer.'],

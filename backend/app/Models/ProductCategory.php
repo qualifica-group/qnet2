@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'multi_quote_work_order', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels', 'revenue_type_id'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'multi_quote_work_order', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels', 'revenue_type_id', 'current_category_id'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -67,6 +67,9 @@ class ProductCategory extends BaseModel
             // the EFFECTIVE activity (an inactive ancestor deactivates the
             // whole subtree, D-1) is resolved at read time by CategoryActivity.
             'is_active' => 'boolean',
+            // Legacy catalogue marker (user directive 2026-11-07), set by the
+            // migration writers only, never mass-assignable.
+            'is_legacy' => 'boolean',
             // Spec 0131 — whether the category is a row of the Gestione
             // Richieste / Iscritti report. Nullable OWN override (user
             // directive 2026-09-18): null inherits the parent's effective
@@ -143,6 +146,26 @@ class ProductCategory extends BaseModel
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /**
+     * The current root a legacy root continues (spec 0374, D-9).
+     *
+     * @return BelongsTo<ProductCategory, $this>
+     */
+    public function currentCategory(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'current_category_id');
+    }
+
+    /**
+     * The legacy roots that point at this one (spec 0374, D-9).
+     *
+     * @return HasMany<ProductCategory, $this>
+     */
+    public function legacyCategories(): HasMany
+    {
+        return $this->hasMany(self::class, 'current_category_id');
     }
 
     public function children(): HasMany

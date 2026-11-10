@@ -15,6 +15,20 @@ function categoryHierarchyLabel(line: ProductLineLike): string {
 }
 
 /**
+ * The i18n key of a competence row's category label: its category, or the
+ * "all categories" wording, narrowed to the new or the legacy ones when the
+ * row keeps only one of them (spec 0367).
+ */
+function allCategoriesKey(line: ProductLineLike): string {
+  if (line.covers_legacy_categories === false) {
+    return 'productLines.currentCategoriesOnlyReadOnly'
+  }
+  return line.covers_current_categories === false
+    ? 'productLines.legacyCategoriesOnlyReadOnly'
+    : 'productLines.allCategoriesReadOnly'
+}
+
+/**
  * Read-only list of confirmed product-lines rows (spec 0040 amendment rev.3,
  * AC-101; spec 0132 D-5 for the card format) — the SINGLE rendering shared by
  * every card record (opportunity, request, project, campaign, offer) and the
@@ -51,12 +65,12 @@ export function ProductLinesReadOnlyList({ lines }: { lines: ProductLineLike[] }
           <li key={line.id} className="flex min-w-0 items-center gap-3">
             <span
               className="min-w-0 flex-1 truncate"
-              title={`${line.business_function.name} — ${line.product_category?.name ?? t('productLines.allCategoriesReadOnly')}`}
+              title={`${line.business_function.name} — ${line.product_category?.name ?? t(allCategoriesKey(line))}`}
             >
               <span className="font-medium">{line.business_function.name}</span>
               <span className="text-muted-foreground">
                 {' '}
-                — {line.product_category?.name ?? t('productLines.allCategoriesReadOnly')}
+                — {line.product_category?.name ?? t(allCategoriesKey(line))}
               </span>
             </span>
             {line.share_percentage !== undefined ? (

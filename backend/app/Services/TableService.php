@@ -65,23 +65,7 @@ class TableService
         $offset = max(0, (int) $payload['startRow']);
         $limit = min($definition->maxRowsLimit(), max(1, (int) $payload['endRow'] - $offset));
 
-        $query = $definition->baseQuery();
-
-        // Spec 0158: a custom filter rule set REPLACES filterModel/
-        // advancedFilters entirely (even required-default advanced filters)
-        // — search, scope and sort below still apply on top.
-        $customFilterRules = $payload['customFilterRules'] ?? null;
-
-        if ($customFilterRules !== null) {
-            $this->customFilterRuleApplier->apply($this->queryBuilder, $definition, $query, $customFilterRules);
-        } else {
-            $this->queryBuilder->applyFilters($definition, $query, $payload['filterModel'] ?? []);
-            // Second-level, backend-driven advanced filters (spec 0032) — AND-combined
-            // with the column filters above and the quick-search below.
-            $this->queryBuilder->applyAdvancedFilters($definition, $query, $payload['advancedFilters'] ?? []);
-        }
-
-        $this->queryBuilder->applySearch($definition, $query, $payload['search'] ?? null);
+        $query = $this->filteredQuery($definition, $payload);
 
         // Spec 0157, D-1: tree/hierarchical row scoping (Sintetica), AFTER
         // every filter/search above so it combines with the rest of the
@@ -136,7 +120,7 @@ class TableService
             // as $total, never the paginated page — a footer total that agreed
             // with the page instead of the filtered set would be the wrong
             // number the moment a second page exists.
-            $aggregates = $definition->aggregates(clone $query);
+            $aggregates = $definition->aggregates($this->aggregatesQuery($definition, $query, $payload));
         }
 
         $this->queryBuilder->applySorting($definition, $query, $payload['sortModel'] ?? []);
@@ -344,5 +328,54 @@ class TableService
                 }
             })
             ->exists();
+    }
+
+    /**
+     * The definition's base query with every filter and the quick search of $payload.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return Builder<Model>
+     */
+    private function filteredQuery(TableDefinition $definition, array $payload): Builder
+    {
+        $query = $definition->baseQuery();
+
+        // Spec 0158: a custom filter rule set REPLACES filterModel/
+        // advancedFilters entirely (even required-default advanced filters)
+        // — search, scope and sort still apply on top.
+        $customFilterRules = $payload['customFilterRules'] ?? null;
+
+        if ($customFilterRules !== null) {
+            $this->customFilterRuleApplier->apply($this->queryBuilder, $definition, $query, $customFilterRules);
+        } else {
+            $this->queryBuilder->applyFilters($definition, $query, $payload['filterModel'] ?? []);
+            // Second-level, backend-driven advanced filters (spec 0032) — AND-combined
+            // with the column filters above and the quick-search below.
+            $this->queryBuilder->applyAdvancedFilters($definition, $query, $payload['advancedFilters'] ?? []);
+        }
+
+        $this->queryBuilder->applySearch($definition, $query, $payload['search'] ?? null);
+
+        return $query;
+    }
+
+    /**
+     * The query the aggregates read: the page's own, or the same one rebuilt
+     * without the filters the domain's figures must not be narrowed by.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $payload
+     * @return Builder<Model>
+     */
+    private function aggregatesQuery(TableDefinition $definition, Builder $query, array $payload): Builder
+    {
+        $ignored = array_flip($definition->filtersIgnoredByAggregates());
+        $filterModel = $payload['filterModel'] ?? [];
+
+        if (array_intersect_key($filterModel, $ignored) === []) {
+            return clone $query;
+        }
+
+        return $this->filteredQuery($definition, ['filterModel' => array_diff_key($filterModel, $ignored)] + $payload);
     }
 }

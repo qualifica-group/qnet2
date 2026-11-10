@@ -50,6 +50,9 @@ final class CompetenceLineSetValidator
      */
     public const string ALL_CATEGORIES_WITH_LINES_MESSAGE = 'Competence rows must be empty when "all categories" is enabled.';
 
+    /** Spec 0367: an "all categories" row keeps the new categories, the legacy ones or both, never neither. */
+    public const string NO_CATEGORY_AGE_MESSAGE = 'Choose the new categories, the old ones or both.';
+
     /** @var array<int, array<int, int>>|null */
     private ?array $childIdMap = null;
 
@@ -73,6 +76,8 @@ final class CompetenceLineSetValidator
             $attribute.'.*.business_function_id' => ['required', 'integer', new ActiveBusinessFunction($exemptFunctionIds)],
             $attribute.'.*.product_category_id' => ['nullable', 'integer', new ActiveProductCategory($exemptCategoryIds)],
             $attribute.'.*.share_percentage' => ['required', 'integer', 'min:1', 'max:'.EmploymentProductLine::SHARE_TOTAL],
+            $attribute.'.*.covers_current_categories' => ['sometimes', 'boolean'],
+            $attribute.'.*.covers_legacy_categories' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -96,7 +101,30 @@ final class CompetenceLineSetValidator
         return array_merge(
             $this->duplicateAndMismatchErrors($rows, $attribute, $this->effectiveFunctionByCategory()),
             $this->shareTotalErrors($lines, $attribute),
+            $this->categoryAgeErrors($lines, $attribute),
         );
+    }
+
+    /**
+     * Spec 0367: a null-category row with both "Nuove" and "Vecchie" off would
+     * cover nothing. An absent flag reads as true (the column default).
+     *
+     * @param  array<int, mixed>  $lines
+     * @return array<string, string>
+     */
+    private function categoryAgeErrors(array $lines, string $attribute): array
+    {
+        $errors = [];
+
+        foreach ($lines as $index => $line) {
+            if (is_array($line) && ($line['product_category_id'] ?? null) === null
+                && ! filter_var($line['covers_current_categories'] ?? true, FILTER_VALIDATE_BOOL)
+                && ! filter_var($line['covers_legacy_categories'] ?? true, FILTER_VALIDATE_BOOL)) {
+                $errors["{$attribute}.{$index}.covers_current_categories"] = __(self::NO_CATEGORY_AGE_MESSAGE);
+            }
+        }
+
+        return $errors;
     }
 
     /**

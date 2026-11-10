@@ -89,6 +89,21 @@ it('0278 AC-001: for-select lists only active types ordered by sort_order and na
         ->and($response->json('data.0.deducts_balance'))->toBeFalse();
 });
 
+it('for-select hydrates a saved type requested by id even when it is inactive (ADR 0011)', function () {
+    $active = AbsenceType::factory()->create(['name' => 'Ferie']);
+    $inactive = AbsenceType::factory()->inactive()->create(['name' => 'Permesso dismesso', 'allows_hourly' => true]);
+    Sanctum::actingAs(User::factory()->create());
+
+    $plain = collect($this->getJson('/api/absence-types/for-select')->assertOk()->json('data'))->pluck('id')->all();
+    $hydrated = collect($this->getJson("/api/absence-types/for-select?ids[]={$inactive->id}&ids[]={$active->id}")->assertOk()->json('data'));
+
+    expect($plain)->toBe([$active->id])
+        ->and($hydrated->pluck('id')->all())->toBe([$active->id, $inactive->id])
+        ->and($hydrated->last()['allows_hourly'])->toBeTrue();
+
+    $this->getJson('/api/absence-types/for-select?ids[]=abc')->assertUnprocessable();
+});
+
 it('0278 AC-001: the table lists the rows and the meta endpoint answers', function () {
     Sanctum::actingAs(hrCatalogUserWith('absence-types', ['viewAny', 'update']));
     AbsenceType::factory()->create(['name' => 'Ferie', 'sort_order' => 0]);

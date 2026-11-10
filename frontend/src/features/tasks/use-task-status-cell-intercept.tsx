@@ -1,12 +1,13 @@
 /**
  * Intercepts a `task_status` cell commit in the Task list (spec 0156 D-8)
- * BEFORE it reaches the generic PATCH: picking a status that CLOSES the task
- * opens the same "Completa" dialog the detail/row action use (segnatempo and,
- * when needed, the validation destination — the picked status id itself is
- * never written directly, `TaskCompleteDialog` derives the real destination
- * server-side); picking back out of a closed status calls `uncomplete`
- * directly. Every other transition (open<->open, or a super-admin editing an
- * already-closed row) is NOT intercepted and PATCHes as any other column.
+ * BEFORE it reaches the generic PATCH: picking a status that closes the task
+ * POSITIVELY opens the same "Completa" dialog the detail/row action use
+ * (segnatempo and, when needed, the validation destination — the picked
+ * status id itself is never written directly, `TaskCompleteDialog` derives the
+ * real destination server-side); picking back out of a closed status calls
+ * `uncomplete` directly. Every other transition (open<->open, a negative
+ * closure, or a super-admin editing an already-closed row) is NOT intercepted
+ * and PATCHes as any other column.
  */
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'

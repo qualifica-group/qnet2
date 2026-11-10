@@ -38,6 +38,14 @@ export const productLines = {
   allCategories: 'Tutte le categorie, riga {{n}}',
   /** Etichetta visibile accanto alla checkbox. */
   allCategoriesShort: 'Tutte',
+  /** Spec 0367: su una riga "Tutte", le categorie nuove e quelle storiche [OLD]. */
+  currentCategoriesShort: 'Nuove',
+  currentCategories: 'Categorie nuove, riga {{n}}',
+  legacyCategoriesShort: 'Vecchie',
+  legacyCategories: 'Categorie vecchie [OLD], riga {{n}}',
+  /** Spec 0367: resa in sola lettura di una riga "Tutte" ristretta. */
+  currentCategoriesOnlyReadOnly: 'Tutte le categorie nuove',
+  legacyCategoriesOnlyReadOnly: 'Tutte le categorie vecchie [OLD]',
   /** Spec 0346: nome accessibile per riga del campo percentuale (CompetenceLinesField). */
   sharePercentage: 'Percentuale riga {{n}}',
   /** Spec 0346: totale delle percentuali sotto le righe. */

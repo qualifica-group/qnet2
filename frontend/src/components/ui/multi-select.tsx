@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { SELECT_POPUP_FIT_CONTENT_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 
 export interface MultiSelectOption {
@@ -88,7 +89,10 @@ export function MultiSelect({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
-        className="max-h-64 w-(--radix-dropdown-menu-trigger-width) overflow-y-auto"
+        className={cn(
+          'max-h-64 min-w-(--radix-dropdown-menu-trigger-width) overflow-y-auto',
+          SELECT_POPUP_FIT_CONTENT_CLASS,
+        )}
       >
         {options.map((option) => (
           <DropdownMenuCheckboxItem

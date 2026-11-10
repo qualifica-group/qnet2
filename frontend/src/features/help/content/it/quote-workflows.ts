@@ -83,12 +83,12 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             "un'offerta può passare solo agli stati del workflow che le corrisponde in quel momento;",
-            'per gli stati Validato o Chiuso serve almeno una riga prodotto ("Non puoi portare l\'offerta a questo stato senza almeno una riga prodotto.");',
+            'per gli stati Validato serve almeno una riga prodotto ("Non puoi portare l\'offerta a questo stato senza almeno una riga prodotto."); Chiuso con esito positivo e Chiuso con esito negativo non la richiedono;',
             "se lo stato richiede una nota, va scritta; viene salvata tra le note dell'opportunità;",
             'entrando in Chiuso con esito positivo nasce il contratto, salvo che la categoria abbia **Prevede un contratto** spento;',
             "se l'offerta esce da Chiuso con esito positivo, il contratto passa a **Sospeso** (non viene cancellato);",
             "se i dati dell'offerta cambiano, QNet ricalcola il workflow: lo stato resta se esiste anche nel nuovo, altrimenti diventa lo stato fisso equivalente o **Aperto**;",
-            'eliminando un workflow, le sue offerte passano al workflow corrispondente o agli stati di default.',
+            "uno stato usato da almeno un'offerta non si può eliminare, e nemmeno il workflow che lo contiene: prima sposta le offerte su un altro stato.",
           ],
         },
         {

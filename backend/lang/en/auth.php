@@ -37,4 +37,8 @@ return [
     'impersonation_started' => 'Impersonation started.',
     'impersonation_stopped' => 'Impersonation stopped.',
 
+    // Welcome tour (spec 0368).
+    'onboarding_saved' => 'Welcome tour saved.',
+    'onboarding_impersonation' => 'The welcome tour cannot be saved during impersonation.',
+    'onboarding_required_not_skippable' => 'The welcome tour must be completed at least once.',
 ];

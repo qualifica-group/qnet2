@@ -7,7 +7,7 @@ import {
   resetTablePreferences,
   saveTablePreferences,
 } from '@/features/table/api'
-import { invalidateDomainConfigs, tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
+import { invalidateDomainConfigs, tableConfigTab, tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
 import type { ColumnPreferenceInput } from '@/features/table/types'
 
 /**
@@ -86,7 +86,7 @@ export function useSaveTablePreferences(domain: string, scope?: TableConfigScope
 
   return useMutation({
     mutationFn: (columns: ColumnPreferenceInput[]) =>
-      saveTablePreferences(domain, columns, scope?.productCategoryId),
+      saveTablePreferences(domain, columns, tableConfigTab(scope)),
     onSuccess: (config) => {
       invalidateDomainConfigs(queryClient, domain)
       queryClient.setQueryData(tableKeys.config(domain, scope), config)

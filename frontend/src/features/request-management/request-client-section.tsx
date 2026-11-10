@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, IdCard, MapPin, Phone, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Control } from 'react-hook-form'
-import { useController } from 'react-hook-form'
+import { useController, useWatch } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
+import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import {
   Collapsible,
   CollapsibleContent,
@@ -13,10 +14,15 @@ import {
 import { AddressCreateField } from '@/features/personal-data/address-create-field'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
+import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
+import type { RequestRegistryLockReason } from '@/features/request-management/types'
 
 interface RequestClientSectionProps {
   control: Control<RequestWorkFormValues>
+  /** The client the request holds now, for the select's label and to tell a picked client apart from it. */
+  registry: RelationFieldRef | null
+  registryLockReason: RequestRegistryLockReason | null
 }
 
 interface ClientGroupProps {
@@ -107,13 +113,16 @@ export function ClientGroup({
  * and immediate persistence do not compose, the quick fields write to the
  * buffer only. Extra channels beyond email/phone/pec/fax stay available
  * through the manager's own dialog and are saved by the same submit.
+ *
+ * The select on top moves the request onto another client (decisione utente
+ * 2026-11-09). While a different client is picked the three groups are hidden:
+ * they hold the data of the client being left, so editing them would write on
+ * the wrong card. The new client's data appears once the change is saved.
  */
-export function RequestClientSection({ control }: RequestClientSectionProps) {
+export function RequestClientSection({ control, registry, registryLockReason }: RequestClientSectionProps) {
   const { t } = useTranslation()
-  const identity = useController({ control, name: 'client_identity' })
-  const contacts = useController({ control, name: 'client_contacts' })
-  const address = useController({ control, name: 'client_address' })
-  const identityDraft = identity.field.value
+  const registryId = useWatch({ control, name: 'registry_id' })
+  const registryChanged = registryId !== (registry?.id ?? null)
 
   return (
     <FormSection
@@ -123,6 +132,55 @@ export function RequestClientSection({ control }: RequestClientSectionProps) {
         defaultValue: 'Contacts and address of the client.',
       })}
     >
+      <RelationSelectField
+        control={control}
+        name="registry_id"
+        metaKey="registry_id"
+        label={t('requestManagement.workPanel.client.registryLabel')}
+        resource={REGISTRIES_FOR_SELECT_RESOURCE}
+        searchPlaceholder={t('requestManagement.form.create.client.registrySearch')}
+        selected={registry}
+        forceDisabled={registryLockReason !== null}
+        required
+        placeholder={t('requestManagement.form.create.client.registryPlaceholder')}
+        emptyLabel={t('requestManagement.form.create.client.registryEmpty')}
+        errorLabel={t('requestManagement.form.create.client.registryError')}
+        clearLabel={t('common.clear')}
+        retryLabel={t('common.retry')}
+      />
+
+      {/* A paragraph, not the field's tooltip hint: the reason a control is
+          disabled has to be readable without hovering it. */}
+      <p className="text-xs text-muted-foreground">
+        {registryLockReason
+          ? t(`requestManagement.workPanel.client.registryLocked.${registryLockReason}`)
+          : t('requestManagement.workPanel.client.registryHint')}
+      </p>
+
+      {registryChanged ? (
+        <p className="text-xs text-muted-foreground">{t('requestManagement.workPanel.client.registryChanged')}</p>
+      ) : (
+        <RequestClientGroups control={control} />
+      )}
+    </FormSection>
+  )
+}
+
+/**
+ * The three groups of the client's own data, in a component of their own so
+ * they are mounted only while they describe the client the select shows.
+ */
+function RequestClientGroups({ control }: Pick<RequestClientSectionProps, 'control'>) {
+  const { t } = useTranslation()
+  const identity = useController({ control, name: 'client_identity' })
+  const contacts = useController({ control, name: 'client_contacts' })
+  const address = useController({ control, name: 'client_address' })
+  const identityDraft = identity.field.value
+
+  return (
+    <>
+      <div className="border-t" />
+
       {identityDraft && (
         <>
           <ClientGroup
@@ -165,6 +223,6 @@ export function RequestClientSection({ control }: RequestClientSectionProps) {
           cityRequired={false}
         />
       </ClientGroup>
-    </FormSection>
+    </>
   )
 }

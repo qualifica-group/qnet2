@@ -28,6 +28,7 @@ use App\Services\Quotes\QuoteStatusChangeLogger;
 use App\Services\Quotes\QuoteTitleWriter;
 use App\Services\Quotes\QuoteTotalsCalculator;
 use App\Services\Quotes\QuoteWorkflowStatusAssigner;
+use App\Support\PeopleChangeLog;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -283,6 +284,14 @@ class QuoteService
             // closed_won transition either way once this method has saved.
             $previousStatusId = $quote->quote_workflow_status_id;
 
+            // Spec 0372, D-7: Gestori and flexible fields are invisible to the model log; a
+            // submitted team may also land on the opportunity (promotion, synchronized categories).
+            $peopleBefore = match (true) {
+                $data->hasManagerSlots() => PeopleChangeLog::capture($quote, Opportunity::findOrFail($quote->opportunity_id)),
+                $data->attributeValues !== null => PeopleChangeLog::capture($quote),
+                default => [],
+            };
+
             // Unconditional save: mirrors OpportunityService/ProjectService's
             // own update() — a clean save runs no UPDATE query.
             $quote->fill($data->submittedAttributes())->save();
@@ -365,6 +374,8 @@ class QuoteService
             // The change lands on the opportunity trail the report reads
             // (user directive 2026-09-18); no entry when nothing changed.
             $this->statusChangeLogger->log($quote, $previousStatusId, $actor);
+
+            PeopleChangeLog::log($peopleBefore);
 
             // Contract lifecycle automation (spec 0072, BR-1).
             $this->contractLifecycleManager->syncOnStatusChange($quote, $previousStatusId);

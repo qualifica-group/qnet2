@@ -5,7 +5,7 @@ namespace App\Http\Requests\Leads;
 use App\DataObjects\Leads\UpdateLeadData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\Lead;
-use App\Rules\ActiveCategoryProduct;
+use App\Rules\ActiveProduct;
 use App\Services\Leads\LeadSourceResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -57,7 +57,7 @@ class UpdateLeadRequest extends FormRequest
             'extra_fields' => ['sometimes', 'nullable', 'array'],
             'extra_fields.*' => ['string'],
             'products_of_interest' => ['sometimes', 'array'],
-            'products_of_interest.*' => ['integer', new ActiveCategoryProduct($this->exemptProductsOfInterestIds())],
+            'products_of_interest.*' => ['integer', new ActiveProduct($this->exemptProductsOfInterestIds())],
         ];
     }
 

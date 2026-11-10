@@ -254,7 +254,7 @@ class InvoicesSource extends AbstractMigrationSource
      *
      * @param  array<int, string>  $warnings
      */
-    private function externalDate(mixed $value, CarbonImmutable $documentDate, array &$warnings): string
+    public function externalDate(mixed $value, CarbonImmutable $documentDate, array &$warnings): string
     {
         $date = $this->blankToNull($value);
 
@@ -268,7 +268,7 @@ class InvoicesSource extends AbstractMigrationSource
     /**
      * @throws RuntimeException when the external number exceeds the column
      */
-    private function externalNumber(mixed $value): ?string
+    public function externalNumber(mixed $value): ?string
     {
         $number = $this->blankToNull($value);
 

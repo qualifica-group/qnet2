@@ -198,6 +198,13 @@ export const enums = {
   },
   // Stato commessa calcolato (spec 0149) dai task radice e da `is_force_closed`,
   // colonna badge `status` della griglia Commesse — nessuna colonna DB.
+  work_order_work_phase: {
+    to_plan: 'Da pianificare',
+    in_progress: 'In lavorazione',
+    completed: 'Conclusa',
+    cancelled: 'Annullata',
+    terminated: 'Disdetta',
+  },
   work_order_status: {
     open: 'Aperta',
     in_progress: 'In lavorazione',
@@ -227,6 +234,16 @@ export const enums = {
     observed_by_me: 'Osservati da me',
     all: 'Tutti',
     visible: 'Tutti i visibili',
+  },
+  commercial_assignment_scope: {
+    supervisor: 'Supervisore',
+    manager: 'Gestore account',
+    visible: 'Tutti i visibili',
+  },
+  work_order_assignment_scope: {
+    supervisor: 'Responsabile',
+    participant: 'Partecipante',
+    visible: 'Tutte le visibili',
   },
   // Spec 0284: esito di una formazione del personale (griglia, filtro, dettaglio, form).
   staff_training_outcome: {

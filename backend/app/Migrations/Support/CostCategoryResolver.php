@@ -27,8 +27,8 @@ final class CostCategoryResolver
     {
         // Step 1: the root and the branch of this legacy table.
         $root = ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->orderBy('id')->first()
-            ?? ProductCategory::create(['name' => CostProductCatalogue::ROOT, ...self::INACTIVE]);
-        $branch = ProductCategory::firstOrCreate(['name' => CostProductCatalogue::BRANCHES[$source], 'parent_id' => $root->id], self::INACTIVE);
+            ?? $this->markedLegacy(ProductCategory::create(['name' => CostProductCatalogue::ROOT, ...self::INACTIVE]));
+        $branch = $this->markedLegacy(ProductCategory::firstOrCreate(['name' => CostProductCatalogue::BRANCHES[$source], 'parent_id' => $root->id], self::INACTIVE));
 
         // Step 2: the branch's attributes, inherited by its sub-categories.
         $this->assignAttributes($branch, CostProductCatalogue::ATTRIBUTES[$source]);
@@ -38,7 +38,20 @@ final class CostCategoryResolver
             return $branch->id;
         }
 
-        return ProductCategory::firstOrCreate(['name' => $legacyCategory, 'parent_id' => $branch->id], self::INACTIVE)->id;
+        return $this->markedLegacy(ProductCategory::firstOrCreate(['name' => $legacyCategory, 'parent_id' => $branch->id], self::INACTIVE))->id;
+    }
+
+    /**
+     * A node this resolver just created belongs to the legacy catalogue (user
+     * directive 2026-11-07); `is_legacy` is not mass-assignable, hence forceFill.
+     */
+    private function markedLegacy(ProductCategory $category): ProductCategory
+    {
+        if ($category->wasRecentlyCreated) {
+            $category->forceFill(['is_legacy' => true])->save();
+        }
+
+        return $category;
     }
 
     /**

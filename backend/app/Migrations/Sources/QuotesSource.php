@@ -15,6 +15,7 @@ use App\Migrations\Sources\Concerns\MapsLegacyQuoteLines;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\LegacyAttributeValueApplier;
 use App\Migrations\Support\LegacyFreeLineProduct;
+use App\Migrations\Support\LegacyQuoteRealigner;
 use App\Migrations\Support\LegacyQuoteState;
 use App\Migrations\Support\LegacyQuoteStatusApplier;
 use App\Models\CompanySite;
@@ -74,6 +75,7 @@ class QuotesSource extends AbstractMigrationSource
         private readonly LegacyQuoteStatusApplier $statusApplier,
         private readonly LegacyAttributeValueApplier $attributeValueApplier,
         private readonly LegacyFreeLineProduct $freeLineProduct,
+        private readonly LegacyQuoteRealigner $realigner,
     ) {
         parent::__construct($client);
     }
@@ -113,6 +115,11 @@ class QuotesSource extends AbstractMigrationSource
     public function endpoint(): string
     {
         return 'quotes';
+    }
+
+    public function supportsUpdateExisting(): bool
+    {
+        return true;
     }
 
     /**
@@ -166,8 +173,12 @@ class QuotesSource extends AbstractMigrationSource
             throw new RuntimeException('External id is required.');
         }
 
-        if ($this->existsByOldId(Quote::class, $externalId)) {
-            return MigrationRowOutcome::skipped();
+        $existing = Quote::query()->where('old_id', $externalId)->first();
+
+        if ($existing !== null) {
+            return $this->updatesExisting($context)
+                ? activity()->withoutLogs(fn (): MigrationRowOutcome => $this->realignRecord($existing, $record))
+                : MigrationRowOutcome::skipped();
         }
 
         return activity()->withoutLogs(fn (): MigrationRowOutcome => $this->importRecord($context, $externalId, $record));
@@ -210,6 +221,42 @@ class QuotesSource extends AbstractMigrationSource
         ]);
 
         return MigrationRowOutcome::created($warnings, $quote);
+    }
+
+    /**
+     * An already imported offer realigned to the legacy (spec 0372): the values the legacy
+     * decides, resolved here (they need the remaps), then diffed and written by the realigner.
+     * Warnings only reach the report when something was written (D-8).
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function realignRecord(Quote $quote, array $record): MigrationRowOutcome
+    {
+        $warnings = [];
+        $title = $this->legacyTitle($record['title'] ?? null, $warnings);
+        $quoteDate = $this->legacyTimestamp($record['quote_date'] ?? null)?->toDateString();
+        $description = trim((string) ($record['description'] ?? ''));
+        $supervisorRef = $record['supervisor_user_id'] ?? null;
+        $supervisorId = $this->remapLegacyId(User::class, $supervisorRef, 'supervisor_user_id', $warnings);
+
+        $fields = [
+            'internal_notes' => $description !== '' ? $description : null,
+            'next_callback_at' => $this->legacyTimestamp($record['callback_date'] ?? null)?->startOfDay(),
+            ...($title !== null ? ['title' => $title] : []),
+            ...($quoteDate !== null ? ['quote_date' => $quoteDate] : []),
+            // A reference that does not resolve keeps the current supervisor instead of clearing it.
+            ...($supervisorId !== null || (int) $supervisorRef === 0 ? ['supervisor_id' => $supervisorId] : []),
+        ];
+
+        return $this->realigner->realign(
+            $quote,
+            $fields,
+            $this->managerSlotsToWrite($quote->opportunity()->firstOrFail(), $record, $warnings),
+            (array) ($record['attribute_values'] ?? []),
+            LegacyQuoteState::fromRecord($record),
+            $this->legacyTimestamp($record['updated_at'] ?? null) ?? $this->legacyTimestamp($record['created_at'] ?? null),
+            $warnings,
+        );
     }
 
     private function resolveOpportunity(mixed $externalOpportunityId): Opportunity

@@ -34,8 +34,8 @@
     <decision id="D-2">La scelta del livello e' salvata nel browser, separata per modulo: localStorage `${key}.category-tab-level`
       (`all` | `root`, default `root` dal 2026-11-05 per decisione utente: prima era `all`; un `all` gia' salvato resta rispettato). Ogni livello ricorda la propria tab: `${key}.category-tab` (invariata, livello `all`)
       e `${key}.category-tab.root`.</decision>
-    <decision id="D-3">Gestione Richieste/Iscritti: una tab radice filtra soltanto. Nessuna colonna `attr.*`, nessuna rinomina
-      Gestori Account; config colonne e layout uguali alla tab "Tutte".</decision>
+    <decision id="D-3">Gestione Richieste/Iscritti: nessuna rinomina Gestori Account su una tab radice. Superata per le colonne
+      `attr.*` (decisione utente 2026-11-09, spec 0350 D-4 rev.3): la tab radice mostra l'insieme effettivo della radice.</decision>
     <decision id="D-4">Preferiti separati per livello: il livello radice usa la riga preferenze `module = "{module}:root"`
       (es. `quotes:root`, sta in string(40), nessuna migrazione). Default da competenza al livello radice = radici il cui ramo
       contiene almeno una categoria della barra coperta dalla competenza (stessa regola 0193 applicata alle radici).</decision>
@@ -49,7 +49,7 @@
       <item>Backend: `ProductCategoryScopable::scopeToProductCategoryBranch(?int $rootId)` implementato dai 4 decoratori (filtro su `whereIn(category, branchIds)` con la stessa subquery di oggi; RM senza `attr.*`/rinomina, D-3).</item>
       <item>Backend: parametro `productCategoryBranchId` in `TableRowsRequest`, `TableValuesRequest` e `TableController` (rows, values), mutuamente esclusivo con `productCategoryId`.</item>
       <item>Backend: `?level=root` su `GET {module|grid}/product-categories` (entrambi i resolver, cache con chiave distinta) e su `GET|PUT {module|grid}/category-tab-preferences` (riga `"{module}:root"`, default D-4).</item>
-      <item>Frontend: scope `productCategoryBranchId` in `TableConfigScope` e nel percorso di `productCategoryId` dentro `features/table/*` e `components/data-table/*` (righe, valori distinti, filtri locali per scope); MAI inviato a config/preferenze/filtri salvati (D-3).</item>
+      <item>Frontend: scope `productCategoryBranchId` in `TableConfigScope` e nel percorso di `productCategoryId` dentro `features/table/*` e `components/data-table/*` (righe, valori distinti, filtri locali per scope); dal 2026-11-09 anche a config e, come `product_category_branch_id`, alle risposte di preferenze/filtri (spec 0350 rev.3).</item>
       <item>Frontend: `features/category-tabs/`: livello persistito (D-2), fetch con `level`, preferiti per livello, interruttore "Categorie madri / Tutte le categorie" nel menu "Altre" accanto a "Mostra solo preferite"; i 4 punti di montaggio passano `productCategoryBranchId` quando il livello e' `root`.</item>
       <item>i18n `categoryTabs.*` IT/EN; guide in-app IT/EN (`request-management`, `opportunities`, `quotes`, `contracts`, sezione/paragrafo della barra); manuale Claude Docs (Gestione Richieste, Opportunita', Offerte, Contratti).</item>
     </in>
@@ -91,7 +91,7 @@
     <criterion id="AC-003">I conteggi al livello radice rispettano la visibility scope del modulo: un record non visibile non conta. (Pest)</criterion>
     <criterion id="AC-004">`level=foo` -> 422; senza `{module}.viewAny` -> 403 anche con `level=root`. (Pest)</criterion>
     <criterion id="AC-005">POST rows con `productCategoryBranchId = R` restituisce A e B (una volta ciascuno) per ogni dominio; con anche `productCategoryId` -> 422; i valori distinti seguono lo stesso scope. (Pest)</criterion>
-    <criterion id="AC-006">Gestione Richieste: con `productCategoryBranchId` la config/righe non contengono colonne `attr.*` ne' etichette GA rinominate. (Pest)</criterion>
+    <criterion id="AC-006">Gestione Richieste: con `productCategoryBranchId` le colonne native restano quelle senza etichette GA rinominate; le `attr.*` sono quelle della radice (spec 0350 rev.3). (Pest)</criterion>
     <criterion id="AC-007">Preferenze `level=root`: GET senza riga salvata propone le radici coperte (D-4) con `is_default` true; PUT scrive `"{module}:root"` senza toccare la riga del livello `all`. (Pest)</criterion>
     <criterion id="AC-008">Barra: nel menu "Altre" l'interruttore passa da "Tutte le categorie" a "Categorie madri"; la barra rilegge le categorie con `level=root`, la griglia riceve `productCategoryBranchId` della tab cliccata e il livello resta al reload (`${key}.category-tab-level`); tornando a "Tutte le categorie" riappare la tab scelta prima a quel livello. (Vitest, su almeno una griglia + test hook)</criterion>
     <criterion id="AC-009">Preferiti al livello radice: stellina e "Mostra solo preferite" usano `?level=root` e non cambiano i preferiti del livello `all`. (Vitest)</criterion>

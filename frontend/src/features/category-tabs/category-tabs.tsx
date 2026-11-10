@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TABS_LIST_CLASS } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
@@ -26,6 +27,9 @@ const ALL_TAB_VALUE = 'all'
  */
 const INLINE_TAB_LIST_CLASS = 'w-auto min-w-0 flex-nowrap gap-1 rounded-none border-0 bg-transparent p-0 shadow-none'
 
+/** Varied widths read as real tab labels; `h-6` is a tab's height, so the strip does not jump when they load. */
+const SKELETON_TAB_WIDTHS = ['w-24', 'w-16', 'w-28', 'w-20']
+
 interface CategoryTabsProps {
   categories: CategoryTabItem[]
   /** `null` selects "Tutte". */
@@ -37,14 +41,18 @@ interface CategoryTabsProps {
   /** The favourites are the ones proposed from the actor's competence, not saved yet (spec 0193). */
   favoritesAreDefault?: boolean
   onToggleFavorite: (categoryId: number) => void
+  /** Replaces the whole favourite list: the menu's "select all" and "deselect all". */
+  onSetFavorites: (categoryIds: number[]) => void
   onShowOnlyFavoritesChange: (showOnlyFavorites: boolean) => void
   /** Spec 0337: which categories the strip lists, and the switch in its menu that changes it. */
   level?: CategoryTabLevel
   onLevelChange?: (level: CategoryTabLevel) => void
+  /** First load of the categories: placeholder chips stand in for the tabs. */
+  isLoading?: boolean
 }
 
 /**
- * Category tab strip above the grid (spec 0064, shared with Opportunities and Quotes by spec 0335): "Tutte"
+ * Category tab strip above the grid (spec 0064): "Tutte"
  * always first and selected by default, then one tab per Product Category
  * actually present in the operator's visible requests, each carrying its own
  * request count. Presentation only — the parent owns persistence and derives
@@ -56,6 +64,10 @@ interface CategoryTabsProps {
  * The actor's favourites come first, or alone when "only favourites" is on
  * (spec 0184); the menu, which also manages them, is always reachable.
  * Compact per ui-design.md §2 (`text-xs`, `px-2.5 py-1`, `size-3.5` icons).
+ *
+ * While the categories load, "Tutte" and the menu stay mounted: the grid is
+ * usable meanwhile, and the level switch inside the open menu must survive the
+ * load it has just triggered.
  */
 export function CategoryTabs({
   categories,
@@ -65,9 +77,11 @@ export function CategoryTabs({
   showOnlyFavorites,
   favoritesAreDefault = false,
   onToggleFavorite,
+  onSetFavorites,
   onShowOnlyFavoritesChange,
   level,
   onLevelChange,
+  isLoading = false,
 }: CategoryTabsProps) {
   const { t } = useTranslation()
   const troughRef = useRef<HTMLDivElement>(null)
@@ -100,7 +114,7 @@ export function CategoryTabs({
           ref={troughRef}
           className={cn(TABS_LIST_CLASS, 'flex flex-nowrap')}
         >
-          <TabsList aria-label={t('categoryTabs.pickerLabel')} className={INLINE_TAB_LIST_CLASS}>
+          <TabsList aria-label={t('categoryTabs.pickerLabel')} aria-busy={isLoading} className={INLINE_TAB_LIST_CLASS}>
             <TabsTrigger value={ALL_TAB_VALUE}>
               {t('categoryTabs.all')}
             </TabsTrigger>
@@ -108,6 +122,13 @@ export function CategoryTabs({
               <CategoryTab key={id} category={byId.get(id)!} />
             ))}
           </TabsList>
+          {isLoading ? (
+            <div aria-hidden="true" className="flex min-w-0 gap-1 overflow-hidden">
+              {SKELETON_TAB_WIDTHS.map((width) => (
+                <Skeleton key={width} className={cn('h-6 shrink-0', width)} />
+              ))}
+            </div>
+          ) : null}
           <CategoryTabsPicker
             categories={categories}
             favoriteCategoryIds={favoriteCategoryIds}
@@ -117,6 +138,7 @@ export function CategoryTabs({
             selectedCategoryId={selectedCategoryId}
             onSelect={onSelect}
             onToggleFavorite={onToggleFavorite}
+            onSetFavorites={onSetFavorites}
             onShowOnlyFavoritesChange={onShowOnlyFavoritesChange}
             level={level}
             onLevelChange={onLevelChange}

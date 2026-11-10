@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Table;
 
+use App\Tables\CategoryTabs\FilterScopedAttributeColumns;
 use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RegistryScopable;
@@ -163,6 +164,10 @@ class TableValuesRequest extends FormRequest
 
             if ($definition instanceof RegistryScopable) {
                 $definition->scopeToRegistry($this->registryIdInput());
+            }
+
+            if ($definition instanceof FilterScopedAttributeColumns) {
+                $definition->scopeAttributeColumnsForValues();
             }
 
             $this->resolvedDefinition = $definition;

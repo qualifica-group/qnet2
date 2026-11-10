@@ -20,9 +20,12 @@ export const requestManagement = {
     expectedCloseDate: 'Expected close date',
     operator: 'Operator',
     managerGa1: 'Tutor',
+    managerGa5: 'APL operator',
+    managers: 'Account managers',
     operationalSite: 'Operational site',
     firstName: 'First name',
     lastName: 'Last name',
+    companyName: 'Company name',
     taxCode: 'Tax code',
     vatNumber: 'VAT number',
     phone: 'Phone',
@@ -257,6 +260,13 @@ export const requestManagement = {
     client: {
       title: 'Client details',
       description: 'Identity, contacts and address of the client.',
+      registryLabel: 'Client',
+      registryHint: 'If you change the client, every offer on this opportunity moves to the new client.',
+      registryChanged: "The new client's details will appear after saving. Any edits to the previous client's details will not be saved.",
+      registryLocked: {
+        contract: 'Cannot be changed: a contract already exists on this opportunity.',
+        lead: 'Cannot be changed: the client comes from the lead the opportunity was created from.',
+      },
       identityGroup: 'Identity',
       contactsGroup: 'Contacts',
       addressGroup: 'Address',
@@ -290,6 +300,7 @@ export const requestManagement = {
       // every locale fall back to English.
       required: 'This field is required.',
       sourceRequired: 'Select a source.',
+      registryRequired: "Select a client.",
       productLinesRequired: 'Add at least one product line.',
       productLineIncomplete: 'Select a parent category and a product category for every row.',
       // Direttiva utente 2026-09-09: mirror of the server gate

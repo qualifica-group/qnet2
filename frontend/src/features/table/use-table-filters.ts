@@ -7,7 +7,7 @@ import {
   saveTableFilters,
   type SaveTableFiltersPayload,
 } from '@/features/table/api'
-import { removeOtherScopeConfigs, tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
+import { removeOtherScopeConfigs, tableConfigTab, tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
 import type { TableConfig } from '@/features/table/types'
 
 /**
@@ -34,7 +34,7 @@ export function useSaveTableFilters(domain: string, scope?: TableConfigScope) {
 
   return useMutation({
     mutationFn: (payload: SaveTableFiltersPayload) =>
-      saveTableFilters(domain, payload, scope?.productCategoryId),
+      saveTableFilters(domain, payload, tableConfigTab(scope)),
     onSuccess: (config: TableConfig) => {
       removeOtherScopeConfigs(queryClient, domain, scope)
       queryClient.setQueryData(tableKeys.config(domain, scope), config)

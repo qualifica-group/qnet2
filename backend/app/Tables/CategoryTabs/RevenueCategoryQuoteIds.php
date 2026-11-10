@@ -10,7 +10,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
  * The quotes that carry a REVENUE line on a product of one category (spec
- * 0335, D-1, no fallback): the single rule behind the category scope of the
+ * 0335, D-1, no fallback): the single rule behind the category filter of the
  * Offerte grid and, through `contracts.quote_id`, of the Contratti grid (D-8).
  */
 final class RevenueCategoryQuoteIds

@@ -13,6 +13,7 @@ use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
+use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
@@ -87,6 +88,7 @@ class UpdateRequestRequest extends FormRequest
      * All are read through `quote.opportunity` by currentFieldValue().
      */
     private const array OPPORTUNITY_FIELDS = [
+        'registry_id',
         'product_lines',
         'general_notes',
         'estimated_value',
@@ -102,6 +104,12 @@ class UpdateRequestRequest extends FormRequest
      */
     private const string MANAGER_SLOTS_CHANGED = 'manager_slots:changed';
 
+    /**
+     * The blocks that write on the CURRENT client's card: alongside a change
+     * of client they would land on the record being left.
+     */
+    private const array CLIENT_BLOCK_FIELDS = ['client_identity', 'client_contacts', 'client_address'];
+
     public function authorize(): bool
     {
         return true;
@@ -112,7 +120,11 @@ class UpdateRequestRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
+            // The client select (decisione utente 2026-11-09). Sparse, never
+            // clearable: a request always has a client. Whether this record
+            // may change it is RequestRegistryWriter's own check.
+            'registry_id' => ['sometimes', 'required', 'integer', Rule::exists('registries', 'id')],
             'next_callback_at' => ['sometimes', 'nullable', 'date'],
             // Attribution (user directive 2026-07-22): "Fonte" (Opportunity),
             // "Segnalatore" and the GA2 "Operatore" (Quote, D-2). Sparse like
@@ -200,6 +212,39 @@ class UpdateRequestRequest extends FormRequest
             // case is worth.
             'operator_id' => ['prohibited'],
         ];
+
+        foreach (self::CLIENT_BLOCK_FIELDS as $field) {
+            $rules[$field][] = Rule::prohibitedIf(fn (): bool => $this->changesRegistry());
+        }
+
+        return $rules;
+    }
+
+    private function changesRegistry(): bool
+    {
+        /** @var Quote $quote */
+        $quote = $this->route('quote');
+        $quote->loadMissing('opportunity');
+
+        return $this->filled('registry_id')
+            && (int) $this->input('registry_id') !== (int) $quote->opportunity?->registry_id;
+    }
+
+    /**
+     * $opportunity as this request is going to leave it: the fiscal gate has
+     * to read the card of the client being picked, not of the one being left.
+     */
+    private function opportunityForFiscalCheck(Opportunity $opportunity): Opportunity
+    {
+        if (! $this->changesRegistry()) {
+            return $opportunity;
+        }
+
+        $target = clone $opportunity;
+        $target->registry_id = (int) $this->input('registry_id');
+        $target->unsetRelation('registry');
+
+        return $target;
     }
 
     /**
@@ -442,11 +487,13 @@ class UpdateRequestRequest extends FormRequest
             return;
         }
 
-        if (app(RequestWorkflowStatusWriter::class)->hasFiscalIdentity($quote->opportunity, $this->clientProfilePayload())) {
+        if (app(RequestWorkflowStatusWriter::class)->hasFiscalIdentity($this->opportunityForFiscalCheck($quote->opportunity), $this->clientProfilePayload())) {
             return;
         }
 
-        $validator->errors()->add('client_identity', __($isTransition
+        // With a client being changed the identity cards are hidden: the
+        // select is the control the operator can act on.
+        $validator->errors()->add($this->changesRegistry() ? 'registry_id' : 'client_identity', __($isTransition
             ? 'request-management.fiscal_identity_required_for_status'
             : 'request-management.fiscal_identity_required_on_closed_won'));
     }

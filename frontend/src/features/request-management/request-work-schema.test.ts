@@ -41,6 +41,7 @@ function original(overrides: Partial<RequestWorkOriginalState> = {}): RequestWor
   return {
     product_lines: [{ root_category_id: null, product_category_id: 500 }],
     attribute_values: {},
+    registry_id: 10,
     quote_workflow_status_id: null,
     client_identity: null,
     client_contacts: [],
@@ -75,6 +76,7 @@ function values(overrides: Record<string, unknown> = {}) {
     manager_slots: [null, null, null, null],
     operational_site_id: null,
     attribute_values: {},
+    registry_id: 10,
     quote_workflow_status_id: null,
     note: null,
     ...overrides,
@@ -150,9 +152,10 @@ describe('buildRequestWorkSchema — source (Fonte)', () => {
 /**
  * Spec 0102 AC-044/045: mirrors the server gate in
  * `QuoteWorkflowStatusWriter::apply()` — a transition into a status whose
- * `group` is `closed_won`/`closed_lost`/`validated` demands at least one
- * REVENUE row; `open`/`pending` do not, and neither does reissuing the
- * status the request already holds (spec 0083 AC-026/AC-018).
+ * `group` is `closed_won`/`validated` demands at least one REVENUE row;
+ * `open`/`pending`/`closed_lost` do not (the last by decisione utente
+ * 2026-11-09), and neither does reissuing the status the request already
+ * holds (spec 0083 AC-026/AC-018).
  */
 describe('buildRequestWorkSchema — offer lines required for status', () => {
   const OPEN: QuoteWorkflowStatusRef = {
@@ -198,24 +201,21 @@ describe('buildRequestWorkSchema — offer lines required for status', () => {
   const STATUSES = [OPEN, PENDING, CLOSED_WON, CLOSED_LOST, VALIDATED]
   const COMPLETE_LINE = { product_id: 10, quantity: 1, unit_price: 100, vat_rate_id: 1 }
 
-  it('rejects a transition to closed_won with no offer lines (AC-044)', () => {
+  // REQUIREMENT CHANGED (decisione utente 2026-11-09): the line is demanded when the contract is validated.
+  it('accepts a transition to closed_won with no offer lines (AC-010)', () => {
     const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
-    const result = schema.safeParse(values({ quote_workflow_status_id: CLOSED_WON.id }))
+    const result = schema.safeParse(
+      values({ quote_workflow_status_id: CLOSED_WON.id, client_identity: card({ tax_code: 'RSSMRA80A01H501U' }) }),
+    )
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'offer_lines')).toBe(true)
-    }
+    expect(result.success).toBe(true)
   })
 
-  it('rejects a transition to closed_lost with no offer lines (AC-044)', () => {
+  it('accepts a transition to closed_lost with no offer lines (AC-011)', () => {
     const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
     const result = schema.safeParse(values({ quote_workflow_status_id: CLOSED_LOST.id }))
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'offer_lines')).toBe(true)
-    }
+    expect(result.success).toBe(true)
   })
 
   it('rejects a transition to validated with no offer lines (AC-044)', () => {
@@ -232,7 +232,7 @@ describe('buildRequestWorkSchema — offer lines required for status', () => {
     const schema = buildRequestWorkSchema(original(), [], STATUSES, i18n.t)
     const result = schema.safeParse(
       values({
-        quote_workflow_status_id: CLOSED_WON.id,
+        quote_workflow_status_id: VALIDATED.id,
         offer_lines: [{ product_id: null, quantity: null, unit_price: null, vat_rate_id: null }],
       }),
     )
@@ -463,5 +463,32 @@ describe('buildRequestWorkSchema - conditional sections (spec 0288 AC-011)', () 
 
     expect(hasRequiredIssue(schema.safeParse(values({ attribute_values: { has_site: false, site_access: null } })))).toBe(false)
     expect(hasRequiredIssue(schema.safeParse(values({ attribute_values: { has_site: true, site_access: null } })))).toBe(true)
+  })
+})
+
+describe('buildRequestWorkSchema: the client select', () => {
+  const closedWon: QuoteWorkflowStatusRef = { id: 3, name: 'Chiusa positiva', color: null, description: null, group: 'closed_won', requires_note: false }
+
+  function issuePaths(status: QuoteWorkflowStatusRef[], input: unknown): string[] {
+    const result = buildRequestWorkSchema(original(), [], status, i18n.t).safeParse(input)
+
+    return result.success ? [] : result.error.issues.map((issue) => issue.path.join('.'))
+  }
+
+  it('refuses an emptied client', () => {
+    expect(issuePaths([], values({ registry_id: null }))).toContain('registry_id')
+  })
+
+  it('leaves the fiscal gate of a positive close to the server when another client is picked', () => {
+    const closing = { quote_workflow_status_id: closedWon.id, client_identity: card() }
+
+    expect(issuePaths([closedWon], values({ ...closing, registry_id: 11 }))).not.toContain('client_identity')
+    expect(issuePaths([closedWon], values(closing))).toContain('client_identity')
+  })
+
+  it('does not validate the contacts of the client being left', () => {
+    const contacts = [{ _key: 'a', type: 'email', value: 'not-an-email', label: null, is_primary: true }]
+
+    expect(issuePaths([], values({ registry_id: 11, client_contacts: contacts })).filter((path) => path.startsWith('client_contacts'))).toEqual([])
   })
 })

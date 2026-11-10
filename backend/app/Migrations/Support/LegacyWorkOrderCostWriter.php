@@ -53,7 +53,7 @@ final class LegacyWorkOrderCostWriter
      * @param  array<int, string>  $warnings
      * @return array<string, mixed>
      */
-    private function row(WorkOrder $workOrder, array $cost, array $lineIdsByOldId, array &$warnings): array
+    public function row(WorkOrder $workOrder, array $cost, array $lineIdsByOldId, array &$warnings): array
     {
         $ref = $cost['id'] ?? '?';
         $product = $this->product($cost['product_source'] ?? null, $cost['product_id'] ?? null, $ref);

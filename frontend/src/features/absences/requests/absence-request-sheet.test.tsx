@@ -16,7 +16,7 @@ const TYPE_OPTIONS = [
   buildTypeOption({ id: 2, name: 'Malattia', deducts_balance: false, allows_half_day: false, allows_hourly: false }),
 ]
 vi.mock('@/features/absences/api', () => ({
-  fetchAbsenceTypeOptions: () => typeOptionsMock(),
+  fetchAbsenceTypeOptions: (savedTypeId: number | null) => typeOptionsMock(savedTypeId),
   previewAbsenceRequest: (payload: unknown) => previewMock(payload),
   createAbsenceRequest: (payload: unknown) => createMock(payload),
   updateAbsenceRequest: (id: number, payload: unknown) => updateMock(id, payload),
@@ -251,6 +251,24 @@ describe('AbsenceRequestSheet', () => {
 
     expect(await screen.findByRole('dialog', { name: label('absences.requests.form.editTitle') })).toBeInTheDocument()
     expect(screen.queryByText(label('absences.requests.form.person'))).not.toBeInTheDocument()
+  })
+
+  it('asks for the saved type by id, so a type deactivated since still fills the select (ADR 0011)', async () => {
+    const retired = buildTypeOption({ id: 3, name: 'Permesso dismesso' })
+    typeOptionsMock.mockImplementation((savedTypeId: number | null) =>
+      Promise.resolve(savedTypeId === 3 ? [...TYPE_OPTIONS, retired] : TYPE_OPTIONS),
+    )
+    renderSheet(
+      buildRequest({
+        status: 'draft',
+        minutes: null,
+        absence_type: { id: 3, name: 'Permesso dismesso', deducts_balance: true, requires_approval: true, color: 'slate' },
+      }),
+    )
+
+    const typeSelect = await screen.findByRole('combobox', { name: new RegExp(label('absences.requests.form.type')) })
+    await waitFor(() => expect(typeSelect).toHaveTextContent('Permesso dismesso'))
+    expect(typeOptionsMock).toHaveBeenCalledWith(3)
   })
 
   it('previews the request live and sends the draft being edited as request_id', async () => {

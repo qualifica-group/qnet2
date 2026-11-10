@@ -51,7 +51,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Titolo, Tipo commessa, Data richiamo, Data inizio, Responsabili) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: per esempio il Titolo e la Data inizio sono obbligatori, mentre i Responsabili si possono anche togliere tutti; un valore non valido viene rifiutato e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Titolo, Tipo commessa, Data richiamo, Data inizio, Responsabili, Partecipanti) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: per esempio il Titolo e la Data inizio sono obbligatori, mentre Responsabili e Partecipanti si possono anche togliere tutti; un valore non valido viene rifiutato e la cella torna al valore di prima.",
         },
         {
           type: 'note',
@@ -60,32 +60,48 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtrare per categoria prodotto",
+      id: 'people-filters',
+      title: "Filtrare per persona",
       blocks: [
         {
           type: 'paragraph',
-          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di commesse. Cliccando una tab l'elenco mostra solo le commesse di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+          text: "Nel pannello **Filtri avanzati** (pulsante nella barra sopra l'elenco) i campi **Responsabili** e **Partecipanti** permettono di scegliere una o più persone: compaiono le commesse in cui almeno una di loro ha quel ruolo. Se compili entrambi i campi, la commessa deve soddisfarli tutti e due. Le colonne **Responsabili** e **Partecipanti** dell'elenco hanno anche il proprio filtro per nome, con la voce **(Vuoti)** per le commesse senza nessuno in quel ruolo.",
+        },
+      ],
+    },
+    {
+      id: 'work-phase-tabs',
+      title: "Fasi di lavorazione",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In alto a destra nella pagina **Commesse** trovi i tab **Tutte**, **Da pianificare**, **In lavorazione**, **Concluse**, **Annullate** e **Disdette**. Ogni tab filtra l'elenco in base al gruppo dello **Stato lavorazione**: esito negativo significa **Annullate**, oppure **Disdette** se il contratto della commessa è stato disdetto. **Tutte** toglie il filtro. Accanto a ogni tab c'è il numero di commesse: tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Il tab si combina con gli altri filtri e con **Assegnazione**: se non vedi una commessa, controlla anche quelli.",
+        },
+      ],
+    },
+    {
+      id: 'list-filters',
+      title: "Filtri predefiniti, categoria e anagrafica",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "All'apertura la pagina **Commesse** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Responsabile** e **Partecipante** (le commesse dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme: una commessa deve soddisfarli entrambi. Per vedere anche le altre commesse che puoi consultare, scegli **Tutte le visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata.",
         },
         {
           type: 'paragraph',
-          text: "Una commessa compare nella tab di ogni categoria dei prodotti presenti nelle **righe di ricavo delle offerte da cui nasce**: l'offerta collegata e, per una commessa multi-offerta, le offerte delle righe che contiene (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; una commessa senza righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quante commesse, tra quelle che puoi vedere, rientrano nella categoria.",
-        },
-        {
-          type: 'steps',
-          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutte le visibili** non compare: non aggiungerebbe nulla.",
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
+          text: "Nello stesso pannello puoi scegliere una o più voci anche in **Categoria prodotto** (solo quella categoria) e **Anagrafica** (il cliente). I filtri non allargano ciò che puoi vedere: restano valide le regole di visibilità del tuo profilo. Una commessa rientra in una categoria se la categoria è tra i prodotti delle **righe di ricavo delle offerte da cui nasce**: l'offerta collegata e, per una commessa multi-offerta, le offerte delle righe che contiene. Le righe di costo non contano. Per una commessa multi-offerta vale anche il cliente di ciascuna offerta.",
         },
         {
           type: 'paragraph',
-          text: "Scegliendo la tab di una categoria (non **Tutte** e non una tab di **Categorie madri**), in fondo all'elenco compaiono le colonne dei campi flessibili della **commessa** di quella categoria (non quelli dell'offerta). Puoi filtrarle e ordinarle. Se hai il permesso di modificarle, le cambi direttamente nella cella. I campi di tipo tabella si modificano solo dal dettaglio.",
+          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con **Tutte**. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Sono i campi della commessa: si ordinano, si filtrano e si esportano; se hai il permesso di modificare le commesse si modificano nella cella, tranne quando il campo non riguarda quella commessa (la cella resta in sola lettura). I valori restano leggibili anche nel dettaglio.",
         },
         {
           type: 'note',
-          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le commesse. La tab **Commesse** del dettaglio di un contratto non ha la barra.",
+          text: "Il campo **Assegnazione** e la **Categoria madre** precompilata esistono solo nella pagina **Commesse**: in **Commesse di Progetto** la **Categoria madre** parte vuota, e nelle sezioni **Commesse** di un contratto o di un'anagrafica non compare. L'esportazione segue i filtri attivi.",
         },
       ],
     },
@@ -433,7 +449,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "La pagina **Commesse** mostra solo le commesse di **lavorazione**. Le commesse di tipo **Progetto** stanno in **Commesse di Progetto** (stesso gruppo **Lavorazioni**), con la colonna **Non letti** e la tab **Chat** nel dettaglio: vedi la guida **Commesse di Progetto**. Dentro un **Contratto** e un'**Anagrafica**, le sezioni **Commesse** mostrano ancora le commesse di tutti i tipi.",
+          text: "La pagina **Commesse** mostra solo le commesse di **lavorazione**. Le commesse di tipo **Progetto** hanno una pagina propria, **Commesse di Progetto**, con la colonna **Non letti** e la tab **Chat** nel dettaglio; per ora quella pagina non compare nel menu. Dentro un **Contratto** e un'**Anagrafica**, le sezioni **Commesse** mostrano ancora le commesse di tutti i tipi: da lì trovi anche quelle di progetto.",
         },
         {
           type: 'note',

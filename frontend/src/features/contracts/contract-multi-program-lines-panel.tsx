@@ -3,14 +3,17 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
-import type { MultiProgrammableLinesData } from '@/features/contracts/types'
+import { ContractMultiProgramRefusal } from '@/features/contracts/contract-multi-program-refusal'
+import type { MultiProgrammableLinesData, MultiProgramRefusal } from '@/features/contracts/types'
 
 interface ContractMultiProgramLinesPanelProps {
   data: MultiProgrammableLinesData | undefined
   isPending: boolean
   isError: boolean
-  /** The server's explanation when it refuses the selected contracts (422): shown instead of the retry. */
-  refusal?: string
+  /** The server's refusal of the selected contracts (422): shown instead of the lines, without retry. */
+  refusal?: MultiProgramRefusal
+  canExcludeRefused: boolean
+  onExcludeRefused: () => void
   onRetry: () => void
   selected: number[]
   selectableIds: Set<number>
@@ -30,6 +33,8 @@ export function ContractMultiProgramLinesPanel({
   isPending,
   isError,
   refusal,
+  canExcludeRefused,
+  onExcludeRefused,
   onRetry,
   selected,
   selectableIds,
@@ -53,11 +58,7 @@ export function ContractMultiProgramLinesPanel({
   }
 
   if (refusal !== undefined) {
-    return (
-      <div role="alert" className="rounded-lg border border-destructive/40 bg-card p-3 text-xs text-destructive">
-        {refusal}
-      </div>
-    )
+    return <ContractMultiProgramRefusal refusal={refusal} canExclude={canExcludeRefused} onExclude={onExcludeRefused} />
   }
 
   if (isError || !data) {

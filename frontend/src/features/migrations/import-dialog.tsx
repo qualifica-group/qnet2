@@ -21,6 +21,8 @@ export interface ImportDialogProps {
   source: string
   /** Human-readable source label, interpolated into the dialog title. */
   sourceLabel: string
+  /** Whether the source can realign already imported records (spec 0372). */
+  supportsUpdateExisting: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -31,7 +33,13 @@ export interface ImportDialogProps {
  * only routes between the confirm step and the progress/summary step based on
  * whether a `MigrationRun` has been created yet.
  */
-export function ImportDialog({ source, sourceLabel, open, onOpenChange }: ImportDialogProps) {
+export function ImportDialog({
+  source,
+  sourceLabel,
+  supportsUpdateExisting,
+  open,
+  onOpenChange,
+}: ImportDialogProps) {
   const { t } = useTranslation('migrations')
   const importState = useMigrationImport({ source })
 
@@ -58,6 +66,7 @@ export function ImportDialog({ source, sourceLabel, open, onOpenChange }: Import
           {!importState.run ? (
             <MigrationImportStart
               onStart={importState.start}
+              supportsUpdateExisting={supportsUpdateExisting}
               isStarting={importState.isStarting}
               startError={importState.startError}
             />

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import {
   createQuoteWorkflow,
   quoteWorkflowDetailQueryKey,
@@ -143,7 +143,7 @@ export function useQuoteWorkflowForm({ mode, onSuccess }: UseQuoteWorkflowFormAr
       const handled = applyServerValidationErrors(error, form.setError, errorFields)
       applyNestedServerErrors(error, form.setError)
       if (!handled) {
-        setServerError(apiErrorMessage(error, t('quoteWorkflows.form.genericError'), i18n))
+        setServerError(refusedActionMessage(error, t('quoteWorkflows.form.genericError'), i18n))
       }
     }
   }

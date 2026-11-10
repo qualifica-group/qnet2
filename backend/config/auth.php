@@ -128,4 +128,17 @@ return [
 
     'first_access_gate' => (bool) env('AUTH_FIRST_ACCESS_GATE', env('APP_ENV') === 'production'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Welcome tour version (spec 0368)
+    |--------------------------------------------------------------------------
+    |
+    | Whoever changes the welcome tour in a substantial way raises this number:
+    | users who saw an older version get the tour once more (skippable). Users
+    | who never saw it must complete it (D-4, D-5).
+    |
+    */
+
+    'onboarding_version' => (int) env('AUTH_ONBOARDING_VERSION', 1),
+
 ];

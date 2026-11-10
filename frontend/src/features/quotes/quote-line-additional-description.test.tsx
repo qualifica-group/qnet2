@@ -10,9 +10,9 @@ import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
  * `additional_description`: the row's optional free text, sent on the wire
  * only when the row carries the key (an absent key keeps the stored value
  * server-side). REQUIREMENT CHANGED (spec 0269): the control is a slot of the
- * Offerte revenue card now (`QuoteOfferTab`), so it is exercised on its own
- * here; "not on a cost row / not in Gestione Richieste" moved to the tab and
- * editor tests, where that rule now lives.
+ * Offerte cards (`QuoteOfferTab`, and `QuoteCostsTab` since AC-014), so it is
+ * exercised on its own here; "not in Gestione Richieste" moved to the editor
+ * tests, where that rule now lives.
  */
 
 const ROW: QuoteLineFormValues = {

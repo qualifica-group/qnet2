@@ -89,6 +89,8 @@ class UserResource extends JsonResource
                     ->all(),
             ),
             'created_at' => $this->created_at,
+            // Spec 0370: last credential login, null until the first one recorded.
+            'last_login_at' => $this->last_login_at,
             // Spec 0042: mode/overrides for the per-user module open preference,
             // defaulted here (never null) when the column is unset.
             'module_open_preferences' => $this->module_open_preferences ?? self::DEFAULT_MODULE_OPEN_PREFERENCES,

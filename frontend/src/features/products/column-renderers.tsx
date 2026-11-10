@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DateTimeCell } from '@/features/table/cell-renderers'
+import { BooleanBadgeCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type {
   ProductCategorySummary,
@@ -136,6 +137,7 @@ function UnitOfMeasureCell({ value }: ICellRendererParams) {
  * domain-agnostic renderer (mirrors `referentTypeColumnRenderers`).
  */
 export const productColumnRenderers: TableRendererMap = {
+  is_active: (params) => <BooleanBadgeCell {...params} />,
   cost: (params) => <DecimalCell {...params} />,
   price: (params) => <DecimalCell {...params} />,
   category: (params) => <CategoryCell {...params} />,

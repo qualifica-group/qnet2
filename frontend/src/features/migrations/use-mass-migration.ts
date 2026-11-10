@@ -5,7 +5,11 @@ import { fetchMassMigrationRun, startMassMigration } from '@/features/migrations
 import { migrationKeys } from '@/features/migrations/query-keys'
 import { resolveMigrationErrorMessage } from '@/features/migrations/resolve-error-message'
 import { useStallTimeout } from '@/hooks/use-stall-timeout'
-import type { MassMigrationRun, MigrationRunStatus } from '@/features/migrations/types'
+import type {
+  MassMigrationRun,
+  MigrationRunStatus,
+  MigrationStartOptions,
+} from '@/features/migrations/types'
 
 /** Interval (ms) between polls while the mass run is pending/processing. */
 const POLL_INTERVAL_MS = 1500
@@ -32,7 +36,7 @@ export function useMassMigration() {
   const [runId, setRunId] = useState<number | null>(null)
 
   const startMutation = useMutation({
-    mutationFn: (updatedSince: string | null) => startMassMigration(updatedSince),
+    mutationFn: (options: MigrationStartOptions) => startMassMigration(options),
     onSuccess: (run) => {
       setRunId(run.id)
       queryClient.setQueryData<MassMigrationRun>(migrationKeys.massRun(run.id), run)

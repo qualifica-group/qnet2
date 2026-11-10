@@ -9,6 +9,7 @@ import type { ProductCategoryTreeNode } from '@/features/product-categories/type
 import { QuoteLineEditor } from '@/features/quotes/line-editor/quote-line-editor'
 import type { QuoteCatalogScope } from '@/features/quotes/line-editor/types'
 import { QuoteCostAssociationSelect } from '@/features/quotes/quote-cost-association-select'
+import { QuoteLineAdditionalDescription } from '@/features/quotes/quote-line-additional-description'
 import type { QuoteCostOfferLineOption, QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { sanitizeCostOfferLineKeys } from '@/features/quotes/quote-line-values'
 import { MAX_LINES_PER_TAB, type QuoteFormValues, type QuoteLineFormValues } from '@/features/quotes/quote-schema'
@@ -115,6 +116,14 @@ export function QuoteCostsTab({
                     options={offerLineOptions}
                     disabled={disabled}
                     onChange={(offerLineKey) => patchRow(index, { offer_line_key: offerLineKey })}
+                  />
+                ),
+                footer: (
+                  <QuoteLineAdditionalDescription
+                    lineNumber={position}
+                    value={row.additional_description ?? null}
+                    disabled={disabled}
+                    onChange={(additionalDescription) => patchRow(index, { additional_description: additionalDescription })}
                   />
                 ),
               })}

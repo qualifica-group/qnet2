@@ -11,6 +11,8 @@ export const categoryTabs = {
   otherCategories: 'Altre categorie',
   addFavorite: 'Aggiungi {{name}} alle preferite',
   removeFavorite: 'Togli {{name}} dalle preferite',
+  selectAllFavorites: 'Seleziona tutte',
+  deselectAllFavorites: 'Deseleziona tutte',
   showOnlyFavorites: 'Mostra solo preferite',
   rootLevel: 'Categorie madri',
   favoritesHint: 'Tocca la stella accanto a una categoria per aggiungerla alle preferite.',

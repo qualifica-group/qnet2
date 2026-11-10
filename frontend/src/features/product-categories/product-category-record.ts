@@ -46,6 +46,9 @@ export type ProductCategoryRecordValues = Pick<
   revenue_type?: Pick<RevenueTypeRef, 'id' | 'code' | 'name'> | null
   /** Own or inherited sub-account; `null` on a draft (nothing is resolved before the first save). */
   effective_revenue_type?: EffectiveRevenueType | null
+  /** Legacy root and the current root it points to (spec 0374 D-9); absent on a draft. */
+  is_legacy?: boolean
+  current_category?: { id: number; name: string } | null
 }
 
 /** The draft fields the record's rows read, as `useWatch` hands them back: every key may still be undefined on the first render. */

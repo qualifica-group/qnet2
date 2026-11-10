@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\Contracts;
 
 use App\Enums\AdvancedFilterType;
+use App\Tables\Shared\PresetListFilters;
 
 /**
  * Advanced-filter catalogue for the `contracts` domain (spec 0072, MT-04),
@@ -85,6 +86,7 @@ final class ContractAdvancedFilterCatalog
                 'source' => ['resource' => 'contract-statuses'],
                 'target' => 'contractStatus',
             ],
+            PresetListFilters::productCategoryFilter('contracts', 6),
         ];
     }
 }

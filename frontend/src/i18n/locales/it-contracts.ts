@@ -40,6 +40,9 @@ export const contracts = {
     renewalDue: 'Da rinnovare',
   },
   advancedFilters: {
+    assignment: 'Assegnazione',
+    parentCategory: 'Categoria madre',
+    productCategory: 'Categoria prodotto',
     registry: 'Cliente',
     opportunity: 'Opportunità',
     commercial: 'Commerciale',
@@ -151,6 +154,7 @@ export const contracts = {
       genericError: 'Impossibile validare il contratto. Riprova.',
       dateRequired: 'La data di validazione è obbligatoria.',
       dateFuture: 'La data di validazione non può essere futura.',
+      offerLineRequired: 'Per validare il contratto serve almeno una riga prodotto nell\'offerta. Aggiungila nel contratto, poi riprova.',
     },
     renewDialog: {
       description: 'Apri un nuovo periodo: le righe dell\'offerta tornano programmabili e le commesse precedenti restano invariate.',
@@ -246,6 +250,26 @@ export const contracts = {
       saving: 'Creazione…',
       success: 'Commessa creata',
       genericError: 'Impossibile creare la commessa. Riprova.',
+      refusal: {
+        genericTitle: 'Questa selezione non si può programmare',
+        listLabel: 'Contratti da togliere',
+        not_allowed: {
+          title_one: '{{count}} contratto non si può cumulare',
+          title_other: '{{count}} contratti non si possono cumulare',
+          description: 'La loro offerta non ha righe di un ramo con l\'impostazione "Commessa multi-offerta" attiva.',
+        },
+        not_won: {
+          title_one: '{{count}} contratto non si può ancora programmare',
+          title_other: '{{count}} contratti non si possono ancora programmare',
+          description: 'Non sono validati, oppure sono sospesi o chiusi negativi.',
+        },
+        exclude_one: 'Continua senza questo contratto',
+        exclude_other: 'Continua senza questi {{count}} contratti',
+        excludeHint: 'La selezione nella griglia non cambia.',
+        notEnough: 'Senza questi contratti ne resterebbe meno di 2: chiudi e seleziona nella griglia altri contratti cumulabili.',
+        excluded_one: '{{count}} contratto tolto da questa commessa.',
+        excluded_other: '{{count}} contratti tolti da questa commessa.',
+      },
     },
     terminateDialog: {
       description: 'Registra la data e la motivazione della disdetta.',

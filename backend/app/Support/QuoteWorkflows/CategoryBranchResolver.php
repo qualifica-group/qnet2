@@ -6,6 +6,7 @@ namespace App\Support\QuoteWorkflows;
 
 use App\Models\Quote;
 use App\Services\ProductCategories\CategoryHierarchy;
+use WeakMap;
 
 /**
  * The product-category BRANCH a Quote belongs to (spec 0092): for every
@@ -38,18 +39,22 @@ use App\Services\ProductCategories\CategoryHierarchy;
 final class CategoryBranchResolver
 {
     /**
-     * Per-Quote memo, keyed by spl_object_id: resolve() walks the same quote
-     * once per criterion AND once per candidate workflow, and a Quote being
-     * created has no id yet to key on.
+     * Per-Quote memo, keyed by the Quote object itself: resolve() walks the same
+     * quote once per criterion AND once per candidate workflow, and a Quote being
+     * created has no id yet to key on. A WeakMap, not spl_object_id: PHP reuses
+     * a freed object's id, so in a long process (seeder, import job) a new Quote
+     * inherited a freed one's branch and resolved the wrong workflow.
      *
-     * @var array<int, array<int, int>>
+     * @var WeakMap<Quote, array<int, int>>
      */
-    private array $distances = [];
+    private WeakMap $distances;
 
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
         private readonly QuoteClassificationSource $classification,
-    ) {}
+    ) {
+        $this->distances = new WeakMap;
+    }
 
     /**
      * $quote's whole branch as `category id => shortest distance`, empty when
@@ -60,7 +65,7 @@ final class CategoryBranchResolver
      */
     public function distancesFor(Quote $quote): array
     {
-        return $this->distances[spl_object_id($quote)] ??= $this->build($quote);
+        return $this->distances[$quote] ??= $this->build($quote);
     }
 
     /**

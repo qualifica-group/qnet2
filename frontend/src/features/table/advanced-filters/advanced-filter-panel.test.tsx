@@ -73,6 +73,7 @@ function fakeFilters(
     canApply: true,
     activeValues: {},
     activeCount: 0,
+    requestValues: {},
     apply: vi.fn(),
     reset: vi.fn(),
     clearField: vi.fn(),

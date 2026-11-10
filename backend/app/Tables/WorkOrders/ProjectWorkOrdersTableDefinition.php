@@ -81,6 +81,16 @@ class ProjectWorkOrdersTableDefinition extends WorkOrdersTableDefinition
     }
 
     /**
+     * The personal view belongs to the "Commesse" page alone.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function advancedFilters(): array
+    {
+        return WorkOrderAdvancedFilterCatalog::advancedFilters();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function mapRow(User $actor, Model $row): array

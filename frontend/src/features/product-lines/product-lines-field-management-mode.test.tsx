@@ -39,7 +39,8 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
     children: [],
     attributes_count: 0,
     products_count: 0,
-    business_function_id: null,
+    // A card only offers categories with a business function (the server refuses the others).
+    business_function_id: 1,
     requires_quote: false,
     is_selectable: true,
     is_active: true,

@@ -282,7 +282,7 @@ class ProductCategoryController extends BaseApiController
      */
     private function resourceWithInherited(ProductCategory $productCategory): array
     {
-        $productCategory->loadMissing('businessFunction');
+        $productCategory->loadMissing(['businessFunction', 'currentCategory']);
         $reportable = $this->reportable->resolve($productCategory);
         $reportColumns = $this->reportColumns->resolve($productCategory);
         $inheritedReportColumns = $this->reportColumns->resolveFromAncestors($productCategory);

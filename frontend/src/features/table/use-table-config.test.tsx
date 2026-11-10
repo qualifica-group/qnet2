@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { tableKeys, useTableConfig } from '@/features/table/use-table-config'
+import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE, removeOtherScopeConfigs, tableKeys, useTableConfig } from '@/features/table/use-table-config'
 import { fetchTableConfig } from '@/features/table/api'
 import type { TableConfig } from '@/features/table/types'
 
@@ -51,6 +51,36 @@ describe('tableKeys.config', () => {
       tableKeys.config('request-management', { productCategoryId: 12 }),
     )
   })
+
+  it('keeps a parent tab apart from the same category at the all level', () => {
+    expect(tableKeys.config('quotes', { productCategoryBranchId: 12 })).not.toEqual(
+      tableKeys.config('quotes', { productCategoryId: 12 }),
+    )
+  })
+})
+
+describe('attribute columns from filters scope (spec 0374, AC-015)', () => {
+  it('keys the config apart from the one without scope and from a category tab', () => {
+    const plain = tableKeys.config('quotes')
+    const scoped = tableKeys.config('quotes', ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE)
+    expect(scoped).not.toEqual(plain)
+    expect(scoped).not.toEqual(tableKeys.config('quotes', { productCategoryId: 12 }))
+  })
+
+  it('asks the config with the flag and keeps the entry of its own scope when others are dropped', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { result } = renderHook(() => useTableConfig('quotes', ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE), {
+      wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    })
+    await waitFor(() => expect(result.current.data).toEqual(CONFIG))
+    expect(fetchTableConfigMock).toHaveBeenCalledWith('quotes', { attributeColumnsFromFilters: true })
+
+    client.setQueryData(tableKeys.config('quotes'), CONFIG)
+    removeOtherScopeConfigs(client, 'quotes', ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE)
+
+    expect(client.getQueryData(tableKeys.config('quotes', ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE))).toEqual(CONFIG)
+    expect(client.getQueryData(tableKeys.config('quotes'))).toBeUndefined()
+  })
 })
 
 describe('useTableConfig', () => {
@@ -71,5 +101,15 @@ describe('useTableConfig', () => {
 
     await waitFor(() => expect(result.current.data).toEqual(CONFIG))
     expect(fetchTableConfigMock).toHaveBeenCalledWith('request-management', 12)
+  })
+
+  it('asks a parent tab config with its own branch scope', async () => {
+    const { result } = renderHook(
+      () => useTableConfig('quotes', { productCategoryBranchId: 3 }),
+      { wrapper: wrapper() },
+    )
+
+    await waitFor(() => expect(result.current.data).toEqual(CONFIG))
+    expect(fetchTableConfigMock).toHaveBeenCalledWith('quotes', { branchId: 3 })
   })
 })

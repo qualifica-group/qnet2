@@ -2,9 +2,7 @@
 
 use App\Models\BusinessFunction;
 use App\Models\User;
-use App\Models\WorkOrder;
 use App\Models\WorkOrderWorkflow;
-use App\Models\WorkOrderWorkflowStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -273,18 +271,4 @@ it('records create, update and delete in the activity log', function () {
             'causer_id' => $actor->id,
         ]);
     }
-});
-
-// AC-009 via HTTP
-it('DELETE reassigns the work orders of the deleted workflow', function () {
-    $workflow = workOrderWorkflowFor('Doomed', ['business_function_id' => BusinessFunction::factory()->create()->id]);
-    $workOrder = WorkOrder::factory()->create();
-    $workOrder->forceFill(['work_order_workflow_status_id' => $workflow->statuses->first()->id])->save();
-    Sanctum::actingAs(workOrderWorkflowUserWith(['delete']));
-
-    $this->deleteJson("/api/work-order-workflows/{$workflow->id}")->assertNoContent();
-
-    $workOrder->refresh();
-    expect($workOrder->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('open')->id)
-        ->and(WorkOrderWorkflowStatus::query()->where('work_order_workflow_id', $workflow->id)->exists())->toBeFalse();
 });

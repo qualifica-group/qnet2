@@ -28,7 +28,8 @@ vi.mock('@/components/rich-text/rich-text-editor', () => ({
     <textarea id={p.id} value={p.value ?? ''} onChange={(event) => p.onChange(event.target.value || null)} />
   ),
 }))
-vi.mock('@/features/task-statuses/for-select-api', () => ({
+vi.mock('@/features/task-statuses/for-select-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/task-statuses/for-select-api')>()),
   useTaskStatusesForSelect: () => ({
     data: { pages: [{ items: [] }] },
     isPending: false,

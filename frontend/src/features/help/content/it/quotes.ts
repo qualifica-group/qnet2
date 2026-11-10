@@ -106,32 +106,38 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtrare per categoria prodotto",
+      id: 'people-filters',
+      title: "Filtrare per persona",
       blocks: [
         {
           type: 'paragraph',
-          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di offerte. Cliccando una tab l'elenco mostra solo le offerte di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+          text: "Nel pannello **Filtri avanzati** (pulsante nella barra sopra l'elenco) i campi **Supervisore** e **Gestori account** permettono di scegliere una o più persone: compaiono le offerte in cui almeno una di loro ha quel ruolo. Se compili entrambi i campi, l'offerta deve soddisfarli tutti e due.",
+        },
+      ],
+    },
+    {
+      id: 'list-filters',
+      title: "Filtri predefiniti e categoria",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "All'apertura la pagina **Offerte** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Supervisore** e **Gestore account** (le offerte dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme. Per allargare l'elenco scegli **Tutti i visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata.",
         },
         {
           type: 'paragraph',
-          text: "Un'offerta compare nella tab di ogni categoria dei prodotti presenti nelle sue **righe di ricavo** (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; un'offerta senza righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quante offerte, tra quelle che puoi vedere, rientrano nella categoria.",
-        },
-        {
-          type: 'steps',
-          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutti i visibili** non compare: non aggiungerebbe nulla. I filtri non allargano ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
+          text: "Nello stesso pannello c'è anche **Categoria prodotto** (solo quella categoria). Rientra in una categoria un'offerta che la ha tra le **righe di ricavo** dell'offerta.",
         },
         {
           type: 'paragraph',
-          text: "Scegliendo la tab di una categoria (non **Tutte** e non una tab di **Categorie madri**), in fondo all'elenco compaiono le colonne dei campi flessibili (**Informazioni aggiuntive**) di quella categoria. Puoi filtrarle e ordinarle. Se hai il permesso di modificarle, le cambi direttamente nella cella. I campi di tipo tabella si modificano solo dal dettaglio.",
+          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con **Tutte**. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Le colonne si ordinano, si filtrano e si esportano; se hai il permesso di modificare le offerte si modificano nella cella, tranne quando il campo non riguarda quell'offerta (la cella resta in sola lettura). I valori restano leggibili anche nel dettaglio.",
         },
         {
           type: 'note',
-          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le offerte.",
+          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Offerte**: non compaiono dentro una scheda e nelle sezioni Offerte di opportunità e anagrafiche. L'esportazione segue i filtri attivi.",
         },
       ],
     },
@@ -146,6 +152,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "Lo **Stato** offre solo gli stati del workflow dell'offerta e chiede la **nota** quando lo stato scelto la richiede. Cambiando la **Società** la Società sede si svuota; la Società sede si sceglie tra le sedi della società della riga. Cambiando un ruolo le commissioni delle righe si ricalcolano come dal dettaglio; un Titolo vuoto torna al titolo automatico.",
+        },
+        {
+          type: 'paragraph',
+          text: "La colonna **Anagrafica** mostra il cliente dell'opportunità collegata: si può filtrare e ordinare ma non modificare.",
         },
         {
           type: 'paragraph',
@@ -181,7 +191,7 @@ const guide: HelpGuide = {
             'Per cambiare il prodotto di una riga, rimuovila e scegli il nuovo prodotto dal catalogo.',
             'Una riga **assegnata a una commessa** mostra "Assegnata a COM-..." ed è bloccata: nessun campo è modificabile e non si può rimuovere finché la commessa non viene eliminata. Vale anche quando modifichi le righe dal contratto o da Gestione Richieste; le provvigioni della riga si modificano comunque dall\'offerta.',
             'La scheda **Costi** mostra tutto il catalogo dei prodotti di costo, senza filtro per categoria, e lo stesso prodotto si può aggiungere più volte.',
-            '**Descrizione aggiuntiva** aggiunge un testo alla riga, stampabile nel preventivo.',
+            '**Descrizione aggiuntiva** aggiunge un testo alla riga, sia nella scheda **Offerta** sia nella scheda **Costi**; il testo è stampabile nel preventivo.',
             "Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga. Il popup mostra in alto imponibile della riga, costi imputati, base di calcolo e totale commissioni; per ogni ruolo un'etichetta indica l'origine della commissione (**Regola: Prodotto**, **Regola: Categoria** o **Regola personale** se viene da una regola del Configuratore, **Modifica manuale** se è stata cambiata a mano; passando sopra l'etichetta compare la spiegazione). In modifica, ogni ruolo mostra anche il **Calcolo di sistema** (quanto prevede il Configuratore Commissioni): se hai cambiato il valore a mano puoi tenerlo oppure tornare al calcolo con **Applica calcolo di sistema**. La riga **Fornitore** mostra anche il **Verso**: se la commissione viene da una regola è quello della regola; se la modifichi a mano scegli tu **Ricevuta** (è il ricavo della riga) o **Pagata** (costo verso il fornitore), e il margine si aggiorna di conseguenza.",
             "Nel riepilogo, sotto le card, **Mostra dettaglio provvigioni** apre (e **Nascondi dettaglio provvigioni** richiude) il blocco **Dettaglio provvigioni per prodotto** dell'offerta salvata, che elenca ogni riga con commissioni: per **Commerciale**, **Segnalatore**, **Supervisore** e **Fornitore** il destinatario, la percentuale (o l'importo fisso) e l'importo; per il Fornitore anche il verso (**Ricevuta** o **Pagata**), con un (?) che spiega cosa significa. Il nome del destinatario porta alla sua scheda: passando sopra un utente compare la sua scheda profilo, passando sopra un referente o un'anagrafica compare il collegamento alla scheda, che si apre anche cliccando il nome (se hai il permesso di vederla). Passando sopra un importo compare il calcolo: per una percentuale la base (imponibile meno costi imputati alla riga) e la percentuale applicata, per i totali il saldo. Ogni importo ha il segno **+** se la commissione entra (Fornitore ricevuta) e **−** se esce (Commerciale, Segnalatore, Supervisore e Fornitore pagata). L'ultima riga e l'ultima colonna danno i totali come saldo: quello che entra meno quello che esce. È visibile solo a chi può vedere le commissioni.",
             'Ogni riga di costo ha un **Prodotto associato**: scegli "Nessuno (costo generico)" oppure una riga del tab Prodotti, per imputare quel costo a quella vendita. Eliminando la riga prodotto associata, il costo torna automaticamente "Nessuno".',

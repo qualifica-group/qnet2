@@ -6,7 +6,19 @@ import type { RowActionHandler, RowActionsOptions } from '@/features/table/row-a
 import type { CellCommitInterceptor } from '@/features/table/use-table-cell-edit'
 import type { TableConfigScope } from '@/features/table/use-table-config'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
-import type { TableRow, TableRowsAggregates, TableRowScope } from '@/features/table/types'
+import type { GridApi } from 'ag-grid-community'
+import type { FilterRules, TableColumn, TableRow, TableRowsAggregates, TableRowScope } from '@/features/table/types'
+
+/** Live grid state handed to a domain's own export menu (spec 0365). */
+export interface TableExportMenuContext {
+  gridApi: GridApi<TableRow> | null
+  columns: TableColumn[]
+  search: string
+  advancedFilters: AdvancedFilterValues
+  customFilterRules: FilterRules | null
+  /** Opens the generic export dialog (`POST /exports/{domain}`). */
+  openGenericExport: () => void
+}
 
 /**
  * Props of the generic `TableView` (extracted from `table-view.tsx` purely to
@@ -114,6 +126,8 @@ export interface TableViewProps extends RowActionsOptions {
    * `useAdvancedFilters`'s `override`. `null`/omitted ⇒ today's behavior.
    */
   advancedFiltersOverride?: AdvancedFilterValues | null
+  /** Names of the domain's advanced filters this grid does not offer: never shown, never sent. Keep the array stable. */
+  hiddenAdvancedFilters?: readonly string[]
   /**
    * Invoked once the user exercises the normal Apply/Reset flow in the
    * advanced-filters panel, so the caller can drop `advancedFiltersOverride`
@@ -130,6 +144,8 @@ export interface TableViewProps extends RowActionsOptions {
    * footer renders and no domain sees any change.
    */
   renderFooter?: (aggregates: TableRowsAggregates | undefined) => ReactNode
+  /** Reports the same `meta.aggregates` to a caller that shows them outside the grid (keep it stable). */
+  onAggregatesChange?: (aggregates: TableRowsAggregates | undefined) => void
   /**
    * A generic, opt-in slot rendered directly below the grid's rows (spec 0156
    * D-7's quick-create bar): the adapter owns everything about it (fields,
@@ -147,4 +163,11 @@ export interface TableViewProps extends RowActionsOptions {
    * `tasks`'s "Sintetica" view.
    */
   treeData?: boolean
+  /**
+   * Replaces the toolbar's single generic Export item with the domain's own
+   * menu entries (spec 0365: Sommario / Dettagli / Righe dettaglio). The
+   * adapter owns the permission gate: when supplied, the generic
+   * `{domain}.export` ability is not required. Omitted, nothing changes.
+   */
+  exportMenu?: (context: TableExportMenuContext) => ReactNode
 }

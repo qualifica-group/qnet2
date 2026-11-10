@@ -35,12 +35,12 @@ beforeEach(() => {
 })
 
 describe('useAdvancedFilters', () => {
-  it('saves against the category tab the table is scoped to', () => {
+  it('saves against the scope the table is keyed by, whole (specs 0064, 0374)', () => {
     const descriptors = [descriptor({ name: 'status', type: 'text' })]
     renderHook(() =>
       useAdvancedFilters({
         domain: 'request-management',
-        productCategoryId: 12,
+        scope: { productCategoryId: 12 },
         descriptors,
         applied: null,
         onApplied: vi.fn(),
@@ -430,5 +430,19 @@ describe('useAdvancedFilters', () => {
 
       expect(result.current.getApplied()).toEqual({})
     })
+  })
+})
+
+describe('useAdvancedFilters sendDefault', () => {
+  it('sends a preset at its default without counting it as active', () => {
+    const descriptors = [descriptor({ name: 'assignment', type: 'enum', required: true, sendDefault: true, defaultValue: ['mine'] })]
+
+    const { result } = renderHook(() =>
+      useAdvancedFilters({ domain: 'work-orders', descriptors, applied: null, onApplied: vi.fn() }),
+    )
+
+    expect(result.current.getApplied()).toEqual({ assignment: ['mine'] })
+    expect(result.current.requestValues).toEqual({ assignment: ['mine'] })
+    expect(result.current.activeCount).toBe(0)
   })
 })

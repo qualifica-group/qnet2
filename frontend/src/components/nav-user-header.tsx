@@ -16,17 +16,20 @@ import type { User } from '@/features/auth/types'
 
 /**
  * Authenticated-user entry point for the top-right of the app header. Shows the
- * display name with the primary role as subtitle (matching the reference
- * design), and exposes settings + sign-out through a dropdown.
+ * display name with the job roles as subtitle, and exposes settings + sign-out
+ * through a dropdown.
  */
 export function NavUserHeader({ user }: { user: User }) {
   const { t } = useTranslation()
   const { logout } = useAuth()
   const navigate = useNavigate()
 
-  // The registry exposes memberships as {id, name}; the first is shown as the
-  // subtitle, falling back to the email when the user has no role.
-  const subtitle = user.roles[0]?.name ?? user.email
+  // A person can hold several job roles; the email covers those with none.
+  const jobRoles = (user.employment?.job_roles ?? [])
+    .map((jobRole) => jobRole.name)
+    .sort((first, second) => first.localeCompare(second))
+    .join(', ')
+  const subtitle = jobRoles || user.email
 
   const handleLogout = async () => {
     await logout()
@@ -40,9 +43,11 @@ export function NavUserHeader({ user }: { user: User }) {
           variant="ghost"
           className="h-auto gap-2 px-1.5 py-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
-          <div className="hidden text-right leading-tight sm:grid">
+          <div className="hidden max-w-52 text-right leading-tight sm:grid">
             <span className="truncate text-xs font-medium">{user.name}</span>
-            <span className="truncate text-[11px] text-sidebar-foreground/70">{subtitle}</span>
+            <span className="truncate text-[11px] text-sidebar-foreground/70" title={subtitle}>
+              {subtitle}
+            </span>
           </div>
           <UserAvatar name={user.name} src={user.avatar_url} />
         </Button>

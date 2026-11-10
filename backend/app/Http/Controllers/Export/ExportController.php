@@ -38,6 +38,9 @@ use Throwable;
  */
 class ExportController extends BaseApiController
 {
+    /** Domain whose export is gated by the same permission that opens its table (spec 0365). */
+    private const string VIEW_GATED_DOMAIN = 'agent-sales-report';
+
     public function __construct(
         private readonly TableRegistry $registry,
         private readonly ExportService $service,
@@ -117,7 +120,8 @@ class ExportController extends BaseApiController
      * incongruity where BOTH resolved `quotes.export` (Quote is what the row
      * IS, not what governs the module, mirrors `authorizeViewAny()`'s own
      * deviation in RequestManagementTableDefinition). Every other domain is
-     * untouched.
+     * untouched. Spec 0365: `agent-sales-report` is gated by its own view
+     * permission (`agent-sales-report.view`), not by `quotes.export`.
      *
      * @throws AuthorizationException
      */
@@ -125,9 +129,12 @@ class ExportController extends BaseApiController
     {
         $module = RequestModule::tryFrom($domain);
 
-        $allowed = $module !== null
-            ? $actor->can($module->permission('export'))
-            : Gate::forUser($actor)->allows('export', $definition->modelClass());
+        $allowed = match (true) {
+            $module !== null => $actor->can($module->permission('export')),
+            // Spec 0365: the report has no `export` ability of its own; opening it is the grant.
+            $domain === self::VIEW_GATED_DOMAIN => $definition->authorizeViewAny($actor),
+            default => Gate::forUser($actor)->allows('export', $definition->modelClass()),
+        };
 
         Gate::allowIf($allowed);
     }

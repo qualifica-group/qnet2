@@ -110,6 +110,12 @@ export const productCategories = {
     businessFunctionSearch: 'Cerca funzioni aziendali…',
     businessFunctionEmpty: 'Nessuna funzione aziendale trovata.',
     businessFunctionError: 'Impossibile caricare le funzioni aziendali.',
+    currentCategory: 'Categoria attuale',
+    currentCategoryPlaceholder: 'Seleziona la categoria attuale…',
+    currentCategorySearch: 'Cerca categorie madri attuali…',
+    currentCategoryEmpty: 'Nessuna categoria madre attuale trovata.',
+    currentCategoryError: 'Impossibile caricare le categorie madri attuali.',
+    currentCategoryHint: 'La categoria madre attuale che ha preso il posto di questa. Le collega nei filtri e nelle colonne dei campi flessibili.',
     businessFunctionInheritedHint:
       'Ereditata da "{{category}}". Per modificarla, agisci su quella categoria.',
     businessFunctionResetTitle: 'Le sottocategorie perderanno la loro funzione aziendale',
@@ -312,6 +318,7 @@ export const products = {
   marginPercent: '{{percent}}% sul prezzo',
   columns: {
     name: 'Nome',
+    is_active: 'Attivo',
     description: 'Descrizione',
     cost: 'Costo',
     price: 'Prezzo',
@@ -332,6 +339,13 @@ export const products = {
     FIXED_AMOUNT: 'Commissione fissa {{value}} {{direction}}',
     direction: { PAID: 'pagata', RECEIVED: 'ricevuta' },
     hint: 'Il costo di questo fornitore è la commissione Fornitore: il costo resta a 0.',
+  },
+  bulkActivation: {
+    activate: 'Attiva',
+    deactivate: 'Disattiva',
+    activated: '{{count}} prodotto/i attivato/i.',
+    deactivated: '{{count}} prodotto/i disattivato/i.',
+    error: 'Impossibile cambiare lo stato attivo. Nessun prodotto è stato modificato.',
   },
   bulkCostType: {
     bulkAction: 'Imposta sottoconto costo',
@@ -358,6 +372,7 @@ export const products = {
     createTitle: 'Crea prodotto',
     createSubtitle: 'Aggiungi un nuovo prodotto.',
     code: 'Codice',
+    isActive: 'Attivo',
     codePlaceholder: 'Codice suggerito, modificabile',
     codeMax: 'Il codice deve avere al massimo 32 caratteri.',
     codeRequired: 'Il codice è obbligatorio.',
@@ -453,6 +468,7 @@ export const products = {
       },
     },
     hints: {
+      isActive: 'Un prodotto non attivo non compare più nelle scelte prodotto e non si collega a nuovi record; quelli già collegati lo mantengono.',
       code: 'Precompilato con il prossimo codice sequenziale; modificalo se ne vuoi uno personalizzato.',
     },
     dynamicFields: {

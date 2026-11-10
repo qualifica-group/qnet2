@@ -27,7 +27,7 @@ interface AbsenceRequestFormProps {
 
 function AbsenceRequestForm({ request, prefill, refreshGrid, onSaved, onClose }: AbsenceRequestFormProps) {
   const { t } = useTranslation()
-  const types = useAbsenceTypeOptions()
+  const types = useAbsenceTypeOptions(request?.absence_type.id ?? null)
   const { form, preview, file, setFile, isSubmitting, saveDraft, send } = useAbsenceRequestForm({
     request,
     prefill,

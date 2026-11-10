@@ -31,6 +31,7 @@ import type { ForSelectItem } from '@/features/for-select/types'
 import { resolveExcludedIds, resolveMultiScopeParams } from '@/components/data-table/multi-select-scope'
 import { UserAvatar } from '@/components/user-avatar'
 import type { TableRow } from '@/features/table/types'
+import { SELECT_POPUP_FIT_CONTENT_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 
 /** A multiselect column's cell value: the related rows' `{id, name}` projections. */
@@ -128,7 +129,7 @@ export function MultiSelectCellEditor(
   }
 
   return (
-    <div className="w-72 rounded-md border border-border bg-popover shadow-md">
+    <div className={cn('min-w-72 rounded-md border border-border bg-popover shadow-md', SELECT_POPUP_FIT_CONTENT_CLASS)}>
       <div className="p-1">
         <Input
           ref={inputRef}

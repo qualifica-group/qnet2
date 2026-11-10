@@ -6,6 +6,7 @@ namespace App\Tables\RequestManagement;
 
 use App\Services\Table\FilterApplier;
 use App\Tables\Concerns\HandlesBlankSetFilter;
+use App\Tables\Shared\OfferLinesColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -20,7 +21,12 @@ use Illuminate\Support\Facades\DB;
  *
  *  - AGGREGATED_RELATIONS: `product_categories` — to-many via
  *    `opportunity.productLines.productCategory`; filterable (`whereHas`
- *    dot-path, no SQL change needed) but never sortable.
+ *    dot-path, no SQL change needed) and, since the user directive
+ *    2026-11-09 ("every column sorts and filters"), sortable by the
+ *    alphabetically FIRST related name (a `min()` correlated subquery). The
+ *    same directive routes `offer_lines`' sort (OfferLinesColumn::sortSubquery())
+ *    and `pending_change_requests`' sort + `number` filter
+ *    (RequestPendingChangeRequestsColumn) through this class.
  *  - QUOTE_RELATIONS: `source` (spec 0332: the Fonte lives on the offer) and
  *    `quote_workflow_status` — OWN FKs on the row's own
  *    table (`quotes.source_id`, `quotes.quote_workflow_status_id`, user directive 2026-08-31):
@@ -90,6 +96,7 @@ final class RequestRelationColumns
     public function __construct(
         private readonly FilterApplier $filterApplier,
         private readonly RequestManagerSlotColumn $managerSlotColumn,
+        private readonly RequestPendingChangeRequestsColumn $pendingChangeRequestsColumn,
     ) {}
 
     /**
@@ -99,6 +106,12 @@ final class RequestRelationColumns
      */
     public function applyFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
+        if ($columnId === RequestPendingChangeRequestsColumn::COLUMN_ID) {
+            $this->pendingChangeRequestsColumn->applyFilter($query, $filter);
+
+            return true;
+        }
+
         if (in_array($columnId, self::OPPORTUNITY_SCALAR_COLUMNS, true)) {
             $query->whereHas('opportunity', function (Builder $opportunityQuery) use ($columnId, $columnConfig, $filter): void {
                 $this->filterApplier->apply($opportunityQuery, $columnId, $columnConfig, $filter);
@@ -139,14 +152,21 @@ final class RequestRelationColumns
 
     /**
      * ORDER BY the derived value via a correlated subquery — never a
-     * row-multiplying JOIN on the main query. `product_categories` (the
-     * AGGREGATED to-many column) is NOT sortable (returns false — no single
-     * related row to order by).
+     * row-multiplying JOIN on the main query. The AGGREGATED to-many columns
+     * (`product_categories`, `offer_lines`) order by the alphabetically first
+     * related name, so rows sharing that first name keep the engine's
+     * secondary order.
      *
      * @param  Builder<Model>  $query
      */
     public function applySort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === RequestPendingChangeRequestsColumn::COLUMN_ID) {
+            $this->pendingChangeRequestsColumn->applySort($query, $direction);
+
+            return true;
+        }
+
         $subquery = $this->subqueryFor($columnId);
 
         if ($subquery === null) {
@@ -160,13 +180,38 @@ final class RequestRelationColumns
 
     private function subqueryFor(string $columnId): ?QueryBuilder
     {
+        if ($columnId === OfferLinesColumn::COLUMN_ID) {
+            return OfferLinesColumn::sortSubquery();
+        }
+
         if (in_array($columnId, self::OPPORTUNITY_SCALAR_COLUMNS, true)) {
             return $this->opportunityScalarSubquery($columnId);
+        }
+
+        $aggregatedConfig = self::AGGREGATED_RELATIONS[$columnId] ?? null;
+
+        if ($aggregatedConfig !== null) {
+            return $this->aggregatedSubquery($aggregatedConfig);
         }
 
         $ownConfig = self::QUOTE_RELATIONS[$columnId] ?? null;
 
         return $ownConfig === null ? null : $this->quoteRelationSubquery($ownConfig['table'], $ownConfig['fk']);
+    }
+
+    /**
+     * ORDER BY operand of an AGGREGATED column: the alphabetically first
+     * related `name` of the row's opportunity product lines. Table and
+     * column names come from the AGGREGATED_RELATIONS constant, never input.
+     *
+     * @param  array{relation: string, table: string, fk: string}  $config
+     */
+    private function aggregatedSubquery(array $config): QueryBuilder
+    {
+        return DB::table('opportunity_product_lines')
+            ->join($config['table'], "{$config['table']}.id", '=', "opportunity_product_lines.{$config['fk']}")
+            ->selectRaw("min({$config['table']}.name)")
+            ->whereColumn('opportunity_product_lines.opportunity_id', 'quotes.opportunity_id');
     }
 
     /**

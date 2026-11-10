@@ -110,6 +110,7 @@ class ProductsSource extends AbstractMigrationSource
             ['id' => 'id', 'label' => 'ID', 'type' => 'number'],
             ['id' => 'code', 'label' => 'Code', 'type' => 'string'],
             ['id' => 'name', 'label' => 'Name', 'type' => 'string'],
+            ['id' => 'is_active', 'label' => 'Active', 'type' => 'boolean'],
             ['id' => 'description', 'label' => 'Description', 'type' => 'string'],
             ['id' => 'cost', 'label' => 'Cost', 'type' => 'number'],
             ['id' => 'price', 'label' => 'Price', 'type' => 'number'],
@@ -136,6 +137,7 @@ class ProductsSource extends AbstractMigrationSource
             'id' => $record['id'] ?? null,
             'code' => $record['code'] ?? null,
             'name' => $record['name'] ?? null,
+            'is_active' => $record['is_active'] ?? null,
             'description' => $record['description'] ?? null,
             'cost' => $record['cost'] ?? null,
             'price' => $record['price'] ?? null,
@@ -171,6 +173,7 @@ class ProductsSource extends AbstractMigrationSource
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             code: $this->trimmedText($record['code'] ?? null),
             productTypologyId: $this->resolveTypology($record['folder'] ?? null, $warnings),
+            isActive: (bool) ($record['is_active'] ?? true),
         ));
 
         $product->old_id = $externalId;

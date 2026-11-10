@@ -125,6 +125,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     opportunity_id: 8001,
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
+    registry_lock_reason: null,
     referent: { id: 20, name: 'Mario Rossi' },
     commercial_id: null,
     commercial: null,

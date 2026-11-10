@@ -72,7 +72,7 @@ const guide: HelpGuide = {
             'A new work order starts from the **Open** status of the set matching it.',
             'A work order can only move to the statuses of the set matching it at that moment.',
             'If the scheduled lines of the work order change and the applicable set is another, the status stays if it also exists in the new set, otherwise it becomes the equivalent fixed status or **Open**.',
-            'Deleting a set, its work orders move to the matching set or to the default statuses.',
+            'A status used by a work order, a task or a Task Template row cannot be deleted, nor can the set that holds it: move those records to another status first.',
           ],
         },
         {

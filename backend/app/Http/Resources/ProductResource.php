@@ -52,6 +52,7 @@ class ProductResource extends JsonResource
             'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'code' => $this->code,
             'name' => $this->name,
+            'is_active' => (bool) $this->is_active,
             'description' => $this->description,
             'cost' => $this->cost,
             'price' => $this->price,

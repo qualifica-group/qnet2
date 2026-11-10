@@ -8,12 +8,15 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\SetFirstPasswordRequest;
+use App\Http\Requests\Auth\UpdateOnboardingRequest;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\Auth\UploadAvatarRequest;
 use App\Http\Resources\UserResource;
+use App\Models\JobRole;
 use App\Models\User;
 use App\Services\AbilitiesService;
+use App\Services\Auth\OnboardingService;
 use App\Services\AuthService;
 use App\Services\AvatarService;
 use Illuminate\Http\JsonResponse;
@@ -43,20 +46,27 @@ class AuthController extends BaseApiController
      * GET /api/users/{user}, che espone anche le remote e i reference): per
      * questo si risolve UserResource e si sovrascrive `employment` invece di
      * riusarlo cosi' com'e' — resta comunque un Resource a monte, mai il
-     * model raw.
+     * model raw. `job_roles` e' il sottotitolo del nome nell'header dell'app.
      */
     private function authenticatedUserPayload(User $user): array
     {
-        $resource = new UserResource($user->loadMissing('employment.operationalSites'));
+        $resource = new UserResource($user->loadMissing(['employment.operationalSites', 'employment.jobRoles']));
 
         $payload = $this->withCustomFields($resource);
         $payload = $payload instanceof JsonResource ? $payload->resolve() : $payload;
         // The client shows the first-access gate from this field: it reflects the
         // gate, not the raw flag, so it stays false where the gate is off (spec 0359).
         $payload['must_set_password'] = $user->isFirstAccessPending();
+        $payload['onboarding_status'] = $user->onboardingStatus()->value;
 
         if ($user->employment !== null) {
-            $payload['employment'] = ['primary_operational_site_id' => $user->employment->primary_operational_site_id];
+            $payload['employment'] = [
+                'primary_operational_site_id' => $user->employment->primary_operational_site_id,
+                'job_roles' => $user->employment->jobRoles
+                    ->map(static fn (JobRole $role): array => ['id' => $role->id, 'name' => $role->name])
+                    ->values()
+                    ->all(),
+            ];
         }
 
         return $payload;
@@ -173,6 +183,16 @@ class AuthController extends BaseApiController
         );
 
         return $this->ok($this->authenticatedUserPayload($user), __('auth.profile_updated'));
+    }
+
+    /**
+     * Registra la visione del tour di benvenuto (spec 0368).
+     */
+    public function updateOnboarding(UpdateOnboardingRequest $request, OnboardingService $onboarding): JsonResponse
+    {
+        $user = $onboarding->markSeen($request->user());
+
+        return $this->ok($this->authenticatedUserPayload($user), __('auth.onboarding_saved'));
     }
 
     /**

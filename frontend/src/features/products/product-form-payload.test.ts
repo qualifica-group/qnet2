@@ -18,6 +18,7 @@ function original(overrides: Partial<ProductDetail> = {}): ProductDetail {
     id: 5,
     code: 'PRD-0005',
     name: 'ThinkPad X1',
+    is_active: true,
     description: null,
     cost: 800,
     price: 1200,
@@ -45,6 +46,7 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
   return {
     code: '',
     name: 'ThinkPad X1',
+    is_active: true,
     description: null,
     cost: 800,
     price: 1200,
@@ -76,6 +78,7 @@ describe('buildCreatePayload', () => {
   it('builds the create payload with the generic fields', () => {
     expect(buildCreatePayload(values(), [])).toEqual({
       name: 'ThinkPad X1',
+      is_active: true,
       description: null,
       cost: 800,
       price: 1200,
@@ -88,6 +91,12 @@ describe('buildCreatePayload', () => {
       // server resolve the default typology.
       product_typology_id: 1,
     })
+  })
+
+  it('spec 0366 AC-010: sends is_active on create and only a changed flag on update', () => {
+    expect(buildCreatePayload(values({ is_active: false }), []).is_active).toBe(false)
+    expect(buildUpdatePayload(values(), original(), [])).not.toHaveProperty('is_active')
+    expect(buildUpdatePayload(values({ is_active: false }), original(), []).is_active).toBe(false)
   })
 
   it('includes the selected VAT rate and unit of measure ids', () => {

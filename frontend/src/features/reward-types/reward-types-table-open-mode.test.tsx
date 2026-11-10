@@ -51,6 +51,7 @@ const currentUser: User = {
   roles: [],
   avatar_url: null,
   must_set_password: false,
+  onboarding_status: 'completed',
   created_at: null,
   module_open_preferences: NATIVE_MODE_PREFERENCES,
   ui_scale: 40,

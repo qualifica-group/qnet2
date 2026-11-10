@@ -46,7 +46,7 @@ class MassMigrationController extends BaseApiController
                 );
             }
 
-            $run = $this->service->startMass($actor, $request->updatedSince());
+            $run = $this->service->startMass($actor, $request->updatedSince(), $request->updateExisting());
 
             return $this->created(['mass_migration_run' => new MassMigrationRunResource($run->load('runs'))]);
         } catch (Throwable $exception) {

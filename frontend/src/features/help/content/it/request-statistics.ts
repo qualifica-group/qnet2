@@ -38,7 +38,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Apri **Commerciale › Statistiche Gestione Richieste**: la pagina mostra subito le statistiche, non serve aprirle.',
+          text: 'Apri **Statistiche › Statistiche Gestione Richieste**: la pagina mostra subito le statistiche, non serve aprirle.',
         },
         {
           type: 'note',

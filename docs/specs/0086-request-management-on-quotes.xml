@@ -68,6 +68,15 @@
       "Linee di prodotto".
     - D-8. Il database non contiene dati di produzione: i reward esistenti vengono cancellati dalla
       migrazione e ripopolati dai seeder demo. Nessuna strategia di riaggancio storico.
+    - Direttiva utente 2026-11-09 (supera "mai ordinabile" di D-7 e di `product_categories`, e
+      AC-011): in Gestione Richieste OGNI colonna del catalogo e' ordinabile e filtrabile.
+      `product_categories` e `offer_lines` si ordinano per il primo nome correlato in ordine
+      alfabetico (sottoquery `min()` correlata, RequestRelationColumns /
+      OfferLinesColumn::sortSubquery()); `pending_change_requests` e' ordinabile e filtrabile con
+      filtro `number` sul conteggio delle richieste pendenti dell'offerta
+      (RequestPendingChangeRequestsColumn, `hasFilterValues: false`); `created_at` e' filtrabile
+      con filtro `date` dal motore generico. Nessun cambio di shape delle righe. Solo questo dominio:
+      la variante read-only di `offer_lines` su Contratti/Offerte resta `sortable: false`.
 
     Decisioni derivate, proposte da questa spec e da validare in approvazione:
 

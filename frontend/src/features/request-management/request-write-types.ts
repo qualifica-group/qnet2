@@ -72,6 +72,8 @@ export interface RequestClientAddressPayload {
  * part of this shape (spec 0086 AC-022): the panel no longer writes it.
  */
 export interface UpdateRequestWorkPayload extends RequestForecastPayload {
+  /** The client select (decisione utente 2026-11-09): sent only when another client was picked, never with the `client_*` blocks. */
+  registry_id?: number
   next_callback_at?: string | null
   /**
    * "Note generali" (direttiva utente 2026-09-09): the Opportunity's free

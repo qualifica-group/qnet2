@@ -13,6 +13,8 @@ use Spatie\Permission\PermissionRegistrar;
 // REQUIREMENT CHANGED (spec 0318): the opportunities-group became the top-level "Commerciale"
 // section (key `commercial`); the items checked here are its direct children as before.
 
+// REQUIREMENT CHANGED (spec 0365): `request-statistics` moved from the `commercial` section to the new `statistics` one.
+
 // Spec 0185 — "Statistiche Gestione Richieste": the request dashboard and its
 // report are a module of their own, gated by `request-statistics.view`, which
 // replaces the former `{module}.report` ability.
@@ -25,7 +27,7 @@ if (! function_exists('statisticsNavigationChild')) {
     /** @return array<string, mixed>|null */
     function statisticsNavigationChild(mixed $groups): ?array
     {
-        $group = collect($groups)->firstWhere('key', 'commercial');
+        $group = collect($groups)->firstWhere('key', 'statistics');
 
         return $group === null ? null : collect($group['children'])->firstWhere('key', 'request-statistics');
     }

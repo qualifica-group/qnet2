@@ -186,3 +186,27 @@ it('AC-020: a null actor matches no quote', function () {
 
     expect(QuoteVisibilityScope::scopeToActor(Quote::query(), null)->count())->toBe(0);
 });
+
+it('AC-016: projects the competence verdict only for an actor it can decide', function () {
+    [$function, $covered] = competenceVisibilityCategory();
+    $bounded = competenceVisibilityActor('quotes');
+    grantCompetence($bounded, $function, $covered);
+    $seesAll = competenceVisibilityActor('quotes', ['viewAny', 'view', 'viewCompetence', 'viewAll']);
+    grantCompetence($seesAll, $function, $covered);
+
+    expect(QuoteVisibilityScope::withCompetenceVerdict(Quote::query(), $bounded)->toSql())
+        ->toContain(QuoteVisibilityScope::COMPETENCE_VERDICT_ATTRIBUTE)
+        ->and(QuoteVisibilityScope::withCompetenceVerdict(Quote::query(), $seesAll)->toSql())
+        ->not->toContain(QuoteVisibilityScope::COMPETENCE_VERDICT_ATTRIBUTE);
+});
+
+it('AC-016: an actor who sees every quote still gets rows outside the competence', function () {
+    [$function, $covered] = competenceVisibilityCategory();
+    $inside = categoryTabQuote([$covered]);
+    $outside = categoryTabQuote([competenceVisibilityCategory()[1]]);
+    $actor = competenceVisibilityActor('quotes', ['viewAny', 'view', 'viewCompetence', 'viewAll']);
+    grantCompetence($actor, $function, $covered);
+    Sanctum::actingAs($actor);
+
+    expect(competenceQuoteIds())->toBe([$inside->id, $outside->id]);
+});

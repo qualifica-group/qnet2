@@ -4,6 +4,7 @@ import type { ApiErrorResponse } from '@/api/types'
 import { abilityLabel, resourceLabel } from '@/features/roles/permission-labels'
 
 const HTTP_FORBIDDEN = 403
+const HTTP_CONFLICT = 409
 
 /** Resource prefix of a permission name, e.g. `opportunities.delete` -> `opportunities`. */
 function permissionResource(permission: string): string {
@@ -36,4 +37,15 @@ export function forbiddenMessage(error: unknown, i18n: I18nInstance): string | n
 /** Message to show for a failed request: the specific 403 sentence, else the caller's fallback. */
 export function apiErrorMessage(error: unknown, fallback: string, i18n: I18nInstance): string {
   return forbiddenMessage(error, i18n) ?? fallback
+}
+
+/** As `apiErrorMessage`, also showing the reason the server gives when it refuses a write with a 409. */
+export function refusedActionMessage(error: unknown, fallback: string, i18n: I18nInstance): string {
+  if (axios.isAxiosError<Partial<ApiErrorResponse>>(error) && error.response?.status === HTTP_CONFLICT) {
+    const message = typeof error.response.data?.message === 'string' ? error.response.data.message.trim() : ''
+    if (message !== '') {
+      return message
+    }
+  }
+  return apiErrorMessage(error, fallback, i18n)
 }

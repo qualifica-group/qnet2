@@ -77,7 +77,7 @@ export function useTimeEntryDraftValues(
   linkedTask: TaskDetailWithPermissions | undefined,
 ): TimeEntryRecordValues {
   const draft = useWatch({ control })
-  const { options: typeOptions } = useTimeEntryTypeOptions()
+  const { options: typeOptions } = useTimeEntryTypeOptions(draft.task_type_id ?? null)
   const registries = useForSelectLabels({ resource: REGISTRIES_FOR_SELECT_RESOURCE, ids: idsOf(draft.registry_id) })
   const opportunities = useForSelectLabels({
     resource: OPPORTUNITIES_FOR_SELECT_RESOURCE,

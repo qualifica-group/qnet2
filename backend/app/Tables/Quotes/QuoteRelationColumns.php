@@ -26,7 +26,10 @@ final class QuoteRelationColumns
 {
     use HandlesBlankSetFilter;
 
-    public function __construct(private readonly RootCategoriesColumn $rootCategoriesColumn) {}
+    public function __construct(
+        private readonly RootCategoriesColumn $rootCategoriesColumn,
+        private readonly QuoteRegistryColumn $registryColumn,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -84,6 +87,12 @@ final class QuoteRelationColumns
      */
     public function applyFilter(Builder $query, string $columnId, array $filter): bool
     {
+        if ($columnId === QuoteRegistryColumn::COLUMN_ID) {
+            $this->registryColumn->applyFilter($query, $this->filterValues($filter));
+
+            return true;
+        }
+
         if ($columnId === OfferLinesColumn::COLUMN_ID) {
             OfferLinesColumn::applyFilter($query, $this->filterValues($filter), $this->matchesBlankEntry($filter));
 
@@ -153,6 +162,12 @@ final class QuoteRelationColumns
      */
     public function applySort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === QuoteRegistryColumn::COLUMN_ID) {
+            $this->registryColumn->applySort($query, $direction);
+
+            return true;
+        }
+
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
         if ($config === null) {
@@ -179,6 +194,10 @@ final class QuoteRelationColumns
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
+        if ($columnId === QuoteRegistryColumn::COLUMN_ID) {
+            return $this->registryColumn->distinctValues($search, $query, $limit);
+        }
+
         if ($columnId === OfferLinesColumn::COLUMN_ID) {
             return OfferLinesColumn::distinctValues($query, $search, $limit);
         }

@@ -2,14 +2,17 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
 import { CATEGORY_POPUP_WIDTH_CLASS } from '@/features/product-lines/category-popup-width'
-import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import { isSingleRootBlocked } from '@/features/product-lines/category-tree-scope'
-
-const EMPTY_IDS: readonly number[] = []
+import { cardCategoryTree, isSingleRootBlocked } from '@/features/product-lines/category-tree-scope'
 
 export interface ProductCategoryRootSelectProps {
   value: number | null
+  /**
+   * The category the row holds under that root. Kept with its path even when
+   * inactive: an inactive root that is not selectable on its own (a legacy
+   * structural root) would otherwise lose its only child and vanish.
+   */
+  categoryId?: number | null
   onChange: (rootCategoryId: number) => void
   disabled?: boolean
   /** Another row of the card already holds a category: `single` roots are listed disabled (spec 0077 AC-047). */
@@ -28,6 +31,7 @@ export interface ProductCategoryRootSelectProps {
  */
 export function ProductCategoryRootSelect({
   value,
+  categoryId = null,
   onChange,
   disabled = false,
   otherRowsFilled = false,
@@ -41,13 +45,14 @@ export function ProductCategoryRootSelect({
     if (!tree) {
       return []
     }
-    return activeCategoryTree(tree, value === null ? EMPTY_IDS : [value]).map((root) => ({
+    const keepIds = [value, categoryId].filter((id): id is number => id !== null)
+    return cardCategoryTree(tree, keepIds).map((root) => ({
       id: root.id,
       name: root.name,
       depth: 0,
       disabled: isSingleRootBlocked(root, otherRowsFilled),
     }))
-  }, [tree, otherRowsFilled, value])
+  }, [tree, otherRowsFilled, value, categoryId])
 
   return (
     <SearchableSelect

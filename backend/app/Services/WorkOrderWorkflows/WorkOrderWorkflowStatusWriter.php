@@ -29,6 +29,10 @@ final class WorkOrderWorkflowStatusWriter
 {
     private const int STEP = 10;
 
+    public function __construct(
+        private readonly WorkOrderWorkflowStatusUsageGuard $statusUsageGuard,
+    ) {}
+
     /**
      * Creates a brand-new set: the pinned 'open' row (sort_order 0), every
      * $customStatuses row in submission order (STEP apart), then the pinned
@@ -221,9 +225,10 @@ final class WorkOrderWorkflowStatusWriter
             $keptIds[] = $status->id;
         }
 
-        $existing
-            ->filter(static fn (WorkOrderWorkflowStatus $status): bool => ! $status->isSystem() && ! in_array($status->id, $keptIds, true))
-            ->each(static fn (WorkOrderWorkflowStatus $status) => $status->delete());
+        $removed = $existing->filter(static fn (WorkOrderWorkflowStatus $status): bool => ! $status->isSystem() && ! in_array($status->id, $keptIds, true));
+
+        $this->statusUsageGuard->assertUnused($removed);
+        $removed->each(static fn (WorkOrderWorkflowStatus $status) => $status->delete());
 
         return $keptIds;
     }

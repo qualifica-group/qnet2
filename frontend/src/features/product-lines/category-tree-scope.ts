@@ -22,6 +22,7 @@
  * unrelated to the retired INV-1 branch confinement — see
  * `selectableIdsUnderRoot`/`rootCategoryIdFor` below.
  */
+import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { collectSelectableIds } from '@/features/product-categories/flatten-tree'
 import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
 
@@ -228,6 +229,41 @@ function findNode(
   }
 
   return null
+}
+
+/**
+ * The tree a CARD picker lists (root, filter and category steps): the active
+ * tree of spec 0208, minus what cannot classify a row. A category with no
+ * EFFECTIVE business function (own or inherited) is refused on save
+ * (`ProductLineSetValidator`, "no business function of reference"): it is the
+ * "Costi" branch, whose cost-only products belong on the offer and work order
+ * Costi tabs, never on a request. Such a node is no longer selectable, and a
+ * branch left with nothing selectable disappears, root included; a
+ * functionless ancestor of a classifiable node stays as context.
+ * A kept id (the value a row already holds) stays selectable whatever its
+ * flags, like the server's persisted-category exemption (spec 0074 D-3b): a
+ * migrated row on a category no longer selectable must not blank out, nor its
+ * root with it.
+ */
+export function cardCategoryTree(
+  nodes: ProductCategoryTreeNode[],
+  keepIds: readonly number[],
+): ProductCategoryTreeNode[] {
+  const keepSet = new Set(keepIds)
+
+  function prune(candidates: ProductCategoryTreeNode[], inheritedFunctionId: number | null): ProductCategoryTreeNode[] {
+    return candidates.flatMap((node) => {
+      const functionId = node.business_function_id ?? inheritedFunctionId
+      const children = prune(node.children, functionId)
+      const selectable = keepSet.has(node.id) || (node.is_selectable && functionId !== null)
+      if (!selectable && children.length === 0) {
+        return []
+      }
+      return [{ ...node, children, is_selectable: selectable }]
+    })
+  }
+
+  return prune(activeCategoryTree(nodes, keepIds), null)
 }
 
 /**

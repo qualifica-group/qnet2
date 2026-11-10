@@ -459,6 +459,14 @@ return [
             'product_lines' => ProductCategory::class,
             'rewards' => RewardType::class,
         ],
+        // Spec 0372, D-7: people lists logged by PeopleChangeLog (user ids, null = empty slot).
+        'quote' => [
+            'manager_slots' => User::class,
+        ],
+        'work_order' => [
+            'supervisors' => User::class,
+            'participants' => User::class,
+        ],
         'quote_line_commission' => [
             'commission_configuration_id' => CommissionConfiguration::class,
         ],

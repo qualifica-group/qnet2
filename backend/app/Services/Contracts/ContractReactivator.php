@@ -10,6 +10,7 @@ use App\Enums\WorkflowStatusGroup;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Services\ContractService;
+use App\Services\WorkOrders\ContractWorkOrderClosure;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -44,6 +45,7 @@ class ContractReactivator
     public function __construct(
         private readonly ContractService $contractService,
         private readonly ContractStatusResolver $statusResolver,
+        private readonly ContractWorkOrderClosure $workOrderClosure,
     ) {}
 
     public function reactivate(Contract $contract, ReactivateContractData $data): Contract
@@ -89,6 +91,8 @@ class ContractReactivator
         $contract->validated_at = null;
         $contract->validated_by = null;
         $contract->save();
+
+        $this->workOrderClosure->restore($contract);
 
         $this->logReactivation($contract, $statusId, $from);
         $this->logClearedValidation($contract, $clearedValidation);

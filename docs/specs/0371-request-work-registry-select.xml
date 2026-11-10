@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0371-request-work-registry-select" status="approved" owner="nicola" date="2026-11-09">
+
+  <goal>
+    Permettere di cambiare l'anagrafica di una richiesta dal form di lavorazione di Gestione Richieste,
+    con lo stesso select del form di creazione.
+  </goal>
+
+  <context>
+    L'anagrafica sta su `opportunities.registry_id`; offerte e contratti non hanno un cliente proprio.
+    Decisioni utente 2026-11-09:
+    D-1 Il select cambia il cliente. Il cambio vale per tutta l'opportunita', quindi per tutte le sue offerte.
+    D-2 Con un contratto su una qualsiasi offerta dell'opportunita' il cliente e' bloccato.
+    Decisioni di implementazione:
+    D-3 Bloccato anche se l'anagrafica arriva dal lead: `UpdateOpportunityRequest` (spec 0040, BR-2) la tiene immutabile,
+        e spostarla da qui farebbe rifiutare i salvataggi successivi del form Opportunita'.
+    D-4 Un referente non collegato al nuovo cliente viene azzerato (spec 0040, BR-4).
+    D-5 Scelto un altro cliente, i blocchi identita'/contatti/indirizzo si nascondono e non viaggiano: descrivono il cliente
+        che si sta lasciando. Il server li rifiuta insieme a un cambio di cliente.
+    D-6 Una chiusura positiva nello stesso salvataggio controlla il codice fiscale/partita IVA del nuovo cliente.
+    D-7 Il controllo di unicita' "una sola opportunita' aperta per anagrafica" resta sulla sola creazione, come nel form Opportunita'.
+  </context>
+
+  <scope>
+    <in>
+      <item>`registry_id` su `PATCH /api/request-management/{quote}` e `RequestRegistryWriter`.</item>
+      <item>Select nella sezione Anagrafica del pannello; riepilogo senza piu' la riga Cliente.</item>
+      <item>Campo `registry_id` nella matrice permessi di `request-management`.</item>
+    </in>
+    <out>
+      <item>Cambio del cliente dalle celle della griglia.</item>
+      <item>Spostamento del cliente su un contratto esistente.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="PATCH" path="/api/request-management/{quote}">
+      <request>`registry_id` opzionale, intero esistente, non annullabile. Se diverso da quello attuale: `client_identity`, `client_contacts`, `client_address` vietati.</request>
+      <response status="200">Pannello, con `registry_lock_reason`: `contract`, `lead` o `null`.</response>
+      <response status="422">`registry_id`: cliente bloccato, oppure nuovo cliente senza identita' fiscale su una chiusura positiva.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un cliente diverso, al salvataggio la richiesta passa a quel cliente.</criterion>
+    <criterion id="AC-002">Il cambio vale per tutte le offerte dell'opportunita'.</criterion>
+    <criterion id="AC-003">Il cliente non si puo' svuotare: 422 su `registry_id`.</criterion>
+    <criterion id="AC-004">Con un contratto su una qualsiasi offerta dell'opportunita': 422 su `registry_id`, nulla cambia.</criterion>
+    <criterion id="AC-005">Con un'anagrafica ereditata dal lead: 422 su `registry_id`, nulla cambia.</criterion>
+    <criterion id="AC-006">Reinviare il cliente attuale non e' un cambio, neanche su un record bloccato.</criterion>
+    <criterion id="AC-007">Il pannello espone il motivo del blocco.</criterion>
+    <criterion id="AC-008">I blocchi `client_*` insieme a un cambio di cliente: 422.</criterion>
+    <criterion id="AC-009">Un referente non condiviso col nuovo cliente viene azzerato, uno condiviso resta.</criterion>
+    <criterion id="AC-010">Una chiusura positiva nello stesso salvataggio legge l'identita' fiscale del nuovo cliente.</criterion>
+    <criterion id="AC-011">Senza `update`: 403, nulla cambia.</criterion>
+  </acceptance_criteria>
+</spec>

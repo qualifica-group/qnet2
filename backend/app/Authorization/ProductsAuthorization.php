@@ -41,6 +41,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
         return [
             new FieldDefinition('code', 'text'),
             new FieldDefinition('name', 'text', mandatory: true),
+            new FieldDefinition('is_active', 'boolean'),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('cost', 'number', mandatory: true),
             new FieldDefinition('price', 'number', mandatory: true),
@@ -84,6 +85,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             // required; the Service still generates one when absent (fallback).
             'code' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'price' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),

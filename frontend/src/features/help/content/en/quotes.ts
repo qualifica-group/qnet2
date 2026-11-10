@@ -106,32 +106,38 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtering by product category",
+      id: 'people-filters',
+      title: "Filtering by person",
       blocks: [
         {
           type: 'paragraph',
-          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of quotes. Clicking a tab shows only the quotes of that category. Your choice is kept after reloading the page.",
+          text: "In the **Advanced filters** panel (button in the bar above the list) the **Supervisor** and **Account managers** fields let you pick one or more people: the list shows the quotes where at least one of them holds that role. If you fill in both fields, a quote must satisfy both.",
+        },
+      ],
+    },
+    {
+      id: 'list-filters',
+      title: "Default filters and category",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "When it opens, the **Quotes** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Account manager** (the quotes where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together. To widen the list choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved.",
         },
         {
           type: 'paragraph',
-          text: "A quote appears under the tab of every category among the products on its **revenue rows** (it counts once even with several rows of the same category). Cost rows do not count; a quote without revenue rows appears only under **All**. The number next to the name is how many quotes, among those you can see, fall under that category.",
-        },
-        {
-          type: 'steps',
-          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
+          text: "In the same panel there is also **Product category** (that category only). A quote falls under a category when it is among the **revenue rows** of the quote.",
         },
         {
           type: 'paragraph',
-          text: "When you choose a category tab (not **All** and not a **Parent categories** tab), the columns of that category's flexible fields (**Additional information**) appear at the end of the list. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with **All**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. The columns can be sorted, filtered and exported; if you may edit quotes they are edited in the cell, except when the field does not concern that quote (the cell stays read-only). The values can still be read in the detail too.",
         },
         {
           type: 'note',
-          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the quotes.",
+          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Quotes** page: they do not appear inside a record and in the Quotes sections of opportunities and clients. The export follows the active filters.",
         },
       ],
     },
@@ -146,6 +152,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "**Status** only offers the statuses of the quote's workflow and asks for the **note** when the chosen status requires it. Changing the **Company** clears the Company site; the Company site is picked among the row's company sites. Changing a role recalculates the line commissions as from the detail; an empty Title goes back to the automatic title.",
+        },
+        {
+          type: 'paragraph',
+          text: "The **Registry** column shows the client of the linked opportunity: it can be filtered and sorted but not edited.",
         },
         {
           type: 'paragraph',
@@ -181,7 +191,7 @@ const guide: HelpGuide = {
             'To change the product of a row, remove the row and pick the new product from the catalogue.',
             'A row **assigned to a work order** shows "Assigned to COM-..." and is locked: no field can be edited and it cannot be removed until the work order is deleted. This also holds when you edit the rows from the contract or from Request management; the row\'s commissions can still be edited from the quote.',
             'The **Costs** tab shows the whole catalogue of cost products, with no category filter, and the same product can be added more than once.',
-            '**Additional description** adds text to the row, printable on the quote document.',
+            '**Additional description** adds text to the row, on both the **Offer** and the **Costs** tab; the text is printable on the quote document.',
             "Each row's **Commissions** can only be opened and changed for that row. The popup shows the line net, imputed costs, calculation base and total commissions at the top; each role carries a label with the commission's origin (**Rule: Product**, **Rule: Category** or **Personal rule** when it comes from a Configurator rule, **Manual override** when it was changed by hand; hovering the label explains it). While editing, every role also shows the **System calculation** (what the Commission Configurator grants): if you changed the value by hand you can keep it or go back to the calculation with **Apply system calculation**. The **Supplier** row also shows the **Direction**: when the commission comes from a rule it is the rule's; when you change it by hand you choose **Received** (it is the line revenue) or **Paid** (a cost towards the supplier), and the margin updates accordingly.",
             'In the summary, under the cards, **Show commission details** opens (and **Hide commission details** closes) the **Commission details per product** block of the saved quote, which lists every row with commissions: for **Commercial**, **Reporter**, **Supervisor** and **Supplier** the recipient, the percentage (or fixed amount) and the amount; for the Supplier also the direction (**Received** or **Paid**), with a (?) explaining what it means. The name of the recipient leads to their record: hovering a user shows their profile card, hovering a referent or a registry shows the link to its record, which also opens by clicking the name (if you may view it). Hovering an amount shows its calculation: for a percentage the base (net amount minus the costs imputed to the row) and the rate applied, for the totals the balance. Each amount carries **+** when the commission comes in (received Supplier) and **−** when it goes out (Commercial, Reporter, Supervisor and paid Supplier). The last row and column give the totals as a balance: what comes in minus what goes out. It is visible only to users who can see commissions.',
             'Every cost row has an **Associated product**: pick "None (generic cost)" or a row from the Products tab to attribute that cost to that sale. Deleting the associated product row sends the cost back to "None" automatically.',

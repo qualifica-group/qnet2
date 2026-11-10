@@ -91,8 +91,8 @@ class ImpersonationController extends BaseApiController
             'token_type' => 'Bearer',
             // `employment` come in AuthController::authenticatedUserPayload():
             // il client rimpiazza l'utente corrente con questo oggetto, che
-            // deve quindi portare la Sede operativa dell'utente impersonato.
-            'user' => new UserResource($result->user->loadMissing('employment')),
+            // deve quindi portare Sede operativa e mansioni dell'utente impersonato.
+            'user' => new UserResource($result->user->loadMissing('employment.jobRoles')),
         ];
     }
 }

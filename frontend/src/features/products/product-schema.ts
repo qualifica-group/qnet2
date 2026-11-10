@@ -44,6 +44,8 @@ function baseFields(t: TFunction) {
       .string()
       .min(1, t('products.form.nameRequired'))
       .max(NAME_MAX_LENGTH, t('products.form.nameMax')),
+    // Spec 0366: the product's own flag; the form defaults it to active.
+    is_active: z.boolean(),
     description: z.string().nullable(),
     // cost/price/category_id are held nullable so the controlled inputs can
     // represent "empty"; the required-value superRefine below rejects a null

@@ -47,6 +47,17 @@ final class ProductColumnCatalog
                 'searchable' => true,
             ],
             [
+                // Spec 0366: the product's own flag; the grid lists inactive
+                // products too (filter "No" to find them).
+                'id' => 'is_active',
+                'label' => 'products.columns.is_active',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 'id' => 'description',
                 'label' => 'products.columns.description',
                 'type' => 'text',
@@ -169,6 +180,7 @@ final class ProductColumnCatalog
         return [
             ['columnId' => 'code', 'type' => 'text'],
             ['columnId' => 'name', 'type' => 'text'],
+            ['columnId' => 'is_active', 'type' => 'boolean'],
             ['columnId' => 'description', 'type' => 'text'],
             ['columnId' => 'cost', 'type' => 'number'],
             ['columnId' => 'price', 'type' => 'number'],

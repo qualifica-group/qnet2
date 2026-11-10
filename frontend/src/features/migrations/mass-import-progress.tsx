@@ -78,6 +78,9 @@ export function MassImportProgress({
             {t('updatedSince.since', { date: formatDate(run.updated_since) })}
           </span>
         ) : null}
+        {run.update_existing ? (
+          <span className="text-xs text-muted-foreground">{t('updateExisting.active')}</span>
+        ) : null}
       </div>
 
       <div
@@ -122,6 +125,9 @@ export function MassImportProgress({
                     skipped: child.skipped_rows,
                     failed: child.failed_rows,
                   })}
+                  {child.update_existing
+                    ? ` · ${t('massImport.perSourceUpdated', { updated: child.updated_rows })}`
+                    : ''}
                   {child.updated_since
                     ? ` · ${t('updatedSince.since', { date: formatDate(child.updated_since) })}`
                     : ''}

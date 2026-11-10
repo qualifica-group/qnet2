@@ -83,6 +83,7 @@ class CostProductsSource extends AbstractMigrationSource
             ['id' => 'source', 'label' => 'Legacy table', 'type' => 'string'],
             ['id' => 'code', 'label' => 'Code', 'type' => 'string'],
             ['id' => 'name', 'label' => 'Name', 'type' => 'string'],
+            ['id' => 'is_active', 'label' => 'Active', 'type' => 'boolean'],
             ['id' => 'description', 'label' => 'Description', 'type' => 'string'],
             ['id' => 'cost', 'label' => 'Cost', 'type' => 'number'],
             ['id' => 'price', 'label' => 'Price', 'type' => 'number'],
@@ -147,6 +148,7 @@ class CostProductsSource extends AbstractMigrationSource
             attributeValues: ($record['attribute_values'] ?? []) !== [] ? $record['attribute_values'] : null,
             code: $this->resolveCode($record['code'] ?? null, $warnings),
             usages: [ProductUsage::Cost],
+            isActive: (bool) ($record['is_active'] ?? true),
         ));
 
         // Step 3: anchor it for idempotent re-import.

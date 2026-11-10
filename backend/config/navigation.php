@@ -44,6 +44,9 @@ return [
     |
     */
 
+    // Hidden for now at the user's request: the page and its permission stay in place.
+    'project_work_orders_enabled' => (bool) env('NAVIGATION_PROJECT_WORK_ORDERS_ENABLED', false),
+
     'items' => [
         require __DIR__.'/navigation/dashboard.php',
         require __DIR__.'/navigation/tasks.php',
@@ -56,6 +59,7 @@ return [
         require __DIR__.'/navigation/warehouse.php',
         require __DIR__.'/navigation/accounting.php',
         require __DIR__.'/navigation/personnel.php',
+        require __DIR__.'/navigation/statistics.php',
         require __DIR__.'/navigation/configuration.php',
         require __DIR__.'/navigation/develop.php',
     ],

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0366-product-active-flag" status="approved" owner="nicola" date="2026-11-07">
+
+  <goal>
+    Ogni prodotto ha lo stato "Attivo / Non attivo", impostabile a mano dalla scheda e in massa dalla griglia. Un
+    prodotto non attivo sparisce dai campi di scelta e non si collega a nuovi record, come i prodotti di una
+    categoria non attiva (spec 0208). I prodotti "[OLD] " (catalogo migrato dal QNet legacy) nascono non attivi.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-11-07. Supera la voce "nessun flag attivo sul prodotto" di spec 0208 (scope out).
+
+    - DB dev: 3007 prodotti, 2007 con nome che inizia per "[OLD] " (il legacy marca TUTTI i prodotti migrati con
+      `LegacyNameMark::PREFIX`, in `ProductMigrationController` e `CostProductMigrationController`).
+    - Spec 0208 ha gia' i canali: `ProductService::forSelect` (esclude i prodotti di categoria non attiva, `ids[]`
+      idrata) e `App\Rules\ActiveCategoryProduct($exemptIds)` su `QuoteLineRules` (offer/cost lines, costi commessa,
+      cella inline), `products_of_interest.*` di Lead/Opportunita', `product_id` Provvigioni, `product_ids.*` import.
+    - Precedenti di massa sui prodotti: `POST /api/products/cost-type` e `/revenue-type` (`products.update`,
+      max 500 id, aggiornamento modello per modello per il log attivita').
+
+    Decisioni utente 2026-11-07:
+    D-1 Effetto — come le categorie (spec 0208 D-2/D-4): non attivo = fuori dai select dei prodotti e non
+        collegabile a un NUOVO record; i record gia' collegati restano validi (esenti gli id gia' persistiti).
+        La griglia Prodotti li mostra tutti, colonna "Attivo" ordinabile e filtrabile.
+    D-2 Comando — interruttore "Attivo" nella scheda/form prodotto (default attivo in creazione) + azione massiva
+        "Attiva / Disattiva" sui prodotti selezionati in griglia.
+    D-3 Migrazione — i prodotti gia' presenti con nome "[OLD] " diventano non attivi (migrazione DB, una volta);
+        i prossimi migrati arrivano non attivi: il legacy invia `is_active: false` (backend.md §9), qnet-2 lo scrive.
+
+    Decisioni di progetto:
+    D-4 Attivita' effettiva del prodotto = flag proprio AND categoria effettivamente attiva (CategoryActivity).
+    D-5 `ActiveCategoryProduct` diventa `ActiveProduct` (stessi punti, stessa esenzione): esistenza, poi flag proprio
+        ("This product is not active."), poi categoria (messaggio di spec 0208). Un solo messaggio per campo.
+    D-6 Massiva: `POST /api/products/activation`, stessa forma di `/cost-type` (nessun rifiuto per riga: l'unico
+        gate e' `products.update`, come le altre massive prodotto).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `products.is_active` BOOLEAN NOT NULL DEFAULT true + backfill `name LIKE '[OLD] %'` -> false, reversibile.</item>
+      <item>Model (fillable + cast), Store/UpdateProductRequest, Create/UpdateProductData, ProductService, ProductResource, ProductsAuthorization (FieldDefinition boolean, editabile da chi scrive).</item>
+      <item>`ProductService::forSelect`: esclusione dei prodotti non attivi (oltre alla categoria), `ids[]` idrata.</item>
+      <item>Regola `ActiveProduct` (rinomina di `ActiveCategoryProduct`) su tutti i suoi punti attuali.</item>
+      <item>Endpoint massivo `POST /api/products/activation`.</item>
+      <item>Griglia Prodotti: colonna + filtro `is_active` (boolean).</item>
+      <item>Migrazione legacy: `ProductsSource` e `CostProductsSource` scrivono `is_active` dal record; legacy
+        `ProductMigrationController` e `CostProductMigrationController` inviano `is_active: false`.</item>
+      <item>FE: tipi, schema Zod, payload, switch "Attivo" nel form/scheda, colonna griglia, azione massiva, i18n IT/EN,
+        guida in-app `products` IT/EN (+ messaggio errore nella guida `product-categories` se elencato).</item>
+    </in>
+    <out>
+      <item>Acquisti (richieste/ordini/fatture passive), magazzino, fatture attive: validazione `exists` invariata
+        (come per le categorie in spec 0208); i loro picker usano gia' `products/for-select` e quindi non elencano piu' i non attivi.</item>
+      <item>Endpoint read-only/lenient (form-context, commission-defaults/recipients, supplier-commissions, stock list).</item>
+      <item>Nessun blocco su cancellazione; nessuna modifica alla regola delle categorie.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <db>`products.is_active` BOOLEAN NOT NULL DEFAULT true, `after('name')`. Nessun indice (filtro su tabella piccola).</db>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/products[/{product}]">
+      <request>`is_active`: `sometimes|boolean`. Create senza il campo -> true. Soggetto ai field-permission (`is_active`).</request>
+      <response status="200|201">`ProductResource` guadagna `"is_active": bool`.</response>
+      <errors>422 se non booleano; 403 invariato.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/products/activation">
+      <request>`{ "product_ids": int[] (1..500, distinct, esistenti), "is_active": bool }`. Gate `products.update`.</request>
+      <response status="200">`{ success, message: "Products updated", data: { "updated": int } }`.</response>
+      <errors>403 senza `products.update`; 422 su id inesistenti / lista vuota / oltre 500 / `is_active` mancante.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/products/for-select">
+      <response status="200">Shape invariata; esclude anche i prodotti con `is_active=false` (lista e total); `ids[]` idrata comunque.</response>
+    </endpoint>
+
+    <validation>
+      Nuovo messaggio: `This product is not active.` (it: "Questo prodotto non è attivo."). Precedenza: esistenza,
+      flag proprio, categoria. Esenti gli id gia' persistiti (invariato).
+    </validation>
+
+    <table_grid>
+      `ProductColumnCatalog`: colonna `is_active` (`type: boolean`, label `products.columns.is_active`, visibile,
+      ordinabile, `filterType: boolean`) + voce `['columnId' => 'is_active', 'type' => 'boolean']` in `filters()`.
+      Riga SSRM: `is_active` bool.
+    </table_grid>
+
+    <migration_source>
+      Record di `products` e `cost-products`: nuovo campo `is_active` (bool). Assente -> true.
+    </migration_source>
+
+    <frontend>
+      `Product.is_active: boolean` (detail). Schema/payload del form: `is_active` boolean, default true in creazione.
+      Azione massiva in griglia: "Attiva" / "Disattiva" sui selezionati -> `POST /api/products/activation`, poi refresh
+      della griglia; visibile solo con `products.update`.
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST /api/products senza `is_active` crea il prodotto attivo; con `is_active=false` lo crea non attivo.</criterion>
+    <criterion id="AC-002">PATCH con `is_active=false` persiste il flag; GET espone `is_active`.</criterion>
+    <criterion id="AC-003">La migrazione rende non attivi i prodotti con nome "[OLD] ..." e lascia attivi gli altri; il rollback toglie la colonna.</criterion>
+    <criterion id="AC-004">/products/for-select esclude un prodotto non attivo da items e total; con `ids[]` lo idrata.</criterion>
+    <criterion id="AC-005">Riga offerta / products_of_interest / provvigioni / import con un prodotto non attivo -> 422 "This product is not active."; valore gia' salvato rimandato invariato -> 200.</criterion>
+    <criterion id="AC-006">Prodotto attivo di categoria non attiva -> messaggio di spec 0208 invariato.</criterion>
+    <criterion id="AC-007">POST /api/products/activation aggiorna i prodotti indicati e restituisce `updated`; senza `products.update` -> 403; id inesistente -> 422.</criterion>
+    <criterion id="AC-008">La griglia Prodotti espone la colonna `is_active` ordinabile e filtrabile; il filtro "No" restituisce i non attivi.</criterion>
+    <criterion id="AC-009">Migrazione legacy: un record con `is_active=false` crea un prodotto non attivo (products e cost-products); senza il campo resta attivo.</criterion>
+    <criterion id="AC-010">(FE) Il form prodotto mostra lo switch "Attivo", attivo di default in creazione, e lo invia nel payload.</criterion>
+    <criterion id="AC-011">(FE) L'azione massiva Attiva/Disattiva chiama l'endpoint con gli id selezionati ed e' nascosta senza `products.update`.</criterion>
+    <criterion id="AC-012">(FE) Guida in-app `products` IT/EN descrive "Attivo"; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Authz server-side: `ProductPolicy` / `products.update`; campo governato da `ProductsAuthorization`.</item>
+    <item>Nessuna query per riga nel for-select. Rinomina della regola: nessun alias residuo (zero dead code).</item>
+    <item>Altra sessione con modifiche non committate su `CostProductsSourceImportTest`/`ProductCategoriesSourceImportTest`: i test di questa spec vanno in file nuovi.</item>
+    <item>Manuale Claude Docs: sezione Prodotti (stato Attivo, azione massiva) e messaggi d'errore delle righe offerta.</item>
+  </constraints>
+
+</spec>

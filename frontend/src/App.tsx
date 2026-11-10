@@ -11,6 +11,7 @@ import { DateDisplayProvider } from '@/features/appearance/date-display-provider
 import { ColorPresetProvider } from '@/features/appearance/color-preset-provider'
 import { FieldChangeRequestDialogProvider } from '@/features/field-change-requests/field-change-request-dialog'
 import { ConfigGate } from '@/features/config/config-gate'
+import { MaintenanceGate } from '@/features/maintenance/maintenance-gate'
 import { FullScreenLoader } from '@/components/full-screen-loader'
 import { queryClient } from '@/app/query-client'
 import { router } from '@/routes/router'
@@ -19,26 +20,28 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <ConfigGate>
-          <AuthProvider>
-            <UiScaleProvider>
-              <ColorPresetProvider>
-                <TooltipProvider>
-                  <ConfirmDialogProvider>
-                    <FieldChangeRequestDialogProvider>
-                      <Suspense fallback={<FullScreenLoader />}>
-                        <DateDisplayProvider>
-                          <RouterProvider router={router} />
-                        </DateDisplayProvider>
-                      </Suspense>
-                    </FieldChangeRequestDialogProvider>
-                  </ConfirmDialogProvider>
-                  <Toaster position="top-center" />
-                </TooltipProvider>
-              </ColorPresetProvider>
-            </UiScaleProvider>
-          </AuthProvider>
-        </ConfigGate>
+        <MaintenanceGate>
+          <ConfigGate>
+            <AuthProvider>
+              <UiScaleProvider>
+                <ColorPresetProvider>
+                  <TooltipProvider>
+                    <ConfirmDialogProvider>
+                      <FieldChangeRequestDialogProvider>
+                        <Suspense fallback={<FullScreenLoader />}>
+                          <DateDisplayProvider>
+                            <RouterProvider router={router} />
+                          </DateDisplayProvider>
+                        </Suspense>
+                      </FieldChangeRequestDialogProvider>
+                    </ConfirmDialogProvider>
+                    <Toaster position="top-center" />
+                  </TooltipProvider>
+                </ColorPresetProvider>
+              </UiScaleProvider>
+            </AuthProvider>
+          </ConfigGate>
+        </MaintenanceGate>
       </ThemeProvider>
     </QueryClientProvider>
   )

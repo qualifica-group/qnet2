@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0350-category-tab-attribute-columns" status="approved" owner="utente" date="2026-11-04" revision="2">
+<spec id="0350-category-tab-attribute-columns" status="approved" owner="utente" date="2026-11-04" revision="3">
 
+  <!-- rev.3 (2026-11-09): richiesta utente "per le tab delle categorie madri voglio anche le colonne flessibili
+       di quella categoria madre (tipo ISO)". Cambiano D-4 e il contratto: spec 0337 D-3 superata per la parte attr.*. -->
   <!-- rev.2 (2026-11-04, build): nomi endpoint allineati al codice reale (`GET .../columns`, `POST .../values`
        con `columnId`); la shape non cambia. Lettura/scrittura in due trait (D-7). -->
 
@@ -62,8 +64,12 @@
     <decision id="D-3">Contratti: campi flessibili dell'offerta di origine (`contracts.quote_id` ->
       `quotes.attribute_values`, contesto `Quote`), SOLA LETTURA (colonna `editable: false`), filtrabili e
       ordinabili. Si modificano dall'offerta. Decisione utente 2026-11-04.</decision>
-    <decision id="D-4">Tab "Tutte" e tab "Categorie madri" (spec 0337): nessuna colonna `attr.*`, come in
-      Gestione Richieste.</decision>
+    <decision id="D-4">Tab "Tutte": nessuna colonna `attr.*`. Tab "Categorie madri" (spec 0337, rev.3, decisione
+      utente 2026-11-09): l'insieme effettivo della sola radice nel contesto del dominio, non l'unione del ramo, su
+      Gestione Richieste/Iscritti, Offerte, Commesse e Contratti. Una madre senza campi propri (es. APL, Gare) non
+      aggiunge colonne. Filtri, ordinamento e modifica in cella come nella tab di una categoria; la scrittura resta
+      validata sul set del RECORD (una sottocategoria che non eredita -> 422, come nel form). Nessuna rinomina Gestori
+      Account sulle tab madri.</decision>
     <decision id="D-5">Nessun nuovo endpoint, nessuna migrazione, nessuna nuova colonna DB: si estende la shape
       gia' esistente di `/api/tables/{domain}/*` per `quotes`, `work-orders`, `contracts`.</decision>
     <decision id="D-6">La cella scrive dallo stesso punto del form: CellWriter del modulo -> FormRequest di
@@ -119,7 +125,8 @@
         `{ id: "attr.<code>", label: <nome attributo>, type, filterType, editable: bool, visible: true,
         order, editor?, options?, relation? }`.
         `editable` = true solo per quotes/work-orders con gate D-1/D-2 e tipo diverso da `table`; sempre false su contracts.
-        Nessuna `attr.*` senza tab o con `product_category_branch_id`.
+        Con `product_category_branch_id` (rev.3, mutuamente esclusivo con `product_category_id`): stesse colonne per
+        l'insieme effettivo della radice. Nessuna `attr.*` senza tab.
       </response>
       <errors>403 senza `{domain}.viewAny`; 422 categoria inesistente (regole gia' esistenti).</errors>
     </endpoint>
@@ -146,15 +153,15 @@
       <errors>422 "Column not editable" (colonna `editable: false`); `quotes.attribute_values` invariato.</errors>
     </endpoint>
     <endpoint method="PUT" path="/api/tables/{quotes|work-orders|contracts}/preferences | /filters">
-      <request>invariato; l'allow-list accetta l'UNIONE degli `attr.*` di tutte le categorie del contesto del
+      <request>invariato + `product_category_branch_id?` (rev.3: sceglie solo la forma del config restituito); l'allow-list accetta l'UNIONE degli `attr.*` di tutte le categorie del contesto del
         dominio (D-4 spec 0064).</request>
     </endpoint>
   </data_contract>
 
   <acceptance_criteria>
     <criterion id="AC-001">Dato un attributo assegnato alla categoria C nel contesto Quote, quando chiedo il config
-      di `quotes` con `product_category_id=C`, allora compare `attr.<code>` dopo le colonne native; senza tab e
-      con `product_category_branch_id` non compare nessuna `attr.*`.</criterion>
+      di `quotes` con `product_category_id=C`, allora compare `attr.<code>` dopo le colonne native; senza tab non
+      compare nessuna `attr.*`; con `product_category_branch_id` vale AC-012.</criterion>
     <criterion id="AC-002">Data un'offerta nella tab C con `attribute_values.<code>` valorizzato, le righe di
       `quotes` con tab C riportano il valore in `attr.<code>`; filtro e ordinamento per `attr.<code>` restringono
       e ordinano le righe; i valori distinti lo elencano.</criterion>
@@ -179,6 +186,10 @@
     <criterion id="AC-010">Visibilita': le righe e i valori distinti `attr.*` rispettano
       `QuoteVisibilityScope`/`WorkOrderVisibilityScope`/`ContractVisibilityScope` (nessun valore di un record non
       visibile nei distinti).</criterion>
+    <criterion id="AC-012">(rev.3) Con `product_category_branch_id=R` config, righe, filtro, ordinamento e valori distinti
+      riportano gli `attr.*` dell'insieme effettivo di R, anche per record su una sottocategoria, e non quelli delle sole
+      sottocategorie (422 se usati); le risposte di preferenze e filtri li conservano; `product_category_id` insieme ->
+      422. Test: `tests/Feature/CategoryTabs/RootCategoryAttributeColumnsTest.php`.</criterion>
     <criterion id="AC-011">Guide in-app IT+EN aggiornate con lo stesso id di sezione; `help-content-parity.test.ts`
       verde.</criterion>
   </acceptance_criteria>

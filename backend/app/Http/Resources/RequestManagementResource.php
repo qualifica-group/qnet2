@@ -12,6 +12,7 @@ use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Quotes\QuoteManagerLabelResolver;
 use App\Services\Quotes\QuoteWorkflowResolver;
+use App\Services\RequestManagement\RequestRegistryWriter;
 use App\Support\Geo\GeoNameLocalizer;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
@@ -94,6 +95,7 @@ class RequestManagementResource extends JsonResource
             'opportunity_id' => $opportunity->id,
             'name' => $opportunity->name,
             'registry' => $this->summarizeByName($opportunity->registry),
+            'registry_lock_reason' => app(RequestRegistryWriter::class)->lockReason($opportunity),
             'referent' => $this->summarizeByName($opportunity->referent),
             // Attribution block (user directive 2026-07-22): editable from
             // this panel, so each one ships BOTH its id (the form's value)

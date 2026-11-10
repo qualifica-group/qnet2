@@ -92,7 +92,7 @@ final class LegacyPurchaseInvoiceWriter
      * @param  array<int, string>  $warnings
      * @return array<int, array<string, mixed>>
      */
-    private function legacy(array $legacyInstallments, string $total, array &$warnings): array
+    public function legacy(array $legacyInstallments, string $total, array &$warnings): array
     {
         $installments = [];
 

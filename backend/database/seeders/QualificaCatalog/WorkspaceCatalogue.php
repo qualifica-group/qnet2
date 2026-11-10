@@ -75,6 +75,7 @@ final class WorkspaceCatalogue
                     'projects', 'campaigns', 'leads', 'imports', 'pipeline-statuses',
                     'opportunities', 'quote-workflows', 'quotes', 'work-orders', 'contract-statuses', 'contracts',
                     'request-management', 'field-change-requests', 'enrollee-management', 'request-statistics',
+                    'agent-sales-report',
                     // The commercial back office asks for proformas (spec 0299 D-8).
                     'proforma-requests',
                     // Customers, catalogue and referral rewards.

@@ -143,6 +143,14 @@ trait DelegatesUnaugmentedTableMethods
     }
 
     /**
+     * @return array<int, string>
+     */
+    public function filtersIgnoredByAggregates(): array
+    {
+        return $this->inner->filtersIgnoredByAggregates();
+    }
+
+    /**
      * Grouped quick-search (spec 0179) is a `$inner` domain concern: a
      * searchable `custom.*` column is never covered here, so it stays on the
      * per-column `applyDerivedSearch()` path.

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { flattenCategoryTree, pruneToPickable, type FlatCategoryOption } from '@/features/product-categories/flatten-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 import {
+  cardCategoryTree,
   filterCategoriesUnderRoot,
   isSingleRootBlocked,
   selectableIdsUnderRoot,
@@ -42,8 +42,8 @@ export function useProductLineCellPicker({
   onPick,
 }: UseProductLineCellPickerArgs) {
   // Spec 0208: the editor only ADDS pairs, so there is no saved value to keep;
-  // inactive branches drop out of every step.
-  const categoryTree = useMemo(() => activeCategoryTree(fullTree, NO_KEPT_IDS), [fullTree])
+  // inactive and unclassifiable branches drop out of every step.
+  const categoryTree = useMemo(() => cardCategoryTree(fullTree, NO_KEPT_IDS), [fullTree])
   const [step, setStep] = useState<CellPickStep>('root_category')
   const [rootCategory, setRootCategory] = useState<PickedCategory | null>(null)
   const [filterCategory, setFilterCategory] = useState<PickedCategory | null>(null)
@@ -62,7 +62,7 @@ export function useProductLineCellPicker({
   )
 
   const baseOptions = useMemo<FlatCategoryOption[]>(() => {
-    // Step 1: every root — always the full list (spec 0132 D-1), never pruned.
+    // Step 1: every root of the card tree (spec 0132 D-1), no step-level pruning.
     if (step === 'root_category' || rootCategory === null) {
       return categoryTree.map((root) => ({
         id: root.id,

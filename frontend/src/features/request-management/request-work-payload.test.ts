@@ -11,6 +11,7 @@ function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
     opportunity_id: 1,
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
+    registry_lock_reason: null,
     referent: { id: 20, name: 'Mario Rossi' },
     commercial_id: null,
     commercial: null,
@@ -54,6 +55,7 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     expected_close_date: null,
     estimated_value: null,
     success_probability: 0,
+    registry_id: 10,
     client_identity: null,
     client_contacts: [],
     client_address: [],
@@ -444,5 +446,31 @@ describe('buildRequestWorkPayload (spec 0049 AC-062)', () => {
 
       expect(payload).toEqual({ offer_lines: [] })
     })
+  })
+})
+
+describe('buildRequestWorkPayload — client select (decisione utente 2026-11-09)', () => {
+  const editedContact = { _key: 'new', type: 'email' as const, value: 'nuovo@example.test', label: null, is_primary: true }
+
+  it('omits registry_id while the client is untouched', () => {
+    expect(buildRequestWorkPayload(formValues(), panel())).toEqual({})
+  })
+
+  it('sends registry_id when another client is picked', () => {
+    expect(buildRequestWorkPayload(formValues({ registry_id: 11 }), panel())).toEqual({ registry_id: 11 })
+  })
+
+  it('leaves the buffered client blocks behind when another client is picked', () => {
+    const payload = buildRequestWorkPayload(formValues({ registry_id: 11, client_contacts: [editedContact] }), panel())
+
+    expect(payload).toEqual({ registry_id: 11 })
+  })
+
+  it('still sends an edited client block when the client is unchanged', () => {
+    expect(buildRequestWorkPayload(formValues({ client_contacts: [editedContact] }), panel())).toHaveProperty('client_contacts')
+  })
+
+  it('never sends an emptied client', () => {
+    expect(buildRequestWorkPayload(formValues({ registry_id: null }), panel())).toEqual({})
   })
 })

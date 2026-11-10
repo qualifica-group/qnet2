@@ -71,7 +71,9 @@ final class LegacyAttributeValueApplier
         // Step 3: merge in memory, already validated against the same set.
         $changed = [];
         $old = [];
+        $before = $quote->attribute_values ?? [];
         $this->quoteWriter->apply($quote, $values, $changed, $old, $applicable->values());
+        $this->keepUnchangedTableRows($quote, $before);
     }
 
     /**
@@ -97,7 +99,47 @@ final class LegacyAttributeValueApplier
         // Step 3: merge in memory, already validated against the same set.
         $changed = [];
         $old = [];
+        $before = $workOrder->attribute_values ?? [];
         $this->workOrderWriter->apply($workOrder, $values, $changed, $old, $applicable->values());
+        $this->keepUnchangedTableRows($workOrder, $before);
+    }
+
+    /**
+     * The table rows get a new generated `id` every time they are normalized, so equal
+     * rows would look changed on every realignment (spec 0375 D-7): those keep their value.
+     *
+     * @param  Quote|WorkOrder  $record
+     * @param  array<string, mixed>  $before
+     */
+    private function keepUnchangedTableRows(Model $record, array $before): void
+    {
+        $values = $record->getAttribute('attribute_values') ?? [];
+
+        foreach ($before as $code => $value) {
+            if (array_key_exists($code, $values) && $this->withoutRowIds($values[$code]) === $this->withoutRowIds($value)) {
+                $values[$code] = $value;
+            }
+        }
+
+        $record->forceFill(['attribute_values' => $values]);
+    }
+
+    private function withoutRowIds(mixed $value): mixed
+    {
+        if (! is_array($value) || ! is_array($value['rows'] ?? null)) {
+            return $value;
+        }
+
+        $value['rows'] = array_map(static function (mixed $row): mixed {
+            if (is_array($row)) {
+                unset($row['id']);
+                ksort($row);
+            }
+
+            return $row;
+        }, $value['rows']);
+
+        return $value;
     }
 
     /**

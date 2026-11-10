@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { createWorkOrderWorkflow, updateWorkOrderWorkflow, workOrderWorkflowKeys } from '@/features/work-order-workflows/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/work-order-workflows/work-order-workflow-form-payload'
 import {
@@ -51,7 +52,7 @@ interface UseWorkOrderWorkflowFormArgs {
  * `WorkOrderWorkflowForm`; edit backs the detail's in-place rows (diff PATCH).
  */
 export function useWorkOrderWorkflowForm({ mode, onSuccess }: UseWorkOrderWorkflowFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -106,7 +107,7 @@ export function useWorkOrderWorkflowForm({ mode, onSuccess }: UseWorkOrderWorkfl
       const handled = applyServerValidationErrors(error, form.setError, errorFields)
       applyNestedServerErrors(error, form.setError)
       if (!handled) {
-        setServerError(t('workOrderWorkflows.form.genericError'))
+        setServerError(refusedActionMessage(error, t('workOrderWorkflows.form.genericError'), i18n))
       }
     }
   }

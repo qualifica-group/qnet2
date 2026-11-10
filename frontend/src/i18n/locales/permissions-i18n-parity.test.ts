@@ -35,6 +35,8 @@ function leafEntries(tree: I18nTree, prefix = ''): [string, string][] {
 // The assignable resource prefixes (`AssignablePermissionCatalogue::names()`,
 // `backend/config/authorization.php` `definitions` + `permission_only_resources`).
 const ASSIGNABLE_RESOURCES = [
+  // Spec 0365: permission-only module (page access), Statistics section.
+  'agent-sales-report',
   'attachments',
   'attributes',
   'business-functions',

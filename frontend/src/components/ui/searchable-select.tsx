@@ -3,6 +3,7 @@ import { Popover as PopoverPrimitive } from 'radix-ui'
 import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SELECT_POPOVER_WIDTH_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
@@ -85,9 +86,8 @@ interface SearchableSelectProps {
   action?: ReactNode
   className?: string
   /**
-   * Merged onto the popup. Default width = the trigger's; a caller whose
-   * labels outgrow a narrow column widens it here (same knob as
-   * `AsyncPaginatedSelect`'s).
+   * Merged onto the popup. It already fits its longest option; a caller that
+   * wants a fixed width sets it here (same knob as `AsyncPaginatedSelect`'s).
    */
   contentClassName?: string
   /**
@@ -299,7 +299,8 @@ export function SearchableSelect({
           align="start"
           sideOffset={4}
           className={cn(
-            'z-50 w-(--radix-popover-trigger-width) rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            'z-50 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            SELECT_POPOVER_WIDTH_CLASS,
             contentClassName,
           )}
           onOpenAutoFocus={(event) => {

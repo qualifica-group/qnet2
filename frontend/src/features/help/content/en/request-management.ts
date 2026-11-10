@@ -20,15 +20,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'What you see depends on your permissions. With no other permission you see the requests you operate. **View by site** adds those of your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. If you create a request outside your scope, you will no longer see it unless you have one of these permissions.',
+          text: 'What you see depends on your permissions. With no other permission you see the requests whose **Team** you belong to: as operator, Supervisor or Account Manager. **View by site** adds those of your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. If you create a request outside your scope, you will no longer see it unless you have one of these permissions.',
         },
         {
           type: 'paragraph',
-          text: 'To keep the categories you use at hand, mark them as favorites: in the menu (**More (N)**, or the star to the right of the tabs when they all fit) tap the star next to the category. Favorites come first among the tabs and at the top of the menu. Turn on **Show favorites only** to keep only them among the tabs (plus the category you are viewing); the others stay in the menu. Favorites are saved on your user, even on another computer, and are separate for Request Management and Enrollee Management.',
+          text: 'To keep the categories you use at hand, mark them as favorites: in the menu (**More (N)**, or the star to the right of the tabs when they all fit) tap the star next to the category. Favorites come first among the tabs and at the top of the menu. Turn on **Show favorites only** to keep only them among the tabs (plus the category you are viewing); the others stay in the menu. With **Select all** and **Deselect all**, in the menu, you add every category to your favorites or remove them all at once; the two buttons are hidden while you are searching. Favorites are saved on your user, even on another computer, and are separate for Request Management and Enrollee Management.',
         },
         {
           type: 'paragraph',
-          text: "In the **More (N)** menu the **Parent categories** switch limits the tabs to the first-level categories only: the tab of a parent category also gathers the requests of its subcategories (a request counts once) and, unlike a single category, it does not add the **Additional information** columns nor rename the manager fields. The choice is saved in your browser for this list, each mode remembers its own tab and the favorites are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
+          text: "In the **More (N)** menu the **Parent categories** switch limits the tabs to the first-level categories only: the tab of a parent category also gathers the requests of its subcategories (a request counts once) and adds the **Additional information** columns assigned to the parent category (those of a subcategory appear only in its own tab). Unlike a single category, it does not rename the manager fields. The choice is saved in your browser for this list, each mode remembers its own tab and the favorites are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
         },
         {
           type: 'paragraph',
@@ -43,13 +43,21 @@ const guide: HelpGuide = {
           text: "The **Search** box finds requests by the client's first name, last name, tax code, VAT number, or primary phone or email. It starts from the third character and matches words that **begin** with what you type: \"ros\" finds Rossi, \"ssi\" does not. With several words (for example \"mario rossi\") all of them must match. One- and two-letter words are ignored. With very generic terms the list may be incomplete: add a word to narrow it down.",
         },
         {
+          type: 'paragraph',
+          text: 'Every column sorts with a click on its header and filters from the header menu. **Product category** and **Product lines**, which can hold several entries, sort by their alphabetically first entry. **Change requests** filters by number (for example greater than 0 to see only requests with pending proposals) and **Created at**, hidden at first, by date.',
+        },
+        {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [
+            ['Company name', "The name of a company client, from its registry card. It can be sorted and filtered; it is edited from the panel, not from the cell, and the **Search** box does not look at it."],
+            ['VAT number', "The client's VAT number. It can be sorted, filtered and edited from the cell."],
             ['Source', 'The channel the request comes from (a field of the quote).'],
             ['Change requests', 'Change proposals still awaiting a decision.'],
             ['Product lines', 'Products present in the quote; the cell opens the editor with the product catalogue.'],
             ['Operator', 'The person working the request.'],
+            ['APL operator', 'The account manager in the fifth team position. It can be sorted and filtered by name and edited from the cell.'],
+            ['Account managers', 'Everyone on the team, operator included. It can be filtered by name and edited from the cell.'],
             ['Operational site', 'The site the request is assigned to.'],
             ['Next callback', 'Date of the next call to the client.'],
             ['Transferred', 'Whether the contact was transferred from another site.'],
@@ -141,8 +149,9 @@ const guide: HelpGuide = {
             '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again.',
             '**Offer rows**: products picked from the **Product catalogue**, with quantities, prices and VAT.',
             "**Sales forecast**: expected close date, estimated value and success probability. They are the opportunity's values: changing them here changes them in **Opportunities** and in the other requests of the same opportunity too.",
-            '**Status**: some statuses require a **Note**.',
-            '**Client details**, **Attribution** (**Source**, **Reporter**, **Sales rep**) and **Team** (**Supervisor** and **Account managers**). A **Sales rep** changed here applies to this request (the quote) only: the opportunity\'s one does not change.',
+            '**Status**: some statuses require a **Note**. A validated status requires at least one offer row. Closing does not, with either a positive or a negative outcome: the product row becomes mandatory when the contract is validated.',
+            "**Client details**: the field at the top shows the request's client and lets you pick another one. The change applies to every offer on the opportunity. After picking another client, its details appear once you save, and any edits to the previous client's details are not saved. If a contract already exists, or the client comes from the lead, the field cannot be changed.",
+            '**Attribution** (**Source**, **Reporter**, **Sales rep**) and **Team** (**Supervisor** and **Account managers**). A **Sales rep** changed here applies to this request (the quote) only: the opportunity\'s one does not change.',
             'The **Additional information**, which depends on the categories picked.',
           ],
         },
@@ -230,7 +239,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Statistics are no longer in the Request Management or Enrollee Management tables: they have their own page, **Sales › Request Management Statistics** (see its guide). Enrollee Management no longer has statistics.',
+          text: 'Statistics are no longer in the Request Management or Enrollee Management tables: they have their own page, **Statistics › Request Management Statistics** (see its guide). Enrollee Management no longer has statistics.',
         },
       ],
     },

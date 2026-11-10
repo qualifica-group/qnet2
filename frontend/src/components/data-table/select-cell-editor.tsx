@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { RequiresNoteBadge } from '@/features/workflow-statuses/requires-note-badge'
+import { SELECT_POPUP_FIT_CONTENT_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 import type { SelectOption, TableRow } from '@/features/table/types'
 
@@ -100,7 +101,10 @@ export function SelectCellEditor(
       role="listbox"
       tabIndex={-1}
       aria-label={t('table.selectEditor.list')}
-      className="max-h-64 w-64 overflow-auto rounded-md border border-border bg-popover p-1 shadow-md outline-none"
+      className={cn(
+        'max-h-64 min-w-64 overflow-auto rounded-md border border-border bg-popover p-1 shadow-md outline-none',
+        SELECT_POPUP_FIT_CONTENT_CLASS,
+      )}
     >
       {available.length === 0 ? (
         <p className="px-2.5 py-1 text-xs text-muted-foreground">{t('table.selectEditor.empty')}</p>

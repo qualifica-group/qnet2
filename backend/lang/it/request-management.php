@@ -3,6 +3,8 @@
 return [
     // Direttiva utente 2026-09-09: la chiusura con esito positivo esige
     // l'identificativo fiscale del cliente, indifferentemente quale dei due.
+    'registry_locked_by_contract' => "Non puoi cambiare l'anagrafica: esiste gia' un contratto su questa opportunita'.",
+    'registry_locked_by_lead' => "Non puoi cambiare l'anagrafica: arriva dal lead da cui e' nata l'opportunita'.",
     'fiscal_identity_required_for_status' => 'Non puoi chiudere la richiesta con esito positivo senza il codice fiscale o la partita IVA del cliente.',
     // Stessa regola, ma sul RECORD invece che sulla transizione (decisione
     // utente 2026-09-09): il pannello non salva una richiesta che STA in

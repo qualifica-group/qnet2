@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
  * TableRegistry::resolve()) so repeated calls within one request never re-walk
  * the hierarchy.
  *
- * The context is `AttributeContext::Quote` (user directive 2026-08-31, NOT
+ * The default context is `AttributeContext::Quote` (user directive 2026-08-31, NOT
  * the `Opportunity` context spec 0064 originally read): spec 0084 D-1 moved
  * "Informazioni aggiuntive" onto the Offerta, and the row of this grid IS an
  * Offerta since spec 0086 — so the grid's flexible columns must resolve
@@ -50,7 +50,7 @@ final class AttributeScopeResolver
     /**
      * A resolver of another context with its OWN memo: the per-instance
      * memos below are keyed by category only, so two contexts must never
-     * share one instance (spec 0350, T1).
+     * share one instance.
      */
     public function forContext(AttributeContext $context): self
     {

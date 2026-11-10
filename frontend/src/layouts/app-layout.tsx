@@ -24,6 +24,8 @@ import {
 import { BreadcrumbTitleProvider } from '@/routes/breadcrumb-title'
 import { UserDetailSheetProvider } from '@/features/users/user-detail-sheet'
 import { cn } from '@/lib/utils'
+import { OnboardingProvider } from '@/features/onboarding/onboarding-provider'
+import { onboardingAnchor } from '@/features/onboarding/steps'
 
 export function AppLayout() {
   const { user } = useAuth()
@@ -49,25 +51,41 @@ export function AppLayout() {
             <header className="relative flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">
               <SidebarSeamToggle />
               {/* ml-6 below md: the seam toggle sits inside the header there (left-3, size-6) and would cover the launcher. */}
-              <div className="ml-6 md:ml-0">
+              <div className="ml-6 flex empty:hidden md:ml-0" {...onboardingAnchor('workspace-launcher')}>
                 <WorkspaceLauncher />
               </div>
+              {/* Each icon sits in a tour anchor (spec 0368); `empty:hidden` drops the
+                  wrapper of a button that renders nothing, so the tour skips it. */}
               <div className="ml-auto flex items-center gap-0.5">
-                <SupportRequestButton />
-                <HelpButton />
-                <NotificationBell />
-                <ThemeToggle />
+                <div className="flex empty:hidden" {...onboardingAnchor('support-request')}>
+                  <SupportRequestButton />
+                </div>
+                <div className="flex empty:hidden" {...onboardingAnchor('help')}>
+                  <HelpButton />
+                </div>
+                <div className="flex empty:hidden" {...onboardingAnchor('notifications')}>
+                  <NotificationBell />
+                </div>
+                <div className="flex empty:hidden" {...onboardingAnchor('theme')}>
+                  <ThemeToggle />
+                </div>
                 <Separator
                   orientation="vertical"
                   className="mx-1 bg-sidebar-border data-[orientation=vertical]:h-5"
                 />
-                {user && <NavUserHeader user={user} />}
+                {user && (
+                  <div className="flex" {...onboardingAnchor('user-menu')}>
+                    <NavUserHeader user={user} />
+                  </div>
+                )}
               </div>
             </header>
-            <main className="flex flex-1 flex-col gap-4 p-4">
-              <Outlet />
-            </main>
-            <FloatingAiAssistant />
+            <OnboardingProvider>
+              <main className="flex flex-1 flex-col gap-4 p-4">
+                <Outlet />
+              </main>
+              <FloatingAiAssistant />
+            </OnboardingProvider>
           </SidebarInset>
         </SidebarProvider>
       </UserDetailSheetProvider>
@@ -88,6 +106,7 @@ function SidebarSeamToggle() {
     <button
       type="button"
       onClick={toggleSidebar}
+      {...onboardingAnchor('sidebar-toggle')}
       aria-label={t('navigation.toggleSidebar')}
       className="absolute top-1/2 left-3 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-md transition-colors hover:bg-sidebar-accent md:left-0 md:-translate-x-1/2"
     >

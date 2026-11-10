@@ -19,6 +19,7 @@ import { useRowGroupColumns } from '@/features/table/use-row-group-columns'
 import { ActiveFilterChips } from '@/features/table/custom-filters/active-filter-chips'
 import { buildTableViewSlots } from '@/features/table/table-view-slots'
 import { useTableViewController, type TableViewHandle } from '@/features/table/use-table-view-controller'
+import { gridMountKey } from '@/features/table/grid-mount-key'
 import type { TableViewProps } from '@/features/table/table-view-props'
 
 export type { TableViewHandle } from '@/features/table/use-table-view-controller'
@@ -80,10 +81,13 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       detailRowAutoHeight,
       advancedFiltersOverride,
       onAdvancedFiltersOverrideCleared,
+      hiddenAdvancedFilters,
       renderFooter,
+      onAggregatesChange,
       pinnedRowSlot,
       interceptCellCommit,
       treeData,
+      exportMenu,
     },
     ref,
   ) {
@@ -125,6 +129,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         disableBuiltinDelete,
         advancedFiltersOverride,
         onAdvancedFiltersOverrideCleared,
+        hiddenAdvancedFilters,
         treeData,
         config,
         refetchConfig: refetch,
@@ -137,6 +142,10 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     useEffect(() => {
       onFilterModelChange?.(filterModel)
     }, [filterModel, onFilterModelChange])
+
+    useEffect(() => {
+      onAggregatesChange?.(view.aggregates)
+    }, [onAggregatesChange, view.aggregates])
 
     // Keyed on the joined ids: the hook hands out a fresh array on every render while grouped.
     const { groupedIds } = useRowGroupColumns(view.gridApi, config?.row_grouping?.max_depth ?? 0)
@@ -172,7 +181,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     } else {
       content = (
         <DataTable
-          key={view.layoutVersion}
+          key={gridMountKey(view.layoutVersion, config.attributeCategoryIds)}
           domain={domain}
           productCategoryId={productCategoryId}
           productCategoryBranchId={productCategoryBranchId}
@@ -227,6 +236,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       registryId,
       referentId,
       workOrderType,
+      exportMenu,
     })
 
     return (

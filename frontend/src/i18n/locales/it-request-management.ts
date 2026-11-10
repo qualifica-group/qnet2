@@ -21,9 +21,12 @@ export const requestManagement = {
     expectedCloseDate: 'Data chiusura prevista',
     operator: 'Operatore',
     managerGa1: 'Tutor',
+    managerGa5: 'Operatore APL',
+    managers: 'Gestori account',
     operationalSite: 'Sede operativa',
     firstName: 'Nome',
     lastName: 'Cognome',
+    companyName: 'Ragione sociale',
     taxCode: 'Codice fiscale',
     vatNumber: 'Partita IVA',
     phone: 'Telefono',
@@ -260,6 +263,13 @@ export const requestManagement = {
     client: {
       title: 'Anagrafica',
       description: 'Dati identificativi, contatti e indirizzo del cliente.',
+      registryLabel: 'Anagrafica',
+      registryHint: "Cambiando anagrafica, tutte le offerte di questa opportunità passano al nuovo cliente.",
+      registryChanged: "I dati della nuova anagrafica saranno visibili dopo il salvataggio. Eventuali modifiche ai dati del cliente precedente non verranno salvate.",
+      registryLocked: {
+        contract: "Non modificabile: esiste già un contratto su questa opportunità.",
+        lead: "Non modificabile: l'anagrafica arriva dal lead da cui è nata l'opportunità.",
+      },
       identityGroup: 'Dati identificativi',
       contactsGroup: 'Contatti',
       addressGroup: 'Indirizzo',
@@ -293,6 +303,7 @@ export const requestManagement = {
       // leggeva 'This field is required.' invece di un errore tradotto.
       required: 'Questo campo è obbligatorio.',
       sourceRequired: 'Seleziona una fonte.',
+      registryRequired: "Seleziona un'anagrafica.",
       productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
       productLineIncomplete: 'Seleziona una categoria genitore e una categoria prodotto per ogni riga.',
       // Direttiva utente 2026-09-09: mirror del gate server

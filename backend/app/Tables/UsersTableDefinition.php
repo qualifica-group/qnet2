@@ -232,6 +232,7 @@ class UsersTableDefinition extends AbstractTableDefinition
             'locale' => $row->locale,
             'is_active' => $row->is_active,
             'created_at' => $row->created_at,
+            'last_login_at' => $row->last_login_at,
             'country' => $address?->country?->localizedName(),
             'region' => $address?->state?->localizedName(),
             'province' => $address?->province?->localizedName(),

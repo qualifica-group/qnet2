@@ -46,6 +46,8 @@ function childRun(source: string, overrides: Partial<MigrationRun> = {}): Migrat
     failed_rows: 0,
     report: null,
     updated_since: null,
+    update_existing: false,
+    updated_rows: 0,
     created_at: '2026-07-20T00:00:00Z',
     ...overrides,
   }
@@ -57,6 +59,7 @@ function pendingRun(sources: string[]): MassMigrationRun {
     status: 'pending',
     sources,
     updated_since: null,
+    update_existing: false,
     created_at: '2026-07-20T00:00:00Z',
     runs: [],
   }
@@ -97,7 +100,7 @@ describe('MassImportDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Start import' }))
 
-    await waitFor(() => expect(startMassMigrationMock).toHaveBeenCalledWith(null))
+    await waitFor(() => expect(startMassMigrationMock).toHaveBeenCalledWith({ updatedSince: null, updateExisting: false }))
     // Terminal state: the Close button appears once the run completes.
     expect(await screen.findByRole('button', { name: 'Close' })).toBeInTheDocument()
   })
@@ -125,10 +128,57 @@ describe('MassImportDialog', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Start import' }))
-    await waitFor(() => expect(startMassMigrationMock).toHaveBeenCalledWith('2026-10-01'))
+    await waitFor(() =>
+      expect(startMassMigrationMock).toHaveBeenCalledWith({
+        updatedSince: '2026-10-01',
+        updateExisting: false,
+      }),
+    )
 
     // AC-014: the aggregate and the child show the start day.
     expect((await screen.findAllByText(/Since /, {}, { timeout: 3000 })).length).toBeGreaterThan(0)
+  })
+
+  it('AC-025: the realign checkbox is always there, off by default, and combines with the day', async () => {
+    startMassMigrationMock.mockResolvedValue({
+      ...pendingRun(['companies', 'users']),
+      updated_since: '2026-10-01',
+      update_existing: true,
+    })
+    fetchMassMigrationRunMock.mockResolvedValue({
+      ...pendingRun(['companies', 'users']),
+      status: 'completed',
+      updated_since: '2026-10-01',
+      update_existing: true,
+      runs: [
+        childRun('companies'),
+        childRun('users', { update_existing: true, updated_rows: 4 }),
+      ],
+    })
+
+    render(<MassImportDialog open onOpenChange={vi.fn()} />, { wrapper: wrapper() })
+
+    await screen.findByText('Companies')
+    const checkbox = screen.getByRole('checkbox', { name: 'Also update records already imported' })
+    expect(checkbox).not.toBeChecked()
+    expect(checkbox).toHaveAccessibleDescription(/Work orders, Quotes, Opportunities/)
+
+    fireEvent.click(checkbox)
+    fireEvent.change(screen.getByLabelText('Import only records created or modified since'), {
+      target: { value: '2026-10-01' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }))
+
+    await waitFor(() =>
+      expect(startMassMigrationMock).toHaveBeenCalledWith({
+        updatedSince: '2026-10-01',
+        updateExisting: true,
+      }),
+    )
+    // AC-026: the aggregate shows the mode and only the supporting child shows its updated count.
+    expect(await screen.findByText('Update existing records', {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.getByText(/4 updated/)).toBeInTheDocument()
+    expect(screen.getAllByText(/updated/)).toHaveLength(1)
   })
 
   it('renders stop-on-failure: the source after the failing one is "Not run"', async () => {

@@ -105,7 +105,7 @@ trait MapsLegacyQuoteLines
      * @param  array<string, mixed>  $externalLine
      * @param  array<int, string>  $warnings
      */
-    private function legacyOfferLine(array $externalLine, int $sortOrder, array &$warnings): QuoteLineData
+    public function legacyOfferLine(array $externalLine, int $sortOrder, array &$warnings): QuoteLineData
     {
         $lineRef = $externalLine['id'] ?? '?';
         $unitPrice = (float) ($externalLine['unit_price'] ?? 0);

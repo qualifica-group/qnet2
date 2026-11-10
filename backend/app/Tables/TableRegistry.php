@@ -4,8 +4,7 @@ namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\RequestManagement\RequestModule;
-use App\Tables\Contracts\ContractCategoryScopedTableDefinition;
-use App\Tables\Opportunities\OpportunityCategoryScopedTableDefinition;
+use App\Tables\Contracts\ContractAttributeColumnsTableDefinition;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\Referents\ReferentScopedTableDefinition;
 use App\Tables\Registries\RegistryScopedTableDefinition;
@@ -44,14 +43,8 @@ class TableRegistry
     private const string WORK_ORDERS_DOMAIN = 'work-orders';
 
     /**
-     * The only domain wrapped in `OpportunityCategoryScopedTableDefinition`
-     * (spec 0335), on top of its registry scope.
-     */
-    private const string OPPORTUNITIES_DOMAIN = 'opportunities';
-
-    /**
-     * The only domain wrapped in `ContractCategoryScopedTableDefinition`
-     * (spec 0335, D-8).
+     * The only domain wrapped in `ContractAttributeColumnsTableDefinition`
+     * (spec 0374).
      */
     private const string CONTRACTS_DOMAIN = 'contracts';
 
@@ -108,7 +101,8 @@ class TableRegistry
      * `work-orders`, THEN in `RegistryScopedTableDefinition` (spec 0199) for
      * `opportunities`/`tasks`/`commission-configurations` (spec 0204), THEN
      * in `ReferentScopedTableDefinition` (spec 0336) for
-     * `commission-configurations` — one line each here, zero per-module code.
+     * `commission-configurations`, THEN in `ContractAttributeColumnsTableDefinition`
+     * (spec 0374) for `contracts` — one line each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
@@ -120,11 +114,10 @@ class TableRegistry
         $definition = $this->wrapIfQuoteScoped($domain, $definition);
 
         $definition = $this->wrapIfRegistryScoped($domain, $definition);
+
         $definition = $this->wrapIfReferentScoped($domain, $definition);
 
-        $definition = $this->wrapIfOpportunityCategoryScoped($domain, $definition);
-
-        return $this->wrapIfContractCategoryScoped($domain, $definition);
+        return $this->wrapIfContractAttributeColumns($domain, $definition);
     }
 
     /**
@@ -274,36 +267,17 @@ class TableRegistry
     }
 
     /**
-     * Wrap in `OpportunityCategoryScopedTableDefinition` (spec 0335) for
-     * `opportunities` only, OUTSIDE the registry decorator: it must be the
-     * outermost one, the one callers' `instanceof` checks see.
+     * Wrap in `ContractAttributeColumnsTableDefinition` (spec 0374) for
+     * `contracts` only; outermost.
      */
-    private function wrapIfOpportunityCategoryScoped(string $domain, TableDefinition $definition): TableDefinition
-    {
-        if ($domain !== self::OPPORTUNITIES_DOMAIN) {
-            return $definition;
-        }
-
-        /** @var OpportunityCategoryScopedTableDefinition $wrapped */
-        $wrapped = $this->container->make(OpportunityCategoryScopedTableDefinition::class, [
-            'inner' => $definition,
-        ]);
-
-        return $wrapped;
-    }
-
-    /**
-     * Wrap in `ContractCategoryScopedTableDefinition` (spec 0335, D-8) for
-     * `contracts` only; outermost, like the opportunities one.
-     */
-    private function wrapIfContractCategoryScoped(string $domain, TableDefinition $definition): TableDefinition
+    private function wrapIfContractAttributeColumns(string $domain, TableDefinition $definition): TableDefinition
     {
         if ($domain !== self::CONTRACTS_DOMAIN) {
             return $definition;
         }
 
-        /** @var ContractCategoryScopedTableDefinition $wrapped */
-        $wrapped = $this->container->make(ContractCategoryScopedTableDefinition::class, [
+        /** @var ContractAttributeColumnsTableDefinition $wrapped */
+        $wrapped = $this->container->make(ContractAttributeColumnsTableDefinition::class, [
             'inner' => $definition,
         ]);
 
