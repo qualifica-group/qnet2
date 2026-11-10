@@ -1,11 +1,9 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { OPEN_MODE_PAGE } from '@/features/modules/types'
-import type { ModuleFormScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
+import type { ModuleFormScreenProps, ModuleScreens } from '@/features/modules/types'
 import { RequestCreateForm } from '@/features/request-management/request-create-form'
 import { RequestWorkPanelScreen } from '@/features/request-management/request-work-panel'
-import { REQUEST_MODULE } from '@/features/request-management/request-module'
 
 /**
  * Create-only (spec 0057 D-7): `mode.type === 'create'` mounts the real
@@ -35,28 +33,8 @@ function RequestManagementFormScreen({ mode, onSuccess, onCancel }: ModuleFormSc
   )
 }
 
-/**
- * Auto-registered in the module registry (spec 0042). `defaultMode = 'page'`
- * (D-9: the record's own read-only context, contacts and dynamic fields
- * warrant the richer dedicated page over a Sheet). `generateRoutes` no longer
- * pinned to `false` (spec 0057 D-6): the module now HAS a create route
- * (`/new`), so `buildModuleRoutes()` generates the full `new`/`:id`/`:id/edit`/
- * `:id/duplicate` set like every other module. The `:id` deep-link keeps its
- * own bespoke page (`router.tsx`, declared before the generated routes so it
- * takes precedence) — see the comment there for why.
- */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: REQUEST_MODULE.key,
-  basePath: REQUEST_MODULE.routeBasePath,
-  defaultMode: OPEN_MODE_PAGE,
-  labelKey: REQUEST_MODULE.labelKey,
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: RequestWorkPanelScreen,
   FormScreen: RequestManagementFormScreen,
-  // The create form's sticky bar IS the heading, with the save/cancel actions
-  // on its right (user directive 2026-08-03) — the hosts must not render a
-  // second one above it.
-  formOwnsHeader: true,
-  // User directive 2026-09-28: a created request lands back on the table
-  // (whose category tab is persisted), not on the new record's page.
-  returnToListOnSave: true,
 }

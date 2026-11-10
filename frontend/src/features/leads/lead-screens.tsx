@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -7,11 +7,10 @@ import { fetchLead, leadDetailQueryKey } from '@/features/leads/api'
 import { LeadForm } from '@/features/leads/lead-form'
 import { LeadDetailView } from '@/features/leads/lead-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { LeadDetail } from '@/features/leads/types'
 
@@ -92,19 +91,8 @@ export function LeadFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'leads',
-  basePath: '/leads',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.leads',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: LeadDetailScreen,
   FormScreen: LeadFormScreen,
-  // The detail IS the edit form (spec 0217): no edit route, no Edit button.
-  // The record card renders the lead -> opportunity CTA itself.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

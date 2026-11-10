@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { JobActivityDetailView } from '@/features/job-activities/job-activity-detail'
-import { moduleScreen } from '@/features/job-activities/job-activity-screens'
+import { moduleDefinition } from '@/features/job-activities/job-activity-module'
 import type { JobActivityDetailWithPermissions } from '@/features/job-activities/types'
 
 /** Spec 0271: the detail edits every row in place, each save a PATCH of that field alone. */
@@ -98,7 +98,7 @@ describe('JobActivityDetailView - in-place editing', () => {
     render(<JobActivityDetailView jobActivity={jobActivity()} />)
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    expect(moduleScreen.generateEditRoute).toBe(false)
+    expect(moduleDefinition.generateEditRoute).toBe(false)
     for (const key of ['name', 'description']) {
       expect(pencilOf(`jobActivities.form.${key}`)).toBeInTheDocument()
     }

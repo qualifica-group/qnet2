@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
@@ -8,11 +8,10 @@ import { attributeDetailQueryKey, fetchAttribute } from '@/features/attributes/a
 import { AttributeForm } from '@/features/attributes/attribute-form'
 import { AttributeDetailView } from '@/features/attributes/attribute-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { AttributeDetail } from '@/features/attributes/types'
 
@@ -140,18 +139,8 @@ function AttributeDuplicateLoader({ attributeId, onSuccess, onCancel }: Attribut
   return <AttributeForm mode={{ type: 'duplicate', source: attribute }} onSuccess={onSuccess} onCancel={onCancel} />
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'attributes',
-  basePath: '/attributes',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.attributes',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: AttributeDetailScreen,
   FormScreen: AttributeFormScreen,
-  // The detail IS the edit form (spec 0240): no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

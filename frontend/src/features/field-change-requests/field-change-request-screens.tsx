@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -6,11 +6,9 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchFieldChangeRequest } from '@/features/field-change-requests/api'
 import { fieldChangeRequestKeys } from '@/features/field-change-requests/query-keys'
 import { FieldChangeRequestDetailView } from '@/features/field-change-requests/field-change-request-detail'
-import { FIELD_CHANGE_REQUESTS_DOMAIN } from '@/features/field-change-requests/types'
-import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
 
@@ -58,29 +56,15 @@ export function FieldChangeRequestDetailScreen({ id }: ModuleDetailScreenProps) 
 /**
  * A field change request has no create/edit route of its own (`generateRoutes:
  * false` below), so this branch is unreachable in practice — kept only
- * because `ModuleRegistryEntry.FormScreen` is a mandatory field of the
+ * because `ModuleScreens.FormScreen` is a mandatory field of the
  * registry type (mirrors `ContractFormScreen`).
  */
 export function FieldChangeRequestFormScreen() {
   return null
 }
 
-/**
- * Auto-registered in the module registry (spec 0042). `generateRoutes:
- * false`: a request is never created/edited through a route (D-2, the
- * generic proposal dialog is the only entry point) — only `/field-change-
- * requests` (list) and `/field-change-requests/:id` (the generic
- * `ModuleDetailPage`) are wired, by hand, in `router.tsx`, mirroring
- * `contracts`. `detailOwnsEditAction: true` for the same reason `contracts`
- * sets it: there is no edit affordance to gate at all.
- */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: FIELD_CHANGE_REQUESTS_DOMAIN,
-  basePath: '/field-change-requests',
-  defaultMode: OPEN_MODE_PAGE,
-  labelKey: 'navigation.fieldChangeRequests',
-  generateRoutes: false,
-  detailOwnsEditAction: true,
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: FieldChangeRequestDetailScreen,
   FormScreen: FieldChangeRequestFormScreen,
 }

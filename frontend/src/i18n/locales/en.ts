@@ -7,6 +7,7 @@
  * (see `.claude/rules/engineering.md` §6); `en`'s public shape is unchanged.
  */
 import { common } from './en-common'
+import { appVersion, config, theme } from './en-app-shell'
 import { personalData, personalDataFieldLabels } from './en-personal-data'
 import { enums } from './en-enums'
 import { companies } from './en-companies'
@@ -105,26 +106,10 @@ import {
 
 export const en = {
   common,
-  config: {
-    error: {
-      title: 'Unable to start the application',
-      description:
-        "We couldn't load the application configuration. Check your connection and try again.",
-      retry: 'Retry',
-    },
-  },
-  appVersion: {
-    available: 'New version available',
-    description: 'A new version is available. Click update to refresh the app.',
-    update: 'Update now',
-  },
+  config,
+  appVersion,
   navigation,
-  theme: {
-    toggle: 'Toggle theme',
-    light: 'Light',
-    dark: 'Dark',
-    system: 'System',
-  },
+  theme,
   actions: {
     view: 'View',
     edit: 'Edit',

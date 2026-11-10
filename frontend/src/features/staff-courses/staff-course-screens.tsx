@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -6,9 +6,8 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { staffCourseKeys, fetchStaffCourse } from '@/features/staff-courses/api'
 import { StaffCourseForm } from '@/features/staff-courses/staff-course-form'
 import { StaffCourseDetailView } from '@/features/staff-courses/staff-course-detail'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
-import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
-import { STAFF_COURSES_DOMAIN, type StaffCourse } from '@/features/staff-courses/types'
+import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleScreens } from '@/features/modules/types'
+import { type StaffCourse } from '@/features/staff-courses/types'
 
 /** Content-only `staff-courses` screens for the module registry (spec 0042). */
 export function StaffCourseDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
@@ -55,17 +54,8 @@ export function StaffCourseFormScreen({ mode, onSuccess, onCancel }: ModuleFormS
   return <StaffCourseForm onSuccess={handleSuccess} onCancel={onCancel} />
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: STAFF_COURSES_DOMAIN,
-  basePath: `/${STAFF_COURSES_DOMAIN}`,
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.staffCourses',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: StaffCourseDetailScreen,
   FormScreen: StaffCourseFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The create form renders its own identity band, so hosts must not stack a second heading.
-  formOwnsHeader: true,
 }

@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { SkillDetailView } from '@/features/skills/skill-detail'
-import { moduleScreen } from '@/features/skills/skill-screens'
+import { moduleDefinition } from '@/features/skills/skill-module'
 import type { SkillDetail } from '@/features/skills/types'
 
 /** The detail edits every row in place, each save a PATCH of that field alone. */
@@ -92,6 +92,6 @@ describe('SkillDetailView', () => {
   })
 
   it('registers as a module with the skills domain and no edit route', () => {
-    expect(moduleScreen).toMatchObject({ domain: 'skills', basePath: '/skills', generateEditRoute: false })
+    expect(moduleDefinition).toMatchObject({ domain: 'skills', basePath: '/skills', generateEditRoute: false })
   })
 })

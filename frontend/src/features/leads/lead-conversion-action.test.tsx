@@ -60,11 +60,7 @@ vi.mock('react-router-dom', async () => {
 // that exact file by its resolved path before the module registry's
 // `import.meta.glob` eagerly imports it.
 vi.mock('@/features/opportunities/opportunity-screens', () => ({
-  moduleScreen: {
-    domain: 'opportunities',
-    basePath: '/opportunities',
-    defaultMode: 'modal',
-    labelKey: 'navigation.opportunities',
+  moduleScreens: {
     DetailScreen: () => null,
     FormScreen: ({
       mode,

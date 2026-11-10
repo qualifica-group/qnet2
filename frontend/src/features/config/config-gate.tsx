@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
+import { BootErrorScreen } from '@/components/boot-error-screen'
 import {
   APP_SPLASH_EXIT_DURATION_MS,
   APP_SPLASH_MIN_DURATION_MS,
@@ -21,7 +21,7 @@ import { useConfig } from '@/features/config/use-config'
  */
 export function ConfigGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
-  const { isError, isSuccess, refetch } = useConfig()
+  const { isError, isFetching, isSuccess, refetch } = useConfig()
   const [hasMinDurationElapsed, setHasMinDurationElapsed] = useState(false)
   const [hasCompletedExit, setHasCompletedExit] = useState(false)
 
@@ -52,18 +52,11 @@ export function ConfigGate({ children }: { children: ReactNode }) {
 
   if (isError) {
     return (
-      <div
-        className="flex min-h-svh flex-col items-center justify-center gap-4 p-4 text-center"
-        role="alert"
-      >
-        <p className="text-xl font-semibold tracking-tight">
-          {t('config.error.title')}
-        </p>
-        <p className="max-w-md text-muted-foreground">
-          {t('config.error.description')}
-        </p>
-        <Button onClick={() => void refetch()}>{t('config.error.retry')}</Button>
-      </div>
+      <BootErrorScreen
+        description={t('config.error.description')}
+        isRetrying={isFetching}
+        onRetry={() => void refetch()}
+      />
     )
   }
 

@@ -19,15 +19,24 @@ final class LegacyRecordLink
 
     public function forOwner(string $attachableType, int $attachableId): ?string
     {
-        $base = rtrim((string) config('migrations.legacy_files_base_url'), '/');
-        $paths = (array) config('migrations.legacy_record_paths');
-
         // Step 1: a line's documents point to the page of its purchase request.
         [$alias, $oldId] = $attachableType === 'purchase_request_line'
             ? ['purchase_request', $this->lineRequestOldId($attachableId)]
             : [$attachableType, $this->ownerOldId($attachableType, $attachableId)];
 
         // Step 2: only a migrated owner with a legacy page gets a link.
+        return $this->forRecord($alias, $oldId);
+    }
+
+    /**
+     * The legacy page of a record already in hand, by its alias in
+     * `migrations.legacy_record_paths` (e.g. the contacts of an anagrafica, spec 0378).
+     */
+    public function forRecord(string $alias, ?int $oldId): ?string
+    {
+        $base = rtrim((string) config('migrations.legacy_files_base_url'), '/');
+        $paths = (array) config('migrations.legacy_record_paths');
+
         if ($base === '' || $oldId === null || ! isset($paths[$alias])) {
             return null;
         }

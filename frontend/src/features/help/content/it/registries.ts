@@ -72,6 +72,10 @@ const guide: HelpGuide = {
           type: 'warning',
           text: 'Solo le anagrafiche segnate come Fornitore compaiono tra i fornitori selezionabili nella scheda prodotto.',
         },
+        {
+          type: 'tip',
+          text: 'Su un’anagrafica che viene dal vecchio QNet, sotto i Contatti trovi **Non trovi un contatto? Controlla nel vecchio QNet**: il link apre la scheda di quell’anagrafica nel vecchio QNet, in una nuova scheda. Il vecchio QNet può chiederti di accedere.',
+        },
       ],
     },
     {

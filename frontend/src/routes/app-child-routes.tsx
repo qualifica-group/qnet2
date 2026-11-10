@@ -298,7 +298,7 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
     element: <ContractsPage />,
   },
   // A contract is never created nor deleted by hand (spec 0072 D-6):
-  // `contracts` sets `generateRoutes: false` on its `moduleScreen`, so
+  // `contracts` sets `generateRoutes: false` on its `moduleDefinition`, so
   // `buildModuleRoutes()` below generates NO route for this domain.
   // Only the read-only detail route is added, by hand, mounting the
   // generic `ModuleDetailPage` directly (mirrors how `module-routes.tsx`
@@ -360,7 +360,7 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
   // Email templates / document bundles (spec 0175, D-14): supporting
   // CRUD tables the work order email composer consumes. Only the
   // list route is declared by hand; `new`/`:id`/`:id/edit` come from
-  // the module registry (both `*-screens.tsx` export `moduleScreen`,
+  // the module registry (both `*-module.ts` export `moduleDefinition`,
   // AC-012).
   {
     path: 'email-templates',
@@ -395,7 +395,7 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
     element: <RequestManagementDetailPage />,
   },
   // Gestione Iscritti (spec 0130 D-8): no creation surface at all, so
-  // `enrollee-management`'s `moduleScreen` sets `generateRoutes: false`
+  // `enrollee-management`'s `moduleDefinition` sets `generateRoutes: false`
   // and BOTH the list and the `:id` detail are declared here by hand —
   // no generated `new`/`:id/edit`/`:id/duplicate` exist for this
   // domain. Same bespoke detail page reasons as `request-management`
@@ -411,7 +411,7 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
   // A field change request is never created/edited through a route
   // (spec 0078, D-2: the generic proposal dialog is the only entry
   // point), so `field-change-requests` sets `generateRoutes: false`
-  // on its `moduleScreen`, same as `contracts` above: only the list
+  // on its `moduleDefinition`, same as `contracts` above: only the list
   // and the read-only `:id` detail (reached from the notification
   // bell's `action_url`, F-8) are wired here by hand.
   {

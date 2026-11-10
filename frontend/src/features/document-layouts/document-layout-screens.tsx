@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -7,13 +7,12 @@ import { documentLayoutDetailQueryKey, fetchDocumentLayout } from '@/features/do
 import { DocumentLayoutForm } from '@/features/document-layouts/document-layout-form'
 import { DocumentLayoutDetailView } from '@/features/document-layouts/document-layout-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
-import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
-import { DOCUMENT_LAYOUTS_BASE_PATH, type DocumentLayoutDetail } from '@/features/document-layouts/types'
+import { type DocumentLayoutDetail } from '@/features/document-layouts/types'
 
 /**
  * Content-only `document-layouts` screens for the module registry (spec
@@ -94,18 +93,8 @@ export function DocumentLayoutFormScreen({ mode, onSuccess, onCancel }: ModuleFo
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'document-layouts',
-  basePath: DOCUMENT_LAYOUTS_BASE_PATH,
-  defaultMode: OPEN_MODE_PAGE,
-  labelKey: 'navigation.documentLayouts',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: DocumentLayoutDetailScreen,
   FormScreen: DocumentLayoutFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

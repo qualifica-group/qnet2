@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -6,11 +6,10 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchRegistry, registryDetailQueryKey } from '@/features/registries/api'
 import { GuardedRegistryForm } from '@/features/registries/guarded-registry-form'
 import { RegistryDetailView } from '@/features/registries/registry-detail'
-import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { RegistryDetail } from '@/features/registries/types'
 
@@ -70,19 +69,8 @@ export function RegistryFormScreen({ mode, onSuccess, onCancel }: ModuleFormScre
   return <GuardedRegistryForm onSuccess={handleSuccess} onCancel={onCancel} />
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'registries',
-  basePath: '/registries',
-  defaultMode: OPEN_MODE_PAGE,
-  generateRoutes: false,
-  labelKey: 'navigation.registries',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: RegistryDetailScreen,
   FormScreen: RegistryFormScreen,
-  // The detail IS the edit form (spec 0200): no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

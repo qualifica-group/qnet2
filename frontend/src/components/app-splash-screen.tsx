@@ -16,6 +16,9 @@ const LOGO_PARTIAL_REVEAL_ANIMATION = 'app-splash-logo-partial-reveal 0.35s ease
  * The white ground is deliberate and outside the surface scale: the brand marks
  * are fixed-colour assets (navy logo, white counters in the partial mark) and
  * would disappear on the dark theme background.
+ *
+ * `index.html` carries a static copy of the first frame, shown while the bundle
+ * downloads: a change to the layout or the starting pose goes there too.
  */
 export function AppSplashScreen({ isExiting = false }: { isExiting?: boolean }) {
   const { t } = useTranslation()

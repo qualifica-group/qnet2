@@ -5,9 +5,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import { parseEntityId } from '@/routes/entity-id'
-import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
+import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleScreens } from '@/features/modules/types'
 import { commissionConfigurationDetailKey, fetchCommissionConfiguration } from './api'
 import { CommissionConfigurationForm } from './commission-configuration-form'
 import { CommissionConfigurationDetailView } from './commission-configuration-detail'
@@ -95,17 +94,8 @@ export function CommissionConfigurationFormScreen({ mode, onSuccess, onCancel }:
   )
 }
 
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'commission-configurations',
-  basePath: '/commission-configurations',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.commissionConfigurations',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: CommissionConfigurationDetailScreen,
   FormScreen: CommissionConfigurationFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

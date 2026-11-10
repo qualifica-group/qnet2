@@ -7,7 +7,7 @@ import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import DocumentLayoutsPage from '@/pages/document-layouts-page'
 import { DocumentLayoutsTable } from '@/features/document-layouts/document-layouts-table'
-import { moduleScreen } from '@/features/document-layouts/document-layout-screens'
+import { moduleDefinition } from '@/features/document-layouts/document-layout-module'
 import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
@@ -32,7 +32,7 @@ vi.mock('@/features/auth/use-abilities', () => ({
 }))
 
 // Force the resolved open mode so the delete-flow tests do not depend on the
-// user's preference resolution (spec 0042, D-6); the moduleScreen's own
+// user's preference resolution (spec 0042, D-6); the moduleDefinition's own
 // `defaultMode` is asserted separately below (AC-133).
 vi.mock('@/features/modules/use-module-open-mode', () => ({
   useModuleOpenMode: () => 'modal',
@@ -233,12 +233,12 @@ describe('DocumentLayoutsTable — delete (AC-132)', () => {
   })
 })
 
-describe('document-layouts moduleScreen registry entry (AC-133)', () => {
+describe('document-layouts moduleDefinition registry entry (AC-133)', () => {
   it('registers the document-layouts domain with OPEN_MODE_PAGE as its default (D-9)', () => {
-    expect(moduleScreen.domain).toBe('document-layouts')
-    expect(moduleScreen.basePath).toBe('/document-layouts')
-    expect(moduleScreen.defaultMode).toBe(OPEN_MODE_PAGE)
-    expect(moduleScreen.generateRoutes).not.toBe(false)
+    expect(moduleDefinition.domain).toBe('document-layouts')
+    expect(moduleDefinition.basePath).toBe('/document-layouts')
+    expect(moduleDefinition.defaultMode).toBe(OPEN_MODE_PAGE)
+    expect(moduleDefinition.generateRoutes).not.toBe(false)
   })
 })
 

@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { StaffCourseDetailView } from '@/features/staff-courses/staff-course-detail'
-import { moduleScreen } from '@/features/staff-courses/staff-course-screens'
+import { moduleDefinition } from '@/features/staff-courses/staff-course-module'
 import type { StaffCourseDetail } from '@/features/staff-courses/types'
 
 /** The detail edits every row in place, each save a PATCH of that field alone. */
@@ -94,6 +94,6 @@ describe('StaffCourseDetailView', () => {
   })
 
   it('registers as a module with the staff-courses domain and no edit route', () => {
-    expect(moduleScreen).toMatchObject({ domain: 'staff-courses', basePath: '/staff-courses', generateEditRoute: false })
+    expect(moduleDefinition).toMatchObject({ domain: 'staff-courses', basePath: '/staff-courses', generateEditRoute: false })
   })
 })

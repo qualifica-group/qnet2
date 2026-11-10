@@ -1,4 +1,5 @@
 import { apiClient } from '@/api/client'
+import { BOOT_REQUEST_TIMEOUT_MS } from '@/api/boot-request'
 import type { ApiResponse } from '@/api/types'
 import type {
   AbilityMap,
@@ -31,7 +32,9 @@ export async function logout(): Promise<void> {
 }
 
 export async function fetchMe(): Promise<User> {
-  const { data } = await apiClient.get<ApiResponse<User>>('/auth/me')
+  const { data } = await apiClient.get<ApiResponse<User>>('/auth/me', {
+    timeout: BOOT_REQUEST_TIMEOUT_MS,
+  })
   return data.data
 }
 

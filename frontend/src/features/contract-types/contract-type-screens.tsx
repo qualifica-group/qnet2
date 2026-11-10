@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -6,9 +6,8 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { contractTypeKeys, fetchContractType } from '@/features/contract-types/api'
 import { ContractTypeForm } from '@/features/contract-types/contract-type-form'
 import { ContractTypeDetailView } from '@/features/contract-types/contract-type-detail'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
-import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
-import { CONTRACT_TYPES_DOMAIN, type ContractType } from '@/features/contract-types/types'
+import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleScreens } from '@/features/modules/types'
+import { type ContractType } from '@/features/contract-types/types'
 
 /** Content-only `contract-types` screens for the module registry (spec 0042). */
 export function ContractTypeDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
@@ -55,17 +54,8 @@ export function ContractTypeFormScreen({ mode, onSuccess, onCancel }: ModuleForm
   return <ContractTypeForm onSuccess={handleSuccess} onCancel={onCancel} />
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: CONTRACT_TYPES_DOMAIN,
-  basePath: `/${CONTRACT_TYPES_DOMAIN}`,
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.contractTypes',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: ContractTypeDetailScreen,
   FormScreen: ContractTypeFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The create form renders its own identity band, so hosts must not stack a second heading.
-  formOwnsHeader: true,
 }

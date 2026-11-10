@@ -24,7 +24,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Se hai dei sottoposti, vedi in automatico anche i task in cui almeno un assegnatario è un tuo sottoposto, anche indiretto (fino in fondo alla catena dei responsabili), compresi i colleghi disattivati: non serve alcun permesso dedicato, basta poter vedere i task. Vedere un task della tua sede o del tuo team non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**.',
+          text: 'Se hai dei sottoposti, vedi in automatico anche i task in cui almeno un assegnatario è un tuo sottoposto, anche indiretto (fino in fondo alla catena dei responsabili), compresi i colleghi disattivati: non serve alcun permesso dedicato, basta poter vedere i task. Se puoi vedere i Task e le Commesse, vedi anche i task delle commesse che vedi (quelle di cui sei Responsabile o Partecipante, o che vedi per sede, competenza o con Visualizza tutti), anche senza avere un ruolo sul task: è il caso dei task arrivati dal vecchio gestionale, che di solito non hanno assegnatari. Vedere un task della tua sede, del tuo team o di una tua commessa non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**.',
         },
         {
           type: 'tip',
@@ -170,7 +170,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un **Task privato** è visibile solo al creatore, al richiedente, agli assegnatari e agli osservatori: chi ha il permesso Visualizza tutti o Visualizza per sede e il responsabile di un assegnatario non lo vedono (il super-amministratore resta l\'unica eccezione).',
+          text: 'Un **Task privato** è visibile solo al creatore, al richiedente, agli assegnatari e agli osservatori: chi ha il permesso Visualizza tutti o Visualizza per sede, il responsabile di un assegnatario e chi vede la commessa del task non lo vedono (il super-amministratore resta l\'unica eccezione).',
         },
         {
           type: 'note',

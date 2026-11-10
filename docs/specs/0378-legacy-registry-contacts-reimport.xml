@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0378-legacy-registry-contacts-reimport" status="approved" owner="nicola" date="2026-11-10">
+
+  <goal>
+    I contatti delle anagrafiche migrate dal legacy arrivano tutti: il legacy divide e pulisce i campi scritti a mano, un comando una tantum aggiunge in qnet-2 quelli mancanti.
+  </goal>
+
+  <context>
+    D-1 Segnalazione utenti 2026-11-10: contatti delle anagrafiche importati male. Sul DB di sviluppo i valori puliti coincidono; circa 1.300 valori del legacy erano stati scartati dalla validazione del tipo: piu' numeri nello stesso campo (`081 5435163, 081 5434440`), prefisso con la barra (`081/5721567`), nome dopo il numero, email nel campo telefono o fax, segnaposto (`NP`, `NON TROVATO`).
+    D-2 Per backend.md §9 la pulizia sta nel legacy (`LegacyContactFields`); qnet-2 aggiunge solo la lettura di `extra_contacts` e la validazione difensiva gia' esistente.
+    D-3 Contratto additivo: i sei campi scalari restano (primo valore valido di ciascun tipo, `phone2` = secondo telefono); i valori in piu' vanno in `extra_contacts`. Un qnet-2 non aggiornato continua a funzionare.
+    D-4 Tipo dal campo e dalla forma: email nel campo PEC = PEC, email altrove = email; numero nel campo fax = fax, altrove = telefono; siti solo dal campo sito. Ordine = ordine dei campi; doppioni (senza maiuscole) scartati.
+    D-5 Il testo scritto accanto a un numero diventa `label` solo per i valori in `extra_contacts`: i campi scalari non portano etichetta.
+    D-6 Il comando non modifica ne' cancella nulla: aggiunge un contatto solo se sulla scheda non c'e' gia' lo stesso tipo con lo stesso valore normalizzato (`normalized_value`). Diventa principale solo se la scheda non ha ancora un principale di quel tipo. Nessuna voce nel log attivita'.
+    D-7 Il riallineamento (spec 0375) resta invariato: allinea solo i principali; i nuovi principali puliti entrano anche da li'.
+    D-8 Richiesta utente 2026-11-10: sotto i Contatti di un'anagrafica migrata compare "Non trovi un contatto? Controlla nel vecchio QNet", come la nota dei Documenti (spec 0343), con lo stesso link (`legacy_record_paths.registry`). `LegacyDocumentsNote` diventa il componente condiviso `LegacyRecordNote`.
+  </context>
+
+  <contract>
+    <endpoint>GET legacy `registries` (anche con `only_ids`): `email`, `pec`, `phone`, `phone2`, `fax`, `website`: ?string, ciascuno un solo valore valido; `extra_contacts`: [{ type: ("email"|"pec"|"phone"|"fax"|"website"), value: string, label: ?string (max 100) }].</endpoint>
+    <endpoint>GET /api/registries/{id}: `legacy_url`: ?string, la pagina del legacy dell'anagrafica migrata (`LegacyRecordLink::forRecord`), null se creata in QNet o senza host legacy.</endpoint>
+    <endpoint>`php artisan migrations:reimport-registry-contacts [--apply] [--output=path.xlsx]`: senza `--apply` simula; report Excel con i fogli `Contatti aggiunti` (legacy_id, qnet2_id, registry, type, value, label, is_primary) e `Anagrafiche saltate` (legacy_id, qnet2_id, registry, reason). Default in `storage/app/private/realign/`.</endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>Legacy: `App\Support\Migration\LegacyContactFields`, `RegistryMigrationController::mapCompany`; rimosso `LegacyRegistryFields::website`, assorbito.</item>
+      <item>qnet-2: `MapsLegacyRegistryProfile::buildExtraContacts`, `RegistryContactsBackfill`, comando `ReimportLegacyRegistryContacts`.</item>
+      <item>Nota sotto i Contatti del dettaglio anagrafica: `RegistryResource.legacy_url`, `LegacyRecordNote`, `contactsFooter` di `PersonalDataRecordSections`; guida `registries` IT/EN, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Referenti (`contacts` del legacy): stesso problema possibile, da misurare a parte.</item>
+      <item>Valori irrecuperabili (`impresa.iridepec.it`, `NON TROVATO`): restano esclusi.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Dato un telefono legacy `081 5435163, 081 5434440`, quando il legacy lo invia, allora `phone` = `081 5435163` e `phone2` = `081 5434440`.</criterion>
+    <criterion id="AC-002">Dato un valore legacy con email nel campo telefono, quando il legacy lo invia, allora l'email arriva come email e il telefono resta vuoto.</criterion>
+    <criterion id="AC-003">Dati `extra_contacts` validi, quando importo l'anagrafica, allora diventano contatti non principali con la loro etichetta; un tipo sconosciuto o un valore non valido e' saltato con un avviso.</criterion>
+    <criterion id="AC-004">Data una scheda con contatti gia' presenti (anche manuali), quando lancio il comando con `--apply`, allora aggiunge solo i mancanti e non modifica gli esistenti.</criterion>
+    <criterion id="AC-005">Dato il comando senza `--apply`, quando termina, allora nulla e' scritto e il report elenca cosa verrebbe aggiunto.</criterion>
+    <criterion id="AC-006">Dato un secondo lancio con `--apply`, quando termina, allora non aggiunge nulla.</criterion>
+    <criterion id="AC-007">Dato un record legacy senza nome, quando lancio il comando, allora l'anagrafica e' saltata ed elencata nel report.</criterion>
+    <criterion id="AC-008">Data un'anagrafica migrata, quando apro il dettaglio, allora sotto i Contatti vedo "Non trovi un contatto? Controlla nel vecchio QNet" con il link alla sua pagina nel legacy, in una nuova scheda.</criterion>
+    <criterion id="AC-009">Data un'anagrafica creata in QNet, o senza host legacy configurato, quando apro il dettaglio, allora la nota non compare.</criterion>
+  </acceptance>
+</spec>

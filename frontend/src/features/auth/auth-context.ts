@@ -6,6 +6,10 @@ export interface AuthContextValue {
   isAuthenticated: boolean
   /** True while the persisted token is being validated on first load. */
   isInitializing: boolean
+  /** True when validating the persisted token timed out: the session is kept and the user can retry. */
+  hasInitTimedOut: boolean
+  /** Re-runs the token validation after a timeout. */
+  retryInit: () => void
   login: (payload: LoginPayload) => Promise<void>
   logout: () => Promise<void>
   /** The original actor's identity while impersonating another user, else null. */

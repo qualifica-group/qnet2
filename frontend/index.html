@@ -9,7 +9,28 @@
     <title>%VITE_APP_NAME%</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static first frame of AppSplashScreen, shown while the JS bundle downloads;
+           React replaces it on first render. Keep in sync with app-splash-screen.tsx. -->
+      <div
+        role="status"
+        style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #fff"
+      >
+        <div style="display: flex; align-items: center; justify-content: center; gap: 2px">
+          <img
+            alt="%VITE_APP_NAME%"
+            src="/brands/logo.svg"
+            style="height: 96px; width: auto; transform: translateY(-36px) rotate(180deg); filter: drop-shadow(0 12px 14px rgb(0 0 0 / 0.08))"
+          />
+          <img
+            alt=""
+            aria-hidden="true"
+            src="/brands/logo_parziale.svg"
+            style="height: 44px; width: auto; margin-left: -20px; opacity: 0"
+          />
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

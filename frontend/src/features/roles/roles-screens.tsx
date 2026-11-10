@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- module registry adapter: exports the `moduleScreen` descriptor alongside its screen components (spec 0042 pattern, same as `project-screens.tsx`) */
+/* eslint-disable react-refresh/only-export-components -- module registry adapter: exports the `moduleScreens` map alongside its screen components (spec 0042 pattern, same as `project-screens.tsx`) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -7,11 +7,10 @@ import { fetchRole, roleDetailQueryKey } from '@/features/roles/api'
 import { RoleForm } from '@/features/roles/role-form'
 import { RoleDetailView } from '@/features/roles/role-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { RoleDetail } from '@/features/roles/types'
 
@@ -95,18 +94,8 @@ export function RoleFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'roles',
-  basePath: '/roles',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.roles',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: RoleDetailScreen,
   FormScreen: RoleFormScreen,
-  // The detail IS the edit form (spec 0230): no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band (title + actions on one row), so
-  // the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

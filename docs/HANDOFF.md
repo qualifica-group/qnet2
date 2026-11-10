@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Chi vede la commessa vede i suoi task (spec 0379) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
+
+- Segnalazione: Noemi Nigliato, Responsabile di COM-20053, vedeva 0 task su 18 nel task board. I task migrati hanno solo creatore/richiedente (in produzione 341.345 task di commessa su 375.342 senza assegnatari), e nessun tier li raggiungeva.
+- Regola (decisione utente): nuovo tier `App\Services\Tasks\TaskWorkOrderTier`, chiamato da `TaskVisibilityScope`. Chi vede la commessa (`WorkOrderVisibilityScope` + `work-orders.view`) vede i suoi task NON privati, in sola lettura. Con visibilita' parziale sulle commesse i task entrano nella UNION della membership; con `work-orders.viewAll` o competenza "tutte" scatta il ramo `is_private=false AND work_order_id IS NOT NULL` (nuovo `WorkOrderVisibilityScope::seesEveryWorkOrder`).
+- Anche: `TaskNotable` (lettori della commessa menzionabili sui task non privati), filtro Assegnazione "Tutti i visibili" per chi ha `work-orders.view`.
+- Verifica: `TaskWorkOrderVisibilityTest` 9/9; suite Tasks, WorkOrders, Notes, TimeEntries, Stats verdi (1.601 test); Pint ok; guide `tasks` e `work-orders` IT/EN + parita' verdi; manuale Claude Docs aggiornato. Su copia di produzione: Noemi 18/18, conteggio per chi ha 1.916 commesse 0,44 s.
+- `tsc -b --force`: 4 errori in `features/registries/*` del lavoro spec 0378 in corso, non di questa modifica.
+
+## Contatti delle anagrafiche: pulizia nel legacy + reimport una tantum (spec 0378) (2026-11-10) — VERDE MIRATO, COMMITTATO (qnet-2 e legacy), NOTA CONTATTI NON PROVATA NEL BROWSER
+
+- Segnalazione: contatti delle anagrafiche importati male. Causa: campi legacy scritti a mano (piu' numeri o email nello stesso campo, `081/5721567`, nome dopo il numero, email nel telefono/fax, `NP`) scartati interi dalla validazione del tipo.
+- Legacy (`../qnet`, non committato): nuovo `App\Support\Migration\LegacyContactFields::split`, usato da `RegistryMigrationController::mapCompany`; rimosso `LegacyRegistryFields::website` (assorbito). Contratto additivo: scalari `email/pec/phone/phone2/fax/website` = un valore valido ciascuno, piu' `extra_contacts: [{type, value, label}]`. Verificato su dati reali via tinker + `php -l`.
+- qnet-2: `MapsLegacyRegistryProfile::buildExtraContacts` (extra non principali con label); comando `php artisan migrations:reimport-registry-contacts [--apply] [--output=]` (`RegistryContactsBackfill`): aggiunge solo i contatti mancanti per tipo + `normalized_value`, mai modifica/cancella, principale solo se manca, senza activity log. Report Excel in `storage/app/private/realign/`.
+- Test: `RegistriesSourceImportTest` (+1), `Realign/RegistryContactsBackfillTest` (4); `tests/Feature/Migration` 921 verdi; Pint pulito.
+- Simulazione sul DB dev contro il legacy locale: 29.771 anagrafiche lette, 1.689 contatti da aggiungere (843 email, 776 telefoni, 53 fax, 14 PEC, 3 siti; 1.151 principali), 0 saltate. Durante il lavoro il DB dev e' stato modificato da un'altra sessione (anagrafiche 30.386 -> 30.740).
+- Nota sotto i Contatti del dettaglio anagrafica migrata: "Non trovi un contatto? Controlla nel vecchio QNet" (AC-008/009). Backend `RegistryResource.legacy_url` via `LegacyRecordLink::forRecord` (nuovo, usato anche da `forOwner`); frontend `LegacyDocumentsNote` -> `components/detail/legacy-record-note.tsx` (`LegacyRecordNote`, prop `note`), chiavi link spostate in `common.legacyRecordLink*`, nuova `registries.contactsLegacyNote`, prop `contactsFooter` su `PersonalDataRecordSections`. Test: `Registries/RegistryLegacyUrlTest` (2), `registry-detail.test.tsx` (+2); Registries BE 155 verdi, Vitest registries/attachments/personal-data/detail/help 475 verdi, tsc -b e ESLint puliti. Guida `registries` IT/EN e manuale Claude Docs aggiornati. Non provato nel browser.
+- Nota: `tests/Feature/Registries/RegistryCrudTest.php` era gia' a 506 righe (oltre il limite di 500), non toccato.
+- Da fare: deploy prima del legacy poi di qnet-2, in produzione simulazione poi `--apply`. Fuori scope: stesso problema probabile sui referenti (`contacts` legacy).
+
+## Avvio dell'app: bundle iniziale ridotto e niente piu' schermate bloccate (2026-11-10) — NON PROVATO NEL BROWSER
+
+- Problema segnalato: al primo caricamento spesso resta lo splash bianco o la schermata grigia con la rotella.
+- Cause misurate: (1) `module-registry.ts` caricava in eager i 66 `*-screens.tsx`, quindi tutta l'app (AG Grid, tiptap, pusher...) finiva nel bundle iniziale: JS iniziale 7,1 MB (1,9 MB gzip); (2) `GET /config` e `GET /auth/me` senza timeout: con server lento splash o loader restavano su per sempre; (3) nessun `Suspense` attorno all'`Outlet` di `AppLayout`: ogni pagina lazy faceva salire il fallback fino al `FullScreenLoader` di `App` (schermata grigia al posto di tutta l'app).
+- Registro moduli (spec 0042) diviso in due file per modulo: `<name>-module.ts` esporta `moduleDefinition` (metadati, glob eager, deve restare senza import pesanti) e `<name>-screens.tsx` esporta `moduleScreens` (`DetailScreen`/`FormScreen`, glob lazy). Il registro (`module-registry.tsx`) avvolge ogni schermata in un proprio `Suspense` con `DetailLoading` e riusa `lazyRoute` (reload dopo deploy): gli host non cambiano. Tipi nuovi `ModuleDefinition`/`ModuleScreens` in `features/modules/types.ts`. `DetailPageActions` resta nei metadati (oggi nessun modulo lo usa). Nuovo modulo = entrambi i file, altrimenti il registro lancia un errore all'avvio.
+- Timeout: `BOOT_REQUEST_TIMEOUT_MS` (10 s) e `isTimeoutError` in `src/api/boot-request.ts`, solo su config e me. La config non ritenta dopo un timeout (subito la schermata Riprova). Un timeout su `me` NON fa logout: `AuthContextValue.hasInitTimedOut`/`retryInit`, `ProtectedRoute` mostra `BootErrorScreen` (estratta da `ConfigGate`, chiave `config.error.timeout`).
+- `index.html`: copia statica del primo fotogramma dello splash dentro `#root` (va tenuta allineata ad `app-splash-screen.tsx`). `AppLayout`: `Suspense` con `PageLoader` attorno all'`Outlet`.
+- `en.ts` era gia' a 514 righe (oltre il limite): `config`/`appVersion`/`theme` spostati in `{en,it}-app-shell.ts`.
+- Test: 12 test leggevano i metadati da `moduleScreen` -> ora `moduleDefinition` dal file `-module.ts` (stesse asserzioni); i mock di `opportunity-screens` nei test lead espongono `moduleScreens`; l'asserzione su `get('/config')` ora include il timeout (requisito cambiato).
+- Misura build: JS iniziale da 7,1 MB / 1,9 MB gzip a 2,3 MB / 644 KB gzip. Resta 1 MB di traduzioni IT+EN caricate all'avvio (`client-*.js`): prossima ottimizzazione possibile (caricare solo la lingua attiva), non fatta.
+- Da verificare: avvio nel browser (splash, login, apertura di un modulo in pagina e in modale); in produzione `/assets/*` servito compresso e con cache lunga. Manuale: nessun impatto.
+
+## Codici sequenziali: i codici manuali col prefisso non bloccano piu' la numerazione (2026-11-10) — VERDE MIRATO, NON COMMITTATO
+
+- Bug in produzione: import lead (`leads-import-errors-13.csv`), 34 righe tutte in `Duplicate entry 'QUO-106264'`. `GeneratesSequentialCode::lastCodeQuery` ordinava per lunghezza e poi per stringa: un codice manuale piu' lungo con lo stesso prefisso (es. `QUO-106263 ...`) finiva in cima e ogni creazione automatica proponeva un codice gia' preso. Righe annullate per intero (transazione per riga), nessun dato parziale, notifiche non partite.
+- Fix: contano solo i codici `{prefix}-{cifre}` (MySQL `REGEXP`, SQLite coppia `GLOB`), ordinati per valore numerico (`CAST(SUBSTR(...) AS UNSIGNED|INTEGER)`). Vale per QUO/PRJ/CMP/PRD/COM. Codici manuali liberi restano ammessi (AC-067, nessuna validazione di formato aggiunta).
+- Test: nuovo caso in `tests/Feature/Quotes/QuoteCodeHttpTest.php` (rosso prima del fix). Verdi: Quotes, WorkOrders, codici Product/Project/Campaign, Imports, Leads, migrazione offerte. Rossi solo i 3 `QuoteDocumentPdfTest` per LibreOffice assente in locale. Ramo MySQL verificato sul DB dev (`previewNextCode` = `QUO-106207`).
+- Da fare: deploy, poi rilanciare in produzione le 34 righe fallite. Manuale: nessun impatto.
+
 ## RDA: prezzo modificabile sulle righe Approvate + fornitore obbligatorio evidente verso Ordinato — VERDE, COMMITTATO 05927431 (2026-11-10)
 
 - Segnalazione utente: in RDA non si poteva inserire il prezzo di una riga gia' Approvata (D-10 la bloccava) e

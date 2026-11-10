@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -8,11 +8,10 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchFinancialAccount } from '@/features/financial-accounts/api'
 import { FinancialAccountForm } from '@/features/financial-accounts/financial-account-form'
 import { FinancialAccountDetailView } from '@/features/financial-accounts/financial-account-detail'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { FinancialAccountDetail } from '@/features/financial-accounts/types'
 
@@ -136,16 +135,8 @@ function FinancialAccountEditScreen({
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'financial-accounts',
-  basePath: '/financial-accounts',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.financialAccounts',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: FinancialAccountDetailScreen,
   FormScreen: FinancialAccountFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
-  detailOwnsEditAction: true,
 }

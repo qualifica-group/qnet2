@@ -73,14 +73,15 @@ trait MapsLegacyRegistryProfile
 
     /**
      * Email, PEC, phone, second phone (non-primary, so the main phone stays
-     * the primary one), fax and website.
+     * the primary one), fax and website, then the `extra_contacts` the legacy
+     * split out of the same columns (spec 0378), all non-primary.
      *
      * @param  array<string, mixed>  $record
      * @return array{0: array<int, ContactInput>, 1: array<int, string>}
      */
     private function buildContacts(array $record): array
     {
-        return $this->buildContactInputs($record, [
+        [$inputs, $warnings] = $this->buildContactInputs($record, [
             ['field' => 'email', 'type' => ContactTypeEnum::Email, 'label' => 'Email'],
             ['field' => 'pec', 'type' => ContactTypeEnum::Pec, 'label' => 'PEC'],
             ['field' => 'phone', 'type' => ContactTypeEnum::Phone, 'label' => 'Telefono'],
@@ -88,6 +89,38 @@ trait MapsLegacyRegistryProfile
             ['field' => 'fax', 'type' => ContactTypeEnum::Fax, 'label' => 'Fax'],
             ['field' => 'website', 'type' => ContactTypeEnum::Website, 'label' => 'Sito web'],
         ]);
+        [$extraInputs, $extraWarnings] = $this->buildExtraContacts($record);
+
+        return [[...$inputs, ...$extraInputs], [...$warnings, ...$extraWarnings]];
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array{0: array<int, ContactInput>, 1: array<int, string>}
+     */
+    private function buildExtraContacts(array $record): array
+    {
+        $inputs = [];
+        $warnings = [];
+
+        foreach ((array) ($record['extra_contacts'] ?? []) as $extra) {
+            $type = ContactTypeEnum::tryFrom((string) ($extra['type'] ?? ''));
+
+            if ($type === null) {
+                $warnings[] = "Unknown extra contact type '".($extra['type'] ?? '')."', skipped.";
+
+                continue;
+            }
+
+            $field = "extra_contacts.{$type->value}";
+            [$typeInputs, $typeWarnings] = $this->buildContactInputs([$field => $extra['value'] ?? null], [
+                ['field' => $field, 'type' => $type, 'label' => $this->blankToNull($extra['label'] ?? null), 'primary' => false],
+            ]);
+            array_push($inputs, ...$typeInputs);
+            array_push($warnings, ...$typeWarnings);
+        }
+
+        return [$inputs, $warnings];
     }
 
     /**

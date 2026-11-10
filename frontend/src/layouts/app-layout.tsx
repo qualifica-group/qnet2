@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +16,7 @@ import { useAuth } from '@/features/auth/use-auth'
 import { ImpersonationBanner } from '@/features/auth/impersonation-banner'
 import { VersionUpdateBanner } from '@/components/version-update-banner'
 import { TopLoadingBar } from '@/components/top-loading-bar'
+import { PageLoader } from '@/components/page-loader'
 import { Separator } from '@/components/ui/separator'
 import {
   SidebarInset,
@@ -82,7 +84,11 @@ export function AppLayout() {
             </header>
             <OnboardingProvider>
               <main className="flex flex-1 flex-col gap-4 p-4">
-                <Outlet />
+                {/* Without this boundary a lazy page suspends up to App's full-screen
+                    loader, which hides the sidebar and header until it arrives. */}
+                <Suspense fallback={<PageLoader />}>
+                  <Outlet />
+                </Suspense>
               </main>
               <FloatingAiAssistant />
             </OnboardingProvider>

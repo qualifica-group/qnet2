@@ -192,3 +192,23 @@ it('AC-069b: next-code is 403 without quotes.create', function () {
 
     $this->getJson('/api/quotes/next-code')->assertForbidden();
 });
+
+it('next-code and POST ignore a non-standard manual QUO- code instead of colliding with the sequence', function () {
+    quoteCodeNewStatus();
+    $opportunity = Opportunity::factory()->create();
+    $actor = quoteCodeUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    // Production bug (lead import, 2026-11-10): a longer manual code sharing
+    // the prefix ("QUO-0004 copia", or a zero-padded "QUO-00004") ranked
+    // above QUO-0005, so every automatic create proposed the taken QUO-0005.
+    foreach (['QUO-0005', 'QUO-0004 copia', 'QUO-0004/1', 'QUO-00004'] as $code) {
+        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'code' => $code]);
+    }
+
+    $this->getJson('/api/quotes/next-code')->assertOk()->assertJsonPath('data.code', 'QUO-0006');
+
+    $this->postJson('/api/quotes', ['title' => 'Sequenziale', 'opportunity_id' => $opportunity->id, 'offer_lines' => quoteCodeOfferLine()])
+        ->assertCreated()
+        ->assertJsonPath('data.code', 'QUO-0006');
+});

@@ -6,7 +6,7 @@ import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { CostTypeDetailView } from '@/features/cost-types/cost-type-detail'
-import { moduleScreen } from '@/features/cost-types/cost-type-screens'
+import { moduleDefinition } from '@/features/cost-types/cost-type-module'
 import type { CostTypeDetailWithPermissions } from '@/features/cost-types/types'
 
 /**
@@ -108,7 +108,7 @@ describe('CostTypeDetailView - in-place editing (spec 0249 AC-006)', () => {
     render(<CostTypeDetailView costType={costType()} />)
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    expect(moduleScreen.generateEditRoute).toBe(false)
+    expect(moduleDefinition.generateEditRoute).toBe(false)
     for (const key of ['name', 'description', 'nature', 'color', 'isActive']) {
       expect(pencilOf(`costTypes.form.${key}`)).toBeInTheDocument()
     }
