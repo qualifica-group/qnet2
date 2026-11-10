@@ -27,9 +27,10 @@ final class CategoryInheritanceRules
      *
      * "DIL" sells an offer with a field set of its OWN (user directive
      * 2026-09-10): the fields ContactProcessingAttributeCatalogue assigns
-     * on it, not the whole Formazione set — "Dati corso", "Dati Aula" and the
-     * training block of "Dati Lavorazione Contatto" — it would otherwise pull
-     * down from the root. It stays a child of "Formazione": the barrier
+     * on it, not the whole Formazione set — "Dati corso" and the training
+     * block of "Dati Lavorazione Contatto" — it would otherwise pull down from
+     * the root. "Dati Aula" is assigned back on DIL itself
+     * (QualificaCatalogSeeder::CATALOG_QUOTE_ATTRIBUTES, task 427536). It stays a child of "Formazione": the barrier
      * changes what it resolves, never where it hangs.
      *
      * "Corsi E-Campus" likewise (user directive 2026-10-01): an online degree

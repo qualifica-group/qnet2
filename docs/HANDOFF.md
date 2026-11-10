@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Task urgenti assegnati a Nicola (2026-11-10) — VERDE MIRATO, COMMITTATO
+
+- **427126 + richiesta utente**: la ricerca rapida di Commesse, Opportunita', Offerte e Contratti cerca anche il nome del cliente (`registry` searchable). Commesse: `WorkOrderRegistryColumn::applySearch` (anche via righe multi-offerta); Opportunita': `OpportunityRelationColumns::applySearch` + `OpportunitiesTableDefinition::applyDerivedSearch`; Offerte: `QuoteRegistryColumn::applySearch` via `QuoteRelationColumns` + `QuotesTableDefinition::applyDerivedSearch`; Contratti: ramo `registry` in `ContractRelationColumns::applySearch`. Spec 0093 aggiornata. Test: `tests/Feature/Table/ClientNameQuickSearchTest.php`, `WorkOrdersTableMultiQuoteTest` (+1), `WorkOrderTableTest` (searchable +registry). Verificato sul DB: ABC (registry 412) "napoli" trova 6/6 commesse, 2/2 opportunita', offerte, contratti.
+- **426900** (offerte@ senza email): Gestione Richieste notifica OGNI gestore appena aggiunto, in qualsiasi posizione e canale (pannello, cella Operatore, colonne per posizione 0382), come la scheda Offerta (0186 D-3). `RequestOperatorWriter::apply/applyPosition/applySlots` restituiscono gli attached di `QuoteManagerWriter::sync()`; `RequestAttributionWriter::notifyAssignments()` unico punto. Muti: spostati, rimozioni, chi assegna se stesso, Tutor massivo. Spec 0097 D-6/AC-007 e 0382 D-7 riviste (REQUIREMENT CHANGED: AC-007 diviso in due test).
+- **427519**: `/identity/duplicate-check` restituisce `registries: {id,name}[]` per match (se stessa / aziende del referente / nessuna per utente); `IdentityDuplicateWarning` prop opzionale `onSelectRegistry` -> pulsante "Usa <nome>"; collegato solo nel form di creazione richiesta (`request-create-client-section.tsx`). Spec 0037 delta. Test shape PII aggiornato (+`registries`).
+- **427536**: DIL riceve "Dati Aula" (`QualificaCatalogSeeder::CATALOG_QUOTE_ATTRIBUTES['DIL']`), barriera invariata; `PREVIOUS_OWN_ATTRIBUTES['DIL']` +3a revisione cosi' il layout seminato viene ricomposto. Nuovo `QualificaDilClassroomDataTest`. **In produzione: `php artisan db:seed --class=QualificaCatalogSeeder --force` (rispondere no all'import legacy)**; un layout DIL ritoccato a mano resta com'e' (aggiungere la sezione dal configuratore).
+- **427112**: nessun codice. Martina non ha `purchase-orders.view`: l'utente aggiunge "Ordini di acquisto (ODA) -> Visualizza" al ruolo. Nel DB locale manca un layout `purchase_orders` predefinito (PDF 422 per tutti): verificare in produzione.
+- **Aperti**: 426932 (layout preventivi: default id 1 e' carta Training; migrazione non ha portato `quotations.layoutquote_id`) attende decisione; 427544 (sostituire template ISO, layout id 4) attende il .docx (allegato solo in produzione).
+- Rossi NON nostri: `RequestManagementAllColumnsSortFilterTest` (managers sortable, commit 88aca589), `TableBulkDeleteTest` guarded/forbidden (lavoro InUseGuard non committato), `QualificaOperatorSeederTest` (importatore-richieste), `QuoteDocumentPdfTest` (LibreOffice assente).
+- Guide in-app IT/EN (request-management, work-orders, opportunities, quotes, contracts) + manuale Claude Docs aggiornati. NB: HANDOFF.md e' ~1,2 MB, oltre la soglia di 50 KB: va archiviato.
+
 ## Stati Task: riordinabili anche gli stati fissi (spec 0101 AC-047 rettificato) (2026-11-10) — VERDE, COMMITTATO
 
 - Richiesta utente: "voglio poter ordinare anche gli stati fissi dei task". Prima i 5 stati protetti erano fissati (Aperto/In corso in testa, le due chiusure in coda; "Assegnato" non si muoveva mai).
@@ -134,7 +145,7 @@
 - Misura build: JS iniziale da 7,1 MB / 1,9 MB gzip a 2,3 MB / 644 KB gzip. Resta 1 MB di traduzioni IT+EN caricate all'avvio (`client-*.js`): prossima ottimizzazione possibile (caricare solo la lingua attiva), non fatta.
 - Da verificare: avvio nel browser (splash, login, apertura di un modulo in pagina e in modale); in produzione `/assets/*` servito compresso e con cache lunga. Manuale: nessun impatto.
 
-## Codici sequenziali: i codici manuali col prefisso non bloccano piu' la numerazione (2026-11-10) — VERDE MIRATO, NON COMMITTATO
+## Codici sequenziali: i codici manuali col prefisso non bloccano piu' la numerazione (2026-11-10) — VERDE MIRATO, COMMITTATO
 
 - Bug in produzione: import lead (`leads-import-errors-13.csv`), 34 righe tutte in `Duplicate entry 'QUO-106264'`. `GeneratesSequentialCode::lastCodeQuery` ordinava per lunghezza e poi per stringa: un codice manuale piu' lungo con lo stesso prefisso (es. `QUO-106263 ...`) finiva in cima e ogni creazione automatica proponeva un codice gia' preso. Righe annullate per intero (transazione per riga), nessun dato parziale, notifiche non partite.
 - Fix: contano solo i codici `{prefix}-{cifre}` (MySQL `REGEXP`, SQLite coppia `GLOB`), ordinati per valore numerico (`CAST(SUBSTR(...) AS UNSIGNED|INTEGER)`). Vale per QUO/PRJ/CMP/PRD/COM. Codici manuali liberi restano ammessi (AC-067, nessuna validazione di formato aggiunta).
@@ -163,7 +174,7 @@
   (`APPROVED_EDITABLE_FIELDS = ['unit_price', 'vat_rate_id']`), FE `LineVatSelect` e "Scorpora IVA"
   (`LineActions.priceEditable`) seguono `can_update_price`. Nuovo test AC-023 IVA (147 test PurchaseRequests verdi).
 
-## Colonne dei campi flessibili guidate dal filtro categoria, categorie collegate (spec 0374 rev.2) (2026-11-09) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Colonne dei campi flessibili guidate dal filtro categoria, categorie collegate (spec 0374 rev.2) (2026-11-09) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente: le colonne `attr.*` tornano su Offerte, Commesse e Contratti senza linguette, export compreso. Supera la voce "via le colonne flessibili dagli elenchi" (commit 53a27f00), linguette e filtri precompilati restano com'erano. Opportunita', Commesse di Progetto e griglie dentro un record restano senza colonne.
 - Regola: `Tables\CategoryTabs\AttributeColumnCategories::fromFilters` (selezione = `product_category` se non vuoto, altrimenti `parent_category`; "Tutte" = nessuna; un id = quello; piu' id = solo se tutti nello stesso gruppo collegato). Ordine: categoria attuale, poi vecchie per id.
@@ -279,7 +290,7 @@
 
 - Come in `q-net` (qtask, commit `2a5fe8c`): `frontend/index.html` con `lang="it"` (era `en`) e `<meta name="google" content="notranslate">`; listener `languageChanged` in `src/i18n/index.ts` tiene `<html lang>` allineato alla lingua attiva (guardia su `document`: i `.test.ts` girano in node). Test `src/i18n/document-language.test.ts`. Da verificare a mano in Chrome: il popup non deve comparire dopo il nuovo build. Manuale: nessun impatto.
 
-## Commesse: tab per fase di lavorazione con conteggi, chiusura commesse da contratto come nel legacy (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+## Commesse: tab per fase di lavorazione con conteggi, chiusura commesse da contratto come nel legacy (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente. Tab in alto a destra su Commesse (solo pagina `processing`): Tutte, Da pianificare, In lavorazione, Concluse, Annullate, Disdette. `WorkOrderWorkPhase` (mai persistito) risolto da `WorkOrderWorkPhaseColumn`: colonna nascosta `work_phase` con filtro `set`; i primi tre = gruppi di "Stato lavorazione"; `closed` si divide sul contratto (`ContractStatus::closesAsTermination`: gruppo closed_lost tranne system_key `cancelled` = Disdette, altrimenti Annullate). Sui dati migrati Disdette 190 invece di 37 del legacy: decisione utente.
 - Conteggi: `aggregates()` di `WorkOrdersTableDefinition`, solo con `work_order_type=processing` (`QuoteScopedTableDefinition`). Nuovo hook del motore `filtersIgnoredByAggregates()`: `TableService` ricalcola gli aggregati senza quei filtri, cosi' il tab attivo non azzera gli altri; ricerca, filtri e visibilita' restano. FE: nuova prop `TableView.onAggregatesChange`, `useWorkPhaseTabs`, `WorkPhaseTabs`. Su dati dev ogni conteggio = righe del suo tab, 349 ms la richiesta `/rows`.
@@ -384,7 +395,7 @@
 - Test in `TaskSiteVisibilityTest` sullo statement eseguito. Pest task/note 165/165, Pint pulito. NON verificato su MySQL reale (non installato in locale):
   dopo il deploy riprovare la menzione. Se persiste, serve la riga `[BACKEND] API internal error` del log di produzione. Manuale: nessun impatto.
 
-## Dashboard in allestimento (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+## Dashboard in allestimento (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Decisione utente: `DashboardScreen` mostra il messaggio `dashboard.underConstruction.{title,description}` (chiavi al posto di
   `dashboard.empty`, non piu' usate) e continua a non fare chiamate dati. Guide IT/EN `dashboard` e `general` aggiornate.
@@ -397,7 +408,7 @@
 - Il costo resta: ogni utente con visibilita' completa ricalcola gli stessi `count(distinct)`, e al livello radice parte una query per
   ogni categoria radice (tutte e quattro le griglie). Cura proposta: cache condivisa per chi vede tutto (`GridCategoryTabsResolver`, chiave oggi per utente).
 
-## Dashboard: pagina vuota, nessuna lettura di dati (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+## Dashboard: pagina vuota, nessuna lettura di dati (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Emergenza produzione, decisione utente: `DashboardScreen` non monta piu' alcun blocco, `/dashboard` non fa chiamate dati.
 - Motivo residuo: il ramo squadra/sede di `TaskVisibilityScope::scopeToActor` resta in `OR` e fa ancora scansione completa di `tasks`
@@ -417,7 +428,7 @@
   La cura e' `TaskVisibilityScope::membershipTaskIds()` (voce sotto).
 - Da fare: verificati i tempi in produzione, ripristinare riga, import, test e guide. Manuale Claude Docs da allineare se lo spegnimento dura.
 
-## Task: filtro di visibilita' senza lettura di tutta la tabella (2026-11-09) — VERDE MIRATO, NON COMMITTATO
+## Task: filtro di visibilita' senza lettura di tutta la tabella (2026-11-09) — VERDE MIRATO, COMMITTATO
 
 - Bug in produzione: `GET /api/stats/tasks` oltre il limite di 25 s (errore MySQL 3024, utenti 22 e 173). Il ramo membership di
   `TaskVisibilityScope::scopeToActor` (OR su colonne + due EXISTS) leggeva tutta `tasks` in ognuna delle query del pannello.

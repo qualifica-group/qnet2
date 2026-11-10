@@ -61,7 +61,7 @@ final class OpportunityColumnCatalog
                 'editable' => true,
                 'nullable' => true,
             ],
-            [...self::derivedColumn('registry', 'opportunities.columns.registry'), ...self::editableRelation('registries', 'registry_id', nullable: false)],
+            [...self::derivedColumn('registry', 'opportunities.columns.registry'), 'searchable' => true, ...self::editableRelation('registries', 'registry_id', nullable: false)],
             [
                 ...self::derivedColumn('referent', 'opportunities.columns.referent'),
                 ...self::editableRelation('referents', 'referent_id'),

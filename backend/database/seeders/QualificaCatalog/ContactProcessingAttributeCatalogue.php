@@ -292,7 +292,8 @@ final class ContactProcessingAttributeCatalogue
      * could not recognise the layouts they wrote once the set has changed.
      *
      * "DIL" before the 2026-09-16 directive, then before "Residuo Ore" joined
-     * it (2026-09-24). Retired codes are listed as they stood:
+     * it (2026-09-24), then before "Dati Aula" joined it (task 427536,
+     * 2026-11-10). Retired codes are listed as they stood:
      * RETIRED_ATTRIBUTES filters them out, like the retirement strips them
      * from the persisted blob.
      *
@@ -307,6 +308,10 @@ final class ContactProcessingAttributeCatalogue
             [
                 'data_scelta_cpi', 'data_app_apl', 'dote_activation_date',
                 'dote_expiry_date', 'subsidy_type', 'id_corso', self::COURSE_SITE,
+            ],
+            [
+                'data_scelta_cpi', 'data_app_apl', 'dote_activation_date', 'dote_expiry_date',
+                self::DIL_REMAINING_HOURS, 'subsidy_type', 'id_corso', self::COURSE_SITE,
             ],
         ],
     ];

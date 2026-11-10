@@ -279,12 +279,14 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
             ['value' => 'closed', 'label' => 'Chiusa'],
         ]);
 
-    // One single assignment each, on the root, in the OFFERTA context (user
-    // directive 2026-09-08: they used to be product attributes).
+    // One assignment each on the root, in the OFFERTA context (user directive
+    // 2026-09-08: they used to be product attributes), plus one on "DIL", cut
+    // off the root by its barrier (requirement changed 2026-11-10, task 427536).
     $classroomPivot = DB::table('attribute_category')->whereIn('attribute_id', $classroomAttributes->pluck('id'))->get();
+    $dilId = ProductCategory::query()->where('name', 'DIL')->value('id');
 
-    expect($classroomPivot)->toHaveCount(count($classroomCodes))
-        ->and($classroomPivot->pluck('category_id')->unique()->all())->toBe([$formazione->id])
+    expect($classroomPivot)->toHaveCount(2 * count($classroomCodes))
+        ->and($classroomPivot->pluck('category_id')->unique()->sort()->values()->all())->toBe(collect([$formazione->id, $dilId])->sort()->values()->all())
         ->and($classroomPivot->pluck('context')->unique()->all())->toBe([AttributeContext::Quote->value]);
 
     // Inherited down the branch, not leaked onto the other root, and gone from

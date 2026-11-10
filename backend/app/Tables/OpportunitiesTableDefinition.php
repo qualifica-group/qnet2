@@ -438,6 +438,14 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * @param  Builder<Opportunity>  $query
+     */
+    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
+    {
+        return $this->relationColumns->applySearch($query, $columnId, $pattern);
+    }
+
+    /**
      * `operational_site` (spec 0056) is delegated to the shared
      * OperationalSiteColumn; every other simple-relation column falls
      * through to OpportunityRelationColumns' correlated subquery sort.

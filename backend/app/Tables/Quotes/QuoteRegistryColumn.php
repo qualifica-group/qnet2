@@ -41,6 +41,18 @@ final class QuoteRegistryColumn
     }
 
     /**
+     * Quick-search on the client's name (task 427126), OR-ed into the engine's search group.
+     *
+     * @param  Builder<Model>  $query
+     */
+    public function applySearch(Builder $query, string $pattern): void
+    {
+        $query->orWhereHas(self::RELATION_PATH, static function (Builder $registries) use ($pattern): void {
+            $registries->where(self::LABEL_COLUMN, 'like', $pattern);
+        });
+    }
+
+    /**
      * @param  Builder<Model>  $query
      */
     public function applySort(Builder $query, string $direction): void

@@ -311,7 +311,7 @@ final class RequestManagementService
             // D-7, the grid's position columns) — they address other slots of
             // the same pivot, so they compose with the two keys above.
             foreach ((array) ($data['manager_positions'] ?? []) as $position => $userId) {
-                $this->attributionWriter->applyManagerPosition($quote, (int) $position, $userId, $changed, $old);
+                $this->attributionWriter->applyManagerPosition($quote, (int) $position, $userId, $actor, $changed, $old);
             }
 
             // Step 4: reward assignments (spec 0059, AC-023; D-4/D-12) —

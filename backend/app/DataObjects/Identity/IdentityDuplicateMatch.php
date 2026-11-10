@@ -15,11 +15,13 @@ final readonly class IdentityDuplicateMatch
     /**
      * @param  string  $ownerType  morph alias of the holder ("user"|"registry"|"referent")
      * @param  array<int, string>  $matchedOn  subset of ["email","phone","tax_code","vat_number"], in that order
+     * @param  list<array{id: int, name: string}>  $registries  the anagrafiche the match leads to (task 427519): itself for an anagrafica, its companies for a referente, none for a user
      */
     public function __construct(
         public string $ownerType,
         public int $ownerId,
         public string $name,
         public array $matchedOn,
+        public array $registries = [],
     ) {}
 }

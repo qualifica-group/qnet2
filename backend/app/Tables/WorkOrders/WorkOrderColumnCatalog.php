@@ -119,6 +119,7 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
+                'searchable' => true,
             ],
             [
                 'id' => 'type',

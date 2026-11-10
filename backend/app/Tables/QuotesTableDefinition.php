@@ -411,6 +411,14 @@ class QuotesTableDefinition extends AbstractTableDefinition
     /**
      * @param  Builder<Quote>  $query
      */
+    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
+    {
+        return $this->relationColumns->applySearch($query, $columnId, $pattern);
+    }
+
+    /**
+     * @param  Builder<Quote>  $query
+     */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
         if ($columnId === self::OPERATIONAL_SITE_COLUMN) {

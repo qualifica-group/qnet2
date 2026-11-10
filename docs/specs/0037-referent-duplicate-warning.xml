@@ -138,6 +138,11 @@
             (non piu' sotto `referents`), con l'etichetta del tipo di titolare nel messaggio.</item>
       <item>Import lead: `LeadDuplicateMatcher` matcha anche su `vat_number` (colonne fiscali da
             allow-list, priorita' invariata: prima i contatti).</item>
+      <item>Delta 2026-11-10 (task 427519, decisione utente): ogni match porta anche
+            `registries: { id, name }[]`, le anagrafiche a cui conduce (se stessa per `registry`,
+            le aziende collegate per `referent`, nessuna per `user`). Solo id e nome di anagrafiche,
+            nessun contatto/codice fiscale/P.IVA: AC-005 invariato. Nel form di creazione di
+            Gestione Richieste ogni anagrafica e' un pulsante che la seleziona come cliente.</item>
       <item>Creazione richiesta (`POST /api/request-management`, ramo `client_*`): nuovo concern
             `ValidatesClientIdentityUniqueness` — CF/P.IVA/telefono gia' presenti nel namespace
             producono 422 su `client_identity.tax_code` / `client_identity.vat_number` /

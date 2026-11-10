@@ -9,6 +9,8 @@ use App\DataObjects\Identity\IdentityDuplicateMatch;
 use App\Enums\ContactTypeEnum;
 use App\Models\Contact;
 use App\Models\PersonalData;
+use App\Models\Referent;
+use App\Models\Registry;
 use App\Support\ContactValueNormalizer;
 use App\Support\IdentityUniquenessScope;
 use Illuminate\Database\Eloquent\Model;
@@ -202,15 +204,58 @@ final class IdentityDuplicateFinder
             ->get(['id', 'personable_type', 'personable_id']);
 
         $names = $this->ownerNames($cards);
+        $referentRegistries = $this->referentRegistries($cards);
 
         return $cards
-            ->map(fn (PersonalData $card): IdentityDuplicateMatch => new IdentityDuplicateMatch(
-                ownerType: (string) $card->personable_type,
-                ownerId: (int) $card->personable_id,
-                name: (string) ($names[(string) $card->personable_type][(int) $card->personable_id] ?? ''),
-                matchedOn: array_values(array_intersect(self::MATCH_ORDER, $channelsByCardId[$card->id])),
-            ))
+            ->map(function (PersonalData $card) use ($names, $referentRegistries, $channelsByCardId): IdentityDuplicateMatch {
+                $type = (string) $card->personable_type;
+                $ownerId = (int) $card->personable_id;
+                $name = (string) ($names[$type][$ownerId] ?? '');
+
+                return new IdentityDuplicateMatch(
+                    ownerType: $type,
+                    ownerId: $ownerId,
+                    name: $name,
+                    matchedOn: array_values(array_intersect(self::MATCH_ORDER, $channelsByCardId[$card->id])),
+                    registries: match ($type) {
+                        (new Registry)->getMorphClass() => [['id' => $ownerId, 'name' => $name]],
+                        (new Referent)->getMorphClass() => $referentRegistries[$ownerId] ?? [],
+                        default => [],
+                    },
+                );
+            })
             ->values()
+            ->all();
+    }
+
+    /**
+     * The companies each matched referente is linked to (task 427519), so the
+     * create form can pick the existing anagrafica in one click.
+     *
+     * @param  Collection<int, PersonalData>  $cards
+     * @return array<int, list<array{id: int, name: string}>> referent id => its anagrafiche
+     */
+    private function referentRegistries(Collection $cards): array
+    {
+        $referentIds = $cards
+            ->where('personable_type', (new Referent)->getMorphClass())
+            ->pluck('personable_id')
+            ->all();
+
+        if ($referentIds === []) {
+            return [];
+        }
+
+        return Referent::query()
+            ->whereIn('id', $referentIds)
+            ->with(['registries' => static fn ($query) => $query->select('registries.id', 'registries.name')->orderBy('registries.name')])
+            ->get(['id'])
+            ->mapWithKeys(static fn (Referent $referent): array => [
+                (int) $referent->id => $referent->registries
+                    ->map(static fn (Registry $registry): array => ['id' => (int) $registry->id, 'name' => (string) $registry->name])
+                    ->values()
+                    ->all(),
+            ])
             ->all();
     }
 

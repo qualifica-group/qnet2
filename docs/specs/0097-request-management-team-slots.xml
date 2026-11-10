@@ -86,6 +86,12 @@
       cambio di team che sposta lo slot 2 emette lo stesso `operator_id` in $changed/$old e
       la stessa `AssignmentNotifier::notify()` di oggi. In piu' viene loggato `manager_slots`
       quando cambia. Un cambio che NON tocca lo slot 2 non notifica nessuno.
+      [Rivista 2026-11-10, task 426900, decisione utente] Come la scheda Offerta (spec 0186
+      D-3): ogni gestore APPENA AGGIUNTO al team viene notificato nella sua posizione, in
+      qualsiasi slot e da qualsiasi canale di Gestione Richieste (pannello, cella Operatore,
+      colonne per posizione della spec 0382). Restano senza notifica: chi e' solo spostato o
+      rinumerato dentro il team, le rimozioni, chi assegna se stesso e l'assegnazione massiva
+      del Tutor (spec 0104 AC-009). Lo spostamento sullo slot 2 notifica il nuovo operatore.
     </decision>
   </decisions>
 
@@ -126,7 +132,9 @@
     AC-006 Le righe `role_field_permissions` gia' configurate su `operator_id` sopravvivono
            alla migrazione come `manager_slots`, e il `down()` le riporta indietro.
     AC-007 Spostare lo slot 2 via `manager_slots` notifica il nuovo operatore esattamente
-           come fa oggi il campo singolo; cambiare solo gli altri slot non notifica.
+           come fa oggi il campo singolo; [rivisto 2026-11-10, D-6] un collega nuovo in un
+           altro slot e' notificato in quella posizione, rimescolare chi e' gia' nel team non
+           notifica nessuno.
     AC-008 `manager_slots` e `operator_id` insieme nello stesso PATCH -> 422.
     AC-009 Nessuna regressione su bulk assign (`assign-operators`) e transfer: continuano a
            passare da `RequestOperatorWriter::apply()`.

@@ -8,8 +8,10 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Role;
 use App\Models\User;
+use App\Notifications\RecordAssignmentNotification;
 use App\Support\ManagerPositions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -322,6 +324,40 @@ it('AC-004: a person already on the team is moved, not duplicated', function ():
     expect($quote->managers()->where('users.id', $tutor->id)->count())->toBe(1)
         ->and($quote->managers()->wherePivot('position', 5)->first()?->id)->toBe($tutor->id)
         ->and($quote->managers()->wherePivot('position', ManagerPositions::GA1)->exists())->toBeFalse();
+});
+
+// Task 426900 (user decision 2026-11-10): whoever is newly put in a position
+// is notified in that position, like the Offerta card (spec 0186 D-3); a member
+// merely moved, and the actor assigning themselves, are not.
+it('a position cell notifies the newcomer in that position, mail included', function (): void {
+    Notification::fake();
+    $quote = positionColumnsQuote([ManagerPositions::OPERATOR => User::factory()->create()->id]);
+    $newcomer = User::factory()->create();
+    Sanctum::actingAs(positionColumnsActor());
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'manager_ga3',
+        'value' => $newcomer->id,
+    ])->assertOk();
+
+    Notification::assertSentTo($newcomer, function (RecordAssignmentNotification $notification) use ($newcomer): bool {
+        return $notification->via($newcomer) === ['database', 'mail']
+            && str_contains((string) $notification->toArray($newcomer)['message'], ' 3 ');
+    });
+    Notification::assertCount(1);
+});
+
+it('a position cell notifies nobody for a member moved within the team, nor for the actor themselves', function (): void {
+    Notification::fake();
+    $tutor = User::factory()->create();
+    $actor = positionColumnsActor();
+    $quote = positionColumnsQuote([ManagerPositions::GA1 => $tutor->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", ['column' => 'manager_ga5', 'value' => $tutor->id])->assertOk();
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", ['column' => 'manager_ga3', 'value' => $actor->id])->assertOk();
+
+    Notification::assertNothingSent();
 });
 
 it('AC-004: the position-2 cell still writes the Operatore', function (): void {

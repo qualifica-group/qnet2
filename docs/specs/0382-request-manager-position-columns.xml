@@ -27,7 +27,8 @@
         opzionale, default `editableField`): la chiave di scrittura resta per posizione.
     D-7 Scrittura: `updateWork` riceve `manager_positions` = [posizione => utente|null], una posizione per volta come la
         cella, con la stessa regola di applyGa1 (chi e' gia' nel team viene spostato, nessuna notifica). La voce di
-        cronologia resta `manager_ga{n}_id`.
+        cronologia resta `manager_ga{n}_id`. [Rivista 2026-11-10, task 426900] Chi entra NUOVO in una posizione riceve la
+        notifica di assegnazione (campanella + email) con la sua posizione: spec 0097 D-6 rivista.
     D-8 [superata da D-11] Default di visibilita' per linguetta: non serve piu', ogni colonna mostrata e' visibile.
     D-11 Richiesta utente 2026-11-10 (dopo la prima consegna): in una linguetta di categoria con etichette ci sono solo le
         colonne delle posizioni con etichetta (es. Formazione: Tutor, Operatore, Partner commerciale, Segnalatore, Operatore

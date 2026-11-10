@@ -46,7 +46,7 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
         ->and($columns['contract_expiry_date']['sortable'])->toBeTrue()
         ->and($columns['contract_expiry_date']['hasFilterValues'])->toBeFalse()
         ->and($columns['contract_expiry_date']['editable'] ?? false)->toBeFalse()
-        ->and($data['searchable'])->toEqualCanonicalizing(['code', 'title', 'contract_number']);
+        ->and($data['searchable'])->toEqualCanonicalizing(['code', 'title', 'contract_number', 'registry']);
 });
 
 it('the `type`/`status` badge columns declare their enumKey + full badges catalogue (AC-040)', function () {

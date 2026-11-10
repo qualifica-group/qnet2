@@ -26,6 +26,7 @@ class IdentityDuplicateMatchResource extends JsonResource
             'owner_id' => $this->ownerId,
             'name' => $this->name,
             'matched_on' => $this->matchedOn,
+            'registries' => $this->registries,
         ];
     }
 }

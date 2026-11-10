@@ -25,17 +25,25 @@ export interface IdentityDuplicateCheckPayload {
 /** Morph alias of the record holding a matched value — the whole identity namespace, as the write gate. */
 export type IdentityDuplicateOwnerType = 'user' | 'registry' | 'referent'
 
+/** An anagrafica a match leads to (task 427519): id and name only. */
+export interface IdentityDuplicateRegistry {
+  id: number
+  name: string
+}
+
 /**
  * One existing holder matching the submitted criteria. Deliberately carries
- * only `{ owner_type, owner_id, name, matched_on }` — never the raw contact
- * value, tax code or VAT number of the match, so the check cannot become a
- * PII exfiltration channel.
+ * only `{ owner_type, owner_id, name, matched_on, registries }` — never the
+ * raw contact value, tax code or VAT number of the match, so the check cannot
+ * become a PII exfiltration channel. `registries` is the match itself for an
+ * anagrafica, its companies for a referente, empty for a user.
  */
 export interface IdentityDuplicateMatch {
   owner_type: IdentityDuplicateOwnerType
   owner_id: number
   name: string
   matched_on: string[]
+  registries: IdentityDuplicateRegistry[]
 }
 
 interface IdentityDuplicateCheckResponse {

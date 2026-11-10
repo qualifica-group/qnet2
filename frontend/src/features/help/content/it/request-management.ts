@@ -95,7 +95,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: "Se il nuovo cliente che stai inserendo esiste già, sotto la scelta dell'anagrafica compare **Possibile duplicato**: scegli quell'anagrafica invece di crearne un'altra. Codice fiscale, partita IVA o telefono già presenti su un'altra scheda bloccano il salvataggio (vedi la guida **Anagrafiche**).",
+          text: "Se il nuovo cliente che stai inserendo esiste già, sotto la scelta dell'anagrafica compare **Possibile duplicato**: scegli quell'anagrafica invece di crearne un'altra. Il pulsante **Usa** accanto al duplicato la seleziona subito; se il telefono o l'email appartengono a un referente, il pulsante seleziona l'azienda a cui il referente è collegato. Codice fiscale, partita IVA o telefono già presenti su un'altra scheda bloccano il salvataggio (vedi la guida **Anagrafiche**).",
         },
         {
           type: 'warning',
@@ -150,7 +150,7 @@ const guide: HelpGuide = {
             "**Previsione commerciale**: data chiusura prevista, valore stimato e probabilità di successo. Sono i valori dell'opportunità: se cambiano qui, cambiano anche in **Opportunità** e nelle altre richieste della stessa opportunità.",
             "**Stato**: alcuni stati richiedono una **Nota**. Per uno stato validato serve almeno una riga offerta. Per chiudere non serve, né con esito positivo né con esito negativo: la riga prodotto diventa obbligatoria quando si valida il contratto.",
             "**Anagrafica**: il campo in alto mostra il cliente della richiesta e permette di sceglierne un altro. Il cambio vale per tutte le offerte dell'opportunità. Scelto un altro cliente, i suoi dati compaiono dopo il salvataggio e le modifiche fatte ai dati del cliente precedente non vengono salvate. Se c'è già un contratto, o il cliente arriva dal lead, il campo non è modificabile.",
-            '**Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**) e **Team** (**Supervisore** e **Gestori account**). Il **Commerciale** modificato qui vale solo per questa richiesta (l\'offerta): quello dell\'opportunità non cambia.',
+            '**Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**) e **Team** (**Supervisore** e **Gestori account**). Il **Commerciale** modificato qui vale solo per questa richiesta (l\'offerta): quello dell\'opportunità non cambia. Chi aggiungi tra i **Gestori account**, in qualsiasi posizione (anche dalle colonne **Gestore account** della tabella), riceve la notifica **Sei stato inserito come Gestore Account** nella campanella e per email; non la ricevono chi viene solo spostato di posizione e chi inserisce se stesso.',
             'Le **Informazioni aggiuntive**, che dipendono dalle categorie scelte.',
           ],
         },

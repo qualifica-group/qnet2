@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
-import type { Control } from 'react-hook-form'
+import { useMemo, useState } from 'react'
+import { useController, type Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { IdCard, MapPin, Phone, UserRound } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import type { ForSelectItem } from '@/features/for-select/types'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
+import type { IdentityDuplicateRegistry } from '@/features/identity-duplicates/duplicate-check-api'
 import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
 import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { AddressCreateField } from '@/features/personal-data/address-create-field'
@@ -54,7 +56,8 @@ interface RequestCreateClientSectionProps {
  * While a new client is being typed, the same live duplicate notice as the
  * anagrafica form sits under the picker (user directive 2026-10-08): a match
  * tells the operator to pick the existing anagrafica instead of finding out
- * from the refused save.
+ * from the refused save, and offers it in one click (task 427519) — the
+ * anagrafica itself, or the companies of a matched referente.
  */
 export function RequestCreateClientSection({
   control,
@@ -70,6 +73,14 @@ export function RequestCreateClientSection({
 }: RequestCreateClientSectionProps) {
   const { t } = useTranslation()
   const { renderAction, selectedItemFor } = useQuickCreateAction(REGISTRIES_FOR_SELECT_RESOURCE)
+  const { field: registryField } = useController({ control, name: 'registry_id' })
+  // The anagrafica picked from the duplicate notice (task 427519): kept as the
+  // trigger's label, it may sit outside the picker's first options page.
+  const [pickedRegistry, setPickedRegistry] = useState<ForSelectItem | null>(null)
+  const selectRegistry = (registry: IdentityDuplicateRegistry) => {
+    setPickedRegistry({ id: registry.id, label: registry.name })
+    registryField.onChange(registry.id)
+  }
   const duplicateDraft = useMemo(() => ({ ...identity, contacts }), [identity, contacts])
   const { matches: duplicateMatches } = useIdentityDuplicateCheck({
     enabled: !usingExistingRegistry,
@@ -94,7 +105,9 @@ export function RequestCreateClientSection({
                 onChange={field.onChange}
                 // Keeps a just-created registry labelled in the trigger until
                 // the invalidated options page catches up (spec 0028 AC-006).
-                selectedItem={selectedItemFor(field.value)}
+                selectedItem={
+                  selectedItemFor(field.value) ?? (pickedRegistry?.id === field.value ? pickedRegistry : null)
+                }
                 action={renderAction((ref) => field.onChange(ref.id))}
                 labels={{
                   placeholder: t('requestManagement.form.create.client.registryPlaceholder'),
@@ -115,7 +128,7 @@ export function RequestCreateClientSection({
         )}
       />
 
-      <IdentityDuplicateWarning matches={duplicateMatches} />
+      <IdentityDuplicateWarning matches={duplicateMatches} onSelectRegistry={selectRegistry} />
 
       {!usingExistingRegistry && (
         <>

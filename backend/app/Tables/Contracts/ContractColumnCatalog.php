@@ -74,7 +74,7 @@ final class ContractColumnCatalog
                 'searchable' => true,
                 'hasFilterValues' => false,
             ],
-            self::relationColumn('registry', 'contracts.columns.registry'),
+            [...self::relationColumn('registry', 'contracts.columns.registry'), 'searchable' => true],
             self::relationColumn('opportunity', 'contracts.columns.opportunity'),
             // "Linee di prodotto" (user directive 2026-10-15): the REVENUE-line
             // products of the contract's offer, read-only.

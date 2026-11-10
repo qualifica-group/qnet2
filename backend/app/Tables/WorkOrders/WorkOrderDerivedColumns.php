@@ -296,13 +296,19 @@ final class WorkOrderDerivedColumns
 
     /**
      * Derived quick-search (spec 0009): `contract_number` matches the
-     * related quote's own `code`. `quote` is deliberately NOT searchable
-     * (data_contract).
+     * related quote's own `code`, `registry` the client's name (task 427126).
+     * `quote` is deliberately NOT searchable (data_contract).
      *
      * @param  Builder<Model>  $query
      */
     public function applySearch(Builder $query, string $columnId, string $pattern): bool
     {
+        if ($columnId === WorkOrderRegistryColumn::COLUMN) {
+            $this->registryColumn->applySearch($query, $pattern);
+
+            return true;
+        }
+
         if ($columnId !== self::CONTRACT_NUMBER_COLUMN) {
             return false;
         }

@@ -186,17 +186,18 @@ it('composes the offer layout only where it differs from the ancestor, and a sec
         ->toBe(ClassroomAttributeCatalogue::codes());
 
     // Sort order follows the array order, with no gap left by a dropped
-    // section — "DIL" is the single-section case since the Consulenza leaves
-    // were emptied: below its barrier the two training sections prune away.
+    // section: "DIL" drops "Dati corso" in the middle.
     expect(array_column(quoteLayoutOf('GOL - Molise')['sections'], 'sort_order'))->toBe([0, 1, 2])
-        ->and(array_column(quoteLayoutOf('DIL')['sections'], 'sort_order'))->toBe([0]);
+        ->and(array_column(quoteLayoutOf('DIL')['sections'], 'sort_order'))->toBe([0, 1]);
 
     // Gives "DIL" an offer form of its own fields, in the client order.
     $dilLayout = quoteLayoutOf('DIL');
 
-    // The two training sections are pruned whole: below the inheritance
-    // barrier DIL resolves neither of their codes.
-    expect(array_column($dilLayout['sections'], 'id'))->toBe(['contact-processing'])
+    // Requirement changed 2026-11-10 (task 427536): below the inheritance
+    // barrier DIL still resolves no "Dati corso" code, but "Dati Aula" is
+    // assigned on DIL itself.
+    expect(array_column($dilLayout['sections'], 'id'))->toBe(['contact-processing', 'classroom-data'])
+        ->and(codesOfSection($dilLayout, 'classroom-data'))->toBe(ClassroomAttributeCatalogue::codes())
         ->and(codesOfSection($dilLayout, 'contact-processing'))->toBe([
             'data_scelta_cpi', 'data_app_apl',
             'dote_activation_date', 'dote_expiry_date',

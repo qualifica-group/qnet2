@@ -76,21 +76,24 @@ final class RequestOperatorWriter
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
+     * @return array<int, int> the genuinely ATTACHED managers, `userId => position` (QuoteManagerWriter::sync())
      */
-    public function apply(Quote $quote, ?int $operatorId, array &$changed, array &$old): void
+    public function apply(Quote $quote, ?int $operatorId, array &$changed, array &$old): array
     {
         $current = $quote->operator_id === null ? null : (int) $quote->operator_id;
 
         if ($current === $operatorId) {
-            return;
+            return [];
         }
 
-        $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, ManagerPositions::OPERATOR, $operatorId), promoteToOpportunity: true);
+        $attached = $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, ManagerPositions::OPERATOR, $operatorId), promoteToOpportunity: true);
         $quote->unsetRelation('operator');
         $quote->unsetRelation('managers');
 
         $old['operator_id'] = $current;
         $changed['operator_id'] = $operatorId;
+
+        return $attached;
     }
 
     public static function positionField(int $position): string
@@ -106,29 +109,30 @@ final class RequestOperatorWriter
      * moved, not duplicated.
      *
      * What apply() does and this deliberately does not: it reads the current
-     * occupant off the pivot rather than a denormalized column, drops the
-     * `managers` relation instead of `operator`, and its caller sends no
-     * assignment notification — a move that leaves the Operatore in place
-     * assigns nobody (spec 0097, D-6/AC-007). The Operatore position itself
+     * occupant off the pivot rather than a denormalized column and drops the
+     * `managers` relation instead of `operator`. The Operatore position itself
      * never comes here: it goes through apply().
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
+     * @return array<int, int> the genuinely ATTACHED managers, `userId => position`: a user merely moved from another slot is not among them
      */
-    public function applyPosition(Quote $quote, int $position, ?int $userId, array &$changed, array &$old): void
+    public function applyPosition(Quote $quote, int $position, ?int $userId, array &$changed, array &$old): array
     {
         $current = $this->currentPositions($quote)[$position] ?? null;
 
         if ($current === $userId) {
-            return;
+            return [];
         }
 
-        $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, $position, $userId), promoteToOpportunity: true);
+        $attached = $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, $position, $userId), promoteToOpportunity: true);
         $quote->unsetRelation('managers');
 
         $field = self::positionField($position);
         $old[$field] = $current;
         $changed[$field] = $userId;
+
+        return $attached;
     }
 
     /**
@@ -141,17 +145,17 @@ final class RequestOperatorWriter
      * Two DIFFERENT keys are reported into $changed/$old (D-6):
      *  - `manager_slots` whenever the team genuinely moves, so the module's
      *    operational history records the new arrangement;
-     *  - `operator_id` ONLY when the OPERATOR slot itself changes hands — it
-     *    is what the caller's assignment notification hangs off, and
-     *    reshuffling the other slots assigns nobody (AC-007).
+     *  - `operator_id` ONLY when the OPERATOR slot itself changes hands, so
+     *    an existing member moved onto it is notified as the new Operatore.
      * A submission that maps to the persisted arrangement writes nothing at
      * all, exactly like apply()'s own no-op guard.
      *
      * @param  array<int, int|null>  $slots  ordered and gap-aware (index+1 = position), the shape QuoteManagerWriter::sync() consumes
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
+     * @return array<int, int> the genuinely ATTACHED managers, `userId => position`
      */
-    public function applySlots(Quote $quote, array $slots, array &$changed, array &$old): void
+    public function applySlots(Quote $quote, array $slots, array &$changed, array &$old): array
     {
         $current = $this->currentPositions($quote);
         $submitted = $this->submittedPositions($slots);
@@ -160,10 +164,10 @@ final class RequestOperatorWriter
         ksort($submitted);
 
         if ($current === $submitted) {
-            return;
+            return [];
         }
 
-        $this->managerWriter->sync($quote, $slots, promoteToOpportunity: true);
+        $attached = $this->managerWriter->sync($quote, $slots, promoteToOpportunity: true);
         $quote->unsetRelation('operator');
         $quote->unsetRelation('managers');
 
@@ -173,12 +177,12 @@ final class RequestOperatorWriter
         $previousOperatorId = $current[ManagerPositions::OPERATOR] ?? null;
         $newOperatorId = $submitted[ManagerPositions::OPERATOR] ?? null;
 
-        if ($previousOperatorId === $newOperatorId) {
-            return;
+        if ($previousOperatorId !== $newOperatorId) {
+            $old['operator_id'] = $previousOperatorId;
+            $changed['operator_id'] = $newOperatorId;
         }
 
-        $old['operator_id'] = $previousOperatorId;
-        $changed['operator_id'] = $newOperatorId;
+        return $attached;
     }
 
     /**

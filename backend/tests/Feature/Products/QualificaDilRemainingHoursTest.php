@@ -77,20 +77,22 @@ it('converges an installation seeded before "Residuo Ore" joined "DIL"', functio
     test()->seed(QualificaCatalogSeeder::class);
 
     // Rewind to the previous revision: the field absent, and each layout
-    // exactly as that revision composed it — today's, minus the new row.
+    // exactly as that revision composed it — today's, minus the new row and
+    // minus "Dati Aula", which joined later (task 427536).
     $service = app(AttributeLayoutService::class);
     $dil = remainingHoursDil();
 
     foreach (REMAINING_HOURS_CONTEXTS as $context) {
         $blob = $service->resolveWithFallback($dil, $context, FormMode::Create);
-        $blob['sections'] = array_map(static function (array $section): array {
+        $sections = array_filter($blob['sections'], static fn (array $section): bool => $section['id'] !== 'classroom-data');
+        $blob['sections'] = array_values(array_map(static function (array $section): array {
             $section['rows'] = array_values(array_filter(
                 $section['rows'],
                 static fn (array $row): bool => array_column($row['items'], 'attribute_code') !== [ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS],
             ));
 
             return $section;
-        }, $blob['sections']);
+        }, $sections));
         $service->upsert($dil, $context, LayoutFormScope::All, $blob);
     }
 

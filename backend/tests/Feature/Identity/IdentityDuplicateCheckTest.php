@@ -292,7 +292,8 @@ it('the response never contains a contact value, tax code or VAT number', functi
     expect($body)->not->toContain('leak@example.com')
         ->and($body)->not->toContain('RSSMRA80A01H501U')
         ->and($body)->not->toContain('01234567890')
-        ->and(array_keys($response->json('data.matches.0')))->toEqualCanonicalizing(['owner_type', 'owner_id', 'name', 'matched_on']);
+        // `registries` (task 427519, requirement changed 2026-11-10): ids and names of anagrafiche only.
+        ->and(array_keys($response->json('data.matches.0')))->toEqualCanonicalizing(['owner_type', 'owner_id', 'name', 'matched_on', 'registries']);
 });
 
 // ---------------------------------------------------------------------------
@@ -362,4 +363,33 @@ it('AC-007: the number of contacts-table queries does not grow with the number o
     $manyContactsQueryCount = $searchDuplicateCheckQueryCount();
 
     expect($manyContactsQueryCount)->toBe($fewContactsQueryCount);
+});
+
+// ---------------------------------------------------------------------------
+// Task 427519 — each match carries the anagrafiche it leads to, so the request
+// create form can pick the existing one in one click
+// ---------------------------------------------------------------------------
+
+it('a phone match carries the anagrafiche it leads to: itself, a referent\'s companies, none for a user', function () {
+    $actor = identityDuplicateCheckUserWith(['registries.create']);
+    $registry = Registry::factory()->create(['name' => 'Beta Spa']);
+    Contact::factory()->phone()->for(PersonalData::factory()->company()->for($registry, 'personable')->create(), 'contactable')
+        ->create(['value' => '3331112222']);
+    $referent = Referent::factory()->create();
+    $company = Registry::factory()->create(['name' => 'Alfa Srl']);
+    $referent->registries()->attach($company);
+    Contact::factory()->phone()->for(PersonalData::factory()->individual()->for($referent, 'personable')->create(), 'contactable')
+        ->create(['value' => '3331112222']);
+    $user = User::factory()->create();
+    Contact::factory()->phone()->for(PersonalData::factory()->individual()->for($user, 'personable')->create(), 'contactable')
+        ->create(['value' => '3331112222']);
+    Sanctum::actingAs($actor);
+
+    $matches = collect($this->postJson('/api/identity/duplicate-check', [
+        'contacts' => [['type' => 'phone', 'value' => '333 111 2222']],
+    ])->assertOk()->json('data.matches'))->keyBy('owner_type');
+
+    expect($matches['registry']['registries'])->toBe([['id' => $registry->id, 'name' => 'Beta Spa']])
+        ->and($matches['referent']['registries'])->toBe([['id' => $company->id, 'name' => 'Alfa Srl']])
+        ->and($matches['user']['registries'])->toBe([]);
 });

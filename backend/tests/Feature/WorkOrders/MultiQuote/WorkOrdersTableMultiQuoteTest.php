@@ -81,3 +81,15 @@ it('distinct values of registry include the customers reached only through lines
 
     expect($values)->toContain('Alfa Srl', 'Beta Spa')->toHaveCount(3);
 });
+
+it('the quick search matches the client name, of a mono-offer row and of a multi-offer row through its lines (task 427126)', function () {
+    [$multiOffer] = multiQuoteReadFixture();
+    $monoOffer = WorkOrder::factory()->create();
+    $monoOffer->quote->opportunity->registry->update(['name' => 'ABC - ACQUA BENE COMUNE NAPOLI']);
+    $unrelated = WorkOrder::factory()->create();
+    Sanctum::actingAs(workOrderUserWith(['viewAny']));
+
+    expect(collect(multiQuoteRows(['search' => 'napoli']))->pluck('id')->all())->toBe([$monoOffer->id])
+        ->and(collect(multiQuoteRows(['search' => 'beta']))->pluck('id')->all())->toBe([$multiOffer->id])
+        ->and(collect(multiQuoteRows(['search' => 'napoli']))->pluck('id'))->not->toContain($unrelated->id);
+});

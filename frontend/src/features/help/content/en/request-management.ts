@@ -95,7 +95,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'If the new client you are entering already exists, **Possible duplicate** appears under the registry picker: pick that registry instead of creating another one. A tax code, VAT number or phone already on another card blocks saving (see the **Registries** guide).',
+          text: 'If the new client you are entering already exists, **Possible duplicate** appears under the registry picker: pick that registry instead of creating another one. The **Use** button next to the duplicate picks it at once; if the phone or email belongs to a referent, the button picks the company the referent is linked to. A tax code, VAT number or phone already on another card blocks saving (see the **Registries** guide).',
         },
         {
           type: 'warning',
@@ -150,7 +150,7 @@ const guide: HelpGuide = {
             "**Sales forecast**: expected close date, estimated value and success probability. They are the opportunity's values: changing them here changes them in **Opportunities** and in the other requests of the same opportunity too.",
             '**Status**: some statuses require a **Note**. A validated status requires at least one offer row. Closing does not, with either a positive or a negative outcome: the product row becomes mandatory when the contract is validated.',
             "**Client details**: the field at the top shows the request's client and lets you pick another one. The change applies to every offer on the opportunity. After picking another client, its details appear once you save, and any edits to the previous client's details are not saved. If a contract already exists, or the client comes from the lead, the field cannot be changed.",
-            '**Attribution** (**Source**, **Reporter**, **Sales rep**) and **Team** (**Supervisor** and **Account managers**). A **Sales rep** changed here applies to this request (the quote) only: the opportunity\'s one does not change.',
+            '**Attribution** (**Source**, **Reporter**, **Sales rep**) and **Team** (**Supervisor** and **Account managers**). A **Sales rep** changed here applies to this request (the quote) only: the opportunity\'s one does not change. Whoever you add among the **Account managers**, in any position (also from the table\'s **Account manager** columns), receives the **You were assigned as Account Manager** notification in the bell and by email; people only moved to another position and people adding themselves do not.',
             'The **Additional information**, which depends on the categories picked.',
           ],
         },
