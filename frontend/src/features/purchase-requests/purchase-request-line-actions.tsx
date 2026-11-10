@@ -87,6 +87,8 @@ interface LineActionsProps {
   index: number
   lineId?: number
   locked: boolean
+  /** Price and VAT stay editable on an approved line (spec 0208 D-19), so the VAT extraction does too. */
+  priceEditable?: boolean
   hasReason: boolean
   pendingFiles: number
   showChangeStatus: boolean
@@ -104,6 +106,7 @@ export function LineActions({
   index,
   lineId,
   locked,
+  priceEditable = !locked,
   hasReason,
   pendingFiles,
   showChangeStatus,
@@ -128,13 +131,13 @@ export function LineActions({
       {showChangeStatus ? (
         <IconAction label={t('purchaseRequests.lines.changeStatus')} icon={<ListChecks />} onClick={onChangeStatus} />
       ) : null}
-      {locked ? null : (
+      {priceEditable ? (
         <IconAction
           label={`${t('purchaseRequests.lines.extractVat')} ${n}`}
           icon={<Calculator />}
           onClick={onExtractVat}
         />
-      )}
+      ) : null}
       <LineDocumentsButton control={control} index={index} lineId={lineId} pendingCount={pendingFiles} />
       {showRemove ? (
         <IconAction

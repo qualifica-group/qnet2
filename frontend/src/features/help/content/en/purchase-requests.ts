@@ -90,7 +90,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'On the record the lines are shown read-only: the line **pencil** opens it for editing, **Save** saves that line alone and **Cancel** puts it back. **Add line** opens a new line the same way; the **trash** asks for confirmation and deletes right away. A line can be edited **only while it is To approve**. On an **Approved** line you can still change the **Unit price** (whoever can edit the RDA; amounts and totals are recomputed) and the supplier (if you may); the rest is locked. From **Ordered** on, and after rejection, the line stays read-only. A **closed** RDA is entirely read-only.',
+          text: 'On the record the lines are shown read-only: the line **pencil** opens it for editing, **Save** saves that line alone and **Cancel** puts it back. **Add line** opens a new line the same way; the **trash** asks for confirmation and deletes right away. A line can be edited **only while it is To approve**. On an **Approved** line you can still change the **Unit price** and the **VAT rate**, also with Extract VAT (whoever can edit the RDA; amounts and totals are recomputed) and the supplier (if you may); the rest is locked. From **Ordered** on, and after rejection, the line stays read-only. A **closed** RDA is entirely read-only.',
         },
       ],
     },

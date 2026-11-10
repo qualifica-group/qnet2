@@ -44,7 +44,7 @@ interface PurchaseRequestLineRowProps {
  * placeholder and icon-only actions. A locked line (non-pending, closed RDA, no
  * update ability) shows everything disabled, except the supplier when the
  * server says it can still change (`can_update_supplier`, AC-013) and the price
- * of an approved line (`can_update_price`, spec 0208 D-19).
+ * and VAT rate of an approved line (`can_update_price`, spec 0208 D-19).
  */
 export function PurchaseRequestLineRow({
   index,
@@ -131,7 +131,7 @@ export function PurchaseRequestLineRow({
       <LineVatSelect
         control={control}
         index={index}
-        disabled={disabled}
+        disabled={disabled && !line.can_update_price}
         label={`${t('purchaseRequests.lines.vatRate')} ${n}`}
         onRateChange={(rate) => setValue(`lines.${index}.vat_rate_percent`, rate)}
       />
@@ -157,6 +157,7 @@ export function PurchaseRequestLineRow({
           index={index}
           lineId={line.id}
           locked={disabled}
+          priceEditable={!disabled || line.can_update_price}
           hasReason={line.reason.trim() !== ''}
           pendingFiles={line.pending_files.length}
           showChangeStatus={line.id !== undefined && line.transitions.length > 0}

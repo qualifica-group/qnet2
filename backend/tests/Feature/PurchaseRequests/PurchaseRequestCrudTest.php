@@ -4,6 +4,7 @@ use App\Enums\PurchaseRequestLineStatus as LineStatus;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
 use App\Models\User;
+use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
@@ -146,6 +147,22 @@ it('AC-023: an approved line still takes a new price, recomputing its amounts, b
         ->assertUnprocessable()
         ->assertJsonValidationErrors('lines.1');
     expect($request->lines->last()->fresh()->quantity)->toBe('1.000');
+});
+
+it('AC-023: an approved line takes a new VAT rate, recomputing its VAT and totals', function () {
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'update']));
+    $request = purchaseRequestWithLines([LineStatus::Approved]);
+    $rate = VatRate::factory()->create(['rate' => '22.00']);
+
+    $payload = purchaseRequestUpdatePayload($request);
+    $payload['lines'][0]['vat_rate_id'] = $rate->id;
+
+    $this->putJson("/api/purchase-requests/{$request->id}", $payload)
+        ->assertOk()
+        ->assertJsonPath('data.lines.0.status', 'approved')
+        ->assertJsonPath('data.lines.0.vat_rate.id', $rate->id)
+        ->assertJsonPath('data.lines.0.vat_amount', '22.00')
+        ->assertJsonPath('data.grand_total', '122.00');
 });
 
 it('AC-023: refuses a new price on an ordered line', function () {

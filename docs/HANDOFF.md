@@ -21,6 +21,9 @@
   274 verdi (AC-013 cambiato: REQUIREMENT CHANGED D-19), ESLint ok, Pint ok, `tsc -b --force` EXIT=0 (via
   `node --max-old-space-size=8192 node_modules/typescript/bin/tsc`: `npx tsc` qui va in segfault).
 - Guide IT/EN `purchase-requests` aggiornate. Manuale Claude Docs: nessun capitolo RDA, da valutare.
+- Seguito stesso giorno (richiesta utente): sbloccata anche l'**aliquota IVA** sulle righe approved
+  (`APPROVED_EDITABLE_FIELDS = ['unit_price', 'vat_rate_id']`), FE `LineVatSelect` e "Scorpora IVA"
+  (`LineActions.priceEditable`) seguono `can_update_price`. Nuovo test AC-023 IVA (147 test PurchaseRequests verdi).
 
 ## Colonne dei campi flessibili guidate dal filtro categoria, categorie collegate (spec 0374 rev.2) (2026-11-09) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
 

@@ -34,7 +34,7 @@ function buildLineSchema(t: TFunction) {
     can_delete: z.boolean(),
     /** Server verdict on the supplier freeze (`abilities.update_supplier`); the supplier stays editable on a locked line when true. */
     can_update_supplier: z.boolean(),
-    /** The unit price stays editable on an approved line until it is ordered (spec 0208 D-19). */
+    /** Unit price and VAT rate stay editable on an approved line until it is ordered (spec 0208 D-19). */
     can_update_price: z.boolean(),
     /** Statuses the server lets the actor move this line to (`abilities.transitions`). */
     transitions: z.array(z.enum(LINE_STATUSES)),

@@ -70,7 +70,7 @@ export function emptyFormValues(requesterId: number | null, now: Date = new Date
 
 /**
  * Only a `pending_approval` line the actor may update stays editable (D-10); an
- * approved one keeps its price editable for whoever may update the RDA (D-19);
+ * approved one keeps price and VAT rate editable for whoever may update the RDA (D-19);
  * a closed RDA locks everything.
  */
 function lineToFormValues(line: PurchaseRequestLine, isClosed: boolean, canUpdateRequest: boolean): PurchaseRequestLineFormValues {

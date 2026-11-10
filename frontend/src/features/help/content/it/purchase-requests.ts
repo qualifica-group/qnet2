@@ -90,7 +90,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Nella scheda le righe si mostrano in sola lettura: la **matita** della riga la apre per la modifica, **Salva** salva solo quella riga e **Annulla** la riporta com’era. **Aggiungi riga** apre una riga nuova allo stesso modo; il **cestino** chiede conferma ed elimina subito. Una riga si modifica **solo finché è Da approvare**. Di una riga **Approvata** si possono ancora cambiare il **Prezzo** (da chi può modificare la RDA; importi e totali vengono ricalcolati) e il fornitore (se puoi); il resto è bloccato. Da **Ordinato** in poi, e dopo il rifiuto, la riga resta in sola lettura. Una RDA **chiusa** è interamente in sola lettura.',
+          text: 'Nella scheda le righe si mostrano in sola lettura: la **matita** della riga la apre per la modifica, **Salva** salva solo quella riga e **Annulla** la riporta com’era. **Aggiungi riga** apre una riga nuova allo stesso modo; il **cestino** chiede conferma ed elimina subito. Una riga si modifica **solo finché è Da approvare**. Di una riga **Approvata** si possono ancora cambiare il **Prezzo** e l’**Aliquota IVA**, anche con Scorpora IVA (da chi può modificare la RDA; importi e totali vengono ricalcolati) e il fornitore (se puoi); il resto è bloccato. Da **Ordinato** in poi, e dopo il rifiuto, la riga resta in sola lettura. Una RDA **chiusa** è interamente in sola lettura.',
         },
       ],
     },
