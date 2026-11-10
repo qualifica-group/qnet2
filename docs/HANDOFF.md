@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Pannello "Colonne" di AG Grid non si chiude piu' a ogni spunta (2026-11-10) — VERDE MIRATO, COMMITTATO
+
+- Causa: spuntare una colonna salva il layout; `useSaveTablePreferences` fa `setQueryData` con la config restituita -> nuovo array `config.columns` -> `gridOptions` (dipende da `columns`) si ricalcolava e creava un nuovo oggetto `sideBar`. AG Grid (`AgSideBar.setState`, listener sulla prop `sideBar`) ricostruisce la barra a ogni cambio di riferimento e riapre `defaultToolPanel` (undefined) = pannello chiuso.
+- Fix: `data-table.tsx` memorizza `sideBar` a parte, solo su `rowGrouping?.enabled`. Non rimettere `buildSideBar(...)` inline dentro `gridOptions`.
+- Test: `column-state-persistence.test.tsx` nuovo caso "keeps the columns tool panel open when the saved config comes back" (rosso prima del fix). Vitest `components/data-table` + `features/table` 585/585, ESLint, `tsc -b --force` puliti.
+- Manuale: nessun impatto (il pannello ora si comporta come gia' descritto).
+
 ## Sotto-task senza assegnatari: li vede e li completa chi ha il task padre (spec 0383) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 
 - Segnalazione task 426939 (Desire' Romito, "non mi fa spuntare le task"): 61/65 suoi task (serie ricorrenti "Gestione presenze e registri", "Gestione SIGEM") hanno sotto-task aperti senza assegnatari; la spec 0123 D-6 blocca il padre e lei non vedeva i figli. Nel DB 26.192 sotto-task senza assegnatari, 7.041 con il padre assegnato; TaskOccurrenceFactory li ricopia vuoti a ogni occorrenza.

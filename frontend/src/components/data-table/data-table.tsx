@@ -279,11 +279,17 @@ export function DataTable({
     [positionStore, pageSize],
   )
 
+  // Kept apart from `gridOptions`: AG Grid rebuilds the side bar, and closes the
+  // open tool panel, whenever the `sideBar` identity changes. `gridOptions`
+  // follows `columns`, which the config echo of every column toggle replaces.
+  const rowGroupingEnabled = rowGrouping?.enabled === true
+  const sideBar = useMemo(() => buildSideBar(rowGroupingEnabled), [rowGroupingEnabled])
+
   const gridOptions = useMemo<GridOptions<TableRow>>(
     () => ({
       rowModelType: 'serverSide',
       serverSideDatasource: datasource,
-      sideBar: buildSideBar(rowGrouping?.enabled === true),
+      sideBar,
       // Universal custom field columns (spec 0021) use a dotted id
       // (`custom.<key>`) as a FLAT row key, not a nested path. AG Grid's default
       // dot-notation would otherwise read `field: 'custom.<key>'` as
@@ -356,6 +362,7 @@ export function DataTable({
     }),
     [
       datasource,
+      sideBar,
       blockSize,
       pageSize,
       initialPosition,
