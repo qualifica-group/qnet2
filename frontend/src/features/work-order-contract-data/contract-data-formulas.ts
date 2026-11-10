@@ -3,6 +3,7 @@ import type { HintContent } from '@/components/calculation-hint'
 import { money, plainNumber } from '@/features/work-order-contract-data/contract-data-format'
 import type {
   ContractDataLine,
+  ContractDataLineWithFigures,
   ContractDataTotals,
   ContractSupplierCommission,
 } from '@/features/work-order-contract-data/types'
@@ -15,7 +16,7 @@ import type {
  * amount and the commission is a cost, none = the net amount alone.
  */
 
-function netAmountLine(line: ContractDataLine, t: TFunction): string {
+function netAmountLine(line: ContractDataLineWithFigures, t: TFunction): string {
   return t('workOrders.contractData.hint.netAmountFormula', {
     quantity: plainNumber(line.quantity),
     unitPrice: money(line.unit_price),
@@ -35,7 +36,7 @@ function commissionDetail(commission: ContractSupplierCommission, t: TFunction):
   return t('workOrders.contractData.hint.commissionFixed', { amount: money(commission.amount) })
 }
 
-export function netAmountHint(line: ContractDataLine, t: TFunction): HintContent {
+export function netAmountHint(line: ContractDataLineWithFigures, t: TFunction): HintContent {
   return {
     title: t('workOrders.contractData.columns.netAmount'),
     lines: [t('workOrders.contractData.hint.netAmountRule'), netAmountLine(line, t)],
@@ -64,7 +65,7 @@ export function commissionHint(line: ContractDataLine, t: TFunction): HintConten
 }
 
 /** "Net - commissions = result", only when the actor sees the commissions. */
-export function netOfCommissionsHint(line: ContractDataLine, t: TFunction): HintContent | null {
+export function netOfCommissionsHint(line: ContractDataLineWithFigures, t: TFunction): HintContent | null {
   if (line.commissions_amount === null || line.net_of_commissions === null) {
     return null
   }
@@ -82,7 +83,7 @@ export function netOfCommissionsHint(line: ContractDataLine, t: TFunction): Hint
 }
 
 /** Why the revenue is what it is: the received commission, or the net amount (paid / not calculated). */
-export function revenueHint(line: ContractDataLine, commissionsVisible: boolean, t: TFunction): HintContent {
+export function revenueHint(line: ContractDataLineWithFigures, commissionsVisible: boolean, t: TFunction): HintContent {
   const revenue = money(line.effective_revenue)
   const direction = line.supplier_commission_direction
   const title = t('workOrders.contractData.columns.effectiveRevenue')

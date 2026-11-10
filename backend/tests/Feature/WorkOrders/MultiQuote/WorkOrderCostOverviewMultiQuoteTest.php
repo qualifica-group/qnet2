@@ -57,11 +57,11 @@ it('contract data of a multi-offer commessa names the client of each line', func
 
 it('contract data hides commissions on a multi-offer commessa when the field is not visible to the role', function () {
     [$workOrder] = multiQuoteReadFixture();
-    foreach (['view', 'viewContractData', 'viewAll'] as $ability) {
+    foreach (['view', 'viewContractData', 'viewCosts', 'viewAll'] as $ability) {
         Permission::findOrCreate("work-orders.{$ability}");
     }
     $role = RoleModel::create(['name' => 'no-commissions']);
-    $role->givePermissionTo(['work-orders.view', 'work-orders.viewContractData', 'work-orders.viewAll']);
+    $role->givePermissionTo(['work-orders.view', 'work-orders.viewContractData', 'work-orders.viewCosts', 'work-orders.viewAll']);
     $role->fieldPermissions()->create(['resource' => 'quotes', 'field' => 'commission_value', 'visible' => false, 'editable' => false, 'required' => false]);
     $actor = User::factory()->create();
     $actor->assignRole($role);

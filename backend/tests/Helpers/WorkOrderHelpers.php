@@ -137,7 +137,7 @@ if (! function_exists('workOrderPaymentsUserWith')) {
      */
     function workOrderPaymentsUserWith(array $abilities, bool $viewAll = true): User
     {
-        foreach (['view', 'viewContractData', 'managePayments', 'viewAll'] as $ability) {
+        foreach (['view', 'viewContractData', 'viewCosts', 'managePayments', 'viewAll'] as $ability) {
             Permission::findOrCreate("work-orders.{$ability}");
         }
 

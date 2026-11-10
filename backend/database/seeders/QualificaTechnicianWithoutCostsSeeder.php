@@ -1,0 +1,98 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Role;
+use App\Models\RoleFieldPermission;
+use App\Models\User;
+use Database\Seeders\QualificaCatalog\LegacyRoleCatalogue;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
+
+/**
+ * Spec 0380 (user directive 2026-11-10): the listed technicians must not see
+ * the costs of a commessa. Their `work-orders.viewCosts` comes from the
+ * `tecnico-consulenza` role, shared with technicians who keep it, and spatie
+ * has no per-user deny: so this seeder clones that role AS IT IS NOW (its
+ * permissions and field matrix) into `tecnico-consulenza-senza-costi` without
+ * viewCosts, and moves the listed people from one role to the other.
+ *
+ * `php artisan db:seed --class=QualificaTechnicianWithoutCostsSeeder`. Every
+ * other role of those people is left alone; a re-run converges. One
+ * transaction.
+ */
+class QualificaTechnicianWithoutCostsSeeder extends Seeder
+{
+    public const string ROLE = 'tecnico-consulenza-senza-costi';
+
+    public const string DESCRIPTION = 'Tecnico consulenza (senza costi commessa)';
+
+    public const string WITHHELD_PERMISSION = 'work-orders.viewCosts';
+
+    /** @var array<int, string> */
+    public const array USERS = [
+        'maria.savarese@qualificagroup.com',
+        'francesco.ienco@qualificagroup.com',
+        'paola.sena@qualificagroup.com',
+        'ilaria.vitolo@qualificagroup.com',
+        'ivana.mango@qualificagroup.com',
+        'noemi.nigliato@qualificagroup.it',
+        'antoniosalvatore.peluso@qualificagroup.com',
+        'antonio.demartino@qualificagroup.com',
+    ];
+
+    public function run(): void
+    {
+        $source = Role::query()->where('name', LegacyRoleCatalogue::TECHNICIAN_ROLE)->first();
+
+        if ($source === null) {
+            $this->command?->warn(sprintf('Role %s missing: nothing to do.', LegacyRoleCatalogue::TECHNICIAN_ROLE));
+
+            return;
+        }
+
+        DB::transaction(function () use ($source): void {
+            // Step 1: the twin role, the source's current permissions minus viewCosts.
+            $target = $this->syncTwinRole($source);
+
+            // Step 2: the listed people move from the source role to the twin.
+            $this->moveUsers($source, $target);
+        });
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    private function syncTwinRole(Role $source): Role
+    {
+        $target = Role::query()->firstOrCreate(
+            ['name' => self::ROLE, 'guard_name' => $source->guard_name],
+            ['description' => self::DESCRIPTION],
+        );
+
+        $target->syncPermissions($source->permissions->reject(fn ($permission): bool => $permission->name === self::WITHHELD_PERMISSION));
+
+        $target->fieldPermissions()->delete();
+        $source->fieldPermissions->each(fn (RoleFieldPermission $row) => $target->fieldPermissions()->create(
+            $row->only(['resource', 'field', 'visible', 'editable', 'required']),
+        ));
+
+        return $target;
+    }
+
+    private function moveUsers(Role $source, Role $target): void
+    {
+        foreach (self::USERS as $email) {
+            $user = User::query()->where('email', $email)->first();
+
+            if ($user === null) {
+                $this->command?->warn(sprintf('%s: no account, skipped.', $email));
+
+                continue;
+            }
+
+            $user->removeRole($source);
+            $user->assignRole($target);
+        }
+    }
+}

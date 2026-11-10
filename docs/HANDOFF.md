@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Dati contrattuali senza il permesso costi + tecnici senza costi (spec 0380) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
+
+- Regola (decisione utente): senza `WorkOrderPolicy::viewCosts` il GET/PATCH `contract-data` non manda numeri. `WorkOrderContractDataBuilder` azzera `quantity`, `unit_price`, `net_amount`, commissioni, `effective_revenue`, svuota `warnings`, `totals` = null, nuovo flag `figures_visible`. Restano prodotto e pagamento (decisione utente: Pagamento visibile, matita per chi ha `managePayments`).
+- FE: `ContractDataLineWithFigures` (tipi), `FigureHeads`/`FigureCells` montati solo con i numeri, totali solo se `totals` non null. Guida `work-orders` IT/EN e manuale Claude Docs aggiornati.
+- Seeder `QualificaTechnicianWithoutCostsSeeder` (NON eseguito: memoria "niente seed su qnet2 dev"): clona `tecnico-consulenza` com'e' nel DB (permessi + matrice campi) in `tecnico-consulenza-senza-costi` senza `work-orders.viewCosts` e ci sposta 8 tecnici (lista nel seeder). Comando: `php artisan db:seed --class=QualificaTechnicianWithoutCostsSeeder`.
+- Test cambiati (REQUIREMENT CHANGED): gli attori che leggono importi in `WorkOrderContractDataTest`, `WorkOrderLinePaymentTest` AC-008, `ProductTypologyColorTest`, `WorkOrderCostOverviewMultiQuoteTest` ora hanno `viewCosts`.
+- Verifica: Pest WorkOrders + ProductTypologies + Spec0358 556/556, seeder 2/2, Pint ok; Vitest contract-data + work-orders 379/379, help 161/161; `tsc -b --force` pulito; ESLint pulito.
+- Da sapere: `QualificaRoleResetSeeder` ricostruisce i ruoli dal catalogo e cancellerebbe il ruolo gemello (e oggi `tecnico-consulenza` nel DB ha `viewCosts` che il catalogo non gli da'). Le tab Proforma attiva/passiva (`viewInvoices`) mostrano ancora importi: segnalato, non toccato.
+
 ## Chi vede la commessa vede i suoi task (spec 0379) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 
 - Segnalazione: Noemi Nigliato, Responsabile di COM-20053, vedeva 0 task su 18 nel task board. I task migrati hanno solo creatore/richiedente (in produzione 341.345 task di commessa su 375.342 senza assegnatari), e nessun tier li raggiungeva.

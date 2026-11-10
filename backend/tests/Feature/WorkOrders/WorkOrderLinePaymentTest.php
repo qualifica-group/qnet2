@@ -26,7 +26,7 @@ it('AC-008: PATCH creates the record at first save, logs the activity and return
     $workOrder = WorkOrder::factory()->create();
     $line = contractDataLine($workOrder, 'consultancy', 500);
     $status = WorkOrderPaymentStatus::factory()->create(['color' => 'blue']);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['managePayments']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['managePayments', 'viewCosts']));
 
     expect(WorkOrderLinePayment::count())->toBe(0);
 
@@ -211,4 +211,16 @@ it('AC-010: the notification links to the commessa only for a recipient who may 
 
     expect($notification->toArray($viewer)['action_url'])->toBe("/work-orders/{$workOrder->id}")
         ->and($notification->toArray(User::factory()->create())['action_url'])->toBeNull();
+});
+
+it('spec 0380: the PATCH response hides the figures without viewCosts', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $line = contractDataLine($workOrder, 'consultancy', 500);
+    Sanctum::actingAs(workOrderPaymentsUserWith(['managePayments']));
+
+    $this->patchJson(linePaymentUrl($workOrder, $line->id), ['has_unpaid' => true])->assertOk()
+        ->assertJsonPath('data.has_unpaid', null)
+        ->assertJsonPath('data.payment.has_unpaid', true)
+        ->assertJsonPath('data.net_amount', null)
+        ->assertJsonPath('data.quantity', null);
 });

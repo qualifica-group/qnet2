@@ -42,15 +42,24 @@ export interface ContractDataLine {
   registry: { id: number; name: string } | null
   /** Spec 0202 D-11: read from the row's frozen snapshot; null = Supplier commission not calculated. */
   supplier_commission_direction: SupplierCommissionDirection | null
-  quantity: string
-  unit_price: string
-  net_amount: string
+  /** Spec 0380: the four figures (and the commission ones) are null without the commessa's `viewCosts`. */
+  quantity: string | null
+  unit_price: string | null
+  net_amount: string | null
   supplier_commission: ContractSupplierCommission | null
   commissions_amount: string | null
   net_of_commissions: string | null
-  effective_revenue: string
+  effective_revenue: string | null
   warnings: ContractDataWarning[]
   payment: ContractLinePayment
+}
+
+/** A line whose figures the actor sees (`figures_visible`, spec 0380). */
+export type ContractDataLineWithFigures = ContractDataLine & {
+  quantity: string
+  unit_price: string
+  net_amount: string
+  effective_revenue: string
 }
 
 export interface ContractTypologyTotal {
@@ -72,8 +81,11 @@ export interface ContractDataTotals {
 
 export interface WorkOrderContractData {
   lines: ContractDataLine[]
-  totals: ContractDataTotals
+  /** Null without the commessa's `viewCosts` (spec 0380). */
+  totals: ContractDataTotals | null
   commissions_visible: boolean
+  /** Spec 0380: false without `viewCosts`, then only product and payment are sent. */
+  figures_visible: boolean
 }
 
 /** PATCH body: only the keys sent change. */

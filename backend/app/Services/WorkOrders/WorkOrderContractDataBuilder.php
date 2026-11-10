@@ -33,12 +33,20 @@ use Illuminate\Support\Collection;
  * the first one. The commission details are hidden (null) unless the actor sees
  * the offer's `commissions` and `commission_value` fields (D-10), the same rule
  * as QuoteResource::summarizeTotals.
+ *
+ * Without `WorkOrderPolicy::viewCosts` on the commessa no figure leaves the
+ * server (spec 0380): every amount and quantity of a line is null, its warnings
+ * are empty, `totals` is null and `figures_visible` is false. Product and
+ * payment stay.
  */
 final class WorkOrderContractDataBuilder
 {
     public const string WARNING_MISSING_SUPPLIER_COMMISSION = 'missing_supplier_commission';
 
     public const string WARNING_STALE_COMMISSION_BASE = 'stale_commission_base';
+
+    /** The keys of a line that carry a figure, hidden without viewCosts (spec 0380). */
+    private const array FIGURE_KEYS = ['quantity', 'unit_price', 'net_amount', 'supplier_commission', 'commissions_amount', 'net_of_commissions', 'effective_revenue'];
 
     /** Relations read per line, eager loaded to avoid N+1. */
     private const array LINE_RELATIONS = ['product.productTypology', 'commissions', 'quote.opportunity.registry'];
@@ -51,22 +59,26 @@ final class WorkOrderContractDataBuilder
     ) {}
 
     /**
-     * @return array{lines: array<int, array<string, mixed>>, totals: array<string, mixed>, commissions_visible: bool}
+     * @return array{lines: array<int, array<string, mixed>>, totals: array<string, mixed>|null, commissions_visible: bool, figures_visible: bool}
      */
     public function build(WorkOrder $workOrder, User $actor): array
     {
-        // Step 1: load the commessa's lines and decide the commission visibility per source offer
+        // Step 1: load the commessa's lines and decide the figure and commission visibility
+        $figuresVisible = $this->figuresVisible($workOrder, $actor);
         $visibleByQuote = $this->visibilityByQuote($workOrder, $actor);
-        $visible = ! in_array(false, $visibleByQuote, true);
+        $visible = $figuresVisible && ! in_array(false, $visibleByQuote, true);
         $lines = $workOrder->quoteLines()->with(self::LINE_RELATIONS)->orderBy('quote_lines.id')->get();
 
         // Step 2: figures per line
         $rows = $this->rows($lines, $visibleByQuote, $this->paymentsByLine($workOrder));
+        $payloads = array_column($rows, 'payload');
 
+        // Step 3: without viewCosts no figure leaves the server (spec 0380)
         return [
-            'lines' => array_column($rows, 'payload'),
-            'totals' => $this->totals($rows, $visible),
+            'lines' => $figuresVisible ? $payloads : array_map($this->withoutFigures(...), $payloads),
+            'totals' => $figuresVisible ? $this->totals($rows, $visible) : null,
             'commissions_visible' => $visible,
+            'figures_visible' => $figuresVisible,
         ];
     }
 
@@ -78,8 +90,24 @@ final class WorkOrderContractDataBuilder
     public function buildLine(WorkOrder $workOrder, QuoteLine $line, User $actor): array
     {
         $line = QuoteLine::query()->with(self::LINE_RELATIONS)->findOrFail($line->id);
+        $payload = $this->rows(collect([$line]), $this->visibilityByQuote($workOrder, $actor), $this->paymentsByLine($workOrder))[0]['payload'];
 
-        return $this->rows(collect([$line]), $this->visibilityByQuote($workOrder, $actor), $this->paymentsByLine($workOrder))[0]['payload'];
+        return $this->figuresVisible($workOrder, $actor) ? $payload : $this->withoutFigures($payload);
+    }
+
+    /** Spec 0380: quantities, prices and amounts follow the "Costi" permission of the commessa. */
+    private function figuresVisible(WorkOrder $workOrder, User $actor): bool
+    {
+        return $actor->can('viewCosts', $workOrder);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withoutFigures(array $payload): array
+    {
+        return [...$payload, ...array_fill_keys(self::FIGURE_KEYS, null), 'warnings' => []];
     }
 
     /**

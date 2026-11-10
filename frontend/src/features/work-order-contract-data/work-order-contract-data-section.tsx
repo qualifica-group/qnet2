@@ -50,7 +50,7 @@ export function WorkOrderContractDataSection({ workOrderId, canManage, showRegis
         <p className="text-sm text-muted-foreground">{t('workOrders.contractData.empty')}</p>
       ) : (
         <>
-          <ContractDataTotals totals={data.totals} />
+          {data.totals ? <ContractDataTotals totals={data.totals} /> : null}
           <ContractDataTable workOrderId={workOrderId} data={data} canManage={canManage} showRegistry={showRegistry} />
         </>
       )}

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0380-work-order-contract-data-without-costs" status="implemented" owner="nicola" date="2026-11-10">
+
+  <goal>
+    Nel dettaglio Commessa chi non ha il permesso di vedere i costi (`work-orders.viewCosts`) non vede
+    nessun numero dei Dati contrattuali: resta solo il prodotto (e il pagamento).
+  </goal>
+
+  <context>
+    D-1 Decisione utente 2026-11-10: senza `viewCosts` spariscono quantita', prezzo unitario, imponibile,
+        commissioni, netto commissioni, ricavo effettivo, i KPI dei totali e il ricavo per tipologia.
+    D-2 Decisione utente 2026-11-10: la colonna Pagamento resta (non e' un importo) e chi ha
+        `managePayments` continua a modificarla.
+    D-3 Il controllo e' server-side: `WorkOrderContractDataBuilder` usa `WorkOrderPolicy::viewCosts`
+        (permesso + perimetro) e azzera i campi prima che lascino il server, anche nelle risposte PATCH.
+    D-4 Decisione utente 2026-11-10: otto tecnici (elenco in `QualificaTechnicianWithoutCostsSeeder::USERS`)
+        non devono vedere i costi. Il permesso arriva dal ruolo `tecnico-consulenza`, condiviso con
+        tecnici che lo mantengono, e spatie non ha un "nega" per utente: il seeder clona il ruolo
+        com'e' oggi (permessi + matrice campi) in `tecnico-consulenza-senza-costi` senza `viewCosts` e
+        sposta solo quelle persone. Gli altri ruoli delle persone restano. Ri-eseguibile.
+  </context>
+
+  <contract>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/contract-data">
+      Shape della spec 0201 piu' `figures_visible: bool`. Con `figures_visible = false`: per ogni riga
+      `quantity`, `unit_price`, `net_amount`, `supplier_commission`, `commissions_amount`,
+      `net_of_commissions`, `effective_revenue` = null e `warnings` = []; `totals` = null;
+      `commissions_visible` = false. `product`, `typology`, `registry`, `payment` invariati.
+    </endpoint>
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}/contract-data/lines[/{quoteLine}]">
+      Stessa regola sulla riga (o sull'intero payload, bulk) restituita.
+    </endpoint>
+  </contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">GET senza `viewCosts`: nessun importo/quantita', `totals` null, `figures_visible` false, prodotto e pagamento presenti.</criterion>
+    <criterion id="AC-002">GET con `viewCosts`: risposta invariata rispetto alla spec 0201, `figures_visible` true.</criterion>
+    <criterion id="AC-003">PATCH senza `viewCosts`: la riga restituita non ha importi.</criterion>
+    <criterion id="AC-004">FE: con `figures_visible` false la tabella ha solo le colonne Prodotto e Pagamento (+ azioni con `manage_payments`), nessun KPI.</criterion>
+    <criterion id="AC-005">Seeder: le persone elencate passano al ruolo gemello senza `viewCosts`, gli altri tecnici restano invariati; ri-eseguito non duplica.</criterion>
+  </acceptance_criteria>
+</spec>
