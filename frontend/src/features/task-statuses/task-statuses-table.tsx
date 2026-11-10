@@ -106,6 +106,7 @@ export function TaskStatusesTable() {
                 genericError: t('taskStatuses.reorder.genericError'),
               }}
               onReordered={refreshGrid}
+              allRowsReorderable
             />
             <Can permission="task-statuses.create">
               <Button onClick={openCreate}>

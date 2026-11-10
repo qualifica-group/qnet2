@@ -9,7 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\TaskStatuses\CreateTaskStatusData;
 use App\DataObjects\TaskStatuses\UpdateTaskStatusData;
 use App\Models\TaskStatus;
-use App\Services\Statuses\StatusOrderManager;
+use App\Services\Lookups\LookupOrderManager;
 use App\Services\Statuses\SystemStatusGuard;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -21,9 +21,10 @@ use Illuminate\Support\Collection;
  * `completion_percentage` moves every Task in that status at once, with no
  * backfill (AC-021).
  *
- * `sort_order` is server-managed — placed by StatusOrderManager::placeNew()
- * on create, resequenced by reorder(); the three protected rows (D-5) are
- * guarded by the shared SystemStatusGuard on both update() and delete().
+ * `sort_order` is server-managed — placed by LookupOrderManager::placeNew()
+ * on create, resequenced by reorder() over EVERY row, protected ones included
+ * (AC-047 rectified 2026-11-10); the protected rows (D-5) are guarded by the
+ * shared SystemStatusGuard on both update() and delete().
  *
  * The controller stays thin; this Service is the single authority.
  */
@@ -46,7 +47,7 @@ class TaskStatusService
     private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active', 'system_key', 'group', 'completion_percentage'];
 
     public function __construct(
-        private readonly StatusOrderManager $orderManager,
+        private readonly LookupOrderManager $orderManager,
         private readonly SystemStatusGuard $systemStatusGuard,
     ) {}
 
@@ -104,11 +105,11 @@ class TaskStatusService
     }
 
     /**
-     * Resequences every custom row to $orderedIds' order and returns the
-     * fresh, complete, ordered list (AC-047). See
-     * App\Services\Statuses\StatusOrderManager::reorder() for the
-     * validation/renormalization rules: the protected rows are pinned
-     * (head/tail) and can neither be moved nor omitted.
+     * Resequences EVERY row, protected ones included, to $orderedIds' order
+     * and returns the fresh, complete, ordered list (AC-047, rectified
+     * 2026-11-10: the protected rows are no longer pinned head/tail). See
+     * App\Services\Lookups\LookupOrderManager::reorder() for the set rule:
+     * exactly the table's id set, none unknown, none missing.
      *
      * @param  array<int, int>  $orderedIds
      * @return EloquentCollection<int, TaskStatus>

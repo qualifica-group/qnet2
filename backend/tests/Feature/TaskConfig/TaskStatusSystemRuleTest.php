@@ -15,6 +15,9 @@ uses(RefreshDatabase::class);
 | System-row rules for `task-statuses` (spec 0101, AC-042/043/044/047)
 |--------------------------------------------------------------------------
 |
+| AC-047 rectified 2026-11-10: the protected rows are no longer pinned
+| head/tail, the reorder set is EVERY row.
+|
 | The three PROTECTED rows are created by the migrations, so every test reads
 | them back rather than building them: `system_key` is UNIQUE and is not
 | mass-assignable, so a second `open` row could not be created anyway.
@@ -228,67 +231,53 @@ it('AC-044: closed_negative stays a CLOSING status after its percentage moves', 
 });
 
 // ---------------------------------------------------------------------------
-// AC-047 — reorder touches the custom rows only
+// AC-047 (rectified 2026-11-10) — reorder moves EVERY row, protected included
 // ---------------------------------------------------------------------------
 
-it('AC-047: a valid permutation resequences the customs in the requested order', function () {
+it('AC-047: a valid permutation of every row moves the protected rows too', function () {
     Sanctum::actingAs(taskStatusSystemActorWith(['update']));
-    $first = TaskStatus::factory()->create(['name' => 'Prima']);
-    $second = TaskStatus::factory()->create(['name' => 'Seconda']);
-    $third = TaskStatus::factory()->create(['name' => 'Terza']);
+    $custom = TaskStatus::factory()->create(['name' => 'Ordinaria']);
+    $open = systemTaskStatus(TaskStatusSystemKey::Open);
+    $closedNegative = systemTaskStatus(TaskStatusSystemKey::ClosedNegative);
 
-    $response = $this->postJson('/api/task-statuses/reorder', [
-        'ordered_ids' => [$third->id, $first->id, $second->id],
-    ])->assertOk();
+    // The opening row goes LAST and the negative closing row FIRST: exactly
+    // the moves the old head/tail pinning forbade.
+    $middle = TaskStatus::query()->whereNotIn('id', [$open->id, $closedNegative->id])
+        ->orderBy('sort_order')->pluck('id')->all();
+    $orderedIds = [$closedNegative->id, ...$middle, $open->id];
 
-    $rows = collect($response->json('data'))->keyBy('id');
+    $response = $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => $orderedIds])->assertOk();
 
-    expect($rows[$third->id]['sort_order'])->toBeLessThan($rows[$first->id]['sort_order'])
-        ->and($rows[$first->id]['sort_order'])->toBeLessThan($rows[$second->id]['sort_order']);
+    expect(collect($response->json('data'))->pluck('id')->all())->toBe($orderedIds)
+        ->and(TaskStatus::query()->orderBy('sort_order')->pluck('id')->all())->toBe($orderedIds)
+        ->and($middle)->toContain($custom->id);
 
-    // The protected opening row stays before every ordinary one and the two
-    // protected closing rows after them (D-5).
-    $headMax = collect(TaskStatus::SYSTEM_HEAD_KEYS)
-        ->map(fn (TaskStatusSystemKey $key): int => systemTaskStatus($key)->fresh()->sort_order)->max();
-    $tailMin = collect(TaskStatus::SYSTEM_TAIL_KEYS)
-        ->map(fn (TaskStatusSystemKey $key): int => systemTaskStatus($key)->fresh()->sort_order)->min();
-
-    expect($headMax)->toBeLessThan($rows[$third->id]['sort_order'])
-        ->and($tailMin)->toBeGreaterThan($rows[$second->id]['sort_order']);
-
-    // ...and each pinned block keeps its DECLARED internal order, which the
-    // head/tail boundary check above would not catch on its own.
-    $orderOf = fn (array $keys): array => collect($keys)
-        ->map(fn (TaskStatusSystemKey $key): int => systemTaskStatus($key)->fresh()->sort_order)->all();
-
-    $headOrders = $orderOf(TaskStatus::SYSTEM_HEAD_KEYS);
-    $tailOrders = $orderOf(TaskStatus::SYSTEM_TAIL_KEYS);
-
-    expect($headOrders)->toBe(collect($headOrders)->sort()->values()->all())
-        ->and($tailOrders)->toBe(collect($tailOrders)->sort()->values()->all());
+    // Moving a protected row changes its position only, never its protection
+    // or its phase.
+    expect($open->fresh()->system_key)->toBe(TaskStatusSystemKey::Open)
+        ->and($closedNegative->fresh()->isClosing())->toBeTrue();
 });
 
-it('AC-047: 422 when ordered_ids includes a system status, no sort_order changes', function () {
+it('AC-047: 422 when ordered_ids omits a protected status, no sort_order changes', function () {
     Sanctum::actingAs(taskStatusSystemActorWith(['update']));
-    $custom = TaskStatus::factory()->create();
-    $system = systemTaskStatus(TaskStatusSystemKey::Open);
-    $systemOrder = $system->sort_order;
-    $customOrder = $custom->sort_order;
+    TaskStatus::factory()->create();
+    $open = systemTaskStatus(TaskStatusSystemKey::Open);
+    $before = TaskStatus::query()->orderBy('sort_order')->pluck('sort_order', 'id')->all();
 
-    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => [$system->id, $custom->id]])
-        ->assertStatus(422);
+    $withoutOpen = TaskStatus::query()->where('id', '!=', $open->id)->pluck('id')->all();
 
-    $this->assertDatabaseHas('task_statuses', ['id' => $system->id, 'sort_order' => $systemOrder]);
-    $this->assertDatabaseHas('task_statuses', ['id' => $custom->id, 'sort_order' => $customOrder]);
+    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => $withoutOpen])->assertStatus(422);
+
+    expect(TaskStatus::query()->orderBy('sort_order')->pluck('sort_order', 'id')->all())->toBe($before);
 });
 
-it('AC-047: 422 when ordered_ids omits a custom status, no sort_order changes', function () {
+it('AC-047: 422 when ordered_ids carries only the custom statuses (the pre-rectification set)', function () {
     Sanctum::actingAs(taskStatusSystemActorWith(['update']));
     $first = TaskStatus::factory()->create();
     $second = TaskStatus::factory()->create();
     $firstOrder = $first->sort_order;
 
-    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => [$second->id]])->assertStatus(422);
+    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => [$second->id, $first->id]])->assertStatus(422);
 
     $this->assertDatabaseHas('task_statuses', ['id' => $first->id, 'sort_order' => $firstOrder]);
 });

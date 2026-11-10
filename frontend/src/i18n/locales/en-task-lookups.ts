@@ -272,12 +272,10 @@ export const taskStatuses = {
   reorder: {
     openButton: 'Reorder',
     title: 'Reorder Task Statuses',
-    // Verified against `TaskStatus::SYSTEM_HEAD_KEYS` (open) and
-    // `SYSTEM_TAIL_KEYS` (closed_positive, closed_negative): one pinned first,
-    // two pinned last (AC-047). The former head keys in_progress/pending/
-    // in_validation are phases now, carried by `group`, not system rows.
+    // Every row moves, system ones included (AC-047 rectified 2026-11-10):
+    // the order is display only.
     subtitle:
-      'Drag the custom statuses to reorder them. The three system statuses stay pinned at the top and at the bottom.',
+      'Drag the statuses to change their order, system ones included. The order applies to the table, the dropdowns and the Kanban columns.',
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the list. Please retry.',
     saved: 'Order updated successfully.',

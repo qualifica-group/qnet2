@@ -18,14 +18,11 @@ uses(RefreshDatabase::class);
 | Reorder on the four PURE lookups (spec 0101, D-4 rectified, AC-049)
 |--------------------------------------------------------------------------
 |
-| Deliberately NOT a copy of the AC-047 suite, because the valid set is a
-| different set: `task-statuses` reorders only the CUSTOM rows (the six
-| system ones are pinned head/tail and must be absent), while these four
-| tables have no `system_key` column at all, so the valid set is EVERY row.
-| A test copied across without changing that would go green for the wrong
-| reason — `assertReorderSetIsEveryRow()` below is the assertion that pins
-| the difference down, and the last test in this file contrasts the two
-| endpoints on the same payload shape.
+| These four tables have no `system_key` column at all, so the valid set is
+| EVERY row. Since AC-047 was rectified (2026-11-10) `task-statuses` obeys
+| the same set rule even though its protected rows DO carry a `system_key`:
+| no row is pinned anymore. The last test in this file pins that
+| convergence down, and that the old custom-only set is now rejected.
 |
 | `sort_order` is server-managed with a step of 10 and resequences on every
 | write, so nothing here asserts a literal value: only relative order, which
@@ -33,8 +30,8 @@ uses(RefreshDatabase::class);
 */
 
 /**
- * The four PURE lookups. `task-statuses` is absent ON PURPOSE: its reorder
- * obeys AC-047, not AC-049.
+ * The four PURE lookups. `task-statuses` is absent ON PURPOSE: it has its
+ * own suite (AC-047), and its `system_key` column would break the first test.
  *
  * @return array<string, array{0: string, 1: string, 2: string}>
  */
@@ -61,9 +58,7 @@ it('AC-049: a pure lookup has no system rows at all, so the reorder set is EVERY
     Sanctum::actingAs(taskConfigActorWith($resource, ['update']));
     $rows = $modelClass::factory()->count(3)->create();
 
-    // Every row is in play: the FULL id set is accepted, where the same
-    // payload shape on task-statuses would be rejected for including the
-    // six pinned rows.
+    // Every row is in play: the FULL id set is accepted.
     $this->postJson("/api/{$resource}/reorder", ['ordered_ids' => $rows->pluck('id')->all()])->assertOk();
 })->with('pureLookupResources');
 
@@ -261,7 +256,7 @@ it('AC-049: sort_order stays prohibited on task-statuses too, which keeps its ow
 // The contrast that keeps this suite honest
 // ---------------------------------------------------------------------------
 
-it('AC-049 vs AC-047: the same "every row" payload is accepted here and rejected on task-statuses', function (string $resource, string $modelClass) {
+it('AC-049 and AC-047 (rectified): the "every row" payload is accepted on both, the customs-only one rejected on task-statuses', function (string $resource, string $modelClass) {
     // BOTH actors are built before the first Sanctum::actingAs(): that call
     // switches the default auth driver to `sanctum`, so a Permission created
     // after it is stamped with the `sanctum` guard while User resolves its
@@ -278,16 +273,19 @@ it('AC-049 vs AC-047: the same "every row" payload is accepted here and rejected
         'ordered_ids' => $modelClass::query()->orderBy('id')->pluck('id')->all(),
     ])->assertOk();
 
-    // Statuses: every row includes the five pinned protected rows -> 422.
-    // Five since spec 0118 D-5 promoted "Assegnato"; the assertion pins the
-    // count because the 422 depends on at least one pinned row being present,
-    // not on how many there are.
+    // Statuses: the five protected rows are part of the set like any other.
+    // The count is pinned because the customs-only 422 below depends on at
+    // least one protected row being present.
     Sanctum::actingAs($statusActor);
     TaskStatus::factory()->count(2)->create();
 
     expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(5);
 
     $this->postJson('/api/task-statuses/reorder', [
-        'ordered_ids' => TaskStatus::query()->orderBy('id')->pluck('id')->all(),
+        'ordered_ids' => TaskStatus::query()->whereNull('system_key')->orderBy('id')->pluck('id')->all(),
     ])->assertStatus(422);
+
+    $this->postJson('/api/task-statuses/reorder', [
+        'ordered_ids' => TaskStatus::query()->orderBy('id')->pluck('id')->all(),
+    ])->assertOk();
 })->with('pureLookupResources');

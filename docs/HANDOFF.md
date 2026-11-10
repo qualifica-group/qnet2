@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Stati Task: riordinabili anche gli stati fissi (spec 0101 AC-047 rettificato) (2026-11-10) — VERDE, COMMITTATO
+
+- Richiesta utente: "voglio poter ordinare anche gli stati fissi dei task". Prima i 5 stati protetti erano fissati (Aperto/In corso in testa, le due chiusure in coda; "Assegnato" non si muoveva mai).
+- BE: `TaskStatus` senza `SYSTEM_HEAD_KEYS`/`SYSTEM_TAIL_KEYS`; `TaskStatusService` usa `LookupOrderManager` (set valido = TUTTE le righe, attive e disattivate; un nuovo stato va in fondo). `StatusOrderManager` resta per pipeline/reward/contract. L'ordine e' solo visuale: ruolo e fase restano su `system_key`/`group`.
+- `QualificaTaskTaxonomySeeder`: solo quando crea stati, sposta le due chiusure protette in coda (`moveClosingStatusesLast`), cosi' un'installazione nuova legge apertura -> lavoro -> chiusura e un riordino manuale sopravvive al re-run.
+- FE: `TaskStatusesTable` passa `allRowsReorderable` (precedente spec 0248 ODA). Sottotitolo sheet IT/EN, guide in-app IT/EN e manuale Claude Docs aggiornati.
+- Test (REQUIREMENT CHANGED, AC-047/AC-015): `TaskStatusSystemRuleTest`, `TaskResumeStatusTest`, `TaskLookupReorderTest`, `TaskConfigForSelectInactiveTest`; nuovo test FE in `task-statuses-table.test.tsx`.
+- Da sapere: failure non correlate gia' presenti nel working tree di altre sessioni: `QualificaOperatorSeederTest` (ruolo `importatore-richieste`), `EmploymentProductLineTest`, tsc su `identity-duplicates` (spec 0037 in corso).
+
 ## Configurazioni in uso non eliminabili (spec 0384) (2026-11-10) — VERDE, COMMITTATO
 
 - Richiesta utente: template, modelli task e moduli di contorno non eliminabili se usati (dopo la 0377 sugli stati di lavorazione). Piano approvato; template email bloccati anche se usati solo da email inviate (D-5).

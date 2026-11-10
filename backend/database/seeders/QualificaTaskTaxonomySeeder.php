@@ -2,13 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Enums\TaskStatusSystemKey;
 use App\Models\TaskCategory;
 use App\Models\TaskImportance;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\TaskType;
 use App\Services\Lookups\LookupOrderManager;
-use App\Services\Statuses\StatusOrderManager;
 use Database\Seeders\QualificaCatalog\TaskTaxonomyCatalogue;
 use Illuminate\Database\Seeder;
 
@@ -27,11 +27,12 @@ use Illuminate\Database\Seeder;
  * The only exception is the three PROTECTED statuses, matched by
  * `system_key` and never by label (D-5).
  *
- * `sort_order` is never written literally: it comes from the order managers
- * that own that column (LookupOrderManager for the four pure lookups,
- * StatusOrderManager for the statuses, which additionally pins the protected
- * head/tail rows), so the seeded sequence is the one the module itself would
- * produce and no step constant is duplicated here.
+ * `sort_order` is never written literally: it comes from LookupOrderManager,
+ * the order manager that owns that column on all five tables, so no step
+ * constant is duplicated here. Statuses are no longer pinned head/tail (spec
+ * 0101 AC-047, rectified 2026-11-10): the seeder itself moves the protected
+ * closing rows after the ordinary ones it creates, so a fresh install still
+ * reads "opening, work, closing".
  *
  * Idempotent on the natural `name` key (AC-005): a re-run adopts the
  * existing row and overwrites neither a rename nor a manual recolour or
@@ -44,7 +45,6 @@ class QualificaTaskTaxonomySeeder extends Seeder
 {
     public function __construct(
         private readonly LookupOrderManager $lookupOrderManager,
-        private readonly StatusOrderManager $statusOrderManager,
     ) {}
 
     public function run(): void
@@ -58,8 +58,11 @@ class QualificaTaskTaxonomySeeder extends Seeder
         // Step 2: give the three protected rows the client's wording, before
         // anything else can collide with a name on them.
         $this->reshapeProtectedStatuses();
-        // Step 3: the client's own statuses, placed between head and tail.
-        $this->seedStatuses();
+        // Step 3: the client's own statuses, then the closing rows after them
+        // — only on the run that creates statuses, so a manual reorder survives.
+        if ($this->seedStatuses()) {
+            $this->moveClosingStatusesLast();
+        }
 
         // Step 4: the client's chosen defaults (spec 0154, D-8) — "Attivita'"
         // type, "Media" priority, "Media" importance. task_categories has no
@@ -139,24 +142,47 @@ class QualificaTaskTaxonomySeeder extends Seeder
     }
 
     /**
-     * The client's ordinary statuses. StatusOrderManager::placeNew() puts
-     * each one after the last ordinary row and pushes the two closing rows
-     * past it, so the sequence stays "opening, work, closing" however many
-     * are added.
+     * The client's ordinary statuses, each placed after the last row by
+     * LookupOrderManager::placeNew(). Returns whether this run created any.
      */
-    private function seedStatuses(): void
+    private function seedStatuses(): bool
     {
+        $created = false;
+
         foreach (TaskTaxonomyCatalogue::STATUSES as [$name, $group, $color, $icon, $percentage]) {
-            TaskStatus::query()->firstOrCreate(
+            $status = TaskStatus::query()->firstOrCreate(
                 ['name' => $name],
                 [
                     'group' => $group,
                     'color' => $color,
                     'icon' => $icon,
                     'completion_percentage' => $percentage,
-                    'sort_order' => $this->statusOrderManager->placeNew(TaskStatus::class),
+                    'sort_order' => $this->lookupOrderManager->placeNew(TaskStatus::class),
                 ],
             );
+
+            $created = $created || $status->wasRecentlyCreated;
         }
+
+        return $created;
+    }
+
+    /**
+     * Moves the two protected closing rows to the end of the sequence, in
+     * that order, keeping every other row where it is.
+     */
+    private function moveClosingStatusesLast(): void
+    {
+        $ordered = TaskStatus::query()->orderBy('sort_order')->orderBy('name')->orderBy('id')->get(['id', 'system_key']);
+        $bySystemKey = $ordered->whereNotNull('system_key')->keyBy(static fn (TaskStatus $status): string => $status->system_key->value);
+
+        $closingIds = collect([TaskStatusSystemKey::ClosedPositive, TaskStatusSystemKey::ClosedNegative])
+            ->map(static fn (TaskStatusSystemKey $key): ?int => $bySystemKey->get($key->value)?->id)
+            ->filter()
+            ->values()
+            ->all();
+        $otherIds = $ordered->pluck('id')->diff($closingIds)->values()->all();
+
+        $this->lookupOrderManager->reorder(TaskStatus::class, [...$otherIds, ...$closingIds]);
     }
 }

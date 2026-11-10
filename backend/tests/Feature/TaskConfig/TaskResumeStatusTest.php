@@ -104,43 +104,21 @@ it('AC-014: PATCH renames the resume status and the key stays', function () {
 });
 
 // ---------------------------------------------------------------------------
-// AC-015 — reorder keeps in_progress pinned to the head, custom order kept
+// AC-015 (spec 0101 AC-047 rectified 2026-11-10) — in_progress reorders freely
 // ---------------------------------------------------------------------------
 
-it('AC-015: a reorder keeps in_progress pinned at the head with the other protected rows, customs in the requested order', function () {
+it('AC-015: in_progress can be moved like any other row and stays the resume status', function () {
     Sanctum::actingAs(taskResumeStatusActorWith(['update']));
-    $first = TaskStatus::factory()->create(['name' => 'Prima']);
-    $second = TaskStatus::factory()->create(['name' => 'Seconda']);
-
-    $response = $this->postJson('/api/task-statuses/reorder', [
-        'ordered_ids' => [$second->id, $first->id],
-    ])->assertOk();
-
-    $rows = collect($response->json('data'))->keyBy('id');
-
-    $open = TaskStatus::query()->where('system_key', TaskStatusSystemKey::Open->value)->firstOrFail();
-    $inProgress = inProgressStatus();
-    $closedPositive = TaskStatus::query()->where('system_key', TaskStatusSystemKey::ClosedPositive->value)->firstOrFail();
-    $closedNegative = TaskStatus::query()->where('system_key', TaskStatusSystemKey::ClosedNegative->value)->firstOrFail();
-
-    // Declared HEAD order (TaskStatus::SYSTEM_HEAD_KEYS): Open, then
-    // InProgress — both pinned before every custom row.
-    expect($open->fresh()->sort_order)->toBeLessThan($inProgress->fresh()->sort_order)
-        ->and($inProgress->fresh()->sort_order)->toBeLessThan($rows[$second->id]['sort_order']);
-
-    // Customs keep the requested relative order.
-    expect($rows[$second->id]['sort_order'])->toBeLessThan($rows[$first->id]['sort_order']);
-
-    // The two closing rows stay pinned after every custom row.
-    expect($rows[$first->id]['sort_order'])->toBeLessThan($closedPositive->fresh()->sort_order)
-        ->and($closedPositive->fresh()->sort_order)->toBeLessThan($closedNegative->fresh()->sort_order);
-});
-
-it('AC-015: the reorder set still excludes in_progress, so it cannot be moved as if it were a custom row', function () {
-    Sanctum::actingAs(taskResumeStatusActorWith(['update']));
-    $custom = TaskStatus::factory()->create();
+    TaskStatus::factory()->create(['name' => 'Prima']);
     $inProgress = inProgressStatus();
 
-    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => [$inProgress->id, $custom->id]])
-        ->assertStatus(422);
+    $others = TaskStatus::query()->where('id', '!=', $inProgress->id)->orderBy('sort_order')->pluck('id')->all();
+    $orderedIds = [...$others, $inProgress->id];
+
+    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => $orderedIds])->assertOk();
+
+    // Last, after the two closing rows too: the position is display only,
+    // the resume role travels with system_key.
+    expect(TaskStatus::query()->orderBy('sort_order')->pluck('id')->all())->toBe($orderedIds)
+        ->and($inProgress->fresh()->system_key)->toBe(TaskStatusSystemKey::InProgress);
 });

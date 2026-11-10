@@ -10,6 +10,7 @@ use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\TaskCategory;
 use App\Models\TaskImportance;
 use App\Models\TaskPriority;
+use App\Models\TaskStatus;
 use App\Models\TaskType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -30,10 +31,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * tail, and validates a reorder set against `whereNull('system_key')`. These
  * four tables have NO `system_key` column at all (D-4) and their models
  * declare neither constant, so every one of those code paths would either
- * fatal on a missing constant or fail at the SQL layer. `task-statuses`
- * keeps using StatusOrderManager (D-5); merging the two would mean teaching
- * the status resequencer to tolerate the absence of the very concept it
- * exists to protect.
+ * fatal on a missing constant or fail at the SQL layer; merging the two
+ * would mean teaching the status resequencer to tolerate the absence of the
+ * very concept it exists to protect. `task_statuses` (and the ODA/RDA status
+ * labels) DO carry `system_key`, but pin nothing on it: since AC-047 was
+ * rectified on 2026-11-10 every task status, protected ones included, is
+ * freely reorderable, so it belongs here.
  *
  * Sequence invariant, maintained by every method here: rows sit at STEP,
  * 2*STEP, 3*STEP... in their intended order, with no pinned position — every
@@ -49,7 +52,7 @@ class LookupOrderManager
      * next to reorder(), so placement and resequencing cannot drift apart —
      * both are the single authority on this column.
      *
-     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>|class-string<CostType>  $modelClass
+     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>|class-string<CostType>|class-string<TaskStatus>  $modelClass
      */
     public function placeNew(string $modelClass): int
     {
@@ -70,9 +73,9 @@ class LookupOrderManager
      * equality against the DB is not something a validation rule can
      * express, and the guard must hold whatever the caller.
      *
-     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>|class-string<CostType>  $modelClass
+     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>|class-string<CostType>|class-string<TaskStatus>  $modelClass
      * @param  array<int, int>  $orderedIds
-     * @return Collection<int, TaskType|TaskCategory|TaskPriority|TaskImportance|PurchaseOrderStatusLabel|PurchaseRequestLineStatusLabel|CostType>
+     * @return Collection<int, TaskType|TaskCategory|TaskPriority|TaskImportance|PurchaseOrderStatusLabel|PurchaseRequestLineStatusLabel|CostType|TaskStatus>
      *
      * @throws HttpException 422
      */
@@ -97,7 +100,7 @@ class LookupOrderManager
      * $orderedIds must be exactly the table's id set: no duplicates, no
      * unknown id, none missing.
      *
-     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>|class-string<CostType>  $modelClass
+     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>|class-string<CostType>|class-string<TaskStatus>  $modelClass
      * @param  array<int, int>  $orderedIds
      *
      * @throws HttpException 422

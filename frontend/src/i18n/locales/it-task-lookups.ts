@@ -289,12 +289,10 @@ export const taskStatuses = {
   reorder: {
     openButton: 'Riordina',
     title: 'Riordina Stati Task',
-    // Verificato su `TaskStatus::SYSTEM_HEAD_KEYS` (open) e
-    // `SYSTEM_TAIL_KEYS` (closed_positive, closed_negative): uno fissato in
-    // testa, due in coda (AC-047). Le ex chiavi di testa in_progress/pending/
-    // in_validation ora sono fasi, portate da `group`, non righe di sistema.
+    // Ogni riga si sposta, anche quelle di sistema (AC-047 rettificato il
+    // 2026-11-10): l'ordine e' solo di visualizzazione.
     subtitle:
-      'Trascina gli stati personalizzati per riordinarli. I tre stati di sistema restano fissi in testa e in coda.',
+      "Trascina gli stati per cambiarne l'ordine, compresi quelli di sistema. L'ordine si riflette su tabella, menu a tendina e colonne della Kanban.",
     dragHandleLabel: 'Trascina per riordinare',
     loadError: "Impossibile caricare l'elenco. Riprova.",
     saved: 'Ordine aggiornato correttamente.',
