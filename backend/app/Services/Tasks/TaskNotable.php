@@ -6,9 +6,11 @@ namespace App\Services\Tasks;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Models\WorkOrder;
 use App\Notes\Contracts\EnlistsMentionedUsers;
 use App\Notes\Contracts\NotableEntity;
 use App\Services\TimeEntries\TimeEntrySubordinateResolver;
+use App\Services\WorkOrders\WorkOrderNotable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Guard;
@@ -67,7 +69,8 @@ final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
      * osservatore), they hold `tasks.viewAll`, or they hold `tasks.viewSite`
      * and share a Sede with one of its assignees (spec 0148), or they
      * stand above one of its assignees on a NON private Task (specs 0214 D-9,
-     * 0309: no team permission, the org chart decides) — plus super-admins. It is
+     * 0309: no team permission, the org chart decides), or read the NON private
+     * Task's commessa (spec 0379 D-8, WorkOrderNotable's readers) — plus super-admins. It is
      * authorizeRead() read from the other end: there the actor is known and
      * the Task is queried, here the Task is known and the actors are. Any
      * gap between the two would mean either mentioning someone who then gets
@@ -96,16 +99,17 @@ final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
         $viewAllExists = $this->permissionExists(TaskVisibilityScope::VIEW_ALL_PERMISSION);
         $viewSiteExists = $siteIds !== [] && $this->permissionExists(TaskVisibilityScope::VIEW_SITE_PERMISSION);
         $teamIds = $record->is_private ? [] : $this->assigneeAncestorIds($record);
+        $workOrderReaders = $this->workOrderReaderIds($record);
 
         return User::query()
             ->excludingServiceAccounts()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($memberIds, $siteIds, $teamIds, $viewExists, $viewAllExists, $viewSiteExists): void {
+            ->where(function (Builder $query) use ($memberIds, $siteIds, $teamIds, $workOrderReaders, $viewExists, $viewAllExists, $viewSiteExists): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
-                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
+                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $siteIds, $teamIds, $workOrderReaders, $viewAllExists, $viewSiteExists): void {
+                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $siteIds, $teamIds, $workOrderReaders, $viewAllExists, $viewSiteExists): void {
                             $reader->permission(self::VIEW_PERMISSION)
-                                ->where(function (Builder $access) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
+                                ->where(function (Builder $access) use ($memberIds, $siteIds, $teamIds, $workOrderReaders, $viewAllExists, $viewSiteExists): void {
                                     $access->whereIn('id', $memberIds)
                                         ->when($viewAllExists, function (Builder $tiers): void {
                                             $tiers->orWhere(function (Builder $viewAll): void {
@@ -121,7 +125,8 @@ final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
                                                     );
                                             });
                                         })
-                                        ->when($teamIds !== [], fn (Builder $tiers) => $tiers->orWhereIn('id', $teamIds));
+                                        ->when($teamIds !== [], fn (Builder $tiers) => $tiers->orWhereIn('id', $teamIds))
+                                        ->when($workOrderReaders !== null, fn (Builder $tiers) => $tiers->orWhereIn('id', $workOrderReaders));
                                 });
                         });
                     });
@@ -203,6 +208,21 @@ final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
         $record->unsetRelation('watchers');
 
         return array_map('intval', $attached);
+    }
+
+    /**
+     * Spec 0379 D-8: the readers of the NON private Task's commessa, as an id
+     * subquery; null when the tier does not apply.
+     *
+     * @return Builder<User>|null
+     */
+    private function workOrderReaderIds(Task $task): ?Builder
+    {
+        $workOrder = $task->is_private || $task->work_order_id === null
+            ? null
+            : WorkOrder::query()->find($task->work_order_id);
+
+        return $workOrder === null ? null : (new WorkOrderNotable)->mentionableUsersQuery($workOrder)->select('users.id');
     }
 
     /**

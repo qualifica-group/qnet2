@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0379-task-visibility-through-work-order" status="approved" owner="nicola" date="2026-11-10">
+
+  <goal>
+    Chi vede una Commessa vede anche i suoi Task non privati, anche quando non ha alcun ruolo sul Task.
+  </goal>
+
+  <context>
+    D-1 Segnalazione utente 2026-11-10: Noemi Nigliato, Responsabile di COM-20053, apriva la commessa e nel task board vedeva 0 task su 18. I task migrati dal legacy hanno solo creatore e richiedente (`assigned_to` vuoto nel legacy): in produzione 341.345 task di commessa su 375.342 sono senza assegnatari, quindi nessuno dei tier esistenti (sede, team) li raggiunge.
+    D-2 Decisione utente 2026-11-10: "chi vede la commessa" e' esattamente WorkOrderVisibilityScope (Responsabili, Partecipanti, `work-orders.viewAll`, `viewSite`, `viewCompetence`), con in piu' il permesso `work-orders.view` (la regola restringe, non concede: come in WorkOrderPolicy). Nessuna regola nuova sulle commesse.
+    D-3 Nuovo tier di TaskVisibilityScope, in unione con membership, `viewSite` e team, assorbito da `tasks.viewAll`. Resta richiesto `tasks.view` (la policy non cambia).
+    D-4 Task privati (spec 0154 D-2): il tier commessa non li raggiunge, come gli altri tier larghi. Super-admin invariato.
+    D-5 Sola lettura, come i tier sede e team: modificare, chiudere o eliminare il Task resta deciso da TaskAbilityResolver (ruolo sul record o `tasks.manageAll`).
+    D-6 Vale ovunque si legge TaskVisibilityScope: task board della commessa, elenco Task, statistiche, contatori, for-select, sotto-task, segnatempo.
+    D-7 Prestazioni: chi vede un sottoinsieme di commesse riceve i Task del tier dentro la stessa UNION della membership (un solo `whereIn` su `tasks.id`, indice `work_order_id`); chi le vede tutte (`work-orders.viewAll` o competenza "tutte le categorie") riceve il ramo `is_private = false AND work_order_id IS NOT NULL`, come oggi `tasks.viewAll`.
+    D-8 Coerenza menzioni (spec 0101 D-5): sui Task non privati di una commessa sono menzionabili anche i lettori della commessa secondo WorkOrderNotable, purche' abbiano `tasks.view`. Stesso perimetro di WorkOrderNotable (senza il tier competenza).
+    D-9 Filtro "Assegnazione": l'opzione "Tutti i visibili" compare anche a chi ha `work-orders.view`.
+  </context>
+
+  <contract>
+    <endpoint>Nessun endpoint nuovo ne' cambio di shape. Cambia solo l'insieme di righe restituite da GET /api/work-orders/{id}/task-board, POST /api/tables/tasks/rows, GET /api/tasks/{id}, GET /api/notes/mentionable-users?entity_type=tasks.</endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>`TaskVisibilityScope` (query e verdetto per record), `WorkOrderVisibilityScope::seesEveryWorkOrder`.</item>
+      <item>`TaskNotable::mentionableUsersQuery`, `TaskAdvancedFilterCatalog::assignmentFilter`.</item>
+      <item>Guida `tasks` IT/EN, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Assegnare d'ufficio i Responsabili della commessa ai task migrati: inventerebbe assegnazioni assenti nel legacy.</item>
+      <item>Permessi di scrittura sui Task del tier commessa.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Un Responsabile della commessa con `tasks.view` e `work-orders.view` vede nel task board, nell'elenco Task e nel dettaglio un Task non privato della commessa su cui non ha ruoli.</criterion>
+    <criterion id="AC-002">Lo stesso vale per un Partecipante e per chi vede la commessa per sede.</criterion>
+    <criterion id="AC-003">Un Task privato della commessa resta invisibile a chi non ne e' membro.</criterion>
+    <criterion id="AC-004">Senza `work-orders.view` il tier non si applica; chi non vede la commessa non vede i suoi Task.</criterion>
+    <criterion id="AC-005">Il tier e' in sola lettura: niente update/delete senza ruolo o `tasks.manageAll`.</criterion>
+    <criterion id="AC-006">Chi ha `work-orders.viewAll` vede i Task non privati di tutte le commesse, non quelli senza commessa.</criterion>
+    <criterion id="AC-007">Il verdetto per record coincide con la query, anche con relazioni gia' caricate.</criterion>
+    <criterion id="AC-008">Il Responsabile della commessa e' menzionabile sui suoi Task non privati, non su quelli privati.</criterion>
+    <criterion id="AC-009">L'opzione "Tutti i visibili" del filtro Assegnazione e' offerta a chi ha `work-orders.view`.</criterion>
+  </acceptance>
+</spec>

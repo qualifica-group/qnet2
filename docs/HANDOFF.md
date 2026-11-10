@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Chi vede la commessa vede i suoi task (spec 0379) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
+
+- Segnalazione: Noemi Nigliato, Responsabile di COM-20053, vedeva 0 task su 18 nel task board. I task migrati hanno solo creatore/richiedente (in produzione 341.345 task di commessa su 375.342 senza assegnatari), e nessun tier li raggiungeva.
+- Regola (decisione utente): nuovo tier `App\Services\Tasks\TaskWorkOrderTier`, chiamato da `TaskVisibilityScope`. Chi vede la commessa (`WorkOrderVisibilityScope` + `work-orders.view`) vede i suoi task NON privati, in sola lettura. Con visibilita' parziale sulle commesse i task entrano nella UNION della membership; con `work-orders.viewAll` o competenza "tutte" scatta il ramo `is_private=false AND work_order_id IS NOT NULL` (nuovo `WorkOrderVisibilityScope::seesEveryWorkOrder`).
+- Anche: `TaskNotable` (lettori della commessa menzionabili sui task non privati), filtro Assegnazione "Tutti i visibili" per chi ha `work-orders.view`.
+- Verifica: `TaskWorkOrderVisibilityTest` 9/9; suite Tasks, WorkOrders, Notes, TimeEntries, Stats verdi (1.601 test); Pint ok; guide `tasks` e `work-orders` IT/EN + parita' verdi; manuale Claude Docs aggiornato. Su copia di produzione: Noemi 18/18, conteggio per chi ha 1.916 commesse 0,44 s.
+- `tsc -b --force`: 4 errori in `features/registries/*` del lavoro spec 0378 in corso, non di questa modifica.
+
 ## Avvio dell'app: bundle iniziale ridotto e niente piu' schermate bloccate (2026-11-10) — NON PROVATO NEL BROWSER
 
 - Problema segnalato: al primo caricamento spesso resta lo splash bianco o la schermata grigia con la rotella.

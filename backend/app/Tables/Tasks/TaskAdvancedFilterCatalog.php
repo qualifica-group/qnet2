@@ -9,6 +9,7 @@ use App\Enums\TaskAssignmentScope;
 use App\Enums\TaskListStatus;
 use App\Models\User;
 use App\Services\Tasks\TaskVisibilityScope;
+use App\Services\Tasks\TaskWorkOrderTier;
 
 /**
  * Advanced-filter catalogue for the `tasks` domain (spec 0147): the same axes
@@ -88,7 +89,8 @@ final class TaskAdvancedFilterCatalog
     /**
      * `assignment` (spec 0153, D-1): required, multi-value, OR-combined by
      * TaskAdvancedFilterApplier, defaulting to `[assigned_to_me]`. `visible`
-     * is listed in `excludedValues` for an actor without viewAll/viewSite and without subordinates:
+     * is listed in `excludedValues` for an actor without viewAll/viewSite, without subordinates
+     * and without `work-orders.view` (spec 0379 D-9):
      * for them it would coincide with `all`, so the option is only noise.
      *
      * @return array<string, mixed>
@@ -98,7 +100,8 @@ final class TaskAdvancedFilterCatalog
         $canSeeBeyondRoles = $actor !== null
             && ($actor->can(TaskVisibilityScope::VIEW_ALL_PERMISSION)
                 || $actor->can(TaskVisibilityScope::VIEW_SITE_PERMISSION)
-                || TaskVisibilityScope::actorTeamIds($actor) !== []);
+                || TaskVisibilityScope::actorTeamIds($actor) !== []
+                || TaskWorkOrderTier::applies($actor));
 
         return [
             'name' => self::ASSIGNMENT,

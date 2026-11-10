@@ -101,6 +101,15 @@ final class WorkOrderVisibilityScope
     }
 
     /**
+     * Whether scopeToActor() leaves the actor every commessa: `viewAll`, or the
+     * "all categories" competence. Lets a caller skip the subquery (spec 0379 D-7).
+     */
+    public static function seesEveryWorkOrder(User $user): bool
+    {
+        return $user->can(self::VIEW_ALL_PERMISSION) || self::competenceReach($user)?->all === true;
+    }
+
+    /**
      * Projects the competence tier's verdict on each row (spec 0340, AC-016),
      * so isVisibleTo() answers a competence-only row from the attribute instead
      * of one query per row. Built from the SAME subquery as scopeToActor().
