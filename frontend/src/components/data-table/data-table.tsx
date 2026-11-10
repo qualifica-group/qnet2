@@ -13,6 +13,7 @@ import {
   type ModelUpdatedEvent,
   type RowSelectionOptions,
   type SelectionChangedEvent,
+  type StateUpdatedEvent,
 } from 'ag-grid-community'
 import {
   AG_GRID_LOCALE_EN,
@@ -32,6 +33,13 @@ import {
   TableEmptyOverlay,
 } from '@/components/data-table/data-table-overlays'
 import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
+import {
+  buildInitialGridState,
+  gridPositionFromState,
+  initialRowCount,
+  pageSizeOptions,
+  restorablePosition,
+} from '@/components/data-table/grid-position'
 import { createFilterTruncationNotice } from '@/components/data-table/filter-truncation-notice'
 import { buildRowGroupingGridOptions, resolveRowId } from '@/components/data-table/row-grouping-grid-options'
 import { buildTreeDataGridOptions } from '@/components/data-table/tree-data-grid-options'
@@ -88,6 +96,7 @@ export function DataTable({
   onGridReady,
   onColumnStateChanged,
   initialFilterModel,
+  positionStore,
   onFilterChanged,
   onRowCountChanged,
   enableSelection,
@@ -250,14 +259,21 @@ export function DataTable({
     [enableSelection, isRowSelectable],
   )
 
-  // Apply the saved filters once, at grid creation, so the first SSRM request is
-  // already filtered. Omitted when empty so a clean table starts unfiltered.
+  // Where the user left this grid (sort, page, page size), read once per mount:
+  // back on the list from a record page, they land where they were.
+  const [initialPosition] = useState(() => restorablePosition(positionStore?.read() ?? null, blockSize))
+  const pageSize = initialPosition?.pageSize ?? blockSize
+
+  // Apply the saved filters and the restored position once, at grid creation,
+  // so the first SSRM request is already filtered, sorted and on that page.
   const initialState = useMemo<GridState | undefined>(
-    () =>
-      initialFilterModel && Object.keys(initialFilterModel).length > 0
-        ? { filter: { filterModel: initialFilterModel } }
-        : undefined,
-    [initialFilterModel],
+    () => buildInitialGridState(initialFilterModel, initialPosition),
+    [initialFilterModel, initialPosition],
+  )
+
+  const handleStateUpdated = useCallback(
+    (event: StateUpdatedEvent<TableRow>) => positionStore?.write(gridPositionFromState(event.state, pageSize)),
+    [positionStore, pageSize],
   )
 
   const gridOptions = useMemo<GridOptions<TableRow>>(
@@ -273,7 +289,7 @@ export function DataTable({
       // Reveal the header filter and column-menu buttons only while the pointer
       // is over the column header; the v35 default keeps them always visible.
       suppressMenuHide: false,
-      cacheBlockSize: blockSize,
+      cacheBlockSize: pageSize,
       // Show a column-shaped skeleton while each SSRM block loads: opting out of
       // the full-width loading row makes AG Grid render `loadingCellRenderer`
       // per cell, so the placeholder mirrors the real column layout.
@@ -283,12 +299,12 @@ export function DataTable({
       noRowsOverlayComponent: TableEmptyOverlay,
       // Render a full page of loading rows on the initial load too: without this,
       // SSRM shows a single loading row until the first response reveals the row
-      // count. Seeding the count with the page size makes the grid paint
-      // `blockSize` skeleton rows immediately.
-      serverSideInitialRowCount: blockSize,
+      // count. Seeding the count with the page size makes the grid paint a page
+      // of skeleton rows immediately; a restored page needs the count to reach it.
+      serverSideInitialRowCount: initialRowCount(pageSize, initialPosition),
       pagination: true,
-      paginationPageSize: blockSize,
-      paginationPageSizeSelector: [blockSize, blockSize * 2, blockSize * 4],
+      paginationPageSize: pageSize,
+      paginationPageSizeSelector: pageSizeOptions(blockSize),
       // Keep the user's column order across a `columnDefs` re-apply. The AG Grid
       // default (false) re-reads the order from the definitions array on every
       // update, so a drag-and-drop reorder was undone by the next React render.
@@ -338,6 +354,8 @@ export function DataTable({
     [
       datasource,
       blockSize,
+      pageSize,
+      initialPosition,
       getRowId,
       rowSelection,
       handleCellValueChanged,
@@ -370,6 +388,7 @@ export function DataTable({
         onFilterOpened={filterTruncationNotice.markOpened}
         onModelUpdated={handleModelUpdated}
         onPaginationChanged={syncCacheBlockToPageSize}
+        onStateUpdated={positionStore ? handleStateUpdated : undefined}
         onSelectionChanged={enableSelection ? handleSelectionChanged : undefined}
         {...gridOptions}
       />

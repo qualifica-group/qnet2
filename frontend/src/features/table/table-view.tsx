@@ -193,6 +193,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           referentId={referentId}
           columns={config.columns}
           datasource={view.datasource}
+          positionStore={view.positionStore}
           blockSize={config.defaultPagination.limit}
           cellRenderers={renderers}
           renderRowActions={view.renderRowActions}

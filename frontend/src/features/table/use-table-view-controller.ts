@@ -11,7 +11,7 @@ import type { UseTableCustomFiltersResult } from '@/features/table/custom-filter
 import type { UseActiveFilterChipsResult } from '@/features/table/custom-filters/use-active-filter-chips'
 import { createSsrmDatasource } from '@/features/table/ssrm-datasource'
 import { useViewportTableHeight } from '@/features/table/use-viewport-table-height'
-import { useTableViewGridState, type TableViewHandle } from '@/features/table/use-table-view-grid-state'
+import { useTableViewGridState, type TableViewHandle, type UseTableViewGridStateResult } from '@/features/table/use-table-view-grid-state'
 import { useTableViewFiltersState } from '@/features/table/use-table-view-filters-state'
 import type { TableConfig, TableRowsAggregates, WorkOrderTypeScope } from '@/features/table/types'
 
@@ -65,6 +65,7 @@ export interface TableViewControllerResult {
   advancedFilters: UseAdvancedFiltersResult
   aggregates: TableRowsAggregates | undefined
   datasource: ReturnType<typeof createSsrmDatasource>
+  positionStore: UseTableViewGridStateResult['positionStore']
   layoutVersion: number
   isCustomized: boolean
   isFilterCustomized: boolean
@@ -199,6 +200,7 @@ export function useTableViewController(
     advancedFilters: grid.advancedFilters,
     aggregates: grid.aggregates,
     datasource: grid.datasource,
+    positionStore: grid.positionStore,
     layoutVersion: filters.layoutVersion,
     isCustomized: filters.isCustomized,
     isFilterCustomized: filters.isFilterCustomized,

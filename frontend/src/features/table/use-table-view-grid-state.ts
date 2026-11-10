@@ -6,6 +6,8 @@ import { resolveRowGrouping } from '@/features/table/row-grouping'
 import { createSsrmDatasource, type SsrmDatasource } from '@/features/table/ssrm-datasource'
 import { useTableToolbarState, type TableToolbarState } from '@/features/table/use-table-toolbar-state'
 import { useTableLocalFilters } from '@/features/table/use-table-local-filters'
+import { useTablePositionStore } from '@/features/table/table-position-store'
+import type { GridPositionStore } from '@/components/data-table/grid-position'
 import type { TableConfigScope } from '@/features/table/use-table-config'
 import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
@@ -63,7 +65,7 @@ export interface UseTableViewGridStateResult {
   initialFilterModel: Record<string, unknown>
   gridApi: GridApi | null
   handleGridReady: (event: GridReadyEvent) => void
-  /** Purges and reloads the SSRM cache; shared with layout/filter persistence. */
+  /** Purges and reloads the SSRM cache (back to page 1); shared with layout/filter persistence. */
   refreshGrid: () => void
   /** The domain's global quick-search allow-list (spec 0009), needed by the filters-state hook to build the placeholder. */
   searchable: string[]
@@ -79,6 +81,8 @@ export interface UseTableViewGridStateResult {
   advancedFilters: UseAdvancedFiltersResult
   aggregates: TableRowsAggregates | undefined
   datasource: SsrmDatasource
+  /** Sort, page and page size kept across the grid's remounts; `undefined` without a signed-in user. */
+  positionStore: GridPositionStore | undefined
 }
 
 /**
@@ -144,9 +148,8 @@ export function useTableViewGridState(
     setGridApi(event.api)
   }, [])
 
-  // Purges and reloads the SSRM cache; shared by the imperative handle (used
-  // by domain adapters after their own CRUD mutations) and the generic
-  // bulk-delete flow below.
+  // Purges and reloads the SSRM cache after a filter/search change: the row set
+  // is a new one, so the grid restarts from page 1.
   // The datasource is built further down (it depends on hooks that themselves
   // call `refreshGrid`), so it is reached through a ref to avoid a cycle.
   const datasourceRef = useRef<SsrmDatasource | null>(null)
@@ -154,6 +157,15 @@ export function useTableViewGridState(
     // Spec 0178 D-2: forget the block-0 total so a page > 1 recounts after a write.
     datasourceRef.current?.resetKnownTotal()
     gridApi?.refreshServerSide({ purge: true })
+  }, [gridApi])
+
+  // Reloads the rows in place after a write (the imperative handle every domain
+  // adapter calls after a save, a delete, a closed notes dialog; the bulk delete
+  // below): same rows, same page and sort. A purge would drop the row count to
+  // one page until the response, and AG Grid would clamp the user back to page 1.
+  const refreshRows = useCallback(() => {
+    datasourceRef.current?.resetKnownTotal()
+    gridApi?.refreshServerSide({ purge: false })
   }, [gridApi])
 
   // Bulk selection (current page only, per the SSRM select-all contract),
@@ -168,7 +180,7 @@ export function useTableViewGridState(
     domain,
     gridApi,
     actions: config?.actions,
-    refresh: refreshGrid,
+    refresh: refreshRows,
     getBulkActions,
     disableBuiltinDelete,
   })
@@ -184,6 +196,8 @@ export function useTableViewGridState(
   // The quick search and active custom filter kept in the browser across a
   // reload; column/advanced filters are restored from the config instead.
   const localFilters = useTableLocalFilters({ domain, productCategoryId, productCategoryBranchId, opportunityId, quoteId, registryId, referentId })
+  // Sort, page and page size, kept while the list is left for a record.
+  const positionStore = useTablePositionStore({ domain, productCategoryId, productCategoryBranchId, opportunityId, quoteId, registryId, referentId, workOrderType })
 
   // Client-only toolbar state (search term + ⌘K, floating filters, fullscreen,
   // live row count), owned by a dedicated hook so this component stays a thin
@@ -314,8 +328,8 @@ export function useTableViewGridState(
     [gridApi],
   )
 
-  useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection, setFilterModel }), [
-    refreshGrid,
+  useImperativeHandle(ref, () => ({ refresh: refreshRows, clearSelection, setFilterModel }), [
+    refreshRows,
     clearSelection,
     setFilterModel,
   ])
@@ -341,5 +355,6 @@ export function useTableViewGridState(
     advancedFilters,
     aggregates,
     datasource,
+    positionStore,
   }
 }

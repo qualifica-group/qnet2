@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tabelle AG Grid: pagina e ordinamento restano dopo un popup e al ritorno dal record (2026-11-10) — VERDE, COMMITTATO, DA PUBBLICARE
+
+- Segnalazione utente: a pagina 3 o con un ordinamento attivo, aprire una commessa e tornare, o chiudere un popup (note), riportava a pagina 1 senza ordinamento.
+- Causa 1 (popup): `TableViewHandle.refresh()` faceva `refreshServerSide({ purge: true })`; il purge riporta il conteggio righe a `serverSideInitialRowCount` (una pagina) e AG Grid `adjustCurrentPageIfInvalid` riporta la pagina a 0. Ora `refresh()` e il bulk delete usano `refreshRows` = `refreshServerSide({ purge: false })` (righe ricaricate in posto, `resetKnownTotal` invariato). I cambi di filtro/ricerca restano su `refreshGrid` (purge, pagina 1: e' un altro insieme di righe).
+- Causa 2 (navigazione): la griglia si rimonta e ordinamento/pagina non erano salvati. Nuovo `components/data-table/grid-position.ts` (`GridPosition` = sortModel, page, pageSize; `GridPositionStore`; `buildInitialGridState`; `initialRowCount` = (page+1)*pageSize, altrimenti AG Grid riporta a pagina 1 prima della risposta). `DataTable` prop `positionStore`: letto una volta al mount (`initialState` sort+pagination, `cacheBlockSize`/`paginationPageSize` = page size ripristinata), scritto su `onStateUpdated`. Store in memoria per la vita dell'app (`features/table/table-position-store.ts`, chiave = quella dei filtri locali + `workOrderType`): un reload riparte da pagina 1 senza ordinamento (scelta, non richiesta: dire all'utente se lo vuole persistente).
+- Test: `grid-position.test.tsx` (5, griglia AG Grid reale: ripristino pagina+sort con richiesta della sola pagina, salvataggio, page size non piu' offerta ignorata, refresh in place tiene la pagina, purge torna a pagina 1); `table-view.test.tsx` +1 (`refresh()` -> `purge: false`, verificato che fallisce col purge). Suite frontend 1366 file / 10231 test verdi; tsc -b e ESLint puliti.
+- Manuale: guida `general` IT/EN (paragrafo "QNet ricorda da solo...") + manuale Claude Docs (paragrafo dopo lo stesso).
+- Da verificare nel browser: pagina 3 + sort su Commesse -> apri commessa a pagina -> indietro; chiudi Note. `data-table.tsx` 398 righe e `use-table-view-grid-state.ts` 360 (soft limit 300).
+
 ## Azioni di riga AG Grid: Ctrl/Cmd+clic apre la pagina in una nuova scheda (2026-11-10) — VERDE, COMMITTATO, DA PUBBLICARE
 
 - Richiesta utente: in ogni tabella l'occhio e le altre icone che portano a una pagina si aprono in una nuova scheda con Ctrl/Cmd+clic. Il clic normale resta com'era (modale o pagina secondo la preferenza).
