@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -7,13 +7,12 @@ import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { agentFiscalProfileKeys, fetchAgentFiscalProfile } from '@/features/agent-fiscal-profiles/api'
 import { AgentFiscalProfileForm } from '@/features/agent-fiscal-profiles/agent-fiscal-profile-form'
 import { AgentFiscalProfileDetailView } from '@/features/agent-fiscal-profiles/agent-fiscal-profile-detail'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
-import { AGENT_FISCAL_PROFILES_DOMAIN, type AgentFiscalProfileDetail } from '@/features/agent-fiscal-profiles/types'
+import { type AgentFiscalProfileDetail } from '@/features/agent-fiscal-profiles/types'
 
 /** The detail edits its rows in place (spec 0264), so `onEdit` is never used; each save reports through `onChanged`. */
 export function AgentFiscalProfileDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
@@ -86,17 +85,8 @@ export function AgentFiscalProfileFormScreen({ mode, onSuccess, onCancel }: Modu
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: AGENT_FISCAL_PROFILES_DOMAIN,
-  basePath: `/${AGENT_FISCAL_PROFILES_DOMAIN}`,
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.agentFiscalProfiles',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: AgentFiscalProfileDetailScreen,
   FormScreen: AgentFiscalProfileFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The form renders its own identity band, so the hosts must not stack a second heading above it.
-  formOwnsHeader: true,
 }

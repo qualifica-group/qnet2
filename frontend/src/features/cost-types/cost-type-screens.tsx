@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -6,13 +6,12 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { costTypeKeys, fetchCostType } from '@/features/cost-types/api'
 import { CostTypeForm } from '@/features/cost-types/cost-type-form'
 import { CostTypeDetailView } from '@/features/cost-types/cost-type-detail'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
-import { COST_TYPES_DOMAIN, type CostTypeDetail } from '@/features/cost-types/types'
+import { type CostTypeDetail } from '@/features/cost-types/types'
 
 /**
  * Content-only `cost-types` screens for the module registry (spec 0042). The
@@ -63,17 +62,8 @@ export function CostTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScre
   return <CostTypeForm onSuccess={handleSuccess} onCancel={onCancel} />
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: COST_TYPES_DOMAIN,
-  basePath: `/${COST_TYPES_DOMAIN}`,
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.costTypes',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: CostTypeDetailScreen,
   FormScreen: CostTypeFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The create form renders its own identity band, so hosts must not stack a second heading.
-  formOwnsHeader: true,
 }

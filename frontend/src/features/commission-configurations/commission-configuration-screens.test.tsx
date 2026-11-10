@@ -3,11 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import i18n from '@/i18n'
-import {
-  CommissionConfigurationDetailScreen,
-  CommissionConfigurationFormScreen,
-  moduleScreen,
-} from './commission-configuration-screens'
+import { CommissionConfigurationDetailScreen, CommissionConfigurationFormScreen } from './commission-configuration-screens'
+import { moduleDefinition } from './commission-configuration-module'
 
 const useDetail = vi.hoisted(() => vi.fn())
 const detailProps = vi.hoisted(() => ({ current: null as null | Record<string, unknown> }))
@@ -99,7 +96,7 @@ describe('commission configuration screens', () => {
   })
 
   it('exports the expected module registry descriptor', () => {
-    expect(moduleScreen).toMatchObject({
+    expect(moduleDefinition).toMatchObject({
       domain: 'commission-configurations',
       basePath: '/commission-configurations',
       generateEditRoute: false,

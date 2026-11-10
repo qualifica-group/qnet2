@@ -157,3 +157,13 @@ export interface ModuleRegistryEntry {
    */
   DetailPageActions?: ComponentType<ModuleDetailScreenProps>
 }
+
+/** The screens a module's `*-screens.tsx` exports as `moduleScreens`, loaded on first use. */
+export type ModuleScreens = Pick<ModuleRegistryEntry, 'DetailScreen' | 'FormScreen'>
+
+/**
+ * Everything about a module but its screens, exported as `moduleDefinition` by
+ * its `*-module.ts`. Loaded with the app shell (routes, settings list, record
+ * links need it at once), so it must stay free of heavy imports.
+ */
+export type ModuleDefinition = Omit<ModuleRegistryEntry, keyof ModuleScreens>

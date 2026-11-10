@@ -5,7 +5,7 @@ import { lazyRoute } from '@/routes/lazy-route'
 // it under the file-size limit (engineering.md §6). ONLY the list routes are
 // declared by hand: every `new`/`:id`/`:id/edit` deep link is generated from
 // the module registry by `buildModuleRoutes()` (spec 0042, AC-012), since all
-// the `*-screens.tsx` export a `moduleScreen`.
+// the `*-module.ts` export a `moduleDefinition`.
 const TasksPage = lazyRoute(() => import('@/pages/tasks-page'))
 const TaskStatusesPage = lazyRoute(() => import('@/pages/task-statuses-page'))
 const TaskTypesPage = lazyRoute(() => import('@/pages/task-types-page'))

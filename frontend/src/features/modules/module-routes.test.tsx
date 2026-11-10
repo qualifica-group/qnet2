@@ -7,7 +7,7 @@ import ModuleFormPage from '@/features/modules/module-form-page'
 /**
  * Spec 0068 AC-113. `buildModuleRoutes()` is a plain function over the real
  * `MODULE_REGISTRY` (built at import time via `import.meta.glob`, which has
- * already picked up `payment-method-screens.tsx`'s `moduleScreen`), so it is
+ * already picked up `payment-method-module.ts`'s `moduleDefinition`), so it is
  * callable directly — no router needs mounting. Asserts what the function
  * actually returns for the `payment-methods` domain (relative paths, no
  * leading slash — `basePath.replace(/^\//, '')`), not an imagined shape.

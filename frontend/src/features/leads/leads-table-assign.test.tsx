@@ -37,11 +37,7 @@ vi.mock('@/features/modules/use-module-open-mode', () => ({
 }))
 
 vi.mock('@/features/opportunities/opportunity-screens', () => ({
-  moduleScreen: {
-    domain: 'opportunities',
-    basePath: '/opportunities',
-    defaultMode: 'modal',
-    labelKey: 'navigation.opportunities',
+  moduleScreens: {
     DetailScreen: () => null,
     FormScreen: ({ mode }: { mode: ModuleFormScreenMode }) => <div>{`opportunity-form-${mode.type}`}</div>,
   },

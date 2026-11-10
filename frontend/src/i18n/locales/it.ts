@@ -1,4 +1,5 @@
 import { common } from './it-common'
+import { appVersion, config, theme } from './it-app-shell'
 import type { TranslationResources } from '@/i18n/locales/en'
 import { navigation } from './it-navigation'
 import { settings } from './it-settings'
@@ -98,26 +99,10 @@ import { aiAssistant } from './it-ai-assistant'
 
 export const it: TranslationResources = {
   common,
-  config: {
-    error: {
-      title: "Impossibile avviare l'applicazione",
-      description:
-        "Non è stato possibile caricare la configurazione dell'applicazione. Verifica la connessione e riprova.",
-      retry: 'Riprova',
-    },
-  },
-  appVersion: {
-    available: 'Nuova versione disponibile',
-    description: "È disponibile una nuova versione. Aggiorna per ricaricare l'applicazione.",
-    update: 'Aggiorna ora',
-  },
+  config,
+  appVersion,
   navigation,
-  theme: {
-    toggle: 'Cambia tema',
-    light: 'Chiaro',
-    dark: 'Scuro',
-    system: 'Sistema',
-  },
+  theme,
   actions: {
     view: 'Visualizza',
     edit: 'Modifica',

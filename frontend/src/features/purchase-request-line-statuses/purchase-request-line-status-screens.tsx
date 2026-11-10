@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
@@ -7,8 +7,7 @@ import {
   purchaseRequestLineStatusDetailQueryKey,
 } from '@/features/purchase-request-line-statuses/api'
 import { PurchaseRequestLineStatusDetailView } from '@/features/purchase-request-line-statuses/purchase-request-line-status-detail'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
-import type { ModuleDetailScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
+import type { ModuleDetailScreenProps, ModuleScreens } from '@/features/modules/types'
 
 /**
  * Content-only `purchase-request-line-statuses` screens for the module
@@ -48,15 +47,8 @@ export function PurchaseRequestLineStatusFormScreen() {
   return null
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'purchase-request-line-statuses',
-  basePath: '/purchase-request-line-statuses',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.purchaseRequestLineStatuses',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: PurchaseRequestLineStatusDetailScreen,
   FormScreen: PurchaseRequestLineStatusFormScreen,
-  // The detail IS the edit surface: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
 }

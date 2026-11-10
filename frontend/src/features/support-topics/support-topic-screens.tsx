@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -7,11 +7,10 @@ import { fetchSupportTopic, supportTopicDetailQueryKey } from '@/features/suppor
 import { SupportTopicForm } from '@/features/support-topics/support-topic-form'
 import { SupportTopicDetailView } from '@/features/support-topics/support-topic-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
-  ModuleRegistryEntry,
+  ModuleScreens,
 } from '@/features/modules/types'
 import type { SupportTopicDetail } from '@/features/support-topics/types'
 
@@ -82,15 +81,8 @@ export function SupportTopicFormScreen({ mode, onSuccess, onCancel }: ModuleForm
   )
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: 'support-topics',
-  basePath: '/support-topics',
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.supportTopics',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: SupportTopicDetailScreen,
   FormScreen: SupportTopicFormScreen,
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  formOwnsHeader: true,
 }

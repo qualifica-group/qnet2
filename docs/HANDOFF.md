@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Avvio dell'app: bundle iniziale ridotto e niente piu' schermate bloccate (2026-11-10) — NON PROVATO NEL BROWSER
+
+- Problema segnalato: al primo caricamento spesso resta lo splash bianco o la schermata grigia con la rotella.
+- Cause misurate: (1) `module-registry.ts` caricava in eager i 66 `*-screens.tsx`, quindi tutta l'app (AG Grid, tiptap, pusher...) finiva nel bundle iniziale: JS iniziale 7,1 MB (1,9 MB gzip); (2) `GET /config` e `GET /auth/me` senza timeout: con server lento splash o loader restavano su per sempre; (3) nessun `Suspense` attorno all'`Outlet` di `AppLayout`: ogni pagina lazy faceva salire il fallback fino al `FullScreenLoader` di `App` (schermata grigia al posto di tutta l'app).
+- Registro moduli (spec 0042) diviso in due file per modulo: `<name>-module.ts` esporta `moduleDefinition` (metadati, glob eager, deve restare senza import pesanti) e `<name>-screens.tsx` esporta `moduleScreens` (`DetailScreen`/`FormScreen`, glob lazy). Il registro (`module-registry.tsx`) avvolge ogni schermata in un proprio `Suspense` con `DetailLoading` e riusa `lazyRoute` (reload dopo deploy): gli host non cambiano. Tipi nuovi `ModuleDefinition`/`ModuleScreens` in `features/modules/types.ts`. `DetailPageActions` resta nei metadati (oggi nessun modulo lo usa). Nuovo modulo = entrambi i file, altrimenti il registro lancia un errore all'avvio.
+- Timeout: `BOOT_REQUEST_TIMEOUT_MS` (10 s) e `isTimeoutError` in `src/api/boot-request.ts`, solo su config e me. La config non ritenta dopo un timeout (subito la schermata Riprova). Un timeout su `me` NON fa logout: `AuthContextValue.hasInitTimedOut`/`retryInit`, `ProtectedRoute` mostra `BootErrorScreen` (estratta da `ConfigGate`, chiave `config.error.timeout`).
+- `index.html`: copia statica del primo fotogramma dello splash dentro `#root` (va tenuta allineata ad `app-splash-screen.tsx`). `AppLayout`: `Suspense` con `PageLoader` attorno all'`Outlet`.
+- `en.ts` era gia' a 514 righe (oltre il limite): `config`/`appVersion`/`theme` spostati in `{en,it}-app-shell.ts`.
+- Test: 12 test leggevano i metadati da `moduleScreen` -> ora `moduleDefinition` dal file `-module.ts` (stesse asserzioni); i mock di `opportunity-screens` nei test lead espongono `moduleScreens`; l'asserzione su `get('/config')` ora include il timeout (requisito cambiato).
+- Misura build: JS iniziale da 7,1 MB / 1,9 MB gzip a 2,3 MB / 644 KB gzip. Resta 1 MB di traduzioni IT+EN caricate all'avvio (`client-*.js`): prossima ottimizzazione possibile (caricare solo la lingua attiva), non fatta.
+- Da verificare: avvio nel browser (splash, login, apertura di un modulo in pagina e in modale); in produzione `/assets/*` servito compresso e con cache lunga. Manuale: nessun impatto.
+
 ## Codici sequenziali: i codici manuali col prefisso non bloccano piu' la numerazione (2026-11-10) — VERDE MIRATO, NON COMMITTATO
 
 - Bug in produzione: import lead (`leads-import-errors-13.csv`), 34 righe tutte in `Duplicate entry 'QUO-106264'`. `GeneratesSequentialCode::lastCodeQuery` ordinava per lunghezza e poi per stringa: un codice manuale piu' lungo con lo stesso prefisso (es. `QUO-106263 ...`) finiva in cima e ogni creazione automatica proponeva un codice gia' preso. Righe annullate per intero (transazione per riga), nessun dato parziale, notifiche non partite.

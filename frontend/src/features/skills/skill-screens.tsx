@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
+/* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -6,9 +6,8 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { skillKeys, fetchSkill } from '@/features/skills/api'
 import { SkillForm } from '@/features/skills/skill-form'
 import { SkillDetailView } from '@/features/skills/skill-detail'
-import { OPEN_MODE_MODAL } from '@/features/modules/types'
-import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
-import { SKILLS_DOMAIN, type Skill } from '@/features/skills/types'
+import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleScreens } from '@/features/modules/types'
+import { type Skill } from '@/features/skills/types'
 
 /** Content-only `skills` screens for the module registry (spec 0042). */
 export function SkillDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
@@ -55,17 +54,8 @@ export function SkillFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenP
   return <SkillForm onSuccess={handleSuccess} onCancel={onCancel} />
 }
 
-/** Auto-registered in the module registry (spec 0042). */
-export const moduleScreen: ModuleRegistryEntry = {
-  domain: SKILLS_DOMAIN,
-  basePath: `/${SKILLS_DOMAIN}`,
-  defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.skills',
+/** Screens of this module, loaded on first use by the module registry (spec 0042). */
+export const moduleScreens: ModuleScreens = {
   DetailScreen: SkillDetailScreen,
   FormScreen: SkillFormScreen,
-  // The detail IS the edit form: no edit route, no Edit button.
-  generateEditRoute: false,
-  detailOwnsEditAction: true,
-  // The create form renders its own identity band, so hosts must not stack a second heading.
-  formOwnsHeader: true,
 }
