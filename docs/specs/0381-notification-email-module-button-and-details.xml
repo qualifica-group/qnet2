@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0381-notification-email-module-button-and-details" status="approved" owner="utente" date="2026-11-10">
+
+  <goal>
+    Ogni email di notifica che parla di un record dell'app porta il bottone per aprire il modulo di quel record
+    (in alto e in fondo, con il nome del modulo) e la scheda dettagli del record. La scheda dell'anagrafica
+    include i dati fiscali.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-10: "in ogni email che fa riferimento all'app voglio il bottone per entrare
+    all'interno del modulo in cui si sta parlando. Ogni email deve contenere il dettaglio di cio' che si sta
+    parlando, soprattutto in anagrafica".
+
+    Decisioni utente 2026-11-10:
+    - U-1: scheda anagrafica = campi di oggi (Denominazione, Tipo, Fonte, Supervisore, Gestori Account) +
+      Partita IVA, Codice fiscale, Codice SDI. NON sede/contatti, classificazione, persone collegate.
+    - U-2 [rev. 2026-11-10, dopo aver visto le anteprime]: UN SOLO bottone, in basso, dopo la scheda
+      (prima: in alto e in fondo).
+    - U-3: etichetta del bottone = nome del modulo ("Apri anagrafica", "Apri commessa", ...).
+    - U-4 (all'approvazione): "allinea tutta la grafica di tutte le email, al momento non e' tanto allineata".
+      Verificato col render: welcome/reset/email ai clienti usano `resources/views/emails/layout.blade.php`
+      (una card: filo blu, testata, corpo, pie' di pagina dentro la card, 520px); le notifiche usano il tema
+      markdown `resources/views/vendor/mail/` (testata a tutta larghezza fuori dalla card, pie' di pagina
+      fuori, 570px), che imita il primo a mano.
+
+    Stato attuale verificato (backend/app/Notifications):
+    - Con scheda (DetailsTable): RecordAssignmentNotification, RequestTransferredNotification,
+      PurchaseRequestSubmittedNotification, TaskNotification (11 sottoclassi). Scheda PRIMA del bottone.
+    - Senza scheda: AbsenceRequestNotification, FieldChangeRequestedNotification,
+      FieldChangeRequestResolvedNotification, NoteMentionNotification, TaskUpdateRequested,
+      WorkOrderUpdateRequested, WorkOrderLineDeliverableNotification.
+    - Bottone: `->action(__('View'|'Open'), rtrim(config('app.frontend_url'),'/').$path)` ripetuto in ogni
+      classe; it.json traduce entrambi "Apri". Un solo bottone, renderizzato da
+      `notifications::email` del framework (non pubblicato) tra introLines e outroLines.
+    - Infrastruttura: app/Support/Notifications/{DetailsTable,RecordDetails,RecordLinkResolver,TaskDetails}.php;
+      etichette in lang/{it,en}/notifications.php (`fields.*`, `values.*`), tradotte nel locale del
+      destinatario da DetailsTable.
+    - Note: tipi annotabili (config/notes.php `notable_types`): request-management, enrollee-management
+      (Opportunity; Offerta quando la nota ha quote_id), tasks, work-orders, proforma-requests, registries,
+      referents, purchase-requests. Il link viene da NotableEntity::deepLinkPath() (per destinatario).
+    - Dati fiscali: `personal_data.vat_number`, `tax_code`, `sdi_code` via Registry::personalData() (MorphOne).
+
+    Decisioni proposte (da validare con la spec):
+    - D-1 [rev. U-4] Due bottoni e una sola grafica: le notifiche rendono la view
+      `resources/views/emails/notification.blade.php` (estende `emails.layout`, come welcome e reset) con la
+      gemella testuale `emails/notification-plain.blade.php`, impostata da RecordMail via
+      `MailMessage::view()`. La view stampa un solo bottone, dopo la scheda (U-2 rev.). Ogni email si
+      compone in quest'ordine: frase -> scheda -> bottone. Nessun bottone
+      (destinatario senza accesso) = la scheda resta, nessun bottone. Le righe passano da
+      `Illuminate\Mail\Markdown::parse()` (html_input escape, invariato rispetto a oggi).
+    - D-8 (U-4) Un solo layout: `emails.layout` riceve gli stili della tabella dettagli e del secondo bottone
+      (light + dark); il tema markdown `resources/views/vendor/mail/` (html, text, themes) non ha piu'
+      utilizzatori e si cancella.
+    - D-2 L'etichetta si ricava dal PERCORSO di destinazione (primo segmento), non dal tipo di record: una
+      stessa nota apre per un utente l'Offerta in Gestione Richieste e per un altro l'Opportunita', e il
+      bottone deve dire dove porta. Mappa unica in `ModuleActionLabel`:
+      registries=Apri anagrafica, referents=Apri referente, opportunities=Apri opportunita',
+      quotes=Apri offerta, request-management=Apri richiesta, enrollee-management=Apri iscritto,
+      work-orders=Apri commessa, tasks=Apri attivita', purchase-requests=Apri richiesta di acquisto,
+      proforma-requests=Apri richiesta proforma, absences=Apri assenze,
+      field-change-requests=Apri richiesta di modifica. Segmento sconosciuto = "Apri in QNet".
+    - D-3 Composizione condivisa: `RecordMail::compose(MailMessage, lead, details, ?path)` sostituisce il
+      blocco frase/tabella/bottone ripetuto in ogni classe (stesso colore di livello del framework).
+    - D-4 Privacy: Partita IVA, Codice fiscale e Codice SDI compaiono solo a chi puo' aprire il record
+      (path non nullo). Chi riceve l'email senza accesso al modulo vede la scheda senza dati fiscali
+      (un'anagrafica puo' essere una persona fisica: il CF e' un dato personale).
+    - D-5 Scheda per ogni email senza scheda:
+      assenza = Persona, Tipo, Periodo, Motivazione (se c'e');
+      richiesta di modifica (nuova) = Campo, Valore attuale, Valore richiesto, Richiesto da + scheda del record;
+      richiesta di modifica (esito) = Campo, Esito, Nota (se c'e'), Gestita da + scheda del record;
+      menzione = scheda del record annotato (Offerta se la nota ha quote_id);
+      richiesta aggiornamento attivita'/commessa = scheda dell'attivita'/commessa;
+      riga consegnabile = Prodotto, Stato pagamento + scheda commessa.
+    - D-6 Nuove schede: Referente (Nome, Tipo referente, Anagrafiche collegate), Richiesta proforma
+      (Commessa, Tipo, Fornitore, Stato, Assegnata a), Richiesta di acquisto (oggi costruita in
+      PurchaseRequestNotifier, si sposta in RecordDetails invariata nei campi).
+    - D-7 La campanella non cambia: toArray() (title, message, level, action_url) resta identico.
+  </context>
+
+  <scope>
+    <in>
+      <item>View `emails/notification.blade.php` + `emails/notification-plain.blade.php` su `emails.layout`, stili tabella in `emails/layout.blade.php`, cancellazione di `resources/views/vendor/mail/` (D-1, D-8).</item>
+      <item>`App\Support\Notifications\ModuleActionLabel` (D-2) e `RecordMail` (D-3), testi `notifications.actions.*` IT/EN.</item>
+      <item>RecordDetails: dati fiscali anagrafica (U-1), schede Referente, Richiesta proforma, Richiesta di acquisto (D-6).</item>
+      <item>Tutte le 14 classi email con record (le 7 con scheda + le 7 senza) riallineate a frase -> bottone -> scheda tramite RecordMail.</item>
+      <item>Chiamanti che precalcolano la scheda: FieldChangeRequestCreator, FieldChangeRequestResolutionNotifier, NoteService, WorkOrderLinePaymentWriter, PurchaseRequestNotifier.</item>
+      <item>Guida in-app `general` IT/EN: paragrafo sulle email di notifica. Manuale Claude Docs: sezione notifiche.</item>
+    </in>
+    <out>
+      <item>WelcomeUserNotification e ResetPasswordNotification (template blade dedicati, gia' con bottone).</item>
+      <item>GenericNotification e ImportCompletedNotification (solo campanella, nessuna email).</item>
+      <item>Email in uscita ai clienti (OutboundEmail, spec 0175/0361/0362).</item>
+      <item>Sede, contatti, classificazione e persone collegate nella scheda anagrafica (U-1).</item>
+      <item>Campanella, pagina notifiche, frontend applicativo: nessuna modifica.</item>
+      <item>Preferenze di notifica per utente, nuovi eventi di notifica.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo o cambiato. Il contratto e' la composizione dell'email. -->
+    <mail_layout>
+      tutte le email (notifiche, welcome, reset, email ai clienti) = `emails.layout`: card unica con filo blu,
+      testata, corpo, pie' di pagina. Corpo notifica: titolo -> saluto -> frase (introLines) -> scheda dettagli -> [bottone, solo con un'action] -> link di
+      riserva. Testo: stesso ordine, il link chiude l'email.
+    </mail_layout>
+    <php>
+      ModuleActionLabel::for(string $path): string  // chiave i18n `notifications.actions.<segment>` o `notifications.actions.default`
+      RecordMail::compose(MailMessage $mail, string $lead, array $details, ?string $path): MailMessage
+        // $details: array&lt;string i18n key, string value&gt;; con $path null rimuove RESTRICTED_FIELDS (D-4)
+      RecordDetails::for(Model): Registry | Opportunity | Quote | WorkOrder | Task | Referent | ProformaRequest | PurchaseRequest
+    </php>
+    <lang file="lang/{it,en}/notifications.php">
+      fields.vat_number, fields.tax_code, fields.sdi_code, fields.person, fields.absence_type, fields.period,
+      fields.reason, fields.field, fields.current_value, fields.requested_value, fields.outcome, fields.note,
+      fields.handled_by, fields.product, fields.payment_status, fields.referent_type, fields.registries,
+      fields.work_order, fields.kind, fields.supplier, fields.assignee, actions.* (D-2)
+    </lang>
+    <database_payload>Invariato: { title, message, level, action_url } (D-7).</database_payload>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un destinatario che puo' aprire il record, quando riceve una qualunque delle 14 email, allora l'email ha un'action con URL `{frontend_url}{path}` e la renderizzazione HTML contiene un solo bottone, dopo la tabella dettagli. [revised 2026-11-10: U-2 rev.]</criterion>
+    <criterion id="AC-002">Dato un destinatario senza permesso sul modulo, quando riceve l'email, allora non c'e' nessun bottone, compare la frase di richiesta accesso e la scheda e' presente.</criterion>
+    <criterion id="AC-003">ModuleActionLabel restituisce l'etichetta di D-2 per ciascuno dei 12 segmenti (con e senza query string, es. `/absences?request=5`) e "Apri in QNet" per un segmento sconosciuto; in inglese "Open registry", "Open work order", ecc.</criterion>
+    <criterion id="AC-004">L'email di assegnazione di un'anagrafica mostra nella scheda Denominazione, Tipo, Partita IVA, Codice fiscale, Codice SDI, Fonte, Supervisore, Gestori Account; un campo vuoto non compare.</criterion>
+    <criterion id="AC-005">Lo stesso destinatario senza `registries.view` riceve la scheda senza Partita IVA, Codice fiscale e Codice SDI (D-4).</criterion>
+    <criterion id="AC-006">L'email di assenza contiene Persona, Tipo, Periodo e, solo se c'e', Motivazione; il bottone dice "Apri assenze".</criterion>
+    <criterion id="AC-007">Le email di richiesta di modifica (nuova ed esito) contengono Campo e valori/esito piu' la scheda dell'opportunita' interessata; bottone "Apri richiesta di modifica" per la nuova; per l'esito il bottone nomina il modulo del campo protetto (`record_path` di config/field-change-requests.php: "Apri richiesta" / "Apri iscritto"). [revised 2026-11-10: il link dell'esito porta a Gestione Richieste/Iscritti, non a /opportunities; D-2 nomina la destinazione]</criterion>
+    <criterion id="AC-008">L'email di menzione contiene la scheda del record annotato per ciascun tipo annotabile (anagrafica, referente, opportunita', offerta con quote_id, commessa, attivita', richiesta proforma, richiesta di acquisto).</criterion>
+    <criterion id="AC-009">Le email di richiesta aggiornamento attivita'/commessa e di riga consegnabile contengono la scheda dell'attivita'/commessa (piu' Prodotto e Stato pagamento per la riga consegnabile).</criterion>
+    <criterion id="AC-010">Il payload della campanella (toArray) di ogni classe e' identico a prima della modifica.</criterion>
+    <criterion id="AC-011">La scheda e le etichette seguono il locale del destinatario (utente EN riceve etichette e bottone in inglese).</criterion>
+    <criterion id="AC-013">L'HTML di una notifica, del welcome e del reset contiene la stessa struttura di `emails.layout` (classi accent-bar, header, body, footer dentro la stessa tabella .content) e nessuna classe del tema markdown (inner-body, content-cell).</criterion>
+    <criterion id="AC-014">La versione testuale di una notifica contiene saluto, frase, URL del bottone e righe della scheda in chiaro (nessun tag HTML, nessuna pipe di tabella markdown).</criterion>
+    <criterion id="AC-012">Nessuna query N+1: con `preventLazyLoading` attivo l'invio delle email non lancia LazyLoadingViolationException.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza.</item>
+    <item>Verifica visiva: screenshot headless (Chrome locale) di una notifica, del welcome e del reset, light e dark, 375px e 700px.</item>
+    <item>Una Notification non interroga il DB oltre loadMissing sul model che gia' possiede: le schede si precalcolano nel chiamante dove la notifica riceve solo id (regola di RecordDetails).</item>
+    <item>Le etichette si traducono al render (locale del destinatario), mai nel chiamante.</item>
+    <item>Test esistenti che assertano `actionText` "View"/"Open" o l'ordine scheda/bottone: aggiornati come REQUIREMENT CHANGED (spec 0381), dichiarato.</item>
+    <item>File sotto 300 righe; RecordDetails (oggi ~260) va diviso se supera la soglia (es. schede nuove in una classe dedicata).</item>
+  </constraints>
+
+</spec>

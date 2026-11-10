@@ -10,8 +10,8 @@ use App\Enums\NotificationLevelEnum;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
-use App\Support\Notifications\DetailsTable;
 use App\Support\Notifications\RecordLinkResolver;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -97,19 +97,14 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
         // A SHORT lead here, not the full sentence the bell shows: the detail
         // card right below carries the same facts as a table, and printing
         // them twice in one email reads as a mistake.
-        $mail = (new MailMessage)
-            ->subject($this->title())
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->withAccessNote($this->lead(), $path))
-            ->line(DetailsTable::markdown($this->details()));
-
-        // No reachable module, no button: a CTA that lands on a 403 is worse
-        // than none, and the message already says what to ask for.
-        if ($path !== null) {
-            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject($this->title())
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->withAccessNote($this->lead(), $path),
+            $this->details(),
+            $path,
+        );
     }
 
     /**

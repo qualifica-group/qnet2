@@ -7,6 +7,8 @@ namespace App\Notifications;
 use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Support\Notifications\DetailFields;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -67,18 +69,29 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
-            ->subject(__("absence_requests.notification.{$this->event}.title"))
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message($notifiable));
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject(__("absence_requests.notification.{$this->event}.title"))
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message($notifiable),
+            $this->details(),
+            $this->pathFor($notifiable),
+        );
+    }
 
-        $path = $this->pathFor($notifiable);
-
-        if ($path !== null) {
-            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+    /**
+     * Spec 0381: the request itself, from the facts already passed in.
+     *
+     * @return array<string, string>
+     */
+    private function details(): array
+    {
+        return DetailFields::compact([
+            'notifications.fields.person' => $this->personName,
+            'notifications.fields.type' => $this->typeName,
+            'notifications.fields.period' => $this->period,
+            'notifications.fields.reason' => $this->reason,
+        ]);
     }
 
     private function pathFor(object $notifiable): ?string

@@ -37,7 +37,7 @@ final class TaskDetails
     {
         $task->loadMissing(self::RELATIONS);
 
-        return self::compact([
+        return DetailFields::compact([
             'notifications.fields.title' => $task->title,
             'notifications.fields.status' => $task->taskStatus?->name,
             'notifications.fields.priority' => $task->taskPriority?->name,
@@ -62,29 +62,5 @@ final class TaskDetails
         }
 
         return $names === [] ? null : implode(', ', $names);
-    }
-
-    /**
-     * Drops the empty rows so a Task without a priority shows a shorter
-     * table rather than a row with a blank cell (AC-029).
-     *
-     * Deliberately NOT shared with RecordDetails::compact(): hoisting six
-     * lines into a trait would mean editing a class this spec has no business
-     * touching, for no gain a reader would notice.
-     *
-     * @param  array<string, string|null>  $fields
-     * @return array<string, string>
-     */
-    private static function compact(array $fields): array
-    {
-        $details = [];
-
-        foreach ($fields as $label => $value) {
-            if ($value !== null && trim($value) !== '') {
-                $details[$label] = trim($value);
-            }
-        }
-
-        return $details;
     }
 }

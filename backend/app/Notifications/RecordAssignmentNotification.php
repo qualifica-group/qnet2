@@ -9,8 +9,8 @@ use App\Enums\AssignmentRoleEnum;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
-use App\Support\Notifications\DetailsTable;
 use App\Support\Notifications\RecordLinkResolver;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -80,26 +80,16 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
     {
         $path = $this->pathFor($notifiable);
 
-        $mail = (new MailMessage)
-            ->subject($this->title())
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message($path));
-
         // The detail card rides on the EMAIL only: the bell shows a one-line
         // summary and the record is one click away there.
-        $table = DetailsTable::markdown($this->details);
-
-        if ($table !== null) {
-            $mail->line($table);
-        }
-
-        // No reachable module, no button: a CTA that lands on a 403 is worse
-        // than none, and the message already says what to ask for.
-        if ($path !== null) {
-            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject($this->title())
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message($path),
+            $this->details,
+            $path,
+        );
     }
 
     private function pathFor(object $notifiable): ?string

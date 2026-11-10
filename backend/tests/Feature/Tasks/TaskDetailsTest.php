@@ -79,7 +79,8 @@ it('joins several assignees into one cell', function () {
         ->toContain('Carlo Verdi');
 });
 
-it('renders through DetailsTable as a markdown table with translated labels', function () {
+// REQUIREMENT CHANGED (spec 0381, D-1): DetailsTable returns rows, not markdown.
+it('renders through DetailsTable as rows with translated labels', function () {
     // Fixture COMPLETA di proposito: con i campi nulli `compact()` li scarta e
     // la tabella resa porterebbe solo due label su sei, lasciando le altre
     // quattro senza alcuna asserzione di traduzione.
@@ -92,22 +93,10 @@ it('renders through DetailsTable as a markdown table with translated labels', fu
     $task->assignees()->attach(User::factory()->create(['name' => 'Anna Bianchi'])->id);
 
     app()->setLocale('it');
-    $table = (string) DetailsTable::markdown(TaskDetails::for($task->fresh()));
+    $rows = collect(DetailsTable::rows(TaskDetails::for($task->fresh())));
 
-    expect($table)->toContain('| Titolo |')
-        ->toContain('| Priorità |')
-        ->toContain('| Data fine |')
-        ->toContain('| Richiedente |')
-        ->toContain('| Assegnatari |')
-        ->toContain('Rinnovo contratto Acme')
-        // Nessuna chiave puntata deve sopravvivere fino al markdown reso.
-        ->not->toContain('notifications.fields.');
-});
-
-it('escapes a pipe in the title so it cannot break the table layout', function () {
-    $task = Task::factory()->create(['title' => 'Acme | Rinnovo']);
-
-    $table = (string) DetailsTable::markdown(TaskDetails::for($task->fresh()));
-
-    expect($table)->toContain('Acme \\| Rinnovo');
+    expect($rows->pluck('label')->all())->toBe(['Titolo', 'Stato', 'Priorità', 'Data fine', 'Richiedente', 'Assegnatari'])
+        ->and($rows->pluck('value'))->toContain('Rinnovo contratto Acme')
+        // Nessuna chiave puntata deve sopravvivere fino alla riga resa.
+        ->and($rows->pluck('label')->implode(' '))->not->toContain('notifications.fields.');
 });

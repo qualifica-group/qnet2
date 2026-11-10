@@ -7,6 +7,7 @@ namespace App\Services\PurchaseRequests;
 use App\Models\PurchaseRequest;
 use App\Models\User;
 use App\Notifications\PurchaseRequestSubmittedNotification;
+use App\Support\Notifications\ModuleRecordDetails;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -49,12 +50,7 @@ class PurchaseRequestNotifier
             $purchaseRequest->id,
             $purchaseRequest->subject,
             $actor->name,
-            [
-                'Subject' => $purchaseRequest->subject,
-                'Priority' => $purchaseRequest->loadMissing('purchaseRequestPriority:id,name')->purchaseRequestPriority->name,
-                'Requested on' => $purchaseRequest->requested_at->toDateString(),
-                'Total' => (string) $purchaseRequest->grand_total,
-            ],
+            ModuleRecordDetails::forPurchaseRequest($purchaseRequest),
         ));
     }
 }

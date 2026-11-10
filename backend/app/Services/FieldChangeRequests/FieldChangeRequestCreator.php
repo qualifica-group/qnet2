@@ -11,6 +11,7 @@ use App\Models\FieldChangeRequest;
 use App\Models\User;
 use App\Notifications\FieldChangeRequestedNotification;
 use App\Services\Table\CellValueValidator;
+use App\Support\Notifications\RecordDetails;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -153,10 +154,13 @@ final class FieldChangeRequestCreator
         }
 
         $subjectLabel = $this->resolver->subjectLabelOrFallback($fieldChangeRequest->resource, (int) $fieldChangeRequest->subject_id, $actor);
+        // Spec 0381: the card of the record the request is about.
+        $subject = $fieldChangeRequest->subject;
+        $subjectDetails = $subject === null ? [] : RecordDetails::for($subject);
 
         Notification::send(
             $recipients,
-            new FieldChangeRequestedNotification($fieldChangeRequest, $actor, $subjectLabel),
+            new FieldChangeRequestedNotification($fieldChangeRequest, $actor, $subjectLabel, $subjectDetails),
         );
     }
 

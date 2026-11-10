@@ -8,6 +8,8 @@ use App\Models\Note;
 use App\Models\User;
 use App\Notes\Mentions\MentionParser;
 use App\Notes\NoteEntityRegistry;
+use App\Support\Notifications\RecordDetails;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
@@ -88,18 +90,29 @@ class NoteMentionNotification extends Notification implements ShouldQueue
     {
         $path = $this->pathFor($notifiable);
 
-        $mail = (new MailMessage)
-            ->subject(__('You were mentioned'))
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message($path, $notifiable));
-
         // No reachable screen, no button: a CTA that lands on a 403 is worse
         // than none, and the message already says what to ask for.
-        if ($path !== null) {
-            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject(__('You were mentioned'))
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message($path, $notifiable),
+            $this->details(),
+            $path,
+        );
+    }
 
-        return $mail;
+    /**
+     * Spec 0381: the card of the annotated record. A note on a request that
+     * names its Offerta is about that Offerta, not the whole Opportunity.
+     *
+     * @return array<string, string>
+     */
+    private function details(): array
+    {
+        $quote = $this->note->quote_id === null ? null : $this->note->loadMissing('quote')->quote;
+
+        return RecordDetails::for($quote ?? $this->record);
     }
 
     /**

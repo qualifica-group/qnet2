@@ -17,11 +17,6 @@ declare(strict_types=1);
 
 return [
 
-    'table' => [
-        'field' => 'Campo',
-        'value' => 'Valore',
-    ],
-
     'fields' => [
         // Anagrafica
         'name' => 'Denominazione',
@@ -58,12 +53,70 @@ return [
         'start_date' => 'Data inizio',
         'supervisors' => 'Responsabili',
         'participants' => 'Partecipanti',
+
+        // Dati fiscali dell'anagrafica (spec 0381)
+        'vat_number' => 'Partita IVA',
+        'tax_code' => 'Codice fiscale',
+        'sdi_code' => 'Codice SDI',
+
+        // Assenza (spec 0381)
+        'person' => 'Persona',
+        'period' => 'Periodo',
+        'reason' => 'Motivazione',
+
+        // Richiesta di modifica (spec 0381)
+        'field' => 'Campo',
+        'current_value' => 'Valore attuale',
+        'requested_value' => 'Valore richiesto',
+        'outcome' => 'Esito',
+        'note' => 'Nota',
+        'handled_by' => 'Gestita da',
+
+        // Riga di commessa consegnabile (spec 0381)
+        'product' => 'Prodotto',
+        'payment_status' => 'Stato pagamento',
+
+        // Referente, richiesta proforma, richiesta di acquisto (spec 0381)
+        'referent_type' => 'Tipo referente',
+        'registries' => 'Anagrafiche',
+        'work_order' => 'Commessa',
+        'supplier' => 'Fornitore',
+        'assignee' => 'Assegnata a',
+        'subject' => 'Oggetto',
+        'requested_on' => 'Data richiesta',
+        'total' => 'Totale',
     ],
 
     'values' => [
         'client' => 'Cliente',
         'supplier' => 'Fornitore',
         'empty' => '—',
+        'approved' => 'Approvata',
+        'rejected' => 'Rifiutata',
+        'proforma_consultancy' => 'Consulenza',
+        'proforma_institution' => 'Ente',
+        'proforma_pending' => 'Da evadere',
+        'proforma_issued' => 'Evasa',
+    ],
+
+    /*
+    | Etichetta del bottone che apre il modulo (spec 0381, D-2): la chiave e'
+    | il primo segmento del percorso di destinazione.
+    */
+    'actions' => [
+        'registries' => 'Apri anagrafica',
+        'referents' => 'Apri referente',
+        'opportunities' => 'Apri opportunità',
+        'quotes' => 'Apri offerta',
+        'request-management' => 'Apri richiesta',
+        'enrollee-management' => 'Apri iscritto',
+        'work-orders' => 'Apri commessa',
+        'tasks' => 'Apri attività',
+        'purchase-requests' => 'Apri richiesta di acquisto',
+        'proforma-requests' => 'Apri richiesta proforma',
+        'absences' => 'Apri assenze',
+        'field-change-requests' => 'Apri richiesta di modifica',
+        'default' => 'Apri in QNet',
     ],
 
 ];

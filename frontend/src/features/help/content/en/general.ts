@@ -124,6 +124,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: "The bell shows how many notifications you haven't read; the browser tab title flags it too." },
         { type: 'list', items: ['Filter by **All**, **Unread** or **Read**.', 'Click a notification to open the linked record: it is marked as read.', 'Use **Mark as read** on a notification, or **Mark all as read**.'] },
+        { type: 'paragraph', text: 'Notifications also arrive by email, in the language set in your profile. Every email carries the card of the record it is about (for a registry also VAT number, Tax code and SDI code) and, below the card, the button that opens the right module, for example **Open registry** or **Open work order**. If you have no access to the module there is no button, the tax data are left out and the email tells you to ask an administrator for access.' },
         {
           type: 'table',
           headers: ['Settings section', 'What you can do'],

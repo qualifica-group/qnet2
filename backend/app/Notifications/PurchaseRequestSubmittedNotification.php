@@ -7,7 +7,7 @@ namespace App\Notifications;
 use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
-use App\Support\Notifications\DetailsTable;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -25,7 +25,7 @@ class PurchaseRequestSubmittedNotification extends Notification implements Shoul
     use Queueable;
 
     /**
-     * @param  array<string, string>  $details  english label => value, shown in the email
+     * @param  array<string, string>  $details  i18n label key => value (ModuleRecordDetails), shown in the email
      */
     public function __construct(
         private readonly int $purchaseRequestId,
@@ -59,24 +59,14 @@ class PurchaseRequestSubmittedNotification extends Notification implements Shoul
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
-            ->subject($this->title())
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message());
-
-        $table = DetailsTable::markdown($this->details);
-
-        if ($table !== null) {
-            $mail->line($table);
-        }
-
-        $path = $this->pathFor($notifiable);
-
-        if ($path !== null) {
-            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject($this->title())
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message(),
+            $this->details,
+            $this->pathFor($notifiable),
+        );
     }
 
     private function pathFor(object $notifiable): ?string

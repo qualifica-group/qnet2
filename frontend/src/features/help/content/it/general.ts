@@ -124,6 +124,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'La campanella mostra quante notifiche non hai letto; anche il titolo della scheda del browser te lo segnala.' },
         { type: 'list', items: ['Filtra con **Tutte**, **Non lette** o **Lette**.', 'Clicca una notifica per aprire il record collegato: viene segnata come letta.', 'Usa **Segna come letta** su una notifica, oppure **Segna tutte come lette**.'] },
+        { type: 'paragraph', text: 'Le notifiche arrivano anche via email, nella lingua scelta nel tuo profilo. Ogni email riporta la scheda del record di cui parla (per un’anagrafica anche Partita IVA, Codice fiscale e Codice SDI) e, sotto la scheda, il pulsante che apre il modulo giusto, per esempio **Apri anagrafica** o **Apri commessa**. Se non hai accesso al modulo il pulsante non c’è, i dati fiscali non compaiono e l’email ti dice di chiedere l’accesso a un amministratore.' },
         {
           type: 'table',
           headers: ['Sezione di Impostazioni', 'Cosa puoi fare'],

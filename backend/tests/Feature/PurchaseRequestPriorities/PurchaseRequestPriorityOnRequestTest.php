@@ -147,6 +147,7 @@ it('AC-005: the notification to the function manager carries the priority name',
     ]))->assertCreated();
 
     Notification::assertSentTo($manager, PurchaseRequestSubmittedNotification::class, function ($notification) use ($manager): bool {
-        return str_contains(collect($notification->toMail($manager)->introLines)->map(fn (mixed $line): string => (string) $line)->implode(' '), 'Critica');
+        // REQUIREMENT CHANGED (spec 0381, D-1): the card travels as view rows.
+        return collect($notification->toMail($manager)->viewData['details'])->pluck('value')->contains('Critica');
     });
 });

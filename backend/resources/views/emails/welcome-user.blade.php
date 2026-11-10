@@ -14,12 +14,7 @@
 
     <p>{{ __('On first access you will be asked to choose a new password.') }}</p>
 
-    <p>
-        <a href="{{ $url }}" class="button" target="_blank" rel="noopener">
-            {{ __('Sign in') }}
-        </a>
-    </p>
+    @include('emails.partials.button', ['url' => $url, 'label' => __('Sign in')])
 
-    <p class="muted">{{ __('If the button above does not work, copy and paste this URL into your browser:') }}</p>
-    <p class="muted break"><a href="{{ $url }}">{{ $url }}</a></p>
+    @include('emails.partials.link-fallback', ['url' => $url])
 @endsection
