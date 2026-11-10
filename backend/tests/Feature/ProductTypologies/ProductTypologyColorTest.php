@@ -143,7 +143,7 @@ it('AC-003: the commessa contract data exposes the color on lines and totals', f
     $workOrder = WorkOrder::factory()->create();
     $line = contractDataLine($workOrder, 'consultancy', 1000);
     ProductTypology::where('code', 'consultancy')->update(['color' => 'blue']);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $data = $this->getJson("/api/work-orders/{$workOrder->id}/contract-data")->assertOk()->json('data');
 

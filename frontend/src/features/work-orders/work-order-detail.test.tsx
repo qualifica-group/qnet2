@@ -124,7 +124,8 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},
-      actions: { view_activity: false },
+      // Spec 0380: the contract data section (plain product list included) needs view_costs.
+      actions: { view_activity: false, view_costs: true },
     },
     ...overrides,
   }
@@ -331,7 +332,7 @@ describe('WorkOrderDetailView — related records', () => {
     const base = workOrder()
     render(
       <WorkOrderDetailView
-        workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_contract_data: true, manage_payments: true } } })}
+        workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_costs: true, view_contract_data: true, manage_payments: true } } })}
       />,
     )
 
@@ -346,6 +347,15 @@ describe('WorkOrderDetailView — related records', () => {
     expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
     expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Consulenza' })).toHaveAttribute('href', '/products/1')
+  })
+
+  it('has no contract data section at all, not even the products, without view_costs (spec 0380)', () => {
+    const base = workOrder()
+    render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_contract_data: true } } })} />)
+
+    expect(screen.queryByRole('heading', { name: 'Contract data' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Consulenza' })).not.toBeInTheDocument()
   })
 
   it("links the client registry reached through the commessa's offer", () => {
@@ -421,7 +431,8 @@ describe('WorkOrderDetailView — related records', () => {
 describe('WorkOrderDetailView — collaboration', () => {
   it('renders no collaboration card when nothing is authorized', () => {
     canMock.mockImplementation((): boolean => false)
-    render(<WorkOrderDetailView workOrder={workOrder()} />)
+    const base = workOrder()
+    render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...base.permissions, actions: {} } })} />)
 
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })

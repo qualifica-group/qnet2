@@ -51,12 +51,17 @@ function WorkOrderLinesList({ lines, showRegistry }: { lines: WorkOrderQuoteLine
  * "Contract data" section of the record card, full width. With
  * `view_contract_data` it is the contract data table (KPIs, revenue per
  * typology, lines with their calculation hints and payment actions); without
- * it, the plain list of the product lines. The lines themselves are not
- * editable on a work order: they are chosen when it is created.
+ * it, the plain list of the product lines. Without `view_costs` there is no
+ * section at all, not even the products (spec 0380). The lines themselves are
+ * not editable on a work order: they are chosen when it is created.
  */
 export function WorkOrderContractDataPanel({ workOrder, className }: { workOrder: WorkOrderDetailWithPermissions; className?: string }) {
   const { t } = useTranslation()
   const { actions } = workOrder.permissions
+
+  if (!actions.view_costs) {
+    return null
+  }
 
   return (
     <RecordSection title={t('workOrders.contractData.title')} icon={<FileText />} full className={className}>

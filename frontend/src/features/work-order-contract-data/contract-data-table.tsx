@@ -5,7 +5,6 @@ import { ContractDataBulkBar } from '@/features/work-order-contract-data/contrac
 import { ContractDataRow } from '@/features/work-order-contract-data/contract-data-row'
 import { ContractPaymentDialog } from '@/features/work-order-contract-data/contract-payment-dialog'
 import type { WorkOrderContractData } from '@/features/work-order-contract-data/types'
-import { cn } from '@/lib/utils'
 
 /** Opaque twin of the header's `bg-muted/40` wash, so the pinned cell hides what scrolls under it. */
 const STICKY_ACTIONS_HEAD =
@@ -29,24 +28,6 @@ function Head({ column, short, align = 'right' }: HeadProps) {
     <th scope="col" aria-label={full} className={`${HEAD_CELL} ${align === 'right' ? 'text-right' : 'text-left'}`}>
       <span title={full}>{short ? t(`workOrders.contractData.columnsShort.${short}`) : full}</span>
     </th>
-  )
-}
-
-/** The figure columns, absent without the commessa's `viewCosts` (spec 0380). */
-function FigureHeads({ commissionsVisible }: { commissionsVisible: boolean }) {
-  return (
-    <>
-      <Head column="quantity" />
-      <Head column="unitPrice" short="unitPrice" />
-      <Head column="netAmount" />
-      {commissionsVisible ? (
-        <>
-          <Head column="supplierCommission" short="supplierCommission" />
-          <Head column="netOfCommissions" short="netOfCommissions" />
-        </>
-      ) : null}
-      <Head column="effectiveRevenue" short="effectiveRevenue" />
-    </>
   )
 }
 
@@ -103,7 +84,7 @@ export function ContractDataTable({ workOrderId, data, canManage, showRegistry }
       {selectedLineIds.length > 0 ? (
         <ContractDataBulkBar workOrderId={workOrderId} selectedLineIds={selectedLineIds} onClear={clearSelection} />
       ) : null}
-      <table className={cn('block w-full text-xs md:table', data.figures_visible ? 'md:min-w-[1100px]' : null)}>
+      <table className="block w-full text-xs md:table md:min-w-[1100px]">
         <caption className="sr-only">{t('workOrders.contractData.tableCaption')}</caption>
         <thead className="hidden bg-muted/40 text-[11px] text-muted-foreground md:table-header-group">
           <tr>
@@ -118,7 +99,16 @@ export function ContractDataTable({ workOrderId, data, canManage, showRegistry }
               </th>
             ) : null}
             <Head column="product" align="left" />
-            {data.figures_visible ? <FigureHeads commissionsVisible={data.commissions_visible} /> : null}
+            <Head column="quantity" />
+            <Head column="unitPrice" short="unitPrice" />
+            <Head column="netAmount" />
+            {data.commissions_visible ? (
+              <>
+                <Head column="supplierCommission" short="supplierCommission" />
+                <Head column="netOfCommissions" short="netOfCommissions" />
+              </>
+            ) : null}
+            <Head column="effectiveRevenue" short="effectiveRevenue" />
             <Head column="payment" align="left" />
             {canManage ? (
               <th scope="col" className={`${HEAD_CELL} ${STICKY_ACTIONS_HEAD}`}>

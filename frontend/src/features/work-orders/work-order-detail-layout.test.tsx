@@ -92,7 +92,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},
-      actions: { view_activity: false, view_contract_data: true },
+      actions: { view_activity: false, view_costs: true, view_contract_data: true },
     },
     ...overrides,
   }

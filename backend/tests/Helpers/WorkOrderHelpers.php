@@ -131,18 +131,20 @@ if (! function_exists('workOrderPaymentStatusUserWith')) {
 if (! function_exists('workOrderPaymentsUserWith')) {
     /**
      * A user holding the given work-orders abilities plus `viewAll` (so the
-     * membership scoping never interferes), spec 0201.
+     * membership scoping never interferes), spec 0201, and `viewCosts`, which
+     * the contract data and the payments require (spec 0380).
      *
      * @param  array<int, string>  $abilities  e.g. ['viewContractData', 'managePayments']
      */
-    function workOrderPaymentsUserWith(array $abilities, bool $viewAll = true): User
+    function workOrderPaymentsUserWith(array $abilities, bool $viewAll = true, bool $viewCosts = true): User
     {
-        foreach (['view', 'viewContractData', 'viewCosts', 'managePayments', 'viewAll'] as $ability) {
+        foreach (['view', 'viewContractData', 'managePayments', 'viewAll', 'viewCosts'] as $ability) {
             Permission::findOrCreate("work-orders.{$ability}");
         }
 
+        $granted = [...$abilities, ...($viewAll ? ['viewAll'] : []), ...($viewCosts ? ['viewCosts'] : [])];
         $user = User::factory()->create();
-        $user->givePermissionTo(array_map(fn (string $ability): string => "work-orders.{$ability}", $viewAll ? [...$abilities, 'viewAll'] : $abilities));
+        $user->givePermissionTo(array_map(fn (string $ability): string => "work-orders.{$ability}", $granted));
 
         return $user;
     }

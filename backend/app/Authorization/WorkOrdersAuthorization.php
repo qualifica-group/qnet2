@@ -143,9 +143,10 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // Spec 0282, D-8: gates the "Proforma attiva/passiva" tabs.
             'view_invoices' => $model !== null && $actor->can('work-orders.viewInvoices'),
             'manage_costs' => $model !== null && $actor->can('work-orders.manageCosts'),
-            // Spec 0201, D-10: gate the "Dati contrattuali" tab and its payment editor.
-            'view_contract_data' => $model !== null && $actor->can('work-orders.viewContractData'),
-            'manage_payments' => $model !== null && $actor->can('work-orders.managePayments'),
+            // Spec 0201, D-10: gate the "Dati contrattuali" tab and its payment editor;
+            // spec 0380: both need the costs too (WorkOrderPolicy::withCosts).
+            'view_contract_data' => $model instanceof WorkOrder && $actor->can('viewContractData', $model),
+            'manage_payments' => $model instanceof WorkOrder && $actor->can('managePayments', $model),
             // "Chiusura forzata"/"Riapri" are detail actions, not fields (user
             // directive 2026-10-06): the same record-level update rule as the
             // PATCH they send, exactly one of the two by the closure state.

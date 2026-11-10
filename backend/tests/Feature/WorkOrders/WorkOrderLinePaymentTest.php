@@ -26,7 +26,7 @@ it('AC-008: PATCH creates the record at first save, logs the activity and return
     $workOrder = WorkOrder::factory()->create();
     $line = contractDataLine($workOrder, 'consultancy', 500);
     $status = WorkOrderPaymentStatus::factory()->create(['color' => 'blue']);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['managePayments', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['managePayments']));
 
     expect(WorkOrderLinePayment::count())->toBe(0);
 
@@ -213,14 +213,12 @@ it('AC-010: the notification links to the commessa only for a recipient who may 
         ->and($notification->toArray(User::factory()->create())['action_url'])->toBeNull();
 });
 
-it('spec 0380: the PATCH response hides the figures without viewCosts', function () {
+it('spec 0380: without viewCosts the payment PATCH is 403, single and bulk', function () {
     $workOrder = WorkOrder::factory()->create();
     $line = contractDataLine($workOrder, 'consultancy', 500);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['managePayments']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['managePayments'], viewCosts: false));
 
-    $this->patchJson(linePaymentUrl($workOrder, $line->id), ['has_unpaid' => true])->assertOk()
-        ->assertJsonPath('data.has_unpaid', null)
-        ->assertJsonPath('data.payment.has_unpaid', true)
-        ->assertJsonPath('data.net_amount', null)
-        ->assertJsonPath('data.quantity', null);
+    $this->patchJson(linePaymentUrl($workOrder, $line->id), ['has_unpaid' => true])->assertForbidden();
+    $this->patchJson("/api/work-orders/{$workOrder->id}/contract-data/lines", ['quote_line_ids' => [$line->id], 'has_unpaid' => true])->assertForbidden();
+    expect(WorkOrderLinePayment::count())->toBe(0);
 });

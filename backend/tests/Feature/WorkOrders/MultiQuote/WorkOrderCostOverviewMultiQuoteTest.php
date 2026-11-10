@@ -29,11 +29,11 @@ it('AC-009: the budget gathers the COST lines of every source offer, allocated a
 
 it('AC-006 (D-10): contract data of a multi-offer commessa lists the lines of every offer', function () {
     [$workOrder] = multiQuoteReadFixture();
-    foreach (['view', 'viewContractData', 'viewAll'] as $ability) {
+    foreach (['view', 'viewContractData', 'viewCosts', 'viewAll'] as $ability) {
         Permission::findOrCreate("work-orders.{$ability}");
     }
     $actor = User::factory()->create();
-    $actor->givePermissionTo(['work-orders.view', 'work-orders.viewContractData', 'work-orders.viewAll']);
+    $actor->givePermissionTo(['work-orders.view', 'work-orders.viewContractData', 'work-orders.viewCosts', 'work-orders.viewAll']);
     Sanctum::actingAs($actor);
 
     $data = $this->getJson("/api/work-orders/{$workOrder->id}/contract-data")->assertOk()->json('data');
@@ -43,11 +43,11 @@ it('AC-006 (D-10): contract data of a multi-offer commessa lists the lines of ev
 
 it('contract data of a multi-offer commessa names the client of each line', function () {
     [$workOrder] = multiQuoteReadFixture();
-    foreach (['view', 'viewContractData', 'viewAll'] as $ability) {
+    foreach (['view', 'viewContractData', 'viewCosts', 'viewAll'] as $ability) {
         Permission::findOrCreate("work-orders.{$ability}");
     }
     $actor = User::factory()->create();
-    $actor->givePermissionTo(['work-orders.view', 'work-orders.viewContractData', 'work-orders.viewAll']);
+    $actor->givePermissionTo(['work-orders.view', 'work-orders.viewContractData', 'work-orders.viewCosts', 'work-orders.viewAll']);
     Sanctum::actingAs($actor);
 
     $lines = $this->getJson("/api/work-orders/{$workOrder->id}/contract-data")->assertOk()->json('data.lines');

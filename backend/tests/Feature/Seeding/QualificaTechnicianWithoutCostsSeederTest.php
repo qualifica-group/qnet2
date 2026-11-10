@@ -7,7 +7,7 @@ use Database\Seeders\QualificaTechnicianWithoutCostsSeeder as Seeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 
-/** Spec 0380: the listed technicians lose the commessa costs and proforma, gain the payments; the others are unchanged. */
+/** Spec 0380: the listed technicians lose the commessa costs and proforma; the others are unchanged. */
 uses(RefreshDatabase::class);
 
 function technicianRoleWithCosts(): Role
@@ -21,7 +21,7 @@ function technicianRoleWithCosts(): Role
     return $role;
 }
 
-it('moves the listed technicians to the twin role without costs and proforma but with payments, idempotently, and leaves the others alone', function () {
+it('moves the listed technicians to the twin role without costs and proforma, idempotently, and leaves the others alone', function () {
     $source = technicianRoleWithCosts();
     Role::create(['name' => 'operatore-base']);
     $listed = User::factory()->create(['email' => Seeder::USERS[0]]);
@@ -39,13 +39,11 @@ it('moves the listed technicians to the twin role without costs and proforma but
         ->and($listed->getRoleNames()->sort()->values()->all())->toBe(['operatore-base', Seeder::ROLE])
         ->and($listed->hasPermissionTo('work-orders.viewCosts'))->toBeFalse()
         ->and($listed->hasPermissionTo('work-orders.viewInvoices'))->toBeFalse()
-        ->and($listed->hasPermissionTo('work-orders.managePayments'))->toBeTrue()
         ->and($listed->hasPermissionTo('work-orders.viewContractData'))->toBeTrue()
         ->and($twin->fieldPermissions()->get(['resource', 'field', 'visible'])->toArray())
         ->toBe([['resource' => 'opportunities', 'field' => 'lead_id', 'visible' => false]])
         ->and($other->refresh()->hasPermissionTo('work-orders.viewCosts'))->toBeTrue()
-        ->and($other->hasPermissionTo('work-orders.viewInvoices'))->toBeTrue()
-        ->and($other->hasPermissionTo('work-orders.managePayments'))->toBeFalse();
+        ->and($other->hasPermissionTo('work-orders.viewInvoices'))->toBeTrue();
 });
 
 it('does nothing without the technician role', function () {

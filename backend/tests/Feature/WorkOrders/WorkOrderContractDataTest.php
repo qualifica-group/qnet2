@@ -30,7 +30,7 @@ it('AC-001: effective revenue is the net without a direction and the Fornitore c
     $institution = contractDataLine($workOrder, 'institution', 2000, SupplierCommissionDirection::Received);
     contractDataCommission($institution, Role::Supplier, CommissionType::Percentage, 10, 200);
     $empty = ProductTypology::factory()->create(['name' => 'Zeta empty']);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $data = $this->getJson(contractDataUrl($workOrder))->assertOk()->assertJsonPath('success', true)->json('data');
     $lines = collect($data['lines'])->keyBy('quote_line_id');
@@ -58,7 +58,7 @@ it('GET returns the frozen line shape', function () {
     $workOrder = WorkOrder::factory()->create();
     $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Supplier, CommissionType::Percentage, 15, 150);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $row = $this->getJson(contractDataUrl($workOrder))->assertOk()->json('data.lines.0');
 
@@ -76,7 +76,7 @@ it('AC-002: commissions_amount sums every commission and net_of_commissions subt
     $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Supplier, CommissionType::FixedAmount, 200, 200);
     contractDataCommission($line, Role::Commercial, CommissionType::FixedAmount, 50, 50);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $row = $this->getJson(contractDataUrl($workOrder))->assertOk()->json('data.lines.0');
 
@@ -87,7 +87,7 @@ it('AC-003: a RECEIVED line without Fornitore commission has 0.00 revenue and a 
     $workOrder = WorkOrder::factory()->create();
     $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Commercial, CommissionType::FixedAmount, 50, 50);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $row = $this->getJson(contractDataUrl($workOrder))->assertOk()->json('data.lines.0');
 
@@ -100,7 +100,7 @@ it('AC-004: FIXED_AMOUNT is the value itself, with no base', function () {
     $workOrder = WorkOrder::factory()->create();
     $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Supplier, CommissionType::FixedAmount, 300, 300);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $row = $this->getJson(contractDataUrl($workOrder))->assertOk()->json('data.lines.0');
 
@@ -120,7 +120,7 @@ it('AC-005: a PERCENTAGE amount that differs from base x value is stale and the 
     ]);
     // 10% of 800 = 80, but the persisted amount is the old 100 (10% of 1000).
     contractDataCommission($line, Role::Supplier, CommissionType::Percentage, 10, 100);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $row = $this->getJson(contractDataUrl($workOrder))->assertOk()->json('data.lines.0');
 
@@ -217,7 +217,7 @@ it('spec 0202 AC-008: a PAID line keeps the net as revenue and raises no warning
     $paid = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Paid);
     contractDataCommission($paid, Role::Supplier, CommissionType::FixedAmount, 90, 90);
     $disabled = contractDataLine($workOrder, 'institution', 500);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $lines = collect($this->getJson(contractDataUrl($workOrder))->assertOk()->json('data.lines'))->keyBy('quote_line_id');
 
@@ -229,31 +229,13 @@ it('spec 0202 AC-008: a PAID line keeps the net as revenue and raises no warning
         ->and($lines[$disabled->id]['warnings'])->toBe([]);
 });
 
-it('spec 0380: without viewCosts no figure leaves the server, product and payment stay', function () {
-    $workOrder = WorkOrder::factory()->create();
-    $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
-    contractDataCommission($line, Role::Commercial, CommissionType::FixedAmount, 50, 50);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
-
-    $data = $this->getJson(contractDataUrl($workOrder))->assertOk()->json('data');
-    $row = $data['lines'][0];
-
-    expect($data['figures_visible'])->toBeFalse()
-        ->and($data['commissions_visible'])->toBeFalse()
-        ->and($data['totals'])->toBeNull()
-        ->and($row['product']['id'])->toBe($line->product_id)
-        ->and($row['payment'])->toBe(['status' => null, 'payment_agreement' => null, 'has_unpaid' => false])
-        ->and($row['warnings'])->toBe([])
-        ->and(collect($row)->only(['quantity', 'unit_price', 'net_amount', 'supplier_commission', 'commissions_amount', 'net_of_commissions', 'effective_revenue'])->filter()->all())->toBe([]);
-});
-
-it('spec 0380: with viewCosts the figures are visible', function () {
+it('spec 0380: without viewCosts the contract data are 403 and the detail flags are off', function () {
     $workOrder = WorkOrder::factory()->create();
     contractDataLine($workOrder, 'consultancy', 1000);
-    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'viewCosts']));
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'managePayments', 'view'], viewCosts: false));
 
-    $this->getJson(contractDataUrl($workOrder))->assertOk()
-        ->assertJsonPath('data.figures_visible', true)
-        ->assertJsonPath('data.lines.0.net_amount', '1000.00')
-        ->assertJsonPath('data.totals.net_amount', '1000.00');
+    $this->getJson(contractDataUrl($workOrder))->assertForbidden();
+    $this->getJson("/api/work-orders/{$workOrder->id}")->assertOk()
+        ->assertJsonPath('permissions.actions.view_contract_data', false)
+        ->assertJsonPath('permissions.actions.manage_payments', false);
 });

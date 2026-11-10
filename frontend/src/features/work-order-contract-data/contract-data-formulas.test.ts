@@ -7,8 +7,8 @@ import {
   revenueHint,
   totalsHint,
 } from '@/features/work-order-contract-data/contract-data-formulas'
-import { CONTRACT_DATA_TOTALS, PAID_LINE, RECEIVED_LINE } from '@/features/work-order-contract-data/contract-data-fixtures'
-import type { ContractDataLineWithFigures } from '@/features/work-order-contract-data/types'
+import { CONTRACT_DATA, PAID_LINE, RECEIVED_LINE } from '@/features/work-order-contract-data/contract-data-fixtures'
+import type { ContractDataLine } from '@/features/work-order-contract-data/types'
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -31,7 +31,7 @@ describe('commissionHint', () => {
   })
 
   it('shows a fixed commission without a base', () => {
-    const line: ContractDataLineWithFigures = {
+    const line: ContractDataLine = {
       ...RECEIVED_LINE,
       supplier_commission: { commission_type: 'FIXED_AMOUNT', value: '300.0000', base_amount: null, amount: '300.00', is_stale: false },
     }
@@ -55,7 +55,7 @@ describe('netOfCommissionsHint', () => {
 
 describe('revenueHint (spec 0202 D-13)', () => {
   it('explains a line without a Supplier commission from the net amount', () => {
-    const line: ContractDataLineWithFigures = { ...PAID_LINE, supplier_commission_direction: null, supplier_commission: null }
+    const line: ContractDataLine = { ...PAID_LINE, supplier_commission_direction: null, supplier_commission: null }
     expect(revenueHint(line, true, t).lines).toEqual([
       'Supplier commission not calculated: the revenue is the net amount.',
       '2 × 500.00 = 1,000.00 → revenue 1,000.00',
@@ -76,22 +76,22 @@ describe('revenueHint (spec 0202 D-13)', () => {
   })
 
   it('says so when a RECEIVED line has no Supplier commission', () => {
-    const line: ContractDataLineWithFigures = { ...RECEIVED_LINE, supplier_commission: null, effective_revenue: '0.00' }
+    const line: ContractDataLine = { ...RECEIVED_LINE, supplier_commission: null, effective_revenue: '0.00' }
     expect(revenueHint(line, true, t).lines[1]).toBe('Commission missing → revenue 0.00')
   })
 
   it('reveals no commission detail on a RECEIVED line when commissions are not visible', () => {
-    const line: ContractDataLineWithFigures = { ...RECEIVED_LINE, supplier_commission: null }
+    const line: ContractDataLine = { ...RECEIVED_LINE, supplier_commission: null }
     expect(revenueHint(line, false, t).lines[1]).toBe('Revenue 200.00')
   })
 })
 
 describe('totalsHint', () => {
   it('shows the net-of-commissions formula with the totals', () => {
-    expect(totalsHint('netOfCommissions', CONTRACT_DATA_TOTALS, t).lines[1]).toBe('3,000.00 − 450.00 = 2,550.00')
+    expect(totalsHint('netOfCommissions', CONTRACT_DATA.totals, t).lines[1]).toBe('3,000.00 − 450.00 = 2,550.00')
   })
 
   it('is a rule only for the other KPIs', () => {
-    expect(totalsHint('revenue', CONTRACT_DATA_TOTALS, t).lines).toHaveLength(1)
+    expect(totalsHint('revenue', CONTRACT_DATA.totals, t).lines).toHaveLength(1)
   })
 })

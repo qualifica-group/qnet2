@@ -23,15 +23,14 @@
 - Manuale: guida `general` IT/EN (sezione `using-lists-and-export`, tip) + manuale Claude Docs (paragrafo "Aprire in una nuova scheda" dopo "Azioni sulla riga").
 - `row-actions.tsx` e' a 326 righe (soft limit 300, era gia' 309).
 
-## Dati contrattuali senza il permesso costi + tecnici senza costi (spec 0380) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
+## Senza permesso costi niente Dati contrattuali + tecnici senza costi (spec 0380) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 
-- Regola (decisione utente): senza `WorkOrderPolicy::viewCosts` il GET/PATCH `contract-data` non manda numeri. `WorkOrderContractDataBuilder` azzera `quantity`, `unit_price`, `net_amount`, commissioni, `effective_revenue`, svuota `warnings`, `totals` = null, nuovo flag `figures_visible`. Restano prodotto e pagamento (decisione utente: Pagamento visibile, matita per chi ha `managePayments`).
-- FE: `ContractDataLineWithFigures` (tipi), `FigureHeads`/`FigureCells` montati solo con i numeri, totali solo se `totals` non null. Guida `work-orders` IT/EN e manuale Claude Docs aggiornati.
-- Seeder `QualificaTechnicianWithoutCostsSeeder` (NON eseguito: memoria "niente seed su qnet2 dev"): clona `tecnico-consulenza` com'e' nel DB (permessi + matrice campi) in `tecnico-consulenza-senza-costi` senza `work-orders.viewCosts` e ci sposta 8 tecnici (lista nel seeder). Comando: `php artisan db:seed --class=QualificaTechnicianWithoutCostsSeeder`.
-- Test cambiati (REQUIREMENT CHANGED): gli attori che leggono importi in `WorkOrderContractDataTest`, `WorkOrderLinePaymentTest` AC-008, `ProductTypologyColorTest`, `WorkOrderCostOverviewMultiQuoteTest` ora hanno `viewCosts`.
-- Verifica: Pest WorkOrders + ProductTypologies + Spec0358 556/556, seeder 2/2, Pint ok; Vitest contract-data + work-orders 379/379, help 161/161; `tsc -b --force` pulito; ESLint pulito.
-- Seguito (committato): il ruolo gemello toglie anche `work-orders.viewInvoices` (niente Proforma attiva/passiva) e riceve `work-orders.managePayments` (modifica stato pagamento). Nel DB locale il ruolo esiste gia' con gli 8 utenti: va rilanciato il seeder. Test seeder 2/2.
-- Da sapere: `QualificaRoleResetSeeder` ricostruisce i ruoli dal catalogo e cancellerebbe il ruolo gemello (e oggi `tecnico-consulenza` nel DB ha `viewCosts` che il catalogo non gli da'). Proforma: chiusa per i tecnici dal ruolo, nessuna regola generale nel codice.
+- Regola finale (decisione utente, supera la "tabella senza numeri" del commit 0948609d, rimossa): `WorkOrderPolicy::viewContractData` e `managePayments` richiedono anche `viewCosts` (`withCosts`). GET contract-data e PATCH pagamenti 403; flag `view_contract_data`/`manage_payments` dalla policy. FE: `WorkOrderContractDataPanel` null senza `view_costs` (niente sezione, niente prodotti).
+- Conseguenza: senza `viewCosts` nessuno modifica lo stato pagamento. Nel DB locale tocca anche `risorse-umane` (3 utenti: `viewContractData` + `managePayments` senza `viewCosts`).
+- Seeder `QualificaTechnicianWithoutCostsSeeder`: ruolo `tecnico-consulenza-senza-costi` = clone di `tecnico-consulenza` senza `viewCosts` e `viewInvoices` (niente Proforma); il grant `managePayments` e' stato tolto (inutile senza costi). Nel DB locale il ruolo esiste gia' con gli 8 utenti e il vecchio grant: rilanciare il seeder.
+- Test: helper `workOrderPaymentsUserWith(..., viewCosts: true)` di default; ruoli costruiti a mano nei test contract-data ora hanno `viewCosts`; fixture del dettaglio FE con `view_costs: true` (REQUIREMENT CHANGED).
+- Verifica: Pest WorkOrders + ProductTypologies + Spec0358 + seeder 557/557, Pint ok; Vitest work-orders + contract-data + help 539/539; `tsc -b --force` e ESLint puliti. Guida `work-orders` IT/EN e manuale Claude Docs aggiornati.
+- Da sapere: `QualificaRoleResetSeeder` ricostruisce i ruoli dal catalogo e cancellerebbe il ruolo gemello (e oggi `tecnico-consulenza` nel DB ha `viewCosts` che il catalogo non gli da').
 
 ## Chi vede la commessa vede i suoi task (spec 0379) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 

@@ -146,20 +146,28 @@ class WorkOrderPolicy extends BasePolicy
 
     /**
      * Gates the "Dati contrattuali" tab and its figures (spec 0201, D-10):
-     * permission plus the same membership scoping as view.
+     * permission plus the same membership scoping as view. Spec 0380: whoever
+     * does not see the costs does not see the contract data at all.
      */
     public function viewContractData(User $user, WorkOrder $workOrder): Response
     {
-        return $this->withinPerimeter($user->can($this->permission('viewContractData')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
+        return $this->withinPerimeter($this->withCosts($user, 'viewContractData'), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
     }
 
     /**
      * Gates editing a line's payment status/agreement/unpaid flag (spec 0201,
-     * D-10/D-12): independent of the commessa's open/closed state.
+     * D-10/D-12): independent of the commessa's open/closed state. Spec 0380:
+     * the editor lives in the contract data, so it needs the costs too.
      */
     public function managePayments(User $user, WorkOrder $workOrder): Response
     {
-        return $this->withinPerimeter($user->can($this->permission('managePayments')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
+        return $this->withinPerimeter($this->withCosts($user, 'managePayments'), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
+    }
+
+    /** Spec 0380: $ability held together with viewCosts. */
+    private function withCosts(User $user, string $ability): bool
+    {
+        return $user->can($this->permission($ability)) && $user->can($this->permission('viewCosts'));
     }
 
     /**
