@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Codici sequenziali: i codici manuali col prefisso non bloccano piu' la numerazione (2026-11-10) — VERDE MIRATO, NON COMMITTATO
+
+- Bug in produzione: import lead (`leads-import-errors-13.csv`), 34 righe tutte in `Duplicate entry 'QUO-106264'`. `GeneratesSequentialCode::lastCodeQuery` ordinava per lunghezza e poi per stringa: un codice manuale piu' lungo con lo stesso prefisso (es. `QUO-106263 ...`) finiva in cima e ogni creazione automatica proponeva un codice gia' preso. Righe annullate per intero (transazione per riga), nessun dato parziale, notifiche non partite.
+- Fix: contano solo i codici `{prefix}-{cifre}` (MySQL `REGEXP`, SQLite coppia `GLOB`), ordinati per valore numerico (`CAST(SUBSTR(...) AS UNSIGNED|INTEGER)`). Vale per QUO/PRJ/CMP/PRD/COM. Codici manuali liberi restano ammessi (AC-067, nessuna validazione di formato aggiunta).
+- Test: nuovo caso in `tests/Feature/Quotes/QuoteCodeHttpTest.php` (rosso prima del fix). Verdi: Quotes, WorkOrders, codici Product/Project/Campaign, Imports, Leads, migrazione offerte. Rossi solo i 3 `QuoteDocumentPdfTest` per LibreOffice assente in locale. Ramo MySQL verificato sul DB dev (`previewNextCode` = `QUO-106207`).
+- Da fare: deploy, poi rilanciare in produzione le 34 righe fallite. Manuale: nessun impatto.
+
 ## Colonne dei campi flessibili guidate dal filtro categoria, categorie collegate (spec 0374 rev.2) (2026-11-09) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente: le colonne `attr.*` tornano su Offerte, Commesse e Contratti senza linguette, export compreso. Supera la voce "via le colonne flessibili dagli elenchi" (commit 53a27f00), linguette e filtri precompilati restano com'erano. Opportunita', Commesse di Progetto e griglie dentro un record restano senza colonne.

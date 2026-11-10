@@ -53,17 +53,33 @@ trait GeneratesSequentialCode
     }
 
     /**
-     * The codes of $prefix, numerically highest first. The sequence is padded
-     * to a MINIMUM width, so past 9999 it grows a digit and a string MAX()
-     * would rank "{prefix}-9999" above "{prefix}-10000", handing out a code
-     * that already exists: longer first, then highest, is the numeric order.
+     * The codes of $prefix, numerically highest first. Only the generated
+     * shape "{prefix}-{digits}" counts: a manual code is free text (D-13), and
+     * one sharing the prefix ("QUO-0004 copia", "QUO-0004/1") must never be
+     * read as the last of the sequence, or every create proposes a code that
+     * is already taken. Ordered by the numeric value, not the string: the
+     * sequence is padded to a MINIMUM width (past 9999 it grows a digit) and a
+     * manual "QUO-00004" is longer than "QUO-0005" yet numerically lower.
      */
     private function lastCodeQuery(string $table, string $column, string $prefix): Builder
     {
-        return DB::table($table)
-            ->where($column, 'like', $prefix.'-%')
-            ->orderByRaw('LENGTH('.DB::getQueryGrammar()->wrap($column).') DESC')
-            ->orderByDesc($column);
+        $wrappedColumn = DB::getQueryGrammar()->wrap($column);
+        $sequence = 'SUBSTR('.$wrappedColumn.', '.(strlen($prefix) + 2).')';
+
+        $query = DB::table($table)->where($column, 'like', $prefix.'-%');
+
+        // SQLite (test suite) has no REGEXP and no UNSIGNED cast: GLOB pair
+        // "prefix-, at least one digit, no non-digit" and an INTEGER cast.
+        if (DB::getDriverName() === 'sqlite') {
+            return $query
+                ->whereRaw($wrappedColumn.' GLOB ?', [$prefix.'-[0-9]*'])
+                ->whereRaw($wrappedColumn.' NOT GLOB ?', [$prefix.'-*[^0-9]*'])
+                ->orderByRaw('CAST('.$sequence.' AS INTEGER) DESC');
+        }
+
+        return $query
+            ->whereRaw($wrappedColumn.' REGEXP ?', ['^'.$prefix.'-[0-9]+$'])
+            ->orderByRaw('CAST('.$sequence.' AS UNSIGNED) DESC');
     }
 
     /**
