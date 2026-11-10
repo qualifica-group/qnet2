@@ -11,6 +11,17 @@
 - Verifica: `TaskWorkOrderVisibilityTest` 9/9; suite Tasks, WorkOrders, Notes, TimeEntries, Stats verdi (1.601 test); Pint ok; guide `tasks` e `work-orders` IT/EN + parita' verdi; manuale Claude Docs aggiornato. Su copia di produzione: Noemi 18/18, conteggio per chi ha 1.916 commesse 0,44 s.
 - `tsc -b --force`: 4 errori in `features/registries/*` del lavoro spec 0378 in corso, non di questa modifica.
 
+## Contatti delle anagrafiche: pulizia nel legacy + reimport una tantum (spec 0378) (2026-11-10) — VERDE MIRATO, COMMITTATO (qnet-2 e legacy), NOTA CONTATTI NON PROVATA NEL BROWSER
+
+- Segnalazione: contatti delle anagrafiche importati male. Causa: campi legacy scritti a mano (piu' numeri o email nello stesso campo, `081/5721567`, nome dopo il numero, email nel telefono/fax, `NP`) scartati interi dalla validazione del tipo.
+- Legacy (`../qnet`, non committato): nuovo `App\Support\Migration\LegacyContactFields::split`, usato da `RegistryMigrationController::mapCompany`; rimosso `LegacyRegistryFields::website` (assorbito). Contratto additivo: scalari `email/pec/phone/phone2/fax/website` = un valore valido ciascuno, piu' `extra_contacts: [{type, value, label}]`. Verificato su dati reali via tinker + `php -l`.
+- qnet-2: `MapsLegacyRegistryProfile::buildExtraContacts` (extra non principali con label); comando `php artisan migrations:reimport-registry-contacts [--apply] [--output=]` (`RegistryContactsBackfill`): aggiunge solo i contatti mancanti per tipo + `normalized_value`, mai modifica/cancella, principale solo se manca, senza activity log. Report Excel in `storage/app/private/realign/`.
+- Test: `RegistriesSourceImportTest` (+1), `Realign/RegistryContactsBackfillTest` (4); `tests/Feature/Migration` 921 verdi; Pint pulito.
+- Simulazione sul DB dev contro il legacy locale: 29.771 anagrafiche lette, 1.689 contatti da aggiungere (843 email, 776 telefoni, 53 fax, 14 PEC, 3 siti; 1.151 principali), 0 saltate. Durante il lavoro il DB dev e' stato modificato da un'altra sessione (anagrafiche 30.386 -> 30.740).
+- Nota sotto i Contatti del dettaglio anagrafica migrata: "Non trovi un contatto? Controlla nel vecchio QNet" (AC-008/009). Backend `RegistryResource.legacy_url` via `LegacyRecordLink::forRecord` (nuovo, usato anche da `forOwner`); frontend `LegacyDocumentsNote` -> `components/detail/legacy-record-note.tsx` (`LegacyRecordNote`, prop `note`), chiavi link spostate in `common.legacyRecordLink*`, nuova `registries.contactsLegacyNote`, prop `contactsFooter` su `PersonalDataRecordSections`. Test: `Registries/RegistryLegacyUrlTest` (2), `registry-detail.test.tsx` (+2); Registries BE 155 verdi, Vitest registries/attachments/personal-data/detail/help 475 verdi, tsc -b e ESLint puliti. Guida `registries` IT/EN e manuale Claude Docs aggiornati. Non provato nel browser.
+- Nota: `tests/Feature/Registries/RegistryCrudTest.php` era gia' a 506 righe (oltre il limite di 500), non toccato.
+- Da fare: deploy prima del legacy poi di qnet-2, in produzione simulazione poi `--apply`. Fuori scope: stesso problema probabile sui referenti (`contacts` legacy).
+
 ## Avvio dell'app: bundle iniziale ridotto e niente piu' schermate bloccate (2026-11-10) — NON PROVATO NEL BROWSER
 
 - Problema segnalato: al primo caricamento spesso resta lo splash bianco o la schermata grigia con la rotella.

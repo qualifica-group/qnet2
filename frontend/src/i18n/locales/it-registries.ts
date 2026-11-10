@@ -8,6 +8,8 @@ export const registries = {
   title: 'Anagrafiche',
   subtitle: 'Sfoglia, filtra e gestisci le anagrafiche clienti/fornitori della tua organizzazione.',
   forbidden: 'Non hai i permessi per visualizzare le anagrafiche.',
+  /** Under the contacts of a migrated anagrafica, before the link to its legacy page (spec 0378). */
+  contactsLegacyNote: 'Non trovi un contatto?',
   columns: {
     name: 'Nome',
     registry_type: 'Tipo',

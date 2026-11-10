@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Form } from '@/components/ui/form'
 import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
+import { LegacyRecordNote } from '@/components/detail/legacy-record-note'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -144,6 +145,7 @@ function RegistryDetailContent({ registry, onChanged }: RegistryDetailViewProps)
             addressesTitle={t('registries.form.sections.addresses.title')}
             showSiteType
             editing={{ fieldPermission: editor.card.fieldPermission, onChanged: handleCardChanged }}
+            contactsFooter={<LegacyRecordNote url={registry.legacy_url} note={t('registries.contactsLegacyNote')} />}
           />
         </RecordSectionsGrid>
       </RecordBody>

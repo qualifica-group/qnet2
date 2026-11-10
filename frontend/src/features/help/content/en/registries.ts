@@ -72,6 +72,10 @@ const guide: HelpGuide = {
           type: 'warning',
           text: 'Only registries marked as Supplier appear among the suppliers selectable on the product card.',
         },
+        {
+          type: 'tip',
+          text: "On a registry that comes from the old QNet, below the Contacts you find **Can't find a contact? Check the old QNet**: the link opens that registry's page in the old QNet, in a new tab. The old QNet may ask you to sign in.",
+        },
       ],
     },
     {

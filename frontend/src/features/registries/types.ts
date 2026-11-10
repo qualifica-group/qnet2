@@ -58,6 +58,8 @@ export interface RegistryDetail {
   id: number
   /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
   old_id?: number | null
+  /** Legacy page of a migrated anagrafica, null otherwise (spec 0378). */
+  legacy_url: string | null
   name: string
   source_id: number | null
   /** Hydrates the "Source" single-select control. */

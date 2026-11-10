@@ -104,6 +104,7 @@ function card(overrides: Partial<PersonalDataCard> = {}): PersonalDataCard {
 function registry(overrides: Partial<RegistryDetailWithPermissions> = {}): RegistryDetailWithPermissions {
   return {
     id: 1,
+    legacy_url: null,
     name: 'Acme S.p.A.',
     source_id: null,
     source: null,
@@ -163,6 +164,20 @@ describe('RegistryDetailView', () => {
     render(<RegistryDetailView registry={registry()} />)
     expect(screen.getByText('Mario Rossi')).toBeInTheDocument()
     expect(screen.getByText(/mario@acme\.it/)).toBeInTheDocument()
+  })
+
+  it('links a migrated anagrafica to the old QNet under its contacts (spec 0378)', () => {
+    render(<RegistryDetailView registry={registry({ legacy_url: 'https://legacy.test/companyshow/702' })} />)
+    expect(screen.getByText("Can't find a contact?")).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Check the old QNet/ })).toHaveAttribute(
+      'href',
+      'https://legacy.test/companyshow/702',
+    )
+  })
+
+  it('shows no legacy note for an anagrafica created in QNet (spec 0378)', () => {
+    render(<RegistryDetailView registry={registry()} />)
+    expect(screen.queryByText("Can't find a contact?")).not.toBeInTheDocument()
   })
 })
 
