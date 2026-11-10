@@ -243,6 +243,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Chi può modificare il task gestisce anche tutte le voci del suo **Segnatempo**, comprese quelle inserite da un altro assegnatario.',
         },
+        {
+          type: 'note',
+          text: 'Un **sotto-task senza assegnatari** è visibile agli assegnatari del task padre diretto, che possono completarlo (e riaprirlo) ma non modificarlo né eliminarlo. Così chi ha il task padre chiude i suoi sotto-task e poi completa il padre. Appena il sotto-task riceve un assegnatario proprio, vale solo quello.',
+        },
       ],
     },
     {

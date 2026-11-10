@@ -41,6 +41,10 @@ use WeakMap;
  * Commessa sees its Tasks, even with no role on them (the migrated Tasks
  * mostly have no assignee). UNION with the others, absorbed by `viewAll`, read-only.
  *
+ * Spec 0383 widens the membership tier itself: the assignee of the DIRECT
+ * parent of a sub-task with no assignee of its own is a member of it
+ * (TaskRecordRoles::isInheritedAssignee()), private or not.
+ *
  * Spec 0154 D-2 adds `is_private`: a PRIVATE Task narrows ALL the wider tiers at
  * once — `viewAll`, `viewSite`, the team and the commessa tier see it ONLY through the membership tier,
  * never through the resource permission or the shared-Sede bypass — while
@@ -150,7 +154,8 @@ final class TaskVisibilityScope
         }
 
         if ($task->relationLoaded('assignees') && $task->relationLoaded('watchers')) {
-            if ($task->assignees->contains('id', $user->id) || $task->watchers->contains('id', $user->id)) {
+            if ($task->assignees->contains('id', $user->id) || $task->watchers->contains('id', $user->id)
+                || TaskRecordRoles::isInheritedAssignee($user, $task)) {
                 return true;
             }
 
@@ -191,7 +196,8 @@ final class TaskVisibilityScope
         $membership = DB::table('tasks')->select('id')->where('creator_id', $user->id)
             ->union(DB::table('tasks')->select('id')->where('requester_id', $user->id))
             ->union(DB::table('task_assignee')->select('task_id')->where('user_id', $user->id))
-            ->union(DB::table('task_watcher')->select('task_id')->where('user_id', $user->id));
+            ->union(DB::table('task_watcher')->select('task_id')->where('user_id', $user->id))
+            ->union(TaskRecordRoles::inheritedAssigneeTaskIds($user));
 
         if ($withWorkOrderTasks) {
             $membership->union(TaskWorkOrderTier::visibleTaskIds($user));

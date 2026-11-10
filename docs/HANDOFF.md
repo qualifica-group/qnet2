@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Sotto-task senza assegnatari: li vede e li completa chi ha il task padre (spec 0383) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
+
+- Segnalazione task 426939 (Desire' Romito, "non mi fa spuntare le task"): 61/65 suoi task (serie ricorrenti "Gestione presenze e registri", "Gestione SIGEM") hanno sotto-task aperti senza assegnatari; la spec 0123 D-6 blocca il padre e lei non vedeva i figli. Nel DB 26.192 sotto-task senza assegnatari, 7.041 con il padre assegnato; TaskOccurrenceFactory li ricopia vuoti a ogni occorrenza.
+- Decisione utente (opzione "a"): `TaskRecordRoles::isInheritedAssignee()` = sotto-task con padre, senza assegnatari propri, attore assegnatario del padre DIRETTO (mai il nonno). Forma query `inheritedAssigneeTaskIds()` (LEFT JOIN anti-join, niente EXISTS/raw: lo vietano `TaskVisibilityTest` e `TaskModuleHygieneTest`) nella UNION di membership di `TaskVisibilityScope`; verdetto per record nel ramo in-memory prima del check `is_private`.
+- Solo "vede e chiude": entra in `TaskAbilityResolver::canComplete()`, NON in `canUpdate()` (niente modifica, eliminazione, cascata dal padre, segnatempo altrui, mandato). `isAssignee()` invariato (deroga manageAll, notifiche, filtri).
+- Test: `tests/Feature/Tasks/TaskInheritedAssigneeTest.php` (6), suite `tests/Feature/Tasks` 700/700 + 251 test di altre aree che toccano i task. Pint, ESLint, `tsc -b --force` puliti; guida `tasks` IT/EN (people-and-roles) + manuale Claude Docs aggiornati.
+- Prestazioni (DB locale): utente tipico +5-25 ms; l'utente con 10.490 assegnazioni +~0,5 s (MySQL scorre l'indice `parent_task_id`, stima falsata dai NULL). Da tenere d'occhio.
+- Fuori scope, segnalato: spiegazione "sotto-task aperti" sul cerchio sbiadito dell'ELENCO (il dettaglio la mostra gia', `task-actions-bar.tsx:187`; servirebbe `open_subtasks_count` nella riga griglia).
+
 ## Gestione Richieste/Iscritti: una colonna per posizione dei Gestori account (spec 0382, 2026-11-10) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente: via le colonne Tutor, Operatore, Operatore APL; una colonna per posizione di `quote_user`, selezionabile dal selettore colonne. Supera spec 0373 D-10 e l'"Operatore secondo" della direttiva 2026-09-17. Visibilita' per team (spec 0373) invariata.

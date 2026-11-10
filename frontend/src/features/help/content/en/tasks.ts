@@ -240,6 +240,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Whoever can edit the task also manages every entry of its **Time tracking**, including ones logged by another assignee.',
         },
+        {
+          type: 'note',
+          text: 'A **sub-task with no assignees** is visible to the assignees of its direct parent task, who can complete it (and reopen it) but not edit or delete it. This way whoever has the parent task closes its sub-tasks and then completes the parent. As soon as the sub-task gets an assignee of its own, only that assignee counts.',
+        },
       ],
     },
     {
