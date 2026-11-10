@@ -43,7 +43,8 @@ interface PurchaseRequestLineRowProps {
  * VAT, the server-computed total (taxable and VAT in its tooltip), status, ODA
  * placeholder and icon-only actions. A locked line (non-pending, closed RDA, no
  * update ability) shows everything disabled, except the supplier when the
- * server says it can still change (`can_update_supplier`, AC-013).
+ * server says it can still change (`can_update_supplier`, AC-013) and the price
+ * of an approved line (`can_update_price`, spec 0208 D-19).
  */
 export function PurchaseRequestLineRow({
   index,
@@ -122,7 +123,7 @@ export function PurchaseRequestLineRow({
       <LineNumberField
         control={control}
         index={index}
-        disabled={disabled}
+        disabled={disabled && !line.can_update_price}
         name="unit_price"
         label={`${t('purchaseRequests.lines.unitPrice')} ${n}`}
         placeholder={t('purchaseRequests.lines.unitPrice')}

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import type { LineTarget, PickedSuppliers } from '@/features/purchase-requests/line-status-transitions'
 import { LineStatusBadge } from '@/features/purchase-requests/purchase-request-status-badge'
@@ -58,7 +59,8 @@ export function LineStatusSummaryTable({ targets, supplierColumn }: LineStatusSu
                       selected={supplierColumn.picked[target.id] ?? null}
                       onSelect={(supplier) => supplierColumn.onPick(target.id, supplier)}
                       label={`${t('purchaseRequests.lines.supplier')} ${target.id}`}
-                      className="h-7 min-h-7 px-2 text-xs"
+                      placeholder={t('purchaseRequests.statusDialog.supplierPick')}
+                      className={cn('h-7 min-h-7 px-2 text-xs', supplierColumn.picked[target.id] ? null : 'border-destructive')}
                     />
                   )}
                 </td>

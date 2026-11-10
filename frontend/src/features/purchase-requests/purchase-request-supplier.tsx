@@ -21,11 +21,13 @@ interface SupplierPickerProps {
   disabled?: boolean
   /** Shows the "+" quick-create next to the picker. */
   quickCreate?: boolean
+  /** Overrides the "optional" hint where the supplier is required (status dialog towards ordered). */
+  placeholder?: string
   className?: string
 }
 
 /** Registry picker restricted to suppliers, shared by the RDA line, the status dialog and the assign dialog. */
-export function SupplierPicker({ selected, onSelect, label, disabled = false, quickCreate = false, className }: SupplierPickerProps) {
+export function SupplierPicker({ selected, onSelect, label, disabled = false, quickCreate = false, placeholder, className }: SupplierPickerProps) {
   const { t } = useTranslation()
   const { renderAction, selectedItemFor } = useQuickCreateAction(REGISTRIES_FOR_SELECT_RESOURCE, SUPPLIER_PRESETS)
   const value = selected?.id ?? null
@@ -40,7 +42,7 @@ export function SupplierPicker({ selected, onSelect, label, disabled = false, qu
       disabled={disabled}
       className={className}
       labels={{
-        placeholder: t('purchaseRequests.lines.supplierPlaceholder'),
+        placeholder: placeholder ?? t('purchaseRequests.lines.supplierPlaceholder'),
         searchPlaceholder: t('purchaseRequests.select.search'),
         empty: t('purchaseRequests.select.empty'),
         error: t('purchaseRequests.select.error'),

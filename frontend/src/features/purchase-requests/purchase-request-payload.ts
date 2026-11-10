@@ -4,7 +4,7 @@ import type {
   PurchaseRequestLinePayload,
   PurchaseRequestPayload,
 } from '@/features/purchase-requests/types'
-import { PENDING_STATUS } from '@/features/purchase-requests/types'
+import { APPROVED_STATUS, PENDING_STATUS } from '@/features/purchase-requests/types'
 import type {
   PurchaseRequestFormValues,
   PurchaseRequestLineFormValues,
@@ -26,6 +26,7 @@ export function newLineValues(overrides: Partial<PurchaseRequestLineFormValues> 
     locked: false,
     can_delete: true,
     can_update_supplier: true,
+    can_update_price: true,
     transitions: [],
     vat_rate_percent: null,
     pending_files: [],
@@ -67,7 +68,11 @@ export function emptyFormValues(requesterId: number | null, now: Date = new Date
   }
 }
 
-/** Only a `pending_approval` line the actor may update stays editable (D-10); a closed RDA locks everything. */
+/**
+ * Only a `pending_approval` line the actor may update stays editable (D-10); an
+ * approved one keeps its price editable for whoever may update the RDA (D-19);
+ * a closed RDA locks everything.
+ */
 function lineToFormValues(line: PurchaseRequestLine, isClosed: boolean, canUpdateRequest: boolean): PurchaseRequestLineFormValues {
   return {
     id: line.id,
@@ -76,6 +81,7 @@ function lineToFormValues(line: PurchaseRequestLine, isClosed: boolean, canUpdat
     can_delete: line.abilities.delete && !isClosed,
     // The PUT needs the RDA `update` policy: whoever only fulfils changes the supplier from the lines management page
     can_update_supplier: line.abilities.update_supplier && canUpdateRequest && !isClosed,
+    can_update_price: !isClosed && canUpdateRequest && (line.abilities.update || line.status === APPROVED_STATUS),
     transitions: isClosed ? [] : line.abilities.transitions,
     vat_rate_percent: line.vat_rate ? Number(line.vat_rate.rate) : null,
     pending_files: [],

@@ -16,8 +16,9 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Writes the lines of a purchase request from the submitted payload (spec 0208):
- * all born pending approval, edited only while pending (D-10), deleted only while
- * pending or rejected (D-11). Amounts are always computed here (D-12).
+ * all born pending approval, edited only while pending (D-10) except the unit
+ * price, still editable while approved (D-19), deleted only while pending or
+ * rejected (D-11). Amounts are always computed here (D-12).
  */
 class PurchaseRequestLineSynchronizer
 {
@@ -25,6 +26,9 @@ class PurchaseRequestLineSynchronizer
     private const array DELETABLE_STATUSES = [PurchaseRequestLineStatus::PendingApproval, PurchaseRequestLineStatus::Rejected];
 
     private const int QUANTITY_SCALE = 3;
+
+    /** Content an approved line still takes besides the supplier (D-19): the price, until the line is ordered. */
+    private const array APPROVED_EDITABLE_FIELDS = ['unit_price'];
 
     public function __construct(
         private readonly LineAmountCalculator $amounts,
@@ -85,7 +89,8 @@ class PurchaseRequestLineSynchronizer
     }
 
     /**
-     * Only a pending line takes new content; any other keeps its values and only its position moves.
+     * Only a pending line takes new content; an approved one takes the supplier and
+     * the price (amounts recomputed); any other keeps its values and only its position moves.
      *
      * @param  array<string, mixed>  $line
      * @param  array<int, string>  $rates
@@ -98,8 +103,17 @@ class PurchaseRequestLineSynchronizer
             return;
         }
 
-        // An approved line may also take a new supplier (already authorized by assertLinesAreValid).
-        $stored->fill(['position' => $position] + ($stored->status === PurchaseRequestLineStatus::Approved ? ['supplier_id' => $line['supplier_id']] : []))->save();
+        if ($stored->status === PurchaseRequestLineStatus::Approved) {
+            // Supplier and price already authorized by assertLinesAreValid; the other values are unchanged.
+            $content = $this->lineContent($line, $position);
+            $stored->fill(['position' => $position, 'supplier_id' => $content['supplier_id'], 'unit_price' => $content['unit_price']])
+                ->forceFill($this->lineAmounts($line, $rates))
+                ->save();
+
+            return;
+        }
+
+        $stored->fill(['position' => $position])->save();
     }
 
     /**
@@ -151,8 +165,8 @@ class PurchaseRequestLineSynchronizer
 
     /**
      * Existing lines must belong to this request (D-10) and, unless pending,
-     * keep their values; the supplier alone may change where the actor may
-     * update it (spec 0209, D-3).
+     * keep their values; the supplier may change where the actor may update it
+     * (spec 0209, D-3) and the price while the line is approved (D-19).
      *
      * @param  Collection<int, PurchaseRequestLine>  $existing  keyed by id
      * @param  array<int, array<string, mixed>>  $lines
@@ -195,8 +209,9 @@ class PurchaseRequestLineSynchronizer
     private function contentChanged(PurchaseRequestLine $stored, array $line): bool
     {
         $submitted = $this->lineContent($line, $stored->position);
+        $free = $stored->status === PurchaseRequestLineStatus::Approved ? self::APPROVED_EDITABLE_FIELDS : [];
 
-        foreach (array_diff(array_keys($submitted), ['position', 'supplier_id']) as $key) {
+        foreach (array_diff(array_keys($submitted), ['position', 'supplier_id', ...$free]) as $key) {
             $current = $stored->getAttribute($key);
 
             if ($key === 'reason') {

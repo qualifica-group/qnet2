@@ -127,6 +127,40 @@ it('AC-010: saves header and pending line changes but refuses to change a line t
         ->assertJsonPath('data.abilities.update', true);
 });
 
+it('AC-023: an approved line still takes a new price, recomputing its amounts, but no other change', function () {
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'update']));
+    $request = purchaseRequestWithLines([LineStatus::PendingApproval, LineStatus::Approved]);
+
+    $payload = purchaseRequestUpdatePayload($request);
+    $payload['lines'][1]['unit_price'] = '250';
+
+    $this->putJson("/api/purchase-requests/{$request->id}", $payload)
+        ->assertOk()
+        ->assertJsonPath('data.lines.1.status', 'approved')
+        ->assertJsonPath('data.lines.1.unit_price', '250.00')
+        ->assertJsonPath('data.lines.1.taxable_amount', '250.00')
+        ->assertJsonPath('data.taxable_total', '350.00');
+
+    $payload['lines'][1]['quantity'] = '4';
+    $this->putJson("/api/purchase-requests/{$request->id}", $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('lines.1');
+    expect($request->lines->last()->fresh()->quantity)->toBe('1.000');
+});
+
+it('AC-023: refuses a new price on an ordered line', function () {
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'update']));
+    $request = purchaseRequestWithLines([LineStatus::Ordered]);
+
+    $payload = purchaseRequestUpdatePayload($request);
+    $payload['lines'][0]['unit_price'] = '250';
+
+    $this->putJson("/api/purchase-requests/{$request->id}", $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('lines.0');
+    expect($request->lines->first()->fresh()->unit_price)->toBe('100.00');
+});
+
 it('AC-010: adds a new pending line and rejects a line id of another request', function () {
     Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'update']));
     $request = purchaseRequestWithLines([LineStatus::Approved]);

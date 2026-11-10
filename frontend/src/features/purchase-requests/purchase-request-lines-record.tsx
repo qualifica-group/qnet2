@@ -91,7 +91,7 @@ export function PurchaseRequestLinesRecord({ request, editor }: PurchaseRequestL
                     />
                   )
                 }
-                const editable = canWrite && (!values.locked || values.can_update_supplier)
+                const editable = canWrite && (!values.locked || values.can_update_supplier || values.can_update_price)
                 const transitions = isOpen ? saved.abilities.transitions : []
                 return (
                   <PurchaseRequestLineView

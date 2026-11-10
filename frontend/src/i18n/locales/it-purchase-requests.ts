@@ -194,6 +194,7 @@ export const purchaseRequests = {
     confirmBulk: 'Conferma su {{count}} righe',
     done: 'Stato cambiato su {{count}} riga/e.',
     supplierRequiredNote: 'Per segnare le righe come ordinate serve un fornitore: scegline uno per ogni riga che ne è priva.',
+    supplierPick: 'Scegli il fornitore (obbligatorio)',
     autoClosed: '{{count}} RDA chiusa/e automaticamente.',
     error: 'Impossibile cambiare lo stato. Nessuna riga è stata modificata.',
   },

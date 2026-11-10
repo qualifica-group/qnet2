@@ -125,18 +125,27 @@ describe('line supplier (spec 0209 AC-012)', () => {
 })
 
 describe('supplier freeze on a locked line (spec 0209 AC-013)', () => {
-  it('enables only the supplier of an approved line with update_supplier when the RDA is updatable', () => {
+  // REQUIREMENT CHANGED (spec 0208 D-19): the price of an approved line stays editable until ordered.
+  it('enables only the supplier and the price of an approved line when the RDA is updatable', () => {
     renderDetail(makeRequest({ lines: [makeLine({ status: 'approved', abilities: lockedAbilities(true) })] }))
 
     editLine(1)
     expect(screen.getByRole('combobox', { name: 'Supplier 1' })).toBeEnabled()
+    expect(screen.getByLabelText('Unit price 1')).toBeEnabled()
     expect(screen.getByLabelText('Description 1')).toBeDisabled()
     expect(screen.getByLabelText('Quantity 1')).toBeDisabled()
-    expect(screen.getByLabelText('Unit price 1')).toBeDisabled()
     expect(screen.getByRole('combobox', { name: /Product 1/ })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: /Unit 1/ })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: /VAT rate 1/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+  })
+
+  it('lets whoever may update the RDA edit the price of an approved line without update_supplier (spec 0208 D-19)', () => {
+    renderDetail(makeRequest({ lines: [makeLine({ status: 'approved', abilities: lockedAbilities(false) })] }))
+
+    editLine(1)
+    expect(screen.getByLabelText('Unit price 1')).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'Supplier 1' })).toBeDisabled()
   })
 
   it('offers no line editor when the RDA itself is not updatable', () => {

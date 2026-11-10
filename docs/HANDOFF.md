@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## RDA: prezzo modificabile sulle righe Approvate + fornitore obbligatorio evidente verso Ordinato — VERDE, NON COMMITTATO (2026-11-10)
+
+- Segnalazione utente: in RDA non si poteva inserire il prezzo di una riga gia' Approvata (D-10 la bloccava) e
+  "non posso portare la riga a Ordinato" (il dialog chiede il fornitore ma il picker diceva "facoltativo").
+  Decisione utente: prezzo modificabile fino a Ordinato da chiunque possa modificare la RDA -> spec 0208 **D-19**,
+  AC-023.
+- Backend `PurchaseRequestLineSynchronizer`: `APPROVED_EDITABLE_FIELDS = ['unit_price']` escluso da
+  `contentChanged` sulle righe approved; `updateLine` approved scrive supplier + unit_price e ricalcola gli importi.
+  Nessun cambio di contratto API (stesso PUT).
+- Frontend: nuovo campo form `can_update_price` (schema + payload: `!isClosed && canUpdateRequest && (abilities.update
+  || status approved)`), `APPROVED_STATUS` in `types.ts`; il campo Prezzo della riga usa `disabled && !can_update_price`;
+  la matita della riga compare anche con `can_update_price`. Dialog stato: `SupplierPicker` ha prop `placeholder`,
+  in tabella "Scegli il fornitore (obbligatorio)" (`statusDialog.supplierPick`) con bordo destructive se vuoto, nota
+  in rosso finche' manca un fornitore.
+- Test: `PurchaseRequestCrudTest` 2 nuovi AC-023 (146 test PurchaseRequests verdi), Vitest purchase-requests+help 33 file /
+  274 verdi (AC-013 cambiato: REQUIREMENT CHANGED D-19), ESLint ok, Pint ok, `tsc -b --force` EXIT=0 (via
+  `node --max-old-space-size=8192 node_modules/typescript/bin/tsc`: `npx tsc` qui va in segfault).
+- Guide IT/EN `purchase-requests` aggiornate. Manuale Claude Docs: nessun capitolo RDA, da valutare.
+
 ## ODA: picker Commessa filtrato per Cliente — VERDE, COMMITTATO e17f3c8f (2026-11-06)
 
 - Solo frontend: `work-orders/for-select` accettava gia' `registry_id` (spec 0122 D-5). In

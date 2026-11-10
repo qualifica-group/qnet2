@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 import { changeLinesStatus, purchaseRequestKeys } from '@/features/purchase-requests/api'
 import { LineStatusOptions } from '@/features/purchase-requests/line-status-options'
 import { LineStatusSummaryTable } from '@/features/purchase-requests/line-status-summary-table'
@@ -53,9 +54,9 @@ function withSuppliers(targets: readonly LineTarget[], picked: PickedSuppliers) 
   return suppliers.length > 0 ? { suppliers } : {}
 }
 
-function Note({ children }: { children: string }) {
+function Note({ children, urgent = false }: { children: string; urgent?: boolean }) {
   return (
-    <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+    <p className={cn('flex items-start gap-1.5 text-xs', urgent ? 'text-destructive' : 'text-muted-foreground')}>
       <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
       {children}
     </p>
@@ -78,7 +79,8 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
   const { options, current } = dialogOptions(targets)
   const selected = choice !== null && options.includes(choice) ? choice : current
   const needsSupplier = selected === SUPPLIER_REQUIRED_STATUS
-  const canConfirm = selected !== null && selected !== current && !(needsSupplier && hasMissingSupplier(targets, picked))
+  const supplierMissing = needsSupplier && hasMissingSupplier(targets, picked)
+  const canConfirm = selected !== null && selected !== current && !supplierMissing
   const reasonRequired = selected !== null && REASON_REQUIRED_STATUSES.includes(selected)
   const reasonMissing = reasonRequired && reason.trim() === ''
   const reasonError = reasonAttempted && reasonMissing ? t('purchaseRequests.statusDialog.reasonMissing') : serverReasonError
@@ -159,7 +161,7 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
               targets={targets}
               supplierColumn={needsSupplier ? { picked, onPick: pickSupplier } : undefined}
             />
-            {needsSupplier ? <Note>{t('purchaseRequests.statusDialog.supplierRequiredNote')}</Note> : null}
+            {needsSupplier ? <Note urgent={supplierMissing}>{t('purchaseRequests.statusDialog.supplierRequiredNote')}</Note> : null}
           </div>
           {capabilities.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5 text-xs">

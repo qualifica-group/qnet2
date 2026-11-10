@@ -32,6 +32,7 @@ export interface PurchaseRequestPriorityRef {
 export type PurchaseRequestStatus = 'open' | 'closed'
 
 export const PENDING_STATUS: LineStatus = 'pending_approval'
+export const APPROVED_STATUS: LineStatus = 'approved'
 
 export interface NamedRef {
   id: number

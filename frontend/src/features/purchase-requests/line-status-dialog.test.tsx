@@ -152,6 +152,8 @@ describe('LineStatusDialog supplier for ordered (spec 0209 AC-015)', () => {
 
     expect(screen.getByRole('cell', { name: 'Bianchi Spa' })).toBeInTheDocument()
     expect(screen.getAllByRole('combobox')).toHaveLength(1)
+    // The missing supplier reads as required, not optional (spec 0208 D-19)
+    expect(screen.getByRole('combobox', { name: 'Supplier 2' })).toHaveTextContent('Pick the supplier (required)')
     expect(screen.getByRole('button', { name: 'Confirm on 2 lines' })).toBeDisabled()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Supplier 2' }))

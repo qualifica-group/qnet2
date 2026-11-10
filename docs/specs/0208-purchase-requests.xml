@@ -111,6 +111,13 @@
       icona (stato attuale preselezionato e non confermabile se riga singola), nota "solo stati
       raggiungibili da tutte le righe" e "motivazione applicata a tutte le N righe" in massivo,
       pulsante "Conferma su N righe".
+
+    Revisione utente 2026-11-10 (D-19, prezzo modificabile fino a Ordinato; supera in parte D-10):
+    - D-19 Una riga `approved` accetta ancora il nuovo prezzo unitario (oltre al fornitore, spec 0209
+      D-3) da chiunque possa modificare la RDA (`update` + RDA aperta); importi riga e totali testata
+      ricalcolati (D-12). Gli altri valori restano invariati (422 `lines.N`); da `ordered` in poi la
+      riga e' interamente bloccata. Nel dialog cambio stato, verso Ordinato, il selettore fornitore
+      delle righe che ne sono prive e' marcato obbligatorio ("Scegli il fornitore").
   </context>
 
   <scope>
@@ -301,6 +308,7 @@
     <criterion id="AC-019">Quick-create prodotto disponibile dal select Prodotto con permesso products.create; il prodotto creato viene selezionato nella riga.</criterion>
     <criterion id="AC-021">Le righe del dettaglio RDA e della griglia Gestione righe espongono abilities.capabilities coerenti con D-17 (responsabile -> ['approve'], fulfill -> ['fulfill'], manageStatuses -> ['manage'], RDA chiusa -> []).</criterion>
     <criterion id="AC-022">FE modale: con 2 righe mostra la tabella delle righe selezionate con stato attuale, "Stai operando come", la nota sugli stati comuni e il pulsante "Conferma su 2 righe"; con 1 riga lo stato attuale e' preselezionato e la conferma e' disabilitata finche' non se ne sceglie un altro.</criterion>
+    <criterion id="AC-023">D-19: con `update`, cambiare il prezzo di una riga approved -> 200 e importi/totali ricalcolati; cambiarne la quantita' -> 422 `lines.N`; cambiare il prezzo di una riga ordered -> 422. FE: sulla riga approved il campo Prezzo e' abilitato, gli altri campi di contenuto no.</criterion>
     <criterion id="AC-020">Guide in-app IT/EN `purchase-requests` e `purchase-request-lines` presenti, parity test verde, HELP_GUIDE_KEYS = 62.</criterion>
   </acceptance_criteria>
 

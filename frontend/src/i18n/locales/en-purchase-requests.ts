@@ -195,6 +195,7 @@ export const purchaseRequests = {
     confirmBulk: 'Confirm on {{count}} lines',
     done: 'Status changed on {{count}} line(s).',
     supplierRequiredNote: 'A supplier is required to mark lines as ordered: pick one for every line that has none.',
+    supplierPick: 'Pick the supplier (required)',
     autoClosed: '{{count}} RDA closed automatically.',
     error: 'Unable to change the status. No line was changed.',
   },
