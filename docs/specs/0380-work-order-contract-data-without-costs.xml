@@ -18,6 +18,10 @@
         tecnici che lo mantengono, e spatie non ha un "nega" per utente: il seeder clona il ruolo
         com'e' oggi (permessi + matrice campi) in `tecnico-consulenza-senza-costi` senza `viewCosts` e
         sposta solo quelle persone. Gli altri ruoli delle persone restano. Ri-eseguibile.
+    D-5 Decisioni utente 2026-11-10 (seguito): quei tecnici non vedono nemmeno Proforma attiva/passiva
+        (il ruolo gemello non ha `work-orders.viewInvoices`) e devono poter modificare lo stato pagamento
+        (il ruolo gemello riceve `work-orders.managePayments`, che apre l'intero popup Pagamento riga:
+        stato, accordo, insoluti). Nessuna regola di codice cambia: e' solo il ruolo.
   </context>
 
   <contract>
@@ -37,6 +41,6 @@
     <criterion id="AC-002">GET con `viewCosts`: risposta invariata rispetto alla spec 0201, `figures_visible` true.</criterion>
     <criterion id="AC-003">PATCH senza `viewCosts`: la riga restituita non ha importi.</criterion>
     <criterion id="AC-004">FE: con `figures_visible` false la tabella ha solo le colonne Prodotto e Pagamento (+ azioni con `manage_payments`), nessun KPI.</criterion>
-    <criterion id="AC-005">Seeder: le persone elencate passano al ruolo gemello senza `viewCosts`, gli altri tecnici restano invariati; ri-eseguito non duplica.</criterion>
+    <criterion id="AC-005">Seeder: le persone elencate passano al ruolo gemello senza `viewCosts` e `viewInvoices`, con `managePayments`; gli altri tecnici restano invariati; ri-eseguito non duplica.</criterion>
   </acceptance_criteria>
 </spec>

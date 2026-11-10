@@ -10,7 +10,8 @@
 - Seeder `QualificaTechnicianWithoutCostsSeeder` (NON eseguito: memoria "niente seed su qnet2 dev"): clona `tecnico-consulenza` com'e' nel DB (permessi + matrice campi) in `tecnico-consulenza-senza-costi` senza `work-orders.viewCosts` e ci sposta 8 tecnici (lista nel seeder). Comando: `php artisan db:seed --class=QualificaTechnicianWithoutCostsSeeder`.
 - Test cambiati (REQUIREMENT CHANGED): gli attori che leggono importi in `WorkOrderContractDataTest`, `WorkOrderLinePaymentTest` AC-008, `ProductTypologyColorTest`, `WorkOrderCostOverviewMultiQuoteTest` ora hanno `viewCosts`.
 - Verifica: Pest WorkOrders + ProductTypologies + Spec0358 556/556, seeder 2/2, Pint ok; Vitest contract-data + work-orders 379/379, help 161/161; `tsc -b --force` pulito; ESLint pulito.
-- Da sapere: `QualificaRoleResetSeeder` ricostruisce i ruoli dal catalogo e cancellerebbe il ruolo gemello (e oggi `tecnico-consulenza` nel DB ha `viewCosts` che il catalogo non gli da'). Le tab Proforma attiva/passiva (`viewInvoices`) mostrano ancora importi: segnalato, non toccato.
+- Seguito (committato): il ruolo gemello toglie anche `work-orders.viewInvoices` (niente Proforma attiva/passiva) e riceve `work-orders.managePayments` (modifica stato pagamento). Nel DB locale il ruolo esiste gia' con gli 8 utenti: va rilanciato il seeder. Test seeder 2/2.
+- Da sapere: `QualificaRoleResetSeeder` ricostruisce i ruoli dal catalogo e cancellerebbe il ruolo gemello (e oggi `tecnico-consulenza` nel DB ha `viewCosts` che il catalogo non gli da'). Proforma: chiusa per i tecnici dal ruolo, nessuna regola generale nel codice.
 
 ## Chi vede la commessa vede i suoi task (spec 0379) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 

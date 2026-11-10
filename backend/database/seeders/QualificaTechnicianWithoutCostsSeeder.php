@@ -8,15 +8,17 @@ use App\Models\User;
 use Database\Seeders\QualificaCatalog\LegacyRoleCatalogue;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Spec 0380 (user directive 2026-11-10): the listed technicians must not see
- * the costs of a commessa. Their `work-orders.viewCosts` comes from the
- * `tecnico-consulenza` role, shared with technicians who keep it, and spatie
- * has no per-user deny: so this seeder clones that role AS IT IS NOW (its
- * permissions and field matrix) into `tecnico-consulenza-senza-costi` without
- * viewCosts, and moves the listed people from one role to the other.
+ * Spec 0380 (user directives 2026-11-10): the listed technicians must not see
+ * the costs nor the active/passive proforma of a commessa, but must edit its
+ * payment status. Their permissions come from the `tecnico-consulenza` role,
+ * shared with technicians who keep them, and spatie has no per-user deny: so
+ * this seeder clones that role AS IT IS NOW (its permissions and field matrix)
+ * into `tecnico-consulenza-senza-costi` without WITHHELD_PERMISSIONS and with
+ * GRANTED_PERMISSIONS, and moves the listed people from one role to the other.
  *
  * `php artisan db:seed --class=QualificaTechnicianWithoutCostsSeeder`. Every
  * other role of those people is left alone; a re-run converges. One
@@ -28,7 +30,11 @@ class QualificaTechnicianWithoutCostsSeeder extends Seeder
 
     public const string DESCRIPTION = 'Tecnico consulenza (senza costi commessa)';
 
-    public const string WITHHELD_PERMISSION = 'work-orders.viewCosts';
+    /** @var array<int, string> */
+    public const array WITHHELD_PERMISSIONS = ['work-orders.viewCosts', 'work-orders.viewInvoices'];
+
+    /** @var array<int, string> */
+    public const array GRANTED_PERMISSIONS = ['work-orders.managePayments'];
 
     /** @var array<int, string> */
     public const array USERS = [
@@ -53,7 +59,7 @@ class QualificaTechnicianWithoutCostsSeeder extends Seeder
         }
 
         DB::transaction(function () use ($source): void {
-            // Step 1: the twin role, the source's current permissions minus viewCosts.
+            // Step 1: the twin role, the source's current permissions minus the withheld, plus the granted.
             $target = $this->syncTwinRole($source);
 
             // Step 2: the listed people move from the source role to the twin.
@@ -70,7 +76,10 @@ class QualificaTechnicianWithoutCostsSeeder extends Seeder
             ['description' => self::DESCRIPTION],
         );
 
-        $target->syncPermissions($source->permissions->reject(fn ($permission): bool => $permission->name === self::WITHHELD_PERMISSION));
+        $granted = collect(self::GRANTED_PERMISSIONS)->map(fn (string $name): Permission => Permission::findOrCreate($name, $source->guard_name));
+        $target->syncPermissions($source->permissions
+            ->reject(fn (Permission $permission): bool => in_array($permission->name, self::WITHHELD_PERMISSIONS, true))
+            ->merge($granted));
 
         $target->fieldPermissions()->delete();
         $source->fieldPermissions->each(fn (RoleFieldPermission $row) => $target->fieldPermissions()->create(
