@@ -8,6 +8,10 @@ import { systemHealth as systemHealthEn } from '@/i18n/locales/en-system-health'
 import { systemHealth as systemHealthIt } from '@/i18n/locales/it-system-health'
 import { workspaces as workspacesEn } from '@/i18n/locales/en-workspaces'
 import { workspaces as workspacesIt } from '@/i18n/locales/it-workspaces'
+import { onboarding as onboardingEn } from '@/i18n/locales/en-onboarding'
+import { onboarding as onboardingIt } from '@/i18n/locales/it-onboarding'
+import { maintenance as maintenanceEn } from '@/i18n/locales/en-maintenance'
+import { maintenance as maintenanceIt } from '@/i18n/locales/it-maintenance'
 
 export const defaultLocale = 'it'
 export const fallbackLocale = 'en'
@@ -29,15 +33,22 @@ export function applyLocale(locale: string | null | undefined): void {
   }
 }
 
+// Chrome offers to translate the page when <html lang> disagrees with its text.
+i18n.on('languageChanged', (locale) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = locale
+  }
+})
+
 void i18n.use(initReactI18next).init({
   resources: {
     // `migrations` is registered as its own namespace (not merged into the
     // default `translation` bundle) so the backend-driven nav label and the
     // breadcrumb can resolve `migrations:nav.label` app-wide — before the lazy
     // migrations feature module is ever loaded. See features/migrations/i18n.ts.
-    // `systemHealth` is a separate namespace for the same reason (en.ts/it.ts at the size limit).
-    en: { translation: en, migrations: migrationsEn, systemHealth: systemHealthEn, workspaces: workspacesEn },
-    it: { translation: it, migrations: migrationsIt, systemHealth: systemHealthIt, workspaces: workspacesIt },
+    // `systemHealth`, `workspaces` and `onboarding` are separate namespaces for the same reason (en.ts/it.ts at the size limit).
+    en: { translation: en, migrations: migrationsEn, systemHealth: systemHealthEn, workspaces: workspacesEn, onboarding: onboardingEn, maintenance: maintenanceEn },
+    it: { translation: it, migrations: migrationsIt, systemHealth: systemHealthIt, workspaces: workspacesIt, onboarding: onboardingIt, maintenance: maintenanceIt },
   },
   lng: defaultLocale,
   fallbackLng: fallbackLocale,

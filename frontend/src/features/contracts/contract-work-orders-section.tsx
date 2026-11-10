@@ -5,6 +5,7 @@ import { RecordCard, RecordCardHeader } from '@/components/detail/record-panel'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
+import { PRESET_LIST_FILTERS } from '@/features/table/advanced-filters/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
@@ -98,6 +99,7 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
             ref={tableRef}
             domain={WORK_ORDERS_DOMAIN}
             rowScope={{ quoteId }}
+            hiddenAdvancedFilters={PRESET_LIST_FILTERS}
             renderers={renderers}
             onAction={handleAction}
             isBusy={isBusy}

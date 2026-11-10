@@ -22,8 +22,8 @@ import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progres
  * and `start_date` (spec 0096) are date-only columns, like the read-only
  * `contract_expiry_date` (the contract's own expiry); `created_at`/
  * `updated_at` reuse the shared datetime renderer. `supervisors`
- * ("Responsabili", spec 0096) is a to-many of `{id,name,avatar_url}` and
- * reuses the SAME `UserStackCell` the Offerta's and Opportunita's own
+ * ("Responsabili", spec 0096) and `participants` ("Partecipanti") are to-many
+ * of `{id,name,avatar_url}` and reuse the SAME `UserStackCell` the Offerta's and Opportunita's own
  * `managers` columns render with — no second avatar-stack cell.
  * `registry` (the Anagrafica, `{id, name}` through the quote's opportunity)
  * renders as the same `RelationCell` the Contratti grid uses.
@@ -45,6 +45,7 @@ export function buildWorkOrderColumnRenderers(openProgress: (workOrderId: number
     start_date: (params) => <DateCell {...params} />,
     contract_expiry_date: (params) => <DateCell {...params} />,
     supervisors: (params) => <UserStackCell {...params} />,
+    participants: (params) => <UserStackCell {...params} />,
     completion_percentage: (params) => <WorkOrderProgressCell {...params} onOpen={openProgress} />,
     chat_unread_count: (params) => <ChatUnreadCell {...params} />,
     renewal_number: (params) => <RenewalPeriodCell {...params} />,

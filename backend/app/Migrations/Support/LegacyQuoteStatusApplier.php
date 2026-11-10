@@ -24,6 +24,10 @@ use App\Services\Contracts\ContractStatusResolver;
  */
 final class LegacyQuoteStatusApplier
 {
+    public const string CONTRACT_TOUCHED_WARNING = 'Contract changed in qnet-2 after the import; not updated.';
+
+    public const string CONTRACT_KEPT_WARNING = "The contract's offer is no longer won in the legacy; the contract was kept.";
+
     private const string CONTRACT_TERMINATED = 'terminated';
 
     /**
@@ -43,6 +47,7 @@ final class LegacyQuoteStatusApplier
         private readonly LegacyQuoteStatusResolver $resolver,
         private readonly ContractLifecycleManager $lifecycleManager,
         private readonly ContractStatusResolver $contractStatusResolver,
+        private readonly LegacyRecordTouchGuard $touchGuard,
     ) {}
 
     /**
@@ -58,15 +63,93 @@ final class LegacyQuoteStatusApplier
         }
 
         // Step 2: quiet write, no status log nor notification.
-        $previousStatusId = $quote->quote_workflow_status_id;
-        $quote->forceFill(['quote_workflow_status_id' => $target->id])->saveQuietly();
-        $this->reportClosedWithoutLines($quote, $target, $state, $warnings);
+        $previousStatusId = $this->writeStatus($quote, $target, $state, $warnings);
 
         // Step 3: a positive close opens and aligns the contract.
         if ($target->group === WorkflowStatusGroup::ClosedWon) {
             $this->lifecycleManager->syncOnStatusChange($quote, $previousStatusId);
             $this->alignContract($quote, $state, $warnings);
         }
+    }
+
+    /**
+     * Realigns an already imported offer to the legacy state (spec 0372, D-4/D-14): the
+     * status follows the legacy outcome (`open` leaves it as is) and the contract is
+     * aligned to the legacy dates and status, writing only what differs. A contract
+     * worked on in qnet-2 is not aligned; a contract whose offer is no longer won in
+     * the legacy is kept as is, never suspended nor deleted.
+     *
+     * @param  array<int, string>  $warnings
+     * @return bool true only when something was written
+     */
+    public function realign(Quote $quote, LegacyQuoteState $state, array &$warnings): bool
+    {
+        // Step 1: the target row inside the Quote's own set (null = status unchanged).
+        $target = $this->resolver->target($quote, $state, $warnings);
+        $contractExisted = Contract::query()->where('quote_id', $quote->id)->exists();
+        $wonInLegacy = LegacyQuoteOutcome::tryFrom($state->outcome) === LegacyQuoteOutcome::Won;
+        $wrote = false;
+
+        // Step 2: quiet status write; only a move TO closed-won touches the lifecycle (a
+        // move away must not suspend the contract).
+        if ($target !== null && $target->id !== $quote->quote_workflow_status_id) {
+            $previousStatusId = $this->writeStatus($quote, $target, $state, $warnings);
+            $wrote = true;
+
+            if ($target->group === WorkflowStatusGroup::ClosedWon) {
+                $this->lifecycleManager->syncOnStatusChange($quote, $previousStatusId);
+            } elseif ($contractExisted && ! $wonInLegacy) {
+                $warnings[] = self::CONTRACT_KEPT_WARNING;
+            }
+        }
+
+        // Step 3: the contract of an offer won in the legacy, also when the status did not change.
+        if ($wonInLegacy && QuoteWorkflowStatus::query()->whereKey($quote->quote_workflow_status_id)->value('group') === WorkflowStatusGroup::ClosedWon) {
+            $wrote = $this->realignContract($quote, $state, $contractExisted, $warnings) || $wrote;
+        }
+
+        return $wrote;
+    }
+
+    /**
+     * @param  array<int, string>  $warnings
+     * @return int|null the status the offer had before
+     */
+    private function writeStatus(Quote $quote, QuoteWorkflowStatus $target, LegacyQuoteState $state, array &$warnings): ?int
+    {
+        $previousStatusId = $quote->quote_workflow_status_id;
+        $quote->forceFill(['quote_workflow_status_id' => $target->id])->saveQuietly();
+        $this->reportClosedWithoutLines($quote, $target, $state, $warnings);
+
+        return $previousStatusId;
+    }
+
+    /**
+     * @param  array<int, string>  $warnings
+     */
+    private function realignContract(Quote $quote, LegacyQuoteState $state, bool $contractExisted, array &$warnings): bool
+    {
+        $contract = Contract::query()->where('quote_id', $quote->id)->first();
+
+        if ($contract === null) {
+            return false;
+        }
+
+        $contract->forceFill($this->contractAttributes($state, $warnings));
+
+        if (! $contract->isDirty()) {
+            return false;
+        }
+
+        if ($contractExisted && $this->touchGuard->isContractTouched($contract)) {
+            $warnings[] = self::CONTRACT_TOUCHED_WARNING;
+
+            return false;
+        }
+
+        $contract->saveQuietly();
+
+        return true;
     }
 
     /**
@@ -94,6 +177,17 @@ final class LegacyQuoteStatusApplier
             return;
         }
 
+        $contract->forceFill($this->contractAttributes($state, $warnings))->saveQuietly();
+    }
+
+    /**
+     * The contract columns the legacy state decides; a null legacy status leaves the status as is.
+     *
+     * @param  array<int, string>  $warnings
+     * @return array<string, int|string|null>
+     */
+    private function contractAttributes(LegacyQuoteState $state, array &$warnings): array
+    {
         $attributes = [
             'accepted_at' => $state->acceptedAt?->toDateString(),
             'validated_at' => $state->validatedAt?->toDateString(),
@@ -107,7 +201,7 @@ final class LegacyQuoteStatusApplier
             $attributes['contract_status_id'] = $statusId;
         }
 
-        $contract->forceFill($attributes)->saveQuietly();
+        return $attributes;
     }
 
     /**

@@ -91,4 +91,13 @@ class ContractStatus extends BaseModel
     {
         return $this->system_key !== null;
     }
+
+    /**
+     * Whether a contract closed on this status counts as terminated: every
+     * negative closure except "Annullato", which cancels the contract instead.
+     */
+    public function closesAsTermination(): bool
+    {
+        return $this->group === ContractStatusGroup::ClosedLost && $this->system_key !== StatusSystemKey::Cancelled->value;
+    }
 }

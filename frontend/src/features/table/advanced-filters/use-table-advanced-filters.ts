@@ -3,6 +3,7 @@ import {
   useAdvancedFilters,
   type UseAdvancedFiltersResult,
 } from '@/features/table/advanced-filters/use-advanced-filters'
+import type { TableConfigScope } from '@/features/table/use-table-config'
 import type {
   AdvancedFilterDescriptor,
   AdvancedFilterValues,
@@ -10,8 +11,8 @@ import type {
 
 interface UseTableAdvancedFiltersArgs {
   domain: string
-  /** Forwarded verbatim to `useAdvancedFilters` (spec 0064 category tab). */
-  productCategoryId?: number
+  /** Forwarded verbatim to `useAdvancedFilters` (spec 0064 category tab, 0374 attribute columns). */
+  scope?: TableConfigScope
   /** `TableConfig.advancedFilters`, undefined until the config loads. */
   descriptors: AdvancedFilterDescriptor[] | undefined
   /** `TableConfig.appliedAdvancedFilters`. */
@@ -22,6 +23,8 @@ interface UseTableAdvancedFiltersArgs {
   override?: AdvancedFilterValues | null
   /** Forwarded verbatim to `useAdvancedFilters` (spec 0151 D-2). */
   onOverrideCleared?: () => void
+  /** Names of the filters this grid does not offer: never shown, never sent. */
+  hidden?: readonly string[]
 }
 
 export interface TableAdvancedFiltersState {
@@ -38,17 +41,21 @@ export interface TableAdvancedFiltersState {
  */
 export function useTableAdvancedFilters({
   domain,
-  productCategoryId,
+  scope,
   descriptors,
   applied,
   onApplied,
   override,
   onOverrideCleared,
+  hidden,
 }: UseTableAdvancedFiltersArgs): TableAdvancedFiltersState {
-  const resolvedDescriptors = useMemo(() => descriptors ?? [], [descriptors])
+  const resolvedDescriptors = useMemo(
+    () => (descriptors ?? []).filter((descriptor) => !hidden?.includes(descriptor.name)),
+    [descriptors, hidden],
+  )
   const filters = useAdvancedFilters({
     domain,
-    productCategoryId,
+    scope,
     descriptors: resolvedDescriptors,
     applied,
     onApplied,

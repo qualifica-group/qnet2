@@ -12,7 +12,7 @@ use App\Services\Contracts\ContractActionAvailability;
 use App\Services\Contracts\ContractAlertResolver;
 use App\Services\Contracts\ContractVisibilityScope;
 use App\Services\Quotes\QuoteVisibilityScope;
-use App\Tables\Contracts\ContractAdvancedFilterCatalog;
+use App\Tables\Contracts\Concerns\HasContractListFilters;
 use App\Tables\Contracts\ContractColumnCatalog;
 use App\Tables\Contracts\ContractRelationColumns;
 use App\Tables\Shared\DocumentsCountColumn;
@@ -50,6 +50,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class ContractsTableDefinition extends AbstractTableDefinition
 {
+    use HasContractListFilters;
+
     private const string ALERT_COLUMN = 'alert';
 
     private const string REVENUE_GROSS_COLUMN = 'revenue_gross';
@@ -134,14 +136,6 @@ class ContractsTableDefinition extends AbstractTableDefinition
     public function actions(): array
     {
         return ContractColumnCatalog::actions();
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function advancedFilters(): array
-    {
-        return ContractAdvancedFilterCatalog::advancedFilters();
     }
 
     /**

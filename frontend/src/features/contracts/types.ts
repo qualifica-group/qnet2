@@ -277,6 +277,24 @@ export interface MultiProgrammableLinesData {
   lines: MultiProgrammableLine[]
 }
 
+/** One contract named by the 422 refusal of the multi-offer selection (spec 0267 D-14, `errors.refused_contracts`). */
+export interface MultiProgramRefusedContract {
+  id: number
+  quote_code: string | null
+  registry_name: string | null
+}
+
+/**
+ * Why the server refuses the selected contracts: `message` is its translated
+ * sentence (always present); `reason` and `contracts` come with the structured
+ * body and drive the dialog's list and "continue without" action.
+ */
+export interface MultiProgramRefusal {
+  message: string
+  reason: 'not_won' | 'not_allowed' | null
+  contracts: MultiProgramRefusedContract[]
+}
+
 /** Body of `POST /contracts/multi-quote-work-orders` (spec 0267): ONE work order across several offers. */
 export interface MultiQuoteWorkOrderPayload {
   contract_ids: number[]

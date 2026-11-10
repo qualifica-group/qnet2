@@ -64,6 +64,19 @@ describe('useCategoryTabPreferences (spec 0184)', () => {
     await waitFor(() => expect(result.current.preferences.favorite_category_ids).toEqual([7]))
   })
 
+  it('replaces the whole favorite list at once, keeping the "only favorites" switch', async () => {
+    fetchMock.mockResolvedValue({ favorite_category_ids: [3], show_only_favorites: true, is_default: true })
+    saveMock.mockResolvedValue({ favorite_category_ids: [], show_only_favorites: true, is_default: false })
+    const { result } = renderHook(() => useCategoryTabPreferences(SOURCE), { wrapper: wrapper() })
+    await waitFor(() => expect(result.current.preferences.favorite_category_ids).toEqual([3]))
+
+    act(() => result.current.setFavorites([]))
+
+    await waitFor(() => expect(result.current.preferences.favorite_category_ids).toEqual([]))
+    expect(saveMock.mock.calls[0][1]).toEqual({ favorite_category_ids: [], show_only_favorites: true })
+    expect(result.current.preferences.is_default).toBe(false)
+  })
+
   it('restores the previous state and warns when the save fails (AC-010)', async () => {
     fetchMock.mockResolvedValue({ favorite_category_ids: [3], show_only_favorites: false, is_default: false })
     saveMock.mockRejectedValue(new Error('network'))

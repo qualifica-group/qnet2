@@ -186,6 +186,14 @@ it('AC-064: the fail-closed branch survives a query that already carries constra
     expect($scoped->count())->toBe(0);
 });
 
+it('scopes membership from the per-user ids, never through a correlated EXISTS over every task', function () {
+    $actor = taskActorWith(['viewAny', 'view']);
+
+    $sql = strtolower(TaskVisibilityScope::scopeToActor(Task::query(), $actor)->toSql());
+
+    expect($sql)->toContain('union')->not->toContain('exists');
+});
+
 // ---------------------------------------------------------------------------
 // AC-065 — the export inherits the scope of whoever asked for it
 // ---------------------------------------------------------------------------

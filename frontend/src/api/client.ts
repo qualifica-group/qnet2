@@ -1,6 +1,7 @@
 import axios from 'axios'
 import i18n from '@/i18n'
 import { env } from '@/config/env'
+import { isMaintenanceError, reportMaintenance } from '@/api/maintenance-state'
 import { tokenStorage } from '@/api/token-storage'
 
 /**
@@ -69,6 +70,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     await normalizeBlobError(error)
+    if (isMaintenanceError(error)) {
+      reportMaintenance()
+    }
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       const isLoginRequest = error.config?.url?.endsWith('/auth/login')
       if (!isLoginRequest) {

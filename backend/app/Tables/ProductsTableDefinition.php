@@ -165,6 +165,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'code' => $row->code,
             'name' => $row->name,
+            'is_active' => (bool) $row->is_active,
             'description' => $row->description,
             $this->costColumn->columnId() => $this->costColumn->value($row),
             $this->priceColumn->columnId() => $this->priceColumn->value($row),

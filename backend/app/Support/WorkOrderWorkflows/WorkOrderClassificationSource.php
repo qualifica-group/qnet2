@@ -29,8 +29,7 @@ use Illuminate\Support\Collection;
 final class WorkOrderClassificationSource
 {
     /**
-     * Effective business function per category id, read once per instance
-     * (see forgetCaches()).
+     * Effective business function per category id, read once per instance.
      *
      * @var array<int, array{id: int, name: string}|null>|null
      */
@@ -62,15 +61,6 @@ final class WorkOrderClassificationSource
         return $this->distinctIds(
             collect($this->categoryIds($workOrder))->map(static fn (int $categoryId): ?int => $functions[$categoryId]['id'] ?? null),
         );
-    }
-
-    /**
-     * Drops the memoized category tree projection so the next read sees the
-     * database as it is (a reparented or re-assigned category).
-     */
-    public function forgetCaches(): void
-    {
-        $this->functionsByCategory = null;
     }
 
     /**

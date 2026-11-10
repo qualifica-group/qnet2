@@ -415,6 +415,14 @@ abstract class AbstractTableDefinition implements TableDefinition
     }
 
     /**
+     * @return array<int, string>
+     */
+    public function filtersIgnoredByAggregates(): array
+    {
+        return [];
+    }
+
+    /**
      * Default: no tree/hierarchical support (spec 0157, D-1). A domain opts
      * in by overriding.
      */

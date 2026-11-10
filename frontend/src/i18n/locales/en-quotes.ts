@@ -15,6 +15,7 @@ export const quotes = {
     code: 'Code',
     title: 'Title',
     opportunity: 'Opportunity',
+    registry: 'Registry',
     quoteWorkflowStatus: 'Status',
     commercial: 'Commercial',
     reporter: 'Reporter',
@@ -37,10 +38,15 @@ export const quotes = {
     missingOfferLines: 'Missing offer rows',
   },
   advancedFilters: {
+    assignment: 'Assignment',
+    parentCategory: 'Parent category',
+    productCategory: 'Product category',
+    registry: 'Client',
     opportunity: 'Opportunity',
     quoteWorkflowStatus: 'Status',
     commercial: 'Commercial',
     supervisor: 'Supervisor',
+    managers: 'Account managers',
     createdRange: 'Created at',
   },
   calculationHints: {

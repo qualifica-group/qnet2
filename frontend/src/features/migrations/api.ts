@@ -9,6 +9,7 @@ import type {
   MigrationRun,
   MigrationRunCreated,
   MigrationSourceSummary,
+  MigrationStartOptions,
 } from '@/features/migrations/types'
 
 /** Fetches the registered migration sources (`GET /migrations`). */
@@ -50,15 +51,16 @@ export async function fetchMigrationPreview(
 /**
  * Starts the queued import (fase 2) for a source
  * (`POST /migrations/{source}/import`); a date limits it to records created or
- * modified since then (spec 0345), null imports everything.
+ * modified since then (spec 0345), null imports everything; `updateExisting`
+ * also realigns the records already imported (spec 0372).
  */
 export async function startMigrationImport(
   source: string,
-  updatedSince: string | null,
+  { updatedSince, updateExisting }: MigrationStartOptions,
 ): Promise<MigrationRunCreated> {
   const { data } = await apiClient.post<ApiResponse<{ migration_run: MigrationRunCreated }>>(
     `/migrations/${source}/import`,
-    { updated_since: updatedSince },
+    { updated_since: updatedSince, update_existing: updateExisting },
   )
   return data.data.migration_run
 }
@@ -89,10 +91,13 @@ export async function saveMigrationPlan(sources: MigrationPlanInput[]): Promise<
 }
 
 /** Starts the mass import from the saved plan (`POST /migrations/mass-runs`). */
-export async function startMassMigration(updatedSince: string | null): Promise<MassMigrationRun> {
+export async function startMassMigration({
+  updatedSince,
+  updateExisting,
+}: MigrationStartOptions): Promise<MassMigrationRun> {
   const { data } = await apiClient.post<ApiResponse<{ mass_migration_run: MassMigrationRun }>>(
     '/migrations/mass-runs',
-    { updated_since: updatedSince },
+    { updated_since: updatedSince, update_existing: updateExisting },
   )
   return data.data.mass_migration_run
 }

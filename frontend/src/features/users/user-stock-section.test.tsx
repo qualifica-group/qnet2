@@ -48,6 +48,7 @@ function user(): UserDetailWithPermissions {
     must_set_password: false,
     managed_business_functions: [],
     created_at: null,
+    last_login_at: null,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},

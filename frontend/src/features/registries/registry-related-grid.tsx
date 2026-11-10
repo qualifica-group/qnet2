@@ -31,6 +31,8 @@ interface RegistryRelatedGridProps {
   interceptCellCommit?: CellCommitInterceptor
   /** One-visit advanced filters over the module's defaults (spec 0151 D-2), e.g. the Task tab's `assignment`. */
   advancedFiltersOverride?: AdvancedFilterValues
+  /** Advanced filters of the module that make no sense inside one record, forwarded to `TableView`. */
+  hiddenAdvancedFilters?: readonly string[]
 }
 
 /**
@@ -53,6 +55,7 @@ export const RegistryRelatedGrid = forwardRef<TableViewHandle, RegistryRelatedGr
     create,
     interceptCellCommit,
     advancedFiltersOverride,
+    hiddenAdvancedFilters,
   },
   ref,
 ) {
@@ -79,6 +82,7 @@ export const RegistryRelatedGrid = forwardRef<TableViewHandle, RegistryRelatedGr
         onRowCountChanged={onRowCountChanged}
         interceptCellCommit={interceptCellCommit}
         advancedFiltersOverride={advancedFiltersOverride}
+        hiddenAdvancedFilters={hiddenAdvancedFilters}
       />
     </div>
   )

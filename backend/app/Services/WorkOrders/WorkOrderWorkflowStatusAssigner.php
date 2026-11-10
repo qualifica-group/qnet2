@@ -130,6 +130,22 @@ final class WorkOrderWorkflowStatusAssigner
     }
 
     /**
+     * Puts back the status held before the contract's termination, or `open`
+     * when it left the resolved set in the meantime: reopening a contract is
+     * never refused because of one commessa.
+     */
+    public function restore(WorkOrder $workOrder, int $statusId): void
+    {
+        $workOrder->unsetRelation('quoteLines');
+        $statuses = $this->resolver->statusesFor($this->resolver->resolve($workOrder));
+        $targetId = $statuses->contains('id', $statusId)
+            ? $statusId
+            : $this->systemRow($statuses, WorkOrderWorkflowStatusSystemKey::Open)->id;
+
+        $this->persist($workOrder, $workOrder->work_order_workflow_status_id, $targetId, logChange: true);
+    }
+
+    /**
      * @param  Collection<int, WorkOrderWorkflowStatus>  $statuses
      */
     private function closingStatus(Collection $statuses, ?int $forceCloseStatusId): WorkOrderWorkflowStatus

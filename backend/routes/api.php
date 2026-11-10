@@ -28,6 +28,7 @@ use App\Http\Controllers\ReferentTypes\ReferentTypeForSelectController;
 use App\Http\Controllers\Roles\RoleController;
 use App\Http\Controllers\Roles\RoleForSelectController;
 use App\Http\Controllers\Stats\StatsController;
+use App\Http\Controllers\System\AvailabilityController;
 use App\Http\Controllers\System\PresenceHeartbeatController;
 use App\Http\Controllers\System\SystemHealthController;
 use App\Http\Controllers\Table\TableController;
@@ -51,6 +52,7 @@ use Illuminate\Support\Facades\Route;
 // The exposed surface is a fixed server-side allowlist (config/config.php),
 // never request input, so no arbitrary class can be reflected. See ADR 0008.
 Route::get('config', [ConfigController::class, 'index']);
+Route::get('availability', AvailabilityController::class); // Spec 0376.
 
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
@@ -77,6 +79,9 @@ Route::prefix('auth')->group(function () {
         // Optional first-access password choice (spec 0177 rev. 2): no current
         // password asked, accepted only while `must_set_password` is true.
         Route::middleware('throttle:6,1')->put('me/first-password', [AuthController::class, 'setFirstPassword']);
+
+        // Welcome tour seen (spec 0368). No throttle: not a credential endpoint.
+        Route::put('me/onboarding', [AuthController::class, 'updateOnboarding']);
 
         // Self-service avatar (settings page): any authenticated user manages
         // their own avatar; no extra permission required.
@@ -354,6 +359,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require __DIR__.'/api/contracts.php'; // Contracts show/update + domain actions (spec 0072)
     require __DIR__.'/api/commission-configurations.php';
     require __DIR__.'/api/request-management.php'; // Work-panel show/update (spec 0049)
+    require __DIR__.'/api/agent-sales-report.php'; // Report Vendite Agenti sync exports (spec 0365)
     require __DIR__.'/api/notes.php'; // Agnostic collaborative notes (spec 0052)
     require __DIR__.'/api/field-change-requests.php'; // Generic field-change-request lifecycle (spec 0078)
     // Attributes CRUD (spec 0017): the global, reusable dynamic-attribute

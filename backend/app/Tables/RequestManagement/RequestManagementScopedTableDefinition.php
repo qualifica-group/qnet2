@@ -90,8 +90,8 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
     private ?int $categoryScope = null;
 
     /**
-     * Spec 0337, D-3: a root tab only filters the rows, so it leaves
-     * `categoryScope` null and carries no `attr.*` column nor GA relabel.
+     * A root tab leaves `categoryScope` null, so it carries no GA relabel, but
+     * it shows the root's own `attr.*` columns (spec 0350 D-4, rev.3).
      */
     private ?int $branchScope = null;
 
@@ -127,8 +127,8 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
     }
 
     /**
-     * Narrows `baseQuery()` ONLY to the rows of a root category's branch
-     * (spec 0337, D-3): no `attr.*` columns and no G.A. relabel.
+     * Narrows `baseQuery()` to the rows of a root category's branch (spec
+     * 0337) and the `attr.*` columns to the root's own set: no G.A. relabel.
      */
     public function scopeToProductCategoryBranch(?int $rootId): void
     {
@@ -366,13 +366,13 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
     }
 
     /**
-     * The scoped category's effective attributes ("Tutte" -> none).
+     * The effective attributes of the scoped category or root ("Tutte" -> none).
      *
      * @return Collection<int, array<string, mixed>>
      */
     private function categoryAttributes(): Collection
     {
-        return $this->attributeColumns->forCategory($this->categoryScope);
+        return $this->attributeColumns->forCategory($this->categoryScope ?? $this->branchScope);
     }
 
     /**
@@ -419,8 +419,8 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
 
     /**
      * The scoped category's EFFECTIVE labels, restricted to the positions the
-     * grid exposes as their own column (RequestManagerColumns::POSITIONS —
-     * `ManagerPositions::OPERATOR` and `::GA1`). Empty when there is no scope,
+     * grid exposes as their own column (RequestManagerColumns::POSITIONS).
+     * Empty when there is no scope,
      * the category no longer exists, or it defines no label for any of them.
      *
      * Spec 0087, D-10: the positions come from `ManagerPositions`, never the

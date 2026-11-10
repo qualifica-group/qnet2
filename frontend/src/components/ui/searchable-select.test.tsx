@@ -54,6 +54,15 @@ describe('SearchableSelect', () => {
     expect(screen.queryByRole('button', { name: /Laptops/ })).not.toBeInTheDocument()
   })
 
+  it('sizes the popup on its longest option by default, never narrower than the trigger', () => {
+    renderSelect()
+    fireEvent.click(screen.getByRole('combobox'))
+    const popup = screen.getByRole('dialog')
+    expect(popup).toHaveClass('w-max')
+    expect(popup).toHaveClass('min-w-[max(15rem,var(--radix-popover-trigger-width))]')
+    expect(popup).not.toHaveClass('w-(--radix-popover-trigger-width)')
+  })
+
   it('merges contentClassName onto the popup, so a caller can widen it past the trigger', () => {
     renderSelect({ contentClassName: 'w-[36rem]' })
     fireEvent.click(screen.getByRole('combobox'))

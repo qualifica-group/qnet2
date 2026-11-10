@@ -6,10 +6,9 @@ namespace App\Services;
 
 use App\DataObjects\QuoteWorkflows\CreateQuoteWorkflowData;
 use App\DataObjects\QuoteWorkflows\UpdateQuoteWorkflowData;
-use App\Models\Quote;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
-use App\Services\Quotes\QuoteWorkflowResolver;
+use App\Services\QuoteWorkflows\QuoteWorkflowStatusUsageGuard;
 use App\Services\QuoteWorkflows\WorkflowStatusWriter;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
@@ -19,17 +18,12 @@ use Illuminate\Support\Facades\DB;
  * moved onto the Offerta by spec 0083 D-6): create/update/delete of a
  * workflow plus its criteria/statuses child collections, and the global
  * default status set.
- *
- * create()/update() have NO dependency on QuoteWorkflowResolver (they only
- * ever write THIS workflow's own rows); delete() does, to re-resolve every
- * Quote left referencing one of the deleted workflow's statuses (AC-018) —
- * the SAME resolver App\Services\QuoteService uses, never duplicated here.
  */
 class QuoteWorkflowService
 {
     public function __construct(
         private readonly WorkflowStatusWriter $statusWriter,
-        private readonly QuoteWorkflowResolver $resolver,
+        private readonly QuoteWorkflowStatusUsageGuard $statusUsageGuard,
     ) {}
 
     public function loadDetail(QuoteWorkflow $workflow): QuoteWorkflow
@@ -103,52 +97,14 @@ class QuoteWorkflowService
     }
 
     /**
-     * Deletes the workflow (cascading its criteria/statuses at the DB
-     * layer), then RE-RESOLVES every Quote that referenced one of its
-     * statuses (AC-018, spec 0083: the delete-reassign flow now concerns the
-     * Offerte, not the Opportunita'): the FK is `restrictOnDelete` at the
-     * schema level for a Quote's OWN `quote_workflow_status_id`, but a
-     * deleted workflow's status rows cascade away at the DB layer, so those
-     * Quotes are re-resolved onto whatever set now applies to them, never
-     * left orphaned.
-     *
-     * `offerLines.product.category`/`opportunity.customFieldValueRow` are
-     * eager-loaded UP FRONT: the resolver's own `resolve()` step 1 only ever
-     * `loadMissing()`s them, which is a no-op when already loaded and a
-     * query PER ROW of this batch otherwise.
+     * Deletes the workflow, cascading its criteria/statuses at the DB layer.
+     * Refused while one of its statuses is in use (spec 0377).
      */
     public function delete(QuoteWorkflow $workflow): void
     {
-        DB::transaction(function () use ($workflow): void {
-            $statusIds = $workflow->statuses()->pluck('id');
+        $this->statusUsageGuard->assertUnused($workflow->statuses()->get());
 
-            $impactedQuoteIds = Quote::query()
-                ->whereIn('quote_workflow_status_id', $statusIds)
-                ->pluck('id');
-
-            // Step 1: take the workflow out of the candidate set BEFORE
-            // reassigning, so the resolver cannot hand its quotes straight
-            // back to the workflow that is about to disappear.
-            $workflow->update(['is_active' => false]);
-            $this->resolver->forgetCaches();
-
-            // Step 2: move every impacted quote off the doomed status rows.
-            // This MUST precede the delete: `quotes.quote_workflow_status_id`
-            // is NOT NULL and `restrictOnDelete`, so the DB refuses to cascade
-            // the status rows away while a quote still points at one. (The
-            // Opportunity precedent this method was modelled on could delete
-            // first because its FK was nullOnDelete — a null the resolver then
-            // remapped. That is not the shape of this one.)
-            Quote::query()
-                ->whereIn('id', $impactedQuoteIds)
-                ->with(['offerLines.product.category', 'opportunity.customFieldValueRow'])
-                ->get()
-                ->each(fn (Quote $quote) => $this->resolver->resolveAndAssign($quote));
-
-            // Step 3: no quote references the set any more, so the cascade of
-            // `quote_workflow_statuses` now succeeds.
-            $workflow->delete();
-        });
+        $workflow->delete();
     }
 
     /**

@@ -103,6 +103,8 @@ final class RequestRowMapper
             // real FK on `quotes` (`operator_id`), denormalized from the
             // `quote_user` pivot.
             'operator_ga2' => $this->userSummary($row->operator),
+            // Spec 0373 D-7: the whole team, in `managers()` position order.
+            RequestManagerColumns::MANAGERS_COLUMN_ID => $row->managers->map(fn (User $user): ?array => $this->userSummary($user))->all(),
             // GA1 (direttiva utente 2026-09-08, which moved this column off
             // position 3): the slot right before the Operatore, read from the
             // `quote_user` pivot itself — unlike GA2
@@ -110,6 +112,8 @@ final class RequestRowMapper
             // and it needs none: the team is eager-loaded by the definition
             // for the whole page, so this costs no per-row query.
             'manager_ga1' => $this->userSummary($this->managerAt($row, ManagerPositions::GA1)),
+            // Spec 0373 D-10: "Operatore APL", same pivot read as the GA1.
+            RequestManagerColumns::GA5_COLUMN_ID => $this->userSummary($this->managerAt($row, ManagerPositions::GA5)),
             // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
             // FK — the site has no own name, so its label is composed
             // server-side from its primary address.
@@ -180,6 +184,7 @@ final class RequestRowMapper
         return [
             'first_name' => $card?->first_name,
             'last_name' => $card?->last_name,
+            'company_name' => $card?->company_name,
             'tax_code' => $card?->tax_code,
             'vat_number' => $card?->vat_number,
             'phone' => $this->primaryContact($card?->contacts, [ContactTypeEnum::Phone]),

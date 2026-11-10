@@ -11,6 +11,7 @@ import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categ
 import { ProductCategoryTreeSelect } from '@/features/product-lines/product-category-tree-select'
 import { useCompetenceLinesField } from '@/features/product-lines/use-competence-lines-field'
 import { CompetenceShareMeter } from '@/features/product-lines/competence-share-meter'
+import { CompetenceCategoryAgeToggles } from '@/features/product-lines/competence-category-age'
 import {
   COMPETENCE_SHARE_TOTAL,
   competenceShareColor,
@@ -63,6 +64,7 @@ export function CompetenceLinesField({
     setRowBusinessFunction,
     setRowProductCategory,
     setRowAllCategories,
+    setRowCategoryAge,
     setRowSharePercentage,
     shareTotal,
     businessFunctionLabel,
@@ -161,6 +163,15 @@ export function CompetenceLinesField({
                 />
                 {t('productLines.allCategoriesShort')}
               </label>
+
+              {row.all_categories === true ? (
+                <CompetenceCategoryAgeToggles
+                  row={row}
+                  index={index}
+                  disabled={disabled}
+                  onChange={(age, checked) => setRowCategoryAge(index, age, checked)}
+                />
+              ) : null}
 
               {/* Spec 0346: the person's informative share on this row; the dot
                   ties it to its segment of the bar under the rows. */}

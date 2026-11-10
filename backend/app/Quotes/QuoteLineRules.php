@@ -8,7 +8,7 @@ use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Enums\SupplierCommissionDirection;
-use App\Rules\ActiveCategoryProduct;
+use App\Rules\ActiveProduct;
 use Illuminate\Validation\Rule;
 
 /**
@@ -52,7 +52,7 @@ final class QuoteLineRules
 
         return [
             $field => ['sometimes', 'array', 'max:'.self::MAX_ROWS],
-            "{$field}.*.product_id" => ['required', 'integer', new ActiveCategoryProduct($exemptProductIds)],
+            "{$field}.*.product_id" => ['required', 'integer', new ActiveProduct($exemptProductIds)],
             // Spec 0320, D-5: the supplier among the product's own (null when it has none).
             "{$field}.*.supplier_id" => ['bail', 'nullable', 'integer', Rule::exists('registries', 'id'), new QuoteLineSupplierRule($field, $persistedLines)],
             "{$field}.*.id" => ['nullable', 'integer', Rule::exists('quote_lines', 'id')],

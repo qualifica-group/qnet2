@@ -316,7 +316,11 @@ function RequestWorkPanelBody({ panel, onSaved }: RequestWorkPanelBodyProps) {
                 selectedStatusId={selectedStatusId}
               />
 
-              <RequestClientSection control={form.control} />
+              <RequestClientSection
+                control={form.control}
+                registry={panel.registry}
+                registryLockReason={panel.registry_lock_reason}
+              />
 
               {/* Provenance and ownership of the request (user directive
                   2026-07-22). `requestId`: the Fonte picker's

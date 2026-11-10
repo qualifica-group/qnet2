@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import type { ColumnState, GridApi } from 'ag-grid-community'
 import { useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
 import { saveTableFilters, saveTablePreferences } from '@/features/table/api'
+import type { TableConfigScope } from '@/features/table/use-table-config'
 import type { TableConfig } from '@/features/table/types'
 
 vi.mock('@/features/table/api', () => ({
@@ -50,12 +51,12 @@ function wrapper() {
   )
 }
 
-function renderPersistence(api: GridApi = gridApi) {
+function renderPersistence(api: GridApi = gridApi, scope: TableConfigScope = { productCategoryId: 12 }) {
   return renderHook(
     () =>
       useTableLayoutPersistence({
         domain: 'users',
-        scope: { productCategoryId: 12 },
+        scope,
         gridApi: api,
         knownColumnIds: KNOWN_COLUMN_IDS,
         initialFilterModel: NO_FILTERS,
@@ -127,6 +128,17 @@ describe('useTableLayoutPersistence', () => {
     window.dispatchEvent(new Event('pagehide'))
 
     expect(saveFiltersMock).toHaveBeenCalledWith('users', { filterModel: FILTER_MODEL }, 12, { keepalive: true })
+  })
+
+  it('sends a parent tab save on unload with its branch scope', () => {
+    const { result } = renderPersistence(gridApi, { productCategoryBranchId: 3 })
+
+    act(() => {
+      result.current.handleFilterChanged()
+    })
+    window.dispatchEvent(new Event('pagehide'))
+
+    expect(saveFiltersMock).toHaveBeenCalledWith('users', { filterModel: FILTER_MODEL }, { branchId: 3 }, { keepalive: true })
   })
 
   it('does not send anything on unload when no change is pending', () => {

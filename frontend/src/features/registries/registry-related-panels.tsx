@@ -29,6 +29,7 @@ import { useTaskStatusCellIntercept } from '@/features/tasks/use-task-status-cel
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
+import { PRESET_LIST_FILTERS } from '@/features/table/advanced-filters/types'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableViewHandle } from '@/features/table/table-view'
 
@@ -75,6 +76,7 @@ export function RegistryOpportunitiesPanel({ registryId, onRowCountChanged }: Re
         ref={tableRef}
         domain={OPPORTUNITIES_DOMAIN}
         rowScope={{ registryId }}
+        hiddenAdvancedFilters={PRESET_LIST_FILTERS}
         renderers={opportunityColumnRenderers}
         iconMap={OPPORTUNITIES_ACTION_ICONS}
         onAction={handleAction}
@@ -108,6 +110,7 @@ export function RegistryQuotesPanel({ registryId, onRowCountChanged }: RegistryR
         ref={tableRef}
         domain={QUOTES_DOMAIN}
         rowScope={{ registryId }}
+        hiddenAdvancedFilters={PRESET_LIST_FILTERS}
         renderers={quoteColumnRenderers}
         iconMap={QUOTES_ACTION_ICONS}
         onAction={handleAction}
@@ -166,6 +169,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
         ref={tableRef}
         domain={WORK_ORDERS_DOMAIN}
         rowScope={{ registryId }}
+        hiddenAdvancedFilters={PRESET_LIST_FILTERS}
         renderers={renderers}
         iconMap={iconMap}
         onAction={handleAction}

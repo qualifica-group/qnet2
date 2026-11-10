@@ -20,6 +20,12 @@ final class ContractVisibilityScope
 {
     public const RESOURCE = 'contracts';
 
+    /** Same tiers as scopeToActor(), read by the "Assegnazione" filter. */
+    public static function seesBeyondOwnRecords(?User $user): bool
+    {
+        return QuoteVisibilityScope::seesBeyondOwnRecords($user, self::RESOURCE);
+    }
+
     /**
      * @param  Builder<Contract>  $query
      * @return Builder<Contract>

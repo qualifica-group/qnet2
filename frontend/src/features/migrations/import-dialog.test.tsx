@@ -51,6 +51,8 @@ function createdRun(overrides: Partial<MigrationRunCreated> = {}): MigrationRunC
     failed_rows: 0,
     has_report: false,
     updated_since: null,
+    update_existing: false,
+    updated_rows: 0,
     created_at: '2026-07-03T00:00:00Z',
     ...overrides,
   }
@@ -67,16 +69,19 @@ function polledRun(overrides: Partial<MigrationRun> = {}): MigrationRun {
     failed_rows: 0,
     report: null,
     updated_since: null,
+    update_existing: false,
+    updated_rows: 0,
     created_at: '2026-07-03T00:00:00Z',
     ...overrides,
   }
 }
 
-function renderDialog(onOpenChange = vi.fn()) {
+function renderDialog(onOpenChange = vi.fn(), supportsUpdateExisting = false) {
   render(
     <ImportDialog
       source="roles"
       sourceLabel="Roles"
+      supportsUpdateExisting={supportsUpdateExisting}
       open
       onOpenChange={onOpenChange}
     />,
@@ -100,7 +105,7 @@ describe('ImportDialog (migrations)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
 
-    await waitFor(() => expect(startMigrationImportMock).toHaveBeenCalledWith('roles', null))
+    await waitFor(() => expect(startMigrationImportMock).toHaveBeenCalledWith('roles', { updatedSince: null, updateExisting: false }))
     await waitFor(() => expect(fetchMigrationRunMock).toHaveBeenCalledWith('roles', 1), {
       timeout: 3000,
     })
@@ -122,7 +127,10 @@ describe('ImportDialog (migrations)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
 
     await waitFor(() =>
-      expect(startMigrationImportMock).toHaveBeenCalledWith('roles', '2026-10-01'),
+      expect(startMigrationImportMock).toHaveBeenCalledWith('roles', {
+        updatedSince: '2026-10-01',
+        updateExisting: false,
+      }),
     )
     // AC-014: the progress view shows the start day.
     expect(await screen.findByText(/^Since /)).toBeInTheDocument()
@@ -135,7 +143,58 @@ describe('ImportDialog (migrations)', () => {
     renderDialog()
     fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
 
-    await waitFor(() => expect(startMigrationImportMock).toHaveBeenCalledWith('roles', null))
+    await waitFor(() =>
+      expect(startMigrationImportMock).toHaveBeenCalledWith('roles', {
+        updatedSince: null,
+        updateExisting: false,
+      }),
+    )
+  })
+
+  it('AC-024: the realign checkbox is hidden when the source does not support it', () => {
+    renderDialog(vi.fn(), false)
+
+    expect(
+      screen.queryByRole('checkbox', { name: 'Also update records already imported' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('AC-024: the realign checkbox is off by default and starts with update_existing', async () => {
+    startMigrationImportMock.mockResolvedValue(createdRun({ update_existing: true }))
+    fetchMigrationRunMock.mockResolvedValue(
+      polledRun({ status: 'completed', update_existing: true, updated_rows: 3 }),
+    )
+
+    renderDialog(vi.fn(), true)
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Also update records already imported' })
+    expect(checkbox).not.toBeChecked()
+    expect(checkbox).toHaveAccessibleDescription(/nobody has worked on in QNet/)
+
+    fireEvent.click(checkbox)
+    fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
+
+    await waitFor(() =>
+      expect(startMigrationImportMock).toHaveBeenCalledWith('roles', {
+        updatedSince: null,
+        updateExisting: true,
+      }),
+    )
+    // AC-026: with update_existing the Updated counter and the mode label show.
+    expect(await screen.findByText('Updated', {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.getByText('Update existing records')).toBeInTheDocument()
+  })
+
+  it('AC-026: without update_existing the Updated counter is not shown', async () => {
+    startMigrationImportMock.mockResolvedValue(createdRun())
+    fetchMigrationRunMock.mockResolvedValue(polledRun({ status: 'completed' }))
+
+    renderDialog(vi.fn(), true)
+    fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
+
+    expect(await screen.findByText('Completed', {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.queryByText('Updated')).not.toBeInTheDocument()
+    expect(screen.queryByText('Update existing records')).not.toBeInTheDocument()
   })
 
   it('wires a server start error to the date field', async () => {

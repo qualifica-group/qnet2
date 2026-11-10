@@ -86,6 +86,8 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
         row.all_categories === true || row.product_category_id === null
           ? null
           : { id: row.product_category_id, name: categoryPathLabel(tree, row.product_category_id) },
+      covers_current_categories: row.covers_current_categories,
+      covers_legacy_categories: row.covers_legacy_categories,
     }))
 
   return {

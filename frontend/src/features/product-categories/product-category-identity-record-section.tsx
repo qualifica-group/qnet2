@@ -6,6 +6,7 @@ import { RecordFieldList, RecordSection } from '@/components/detail/record-panel
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { RevenueTypeValue } from '@/features/revenue-types/effective-revenue-type'
 import { RevenueTypeField } from '@/features/revenue-types/revenue-type-field'
+import { ProductCategoryCurrentCategoryField } from '@/features/product-categories/product-category-current-category-field'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
 import {
   ProductCategoryDescriptionField,
@@ -18,7 +19,7 @@ import { useProductCategoryParentPicker } from '@/features/product-categories/us
 
 /**
  * "Dettagli": name, parent, description and the business function, one row each
- * (spec 0229 D-2). The business function is read-only while an ancestor owns it
+ * (spec 0229 D-2), plus the "Categoria attuale" of a legacy root (spec 0374 D-9). The business function is read-only while an ancestor owns it
  * (spec 0023): the row then only names the category it comes from.
  */
 export function ProductCategoryIdentityRecordSection({ values, form, inline, mode, canEdit }: ProductCategoryRecordSectionProps) {
@@ -95,6 +96,17 @@ export function ProductCategoryIdentityRecordSection({ values, form, inline, mod
         >
           <RevenueTypeValue own={values.revenue_type} effective={values.effective_revenue_type} />
         </RecordInlineField>
+        {values.is_legacy === true && parentId === null ? (
+          <RecordInlineField
+            field="current_category_id"
+            label={t('productCategories.form.currentCategory')}
+            inline={inline}
+            canEdit={canEdit}
+            editor={<ProductCategoryCurrentCategoryField control={control} selected={values.current_category ?? null} />}
+          >
+            {values.current_category ? <span className="break-words">{values.current_category.name}</span> : <DetailEmpty />}
+          </RecordInlineField>
+        ) : null}
       </RecordFieldList>
     </RecordSection>
   )

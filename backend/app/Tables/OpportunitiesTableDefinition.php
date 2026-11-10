@@ -12,12 +12,14 @@ use App\Tables\Opportunities\OpportunityCellWriter;
 use App\Tables\Opportunities\OpportunityColumnCatalog;
 use App\Tables\Opportunities\OpportunityRelationColumns;
 use App\Tables\Opportunities\OpportunityStatusColumn;
+use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use App\Tables\Shared\ProductLinePairsColumn;
 use App\Tables\Shared\ProductsOfInterestColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -60,6 +62,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         private readonly OpportunityCellWriter $cellWriter,
         private readonly ProductLinePairsColumn $productLinePairs,
         private readonly OpportunityStatusResolver $statusResolver,
+        private readonly CommercialListFilterApplier $listFilters,
     ) {}
 
     /**
@@ -144,15 +147,13 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Whether the actor reaches Offerte beyond the ones they operate (site or
-     * competence tier) without seeing them all: the only case where the
-     * EXISTS above can change allowsNotes()' verdict.
+     * Whether the actor is scoped to some Offerte without seeing them all
+     * (team, site or competence tier): the only case where the EXISTS above
+     * can change allowsNotes()' verdict.
      */
     private function widensRequestScope(User $actor): bool
     {
-        return $actor->can('request-management.view')
-            && ! $actor->can('request-management.viewAll')
-            && ($actor->can('request-management.viewSite') || $actor->can('request-management.viewCompetence'));
+        return $actor->can('request-management.view') && ! $actor->can('request-management.viewAll');
     }
 
     /**
@@ -184,7 +185,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return OpportunityAdvancedFilterCatalog::advancedFilters();
+        return [...$this->listFilters->presetFilters('opportunities', Auth::user(), OpportunityVisibilityScope::seesBeyondOwnRecords(Auth::user())), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**
@@ -326,7 +327,8 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      * The SAME rule RequestManagementNotable::authorizeRead applies when the
      * note endpoints re-check the thread: `request-management.view` AND one of
      * `request-management.viewAll`, being that opportunity's GA2 Operatore, or
-     * (spec 0105) reaching one of its Offerte through `viewSite`.
+     * reaching one of its Offerte through the team (spec 0373) or `viewSite`
+     * (spec 0105).
      * The full rule is evaluated here — unlike the request-management table,
      * this list is NOT already scoped to the actor's own opportunities, so
      * checking only `request-management.view` would offer the action on rows
@@ -334,9 +336,9 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      * eager-loaded `managers` collection via `operatorManager()`, the single
      * expression of the "position 2 = operator" rule: no per-row query.
      *
-     * Spec 0105, spec 0340: the site and competence tiers read
+     * Spec 0105, spec 0340, spec 0373: the team, site and competence tiers read
      * `request_scoped_quote_exists`, the EXISTS flag baseQuery() projects for
-     * a `viewSite`/`viewCompetence` holder — absent (hence false) otherwise.
+     * a scoped actor — absent (hence false) otherwise.
      */
     private function allowsNotes(User $actor, Opportunity $row): bool
     {
@@ -361,6 +363,17 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      */
     public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
     {
+        $applyCategories = static function (Builder $opportunities, array $categoryIds): void {
+            $opportunities->whereIn('opportunities.id', static fn (QueryBuilder $lines) => $lines
+                ->select('opportunity_id')
+                ->from('opportunity_product_lines')
+                ->whereIn('product_category_id', $categoryIds));
+        };
+
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), $applyCategories)) {
+            return true;
+        }
+
         if ($name === self::OPERATIONAL_SITE_COLUMN) {
             if (is_string($value) && $value !== '') {
                 $this->operationalSiteColumn->applyAdvancedFilter($query, self::OPERATIONAL_SITE_RELATION, $value);

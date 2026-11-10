@@ -51,7 +51,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Title, Work order type, Callback date, Start date, Supervisors) edits it **directly in the list**, with the **same rules as the detail**: for example the Title and the Start date are mandatory, while the Supervisors can all be removed; an invalid value is refused and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Title, Work order type, Callback date, Start date, Supervisors, Participants) edits it **directly in the list**, with the **same rules as the detail**: for example the Title and the Start date are mandatory, while the Supervisors and Participants can all be removed; an invalid value is refused and the cell goes back to its previous value.",
         },
         {
           type: 'note',
@@ -60,32 +60,48 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtering by product category",
+      id: 'people-filters',
+      title: "Filtering by person",
       blocks: [
         {
           type: 'paragraph',
-          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of work orders. Clicking a tab shows only the work orders of that category. Your choice is kept after reloading the page.",
+          text: "In the **Advanced filters** panel (button in the bar above the list) the **Supervisors** and **Participants** fields let you pick one or more people: the list shows the work orders where at least one of them holds that role. If you fill in both fields, a work order must satisfy both. The **Supervisors** and **Participants** columns of the list also have their own filter by name, with a **(Blanks)** entry for the work orders with nobody in that role.",
+        },
+      ],
+    },
+    {
+      id: 'work-phase-tabs',
+      title: "Working phases",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top right of the **Work orders** page you find the tabs **All**, **To plan**, **In progress**, **Completed**, **Cancelled** and **Terminated**. Each tab filters the list on the group of the **Working status**: a negative outcome means **Cancelled**, or **Terminated** when the work order's contract was terminated. **All** removes the filter. Each tab shows how many work orders it holds: the number follows the search and the active filters, so it matches what you see when you open the tab. The tab adds up with the other filters and with **Assignment**: if a work order is missing, check those too.",
+        },
+      ],
+    },
+    {
+      id: 'list-filters',
+      title: "Default filters, category and client",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "When it opens, the **Work orders** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Participant** (the work orders where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together: a work order must satisfy both. To also see the other work orders you can access, choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved.",
         },
         {
           type: 'paragraph',
-          text: "A work order appears under the tab of every category among the products on the **revenue rows of the offers it comes from**: the linked offer and, for a multi-offer work order, the offers of the rows it holds (it counts once even with several rows of the same category). Cost rows do not count; a work order without revenue rows appears only under **All**. The number next to the name is how many work orders, among those you can see, fall under that category.",
-        },
-        {
-          type: 'steps',
-          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing.",
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
+          text: "In the same panel you can also pick one or more values in **Product category** (that category only) and **Client**. The filters never widen what you can see: your profile's visibility rules still apply. A work order falls under a category if the category is among the products on the **revenue rows of the offers it comes from**: the linked offer and, for a multi-offer work order, the offers of the rows it holds. Cost rows do not count. For a multi-offer work order the client of each offer counts too.",
         },
         {
           type: 'paragraph',
-          text: "When you choose a category tab (not **All** and not a **Parent categories** tab), the columns of that category's flexible fields of the **work order** (not those of the quote) appear at the end of the list. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with **All**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. They are the work order's own fields: they can be sorted, filtered and exported; if you may edit work orders they are edited in the cell, except when the field does not concern that work order (the cell stays read-only). The values can still be read in the detail too.",
         },
         {
           type: 'note',
-          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the work orders. The **Work orders** tab of a contract's detail has no bar.",
+          text: "The **Assignment** field and the pre-filled **Parent category** exist only on the **Work orders** page: on **Project work orders** the **Parent category** starts empty, and it does not appear in the **Work orders** sections of a contract or a client. The export follows the active filters.",
         },
       ],
     },
@@ -433,7 +449,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Work Orders** page shows only **processing** work orders. Work orders of type **Project** live in **Project Work Orders** (same **Operations** group), with the **Unread** column and the **Chat** tab in the detail: see the **Project Work Orders** guide. Inside a **Contract** and a **Registry**, the **Work orders** sections still show work orders of every type.',
+          text: 'The **Work Orders** page shows only **processing** work orders. Work orders of type **Project** have their own page, **Project Work Orders**, with the **Unread** column and the **Chat** tab in the detail; for now that page does not appear in the menu. Inside a **Contract** and a **Registry**, the **Work orders** sections still show work orders of every type: you can reach project work orders from there.',
         },
         {
           type: 'note',

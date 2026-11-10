@@ -9,6 +9,8 @@ use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyOpportunityRealigner;
+use App\Migrations\Support\LegacyRecordTouchGuard;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
@@ -17,6 +19,7 @@ use App\Models\Registry;
 use App\Models\User;
 use App\Services\OpportunityService;
 use App\Services\ProductLines\ProductLineWriter;
+use Carbon\CarbonInterface;
 use RuntimeException;
 
 /**
@@ -50,10 +53,14 @@ class OpportunitiesSource extends AbstractMigrationSource
 
     private const string BACKFILLED_NOTES_NOTE = 'Missing preliminary info notes back-filled.';
 
+    private const string TOUCHED_NOTE = 'Changed in qnet-2 after the import; not updated.';
+
     public function __construct(
         ExternalApiClient $client,
         private readonly OpportunityService $service,
         private readonly ProductLineWriter $productLineWriter,
+        private readonly LegacyOpportunityRealigner $realigner,
+        private readonly LegacyRecordTouchGuard $touchGuard,
     ) {
         parent::__construct($client);
     }
@@ -80,6 +87,11 @@ class OpportunitiesSource extends AbstractMigrationSource
             MigrationDependency::optional('product-categories'),
             MigrationDependency::optional('operational-sites'),
         ];
+    }
+
+    public function supportsUpdateExisting(): bool
+    {
+        return true;
     }
 
     public function endpoint(): string
@@ -133,7 +145,59 @@ class OpportunitiesSource extends AbstractMigrationSource
 
         return activity()->withoutLogs(fn (): MigrationRowOutcome => $existing === null
             ? $this->importRecord($externalId, $record)
-            : $this->backfillExisting($existing, $record));
+            : ($this->updatesExisting($context)
+                ? $this->realignExisting($existing, $record)
+                : $this->backfillExisting($existing, $record)));
+    }
+
+    /**
+     * Realignment of an already imported opportunity (spec 0372): a touched one is left as is; an
+     * untouched one gets the legacy values that differ, then the missing categories (never overwritten).
+     * Nothing to write = a silent skip, with no mapping warning (D-8).
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function realignExisting(Opportunity $opportunity, array $record): MigrationRowOutcome
+    {
+        // Step 1: a record worked on in qnet-2 is not overwritten (D-6).
+        if ($this->touchGuard->isOpportunityTouched($opportunity)) {
+            return MigrationRowOutcome::skipped([self::TOUCHED_NOTE]);
+        }
+
+        // Step 2: the legacy values that differ.
+        $warnings = [];
+        $changed = $this->realigner->realign($opportunity, $this->desiredValues($record, $warnings));
+
+        // Step 3: the categories and notes the opportunity still lacks.
+        $backfilled = $this->backfillExisting($opportunity, $record)->warnings;
+
+        // Step 4: updated only when something was written.
+        return $changed || $backfilled !== []
+            ? MigrationRowOutcome::updated([...$warnings, ...$backfilled])
+            : MigrationRowOutcome::skipped();
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @param  array<int, string>  $warnings
+     * @return array{name: ?string, start_date: ?string, expected_close_date: ?string, estimated_value: ?float, general_notes: ?string, supervisor_id?: ?int, manager_slots: array<int, int|null>, updated_at: ?CarbonInterface}
+     */
+    private function desiredValues(array $record, array &$warnings): array
+    {
+        $estimatedValue = $record['estimated_value'] ?? null;
+        $supervisorId = $this->remapLegacyId(User::class, $record['supervisor_user_id'] ?? null, 'supervisor_user_id', $warnings);
+        $supervisorKept = $supervisorId === null && (int) ($record['supervisor_user_id'] ?? 0) !== 0;
+
+        return [
+            'name' => $this->name($record),
+            'start_date' => $this->blankToNull($record['start_date'] ?? null),
+            'expected_close_date' => $this->blankToNull($record['expected_close_date'] ?? null),
+            'estimated_value' => is_numeric($estimatedValue) ? (float) $estimatedValue : null,
+            'general_notes' => $this->blankToNull($record['general_notes'] ?? null),
+            ...($supervisorKept ? [] : ['supervisor_id' => $supervisorId]),
+            'manager_slots' => $this->legacyManagerSlots($record['manager_user_ids'] ?? [], $warnings),
+            'updated_at' => $this->legacyTimestamp($record['updated_at'] ?? null),
+        ];
     }
 
     /**

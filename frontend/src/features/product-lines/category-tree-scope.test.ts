@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  cardCategoryTree,
   filterCategoriesUnderRoot,
   pickableCategoryIdsFor,
   resolveSimplifiedOfferLine,
@@ -245,5 +246,48 @@ describe('filterCategoriesUnderRoot', () => {
   it('is empty for a root with no grouping child or an unknown root', () => {
     expect(filterCategoriesUnderRoot(FILTER_TREE, 4)).toEqual([])
     expect(filterCategoriesUnderRoot(FILTER_TREE, 999)).toEqual([])
+  })
+})
+
+describe('cardCategoryTree', () => {
+  /** Ids in depth-first order, `:off` marking a node kept only as non-selectable context. */
+  function ids(nodes: ProductCategoryTreeNode[]): string[] {
+    return nodes.flatMap((n) => [`${n.id}${n.is_selectable ? '' : ':off'}`, ...ids(n.children)])
+  }
+
+  const CARD_TREE: ProductCategoryTreeNode[] = [
+    node({
+      id: 1,
+      name: 'Consulenza',
+      is_selectable: false,
+      children: [node({ id: 2, name: 'ISO', parent_id: 1, business_function_id: 12 })],
+    }),
+    node({
+      id: 3,
+      name: 'Costi',
+      is_selectable: false,
+      children: [
+        node({ id: 4, name: 'Note spese', parent_id: 3 }),
+        node({ id: 5, name: 'Articoli', parent_id: 3 }),
+      ],
+    }),
+    node({
+      id: 6,
+      name: 'Formazione',
+      business_function_id: 7,
+      children: [node({ id: 7, name: 'Corsi', parent_id: 6, is_active: false })],
+    }),
+  ]
+
+  it('drops a branch with no effective business function (the cost-only Costi branch)', () => {
+    expect(ids(cardCategoryTree(CARD_TREE, []))).toEqual(['1:off', '2', '6'])
+  })
+
+  it('keeps a functionless root as context above a classifiable category', () => {
+    expect(cardCategoryTree(CARD_TREE, []).map((root) => root.id)).toContain(1)
+  })
+
+  it('still drops inactive branches, keeping the saved value (spec 0208)', () => {
+    expect(ids(cardCategoryTree(CARD_TREE, [7]))).toEqual(['1:off', '2', '6', '7'])
   })
 })

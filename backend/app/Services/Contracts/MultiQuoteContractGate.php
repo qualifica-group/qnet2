@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\Exceptions\Contracts\MultiQuoteContractsRefusedException;
 use App\Models\Contract;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Loads the contracts selected for "Programma commessa unica" (spec 0267, D-3)
@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
  * `program` (403 for the whole request on a single failure, so nothing is read
  * or created on partial permission), then ContractActionAvailability::mayProgram
  * and the multi-offer eligibility (D-14), each a 422 on `contract_ids` naming
- * the contracts to remove from the selection.
+ * the contracts to remove from the selection (MultiQuoteContractsRefusedException).
  */
 final class MultiQuoteContractGate
 {
@@ -47,12 +47,14 @@ final class MultiQuoteContractGate
         // Step 2: every contract must be in a status a work order is programmed from (422)
         $this->refuse(
             $ordered->reject(fn (Contract $contract): bool => $this->availability->mayProgram($contract)),
+            MultiQuoteContractsRefusedException::REASON_NOT_WON,
             'work_orders.multi_quote.contracts_not_won',
         );
 
         // Step 3: every contract must allow the multi-offer work order (422)
         $this->refuse(
             $ordered->reject(static fn (Contract $contract): bool => $contract->allowsMultiQuoteWorkOrder()),
+            MultiQuoteContractsRefusedException::REASON_NOT_ALLOWED,
             'work_orders.multi_quote.contracts_not_allowed',
         );
 
@@ -62,21 +64,22 @@ final class MultiQuoteContractGate
     /**
      * @param  Collection<int, Contract>  $refused
      */
-    private function refuse(Collection $refused, string $messageKey): void
+    private function refuse(Collection $refused, string $reason, string $messageKey): void
     {
         if ($refused->isEmpty()) {
             return;
         }
 
+        $contracts = $refused->map(static fn (Contract $contract): array => [
+            'id' => $contract->id,
+            'quote_code' => $contract->quote?->code,
+            'registry_name' => $contract->quote?->opportunity?->registry?->name,
+        ])->values()->all();
+
         // "QUO-0018 (Rossi Srl)": the offer code the grid shows, with its customer.
-        $codes = $refused->map(static function (Contract $contract): string {
-            $registry = $contract->quote?->opportunity?->registry?->name;
+        $codes = collect($contracts)->map(static fn (array $contract): string => (string) $contract['quote_code']
+            .($contract['registry_name'] === null ? '' : " ({$contract['registry_name']})"))->implode(', ');
 
-            return (string) $contract->quote?->code.($registry === null ? '' : " ({$registry})");
-        })->implode(', ');
-
-        throw ValidationException::withMessages([
-            'contract_ids' => __($messageKey, ['codes' => $codes]),
-        ]);
+        throw new MultiQuoteContractsRefusedException($reason, $contracts, __($messageKey, ['codes' => $codes]));
     }
 }

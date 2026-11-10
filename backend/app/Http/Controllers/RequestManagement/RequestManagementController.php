@@ -195,6 +195,8 @@ class RequestManagementController extends BaseApiController
                 [
                     ...$request->safe()->only([
                         'next_callback_at',
+                        // The client select (decisione utente 2026-11-09).
+                        'registry_id',
                         'source_id',
                         'reporter_id',
                         // Spec 0357: the Offerta's "Commerciale", next to

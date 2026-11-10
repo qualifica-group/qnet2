@@ -40,6 +40,9 @@ export const contracts = {
     renewalDue: 'Renewal due',
   },
   advancedFilters: {
+    assignment: 'Assignment',
+    parentCategory: 'Parent category',
+    productCategory: 'Product category',
     registry: 'Client',
     opportunity: 'Opportunity',
     commercial: 'Commercial',
@@ -151,6 +154,7 @@ export const contracts = {
       genericError: 'Unable to validate the contract. Please try again.',
       dateRequired: 'Validation date is required.',
       dateFuture: 'Validation date cannot be in the future.',
+      offerLineRequired: 'The contract needs at least one product line on the offer to be validated. Add it on the contract, then try again.',
     },
     renewDialog: {
       description: 'Open a new period: the offer lines become programmable again and the previous work orders stay untouched.',
@@ -246,6 +250,26 @@ export const contracts = {
       saving: 'Creating…',
       success: 'Work order created',
       genericError: 'Unable to create the work order. Try again.',
+      refusal: {
+        genericTitle: 'This selection cannot be programmed',
+        listLabel: 'Contracts to remove',
+        not_allowed: {
+          title_one: '{{count}} contract cannot be grouped',
+          title_other: '{{count}} contracts cannot be grouped',
+          description: 'Their offer has no line of a branch with the "Multi-offer work order" setting on.',
+        },
+        not_won: {
+          title_one: '{{count}} contract cannot be programmed yet',
+          title_other: '{{count}} contracts cannot be programmed yet',
+          description: 'They are not validated, or are suspended or closed negatively.',
+        },
+        exclude_one: 'Continue without this contract',
+        exclude_other: 'Continue without these {{count}} contracts',
+        excludeHint: 'The grid selection does not change.',
+        notEnough: 'Without these contracts fewer than 2 would remain: close and select other groupable contracts in the grid.',
+        excluded_one: '{{count}} contract left out of this work order.',
+        excluded_other: '{{count}} contracts left out of this work order.',
+      },
     },
     terminateDialog: {
       description: 'Record the termination date and reason.',

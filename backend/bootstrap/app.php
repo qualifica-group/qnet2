@@ -3,6 +3,7 @@
 use App\Authorization\Denials\ForbiddenResponse;
 use App\Http\Middleware\CaptureCustomFields;
 use App\Http\Middleware\EnsureFirstPasswordSet;
+use App\Http\Middleware\EnsureNotInMaintenance;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\LimitStatementDuration;
 use App\Http\Middleware\RecordActorWrite;
@@ -71,7 +72,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // anything downstream renders a message — a FormRequest rejecting the
         // payload throws from the route middleware stack, before any
         // controller runs.
-        $middleware->api(prepend: [SetLocale::class]);
+        // Spec 0376: maintenance right after it, so the 503 is translated and
+        // nothing else runs for a blocked request.
+        $middleware->api(prepend: [SetLocale::class, EnsureNotInMaintenance::class]);
 
         // Spec 0210, AC-008: per-client rate limit, only for requests made with
         // a token bound to an API client.

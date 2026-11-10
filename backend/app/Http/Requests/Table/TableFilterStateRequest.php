@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Table;
 
+use App\Http\Requests\Table\Concerns\ValidatesAttributeColumnsFromFilters;
+use App\Http\Requests\Table\Concerns\ValidatesCategoryBranchScope;
 use App\Services\Table\AdvancedFilterApplier;
 use App\Tables\CategoryTabs\AttributeColumnsScopable;
 use App\Tables\TableDefinition;
@@ -31,6 +33,8 @@ use Illuminate\Validation\Validator;
  */
 class TableFilterStateRequest extends FormRequest
 {
+    use ValidatesAttributeColumnsFromFilters, ValidatesCategoryBranchScope;
+
     private ?TableDefinition $resolvedDefinition = null;
 
     public function authorize(): bool
@@ -53,6 +57,8 @@ class TableFilterStateRequest extends FormRequest
             'advancedFilters' => ['sometimes', 'nullable', 'array'],
 
             'product_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
+            ...$this->categoryBranchRules(),
+            ...$this->attributeColumnsFromFiltersRules(),
         ];
     }
 

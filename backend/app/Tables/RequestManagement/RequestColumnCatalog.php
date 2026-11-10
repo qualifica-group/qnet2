@@ -49,6 +49,8 @@ use App\Tables\Shared\OfferLinesColumn;
  *    phone/email contact), inline-editable, sortable +
  *    text-filterable + searchable, all resolved against that card by
  *    RequestClientColumns.
+ *  - `company_name` ("Ragione sociale") — the same card, resolved the same
+ *    way, but read-only and outside the quick-search.
  *  - `next_callback_at` ("Prossimo richiamo", spec 0052 D-1/D-5; user
  *    directive 2026-09-04) — a real `quotes` column now, so the generic
  *    engine sorts, filters and lists its distinct values with no
@@ -86,21 +88,26 @@ final class RequestColumnCatalog
         OfferLinesColumn::COLUMN_ID => 214,
         'first_name' => 120,
         'last_name' => 137,
+        'company_name' => 206,
         'phone' => 145,
         'email' => 206,
+        'vat_number' => 145,
         'tax_code' => 171,
         'general_notes' => 239,
         'source' => 127,
         RequestManagerColumns::GA1_COLUMN_ID => 177,
+        RequestManagerColumns::GA5_COLUMN_ID => 177,
+        RequestManagerColumns::MANAGERS_COLUMN_ID => 140,
     ];
 
     /**
      * Declaration order IS the default column order (spec 0001's persisted
-     * layout is a sparse delta over this baseline). Direttiva utente
-     * 2026-09-17 fixed the default worklist to exactly these visible columns,
-     * in this order: Categoria prodotto, Operatore, Stato di lavorazione,
-     * Prossimo richiamo, Linee di prodotto, Nome, Cognome, Telefono, Email,
-     * Codice fiscale, Note generali, Fonte, Tutor (GA1). Every other column is
+     * layout is a sparse delta over this baseline). Direttive utente
+     * 2026-09-17 and 2026-11-09 fixed the default worklist to exactly these
+     * visible columns, in this order: Categoria prodotto, Operatore, Stato di
+     * lavorazione, Prossimo richiamo, Linee di prodotto, Nome, Cognome,
+     * Ragione sociale, Telefono, Email, Partita IVA, Codice fiscale, Note
+     * generali, Fonte, Tutor (GA1), Operatore APL (GA5). Every other column is
      * declared after them with `visible: false` — still in the column chooser,
      * never removed — and the category tab's `attr.*` columns follow the whole
      * catalogue (RequestManagementScopedTableDefinition), as before.
@@ -226,12 +233,31 @@ final class RequestColumnCatalog
             // engine applies it before the rules run (CellValueValidator).
             self::clientColumn('first_name', 'requestManagement.columns.firstName', 'client_first_name', format: 'person_name'),
             self::clientColumn('last_name', 'requestManagement.columns.lastName', 'client_last_name', format: 'person_name'),
+            // "Ragione sociale" (direttiva utente 2026-11-09): the card's own
+            // value, sorted and filtered by RequestClientColumns. Read-only and
+            // out of the quick-search: the work panel writes it, and search
+            // would need its column in the FULLTEXT index first.
+            [
+                'id' => 'company_name',
+                'label' => 'requestManagement.columns.companyName',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'text',
+            ],
             self::clientColumn('phone', 'requestManagement.columns.phone', 'client_phone', format: 'phone'),
             // "Email" (direttiva utente 2026-09-17): the card's primary email
             // contact, the twin of "Telefono" in every respect — its own
             // `client_email` key, the rule and canonical shape ContactTypeEnum
             // already imposes on an email contact written anywhere else.
             self::clientColumn('email', 'requestManagement.columns.email', 'client_email', ContactTypeEnum::Email->valueRules(), 'email'),
+            // "Partita IVA" (direttiva utente 2026-09-09): the codice fiscale's
+            // alternative in the positive-close gate (RequestWorkflowStatusWriter),
+            // so it stays editable in-cell. Same card, same sparse `client_*`
+            // write key, and the `vat_number` format so a typed
+            // `IT 007431 10157` lands canonical like the card form's own.
+            self::clientColumn('vat_number', 'requestManagement.columns.vatNumber', 'client_vat_number', [new VatNumber], 'vat_number'),
             // The inline editor sends the cell alone, so TaxCode can only check
             // format + control character here: the anagraphic-consistency check
             // needs the whole card and lives in ValidatesRequestClientProfile.
@@ -275,6 +301,8 @@ final class RequestColumnCatalog
             // "Fonte"); see RequestManagerColumns for how it differs from the
             // Operatore slot.
             RequestManagerColumns::column(RequestManagerColumns::GA1_COLUMN_ID),
+            RequestManagerColumns::column(RequestManagerColumns::GA5_COLUMN_ID),
+            RequestManagerColumns::column(RequestManagerColumns::MANAGERS_COLUMN_ID),
             // ----- Hidden by default (direttiva utente 2026-09-17) -----
             // "Richieste di modifica in attesa" (spec 0078, AC-037): a
             // per-record pending-count badge/alert. A real aggregated value
@@ -323,15 +351,6 @@ final class RequestColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'boolean',
-            ],
-            // "Partita IVA" (direttiva utente 2026-09-09): the codice fiscale's
-            // alternative in the positive-close gate (RequestWorkflowStatusWriter),
-            // so it stays editable in-cell when shown. Same card, same sparse
-            // `client_*` write key, and the `vat_number` format so a typed
-            // `IT 007431 10157` lands canonical like the card form's own.
-            [
-                ...self::clientColumn('vat_number', 'requestManagement.columns.vatNumber', 'client_vat_number', [new VatNumber], 'vat_number'),
-                'visible' => false,
             ],
             // "Previsione commerciale" (spec 0313, D-6), hidden by default.
             ...RequestForecastColumns::declarations(),

@@ -239,6 +239,8 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
       id: 91,
       business_function: { id: SALES_FUNCTION, name: 'Sales' },
       product_category: { id: PHOTOVOLTAIC_CATEGORY, name: 'Photovoltaic' },
+      covers_current_categories: true,
+      covers_legacy_categories: true,
       share_percentage: 100,
     },
   ],
@@ -353,8 +355,8 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
     save()
 
     expect((await submittedEmployment()).product_lines).toEqual([
-      { business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY, share_percentage: 60 },
-      { business_function_id: MARKETING_FUNCTION, product_category_id: CAMPAIGNS_CATEGORY, share_percentage: 40 },
+      { business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 60 },
+      { business_function_id: MARKETING_FUNCTION, product_category_id: CAMPAIGNS_CATEGORY, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 40 },
     ])
   })
 
@@ -421,6 +423,8 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
             id: 92,
             business_function: { id: SALES_FUNCTION, name: 'Sales' },
             product_category: { id: AUDIT_CATEGORY, name: 'Audit' },
+            covers_current_categories: true,
+            covers_legacy_categories: true,
             share_percentage: 100,
           },
         ],

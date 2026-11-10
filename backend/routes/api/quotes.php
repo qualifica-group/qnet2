@@ -1,7 +1,5 @@
 <?php
 
-use App\Http\Controllers\CategoryTabs\GridCategoryTabPreferencesController;
-use App\Http\Controllers\CategoryTabs\GridCategoryTabsController;
 use App\Http\Controllers\Quotes\QuoteCommissionDefaultsController;
 use App\Http\Controllers\Quotes\QuoteCommissionRecalculationController;
 use App\Http\Controllers\Quotes\QuoteCommissionRecipientsController;
@@ -9,7 +7,6 @@ use App\Http\Controllers\Quotes\QuoteController;
 use App\Http\Controllers\Quotes\QuoteDocumentController;
 use App\Http\Controllers\Quotes\QuoteForSelectController;
 use App\Http\Controllers\Quotes\RecalculateQuoteCommissionsController;
-use App\Tables\CategoryTabs\CategoryTabGrid;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,16 +36,6 @@ Route::post('quotes/commission-recipients', QuoteCommissionRecipientsController:
 // quotes/{quote} so the literal segment wins over the route-model-binding
 // wildcard (mirrors next-code above).
 Route::post('quotes/form-context', [QuoteController::class, 'formContext']);
-
-// Spec 0335: the category tab strip of the grid (counts + the actor's
-// favourites). Declared BEFORE the wildcard, otherwise "product-categories"
-// is swallowed by its route model binding.
-Route::get('quotes/product-categories', GridCategoryTabsController::class)
-    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Quotes->value);
-Route::get('quotes/category-tab-preferences', [GridCategoryTabPreferencesController::class, 'show'])
-    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Quotes->value);
-Route::put('quotes/category-tab-preferences', [GridCategoryTabPreferencesController::class, 'update'])
-    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Quotes->value);
 
 // Quotes CRUD. Authorization (quotes.view/create/update/delete) is enforced
 // server-side in QuoteController via QuotePolicy on every endpoint.

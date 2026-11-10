@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Popover as PopoverPrimitive } from 'radix-ui'
 import { ChevronsUpDown, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { SELECT_POPOVER_WIDTH_CLASS } from '@/components/ui/select-popup-width'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
@@ -128,7 +129,10 @@ export function RevenueTypeSelect({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={4}
-          className="z-50 w-(--radix-popover-trigger-width) min-w-64 max-w-[calc(100vw-2rem)] rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"
+          className={cn(
+            'z-50 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            SELECT_POPOVER_WIDTH_CLASS,
+          )}
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <div className="p-1">

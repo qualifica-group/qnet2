@@ -12,6 +12,7 @@ use App\Services\Assignment\OperatorCompetence;
 use App\Services\RequestManagement\RequestManagementScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Guard;
 use Spatie\Permission\Models\Permission;
 
@@ -84,8 +85,8 @@ class RequestManagementNotable implements NotableEntity
 
     /**
      * D-10: active users who hold `request-management.view` AND reach this
-     * Opportunity through any of the three visibility tiers — they operate at
-     * least one of its Offerte (spec 0087, D-9), they hold
+     * Opportunity through any of the three visibility tiers — they are on the
+     * team of at least one of its Offerte (spec 0373), they hold
      * `request-management.viewAll`, or (spec 0105, D-9) they hold
      * `request-management.viewSite` and belong to the Sede operativa of one of
      * those Offerte — plus super-admins. A plain `whereHas` matching the role
@@ -108,10 +109,7 @@ class RequestManagementNotable implements NotableEntity
         $module = $this->module();
 
         /** @var Opportunity $record */
-        $operatorIds = Quote::query()
-            ->where('opportunity_id', $record->getKey())
-            ->whereNotNull('operator_id')
-            ->pluck('operator_id');
+        $teamIds = $this->teamMemberIds($record);
 
         $siteIds = Quote::query()
             ->where('opportunity_id', $record->getKey())
@@ -138,12 +136,12 @@ class RequestManagementNotable implements NotableEntity
         return User::query()
             ->excludingServiceAccounts()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($module, $operatorIds, $siteIds, $siteTiers, $competence): void {
+            ->where(function (Builder $query) use ($module, $teamIds, $siteIds, $siteTiers, $competence): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->orWhere(function (Builder $canRead) use ($module, $operatorIds, $siteIds, $siteTiers, $competence): void {
+                    ->orWhere(function (Builder $canRead) use ($module, $teamIds, $siteIds, $siteTiers, $competence): void {
                         $canRead->permission($module->permission('view'))
-                            ->where(function (Builder $access) use ($module, $operatorIds, $siteIds, $siteTiers, $competence): void {
-                                $access->whereIn('id', $operatorIds)
+                            ->where(function (Builder $access) use ($module, $teamIds, $siteIds, $siteTiers, $competence): void {
+                                $access->whereIn('id', $teamIds)
                                     ->orWhere(function (Builder $viewAll) use ($module): void {
                                         $viewAll->permission($module->permission('viewAll'));
                                     });
@@ -163,6 +161,27 @@ class RequestManagementNotable implements NotableEntity
                             });
                     });
             });
+    }
+
+    /**
+     * The team of every Offerta of the Opportunity (spec 0373): the same people
+     * RequestManagementScope reads as "on the team", from the other end.
+     *
+     * @return array<int, int>
+     */
+    private function teamMemberIds(Model $record): array
+    {
+        $quotes = Quote::query()->where('opportunity_id', $record->getKey());
+
+        return DB::table('quote_user')
+            ->whereIn('quote_id', (clone $quotes)->select('id'))
+            ->pluck('user_id')
+            ->merge((clone $quotes)->pluck('operator_id'))
+            ->merge((clone $quotes)->pluck('supervisor_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

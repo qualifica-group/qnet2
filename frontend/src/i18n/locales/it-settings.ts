@@ -23,6 +23,12 @@ export const settings = {
     title: 'Impostazioni sistema',
     subtitle: 'Preferenze di sistema del gestionale.',
   },
+  onboardingTour: {
+    title: 'Tour di benvenuto',
+    subtitle: 'Rivedi la presentazione del menu laterale e delle icone dell’intestazione.',
+    start: 'Avvia tour',
+    impersonating: 'Non disponibile mentre stai impersonando un altro utente: il tour è personale.',
+  },
   uiScale: {
     title: 'Risoluzione interfaccia',
     subtitle:

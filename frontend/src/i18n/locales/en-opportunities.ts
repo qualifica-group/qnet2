@@ -32,10 +32,13 @@ export const opportunities = {
     empty: 'No status',
   },
   advancedFilters: {
+    assignment: 'Assignment',
+    parentCategory: 'Parent category',
     registry: 'Registry',
     referent: 'Contact',
     commercial: 'Sales rep',
     supervisor: 'Supervisor',
+    managers: 'Account managers',
     operationalSite: 'Operational site',
     productCategory: 'Product category',
     businessFunction: 'Business function',

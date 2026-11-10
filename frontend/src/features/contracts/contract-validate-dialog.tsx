@@ -48,6 +48,7 @@ export function ContractValidateDialog({
 }: ContractValidateDialogProps) {
   const { t, i18n } = useTranslation()
   const schema = buildValidateContractSchema(t)
+  const hasOfferLine = contract.offer_lines.length > 0
 
   const form = useForm<ValidateContractFormValues>({
     resolver: zodResolver(schema),
@@ -89,6 +90,12 @@ export function ContractValidateDialog({
           <DialogTitle>{t('contracts.actions.validate')}</DialogTitle>
           <DialogDescription>{t('contracts.actions.validateDialog.description')}</DialogDescription>
         </DialogHeader>
+
+        {hasOfferLine ? null : (
+          <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive">
+            {t('contracts.actions.validateDialog.offerLineRequired')}
+          </p>
+        )}
 
         <Form {...form}>
           <form
@@ -136,7 +143,7 @@ export function ContractValidateDialog({
           <Button type="button" variant="outline" className="bg-card" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="contract-validate-form" disabled={validateMutation.isPending}>
+          <Button type="submit" form="contract-validate-form" disabled={validateMutation.isPending || !hasOfferLine}>
             {validateMutation.isPending ? t('contracts.actions.validateDialog.saving') : t('contracts.actions.validateDialog.confirm')}
           </Button>
         </DialogFooter>

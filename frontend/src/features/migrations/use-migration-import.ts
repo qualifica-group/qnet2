@@ -5,7 +5,12 @@ import { fetchMigrationRun, startMigrationImport } from '@/features/migrations/a
 import { migrationKeys } from '@/features/migrations/query-keys'
 import { resolveMigrationErrorMessage } from '@/features/migrations/resolve-error-message'
 import { useStallTimeout } from '@/hooks/use-stall-timeout'
-import type { MigrationRun, MigrationRunCreated, MigrationRunStatus } from '@/features/migrations/types'
+import type {
+  MigrationRun,
+  MigrationRunCreated,
+  MigrationRunStatus,
+  MigrationStartOptions,
+} from '@/features/migrations/types'
 
 /** Interval (ms) between polls while the run is pending/processing. */
 const POLL_INTERVAL_MS = 1500
@@ -32,6 +37,8 @@ function migrationRunFromCreated(created: MigrationRunCreated): MigrationRun {
     failed_rows: created.failed_rows,
     report: null,
     updated_since: created.updated_since,
+    update_existing: created.update_existing,
+    updated_rows: created.updated_rows,
     created_at: created.created_at,
   }
 }
@@ -53,7 +60,7 @@ export function useMigrationImport({ source }: UseMigrationImportArgs) {
   const [runId, setRunId] = useState<number | null>(null)
 
   const startMutation = useMutation({
-    mutationFn: (updatedSince: string | null) => startMigrationImport(source, updatedSince),
+    mutationFn: (options: MigrationStartOptions) => startMigrationImport(source, options),
     onSuccess: (created) => {
       setRunId(created.id)
       queryClient.setQueryData<MigrationRun>(

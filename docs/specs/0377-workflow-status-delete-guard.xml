@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0377-workflow-status-delete-guard" status="approved" owner="nicola" date="2026-11-09">
+
+  <goal>
+    Uno stato di configurazione di Offerte o Commesse in uso non si puo' eliminare, ne' da solo ne' eliminando il suo workflow.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-09, dopo l'azzeramento di 74 richieste di Orientamento specialistico: eliminare il workflow le aveva riportate allo stato iniziale senza voce nel log.
+    D-2 Supera spec 0083 AC-018 e spec 0322 AC-009: l'eliminazione di un workflow non riassegna piu' nulla, si rifiuta.
+    D-3 Stato di Offerta in uso = almeno una riga di `quotes` lo usa.
+    D-4 Stato di Commessa in uso = almeno una riga di `work_orders` lo usa (stato corrente o `status_before_contract_termination_id`), oppure `tasks` o `task_template_items`: la FK azzererebbe il collegamento in silenzio.
+    D-5 Rifiuto 409 con envelope `{ success:false, message }`, come `TaskStatusService::delete`. Il messaggio elenca gli stati e quanti record li usano. Nel bulk-delete la riga risulta in `failed`.
+    D-6 Il salvataggio che toglie uno stato in uso si annulla per intero: nessuna altra modifica dello stesso PATCH resta scritta.
+    D-7 Vale per i set dei workflow e per gli stati di default globali.
+  </context>
+
+  <contract>
+    <endpoint>DELETE /api/quote-workflows/{id} e DELETE /api/work-order-workflows/{id}: 409 se uno stato del workflow e' in uso, 204 altrimenti.</endpoint>
+    <endpoint>PATCH /api/quote-workflows/{id}, PATCH /api/work-order-workflows/{id}, PUT .../default-statuses: 409 se il payload omette uno stato personalizzato in uso.</endpoint>
+    <endpoint>POST /api/tables/{quote-workflows|work-order-workflows}/bulk-delete: 200, la riga con stati in uso non viene eliminata e non conta in `deleted`.</endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>`QuoteWorkflowStatusUsageGuard`, `WorkOrderWorkflowStatusUsageGuard`, i due service, i due writer.</item>
+      <item>Rimozione di `resolveAndAssign` dai due resolver e del `forgetCaches` delle Commesse, rimasti senza chiamanti.</item>
+      <item>`refusedActionMessage` in `lib/forbidden-message.ts`, usato dai form e dagli sheet degli stati di default.</item>
+      <item>Guide `quote-workflows` e `work-order-workflows` IT/EN, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Disattivare il cestino nell'interfaccia per gli stati in uso: il blocco e' sul server e il messaggio e' mostrato al salvataggio.</item>
+      <item>Cambio di gruppo o rinomina di uno stato in uso.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Dato un workflow Offerte con uno stato usato da un'offerta, quando lo elimino, allora ricevo 409, il messaggio nomina lo stato e offerta e workflow restano invariati.</criterion>
+    <criterion id="AC-002">Dato lo stesso workflow, quando lo elimino dal bulk-delete, allora non viene eliminato e non conta in `deleted`.</criterion>
+    <criterion id="AC-003">Dato uno stato personalizzato in uso, quando salvo il set senza di esso, allora ricevo 409 e nessuna modifica dello stesso salvataggio resta scritta.</criterion>
+    <criterion id="AC-004">Dato uno stato personalizzato non usato, quando salvo il set senza di esso, allora viene eliminato.</criterion>
+    <criterion id="AC-005">Dato un workflow senza stati in uso, quando lo elimino, allora ricevo 204.</criterion>
+    <criterion id="AC-006">Gli AC-001..005 valgono per le Commesse; uno stato collegato solo a un task o a una riga di modello di task conta come in uso.</criterion>
+    <criterion id="AC-007">Dato il set degli stati di default, quando tolgo uno stato in uso, allora ricevo 409.</criterion>
+    <criterion id="AC-008">Dato un rifiuto 409, quando salvo da form o sheet, allora vedo il messaggio del server e non l'errore generico.</criterion>
+  </acceptance>
+</spec>

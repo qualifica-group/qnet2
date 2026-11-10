@@ -21,7 +21,7 @@ use App\Enums\ProductUsage;
  * `productTypologyId` (spec 0099, D-3) behaves identically: absent OR null
  * both collapse to the Service falling back to the default typology.
  * `usages` (spec 0142) absent leaves the Product model's default (Sellable
- * only) in place.
+ * only) in place. `isActive` (spec 0366) absent = active.
  */
 final readonly class CreateProductData
 {
@@ -46,6 +46,7 @@ final readonly class CreateProductData
         public ?int $costTypeId = null,
         public ?array $suppliers = null,
         public ?int $revenueTypeId = null,
+        public bool $isActive = true,
     ) {}
 
     /**
@@ -57,6 +58,7 @@ final readonly class CreateProductData
     {
         return new self(
             name: (string) $data['name'],
+            isActive: (bool) ($data['is_active'] ?? true),
             description: array_key_exists('description', $data) ? $data['description'] : null,
             cost: isset($data['cost']) ? (float) $data['cost'] : null,
             price: isset($data['price']) ? (float) $data['price'] : null,

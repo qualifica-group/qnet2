@@ -135,8 +135,8 @@ describe('QuoteCostsTab (spec 0065 AC-073, catalogue since spec 0269)', () => {
     const rows = costRowsSpy.mock.lastCall?.[0] ?? []
     expect(rows.map((row) => [row.product_id, row.unit_price])).toEqual([[30, 40], [30, 40]])
     expect(screen.getByRole('option', { name: /Docenza/ })).not.toHaveAttribute('aria-disabled', 'true')
-    // A cost row never carries the revenue-only additional description.
-    expect(screen.queryByRole('button', { name: 'Additional description' })).not.toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0269 AC-014): cost rows carry the additional description too.
+    expect(screen.getAllByRole('button', { name: 'Additional description' })).toHaveLength(2)
   })
 })
 
@@ -181,6 +181,27 @@ describe('QuoteCostsTab — Associated product (spec 0144)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear Widget Pro (row 1)' }))
 
     expect(screen.getByRole('combobox', { name: 'Row 1 associated product' })).toHaveTextContent('None (generic cost)')
+  })
+
+  it('edits the additional description of a cost row, opened when the row already has one', () => {
+    const describedCost = { ...COST_ROW, additional_description: 'Docente esterno' }
+    render(<HarnessWithLines offerLines={[OFFER_ROW]} costLines={[describedCost]} />, { wrapper: wrapper() })
+
+    const textarea = screen.getByRole('textbox', { name: 'Row 1 additional description' })
+    expect(textarea).toHaveValue('Docente esterno')
+
+    fireEvent.change(textarea, { target: { value: 'Docente interno' } })
+    expect(screen.getByRole('textbox', { name: 'Row 1 additional description' })).toHaveValue('Docente interno')
+  })
+
+  it('offers the additional description on a cost row without one, and removing it collapses the field', () => {
+    render(<HarnessWithLines offerLines={[OFFER_ROW]} costLines={[COST_ROW]} />, { wrapper: wrapper() })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Additional description' }))
+    expect(screen.getByRole('textbox', { name: 'Row 1 additional description' })).toHaveValue('')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove row 1 additional description' }))
+    expect(screen.queryByRole('textbox', { name: 'Row 1 additional description' })).not.toBeInTheDocument()
   })
 
   it('picking an offer row updates the field to its client_key', () => {

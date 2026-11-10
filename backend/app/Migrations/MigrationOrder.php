@@ -99,7 +99,8 @@ final class MigrationOrder
         ['product-suppliers', 'commission-configurations'],
         ['opportunities'],
         ['quotes'],
-        ['work-orders'],
+        // `quote-accepted-dates` (spec 0365) only needs the quotes: same phase as the work orders.
+        ['work-orders', 'quote-accepted-dates'],
 
         // Phase 12 — spec 0289: the legacy tasks. They link users (phase 2) and
         // the commessa and its stages (phase 11), and optionally registries,

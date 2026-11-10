@@ -41,6 +41,7 @@ class MigrationSourceResource extends JsonResource
             'label' => $source->label(),
             'phase' => MigrationOrder::phaseOf($source->key()),
             'available' => $source->isAvailable(),
+            'supports_update_existing' => $source->supportsUpdateExisting(),
             'last_run' => $this->lastRun !== null ? new MigrationRunResource($this->lastRun) : null,
             'migrated_at' => $this->migratedAt,
         ];

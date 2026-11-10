@@ -20,15 +20,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Cosa vedi dipende dai permessi. Senza altri permessi vedi le richieste di cui sei operatore. **Visualizza per sede** aggiunge quelle delle tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Se crei una richiesta fuori dal tuo ambito, non la vedrai più a meno di avere uno di questi permessi.',
+          text: 'Cosa vedi dipende dai permessi. Senza altri permessi vedi le richieste del cui **Team** fai parte: come operatore, Supervisore o Gestore account. **Visualizza per sede** aggiunge quelle delle tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Se crei una richiesta fuori dal tuo ambito, non la vedrai più a meno di avere uno di questi permessi.',
         },
         {
           type: 'paragraph',
-          text: 'Per avere sempre a portata le categorie che usi, segnale come preferite: nel menu (**Altre (N)**, oppure la stella a destra delle schede quando entrano tutte) tocca la stella accanto alla categoria. Le preferite compaiono per prime tra le schede e in cima al menu. Attiva **Mostra solo preferite** per vedere tra le schede solo quelle (più la categoria che stai guardando); le altre restano nel menu. Le preferite sono salvate sul tuo utente, anche cambiando computer, e sono separate per Gestione Richieste e Gestione Iscritti.',
+          text: 'Per avere sempre a portata le categorie che usi, segnale come preferite: nel menu (**Altre (N)**, oppure la stella a destra delle schede quando entrano tutte) tocca la stella accanto alla categoria. Le preferite compaiono per prime tra le schede e in cima al menu. Attiva **Mostra solo preferite** per vedere tra le schede solo quelle (più la categoria che stai guardando); le altre restano nel menu. Con **Seleziona tutte** e **Deseleziona tutte**, nel menu, aggiungi o togli in un colpo solo tutte le categorie dalle preferite; i due pulsanti non compaiono mentre stai cercando. Le preferite sono salvate sul tuo utente, anche cambiando computer, e sono separate per Gestione Richieste e Gestione Iscritti.',
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre (N)** l'interruttore **Categorie madri** limita le schede alle sole categorie di primo livello: la scheda di una categoria madre raccoglie anche le richieste delle sottocategorie (una richiesta conta una volta sola) e, a differenza di una singola categoria, non aggiunge le colonne **Informazioni aggiuntive** né rinomina i campi dei gestori. La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria scheda e le preferite sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
+          text: "Nel menu **Altre (N)** l'interruttore **Categorie madri** limita le schede alle sole categorie di primo livello: la scheda di una categoria madre raccoglie anche le richieste delle sottocategorie (una richiesta conta una volta sola) e aggiunge le colonne **Informazioni aggiuntive** assegnate alla categoria madre (quelle delle sole sottocategorie compaiono solo nella loro scheda). A differenza di una singola categoria, non rinomina i campi dei gestori. La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria scheda e le preferite sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
         },
         {
           type: 'paragraph',
@@ -50,10 +50,14 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [
+            ['Ragione sociale', "Denominazione del cliente azienda, dalla sua scheda anagrafica. Si ordina e si filtra; si modifica dal pannello, non dalla cella, e il campo **Cerca** non la considera."],
+            ['Partita IVA', 'Partita IVA del cliente. Si ordina, si filtra e si modifica dalla cella.'],
             ['Fonte', "Canale da cui arriva la richiesta (è un campo dell'offerta)."],
             ['Richieste di modifica', 'Proposte di modifica ancora in attesa.'],
             ['Linee di prodotto', "Prodotti presenti nell'offerta; la cella apre l'editor con il catalogo prodotti."],
             ['Operatore', 'Persona che lavora la richiesta.'],
+            ['Operatore APL', 'Il Gestore account in quinta posizione del team. Si ordina e si filtra per nome e si modifica dalla cella.'],
+            ['Gestori account', 'Tutte le persone del team, operatore compreso. Si filtra per nome e si modifica dalla cella.'],
             ['Sede operativa', 'Sede a cui è assegnata la richiesta.'],
             ['Prossimo richiamo', 'Data della prossima chiamata al cliente.'],
             ['Trasferito', "Se il contatto è stato trasferito da un'altra sede."],
@@ -145,8 +149,9 @@ const guide: HelpGuide = {
             "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto.",
             '**Righe offerta**: prodotti scelti dal **Catalogo prodotti**, con quantità, prezzi e IVA.',
             "**Previsione commerciale**: data chiusura prevista, valore stimato e probabilità di successo. Sono i valori dell'opportunità: se cambiano qui, cambiano anche in **Opportunità** e nelle altre richieste della stessa opportunità.",
-            '**Stato**: alcuni stati richiedono una **Nota**.',
-            '**Anagrafica**, **Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**) e **Team** (**Supervisore** e **Gestori account**). Il **Commerciale** modificato qui vale solo per questa richiesta (l\'offerta): quello dell\'opportunità non cambia.',
+            "**Stato**: alcuni stati richiedono una **Nota**. Per uno stato validato serve almeno una riga offerta. Per chiudere non serve, né con esito positivo né con esito negativo: la riga prodotto diventa obbligatoria quando si valida il contratto.",
+            "**Anagrafica**: il campo in alto mostra il cliente della richiesta e permette di sceglierne un altro. Il cambio vale per tutte le offerte dell'opportunità. Scelto un altro cliente, i suoi dati compaiono dopo il salvataggio e le modifiche fatte ai dati del cliente precedente non vengono salvate. Se c'è già un contratto, o il cliente arriva dal lead, il campo non è modificabile.",
+            '**Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**) e **Team** (**Supervisore** e **Gestori account**). Il **Commerciale** modificato qui vale solo per questa richiesta (l\'offerta): quello dell\'opportunità non cambia.',
             'Le **Informazioni aggiuntive**, che dipendono dalle categorie scelte.',
           ],
         },
@@ -234,7 +239,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le statistiche non sono più nella tabella di Gestione Richieste né in quella di Gestione Iscritti: hanno una pagina propria, **Commerciale › Statistiche Gestione Richieste** (vedi la relativa guida). Gestione Iscritti non ha più statistiche.',
+          text: 'Le statistiche non sono più nella tabella di Gestione Richieste né in quella di Gestione Iscritti: hanno una pagina propria, **Statistiche › Statistiche Gestione Richieste** (vedi la relativa guida). Gestione Iscritti non ha più statistiche.',
         },
       ],
     },

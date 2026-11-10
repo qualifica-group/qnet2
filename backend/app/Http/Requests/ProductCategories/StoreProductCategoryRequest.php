@@ -97,6 +97,8 @@ class StoreProductCategoryRequest extends FormRequest
             'manager_labels' => ['sometimes', 'nullable', 'array'],
             'manager_labels.*' => ['nullable', 'string', 'max:'.ProductCategory::MANAGER_LABEL_MAX_LENGTH],
             'inherits_manager_labels' => ['sometimes', 'boolean'],
+            // Spec 0374, D-9: a new category is never legacy, so it carries no link.
+            'current_category_id' => ['prohibited'],
             // Spec 0350: own default revenue sub-account, active ones only.
             'revenue_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('revenue_types', 'id')->where('is_active', true)],
             // Row action "duplicate": the category whose own attribute layouts

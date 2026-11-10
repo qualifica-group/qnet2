@@ -11,33 +11,40 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 /**
- * The READ side of the `attr.<code>` flexible columns for a category-tab
- * decorator (spec 0350, D-7): the columns of the scoped category's effective
- * attribute set, appended after the native ones, with their row values and
+ * The READ side of the `attr.<code>` flexible columns of a grid whose columns
+ * follow its advanced filters (spec 0374): the columns of the categories the
+ * filters select, appended after the native ones, with their row values and
  * filter/sort/distinct hooks. Mirrors what
  * `RequestManagementScopedTableDefinition` does for Gestione Richieste, on top
  * of the shared `AttributeGridColumns`.
  *
- * The using class must expose `private readonly TableDefinition $inner`,
+ * The using class must expose `private readonly TableDefinition $inner` and
  * `private readonly AttributeGridColumns $attributeColumns` (already bound to
- * its `AttributeGridTarget`) and `private ?int $categoryScope`. The "Tutte"
- * tab and a root (branch) tab leave `categoryScope` null, hence no `attr.*`
- * (D-4). Where the values live, how they are filtered and whether they are
- * editable are protected hooks with the own-column default; the contracts grid
- * overrides them to read its source offer's JSON (D-3, D-8).
+ * its `AttributeGridTarget`) and `private readonly AttributeColumnCategories
+ * $columnCategories`. Where the values live, how they are filtered and
+ * whether they are editable are protected hooks with the own-column default;
+ * the contracts grid overrides them to read its source offer's JSON.
  *
  * Every `code` reaching a query comes from the server-resolved set
  * (allow-list), never from request input (backend.md §8).
  */
 trait AppendsCategoryAttributeColumns
 {
+    /** @var array<int, int> the categories whose sets are shown (spec 0374, D-1); empty = no `attr.*` column */
+    private array $attributeCategories = [];
+
+    /** @var Collection<int, array<string, mixed>>|null */
+    private ?Collection $categoryAttributesMemo = null;
+
     /** Widens the SSRM allow-lists to the union of every category (D-4, spec 0064). */
     private bool $allowListUnion = false;
 
+    /** `POST /values` carries no filters: columns are looked up in the union (D-8). */
+    private bool $lookupInUnion = false;
+
     /**
-     * Set by the write trait right after a successful `attr.<code>` write so
-     * the immediately following `mapRow()` (the PATCH response remap) shows
-     * the written cell: the PATCH carries no category scope of its own.
+     * Set by the write trait after a successful write so the PATCH response
+     * remap shows the written cell: the PATCH carries no category scope.
      *
      * @var Collection<int, array<string, mixed>>|null
      */
@@ -48,8 +55,24 @@ trait AppendsCategoryAttributeColumns
         $this->allowListUnion = true;
     }
 
+    public function scopeAttributeColumnsForRows(array $advancedFilters): void
+    {
+        $this->useAttributeCategories($this->columnCategories->fromFilters($advancedFilters), union: true);
+    }
+
+    public function scopeAttributeColumnsForConfig(array $advancedFilters): void
+    {
+        $this->useAttributeCategories($this->columnCategories->fromFilters($advancedFilters), union: false);
+    }
+
+    public function scopeAttributeColumnsForValues(): void
+    {
+        $this->useAttributeCategories([], union: true);
+        $this->lookupInUnion = true;
+    }
+
     /**
-     * UNSCOPED by design: the union's raw declarations, the shape
+     * UNSCOPED by design: the union's raw declarations, which
      * `TableCellUpdateService` looks a submitted `attr.<code>` up in.
      *
      * @return array<int, array<string, mixed>>
@@ -65,9 +88,6 @@ trait AppendsCategoryAttributeColumns
         return [...$this->inner->columns(), ...$this->rawAttributeColumns($attributes)];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     public function mapRow(User $actor, Model $row): array
     {
         $mapped = $this->inner->mapRow($actor, $row);
@@ -95,13 +115,11 @@ trait AppendsCategoryAttributeColumns
         return $this->inner->searchableColumnIds();
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     public function resolveConfig(User $actor): array
     {
         $config = $this->inner->resolveConfig($actor);
         $attributes = $this->categoryAttributes();
+        $config['attributeCategoryIds'] = $attributes->isEmpty() ? [] : $this->attributeCategories;
 
         if ($attributes->isEmpty()) {
             return $config;
@@ -115,9 +133,6 @@ trait AppendsCategoryAttributeColumns
         return $config;
     }
 
-    /**
-     * @return array<string, array{visible: bool, width: int|null, order: int}>
-     */
     public function defaultColumnLayout(): array
     {
         $layout = $this->inner->defaultColumnLayout();
@@ -135,9 +150,6 @@ trait AppendsCategoryAttributeColumns
         return $layout;
     }
 
-    /**
-     * @return array<string, array<string, mixed>>
-     */
     public function filterableColumnMap(): array
     {
         $map = $this->inner->filterableColumnMap();
@@ -149,17 +161,13 @@ trait AppendsCategoryAttributeColumns
         return $map;
     }
 
-    /**
-     * @param  Builder<Model>  $query
-     * @param  array<string, mixed>  $columnConfig
-     * @param  array<string, mixed>  $filter
-     */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->categoryAttributes());
+        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->lookupAttributes());
 
         if ($attributeRow === null) {
-            return $this->inner->applyDerivedFilter($query, $columnId, $columnConfig, $filter);
+            // An `attr.*` of the union outside the current category is ignored (D-4).
+            return $this->isAttributeColumn($columnId) || $this->inner->applyDerivedFilter($query, $columnId, $columnConfig, $filter);
         }
 
         $this->applyAttributeFilter($query, $attributeRow, $filter);
@@ -167,15 +175,12 @@ trait AppendsCategoryAttributeColumns
         return true;
     }
 
-    /**
-     * @param  Builder<Model>  $query
-     */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
-        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->categoryAttributes());
+        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->lookupAttributes());
 
         if ($attributeRow === null) {
-            return $this->inner->applyDerivedSort($query, $columnId, $direction);
+            return $this->isAttributeColumn($columnId) || $this->inner->applyDerivedSort($query, $columnId, $direction);
         }
 
         $this->applyAttributeSort($query, $attributeRow, $direction);
@@ -183,14 +188,9 @@ trait AppendsCategoryAttributeColumns
         return true;
     }
 
-    /**
-     * @param  Builder<Model>  $query
-     * @param  array<string, mixed>  $columnConfig
-     * @return array<int, string>|null
-     */
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
-        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->categoryAttributes());
+        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->lookupAttributes());
 
         if ($attributeRow === null) {
             return $this->inner->distinctValues($actor, $columnId, $columnConfig, $search, $query, $limit);
@@ -199,9 +199,6 @@ trait AppendsCategoryAttributeColumns
         return $this->attributeDistinctValues($query, $attributeRow, $search, $limit);
     }
 
-    /**
-     * @param  Builder<Model>  $query
-     */
     public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
     {
         return $this->inner->applyDerivedSearch($query, $columnId, $pattern);
@@ -236,27 +233,19 @@ trait AppendsCategoryAttributeColumns
         return $row->attribute_values;
     }
 
-    /**
-     * @param  Builder<Model>  $query
-     * @param  array<string, mixed>  $attributeRow
-     * @param  array<string, mixed>  $filter
-     */
+    /** @param  array<string, mixed>  $attributeRow */
     protected function applyAttributeFilter(Builder $query, array $attributeRow, array $filter): void
     {
         $this->attributeColumns->applyFilter($query, $attributeRow, $filter);
     }
 
-    /**
-     * @param  Builder<Model>  $query
-     * @param  array<string, mixed>  $attributeRow
-     */
+    /** @param  array<string, mixed>  $attributeRow */
     protected function applyAttributeSort(Builder $query, array $attributeRow, string $direction): void
     {
         $this->attributeColumns->applySort($query, $attributeRow, $direction);
     }
 
     /**
-     * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $attributeRow
      * @return array<int, string>
      */
@@ -266,23 +255,39 @@ trait AppendsCategoryAttributeColumns
     }
 
     /**
-     * The scoped category's effective attributes ("Tutte"/root tab -> none).
+     * The effective attributes of the selected categories, deduplicated by code (spec 0374, D-10).
      *
      * @return Collection<int, array<string, mixed>>
      */
     private function categoryAttributes(): Collection
     {
-        return $this->attributeColumns->forCategory($this->categoryScope);
+        return $this->categoryAttributesMemo ??= $this->attributeColumns->forCategories($this->attributeCategories);
     }
 
     /**
-     * The set the SSRM allow-lists are built from: the union when the caller
-     * asked for it (preferences/filter persistence), the tab's own otherwise.
-     *
-     * @return Collection<int, array<string, mixed>>
+     * @param  array<int, int>  $categoryIds
      */
+    private function useAttributeCategories(array $categoryIds, bool $union): void
+    {
+        $this->allowListUnion = $union;
+        $this->attributeCategories = $categoryIds;
+        $this->categoryAttributesMemo = null;
+    }
+
+    /** @return Collection<int, array<string, mixed>> the union for rows, export and persistence, the categories' own for the config */
     private function allowListedAttributes(): Collection
     {
         return $this->allowListUnion ? $this->attributeColumns->union() : $this->categoryAttributes();
+    }
+
+    /** @return Collection<int, array<string, mixed>> the set a filter, sort or distinct request resolves its column in */
+    private function lookupAttributes(): Collection
+    {
+        return $this->lookupInUnion ? $this->attributeColumns->union() : $this->categoryAttributes();
+    }
+
+    private function isAttributeColumn(string $columnId): bool
+    {
+        return $this->attributeColumns->codeFor($columnId) !== null;
     }
 }

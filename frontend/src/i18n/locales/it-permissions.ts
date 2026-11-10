@@ -128,6 +128,7 @@ export const permissions = {
     'email-templates': 'Modelli email',
     'document-bundles': 'Modelli documenti',
     // Spec 0130: sottoinsieme validato/chiuso-vinto di Gestione Richieste, permessi propri.
+    'agent-sales-report': 'Report Vendite Agenti',
     'enrollee-management': 'Gestione Iscritti',
     'field-change-requests': 'Richieste di modifica',
     leads: 'Lead',

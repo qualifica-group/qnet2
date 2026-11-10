@@ -2,15 +2,14 @@ import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
 import { CATEGORY_POPUP_WIDTH_CLASS } from '@/features/product-lines/category-popup-width'
-import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import { filterCategoriesUnderRoot } from '@/features/product-lines/category-tree-scope'
-
-const EMPTY_IDS: readonly number[] = []
+import { cardCategoryTree, filterCategoriesUnderRoot } from '@/features/product-lines/category-tree-scope'
 
 export interface ProductCategoryFilterSelectProps {
   rootCategoryId: number
   value: number | null
+  /** The category the row holds: kept with its path even when inactive, as in `ProductCategoryRootSelect`. */
+  categoryId?: number | null
   onChange: (filterCategoryId: number) => void
   disabled?: boolean
   /** Rendered next to the trigger (the row's "remove filter" button), like the category select's quick-create. */
@@ -28,6 +27,7 @@ export interface ProductCategoryFilterSelectProps {
 export function ProductCategoryFilterSelect({
   rootCategoryId,
   value,
+  categoryId = null,
   onChange,
   disabled = false,
   action,
@@ -37,13 +37,17 @@ export function ProductCategoryFilterSelect({
   const treeQuery = useProductCategoryTree()
   const tree = treeQuery.data
 
-  const options = useMemo<SearchableSelectOption[]>(
-    () =>
-      tree === undefined
-        ? []
-        : filterCategoriesUnderRoot(activeCategoryTree(tree, value === null ? EMPTY_IDS : [value]), rootCategoryId).map((node) => ({ id: node.id, name: node.name, depth: 0 })),
-    [tree, rootCategoryId, value],
-  )
+  const options = useMemo<SearchableSelectOption[]>(() => {
+    if (tree === undefined) {
+      return []
+    }
+    const keepIds = [value, categoryId].filter((id): id is number => id !== null)
+    return filterCategoriesUnderRoot(cardCategoryTree(tree, keepIds), rootCategoryId).map((node) => ({
+      id: node.id,
+      name: node.name,
+      depth: 0,
+    }))
+  }, [tree, rootCategoryId, value, categoryId])
 
   return (
     <SearchableSelect

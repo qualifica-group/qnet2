@@ -10,9 +10,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// Direttiva utente 2026-09-17: the grid's default worklist is exactly thirteen
-// visible columns, in a fixed order, "Email" among them (a new client column,
-// the twin of "Telefono"); every other column stays in the catalogue, hidden.
+// Direttiva utente 2026-09-17 (2026-11-09: four more): the grid's default
+// worklist is exactly seventeen visible columns, in a fixed order, "Email" among
+// them (a new client column, the twin of "Telefono"); every other column stays
+// in the catalogue, hidden.
 
 uses(RefreshDatabase::class);
 
@@ -84,19 +85,26 @@ it('shows exactly the requested columns, in the requested order, and hides the r
         'offer_lines',
         'first_name',
         'last_name',
+        // REQUIREMENT CHANGED (direttiva utente 2026-11-09): Ragione sociale
+        // and Partita IVA join the default worklist.
+        'company_name',
         'phone',
         'email',
+        'vat_number',
         'tax_code',
         'general_notes',
         'source',
         'manager_ga1',
+        // REQUIREMENT CHANGED (spec 0373 D-10): "Operatore APL", beside the Tutor.
+        'manager_ga5',
+        // REQUIREMENT CHANGED (spec 0373 D-7): the whole team, as in Offerte.
+        'managers',
     ])->and($columns->where('visible', false)->pluck('id')->all())->toBe([
         // The engine's own hidden row-id column (AbstractTableDefinition).
         'id',
         'pending_change_requests',
         'operational_site',
         'is_transferred',
-        'vat_number',
         // REQUIREMENT CHANGED (spec 0313, D-6): the forecast trio joins the
         // column chooser, hidden by default.
         'estimated_value',
@@ -119,12 +127,16 @@ it('gives every visible column its requested default width, and none to the hidd
         'offer_lines' => 214,
         'first_name' => 120,
         'last_name' => 137,
+        'company_name' => 206,
         'phone' => 145,
         'email' => 206,
+        'vat_number' => 145,
         'tax_code' => 171,
         'general_notes' => 239,
         'source' => 127,
         'manager_ga1' => 177,
+        'manager_ga5' => 177,
+        'managers' => 140,
     ])->and($columns->where('visible', false)->pluck('width')->unique()->all())->toBe([null]);
 });
 

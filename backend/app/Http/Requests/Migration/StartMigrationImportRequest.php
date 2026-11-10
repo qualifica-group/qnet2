@@ -10,6 +10,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * created or modified from that day on are requested. Absent or null = full
  * import.
  *
+ * Optional `update_existing` (spec 0372): also realign the records already imported.
+ *
  * Authorization is NOT handled here: the route group's `super-admin`
  * middleware alias (EnsureSuperAdmin) gates every migrations endpoint.
  */
@@ -27,7 +29,13 @@ class StartMigrationImportRequest extends FormRequest
     {
         return [
             'updated_since' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'update_existing' => ['sometimes', 'boolean'],
         ];
+    }
+
+    public function updateExisting(): bool
+    {
+        return (bool) $this->validated('update_existing', false);
     }
 
     public function updatedSince(): ?CarbonImmutable

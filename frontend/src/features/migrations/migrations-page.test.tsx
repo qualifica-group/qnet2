@@ -58,13 +58,15 @@ const USERS_RUN: MigrationLastRun = {
   failed_rows: 0,
   has_report: false,
   updated_since: null,
+  update_existing: false,
+  updated_rows: 0,
   created_at: '2026-10-12T09:00:00.000000Z',
 }
 
 const SOURCES: MigrationSourceSummary[] = [
-  { key: 'roles', label: 'Roles', phase: 1, available: true, last_run: null, migrated_at: null },
-  { key: 'users', label: 'Users', phase: 2, available: true, last_run: USERS_RUN, migrated_at: '2026-10-12T09:01:00.000000Z' },
-  { key: 'company-sites', label: 'Company sites', phase: 2, available: true, last_run: null, migrated_at: null },
+  { key: 'roles', label: 'Roles', phase: 1, available: true, supports_update_existing: false, last_run: null, migrated_at: null },
+  { key: 'users', label: 'Users', phase: 2, available: true, supports_update_existing: false, last_run: USERS_RUN, migrated_at: '2026-10-12T09:01:00.000000Z' },
+  { key: 'company-sites', label: 'Company sites', phase: 2, available: true, supports_update_existing: false, last_run: null, migrated_at: null },
 ]
 
 function previewPage(overrides: Partial<MigrationPreviewPage> = {}): MigrationPreviewPage {

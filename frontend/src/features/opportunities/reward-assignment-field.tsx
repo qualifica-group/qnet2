@@ -3,6 +3,7 @@ import { Popover as PopoverPrimitive } from 'radix-ui'
 import { Loader2, Plus } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SELECT_POPUP_FIT_CONTENT_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { flattenForSelectPages } from '@/features/for-select/use-for-select'
@@ -155,7 +156,10 @@ export function RewardAssignmentField({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={4}
-          className="z-50 w-64 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"
+          className={cn(
+            'z-50 min-w-64 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            SELECT_POPUP_FIT_CONTENT_CLASS,
+          )}
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <div className="p-1">

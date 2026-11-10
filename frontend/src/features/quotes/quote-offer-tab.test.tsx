@@ -10,6 +10,7 @@ import { ResourcePermissionsProvider } from '@/features/authorization/permission
 import { fetchQuoteCommissionDefaults } from '@/features/quotes/api'
 import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
 import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
+import type { QuoteLine } from '@/features/quotes/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { OpportunityDetailWithPermissions } from '@/features/opportunities/types'
 import type { ForSelectParams } from '@/features/for-select/types'
@@ -128,14 +129,22 @@ function RowsSpy({ control }: { control: Control<QuoteFormValues> }) {
   return null
 }
 
-function Harness({ permissions = FULL_ACCESS_PERMISSIONS, values = EMPTY_VALUES }: { permissions?: ResourcePermissions; values?: QuoteFormValues }) {
+const NO_KNOWN_LINES: QuoteLine[] = []
+
+interface HarnessProps {
+  permissions?: ResourcePermissions
+  values?: QuoteFormValues
+  knownLines?: QuoteLine[]
+}
+
+function Harness({ permissions = FULL_ACCESS_PERMISSIONS, values = EMPTY_VALUES, knownLines = NO_KNOWN_LINES }: HarnessProps) {
   const form = useForm<QuoteFormValues>({ defaultValues: values })
   return (
     <Form {...form}>
       <ResourcePermissionsProvider permissions={permissions}>
         <QuoteOfferTab
           control={form.control}
-          knownLines={[]}
+          knownLines={knownLines}
           vatRatePercentFor={() => null}
           rememberVatRatePercent={vi.fn()}
           rememberProductTypology={rememberProductTypology}
@@ -279,6 +288,21 @@ describe('QuoteOfferTab — righe e provvigioni (spec 0269)', () => {
     expect(screen.getByRole('button', { name: 'Additional description' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Commissions for line 1' }))
     expect(await screen.findByRole('dialog', { name: /Widget Pro.*1/ })).toBeInTheDocument()
+  })
+
+  it('spec 0360 D-4: a row assigned to a work order locks its additional description, the server would reject the change', async () => {
+    const row = { id: 70, product_id: 20, quantity: 1, unit_price: 50, vat_rate_id: null, commissions: [], client_key: 'line-70', additional_description: 'Testo' }
+    const knownLine = {
+      id: 70,
+      product_id: 20,
+      product: { id: 20, name: 'Widget Pro', code: 'W-20', category_id: 7 },
+      work_orders: [{ id: 1, code: 'COM-1' }],
+    } as unknown as QuoteLine
+    render(<Harness values={{ ...EMPTY_VALUES, offer_lines: [row] } as unknown as QuoteFormValues} knownLines={[knownLine]} />, { wrapper: wrapper() })
+    await screen.findByText('Widget Lite')
+
+    expect(screen.getByRole('textbox', { name: 'Row 1 additional description' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Remove row 1 additional description' })).toBeDisabled()
   })
 
   it('AC-007: hides the commissions control when the commissions field is not visible', async () => {

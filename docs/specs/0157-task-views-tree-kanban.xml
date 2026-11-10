@@ -29,9 +29,10 @@
          (utente 2026-09-24, integrazione) Colonna "Piu' avanti" tra Questo mese e Completati: task aperti con
          scadenza dopo l'ultimo giorno del mese corrente; "Questo mese" resta mese corrente + senza scadenza.
          Trascinare su "Piu' avanti" imposta end_date al primo giorno del mese successivo.
-    D-3  (utente 3b) Trascinare su uno stato di chiusura apre la finestra di completamento (segnatempo, feedback,
+    D-3  (utente 3b) Trascinare su uno stato closed_positive apre la finestra di completamento (segnatempo, feedback,
          validazione); annullare riporta la card. Da uno stato chiuso a uno aperto chiama riapri. Tra stati aperti
-         e' un PATCH di task_status_id con le guardie esistenti.
+         e verso closed_negative e' un PATCH di task_status_id con le guardie esistenti (rettifica utente 2026-11-09:
+         Completa chiude sempre in positivo, spec 0126 D-4).
     D-4  Il kanban usa gli stessi filtri avanzati e la ricerca della lista; carica fino a 500 task (oltre, avviso
          "restringi i filtri"). Il "+" di colonna apre il form di creazione con stato o scadenza precompilati.
     D-5  La modalita' scelta si ricorda per utente (stato UI locale, come le altre preferenze di tabella).

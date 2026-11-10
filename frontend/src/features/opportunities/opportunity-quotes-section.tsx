@@ -9,6 +9,7 @@ import { ResourceActivityDialog } from '@/features/activity-log/resource-activit
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { PRESET_LIST_FILTERS } from '@/features/table/advanced-filters/types'
 import { TableView } from '@/features/table/table-view'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
@@ -164,6 +165,7 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
             ref={tableRef}
             domain={QUOTES_DOMAIN}
             rowScope={{ opportunityId: opportunity.id }}
+            hiddenAdvancedFilters={PRESET_LIST_FILTERS}
             renderers={quoteColumnRenderers}
             onAction={handleAction}
             isBusy={isBusy}

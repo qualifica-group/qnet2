@@ -102,6 +102,12 @@ class ProductCategoryResource extends JsonResource
             // Spec 0350: own default revenue sub-account and the effective one (own or from the closest ancestor).
             'revenue_type_id' => $this->revenue_type_id,
             'revenue_type' => RevenueTypeRef::find($this->revenue_type_id),
+            // Spec 0374: legacy root and the current root it continues.
+            'is_legacy' => (bool) $this->is_legacy,
+            'current_category_id' => $this->current_category_id,
+            'current_category' => $this->currentCategory !== null
+                ? ['id' => $this->currentCategory->id, 'name' => $this->currentCategory->name]
+                : null,
             'effective_revenue_type' => app(EffectiveRevenueType::class)->forCategory($this->resource),
             'attributes' => $this->attributes->map(fn (Attribute $attribute): array => [
                 'attribute_id' => $attribute->id,

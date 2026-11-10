@@ -50,8 +50,9 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     $ids = $columns->pluck('id')->all();
     // REQUIREMENT CHANGED: spec 0332 — `source` joins the catalogue after `operational_site`.
     // REQUIREMENT CHANGED: spec 0349 — `follow_up_date` is appended after `next_callback_at`.
+    // REQUIREMENT CHANGED: user request 2026-11-09 — `registry` sits right after `opportunity`.
     expect($ids)->toBe([
-        'id', 'code', 'title', 'opportunity', 'offer_lines', 'root_categories', 'quote_workflow_status', 'commercial',
+        'id', 'code', 'title', 'opportunity', 'registry', 'offer_lines', 'root_categories', 'quote_workflow_status', 'commercial',
         'reporter', 'supervisor', 'managers', 'revenue_net', 'cost_net', 'margin_net',
         'created_at', 'company', 'company_site', 'operational_site', 'source', 'next_callback_at',
         'follow_up_date', 'alert',
@@ -180,4 +181,24 @@ it('rows: a quote with every nullable relation absent projects null summaries, n
         ->and($row['commercial'])->toBeNull()
         ->and($row['reporter'])->toBeNull()
         ->and($row['supervisor'])->toBeNull();
+});
+
+it('advanced filters: managers and supervisor pick people by id, each on its own role', function () {
+    Sanctum::actingAs(quoteTableUserWith(['viewAny']));
+    $person = User::factory()->create();
+    $managed = Quote::factory()->create();
+    $managed->managers()->attach($person->id, ['position' => 1]);
+    $supervised = Quote::factory()->create(['supervisor_id' => $person->id]);
+    Quote::factory()->create();
+
+    $filters = collect($this->getJson('/api/tables/quotes/columns')->assertOk()->json('data.advancedFilters'))->keyBy('name');
+
+    expect($filters['managers'])->toMatchArray(['type' => 'relation', 'multiple' => true, 'source' => ['resource' => 'users']]);
+
+    $idsFor = fn (string $filter): array => collect($this->postJson('/api/tables/quotes/rows', [
+        'startRow' => 0, 'endRow' => 25, 'advancedFilters' => [$filter => [$person->id]],
+    ])->assertOk()->json('items'))->pluck('id')->all();
+
+    expect($idsFor('managers'))->toBe([$managed->id])
+        ->and($idsFor('supervisor'))->toBe([$supervised->id]);
 });

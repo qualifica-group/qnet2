@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react'
 import type { CustomCellEditorProps } from 'ag-grid-react'
 import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
+import { SELECT_POPUP_FIT_CONTENT_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 import { useTaskWorkOrderStageOptions } from '@/features/tasks/use-task-work-order-stage-options'
 import type { TableRow } from '@/features/table/types'
@@ -43,7 +44,10 @@ export function TaskWorkOrderStageCellEditor(
       role="listbox"
       tabIndex={-1}
       aria-label={t('tasks.form.workOrderStage')}
-      className="max-h-64 w-64 overflow-auto rounded-md border border-border bg-popover p-1 shadow-md outline-none"
+      className={cn(
+        'max-h-64 min-w-64 overflow-auto rounded-md border border-border bg-popover p-1 shadow-md outline-none',
+        SELECT_POPUP_FIT_CONTENT_CLASS,
+      )}
     >
       {workOrderId === null ? (
         <p className="px-2.5 py-1 text-xs text-muted-foreground">{t('tasks.form.workOrderStageNoWorkOrder')}</p>

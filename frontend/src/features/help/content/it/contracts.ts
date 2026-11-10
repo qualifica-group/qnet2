@@ -36,8 +36,8 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Valida contratto**: indica la **Data di validazione** (non futura). Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza): su quei contratti compare invece **Programma**, se non sono sospesi.',
-            '**Disdici contratto**: indica **Data di disdetta**, **Motivazione** e **Stato di destinazione**.',
+            '**Valida contratto**: indica la **Data di validazione** (non futura). Serve almeno una riga prodotto: se il contratto non ne ha, aggiungila dalla scheda prima di validare. Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza): su quei contratti compare invece **Programma**, se non sono sospesi.',
+            '**Disdici contratto**: indica **Data di disdetta**, **Motivazione** e **Stato di destinazione**. Con lo stato **Annullato** tutte le commesse del contratto vengono chiuse, anche quelle concluse, e restano chiuse se riapri il contratto. Con qualsiasi altro stato vengono chiuse solo le commesse ancora aperte, che **Riapri contratto** riporta allo stato che avevano. I task delle commesse non cambiano.',
             'Dati del contratto: **Scadenza**, **Rinnovo**, **Note di pagamento** e **Commenti** si modificano direttamente nella scheda, finché il contratto è Aperto, In attesa o Chiuso positivo (Validato): premi la matita accanto al campo (o fai clic sul valore), cambia il valore e premi **Salva** (Annulla, Esc o un clic fuori chiudono senza salvare). I Commenti si scrivono dentro il loro riquadro in cima alla scheda.',
             '**Riapri contratto**: riporta il contratto in lavorazione; se era sospeso, torna allo stato precedente. Riaprendo un contratto Chiuso positivo o Chiuso negativo si azzerano anche la data e l\'autore della validazione, così il contratto si può validare di nuovo; i valori precedenti restano in **Cronologia attività**.',
           ],
@@ -134,7 +134,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa nel periodo corrente del suo contratto non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno che non si può ancora programmare (non validato, per esempio **Da validare**, oppure sospeso) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra quali contratti, con il cliente, vanno tolti dalla selezione.',
+          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa nel periodo corrente del suo contratto non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno che non si può ancora programmare (non validato, per esempio **Da validare**, oppure sospeso) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra un avviso con il motivo e l\'elenco di quei contratti, con il cliente. Se ne restano almeno due, il pulsante **Continua senza questi contratti** li toglie da questa commessa e carica le righe degli altri (la selezione nella griglia non cambia); altrimenti chiudi la finestra e scegli nella griglia altri contratti.',
         },
       ],
     },
@@ -184,32 +184,28 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtrare per categoria prodotto",
+      id: 'list-filters',
+      title: "Filtri predefiniti e categoria",
       blocks: [
         {
           type: 'paragraph',
-          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di contratti. Cliccando una tab l'elenco mostra solo i contratti di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+          text: "All'apertura la pagina **Contratti** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Supervisore** e **Gestore account** (i contratti dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme. Per allargare l'elenco scegli **Tutti i visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata.",
         },
         {
           type: 'paragraph',
-          text: "Un contratto compare nella tab di ogni categoria dei prodotti presenti nelle **righe di ricavo dell'offerta del contratto** (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; un contratto la cui offerta non ha righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quanti contratti, tra quelli che puoi vedere, rientrano nella categoria.",
-        },
-        {
-          type: 'steps',
-          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutti i visibili** non compare: non aggiungerebbe nulla. I filtri non allargano ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
-          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. L'interruttore è acceso di default: spegnendolo vedi tutte le categorie.",
+          text: "Nello stesso pannello c'è anche **Categoria prodotto** (solo quella categoria). Rientra in una categoria un contratto che la ha tra le **righe di ricavo** dell'offerta del contratto.",
         },
         {
           type: 'paragraph',
-          text: "Scegliendo la tab di una categoria, in fondo all'elenco compaiono le colonne dei campi flessibili dell'**offerta di origine** del contratto, in sola lettura. Puoi filtrarle e ordinarle, ma per modificarle devi aprire l'offerta.",
+          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con **Tutte**. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Mostrano i campi dell'offerta di origine del contratto, in sola lettura: si ordinano, si filtrano e si esportano, mentre i valori si modificano dall'offerta.",
         },
         {
           type: 'note',
-          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutti i contratti.",
+          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Contratti**: non compaiono dentro una scheda. L'esportazione segue i filtri attivi.",
         },
       ],
     },

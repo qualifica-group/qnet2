@@ -9,6 +9,9 @@ import type {
 /** Resource segment for the product-categories for-select endpoint (spec 0023). */
 export const PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE = 'product-categories'
 
+/** Root categories (spec 0374 D-9); with `current_only=1` only the current (non-legacy) ones, "Tutte" left out. */
+export const PRODUCT_CATEGORY_ROOTS_FOR_SELECT_RESOURCE = 'product-category-roots'
+
 /**
  * Every active category, containers included (spec 0223): the commission
  * configurator's picker, whose rule covers the whole branch.

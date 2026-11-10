@@ -26,8 +26,10 @@ class MigrationRunFactory extends Factory
             'total_rows' => 0,
             'created_rows' => 0,
             'skipped_rows' => 0,
+            'updated_rows' => 0,
             'failed_rows' => 0,
             'report' => null,
+            'update_existing' => false,
         ];
     }
 

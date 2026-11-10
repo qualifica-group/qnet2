@@ -96,6 +96,25 @@ abstract class AbstractMigrationSource implements MigrationSource
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * Not supported by default: only a source that can realign an existing record opts in.
+     */
+    public function supportsUpdateExisting(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Whether THIS run must realign the records already imported: the source supports it and
+     * the run asked for it (spec 0372).
+     */
+    protected function updatesExisting(MigrationImportContext $context): bool
+    {
+        return $this->supportsUpdateExisting() && $context->run->update_existing;
+    }
+
+    /**
      * The external record's own id (the value `old_id` is set to), or null
      * when the record carries none — a fatal, per-row error (never silently
      * skipped) surfaced via processRow().
@@ -113,6 +132,17 @@ abstract class AbstractMigrationSource implements MigrationSource
      * @param  array<string, mixed>  $record
      */
     abstract protected function processRow(MigrationImportContext $context, array $record): MigrationRowOutcome;
+
+    /**
+     * Realigns one record already imported, for a caller that has found it and
+     * handles the transaction itself (spec 0375). Requires an `update_existing` run.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    public function realignExistingRecord(MigrationImportContext $context, array $record): MigrationRowOutcome
+    {
+        return $this->processRow($context, $record);
+    }
 
     public function preview(MigrationQuery $query): MigrationPage
     {
@@ -370,11 +400,11 @@ abstract class AbstractMigrationSource implements MigrationSource
                 return $outcome;
             });
 
-            if ($outcome->skipped) {
-                $run->increment('skipped_rows');
-            } else {
-                $run->increment('created_rows');
-            }
+            $run->increment(match (true) {
+                $outcome->skipped => 'skipped_rows',
+                $outcome->updated => 'updated_rows',
+                default => 'created_rows',
+            });
 
             foreach ($outcome->warnings as $warning) {
                 $this->appendReport($run, $externalId, 'warning', $warning);

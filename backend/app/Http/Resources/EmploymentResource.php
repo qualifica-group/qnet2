@@ -236,7 +236,7 @@ class EmploymentResource extends JsonResource
      * frontend reads a user's rows exactly as it reads an opportunity's.
      *
      * @param  iterable<int, Model>  $lines
-     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null, share_percentage: int}>
+     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null, covers_current_categories: bool, covers_legacy_categories: bool, share_percentage: int}>
      */
     private function summarizeProductLines(iterable $lines): array
     {
@@ -245,6 +245,8 @@ class EmploymentResource extends JsonResource
                 'id' => $line->id,
                 'business_function' => $this->summarizeByName($line->businessFunction),
                 'product_category' => $this->summarizeByName($line->productCategory),
+                'covers_current_categories' => (bool) $line->getAttribute('covers_current_categories'),
+                'covers_legacy_categories' => (bool) $line->getAttribute('covers_legacy_categories'),
                 'share_percentage' => (int) $line->getAttribute('share_percentage'),
             ])
             ->values()

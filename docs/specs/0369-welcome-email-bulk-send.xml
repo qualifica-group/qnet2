@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0369-welcome-email-bulk-send" status="approved" owner="nicola" date="2026-11-07">
+
+  <goal>
+    Inviare in un colpo solo l'email di benvenuto (nuova password generata dal sistema) a tutti gli utenti attivi,
+    in modo idempotente: un secondo lancio non rimanda l'email a chi l'ha gia' ricevuta.
+  </goal>
+
+  <context>
+    Segue le spec 0355 (password generata nell'email di benvenuto) e 0356. Decisioni utente 2026-11-07:
+    D-1 One shot da terminale: comando artisan, nessuna UI.
+    D-2 Destinatari: tutti gli utenti attivi (`is_active`), mai gli account di servizio (`is_service_account`).
+        L'invio fa quello che fa il reinvio singolo: il sistema genera una NUOVA password (quella attuale, anche se
+        scelta dall'utente, viene sostituita), forza il cambio al primo accesso, chiude le sessioni, invia l'email.
+    D-3 Idempotenza: nuova colonna `users.welcome_sent_at`, valorizzata a ogni invio del benvenuto. Il comando
+        salta chi ce l'ha valorizzata.
+    D-4 Anche il reinvio singolo dalla scheda utente e la creazione utente valorizzano `welcome_sent_at`
+        (coerenza: chi ha gia' ricevuto il benvenuto e' saltato dal comando).
+
+    Codice reale verificato 2026-11-07: `App\Services\Users\UserOnboardingService` (`start()`, `resendWelcome()`,
+    `assertEligible()`), `App\Notifications\WelcomeUserNotification` (ShouldQueue + ShouldBeEncrypted),
+    `UserController::resendWelcome()` (`POST /api/users/{user}/resend-welcome`), `User` cast
+    `must_set_password`/`password_changed_at`, `tests/Helpers/FirstAccessHelpers.php`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: `users.welcome_sent_at` timestamp nullable, reversibile, nessun backfill (nessun invio noto).</item>
+      <item>`User`: cast `welcome_sent_at => datetime`; NON in $fillable (forceFill).</item>
+      <item>`UserOnboardingService`: nuovo metodo pubblico `reissueWelcome(User)` (nuova password, flag, revoca
+        token e `welcome_sent_at` in un'unica transazione; email dopo il commit). `resendWelcome()` = controllo di
+        idoneita' + `reissueWelcome()`. `start()` valorizza anche `welcome_sent_at`.</item>
+      <item>Comando `users:send-welcome` con `--dry-run` (conta senza scrivere ne' inviare) e `--force` (salta la
+        conferma interattiva). Seleziona attivi, non di servizio, `welcome_sent_at` nullo; a blocchi
+        (`chunkById`); stampa il conteggio.</item>
+    </in>
+    <out>
+      <item>UI o endpoint per l'invio massivo.</item>
+      <item>Cambi al testo/template dell'email o alla notifica.</item>
+      <item>Esporre `welcome_sent_at` in API/UI.</item>
+      <item>Limitazione per ambiente (il comando gira dove viene lanciato; in produzione serve il queue worker).</item>
+      <item>Manuale utente: nessun impatto (comando da terminale, nessuna schermata cambiata).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo o cambiato. -->
+    <database>users.welcome_sent_at TIMESTAMP NULL</database>
+    <command signature="users:send-welcome {--dry-run} {--force}">
+      Output: "N utenti riceveranno l'email di benvenuto." (dry-run) oppure
+      "Email di benvenuto inviata a N utenti." Senza --force chiede conferma; risposta negativa: nessuna scrittura.
+    </command>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Il comando invia il benvenuto a ogni utente attivo non di servizio con `welcome_sent_at` nullo: nuova password (quella dell'email), `must_set_password` true, token revocati, `welcome_sent_at` valorizzato.</criterion>
+    <criterion id="AC-002">Non tocca utenti inattivi, account di servizio, utenti con `welcome_sent_at` valorizzato (password, token e flag invariati, nessuna notifica).</criterion>
+    <criterion id="AC-003">Un secondo lancio non invia nulla e riporta 0.</criterion>
+    <criterion id="AC-004">`--dry-run` riporta il conteggio e non scrive ne' invia nulla; senza `--force` una conferma negata non scrive ne' invia nulla.</criterion>
+    <criterion id="AC-005">`POST /api/users/{user}/resend-welcome` e la creazione utente valorizzano `welcome_sent_at`.</criterion>
+    <criterion id="AC-006">La migrazione e' reversibile.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessun comando distruttivo sul DB di sviluppo.</item>
+    <item>`welcome_sent_at` e `must_set_password` solo via forceFill; nessuna password nei log o nell'output.</item>
+    <item>Test Pest in `tests/Feature/Spec0369`; Pint.</item>
+  </constraints>
+
+</spec>

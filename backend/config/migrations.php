@@ -26,6 +26,7 @@ use App\Migrations\Sources\ProformaRequestsSource;
 use App\Migrations\Sources\PurchaseInvoicesSource;
 use App\Migrations\Sources\PurchaseOrdersSource;
 use App\Migrations\Sources\PurchaseRequestsSource;
+use App\Migrations\Sources\QuoteAcceptedDatesSource;
 use App\Migrations\Sources\QuotesSource;
 use App\Migrations\Sources\ReferentsSource;
 use App\Migrations\Sources\ReferentTypesSource;
@@ -159,6 +160,8 @@ return [
         'registries' => RegistriesSource::class,
         'opportunities' => OpportunitiesSource::class,
         'quotes' => QuotesSource::class,
+        // spec 0365: the acceptance date of the migrated quotes.
+        'quote-accepted-dates' => QuoteAcceptedDatesSource::class,
         'work-orders' => WorkOrdersSource::class,
         // spec 0289: the legacy tasks, needing users and the migrated work orders.
         'tasks' => TasksSource::class,

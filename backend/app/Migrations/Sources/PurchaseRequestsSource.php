@@ -41,7 +41,7 @@ class PurchaseRequestsSource extends AbstractMigrationSource
 {
     use MapsLegacyOperationalRecord, RequiresLegacyAnchors;
 
-    private const int SUBJECT_MAX = 255;
+    public const int SUBJECT_MAX = 255;
 
     /** @var array{byName: array<string, int>, default: int|null}|null */
     private ?array $priorities = null;
@@ -202,7 +202,7 @@ class PurchaseRequestsSource extends AbstractMigrationSource
      * @param  array<int, string>  $warnings
      * @return array<string, mixed>
      */
-    private function closure(PurchaseRequest $purchaseRequest, array $record, array &$warnings): array
+    public function closure(PurchaseRequest $purchaseRequest, array $record, array &$warnings): array
     {
         if ((bool) ($record['is_closed'] ?? false)) {
             return [
@@ -239,7 +239,7 @@ class PurchaseRequestsSource extends AbstractMigrationSource
      *
      * @param  array<int, string>  $warnings
      */
-    private function priorityId(mixed $name, array &$warnings): int
+    public function priorityId(mixed $name, array &$warnings): int
     {
         $this->priorities ??= $this->priorityIndex();
         $name = $this->blankToNull($name);

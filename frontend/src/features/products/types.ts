@@ -72,6 +72,8 @@ export interface ProductDetail {
   /** Manual, unique, immutable-after-create code (spec 0065, `string(32)`); server-generated when omitted at create. */
   code: string
   name: string
+  /** Spec 0366: an inactive product leaves the product pickers and cannot be linked to new records. */
+  is_active: boolean
   description: string | null
   /**
    * Money columns are `decimal:2` casts server-side: Laravel serializes them
@@ -174,6 +176,8 @@ export interface ProductDetailWithPermissions extends ProductDetail {
 export interface CreateProductPayload {
   code?: string
   name: string
+  /** Spec 0366: omitted resolves server-side to active. */
+  is_active?: boolean
   description?: string | null
   /** Both always sent, for every usage (spec 0320 rev.3 D-20). */
   cost: number
@@ -211,6 +215,12 @@ export interface BulkProductCostTypePayload {
 /** `data` of POST /products/cost-type. */
 export interface BulkProductCostTypeResult {
   updated: number
+}
+
+/** Payload for POST /products/activation (spec 0366 D-6). */
+export interface BulkProductActivationPayload {
+  product_ids: number[]
+  is_active: boolean
 }
 
 /** Payload for POST /products/revenue-type (spec 0350): `revenue_type_id: null` removes the sub-account. */

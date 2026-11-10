@@ -193,7 +193,7 @@ function OfferLinesBody({
       rememberVatRatePercent={rememberVatRatePercent}
       commissions={commissions}
       onProductsPicked={rememberPicked}
-      renderRowSlots={(row, index, position, product) => ({
+      renderRowSlots={(row, index, position, product, locked) => ({
         actions: commissionsPermission.visible ? (
           <QuoteLineCommissionsAction
             position={position}
@@ -210,7 +210,7 @@ function OfferLinesBody({
           <QuoteLineAdditionalDescription
             lineNumber={position}
             value={row.additional_description ?? null}
-            disabled={disabled}
+            disabled={disabled || locked}
             onChange={(additionalDescription) => patchRow(index, { additional_description: additionalDescription })}
           />
         ),

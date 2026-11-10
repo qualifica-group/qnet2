@@ -36,6 +36,7 @@ function user(overrides: Partial<User> = {}): User {
     roles: [],
     avatar_url: null,
     must_set_password: false,
+    onboarding_status: 'completed',
     personal_data: null,
     created_at: null,
     module_open_preferences: DEFAULT_MODULE_OPEN_PREFERENCES,

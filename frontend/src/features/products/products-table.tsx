@@ -16,9 +16,10 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { BulkAction } from '@/features/table/use-bulk-actions-slot'
+import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import { productColumnRenderers } from '@/features/products/column-renderers'
 import { deleteProduct } from '@/features/products/api'
+import { useProductBulkActivation } from '@/features/products/use-product-bulk-activation'
 import { ProductRevenueTypeDialog } from '@/features/products/product-revenue-type-dialog'
 import { ProductCostTypeDialog, type ProductCostTypeTarget } from '@/features/products/product-cost-type-dialog'
 
@@ -104,11 +105,14 @@ export function ProductsTable() {
     [openView, runDelete],
   )
 
+  const activation = useProductBulkActivation({ onChanged: refreshGrid })
+
   // The server re-authorizes: hiding the action is only an affordance.
   const getBulkActions = useCallback(
-    (selection: { rows: TableRow[] }): BulkAction[] =>
+    (selection: TableSelection): BulkAction[] =>
       canUpdate
         ? [
+            ...activation.getBulkActions(selection),
             {
               key: 'set-cost-type',
               label: t('products.bulkCostType.bulkAction'),
@@ -123,7 +127,7 @@ export function ProductsTable() {
             },
           ]
         : [],
-    [canUpdate, t],
+    [canUpdate, t, activation],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

@@ -56,6 +56,9 @@ export function MigrationImportProgress({
             {t('updatedSince.since', { date: formatDate(run.updated_since) })}
           </span>
         ) : null}
+        {run.update_existing ? (
+          <span className="text-xs text-muted-foreground">{t('updateExisting.active')}</span>
+        ) : null}
       </div>
 
       <div
@@ -79,7 +82,11 @@ export function MigrationImportProgress({
         />
       ) : null}
 
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+      <dl
+        className={`grid grid-cols-2 gap-3 text-sm ${
+          run.update_existing ? 'sm:grid-cols-5' : 'sm:grid-cols-4'
+        }`}
+      >
         <div>
           <dt className="text-muted-foreground">{t('import.summary.total')}</dt>
           <dd className="font-medium">{run.total_rows}</dd>
@@ -88,6 +95,12 @@ export function MigrationImportProgress({
           <dt className="text-muted-foreground">{t('import.summary.created')}</dt>
           <dd className="font-medium">{run.created_rows}</dd>
         </div>
+        {run.update_existing ? (
+          <div>
+            <dt className="text-muted-foreground">{t('import.summary.updated')}</dt>
+            <dd className="font-medium">{run.updated_rows}</dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-muted-foreground">{t('import.summary.skipped')}</dt>
           <dd className="font-medium">{run.skipped_rows}</dd>

@@ -89,6 +89,26 @@ it('updates and clears the description when the row carries the key', function (
         ->and(resubmitFirstOfferLine($quote, ['additional_description' => null])->additional_description)->toBeNull();
 });
 
+it('persists and updates the description of a cost row', function () {
+    $quote = additionalDescriptionQuote(null);
+    $costRow = fn (array $extra): array => [
+        'product_id' => $quote->offerLines()->sole()->product_id,
+        'quantity' => 1,
+        'unit_price' => 4,
+        ...$extra,
+    ];
+    $sync = fn (array $row) => app(QuoteService::class)->update(
+        $quote,
+        new UpdateQuoteData(costLines: [QuoteLineData::fromValidated($row)]),
+        User::factory()->create(),
+    )->costLines()->sole();
+
+    $line = $sync($costRow(['additional_description' => 'Docente esterno']));
+    expect($line->additional_description)->toBe('Docente esterno');
+
+    expect($sync($costRow(['id' => $line->id, 'additional_description' => 'Docente interno']))->additional_description)->toBe('Docente interno');
+});
+
 it('rejects a description longer than the maximum length', function () {
     $validator = Validator::make([
         'title' => 'x',

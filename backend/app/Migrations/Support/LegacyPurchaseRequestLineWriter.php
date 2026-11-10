@@ -31,7 +31,7 @@ use RuntimeException;
 final class LegacyPurchaseRequestLineWriter
 {
     /** Scale of `purchase_request_lines.quantity`, the same the synchronizer rounds to. */
-    private const int QUANTITY_SCALE = 3;
+    public const int QUANTITY_SCALE = 3;
 
     private const int DESCRIPTION_MAX = 500;
 
@@ -109,7 +109,7 @@ final class LegacyPurchaseRequestLineWriter
      * @param  array<int, mixed>  $legacyLogs
      * @param  array<int, string>  $warnings
      */
-    private function writeLogs(PurchaseRequestLine $line, array $legacyLogs, array &$warnings): void
+    public function writeLogs(PurchaseRequestLine $line, array $legacyLogs, array &$warnings): void
     {
         foreach ($legacyLogs as $legacyLog) {
             $legacyLog = (array) $legacyLog;
@@ -139,7 +139,7 @@ final class LegacyPurchaseRequestLineWriter
     /**
      * @param  array<int, string>  $warnings
      */
-    private function description(mixed $legacyDescription, int|string $lineId, array &$warnings): string
+    public function description(mixed $legacyDescription, int|string $lineId, array &$warnings): string
     {
         $description = trim((string) ($legacyDescription ?? ''));
 
@@ -159,7 +159,7 @@ final class LegacyPurchaseRequestLineWriter
     /**
      * @param  array<int, string>  $warnings
      */
-    private function unitId(mixed $code, int|string $lineId, array &$warnings): ?int
+    public function unitId(mixed $code, int|string $lineId, array &$warnings): ?int
     {
         $code = $this->blankToNull($code);
 
@@ -180,7 +180,7 @@ final class LegacyPurchaseRequestLineWriter
      * @param  array<int, string>  $warnings
      * @return array{id: int, rate: string}|null
      */
-    private function vatRate(mixed $legacyId, int|string $lineId, array &$warnings): ?array
+    public function vatRate(mixed $legacyId, int|string $lineId, array &$warnings): ?array
     {
         if ($legacyId === null || $legacyId === '') {
             return null;
@@ -204,7 +204,7 @@ final class LegacyPurchaseRequestLineWriter
      * @param  class-string<Product|Registry|User>  $targetClass
      * @param  array<int, string>  $warnings
      */
-    private function optionalOldId(string $targetClass, mixed $legacyId, string $label, array &$warnings): ?int
+    public function optionalOldId(string $targetClass, mixed $legacyId, string $label, array &$warnings): ?int
     {
         if ($legacyId === null || $legacyId === '') {
             return null;

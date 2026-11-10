@@ -93,12 +93,5 @@ return [
             'route' => '/rewarded-referents',
             'permission' => 'rewarded-referents.view',
         ],
-        [
-            'key' => 'request-statistics',
-            'label' => 'navigation.requestStatistics',
-            'icon' => 'chart-column',
-            'route' => '/request-statistics',
-            'permission' => 'request-statistics.view',
-        ],
     ],
 ];

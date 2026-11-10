@@ -69,6 +69,7 @@ export function productFixture(overrides: Partial<ProductDetailWithPermissions> 
     id: 5,
     code: 'PRD-0005',
     name: 'ThinkPad X1',
+    is_active: true,
     description: null,
     cost: '800.00',
     price: '1200.00',

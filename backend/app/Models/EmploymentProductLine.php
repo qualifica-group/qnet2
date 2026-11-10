@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * (CompetenceLineSetValidator). Fillable, so a changed share on a readonly
  * field is a change like any other.
  */
-#[Fillable(['business_function_id', 'product_category_id', 'share_percentage'])]
+#[Fillable(['business_function_id', 'product_category_id', 'covers_current_categories', 'covers_legacy_categories', 'share_percentage'])]
 class EmploymentProductLine extends BaseModel
 {
     /** @use HasFactory<EmploymentProductLineFactory> */
@@ -46,12 +46,16 @@ class EmploymentProductLine extends BaseModel
      */
     protected $attributes = [
         'share_percentage' => self::SHARE_TOTAL,
+        'covers_current_categories' => true,
+        'covers_legacy_categories' => true,
     ];
 
     protected function casts(): array
     {
         return [
             'share_percentage' => 'integer',
+            'covers_current_categories' => 'boolean',
+            'covers_legacy_categories' => 'boolean',
         ];
     }
 

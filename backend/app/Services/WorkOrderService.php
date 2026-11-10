@@ -23,6 +23,7 @@ use App\Services\WorkOrders\WorkOrderTitleWriter;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrders\WorkOrderWorkflowStatusAssigner;
 use App\Support\ManagerPositions;
+use App\Support\PeopleChangeLog;
 use App\Support\PositionalPivotSync;
 use App\WorkOrders\WorkOrderAttributeResolver;
 use Illuminate\Database\Eloquent\Builder;
@@ -312,6 +313,10 @@ class WorkOrderService
         DB::transaction(function () use ($workOrder, $data): void {
             $wasForceClosed = $workOrder->is_force_closed;
             $previousStatusId = $workOrder->work_order_workflow_status_id;
+            // Spec 0372, D-7: people and flexible fields are invisible to the model log.
+            $peopleBefore = $data->hasSupervisorIds() || $data->hasParticipantSlots() || $data->attributeValues !== null
+                ? PeopleChangeLog::capture($workOrder)
+                : [];
 
             $workOrder->fill($data->submittedAttributes());
             $this->enforceForceCloseInvariant($workOrder);
@@ -380,6 +385,8 @@ class WorkOrderService
                 $addedParticipantIds = PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots ?? []))['attached'];
                 $workOrder->unsetRelation('participants');
             }
+
+            PeopleChangeLog::log($peopleBefore);
 
             // Spec 0351, D-2: only who just ENTERED the team; a slot move is not an assignment.
             $this->notifyAddedMembers($workOrder, $addedSupervisorIds, $addedParticipantIds);
@@ -473,6 +480,8 @@ class WorkOrderService
     {
         if (! $workOrder->is_force_closed) {
             $workOrder->force_close_reason = null;
+            // A commessa reopened by hand no longer waits for its contract's reopening.
+            $workOrder->status_before_contract_termination_id = null;
         }
     }
 }

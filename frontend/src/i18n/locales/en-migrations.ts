@@ -40,6 +40,7 @@ export const migrations = {
     registries: 'Registries',
     opportunities: 'Opportunities',
     quotes: 'Quotes',
+    'quote-accepted-dates': 'Quotes — acceptance date',
     'work-orders': 'Work orders',
     tasks: 'Tasks',
     'work-order-progress': 'Work orders — progress',
@@ -133,6 +134,7 @@ export const migrations = {
     summary: {
       total: 'Total rows',
       created: 'Created',
+      updated: 'Updated',
       skipped: 'Skipped',
       failed: 'Failed',
     },
@@ -171,11 +173,19 @@ export const migrations = {
       notRun: 'Not run',
     },
     perSourceCounts: '{{created}} created · {{skipped}} skipped · {{failed}} failed',
+    perSourceUpdated: '{{updated}} updated',
+    updateExistingHelp:
+      'Applies only to Work orders, Quotes, Opportunities and Work order statuses. Only records nobody has worked on in QNet are updated; lines and costs do not change.',
   },
   updatedSince: {
     label: 'Import only records created or modified since',
     help: 'Optional. Leave empty to import everything.',
     since: 'Since {{date}}',
+  },
+  updateExisting: {
+    label: 'Also update records already imported',
+    help: 'Only records nobody has worked on in QNet are updated; records changed in QNet are left as they are and flagged in the report. Lines and costs do not change.',
+    active: 'Update existing records',
   },
   background: {
     hint: 'The operation keeps running on the server even if you close this dialog.',

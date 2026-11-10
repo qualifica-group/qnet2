@@ -39,10 +39,21 @@ const guide: HelpGuide = {
             ['Grid (**Apps**)', 'Appears when apps are set up: opens the launcher to switch app.'],
             ['Bell', 'Opens notifications.'],
             ['Sun/moon (**Change theme**)', 'Picks the **Light**, **Dark** or **System** theme.'],
-            ['Name and avatar', 'Opens the user menu with **Settings** and **Sign out**.'],
+            ['Name and avatar', 'Your job role appears under the name (your email if you have none). Opens the user menu with **Settings** and **Sign out**.'],
           ],
         },
         { type: 'paragraph', text: 'Below the header, every page except the home shows the navigation path; to its right is the button to create a new record. If **New version available** appears, press **Update now**.' },
+      ],
+    },
+    {
+      id: 'onboarding-tour',
+      title: 'The welcome tour',
+      blocks: [
+        { type: 'paragraph', text: 'At your first sign-in QNet shows a short **welcome tour**: the screen dims and, one element at a time, lights up the parts of the **side menu** and the header icons with a card explaining what they are for. The card shows where you are (for example **Step 3 of 10**).' },
+        { type: 'list', items: ['Press **Next** and **Back**, or the right and left arrow keys.', 'On the last step press **Start using QNet**: the tour is completed.', 'Elements you do not see (for example the AI assistant when it is not enabled for you) are skipped.'] },
+        { type: 'note', text: 'The first time the tour must be completed: there is no **Skip the tour** and Esc does not close it. Reloading the page restarts it. When the tour is updated with new content, it is offered once more, but you can skip it.' },
+        { type: 'steps', items: ['To replay it open **Settings** › **System settings**.', 'In the **Welcome tour** card press **Start tour**.', 'Close it at any time with **Skip the tour** or Esc.'] },
+        { type: 'tip', text: 'While you impersonate another user the tour does not start and **Start tour** is disabled: the tour is personal and is never marked as seen for the impersonated user.' },
       ],
     },
     {
@@ -118,7 +129,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Profile**', 'Upload or remove your avatar, choose the **Language** (Italian or English), update your personal details.'],
             ['**Password**', 'Change your password.'],
-            ['**System settings**', 'Choose **Module opening mode**, **Interface scale**, **Date format** and **Theme color**.'],
+            ['**System settings**', 'Choose **Module opening mode**, **Interface scale**, **Date format** and **Theme color**; replay the **Welcome tour**.'],
           ],
         },
         { type: 'paragraph', text: '**Interface scale** enlarges or shrinks the whole application (100% is the normal size). **Date format** decides how you see dates and times, for example **Day/Month/Year** and **24-hour (14:30)**, with a preview. **Theme color** changes the palette of buttons, highlights and the side menu: pick one of the eight combinations (for example **Classic blue**, **Forest green**, **Graphite mono**), each previewing its colors; it applies to both the light and the dark theme. Save with **Save changes**.' },
@@ -140,7 +151,7 @@ const guide: HelpGuide = {
       id: 'dashboard-and-statistics',
       title: 'Dashboard and statistics',
       blocks: [
-        { type: 'paragraph', text: 'The **Dashboard** is the first page after signing in; right now it shows "This section is not available yet." The main numbers are found inside each module, in the **Statistics** panel (for example in **Users**, **Registries**, **Company Sites**, **Products**, **Product Categories**, **Projects**, **Leads** and **Opportunities**).' },
+        { type: 'paragraph', text: 'The **Dashboard** is the first page after signing in: it sums up your open tasks, your time entries, your absences and the key figures of the modules. The details are found inside each module, in the **Statistics** panel (for example in **Users**, **Registries**, **Company Sites**, **Products**, **Product Categories**, **Projects**, **Leads** and **Opportunities**).' },
         { type: 'steps', items: ['Open the module.', 'Press the button with the chart icon (**Show statistics**).', 'To close it, press it again (**Hide statistics**).'] },
         { type: 'paragraph', text: 'The panel shows totals and indicators (for example the allocated budget), distributions such as "By status" and monthly trends such as "New projects per month". qnet remembers if you left it open.' },
       ],
@@ -178,6 +189,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'The **Activity history** shows who changed what and when. It opens from the **Activity** action on the row or inside the record.' },
         { type: 'list', items: ['The type: **Creation**, **Update**, **Deletion** or **Restore**.', 'The affected part, for example **Contact**, **Address**, **Note** or **Document**.', 'Who did it (**System** if it was automatic).', 'The fields changed, with the previous value struck through and the new value.'] },
         { type: 'paragraph', text: 'Filter by **All**, **Creation only** or **Update only**; **Load more** shows older operations.' },
+        { type: 'paragraph', text: 'On work orders, quotes and opportunities the history also records changes to **Supervisors**, **Participants**, **Account managers** and additional fields.' },
       ],
     },
     {
@@ -217,6 +229,7 @@ const guide: HelpGuide = {
             ["I closed a quote as won but don't see the contract.", 'The product category may have **Generates a contract** turned off. Check it in **Product Categories**.'],
             ["An operator doesn't receive assignments.", "Their user record is missing the assignment scope on the category or the site: the module flags it at the top with **Not assignable**."],
             ["I can't convert a lead.", 'The lead already has an opportunity, the campaign has no business function or category, or the registry already has an open opportunity.'],
+            ['The **Site under maintenance** screen appears.', 'Maintenance is in progress and access is temporarily suspended. There is no need to reload: the page checks by itself every few seconds, or press **Retry**. If you were filling in a form, you find it as you left it when maintenance ends, and your session stays valid.'],
             ['The quote PDF gives an error.', 'At least one active layout is needed for Quotes: check **Configuration › Documents › Layouts** and the **Default** layout.'],
             ["I don't receive the password reset email.", 'Check the spam folder; if the link expired, request a new one.'],
           ],

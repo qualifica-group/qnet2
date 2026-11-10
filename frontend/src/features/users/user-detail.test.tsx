@@ -56,6 +56,7 @@ function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWit
     must_set_password: false,
     managed_business_functions: [],
     created_at: null,
+    last_login_at: null,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},
@@ -139,12 +140,16 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
             id: 91,
             business_function: { id: 4, name: 'Sales' },
             product_category: { id: 21, name: 'Photovoltaic' },
+            covers_current_categories: true,
+            covers_legacy_categories: true,
             share_percentage: 60,
           },
           {
             id: 92,
             business_function: { id: 5, name: 'Marketing' },
             product_category: { id: 200, name: 'Campaigns' },
+            covers_current_categories: true,
+            covers_legacy_categories: true,
             share_percentage: 40,
           },
         ]),
@@ -174,7 +179,7 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
     renderDetail(
       user({
         employment: employment([
-          { id: 91, business_function: { id: 4, name: 'Sales' }, product_category: null, share_percentage: 100 },
+          { id: 91, business_function: { id: 4, name: 'Sales' }, product_category: null, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 100 },
         ]),
       }),
     )

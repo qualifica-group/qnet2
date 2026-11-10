@@ -78,6 +78,7 @@ import { documentLayouts } from './en-document-layouts'
 import { dashboard } from './en-dashboard'
 import { navigation } from './en-navigation'
 import { settings } from './en-settings'
+import { agentSalesReport } from './en-agent-sales-report'
 import { requestManagement } from './en-request-management'
 import { categoryTabs } from './en-category-tabs'
 import { enrolleeManagement } from './en-enrollee-management'
@@ -479,6 +480,7 @@ export const en = {
   taskImportances,
   timeEntries,
   commissionConfigurations,
+  agentSalesReport,
   requestManagement,
   categoryTabs,
   enrolleeManagement,

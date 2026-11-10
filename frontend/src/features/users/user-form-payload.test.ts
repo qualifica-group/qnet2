@@ -97,6 +97,7 @@ function original(overrides: Partial<UserDetailWithPermissions> = {}): UserDetai
     must_set_password: false,
     managed_business_functions: [],
     created_at: null,
+    last_login_at: null,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},
@@ -253,8 +254,8 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
         employment: {
           ...emptyEmployment,
           product_lines: [
-            { business_function_id: 4, product_category_id: 21, share_percentage: 70 },
-            { business_function_id: 4, product_category_id: 22, share_percentage: 30 },
+            { business_function_id: 4, product_category_id: 21, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 70 },
+            { business_function_id: 4, product_category_id: 22, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 30 },
           ],
         },
       },
@@ -262,8 +263,8 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     )
 
     expect(payload.employment.product_lines).toEqual([
-      { business_function_id: 4, product_category_id: 21, share_percentage: 70 },
-      { business_function_id: 4, product_category_id: 22, share_percentage: 30 },
+      { business_function_id: 4, product_category_id: 21, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 70 },
+      { business_function_id: 4, product_category_id: 22, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 30 },
     ])
   })
 
@@ -275,7 +276,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
         employment: {
           ...emptyEmployment,
           product_lines: [
-            { business_function_id: 4, product_category_id: 21, share_percentage: 100 },
+            { business_function_id: 4, product_category_id: 21, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 100 },
             { business_function_id: 4, product_category_id: null },
             { business_function_id: null, product_category_id: 22 },
           ],
@@ -285,7 +286,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     )
 
     expect(payload.employment.product_lines).toEqual([
-      { business_function_id: 4, product_category_id: 21, share_percentage: 100 },
+      { business_function_id: 4, product_category_id: 21, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 100 },
     ])
   })
 
@@ -338,7 +339,28 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
 
     expect(payload.employment.covers_all_product_categories).toBe(false)
     expect(payload.employment.product_lines).toEqual([
-      { business_function_id: 4, product_category_id: null, share_percentage: 100 },
+      { business_function_id: 4, product_category_id: null, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 100 },
+    ])
+  })
+
+  it('spec 0367 — sends the "New" / "Old" choice of an "all categories" row, both true on a specific category', () => {
+    const payload = buildCreatePayload(
+      {
+        ...formValues,
+        employment: {
+          ...emptyEmployment,
+          product_lines: [
+            { business_function_id: 4, product_category_id: null, all_categories: true, covers_current_categories: true, covers_legacy_categories: false, share_percentage: 60 },
+            { business_function_id: 5, product_category_id: 21, covers_current_categories: false, covers_legacy_categories: false, share_percentage: 40 },
+          ],
+        },
+      },
+      draft(),
+    )
+
+    expect(payload.employment.product_lines).toEqual([
+      { business_function_id: 4, product_category_id: null, covers_current_categories: true, covers_legacy_categories: false, share_percentage: 60 },
+      { business_function_id: 5, product_category_id: 21, covers_current_categories: true, covers_legacy_categories: true, share_percentage: 40 },
     ])
   })
 

@@ -11,6 +11,7 @@ import {
 // Side effect: registers the `migrations` i18next namespace before this
 // dialog's own `t()` calls run.
 import '@/features/migrations/i18n'
+import { MigrationUpdateExistingField } from '@/features/migrations/migration-update-existing-field'
 import { MigrationUpdatedSinceField } from '@/features/migrations/migration-updated-since-field'
 import { MassImportProgress } from '@/features/migrations/mass-import-progress'
 import { useMassMigration } from '@/features/migrations/use-mass-migration'
@@ -35,6 +36,7 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
   const massState = useMassMigration()
   const { plan } = useMigrationPlan()
   const [updatedSince, setUpdatedSince] = useState('')
+  const [updateExisting, setUpdateExisting] = useState(false)
 
   const enabledSources = (plan?.sources ?? []).filter((item) => item.enabled)
   const sourceLabel = (source: string, fallback: string) =>
@@ -44,6 +46,7 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
     if (!next) {
       massState.reset()
       setUpdatedSince('')
+      setUpdateExisting(false)
     }
     onOpenChange(next)
   }
@@ -71,6 +74,13 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
                 error={massState.startError}
               />
 
+              <MigrationUpdateExistingField
+                checked={updateExisting}
+                onCheckedChange={setUpdateExisting}
+                help={t('massImport.updateExistingHelp')}
+                disabled={massState.isStarting}
+              />
+
               {enabledSources.length === 0 ? (
                 <p className="text-sm text-destructive" role="alert">
                   {t('massImport.empty')}
@@ -88,7 +98,7 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
               <div className="flex justify-end">
                 <Button
                   type="button"
-                  onClick={() => massState.start(updatedSince || null)}
+                  onClick={() => massState.start({ updatedSince: updatedSince || null, updateExisting })}
                   disabled={massState.isStarting || enabledSources.length === 0}
                 >
                   {massState.isStarting ? t('massImport.starting') : t('massImport.start')}

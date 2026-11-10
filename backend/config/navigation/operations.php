@@ -30,6 +30,7 @@ return [
             'icon' => 'clipboard-list',
             'route' => '/project-work-orders',
             'permission' => 'work-orders.view',
+            'feature' => 'navigation.project_work_orders_enabled',
         ],
     ],
 ];

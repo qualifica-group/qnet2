@@ -6,6 +6,7 @@ namespace App\Tables\WorkOrders;
 
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
+use App\Enums\WorkOrderWorkPhase;
 use App\Services\Table\FilterApplier;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Tables\Concerns\HandlesBlankSetFilter;
@@ -22,10 +23,10 @@ use Illuminate\Support\Facades\DB;
  * delegated entirely to WorkOrderStatusResolver so the badge and the filter
  * can never disagree — AC-034), `is_force_closed` (a real boolean column
  * rendered as `badge`+`set`, D-4) and `type` (a real WorkOrderType-cast
- * column, D-10) and `supervisors` (spec 0096 D-7, the Responsabili reached
- * through the `work_order_supervisor` pivot — a to-many rendered as an avatar
- * stack, not sortable, `set`-filtered via whereHas, exactly like
- * QuoteRelationColumns' own `managers`). `registry` (the Anagrafica,
+ * column, D-10) and `supervisors`/`participants` (spec 0096 D-7, the
+ * Responsabili and the Partecipanti reached through their pivots — to-many
+ * columns rendered as an avatar stack, not sortable, `set`-filtered via
+ * whereHas, exactly like QuoteRelationColumns' own `managers`). `registry` (the Anagrafica,
  * reached through `quote.opportunity`) is delegated to
  * WorkOrderRegistryColumn, `contract_expiry_date` (the Contratto's own
  * `expiry_date`) to WorkOrderContractExpiryColumn.
@@ -47,12 +48,15 @@ final class WorkOrderDerivedColumns
 
     private const string STATUS_COLUMN = 'status';
 
-    /** The Responsabili (spec 0096, D-7): a to-many over `work_order_supervisor`. */
     private const string SUPERVISORS_COLUMN = 'supervisors';
 
-    private const string SUPERVISORS_RELATION = 'supervisors';
+    private const string PARTICIPANTS_COLUMN = 'participants';
 
-    private const string SUPERVISORS_PIVOT = 'work_order_supervisor';
+    /** The to-many team columns (spec 0096, D-7): column id, also the relation name => pivot table. */
+    private const array TEAM_PIVOTS = [
+        self::SUPERVISORS_COLUMN => 'work_order_supervisor',
+        self::PARTICIPANTS_COLUMN => 'work_order_participant',
+    ];
 
     private const string USERS_TABLE = 'users';
 
@@ -71,6 +75,7 @@ final class WorkOrderDerivedColumns
         private readonly WorkOrderContractExpiryColumn $contractExpiryColumn,
         private readonly WorkOrderRenewalColumn $renewalColumn,
         private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
+        private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
     ) {}
 
     /**
@@ -86,14 +91,20 @@ final class WorkOrderDerivedColumns
             return true;
         }
 
+        if ($columnId === WorkOrderWorkPhaseColumn::COLUMN) {
+            $this->workPhaseColumn->applyFilter($query, $this->setFilterValues($filter));
+
+            return true;
+        }
+
         if ($columnId === self::IS_FORCE_CLOSED_COLUMN) {
             $this->applyIsForceClosedFilter($query, $this->setFilterValues($filter));
 
             return true;
         }
 
-        if ($columnId === self::SUPERVISORS_COLUMN) {
-            $this->applySupervisorsFilter($query, $this->setFilterValues($filter), $this->matchesBlankEntry($filter));
+        if (array_key_exists($columnId, self::TEAM_PIVOTS)) {
+            $this->applyTeamFilter($query, $columnId, $this->setFilterValues($filter), $this->matchesBlankEntry($filter));
 
             return true;
         }
@@ -142,41 +153,41 @@ final class WorkOrderDerivedColumns
     }
 
     /**
-     * `set` filter on the responsabili's own `users.name`, via `whereHas`
+     * `set` filter on the team members' own `users.name`, via `whereHas`
      * with BOUND values — never a raw fragment built from client input
-     * (backend.md §8). Matches a commessa when ANY of its responsabili is
+     * (backend.md §8). Matches a commessa when ANY of the members is
      * among the picked names, the same semantics the Offerta's `managers`
-     * column already has. The column id itself comes from the static
-     * catalogue, never from the request.
+     * column already has. The relation comes from the static catalogue,
+     * never from the request.
      *
      * @param  Builder<Model>  $query
      * @param  array<int, string>  $values
      */
-    private function applySupervisorsFilter(Builder $query, array $values, bool $matchesBlank = false): void
+    private function applyTeamFilter(Builder $query, string $relation, array $values, bool $matchesBlank): void
     {
         if ($values === [] && ! $matchesBlank) {
             return;
         }
 
-        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+        $query->where(static function (Builder $group) use ($relation, $values, $matchesBlank): void {
             if ($values !== []) {
-                $group->whereHas(self::SUPERVISORS_RELATION, static function (Builder $userQuery) use ($values): void {
+                $group->whereHas($relation, static function (Builder $userQuery) use ($values): void {
                     $userQuery->whereIn(self::USER_LABEL_COLUMN, $values);
                 });
             }
 
-            // The blank entry ("(Vuoti)"): the commesse with no responsabile.
+            // The blank entry ("(Vuoti)"): the commesse with nobody in that role.
             if ($matchesBlank) {
-                $group->orWhereDoesntHave(self::SUPERVISORS_RELATION);
+                $group->orWhereDoesntHave($relation);
             }
         });
     }
 
     /**
      * ORDER BY `quotes.code`/`quotes.title` via a correlated subquery — never
-     * a row-multiplying JOIN on the main query. `supervisors` never reaches
-     * here: a to-many has no single sort key, so the catalogue declares it
-     * `sortable: false`. `status`/`is_force_closed`/
+     * a row-multiplying JOIN on the main query. `supervisors`/`participants`
+     * never reach here: a to-many has no single sort key, so the catalogue
+     * declares them `sortable: false`. `status`/`is_force_closed`/
      * `type` never reach here: `status` is not sortable (excluded from the
      * whitelist upstream) and the other two are real columns, sorted by the
      * generic engine's plain ORDER BY.
@@ -243,10 +254,11 @@ final class WorkOrderDerivedColumns
             self::TYPE_COLUMN => $this->filterOptions($search, WorkOrderType::values()),
             self::IS_FORCE_CLOSED_COLUMN => $this->filterOptions($search, ['true', 'false']),
             self::STATUS_COLUMN => $this->filterOptions($search, WorkOrderStatus::values()),
-            self::SUPERVISORS_COLUMN => $this->withBlankEntry(
-                $this->distinctSupervisorNames($search, $query, $limit),
+            WorkOrderWorkPhaseColumn::COLUMN => $this->filterOptions($search, WorkOrderWorkPhase::values()),
+            self::SUPERVISORS_COLUMN, self::PARTICIPANTS_COLUMN => $this->withBlankEntry(
+                $this->distinctTeamNames(self::TEAM_PIVOTS[$columnId], $search, $query, $limit),
                 $search,
-                fn (): bool => (clone $query)->whereDoesntHave(self::SUPERVISORS_RELATION)->exists(),
+                fn (): bool => (clone $query)->whereDoesntHave($columnId)->exists(),
             ),
             WorkOrderRegistryColumn::COLUMN => $this->registryColumn->distinctValues($search, $query, $limit),
             WorkOrderWorkflowStatusColumn::COLUMN => $this->workflowStatusColumn->distinctValues($search, $query, $limit),
@@ -255,7 +267,7 @@ final class WorkOrderDerivedColumns
     }
 
     /**
-     * Distinct responsabile names among the work orders matching $query —
+     * Distinct team-member names among the work orders matching $query —
      * scoped by every OTHER active filter (Excel-like distinct values, spec
      * 0004/0005), unlike the enum columns above which list their full
      * declared set. Mirrors QuoteRelationColumns::distinctManagerNames(), a
@@ -264,13 +276,13 @@ final class WorkOrderDerivedColumns
      * @param  Builder<Model>  $query
      * @return array<int, string>
      */
-    private function distinctSupervisorNames(?string $search, Builder $query, int $limit): array
+    private function distinctTeamNames(string $pivot, ?string $search, Builder $query, int $limit): array
     {
         $workOrderIds = (clone $query)->select('work_orders.id');
 
         return DB::table(self::USERS_TABLE)
-            ->join(self::SUPERVISORS_PIVOT, self::SUPERVISORS_PIVOT.'.user_id', '=', self::USERS_TABLE.'.id')
-            ->whereIn(self::SUPERVISORS_PIVOT.'.work_order_id', $workOrderIds)
+            ->join($pivot, $pivot.'.user_id', '=', self::USERS_TABLE.'.id')
+            ->whereIn($pivot.'.work_order_id', $workOrderIds)
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where(self::USERS_TABLE.'.'.self::USER_LABEL_COLUMN, 'like', '%'.$this->escapeLike($search).'%');
             })

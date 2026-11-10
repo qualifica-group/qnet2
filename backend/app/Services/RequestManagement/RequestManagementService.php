@@ -150,6 +150,7 @@ final class RequestManagementService
 
     public function __construct(
         private readonly RequestClientProfileWriter $clientProfileWriter,
+        private readonly RequestRegistryWriter $registryWriter,
         private readonly ProductCategoryCoherence $coherence,
         private readonly RequestProductLineWriter $productLineWriter,
         private readonly RequestOfferLineWriter $offerLineWriter,
@@ -175,7 +176,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_ga1_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_ga1_id?: int|null, manager_ga5_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
@@ -205,6 +206,11 @@ final class RequestManagementService
             // is added, which would double-log it. Persisted by the shared
             // `$opportunity->save()` below.
             $opportunity->fill(Arr::only($data, self::OPPORTUNITY_SCALAR_FIELDS));
+
+            // Step 0-ter: the client select (decisione utente 2026-11-09),
+            // before the status step: a positive close in this same request
+            // is checked against the new client's fiscal identity.
+            $this->registryWriter->apply($opportunity, $data);
 
             // Step 1: funzione aziendale + categoria prodotto (user directive
             // 2026-07-31), still an Opportunity-level classification (D-2).
@@ -308,6 +314,10 @@ final class RequestManagementService
             // grid cell is its only channel today and sends it alone.
             if (array_key_exists('manager_ga1_id', $data)) {
                 $this->attributionWriter->applyManagerGa1($quote, $data['manager_ga1_id'], $changed, $old);
+            }
+
+            if (array_key_exists('manager_ga5_id', $data)) {
+                $this->attributionWriter->applyManagerGa5($quote, $data['manager_ga5_id'], $changed, $old);
             }
 
             // Step 4: reward assignments (spec 0059, AC-023; D-4/D-12) —

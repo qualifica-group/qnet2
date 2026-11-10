@@ -199,6 +199,13 @@ export const enums = {
   },
   // Calculated work order status (spec 0149) from the root tasks and
   // `is_force_closed`, the grid's `status` badge column — no DB column.
+  work_order_work_phase: {
+    to_plan: 'To plan',
+    in_progress: 'In progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    terminated: 'Terminated',
+  },
   work_order_status: {
     open: 'Open',
     in_progress: 'In progress',
@@ -227,6 +234,16 @@ export const enums = {
     created_by_me: 'Created by me',
     observed_by_me: 'Observed by me',
     all: 'All',
+    visible: 'All visible',
+  },
+  commercial_assignment_scope: {
+    supervisor: 'Supervisor',
+    manager: 'Account manager',
+    visible: 'All visible',
+  },
+  work_order_assignment_scope: {
+    supervisor: 'Supervisor',
+    participant: 'Participant',
     visible: 'All visible',
   },
   // Spec 0284: outcome of a staff training (grid, filter, detail, form).

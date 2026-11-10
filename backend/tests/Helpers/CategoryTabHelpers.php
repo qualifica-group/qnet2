@@ -158,26 +158,14 @@ if (! function_exists('categoryTabRecord')) {
         return match ($module) {
             'request-management' => categoryTabRequestQuote($categories),
             'enrollee-management' => categoryTabRequestQuote($categories, 'closed_won'),
-            'opportunities' => categoryTabOpportunity(...$categories),
-            'quotes' => categoryTabQuote($categories),
-            'contracts' => categoryTabContract($categories),
-            'work-orders' => categoryTabWorkOrder($categories),
         };
     }
 }
 
-if (! function_exists('categoryTabCountKey')) {
-    /** The count field of the strip payload: requests for the two request modules, records otherwise. */
-    function categoryTabCountKey(string $module): string
-    {
-        return in_array($module, ['request-management', 'enrollee-management'], true) ? 'requests_count' : 'records_count';
-    }
-}
-
 if (! function_exists('categoryTabModules')) {
-    /** @return array<int, string> the six modules with a category tab strip */
+    /** @return array<int, string> the two modules with a category tab strip */
     function categoryTabModules(): array
     {
-        return ['request-management', 'enrollee-management', 'opportunities', 'quotes', 'contracts', 'work-orders'];
+        return ['request-management', 'enrollee-management'];
     }
 }

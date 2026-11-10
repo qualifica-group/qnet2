@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\EmploymentProfile;
+use App\Models\JobRole;
 use App\Models\OperationalSite;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,6 +108,29 @@ it('exposes only the authenticated user\'s physical Sede id on /me (AC-022)', fu
         ->assertOk()
         ->assertJsonPath('data.employment.primary_operational_site_id', $physical->id)
         ->assertJsonMissingPath('data.employment.operational_sites');
+});
+
+it('exposes the authenticated user\'s job roles on /me for the app header', function () {
+    $user = User::factory()->create();
+    $jobRole = JobRole::factory()->create();
+    EmploymentProfile::factory()->create(['user_id' => $user->id])->jobRoles()->attach($jobRole);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/auth/me')
+        ->assertOk()
+        ->assertJsonPath('data.employment.job_roles', [['id' => $jobRole->id, 'name' => $jobRole->name]]);
+});
+
+it('returns an empty job role list on /me for an employee without job roles', function () {
+    $user = User::factory()->create();
+    EmploymentProfile::factory()->create(['user_id' => $user->id]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/auth/me')
+        ->assertOk()
+        ->assertJsonPath('data.employment.job_roles', []);
 });
 
 it('omits employment on /me for a user with no employment profile', function () {

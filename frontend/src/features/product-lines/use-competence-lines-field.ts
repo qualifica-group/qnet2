@@ -6,6 +6,7 @@ import {
   COMPETENCE_SHARE_TOTAL,
   competenceShareTotal,
   emptyCompetenceLineRow,
+  type CompetenceCategoryAge,
   type CompetenceLineRow,
   type KnownProductLine,
 } from '@/features/product-lines/types'
@@ -108,9 +109,16 @@ export function useCompetenceLinesField({ value, onChange, knownLines }: UseComp
    */
   const setRowAllCategories = (index: number, checked: boolean) => {
     const next = value.map((row, rowIndex) =>
-      rowIndex === index ? { ...row, product_category_id: null, all_categories: checked } : row,
+      rowIndex === index
+        ? { ...row, product_category_id: null, all_categories: checked, covers_current_categories: true, covers_legacy_categories: true }
+        : row,
     )
     onChange(next)
+  }
+
+  /** Spec 0367: "Nuove" / "Vecchie" on an "all categories" row; at least one stays on (the server rejects neither). */
+  const setRowCategoryAge = (index: number, age: CompetenceCategoryAge, checked: boolean) => {
+    onChange(value.map((row, rowIndex) => (rowIndex === index ? { ...row, [age]: checked } : row)))
   }
 
   /** Spec 0346: the share as typed in the row's number input; blank (or not a number) reads as no share yet. */
@@ -126,6 +134,7 @@ export function useCompetenceLinesField({ value, onChange, knownLines }: UseComp
     setRowBusinessFunction,
     setRowProductCategory,
     setRowAllCategories,
+    setRowCategoryAge,
     setRowSharePercentage,
     shareTotal,
     businessFunctionLabel,

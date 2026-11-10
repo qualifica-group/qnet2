@@ -51,6 +51,9 @@ export interface ProductLineRow {
  * DIFFERENT shape from the card's `ProductLineRow` — kept as its own type
  * rather than reused for two contracts (spec 0132 constraint).
  */
+/** Spec 0367: the two halves of a function's catalogue an "all categories" competence row may keep. */
+export type CompetenceCategoryAge = 'covers_current_categories' | 'covers_legacy_categories'
+
 export interface CompetenceLineRow {
   business_function_id: number | null
   product_category_id: number | null
@@ -60,6 +63,10 @@ export interface CompetenceLineRow {
    * unfinished pick.
    */
   all_categories?: boolean
+  /** Spec 0367: on an `all_categories` row, whether it keeps the new categories ("Nuove"); absent = true. */
+  covers_current_categories?: boolean
+  /** Spec 0367: on an `all_categories` row, whether it keeps the legacy [OLD] categories ("Vecchie"); absent = true. */
+  covers_legacy_categories?: boolean
   /** Spec 0346: the person's informative share on the row, 1..100; null while being typed. */
   share_percentage?: number | null
 }
@@ -79,6 +86,9 @@ export interface ProductLineLike {
   root_category?: ProductLineRelationRef
   /** Spec 0346: a competence row's share, rendered after the category. */
   share_percentage?: number
+  /** Spec 0367: a competence "all categories" row restricted to the new or to the legacy categories. */
+  covers_current_categories?: boolean
+  covers_legacy_categories?: boolean
 }
 
 /**

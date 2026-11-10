@@ -84,15 +84,17 @@ vi.mock('@/features/table/table-view', () => ({
     { refresh: () => void },
     {
       domain: string
+      scope?: { attributeColumnsFromFilters?: boolean }
       onAction?: (action: TableActionDefinition, row: TableRow) => void
       getBulkActions?: (selection: { rows: TableRow[] }) => BulkAction[]
     }
-  >(function TableViewStub({ domain, onAction, getBulkActions }, ref) {
+  >(function TableViewStub({ domain, scope, onAction, getBulkActions }, ref) {
     const bulk =
       getBulkActions?.({ rows: Array.from({ length: selectionSize }, (_, i) => ({ ...ROW, id: i + 1 })) }) ?? []
     useImperativeHandle(ref, () => ({ refresh: vi.fn() }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
+        <p>{scope?.attributeColumnsFromFilters ? 'attr-columns-from-filters' : 'no-attr-columns'}</p>
         <button type="button" onClick={() => onAction?.(VIEW_ACTION, ROW)}>
           view row
         </button>
@@ -143,6 +145,7 @@ describe('ContractsTable — domain wiring', () => {
   it('mounts <TableView domain="contracts"> with no client-declared columns', () => {
     renderTable()
     expect(screen.getByRole('region', { name: 'table-contracts' })).toBeInTheDocument()
+    expect(screen.getByText('attr-columns-from-filters')).toBeInTheDocument()
   })
 
   it('never renders a "New contract" affordance (D-6)', () => {

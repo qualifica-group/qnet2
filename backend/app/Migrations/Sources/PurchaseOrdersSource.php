@@ -43,9 +43,9 @@ class PurchaseOrdersSource extends AbstractMigrationSource
 {
     use MapsLegacyOperationalRecord, RequiresLegacyAnchors;
 
-    private const int DESCRIPTION_MAX = 255;
+    public const int DESCRIPTION_MAX = 255;
 
-    private const int SECTOR_NOTES_MAX = 500;
+    public const int SECTOR_NOTES_MAX = 500;
 
     public function __construct(
         ExternalApiClient $client,
@@ -227,7 +227,7 @@ class PurchaseOrdersSource extends AbstractMigrationSource
     /**
      * The work order of every line when they all share one, as the generation from RDA does.
      */
-    private function sharedWorkOrderId(PurchaseOrder $order): ?int
+    public function sharedWorkOrderId(PurchaseOrder $order): ?int
     {
         $workOrderIds = $order->lines()->pluck('work_order_id')->unique()->values();
 

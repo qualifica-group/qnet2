@@ -213,6 +213,18 @@ final class RequestAttributionWriter
     }
 
     /**
+     * The "Operatore APL" slot (spec 0373 D-10): same terms as the GA1 above,
+     * no notification.
+     *
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    public function applyManagerGa5(Quote $quote, mixed $value, array &$changed, array &$old): void
+    {
+        $this->operatorWriter->applyGa5($quote, $value === null ? null : (int) $value, $changed, $old);
+    }
+
+    /**
      * The WHOLE team, as the work panel now writes it (spec 0097, D-1/D-5):
      * delegated to the SAME RequestOperatorWriter — which reports
      * `manager_slots` on any genuine move and `operator_id` only when the

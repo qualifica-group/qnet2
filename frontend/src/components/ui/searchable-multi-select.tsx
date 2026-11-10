@@ -2,6 +2,7 @@ import { useCallback, useId, useMemo, useState } from 'react'
 import { Popover as PopoverPrimitive } from 'radix-ui'
 import { ChevronDown, Search, X } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { SELECT_POPOVER_WIDTH_CLASS } from '@/components/ui/select-popup-width'
 import { cn } from '@/lib/utils'
 
 /** One selectable entry: an opaque value plus the label rendered verbatim. */
@@ -65,7 +66,7 @@ const PILL_CLASS =
 const PILL_MUTED_CLASS =
   'inline-flex shrink-0 items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground'
 const CONTENT_CLASS =
-  'z-50 flex w-(--radix-popover-trigger-width) min-w-64 flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95'
+  'z-50 flex flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95'
 const SEARCH_ROW_CLASS = 'flex items-center gap-2 border-b px-2.5'
 const SEARCH_INPUT_CLASS =
   'h-9 w-full min-w-0 bg-transparent text-xs outline-none placeholder:text-muted-foreground'
@@ -276,7 +277,7 @@ export function SearchableMultiSelect({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          className={CONTENT_CLASS}
+          className={cn(CONTENT_CLASS, SELECT_POPOVER_WIDTH_CLASS)}
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <div className={SEARCH_ROW_CLASS}>

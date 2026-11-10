@@ -71,11 +71,12 @@ const ROW: TableRow = { id: 1, actions: ['delete'], title: 'Installazione impian
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
     { refresh: () => void },
-    { domain: string; onAction?: (action: TableActionDefinition, row: TableRow) => void }
-  >(function TableViewStub({ domain, onAction }, ref) {
+    { domain: string; scope?: { attributeColumnsFromFilters?: boolean }; onAction?: (action: TableActionDefinition, row: TableRow) => void }
+  >(function TableViewStub({ domain, scope, onAction }, ref) {
     useImperativeHandle(ref, () => ({ refresh: () => {} }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
+        <p>{scope?.attributeColumnsFromFilters ? 'attr-columns-from-filters' : 'no-attr-columns'}</p>
         <button type="button" onClick={() => onAction?.(DELETE_ACTION, ROW)}>
           delete row
         </button>
@@ -134,6 +135,7 @@ describe('WorkOrdersPage — permission gating (AC-070)', () => {
     renderPage()
 
     expect(screen.getByRole('region', { name: 'table-work-orders' })).toBeInTheDocument()
+    expect(screen.getByText('attr-columns-from-filters')).toBeInTheDocument()
   })
 })
 

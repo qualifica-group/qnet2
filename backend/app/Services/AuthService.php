@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataObjects\Auth\LoginResult;
 use App\DataObjects\Users\ProfileData;
 use App\Models\User;
+use App\Support\Maintenance\MaintenanceMode;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -14,7 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
-    public function __construct(private readonly ProfileWriter $profileWriter) {}
+    public function __construct(
+        private readonly ProfileWriter $profileWriter,
+        private readonly MaintenanceMode $maintenance,
+    ) {}
 
     /**
      * Verify the credentials and issue a new access token.
@@ -23,11 +27,30 @@ class AuthService
      */
     public function login(string $email, string $password, string $deviceName): LoginResult
     {
+        // Step 1: check the credentials.
         $user = $this->authenticate($email, $password);
 
+        // Step 2: during maintenance only the excluded users sign in (spec 0376).
+        $this->maintenance->assertCanSignIn($user);
+
+        // Step 3: record the login (spec 0370).
+        $this->recordLogin($user);
+
+        // Step 4: issue the token.
         $token = $user->createToken($deviceName)->plainTextToken;
 
         return new LoginResult(user: $user, token: $token);
+    }
+
+    /**
+     * A login is not an edit of the record: `updated_at` stays put and no model
+     * event fires, so the activity log gets no entry (spec 0370 D-4).
+     */
+    private function recordLogin(User $user): void
+    {
+        User::withoutTimestamps(
+            static fn (): bool => $user->forceFill(['last_login_at' => now()])->saveQuietly(),
+        );
     }
 
     /**

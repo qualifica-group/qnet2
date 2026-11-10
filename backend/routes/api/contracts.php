@@ -1,7 +1,5 @@
 <?php
 
-use App\Http\Controllers\CategoryTabs\GridCategoryTabPreferencesController;
-use App\Http\Controllers\CategoryTabs\GridCategoryTabsController;
 use App\Http\Controllers\Contracts\ContractController;
 use App\Http\Controllers\Contracts\ContractForSelectController;
 use App\Http\Controllers\Contracts\ContractMultiProgrammableLinesController;
@@ -14,7 +12,6 @@ use App\Http\Controllers\Contracts\ContractTerminationController;
 use App\Http\Controllers\Contracts\ContractValidationController;
 use App\Http\Controllers\Contracts\ContractWorkOrderBatchController;
 use App\Http\Controllers\Contracts\ContractWorkOrderController;
-use App\Tables\CategoryTabs\CategoryTabGrid;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -38,16 +35,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('contracts/for-select', ContractForSelectController::class);
 Route::get('contracts/multi-programmable-lines', ContractMultiProgrammableLinesController::class);
 Route::post('contracts/multi-quote-work-orders', ContractMultiQuoteWorkOrderController::class);
-
-// Spec 0335 (D-8): the category tab strip of the grid (counts + the actor's
-// favourites). Declared BEFORE the wildcard, otherwise "product-categories"
-// is swallowed by its route model binding.
-Route::get('contracts/product-categories', GridCategoryTabsController::class)
-    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Contracts->value);
-Route::get('contracts/category-tab-preferences', [GridCategoryTabPreferencesController::class, 'show'])
-    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Contracts->value);
-Route::put('contracts/category-tab-preferences', [GridCategoryTabPreferencesController::class, 'update'])
-    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Contracts->value);
 
 // Contracts show/update. Authorization (contracts.view/update) is enforced
 // server-side in ContractController via ContractPolicy on every endpoint.

@@ -138,6 +138,10 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
         expect(costCategory($branchName, $root->id)?->is_active)->toBeFalse();
     }
 
+    // User directive 2026-11-07: the legacy cost branch is marked legacy too.
+    expect($root->is_legacy)->toBeTrue()
+        ->and(costCategory(CostProductCatalogue::BRANCHES['products'], $root->id)->is_legacy)->toBeTrue();
+
     $articles = costCategory(CostProductCatalogue::BRANCHES['products'], $root->id);
     $article = Product::query()->where('old_source', 'products')->where('old_id', 2)->firstOrFail();
 

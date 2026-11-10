@@ -9,11 +9,10 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The (work order, source offer) pairs behind the category tab strip of the
- * Commesse grid (spec 0335 rev.3, D-9): a commessa's own `quote_id` (mono-offer)
+ * The (work order, source offer) pairs behind the Commesse category filters and
+ * visibility scope (spec 0335 rev.3, D-9): a commessa's own `quote_id` (mono-offer)
  * plus the offers of its lines in `quote_line_work_order`, the only source of a
- * multi-offer one (spec 0267, D-4). Same set as `WorkOrder::sourceQuoteIds()`,
- * as SQL, so the counts and the row scope share one rule.
+ * multi-offer one (spec 0267, D-4). Same set as `WorkOrder::sourceQuoteIds()`, as SQL.
  */
 final class WorkOrderSourceQuotes
 {

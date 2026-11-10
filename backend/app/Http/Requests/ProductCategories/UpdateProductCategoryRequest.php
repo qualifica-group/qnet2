@@ -10,6 +10,7 @@ use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use App\Http\Requests\Concerns\ValidatesManagerLabelPositions;
 use App\Models\ProductCategory;
 use App\Rules\ActiveBusinessFunction;
+use Closure;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -97,11 +98,30 @@ class UpdateProductCategoryRequest extends FormRequest
             'manager_labels' => ['sometimes', 'nullable', 'array'],
             'manager_labels.*' => ['nullable', 'string', 'max:'.ProductCategory::MANAGER_LABEL_MAX_LENGTH],
             'inherits_manager_labels' => ['sometimes', 'boolean'],
+            // Spec 0374, D-9: a legacy root can point at a current root (a root that is not legacy).
+            'current_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')->where(
+                fn ($roots) => $roots->whereNull('parent_id')->where('is_legacy', false),
+            ), $this->legacyRootRule()],
             // Spec 0350: active sub-accounts, or the one the category already has.
             'revenue_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('revenue_types', 'id')->where(
                 fn ($types) => $types->where('is_active', true)->orWhere('id', $this->authorizationModel()?->getAttribute('revenue_type_id')),
             )],
         ];
+    }
+
+    /**
+     * The link lives on a legacy ROOT only (after this request's own reparent, if any); null always clears it.
+     */
+    private function legacyRootRule(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $category = $this->authorizationModel();
+            $parentId = $this->has('parent_id') ? $this->input('parent_id') : $category?->getAttribute('parent_id');
+
+            if ($value !== null && (! $category?->getAttribute('is_legacy') || $parentId !== null)) {
+                $fail(__('product_categories.current_category_not_legacy_root'));
+            }
+        };
     }
 
     public function withValidator(Validator $validator): void

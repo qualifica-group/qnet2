@@ -3,6 +3,7 @@ import type { PersonalDataCard } from '@/features/personal-data/types'
 import type { ModuleOpenPreferences } from '@/features/modules/types'
 import type { DateFormat, TimeFormat } from '@/lib/formatting/date-display'
 import type { ColorPreset } from '@/features/appearance/color-preset'
+import type { OnboardingStatus } from '@/features/onboarding/types'
 
 export interface User {
   id: number
@@ -24,6 +25,12 @@ export interface User {
    */
   must_set_password: boolean
   /**
+   * Welcome tour state (spec 0368), computed server-side against the current tour
+   * version: `required` never seen (mandatory), `outdated` an older version seen
+   * (offered once, skippable), `completed` current version seen.
+   */
+  onboarding_status: OnboardingStatus
+  /**
    * The user's personal-data card (registry + contacts + addresses), or null
    * when none has been created yet. Same shape as the Users module (ADR 0013).
    */
@@ -31,13 +38,16 @@ export interface User {
   /**
    * Employment slice of the connected actor (spec 0015 `employment`), narrowed
    * to what the app reads from it: the Sede operativa the request-management
-   * create form defaults to (user directive 2026-08-04). Since spec 0103 the
-   * Sede lives on the pivot rather than a column, hence the renamed field —
-   * the field itself stays the FISICA site only. Absent when the actor has no
-   * employment profile — the full profile stays the Users module's own
-   * `EmploymentDetail`.
+   * create form defaults to (user directive 2026-08-04) and the job roles shown
+   * under the name in the app header. Since spec 0103 the Sede lives on the
+   * pivot rather than a column, hence the renamed field — the field itself
+   * stays the FISICA site only. Absent when the actor has no employment
+   * profile — the full profile stays the Users module's own `EmploymentDetail`.
    */
-  employment?: { primary_operational_site_id: number | null } | null
+  employment?: {
+    primary_operational_site_id: number | null
+    job_roles: { id: number; name: string }[]
+  } | null
   created_at: string | null
   /** Per-user modal-vs-page open mode preference (spec 0042). Never null on the wire. */
   module_open_preferences: ModuleOpenPreferences

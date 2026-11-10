@@ -52,6 +52,8 @@ export interface RequestManagerRef {
   position: number
 }
 
+export type RequestRegistryLockReason = 'contract' | 'lead'
+
 /** A hydrated `{id, name}` relation projection (registry/referent/commercial/reporter). */
 export interface RequestRelationRef {
   id: number
@@ -180,6 +182,8 @@ export interface RequestWorkPanel extends RequestForecast {
   opportunity_id: number
   name: string
   registry: RequestRelationRef | null
+  /** Why the client select is read-only (a contract exists, or the client comes from the lead); `null` when it can change. */
+  registry_lock_reason: RequestRegistryLockReason | null
   referent: RequestRelationRef | null
   /** "Fonte" (user directive 2026-07-22): editable from the panel's attribution section. */
   source_id: number | null

@@ -7,6 +7,7 @@ return [
     'no_layout_available' => 'No layout is available to generate the document: create or activate a default layout for Quotes.',
     'offer_line_required' => 'The offer must contain at least one product line.',
     'offer_line_required_for_status' => 'You cannot move the offer to this status without at least one product line.',
+    'offer_line_required_to_validate_contract' => 'You cannot validate the contract without at least one product line on the offer.',
     // Spec 0360, D-4: a REVENUE row assigned to a work order is frozen.
     'line_removal_blocked_by_work_order' => 'The line :product is assigned to work order :code: delete the work order first.',
     'line_locked_by_work_order' => 'The line is assigned to work order :code and cannot be changed.',

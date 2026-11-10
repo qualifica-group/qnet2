@@ -9,6 +9,7 @@ use App\Models\WorkOrder;
 use App\Notes\Contracts\EnlistsMentionedUsers;
 use App\Notes\Contracts\NotableEntity;
 use App\Support\ManagerPositions;
+use App\Support\PeopleChangeLog;
 use App\Support\PositionalPivotSync;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -169,8 +170,10 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
             ]);
         }
 
+        $before = PeopleChangeLog::capture($record);
         $attached = PositionalPivotSync::sync($record->participants(), ManagerPositions::syncMap($slots))['attached'];
         $record->unsetRelation('participants');
+        PeopleChangeLog::log($before);
 
         return array_map('intval', $attached);
     }

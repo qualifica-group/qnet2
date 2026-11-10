@@ -31,6 +31,7 @@ const SERVER_ERROR_FIELDS = [
   'attributes',
   'business_function_id',
   'revenue_type_id',
+  'current_category_id',
   'requires_quote',
   'is_selectable',
   'is_active',

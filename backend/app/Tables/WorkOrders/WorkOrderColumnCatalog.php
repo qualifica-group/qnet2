@@ -164,6 +164,16 @@ final class WorkOrderColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // Hidden: it only backs the status tabs of the Commesse page (WorkOrderWorkPhaseColumn).
+                'id' => WorkOrderWorkPhaseColumn::COLUMN,
+                'label' => 'workOrders.columns.work_phase',
+                'type' => 'badge',
+                'visible' => false,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 // Computed (spec 0321, D-1), its date rides in the row as `completion_recorded_on`, never a real column.
                 'id' => 'completion_percentage',
                 'label' => 'workOrders.columns.completion_percentage',
@@ -222,6 +232,22 @@ final class WorkOrderColumnCatalog
                 'editableField' => 'supervisor_ids',
             ],
             [
+                // Partecipanti: same avatar stack and `set` filter as the
+                // Responsabili. The cell holds a plain list of people, turned
+                // into the positional `participant_slots` by WorkOrderCellWriter.
+                'id' => 'participants',
+                'label' => 'workOrders.columns.participants',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'multiselect',
+                'relation' => ['resource' => 'users'],
+                'editableField' => 'participant_slots',
+            ],
+            [
                 // Spec 0322: the "Stato lavorazione", a real FK column rendered as a
                 // colored badge; the select editor offers only the row's own set
                 // (`work_order_workflow_status_options`, WorkOrderWorkflowStatusColumn).
@@ -257,11 +283,13 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'callback_date', 'type' => 'date'],
             ['columnId' => 'is_force_closed', 'type' => 'set'],
             ['columnId' => 'status', 'type' => 'set'],
+            ['columnId' => WorkOrderWorkPhaseColumn::COLUMN, 'type' => 'set'],
             ['columnId' => 'work_order_workflow_status', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
             ['columnId' => 'updated_at', 'type' => 'date'],
             ['columnId' => 'start_date', 'type' => 'date'],
             ['columnId' => 'supervisors', 'type' => 'set'],
+            ['columnId' => 'participants', 'type' => 'set'],
         ];
     }
 

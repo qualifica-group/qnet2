@@ -6,6 +6,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import { FunctionBadges } from '@/features/users/function-badges'
 import type { AssignmentSummary } from '@/features/users/user-assignment'
 import type { UserDetail } from '@/features/users/types'
+import { formatDateTime } from '@/lib/formatting/date-display'
 
 /**
  * Identity band and KPI strip of the user record card. Kept in one file: both
@@ -41,6 +42,11 @@ export function UserDetailHeader({ user }: { user: UserDetail }) {
           </Badge>
           {user.must_set_password ? (
             <Badge variant="outline">{t('users.detail.pendingFirstAccess')}</Badge>
+          ) : null}
+          {user.last_login_at ? (
+            <Badge variant="outline">
+              {t('users.columns.last_login_at')}: {formatDateTime(user.last_login_at)}
+            </Badge>
           ) : null}
           {functions.length > 0 ? <FunctionBadges refs={functions} managedIds={managedIds} /> : null}
           {user.roles.map((role) => (

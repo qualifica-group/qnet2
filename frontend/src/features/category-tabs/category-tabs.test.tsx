@@ -34,6 +34,7 @@ function renderTabs(overrides: Partial<TabsProps> = {}) {
     favoriteCategoryIds: [],
     showOnlyFavorites: false,
     onToggleFavorite: vi.fn(),
+    onSetFavorites: vi.fn(),
     onShowOnlyFavoritesChange: vi.fn(),
     ...overrides,
   }
@@ -49,6 +50,34 @@ beforeAll(async () => {
 })
 
 describe('CategoryTabs', () => {
+  it('shows placeholder chips next to "All" and the menu while the categories load', () => {
+    const { container } = render(
+      <CategoryTabs
+        categories={[]}
+        selectedCategoryId={null}
+        onSelect={vi.fn()}
+        favoriteCategoryIds={[]}
+        showOnlyFavorites={false}
+        onToggleFavorite={vi.fn()}
+        onSetFavorites={vi.fn()}
+        onShowOnlyFavoritesChange={vi.fn()}
+        isLoading
+      />,
+    )
+
+    expect(screen.getByRole('tablist', { busy: true })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['All'])
+    expect(categoryButton(/./)).toBeInTheDocument()
+    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0)
+  })
+
+  it('shows no placeholder once the categories are there', () => {
+    renderTabs()
+
+    expect(screen.queryByRole('tablist', { busy: true })).not.toBeInTheDocument()
+    expect(document.querySelector('[data-slot="skeleton"]')).toBeNull()
+  })
+
   it('renders "All" first and selected by default, plus one tab per category with its count', () => {
     renderTabs()
 
@@ -151,6 +180,40 @@ describe('CategoryTabs favorites (spec 0184)', () => {
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
     fireEvent.click(screen.getByRole('button', { name: 'Categories and favorites' }))
     expect(within(screen.getByRole('list', { name: 'Favorites' })).getByText('Formazione')).toBeInTheDocument()
+  })
+
+  it('marks every category as favorite, keeping the favorites not on the strip, and regroups the menu', () => {
+    const { onSetFavorites, rerender } = renderTabs({ favoriteCategoryIds: [7, 99] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Categories and favorites' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Select all' }))
+
+    expect(onSetFavorites).toHaveBeenCalledWith([7, 99, 12])
+    rerender({ favoriteCategoryIds: [7, 99, 12] })
+    expect(within(screen.getByRole('list', { name: 'Favorites' })).getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Select all' })).toBeDisabled()
+  })
+
+  it('clears every favorite and regroups the menu', () => {
+    const { onSetFavorites, rerender } = renderTabs({ favoriteCategoryIds: [7, 12] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Categories and favorites' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Deselect all' }))
+
+    expect(onSetFavorites).toHaveBeenCalledWith([])
+    rerender({ favoriteCategoryIds: [] })
+    expect(screen.queryByRole('list', { name: 'Favorites' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Deselect all' })).toBeDisabled()
+  })
+
+  it('offers no bulk action while searching, when it would touch rows the search hides', () => {
+    renderTabs({ favoriteCategoryIds: [7] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Categories and favorites' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search category…' }), { target: { value: 'GOL' } })
+
+    expect(screen.queryByRole('button', { name: 'Select all' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deselect all' })).not.toBeInTheDocument()
   })
 
   it('reports the "only favorites" switch, disabled while there is no favorite', () => {

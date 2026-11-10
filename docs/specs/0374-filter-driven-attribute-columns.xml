@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="3">
+
+  <!-- rev.3 (2026-11-09): decisione utente "nei select solo le old non abbinate, cliccando ISO prende entrambi". Nuova D-12,
+       AC-024..AC-027; cambia AC-019. D-1 resta valida per Categoria prodotto. Vale anche su Opportunita' (solo righe). -->
+
+
+  <!-- rev.2 (2026-11-09): richiesta utente "ci sono due categorie ISO che dovrebbero viaggiare insieme". Decisione utente:
+       categorie collegate dichiarate nell'anagrafica. Cambiano D-1, D-5, il contratto, AC-001/002/003/005/016/018; nuovi
+       D-9, D-10, AC-019..AC-022. Da riapprovare. -->
+
+  <goal>
+    Sulle pagine Offerte, Commesse e Contratti, senza linguette, quando il filtro avanzato di categoria seleziona
+    una sola categoria (es. ISO), oppure categorie collegate tra loro (es. ISO e [OLD] ISO), compaiono le colonne dei campi
+    flessibili di quelle categorie: visibili, filtrabili, ordinabili, esportabili e, dove consentito, modificabili nella cella.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel codice e nel DB di sviluppo (2026-11-09). -->
+    - Decisioni utente 2026-11-09: colonne guidate dal filtro (non linguette, non tutte nel pannello Colonne); export
+      incluso. Supera la voce di docs/HANDOFF.md "via le colonne flessibili dagli elenchi" e, per queste tre griglie, il
+      legame con la tab della spec 0350 (restano valide le sue D-1, D-2, D-3, D-6, D-8).
+    - La rimozione e' nel commit 53a27f00. Stato precedente recuperabile da 53a27f00^:
+      `Tables\CategoryTabs\AttributeGridTarget`, `Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns`,
+      `Tables\CategoryTabs\Concerns\WritesCategoryAttributeCells`, `Tables\Contracts\ContractCategoryScopedTableDefinition`,
+      e la parametrizzazione di `AttributeGridColumns` (`forTarget`, `mapValues`, `fromApplicable`) e di
+      `AttributeScopeResolver` (`forContext`).
+    - Filtri: `Tables\Shared\PresetListFilters` (`PARENT_CATEGORY`, `PRODUCT_CATEGORY`, `ALL_ROOTS_ID` = "Tutte" = 0,
+      `ids()`). I descrittori hanno `defaultValue`, e `parent_category` e' precompilato con le radici di competenza. I
+      valori uguali al default non vengono salvati in `user_table_filters.advanced_filters` (`computeActiveValues`), mentre
+      `POST /rows` e l'export li inviano sempre (`sendDefault`, `computeRequestValues`).
+    - Le griglie dentro un record (Opportunita', Contratto, Anagrafica) nascondono quei filtri con `PRESET_LIST_FILTERS`:
+      non li inviano in `POST /rows`, ma condividono il dominio e quindi la riga di filtri salvati della pagina. Il config
+      non puo' dunque dedurre da solo di essere chiamato dalla pagina: serve un parametro esplicito (D-2).
+    - `POST /values` non riceve i filtri avanzati. `POST /filters` restituisce il config, che il frontend scrive nella cache
+      (`useSaveTableFilters`). `TableView` monta `DataTable` con `key={view.layoutVersion}`.
+    - `TableQueryBuilder` usa `orderBy($colId)` e `FilterApplier` sulla colonna reale se `applyDerivedSort`/
+      `applyDerivedFilter` restituiscono false: un `attr.*` fuori insieme non gestito darebbe errore SQL.
+    - `TableRegistry`: `quotes` -> `OpportunityScopedTableDefinition`, `work-orders` -> `QuoteScopedTableDefinition`;
+      `contracts` oggi senza decoratore proprio; `project-work-orders` ha una definizione propria e nessuno dei due
+      decoratori.
+    - `TableController.php` e' a 497 righe (hard limit 500); `ContractsTableDefinition` 494, `WorkOrdersTableDefinition` 492.
+    - Volumi in dev (insieme effettivo): radice ISO 48 campi offerta e 21 commessa; massimo per categoria 93 e 146; unione
+      314 e 265. I valori sono ancora in `quotes.attribute_values` e `work_orders.attribute_values`.
+    - ISO (76) e [OLD] ISO (169) non hanno codici in comune: insieme 89 campi offerta (9 con lo stesso nome) e 60 commessa
+      (8 con lo stesso nome). Le radici con piu' versioni in dev sono APL, Costi, Finanza Agevolata, Formazione, Gare (due
+      vecchie: [OLD] GARE e [OLD] GARE-), GDPR, ISO, Istruzione, SOA. `product_categories.is_legacy` distingue le vecchie;
+      il nome non va usato per riconoscerle (decisione utente, i nomi possono cambiare).
+  </context>
+
+  <decisions>
+    <decision id="D-1">(rev.2) Regola unica e lato server, `Tables\CategoryTabs\AttributeColumnCategories::fromFilters(array $values): array` (id ordinati, `[]` = nessuna colonna):
+      la selezione e' `product_category` se non vuoto, altrimenti `parent_category`; "Tutte" nella selezione -> `[]`. Selezione
+      vuota -> `[]`. Un id -> quell'id. Due o piu' id -> la selezione, se tutti appartengono allo stesso gruppo collegato (D-9),
+      altrimenti `[]`. Ogni categoria mostra il proprio insieme effettivo, non l'unione del ramo (spec 0350 D-4). La selezione di
+      una sola categoria mostra solo le sue colonne, anche se e' collegata ad altre.</decision>
+    <decision id="D-2">Solo le tre pagine attivano il meccanismo sul config, con `attribute_columns_from_filters`. Il valore
+      viene dai filtri salvati dell'utente sovrapposti ai default dei descrittori, cosi' le colonne arrivano gia' nella prima
+      risposta, senza doppio caricamento. Senza il parametro: nessuna `attr.*`.</decision>
+    <decision id="D-3">`POST /rows` e l'export non hanno parametri nuovi: la categoria si deduce con D-1 dagli
+      `advancedFilters` della stessa richiesta, quindi la risposta segue subito il filtro appena applicato, senza dipendere
+      dal config che arrivera' dopo.</decision>
+    <decision id="D-4">Le righe, `POST /values` e l'export accettano in filtro e ordinamento gli `attr.*` dell'unione
+      (`scopeToAllProductCategories`). Un `attr.*` fuori dalla categoria corrente viene ignorato (nessun 422, nessun SQL):
+      copre l'istante tra "Applica" e l'arrivo del nuovo config. Il config invece riporta in `filterState` solo gli `attr.*`
+      della categoria; quelli di altre categorie restano salvati e tornano quando si ritorna su quella categoria.</decision>
+    <decision id="D-5">(rev.2) Il config riporta `attributeCategoryIds` (`[]` se nessuna colonna `attr.*`). Quando cambia, il frontend
+      rimonta `DataTable`, come faceva il cambio di linguetta. Accettato: al cambio di categoria parte una richiesta di righe
+      in piu'.</decision>
+    <decision id="D-6">Colonne visibili di default, dopo le native, come con le linguette. Valgono D-1 (Offerte, contesto Quote,
+      modificabili), D-2 (Commesse, contesto WorkOrder, modificabili), D-3 e D-8 (Contratti, campi dell'offerta di origine,
+      sola lettura) e D-6 (scrittura dal CellWriter del modulo) della spec 0350.</decision>
+    <decision id="D-7">Righe: nessun filtro aggiuntivo. Il restringimento lo fanno gia' i filtri avanzati; i decoratori non
+      tornano `ProductCategoryScopable`. Il decoratore dei Contratti rinasce come
+      `Tables\Contracts\ContractAttributeColumnsTableDefinition`, senza logica di righe.</decision>
+    <decision id="D-8">Interfaccia `Tables\CategoryTabs\FilterScopedAttributeColumns extends AttributeColumnsScopable`, con
+      `scopeAttributeColumnsForRows(array $advancedFilters)` (categoria D-1 + allow-list unione) e
+      `scopeAttributeColumnsForConfig(array $advancedFilters)` (categoria D-1 + allow-list della sola categoria) e
+      `scopeAttributeColumnsForValues()` (nessuna categoria, colonne cercate nell'unione: `POST /values` non riceve i filtri
+      avanzati, ma deve elencare i distinti e rispettare i filtri `attr.*` delle altre colonne). Per il
+      limite di 500 righe, i metodi privati `scopeTo*` di `TableController` si spostano nel trait
+      `Http\Controllers\Table\Concerns\ScopesTableDefinitions`, senza cambiarne il comportamento.</decision>
+    <decision id="D-9">(rev.2) Collegamento dichiarato: nuova colonna nullable `product_categories.current_category_id` (FK verso la
+      stessa tabella, null on delete, indice), valorizzabile solo su una radice `is_legacy` e solo verso una radice non `is_legacy`.
+      Un gruppo e' una categoria attuale piu' tutte le vecchie che puntano a lei; un rapporto molti-a-uno perche' Gare ha due
+      vecchie. Valgono anche selezioni di sole vecchie dello stesso gruppo. A runtime il collegamento conta solo se entrambe sono
+      ancora radici.</decision>
+    <decision id="D-10">(rev.2) Con piu' categorie, le colonne si uniscono deduplicate per `code`: prima quelle della categoria attuale,
+      poi quelle delle vecchie per id crescente, ciascuna nel proprio ordine. Le colonne con lo stesso nome restano separate e
+      compaiono doppie. La cella si modifica solo se il campo si applica al record (D-6 spec 0350): sull'altra categoria 422.
+      Il nome non viene mai usato a runtime.</decision>
+    <decision id="D-12">(rev.3, decisione utente 2026-11-09) Filtro Categoria madre delle pagine che usano `PresetListFilters::parentCategoryFilter`:
+      il select non propone le radici vecchie collegate (`GET /product-category-roots/for-select?hide_linked_legacy=1`; l'idratazione con
+      `ids[]` continua a risolverle). Scegliere una radice attuale vale per tutto il suo gruppo: righe (`PresetListFilters::branchIds`,
+      quindi anche export) e colonne (`fromFilters`, con categoria attuale e vecchie). Un id vecchio collegato arrivato da una richiesta
+      o da una vista salvata vale come la sua attuale. Il default da competenza mappa le vecchie collegate sull'attuale, senza doppioni. In
+      `appliedAdvancedFilters` del config gli id vecchi collegati vengono convertiti nell'attuale. Due attuali diverse: righe di entrambi i
+      gruppi, nessuna colonna. Le radici vecchie non collegate funzionano come prima. Categoria prodotto, le linguette di Gestione Richieste
+      e Iscritti non cambiano. Non si puo' piu' isolare "solo nuove" o "solo vecchie" da Categoria madre.</decision>
+    <decision id="D-11">(rev.2, decisione utente 2026-11-09) La migrazione di D-9 compila anche i collegamenti, una tantum: per ogni radice
+      `is_legacy` senza collegamento toglie dal nome il prefisso "[OLD]", gli spazi e i trattini finali e cerca, senza distinzione di
+      maiuscole, la radice non `is_legacy` con lo stesso nome; se ne trova esattamente una la collega, altrimenti non fa nulla. Non
+      sovrascrive collegamenti esistenti. In dev collega 10 vecchie a 9 attuali (APL, Costi, Finanza Agevolata, Formazione, Gare x2,
+      GDPR, ISO, Istruzione, SOA). Eccezione esplicita, decisione utente: "[OLD] SICUREZZA 81/08" -> "Sicurezza". Le altre si collegano dal dettaglio categoria. Le categorie importate dopo l'esecuzione della
+      migrazione non vengono collegate da sole.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Pagine Offerte (`quotes`), Commesse (`work-orders`, tipo `processing`), Contratti (`contracts`).</item>
+      <item>Lettura, filtro, ordinamento, valori distinti, modifica in cella dove consentita, salvataggio layout.</item>
+      <item>Export con le colonne `attr.*` valorizzate e con filtro/ordinamento su `attr.*`.</item>
+      <item>Campo "Categoria attuale" nel dettaglio e nel form delle sole radici vecchie, con validazione server e permesso di campo.</item>
+      <item>Guide in-app IT+EN `quotes`, `work-orders`, `contracts`, `product-categories`; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Linguette categoria: restano rimosse; i filtri precompilati non cambiano.</item>
+      <item>Opportunita': nessun campo flessibile dalla spec 0084.</item>
+      <item>Commesse di Progetto e griglie dentro un record: restano senza `attr.*`.</item>
+      <item>Gestione Richieste e Iscritti: invariate.</item>
+      <item>Viste filtro salvate e filtri personalizzati su `attr.*`: `TableFilterViewRequest` valida senza unione, limite gia'
+        presente con le linguette. Da segnalare, non da correggere qui.</item>
+      <item>Collegamento tra sottocategorie: solo radici.</item>
+      <item>Unificazione delle colonne con lo stesso nome tra categoria attuale e vecchia.</item>
+      <item>Collegamento automatico di categorie importate dopo la migrazione.</item>
+      <item>Nessuna migrazione oltre alla colonna di D-9, nessuna dipendenza nuova, nessun endpoint nuovo.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/tables/{quotes|work-orders|contracts}/columns">
+      <request>Query `attribute_columns_from_filters=1` (opzionale, boolean).</request>
+      <response status="200">`{ success, message, data: TableConfig }`, con `data.attributeCategoryIds: number[]`;
+        `data.columns` con le `attr.CODE` delle categorie D-1 dopo le native; `data.filterState` senza `attr.*` di altre
+        categorie. Senza parametro: nessuna `attr.*`, `attributeCategoryIds: []`.</response>
+      <errors>403 senza `viewAny`; 422 se il parametro non e' boolean.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/{quotes|work-orders|contracts}/preferences | /filters">
+      <request>Body invariato + `attribute_columns_from_filters?: 1`. Non cambia cio' che viene salvato.</request>
+      <response status="200">Stesso `TableConfig` del GET, calcolato DOPO il salvataggio: su `/filters` riflette i filtri
+        appena salvati.</response>
+      <errors>422 su `filterModel` con chiave fuori dall'unione; 403 senza `viewAny`.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/{quotes|work-orders|contracts}/rows">
+      <request>Invariata. `advancedFilters` determina la categoria (D-1, D-3).</request>
+      <response status="200">Righe con `attr.CODE` dell'insieme della categoria; nessuna chiave `attr.*` se la categoria e' null.</response>
+      <errors>422 su `attr.*` fuori dall'unione. Un `attr.*` dell'unione ma fuori categoria e' ignorato, risposta 200.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/{quotes|work-orders|contracts}/values">
+      <request>Invariata; `columnId` accetta ogni `attr.*` dell'unione.</request>
+      <response status="200">`{ values, hasMore }`, limitati ai record visibili all'utente.</response>
+      <errors>422 su `columnId` fuori dall'unione.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tables/{quotes|work-orders|contracts}/rows/{id}">
+      <request>`{ column: "attr.CODE", value }`, come spec 0350.</request>
+      <errors>403 senza permesso di campo; 422 su codice non applicabile al record, tipo errato o attributo `table`; `contracts`: sempre 422 "Column not editable".</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/product-categories/{id} (e POST /api/product-categories)">
+      <request>`current_category_id?: number|null` (D-9). La lettura aggiunge a `ProductCategoryResource` `is_legacy`,
+        `current_category_id` e `current_category: { id, name }|null`. Su `GET /api/product-category-roots/for-select` il nuovo
+        parametro `current_only=1` limita alle radici non `is_legacy` e toglie la voce "Tutte".</request>
+      <errors>422 su `current_category_id` se la categoria non e' una radice `is_legacy`, se la destinazione non e' una radice non
+        `is_legacy` o non esiste; 403 senza permesso di campo.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/exports/{quotes|work-orders|contracts}">
+      <request>Invariata; `columns[].colId`, `sortModel` e `filterModel` accettano `attr.*` dell'unione; la categoria viene da
+        `advancedFilters` (D-1), riapplicata in `ExportService::generate` dallo stato salvato della run.</request>
+      <errors>422 su `attr.*` fuori dall'unione.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">(rev.2) Dati i valori di filtro, `fromFilters` restituisce: prodotto [A] con madre vuota, multipla o "Tutte" -> [A]; prodotto [A,B] non collegate con madre [R] -> []; prodotto vuoto e madre [R] -> [R]; madre [R,S] non collegate -> []; madre [0] -> []; madre [R,0] -> []; entrambi vuoti -> [].</criterion>
+    <criterion id="AC-002">Dati filtri salvati con madre [R], quando chiedo il config di `quotes` con `attribute_columns_from_filters=1`, allora ottengo le `attr.*` dell'insieme effettivo di R nel contesto Quote, visibili e dopo le native, e `attributeCategoryIds` = [R].</criterion>
+    <criterion id="AC-003">Dato un utente senza filtri salvati, con competenza su una sola radice R, il config riporta le colonne di R; con competenza su due radici non collegate, oppure jolly, nessuna `attr.*` e `attributeCategoryIds` = []; con competenza su due radici collegate, le colonne di entrambe.</criterion>
+    <criterion id="AC-004">Dati filtri salvati con madre [R], senza il parametro il config non ha `attr.*`.</criterion>
+    <criterion id="AC-005">Quando salvo con `POST /filters` e il parametro un filtro da R a S, il config restituito ha le colonne di S e `attributeCategoryIds` = [S]; salvando "Tutte" o due categorie non collegate, nessuna `attr.*`. Un filtro su `attr.X` di R non compare nel `filterState` del config di S, resta salvato e ricompare tornando su R.</criterion>
+    <criterion id="AC-006">Offerte: con `advancedFilters` su una sola categoria, `POST /rows` riporta i valori in `attr.CODE`; filtro e ordinamento restringono e ordinano; `POST /values` elenca i valori distinti.</criterion>
+    <criterion id="AC-007">Quando `POST /rows` riceve filtro e ordinamento su un `attr.*` dell'unione ma fuori dalla categoria corrente, risponde 200 e li ignora; con un `attr.*` fuori dall'unione risponde 422.</criterion>
+    <criterion id="AC-008">Offerte: con `quotes.update` e campo `attribute_values` editabile la colonna e' `editable: true` e il PATCH salva con merge sparso e voce di activity log; senza permesso `editable: false` e 403; codice non applicabile o tipo errato 422; attributo `table` non editabile.</criterion>
+    <criterion id="AC-009">Commesse: le colonne sono quelle del contesto WorkOrder e non quelle solo-Quote; lettura, filtro, ordinamento e distinti su `work_orders.attribute_values`; il PATCH non tocca `quotes.attribute_values`; senza permesso 403.</criterion>
+    <criterion id="AC-010">Contratti: colonne del contesto Quote con `editable: false` e valori dell'offerta di origine; filtro, ordinamento e distinti funzionano e la paginazione non duplica righe; PATCH 422 con `quotes.attribute_values` invariato.</criterion>
+    <criterion id="AC-011">Export di `quotes`, `work-orders`, `contracts` con una sola categoria nei filtri e colonne `attr.*`: il file riporta i valori; con filtro o ordinamento su `attr.*` la richiesta e' accettata e il file e' ristretto o ordinato. Il job funziona senza utente autenticato in ingresso.</criterion>
+    <criterion id="AC-012">Valori distinti `attr.*` e righe rispettano le visibility scope: nessun valore di un record non visibile.</criterion>
+    <criterion id="AC-013">Layout: una colonna `attr.*` nascosta resta nascosta al ricaricamento; il config restituito da `POST /preferences` con il parametro conserva le colonne della categoria.</criterion>
+    <criterion id="AC-014">Nessuna regressione: `tests/Feature/RequestManagement`, `tests/Feature/EnrolleeManagement`, `tests/Feature/CategoryTabs` verdi senza modifiche ai test; `opportunities` e `project-work-orders` senza `attr.*`.</criterion>
+    <criterion id="AC-015">Frontend: `fetchTableConfig`, `saveTablePreferences` e `saveTableFilters` inviano `attribute_columns_from_filters: 1` quando lo scope lo chiede e nulla altrimenti; la chiave di cache del config e' distinta da quella senza scope.</criterion>
+    <criterion id="AC-016">(rev.2) Frontend: quando `attributeCategoryIds` del config cambia, `DataTable` viene rimontata con le nuove colonne; se cambiano i filtri ma non `attributeCategoryIds` non viene rimontata.</criterion>
+    <criterion id="AC-017">Frontend: `QuotesTable`, `WorkOrdersTable` e `ContractsTable` passano lo scope; Commesse di Progetto e le griglie dentro un record no.</criterion>
+    <criterion id="AC-018">(rev.2) Guide IT+EN `quotes`, `work-orders`, `contracts` descrivono la regola, categorie collegate comprese, nella sezione `list-filters`; `product-categories` descrive il campo "Categoria attuale"; stessi id IT/EN; `help-content-parity.test.ts` verde.</criterion>
+    <criterion id="AC-019">(rev.2) Date le radici R (attuale) e L1, L2 (vecchie) con `current_category_id` = R: `fromFilters` con madre [R,L1], [L1,L2] o [R,L1,L2] restituisce la selezione ordinata; con [R,X] (X non collegata), oppure con [L1,X], restituisce []. (rev.3) In Categoria madre [R] restituisce [R,L1,L2] e [L1] vale come [R]; in Categoria prodotto [R] resta [R]. Se L1 non e' piu' radice, non appartiene al gruppo.</criterion>
+    <criterion id="AC-024">(rev.3) `GET /product-category-roots/for-select?hide_linked_legacy=1` non elenca le radici vecchie collegate, elenca attuali, vecchie non collegate e "Tutte"; con `ids[]` di una vecchia collegata la risolve; senza parametro l'elenco non cambia. Il descrittore `parent_category` invia il parametro.</criterion>
+    <criterion id="AC-025">(rev.3) Con Categoria madre [R], `POST /rows` di `quotes`, `work-orders`, `contracts` e `opportunities` riporta i record del ramo di R e dei rami delle vecchie collegate, l'export lo stesso; un'altra categoria resta esclusa; `[R,X]` riporta entrambi i gruppi senza `attr.*`.</criterion>
+    <criterion id="AC-026">(rev.3) Un utente con competenza su R e L1 ha come default `parent_category` = [R], una sola volta; con competenza solo su L1 ha [R]; le righe restano limitate dalla visibilita' del suo profilo.</criterion>
+    <criterion id="AC-027">(rev.3) Filtri salvati con `parent_category` [L1]: `appliedAdvancedFilters` riporta [R], senza doppioni con [R,L1]; una radice vecchia non collegata resta invariata.</criterion>
+    <criterion id="AC-020">(rev.2) Con madre [R,L1] il config riporta le colonne di R e poi quelle di L1, deduplicate per `code`, e `attributeCategoryIds` = [R,L1] ordinati; le righe riportano i valori di entrambe; filtro, ordinamento, valori distinti ed export funzionano su ciascuna. Un PATCH su un campo non applicabile al record risponde 422 senza scrivere.</criterion>
+    <criterion id="AC-021">(rev.2) Il salvataggio di `current_category_id` su una radice vecchia verso una radice attuale riesce e compare nella risposta con nome e voce di activity log; 422 su categoria non vecchia, su sottocategoria, su destinazione vecchia o sottocategoria, su destinazione inesistente; 403 senza permesso di campo; `null` toglie il collegamento; la cancellazione della categoria attuale azzera il campo.</criterion>
+    <criterion id="AC-022">(rev.2) Frontend: nel dettaglio e nel form di una radice vecchia compare il campo "Categoria attuale" con la selezione delle sole radici attuali; non compare su categorie attuali o sottocategorie; il salvataggio invia `current_category_id`.</criterion>
+    <criterion id="AC-023">(rev.2) Eseguendo la migrazione: "[OLD] ISO" -> "ISO", "[OLD] GARE-" e "[OLD] GARE" -> "Gare"; una vecchia senza corrispondente, una sottocategoria vecchia e una vecchia con due attuali omonime restano senza collegamento; un collegamento gia' presente non cambia; `down` rimuove la colonna.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Una sola migrazione reversibile (D-9), eseguita in dev da sola con `--path`. Authz server-side: gate di riga e di campo esistenti.
+    - Codici `attr.*` solo dal set risolto dal server (allow-list), mai dall'input; niente `*Raw` con input.
+    - Niente N+1: i Contratti leggono l'offerta dall'eager gia' presente; insiemi memoizzati per richiesta.
+    - Limiti file: `TableController.php` sotto 500 con l'estrazione di D-8; `AppendsCategoryAttributeColumns` sotto 300;
+      `ContractsTableDefinition` e `WorkOrdersTableDefinition` non crescono.
+    - Test mirati Pest con `XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/...`; Vitest mirato; Pint, ESLint,
+      `cd frontend &amp;&amp; npx tsc -b --force`. Suite completa una volta a fine feature, backend e frontend mai insieme.
+    - Mai comandi distruttivi sul DB di sviluppo (migrate:fresh, rollback, seed), da ripetere nei brief dei subagent.
+    - Git solo su richiesta esplicita (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>

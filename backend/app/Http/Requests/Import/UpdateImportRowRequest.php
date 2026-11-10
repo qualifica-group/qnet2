@@ -9,7 +9,7 @@ use App\Imports\Leads\LeadRowCampaign;
 use App\Imports\Staging\StagedRowBuilder;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
-use App\Rules\ActiveCategoryProduct;
+use App\Rules\ActiveProduct;
 use App\Support\Import\GeoPinValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -88,7 +88,7 @@ class UpdateImportRowRequest extends FormRequest
             'operator_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', 'exists:operational_sites,id'],
             'product_ids' => ['sometimes', 'nullable', 'array'],
-            'product_ids.*' => ['integer', new ActiveCategoryProduct($this->persistedRowProductIds())],
+            'product_ids.*' => ['integer', new ActiveProduct($this->persistedRowProductIds())],
             'campaign_id' => ['sometimes', 'nullable', 'integer', 'exists:campaigns,id'],
         ];
     }

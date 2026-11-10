@@ -5,6 +5,7 @@ use App\Tables\AbsenceRequests\AbsenceRequestsTableDefinition;
 use App\Tables\AbsenceRequests\AbsenceRequestsToApproveTableDefinition;
 use App\Tables\AbsenceTypesTableDefinition;
 use App\Tables\AgentFiscalProfilesTableDefinition;
+use App\Tables\AgentSalesReportTableDefinition;
 use App\Tables\ApiClientsTableDefinition;
 use App\Tables\AttributesTableDefinition;
 use App\Tables\BusinessFunctionsTableDefinition;
@@ -167,6 +168,8 @@ return [
         'opportunities' => OpportunitiesTableDefinition::class,
         'payment-methods' => PaymentMethodsTableDefinition::class,
         'quotes' => QuotesTableDefinition::class,
+        // spec 0365: the read-only "Report Vendite Agenti" over quotes.
+        'agent-sales-report' => AgentSalesReportTableDefinition::class,
         'quote-workflows' => QuoteWorkflowsTableDefinition::class,
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersTableDefinition::class,

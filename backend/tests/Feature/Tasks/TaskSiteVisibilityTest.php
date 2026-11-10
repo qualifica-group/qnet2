@@ -6,7 +6,9 @@ use App\Models\Task;
 use App\Models\User;
 use App\Policies\TaskPolicy;
 use App\Services\Tasks\TaskVisibilityScope;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -213,4 +215,26 @@ it('a viewSite holder sharing an assignee site is mentionable in the task notes,
     expect($ids)->toContain($siteReader->id)
         ->and($ids)->not->toContain($otherSiteReader->id)
         ->and($ids)->not->toContain($sameSiteNoGrant->id);
+});
+
+it('reads the assignee sites without ordering a DISTINCT by a column it does not select', function () {
+    $site = OperationalSite::factory()->create();
+    $creator = siteTaskActor(['view']);
+    $task = Task::factory()->forCreator($creator)->create(['requester_id' => $creator->id]);
+    $task->assignees()->attach(siteTaskMemberOf(siteTaskActor(['view']), $site)->id);
+    Sanctum::actingAs($creator);
+
+    // SQLite and MariaDB accept this statement, MySQL rejects it (error 3065):
+    // only the executed SQL can show the defect under the test database.
+    $siteQueries = [];
+    DB::listen(function (QueryExecuted $query) use (&$siteQueries): void {
+        if (str_contains($query->sql, 'select distinct') && str_contains($query->sql, 'operational_site_id')) {
+            $siteQueries[] = $query->sql;
+        }
+    });
+
+    $this->getJson("/api/notes/mentionable-users?entity_type=tasks&entity_id={$task->id}&search=mario")->assertOk();
+
+    expect($siteQueries)->toHaveCount(1)
+        ->and($siteQueries[0])->not->toContain('order by');
 });

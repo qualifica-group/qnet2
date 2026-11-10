@@ -38,7 +38,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Open **Sales › Request Management Statistics**: the page shows the statistics right away, nothing to open.',
+          text: 'Open **Statistics › Request Management Statistics**: the page shows the statistics right away, nothing to open.',
         },
         {
           type: 'note',

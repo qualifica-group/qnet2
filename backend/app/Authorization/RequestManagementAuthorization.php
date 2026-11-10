@@ -84,6 +84,11 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // opportunity must always carry at least one row (ValidatesProductLines' `min:1` on both
             // write channels), so no role matrix may narrow it away.
             new FieldDefinition('product_lines', 'custom', mandatory: true),
+            // The client select of the work panel (decisione utente
+            // 2026-11-09). Not mandatory, unlike the Opportunities form's own:
+            // here the field only moves an existing request onto another
+            // client, so a role matrix may keep it read-only.
+            new FieldDefinition('registry_id', 'select'),
             // Attribution block (user directive 2026-07-22): "Fonte",
             // "Segnalatore" and the GA2 "Operatore"/Supervisore — the same
             // dimensions the opportunities form owns, made editable from the
@@ -134,6 +139,8 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // restricting `manager_slots` does NOT restrict this key, the two
             // rows of the matrix are independent.
             new FieldDefinition('manager_ga1_id', 'select'),
+            // Spec 0373 D-10: the "Operatore APL" cell, on the same terms.
+            new FieldDefinition('manager_ga5_id', 'select'),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block (see OpportunitiesAuthorization's docblock for
             // the operational-sites.viewAny ceiling rule this field shares).
@@ -200,6 +207,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
         return [
             'next_callback_at' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'product_lines' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'registry_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'source_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
@@ -209,6 +217,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_ga1_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'manager_ga5_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0056: readonly unless the actor ALSO holds
             // operational-sites.viewAny (mirrors OpportunitiesAuthorization).
             'operational_site_id' => $mayWrite && $actor->can('operational-sites.viewAny') ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

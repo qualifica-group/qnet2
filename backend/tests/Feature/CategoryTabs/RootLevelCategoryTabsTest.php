@@ -4,7 +4,7 @@ use App\Models\ProductCategory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
-// GET /api/{module}/product-categories?level=root on the five strips (spec 0337, AC-002..004).
+// GET /api/{module}/product-categories?level=root on the request-module strips (spec 0337, AC-002..004).
 
 uses(RefreshDatabase::class);
 
@@ -15,7 +15,7 @@ it('lists only the root categories, each counting the distinct records of its br
     categoryTabRecord($module, [$grandchild]);
     categoryTabRecord($module, [$other]);
     Sanctum::actingAs(categoryTabGridActor($module));
-    $count = categoryTabCountKey($module);
+    $count = 'requests_count';
 
     $this->getJson("/api/{$module}/product-categories?level=root")
         ->assertOk()
@@ -40,7 +40,7 @@ it('counts a record on the root and on its descendant once (AC-002)', function (
     $this->getJson("/api/{$module}/product-categories?level=root")
         ->assertOk()
         ->assertJsonPath('data.categories.0.id', $root->id)
-        ->assertJsonPath('data.categories.0.'.categoryTabCountKey($module), 1);
+        ->assertJsonPath('data.categories.0.requests_count', 1);
 })->with(categoryTabModules());
 
 it('keeps the visibility scope of the module at the root level (AC-003)', function (string $module) {

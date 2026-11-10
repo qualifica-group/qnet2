@@ -33,6 +33,10 @@ final class WorkflowStatusWriter
 {
     private const int STEP = 10;
 
+    public function __construct(
+        private readonly QuoteWorkflowStatusUsageGuard $statusUsageGuard,
+    ) {}
+
     /**
      * Creates a brand-new set (AC-004): the pinned 'open' row (sort_order 0),
      * every $customStatuses row in submission order (STEP apart), then the
@@ -286,9 +290,10 @@ final class WorkflowStatusWriter
             $keptIds[] = $status->id;
         }
 
-        $existing
-            ->filter(static fn (QuoteWorkflowStatus $status): bool => ! $status->isSystem() && ! in_array($status->id, $keptIds, true))
-            ->each(static fn (QuoteWorkflowStatus $status) => $status->delete());
+        $removed = $existing->filter(static fn (QuoteWorkflowStatus $status): bool => ! $status->isSystem() && ! in_array($status->id, $keptIds, true));
+
+        $this->statusUsageGuard->assertUnused($removed);
+        $removed->each(static fn (QuoteWorkflowStatus $status) => $status->delete());
 
         return $keptIds;
     }

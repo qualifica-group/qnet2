@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Table;
 
+use App\Http\Requests\Table\Concerns\ValidatesAttributeColumnsFromFilters;
+use App\Http\Requests\Table\Concerns\ValidatesCategoryBranchScope;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,6 +26,8 @@ use Illuminate\Validation\Rule;
  */
 class TableColumnsRequest extends FormRequest
 {
+    use ValidatesAttributeColumnsFromFilters, ValidatesCategoryBranchScope;
+
     public function authorize(): bool
     {
         return true;
@@ -36,9 +40,11 @@ class TableColumnsRequest extends FormRequest
     {
         return [
             'product_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
+            ...$this->categoryBranchRules(),
             'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
             'quote_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
             'registry_id' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
+            ...$this->attributeColumnsFromFiltersRules(),
         ];
     }
 

@@ -4,6 +4,7 @@ use App\Enums\ContractStatusGroup;
 use App\Enums\WorkflowStatusGroup;
 use App\Models\Contract;
 use App\Models\ContractStatus;
+use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -282,8 +283,10 @@ it('reactivate is 403 without contracts.reactivate', function () {
 // AC-009/010/011 — validate (BR-3)
 // ---------------------------------------------------------------------------
 
+// REQUIREMENT CHANGED (decisione utente 2026-11-09): validating demands a REVENUE line on the offer.
 it('AC-009: validating an unvalidated contract stamps validated_at/validated_by and logs the activity', function () {
     $contract = Contract::factory()->create();
+    QuoteLine::factory()->for($contract->quote)->create();
     $actor = contractActionsUserWith(['validate']);
     Sanctum::actingAs($actor);
 
@@ -338,6 +341,7 @@ it('validating a contract already validated but sitting on a pending status is 4
 
 it('re-validates a contract once it has been reopened from its closure', function () {
     $contract = terminatedContractForReactivation();
+    QuoteLine::factory()->for($contract->quote)->create();
     Sanctum::actingAs(contractActionsUserWith(['reactivate', 'validate']));
 
     $this->postJson("/api/contracts/{$contract->id}/reactivate", [
@@ -359,6 +363,18 @@ it('validating a contract closed on the negative side is 422 (reactivate it firs
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/contracts/{$contract->id}/validate")->assertStatus(422);
+});
+
+it('validating a contract whose offer has no REVENUE line is 422 on offer_lines, nothing written', function () {
+    $contract = Contract::factory()->create();
+    QuoteLine::factory()->for($contract->quote)->cost()->create();
+    Sanctum::actingAs(contractActionsUserWith(['validate']));
+
+    $this->postJson("/api/contracts/{$contract->id}/validate")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('offer_lines');
+
+    expect($contract->fresh()->validated_at)->toBeNull();
 });
 
 it('AC-011: validating without contracts.validate is 403, nothing written', function () {
@@ -385,6 +401,7 @@ it('validating a suspended contract is 422', function () {
 
 it('validating without a contract_status_id defaults to the system validated row', function () {
     $contract = Contract::factory()->create();
+    QuoteLine::factory()->for($contract->quote)->create();
     $validatedStatus = ContractStatus::where('system_key', 'validated')->sole();
     $actor = contractActionsUserWith(['validate']);
     Sanctum::actingAs($actor);

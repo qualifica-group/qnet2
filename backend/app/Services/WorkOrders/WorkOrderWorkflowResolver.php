@@ -21,9 +21,9 @@ use Illuminate\Support\Collection;
  * carry. Twin of App\Services\Quotes\QuoteWorkflowResolver.
  *
  * Both `activeWorkflows()` and `statusesFor()`'s result per workflow are
- * memoized on THIS instance (see forgetCaches()).
+ * memoized on THIS instance.
  *
- * Perf constraint: a batch caller (grid, reassignment) MUST eager-load
+ * Perf constraint: a batch caller (grid) MUST eager-load
  * `quoteLines.product` in ONE query before resolving — resolve() step 1 only
  * ever `loadMissing()`s it, a no-op once already loaded.
  */
@@ -82,20 +82,6 @@ final class WorkOrderWorkflowResolver
                 return $byDepth !== 0 ? $byDepth : $a->id <=> $b->id;
             })
             ->first();
-    }
-
-    /**
-     * Drops the memos so the next resolve() re-reads from the database.
-     *
-     * Needed by the callers that CHANGE the candidate set or the category
-     * tree mid-request (WorkOrderWorkflowService::delete() deactivates the
-     * workflow before reassigning its work orders).
-     */
-    public function forgetCaches(): void
-    {
-        $this->activeWorkflowsCache = null;
-        $this->statusesCache = [];
-        $this->classification->forgetCaches();
     }
 
     /**
@@ -161,19 +147,6 @@ final class WorkOrderWorkflowResolver
         }
 
         return $open;
-    }
-
-    /**
-     * Resolve $workOrder's workflow/status and PERSIST only the
-     * `work_order_workflow_status_id` column (plain reassignment, never a
-     * user-driven change). The column is outside #[Fillable], hence
-     * forceFill().
-     */
-    public function resolveAndAssign(WorkOrder $workOrder): void
-    {
-        $target = $this->targetStatus($workOrder, $this->resolve($workOrder));
-
-        $workOrder->forceFill(['work_order_workflow_status_id' => $target->id])->save();
     }
 
     /**

@@ -101,7 +101,9 @@
         cliccabile (solo il limite di 50 la disattiva): se almeno un contratto selezionato non si puo' cumulare, il server
         (MultiQuoteContractGate, dopo il 403) risponde 422 su `contract_ids` con un messaggio tradotto che elenca
         "codice offerta (cliente)" dei contratti da togliere, e il popup lo mostra al posto delle righe (role=alert,
-        senza Riprova; la query non ritenta un 422). Tutti i messaggi di errore della multi-offerta sono tradotti
+        senza Riprova; la query non ritenta un 422). (2026-11-07) Il riquadro mostra titolo per motivo, i contratti uno per
+        riga (codice offerta + cliente) e, se ne restano almeno 2, "Continua senza questi contratti": li esclude solo nel
+        popup (la selezione della griglia non cambia) e ricarica le righe degli altri. Tutti i messaggi di errore della multi-offerta sono tradotti
         (`lang/{it,en}/work_orders.php`, lingua da Accept-Language).
     D-15 (decisioni utente 2026-10-15) Seed di produzione: la radice "Formazione" ha `generates_contract` = true e
         `multi_quote_work_order` = true (CatalogRootRules, solo Formazione: APL resta senza contratto; le altre radici
@@ -162,7 +164,9 @@
       <errors>
         403 se l'utente non ha `program` su anche uno solo dei contratti.
         422 su `contract_ids` (meno di 2, oltre 50, duplicati, inesistenti; contratti non ClosedWon, D-3;
-            contratti non cumulabili, D-14).
+            contratti non cumulabili, D-14). Nei rifiuti D-3/D-14 (MultiQuoteContractsRefusedException, decisione
+            utente 2026-11-07) `errors` porta anche `reason: 'not_won'|'not_allowed'` e
+            `refused_contracts: [{ id: int, quote_code: string|null, registry_name: string|null }]`.
       </errors>
     </endpoint>
 

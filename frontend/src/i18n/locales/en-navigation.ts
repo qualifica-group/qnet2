@@ -79,6 +79,8 @@ export const navigation = {
   requestManagement: 'Request Management',
   enrolleeManagement: 'Enrollee Management',
   requestStatistics: 'Request Management Statistics',
+  statistics: 'Statistics',
+  agentSalesReport: 'Agent Sales Report',
   fieldChangeRequests: 'Change Requests',
   rewardTypes: 'Vouchers, Rewards and Incentives',
   rewardStatuses: 'Reward Statuses',

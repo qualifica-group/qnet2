@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0370-user-last-login" status="approved" owner="nicola" date="2026-11-08">
+
+  <goal>
+    Registrare e mostrare la data dell'ultimo accesso di ogni utente (ultimo login riuscito con le credenziali).
+  </goal>
+
+  <context>
+    Oggi non esiste: il badge "In attesa di primo accesso" dipende da `users.must_set_password` (spec 0177/0355),
+    che e' un flag e non una data; `personal_access_tokens.last_used_at` (spec 0187) vale per token e si perde al
+    logout. Decisioni utente 2026-11-08:
+    D-1 "Ultimo accesso" = ultimo login riuscito su `POST /api/auth/login` (`AuthService::login`). Non e'
+        l'ultima attivita' nell'app.
+    D-2 Non lo aggiornano: l'impersonificazione (`ImpersonationService`, "Accedi come"), il refresh del token,
+        il login da client API (`auth/client-login`, spec 0210: accesso di un'integrazione esterna, non a QNet).
+    D-3 Visibile come colonna della griglia Utenti (ordinabile, filtro data) e nell'intestazione della scheda
+        utente. Nessun backfill: gli utenti esistenti partono senza dato fino al prossimo login.
+    D-4 La scrittura non tocca `updated_at` (un login non e' una modifica del record) e non produce voci di
+        activity log (colonna guarded, fuori da logFillable).
+
+    Codice reale verificato 2026-11-08: `App\Services\AuthService::login()/authenticate()`,
+    `App\Services\ApiClients\ClientLoginService` (usa solo `authenticate()`), `UserResource`,
+    `UsersTableDefinition::mapRow()`, `UserColumnCatalog` (colonna `created_at` come modello),
+    `frontend/src/features/users/{types.ts,user-detail-header.tsx}`, `formatDateTime` in
+    `lib/formatting/date-display.ts`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: `users.last_login_at` timestamp nullable con indice, reversibile, nessun backfill.</item>
+      <item>`User`: cast `last_login_at => datetime`; NON in $fillable (forceFill).</item>
+      <item>`AuthService::login()`: valorizza `last_login_at` dopo l'autenticazione riuscita, senza toccare
+        `updated_at` e senza eventi.</item>
+      <item>`UserResource`: campo `last_login_at`. `UsersTableDefinition::mapRow` + `UserColumnCatalog`: colonna
+        `last_login_at` (datetime, visibile, ordinabile, filtro data).</item>
+      <item>FE: `UserDetail.last_login_at`; badge "Ultimo accesso: data ora" nell'intestazione della scheda,
+        mostrato solo se il dato esiste; etichette IT/EN.</item>
+      <item>Manuale: guida in-app Utenti (IT/EN) e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Storico degli accessi (elenco di tutti i login).</item>
+      <item>Ultima attivita' nell'app (gia' coperta dagli utenti online, spec 0187).</item>
+      <item>Modifica manuale del campo.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <database>users.last_login_at TIMESTAMP NULL, INDEX</database>
+    <endpoint method="GET" path="/api/users/{user}">`data.last_login_at`: ISO 8601 o null.</endpoint>
+    <endpoint method="POST" path="/api/tables/users/rows">riga con `last_login_at`; colonna `last_login_at`
+      type `datetime`, sortable, filterType `date`.</endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un login riuscito valorizza `last_login_at` a ora, senza cambiare `updated_at` e senza voce di activity log.</criterion>
+    <criterion id="AC-002">Login fallito (password errata, utente inattivo) non cambia `last_login_at`.</criterion>
+    <criterion id="AC-003">Impersonificazione e client-login non cambiano `last_login_at` dell'utente.</criterion>
+    <criterion id="AC-004">`GET /api/users/{user}` espone `last_login_at`; la griglia Utenti espone la colonna ed e' ordinabile.</criterion>
+    <criterion id="AC-005">La scheda utente mostra "Ultimo accesso: data ora" solo quando il dato esiste.</criterion>
+  </acceptance_criteria>
+
+</spec>

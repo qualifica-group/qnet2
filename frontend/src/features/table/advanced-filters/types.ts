@@ -91,6 +91,8 @@ export interface AdvancedFilterDescriptor {
   /** Display order; descriptors arrive already sorted by it. */
   order: number
   defaultValue?: AdvancedFilterValue | null
+  /** The page sends this filter even at its default: the server has no fallback for it. */
+  sendDefault?: boolean
   required: boolean
   visible: boolean
   width: AdvancedFilterWidth
@@ -106,3 +108,6 @@ export interface AdvancedFilterDescriptor {
   excludedValues?: string[]
   dependency?: AdvancedFilterDependency
 }
+
+/** The filters a list page opens with already filled in: hidden where the same grid lists one record's children. */
+export const PRESET_LIST_FILTERS: readonly string[] = ['assignment', 'parent_category']

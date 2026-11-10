@@ -49,6 +49,7 @@ function AlertCell({ value }: ICellRendererParams) {
 export const quoteColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
   opportunity: (params) => <RelationCell {...params} icon={Handshake} />,
+  registry: (params) => <RelationCell {...params} icon={Building2} />,
   quote_workflow_status: (params) => <StatusBadgeCell {...params} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
   reporter: (params) => <RelationCell {...params} icon={UserRound} />,

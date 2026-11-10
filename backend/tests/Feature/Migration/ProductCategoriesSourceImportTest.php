@@ -61,6 +61,9 @@ it('creates root and child categories, remapping parent_id via old_id', function
     $child = ProductCategory::query()->where('old_id', 2)->first();
 
     expect($root->name)->toBe('[OLD] Electronics')
+        // User directive 2026-11-07: every migrated category is marked legacy.
+        ->and($root->is_legacy)->toBeTrue()
+        ->and($child->is_legacy)->toBeTrue()
         // REQUIREMENT CHANGED (user directive 2026-11-05): a legacy root stays
         // at the top level, no "Old category" container is created.
         ->and($root->parent_id)->toBeNull()

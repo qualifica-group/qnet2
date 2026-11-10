@@ -12,10 +12,10 @@ use Closure;
 
 /**
  * Reads and writes a user's category tab favourites for one strip (spec 0184,
- * competence default 0193), shared by Gestione Richieste/Iscritti and the
- * Opportunities/Offerte grids (spec 0335). `$module` is the preference key
- * ("request-management", "opportunities", ...), always taken from the matched
- * route, never from input. At the root level (spec 0337) the row is
+ * competence default 0193), shared by Gestione Richieste and Gestione
+ * Iscritti. `$module` is the preference key ("request-management",
+ * "enrollee-management"), always taken from the matched route, never from
+ * input. At the root level (spec 0337) the row is
  * "{module}:root" and the default is lifted from categories to their roots.
  */
 final class CategoryTabPreferenceStore

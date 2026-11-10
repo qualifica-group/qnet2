@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Services\RoleAssignmentGuard;
 use App\Services\TimeEntries\TimeEntrySubordinateResolver;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 use WeakMap;
 
 /**
@@ -94,11 +96,7 @@ final class TaskVisibilityScope
         $teamIds = $hasViewAll ? [] : self::actorTeamIds($user);
 
         return $query->where(function (Builder $scoped) use ($user, $siteIds, $teamIds, $hasViewAll): void {
-            $scoped
-                ->where('tasks.creator_id', $user->id)
-                ->orWhere('tasks.requester_id', $user->id)
-                ->orWhereHas('assignees', fn (Builder $assignees) => $assignees->whereKey($user->id))
-                ->orWhereHas('watchers', fn (Builder $watchers) => $watchers->whereKey($user->id));
+            $scoped->whereIn('tasks.id', self::membershipTaskIds($user));
 
             // D-2 (spec 0154): the wider tiers below see a PRIVATE Task
             // ONLY through the membership branch above — never through
@@ -168,6 +166,23 @@ final class TaskVisibilityScope
         }
 
         return self::scopeToActor(Task::query()->whereKey($task->getKey()), $user)->exists();
+    }
+
+    /**
+     * The ids of the Tasks $user belongs to. A UNION starting from the per-user
+     * indexes, because the equivalent OR of columns and EXISTS cannot use them:
+     * it read the whole `tasks` table for each query and made the statistics
+     * panel exceed the statement timeout in production. The derived table is
+     * what lets the optimizer drive the outer query from these ids.
+     */
+    private static function membershipTaskIds(User $user): QueryBuilder
+    {
+        $membership = DB::table('tasks')->select('id')->where('creator_id', $user->id)
+            ->union(DB::table('tasks')->select('id')->where('requester_id', $user->id))
+            ->union(DB::table('task_assignee')->select('task_id')->where('user_id', $user->id))
+            ->union(DB::table('task_watcher')->select('task_id')->where('user_id', $user->id));
+
+        return DB::query()->fromSub($membership, 'membership_tasks')->select('id');
     }
 
     /**

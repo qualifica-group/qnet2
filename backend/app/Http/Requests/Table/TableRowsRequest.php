@@ -7,6 +7,7 @@ use App\Services\Table\AdvancedFilterApplier;
 use App\Services\Table\CustomFilterRuleValidator;
 use App\Services\Table\RowGroupQuery;
 use App\Services\Table\RowGroupValidator;
+use App\Tables\CategoryTabs\FilterScopedAttributeColumns;
 use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RegistryScopable;
@@ -359,6 +360,11 @@ class TableRowsRequest extends FormRequest
 
             if ($definition instanceof RegistryScopable) {
                 $definition->scopeToRegistry($this->registryIdInput());
+            }
+
+            if ($definition instanceof FilterScopedAttributeColumns) {
+                $advancedFilters = $this->input('advancedFilters');
+                $definition->scopeAttributeColumnsForRows(is_array($advancedFilters) ? $advancedFilters : []);
             }
 
             $this->resolvedDefinition = $definition;

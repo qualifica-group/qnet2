@@ -38,6 +38,7 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   disableBuiltinDelete?: boolean
   advancedFiltersOverride?: AdvancedFilterValues | null
   onAdvancedFiltersOverrideCleared?: () => void
+  hiddenAdvancedFilters?: readonly string[]
   treeData?: boolean
   /** The loaded config (or `undefined` while pending/erroring) — fetched by the caller so its narrowing stays local to `table-view.tsx`. */
   config: TableConfig | undefined
@@ -119,6 +120,7 @@ export function useTableViewController(
     disableBuiltinDelete,
     advancedFiltersOverride,
     onAdvancedFiltersOverrideCleared,
+    hiddenAdvancedFilters,
     treeData,
     config,
     refetchConfig,
@@ -129,6 +131,7 @@ export function useTableViewController(
   const grid = useTableViewGridState(
     {
       domain,
+      scope,
       productCategoryId,
       productCategoryBranchId,
       opportunityId,
@@ -143,6 +146,7 @@ export function useTableViewController(
       disableBuiltinDelete,
       advancedFiltersOverride,
       onAdvancedFiltersOverrideCleared,
+      hiddenAdvancedFilters,
       treeData,
       config,
     },

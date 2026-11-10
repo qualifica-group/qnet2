@@ -116,6 +116,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'request-management': 'navigation.requestManagement',
   'enrollee-management': 'navigation.enrolleeManagement',
   'request-statistics': 'navigation.requestStatistics',
+  'agent-sales-report': 'navigation.agentSalesReport',
   'reward-types': 'navigation.rewardTypes',
   'reward-statuses': 'navigation.rewardStatuses',
   'work-order-payment-statuses': 'navigation.workOrderPaymentStatuses',

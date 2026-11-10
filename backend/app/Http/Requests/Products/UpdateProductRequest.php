@@ -57,6 +57,7 @@ class UpdateProductRequest extends FormRequest
         return [
             ...$this->supplierRules(),
             'name' => ['sometimes', 'required', 'string', 'max:191'],
+            'is_active' => ['sometimes', 'boolean'],
             'description' => ['sometimes', 'nullable', 'string'],
             'cost' => ['sometimes', 'nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'price' => ['sometimes', 'nullable', 'numeric', 'min:0', 'decimal:0,2'],

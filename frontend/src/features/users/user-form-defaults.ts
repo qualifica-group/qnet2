@@ -63,6 +63,8 @@ function productLinesToRows(lines: EmploymentProductLine[] | undefined): Compete
     business_function_id: line.business_function.id,
     product_category_id: line.product_category?.id ?? null,
     all_categories: line.product_category === null,
+    covers_current_categories: line.covers_current_categories,
+    covers_legacy_categories: line.covers_legacy_categories,
     share_percentage: line.share_percentage,
   }))
 }

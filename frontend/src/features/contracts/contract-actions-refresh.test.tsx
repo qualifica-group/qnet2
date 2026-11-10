@@ -8,6 +8,7 @@ import i18n from '@/i18n'
 import { contracts as contractsEn } from '@/i18n/locales/en-contracts'
 import { ContractDetailView } from '@/features/contracts/contract-detail'
 import { validateContract } from '@/features/contracts/api'
+import { OFFER_LINE_FIBRA } from '@/features/request-management/request-work-panel-fixtures'
 import type { ContractDetailWithPermissions, ContractStatusRef } from '@/features/contracts/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
@@ -179,7 +180,8 @@ describe('ContractActionsBar — refresh delle azioni dopo un cambio di stato', 
       validated_at: '2026-08-31',
     })
 
-    renderView(contract(OPEN_STATUS, { validate: true, terminate: true, change_status: true }))
+    // REQUIREMENT CHANGED (decisione utente 2026-11-09): validating demands a product line.
+    renderView({ ...contract(OPEN_STATUS, { validate: true, terminate: true, change_status: true }), offer_lines: [OFFER_LINE_FIBRA] })
 
     expect(screen.getByRole('button', { name: 'Validate contract' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
@@ -199,6 +201,15 @@ describe('ContractActionsBar — refresh delle azioni dopo un cambio di stato', 
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     // Il badge di stato nell'hero segue lo stesso aggiornamento.
     expect(screen.getByText('Validato')).toBeInTheDocument()
+  })
+
+  it('non lascia confermare la validazione di un contratto senza righe prodotto', async () => {
+    renderView(contract(OPEN_STATUS, { validate: true, terminate: true, change_status: true }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Validate contract' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('at least one product line')
+    expect(screen.getByRole('button', { name: 'Validate' })).toBeDisabled()
   })
 
   it('non ripropone "Valida" a un contratto gia\' validato su uno stato in attesa (migrazione legacy)', () => {

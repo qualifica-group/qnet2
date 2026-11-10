@@ -7,6 +7,7 @@ use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
+use App\Migrations\Support\LegacyRecordTouchGuard;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderWorkflowStatus;
 use App\Services\WorkOrders\WorkOrderWorkflowResolver;
@@ -66,6 +67,11 @@ class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
         ];
     }
 
+    public function supportsUpdateExisting(): bool
+    {
+        return true;
+    }
+
     public function endpoint(): string
     {
         return 'work-order-workflow-statuses';
@@ -116,6 +122,13 @@ class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
             ?? throw new RuntimeException("Work order not migrated (legacy id {$externalId}); migrate work orders first.");
         $status = $this->legacyStatus($record['status_id'] ?? null);
 
+        // Step 1-bis (spec 0372, D-13): with "update existing", a commessa worked on in qnet-2 keeps its status.
+        $updatesExisting = $this->updatesExisting($context);
+
+        if ($updatesExisting && app(LegacyRecordTouchGuard::class)->isWorkOrderTouched($workOrder)) {
+            return MigrationRowOutcome::skipped([WorkOrdersSource::TOUCHED_WARNING]);
+        }
+
         // Step 2: the set resolved for this work order
         $resolver = $this->resolver ??= app(WorkOrderWorkflowResolver::class);
         $statuses = $resolver->statusesFor($resolver->resolve($workOrder));
@@ -133,7 +146,7 @@ class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
         // Step 4: quiet write, no activity log
         activity()->withoutLogs(fn () => $workOrder->forceFill(['work_order_workflow_status_id' => $target->id])->saveQuietly());
 
-        return MigrationRowOutcome::created($warnings);
+        return $updatesExisting ? MigrationRowOutcome::updated($warnings) : MigrationRowOutcome::created($warnings);
     }
 
     private function legacyStatus(mixed $statusId): ?WorkOrderWorkflowStatus

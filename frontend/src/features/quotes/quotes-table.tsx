@@ -7,16 +7,12 @@ import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
-import { CategoryTabs } from '@/features/category-tabs/category-tabs'
-import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
-import type { CategoryTabSource } from '@/features/category-tabs/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE } from '@/features/table/use-table-config'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { QUOTES_DOMAIN } from '@/features/quotes/api'
 import { useQuoteRowActions } from '@/features/quotes/use-quote-row-actions'
-
-const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: QUOTES_DOMAIN, apiBasePath: `/${QUOTES_DOMAIN}` }
 
 /**
  * Thin Quotes adapter over the generic table (spec 0065, mirrors
@@ -33,14 +29,10 @@ const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: QUOTES_DOMAIN, apiBasePath
 export function QuotesTable() {
   const { t } = useTranslation()
 
-  const { scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
-
   const tableRef = useRef<TableViewHandle>(null)
-  // A write can move the quote across categories, so the strip counts are re-read with the rows.
   const refreshGrid = useCallback(() => {
     tableRef.current?.refresh()
-    invalidateCategories()
-  }, [invalidateCategories])
+  }, [])
 
   const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, documentsDialog, sheet, openCreate } =
     useQuoteRowActions({ onMutated: refreshGrid })
@@ -58,15 +50,10 @@ export function QuotesTable() {
         }
       />
 
-      <CategoryTabs {...tabsProps} />
-
       <TableView
-        // Keyed by the selection: a tab change remounts the table so search,
-        // filters and layout restart from the scoped config (as in Gestione Richieste).
-        key={tableKey}
         ref={tableRef}
         domain={QUOTES_DOMAIN}
-        scope={scope}
+        scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE}
         renderers={quoteColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}

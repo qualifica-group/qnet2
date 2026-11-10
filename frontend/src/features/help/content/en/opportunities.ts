@@ -84,28 +84,38 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'category-tabs',
-      title: "Filtering by product category",
+      id: 'people-filters',
+      title: "Filtering by person",
       blocks: [
         {
           type: 'paragraph',
-          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of opportunities. Clicking a tab shows only the opportunities of that category. Your choice is kept after reloading the page.",
+          text: "In the **Advanced filters** panel (button in the bar above the list) the **Supervisor** and **Account managers** fields let you pick one or more people: the list shows the opportunities where at least one of them holds that role. If you fill in both fields, an opportunity must satisfy both.",
+        },
+      ],
+    },
+    {
+      id: 'list-filters',
+      title: "Default filters and category",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "When it opens, the **Opportunities** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Account manager** (the opportunities where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together. To widen the list choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved.",
         },
         {
           type: 'paragraph',
-          text: "An opportunity appears under the tab of every category among its product lines (it counts once even with several lines of the same category). The number next to the name is how many opportunities, among those you can see, fall under that category.",
-        },
-        {
-          type: 'steps',
-          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
+          text: "In the same panel there is also **Product category** (that category only). An opportunity falls under a category when it is among the **product lines** of the opportunity.",
+        },
+        {
+          type: 'paragraph',
+          text: "Choosing a current parent category in **Parent category** (for example ISO) also brings in the opportunities of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter. To see only those of a legacy category or only of a new one use **Product category**.",
         },
         {
           type: 'note',
-          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The statistics panel and the export do not follow the tab: they always cover all the opportunities.",
+          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Opportunities** page: they do not appear inside a record and in a client's Opportunities section. The export follows the active filters. Flexible fields are read and edited from the detail.",
         },
       ],
     },
@@ -137,7 +147,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**.',
+          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Single-offer categories are the exception: a single-offer opportunity never blocks the others and is created even when the registry already has an open one. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either.',
         },
       ],
     },

@@ -81,6 +81,7 @@ export function ProductLinesField({ value, onChange, disabled = false }: Product
                 <div className="min-w-0 flex-1">
                   <ProductCategoryRootSelect
                     value={rootCategoryId}
+                    categoryId={row.product_category_id}
                     onChange={(id) => setRowRootCategory(index, id)}
                     disabled={disabled}
                     otherRowsFilled={otherRowsFilled(index)}
@@ -95,6 +96,7 @@ export function ProductLinesField({ value, onChange, disabled = false }: Product
                       <ProductCategoryFilterSelect
                         rootCategoryId={filter.rootCategoryId}
                         value={filter.filterCategoryId}
+                        categoryId={row.product_category_id}
                         onChange={(id) => setRowFilterCategory(index, id)}
                         disabled={disabled}
                         triggerLabel={t('productLines.filterCategory', { n: index + 1 })}

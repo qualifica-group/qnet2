@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Products\ProductActivationController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Products\ProductCostTypeController;
 use App\Http\Controllers\Products\ProductForSelectController;
@@ -44,6 +45,10 @@ Route::post('products/cost-type', [ProductCostTypeController::class, 'assign']);
 
 // Mass default-revenue-type assignment (spec 0350), gated by products.update.
 Route::post('products/revenue-type', [ProductRevenueTypeController::class, 'assign']);
+
+// Mass activation / deactivation (spec 0366), gated by products.update and
+// the `is_active` field permission.
+Route::post('products/activation', ProductActivationController::class);
 
 Route::get('products/{product}', [ProductController::class, 'show']);
 Route::post('products', [ProductController::class, 'store']);

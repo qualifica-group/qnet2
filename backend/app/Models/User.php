@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OnboardingStatusEnum;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasCustomFields;
@@ -104,6 +105,18 @@ class User extends Authenticatable implements HasLocalePreference
     public function isFirstAccessPending(): bool
     {
         return $this->must_set_password && config('auth.first_access_gate');
+    }
+
+    /**
+     * Welcome tour state (spec 0368 D-6): never seen, seen an older version, or current.
+     */
+    public function onboardingStatus(): OnboardingStatusEnum
+    {
+        return match (true) {
+            $this->onboarding_seen_version === null => OnboardingStatusEnum::Required,
+            $this->onboarding_seen_version < config('auth.onboarding_version') => OnboardingStatusEnum::Outdated,
+            default => OnboardingStatusEnum::Completed,
+        };
     }
 
     /**
@@ -221,6 +234,12 @@ class User extends Authenticatable implements HasLocalePreference
             // only via forceFill() by the onboarding/password services.
             'must_set_password' => 'boolean',
             'password_changed_at' => 'datetime',
+            // Spec 0369 — welcome email marker. Guarded: written only via
+            // forceFill() by UserOnboardingService.
+            'welcome_sent_at' => 'datetime',
+            // Spec 0370 — last credential login. Guarded: written only via
+            // forceFill() by AuthService::login().
+            'last_login_at' => 'datetime',
             // Spec 0013 — external data migration: the source system's id for
             // a migrated user, guarded (not in $fillable) so it is only ever
             // set by property assignment post-create, never mass-assigned.
@@ -233,6 +252,10 @@ class User extends Authenticatable implements HasLocalePreference
             // `locale`: fillable, validated 0..100 by UpdateProfileRequest, no
             // escalation risk.
             'ui_scale' => 'integer',
+            // Spec 0368 — welcome tour. Guarded (not in $fillable): written only
+            // via forceFill() by OnboardingService.
+            'onboarding_seen_version' => 'integer',
+            'onboarding_seen_at' => 'datetime',
         ];
     }
 }

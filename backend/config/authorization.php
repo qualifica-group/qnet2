@@ -3,6 +3,7 @@
 use App\Authorization\AbsenceRequestsAuthorization;
 use App\Authorization\AbsenceTypesAuthorization;
 use App\Authorization\AgentFiscalProfilesAuthorization;
+use App\Authorization\AgentSalesReportAuthorization;
 use App\Authorization\ApiClientsAuthorization;
 use App\Authorization\AttributesAuthorization;
 use App\Authorization\BusinessFunctionsAuthorization;
@@ -153,6 +154,8 @@ return [
         // Spec 0130: "Gestione Iscritti" — same field/action catalogue as
         // request-management, own resource() (see the class docblock).
         'enrollee-management' => EnrolleeManagementAuthorization::class,
+        // Spec 0365: "Report Vendite Agenti" — a view-only module.
+        'agent-sales-report' => AgentSalesReportAuthorization::class,
         // Spec 0185: "Statistiche Gestione Richieste" — a view-only module.
         'request-statistics' => RequestStatisticsAuthorization::class,
         // Spec 0273: the HR "Organigramma" page (view-only permission).

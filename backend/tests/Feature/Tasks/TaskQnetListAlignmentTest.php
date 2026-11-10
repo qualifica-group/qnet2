@@ -411,6 +411,34 @@ it('the grid runs the same number of queries with 1 or 5 rows carrying assignees
 // PATCH cell — a structural failure is 422, never a 500 (spec 0156, D-8)
 // ---------------------------------------------------------------------------
 
+it('PATCH task_status to closed_negative closes on the picked status, with no time entry and no completion date', function () {
+    $actor = taskActorWith(['viewAny', 'view', 'update']);
+    $task = Task::factory()->forCreator($actor)->create();
+    $target = TaskStatus::factory()->group(TaskStatusGroup::ClosedNegative)->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/tasks/rows/{$task->id}", ['column' => 'task_status', 'value' => $target->id])
+        ->assertOk();
+
+    $task->refresh();
+    expect($task->task_status_id)->toBe($target->id)
+        ->and($task->completion_date)->toBeNull()
+        ->and(TimeEntry::query()->where('task_id', $task->id)->exists())->toBeFalse();
+});
+
+it('PATCH task_status to closed_negative is 422 when the task requires a missing closure feedback', function () {
+    $actor = taskActorWith(['viewAny', 'view', 'update']);
+    $task = Task::factory()->forCreator($actor)->create(['requires_closure_feedback' => true, 'closure_feedback' => null]);
+    $originalStatusId = $task->task_status_id;
+    $target = TaskStatus::factory()->group(TaskStatusGroup::ClosedNegative)->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/tasks/rows/{$task->id}", ['column' => 'task_status', 'value' => $target->id])
+        ->assertStatus(422);
+
+    expect($task->fresh()->task_status_id)->toBe($originalStatusId);
+});
+
 it('PATCH task_status with a non-existent id is 422, not 500', function () {
     $actor = taskActorWith(['viewAny', 'view', 'update']);
     $task = Task::factory()->forCreator($actor)->create();

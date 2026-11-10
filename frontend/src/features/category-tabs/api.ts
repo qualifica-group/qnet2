@@ -8,13 +8,6 @@ import type {
   CategoryTabPreferencesPayload,
 } from '@/features/category-tabs/types'
 
-/** A category as the grids' endpoint returns it (spec 0335). */
-interface GridCategoryDto {
-  id: number
-  name: string
-  records_count: number
-}
-
 /** A category as Gestione Richieste's endpoint returns it (spec 0064). */
 export interface RequestsCategoryDto {
   id: number
@@ -22,21 +15,9 @@ export interface RequestsCategoryDto {
   requests_count: number
 }
 
-/** The only place the two count field names are reconciled into `count`. */
+/** Maps the endpoint's `requests_count` to the strip's `count`. */
 export function categoryTabItemsFromRequests(categories: RequestsCategoryDto[]): CategoryTabItem[] {
   return categories.map(({ id, name, requests_count }) => ({ id, name, count: requests_count }))
-}
-
-/** GET {basePath}/product-categories for the Opportunities and Quotes grids. */
-export async function fetchGridCategoryTabs(
-  basePath: string,
-  level: CategoryTabLevel = 'all',
-): Promise<CategoryTabItem[]> {
-  const { data } = await apiClient.get<ApiResponse<{ categories: GridCategoryDto[] }>>(
-    `${basePath}/product-categories`,
-    levelRequestConfig(level),
-  )
-  return data.data.categories.map(({ id, name, records_count }) => ({ id, name, count: records_count }))
 }
 
 /** GET {basePath}/category-tab-preferences (spec 0184): the actor's favourite strip categories. */
