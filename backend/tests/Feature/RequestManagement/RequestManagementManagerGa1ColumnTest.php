@@ -114,9 +114,9 @@ it('a category tab relabels BOTH G.A. columns from its own manager_labels', func
         ->and($columns['manager_ga1']['label'])->toBe('Back Office');
 });
 
-// REQUIREMENT CHANGED (spec 0382 D-3): an unlabelled position keeps
-// "Gestore account N" and starts hidden, instead of its former i18n key.
-it('a category defining only the level-1 label leaves operator_ga2 as a hidden "Gestore account 2"', function (): void {
+// REQUIREMENT CHANGED (spec 0382 D-11): an unlabelled position has no column
+// of its own in a category tab, its people go into "Altri gestori account".
+it('a category defining only the level-1 label shows no operator_ga2 column', function (): void {
     $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Back Office']]);
     Sanctum::actingAs(ga1ColumnActor());
 
@@ -124,7 +124,7 @@ it('a category defining only the level-1 label leaves operator_ga2 as a hidden "
         ->assertOk()->json('data.columns'))->keyBy('id');
 
     expect($columns['manager_ga1']['label'])->toBe('Back Office')
-        ->and($columns['operator_ga2'])->toMatchArray(['label' => 'Account manager 2', 'visible' => false]);
+        ->and($columns)->not->toHaveKey('operator_ga2');
 });
 
 // ---------------------------------------------------------------------------

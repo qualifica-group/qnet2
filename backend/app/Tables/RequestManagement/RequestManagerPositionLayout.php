@@ -10,58 +10,62 @@ use App\Support\ManagerPositions;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Which Gestore Account position columns a tab shows, and under which name
- * (spec 0382 D-2/D-3). The catalogue declares every position up to
- * ManagerPositions::MAX; this class trims it to the positions in use and
- * applies the tab's category labels:
- *  - "Tutte", or a category with no label at all: positions 1..N, N = the
- *    highest position occupied in `quote_user` but never below the Operatore
- *    (so a system with no team yet can still assign from the cell), all
- *    visible, "Gestore account N";
- *  - a category with labels: positions up to the higher of N and its last
- *    label; a labelled position takes the label and is visible, the others
- *    keep "Gestore account N" and start hidden (selectable from the chooser).
+ * Which Gestore Account columns a tab shows, and under which name (spec 0382).
+ * The catalogue declares every position up to ManagerPositions::MAX; this
+ * class trims it per tab:
+ *  - "Tutte", or a category with no label at all (D-2): positions 1..N,
+ *    N = the highest position occupied in `quote_user` but never below the
+ *    Operatore (so a system with no team yet can still assign from the cell),
+ *    "Gestore account N", plus "Gestori account" with the whole team;
+ *  - a category with labels (D-11): one column per NAMED position, under its
+ *    label, plus "Altri gestori account" with the people in every other
+ *    position (RequestOtherManagersColumn).
  *
  * The labels are the category's EFFECTIVE `manager_labels` (spec 0080,
  * inherited from its ancestors), of the Offerta's own team (spec 0087 D-10).
  */
 final class RequestManagerPositionLayout
 {
+    /** The `managers` header in a category tab with labels (spec 0382 D-11). */
+    public const string OTHER_MANAGERS_LABEL = 'requestManagement.columns.otherManagers';
+
     private ?int $highestOccupied = null;
+
+    /** @var array<int, array<int, string>> */
+    private array $labelsByCategory = [];
 
     public function __construct(private readonly ProductCategoryService $categories) {}
 
     /**
-     * The config columns of a tab: position columns trimmed, named and
-     * shown or hidden; every other column untouched.
+     * The config columns of a tab: position columns trimmed and named, the
+     * team column renamed when it holds only the unnamed positions; every
+     * other column untouched.
      *
      * @param  array<int, array<string, mixed>>  $columns
      * @return array<int, array<string, mixed>>
      */
     public function shape(array $columns, ?int $categoryId): array
     {
-        // Step 1: the tab's labels and the last position it shows
+        // Step 1: the tab's labels, and the positions it shows
         $labels = $this->labels($categoryId);
-        $lastPosition = max($this->highestOccupied(), $labels === [] ? 0 : max(array_keys($labels)));
-        $visibility = $this->visibilityFor($labels);
+        $shown = $labels === [] ? range(1, $this->highestOccupied()) : array_keys($labels);
         $shaped = [];
 
-        // Step 2: drop the positions beyond it, name and show the others
+        // Step 2: keep and name the shown positions, rename the team column
         foreach ($columns as $column) {
-            $position = RequestManagerColumns::positionOf((string) ($column['id'] ?? ''));
+            $id = (string) ($column['id'] ?? '');
+            $position = RequestManagerColumns::positionOf($id);
 
             if ($position === null) {
-                $shaped[] = $column;
+                $shaped[] = $id === RequestManagerColumns::MANAGERS_COLUMN_ID && $labels !== []
+                    ? [...$column, 'label' => self::OTHER_MANAGERS_LABEL]
+                    : $column;
 
                 continue;
             }
 
-            if ($position <= $lastPosition) {
-                $shaped[] = [
-                    ...$column,
-                    'label' => $labels[$position] ?? $column['label'],
-                    'visible' => $visibility[$column['id']],
-                ];
+            if (in_array($position, $shown, true)) {
+                $shaped[] = [...$column, 'label' => $labels[$position] ?? $column['label']];
             }
         }
 
@@ -69,30 +73,14 @@ final class RequestManagerPositionLayout
     }
 
     /**
-     * The tab's default visibility of every position column, as column id =>
-     * visible: the baseline the saved column preferences are a delta of
-     * (spec 0382 D-8).
+     * The positions a tab shows as their own column under a category label;
+     * empty for "Tutte" and for a category with no label.
      *
-     * @return array<string, bool>
+     * @return array<int, int>
      */
-    public function visibility(?int $categoryId): array
+    public function namedPositions(?int $categoryId): array
     {
-        return $this->visibilityFor($this->labels($categoryId));
-    }
-
-    /**
-     * @param  array<int, string>  $labels
-     * @return array<string, bool>
-     */
-    private function visibilityFor(array $labels): array
-    {
-        $visibility = [];
-
-        foreach (RequestManagerColumns::positions() as $position => $columnId) {
-            $visibility[$columnId] = $labels === [] || isset($labels[$position]);
-        }
-
-        return $visibility;
+        return array_keys($this->labels($categoryId));
     }
 
     /**
@@ -103,7 +91,19 @@ final class RequestManagerPositionLayout
      */
     private function labels(?int $categoryId): array
     {
-        $category = $categoryId === null ? null : ProductCategory::find($categoryId);
+        if ($categoryId === null) {
+            return [];
+        }
+
+        return $this->labelsByCategory[$categoryId] ??= $this->resolveLabels($categoryId);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveLabels(int $categoryId): array
+    {
+        $category = ProductCategory::find($categoryId);
 
         if ($category === null) {
             return [];
@@ -118,6 +118,8 @@ final class RequestManagerPositionLayout
                 $labels[$position] = $label;
             }
         }
+
+        ksort($labels);
 
         return $labels;
     }

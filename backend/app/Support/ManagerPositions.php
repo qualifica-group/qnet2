@@ -99,14 +99,18 @@ final class ManagerPositions
      * Turns a grid cell's plain list of people into the `manager_slots`
      * payload, for a team model (spec 0206, D-3).
      *
+     * `$reservedPositions` (spec 0382 D-11) are positions the cell does not
+     * show: their occupants stay put and newcomers never land on them.
+     *
      * @param  array<int, int|string>  $userIds
+     * @param  array<int, int>  $reservedPositions
      * @return array<int, int|null>
      */
-    public static function slotsFor(Model $owner, array $userIds): array
+    public static function slotsFor(Model $owner, array $userIds, array $reservedPositions = []): array
     {
         $owner->loadMissing('managers');
 
-        return self::slotsFromIds(self::positionsOf($owner->getRelationValue('managers')), array_map('intval', $userIds));
+        return self::slotsFromIds(self::positionsOf($owner->getRelationValue('managers')), array_map('intval', $userIds), $reservedPositions);
     }
 
     /**
@@ -118,33 +122,48 @@ final class ManagerPositions
      *
      * @param  array<int, int>  $currentPositions  userId => 1-based position, as persisted
      * @param  array<int, int>  $userIds  the people the cell now holds
+     * @param  array<int, int>  $reservedPositions  positions kept as they are and never filled by a newcomer
      * @return array<int, int|null>
      */
-    public static function slotsFromIds(array $currentPositions, array $userIds): array
+    public static function slotsFromIds(array $currentPositions, array $userIds, array $reservedPositions = []): array
     {
         $slots = [];
 
         foreach ($currentPositions as $userId => $position) {
-            $slots[$position - 1] = in_array($userId, $userIds, true) ? $userId : null;
+            $keep = in_array($position, $reservedPositions, true) || in_array($userId, $userIds, true);
+            $slots[$position - 1] = $keep ? $userId : null;
         }
-
-        $slots = $slots === [] ? [] : array_replace(array_fill(0, max(array_keys($slots)) + 1, null), $slots);
 
         foreach (array_diff($userIds, array_keys($currentPositions)) as $newcomer) {
-            $free = array_search(null, $slots, true);
-
-            if ($free === false) {
-                $slots[] = $newcomer;
-            } else {
-                $slots[$free] = $newcomer;
-            }
+            $slots[self::firstFreeIndex($slots, $reservedPositions)] = $newcomer;
         }
+
+        // Removed or reserved positions, and newcomers placed past them, leave holes: fill them.
+        $slots = $slots === [] ? [] : array_replace(array_fill(0, max(array_keys($slots)) + 1, null), $slots);
 
         while ($slots !== [] && end($slots) === null) {
             array_pop($slots);
         }
 
         return $slots;
+    }
+
+    /**
+     * The 0-based index of the first empty slot outside the reserved
+     * positions, or the next one past the end.
+     *
+     * @param  array<int, int|null>  $slots
+     * @param  array<int, int>  $reservedPositions
+     */
+    private static function firstFreeIndex(array $slots, array $reservedPositions): int
+    {
+        $index = 0;
+
+        while (($slots[$index] ?? null) !== null || in_array($index + 1, $reservedPositions, true)) {
+            $index++;
+        }
+
+        return $index;
     }
 
     /**

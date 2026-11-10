@@ -2,6 +2,7 @@
 
 use App\Authorization\RequestManagementAuthorization;
 use App\Models\Opportunity;
+use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
@@ -16,7 +17,9 @@ use Spatie\Permission\Models\Permission;
  * Spec 0382: one Gestore Account column per `quote_user` position, named and
  * shown per tab, replacing the fixed Tutor/Operatore/Operatore APL columns.
  * Position 5 stands in for any non-Operatore position (it superseded the
- * spec 0373 D-10 "Operatore APL" test file: REQUIREMENT CHANGED).
+ * spec 0373 D-10 "Operatore APL" test file: REQUIREMENT CHANGED). In a
+ * category tab only the named positions get a column, the others go into
+ * "Altri gestori account" (D-11).
  */
 uses(RefreshDatabase::class);
 
@@ -47,6 +50,24 @@ if (! function_exists('positionColumnsQuote')) {
         foreach ($slots as $position => $userId) {
             $quote->managers()->attach($userId, ['position' => $position]);
         }
+
+        return $quote;
+    }
+}
+
+if (! function_exists('positionColumnsCategoryQuote')) {
+    /**
+     * A request filed under $category, with the given team.
+     *
+     * @param  array<int, int>  $slots  position => user id
+     */
+    function positionColumnsCategoryQuote(ProductCategory $category, array $slots): Quote
+    {
+        $quote = positionColumnsQuote($slots);
+        OpportunityProductLine::factory()->create([
+            'opportunity_id' => $quote->opportunity_id,
+            'product_category_id' => $category->id,
+        ]);
 
         return $quote;
     }
@@ -118,7 +139,7 @@ it('AC-001: the position columns sit together after "Fonte", in position order, 
     expect(array_slice($visible, $from, 5))->toBe(['source', 'manager_ga1', 'operator_ga2', 'manager_ga3', 'managers']);
 });
 
-it('AC-002: a category tab names its labelled positions and hides the others', function (): void {
+it('AC-002: a category tab shows only its named positions, and "Altri gestori account"', function (): void {
     positionColumnsQuote([6 => User::factory()->create()->id]);
     $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Tutor', '2' => 'Operatore', '4' => 'Back office']]);
     Sanctum::actingAs(positionColumnsActor());
@@ -127,10 +148,9 @@ it('AC-002: a category tab names its labelled positions and hides the others', f
 
     expect($columns['manager_ga1'])->toMatchArray(['label' => 'Tutor', 'visible' => true])
         ->and($columns['operator_ga2'])->toMatchArray(['label' => 'Operatore', 'visible' => true])
-        ->and($columns['manager_ga3'])->toMatchArray(['label' => 'Account manager 3', 'visible' => false])
         ->and($columns['manager_ga4'])->toMatchArray(['label' => 'Back office', 'visible' => true])
-        ->and($columns['manager_ga6'])->toMatchArray(['label' => 'Account manager 6', 'visible' => false])
-        ->and($columns)->not->toHaveKey('manager_ga7');
+        ->and($columns)->not->toHaveKeys(['manager_ga3', 'manager_ga5', 'manager_ga6'])
+        ->and($columns['managers'])->toMatchArray(['label' => 'requestManagement.columns.otherManagers', 'visible' => true]);
 });
 
 it('AC-002: a label beyond the highest occupied position still gets its column', function (): void {
@@ -140,7 +160,18 @@ it('AC-002: a label beyond the highest occupied position still gets its column',
     $columns = positionColumnsConfig("?product_category_id={$category->id}");
 
     expect($columns['manager_ga5'])->toMatchArray(['label' => 'Operatore APL', 'visible' => true])
-        ->and($columns['manager_ga1']['visible'])->toBeFalse();
+        ->and($columns)->not->toHaveKey('manager_ga1');
+});
+
+it('AC-002: a root tab uses the labels of its root', function (): void {
+    $root = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Tutor']]);
+    Sanctum::actingAs(positionColumnsActor());
+
+    $columns = positionColumnsConfig("?product_category_branch_id={$root->id}");
+
+    expect($columns['manager_ga1']['label'])->toBe('Tutor')
+        ->and($columns)->not->toHaveKey('operator_ga2')
+        ->and($columns['managers']['label'])->toBe('requestManagement.columns.otherManagers');
 });
 
 it('AC-002: a category with no label behaves like "Tutte"', function (): void {
@@ -150,7 +181,8 @@ it('AC-002: a category with no label behaves like "Tutte"', function (): void {
     $columns = positionColumnsConfig("?product_category_id={$category->id}");
 
     expect($columns['manager_ga1'])->toMatchArray(['label' => 'Account manager 1', 'visible' => true])
-        ->and($columns['operator_ga2'])->toMatchArray(['label' => 'Account manager 2', 'visible' => true]);
+        ->and($columns['operator_ga2'])->toMatchArray(['label' => 'Account manager 2', 'visible' => true])
+        ->and($columns['managers']['label'])->toBe('requestManagement.columns.managers');
 });
 
 it('AC-002: the Italian header reads "Gestore account N"', function (): void {
@@ -344,20 +376,6 @@ it('AC-005: the single-position keys are no longer in the role matrix', function
         ->and($keys)->not->toContain('manager_ga5_id');
 });
 
-it('AC-006: showing a hidden position in a category tab survives the reload', function (): void {
-    positionColumnsQuote([3 => User::factory()->create()->id]);
-    $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Tutor']]);
-    Sanctum::actingAs(positionColumnsActor());
-
-    $this->postJson('/api/tables/request-management/preferences', [
-        'product_category_id' => $category->id,
-        'columns' => [['id' => 'manager_ga3', 'visible' => true]],
-    ])->assertOk();
-
-    expect(positionColumnsConfig("?product_category_id={$category->id}")['manager_ga3']['visible'])->toBeTrue()
-        ->and(positionColumnsConfig("?product_category_id={$category->id}")['operator_ga2']['visible'])->toBeFalse();
-});
-
 it('AC-006: hiding a position in "Tutte" survives the reload', function (): void {
     Sanctum::actingAs(positionColumnsActor());
 
@@ -366,4 +384,77 @@ it('AC-006: hiding a position in "Tutte" survives the reload', function (): void
     ])->assertOk();
 
     expect(positionColumnsConfig()['manager_ga1']['visible'])->toBeFalse();
+});
+
+it('AC-008: in a category tab "Altri gestori account" holds only the unnamed positions', function (): void {
+    $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Tutor', '2' => 'Operatore']]);
+    $tutor = User::factory()->create(['name' => 'Tutor Person']);
+    $partner = User::factory()->create(['name' => 'Partner Person']);
+    $quote = positionColumnsCategoryQuote($category, [1 => $tutor->id, 3 => $partner->id]);
+    Sanctum::actingAs(positionColumnsActor());
+
+    $row = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25, 'productCategoryId' => $category->id])
+        ->assertOk()->json('items'))->keyBy('id')[$quote->id];
+    $allRow = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
+        ->assertOk()->json('items'))->keyBy('id')[$quote->id];
+
+    expect(array_column($row['managers'], 'id'))->toBe([$partner->id])
+        ->and($row['manager_ga1']['id'])->toBe($tutor->id)
+        ->and(array_column($allRow['managers'], 'id'))->toBe([$tutor->id, $partner->id]);
+});
+
+it('AC-008: the filter and the distinct values of "Altri gestori account" ignore the named positions', function (): void {
+    $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Tutor']]);
+    $anna = User::factory()->create(['name' => 'Anna']);
+    $zeno = User::factory()->create(['name' => 'Zeno']);
+    positionColumnsCategoryQuote($category, [1 => $anna->id]);
+    $annaAsOther = positionColumnsCategoryQuote($category, [3 => $anna->id, 1 => $zeno->id]);
+    Sanctum::actingAs(positionColumnsActor());
+
+    $ids = collect($this->postJson('/api/tables/request-management/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'productCategoryId' => $category->id,
+        'filterModel' => ['managers' => ['filterType' => 'set', 'values' => ['Anna']]],
+    ])->assertOk()->json('items'))->pluck('id')->all();
+
+    expect($ids)->toBe([$annaAsOther->id]);
+
+    $this->postJson('/api/tables/request-management/values', ['columnId' => 'managers', 'productCategoryId' => $category->id])
+        ->assertOk()->assertJsonPath('data.values', [null, 'Anna']);
+});
+
+it('AC-009: the "Altri gestori account" cell writes only the unnamed positions', function (): void {
+    $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Tutor', '2' => 'Operatore', '3' => 'Partner']]);
+    $tutor = User::factory()->create();
+    $other = User::factory()->create();
+    $newcomer = User::factory()->create();
+    $quote = positionColumnsCategoryQuote($category, [1 => $tutor->id, 5 => $other->id]);
+    Sanctum::actingAs(positionColumnsActor());
+
+    $row = $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'managers',
+        'value' => [$newcomer->id],
+        'product_category_id' => $category->id,
+    ])->assertOk()->json('data');
+
+    $positions = $quote->fresh()->managers()->get()->mapWithKeys(fn (User $user): array => [$user->pivot->position => $user->id])->all();
+
+    // The Tutor stays, the empty named positions 2-3 are skipped, the other leaves.
+    expect($positions)->toBe([1 => $tutor->id, 4 => $newcomer->id])
+        ->and(array_column($row['managers'], 'id'))->toBe([$newcomer->id]);
+});
+
+it('AC-009: without a tab the team cell still edits the whole team', function (): void {
+    $tutor = User::factory()->create();
+    $newcomer = User::factory()->create();
+    $quote = positionColumnsQuote([1 => $tutor->id]);
+    Sanctum::actingAs(positionColumnsActor());
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'managers',
+        'value' => [$newcomer->id],
+    ])->assertOk();
+
+    expect($quote->fresh()->managers()->pluck('users.id')->all())->toBe([$newcomer->id]);
 });

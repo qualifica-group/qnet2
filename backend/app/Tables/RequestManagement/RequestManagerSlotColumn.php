@@ -17,8 +17,10 @@ use Illuminate\Support\Facades\DB;
  * columns that read a `quote_user` pivot POSITION instead of a column of
  * `quotes` (direttiva utente 2026-09-24, every position since spec 0382). The
  * Operatore position is not here: it is denormalized onto `quotes.operator_id`,
- * so RequestRelationColumns handles it as an own FK. The `managers` column (spec 0373) shares the filter
- * and the distinct values with no position: it matches every slot.
+ * so RequestRelationColumns handles it as an own FK. The `managers` column
+ * (spec 0373) shares the filter and the distinct values with no position: it
+ * matches every slot, or every slot but the excluded ones (a category tab's
+ * named positions, spec 0382 D-11).
  *
  * The cell shows the occupant's `name`, so every hook addresses `users.name`
  * of the user in that slot; an empty slot is the blank entry "(Vuoti)". The
@@ -34,8 +36,9 @@ final class RequestManagerSlotColumn
     /**
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
+     * @param  array<int, int>  $excludedPositions  only for the `managers` column
      */
-    public function applyFilter(Builder $query, string $columnId, array $filter): bool
+    public function applyFilter(Builder $query, string $columnId, array $filter, array $excludedPositions = []): bool
     {
         if (! self::handles($columnId)) {
             return false;
@@ -49,16 +52,16 @@ final class RequestManagerSlotColumn
             return true;
         }
 
-        $query->where(function (Builder $group) use ($position, $values, $matchesBlank): void {
+        $query->where(function (Builder $group) use ($position, $excludedPositions, $values, $matchesBlank): void {
             if ($values !== []) {
-                $group->whereHas('managers', static function (Builder $managers) use ($position, $values): void {
-                    self::inSlot($position)($managers);
+                $group->whereHas('managers', static function (Builder $managers) use ($position, $excludedPositions, $values): void {
+                    self::inSlot($position, $excludedPositions)($managers);
                     $managers->whereIn('users.name', $values);
                 });
             }
 
             if ($matchesBlank) {
-                $group->orWhereDoesntHave('managers', self::inSlot($position));
+                $group->orWhereDoesntHave('managers', self::inSlot($position, $excludedPositions));
             }
         });
 
@@ -89,16 +92,17 @@ final class RequestManagerSlotColumn
      * blank entry when some of those rows leave the slot empty.
      *
      * @param  Builder<Model>  $query
+     * @param  array<int, int>  $excludedPositions  only for the `managers` column
      * @return array<int, string|null>|null
      */
-    public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
+    public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit, array $excludedPositions = []): ?array
     {
         if (! self::handles($columnId)) {
             return null;
         }
 
         $position = self::slotPosition($columnId);
-        $names = $this->slotUsers($position)
+        $names = $this->slotUsers($position, $excludedPositions)
             ->whereIn('quote_user.quote_id', (clone $query)->select('quotes.id'))
             ->when($search !== null && $search !== '', function (QueryBuilder $builder) use ($search): void {
                 $builder->where('users.name', 'like', '%'.$this->escapeLike((string) $search).'%');
@@ -113,7 +117,7 @@ final class RequestManagerSlotColumn
         return $this->withBlankEntry(
             $names,
             $search,
-            fn (): bool => (clone $query)->whereDoesntHave('managers', self::inSlot($position))->exists(),
+            fn (): bool => (clone $query)->whereDoesntHave('managers', self::inSlot($position, $excludedPositions))->exists(),
         );
     }
 
@@ -135,22 +139,30 @@ final class RequestManagerSlotColumn
 
     /**
      * Narrows a `managers` relation query to the occupant of one position;
-     * a null position is the whole team.
+     * a null position is the whole team, minus the excluded positions.
+     *
+     * @param  array<int, int>  $excludedPositions
      */
-    private static function inSlot(?int $position): Closure
+    private static function inSlot(?int $position, array $excludedPositions = []): Closure
     {
-        return static function (Builder $managers) use ($position): void {
+        return static function (Builder $managers) use ($position, $excludedPositions): void {
             if ($position !== null) {
                 $managers->where('quote_user.position', $position);
+            } elseif ($excludedPositions !== []) {
+                $managers->whereNotIn('quote_user.position', $excludedPositions);
             }
         };
     }
 
-    private function slotUsers(?int $position): QueryBuilder
+    /**
+     * @param  array<int, int>  $excludedPositions
+     */
+    private function slotUsers(?int $position, array $excludedPositions = []): QueryBuilder
     {
         return DB::table('users')
             ->join('quote_user', 'quote_user.user_id', '=', 'users.id')
-            ->when($position !== null, static fn (QueryBuilder $users) => $users->where('quote_user.position', $position));
+            ->when($position !== null, static fn (QueryBuilder $users) => $users->where('quote_user.position', $position))
+            ->when($position === null && $excludedPositions !== [], static fn (QueryBuilder $users) => $users->whereNotIn('quote_user.position', $excludedPositions));
     }
 
     /**

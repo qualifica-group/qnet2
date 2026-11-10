@@ -90,9 +90,9 @@ it('the "Tutte" tab (no product_category_id) names operator_ga2 "Gestore account
     expect($columns['operator_ga2']['label'])->toBe('Account manager 2');
 });
 
-// REQUIREMENT CHANGED (spec 0382 D-3): an unlabelled position is a hidden
-// "Gestore account N".
-it('a scoped category with no level-2 label leaves operator_ga2 as a hidden "Gestore account 2"', function (): void {
+// REQUIREMENT CHANGED (spec 0382 D-11): an unlabelled position has no column
+// in a category tab.
+it('a scoped category with no level-2 label shows no operator_ga2 column', function (): void {
     $actor = operatorLabelColumnUserWith(['viewAny', 'viewAll']);
     $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Commerciale']]);
     Sanctum::actingAs($actor);
@@ -100,21 +100,21 @@ it('a scoped category with no level-2 label leaves operator_ga2 as a hidden "Ges
     $columns = collect($this->getJson("/api/tables/request-management/columns?product_category_id={$category->id}")
         ->assertOk()->json('data.columns'))->keyBy('id');
 
-    expect($columns['operator_ga2'])->toMatchArray(['label' => 'Account manager 2', 'visible' => false]);
+    expect($columns)->not->toHaveKey('operator_ga2');
 });
 
-// REQUIREMENT CHANGED (spec 0382 D-3): a labelled category also hides its
-// unlabelled positions, so the Gestore Account positions are compared apart.
+// REQUIREMENT CHANGED (spec 0382 D-11): a labelled category drops its
+// unlabelled positions and renames the team column, so those are compared apart.
 it('the relabel does not disturb attr.* columns or any other native column', function (): void {
     $actor = operatorLabelColumnUserWith(['viewAny', 'viewAll']);
     $category = ProductCategory::factory()->create(['manager_labels' => ['2' => 'Consulente']]);
     Sanctum::actingAs($actor);
 
     $before = collect($this->getJson('/api/tables/request-management/columns')->assertOk()->json('data.columns'))
-        ->keyBy('id')->except(['operator_ga2', 'manager_ga1']);
+        ->keyBy('id')->except(['operator_ga2', 'manager_ga1', 'managers']);
 
     $after = collect($this->getJson("/api/tables/request-management/columns?product_category_id={$category->id}")
-        ->assertOk()->json('data.columns'))->keyBy('id')->except(['operator_ga2', 'manager_ga1']);
+        ->assertOk()->json('data.columns'))->keyBy('id')->except(['operator_ga2', 'manager_ga1', 'managers']);
 
     expect($after->all())->toBe($before->all());
 });

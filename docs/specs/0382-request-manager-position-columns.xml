@@ -12,9 +12,7 @@
     D-2 Linguetta "Tutte": colonne "Gestore account 1..N", N = posizione piu' alta occupata in `quote_user` (decisione
         utente), mai sotto la posizione 2 dell'Operatore (senza team in archivio si deve poter assegnare dalla cella), al
         massimo `ManagerPositions::MAX`. Tutte visibili.
-    D-3 Linguetta di categoria: posizioni 1..max(N, ultima etichetta). Una posizione con etichetta nelle `manager_labels`
-        effettive della categoria (spec 0080) prende quel nome ed e' visibile; le altre si chiamano "Gestore account N" e
-        sono nascoste, selezionabili dal selettore colonne (decisione utente). Una categoria senza alcuna etichetta si
+    D-3 [superata da D-11] Linguetta di categoria: posizioni 1..max(N, ultima etichetta), quelle senza etichetta nascoste. Una categoria senza alcuna etichetta si
         comporta come "Tutte". Le linguette di radice (spec 0337) usano le etichette della radice: prima non rinominavano.
     D-4 Ogni colonna di posizione e' selezionabile dal selettore colonne, ordinabile, filtrabile per nome con "Vuoti" e
         modificabile dalla cella. Le colonne sono raggruppate dopo "Fonte", in ordine di posizione, prima di "Gestori
@@ -30,9 +28,15 @@
     D-7 Scrittura: `updateWork` riceve `manager_positions` = [posizione => utente|null], una posizione per volta come la
         cella, con la stessa regola di applyGa1 (chi e' gia' nel team viene spostato, nessuna notifica). La voce di
         cronologia resta `manager_ga{n}_id`.
-    D-8 Preferenze colonne: restano per modulo, ma il default di visibilita' delle colonne di posizione e' quello della
-        linguetta aperta (D-2/D-3), cosi' mostrare una posizione senza etichetta in una categoria si salva. Il salvataggio
-        applica la linguetta prima di calcolare il delta.
+    D-8 [superata da D-11] Default di visibilita' per linguetta: non serve piu', ogni colonna mostrata e' visibile.
+    D-11 Richiesta utente 2026-11-10 (dopo la prima consegna): in una linguetta di categoria con etichette ci sono solo le
+        colonne delle posizioni con etichetta (es. Formazione: Tutor, Operatore, Partner commerciale, Segnalatore, Operatore
+        APL; un'etichetta aggiunta alla categoria aggiunge la colonna). Chi occupa le altre posizioni va nella colonna
+        `managers`, che li' si chiama "Altri gestori account": riga, filtro e valori distinti escludono le posizioni con
+        etichetta, la scrittura dalla cella le lascia ferme e i nuovi arrivati non ci finiscono (`ManagerPositions::slotsFor`
+        con posizioni riservate). Per saperlo la PATCH di cella porta la linguetta (`product_category_id` /
+        `product_category_branch_id`, opzionali). In "Tutte", o in una categoria senza etichette, `managers` resta
+        "Gestori account" con tutto il team. Le linguette di radice usano le etichette della radice.
     D-9 Fuori scope: azione massiva "Assegna Tutor" (spec 0104, resta sulla posizione 1), report e statistiche per operatore,
         notifiche.
   </context>
@@ -41,16 +45,21 @@
     `GET /tables/{request-management|enrollee-management}/columns`: le colonne `operator_ga2` e `manager_ga{n}` compaiono per
     n = 1..N (D-2/D-3) con `label` gia' risolta (testo, non chiave i18n), `visible`, `sortable: true`, `filterType: set`,
     `editable`, `relation: {resource: users}`. Le righe portano `manager_ga{n}` = {id, name, ...} | null per n = 1..MAX, n != 2.
-    `PATCH .../cells` su `manager_ga{n}`: valore id utente | null. Nessuna migrazione.
+    `PATCH .../rows/{row}` su `manager_ga{n}`: valore id utente | null. Corpo PATCH: `product_category_id` o
+    `product_category_branch_id` opzionali (D-11). Gli elementi di `managers` portano anche `position`; in una linguetta con
+    etichette solo quelli fuori dalle posizioni con etichetta, label `requestManagement.columns.otherManagers`.
+    Nessuna migrazione.
   </data_contract>
 
   <acceptance>
     <criterion id="AC-001">In "Tutte" la config porta "Gestore account 1..N" con N = posizione massima occupata, tutte visibili, nessuna colonna Tutor/Operatore/Operatore APL.</criterion>
-    <criterion id="AC-002">In una categoria le posizioni con etichetta prendono l'etichetta e sono visibili; le altre fino a N sono "Gestore account N" nascoste.</criterion>
+    <criterion id="AC-002">In una categoria con etichette compaiono solo le posizioni con etichetta, con quel nome; la colonna team si chiama "Altri gestori account". Senza etichette come "Tutte".</criterion>
     <criterion id="AC-003">La riga porta l'occupante di ogni posizione; ordinamento, filtro set con "Vuoti" e valori distinti leggono quella posizione.</criterion>
     <criterion id="AC-004">Dalla cella si scrive o si svuota una posizione qualunque, anche su Iscritti; la posizione 2 continua ad aggiornare `operator_id`.</criterion>
     <criterion id="AC-005">Con `manager_slots` non modificabile per il ruolo ogni colonna di posizione e' in sola lettura (403 in scrittura); `manager_ga1_id`/`manager_ga5_id` non sono piu' nel catalogo permessi.</criterion>
-    <criterion id="AC-006">Mostrare in una categoria una posizione nascosta e salvare le preferenze la lascia visibile al ricaricamento.</criterion>
+    <criterion id="AC-006">Nascondere una posizione in "Tutte" e salvare le preferenze la lascia nascosta al ricaricamento.</criterion>
     <criterion id="AC-007">L'azione massiva "Assegna Tutor" scrive ancora la posizione 1.</criterion>
+    <criterion id="AC-008">In una categoria con etichette "Altri gestori account" mostra, filtra ed elenca solo chi sta nelle posizioni senza etichetta.</criterion>
+    <criterion id="AC-009">Dalla cella "Altri gestori account" si cambiano solo le posizioni senza etichetta; senza linguetta la cella modifica tutto il team.</criterion>
   </acceptance>
 </spec>

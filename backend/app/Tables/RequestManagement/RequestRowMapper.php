@@ -103,7 +103,11 @@ final class RequestRowMapper
             // `quotes` (`operator_id`), denormalized from the pivot.
             RequestManagerColumns::OPERATOR_COLUMN_ID => $this->userSummary($row->operator),
             // Spec 0373 D-7: the whole team, in `managers()` position order.
-            RequestManagerColumns::MANAGERS_COLUMN_ID => $row->managers->map(fn (User $user): ?array => $this->userSummary($user))->all(),
+            // Each person carries its position, so a category tab can keep
+            // only the unnamed ones ("Altri gestori account", spec 0382 D-11).
+            RequestManagerColumns::MANAGERS_COLUMN_ID => $row->managers
+                ->map(fn (User $user): array => [...($this->userSummary($user) ?? []), 'position' => (int) $user->pivot->position])
+                ->all(),
             // Every other position (spec 0382), read from the `quote_user`
             // pivot: the team is eager-loaded for the whole page, so this
             // costs no per-row query.

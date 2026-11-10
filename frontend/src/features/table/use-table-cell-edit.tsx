@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import type { CellValueChangedEvent, IRowNode } from 'ag-grid-community'
 import type { ApiErrorResponse } from '@/api/types'
 import { CellNoteDialog } from '@/components/data-table/cell-note-dialog'
-import { updateTableCell } from '@/features/table/api'
+import { updateTableCell, type CellEditTab, type UpdateTableCellPayload } from '@/features/table/api'
 import type { TableColumn, TableRow } from '@/features/table/types'
 import { useRequestFieldChange } from '@/features/field-change-requests/use-field-change-request-dialog'
 
@@ -30,6 +30,13 @@ interface CellPatchArgs {
   column: string
   value: CellPatchValue
   note?: string
+}
+
+/** The tab keys of a cell PATCH body: none outside a category tab, so every other body is unchanged. */
+function cellEditTabBody(tab?: CellEditTab): Pick<UpdateTableCellPayload, 'product_category_id' | 'product_category_branch_id'> {
+  if (tab?.productCategoryBranchId != null) return { product_category_branch_id: tab.productCategoryBranchId }
+  if (tab?.productCategoryId != null) return { product_category_id: tab.productCategoryId }
+  return {}
 }
 
 /** Resolves the toast message for a failed cell PATCH: the server's own message (D-9), a generic fallback otherwise. */
@@ -209,6 +216,7 @@ export function useTableCellEdit(
   domain: string,
   columns: TableColumn[],
   interceptCommit?: CellCommitInterceptor,
+  tab?: CellEditTab,
 ) {
   const { t, i18n } = useTranslation()
   const { requestFieldChange } = useRequestFieldChange()
@@ -222,7 +230,7 @@ export function useTableCellEdit(
   // column width/order.
   const { mutate: patchCell } = useMutation({
     mutationFn: ({ rowId, column, value, note }: CellPatchArgs) =>
-      updateTableCell(domain, rowId, { column, value, ...(note !== undefined ? { note } : {}) }),
+      updateTableCell(domain, rowId, { column, value, ...(note !== undefined ? { note } : {}), ...cellEditTabBody(tab) }),
   })
 
   const runPatch = useCallback(
