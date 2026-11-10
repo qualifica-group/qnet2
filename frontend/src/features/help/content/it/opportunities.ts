@@ -110,6 +110,10 @@ const guide: HelpGuide = {
           text: "Nello stesso pannello c'è anche **Categoria prodotto** (solo quella categoria). Rientra in una categoria un'opportunità che la ha tra le **linee di prodotto** dell'opportunità.",
         },
         {
+          type: 'paragraph',
+          text: "Scegliendo in **Categoria madre** una categoria attuale (per esempio ISO) entrano nell'elenco anche le opportunità delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte. Per vedere solo quelle di una categoria vecchia o solo di una nuova usa **Categoria prodotto**.",
+        },
+        {
           type: 'note',
           text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Opportunità**: non compaiono dentro una scheda e nella sezione Opportunità di un'anagrafica. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
         },

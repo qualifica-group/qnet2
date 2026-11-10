@@ -32,7 +32,8 @@ it('deduces the categories from the product and parent category filters (AC-001)
         ->and(attributeColumnsFor(['product_category' => [], 'parent_category' => []]))->toBe([]);
 });
 
-it('joins a current root with the legacy roots linked to it (AC-019)', function () {
+// REQUIREMENT CHANGED (spec 0374 rev.3, D-12): in the parent category a root stands for its whole group.
+it('takes the whole group from the parent category and the rev.2 rule from the product category (AC-019)', function () {
     $current = ProductCategory::factory()->create();
     $first = categoryTabLegacyRoot($current);
     $second = categoryTabLegacyRoot($current);
@@ -40,19 +41,25 @@ it('joins a current root with the legacy roots linked to it (AC-019)', function 
     $legacyUnlinked = categoryTabLegacyRoot();
     [$r, $l1, $l2] = [$current->id, $first->id, $second->id];
 
-    expect(attributeColumnsFor(['parent_category' => [$l1, $r]]))->toBe([$r, $l1])
-        ->and(attributeColumnsFor(['parent_category' => [$l2, $l1]]))->toBe([$l1, $l2])
+    expect(attributeColumnsFor(['parent_category' => [$r]]))->toBe([$r, $l1, $l2])
+        ->and(attributeColumnsFor(['parent_category' => [$l1]]))->toBe([$r, $l1, $l2])
+        ->and(attributeColumnsFor(['parent_category' => [$l1, $r]]))->toBe([$r, $l1, $l2])
         ->and(attributeColumnsFor(['parent_category' => [$l2, $r, $l1]]))->toBe([$r, $l1, $l2])
-        ->and(attributeColumnsFor(['parent_category' => [$r]]))->toBe([$r])
         ->and(attributeColumnsFor(['parent_category' => [$r, $unlinked->id]]))->toBe([])
         ->and(attributeColumnsFor(['parent_category' => [$l1, $unlinked->id]]))->toBe([])
-        ->and(attributeColumnsFor(['parent_category' => [$l1, $legacyUnlinked->id]]))->toBe([]);
+        ->and(attributeColumnsFor(['parent_category' => [$l1, $legacyUnlinked->id]]))->toBe([])
+        ->and(attributeColumnsFor(['parent_category' => [$legacyUnlinked->id]]))->toBe([$legacyUnlinked->id])
+        ->and(attributeColumnsFor(['product_category' => [$r]]))->toBe([$r])
+        ->and(attributeColumnsFor(['product_category' => [$l2, $l1]]))->toBe([$l1, $l2])
+        ->and(attributeColumnsFor(['product_category' => [$l1, $r]]))->toBe([$r, $l1])
+        ->and(attributeColumnsFor(['product_category' => [$l1, $unlinked->id]]))->toBe([]);
 });
 
-it('does not join a legacy category that is no longer a root (AC-019)', function () {
+it('leaves out a legacy category that is no longer a root (AC-019)', function () {
     $current = ProductCategory::factory()->create();
     $legacy = categoryTabLegacyRoot($current);
     $legacy->forceFill(['parent_id' => ProductCategory::factory()->create()->id])->save();
 
-    expect(attributeColumnsFor(['parent_category' => [$current->id, $legacy->id]]))->toBe([]);
+    expect(attributeColumnsFor(['parent_category' => [$current->id]]))->toBe([$current->id])
+        ->and(attributeColumnsFor(['parent_category' => [$current->id, $legacy->id]]))->toBe([]);
 });

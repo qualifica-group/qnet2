@@ -210,7 +210,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'The Current category row appears only on legacy parent categories (the ones prefixed [OLD]): it says which current parent category replaced it, picked among current parent categories only. The link makes the flexible-field columns appear together in the Quotes, Work orders and Contracts filters; it is changed or removed from the detail with the pencil.',
+            'The Current category row appears only on legacy parent categories (the ones prefixed [OLD]): it says which current parent category replaced it, picked among current parent categories only. In the **Parent category** filter of the lists the linked legacy categories do not appear as separate options: choosing the current category also brings in their records and, in Quotes, Work orders and Contracts, the flexible-field columns. It is changed or removed from the detail with the pencil.',
             'The four rules decided by the root (Generates quote, Management mode, Single offer per opportunity, Generates a contract) and an inherited Business function have no pencil on subcategories: they show the value with the Inherited from … badge; to change them open the indicated category.',
             'The Report columns row appears only if the category is reportable.',
             'If you assign a business function to a category whose subcategories have their own, a confirmation is asked before saving.',

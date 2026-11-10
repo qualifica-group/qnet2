@@ -29,7 +29,10 @@ final class PresetListFilters
     /** Same whereIn cardinality cap as the generic AdvancedFilterApplier. */
     private const int MAX_IDS = 500;
 
-    public function __construct(private readonly ProductCategoryBranches $branches) {}
+    public function __construct(
+        private readonly ProductCategoryBranches $branches,
+        private readonly LinkedCategoryGroups $groups,
+    ) {}
 
     /**
      * @param  array<int, string>  $defaultValue
@@ -60,7 +63,7 @@ final class PresetListFilters
      */
     public static function parentCategoryFilter(string $labelNamespace, int $order): array
     {
-        return self::categoryFilter(self::PARENT_CATEGORY, "{$labelNamespace}.advancedFilters.parentCategory", $order, ['resource' => 'product-category-roots']);
+        return self::categoryFilter(self::PARENT_CATEGORY, "{$labelNamespace}.advancedFilters.parentCategory", $order, ['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1]]);
     }
 
     /**
@@ -84,7 +87,8 @@ final class PresetListFilters
 
     /**
      * The categories selected by a parent category value, every picked root
-     * with its descendants; null when "Tutte" is among the picks.
+     * with its descendants and, as a group (spec 0374 D-12), the legacy roots
+     * linked to it; null when "Tutte" is among the picks.
      *
      * @return array<int, int>|null
      */
@@ -98,7 +102,7 @@ final class PresetListFilters
 
         $branchIds = [];
 
-        foreach ($rootIds as $rootId) {
+        foreach ($this->groups->withLinkedLegacy($this->groups->currentRootIds($rootIds)) as $rootId) {
             $branchIds = [...$branchIds, ...$this->branches->branchIds($rootId)];
         }
 
@@ -118,7 +122,7 @@ final class PresetListFilters
     }
 
     /**
-     * The roots of the branches the actor's competence touches. An actor with
+     * The roots of the branches the actor's competence touches, a linked legacy root as its current one. An actor with
      * no competence, or with every category, has nothing to preset and starts
      * on "Tutte" (as spec 0193 D-2 does for the category tabs).
      *
@@ -132,7 +136,7 @@ final class PresetListFilters
             return [ProductCategoryForSelectResolver::ALL_ROOTS_ID];
         }
 
-        $rootIds = array_values(array_unique(array_map($this->branches->rootIdOf(...), $reach->categoryIds)));
+        $rootIds = $this->groups->currentRootIds(array_values(array_unique(array_map($this->branches->rootIdOf(...), $reach->categoryIds))));
         sort($rootIds);
 
         return $rootIds;

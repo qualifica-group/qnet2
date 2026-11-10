@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="2">
+<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="3">
+
+  <!-- rev.3 (2026-11-09): decisione utente "nei select solo le old non abbinate, cliccando ISO prende entrambi". Nuova D-12,
+       AC-024..AC-027; cambia AC-019. D-1 resta valida per Categoria prodotto. Vale anche su Opportunita' (solo righe). -->
+
 
   <!-- rev.2 (2026-11-09): richiesta utente "ci sono due categorie ISO che dovrebbero viaggiare insieme". Decisione utente:
        categorie collegate dichiarate nell'anagrafica. Cambiano D-1, D-5, il contratto, AC-001/002/003/005/016/018; nuovi
@@ -85,6 +89,14 @@
       poi quelle delle vecchie per id crescente, ciascuna nel proprio ordine. Le colonne con lo stesso nome restano separate e
       compaiono doppie. La cella si modifica solo se il campo si applica al record (D-6 spec 0350): sull'altra categoria 422.
       Il nome non viene mai usato a runtime.</decision>
+    <decision id="D-12">(rev.3, decisione utente 2026-11-09) Filtro Categoria madre delle pagine che usano `PresetListFilters::parentCategoryFilter`:
+      il select non propone le radici vecchie collegate (`GET /product-category-roots/for-select?hide_linked_legacy=1`; l'idratazione con
+      `ids[]` continua a risolverle). Scegliere una radice attuale vale per tutto il suo gruppo: righe (`PresetListFilters::branchIds`,
+      quindi anche export) e colonne (`fromFilters`, con categoria attuale e vecchie). Un id vecchio collegato arrivato da una richiesta
+      o da una vista salvata vale come la sua attuale. Il default da competenza mappa le vecchie collegate sull'attuale, senza doppioni. In
+      `appliedAdvancedFilters` del config gli id vecchi collegati vengono convertiti nell'attuale. Due attuali diverse: righe di entrambi i
+      gruppi, nessuna colonna. Le radici vecchie non collegate funzionano come prima. Categoria prodotto, le linguette di Gestione Richieste
+      e Iscritti non cambiano. Non si puo' piu' isolare "solo nuove" o "solo vecchie" da Categoria madre.</decision>
     <decision id="D-11">(rev.2, decisione utente 2026-11-09) La migrazione di D-9 compila anche i collegamenti, una tantum: per ogni radice
       `is_legacy` senza collegamento toglie dal nome il prefisso "[OLD]", gli spazi e i trattini finali e cerca, senza distinzione di
       maiuscole, la radice non `is_legacy` con lo stesso nome; se ne trova esattamente una la collega, altrimenti non fa nulla. Non
@@ -176,7 +188,11 @@
     <criterion id="AC-016">(rev.2) Frontend: quando `attributeCategoryIds` del config cambia, `DataTable` viene rimontata con le nuove colonne; se cambiano i filtri ma non `attributeCategoryIds` non viene rimontata.</criterion>
     <criterion id="AC-017">Frontend: `QuotesTable`, `WorkOrdersTable` e `ContractsTable` passano lo scope; Commesse di Progetto e le griglie dentro un record no.</criterion>
     <criterion id="AC-018">(rev.2) Guide IT+EN `quotes`, `work-orders`, `contracts` descrivono la regola, categorie collegate comprese, nella sezione `list-filters`; `product-categories` descrive il campo "Categoria attuale"; stessi id IT/EN; `help-content-parity.test.ts` verde.</criterion>
-    <criterion id="AC-019">(rev.2) Date le radici R (attuale) e L1, L2 (vecchie) con `current_category_id` = R: `fromFilters` con madre [R,L1], [L1,L2] o [R,L1,L2] restituisce la selezione ordinata; con [R,X] (X non collegata), oppure con [L1,X], restituisce []; con [R] solo [R]. Se L1 non e' piu' radice, [R,L1] -> [].</criterion>
+    <criterion id="AC-019">(rev.2) Date le radici R (attuale) e L1, L2 (vecchie) con `current_category_id` = R: `fromFilters` con madre [R,L1], [L1,L2] o [R,L1,L2] restituisce la selezione ordinata; con [R,X] (X non collegata), oppure con [L1,X], restituisce []. (rev.3) In Categoria madre [R] restituisce [R,L1,L2] e [L1] vale come [R]; in Categoria prodotto [R] resta [R]. Se L1 non e' piu' radice, non appartiene al gruppo.</criterion>
+    <criterion id="AC-024">(rev.3) `GET /product-category-roots/for-select?hide_linked_legacy=1` non elenca le radici vecchie collegate, elenca attuali, vecchie non collegate e "Tutte"; con `ids[]` di una vecchia collegata la risolve; senza parametro l'elenco non cambia. Il descrittore `parent_category` invia il parametro.</criterion>
+    <criterion id="AC-025">(rev.3) Con Categoria madre [R], `POST /rows` di `quotes`, `work-orders`, `contracts` e `opportunities` riporta i record del ramo di R e dei rami delle vecchie collegate, l'export lo stesso; un'altra categoria resta esclusa; `[R,X]` riporta entrambi i gruppi senza `attr.*`.</criterion>
+    <criterion id="AC-026">(rev.3) Un utente con competenza su R e L1 ha come default `parent_category` = [R], una sola volta; con competenza solo su L1 ha [R]; le righe restano limitate dalla visibilita' del suo profilo.</criterion>
+    <criterion id="AC-027">(rev.3) Filtri salvati con `parent_category` [L1]: `appliedAdvancedFilters` riporta [R], senza doppioni con [R,L1]; una radice vecchia non collegata resta invariata.</criterion>
     <criterion id="AC-020">(rev.2) Con madre [R,L1] il config riporta le colonne di R e poi quelle di L1, deduplicate per `code`, e `attributeCategoryIds` = [R,L1] ordinati; le righe riportano i valori di entrambe; filtro, ordinamento, valori distinti ed export funzionano su ciascuna. Un PATCH su un campo non applicabile al record risponde 422 senza scrivere.</criterion>
     <criterion id="AC-021">(rev.2) Il salvataggio di `current_category_id` su una radice vecchia verso una radice attuale riesce e compare nella risposta con nome e voce di activity log; 422 su categoria non vecchia, su sottocategoria, su destinazione vecchia o sottocategoria, su destinazione inesistente; 403 senza permesso di campo; `null` toglie il collegamento; la cancellazione della categoria attuale azzera il campo.</criterion>
     <criterion id="AC-022">(rev.2) Frontend: nel dettaglio e nel form di una radice vecchia compare il campo "Categoria attuale" con la selezione delle sole radici attuali; non compare su categorie attuali o sottocategorie; il salvataggio invia `current_category_id`.</criterion>

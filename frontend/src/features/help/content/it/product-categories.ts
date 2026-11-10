@@ -210,7 +210,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'La riga Categoria attuale compare solo sulle categorie madri vecchie (quelle con il prefisso [OLD]): serve a dire quale categoria madre attuale ha preso il suo posto, scegliendola tra le sole categorie madri attuali. Il collegamento fa comparire insieme le colonne dei campi flessibili nei filtri di Offerte, Commesse e Contratti; si cambia o si toglie dal dettaglio con la matita.',
+            'La riga Categoria attuale compare solo sulle categorie madri vecchie (quelle con il prefisso [OLD]): serve a dire quale categoria madre attuale ha preso il suo posto, scegliendola tra le sole categorie madri attuali. Nel filtro **Categoria madre** delle liste le categorie vecchie collegate non compaiono come voci a parte: scegliendo la categoria attuale entrano anche i loro record e, in Offerte, Commesse e Contratti, le colonne dei campi flessibili. Si cambia o si toglie dal dettaglio con la matita.',
             'Le quattro regole decise dalla radice (Prevede preventivo, Modalità di gestione, Offerta unica per opportunità, Prevede un contratto) e la Funzione aziendale ereditata non hanno la matita sulle sottocategorie: mostrano il valore con il badge Ereditata da …; per cambiarle apri la categoria indicata.',
             'La riga Colonne report compare solo se la categoria è visibile nei report.',
             'Se assegni una funzione aziendale a una categoria con sottocategorie che ne hanno una propria, prima di salvare compare la richiesta di conferma.',

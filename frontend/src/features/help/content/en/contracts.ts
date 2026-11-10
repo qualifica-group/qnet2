@@ -201,7 +201,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category (a single value in **Product category** or, if that is empty, a single one in **Parent category**), or to several parent categories linked to each other, for example ISO and [OLD] ISO: then the columns of the current category come first, followed by those of the legacy ones. With unlinked categories or with **All** they do not appear. A field with the same name in several categories can appear twice. They show the fields of the contract's originating quote, read-only: they can be sorted, filtered and exported, while the values are edited from the quote.",
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with **All**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. They show the fields of the contract's originating quote, read-only: they can be sorted, filtered and exported, while the values are edited from the quote.",
         },
         {
           type: 'note',

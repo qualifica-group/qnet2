@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserTableFilter;
+use App\Tables\Shared\LinkedCategoryGroups;
+use App\Tables\Shared\PresetListFilters;
 use App\Tables\TableDefinition;
 
 /**
@@ -24,6 +26,8 @@ use App\Tables\TableDefinition;
  */
 class TableFilterStateService
 {
+    public function __construct(private readonly LinkedCategoryGroups $groups) {}
+
     /**
      * Merge the actor's saved filter state into a resolved config so the frontend
      * can re-apply it on mount. Adds keys mirroring the preferences merge:
@@ -41,7 +45,7 @@ class TableFilterStateService
         $row = $this->rowFor($definition, $actor);
 
         $saved = $this->allowlistFilters($definition, $row?->filters ?? []);
-        $savedAdvanced = $this->allowlistAdvanced($definition, $row?->advanced_filters ?? []);
+        $savedAdvanced = $this->currentRootsOf($definition, $this->allowlistAdvanced($definition, $row?->advanced_filters ?? []));
 
         // Emit as an object so an empty state serializes to `{}` (a valid empty
         // AG Grid filterModel), never `[]`.
@@ -50,6 +54,26 @@ class TableFilterStateService
         $config['appliedAdvancedFilters'] = $savedAdvanced !== [] ? (object) $savedAdvanced : null;
 
         return $config;
+    }
+
+    /**
+     * Spec 0374 D-12: a descriptor that hides the linked legacy roots shows the
+     * current root of a saved legacy one, without touching what is stored.
+     *
+     * @param  array<string, mixed>  $advanced
+     * @return array<string, mixed>
+     */
+    private function currentRootsOf(TableDefinition $definition, array $advanced): array
+    {
+        foreach ($definition->advancedFilters() as $descriptor) {
+            $name = $descriptor['name'];
+
+            if (($descriptor['source']['params']['hide_linked_legacy'] ?? null) !== null && is_array($advanced[$name] ?? null)) {
+                $advanced[$name] = $this->groups->currentRootIds(PresetListFilters::ids($advanced[$name]));
+            }
+        }
+
+        return $advanced;
     }
 
     /**

@@ -110,6 +110,10 @@ const guide: HelpGuide = {
           text: "In the same panel there is also **Product category** (that category only). An opportunity falls under a category when it is among the **product lines** of the opportunity.",
         },
         {
+          type: 'paragraph',
+          text: "Choosing a current parent category in **Parent category** (for example ISO) also brings in the opportunities of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter. To see only those of a legacy category or only of a new one use **Product category**.",
+        },
+        {
           type: 'note',
           text: "The pre-filled **Assignment** and **Parent category** apply only on the **Opportunities** page: they do not appear inside a record and in a client's Opportunities section. The export follows the active filters. Flexible fields are read and edited from the detail.",
         },

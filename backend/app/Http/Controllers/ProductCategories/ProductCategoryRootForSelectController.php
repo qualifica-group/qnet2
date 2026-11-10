@@ -25,7 +25,7 @@ class ProductCategoryRootForSelectController extends BaseApiController
     public function __invoke(ProductCategoryRootForSelectRequest $request): JsonResponse
     {
         try {
-            $result = $this->resolver->resolveRoots($request->toData(), $request->currentOnly());
+            $result = $this->resolver->resolveRoots($request->toData(), $request->currentOnly(), $request->hideLinkedLegacy());
 
             return $this->paginatedResponse(
                 ProductCategoryBranchForSelectResource::collection($result->items),

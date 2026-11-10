@@ -51,7 +51,8 @@ it('offers assignment and parent category preset like the Task assignment, then 
     expect($filters->pluck('name')->all())->toBe(['assignment', 'supervisors', 'participants', 'parent_category', 'product_category', 'registry'])
         ->and($filters->firstWhere('name', 'assignment'))->toMatchArray(['type' => 'enum', 'multiple' => true, 'required' => true, 'sendDefault' => true, 'enumKey' => 'work_order_assignment_scope', 'defaultValue' => ['supervisor', 'participant']])
         ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['type' => 'relation', 'multiple' => true, 'required' => true, 'sendDefault' => true, 'defaultValue' => [$root->id]])
-        ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots']);
+        // REQUIREMENT CHANGED (spec 0374 rev.3, D-12): the picker hides the linked legacy roots.
+        ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1]]);
 });
 
 it('offers "all visible" only to who sees more than their own commesse', function () {
