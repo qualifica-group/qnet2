@@ -12,6 +12,15 @@
 - Test: nuovo `tests/Feature/Notifications/EmailNotificationsPreferenceTest.php` (47) + `email-notifications-form.test.tsx` (3). 4 test che chiamavano `via((object) [])` ora passano il destinatario reale (REQUIREMENT CHANGED: i canali dipendono dal destinatario): RecordAssignment AC-001, FieldChangeRequest AC-026, RequestContactTransfer AC-013/AC-018. Cartelle BE notifiche verdi; tsc pulito per questi file (gli errori residui sono `usage_area` della sessione categorie prodotto).
 - Manuale: guida `general` sezione `notifications-and-preferences` IT/EN + manuale Claude Docs (paragrafo dopo le notifiche email, tabella Impostazioni sistema).
 
+## Notifica "Nuova richiesta di modifica" solo a un ruolo dedicato (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente: la notifica di nuova richiesta di modifica campo arrivava a 22 persone (tutti i titolari di `field-change-requests.viewAny`: admin, super-admin, supervisori commerciali); deve arrivare solo a Rosa Falzarano e Fabrizio Aliberti. Spec 0078 delta **D-8** (AC-024 riscritto).
+- Backend: `FieldChangeRequestCreator::NOTIFIED_ROLE = 'notifiche-richieste-modifica'`; `notifyReviewers()` manda a `User::role(NOTIFIED_ROLE)` attivi, escluso il richiedente; ruolo inesistente = nessuno (RoleDoesNotExist catturata). Ruolo e non permesso perche' admin/super-admin ricevono per sync tutto il catalogo.
+- Seeder one-shot `QualificaFieldChangeReviewerSeeder` (NON in DatabaseSeeder): crea il ruolo (descrizione "Notifiche richieste di modifica", permessi `field-change-requests.viewAny`+`.view`) e lo aggiunge a rosa.falzarano@ / fabrizio.aliberti@qualificagroup.com sopra i loro ruoli. Eseguito su qnet2 dev (verificato: ruolo con i 2 permessi, titolari solo Rosa id 8 e Fabrizio id 13). **Da eseguire in produzione dopo il deploy**: `php artisan db:seed --class=QualificaFieldChangeReviewerSeeder`; finche' non gira, nessuno riceve la notifica.
+- Test: `FieldChangeRequestNotificationTest` AC-024 riscritto (REQUIREMENT CHANGED) + caso senza ruolo; test italiano allineato; nuovo `tests/Feature/Seeding/QualificaFieldChangeReviewerSeederTest.php`. Guide in-app IT/EN `field-change-requests` aggiornate (help Vitest 161 verdi). Pint/ESLint puliti.
+- Rossi preesistenti non correlati: `AC-026: approval` (asserisce `via((object) [])` = database+mail, rotto dalla preferenza email), `PendingChangeRequestsColumnTest` AC-037 (colonna sortable).
+- Manuale Claude Docs aggiornato (paragrafo Notifiche di Richieste di modifica).
+
 ## Codice fiscale e partita IVA esteri (2026-11-11) — VERDE MIRATO, NON COMMITTATO
 
 - Segnalazione utente: non si potevano inserire partita IVA e codice fiscale esteri (validazione solo italiana).

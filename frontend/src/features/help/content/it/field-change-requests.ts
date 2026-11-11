@@ -19,7 +19,7 @@ const guide: HelpGuide = {
           items: [
             'Viene scelta una nuova Fonte e inviata la richiesta.',
             'La proposta resta **In attesa**.',
-            'I gestori che possono decidere ricevono una notifica.',
+            'Chi ha il ruolo **Notifiche richieste di modifica** riceve una notifica.',
             'Se **Approva**, il nuovo valore viene applicato.',
             'Se **Rifiuta**, il valore resta invariato.',
           ],
@@ -78,7 +78,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Una nuova proposta avvisa (campanella ed email) chi può consultare le richieste di modifica, tranne il richiedente. L\'esito della decisione viene notificato al richiedente.',
+          text: 'Una nuova proposta avvisa (campanella ed email) solo gli utenti attivi con il ruolo **Notifiche richieste di modifica**, tranne il richiedente. Il ruolo si aggiunge agli altri dalla scheda utente e permette anche di consultare le richieste. Chi può approvare ma non ha il ruolo vede comunque le proposte nella lista **Richieste di modifica**. L\'esito della decisione viene notificato al richiedente.',
         },
       ],
     },

@@ -19,7 +19,7 @@ const guide: HelpGuide = {
           items: [
             'A new Source is picked and the request is sent.',
             'The proposal stays **Pending**.',
-            'The managers who can decide receive a notification.',
+            'Users with the **Notifiche richieste di modifica** role receive a notification.',
             'If **Approved**, the new value is applied.',
             'If **Rejected**, the value stays unchanged.',
           ],
@@ -78,7 +78,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'A new proposal notifies (bell and email) whoever can view change requests, except the requester. The decision outcome is notified to the requester.',
+          text: 'A new proposal notifies (bell and email) only the active users with the **Notifiche richieste di modifica** role, except the requester. The role is added to the others from the user record and also lets its holder view the requests. Whoever can approve without holding the role still sees the proposals in the **Change Requests** list. The decision outcome is notified to the requester.',
         },
       ],
     },

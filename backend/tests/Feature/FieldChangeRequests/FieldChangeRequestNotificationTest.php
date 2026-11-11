@@ -8,11 +8,13 @@ use App\Models\Source;
 use App\Models\User;
 use App\Notifications\FieldChangeRequestedNotification;
 use App\Notifications\FieldChangeRequestResolvedNotification;
+use App\Services\FieldChangeRequests\FieldChangeRequestCreator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 // Notification dispatch (spec 0078): AC-024/025/026.
 //
@@ -60,38 +62,62 @@ if (! function_exists('fcrNotifActorWith')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-024 / AC-025 — creation notifies every viewAny holder, not the requester
+// AC-024 / AC-025 — creation notifies the active reviewers, not the requester
+// REQUIREMENT CHANGED (D-8, user directive 2026-11-11): the audience is the
+// NOTIFIED_ROLE, no longer every `viewAny` holder.
 // ---------------------------------------------------------------------------
 
-it('AC-024/AC-025: creating a request notifies every viewAny holder on database+mail, never the requester, never a stranger', function () {
+if (! function_exists('fcrNotifCreateRequest')) {
+    function fcrNotifCreateRequest(User $requester): FieldChangeRequest
+    {
+        $opportunity = Opportunity::factory()->create();
+        $quote = Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
+        Sanctum::actingAs($requester);
+
+        test()->postJson('/api/field-change-requests', [
+            'resource' => 'request-management',
+            'subject_id' => $quote->id,
+            'field' => 'source_id',
+            'requested_value' => Source::factory()->create()->id,
+        ])->assertCreated();
+
+        return FieldChangeRequest::sole();
+    }
+}
+
+it('AC-024/AC-025: creating a request notifies the active reviewers on database+mail, never the requester, a viewAny holder or an inactive reviewer', function () {
     Notification::fake();
+    Role::findOrCreate(FieldChangeRequestCreator::NOTIFIED_ROLE, 'web');
 
     $requester = fcrNotifActorWith(['create']);
+    $requester->assignRole(FieldChangeRequestCreator::NOTIFIED_ROLE);
+    $reviewer = fcrNotifActorWith([])->assignRole(FieldChangeRequestCreator::NOTIFIED_ROLE);
+    $inactiveReviewer = fcrNotifActorWith([])->assignRole(FieldChangeRequestCreator::NOTIFIED_ROLE);
+    $inactiveReviewer->update(['is_active' => false]);
     $viewer = fcrNotifActorWith(['viewAny']);
-    $stranger = fcrNotifActorWith([]);
-    $opportunity = Opportunity::factory()->create();
-    $quote = Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
-    $newSource = Source::factory()->create();
-    Sanctum::actingAs($requester);
 
-    $this->postJson('/api/field-change-requests', [
-        'resource' => 'request-management',
-        'subject_id' => $quote->id,
-        'field' => 'source_id',
-        'requested_value' => $newSource->id,
-    ])->assertCreated();
+    $fieldChangeRequest = fcrNotifCreateRequest($requester);
 
-    $fieldChangeRequest = FieldChangeRequest::sole();
+    Notification::assertSentTo($reviewer, function (FieldChangeRequestedNotification $notification) use ($fieldChangeRequest, $reviewer): bool {
+        $data = $notification->toArray($reviewer);
 
-    Notification::assertSentTo($viewer, function (FieldChangeRequestedNotification $notification) use ($fieldChangeRequest, $viewer): bool {
-        $data = $notification->toArray($viewer);
-
-        return $notification->via((object) []) === ['database', 'mail']
+        return $notification->via($reviewer) === ['database', 'mail']
             && $data['action_url'] === "/field-change-requests/{$fieldChangeRequest->id}"
             && $data['level'] === NotificationLevelEnum::Info->value;
     });
     Notification::assertNotSentTo($requester, FieldChangeRequestedNotification::class);
-    Notification::assertNotSentTo($stranger, FieldChangeRequestedNotification::class);
+    Notification::assertNotSentTo($inactiveReviewer, FieldChangeRequestedNotification::class);
+    Notification::assertNotSentTo($viewer, FieldChangeRequestedNotification::class);
+});
+
+it('AC-024: without the reviewer role the request is created and nobody is notified', function () {
+    Notification::fake();
+
+    fcrNotifActorWith(['viewAny']);
+
+    fcrNotifCreateRequest(fcrNotifActorWith(['create']));
+
+    Notification::assertNothingSent();
 });
 
 // ---------------------------------------------------------------------------
@@ -168,23 +194,15 @@ it('AC-026: rejection notifies the requester with level warning', function () {
 
 it('renders the creation notification in Italian with the translated field label', function () {
     Notification::fake();
+    Role::findOrCreate(FieldChangeRequestCreator::NOTIFIED_ROLE, 'web');
 
-    $requester = fcrNotifActorWith(['create']);
-    $viewer = fcrNotifActorWith(['viewAny']);
-    $opportunity = Opportunity::factory()->create();
-    $quote = Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
-    Sanctum::actingAs($requester);
+    $reviewer = fcrNotifActorWith([])->assignRole(FieldChangeRequestCreator::NOTIFIED_ROLE);
 
-    $this->postJson('/api/field-change-requests', [
-        'resource' => 'request-management',
-        'subject_id' => $quote->id,
-        'field' => 'source_id',
-        'requested_value' => Source::factory()->create()->id,
-    ])->assertCreated();
+    fcrNotifCreateRequest(fcrNotifActorWith(['create']));
 
-    Notification::assertSentTo($viewer, function (FieldChangeRequestedNotification $notification) use ($viewer): bool {
+    Notification::assertSentTo($reviewer, function (FieldChangeRequestedNotification $notification) use ($reviewer): bool {
         App::setLocale('it');
-        $data = $notification->toArray($viewer);
+        $data = $notification->toArray($reviewer);
 
         return $data['title'] === 'Nuova richiesta di modifica'
             && str_contains((string) $data['message'], 'chiede di modificare Fonte di')

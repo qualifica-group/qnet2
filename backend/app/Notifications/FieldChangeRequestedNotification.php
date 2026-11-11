@@ -17,8 +17,8 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Sent to every titolare of `field-change-requests.viewAny` when a NEW
- * request is created (spec 0078, AC-024), excluded the requester themselves
+ * Sent to the active holders of FieldChangeRequestCreator::NOTIFIED_ROLE when
+ * a NEW request is created (spec 0078, AC-024/D-8), excluded the requester themselves
  * (SentTo/exclusion handled by the caller, FieldChangeRequestCreator).
  * Modelled on NoteMentionNotification (database + mail, ShouldQueue): the
  * database payload goes through the SAME NotificationData shape (title,
