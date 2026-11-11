@@ -19,6 +19,11 @@ use Illuminate\Validation\Rule;
  * has no sane query-string encoding, mirroring every other `form-context`
  * endpoint of this codebase.
  *
+ * `opportunity_id` (user report 2026-11-11) adds the picked Opportunity's
+ * product-line categories, the same union a save resolves
+ * (App\Quotes\QuoteAttributeResolver): without it the preview would drop
+ * every field the record's own classification brings.
+ *
  * Deliberately LENIENT on absence: a row with no `product_id` yet (the
  * operator just added a blank line) is DROPPED, never a 422 — it simply
  * scopes nothing (AC-034). The referenced id must still exist: an unknown id
@@ -40,9 +45,17 @@ class QuoteFormContextRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'opportunity_id' => ['nullable', 'integer', Rule::exists('opportunities', 'id')],
             'offer_lines' => ['sometimes', 'array'],
             'offer_lines.*.product_id' => ['nullable', 'integer', Rule::exists('products', 'id')],
         ];
+    }
+
+    public function opportunityId(): ?int
+    {
+        $opportunityId = $this->validated('opportunity_id');
+
+        return $opportunityId === null ? null : (int) $opportunityId;
     }
 
     /**

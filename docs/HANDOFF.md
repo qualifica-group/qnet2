@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Info aggiuntive: Offerte = Gestione Richieste (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Segnalazione utente (richiesta 29395): in Offerte le Informazioni aggiuntive non c'erano (la richiesta ha 4 righe
+  prodotto con categoria ISO, 0 righe offerta); aggiungendo una riga offerta ricomparivano VUOTE, e un salvataggio
+  poteva riscrivere a null i valori compilati in Gestione Richieste.
+- Root cause: stesso record `quotes`, stessa mappa `attribute_values`, ma due insiemi diversi: `QuoteAttributeResolver`
+  usava solo le righe offerta, `RequestAttributeResolver` l'unione (D-1). Nel form, `editDefaults` semina solo i codici
+  applicabili, quindi un codice che diventava applicabile partiva vuoto.
+- Backend: `QuoteAttributeResolver` = unione righe prodotto Opportunita' (prima) + righe offerta; `formContext(?int
+  $opportunityId, array $productIds, FormMode)`; `RequestAttributeResolver::resolve/layout` delegano a lui
+  (`forCategories` resta). Contratto: `POST /api/quotes/form-context` accetta `opportunity_id` facoltativo (422 se
+  inesistente). Spec 0084 D-5 rettificata, AC-034 rivisto, AC-037/038 nuovi.
+- Effetto voluto anche sulle offerte normali: mostrano gli attributi delle categorie dell'Opportunita' anche senza righe
+  offerta di quella categoria (stesso set che mostrerebbe Gestione Richieste).
+- Frontend: `useQuoteFormContext(opportunityId, productIds, persisted)` (rimosso `hasPickedProduct`, era ridondante con
+  `isLoading`); `fetchQuoteFormContext(opportunityId, productIds)`; `useQuoteForm` semina i codici nuovi dal valore
+  salvato (`withStoredFallback`: ignora le chiavi `undefined` che RHF registra al mount del campo); `buildUpdatePayload`
+  confronta anche col valore salvato, cosi' non rispedisce la mappa se invariata.
+- Test: Pest `QuoteAttributeValuesTest` +4 (21/21); Quotes 486/489 (3 rossi = PDF senza LibreOffice, noti),
+  RequestManagement 986/987 e Unit 1283/1284 con 2 rossi FUORI SCOPE da indagare a parte
+  (`RequestManagementAllColumnsSortFilterTest` "managers is not sortable", `EmploymentProductLineTest` fillable),
+  Opportunities/Tables/Migration verdi. Vitest quotes+request-management+attributes+help 1304 + 3 nuovi verdi; ESLint,
+  Pint, `tsc -b --force` puliti.
+- Manuale: guide in-app quotes IT/EN; Claude Docs: paragrafo riepilogo/Informazioni aggiuntive dell'Offerta e tabella
+  "dove compaiono" degli attributi offerta.
+- Produzione: nessun dato da sistemare, i valori della 29395 sono gia' in `quotes.attribute_values` e compaiono al
+  deploy.
+
 ## Email di menzione (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione utente: nell'email "Sei stato menzionato" il titolo del record e il testo della nota erano nella stessa frase e non si capiva dove finiva l'uno e iniziava l'altro. Ora l'email dice solo ":author ti ha menzionato:" (o "... e ti ha aggiunto come :role:"), poi l'estratto in un paragrafo a se' tra virgolette, poi l'eventuale avviso di accesso mancante. Il titolo resta nella scheda dettagli (presente per tutti gli 8 tipi annotabili). Campanella invariata (lì il titolo serve: non c'e' scheda).

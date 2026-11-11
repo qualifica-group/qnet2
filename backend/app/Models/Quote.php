@@ -61,9 +61,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * `open` row of the criteria-resolved set (AC-020/021/022).
  *
  * `attribute_values` (spec 0084): the dynamic "Informazioni aggiuntive" map,
- * moved here from the Opportunity — resolved from the categories of THIS
- * quote's own offer lines (App\Quotes\QuoteAttributeResolver), never the
- * parent Opportunity's product lines. DELIBERATELY absent from #[Fillable]
+ * moved here from the Opportunity — resolved from the union of the parent
+ * Opportunity's product-line categories and THIS quote's own offer lines'
+ * categories (App\Quotes\QuoteAttributeResolver), the same set Gestione
+ * Richieste shows for the same record. DELIBERATELY absent from #[Fillable]
  * (mass-assignment guard, same discipline as the former
  * `opportunities.attribute_values`): written only by
  * App\Services\Quotes\QuoteAttributeValueWriter, inside QuoteService's

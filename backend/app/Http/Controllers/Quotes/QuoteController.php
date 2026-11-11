@@ -46,7 +46,8 @@ class QuoteController extends BaseApiController
 
     /**
      * POST /api/quotes/form-context (spec 0084, D-5): the applicable dynamic
-     * attributes and their layout for the offer lines composed so far. Read-
+     * attributes and their layout for the opportunity and offer lines composed
+     * so far. Read-
      * only (nothing is persisted), gated by the SAME `quotes.create` that
      * gates the form itself.
      */
@@ -56,7 +57,7 @@ class QuoteController extends BaseApiController
             $this->authorize('create', Quote::class);
 
             return $this->ok(new QuoteFormContextResource(
-                $this->attributeResolver->formContext($request->productIds(), FormMode::Create),
+                $this->attributeResolver->formContext($request->opportunityId(), $request->productIds(), FormMode::Create),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

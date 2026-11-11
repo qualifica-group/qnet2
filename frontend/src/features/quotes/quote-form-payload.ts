@@ -1,5 +1,5 @@
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
-import { seedAttributeValues } from '@/features/attributes/attribute-values'
+import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
 import {
   offerLineReferenceResolver,
   originalLineInputs,
@@ -93,16 +93,15 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   // form (`useQuoteForm`), altrimenti un booleano mai salvato leggerebbe come
   // cambiato a ogni salvataggio estraneo. I `code` sono quelli VIVI (le righe
   // offerta possono aver cambiato categoria in questo stesso form), non quelli
-  // persistiti: un attributo appena diventato applicabile deve poter viaggiare.
-  const originalAttributeValues = seedAttributeValues(
-    original.applicable_attributes ?? [],
-    original.attribute_values ?? {},
-  )
+  // persistiti: un attributo appena diventato applicabile deve poter viaggiare,
+  // e si confronta col valore SALVATO, se c'e', che il form ha seminato.
+  const storedAttributeValues = toAttributeValuesMap(original.attribute_values)
+  const originalAttributeValues = seedAttributeValues(original.applicable_attributes ?? [], storedAttributeValues)
   const attributeValuesChanged = Object.keys(values.attribute_values).some(
     (code) =>
       !isEqualCustomFieldValue(
         values.attribute_values[code] ?? null,
-        originalAttributeValues[code] ?? null,
+        originalAttributeValues[code] ?? storedAttributeValues[code] ?? null,
       ),
   )
 

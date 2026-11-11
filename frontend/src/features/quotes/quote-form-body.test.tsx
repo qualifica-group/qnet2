@@ -186,11 +186,11 @@ describe('QuoteFormBody — the detail replica (spec 0197)', () => {
     expect(vi.mocked(createQuote)).not.toHaveBeenCalled()
   })
 
-  // Spec 0084 D-5 (direttiva utente 2026-08-06): l'innesco della sezione e' la
-  // SCELTA DEL PRODOTTO. Senza prodotto non c'e' categoria, quindi nessun
-  // attributo: la sezione non deve esistere, e nemmeno l'endpoint viene
-  // interrogato (AC-034).
-  it('does not render the additional-information section until a product is picked (AC-034)', () => {
+  // Spec 0084 D-5 (direttiva utente 2026-08-06, allargata 2026-11-11): gli
+  // inneschi della sezione sono l'Opportunita' e la SCELTA DEL PRODOTTO. Senza
+  // nessuno dei due non c'e' categoria, quindi nessun attributo: la sezione non
+  // deve esistere, e nemmeno l'endpoint viene interrogato (AC-034).
+  it('does not render the additional-information section until an opportunity or a product is picked (AC-034)', () => {
     vi.mocked(fetchQuoteFormContext).mockResolvedValue({
       applicable_attributes: [attributeFixture('text', 'colour')],
       attribute_layout: null,
@@ -200,6 +200,30 @@ describe('QuoteFormBody — the detail replica (spec 0197)', () => {
 
     expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
     expect(vi.mocked(fetchQuoteFormContext)).not.toHaveBeenCalled()
+  })
+
+  // Segnalazione 2026-11-11: le righe prodotto dell'Opportunita' portano le
+  // loro categorie, come al salvataggio e in Gestione Richieste.
+  it('resolves the additional information from the picked opportunity, before any product', async () => {
+    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
+      applicable_attributes: [attributeFixture('text', 'colour')],
+      attribute_layout: null,
+    })
+
+    render(
+      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+        <QuoteFormBody
+          mode={{ type: 'create', params: { opportunity_id: 55 } }}
+          onSuccess={vi.fn()}
+          onCancel={vi.fn()}
+          initialCode="QUO-0007"
+        />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+
+    expect(await screen.findByText('Additional information')).toBeInTheDocument()
+    expect(vi.mocked(fetchQuoteFormContext)).toHaveBeenCalledWith(55, [])
   })
 })
 

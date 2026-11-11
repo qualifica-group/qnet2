@@ -10,17 +10,19 @@ import { toast } from 'sonner'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { apiErrorMessage } from '@/lib/forbidden-message'
-import { seedAttributeValues } from '@/features/attributes/attribute-values'
+import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
 import { createQuote, quoteDetailQueryKey, updateQuote } from '@/features/quotes/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
 import { createDefaults, editDefaults } from '@/features/quotes/quote-form-defaults'
 import { buildCreateQuoteSchema, buildUpdateQuoteSchema, type QuoteFormValues } from '@/features/quotes/quote-schema'
 import { useQuoteFormContext, type PersistedQuoteContext } from '@/features/quotes/use-quote-form-context'
 import { useQuoteLineCaches } from '@/features/quotes/use-quote-line-caches'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { QuoteDetail, QuoteFormMode, QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
 /** Hoisted so the schema memo keeps a stable dependency in create mode (no set resolved yet). */
 const EMPTY_STATUSES: QuoteWorkflowStatusRef[] = []
+const EMPTY_ATTRIBUTE_VALUES: Record<string, CustomFieldValue> = {}
 
 /** Server-side field names mapped onto the form for 422 handling (mirrors `opportunities`/`projects`). */
 const SERVER_ERROR_FIELDS = [
@@ -55,6 +57,24 @@ const SERVER_ERROR_FIELDS = [
  * violation. Returns the server's own message (AC-004 names the user) or
  * `null` when the failure is unrelated.
  */
+/**
+ * The form's map over the stored one. A key the form holds as `undefined` is
+ * a field that registered before its seed (a new product's row mounting), not
+ * a value: it must not hide the stored one.
+ */
+function withStoredFallback(
+  current: Record<string, CustomFieldValue | undefined>,
+  stored: Record<string, CustomFieldValue>,
+): Record<string, CustomFieldValue> {
+  const merged = { ...stored }
+  for (const [code, value] of Object.entries(current)) {
+    if (value !== undefined) {
+      merged[code] = value
+    }
+  }
+  return merged
+}
+
 function managerSlotsMembershipMessage(error: unknown): string | null {
   if (!axios.isAxiosError(error) || error.response?.status !== 422) {
     return null
@@ -144,14 +164,24 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     [mode],
   )
 
-  // Spec 0084 D-5: l'innesco e' la scelta del PRODOTTO sulle righe OFFERTA.
+  const persistedAttributeValues = useMemo(
+    () => (mode.type === 'edit' ? toAttributeValuesMap(mode.quote.attribute_values) : EMPTY_ATTRIBUTE_VALUES),
+    [mode],
+  )
+
+  // Spec 0084 D-5: gli inneschi sono l'Opportunita' (le sue righe prodotto) e
+  // la scelta del PRODOTTO sulle righe OFFERTA.
+  const opportunityId = useWatch({ control: form.control, name: 'opportunity_id' })
   const offerLines = useWatch({ control: form.control, name: 'offer_lines' })
   const pickedProductIds = useMemo(
     () => (offerLines ?? []).map((line) => line.product_id).filter((id): id is number => id !== null),
     [offerLines],
   )
-  const { context: attributeContext, isLoading: attributesLoading, hasPickedProduct } =
-    useQuoteFormContext(pickedProductIds, persistedContext)
+  const { context: attributeContext, isLoading: attributesLoading } = useQuoteFormContext(
+    opportunityId ?? null,
+    pickedProductIds,
+    persistedContext,
+  )
 
   // Lo schema vero, ricostruito ogni volta che il set applicabile cambia, cosi'
   // RHF valida SEMPRE contro i campi realmente a schermo (obbligatorieta'
@@ -194,12 +224,18 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
   // quelle mancanti e `handleSubmit` abortirebbe in silenzio, con errori su
   // campi mai toccati. `setValue` sulla mappa intera, non `reset`: gli altri
   // campi gia' compilati restano. Stesso pattern di `useOpportunityForm`.
+  // Un codice appena diventato applicabile parte dal valore SALVATO, se c'e'
+  // (segnalazione 2026-11-11): la mappa del form porta solo i codici del set
+  // precedente, e seminarlo vuoto mostrerebbe vuoto un valore esistente.
   useEffect(() => {
     form.setValue(
       'attribute_values',
-      seedAttributeValues(attributeContext.applicable_attributes, form.getValues('attribute_values')),
+      seedAttributeValues(
+        attributeContext.applicable_attributes,
+        withStoredFallback(form.getValues('attribute_values'), persistedAttributeValues),
+      ),
     )
-  }, [attributeContext.applicable_attributes, form])
+  }, [attributeContext.applicable_attributes, persistedAttributeValues, form])
 
   const lineCaches = useQuoteLineCaches(original)
 
@@ -273,7 +309,6 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     // consumano per rendere i campi, senza risolverli una seconda volta.
     attributeContext,
     attributesLoading,
-    hasPickedProduct,
   }
 }
 

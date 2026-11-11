@@ -6,6 +6,7 @@ namespace App\Quotes;
 
 use App\Enums\AttributeContext;
 use App\Enums\FormMode;
+use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\Quote;
 use App\RequestManagement\ApplicableAttribute;
@@ -15,21 +16,27 @@ use Illuminate\Support\Collection;
 
 /**
  * The Quote-level "applicable attributes"/layout (spec 0084, D-5): resolved
- * from the DISTINCT product categories of THIS quote's own offer lines
- * (`offerLines[].product.category_id`), never the parent Opportunity's
- * product lines — the "Informazioni aggiuntive" section moved from the
- * Opportunity to the Offerta (D-1).
+ * from the UNION of the parent Opportunity's product lines'
+ * `product_category_id` and THIS quote's own offer lines' product categories.
+ *
+ * The union, not the offer lines alone (user report 2026-11-11, request
+ * 29395): Offerte and Gestione Richieste show the SAME `quotes` record and the
+ * SAME `attribute_values` map, so they must resolve the same set. A request
+ * is born with no offer lines, and the offer-lines-only rule left its values
+ * invisible here and, worse, editable as empty fields once a line was added.
+ * Opportunity categories come first: the merge keeps a code's first-seen
+ * position, so the record's own classification drives the order.
  *
  * Thin caller of the generalized App\RequestManagement\AttributeSetResolver /
  * AttributeLayoutMerger (D-4): this class only knows how to turn a Quote (or
- * a transient list of product ids, for the not-yet-saved `form-context`
- * preview) into an ordered, deduped category-id list; the union/merge logic
- * itself lives entirely in the two generalized resolvers, shared with the
- * Product side.
+ * a transient opportunity + product ids, for the not-yet-saved
+ * `form-context` preview) into an ordered, deduped category-id list; the
+ * union/merge logic itself lives entirely in the two generalized resolvers,
+ * shared with the Product side.
  *
- * N+1-free: `resolve()`/`layout()` rely on `offerLines.product.category`
- * already being eager-loaded (QuoteService::DETAIL_RELATIONS); `formContext()`
- * loads every referenced Product (with its category) in ONE query.
+ * N+1-free: `resolve()`/`layout()` rely on `opportunity.productLines` and
+ * `offerLines.product.category` already being eager-loaded
+ * (QuoteService::DETAIL_RELATIONS); `formContext()` runs one query per source.
  */
 final class QuoteAttributeResolver
 {
@@ -56,15 +63,19 @@ final class QuoteAttributeResolver
 
     /**
      * The `POST /api/quotes/form-context` shape (spec 0084): both blocks,
-     * resolved once for the SAME category-id list — the not-yet-saved offer
-     * lines' products, not a persisted Quote.
+     * resolved once for the SAME category-id list a save would produce — the
+     * picked Opportunity's product lines plus the not-yet-saved offer lines'
+     * products, not a persisted Quote.
      *
      * @param  array<int, int>  $productIds
      * @return array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
      */
-    public function formContext(array $productIds, FormMode $formMode): array
+    public function formContext(?int $opportunityId, array $productIds, FormMode $formMode): array
     {
-        $categoryIds = $this->categoryIdsForProductIds($productIds);
+        $categoryIds = $this->unionOf(
+            $this->categoryIdsForOpportunityId($opportunityId),
+            $this->categoryIdsForProductIds($productIds),
+        );
 
         return [
             'applicable_attributes' => $this->setResolver->resolve($categoryIds, AttributeContext::Quote),
@@ -77,11 +88,41 @@ final class QuoteAttributeResolver
      */
     private function categoryIdsForQuote(Quote $quote): array
     {
-        $quote->loadMissing('offerLines.product.category');
+        $quote->loadMissing(['opportunity.productLines', 'offerLines.product.category']);
 
-        return $quote->offerLines
-            ->pluck('product.category.id')
+        return $this->unionOf(
+            $quote->opportunity->productLines->pluck('product_category_id')->all(),
+            $quote->offerLines->pluck('product.category.id')->all(),
+        );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function categoryIdsForOpportunityId(?int $opportunityId): array
+    {
+        if ($opportunityId === null) {
+            return [];
+        }
+
+        return OpportunityProductLine::query()
+            ->where('opportunity_id', $opportunityId)
+            ->orderBy('id')
+            ->pluck('product_category_id')
+            ->all();
+    }
+
+    /**
+     * @param  array<int, mixed>  $opportunityCategoryIds
+     * @param  array<int, mixed>  $offerCategoryIds
+     * @return array<int, int>
+     */
+    private function unionOf(array $opportunityCategoryIds, array $offerCategoryIds): array
+    {
+        return collect($opportunityCategoryIds)
+            ->concat($offerCategoryIds)
             ->filter()
+            ->map(static fn (mixed $id): int => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -102,9 +143,6 @@ final class QuoteAttributeResolver
 
         return collect($productIds)
             ->map(fn (int $id): ?int => $products->get($id)?->category?->id)
-            ->filter()
-            ->unique()
-            ->values()
             ->all();
     }
 }

@@ -42,7 +42,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Le **Informazioni aggiuntive** compaiono, sotto le righe **Offerta** e **Costi**, appena una riga offerta ha un prodotto che le prevede. Alcune sezioni compaiono solo quando un campo sì/no è attivo: spento il campo, la sezione sparisce, i suoi obbligatori non servono e al salvataggio i suoi valori vengono svuotati. Uscendo senza salvare (Annulla, chiusura del pannello, un link) ti viene chiesta conferma.",
+          text: "Le **Informazioni aggiuntive** compaiono, sotto le righe **Offerta** e **Costi**, appena l'opportunità scelta o una riga offerta hanno una categoria che le prevede: sono le stesse che vedi in **Gestione Richieste** per la stessa richiesta, con gli stessi valori. Alcune sezioni compaiono solo quando un campo sì/no è attivo: spento il campo, la sezione sparisce, i suoi obbligatori non servono e al salvataggio i suoi valori vengono svuotati. Uscendo senza salvare (Annulla, chiusura del pannello, un link) ti viene chiesta conferma.",
         },
         {
           type: 'note',

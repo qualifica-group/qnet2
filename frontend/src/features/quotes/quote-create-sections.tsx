@@ -122,22 +122,22 @@ interface QuoteCreateAttributesProps {
 
 /**
  * The draft's Attribute values, after the offer rows like on the detail
- * (`QuoteAttributesBand`). Spec 0084 D-5: nothing to show until a line
- * carries a product; a loading line while its Attributes resolve.
+ * (`QuoteAttributesBand`). Spec 0084 D-5: nothing to show until the
+ * Opportunita' or a line brings a category; a loading line while its
+ * Attributes resolve.
  */
 export function QuoteCreateAttributes({ quoteForm, draft }: QuoteCreateAttributesProps) {
   const { t } = useTranslation()
-  const { form, attributeContext, attributesLoading, hasPickedProduct } = quoteForm
+  const { form, attributeContext, attributesLoading } = quoteForm
   const attributeValues = useWatch({ control: form.control, name: 'attribute_values' })
-  const loading = hasPickedProduct && attributesLoading
 
-  if (!loading && attributeContext.applicable_attributes.length === 0) {
+  if (!attributesLoading && attributeContext.applicable_attributes.length === 0) {
     return null
   }
 
   return (
     <QuoteAttributesBand>
-      {loading ? (
+      {attributesLoading ? (
         <AdditionalInformationSection
           storageKey={QUOTE_ADDITIONAL_INFORMATION_STORAGE_KEY}
           title={t('quotes.detail.additionalInformation')}

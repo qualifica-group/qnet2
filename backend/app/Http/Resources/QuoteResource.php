@@ -83,13 +83,14 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * Spec 0084 (D-1/D-5): `attribute_values` is the raw quote-level values map
  * (`{}` when null); `applicable_attributes` is the union/dedup-by-code set of
- * THIS quote's own offer lines' effective category attributes
+ * the parent Opportunity's product-line categories and THIS quote's own
+ * offer lines' categories, effective attributes
  * (App\Quotes\QuoteAttributeResolver, context `quote`); `attribute_layout`
  * completes the trio with the merged, multi-category layout (spec 0062),
  * `FormMode::Edit` since this resource IS what the edit form hydrates from —
  * `null` when no contributing category configures one (flat rendering).
  * Relies on QuoteService::DETAIL_RELATIONS already eager-loading
- * `offerLines.product.category`, so resolving all three never N+1s.
+ * `opportunity.productLines` and `offerLines.product.category`, so resolving all three never N+1s.
  *
  * `rewards` (spec 0059 D-3, extended to the Offerta origin by the 2026-08-31
  * directive): the offer's own "abbinamento buono" chips, beneficiary
