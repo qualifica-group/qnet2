@@ -102,6 +102,20 @@ vi.mock('@/features/attachments/documents-section', () => ({
   ),
 }))
 
+// The tab counts are agnostic components owned by notes/attachments: stubbed
+// down to their props, like the sections, so their queries stay out of here.
+vi.mock('@/features/notes/notes-tab-count', () => ({
+  NotesTabCount: (props: { entityType: string; entityId: number }) => (
+    <span data-testid="notes-tab-count" data-entity-type={props.entityType} data-entity-id={props.entityId} />
+  ),
+}))
+
+vi.mock('@/features/attachments/documents-tab-count', () => ({
+  DocumentsTabCount: (props: { resource: string; id: number }) => (
+    <span data-testid="documents-tab-count" data-resource={props.resource} data-id={props.id} />
+  ),
+}))
+
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => (
     <div data-testid="activity-log-section" data-resource={props.resource} data-id={props.id} />
@@ -115,7 +129,7 @@ vi.mock('@/features/time-entries/task/task-time-entries-section', () => ({
 }))
 
 /** Controlled per-test by reassignment, mirrors `granted` (spec 0122 MT-F6). */
-let timeEntriesQueryResult: { data: { total_minutes: number } | undefined } = { data: undefined }
+let timeEntriesQueryResult: { data: { total_minutes: number; items: unknown[] } | undefined } = { data: undefined }
 
 vi.mock('@/features/time-entries/task/use-task-time-entries', () => ({
   useTaskTimeEntries: () => timeEntriesQueryResult,
@@ -189,11 +203,26 @@ describe('gating', () => {
 
   it('MT-F6/AC-040: with time-entries.viewAny the Segnatempo tab shows the total-minutes badge', () => {
     granted = ['time-entries.viewAny']
-    timeEntriesQueryResult = { data: { total_minutes: 90 } }
+    timeEntriesQueryResult = { data: { total_minutes: 90, items: [] } }
     render(<TaskCollaborationSection task={taskDetailWithPermissions({ permissions: permissionsWith({}) })} />)
 
     const tab = screen.getByRole('tab', { name: /Segnatempo/ })
     expect(tab).toHaveTextContent('1h 30m')
+  })
+
+  it('the Segnatempo icon carries the number of entries, none at zero', () => {
+    granted = ['time-entries.viewAny']
+    timeEntriesQueryResult = { data: { total_minutes: 90, items: [{}, {}, {}] } }
+    const { rerender } = render(
+      <TaskCollaborationSection task={taskDetailWithPermissions({ permissions: permissionsWith({}) })} />,
+    )
+
+    expect(screen.getByRole('tab', { name: /^3 Segnatempo/ })).toBeInTheDocument()
+
+    timeEntriesQueryResult = { data: { total_minutes: 0, items: [] } }
+    rerender(<TaskCollaborationSection task={taskDetailWithPermissions({ permissions: permissionsWith({}) })} />)
+
+    expect(screen.getByRole('tab', { name: /^Segnatempo/ })).toBeInTheDocument()
   })
 })
 
@@ -220,6 +249,19 @@ describe('props of the mounted sections', () => {
     expect(documents).toHaveAttribute('data-can-upload', 'true')
     // `attachments.delete` was NOT granted: the two flags are read separately.
     expect(documents).toHaveAttribute('data-can-delete', 'false')
+  })
+
+  it('the Note and Documenti icons count the task\'s own thread and documents', () => {
+    granted = ['tasks.view']
+    const task = taskDetailWithPermissions({ permissions: permissionsWith(ALL_TABS) })
+    render(<TaskCollaborationSection task={task} />)
+
+    const notesCount = screen.getByTestId('notes-tab-count')
+    expect(notesCount).toHaveAttribute('data-entity-type', 'tasks')
+    expect(notesCount).toHaveAttribute('data-entity-id', String(task.id))
+    const documentsCount = screen.getByTestId('documents-tab-count')
+    expect(documentsCount).toHaveAttribute('data-resource', 'task')
+    expect(documentsCount).toHaveAttribute('data-id', String(task.id))
   })
 
   it('MT-F6: TaskTimeEntriesSection receives the task id', () => {

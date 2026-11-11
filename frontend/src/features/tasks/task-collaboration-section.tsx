@@ -1,11 +1,14 @@
 import { useTranslation } from 'react-i18next'
 import { Clock, MessagesSquare, Paperclip } from 'lucide-react'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { RecordTabCount } from '@/components/detail/record-tab-icon'
 import { Badge } from '@/components/ui/badge'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
+import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { TASK_ATTACHABLE_ALIAS, TASKS_DOMAIN } from '@/features/tasks/api'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 import { TaskTimeEntriesSection } from '@/features/time-entries/task/task-time-entries-section'
@@ -27,7 +30,9 @@ const TIME_ENTRIES_TAB = 'time-entries'
  *
  * Segnatempo (spec 0122 MT-F6/D-9) is the one tab whose data is fetched HERE
  * rather than lazily inside its own tab content: the trigger's total-minutes
- * badge needs it even while the tab itself is not the active one.
+ * badge and the icon's entry count need it even while the tab itself is not
+ * the active one. Notes and documents count through their own components,
+ * which share the tab body's query.
  */
 export function useTaskCollaborationTabs(
   task: TaskDetailWithPermissions,
@@ -45,6 +50,7 @@ export function useTaskCollaborationTabs(
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      badge: <NotesTabCount entityType={TASKS_DOMAIN} entityId={task.id} />,
       content: (
         <NotesSection
           entityType={TASKS_DOMAIN}
@@ -61,6 +67,7 @@ export function useTaskCollaborationTabs(
       value: 'documents',
       label: t('attachments.title'),
       icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: <DocumentsTabCount resource={TASK_ATTACHABLE_ALIAS} id={task.id} />,
       content: (
         <DocumentsSection
           resource={TASK_ATTACHABLE_ALIAS}
@@ -90,6 +97,7 @@ export function useTaskCollaborationTabs(
         </>
       ),
       icon: <Clock className="size-3.5" aria-hidden="true" />,
+      badge: <RecordTabCount count={timeEntriesQuery.data?.items.length} />,
       content: <TaskTimeEntriesSection taskId={task.id} />,
     })
   }

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PanelRightClose } from 'lucide-react'
 import { RecordCard } from '@/components/detail/record-panel'
+import { RecordTabIcon } from '@/components/detail/record-tab-icon'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
@@ -10,6 +11,8 @@ export interface RecordCollaborationTab {
   /** Trigger content after the icon: the label, optionally followed by a badge. */
   label: ReactNode
   icon: ReactNode
+  /** Count on the icon's corner (`RecordTabCount`), shown in the strip and in the collapsed rail. */
+  badge?: ReactNode
   content: ReactNode
 }
 
@@ -44,7 +47,7 @@ export function RecordCollaborationCard({ tabs, value, onValueChange, onCollapse
           <TabsList className="min-w-0 flex-1">
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.icon}
+                <RecordTabIcon icon={tab.icon} badge={tab.badge} />
                 {tab.label}
               </TabsTrigger>
             ))}

@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Contatori sulle icone Note / Documenti / Segnatempo (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente (task 427475): numero di note sull'icona Note, e lo stesso per Documenti e Segnatempo, ovunque ci
+  sia la colonna laterale delle schede (strip espansa, barra a icone compressa, strip inline su schermi stretti).
+- Contratto: `GET /api/notes` -> `meta.total` = radici nello scope + loro risposte, indipendente dalla pagina (stesso
+  insieme del badge `notes_count` delle griglie). `NotePage::$total`, `NoteService::threadTotal()`. Spec 0052 emendata.
+- Frontend: `RecordCollaborationTab.badge?: ReactNode`; `RecordTabIcon` (icona + badge, usato da card/rail/inline e dal
+  pannello lavoro di Gestione Richieste) e `RecordTabCount({count})` in `components/detail/record-tab-icon.tsx`
+  (nulla a 0/in caricamento). `IconCountBadge` estratto in `components/ui/icon-count-badge.tsx` da `row-actions.tsx`
+  (stesso badge delle azioni di griglia). Contatori auto-alimentati che condividono la query key della sezione:
+  `NotesTabCount` (features/notes, `quoteScope` = `lockedQuoteId` su Offerta/pannello lavoro) e `DocumentsTabCount`
+  (features/attachments, via nuovo `useAttachmentList`). Segnatempo (solo task): `items.length` di `useTaskTimeEntries`.
+- Collegati in: task, commessa, anagrafica (+ "Documenti anagrafica" condivisa), opportunita', offerta, contratto,
+  richiesta d'acquisto, richiesta proforma, referente, pannello lavoro Gestione Richieste.
+- Verifica: Pest `tests/Feature/Notes` 121 verdi (2 nuovi su meta.total); Vitest aree toccate 347 file / 2786 verdi + help 161; tsc -b pulito;
+  Pint/ESLint puliti. Guide in-app IT+EN aggiornate (`general` sezione schede, `tasks` collaborazione).
+
 ## Info aggiuntive: Offerte = Gestione Richieste (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione utente (richiesta 29395): in Offerte le Informazioni aggiuntive non c'erano (la richiesta ha 4 righe

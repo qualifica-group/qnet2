@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Paperclip } from 'lucide-react'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { DocumentsSection } from '@/features/attachments/documents-section'
+import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { REGISTRY_ATTACHABLE_ALIAS } from '@/features/registries/api'
 
@@ -28,6 +29,7 @@ export function useRegistryDocumentsTab(registryId: number | null | undefined): 
     value: REGISTRY_DOCUMENTS_TAB,
     label: t('registries.detail.registryDocumentsTab'),
     icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+    badge: <DocumentsTabCount resource={REGISTRY_ATTACHABLE_ALIAS} id={registryId} />,
     content: (
       <DocumentsSection resource={REGISTRY_ATTACHABLE_ALIAS} id={registryId} canUpload={false} canDelete={false} />
     ),

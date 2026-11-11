@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { RecordBody } from '@/components/detail/record-body'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { RecordTabCount } from '@/components/detail/record-tab-icon'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import i18n from '@/i18n'
 
@@ -108,6 +109,36 @@ describe('RecordBody with collaboration tabs — wide', () => {
     expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByText('notes body')).toBeInTheDocument()
     expect(window.localStorage.getItem('record.side.collapsed')).toBe('false')
+  })
+})
+
+describe('RecordBody collaboration tab counts', () => {
+  const COUNTED_TABS = [
+    { value: 'notes', label: 'Notes', icon: null, badge: <RecordTabCount count={3} />, content: <p>notes body</p> },
+    { value: 'activity', label: 'Activity', icon: null, badge: <RecordTabCount count={0} />, content: <p>activity body</p> },
+  ]
+
+  it('shows the count on the rail icon, none at zero', () => {
+    mockBodyWidth(WIDE_BODY_WIDTH)
+    renderBody(COUNTED_TABS)
+
+    expect(screen.getByRole('button', { name: '3 Notes' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Activity' })).toBeInTheDocument()
+  })
+
+  it('shows the same count in the expanded card strip and in the narrow strip', () => {
+    window.localStorage.setItem('record.side.collapsed', 'false')
+    mockBodyWidth(WIDE_BODY_WIDTH)
+    const { unmount } = renderBody(COUNTED_TABS)
+
+    expect(screen.getByRole('tab', { name: '3 Notes' })).toBeInTheDocument()
+    unmount()
+
+    mockBodyWidth(NARROW_BODY_WIDTH)
+    renderBody(COUNTED_TABS)
+
+    expect(screen.getByRole('tab', { name: '3 Notes' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Activity' })).toBeInTheDocument()
   })
 })
 

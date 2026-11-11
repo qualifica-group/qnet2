@@ -5,6 +5,7 @@ import { MoreHorizontal } from 'lucide-react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { IconCountBadge } from '@/components/ui/icon-count-badge'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import {
   DropdownMenu,
@@ -122,22 +123,6 @@ function resolveActionCount(action: TableActionDefinition, row: TableRow): numbe
 }
 
 /**
- * Small numeric badge overlaid on an inline icon button's top-right corner
- * (e.g. the "documents" row action's attachment count). Purely presentational;
- * the caller decides whether to render it at all (see `resolveActionCount`).
- */
-function ActionCountBadge({ count }: { count: number }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="pointer-events-none absolute -top-px -right-px flex h-2.5 min-w-2.5 items-center justify-center rounded-full bg-primary px-0.5 text-[7px] leading-none text-primary-foreground"
-    >
-      {count}
-    </span>
-  )
-}
-
-/**
  * Renders the actions available for a single row by crossing `row.actions`
  * (the per-row whitelist computed server-side) with the config action catalog
  * (label/icon/type/confirm). Actions not present in `row.actions` are never
@@ -244,7 +229,7 @@ function RowActions({
                   className={cn('relative', ACTION_ICON_CLASS[action.type], state?.className)}
                 >
                   <Icon aria-hidden="true" />
-                  {count !== null && <ActionCountBadge count={count} />}
+                  {count !== null && <IconCountBadge count={count} aria-hidden="true" />}
                 </RowActionButton>
               </TooltipTrigger>
               <TooltipContent>{label}</TooltipContent>

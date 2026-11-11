@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PanelRightOpen } from 'lucide-react'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordCard } from '@/components/detail/record-panel'
+import { RecordTabIcon } from '@/components/detail/record-tab-icon'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
@@ -39,7 +40,7 @@ export function RecordCollaborationRail({ tabs, onExpand }: RecordCollaborationR
           <RailTooltip label={tab.label}>
             <PopoverTrigger asChild>
               <Button type="button" variant="ghost" size="icon-sm">
-                {tab.icon}
+                <RecordTabIcon icon={tab.icon} badge={tab.badge} />
                 <span className="sr-only">{tab.label}</span>
               </Button>
             </PopoverTrigger>

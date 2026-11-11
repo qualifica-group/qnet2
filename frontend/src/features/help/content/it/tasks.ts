@@ -404,7 +404,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nel dettaglio del task trovi **Note**, **Documenti**, **Cronologia attività** e **Segnatempo**.',
+          text: 'Nel dettaglio del task trovi **Note**, **Documenti**, **Cronologia attività** e **Segnatempo**. Sull\'icona di **Note**, **Documenti** e **Segnatempo** un numero indica quante note (risposte comprese), documenti e registrazioni di tempo ha il task; accanto a **Segnatempo** resta il totale delle ore.',
         },
         {
           type: 'paragraph',

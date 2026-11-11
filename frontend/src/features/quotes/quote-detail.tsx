@@ -6,6 +6,8 @@ import { RecordBody } from '@/components/detail/record-body'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
+import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
@@ -50,6 +52,7 @@ function useCollaborationTabs(quote: QuoteDetailWithPermissions): RecordCollabor
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      badge: <NotesTabCount entityType={REQUEST_MANAGEMENT_DOMAIN} entityId={quote.opportunity_id} quoteScope={quote.id} />,
       content: (
         <NotesSection
           entityType={REQUEST_MANAGEMENT_DOMAIN}
@@ -63,6 +66,7 @@ function useCollaborationTabs(quote: QuoteDetailWithPermissions): RecordCollabor
       value: 'opportunity-documents',
       label: t('quotes.detail.tabs.opportunityDocuments'),
       icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: <DocumentsTabCount resource={OPPORTUNITY_ATTACHABLE_ALIAS} id={quote.opportunity_id} />,
       content: (
         <DocumentsSection
           resource={OPPORTUNITY_ATTACHABLE_ALIAS}

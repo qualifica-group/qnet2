@@ -8,9 +8,11 @@ import { LegacyRecordNote } from '@/components/detail/legacy-record-note'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
+import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { PersonalDataRecordSections } from '@/features/personal-data/personal-data-record-cards'
 import { REGISTRY_ATTACHABLE_ALIAS, registryDetailQueryKey } from '@/features/registries/api'
 import { RegistryDetailHeader, RegistryStatsStrip } from '@/features/registries/registry-detail-header'
@@ -43,6 +45,7 @@ function useCollaborationTabs(registry: RegistryDetailWithPermissions): RecordCo
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      badge: <NotesTabCount entityType="registries" entityId={registry.id} />,
       content: <NotesSection entityType="registries" entityId={registry.id} showHeader={false} />,
     })
   }
@@ -52,6 +55,7 @@ function useCollaborationTabs(registry: RegistryDetailWithPermissions): RecordCo
       value: 'documents',
       label: t('attachments.title'),
       icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: <DocumentsTabCount resource={REGISTRY_ATTACHABLE_ALIAS} id={registry.id} />,
       content: (
         <DocumentsSection
           resource={REGISTRY_ATTACHABLE_ALIAS}

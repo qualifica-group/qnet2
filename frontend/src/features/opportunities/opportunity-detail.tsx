@@ -6,9 +6,11 @@ import { RecordBody } from '@/components/detail/record-body'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
+import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import {
   OpportunityDetailHeader,
@@ -47,6 +49,7 @@ function useCollaborationTabs(opportunity: OpportunityDetailData): RecordCollabo
       value: NOTES_TAB,
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      badge: <NotesTabCount entityType={REQUEST_MANAGEMENT_DOMAIN} entityId={opportunity.id} />,
       /*
        * The notes hang off the Opportunity record itself
        * (`RequestManagementNotable::modelClass()` resolves to `Opportunity`),
@@ -71,6 +74,7 @@ function useCollaborationTabs(opportunity: OpportunityDetailData): RecordCollabo
       value: DOCUMENTS_TAB,
       label: t('attachments.title'),
       icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: <DocumentsTabCount resource={OPPORTUNITY_ATTACHABLE_ALIAS} id={opportunity.id} />,
       content: (
         <DocumentsSection
           resource={OPPORTUNITY_ATTACHABLE_ALIAS}

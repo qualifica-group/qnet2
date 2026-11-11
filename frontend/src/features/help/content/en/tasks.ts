@@ -401,7 +401,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "In the task's detail you find **Notes**, **Documents**, **History** and **Time tracking**.",
+          text: "In the task's detail you find **Notes**, **Documents**, **History** and **Time tracking**. On the **Notes**, **Documents** and **Time tracking** icons a number shows how many notes (replies included), documents and time entries the task has; next to **Time tracking** the total hours stay.",
         },
         {
           type: 'paragraph',

@@ -8,6 +8,7 @@ import type { RecordCollaborationTab } from '@/components/detail/record-collabor
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { PersonalDataRecordSections } from '@/features/personal-data/personal-data-record-cards'
 import { referentDetailQueryKey } from '@/features/referents/api'
 import { ReferentDetailHeader, ReferentStatsStrip } from '@/features/referents/referent-detail-header'
@@ -37,6 +38,7 @@ function useReferentCollaborationTabs(referent: ReferentDetailWithPermissions): 
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      badge: <NotesTabCount entityType="referents" entityId={referent.id} />,
       content: <NotesSection entityType="referents" entityId={referent.id} showHeader={false} />,
     })
   }

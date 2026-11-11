@@ -7,9 +7,11 @@ import { RecordBody } from '@/components/detail/record-body'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
+import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-emails-tab'
@@ -57,6 +59,7 @@ function useCollaborationTabs(
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      badge: <NotesTabCount entityType={WORK_ORDERS_DOMAIN} entityId={workOrder.id} />,
       content: (
         <NotesSection
           entityType={WORK_ORDERS_DOMAIN}
@@ -73,6 +76,7 @@ function useCollaborationTabs(
       value: 'documents',
       label: t('attachments.title'),
       icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: <DocumentsTabCount resource={WORK_ORDER_ATTACHABLE_ALIAS} id={workOrder.id} />,
       content: (
         <DocumentsSection
           resource={WORK_ORDER_ATTACHABLE_ALIAS}

@@ -113,6 +113,23 @@ it('quote_scope=<id offerta A> returns only the notes of A (AC-012)', function (
     expect(collect($response->json('data'))->pluck('id')->all())->toBe([$onA->id]);
 });
 
+it('meta.total follows the scope: only the scoped roots and their replies', function () {
+    $actor = noteActor(['request-management.view']);
+    $opportunity = noteManagedOpportunity($actor);
+    $quoteA = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+    Sanctum::actingAs($actor);
+
+    $onA = rootNote($opportunity, $quoteA->id, now());
+    Note::factory()->create(['notable_type' => 'opportunity', 'notable_id' => $opportunity->id, 'parent_id' => $onA->id]);
+    rootNote($opportunity, null, now());
+
+    $base = "/api/notes?entity_type=request-management&entity_id={$opportunity->id}";
+
+    expect($this->getJson($base)->assertOk()->json('meta.total'))->toBe(3);
+    expect($this->getJson("{$base}&quote_scope={$quoteA->id}")->assertOk()->json('meta.total'))->toBe(2);
+    expect($this->getJson("{$base}&quote_scope=general")->assertOk()->json('meta.total'))->toBe(1);
+});
+
 it('quote_scope numeric referring to an offer of ANOTHER opportunity -> 422 (AC-013)', function () {
     $actor = noteActor(['request-management.view']);
     $opportunity = noteManagedOpportunity($actor);

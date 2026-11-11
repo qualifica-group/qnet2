@@ -66,10 +66,13 @@ final class NoteService
         $record = $this->authorizedRecord($user, $entityType, $entityId);
         $limit ??= self::DEFAULT_LIMIT;
 
-        $query = Note::query()
+        $roots = Note::query()
             ->where('notable_type', $record->getMorphClass())
             ->where('notable_id', $record->getKey())
-            ->whereNull('parent_id')
+            ->whereNull('parent_id');
+        $this->applyQuoteScope($roots, $scope);
+
+        $query = (clone $roots)
             ->with([
                 'author.avatar',
                 'mentionedUsers.avatar',
@@ -80,13 +83,12 @@ final class NoteService
                     ->with(['author.avatar', 'mentionedUsers.avatar', 'quote']),
             ]);
 
-        $this->applyQuoteScope($query, $scope);
         $this->applyCursor($query, $cursor);
 
-        $roots = $query->orderByDesc('created_at')->orderByDesc('id')->limit($limit + 1)->get();
+        $page = $query->orderByDesc('created_at')->orderByDesc('id')->limit($limit + 1)->get();
 
-        $hasMore = $roots->count() > $limit;
-        $items = $roots->take($limit)->values();
+        $hasMore = $page->count() > $limit;
+        $items = $page->take($limit)->values();
 
         return new NotePage(
             $items,
@@ -94,6 +96,7 @@ final class NoteService
             $hasMore,
             $this->registry->quoteScopes($entityType, $record),
             $this->registry->mentionOutsideFor($user, $entityType, $record),
+            $this->threadTotal($roots),
         );
     }
 
@@ -301,6 +304,21 @@ final class NoteService
             'quote' => $query->where('quote_id', $scope->quoteId),
             default => null,
         };
+    }
+
+    /**
+     * Every note the scoped thread shows — its roots plus their replies, the
+     * same set the grids' `notes_count` badge counts — independent of the
+     * page, so the collaboration tab can badge it without walking the cursor.
+     *
+     * @param  Builder<Note>  $roots
+     */
+    private function threadTotal(Builder $roots): int
+    {
+        $rootCount = (clone $roots)->count();
+        $replyCount = Note::query()->whereIn('parent_id', (clone $roots)->select('id'))->count();
+
+        return $rootCount + $replyCount;
     }
 
     private function applyCursor(Builder $query, ?NoteCursor $cursor): void

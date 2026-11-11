@@ -63,6 +63,9 @@ class NoteController extends BaseApiController
                     // Spec 0353: whether the composer may unlock mentions of
                     // people outside the record, and the role they would get.
                     'mention_outside' => $page->mentionOutside,
+                    // Roots in scope plus their replies: the count badge on
+                    // the record's Note tab (same set as the grids' notes_count).
+                    'total' => $page->total,
                 ],
             ]);
         } catch (Throwable $exception) {
