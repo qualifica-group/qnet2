@@ -367,6 +367,20 @@ it('carries the Offerta card when the note names one (AC-008)', function () {
     expect($rows['Titolo'])->toBe('Offerta corso');
 });
 
+it('quotes the note on its own line and leaves the title to the card in the mention email', function () {
+    $task = Task::factory()->create(['title' => 'Chiamare Acme']);
+
+    // A recipient who cannot open the task: the access hint gets its own line too.
+    $mail = noteMentionMail('tasks', $task, layoutRecipient());
+
+    expect($mail->introLines)->toHaveCount(3)
+        ->and($mail->introLines[0])->toEndWith('ti ha menzionato:')
+        ->and($mail->introLines[0])->not->toContain('Etichetta')
+        ->and($mail->introLines[1])->toBe('“Ciao”')
+        ->and($mail->introLines[2])->toStartWith('Non puoi aprire')
+        ->and(mailRows($mail)['Titolo'])->toBe('Chiamare Acme');
+});
+
 // ---------------------------------------------------------------------------
 // AC-010 — the bell does not change
 // ---------------------------------------------------------------------------

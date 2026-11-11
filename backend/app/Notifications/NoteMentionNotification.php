@@ -42,6 +42,8 @@ class NoteMentionNotification extends Notification implements ShouldQueue
 
     private const int EXCERPT_LENGTH = 140;
 
+    private const string NO_ACCESS_HINT = 'You cannot open this record: ask an administrator to grant you access to the module.';
+
     /**
      * @param  string  $entityType  the `notable_types` slug of $record, the
      *                              only thing the link resolution needs on
@@ -96,10 +98,32 @@ class NoteMentionNotification extends Notification implements ShouldQueue
             (new MailMessage)
                 ->subject(__('You were mentioned'))
                 ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
-            $this->message($path, $notifiable),
+            $this->mailLines($path, $notifiable),
             $this->details(),
             $path,
         );
+    }
+
+    /**
+     * The email names no record: its detail card already carries the title,
+     * and a title quoted inline ran into the note, so the reader could not
+     * tell where one ended and the other began. The note gets its own quoted
+     * paragraph instead.
+     *
+     * @return array<int, string>
+     */
+    private function mailLines(?string $path, object $notifiable): array
+    {
+        $params = ['author' => $this->author->name];
+
+        $lines = [
+            $this->wasEnlisted($notifiable)
+                ? __(':author mentioned you and added you as :role:', $params + ['role' => __(ucfirst((string) $this->enlistedRole))])
+                : __(':author mentioned you:', $params),
+            '“'.$this->excerpt().'”',
+        ];
+
+        return $path === null ? [...$lines, __(self::NO_ACCESS_HINT)] : $lines;
     }
 
     /**
@@ -129,10 +153,7 @@ class NoteMentionNotification extends Notification implements ShouldQueue
 
     private function message(?string $path, object $notifiable): string
     {
-        $namesById = $this->note->mentionedUsers->pluck('name', 'id')->all();
-        $excerpt = MentionParser::excerptWithNames($this->note->body, $namesById, self::EXCERPT_LENGTH);
-
-        $params = ['author' => $this->author->name, 'label' => $this->recordLabel, 'excerpt' => $excerpt];
+        $params = ['author' => $this->author->name, 'label' => $this->recordLabel, 'excerpt' => $this->excerpt()];
 
         $message = $this->wasEnlisted($notifiable)
             ? __(':author mentioned you in :label and added you as :role: :excerpt', $params + ['role' => __(ucfirst((string) $this->enlistedRole))])
@@ -142,7 +163,14 @@ class NoteMentionNotification extends Notification implements ShouldQueue
             return $message;
         }
 
-        return $message.' '.__('You cannot open this record: ask an administrator to grant you access to the module.');
+        return $message.' '.__(self::NO_ACCESS_HINT);
+    }
+
+    private function excerpt(): string
+    {
+        $namesById = $this->note->mentionedUsers->pluck('name', 'id')->all();
+
+        return MentionParser::excerptWithNames($this->note->body, $namesById, self::EXCERPT_LENGTH);
     }
 
     private function wasEnlisted(object $notifiable): bool

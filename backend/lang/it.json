@@ -119,6 +119,8 @@
     "You were mentioned": "Sei stato menzionato",
     ":author mentioned you in :label: :excerpt": ":author ti ha menzionato in :label: :excerpt",
     ":author mentioned you in :label and added you as :role: :excerpt": ":author ti ha menzionato in :label e ti ha aggiunto come :role: :excerpt",
+    ":author mentioned you:": ":author ti ha menzionato:",
+    ":author mentioned you and added you as :role:": ":author ti ha menzionato e ti ha aggiunto come :role:",
     "Participant": "Partecipante",
     "Watcher": "Osservatore",
     "You cannot mention people outside this record.": "Non puoi menzionare persone esterne a questo record.",

@@ -3,6 +3,11 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Email di menzione (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Segnalazione utente: nell'email "Sei stato menzionato" il titolo del record e il testo della nota erano nella stessa frase e non si capiva dove finiva l'uno e iniziava l'altro. Ora l'email dice solo ":author ti ha menzionato:" (o "... e ti ha aggiunto come :role:"), poi l'estratto in un paragrafo a se' tra virgolette, poi l'eventuale avviso di accesso mancante. Il titolo resta nella scheda dettagli (presente per tutti gli 8 tipi annotabili). Campanella invariata (lì il titolo serve: non c'e' scheda).
+- File: `NoteMentionNotification` (`mailLines()`, `excerpt()`, costante `NO_ACCESS_HINT`), `RecordMail::compose()` accetta `string|array $lead`, `lang/it.json` (2 chiavi nuove). Spec 0381 AC-008 e 0353 rivisti. Test: `NotificationEmailLayoutTest` (+1). `tests/Feature/Notifications` + `tests/Feature/Notes` verdi (269).
+
 ## Task urgenti assegnati a Nicola (2026-11-10) — VERDE MIRATO, COMMITTATO
 
 - **427126 + richiesta utente**: la ricerca rapida di Commesse, Opportunita', Offerte e Contratti cerca anche il nome del cliente (`registry` searchable). Commesse: `WorkOrderRegistryColumn::applySearch` (anche via righe multi-offerta); Opportunita': `OpportunityRelationColumns::applySearch` + `OpportunitiesTableDefinition::applyDerivedSearch`; Offerte: `QuoteRegistryColumn::applySearch` via `QuoteRelationColumns` + `QuotesTableDefinition::applyDerivedSearch`; Contratti: ramo `registry` in `ContractRelationColumns::applySearch`. Spec 0093 aggiornata. Test: `tests/Feature/Table/ClientNameQuickSearchTest.php`, `WorkOrdersTableMultiQuoteTest` (+1), `WorkOrderTableTest` (searchable +registry). Verificato sul DB: ABC (registry 412) "napoli" trova 6/6 commesse, 2/2 opportunita', offerte, contratti.

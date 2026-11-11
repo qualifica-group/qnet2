@@ -33,16 +33,19 @@ final class RecordMail
     ];
 
     /**
-     * @param  string  $lead  the sentence, already translated
+     * @param  string|array<int, string>  $lead  the sentence, already translated; several
+     *                                           paragraphs when the email quotes a text of its own
      * @param  array<string, string>  $details  i18n label key => value, ordered
      * @param  ?string  $path  internal SPA path, null when the recipient may
      *                         not open the record: no button then, since a
      *                         CTA that lands on a 403 is worse than none
      */
-    public static function compose(MailMessage $mail, string $lead, array $details, ?string $path): MailMessage
+    public static function compose(MailMessage $mail, string|array $lead, array $details, ?string $path): MailMessage
     {
         // Step 1: the sentence
-        $mail->line($lead);
+        foreach ((array) $lead as $line) {
+            $mail->line($line);
+        }
 
         // Step 2: the button, named after the module it opens
         if ($path !== null) {

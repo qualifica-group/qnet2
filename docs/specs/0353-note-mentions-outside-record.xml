@@ -163,6 +163,8 @@
       Per un destinatario aggiunto: message = ":author mentioned you in :label and added you as :role:
       :excerpt" (role tradotto: Partecipante / Osservatore), stessa frase di accesso mancante se nessun link.
       Per gli altri destinatari: testo invariato.
+      [revised 2026-11-11, spec 0381 AC-008: le frasi sopra valgono per la campanella; l'email usa
+      ":author mentioned you and added you as :role:" seguito dall'estratto in un paragrafo a parte.]
     </notification>
   </data_contract>
 
