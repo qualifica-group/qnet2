@@ -38,6 +38,7 @@ vi.mock('@/features/auth/use-auth', () => ({
       date_format: 'dmy',
       time_format: '24h',
       color_preset: 'default',
+      email_notifications_enabled: true,
     } satisfies User,
   }),
 }))

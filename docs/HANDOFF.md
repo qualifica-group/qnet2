@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Interruttore personale "Notifiche via email" (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+
+- Richiesta utente: un'impostazione per non ricevere le notifiche via email e tenere solo quelle di sistema (campanella), come in Reezl (`gym-pro`, `users.email_notifications_enabled`).
+- Backend: colonna `users.email_notifications_enabled` (bool, default **true**, migrazione `2026_12_05_100000`, gia' applicata su qnet2 dev con `--path`), fillable + cast + `$attributes` default sul model, `User::wantsEmailNotifications()` (switch acceso **e** email presente). Esposta in `UserResource`, scritta da `PATCH /auth/me` (`sometimes|required|boolean`, `UpdateProfileRequest::accountAttributes`). Nessun endpoint nuovo.
+- Unico punto di decisione: trait `App\Notifications\Concerns\RespectsEmailPreference::databaseAndPreferredMail()` usato nel `via()` delle 12 notifiche database+mail (Absence, FieldChangeRequested/Resolved, NoteMention, PurchaseRequestSubmitted, RecordAssignment, RequestTransferred, TaskNotification base, TaskUpdateRequested, WorkOrderLineDeliverable, WorkOrderTasksAssigned, WorkOrderUpdateRequested). Nuova notifica con mail -> usa il trait. Escluse di proposito: `WelcomeUserNotification`, `ResetPasswordNotification` (credenziali, sempre mail). Le email composte (`OutboundEmailMessage`) non sono notifiche: invariate.
+- Frontend: `features/notifications/email-notifications-form.tsx` (Switch, salva al cambio), sotto-sezione `email-notifications` in Impostazioni > Impostazioni sistema; `User.email_notifications_enabled` obbligatorio nel tipo (fixture dei test aggiornate); i18n `settings.emailNotifications.*` IT/EN.
+- Test: nuovo `tests/Feature/Notifications/EmailNotificationsPreferenceTest.php` (47) + `email-notifications-form.test.tsx` (3). 4 test che chiamavano `via((object) [])` ora passano il destinatario reale (REQUIREMENT CHANGED: i canali dipendono dal destinatario): RecordAssignment AC-001, FieldChangeRequest AC-026, RequestContactTransfer AC-013/AC-018. Cartelle BE notifiche verdi; tsc pulito per questi file (gli errori residui sono `usage_area` della sessione categorie prodotto).
+- Manuale: guida `general` sezione `notifications-and-preferences` IT/EN + manuale Claude Docs (paragrafo dopo le notifiche email, tabella Impostazioni sistema).
+
 ## Codice fiscale e partita IVA esteri (2026-11-11) — VERDE MIRATO, NON COMMITTATO
 
 - Segnalazione utente: non si potevano inserire partita IVA e codice fiscale esteri (validazione solo italiana).

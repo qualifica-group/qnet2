@@ -63,6 +63,7 @@ const currentUser: User = {
   date_format: 'dmy',
   time_format: '24h',
   color_preset: 'default',
+  email_notifications_enabled: true,
 }
 
 vi.mock('@/features/auth/use-auth', () => ({

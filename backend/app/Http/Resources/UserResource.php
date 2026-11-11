@@ -101,6 +101,8 @@ class UserResource extends JsonResource
             'time_format' => $this->time_format ?? self::TIME_FORMAT_DEFAULT,
             // Per-user accent palette, defaulted when unset.
             'color_preset' => $this->color_preset ?? self::COLOR_PRESET_DEFAULT,
+            // Per-user switch for the email copy of in-app notifications.
+            'email_notifications_enabled' => (bool) $this->email_notifications_enabled,
         ];
     }
 }

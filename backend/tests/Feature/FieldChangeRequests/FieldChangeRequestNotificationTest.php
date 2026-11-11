@@ -126,7 +126,7 @@ it('AC-026: approval notifies the requester with level success and the handling 
     Notification::assertSentTo($requester, function (FieldChangeRequestResolvedNotification $notification) use ($requester): bool {
         $data = $notification->toArray($requester);
 
-        return $notification->via((object) []) === ['database', 'mail']
+        return $notification->via($requester) === ['database', 'mail']
             && $data['level'] === NotificationLevelEnum::Success->value
             && str_contains((string) $data['message'], 'Confermato con il cliente.');
     });

@@ -8,6 +8,7 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordLinkResolver;
 use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
@@ -26,7 +27,7 @@ use Illuminate\Notifications\Notification;
  */
 class WorkOrderTasksAssignedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsEmailPreference;
 
     /**
      * @param  array<string, string>  $workOrderDetails  the commessa's card
@@ -46,7 +47,7 @@ class WorkOrderTasksAssignedNotification extends Notification implements ShouldQ
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**

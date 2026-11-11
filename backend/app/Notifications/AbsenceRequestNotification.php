@@ -7,6 +7,7 @@ namespace App\Notifications;
 use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\DetailFields;
 use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
@@ -19,11 +20,12 @@ use Illuminate\Notifications\Notification;
  * (submitted | approved | rejected | cancelled) and the audience (the person,
  * an approver, or the HR office in copy) only pick a sentence. Facts are precomputed by
  * AbsenceRequestNotifier; the link is resolved per recipient (no button for
- * someone who cannot open the page). Mail is skipped without an address.
+ * someone who cannot open the page). Mail only per the recipient's
+ * preference (RespectsEmailPreference).
  */
 class AbsenceRequestNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsEmailPreference;
 
     public const string EVENT_SUBMITTED = 'submitted';
 
@@ -51,7 +53,7 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return filled($notifiable->email) ? ['database', 'mail'] : ['database'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**

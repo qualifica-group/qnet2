@@ -125,17 +125,18 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: "The bell shows how many notifications you haven't read; the browser tab title flags it too." },
         { type: 'list', items: ['Filter by **All**, **Unread** or **Read**.', 'Click a notification to open the linked record: it is marked as read.', 'Use **Mark as read** on a notification, or **Mark all as read**.'] },
-        { type: 'paragraph', text: 'Notifications also arrive by email, in the language set in your profile. Every email carries the card of the record it is about (for a registry also VAT number, Tax code and SDI code) and, below the card, the button that opens the right module, for example **Open registry** or **Open work order**. If you have no access to the module there is no button, the tax data are left out and the email tells you to ask an administrator for access.' },
+        { type: 'paragraph', text: 'Notifications also arrive by email, in the language set in your profile, as long as you keep **Email notifications** on (see below). Every email carries the card of the record it is about (for a registry also VAT number, Tax code and SDI code) and, below the card, the button that opens the right module, for example **Open registry** or **Open work order**. If you have no access to the module there is no button, the tax data are left out and the email tells you to ask an administrator for access.' },
         {
           type: 'table',
           headers: ['Settings section', 'What you can do'],
           rows: [
             ['**Profile**', 'Upload or remove your avatar, choose the **Language** (Italian or English), update your personal details.'],
             ['**Password**', 'Change your password.'],
-            ['**System settings**', 'Choose **Module opening mode**, **Interface scale**, **Date format** and **Theme color**; replay the **Welcome tour**.'],
+            ['**System settings**', 'Choose **Module opening mode**, **Interface scale**, **Date format**, **Theme color** and **Email notifications**; replay the **Welcome tour**.'],
           ],
         },
         { type: 'paragraph', text: '**Interface scale** enlarges or shrinks the whole application (100% is the normal size). **Date format** decides how you see dates and times, for example **Day/Month/Year** and **24-hour (14:30)**, with a preview. **Theme color** changes the palette of buttons, highlights and the side menu: pick one of the eight combinations (for example **Classic blue**, **Forest green**, **Graphite mono**), each previewing its colors; it applies to both the light and the dark theme. Save with **Save changes**.' },
+        { type: 'paragraph', text: 'In **Email notifications** the **Also receive notifications by email** switch decides whether notifications also reach you by email. When off, you get them in the bell only; the choice is saved at once, with no button. Sign-in emails (welcome with the password and password reset) are always sent.' },
         { type: 'note', text: 'The avatar accepts JPEG, PNG, GIF or WebP up to 10 MB. The profile email cannot be changed from here.' },
         { type: 'tip', text: 'Administrators can sign into qnet as another user with **Impersonate**; it is explained in the **Users** guide.' },
       ],

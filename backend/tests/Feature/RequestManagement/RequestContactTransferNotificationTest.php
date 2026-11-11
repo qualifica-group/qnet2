@@ -85,8 +85,8 @@ it('the new operator receives a database and a mail notification (AC-013)', func
         'operator_id' => $newOperator->id,
     ])->assertOk();
 
-    Notification::assertSentTo($newOperator, function (RequestTransferredNotification $notification): bool {
-        return $notification->via((object) []) === ['database', 'mail'];
+    Notification::assertSentTo($newOperator, function (RequestTransferredNotification $notification) use ($newOperator): bool {
+        return $notification->via($newOperator) === ['database', 'mail'];
     });
 });
 

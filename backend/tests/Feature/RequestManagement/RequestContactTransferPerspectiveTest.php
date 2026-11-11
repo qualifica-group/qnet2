@@ -82,7 +82,7 @@ it('tells the previous operator, on both channels, that the contact is no longer
         function (RequestTransferredNotification $notification) use ($previousOperator, $actor): bool {
             $message = (string) $notification->toArray($previousOperator)['message'];
 
-            return $notification->via((object) []) === ['database', 'mail']
+            return $notification->via($previousOperator) === ['database', 'mail']
                 && str_contains($message, 'no longer the operator')
                 && str_contains($message, 'Acme deal')
                 && str_contains($message, 'New Operator')

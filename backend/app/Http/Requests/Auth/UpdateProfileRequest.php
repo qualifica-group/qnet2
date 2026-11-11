@@ -60,6 +60,9 @@ class UpdateProfileRequest extends FormRequest
             // the colors by the client stylesheet.
             'color_preset' => ['sometimes', 'required', Rule::in(ColorPresetEnum::values())],
 
+            // Per-user switch for the email copy of in-app notifications.
+            'email_notifications_enabled' => ['sometimes', 'required', 'boolean'],
+
             // Spec 0042 — per-user module open mode preference. `mode` is
             // required only when the object itself is submitted; override
             // keys are checked against the table registry in withValidator().
@@ -144,6 +147,9 @@ class UpdateProfileRequest extends FormRequest
                 'date_format' => $validated['date_format'] ?? null,
                 'time_format' => $validated['time_format'] ?? null,
                 'color_preset' => $validated['color_preset'] ?? null,
+                'email_notifications_enabled' => isset($validated['email_notifications_enabled'])
+                    ? (bool) $validated['email_notifications_enabled']
+                    : null,
             ],
             static fn ($value): bool => $value !== null,
         );

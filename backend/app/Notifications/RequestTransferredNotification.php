@@ -9,6 +9,7 @@ use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\User;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\RequestManagement\RequestModule;
 use App\Support\Notifications\RecordLinkResolver;
 use App\Support\Notifications\RecordMail;
@@ -27,7 +28,7 @@ use Illuminate\Support\Carbon;
  * (RequestTransferService::dispatchNotifications()); `$recipientRole` only
  * selects which of the three stories this copy tells.
  *
- * `via(): ['database', 'mail']`, `ShouldQueue`, payload through the shared
+ * `via()`: bell always, mail per recipient preference, `ShouldQueue`, payload through the shared
  * NotificationData shape (title/message/level/action_url), `action_url` a
  * PATH INTERNO, never absolute — the mail CTA is the only place
  * `config('app.frontend_url')` is prepended.
@@ -41,7 +42,7 @@ use Illuminate\Support\Carbon;
  */
 class RequestTransferredNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsEmailPreference;
 
     /**
      * @param  int  $requestId  the transferred Offerta's own id (spec 0086,
@@ -72,7 +73,7 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**

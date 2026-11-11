@@ -9,6 +9,7 @@ use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordDetails;
 use App\Support\Notifications\RecordLinkResolver;
 use App\Support\Notifications\RecordMail;
@@ -28,7 +29,7 @@ use Illuminate\Support\Str;
  */
 class WorkOrderUpdateRequested extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsEmailPreference;
 
     private const int MESSAGE_LIMIT = 2000;
 
@@ -44,7 +45,7 @@ class WorkOrderUpdateRequested extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**

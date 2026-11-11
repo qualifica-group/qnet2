@@ -9,6 +9,7 @@ use App\Enums\FieldChangeRequestStatus;
 use App\Enums\NotificationLevelEnum;
 use App\Models\FieldChangeRequest;
 use App\Models\User;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\DetailFields;
 use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
@@ -26,7 +27,7 @@ use Illuminate\Notifications\Notification;
  */
 class FieldChangeRequestResolvedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsEmailPreference;
 
     /**
      * @param  array<string, string>  $subjectDetails  the card of the record
@@ -47,7 +48,7 @@ class FieldChangeRequestResolvedNotification extends Notification implements Sho
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**

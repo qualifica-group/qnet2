@@ -66,6 +66,14 @@ export const settings = {
       terracotta: 'Terracotta sun',
     },
   },
+  emailNotifications: {
+    title: 'Email notifications',
+    subtitle: 'Choose whether the notifications shown in the app bell are also sent to you by email.',
+    label: 'Also receive notifications by email',
+    hint: 'When off, notifications stay in the bell only. Sign-in emails (welcome and password reset) are always sent.',
+    savedOn: 'Email notifications turned on.',
+    savedOff: 'Email notifications turned off: you will get them in the bell only.',
+  },
   moduleOpenMode: {
     title: 'Module open mode',
     subtitle: 'Choose how each module opens its create, edit and detail screens.',

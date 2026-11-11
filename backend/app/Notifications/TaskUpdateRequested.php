@@ -8,6 +8,7 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Services\Tasks\TaskNotable;
 use App\Support\Notifications\RecordMail;
 use App\Support\Notifications\TaskDetails;
@@ -37,7 +38,7 @@ use Illuminate\Support\Str;
  */
 class TaskUpdateRequested extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsEmailPreference;
 
     private const int MESSAGE_LIMIT = 2000;
 
@@ -53,7 +54,7 @@ class TaskUpdateRequested extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**

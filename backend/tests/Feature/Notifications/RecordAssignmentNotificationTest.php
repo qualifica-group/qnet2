@@ -68,8 +68,8 @@ it('notifies the supervisor named at registry creation, on both channels (AC-001
     $this->postJson('/api/registries', assignmentRegistryPayload(['supervisor_id' => $supervisor->id]))
         ->assertCreated();
 
-    Notification::assertSentTo($supervisor, function (RecordAssignmentNotification $notification): bool {
-        return $notification->via((object) []) === ['database', 'mail'];
+    Notification::assertSentTo($supervisor, function (RecordAssignmentNotification $notification) use ($supervisor): bool {
+        return $notification->via($supervisor) === ['database', 'mail'];
     });
 });
 

@@ -59,6 +59,8 @@ export interface User {
   time_format: TimeFormat
   /** Accent palette of the whole UI. Never null on the wire (defaults to 'default'). */
   color_preset: ColorPreset
+  /** Whether notifications are also sent by email (the bell always gets them). */
+  email_notifications_enabled: boolean
 }
 
 export interface LoginPayload {
@@ -81,6 +83,8 @@ export interface UpdateProfilePayload {
   time_format?: TimeFormat
   /** Optional: updates the accent palette of the whole UI. */
   color_preset?: ColorPreset
+  /** Optional: turns the email copy of notifications on or off. */
+  email_notifications_enabled?: boolean
 }
 
 export interface ChangePasswordPayload {

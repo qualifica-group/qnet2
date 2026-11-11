@@ -125,17 +125,18 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'La campanella mostra quante notifiche non hai letto; anche il titolo della scheda del browser te lo segnala.' },
         { type: 'list', items: ['Filtra con **Tutte**, **Non lette** o **Lette**.', 'Clicca una notifica per aprire il record collegato: viene segnata come letta.', 'Usa **Segna come letta** su una notifica, oppure **Segna tutte come lette**.'] },
-        { type: 'paragraph', text: 'Le notifiche arrivano anche via email, nella lingua scelta nel tuo profilo. Ogni email riporta la scheda del record di cui parla (per un’anagrafica anche Partita IVA, Codice fiscale e Codice SDI) e, sotto la scheda, il pulsante che apre il modulo giusto, per esempio **Apri anagrafica** o **Apri commessa**. Se non hai accesso al modulo il pulsante non c’è, i dati fiscali non compaiono e l’email ti dice di chiedere l’accesso a un amministratore.' },
+        { type: 'paragraph', text: 'Le notifiche arrivano anche via email, nella lingua scelta nel tuo profilo, finché tieni attivo **Notifiche via email** (vedi sotto). Ogni email riporta la scheda del record di cui parla (per un’anagrafica anche Partita IVA, Codice fiscale e Codice SDI) e, sotto la scheda, il pulsante che apre il modulo giusto, per esempio **Apri anagrafica** o **Apri commessa**. Se non hai accesso al modulo il pulsante non c’è, i dati fiscali non compaiono e l’email ti dice di chiedere l’accesso a un amministratore.' },
         {
           type: 'table',
           headers: ['Sezione di Impostazioni', 'Cosa puoi fare'],
           rows: [
             ['**Profilo**', 'Caricare o togliere l’avatar, scegliere la **Lingua** (Italiano o Inglese), aggiornare i tuoi dati anagrafici.'],
             ['**Password**', 'Cambiare la password.'],
-            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia**, **Formato data** e **Colore tema**; rivedere il **Tour di benvenuto**.'],
+            ['**Impostazioni sistema**', 'Scegliere **Modalità apertura moduli**, **Risoluzione interfaccia**, **Formato data**, **Colore tema** e **Notifiche via email**; rivedere il **Tour di benvenuto**.'],
           ],
         },
         { type: 'paragraph', text: '**Risoluzione interfaccia** ingrandisce o rimpicciolisce tutta l’applicazione (100% è la dimensione normale). **Formato data** decide come vedi date e orari, per esempio **Giorno/Mese/Anno** e **24 ore (14:30)**, con anteprima. **Colore tema** cambia la palette di pulsanti, evidenziazioni e menu laterale: scegli una delle otto combinazioni (per esempio **Blu classico**, **Verde foresta**, **Grafite**), ognuna con l’anteprima dei suoi colori; vale sia col tema chiaro sia con quello scuro. Salva con **Salva modifiche**.' },
+        { type: 'paragraph', text: 'In **Notifiche via email** l’interruttore **Ricevi le notifiche anche via email** decide se le notifiche ti arrivano anche per email. Spento, le ricevi solo nella campanella; la scelta si salva subito, senza pulsante. Le email di accesso (benvenuto con la password e reimpostazione della password) arrivano comunque.' },
         { type: 'note', text: 'L’avatar accetta JPEG, PNG, GIF o WebP fino a 10 MB. L’email del profilo non si modifica da qui.' },
         { type: 'tip', text: 'Gli amministratori possono entrare in QNet come un altro utente con **Impersona**; è spiegato nella guida **Utenti**.' },
       ],
