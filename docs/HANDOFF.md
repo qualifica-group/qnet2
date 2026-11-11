@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Seeder one-shot Avvalimenti come ISO (2026-11-11) — VERDE MIRATO, ESEGUITO SU DEV, COMMITTATO
+
+- Richiesta utente: dare l'ambito Avvalimenti a Maria Iannotta (legacy user 23, unica persona e responsabile della funzione legacy AVVALIMENTI) "come ISO", senza riattivare la vecchia funzione.
+- `QualificaAvvalimentiFunctionSeeder` (`php artisan db:seed --class=QualificaAvvalimentiFunctionSeeder`, una transazione, rieseguibile): crea la funzione attiva "Avvalimenti" (responsabile + membro Maria), crea la radice "Avvalimenti" con le impostazioni della radice [OLD] (via `ProductCategoryService::create`), sposta le radici [OLD] (old_id 7 e 62) sulla nuova funzione e le collega alla nuova (`current_category_id`), e aggiunge a Maria la riga "Avvalimenti - Tutte" ridistribuendo le quote (25% x4). "[OLD] AVVALIMENTI" (funzione 29) resta non attiva e vuota.
+- Perche' lo spostamento di funzione: la competenza confronta la funzione EFFETTIVA della categoria (`OperatorCompetence`); il collegamento `current_category_id` serve solo a tabelle e filtri (spec 0374).
+- Su dev: funzione 33, categoria 367; `coveredCategoryIdsFor(139)` copre 172, 180, 320 e 367. Maria ha **"Assegnabile" spento** (dato preesistente, non toccato): finche' resta spento non entra nei pool di assegnazione.
+- Test: `tests/Feature/Seeding/QualificaAvvalimentiFunctionSeederTest.php` (2 verdi).
+
 ## Responsabile/Partecipante della commessa completa i task senza assegnatari e ne diventa assegnatario (spec 0387) (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente ("pezza"): sui task di commessa senza assegnatari (la gran parte dei migrati, spec 0379) un **Partecipante** della commessa puo' completare; il completamento lo aggiunge agli assegnatari e prosegue l'iter dell'assegnatario (validazione se `requires_validation`, segnatempo suo, notifiche, avanzamento commessa).
