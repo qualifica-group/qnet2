@@ -11,6 +11,13 @@
 - Su dev: funzione 33, categoria 367; `coveredCategoryIdsFor(139)` copre 172, 180, 320 e 367. Maria ha **"Assegnabile" spento** (dato preesistente, non toccato): finche' resta spento non entra nei pool di assegnazione.
 - Test: `tests/Feature/Seeding/QualificaAvvalimentiFunctionSeederTest.php` (2 verdi).
 
+## Campi flessibili di pagamento su tutte le categorie commessa (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Segnalazione utente (commessa 16524 in produzione senza "Stato pagamento"): `stato_pagamento`, `accordo_pagamento`, `insoluti` (attributi legacy 357/358/359) erano assegnati in contesto Commessa solo alle 140 categorie [OLD]; le categorie attuali (ISO, SOA, Formazione...) non li vedevano. Lo stato pagamento vero resta quello per riga dei Dati contrattuali (spec 0201, che li indicava come doppioni da togliere, C-2): decisione utente di mostrarli comunque su tutte.
+- **One-shot produzione: `php artisan db:seed --class=QualificaWorkOrderPaymentAttributesSeeder --force`**. Assegna i tre attributi (cercati per codice, mai creati; assente = warning) a ogni radice e a ogni categoria con barriera `inherits_work_order_attributes` che non li possiede; le altre li ereditano. Nessun layout toccato: compaiono in "Altre informazioni". Idempotente. Non in `DatabaseSeeder`.
+- DB locale (transazione annullata): 93 assegnazioni (31 categorie x 3), poi 366/366 categorie li vedono, 0,13 s.
+- Test `tests/Feature/Products/QualificaWorkOrderPaymentAttributesTest.php` (2); `tests/Feature/Products` 313/313; Pint ok. Manuale: nessun impatto (dato di configurazione, le guide non elencano i campi flessibili).
+
 ## Responsabile/Partecipante della commessa completa i task senza assegnatari e ne diventa assegnatario (spec 0387) (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente ("pezza"): sui task di commessa senza assegnatari (la gran parte dei migrati, spec 0379) un **Partecipante** della commessa puo' completare; il completamento lo aggiunge agli assegnatari e prosegue l'iter dell'assegnatario (validazione se `requires_validation`, segnatempo suo, notifiche, avanzamento commessa).
