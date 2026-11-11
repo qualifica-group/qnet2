@@ -175,7 +175,7 @@ const guide: HelpGuide = {
         { type: 'list', items: [
           'Il file **non viene copiato**: QNet conserva il collegamento e lo apre dal vecchio QNet. Per questo l’amministratore deve aver configurato l’indirizzo dei file del vecchio QNet; senza, la sorgente non è disponibile.',
           'Un documento il cui record non è importato, o il cui file manca nel vecchio QNet, fallisce con il motivo. Un caricatore non importato resta vuoto, con un avviso.',
-          'I formati non ammessi da QNet (per esempio p7m, rar, msg) si possono solo scaricare, non vedere in anteprima.',
+          'I formati non ammessi da QNet (per esempio rar, msg) si possono solo scaricare, non vedere in anteprima.',
           'Se rilanci la sorgente, i documenti già importati vengono saltati.',
         ] },
         { type: 'note', text: 'Non vengono importati gli allegati delle email, le FAQ, i ticket, la visibilità e la tipologia dei documenti del vecchio QNet, né le categorie e le scadenze dei documenti cliente da modello. Nella sezione **Documenti** di un record i documenti migrati compaiono come gli altri, ma **Anteprima** e **Scarica** passano da QNet e richiedono che il vecchio QNet sia raggiungibile.' },

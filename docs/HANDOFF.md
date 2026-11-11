@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Allegati p7m ammessi (documenti, allegati email, ticket IT) (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+
+- Segnalazione utente: allegando un p7m alle email (e ai documenti) compariva "tipo di file non ammesso". PDF e ZIP erano gia' ammessi (test esistenti); mancava solo il p7m, che finfo rileva come `application/octet-stream` (DER) o `text/plain` (PEM).
+- `config/attachments.php`: `p7m` in `allowed_extensions`; nuove chiavi `opaque_types` (estensione -> MIME salvato, `p7m => application/pkcs7-mime`) e `opaque_detected_mime_types` (MIME rilevati accettati solo per quelle estensioni).
+- Nuova regola `App\Rules\AllowedAttachmentFile`, usata da `StoreAttachmentRequest`, `StoreWorkOrderEmailAttachmentRequest` (anche ODA/fatture/owner email) e `StoreSupportRequestRequest` al posto di `mimetypes:`. Il messaggio d'errore ora elenca le estensioni, non i MIME.
+- `AttachmentService::persist` salva i tipi opachi col MIME fisso di config, mai quello dichiarato dal client (contenuto accettato senza essere riconosciuto). Un .p7m con contenuto HTML resta rifiutato.
+- Test: `AttachmentCrudTest` (3 nuovi), `WorkOrderEmailAttachmentTest` (p7m + zip); helper `tests/Helpers/AttachmentHelpers.php` (`realUploadedFile`, `signedP7mBytes`). 207 test dei file allegati verdi, Pint ok, tsc ok.
+- Manuale: guide `migrations` IT/EN, `*-migration-requirements` e manuale Claude Docs: esempio "formati non ammessi" senza p7m.
+- Segnalato, NON fatto (fuori scope): per gli altri tipi `persist` salva ancora `getClientMimeType()`; un client puo' dichiarare `text/html` per un contenuto `text/plain` e la view inline lo servirebbe come HTML (anteprima via blob: nell'origine SPA). Fix proposto: salvare il MIME rilevato.
+
 ## Chiusura task da Modello: niente email al richiedente (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione utente: chi crea una commessa (non Responsabile ne' Partecipante) riceve un'email per ogni task chiuso. Causa: il richiedente dei task generati da Modello e' l'autore della commessa (spec 0124 D-4; nel legacy `assigned_by`), e la chiusura (TaskClosed/TaskFeedbackInserted) va a richiedente + osservatori. Scelta utente: cambiare la notifica, non il richiedente. Spec 0388.

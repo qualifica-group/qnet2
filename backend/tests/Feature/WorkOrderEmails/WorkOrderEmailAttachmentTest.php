@@ -50,6 +50,26 @@ it('AC-010: upload creates an email_attachments copy and it survives deleting th
     expect($attachment->collection)->toBe(OutboundEmail::ATTACHMENT_COLLECTION);
 });
 
+it('upload accepts a signed .p7m and a .zip as email attachments', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $actor = workOrderEmailActor($workOrder, ['sendEmail']);
+    $email = draftEmail($workOrder, $actor);
+    Sanctum::actingAs($actor);
+    $url = "/api/work-orders/{$workOrder->id}/emails/{$email->id}/attachments";
+
+    $zipPath = tempnam(sys_get_temp_dir(), 'zip');
+    $zip = new ZipArchive;
+    $zip->open($zipPath, ZipArchive::OVERWRITE);
+    $zip->addFromString('readme.txt', 'archive content');
+    $zip->close();
+
+    $this->postJson($url, ['file' => realUploadedFile('invoice.xml.p7m', signedP7mBytes(), 'application/octet-stream')])->assertCreated();
+    $this->postJson($url, ['file' => realUploadedFile('bundle.zip', (string) file_get_contents($zipPath), 'application/zip')])->assertCreated();
+
+    expect($email->fresh()->attachments->pluck('mime_type')->sort()->values()->all())
+        ->toBe(['application/pkcs7-mime', 'application/zip']);
+});
+
 it('AC-010: total attachments over the configured limit is 422', function () {
     config(['outbound_emails.max_total_attachments_kb' => 1]);
     $workOrder = WorkOrder::factory()->create();

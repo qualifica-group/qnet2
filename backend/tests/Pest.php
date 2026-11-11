@@ -100,6 +100,7 @@ require_once __DIR__.'/Helpers/AiAssistantHelpers.php';
 require_once __DIR__.'/Helpers/ChartOfAccountsHelpers.php';
 require_once __DIR__.'/Helpers/RevenueClassificationHelpers.php';
 require_once __DIR__.'/Helpers/DilAssociationDateHelpers.php';
+require_once __DIR__.'/Helpers/AttachmentHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

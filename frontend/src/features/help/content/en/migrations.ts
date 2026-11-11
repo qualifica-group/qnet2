@@ -175,7 +175,7 @@ const guide: HelpGuide = {
         { type: 'list', items: [
           'The file is **not copied**: QNet keeps the link and opens it from the old QNet. For this reason the administrator must have configured the address of the old QNet files; without it the source is not available.',
           'A document whose record is not imported, or whose file is missing in the old QNet, fails with the reason. An uploader not imported stays empty, with a warning.',
-          'Formats not allowed by QNet (for example p7m, rar, msg) can only be downloaded, not previewed.',
+          'Formats not allowed by QNet (for example rar, msg) can only be downloaded, not previewed.',
           'If you run the source again, the documents already imported are skipped.',
         ] },
         { type: 'note', text: 'Email attachments, FAQ, tickets, visibility and type of the documents of the old QNet, and the categories and due dates of customer documents from template are not imported. In the **Documents** section of a record the migrated documents appear like the others, but **Preview** and **Download** go through QNet and need the old QNet to be reachable.' },

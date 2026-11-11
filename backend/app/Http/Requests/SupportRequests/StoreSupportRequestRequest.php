@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\SupportRequests;
 
 use App\DataObjects\SupportRequests\SupportRequestData;
+use App\Rules\AllowedAttachmentFile;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,12 +44,8 @@ class StoreSupportRequestRequest extends FormRequest
             'file',
             'max:'.(int) config('attachments.max_size'),
             'extensions:'.implode(',', (array) config('attachments.allowed_extensions')),
+            new AllowedAttachmentFile,
         ];
-        $mimeTypes = (array) config('attachments.allowed_mime_types');
-
-        if ($mimeTypes !== []) {
-            $fileRules[] = 'mimetypes:'.implode(',', $mimeTypes);
-        }
 
         return [
             'support_topic_id' => ['required', 'integer', Rule::exists('support_topics', 'id')->where('is_active', true)],

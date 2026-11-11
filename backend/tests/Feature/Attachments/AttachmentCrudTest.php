@@ -106,6 +106,37 @@ it('upload: 201 for a real .zip archive (MIME detected from content)', function 
         ->assertJsonPath('data.mime_type', 'application/zip');
 });
 
+it('upload: 201 for a signed .p7m, stored as application/pkcs7-mime whatever the client declares', function () {
+    Sanctum::actingAs(userWithAttachmentAbilities(['create']));
+
+    $file = realUploadedFile('contract.pdf.p7m', signedP7mBytes(), 'text/html');
+
+    $this->postJson('/api/attachments', ['file' => $file])
+        ->assertCreated()
+        ->assertJsonPath('data.mime_type', 'application/pkcs7-mime')
+        ->assertJsonPath('data.extension', 'p7m');
+});
+
+it('upload: 422 for a .p7m whose content is HTML', function () {
+    Sanctum::actingAs(userWithAttachmentAbilities(['create']));
+
+    $file = realUploadedFile('fake.p7m', '<!DOCTYPE html><html><body><script>alert(1)</script></body></html>', 'application/pkcs7-mime');
+
+    $this->postJson('/api/attachments', ['file' => $file])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('file');
+});
+
+it('upload: 422 for unrecognized binary content without an opaque extension', function () {
+    Sanctum::actingAs(userWithAttachmentAbilities(['create']));
+
+    $file = realUploadedFile('blob.bin', signedP7mBytes(), 'application/octet-stream');
+
+    $this->postJson('/api/attachments', ['file' => $file])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['file' => 'p7m']);
+});
+
 it('upload: links to an allowed polymorphic owner', function () {
     $actor = userWithAttachmentAbilities(['create']);
     Sanctum::actingAs($actor);

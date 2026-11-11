@@ -198,6 +198,18 @@ class AttachmentService
     }
 
     /**
+     * An opaque type (config `attachments.opaque_types`, e.g. a signed .p7m)
+     * is stored under its fixed MIME: its content was accepted by extension,
+     * without being recognized, so the client's declared type is not trusted.
+     */
+    private function storedMimeType(UploadedFile $file, string $extension): string
+    {
+        $opaqueTypes = (array) config('attachments.opaque_types');
+
+        return (string) ($opaqueTypes[strtolower($extension)] ?? $file->getClientMimeType());
+    }
+
+    /**
      * Write the binary to disk and persist its metadata row consistently.
      *
      * The stored object name is a random UUID (the original name is never used
@@ -226,7 +238,7 @@ class AttachmentService
                     'disk' => $disk,
                     'path' => $path,
                     'original_name' => $file->getClientOriginalName(),
-                    'mime_type' => $file->getClientMimeType(),
+                    'mime_type' => $this->storedMimeType($file, $extension),
                     'extension' => $extension !== '' ? $extension : null,
                     'size' => $file->getSize(),
                     'uploaded_by' => $actor?->id,

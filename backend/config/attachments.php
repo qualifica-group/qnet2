@@ -89,14 +89,41 @@ return [
     |
     | Extension allow-list matching `allowed_mime_types`. Used next to the MIME
     | rule so a file whose declared MIME is allowed cannot smuggle in a
-    | different extension (spoof defence). Currently enforced by the IT support
-    | request upload only.
+    | different extension (spoof defence). Enforced by the IT support request
+    | upload only; every upload lists it in its "type not allowed" message.
     |
     */
 
     'allowed_extensions' => [
         'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'csv',
-        'doc', 'docx', 'xls', 'xlsx', 'zip',
+        'doc', 'docx', 'xls', 'xlsx', 'zip', 'p7m',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Opaque types (accepted by extension)
+    |--------------------------------------------------------------------------
+    |
+    | Formats whose content MIME sniffing cannot recognize: a signed .p7m
+    | (CAdES) is DER CMS, detected as application/octet-stream (text/plain
+    | when PEM-encoded). Such a file is accepted by its extension when its
+    | detected MIME is in `opaque_detected_mime_types` (or in the regular
+    | allowlist), and it is stored under the fixed MIME mapped here, never the
+    | client's claim: content accepted without being recognized must not be
+    | served back as whatever type the uploader declared.
+    |
+    */
+
+    'opaque_types' => [
+        'p7m' => 'application/pkcs7-mime',
+    ],
+
+    'opaque_detected_mime_types' => [
+        'application/octet-stream',
+        'application/pkcs7-mime',
+        'application/pkcs7-signature',
+        'application/x-pkcs7-mime',
+        'text/plain',
     ],
 
     /*
