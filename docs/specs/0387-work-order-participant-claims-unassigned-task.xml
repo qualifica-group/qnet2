@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0387-work-order-participant-claims-unassigned-task" status="approved" owner="nicola" date="2026-11-11">
+
+  <goal>
+    Su una commessa, un Partecipante puo' completare un task della commessa che non ha assegnatari: completandolo ne diventa assegnatario e prosegue l'iter come un assegnatario (validazione, segnatempo, notifiche, avanzamento della commessa).
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-11 ("pezza"): i task delle commesse senza assegnatari (in produzione la gran parte dei task migrati, vedi spec 0379) sono visibili ai partecipanti in sola lettura e nessuno li chiude.
+    D-2 Regola: l'attore "rivendica" un Task quando il Task ha `work_order_id`, NON ha alcun assegnatario e l'attore e' in `work_order_participant` di quella commessa. Solo Partecipanti, non Responsabili (richiesta letterale). Resta richiesta la visibilita' del Task (tier commessa della spec 0379: `work-orders.view`, task non privato) e `tasks.complete`.
+    D-3 Matrice: il rivendicante entra solo in TaskAbilityResolver::canComplete() (come l'assegnatario ereditato della spec 0383), non in canUpdate(): prima di completare non modifica, non elimina, non possiede il mandato.
+    D-4 Completamento: TaskCompletionService::complete() aggiunge l'attore agli assegnatari come primo passo dopo le guardie, dentro la transazione (una guardia successiva annulla anche l'assegnazione). Da li' il percorso e' quello dell'assegnatario: con `requires_validation` va in validazione, il segnatempo e' suo, notifiche di chiusura e avanzamento della commessa come di consueto. Nessuna notifica di assegnazione (l'attore si assegna da solo). Vale per tutte le vie di completamento (dettaglio, azioni di massa, board della commessa).
+    D-5 Chi puo' gia' modificare il Task (creatore, richiedente, gestore) non viene assegnato: per un gestore `tasks.manageAll` diventare assegnatario toglierebbe lo status di gestore (spec 0116 D-2).
+  </context>
+
+  <contract>
+    <endpoint>Nessun endpoint nuovo ne' cambio di shape. Cambiano i flag `permissions.actions.complete`/`complete_to_validation` di GET /api/tasks/{id} e l'esito di POST /api/tasks/{id}/complete (e delle azioni di massa) per i task di commessa senza assegnatari; dopo il completamento `assignees` contiene l'attore.</endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>`TaskRecordRoles::isWorkOrderParticipantClaimant`, `TaskAbilityResolver::canComplete`, `TaskCompletionService::complete`.</item>
+      <item>Guide `tasks` e `work-orders` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Pulsante "Prendi in carico" separato dal completamento.</item>
+      <item>Responsabili della commessa e task con assegnatari.</item>
+      <item>Assegnazione massiva d'ufficio dei task esistenti.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Il partecipante vede `complete` true su un task della commessa senza assegnatari, lo completa e ne risulta assegnatario.</criterion>
+    <criterion id="AC-002">Con `requires_validation` il task va in validazione (`complete_to_validation` true) e il partecipante ne e' assegnatario.</criterion>
+    <criterion id="AC-003">Nessun diritto se il task ha un assegnatario, se l'attore non e' partecipante (anche se Responsabile), o se il task non e' di commessa.</criterion>
+    <criterion id="AC-004">Prima di completare il partecipante non modifica il task (403); una guardia fallita (segnatempo mancante) non lascia l'assegnazione.</criterion>
+    <criterion id="AC-005">Un gestore `tasks.manageAll` partecipante chiude senza diventare assegnatario.</criterion>
+  </acceptance>
+</spec>

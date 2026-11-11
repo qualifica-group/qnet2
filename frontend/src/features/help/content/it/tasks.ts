@@ -247,6 +247,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Un **sotto-task senza assegnatari** è visibile agli assegnatari del task padre diretto, che possono completarlo (e riaprirlo) ma non modificarlo né eliminarlo. Così chi ha il task padre chiude i suoi sotto-task e poi completa il padre. Appena il sotto-task riceve un assegnatario proprio, vale solo quello.',
         },
+        {
+          type: 'note',
+          text: 'Un **task di commessa senza assegnatari** può essere completato da un **Partecipante** della commessa (non basta esserne Responsabile), anche se non ne è assegnatario. Completandolo ne diventi **assegnatario** e da lì valgono le regole di sempre: se il task richiede la validazione va in validazione, il segnatempo è registrato a tuo nome e la commessa avanza come per gli altri task. Prima di completarlo non puoi modificarlo. Se il task ha già un assegnatario, vale solo quello.',
+        },
       ],
     },
     {

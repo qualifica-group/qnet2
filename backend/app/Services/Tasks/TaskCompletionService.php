@@ -81,6 +81,7 @@ final class TaskCompletionService
             $this->assertCompletable($task);
             $this->assertNoOpenSubtasks($task);
             $this->assertTimeEntryProvidedWhenRequired($task, $data);
+            $this->claimForWorkOrderParticipant($task, $actor);
 
             $requiresValidation = TaskAbilityResolver::completionRequiresValidation($actor, $task);
 
@@ -226,6 +227,25 @@ final class TaskCompletionService
         if ($status !== null) {
             $this->workOrderProgress->raiseTo($task->workOrder()->firstOrFail(), $status->progress_percentage, $actor);
         }
+    }
+
+    /**
+     * Spec 0387: a Partecipante of the commessa completing a Task with no
+     * assignee becomes its assignee BEFORE the percorso is derived, so the
+     * rest of complete() (validation, segnatempo, notifications) treats them
+     * exactly as an assignee. Inside the transaction: a later guard rolls
+     * the assignment back with the completion. An actor who may already
+     * edit the Task (creator, requester, manager) is never assigned: it
+     * would cost a manager the manager standing (TaskRecordRoles::isManager()).
+     */
+    private function claimForWorkOrderParticipant(Task $task, User $actor): void
+    {
+        if (TaskAbilityResolver::canUpdate($actor, $task) || ! TaskRecordRoles::isWorkOrderParticipantClaimant($actor, $task)) {
+            return;
+        }
+
+        $task->assignees()->attach($actor->id);
+        $task->unsetRelation('assignees');
     }
 
     /**

@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Partecipante della commessa completa i task senza assegnatari e ne diventa assegnatario (spec 0387) (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+
+- Richiesta utente ("pezza"): sui task di commessa senza assegnatari (la gran parte dei migrati, spec 0379) un **Partecipante** della commessa (non il Responsabile) puo' completare; il completamento lo aggiunge agli assegnatari e prosegue l'iter dell'assegnatario (validazione se `requires_validation`, segnatempo suo, notifiche, avanzamento commessa).
+- `TaskRecordRoles::isWorkOrderParticipantClaimant()` (task con `work_order_id`, zero assegnatari, attore in `work_order_participant`; helper privato `hasAssignees()` condiviso con `isInheritedAssignee()`) -> entra solo in `TaskAbilityResolver::canComplete()`. `TaskCompletionService::complete()` -> `claimForWorkOrderParticipant()` dopo le guardie, dentro la transazione, PRIMA di derivare il percorso; salta chi ha gia' `canUpdate()` (creatore/richiedente/gestore: un `manageAll` assegnato perderebbe lo status di gestore). Vale per dettaglio, massiva e board (tutte passano dal service). Nessuna notifica di assegnazione.
+- Effetto collaterale accettato: `canComplete()` apre al partecipante anche `POST` segnatempo sul task (`TaskTimeEntryController`), come per l'assegnato ereditato (0383).
+- Test `tests/Feature/Tasks/TaskWorkOrderParticipantClaimTest.php` (5). Suite Tasks 705, Unit Services/Tasks 87, WorkOrders 485, TimeEntries 142 verdi. Pint ok; guide `tasks`/`work-orders` IT/EN (parity 161 verdi), ESLint, `tsc -b --force` puliti; manuale Claude Docs aggiornato (paragrafo dopo "sotto-task senza assegnatari"), PDF da rigenerare.
+- `TaskCompletionService.php` 411 righe (soft limit 300 superato gia' prima: 391).
+
 ## Task di Rosa Falzarano (2026-11-11) — VERDE, COMMITTATO
 
 - **427463 (Fonte mancante)**: `LeadConversionOfferCreator` non passava la Fonte del lead all'Offerta generata (regressione spec 0332). Fix + test in `LeadConversionOfferTest`. Spec 0332 rettificata. **One-shot produzione: `php artisan db:seed --class=LeadRequestAlignmentSeeder --force`** (richieste nate da lead: Fonte e Operatore del lead solo se vuoti; operatore via `RequestOperatorWriter`; nel DB locale 85 Fonti + 1 operatore, provato in transazione annullata). Gap aperto, non implementato: l'operatore assegnato al lead DOPO la conversione non arriva alla richiesta (lead 168 -> offerta 29953).

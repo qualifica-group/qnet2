@@ -244,6 +244,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'A **sub-task with no assignees** is visible to the assignees of its direct parent task, who can complete it (and reopen it) but not edit or delete it. This way whoever has the parent task closes its sub-tasks and then completes the parent. As soon as the sub-task gets an assignee of its own, only that assignee counts.',
         },
+        {
+          type: 'note',
+          text: 'A **work order task with no assignees** can be completed by a **Participant** of the work order (being its Supervisor is not enough), even without being its assignee. Completing it makes you its **assignee**, and from then on the usual rules apply: if the task requires validation it goes into validation, the time entry is logged in your name and the work order advances as with the other tasks. Before completing it you cannot edit it. If the task already has an assignee, only that assignee counts.',
+        },
       ],
     },
     {
