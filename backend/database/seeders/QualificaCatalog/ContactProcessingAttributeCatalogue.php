@@ -137,6 +137,13 @@ final class ContactProcessingAttributeCatalogue
     private const array APL_APPOINTMENT_DATE = ['code' => 'data_app_apl', 'name' => 'OK app. APL', 'type' => 'date'];
 
     /**
+     * "Data associazione", shared by the training set and "DIL" (task 427520).
+     *
+     * @var array{code: string, name: string, type: string}
+     */
+    public const array ASSOCIATION_DATE = ['code' => 'stato_assoc_cpi', 'name' => 'Data associazione', 'type' => 'date'];
+
+    /**
      * @var array{code: string, name: string, type: string}
      */
     private const array COURSE_ID_SPEC = ['code' => 'id_corso', 'name' => 'ID Corso', 'type' => 'text'];
@@ -209,7 +216,7 @@ final class ContactProcessingAttributeCatalogue
             self::CPI_APPOINTMENT_DATE,
             self::APL_APPOINTMENT_DATE,
             ['code' => 'dote_remaining_hours', 'name' => 'Residuo Ore Dote', 'type' => 'integer'],
-            ['code' => 'stato_assoc_cpi', 'name' => 'Data associazione', 'type' => 'date'],
+            self::ASSOCIATION_DATE,
             ['code' => 'cpi', 'name' => 'CPI', 'type' => 'text'],
             ['code' => 'profilo_cpi', 'name' => 'Profilo CPI', 'type' => 'enum', 'options' => [
                 ['value' => '101', 'label' => '101'],
@@ -280,6 +287,7 @@ final class ContactProcessingAttributeCatalogue
         ['code' => 'dote_activation_date', 'name' => 'Data Attivazione Dote', 'type' => 'date'],
         ['code' => 'dote_expiry_date', 'name' => 'Data Scadenza Dote', 'type' => 'date'],
         ['code' => self::DIL_REMAINING_HOURS, 'name' => 'Residuo Ore', 'type' => 'integer'],
+        self::ASSOCIATION_DATE,
         self::SUBSIDY_TYPE,
         self::COURSE_ID_SPEC,
         self::COURSE_SITE_SPEC,
@@ -293,7 +301,8 @@ final class ContactProcessingAttributeCatalogue
      *
      * "DIL" before the 2026-09-16 directive, then before "Residuo Ore" joined
      * it (2026-09-24), then before "Dati Aula" joined it (task 427536,
-     * 2026-11-10). Retired codes are listed as they stood:
+     * 2026-11-10), then before "Data associazione" joined it (task 427520,
+     * 2026-11-11). Retired codes are listed as they stood:
      * RETIRED_ATTRIBUTES filters them out, like the retirement strips them
      * from the persisted blob.
      *
@@ -312,6 +321,12 @@ final class ContactProcessingAttributeCatalogue
             [
                 'data_scelta_cpi', 'data_app_apl', 'dote_activation_date', 'dote_expiry_date',
                 self::DIL_REMAINING_HOURS, 'subsidy_type', 'id_corso', self::COURSE_SITE,
+            ],
+            [
+                'data_scelta_cpi', 'data_app_apl', 'dote_activation_date', 'dote_expiry_date',
+                self::DIL_REMAINING_HOURS, 'subsidy_type', 'id_corso', self::COURSE_SITE,
+                'teacher', 'classroom_status', 'course_name', 'course_edition', 'course_start_date',
+                'course_end_date', 'exam_date', 'internship_company', 'internship_start_date', 'internship_end_date',
             ],
         ],
     ];
@@ -343,9 +358,9 @@ final class ContactProcessingAttributeCatalogue
      * gets a coherent section: outside the GOL branch the times row drops
      * entirely, and in a region without the APL appointment it keeps the CPI
      * time alone, still under its own date. "DIL" is the extreme case — it
-     * resolves its own eight codes and nothing else, so what survives the
+     * resolves its own nine codes and nothing else, so what survives the
      * filter is exactly the client's own order: the two appointment dates, the
-     * two DOTE ones, the remaining hours, the subsidy, the course references.
+     * two DOTE ones, the remaining hours, the association date, the subsidy, the course references.
      *
      * A row holding only a code no previous revision resolved composes to the
      * same blob as before for every earlier effective set — which is why

@@ -57,7 +57,7 @@ const guide: HelpGuide = {
               'Filtri applicati',
               'Un riquadro per Periodo, Categorie, Sedi, Operatori, Righe: colorato se restringe i dati, neutro se vale "tutto".',
             ],
-            ['Schede', "**Panoramica**, poi le categorie selezionate che stanno nella riga; le altre sono nel menu **Altre (N)**, con la ricerca. La categoria aperta resta sempre visibile nella riga."],
+            ['Schede', "**Panoramica**, poi le categorie selezionate che stanno nella riga, prima le preferite; le altre sono nel menu **Altre (N)** (la stella quando stanno tutte nella riga), con la ricerca, le preferite e il filtro **Categorie madri**. La categoria aperta resta sempre visibile nella riga."],
           ],
         },
         {
@@ -91,6 +91,10 @@ const guide: HelpGuide = {
           text: 'Le colonne "non gestiti" (Richiami e Nuovi contatti non gestiti) hanno l\'icona ambra: sono numeri da far scendere, quindi per loro un aumento è rosso e un calo è verde.',
         },
         {
+          type: 'paragraph',
+          text: '**Dettaglio per stato.** Nelle caselle il numero è sottolineato a puntini: passa il mouse sopra (o selezionalo con Tab) per vedere come si divide tra gli stati di lavorazione attuali delle richieste, dal più numeroso (per N. Telefonate Effettuate: le telefonate secondo lo stato della richiesta). Lo stesso dettaglio c\'è nella **Classifica operatori**, sul numero di ogni operatore. Non c\'è per Aziende inserite (conta aziende, non richieste) né per le colonne Aule, che valgono 0.',
+        },
+        {
           type: 'table',
           headers: ['Pagina', 'File CSV/Excel'],
           rows: [
@@ -103,6 +107,30 @@ const guide: HelpGuide = {
             ],
             ['Variazione sul periodo precedente', 'Solo i valori del periodo scelto'],
           ],
+        },
+      ],
+    },
+    {
+      id: 'statistics-favorites',
+      title: 'Categorie preferite e categorie madri',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Come in Gestione Richieste, puoi segnare come **preferite** le categorie che consulti più spesso, per trovarle subito nella riga delle schede. Apri il menu a destra delle schede (**Altre (N)**, oppure la stella quando tutte le schede stanno nella riga).",
+        },
+        {
+          type: 'table',
+          headers: ['Comando', 'Cosa fa'],
+          rows: [
+            ['Stella accanto a una categoria', 'Aggiunge o toglie la categoria dalle preferite. Le preferite compaiono per prime nella riga e in un gruppo **Preferite** in cima al menu.'],
+            ['**Seleziona tutte** / **Deseleziona tutte**', 'Aggiunge alle preferite o toglie tutte le categorie elencate nel menu; le preferite di categorie che ora non sono tra quelle selezionate nei filtri restano.'],
+            ['**Mostra solo preferite**', 'La riga mostra solo le preferite (più la categoria aperta). Si attiva dopo aver scelto almeno una preferita.'],
+            ['**Categorie madri**', 'La riga e il menu mostrano solo le categorie principali, senza sottocategorie; spento (valore iniziale) mostra tutte le categorie, sottocategorie comprese. Una sottocategoria aperta resta visibile.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: "Le preferite e **Mostra solo preferite** sono salvate sul tuo account e sono separate da quelle di Gestione Richieste; **Categorie madri** è ricordato dal browser. Questi comandi cambiano solo le schede visibili: la Panoramica, i numeri e il pannello Filtri restano uguali.",
         },
       ],
     },

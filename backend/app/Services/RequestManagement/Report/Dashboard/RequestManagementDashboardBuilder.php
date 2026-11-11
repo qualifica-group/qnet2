@@ -200,7 +200,7 @@ final class RequestManagementDashboardBuilder
             indicatorKey: $indicatorKey,
             indicatorLabel: $this->indicatorLabel($indicatorKey),
             points: $this->sorted(array_map(
-                static fn (ReportRow $row): DashboardPoint => new DashboardPoint($row->label, $row->values[$indicatorKey]),
+                fn (ReportRow $row): DashboardPoint => new DashboardPoint($row->label, $row->values[$indicatorKey], $this->breakdownOf($row, $indicatorKey)),
                 $operatorRows,
             )),
         );
@@ -216,9 +216,24 @@ final class RequestManagementDashboardBuilder
     private function summaryOf(ReportRow $row): array
     {
         return array_map(
-            fn (string $key): DashboardSummaryItem => new DashboardSummaryItem($key, $this->indicatorLabel($key), $row->values[$key]),
+            fn (string $key): DashboardSummaryItem => new DashboardSummaryItem($key, $this->indicatorLabel($key), $row->values[$key], $this->breakdownOf($row, $key)),
             $this->activeColumnsOf($row),
         );
+    }
+
+    /**
+     * Task 427193: a tile's (or an operator point's) split by current
+     * working status, zero lines dropped, largest first then by name.
+     *
+     * @return array<int, array{label: string, value: int}>
+     */
+    private function breakdownOf(ReportRow $row, string $key): array
+    {
+        $counts = array_filter($row->breakdowns[$key] ?? [], static fn (int $count): bool => $count > 0);
+        $lines = array_map(static fn (string $label, int $value): array => ['label' => $label, 'value' => $value], array_keys($counts), $counts);
+        usort($lines, static fn (array $a, array $b): int => $b['value'] <=> $a['value'] ?: strcmp($a['label'], $b['label']));
+
+        return $lines;
     }
 
     /**

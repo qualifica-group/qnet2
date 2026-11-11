@@ -260,3 +260,21 @@ it('AC-067: a single-managed derivation with 2+ products of interest -> 422, no 
     expect(Opportunity::count())->toBe($opportunityCountBefore);
     expect(Quote::count())->toBe($quoteCountBefore);
 });
+
+it('task 427463: the generated Offerta inherits the lead Fonte', function () {
+    $actor = leadConversionActor(['create'], ['create']);
+    $campaign = campaignWithLines([coherentCategoryPair()]);
+    $source = Source::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/leads', [
+        'registry_id' => Registry::factory()->create()->id,
+        'campaign_id' => $campaign->id,
+        'source_id' => $source->id,
+        'convert_to_opportunity' => true,
+    ])->assertCreated();
+
+    $opportunity = Opportunity::where('lead_id', $response->json('data.id'))->firstOrFail();
+
+    expect(Quote::where('opportunity_id', $opportunity->id)->sole()->source_id)->toBe($source->id);
+});

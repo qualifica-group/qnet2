@@ -1,13 +1,17 @@
 import { useTranslation } from 'react-i18next'
 import { ArrowDown, ArrowUp, Minus, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import type { RequestDashboardSummaryItem } from '@/features/request-management/dashboard-api'
+import type {
+  RequestDashboardChartPoint,
+  RequestDashboardSummaryItem,
+} from '@/features/request-management/dashboard-api'
 import {
   type DashboardTrend,
   type DashboardTrendSentiment,
   isInverseIndicator,
 } from '@/features/request-management/dashboard-comparison'
 import { FALLBACK_INDICATOR_ICON, INDICATOR_ICONS } from '@/features/request-management/dashboard-indicator-meta'
+import { DashboardStatusBreakdown } from '@/features/request-management/request-dashboard-status-breakdown'
 import type { CategoryShare } from '@/features/request-management/dashboard-overview'
 import { useCountUp } from '@/hooks/use-count-up'
 import { cn } from '@/lib/utils'
@@ -19,6 +23,8 @@ const SENTIMENT_CLASS: Record<DashboardTrendSentiment, string> = {
 }
 
 const TREND_ICON = { up: ArrowUp, down: ArrowDown, flat: Minus } as const
+
+const NO_BREAKDOWN: RequestDashboardChartPoint[] = []
 
 function formatCount(value: number): string {
   return value.toLocaleString()
@@ -98,13 +104,21 @@ export interface DashboardKpiCardProps {
 /**
  * A statistics KPI (spec 0192 D-4/D-6/D-7): indicator icon, the number
  * counting up to its value, the change against the previous period and, in
- * the overview, which categories it comes from. Unhandled-work indicators
+ * the overview, which categories it comes from; hovering the number of a
+ * "Potenziali" tile opens its split by status (task 427193). Unhandled-work indicators
  * carry the amber accent: they are the numbers to bring down.
  */
 export function DashboardKpiCard({ item, trend, shares }: DashboardKpiCardProps) {
   const displayed = useCountUp(item.value)
   const Icon = INDICATOR_ICONS[item.key] ?? FALLBACK_INDICATOR_ICON
   const attention = isInverseIndicator(item.key)
+  const breakdown = item.breakdown ?? NO_BREAKDOWN
+  const value = (
+    <span className="text-2xl font-semibold tracking-tight tabular-nums">
+      <span aria-hidden="true">{formatCount(displayed)}</span>
+      <span className="sr-only">{formatCount(item.value)}</span>
+    </span>
+  )
 
   return (
     <Card className="group relative gap-2 overflow-hidden px-3 py-3 transition-shadow hover:shadow-md">
@@ -129,10 +143,13 @@ export function DashboardKpiCard({ item, trend, shares }: DashboardKpiCardProps)
         </span>
       </div>
       <div className="relative flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-        <span className="text-2xl font-semibold tracking-tight tabular-nums">
-          <span aria-hidden="true">{formatCount(displayed)}</span>
-          <span className="sr-only">{formatCount(item.value)}</span>
-        </span>
+        {breakdown.length > 0 ? (
+          <DashboardStatusBreakdown label={item.label} lines={breakdown}>
+            {value}
+          </DashboardStatusBreakdown>
+        ) : (
+          value
+        )}
         {trend ? <TrendBadge trend={trend} /> : null}
       </div>
       {shares && shares.length > 0 ? <ShareBar shares={shares} /> : null}

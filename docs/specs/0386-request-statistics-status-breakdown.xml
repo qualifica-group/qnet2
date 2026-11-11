@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0386-request-statistics-status-breakdown" status="approved" owner="nicola" date="2026-11-11">
+
+  <goal>
+    Nelle Statistiche Gestione Richieste ogni numero che conta richieste (o le loro note) mostra, al passaggio del mouse, il dettaglio degli stati di lavorazione attuali che lo compongono (task 427193, esteso a tutte le colonne per richiesta utente): sulle caselle e su ogni operatore della Classifica operatori.
+  </goal>
+
+  <context>
+    D-1 `QuoteCountAggregator::partitioned()` raggruppa la sua UNICA query per GA2 e nome dello stato ATTUALE (`byOperatorAndStatus`): i valori per GA2 sono le somme, la ripartizione per stato viene gratis, nessuna query in piu'. Vale per ogni colonna partizionata: telefonate (note per stato della richiesta), richiami, nuovi contatti, potenziali, associati/trattative/invio, presa appuntamenti e le versioni senza periodo. Esclusi: Aziende inserite (`distinct registries.id`, non partizionato: una stessa azienda su richieste in stati diversi farebbe superare il totale) e le colonne Aule (stub a 0). Nessuna regola di conteggio cambia; per le colonne che leggono lo storico la ripartizione e' per stato attuale.
+    D-2 `IndicatorResult::statusBreakdown()` (tutti o un GA2) -> `ReportRow::breakdowns` su ogni riga -> dashboard: `summary[].breakdown` (caselle) e `charts[].points[].breakdown` (punti operatore, cioe' le celle della Classifica). [{label, value}] per valore decrescente, poi nome; zeri esclusi. Stati con lo stesso nome in flussi diversi sono una riga sola. Il CSV non cambia.
+    D-3 Frontend: `DashboardStatusBreakdown` (hover card su hover/focus del numero, sottolineato a puntini, + lista per screen reader) usato da `DashboardKpiCard` e dalle celle di `DashboardLeaderboard`.
+    D-4 (storia) Una configurazione per stato delle colonne statistiche (task 427235/427248) e' stata introdotta e ritirata lo stesso giorno per decisione utente, da riprogettare: la migrazione `2026_12_03_100002` rimuove `quote_workflow_statuses.report_columns` dove esiste.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: aggregatore, IndicatorResult, ReportRow/ReportBranchRowsBuilder, DashboardSummaryItem/DashboardPoint, resource della dashboard (indicatori invariati).</item>
+      <item>Frontend: tipi dashboard, `DashboardStatusBreakdown`, casella KPI, classifica operatori.</item>
+      <item>Guide in-app IT/EN `request-statistics`.</item>
+    </in>
+    <out>
+      <item>Regole di conteggio delle colonne (427235, 427248): da riprogettare.</item>
+      <item>CSV/Excel.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/{module}/report/dashboard">
+      <response status="200">summary[] e categories[].summary[]: { key, label, value, breakdown: [{ label, value }] }; charts[].points[]: { label, value, breakdown } (vuoto per Aziende inserite, Aule, valori a 0 e punti indicatore)</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Le caselle delle colonne per richiesta portano la ripartizione per stato attuale, dal piu' numeroso; Aziende inserite e le colonne a 0 no. (Pest RequestManagementReportStatusBreakdownTest)</criterion>
+    <criterion id="AC-002">Ogni operatore della classifica porta la propria ripartizione. (Pest RequestManagementReportStatusBreakdownTest)</criterion>
+    <criterion id="AC-003">Hover/focus sul numero apre il dettaglio, anche per screen reader; senza dettaglio il numero resta semplice. (Vitest request-dashboard-kpi-card, request-dashboard-leaderboard, dashboard-leaderboard)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza; espressioni di conteggio statiche (backend.md §8). UI compatta.
+  </constraints>
+</spec>

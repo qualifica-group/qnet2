@@ -64,6 +64,8 @@ function dashboardErrorKey(error: unknown): string {
 
 interface DashboardResultsProps {
   query: UseQueryResult<RequestDashboardData>
+  /** The report branches, for the strip's "parent categories" switch (spec 0385). */
+  branches: RequestReportCategory[]
   previous: RequestDashboardData | undefined
   unassignedLabel: string | undefined
 }
@@ -76,7 +78,7 @@ interface DashboardResultsProps {
  * week is an answer. A filter change keeps the previous numbers on screen,
  * dimmed, until the new ones land.
  */
-function DashboardResults({ query, previous, unassignedLabel }: DashboardResultsProps) {
+function DashboardResults({ query, branches, previous, unassignedLabel }: DashboardResultsProps) {
   const { t, i18n } = useTranslation()
   const { data, error, isLoading, isError, isPlaceholderData, refetch } = query
   const categoryKeys = data ? data.categories.map((category) => category.key) : EMPTY_KEYS
@@ -96,7 +98,7 @@ function DashboardResults({ query, previous, unassignedLabel }: DashboardResults
           onValueChange={setTab}
           className={isPlaceholderData ? 'gap-3 opacity-60 transition-opacity' : 'gap-3 transition-opacity'}
         >
-          <DashboardCategoryStrip categories={data.categories} value={tab} onSelect={setTab} />
+          <DashboardCategoryStrip categories={data.categories} branches={branches} value={tab} onSelect={setTab} />
 
           <TabsContent value={OVERVIEW_TAB}>
             <DashboardOverview data={data} previous={previous} onSelectCategory={setTab} />
@@ -223,7 +225,12 @@ export function RequestDashboard() {
       ) : categoriesEmpty ? (
         <DashboardNotice tone="info" message={t('requestManagement.dashboard.noCategories')} />
       ) : (
-        <DashboardResults query={dashboardQuery} previous={previousData} unassignedLabel={unassignedLabel} />
+        <DashboardResults
+          query={dashboardQuery}
+          branches={categories ?? EMPTY_CATEGORIES}
+          previous={previousData}
+          unassignedLabel={unassignedLabel}
+        />
       )}
 
       <RequestReportFiltersDialog

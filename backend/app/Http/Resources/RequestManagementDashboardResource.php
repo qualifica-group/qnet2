@@ -55,7 +55,7 @@ class RequestManagementDashboardResource extends JsonResource
      */
     private function summaryItem(DashboardSummaryItem $item): array
     {
-        return ['key' => $item->key, 'label' => $item->label, 'value' => $item->value];
+        return ['key' => $item->key, 'label' => $item->label, 'value' => $item->value, 'breakdown' => $item->breakdown];
     }
 
     /**
@@ -77,6 +77,6 @@ class RequestManagementDashboardResource extends JsonResource
      */
     private function point(DashboardPoint $point): array
     {
-        return ['label' => $point->label, 'value' => $point->value];
+        return ['label' => $point->label, 'value' => $point->value, 'breakdown' => $point->breakdown];
     }
 }

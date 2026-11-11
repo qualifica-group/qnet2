@@ -23,8 +23,11 @@ it('converges an installation seeded before "Dati Aula" joined "DIL"', function 
     test()->seed(QualificaCatalogSeeder::class);
 
     // Rewind: no classroom assignment on DIL, and its offer layout exactly as
-    // the previous revision composed it — today's, without the section.
+    // the previous revision composed it — today's, without the section. Also
+    // without "Data associazione" (task 427520, REQUIREMENT CHANGED): it joined
+    // after "Dati Aula", so the previous revision composed without it.
     $dil = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
+    rewindDilBeforeAssociationDate($dil);
     $service = app(AttributeLayoutService::class);
     DB::table('attribute_category')
         ->where('category_id', $dil->id)

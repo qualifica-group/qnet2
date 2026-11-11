@@ -451,6 +451,11 @@ export const requestManagement = {
       lead: '{{label}} {{percent}}%',
       more: '+{{count}} altre',
     },
+    breakdown: {
+      title: 'Dettaglio per stato attuale',
+      trigger: 'Dettaglio per stato di {{label}}',
+      item: '{{label}}: {{value}}',
+    },
     heatmap: {
       title: 'Mappa categorie × indicatori',
       description: "Colore più intenso = valore più alto per quell'indicatore. Clicca una categoria per aprirla.",

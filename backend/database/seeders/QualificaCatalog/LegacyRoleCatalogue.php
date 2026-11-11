@@ -141,7 +141,8 @@ final class LegacyRoleCatalogue
                 'quotes' => self::WRITE,
                 'work-orders' => self::WRITE,
                 'contracts' => self::READ,
-                'enrollee-management' => self::READ,
+                // Task 427522: the enrollee's documents are the training office's working material.
+                'enrollee-management' => [...self::READ, 'viewDocuments'],
                 ...self::FORM_SELECTS,
             ],
         ],

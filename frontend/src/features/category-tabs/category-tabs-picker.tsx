@@ -24,6 +24,9 @@ const MORE_BUTTON_CLASS = cn(
 /** Marks the category buttons the arrow keys move between. */
 const OPTION_SELECTOR = '[data-category-option]'
 
+/** A menu row: the count badge shows only when the strip has one (the statistics strip has none, spec 0385). */
+type PickerCategory = Pick<CategoryTabItem, 'id' | 'name'> & { count?: number }
+
 interface CategoryMoreButtonProps extends ComponentProps<'button'> {
   hiddenCount: number
 }
@@ -53,7 +56,7 @@ export function CategoryMoreButton({ hiddenCount, className, ...props }: Categor
 
 interface CategoryTabsPickerProps {
   /** Every category, in the server's order. */
-  categories: CategoryTabItem[]
+  categories: PickerCategory[]
   favoriteCategoryIds: number[]
   showOnlyFavorites: boolean
   /** The favourites are the competence default, not saved yet (spec 0193): the menu says so. */
@@ -106,8 +109,8 @@ export function CategoryTabsPicker({
   const [groupedFavoriteIds, setGroupedFavoriteIds] = useState(favoriteCategoryIds)
 
   const matches = filterCategoriesByName(categories, search)
-  const isFavorite = (category: CategoryTabItem) => favoriteCategoryIds.includes(category.id)
-  const isGroupedFavorite = (category: CategoryTabItem) => groupedFavoriteIds.includes(category.id)
+  const isFavorite = (category: PickerCategory) => favoriteCategoryIds.includes(category.id)
+  const isGroupedFavorite = (category: PickerCategory) => groupedFavoriteIds.includes(category.id)
   const favorites = matches.filter(isGroupedFavorite)
   const others = matches.filter((category) => !isGroupedFavorite(category))
   const hasFavorites = categories.some(isFavorite)
@@ -157,7 +160,7 @@ export function CategoryTabsPicker({
     }
   }
 
-  const renderRows = (rows: CategoryTabItem[]) =>
+  const renderRows = (rows: PickerCategory[]) =>
     rows.map((category) => (
       <CategoryRow
         key={category.id}
@@ -264,7 +267,7 @@ function CategoryGroup({ label, children }: { label: string; children: ReactNode
 }
 
 interface CategoryRowProps {
-  category: CategoryTabItem
+  category: PickerCategory
   favorite: boolean
   selected: boolean
   onPick: (categoryId: number) => void
@@ -302,9 +305,11 @@ function CategoryRow({ category, favorite, selected, onPick, onToggleFavorite }:
         <span className="min-w-0 flex-1 truncate" title={category.name}>
           {category.name}
         </span>
-        <Badge variant="secondary" className="px-1.5 py-0 text-[0.65rem]">
-          {category.count}
-        </Badge>
+        {category.count === undefined ? null : (
+          <Badge variant="secondary" className="px-1.5 py-0 text-[0.65rem]">
+            {category.count}
+          </Badge>
+        )}
         <Check className={cn('size-3.5 shrink-0', !selected && 'invisible')} aria-hidden="true" />
       </button>
     </li>

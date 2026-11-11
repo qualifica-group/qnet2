@@ -28,6 +28,10 @@ const guide: HelpGuide = {
             ],
             ['Permissions', 'It has its own permissions, separate from Request Management.'],
             [
+              'Documents and notes',
+              'An enrollee is the same request: the documents and notes written in Request Management stay the same, with no copies. The **Documents** tab shows with the Enrollee Management **View documents** permission, which sales operators, the training office and the training supervisor also have.',
+            ],
+            [
               'Who sees what',
               'With no other permission you only see the requests whose **Team** you belong to: as operator, Supervisor or Account Manager. **View physical site** adds those of your physical site (not your remote sites); **View by site** those of all your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. The module\'s status filter still applies.',
             ],

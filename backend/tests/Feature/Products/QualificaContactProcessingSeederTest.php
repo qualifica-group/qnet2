@@ -194,7 +194,7 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
     expect($placedCodes($service->resolveWithFallback($dilCategory, AttributeContext::Quote, FormMode::Create)))->toBe([
         'data_scelta_cpi', 'data_app_apl',
         'dote_activation_date', 'dote_expiry_date',
-        ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS, 'subsidy_type',
+        ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS, 'stato_assoc_cpi', 'subsidy_type',
         'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
     ]);
 

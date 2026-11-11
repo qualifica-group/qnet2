@@ -202,6 +202,7 @@ it('composes the offer layout only where it differs from the ancestor, and a sec
             'data_scelta_cpi', 'data_app_apl',
             'dote_activation_date', 'dote_expiry_date',
             ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS,
+            'stato_assoc_cpi',
             'subsidy_type',
             'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
         ]);

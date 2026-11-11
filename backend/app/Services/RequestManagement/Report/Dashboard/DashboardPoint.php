@@ -14,5 +14,7 @@ final class DashboardPoint
     public function __construct(
         public readonly string $label,
         public readonly int $value,
+        /** @var array<int, array{label: string, value: int}> per current status (task 427193), operator points of the "Potenziali" only */
+        public readonly array $breakdown = [],
     ) {}
 }

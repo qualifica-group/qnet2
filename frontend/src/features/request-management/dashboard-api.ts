@@ -14,6 +14,8 @@ export interface RequestDashboardSummaryItem {
   key: string
   label: string
   value: number
+  /** Task 427193: the total split by current working status, largest first; empty (or absent) when not computed. */
+  breakdown?: RequestDashboardChartPoint[]
 }
 
 /** `indicator` -> one point per indicator column of the category; `operator` -> one point per GA2 on ONE indicator. */
@@ -22,6 +24,8 @@ export type RequestDashboardChartScope = 'indicator' | 'operator'
 export interface RequestDashboardChartPoint {
   label: string
   value: number
+  /** Task 427193: an operator point of the "Potenziali" split by current status; empty (or absent) otherwise. */
+  breakdown?: RequestDashboardChartPoint[]
 }
 
 export interface RequestDashboardChart {

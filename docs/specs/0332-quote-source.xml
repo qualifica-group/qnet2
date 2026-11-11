@@ -54,6 +54,11 @@
       insieme a Commerciale/Segnalatore/Supervisore (scelta opportunita' o opportunita' bloccata).
       La conversione Lead -> Opportunita' e la scelta di un lead nel form opportunita' non trattano
       piu' la Fonte (`source_id` esce dai default/derivabili del lead per l'opportunita').
+      Rettifica 2026-11-11 (task 427463): l'Offerta GENERATA dalla conversione
+      (`LeadConversionOfferCreator`) nasce con la Fonte del lead; prima nasceva senza, e ogni
+      richiesta da lead risultava senza Fonte. One-shot `LeadRequestAlignmentSeeder` per le
+      offerte gia' create da lead: Fonte e Operatore del lead, solo se vuoti sull'offerta (l'operatore
+      via RequestOperatorWriter, squadra coerente).
     - D-7 (Gestione richieste/iscritti): la colonna `source` legge/scrive `quotes.source_id`
       (relazione `source`); la creazione scrive la Fonte sull'offerta creata; la PATCH del pannello
       scrive `source_id` sull'offerta. Campo protetto e permesso `updateSource` invariati.

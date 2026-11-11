@@ -81,6 +81,9 @@ it('converges an installation seeded before "Residuo Ore" joined "DIL"', functio
     // minus "Dati Aula", which joined later (task 427536).
     $service = app(AttributeLayoutService::class);
     $dil = remainingHoursDil();
+    // Also minus "Data associazione" (task 427520, REQUIREMENT CHANGED): it
+    // joined after "Residuo Ore", so that revision composed without it.
+    rewindDilBeforeAssociationDate($dil);
 
     foreach (REMAINING_HOURS_CONTEXTS as $context) {
         $blob = $service->resolveWithFallback($dil, $context, FormMode::Create);

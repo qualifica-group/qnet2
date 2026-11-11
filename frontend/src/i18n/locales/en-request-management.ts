@@ -444,6 +444,11 @@ export const requestManagement = {
       lead: '{{label}} {{percent}}%',
       more: '+{{count}} more',
     },
+    breakdown: {
+      title: 'Split by current status',
+      trigger: '{{label}} split by status',
+      item: '{{label}}: {{value}}',
+    },
     heatmap: {
       title: 'Categories × indicators map',
       description: 'Darker = higher value for that indicator. Click a category to open it.',

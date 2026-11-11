@@ -57,7 +57,7 @@ const guide: HelpGuide = {
               'Applied filters',
               'A box for Period, Categories, Sites, Operators, Rows: colored if it narrows the data, neutral if it means "everything".',
             ],
-            ['Tabs', '**Overview**, then the selected categories that fit on the row; the others are in the **More (N)** menu, with a search. The open category always stays visible on the row.'],
+            ['Tabs', '**Overview**, then the selected categories that fit on the row, favorites first; the others are in the **More (N)** menu (the star when they all fit on the row), with the search, the favorites and the **Parent categories** filter. The open category always stays visible on the row.'],
           ],
         },
         {
@@ -87,6 +87,10 @@ const guide: HelpGuide = {
           text: "**Change against the previous period.** When both From and To are filled in, every box shows the percentage change against the previous period of the same length (for Last 7 days, the 7 days before), with every other filter unchanged. Green = improvement, red = worsening; **New** = the value was 0 in the previous period. Hover the change to read the previous period's value.",
         },
         {
+          type: 'paragraph',
+          text: '**Split by status.** In the boxes the number has a dotted underline: hover it (or reach it with Tab) to see how it splits across the requests\' current working statuses, largest first (for Calls Made: the calls by request status). The same split is in the **Operator ranking**, on each operator\'s number. Companies Added (it counts companies, not requests) and the classroom columns, always 0, have none.',
+        },
+        {
           type: 'note',
           text: 'The "unhandled" columns (unhandled callbacks and new contacts) carry the amber icon: they are numbers to bring down, so for them a rise is red and a drop is green.',
         },
@@ -103,6 +107,30 @@ const guide: HelpGuide = {
             ],
             ['Change against the previous period', "Only the chosen period's values"],
           ],
+        },
+      ],
+    },
+    {
+      id: 'statistics-favorites',
+      title: 'Favorite categories and parent categories',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'As in Request Management, you can mark the categories you check most often as **favorites**, to find them at once on the tab row. Open the menu to the right of the tabs (**More (N)**, or the star when every tab fits on the row).',
+        },
+        {
+          type: 'table',
+          headers: ['Control', 'What it does'],
+          rows: [
+            ['Star next to a category', 'Adds the category to or removes it from your favorites. Favorites come first on the row and in a **Favorites** group at the top of the menu.'],
+            ['**Select all** / **Deselect all**', 'Adds or removes every category listed in the menu; favorites of categories not currently selected in the filters are kept.'],
+            ['**Show favorites only**', 'The row shows only your favorites (plus the open category). Available once at least one favorite is chosen.'],
+            ['**Parent categories**', 'The row and the menu show only the main categories, without subcategories; off (the initial value) shows every category, subcategories included. An open subcategory stays visible.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Favorites and **Show favorites only** are saved on your account and kept apart from the Request Management ones; **Parent categories** is remembered by the browser. These controls change only the visible tabs: the Overview, the figures and the Filters panel stay the same.',
         },
       ],
     },

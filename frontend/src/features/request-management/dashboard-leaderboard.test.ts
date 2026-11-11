@@ -52,9 +52,33 @@ describe('buildLeaderboard', () => {
     expect(leaderboard?.rows.find((row) => row.label === 'Bea Neri')).toEqual({
       label: 'Bea Neri',
       values: { telefonate: 2, associati: 3 },
+      breakdowns: {},
       unassigned: false,
     })
     expect(leaderboard?.rows.find((row) => row.label === 'Non assegnato')?.unassigned).toBe(true)
+  })
+
+  it('keeps each operator split by status for the columns that send it (task 427193)', () => {
+    const potentials: RequestDashboardChart = {
+      id: 'operator-gol-potenziali',
+      scope: 'operator',
+      indicator_key: 'potenziali',
+      indicator_label: 'Potenziali',
+      points: [
+        { label: 'Ada Rossi', value: 3, breakdown: [{ label: 'In trattativa', value: 2 }, { label: 'Validato', value: 1 }] },
+        { label: 'Bea Neri', value: 0, breakdown: [] },
+      ],
+    }
+
+    const rows = buildLeaderboard([...CHARTS, potentials], 'Non assegnato')?.rows ?? []
+
+    expect(rows.find((row) => row.label === 'Ada Rossi')?.breakdowns).toEqual({
+      potenziali: [
+        { label: 'In trattativa', value: 2 },
+        { label: 'Validato', value: 1 },
+      ],
+    })
+    expect(rows.find((row) => row.label === 'Bea Neri')?.breakdowns).toEqual({})
   })
 
   it('is null without any operator chart (row mode "total only")', () => {

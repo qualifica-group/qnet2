@@ -6,6 +6,7 @@ namespace App\Services\Opportunities;
 
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\Enums\CategoryManagementMode;
+use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Quotes\ProductOfferLineResolver;
@@ -65,6 +66,9 @@ final class LeadConversionOfferCreator
             supervisorIdSubmitted: false,
             internalNotes: null,
             offerLines: $this->offerLineResolver->resolve($productIds),
+            // Spec 0332 moved the Fonte onto the Offerta: the generated one
+            // carries the lead's, or every lead-born request has none (task 427463).
+            sourceId: Lead::query()->whereKey($opportunity->lead_id)->value('source_id'),
         ), $actor);
     }
 

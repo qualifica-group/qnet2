@@ -17,6 +17,7 @@ import {
   sortLeaderboard,
 } from '@/features/request-management/dashboard-leaderboard'
 import { cn } from '@/lib/utils'
+import { DashboardStatusBreakdown } from '@/features/request-management/request-dashboard-status-breakdown'
 
 /** Places that get a podium badge (D-3). */
 const PODIUM_SIZE = 3
@@ -165,19 +166,29 @@ export function DashboardLeaderboard({ leaderboard }: DashboardLeaderboardProps)
                   {leaderboard.columns.map((column) => {
                     const value = row.values[column.key] ?? 0
                     const color = INDICATOR_COLORS[column.key] ?? FALLBACK_INDICATOR_COLOR
+                    const breakdown = row.breakdowns[column.key]
+                    const pill = (
+                      <span
+                        className={cn(
+                          'inline-block min-w-7 rounded-md px-1.5 py-0.5 text-center tabular-nums',
+                          value > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                        )}
+                        style={value > 0 ? { backgroundColor: indicatorTint(color) } : undefined}
+                      >
+                        {value.toLocaleString()}
+                      </span>
+                    )
 
                     return (
                       <td key={column.key} className="px-2 py-1.5 text-right">
                         {/* Tinted pill, foreground text: a zero stays plain and muted so the eye lands on real numbers. */}
-                        <span
-                          className={cn(
-                            'inline-block min-w-7 rounded-md px-1.5 py-0.5 text-center tabular-nums',
-                            value > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground',
-                          )}
-                          style={value > 0 ? { backgroundColor: indicatorTint(color) } : undefined}
-                        >
-                          {value.toLocaleString()}
-                        </span>
+                        {breakdown ? (
+                          <DashboardStatusBreakdown label={`${row.label} - ${column.label}`} lines={breakdown}>
+                            {pill}
+                          </DashboardStatusBreakdown>
+                        ) : (
+                          pill
+                        )}
                         <span aria-hidden="true" className="mt-1 ml-auto block h-1 w-full max-w-24 overflow-hidden rounded-full bg-muted">
                           <span
                             className={cn('block h-full rounded-full', sort.key === column.key ? null : 'opacity-60')}
