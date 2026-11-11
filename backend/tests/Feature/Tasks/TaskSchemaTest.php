@@ -52,6 +52,8 @@ it('AC-003: tasks carries every column of the data_contract', function () {
         'old_id',
         // Spec 0323, D-4: snapshot of the template row's commessa working status.
         'work_order_workflow_status_id',
+        // Spec 0388 (REQUIREMENT CHANGED), D-2: generated from a Modello di Task.
+        'is_template_generated',
         'created_at', 'updated_at',
     ];
 

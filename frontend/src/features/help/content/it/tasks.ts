@@ -423,7 +423,7 @@ const guide: HelpGuide = {
           items: [
             'ti viene assegnato un task come nuovo assegnatario (a meno che tu ne sia anche il creatore) o come nuovo osservatore (sempre, anche se sei il creatore);',
             'un task va in validazione, oppure la sua validazione viene approvata o rifiutata;',
-            'un task viene chiuso: la notifica arriva al richiedente e agli osservatori, e agli assegnatari solo se sono più di uno; se il task era in validazione, gli assegnatari ricevono comunque una notifica separata di approvazione;',
+            'un task viene chiuso: la notifica arriva al richiedente e agli osservatori, e agli assegnatari solo se sono più di uno; sui task generati da un **Modello di Task** di una commessa il richiedente (chi ha creato la commessa) non la riceve, a meno che non sia anche osservatore o assegnatario; se il task era in validazione, gli assegnatari ricevono comunque una notifica separata di approvazione;',
             'un task viene riaperto, bloccato o sbloccato;',
             'qualcuno ti chiede un aggiornamento: la ricevono i destinatari scelti, con una copia (**In copia**) agli osservatori quando la richiesta va agli assegnatari.',
             'qualcuno ti menziona in una nota con **Menziona chiunque** e ti aggiunge come osservatore: ricevi solo la notifica di menzione ("ti ha menzionato e ti ha aggiunto come Osservatore"), non quella di nuovo osservatore.',

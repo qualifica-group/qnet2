@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Chiusura task da Modello: niente email al richiedente (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Segnalazione utente: chi crea una commessa (non Responsabile ne' Partecipante) riceve un'email per ogni task chiuso. Causa: il richiedente dei task generati da Modello e' l'autore della commessa (spec 0124 D-4; nel legacy `assigned_by`), e la chiusura (TaskClosed/TaskFeedbackInserted) va a richiedente + osservatori. Scelta utente: cambiare la notifica, non il richiedente. Spec 0388.
+- Nuova colonna `tasks.is_template_generated` (bool, default false, NON fillable). La valorizzano `WorkOrderTaskGenerator` (radici e sotto-task), `TasksSource` (import + ri-lancio che riempie il flag sui task gia' importati, come lo snapshot di stato della spec 0323 D-12; metodo rinominato `fillEmptySnapshots`) e `TasksTarget` (riallineamento).
+- `TaskNotificationAudience::closure()` esclude il richiedente sui task generati; resta destinatario se e' anche osservatore/assegnatario incluso. Le altre notifiche (validazione ecc.) sono invariate.
+- Legacy `../qnet` `TaskMigrationController::mapTask` invia `is_template_generated` da `generato_da_modello` (verificato con tinker su dati reali; non committato nel legacy). Fixture `legacyTaskRecord` aggiornata (cambio di requisito).
+- Migrazione eseguita sul DB dev `qnet2`. Per valorizzare i task gia' importati: rilanciare la sorgente `tasks` oppure il riallineamento.
+- Test: nuovi `tests/Feature/Tasks/TemplateTaskClosureNotificationTest.php` (5), `tests/Feature/Migration/TasksTemplateGeneratedImportTest.php` (3), +1 in `Realign/TasksTargetTest.php`; `TaskSchemaTest` aggiornato (nuova colonna). Verdi: Pest Tasks 711, WorkOrders 489, Migration 925, Contracts 225, WorkOrderWorkflows 67, TaskTemplates 79, Deletion, Notifications; Vitest help 161; tsc -b, ESLint, Pint puliti.
+- Manuale: guida `tasks` IT/EN + manuale Claude Docs (sezione notifiche task) aggiornati.
+
 ## Smistamento equo: interruttore "Tieni conto del carico attuale" (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: poter smistare per numero di persone selezionate invece che per carico. Spec 0168 delta D-4 (AC-017/AC-018).

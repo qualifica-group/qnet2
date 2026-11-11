@@ -49,6 +49,7 @@ if (! function_exists('legacyTaskRecord')) {
             'is_blocked' => false,
             'requires_closure_feedback' => false,
             'requires_validation' => false,
+            'is_template_generated' => false,
             'closure_feedback' => null,
             'recurrence' => null,
             'recurrence_source_id' => null,

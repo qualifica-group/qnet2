@@ -420,7 +420,7 @@ const guide: HelpGuide = {
           items: [
             'a task is assigned to you as a new assignee (unless you are also its creator) or as a new watcher (always, even as the creator);',
             'a task goes to validation, or its validation is approved or rejected;',
-            'a task is closed: the notification reaches the requester and the watchers, and the assignees only if there is more than one; if the task was in validation, the assignees still get a separate approval notification;',
+            'a task is closed: the notification reaches the requester and the watchers, and the assignees only if there is more than one; on tasks generated from the **Task Template** of a work order the requester (whoever created the work order) does not get it, unless they are also a watcher or an assignee; if the task was in validation, the assignees still get a separate approval notification;',
             'a task is reopened, blocked or unblocked;',
             'someone requests an update: the chosen recipients get it, with a copy (**CC**) to the watchers whenever the request targets the assignees.',
             'someone mentions you in a note with **Mention anyone** and adds you as a watcher: you only get the mention notification ("mentioned you and added you as Watcher"), not the new watcher one.',

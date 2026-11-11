@@ -33,6 +33,7 @@ final readonly class TaskNotificationAudience
         private ?int $requesterId,
         private array $assigneeIds,
         private array $watcherIds,
+        private bool $isTemplateGenerated = false,
     ) {}
 
     /**
@@ -48,6 +49,7 @@ final readonly class TaskNotificationAudience
             requesterId: $task->requester_id === null ? null : (int) $task->requester_id,
             assigneeIds: $task->assignees->pluck('id')->map(intval(...))->all(),
             watcherIds: $task->watchers->pluck('id')->map(intval(...))->all(),
+            isTemplateGenerated: (bool) $task->is_template_generated,
         );
     }
 
@@ -156,13 +158,15 @@ final readonly class TaskNotificationAudience
      * member of this set as such — only ever through the requester/watcher/
      * assignee role, exactly like every other audience. Inactive recipients
      * are dropped by TaskNotifier::send() (`activeOnly`), not here — this
-     * class never queries.
+     * class never queries. On a Task generated from a Modello di Task the
+     * requester is only whoever generated the commessa (spec 0388, D-3), so
+     * they hear about the closure only through another role.
      *
      * @return array<int, int>
      */
     public function closure(?User $actor, bool $includeAssignees): array
     {
-        $ids = [$this->requesterId, ...$this->watcherIds];
+        $ids = [$this->isTemplateGenerated ? null : $this->requesterId, ...$this->watcherIds];
 
         if ($includeAssignees) {
             $ids = [...$ids, ...$this->assigneeIds];
