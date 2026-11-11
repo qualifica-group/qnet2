@@ -164,7 +164,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'When you edit the client details, from the panel or directly in the table cell, you cannot enter a tax code, VAT number or phone that already belongs to another card: the save is refused. The values already on the client stay editable.',
+          text: 'When you edit the client details, from the panel or directly in the table cell, you cannot enter a tax code, VAT number or phone that already belongs to another card: the save is refused. You can instead enter the phone of a referent linked to that client. The values already on the client stay editable.',
         },
         {
           type: 'paragraph',

@@ -258,7 +258,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Codice fiscale, partita IVA e telefono già presenti su un'altra scheda bloccano il salvataggio, ovunque li inserisci: creazione, modifica, contatti del dettaglio e Gestione Richieste. L'email invece genera solo l'avviso: tocca a te decidere se la scheda è davvero un duplicato.",
+          text: "Codice fiscale, partita IVA e telefono già presenti su un'altra scheda bloccano il salvataggio, ovunque li inserisci: creazione, modifica, contatti del dettaglio e Gestione Richieste. Fa eccezione il telefono condiviso tra un'anagrafica e i suoi referenti collegati: l'azienda può avere lo stesso numero del proprio referente (e viceversa), mentre resta bloccato il numero di un referente collegato a un'altra anagrafica. L'email invece genera solo l'avviso: tocca a te decidere se la scheda è davvero un duplicato.",
         },
       ],
     },

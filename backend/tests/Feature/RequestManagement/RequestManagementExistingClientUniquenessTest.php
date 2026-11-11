@@ -208,3 +208,42 @@ it('inline: a free codice fiscale is written', function () {
 
     expect(existingClientCard($quote)->fresh()->tax_code)->toBe(EXISTING_CLIENT_VAT);
 });
+
+// ---------------------------------------------------------------------------
+// The client's own referenti (user directive 2026-11-11)
+// ---------------------------------------------------------------------------
+
+function clientReferentHoldingPhone(Quote $quote, string $phone): void
+{
+    $referent = Referent::factory()->create();
+    $card = PersonalData::factory()->individual()->for($referent, 'personable')->create();
+    Contact::factory()->for($card, 'contactable')->create(['type' => 'phone', 'value' => $phone]);
+    $quote->opportunity->registry->referents()->sync([$referent->id]);
+}
+
+it('panel: accepts a phone the client\'s own referente already holds', function () {
+    $actor = existingClientEditor();
+    $quote = existingClientRequest($actor);
+    clientReferentHoldingPhone($quote, EXISTING_CLIENT_PHONE);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'client_contacts' => [['type' => 'phone', 'value' => '333 123 4567']],
+    ])->assertOk();
+
+    expect(existingClientCard($quote)->contacts()->where('type', 'phone')->count())->toBe(1);
+});
+
+it('inline: accepts a phone the client\'s own referente already holds', function () {
+    $actor = existingClientEditor();
+    $quote = existingClientRequest($actor);
+    clientReferentHoldingPhone($quote, EXISTING_CLIENT_PHONE);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'phone',
+        'value' => EXISTING_CLIENT_PHONE,
+    ])->assertOk();
+
+    expect(existingClientCard($quote)->contacts()->where('type', 'phone')->count())->toBe(1);
+});

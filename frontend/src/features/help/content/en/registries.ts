@@ -258,7 +258,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A tax code, VAT number or phone already on another card blocks saving, wherever you enter it: creation, editing, the contacts of the detail and Request management. An email only raises the notice: it is up to you to decide whether the card is really a duplicate.',
+          text: 'A tax code, VAT number or phone already on another card blocks saving, wherever you enter it: creation, editing, the contacts of the detail and Request management. The exception is a phone shared between a registry and its linked referents: the company may have the same number as its own referent (and vice versa), while the number of a referent linked to another registry stays blocked. An email only raises the notice: it is up to you to decide whether the card is really a duplicate.',
         },
       ],
     },

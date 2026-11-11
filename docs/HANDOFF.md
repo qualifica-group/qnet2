@@ -3,6 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Telefono condiviso tra anagrafica e suoi referenti (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Segnalazione utente: in Gestione Richieste il telefono del cliente uguale a quello del referente collegato
+  all'azienda veniva rifiutato ("The phone number is already assigned to another record.").
+- Decisione utente 2026-11-11: un'anagrafica e i referenti collegati (`referent_registry`) possono avere lo stesso
+  telefono, nei due versi. Resta bloccato il numero di un referente NON collegato, di un'altra anagrafica, di un
+  utente. CF/P.IVA senza eccezioni. Il create di un cliente nuovo da Gestione Richieste resta bloccato (nessun link).
+- Backend: `IdentityUniquenessScope::phoneSharingOwners(?Model)` (Registry -> suoi referent id, Referent -> sue
+  registry id) + `withoutOwners(Builder, array)`. Hook `ValidatesPhoneUniqueness::phoneSharingOwners()` (default
+  `[]`), override in `StoreRegistryRequest`/`UpdateRegistryRequest` (`resultingReferentIds()`, i link inviati nel
+  payload contano) e `UpdateReferentRequest`. Applicato anche in `RequestClientUniquenessGuard::phoneConflict`
+  (pannello + celle inline) e `StoreContactRequest::validateNamespacePhone` (endpoint contatti).
+- `IdentityDuplicateFinder` (pannello "Possibile duplicato", non bloccante) invariato: mostra ancora il referente.
+- Test: nuovo `tests/Feature/Identity/LinkedReferentPhoneSharingTest.php` (6), +2 in
+  `RequestManagementExistingClientUniquenessTest`. Mirati: Identity, RequestManagement uniqueness, ContactPhone,
+  Referents, Registries = 315 verdi; i 6 casi "ammesso" falliscono senza la correzione. Pint pulito.
+- Manuale: guide in-app `registries.ts` e `request-management.ts` (IT+EN, parity verde); manuale Claude Docs,
+  paragrafo "Attenzione" dei duplicati in Anagrafiche (era superato: diceva che l'avviso non blocca mai).
+- Suite completa backend (4 processi): 14658 verdi, 15 falliti + 7 errori, tutti fuori da questo intervento
+  (AiAssistant tipi file, PermissionCatalogue 712 vs 695, QualificaOperatorSeeder, ManagementControl access,
+  QuoteDocumentPdf senza LibreOffice, AttributeLayoutConditionalSection firma formContext, EmploymentProductLine,
+  TableBulkDelete, TaskBoard, SettlementApproval, AttachmentsSourceImport, PendingChangeRequestsColumn,
+  RequestManagementAllColumnsSortFilter `managers`): da verificare con le sessioni che hanno quelle modifiche.
+
 ## Contatori sulle icone Note / Documenti / Segnatempo (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente (task 427475): numero di note sull'icona Note, e lo stesso per Documenti e Segnatempo, ovunque ci

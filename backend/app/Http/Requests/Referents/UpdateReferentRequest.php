@@ -10,6 +10,7 @@ use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Http\Requests\Referents\Concerns\ValidatesReferentSupplierLink;
 use App\Http\Requests\Referents\Concerns\ValidatesReferentUserLink;
 use App\Models\Referent;
+use App\Support\IdentityUniquenessScope;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -95,6 +96,17 @@ class UpdateReferentRequest extends FormRequest
     protected function authorizationModel(): ?Model
     {
         return $this->routeReferent();
+    }
+
+    /**
+     * The anagrafiche it is linked to may already hold the number it is given
+     * (user directive 2026-11-11).
+     *
+     * @return array<class-string<Model>, array<int, int>>
+     */
+    protected function phoneSharingOwners(): array
+    {
+        return IdentityUniquenessScope::phoneSharingOwners($this->routeReferent());
     }
 
     /** The bound referent under edit, shared by the authz and uniqueness hooks. */

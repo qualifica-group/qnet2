@@ -164,7 +164,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Se modifichi i dati del cliente, dal pannello o direttamente nella cella della tabella, non puoi inserire un codice fiscale, una partita IVA o un telefono che appartengono già a un'altra scheda: il salvataggio viene rifiutato. I valori già presenti sul cliente restano modificabili.",
+          text: "Se modifichi i dati del cliente, dal pannello o direttamente nella cella della tabella, non puoi inserire un codice fiscale, una partita IVA o un telefono che appartengono già a un'altra scheda: il salvataggio viene rifiutato. Puoi invece inserire il telefono di un referente collegato a quel cliente. I valori già presenti sul cliente restano modificabili.",
         },
         {
           type: 'paragraph',
