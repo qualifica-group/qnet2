@@ -6,6 +6,7 @@ use App\DataObjects\Attachments\CreateAttachmentData;
 use App\Models\Attachment;
 use App\Models\User;
 use App\Services\Attachments\LegacyAttachmentFetcher;
+use App\Support\Attachments\SignedEnvelope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -222,7 +223,8 @@ class AttachmentService
         $directory = trim((string) config('attachments.directory'), '/');
 
         $file = $data->file;
-        $extension = $file->getClientOriginalExtension();
+        $originalName = SignedEnvelope::originalName($file);
+        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
         $storedName = (string) Str::uuid().($extension !== '' ? '.'.$extension : '');
 
         $path = Storage::disk($disk)->putFileAs($directory, $file, $storedName);
@@ -232,12 +234,12 @@ class AttachmentService
         }
 
         try {
-            return DB::transaction(function () use ($actor, $data, $disk, $path, $file, $extension): Attachment {
+            return DB::transaction(function () use ($actor, $data, $disk, $path, $file, $originalName, $extension): Attachment {
                 $attachment = new Attachment([
                     'collection' => $data->collection,
                     'disk' => $disk,
                     'path' => $path,
-                    'original_name' => $file->getClientOriginalName(),
+                    'original_name' => $originalName,
                     'mime_type' => $this->storedMimeType($file, $extension),
                     'extension' => $extension !== '' ? $extension : null,
                     'size' => $file->getSize(),

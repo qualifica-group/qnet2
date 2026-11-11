@@ -181,6 +181,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'tip', text: "If the preview does not open, allow pop-up windows for qnet's site." },
+        { type: 'note', text: 'Files up to 10 MB can be uploaded: images (JPG, PNG, GIF, WebP), PDF, Word, Excel, TXT, CSV, ZIP and digitally signed files (.p7m). A signed file saved by mistake as .pdf is recognized and uploaded under its correct name, for example **attestato.pdf.p7m**: it opens with a digital signature program, not as a PDF. The same rules apply to email attachments.' },
         { type: 'note', text: 'Documents migrated from the old QNet appear like the others, but the file stays on the old QNet: **Preview** and **Download** go through QNet and need the old QNet to be reachable, otherwise an error appears. **Delete document** removes only the link in QNet, not the file on the old QNet. If you attach a migrated document to an email of a work order, QNet saves a copy of it in the email.' },
         { type: 'tip', text: 'On a record that comes from the old QNet, below the documents you find **Can’t find a document? Check the old QNet**: the link opens that record in the old QNet (for Opportunities and Tasks their list, where to look it up), in a new tab. The old QNet may ask you to sign in.' },
       ],

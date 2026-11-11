@@ -70,6 +70,21 @@ it('upload accepts a signed .p7m and a .zip as email attachments', function () {
         ->toBe(['application/pkcs7-mime', 'application/zip']);
 });
 
+it('upload accepts a signed file saved as .pdf and attaches it as .pdf.p7m', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $actor = workOrderEmailActor($workOrder, ['sendEmail']);
+    $email = draftEmail($workOrder, $actor);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/work-orders/{$workOrder->id}/emails/{$email->id}/attachments", [
+        'file' => realUploadedFile('attestato.pdf', signedP7mBytes(), 'application/pdf'),
+    ])->assertCreated();
+
+    $attachment = $email->fresh()->attachments->sole();
+    expect($attachment->original_name)->toBe('attestato.pdf.p7m')
+        ->and($attachment->mime_type)->toBe('application/pkcs7-mime');
+});
+
 it('AC-010: total attachments over the configured limit is 422', function () {
     config(['outbound_emails.max_total_attachments_kb' => 1]);
     $workOrder = WorkOrder::factory()->create();

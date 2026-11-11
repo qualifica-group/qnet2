@@ -117,6 +117,18 @@ it('upload: 201 for a signed .p7m, stored as application/pkcs7-mime whatever the
         ->assertJsonPath('data.extension', 'p7m');
 });
 
+it('upload: 201 for a signed file saved as .pdf, renamed .pdf.p7m and stored as application/pkcs7-mime', function () {
+    Sanctum::actingAs(userWithAttachmentAbilities(['create']));
+
+    $file = realUploadedFile('attestato.pdf', signedP7mBytes(), 'application/pdf');
+
+    $this->postJson('/api/attachments', ['file' => $file])
+        ->assertCreated()
+        ->assertJsonPath('data.original_name', 'attestato.pdf.p7m')
+        ->assertJsonPath('data.mime_type', 'application/pkcs7-mime')
+        ->assertJsonPath('data.extension', 'p7m');
+});
+
 it('upload: 422 for a .p7m whose content is HTML', function () {
     Sanctum::actingAs(userWithAttachmentAbilities(['create']));
 
@@ -130,7 +142,7 @@ it('upload: 422 for a .p7m whose content is HTML', function () {
 it('upload: 422 for unrecognized binary content without an opaque extension', function () {
     Sanctum::actingAs(userWithAttachmentAbilities(['create']));
 
-    $file = realUploadedFile('blob.bin', signedP7mBytes(), 'application/octet-stream');
+    $file = realUploadedFile('blob.bin', str_repeat("\x00\x11\x22\xff", 64), 'application/octet-stream');
 
     $this->postJson('/api/attachments', ['file' => $file])
         ->assertUnprocessable()

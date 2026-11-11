@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Rules;
 
+use App\Support\Attachments\SignedEnvelope;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Http\UploadedFile;
@@ -13,8 +14,9 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  * Server-side type allowlist of an uploaded attachment (config/attachments.php):
  * the MIME detected from the content must be in `allowed_mime_types`, or, for
  * an opaque type accepted by extension (e.g. a signed .p7m), in
- * `opaque_detected_mime_types`. An empty `allowed_mime_types` lifts the
- * restriction. Whether a file is present is the FormRequest's call.
+ * `opaque_detected_mime_types`. A signed envelope recognized by its content
+ * passes whatever its extension (SignedEnvelope). An empty
+ * `allowed_mime_types` lifts the restriction. Whether a file is present is the FormRequest's call.
  */
 final class AllowedAttachmentFile implements ValidationRule
 {
@@ -30,6 +32,10 @@ final class AllowedAttachmentFile implements ValidationRule
         $allowedMimeTypes = (array) config('attachments.allowed_mime_types');
 
         if ($allowedMimeTypes === [] || in_array($value->getMimeType(), $this->acceptedMimeTypes($value, $allowedMimeTypes), true)) {
+            return;
+        }
+
+        if (SignedEnvelope::isSignedData($value)) {
             return;
         }
 

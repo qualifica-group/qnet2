@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## File firmati salvati come .pdf riconosciuti dal contenuto (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+
+- Segnalazione utente: un `attestato.pdf` veniva rifiutato. Non era un PDF ma una busta CAdES (DER CMS SignedData, il PDF dentro) salvata senza `.p7m`: finfo -> `application/octet-stream`, quindi 422 "tipo non ammesso" (l'utente lo leggeva come permesso).
+- Nuovo `App\Support\Attachments\SignedEnvelope`: `isSignedData()` (header DER `0x30` + OID 1.2.840.113549.1.7.2 nei primi 32 byte) e `originalName()` (aggiunge `.p7m` se il contenuto e' firmato e l'estensione non lo e').
+- `AllowedAttachmentFile` accetta una busta firmata qualunque sia l'estensione; `AttachmentService::persist` salva nome `attestato.pdf.p7m`, estensione `p7m`, MIME `application/pkcs7-mime` (via `opaque_types`). Firma intatta, niente estrazione del PDF.
+- Test: 2 nuovi (documenti + email). Il test "binario non riconosciuto rifiutato" ora usa byte non firmati (REQUIREMENT CHANGED: i byte firmati sono accettati di proposito). 209 test allegati verdi. Verificato col file reale dell'utente: validazione OK, nome `attestato.pdf.p7m`.
+- Manuale: nota formati/file firmati in guida `general` sezione `notes-and-documents` IT/EN e nel manuale Claude Docs (dopo il suggerimento pop-up).
+- Ambiente locale: Herd `qnet-2-backend.test` e' isolato su PHP 8.5 con nginx proprio; limiti upload alzati (64M nginx, 20M/64M in php 8.5 e 8.4) perche' oltre 2 MB rispondeva 413. Sul server (PHP 8.4) servono valori equivalenti.
+
 ## Allegati p7m ammessi (documenti, allegati email, ticket IT) (2026-11-11) — VERDE MIRATO, NON COMMITTATO
 
 - Segnalazione utente: allegando un p7m alle email (e ai documenti) compariva "tipo di file non ammesso". PDF e ZIP erano gia' ammessi (test esistenti); mancava solo il p7m, che finfo rileva come `application/octet-stream` (DER) o `text/plain` (PEM).
