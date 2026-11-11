@@ -4,6 +4,7 @@ import {
   asCustomFieldsField,
   type CustomFieldsSchema,
 } from '@/features/custom-fields/build-custom-fields-schema'
+import { isValidForeignFiscalCode } from '@/lib/fiscal/foreign-fiscal-code'
 import { isValidVatNumber } from '@/lib/fiscal/vat-number'
 
 /**
@@ -84,14 +85,15 @@ function baseFields(t: TFunction) {
       .string()
       .min(1, t('companies.form.denominationRequired'))
       .max(DENOMINATION_MAX_LENGTH, t('companies.form.denominationMax')),
-    // Optional, but once filled it must be a real partita IVA (control digit),
-    // mirroring the backend `VatNumber` rule.
+    // Optional, but once filled it must be a real partita IVA (control digit)
+    // or a foreign one with its country prefix, mirroring the backend
+    // `VatNumber` rule.
     vat_number: z
       .string()
       .max(VAT_NUMBER_MAX_LENGTH)
       .optional()
       .refine(
-        (value) => !value?.trim() || isValidVatNumber(value),
+        (value) => !value?.trim() || isValidVatNumber(value) || isValidForeignFiscalCode(value),
         { message: t('companies.form.vatNumberInvalid') },
       ),
     address: addressSchema(t),

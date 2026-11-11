@@ -201,6 +201,7 @@ const guide: HelpGuide = {
       title: 'Master data and custom fields',
       blocks: [
         { type: 'paragraph', text: 'The **Personal details** section appears in **Registries**, **Referents**, **Users** and your own **Profile**. Choose the **Type** (**Individual** or **Company**) and fill in the required fields: qnet checks that the tax code and VAT number are valid.' },
+        { type: 'tip', text: 'For a **foreign** tax code or VAT number, type the country prefix first, for example **DE123456789** or **FR12345678901**: qnet checks only its shape, not its content.' },
         { type: 'paragraph', text: 'Use **Add contact** for phone, email, certified email, fax or website and **Add address** for addresses; you can mark one as primary. On an already-saved record, every contact or address is registered right away.' },
         { type: 'tip', text: 'If "Save the record first to add contacts and addresses." appears, save the record and then add them.' },
         { type: 'paragraph', text: 'For the **Possible duplicate** warning, see the **Registries** guide.' },

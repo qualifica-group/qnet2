@@ -9,6 +9,7 @@ import {
   taxCodeNameTriple,
   taxCodeSurnameTriple,
 } from '@/lib/fiscal/tax-code'
+import { isValidForeignFiscalCode } from '@/lib/fiscal/foreign-fiscal-code'
 import { isValidVatNumber } from '@/lib/fiscal/vat-number'
 
 /**
@@ -90,7 +91,8 @@ interface FiscalFields {
  * Mirrors the backend `TaxCode`/`VatNumber` rules: an individual carries the
  * sixteen-character personal code, a legal entity the eleven-digit numeric
  * one, and an individual's code must also be CONSISTENT with the anagraphic
- * fields of the same card. A blank identifier is always accepted — both stay
+ * fields of the same card. A foreign code written with its country prefix is
+ * accepted on either field. A blank identifier is always accepted — both stay
  * optional.
  */
 function addFiscalIssues(
@@ -100,7 +102,9 @@ function addFiscalIssues(
 ): void {
   const taxCode = values.tax_code?.trim()
 
-  if (taxCode) {
+  // A foreign code (country prefix) is accepted on its shape alone: it
+  // encodes nothing to check against the card.
+  if (taxCode && !isValidForeignFiscalCode(taxCode)) {
     if (values.type === 'company') {
       if (!isValidVatNumber(taxCode)) {
         addTaxCodeIssue(ctx, t('personalData.form.companyTaxCodeInvalid'))
@@ -114,7 +118,7 @@ function addFiscalIssues(
 
   const vatNumber = values.vat_number?.trim()
 
-  if (vatNumber && !isValidVatNumber(vatNumber)) {
+  if (vatNumber && !isValidVatNumber(vatNumber) && !isValidForeignFiscalCode(vatNumber)) {
     ctx.addIssue({
       code: 'custom',
       path: ['vat_number'],

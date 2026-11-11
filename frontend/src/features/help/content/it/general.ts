@@ -201,6 +201,7 @@ const guide: HelpGuide = {
       title: 'Dati anagrafici e campi personalizzati',
       blocks: [
         { type: 'paragraph', text: 'La sezione **Dati anagrafici** compare in **Anagrafiche**, **Referenti**, **Utenti** e nel tuo **Profilo**. Scegli il **Tipo** (**Persona fisica** o **Azienda**) e compila i campi richiesti: QNet controlla che codice fiscale e partita IVA siano validi.' },
+        { type: 'tip', text: 'Per un codice fiscale o una partita IVA **esteri** scrivi prima la sigla del paese, per esempio **DE123456789** o **FR12345678901**: QNet ne controlla solo la forma, non il contenuto.' },
         { type: 'paragraph', text: 'Usa **Aggiungi contatto** per telefono, email, PEC, fax o sito web e **Aggiungi indirizzo** per gli indirizzi; puoi segnarne uno come principale. Su un record già salvato, ogni contatto o indirizzo si registra subito.' },
         { type: 'tip', text: 'Se compare "Salva prima la scheda per aggiungere contatti e indirizzi.", salva la scheda e poi aggiungili.' },
         { type: 'paragraph', text: 'Per l’avviso **Possibile duplicato** vedi la guida **Anagrafiche**.' },

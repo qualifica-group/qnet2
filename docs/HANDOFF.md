@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Codice fiscale e partita IVA esteri (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+
+- Segnalazione utente: non si potevano inserire partita IVA e codice fiscale esteri (validazione solo italiana).
+- Decisione: un codice estero si riconosce dalla **sigla paese in testa** (2 lettere, mai `IT`) + 2-16 alfanumerici; solo controllo di forma. Guardia: un valore che inizia con 6 lettere e' un CF italiano sbagliato, non estero. Nessuna migrazione/colonna nuova.
+- Nuovo `App\Support\Fiscal\ForeignFiscalCode` (+ gemello `frontend/src/lib/fiscal/foreign-fiscal-code.ts`, `isValidForeignFiscalCode`). `Rules\VatNumber` e `Rules\TaxCode` lo accettano (persona fisica: niente controlli di coerenza con nome/data/sesso; azienda e payload senza tipo: accettato). Schemi FE `personal-data-schema.ts` e `company-schema.ts` allineati.
+- Messaggi di errore estesi con il suggerimento della sigla (chiavi backend cambiate in `lang/it.json`; i18n FE `personalData.form.*`, `companies.form.vatNumberInvalid`). Test `TaxCodeRuleTest` aggiornati (REQUIREMENT CHANGED: testo messaggi) + nuovi casi esteri BE/FE.
+- Verifica: Pest `tests/Unit/Fiscal` + PersonalData/Identity/Registries/RequestManagement/Companies/CompanySites/profilo: 1529/1532, i 3 rossi (notifica trasferimento x2, colonna `managers` non sortable) sono del lavoro non committato di un'altra sessione (notifiche email/categorie prodotto), non fiscali. Vitest aree toccate verde; `tsc -b` rosso solo per fixture `User` senza `email_notifications_enabled` (stesso lavoro esterno). ESLint/Pint puliti.
+- Manuale: tip "codici esteri con sigla paese" in guida `general` sezione `master-data-and-custom-fields` IT/EN e nel manuale Claude Docs (dopo "Dati anagrafici").
+
 ## File firmati salvati come .pdf riconosciuti dal contenuto (2026-11-11) — VERDE MIRATO, NON COMMITTATO
 
 - Segnalazione utente: un `attestato.pdf` veniva rifiutato. Non era un PDF ma una busta CAdES (DER CMS SignedData, il PDF dentro) salvata senza `.p7m`: finfo -> `application/octet-stream`, quindi 422 "tipo non ammesso" (l'utente lo leggeva come permesso).
