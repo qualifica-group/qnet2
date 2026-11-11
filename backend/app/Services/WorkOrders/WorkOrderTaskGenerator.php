@@ -13,7 +13,6 @@ use App\Models\WorkOrder;
 use App\RichText\RichText;
 use App\RichText\RichTextAttachmentCopier;
 use App\Services\AttachmentService;
-use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskDefaultLookupResolver;
 use App\Services\Tasks\TaskInitialStatusResolver;
 use Illuminate\Support\Facades\Storage;
@@ -65,7 +64,7 @@ final class WorkOrderTaskGenerator
     public function __construct(
         private readonly TaskInitialStatusResolver $initialStatusResolver,
         private readonly AttachmentService $attachments,
-        private readonly TaskNotifier $notifier,
+        private readonly GeneratedTasksNotifier $notifier,
         private readonly RichTextAttachmentCopier $descriptionCopier,
         private readonly GeneratedTaskPositioner $positioner,
         private readonly TaskDefaultLookupResolver $defaultLookups,
@@ -124,14 +123,11 @@ final class WorkOrderTaskGenerator
             throw $exception;
         }
 
-        // Notifications only after the OUTER transaction (WorkOrderService::
-        // create()) commits: TaskNotifier::assigned() already defers to
-        // DB::afterCommit() internally, so calling it here — still inside
-        // the transaction — is correct and matches TaskOccurrenceFactory's
-        // own usage.
-        foreach ($tasks as $task) {
-            $this->notifier->assigned($task, $actor, $supervisorIds);
-        }
+        // One summary per supervisor, not one TaskAssigned per task: a long
+        // template flooded the bell and the inbox. The notifier defers to
+        // DB::afterCommit(), so calling it inside the OUTER transaction
+        // (WorkOrderService::create()) is correct.
+        $this->notifier->notify($workOrder, count($tasks), $supervisorIds, $actor);
 
         return $tasks;
     }

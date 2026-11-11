@@ -13,6 +13,7 @@ use App\Models\TaskType;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Notifications\TaskAssigned;
+use App\Notifications\WorkOrderTasksAssignedNotification;
 use App\RichText\RichText;
 use App\Services\AttachmentService;
 use App\Services\Tasks\TaskInitialStatusResolver;
@@ -346,5 +347,6 @@ it('AC-023: generation runs with work-orders.create alone (no tasks.create), sup
         'task_template_id' => $template->id,
     ])->assertCreated();
 
-    Notification::assertSentTo($supervisor, TaskAssigned::class);
+    Notification::assertSentToTimes($supervisor, WorkOrderTasksAssignedNotification::class, 1);
+    Notification::assertNotSentTo($supervisor, TaskAssigned::class);
 });

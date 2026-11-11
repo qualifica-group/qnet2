@@ -33,7 +33,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Chi viene **aggiunto** come **Responsabile** o **Partecipante**, alla creazione della commessa o dopo (anche dall'elenco), riceve una **notifica** nella campanella e per email con il link alla commessa. Chi c'era già, chi cambia solo posizione tra i Partecipanti e chi viene tolto non riceve nulla; nessuno riceve notifiche per le modifiche che fa lui stesso. Chi è sia Responsabile sia Partecipante riceve una notifica per ciascun ruolo.",
+          text: "Chi viene **aggiunto** come **Responsabile** o **Partecipante**, alla creazione della commessa o dopo (anche dall'elenco), riceve una **notifica** nella campanella e per email con il link alla commessa. Chi c'era già, chi cambia solo posizione tra i Partecipanti e chi viene tolto non riceve nulla; nessuno riceve notifiche per le modifiche che fa lui stesso. Chi è sia Responsabile sia Partecipante riceve una notifica per ciascun ruolo. Se la commessa nasce da un **Modello di Task**, ogni Responsabile riceve anche **una sola** notifica con il numero di attività che gli sono state assegnate (es. \"ti ha assegnato le 21 attività della commessa\"), non una per ogni attività.",
         },
         {
           type: 'note',

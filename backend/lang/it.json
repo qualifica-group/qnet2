@@ -108,6 +108,8 @@
     ":actor assigned you as Supervisor of the work order :label.": ":actor ti ha inserito come Responsabile della commessa :label.",
     ":actor assigned you as Participant of the work order :label.": ":actor ti ha inserito come Partecipante della commessa :label.",
     "Line ready for delivery": "Riga consegnabile",
+    "Work order tasks assigned to you": "Attività della commessa assegnate a te",
+    "{1} :actor assigned you the task of the work order :label.|[2,*] :actor assigned you the :count tasks of the work order :label.": "{1} :actor ti ha assegnato l'attività della commessa :label.|[2,*] :actor ti ha assegnato le :count attività della commessa :label.",
     "Choose at least one value to set.": "Scegli almeno un valore da impostare.",
     ":actor set the payment status of \":product\" on :label to \":status\": it can be delivered.": ":actor ha impostato lo stato di pagamento di \":product\" su :label a \":status\": si può consegnare.",
     "Contact transferred": "Contatto trasferito",

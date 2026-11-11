@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Una sola notifica per Responsabile alla generazione dei task da modello (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Segnalazione di Gaetano Farina (user 124): a ogni commessa rilasciata dal backoffice riceveva ~21 notifiche + 21 email "Attivita' assegnata a te", una per ogni riga del modello (es. modello 15 "SIC_MODELLO SICUREZZA 81/08_rev. 1", 21 righe in 3 fasi).
+- `WorkOrderTaskGenerator` non chiama piu' `TaskNotifier::assigned()` per task: chiama `GeneratedTasksNotifier::notify()` (nuovo, `app/Services/WorkOrders/`), che dopo il commit manda a ogni Responsabile, escluso chi crea la commessa, UNA `WorkOrderTasksAssignedNotification` (nuova; `database` + `mail`, testo singolare/plurale con `trans_choice`, link alla commessa se ha `work-orders.view`, scheda `RecordDetails` nell'email). Chiavi IT in `lang/it.json`.
+- Invariati: le assegnazioni manuali o successive continuano a mandare `TaskAssigned` per task; `TaskOccurrenceFactory` (ricorrenze) invariato.
+- Test: nuovo `tests/Feature/WorkOrders/WorkOrderGeneratedTasksNotificationTest.php` (4); AC-023 di `WorkOrderTaskTemplateGenerationTest` aggiornato (REQUIREMENT CHANGED: riepilogo al posto di TaskAssigned). Verdi: WorkOrders 489, Tasks 706, Contracts 225, Notifications 150; help vitest 161; tsc -b pulito.
+- Fallimento preesistente non correlato: `tests/Unit/Models/EmploymentProductLineTest` (fillable senza `covers_current_categories`/`covers_legacy_categories`, spec 0367).
+- Manuale: guide in-app `work-orders` e `task-templates` (IT+EN) e manuale Claude Docs (paragrafo Modello di Task nelle Commesse) aggiornati.
+
 ## Seeder one-shot Avvalimenti come ISO (2026-11-11) — VERDE MIRATO, ESEGUITO SU DEV, COMMITTATO
 
 - Richiesta utente: dare l'ambito Avvalimenti a Maria Iannotta (legacy user 23, unica persona e responsabile della funzione legacy AVVALIMENTI) "come ISO", senza riattivare la vecchia funzione.

@@ -33,7 +33,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Whoever is **added** as **Supervisor** or **Participant**, when the work order is created or later (from the list too), receives a **notification** in the bell and by email with the link to the work order. People already on it, a Participant who only changes position and anyone removed receive nothing; nobody is notified of their own changes. Someone who is both Supervisor and Participant receives one notification per role.",
+          text: "Whoever is **added** as **Supervisor** or **Participant**, when the work order is created or later (from the list too), receives a **notification** in the bell and by email with the link to the work order. People already on it, a Participant who only changes position and anyone removed receive nothing; nobody is notified of their own changes. Someone who is both Supervisor and Participant receives one notification per role. When the work order is created from a **Task template**, each Supervisor also receives **a single** notification with the number of tasks assigned to them (e.g. \"assigned you the 21 tasks of the work order\"), not one per task.",
         },
         {
           type: 'note',
