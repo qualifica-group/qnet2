@@ -99,6 +99,7 @@ const guide: HelpGuide = {
             'Clicca **Assegna operatori**.',
             'Scegli il **Tipo di assegnazione**: **Smistamento equo** (distribuisce bilanciando il carico) o **Assegna a operatore** (tutti allo stesso operatore).',
             'Con **Smistamento equo** compare la lista degli operatori raggruppati per Sede: sono tutti selezionati, deseleziona chi non deve ricevere lead (per gruppo intero o singolo operatore).',
+            'Sotto la lista, l’interruttore **Tieni conto del carico attuale** (acceso di default) dà più lead a chi ne ha meno in carico; spento, divide i lead in parti uguali tra gli operatori selezionati senza contare quelli che hanno già.',
             'Clicca **Assegna**.',
           ],
         },

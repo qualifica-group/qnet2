@@ -186,7 +186,7 @@ const guide: HelpGuide = {
           rows: [
             [
               'Assign operators',
-              '**Balanced split** shows the operators grouped by Site (all selected, deselectable per group or individually) and distributes across whoever stays selected; **Assign to operator** assigns everything to the same person.',
+              '**Balanced split** shows the operators grouped by Site (all selected, deselectable per group or individually) and distributes across whoever stays selected — with **Take the current load into account** on it favours whoever operates fewer offers, off it splits equally; **Assign to operator** assigns everything to the same person.',
             ],
             [
               'Assign Tutor',

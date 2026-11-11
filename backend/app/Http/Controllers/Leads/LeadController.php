@@ -139,6 +139,7 @@ class LeadController extends BaseApiController
                 $request->mode(),
                 $request->operatorId(),
                 $request->operatorsBySite(),
+                $request->usesCurrentLoad(),
             );
 
             return $this->ok(['assigned' => $outcome->assigned, 'skipped' => $outcome->skipped], 'Operators assigned');

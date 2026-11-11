@@ -24,6 +24,11 @@ use Illuminate\Validation\Rule;
  * and distinct WITHIN an entry — an operator sent but not a candidate of any
  * record at that Sede is not a validation error (rules): the restriction
  * (OperatorsBySitePoolRestriction) silently drops it via intersection.
+ *
+ * `use_current_load` (spec 0168 D-4): same `prohibited` rule. Absent or true
+ * the balanced greedy starts from each operator's existing load (current
+ * behaviour); false starts every operator at zero, so the selection is split
+ * by headcount among the operators left selected.
  */
 trait HasOperatorsBySiteRules
 {
@@ -42,7 +47,20 @@ trait HasOperatorsBySiteRules
             ],
             'operators_by_site.*.operator_ids' => ['required', 'array', 'min:1'],
             'operators_by_site.*.operator_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')],
+            'use_current_load' => [
+                Rule::prohibitedIf(fn (): bool => $this->input('mode') !== LeadAssignmentMode::Balanced->value),
+                'boolean',
+            ],
         ];
+    }
+
+    /**
+     * Whether the balanced distribution weighs the operators' existing load
+     * (spec 0168 D-4). Absent means true: the pre-D-4 behaviour.
+     */
+    public function usesCurrentLoad(): bool
+    {
+        return $this->boolean('use_current_load', true);
     }
 
     /**

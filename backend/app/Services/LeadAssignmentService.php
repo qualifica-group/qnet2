@@ -38,14 +38,16 @@ class LeadAssignmentService
      * `single` mode every lead also receives $operatorId; in `balanced` mode
      * operators are assigned per br-balanced, narrowed to the lead's own
      * Sede and competence, further narrowed to $operatorsBySite when given
-     * (spec 0168). Whole operation is one transaction.
+     * (spec 0168). `$useCurrentLoad` false splits by headcount, ignoring the
+     * leads each operator already holds (spec 0168 D-4). Whole operation is
+     * one transaction.
      *
      * @param  array<int, int>  $leadIds
      * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite
      */
-    public function assignOperators(array $leadIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $operatorsBySite = null): AssignmentOutcome
+    public function assignOperators(array $leadIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $operatorsBySite = null, bool $useCurrentLoad = true): AssignmentOutcome
     {
-        return DB::transaction(function () use ($leadIds, $mode, $operatorId, $operatorsBySite): AssignmentOutcome {
+        return DB::transaction(function () use ($leadIds, $mode, $operatorId, $operatorsBySite, $useCurrentLoad): AssignmentOutcome {
             $orderedLeadIds = collect($leadIds)->unique()->sort()->values()->all();
 
             // Step 1: derive each lead's Sede from its campaign and persist it.
@@ -55,7 +57,7 @@ class LeadAssignmentService
             // Step 2: apply the operator(s) per mode.
             return $mode === LeadAssignmentMode::Single
                 ? $this->assignSingleOperator($orderedLeadIds, $operatorId)
-                : $this->assignBalanced($orderedLeadIds, $siteByLead, $operatorsBySite);
+                : $this->assignBalanced($orderedLeadIds, $siteByLead, $operatorsBySite, $useCurrentLoad);
         });
     }
 
@@ -133,7 +135,7 @@ class LeadAssignmentService
      * @param  array<int, int|null>  $siteByLead
      * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite
      */
-    private function assignBalanced(array $orderedLeadIds, array $siteByLead, ?array $operatorsBySite): AssignmentOutcome
+    private function assignBalanced(array $orderedLeadIds, array $siteByLead, ?array $operatorsBySite, bool $useCurrentLoad): AssignmentOutcome
     {
         $candidatesByLead = $this->candidates->byRecord(
             $siteByLead,
@@ -145,10 +147,11 @@ class LeadAssignmentService
         $candidatesByLead = $this->poolRestriction->restrict($candidatesByLead, $siteByLead, $operatorsBySite);
 
         // ONE load map over the union of every pool: two disjoint Sedi must
-        // not rebalance in isolation (AC-011), tie-break stays lowest id.
+        // not rebalance in isolation (AC-011), tie-break stays lowest id. An
+        // empty map (D-4) starts everyone at zero: a split by headcount.
         $assignments = $this->distributor->distributeAmong(
             $candidatesByLead,
-            $this->distributor->currentLoads($this->involvedOperatorIds($candidatesByLead)),
+            $useCurrentLoad ? $this->distributor->currentLoads($this->involvedOperatorIds($candidatesByLead)) : [],
         );
 
         foreach ($this->distributor->groupByOperator($assignments) as $assignedOperatorId => $ids) {

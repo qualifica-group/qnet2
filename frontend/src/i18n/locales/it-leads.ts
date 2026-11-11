@@ -180,6 +180,11 @@ export const leads = {
       load: '{{count}} in carico',
       groupWarning: 'Nessun operatore selezionato: questi {{count}} record non verranno assegnati.',
       globalWarning: '{{count}} record non hanno un operatore disponibile e non verranno assegnati.',
+      // Spec 0168 D-4: interruttore "carico attuale" dello Smistamento equo.
+      useCurrentLoad: 'Tieni conto del carico attuale',
+      useCurrentLoadOnHint: 'Chi ha meno record in carico ne riceve di più, fino a pareggiare.',
+      useCurrentLoadOffHint:
+        'I record vengono divisi in parti uguali tra gli operatori selezionati, senza contare quelli che hanno già in carico.',
     },
     actions: {
       balanced: 'Smistamento equo',

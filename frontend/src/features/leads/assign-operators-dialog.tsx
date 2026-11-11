@@ -55,6 +55,12 @@ export interface AssignOperatorsDialogInput {
    * when `balancedScope` was not passed (the two transfer dialogs).
    */
   operators_by_site?: BalancedOperatorsBySiteEntry[]
+  /**
+   * Spec 0168 D-4: sent only as `false`, when the user switched off "weigh the
+   * current load" — the selection is then split by headcount. Absent, the
+   * server weighs the load (the default and pre-D-4 behaviour).
+   */
+  use_current_load?: false
 }
 
 export interface AssignOperatorsDialogProps {

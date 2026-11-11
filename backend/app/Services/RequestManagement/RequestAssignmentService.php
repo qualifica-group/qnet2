@@ -79,10 +79,11 @@ final class RequestAssignmentService
      *                                 Defaults to `Requests`, at parity for
      *                                 every pre-0130 caller.
      * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168, `balanced` only
+     * @param  bool  $useCurrentLoad  spec 0168 D-4: false splits by headcount, ignoring the existing load
      */
-    public function assignOperators(array $requestIds, User $actor, LeadAssignmentMode $mode, ?int $operatorId, RequestModule $module = RequestModule::Requests, ?array $operatorsBySite = null): AssignmentOutcome
+    public function assignOperators(array $requestIds, User $actor, LeadAssignmentMode $mode, ?int $operatorId, RequestModule $module = RequestModule::Requests, ?array $operatorsBySite = null, bool $useCurrentLoad = true): AssignmentOutcome
     {
-        return DB::transaction(function () use ($requestIds, $actor, $mode, $operatorId, $module, $operatorsBySite): AssignmentOutcome {
+        return DB::transaction(function () use ($requestIds, $actor, $mode, $operatorId, $module, $operatorsBySite, $useCurrentLoad): AssignmentOutcome {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
             $quotes = $this->inScopeQuotes($requestIds, $actor, $module);
 
@@ -97,7 +98,7 @@ final class RequestAssignmentService
             // had, which a null would instead have cleared.
             $operatorPerQuote = $mode === LeadAssignmentMode::Single
                 ? array_fill_keys($quotes->modelKeys(), $operatorId)
-                : $this->distributeBalanced($quotes->modelKeys(), $operatorsBySite);
+                : $this->distributeBalanced($quotes->modelKeys(), $operatorsBySite, $useCurrentLoad);
 
             // Step 3: write the GA2 Operatore (Quote column + `quote_user`
             // pivot slot sync, spec 0087 D-9) on each offer. Nothing else is
@@ -184,7 +185,7 @@ final class RequestAssignmentService
      * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168
      * @return array<int, int> quoteId => operatorId
      */
-    private function distributeBalanced(array $quoteIds, ?array $operatorsBySite = null): array
+    private function distributeBalanced(array $quoteIds, ?array $operatorsBySite, bool $useCurrentLoad): array
     {
         $siteByQuote = $this->siteResolver->forQuotes($quoteIds);
 
@@ -197,9 +198,10 @@ final class RequestAssignmentService
         // selected for its own Sede. A no-op when $operatorsBySite is null.
         $candidatesByQuote = $this->poolRestriction->restrict($candidatesByQuote, $siteByQuote, $operatorsBySite);
 
+        // An empty load map (D-4) starts everyone at zero: a split by headcount.
         return $this->distributor->distributeAmong(
             $candidatesByQuote,
-            $this->quoteLoads->currentLoads($this->involvedOperatorIds($candidatesByQuote)),
+            $useCurrentLoad ? $this->quoteLoads->currentLoads($this->involvedOperatorIds($candidatesByQuote)) : [],
         );
     }
 

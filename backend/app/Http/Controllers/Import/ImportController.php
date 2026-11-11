@@ -336,6 +336,7 @@ class ImportController extends BaseApiController
                 $request->operatorId(),
                 $request->productIds(),
                 $request->operatorsBySite(),
+                $request->usesCurrentLoad(),
             );
             $this->service->recomputeCounts($importRun->fresh());
 

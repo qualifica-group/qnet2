@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Smistamento equo: interruttore "Tieni conto del carico attuale" (2026-11-11) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente: poter smistare per numero di persone selezionate invece che per carico. Spec 0168 delta D-4 (AC-017/AC-018).
+- Contratto: campo opzionale `use_current_load: bool` sui 3 endpoint di assegnazione (lead, request/enrollee-management, import rows). Validazione nel trait condiviso `HasOperatorsBySiteRules` (`prohibited` salvo mode=balanced, `boolean`; `usesCurrentLoad()` default true). Assente/true = invariato; false = carico iniziale vuoto passato a `distributeAmong` (stesso greedy, tie-break id piu' basso) => divisione in parti uguali.
+- Service: `LeadAssignmentService`, `RequestAssignmentService`, `ImportBulkAssigner`/`ImportService::bulkAssign` hanno il nuovo parametro `bool $useCurrentLoad = true`.
+- Frontend: `Switch` nel dialog condiviso (`assign-operators-dialog-body.tsx`) sotto la lista per Sede, acceso di default; invia `use_current_load: false` SOLO se spento (payload invariato altrimenti). Tipi payload aggiornati (leads, request-write-types, imports); `buildBulkAssignPayload` lo inoltra solo in balanced. i18n `leads.assign.balanced.useCurrentLoad*` IT/EN.
+- Test: nuovo `tests/Feature/Assignment/BalancedHeadcountSplitTest.php` (7); Vitest su dialog e `use-review-rows-assign`. Verdi: Pest Leads 159, Imports 319, Assignment 89, EnrolleeManagement 93, RequestManagement 984/985; Vitest leads/imports/request-management/assignment 977, help 161; tsc -b, ESLint, Pint puliti.
+- Fallimento preesistente non correlato: `RequestManagementAllColumnsSortFilterTest` ("managers is not sortable").
+- Manuale: guide in-app leads/request-management/imports/general IT+EN e manuale Claude Docs (4 paragrafi Smistamento equo) aggiornati.
+
 ## Una sola notifica per Responsabile alla generazione dei task da modello (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione di Gaetano Farina (user 124): a ogni commessa rilasciata dal backoffice riceveva ~21 notifiche + 21 email "Attivita' assegnata a te", una per ogni riga del modello (es. modello 15 "SIC_MODELLO SICUREZZA 81/08_rev. 1", 21 righe in 3 fasi).

@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Scale, UserCheck, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { BalancedOperatorsPicker } from '@/features/assignment/balanced-operators-picker'
 import { useBalancedOperatorSelection } from '@/features/assignment/use-balanced-operator-selection'
 import { AssignOperatorsModePicker } from '@/features/leads/assign-operators-mode-picker'
@@ -46,6 +48,10 @@ export function AssignOperatorsDialogBody({
   const [siteId, setSiteId] = useState<number | null>(defaultSiteId ?? defaultSite?.id ?? null)
   const [operatorId, setOperatorId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Spec 0168 D-4: on by default (weigh each operator's current load); off
+  // splits the selection by headcount among the operators left selected.
+  const [useCurrentLoad, setUseCurrentLoad] = useState(true)
+  const useCurrentLoadId = useId()
   // Fed `undefined` groups whenever `balancedScope` itself is omitted (the
   // transfer dialogs): the hook then reports no selection at all, which is
   // fine since `canSubmit`/`handleAssign` below never read it in that case.
@@ -91,7 +97,10 @@ export function AssignOperatorsDialogBody({
       mode: effectiveMode,
       ...(needsOperator ? { operator_id: operatorId as number } : {}),
       ...(balancedScope && effectiveMode === 'balanced'
-        ? { operators_by_site: balancedSelection.operatorsBySite }
+        ? {
+            operators_by_site: balancedSelection.operatorsBySite,
+            ...(useCurrentLoad ? {} : { use_current_load: false as const }),
+          }
         : {}),
     })
       .then(() => onClose())
@@ -154,14 +163,36 @@ export function AssignOperatorsDialogBody({
             (spec 0168). Only when the call site wired a `balancedScope` — the two
             transfer dialogs (always `lockedMode="single"`) never reach here. */}
         {effectiveMode === 'balanced' && balancedScope && (
-          <BalancedOperatorsPicker
-            groups={balancedScope.groups}
-            unassignableCount={balancedScope.unassignableCount}
-            isResolving={balancedScope.isResolving}
-            isError={balancedScope.isError}
-            selection={balancedSelection}
-            disabled={isSubmitting}
-          />
+          <>
+            <BalancedOperatorsPicker
+              groups={balancedScope.groups}
+              unassignableCount={balancedScope.unassignableCount}
+              isResolving={balancedScope.isResolving}
+              isError={balancedScope.isError}
+              selection={balancedSelection}
+              disabled={isSubmitting}
+            />
+            <div className="flex items-start gap-2 rounded-lg border bg-card px-3 py-2">
+              <Switch
+                id={useCurrentLoadId}
+                checked={useCurrentLoad}
+                onCheckedChange={setUseCurrentLoad}
+                disabled={isSubmitting}
+                aria-describedby={`${useCurrentLoadId}-hint`}
+                className="mt-0.5"
+              />
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor={useCurrentLoadId} className="text-xs">
+                  {t('leads.assign.balanced.useCurrentLoad')}
+                </Label>
+                <p id={`${useCurrentLoadId}-hint`} className="text-[11px] leading-snug text-muted-foreground">
+                  {useCurrentLoad
+                    ? t('leads.assign.balanced.useCurrentLoadOnHint')
+                    : t('leads.assign.balanced.useCurrentLoadOffHint')}
+                </p>
+              </div>
+            </div>
+          </>
         )}
       </div>
 

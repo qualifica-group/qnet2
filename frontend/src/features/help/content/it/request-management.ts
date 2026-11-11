@@ -186,7 +186,7 @@ const guide: HelpGuide = {
           rows: [
             [
               'Assegna operatori',
-              '**Smistamento equo** mostra gli operatori raggruppati per Sede (tutti selezionati, deselezionabili per gruppo o singolarmente) e distribuisce tra chi resta selezionato; **Assegna a operatore** assegna tutto alla stessa persona.',
+              '**Smistamento equo** mostra gli operatori raggruppati per Sede (tutti selezionati, deselezionabili per gruppo o singolarmente) e distribuisce tra chi resta selezionato — con **Tieni conto del carico attuale** acceso favorisce chi ha meno offerte in carico, spento divide in parti uguali; **Assegna a operatore** assegna tutto alla stessa persona.',
             ],
             [
               'Assegna Tutor',

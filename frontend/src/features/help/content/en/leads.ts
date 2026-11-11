@@ -99,6 +99,7 @@ const guide: HelpGuide = {
             'Click **Assign operators**.',
             'Choose the **Assignment type**: **Balanced split** (distributes leads balancing the workload) or **Assign to operator** (all to the same operator).',
             'With **Balanced split** the operator list appears, grouped by Site: everyone is selected, deselect whoever should not receive leads (a whole group or a single operator).',
+            'Below the list, the **Take the current load into account** switch (on by default) gives more leads to whoever holds fewer; switched off, it splits the leads equally among the selected operators regardless of what they already hold.',
             'Click **Assign**.',
           ],
         },
