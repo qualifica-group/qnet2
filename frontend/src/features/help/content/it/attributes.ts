@@ -68,6 +68,23 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'table-notification',
+      title: 'Notifica di una tabella',
+      blocks: [
+        { type: 'paragraph', text: 'Un campo di tipo Tabella può avvisare qualcuno quando si aggiunge una riga o quando su una riga si attiva una colonna Sì/No (ad esempio la colonna Avviso delle verifiche ispettive). Nell’editor Colonne attiva **Invia una notifica quando si aggiunge o si attiva una riga**.' },
+        {
+          type: 'list',
+          items: [
+            '**Quando:** **Si aggiunge una riga**, oppure **Si attiva "…" su una riga** per una colonna Sì/No o per la selezione riga. La notifica parte quando la riga viene salvata attiva e prima non lo era (riga nuova o spunta appena messa); salvare di nuovo senza cambiare, o togliere la spunta, non invia nulla.',
+            '**Email da inviare:** scegli un **Modello email** (i segnaposto della commessa, come il codice o il cliente, vengono compilati con i dati del record) oppure lascia vuoto per l’email standard. In entrambi i casi l’email riporta i valori della riga e il pulsante per aprire il record.',
+            '**Destinatari:** **Persone assegnate al record** (commessa: Responsabili e Partecipanti; offerta: Supervisore, Gestori Account e Operatore; opportunità e anagrafica: Supervisore e Gestori Account), **Utenti**, **Ruoli** (tutti gli utenti attivi del ruolo) e **Altri indirizzi email**, anche esterni. Serve almeno un destinatario.',
+          ],
+        },
+        { type: 'paragraph', text: 'Gli utenti ricevono la notifica nella campanella e, se non hanno disattivato le email delle notifiche, anche l’email. Gli indirizzi liberi ricevono solo l’email, con i valori della riga ma senza la scheda interna del record. Chi salva la riga non riceve la propria notifica; gli utenti disattivati sono esclusi.' },
+        { type: 'note', text: 'Le importazioni e la migrazione dal QNet precedente non inviano notifiche.' },
+      ],
+    },
+    {
       id: 'creating-an-attribute',
       title: 'Creare un attributo',
       blocks: [

@@ -39,8 +39,12 @@ final class TableFieldConfigValidator
         $selectableKey = $this->validateSelectable($config['selectable'] ?? null, $columnKeys);
         $this->validateSummary($config['summary'] ?? null, $config['columns'] ?? [], $selectableKey);
         $this->validateRows($config['min_rows'] ?? null, $config['max_rows'] ?? null);
+        $columns = is_array($config['columns'] ?? null) ? $config['columns'] : [];
 
-        return $this->errors;
+        return [
+            ...$this->errors,
+            ...(new TableRowNotifyConfigValidator)->validate($config['notify'] ?? null, $columns, $selectableKey),
+        ];
     }
 
     /**

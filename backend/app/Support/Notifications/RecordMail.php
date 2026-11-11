@@ -20,6 +20,10 @@ final class RecordMail
 
     private const string TEXT_VIEW = 'emails.notification-plain';
 
+    private const string BODY_HTML_VIEW = 'emails.notification-body';
+
+    private const string BODY_TEXT_VIEW = 'emails.notification-body-plain';
+
     /**
      * Shown only to a recipient who can open the record (D-4): an anagrafica
      * can be a natural person, whose tax code is personal data.
@@ -42,6 +46,33 @@ final class RecordMail
      */
     public static function compose(MailMessage $mail, string|array $lead, array $details, ?string $path): MailMessage
     {
+        return self::build($mail, $lead, $details, $path, [self::HTML_VIEW, self::TEXT_VIEW], []);
+    }
+
+    /**
+     * The same email opened by a text the administrator chose (spec 0390): an
+     * "Modello email" body, ALREADY rendered and sanitized, printed raw before
+     * the sentence, the detail card and the button.
+     *
+     * @param  string|array<int, string>  $lead
+     * @param  array<string, string>  $details
+     */
+    public static function composeWithBody(MailMessage $mail, string $htmlBody, string|array $lead, array $details, ?string $path): MailMessage
+    {
+        return self::build($mail, $lead, $details, $path, [self::BODY_HTML_VIEW, self::BODY_TEXT_VIEW], [
+            'body' => $htmlBody,
+            'plainBody' => trim(html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>', '<br />'], "\n", $htmlBody)))),
+        ]);
+    }
+
+    /**
+     * @param  string|array<int, string>  $lead
+     * @param  array<string, string>  $details
+     * @param  array{0: string, 1: string}  $views
+     * @param  array<string, string>  $extra
+     */
+    private static function build(MailMessage $mail, string|array $lead, array $details, ?string $path, array $views, array $extra): MailMessage
+    {
         // Step 1: the sentence
         foreach ((array) $lead as $line) {
             $mail->line($line);
@@ -56,9 +87,10 @@ final class RecordMail
         // who cannot open the record
         $visible = $path === null ? array_diff_key($details, array_flip(self::RESTRICTED_FIELDS)) : $details;
 
-        return $mail->view([self::HTML_VIEW, self::TEXT_VIEW], [
+        return $mail->view($views, [
             'appName' => config('app.name'),
             'details' => DetailsTable::rows($visible),
+            ...$extra,
         ]);
     }
 }

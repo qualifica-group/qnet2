@@ -76,6 +76,23 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'table-notification',
+      title: 'Table notification',
+      blocks: [
+        { type: 'paragraph', text: 'A Table field can alert someone when a row is added or when a Yes/No column is switched on in a row (for example the Alert column of the inspection audits). In the Columns editor turn on **Send a notification when a row is added or switched on**.' },
+        {
+          type: 'list',
+          items: [
+            '**When:** **A row is added**, or **"…" is switched on in a row** for a Yes/No column or for the row selection. The notification goes out when the row is saved switched on and was not before (a new row or a box just ticked); saving again without changes, or unticking, sends nothing.',
+            '**Email to send:** pick an **Email template** (the work order placeholders, such as the code or the client, are filled in with the record data) or leave it empty for the standard email. Either way the email shows the row values and the button that opens the record.',
+            '**Recipients:** **People assigned to the record** (work order: Supervisors and Participants; quote: Supervisor, Account Managers and Operator; opportunity and registry: Supervisor and Account Managers), **Users**, **Roles** (every active user of the role) and **Other email addresses**, external ones included. At least one recipient is needed.',
+          ],
+        },
+        { type: 'paragraph', text: 'Users get the notification in the bell and, unless they turned off notification emails, the email too. Free addresses get the email only, with the row values but without the internal record card. Whoever saves the row does not get their own notification; deactivated users are left out.' },
+        { type: 'note', text: 'Imports and the migration from the previous QNet send no notifications.' },
+      ],
+    },
+    {
       id: 'table-field-fill',
       title: 'Filling in a table in a record',
       blocks: [

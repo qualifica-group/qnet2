@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0390-table-row-notifications" status="approved" owner="utente" date="2026-11-11">
+
+  <goal>
+    Un campo flessibile di tipo Tabella (attributo o campo personalizzato) puo' scatenare un evento quando
+    l'utente aggiunge una riga o attiva su una riga una colonna Si'/No: il sistema invia l'email scelta
+    dall'amministratore (un Modello email o quella standard) ai destinatari scelti: persone assegnate al record,
+    utenti, ruoli, indirizzi liberi. Gli utenti ricevono anche la campanella.
+    Generico: lo configura l'amministratore sul campo, nessuna regola specifica di un'azienda o di un campo.
+  </goal>
+
+  <context>
+    <legacy>
+      - `/Users/Repository/qnet`: commessa ISO, "Verifiche Ispettive" (`orderiso_verificas`). In `addVerifica()`
+        (`Livewire/DatiIso/IsoAnnualiConsulenza`, `FocusLavorazioniIso`, `AddMultipleVerifiche`, `CreaDatiIso`)
+        alla creazione di una riga con la spunta `invio_alert` si notifica `VerificaIspettivaAlert`
+        (mail + database) ai Responsabili (`ResponsabileService`) e ai Partecipanti (`PartecipantService`)
+        della commessa, piu' `VerificaPagamentoIso` (solo mail) al responsabile amministrativo della BU.
+        Email: oggetto "Verifica Ispettiva Programmata", "Gentile responsabile", "E' stata programmata la
+        verifica ispettiva per CLIENTE", "Per la commessa in lavorazione n. ID", titolo, bottone
+        "Visualizza Commessa".
+      - In qnet-2 il campo e' gia' l'attributo `orderiso_verificas` di tipo `table` (spec 0180/0181) con la
+        colonna booleana `invio_alert` ("Avviso") e la selezione riga `attivo`. La spec 0180 rimandava qui
+        le notifiche (D-3).
+    </legacy>
+    <qnet2>
+      - Config tabella: `App\CustomFields\Table\TableFieldSchema`, validazione `TableFieldConfigValidator`
+        (via `ValidatesFieldTypeDefinition`, attributi e campi personalizzati).
+      - Scritture: attributi `WorkOrderAttributeValueWriter::apply`, `QuoteAttributeValueWriter::apply`
+        (offerte e Gestione Richieste/Iscritti), `ProductService` (prodotti); campi personalizzati
+        `CustomFieldWriter::write`. Tutte dentro `DB::transaction` dei service, record gia' salvato.
+      - Notifiche: `RecordMail::compose`, `RecordDetails`, `RecordLinkResolver`, `RespectsEmailPreference`,
+        `AssignmentNotifier` (esclusione attore, `DB::afterCommit`, silenziatore `muted()` usato da migrazione
+        legacy, realign e import richieste).
+      - Admin FE: `DefinitionTableColumnsEditor` condiviso dai form Campo personalizzato e Attributo.
+    </qnet2>
+    <decisions>
+      D-1 Evento configurato sul campo (`config.notify`), non sull'azienda ne' sul codice del campo.
+      D-2 Trigger: `null` = ogni riga AGGIUNTA; altrimenti la chiave di una colonna `boolean` o della
+          selezione riga: scatta quando una riga viene salvata con quel valore Si' e prima non lo era
+          (riga nuova oppure No -> Si'). Risalvare senza cambiare non rinotifica; spegnere non notifica.
+      D-3 (utente 2026-11-11) Destinatari scelti dall'amministratore, combinabili: `record_team` = persone
+          assegnate al record (Commessa: Responsabili + Partecipanti; Offerta: Supervisore + Gestori Account +
+          Operatore; Opportunita' e Anagrafica: Supervisore + Gestori Account; altri record: nessuno),
+          `user_ids`, `role_ids` (utenti attivi del ruolo), `emails` liberi anche esterni. Utenti solo attivi,
+          autore escluso; un indirizzo libero uguale all'email di un utente gia' notificato non riceve doppio.
+          Il responsabile amministrativo della BU del legacy si copre con `user_ids` o `role_ids`.
+      D-4 (utente 2026-11-11) L'email la sceglie l'amministratore nella config del campo: `email_template_id`
+          = un "Modello email" (spec 0175, modulo work_orders), risolto con gli stessi resolver del composer
+          (Commessa: WorkOrderEmailVariableResolver; Offerta: VariableResolver; altri record: segnaposto
+          svuotati); null = email standard generica. Sempre seguiti dai valori della riga e dal bottone al
+          record. Canali: utenti campanella + email secondo preferenza; indirizzi liberi solo email, senza la
+          scheda interna del record. Una notifica per riga che scatta.
+      D-5 Nessuna notifica per scritture di sistema: silenziatore `AssignmentNotifier::muted()` attivo
+          (migrazione legacy, realign, import) oppure nessun utente autenticato (job, console).
+      D-6 (rev. utente 2026-11-11) Il codice resta generico; la configurazione Qualifica dell'attributo
+          `orderiso_verificas` arriva dal seeder one-shot `QualificaInspectionAlertSeeder`: Modello email
+          "Verifica Ispettiva Programmata" col testo del legacy, trigger `invio_alert`, persone assegnate al
+          record + `contabilita@qualificagroup.it` (accounting manager delle BU legacy).
+    </decisions>
+  </context>
+
+  <scope>
+    <in>
+      <item>`config.notify` nel contratto TableFieldConfig + validazione server (`TableRowNotifyConfigValidator`, chiamato da `TableFieldConfigValidator`).</item>
+      <item>Rilevazione pura delle righe che scattano (`TableRowTrigger`) e servizio `TableRowNotifier` chiamato dai 4 punti di scrittura (writer commessa, writer offerta, ProductService, CustomFieldWriter).</item>
+      <item>`RecordTeam` (persone assegnate per tipo di record), `TableRowEmailRenderer` (modello email sul record), notifica `TableRowNotification` (RecordMail / RecordMail::composeWithBody + viste `emails.notification-body*`).</item>
+      <item>FE: sezione "Notifica" nell'editor tabella (attiva, quando, modello email, persone assegnate, utenti, ruoli, indirizzi), schema Zod, idratazione/payload, mapping errori 422 `config.notify.*`.</item>
+      <item>i18n BE (it.json) e FE IT/EN; guide in-app `custom-fields` e `attributes` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Email al cliente/esterni, allegati, promemoria a data (es. N giorni prima della data verifica).</item>
+      <item>Destinatari per permesso; responsabile amministrativo BU calcolato; scelta dell'email al momento dell'attivazione (decisione utente: solo config del campo).</item>
+      <item>Eventi su modifica di una cella qualsiasi o su eliminazione riga.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <shape name="TableFieldConfig.notify (nuova chiave opzionale)">
+      notify?: {
+        trigger: string | null,            // null = ogni riga aggiunta; altrimenti key di una colonna type=boolean o selectable.key
+        email_template_id: int | null,     // EmailTemplate esistente; null = email standard
+        record_team: boolean,              // persone assegnate al record (D-3)
+        user_ids: int[],                   // 0..50 utenti esistenti, distinti
+        role_ids: int[],                   // 0..50 ruoli esistenti, distinti
+        emails: string[]                   // 0..20 indirizzi validi, distinti (case-insensitive)
+      } | null
+      Almeno un destinatario: record_team = true oppure una delle liste non vuota.
+    </shape>
+    <endpoint method="POST|PATCH" path="/api/custom-fields , /api/attributes (+ /{id})">
+      <request>`config.notify` come sopra (opzionale).</request>
+      <response status="200">Invariata, `config.notify` restituito com'e'.</response>
+      <errors>422 `config.notify` (non oggetto / nessun destinatario), `config.notify.trigger` (non colonna booleana ne' selezione), `config.notify.email_template_id` (inesistente), `config.notify.user_ids` / `config.notify.role_ids` (non lista, >50, inesistenti o duplicati), `config.notify.emails` (>20, non valide o duplicate), `config.notify.record_team` (non booleano).</errors>
+    </endpoint>
+    <shape name="Notifica (database, NotificationData)">
+      { title: oggetto del modello risolto o "&lt;campo&gt; - &lt;record&gt;", message: frase evento, level: info, action_url: path del record per il destinatario o null }
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un POST /api/attributes type=table con `config.notify` valido (trigger colonna boolean, email_template_id, record_team, user_ids, role_ids, emails), allora 201 e `config.notify` persistito identico; lo stesso per /api/custom-fields. (Pest feature)</criterion>
+    <criterion id="AC-002">Dato `config.notify` invalido (trigger su colonna non booleana o inesistente, nessun destinatario, user_ids/role_ids inesistenti/duplicati/oltre 50, email non valide/duplicate, modello inesistente), allora 422 con la chiave del contratto e nessun attributo creato. (Pest feature dataset)</criterion>
+    <criterion id="AC-003">`TableRowTrigger`: con trigger colonna, scatta per riga nuova con Si', per riga esistente No->Si'; non scatta per riga invariata Si', per Si'->No, per riga nuova con No; con trigger null scatta per ogni riga con id assente prima; senza notify nessuna riga. (Pest unit dataset)</criterion>
+    <criterion id="AC-004">Dato l'attributo table con notify (trigger `invio_alert`, record_team) su una commessa con un Responsabile, un Partecipante e l'autore Responsabile, quando l'autore fa PATCH /api/work-orders/{id} aggiungendo una riga con `invio_alert`=true, allora Responsabile e Partecipante (non l'autore) ricevono una `TableRowNotification`; ripetendo lo stesso PATCH nessuna nuova notifica. (Pest feature, Notification::fake)</criterion>
+    <criterion id="AC-005">Dato lo stesso scenario con record_team=false, `user_ids` = [X attivo, Y disattivato], `role_ids` = [ruolo di Z] ed `emails` = [esterno, email di X in maiuscolo], allora ricevono X, Z e l'indirizzo esterno (solo mail, una volta), non Y ne' i Responsabili. (Pest feature)</criterion>
+    <criterion id="AC-006">Dato lo scenario AC-004 eseguito dentro `AssignmentNotifier::muted()` oppure senza utente autenticato, allora nessuna notifica. (Pest feature)</criterion>
+    <criterion id="AC-007">Dato un campo personalizzato table con notify trigger null e user_ids, quando si salva un'entita' custom-fieldable con una riga nuova, allora l'utente riceve la notifica; risalvando le stesse righe (con id) nessuna nuova. (Pest feature)</criterion>
+    <criterion id="AC-008">Dato un attributo table con notify nel contesto offerta, quando si aggiorna l'offerta aggiungendo una riga che scatta, allora Supervisore e Gestori Account ricevono la notifica. (Pest feature)</criterion>
+    <criterion id="AC-009">`TableRowNotification`: utente via database + mail per preferenza, indirizzo libero solo mail senza scheda del record; con modello email l'oggetto e il corpo sono quelli del modello risolto sulla commessa, senza modello oggetto "&lt;campo&gt; - &lt;record&gt;"; l'email contiene la frase evento, i valori della riga (data in formato locale, Si'/No) e il bottone al record solo se il destinatario puo' aprirlo. (Pest feature)</criterion>
+    <criterion id="AC-010">FE: nell'editor tabella, attivando "Notifica" e scegliendo evento/destinatari/oggetto/testo il payload contiene `config.notify` secondo il contratto; l'idratazione da config persistito ripristina i valori; senza destinatari il submit e' bloccato con errore sul campo; rimuovendo o cambiando tipo alla colonna trigger il trigger torna a "riga aggiunta". (Vitest)</criterion>
+    <criterion id="AC-011">i18n IT/EN delle nuove chiavi presenti in entrambe le lingue; guide `custom-fields` e `attributes` IT/EN aggiornate, `help-content-parity.test.ts` verde. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Nessun observer/evento Eloquent: chiamata esplicita dai writer (vincolo spec 0077).
+    - Notifica dopo il commit (`DB::afterCommit`), autore escluso, solo utenti attivi.
+    - La Notification non interroga il DB: fatti calcolati dal notifier prima del dispatch (come AssignmentNotifier).
+    - File entro 300/500 righe; identificatori in inglese; UI compatta (ui-design.md §2).
+  </constraints>
+
+</spec>

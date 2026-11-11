@@ -100,6 +100,8 @@ return [
         'proforma_institution' => 'Institution',
         'proforma_pending' => 'Pending',
         'proforma_issued' => 'Issued',
+        'yes' => 'Yes',
+        'no' => 'No',
     ],
 
     /*

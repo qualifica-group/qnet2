@@ -6,6 +6,7 @@ namespace App\CustomFields;
 
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldValue;
+use App\Services\Notifications\TableRowNotifier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ class CustomFieldWriter
         private readonly CustomFieldEntityRegistry $entityRegistry,
         private readonly CustomFieldProvider $provider,
         private readonly FieldTypeRegistry $typeRegistry,
+        private readonly TableRowNotifier $tableRowNotifier,
     ) {}
 
     /**
@@ -57,18 +59,21 @@ class CustomFieldWriter
             return;
         }
 
-        $normalized = $this->normalize($this->provider->definitionsFor($entityType)->keyBy('key'), $values);
+        $definitions = $this->provider->definitionsFor($entityType)->keyBy('key');
+        $normalized = $this->normalize($definitions, $values);
 
         if ($normalized === []) {
             return;
         }
 
-        DB::transaction(function () use ($model, $entityType, $normalized): void {
+        DB::transaction(function () use ($model, $entityType, $normalized, $definitions): void {
             $row = CustomFieldValue::query()
                 ->where('entity_type', $entityType)
                 ->where('entity_id', $model->getKey())
                 ->lockForUpdate()
                 ->first();
+
+            $before = $row?->values ?? [];
 
             if ($row === null) {
                 CustomFieldValue::create([
@@ -76,11 +81,12 @@ class CustomFieldWriter
                     'entity_id' => $model->getKey(),
                     'values' => $normalized,
                 ]);
-
-                return;
+            } else {
+                $row->update(['values' => [...$before, ...$normalized]]);
             }
 
-            $row->update(['values' => [...$row->values, ...$normalized]]);
+            // A table row that fired its event tells who the field names (spec 0390).
+            $this->tableRowNotifier->notifyCustomFields($model, $definitions, $before, [...$before, ...$normalized]);
         });
     }
 

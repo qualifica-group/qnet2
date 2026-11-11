@@ -20,6 +20,7 @@ use App\RequestManagement\AttributeSectionVisibility;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
 use App\Services\Concerns\GeneratesSequentialCode;
+use App\Services\Notifications\TableRowNotifier;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryActivity;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -89,6 +90,7 @@ class ProductService
         private readonly AttributeLayoutService $attributeLayoutService,
         private readonly AttributeSectionVisibility $attributeSectionVisibility,
         private readonly ProductSupplierSync $supplierSync,
+        private readonly TableRowNotifier $tableRowNotifier,
     ) {}
 
     /**
@@ -190,10 +192,6 @@ class ProductService
         // attribute_values against the NEW category, never the stale one.
         $product->fill($attributes);
 
-        if ($data->hasAttributeValues()) {
-            $this->applyAttributeValues($product, $data->attributeValues, FormMode::View);
-        }
-
         // Spec 0088, D-4: a submitted null resets to the default unit — the
         // column is NOT NULL, so it can never actually persist as null.
         $product->unit_of_measure_id ??= $this->resolveDefaultUnitOfMeasureId();
@@ -203,6 +201,11 @@ class ProductService
         $revenueTypeChanged = false;
 
         DB::transaction(function () use ($product, $data, &$revenueTypeChanged): void {
+            // Inside the transaction so a table row event (spec 0390) leaves only once the write commits.
+            if ($data->hasAttributeValues()) {
+                $this->applyAttributeValues($product, $data->attributeValues, FormMode::View);
+            }
+
             // Unconditional save: fire the model's saved event even when no native
             // attribute changed, so the HasCustomFields write pipeline (spec 0021)
             // persists a custom-fields-only edit. A clean save runs no UPDATE query.
@@ -311,6 +314,7 @@ class ProductService
         // guard, same discipline as Opportunity.attribute_values): forceFill
         // is the deliberate, single write path.
         $product->forceFill(['attribute_values' => $merged]);
+        $this->tableRowNotifier->notifyAttributes($product, $applicable, $current, $merged);
     }
 
     /**

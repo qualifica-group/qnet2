@@ -43,3 +43,23 @@ if (! function_exists('tableCustomField')) {
         ]);
     }
 }
+
+if (! function_exists('notifyingInspectionConfig')) {
+    /**
+     * The inspections table with a row event (spec 0390): fires when "Alert sent" is switched on.
+     *
+     * @param  array<string, mixed>  $notify
+     * @return array<string, mixed>
+     */
+    function notifyingInspectionConfig(array $notify = []): array
+    {
+        return inspectionTableConfig(['notify' => [...[
+            'trigger' => 'alert_sent',
+            'email_template_id' => null,
+            'record_team' => true,
+            'user_ids' => [],
+            'role_ids' => [],
+            'emails' => [],
+        ], ...$notify]]);
+    }
+}

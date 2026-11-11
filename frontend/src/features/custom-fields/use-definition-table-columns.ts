@@ -46,6 +46,12 @@ export function useDefinitionTableColumns(control: Control<FieldDefinitionFormVa
     }
   }
 
+  const clearTriggerIf = (key: string) => {
+    if (key !== '' && getValues('table.notify_trigger') === key) {
+      setValue('table.notify_trigger', '', { shouldDirty: true })
+    }
+  }
+
   const changeKey = (index: number, key: string, touched = true) => {
     const previous = getValues(`table.columns.${index}.key`)
     setValue(`table.columns.${index}.key`, key, { shouldDirty: true })
@@ -54,6 +60,9 @@ export function useDefinitionTableColumns(control: Control<FieldDefinitionFormVa
     }
     if (previous !== '' && getValues('table.summary_column') === previous) {
       setValue('table.summary_column', key, { shouldDirty: true })
+    }
+    if (previous !== '' && getValues('table.notify_trigger') === previous) {
+      setValue('table.notify_trigger', key, { shouldDirty: true })
     }
   }
 
@@ -68,10 +77,15 @@ export function useDefinitionTableColumns(control: Control<FieldDefinitionFormVa
     const column = getValues(`table.columns.${index}`)
     setValue(`table.columns.${index}.type`, type, { shouldDirty: true })
     clearSummaryIfDropped(column.key, TABLE_SUMMARY_COLUMN_TYPES.includes(type))
+    if (type !== 'boolean') {
+      clearTriggerIf(column.key)
+    }
   }
 
   const removeColumn = (index: number) => {
-    clearSummaryIfDropped(getValues(`table.columns.${index}.key`), false)
+    const key = getValues(`table.columns.${index}.key`)
+    clearSummaryIfDropped(key, false)
+    clearTriggerIf(key)
     remove(index)
   }
 
@@ -79,6 +93,9 @@ export function useDefinitionTableColumns(control: Control<FieldDefinitionFormVa
     setValue('table.selectable_enabled', enabled, { shouldDirty: true })
     if (!enabled && getValues('table.summary_strategy') === 'selected') {
       setValue('table.summary_strategy', 'max', { shouldDirty: true })
+    }
+    if (!enabled) {
+      clearTriggerIf(getValues('table.selectable_key'))
     }
   }
 

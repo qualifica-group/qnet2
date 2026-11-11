@@ -97,6 +97,8 @@ return [
         'proforma_institution' => 'Ente',
         'proforma_pending' => 'Da evadere',
         'proforma_issued' => 'Evasa',
+        'yes' => 'Sì',
+        'no' => 'No',
     ],
 
     /*
