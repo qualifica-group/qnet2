@@ -11,10 +11,10 @@ use Spatie\Permission\Models\Permission;
 
 /*
 |--------------------------------------------------------------------------
-| Spec 0387 — a commessa participant claims an unassigned task by closing it
+| Spec 0387 — a commessa member claims an unassigned task by closing it
 |--------------------------------------------------------------------------
 |
-| A Partecipante of the commessa may complete one of its Tasks with no
+| A Responsabile or Partecipante of the commessa may complete one of its Tasks with no
 | assignee: the completion makes them its assignee and the rest of the
 | percorso is the assignee's one.
 */
@@ -89,21 +89,15 @@ it('AC-002: on a task requiring validation the participant becomes assignee and 
         ->assertJsonPath('data.assignees.0.id', $actor->id);
 });
 
-it('AC-003: no claim on an assigned task, for a supervisor only, or on a task outside the commessa', function () {
+// REQUIREMENT CHANGED (user decision 2026-11-11): the Responsabile claims too.
+it('AC-003: no claim on an assigned task or on a task outside the commessa', function () {
     $actor = participantClaimActor();
-    $workOrder = participantClaimWorkOrder($actor);
-    $assigned = participantClaimTask($workOrder);
+    $assigned = participantClaimTask(participantClaimWorkOrder($actor));
     $assigned->assignees()->attach(User::factory()->create()->id);
-
-    $supervisedWorkOrder = WorkOrder::factory()->create();
-    $supervisedWorkOrder->supervisors()->attach($actor->id);
-    $supervised = participantClaimTask($supervisedWorkOrder);
     Sanctum::actingAs($actor);
 
-    foreach ([$assigned, $supervised] as $task) {
-        $this->getJson("/api/tasks/{$task->id}")->assertJsonPath('permissions.actions.complete', false);
-        $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertForbidden();
-    }
+    $this->getJson("/api/tasks/{$assigned->id}")->assertJsonPath('permissions.actions.complete', false);
+    $this->postJson("/api/tasks/{$assigned->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertForbidden();
 
     $foreign = participantClaimTask(WorkOrder::factory()->create());
     $this->postJson("/api/tasks/{$foreign->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertForbidden();
@@ -131,4 +125,18 @@ it('AC-005: a manageAll participant closes the task without becoming its assigne
         ->assertJsonCount(0, 'data.assignees');
 
     expect($task->fresh()->completion_date)->not->toBeNull();
+});
+
+it('AC-006: the supervisor of the commessa claims an unassigned task like a participant', function () {
+    $actor = participantClaimActor();
+    $workOrder = WorkOrder::factory()->create();
+    $workOrder->supervisors()->attach($actor->id);
+    $task = participantClaimTask($workOrder);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$task->id}")->assertJsonPath('permissions.actions.complete', true);
+
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])
+        ->assertOk()
+        ->assertJsonPath('data.assignees.0.id', $actor->id);
 });

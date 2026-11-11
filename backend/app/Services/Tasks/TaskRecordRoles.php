@@ -63,13 +63,13 @@ final class TaskRecordRoles
     }
 
     /**
-     * Spec 0387: a Partecipante of the commessa of a Task with no assignee
-     * may take it over by completing it. Kept apart from isAssignee() like
-     * isInheritedAssignee(): it only grants the completion, and
-     * TaskCompletionService::complete() turns the actor into a real
-     * assignee as the first step of that completion.
+     * Spec 0387: a Responsabile or Partecipante of the commessa of a Task
+     * with no assignee may take it over by completing it. Kept apart from
+     * isAssignee() like isInheritedAssignee(): it only grants the
+     * completion, and TaskCompletionService::complete() turns the actor
+     * into a real assignee as the first step of that completion.
      */
-    public static function isWorkOrderParticipantClaimant(User $actor, Task $task): bool
+    public static function isWorkOrderMemberClaimant(User $actor, Task $task): bool
     {
         if ($task->work_order_id === null || self::hasAssignees($task)) {
             return false;
@@ -78,7 +78,11 @@ final class TaskRecordRoles
         return DB::table('work_order_participant')
             ->where('work_order_id', $task->work_order_id)
             ->where('user_id', $actor->id)
-            ->exists();
+            ->exists()
+            || DB::table('work_order_supervisor')
+                ->where('work_order_id', $task->work_order_id)
+                ->where('user_id', $actor->id)
+                ->exists();
     }
 
     /**
