@@ -4,10 +4,12 @@ import { indexCategoryTree, resolveInheritedBusinessFunction } from '@/features/
 import { resolveInheritedContractGenerationFlag } from '@/features/product-categories/contract-generation-inheritance'
 import { resolveInheritedManagementMode } from '@/features/product-categories/management-mode-inheritance'
 import { resolveInheritedMultiQuoteWorkOrderFlag } from '@/features/product-categories/multi-quote-work-order-inheritance'
+import { resolveInheritedMultipleOpenOpportunitiesFlag } from '@/features/product-categories/multiple-open-opportunities-inheritance'
 import { resolveInheritedQuoteFlag } from '@/features/product-categories/requires-quote-inheritance'
 import { resolveInheritedReportable } from '@/features/product-categories/reportable-inheritance'
 import { resolveInheritedSimplifiedOfferLine } from '@/features/product-categories/simplified-offer-line-inheritance'
 import { resolveInheritedSingleQuoteFlag } from '@/features/product-categories/single-quote-inheritance'
+import { resolveInheritedUsageArea } from '@/features/product-categories/usage-area-inheritance'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
 
 /**
@@ -33,6 +35,10 @@ export type ProductCategoryRecordValues = Pick<
   | 'generates_contract_source_category'
   | 'multi_quote_work_order'
   | 'multi_quote_work_order_source_category'
+  | 'usage_area'
+  | 'usage_area_source_category'
+  | 'multiple_open_opportunities'
+  | 'multiple_open_opportunities_source_category'
   | 'simplified_offer_line'
   | 'simplified_offer_line_source_category'
   | 'is_reportable'
@@ -65,6 +71,8 @@ export type ProductCategoryDraft = Partial<
     | 'single_quote_per_opportunity'
     | 'generates_contract'
     | 'multi_quote_work_order'
+    | 'usage_area'
+    | 'multiple_open_opportunities'
     | 'simplified_offer_line'
     | 'simplified_offer_line_override'
     | 'is_selectable'
@@ -100,6 +108,8 @@ export function buildDraftRecordValues(
   const single = resolveInheritedSingleQuoteFlag(nodesById, parentId)
   const contract = resolveInheritedContractGenerationFlag(nodesById, parentId)
   const multiQuote = resolveInheritedMultiQuoteWorkOrderFlag(nodesById, parentId)
+  const usageArea = resolveInheritedUsageArea(nodesById, parentId)
+  const multipleOpen = resolveInheritedMultipleOpenOpportunitiesFlag(nodesById, parentId)
   const offerLine = resolveInheritedSimplifiedOfferLine(nodesById, parentId)
   const reportable = resolveInheritedReportable(nodesById, parentId)
   // A child shows its own override, else what it inherits; a root declares the value itself (spec 0188).
@@ -149,6 +159,12 @@ export function buildDraftRecordValues(
     generates_contract_source_category: contract?.sourceCategory ?? null,
     multi_quote_work_order: multiQuote ? multiQuote.multiQuoteWorkOrder : (draft.multi_quote_work_order ?? false),
     multi_quote_work_order_source_category: multiQuote?.sourceCategory ?? null,
+    usage_area: usageArea ? usageArea.usageArea : (draft.usage_area ?? 'all'),
+    usage_area_source_category: usageArea?.sourceCategory ?? null,
+    multiple_open_opportunities: multipleOpen
+      ? multipleOpen.multipleOpenOpportunities
+      : (draft.multiple_open_opportunities ?? false),
+    multiple_open_opportunities_source_category: multipleOpen?.sourceCategory ?? null,
     simplified_offer_line: simplifiedOfferLine,
     simplified_offer_line_source_category: simplifiedOfferLineSource,
     is_reportable: isReportable,

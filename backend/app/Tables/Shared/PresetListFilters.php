@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\Shared;
 
 use App\Enums\AdvancedFilterType;
+use App\Enums\CategoryUsageArea;
 use App\Models\User;
 use App\Products\ProductCategoryBranches;
 use App\Services\Assignment\ActorCompetenceReach;
@@ -61,17 +62,27 @@ final class PresetListFilters
     /**
      * @return array<string, mixed>
      */
-    public static function parentCategoryFilter(string $labelNamespace, int $order): array
+    public static function parentCategoryFilter(string $labelNamespace, int $order, ?CategoryUsageArea $area = null): array
     {
-        return self::categoryFilter(self::PARENT_CATEGORY, "{$labelNamespace}.advancedFilters.parentCategory", $order, ['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1]]);
+        return self::categoryFilter(self::PARENT_CATEGORY, "{$labelNamespace}.advancedFilters.parentCategory", $order, ['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, ...self::areaParam($area)]]);
     }
 
     /**
      * @return array<string, mixed>
      */
-    public static function productCategoryFilter(string $labelNamespace, int $order): array
+    public static function productCategoryFilter(string $labelNamespace, int $order, ?CategoryUsageArea $area = null): array
     {
-        return self::categoryFilter(self::PRODUCT_CATEGORY, "{$labelNamespace}.advancedFilters.productCategory", $order, ['resource' => 'product-categories', 'params' => ['include_inactive' => 1]]);
+        return self::categoryFilter(self::PRODUCT_CATEGORY, "{$labelNamespace}.advancedFilters.productCategory", $order, ['resource' => 'product-categories', 'params' => ['include_inactive' => 1, ...self::areaParam($area)]]);
+    }
+
+    /**
+     * Spec 0389 rev.2: the module a grid's category filter lists categories for; none = every category.
+     *
+     * @return array<string, string>
+     */
+    public static function areaParam(?CategoryUsageArea $area): array
+    {
+        return $area === null ? [] : ['usage_area' => $area->value];
     }
 
     /**

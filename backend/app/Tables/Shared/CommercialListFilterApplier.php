@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\Shared;
 
+use App\Enums\CategoryUsageArea;
 use App\Enums\CommercialAssignmentScope;
 use App\Models\User;
 use Closure;
@@ -23,13 +24,14 @@ final class CommercialListFilterApplier
 
     /**
      * @param  bool  $seesBeyondOwnRecords  false hides "visible", which would change nothing for the actor
+     * @param  CategoryUsageArea|null  $area  spec 0389 rev.2: the module whose roots the category filter lists
      * @return array<int, array<string, mixed>>
      */
-    public function presetFilters(string $labelNamespace, ?User $actor, bool $seesBeyondOwnRecords): array
+    public function presetFilters(string $labelNamespace, ?User $actor, bool $seesBeyondOwnRecords, ?CategoryUsageArea $area = null): array
     {
         return [
             PresetListFilters::assignmentFilter($labelNamespace, self::ENUM_KEY, [CommercialAssignmentScope::Supervisor->value, CommercialAssignmentScope::Manager->value], $seesBeyondOwnRecords ? [] : [CommercialAssignmentScope::Visible->value]),
-            $this->presets->presetParentCategory(PresetListFilters::parentCategoryFilter($labelNamespace, 0), $actor),
+            $this->presets->presetParentCategory(PresetListFilters::parentCategoryFilter($labelNamespace, 0, $area), $actor),
         ];
     }
 

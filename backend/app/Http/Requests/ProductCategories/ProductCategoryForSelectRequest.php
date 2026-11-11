@@ -3,8 +3,10 @@
 namespace App\Http\Requests\ProductCategories;
 
 use App\DataObjects\Shared\ForSelectQuery;
+use App\Enums\CategoryUsageArea;
 use App\Http\Controllers\Abstract\BaseApiController;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the query for GET /api/product-categories/for-select (ADR 0011),
@@ -44,6 +46,8 @@ class ProductCategoryForSelectRequest extends FormRequest
             'business_function_id' => ['sometimes', 'nullable', 'integer', 'exists:business_functions,id'],
             'root_category_id' => ['sometimes', 'nullable', 'integer', 'exists:product_categories,id'],
             'include_inactive' => ['sometimes', 'boolean'],
+            // Spec 0389 rev.2: only the categories used in that module.
+            'usage_area' => ['sometimes', Rule::enum(CategoryUsageArea::class)->except(CategoryUsageArea::All)],
         ];
     }
 

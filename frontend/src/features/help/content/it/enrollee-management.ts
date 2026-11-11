@@ -27,6 +27,7 @@ const guide: HelpGuide = {
               'Non ha il pulsante di creazione: una richiesta entra negli iscritti solo cambiando stato.',
             ],
             ['Permessi', 'Ha permessi propri, separati da quelli di Gestione Richieste.'],
+            ['Categorie', 'Come in Gestione Richieste: le categorie con **Visibile in** su **Opportunità / Offerte** non hanno una scheda e non si possono scegliere, e gli iscritti che hanno solo categorie di questo tipo non compaiono.'],
             [
               'Documenti e note',
               "L'iscritto è la stessa richiesta: documenti e note scritti in Gestione Richieste restano gli stessi, senza copie. La scheda **Documenti** compare con il permesso **Visualizza documenti** di Gestione Iscritti, che hanno anche commerciali, segreteria didattica e supervisore didattica.",

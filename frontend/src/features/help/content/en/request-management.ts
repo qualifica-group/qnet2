@@ -20,6 +20,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Categories whose **Used in** setting (in the category record) is **Opportunities / Quotes** are not part of Request Management: they have no tab, cannot be picked (neither in the form nor in the **Product category** cell) and do not show in filters and statistics. A request that has **only** such categories is not listed, counted or found by search, and its link answers **Access denied**; if it also has a category used here it stays visible. Setting **All modules** back on the category restores everything: no data is deleted.",
+        },
+        {
+          type: 'paragraph',
           text: 'What you see depends on your permissions. With no other permission you see the requests whose **Team** you belong to: as operator, Supervisor or Account Manager. **View by site** adds those of your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. If you create a request outside your scope, you will no longer see it unless you have one of these permissions.',
         },
         {

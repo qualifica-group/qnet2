@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['General notes', 'Free-form text'],
             ['Details', '**Title** (optional), **Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
             ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Reporter** with the **Assigned rewards**'],
-            ['Classification', '**Product lines** (at least one row: parent category, optional intermediate **Filter**, product category), **Products of interest**'],
+            ['Classification', '**Product lines** (at least one row: parent category, optional intermediate **Filter**, product category; categories whose **Used in** is **Requests / Enrollees** are not offered), **Products of interest**'],
             ['Team', '**Supervisor**, **Account managers**'],
           ],
         },
@@ -111,6 +111,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Categories whose **Used in** is **Requests / Enrollees** are not part of this page: they do not show in **Parent category** and **Product category**, and opportunities that have **only** such categories are not in the list or the statistics (the detail can still be opened, for example from a contract). If an opportunity also has a category used here it stays visible.",
+        },
+        {
+          type: 'paragraph',
           text: "Choosing a current parent category in **Parent category** (for example ISO) also brings in the opportunities of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter. To see only those of a legacy category or only of a new one use **Product category**.",
         },
         {
@@ -147,7 +151,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Single-offer categories are the exception: a single-offer opportunity never blocks the others and is created even when the registry already has an open one. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either.',
+          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Categories with the **Several open opportunities per registry** rule are the exception: their opportunities never block the others and are created even when the registry already has an open one, and with Multiple mode the offer can carry several rows. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either.',
         },
       ],
     },

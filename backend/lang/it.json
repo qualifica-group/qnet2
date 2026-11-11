@@ -55,6 +55,7 @@
     "The selected product category is invalid.": "La categoria prodotto selezionata non è valida.",
     "This product category is not selectable.": "Questa categoria prodotto non è selezionabile.",
     "This product category is not active.": "Questa categoria prodotto non è attiva.",
+    "This product category is not used in this module.": "Questa categoria prodotto non si usa in questo modulo.",
     "This product belongs to an inactive category.": "Questo prodotto appartiene a una categoria non attiva.",
     "This product is not active.": "Questo prodotto non è attivo.",
     "Choose the new categories, the old ones or both.": "Scegli le categorie nuove, le vecchie o entrambe.",

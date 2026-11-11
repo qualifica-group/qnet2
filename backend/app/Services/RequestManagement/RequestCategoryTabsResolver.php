@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
@@ -63,10 +64,12 @@ final class RequestCategoryTabsResolver
             $user,
         );
 
-        // Step 2: only categories with a non-zero count in scope, ordered by
-        // name; names stay live, only the counts are cached.
+        // Step 2: only categories with a non-zero count in scope and used in
+        // this module (spec 0389: a branch reserved to Opportunita' never gets
+        // a tab), ordered by name; names stay live, only the counts are cached.
         return ProductCategory::query()
             ->whereKey(array_keys($counts))
+            ->whereIn('usage_area', CategoryUsageArea::valuesVisibleIn(CategoryUsageArea::Requests))
             ->orderBy('name')
             ->get(['id', 'name'])
             ->each(static fn (ProductCategory $category) => $category->setAttribute('requests_count', $counts[$category->id]));

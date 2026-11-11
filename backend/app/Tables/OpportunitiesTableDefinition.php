@@ -2,10 +2,12 @@
 
 namespace App\Tables;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\OpportunityVisibilityScope;
+use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
 use App\Tables\Opportunities\OpportunityCellWriter;
@@ -107,7 +109,8 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // project the inline avatar (data URI) without a per-row query.
         // Spec 0316: rows, totals, filters, export, inline edit and bulk delete
         // all start here, so the visibility rule lives in one place.
-        $query = OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user())
+        // Spec 0389 rev.2: opportunities whose categories are all reserved to Gestione Richieste are not listed.
+        $query = UsageAreaRowFilter::apply(OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user()), 'opportunities.id', CategoryUsageArea::Opportunities)
             ->with([
                 'registry', 'referent', 'commercial', 'supervisor.avatar',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
@@ -185,7 +188,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return [...$this->listFilters->presetFilters('opportunities', Auth::user(), OpportunityVisibilityScope::seesBeyondOwnRecords(Auth::user())), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
+        return [...$this->listFilters->presetFilters('opportunities', Auth::user(), OpportunityVisibilityScope::seesBeyondOwnRecords(Auth::user()), CategoryUsageArea::Opportunities), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**

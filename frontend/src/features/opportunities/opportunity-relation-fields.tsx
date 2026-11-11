@@ -188,6 +188,7 @@ export function OpportunityProductLinesFormField({ control }: FieldProps) {
             pruneProductsOfInterest(rows)
           }}
           disabled={disabled}
+          area="opportunities"
         />
       )}
     </MetaField>

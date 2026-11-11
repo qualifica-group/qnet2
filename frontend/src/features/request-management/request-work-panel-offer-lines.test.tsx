@@ -275,6 +275,8 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
         single_quote_per_opportunity: false,
         generates_contract: true,
         multi_quote_work_order: false,
+        usage_area: 'all',
+        multiple_open_opportunities: false,
         simplified_offer_line: true,
         simplified_offer_line_override: null,
       },
@@ -313,6 +315,8 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
         single_quote_per_opportunity: false,
         generates_contract: true,
         multi_quote_work_order: false,
+        usage_area: 'all',
+        multiple_open_opportunities: false,
         simplified_offer_line: false,
         simplified_offer_line_override: null,
       },
@@ -340,6 +344,8 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       multi_quote_work_order: false,
+      usage_area: 'all' as const,
+      multiple_open_opportunities: false,
     }
     categoryTreeMock.mockReturnValue([
       {

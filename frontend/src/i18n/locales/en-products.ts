@@ -33,6 +33,8 @@ export const productCategories = {
     single_quote_per_opportunity: 'One offer per opportunity',
     generates_contract: 'Includes a contract',
     multi_quote_work_order: "Multi-offer work order",
+    usage_area: 'Used in',
+    multiple_open_opportunities: 'Several open opportunities per registry',
     simplified_offer_line: 'Simplified offer line',
     created_at: 'Created at',
     tooltipEmpty: 'Nothing to show.',
@@ -48,8 +50,10 @@ export const productCategories = {
     reportColumnsInherited: 'Inherited from {{category}}',
     managementModeInherited: 'Inherited from {{category}}',
     singleQuotePerOpportunityInherited: 'Inherited from {{category}}',
+    multipleOpenOpportunitiesInherited: 'Inherited from {{category}}',
     generatesContractInherited: 'Inherited from {{category}}',
     multiQuoteWorkOrderInherited: "Inherited from {{category}}",
+    usageAreaInherited: 'Inherited from {{category}}',
     simplifiedOfferLineInherited: 'Inherited from {{category}}',
     managerLabelInherited: 'Inherited',
     inheritedCount: '+{{count}} inherited',
@@ -170,6 +174,15 @@ export const productCategories = {
     singleQuotePerOpportunityInfo:
       'Bounds how many OFFER DOCUMENTS an opportunity may hold, which is a different rule from the management mode (that one bounds the product lines of a card). When on, creating a second offer on an opportunity of this branch is refused. Opportunities that already carry several offers keep them and stay editable. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).',
     singleQuotePerOpportunityInfoLabel: 'More info about One offer per opportunity',
+    multipleOpenOpportunities: 'Several open opportunities per registry',
+    multipleOpenOpportunitiesHint:
+      'When on, a registry may keep several open opportunities on this category.',
+    multipleOpenOpportunitiesInheritedHint:
+      'The rule is inherited from the root category "{{category}}". To change it, edit that category instead.',
+    multipleOpenOpportunitiesInfo:
+      'By default a registry may keep only one open opportunity: a second one is refused and points to the existing one. When on, the opportunities of this branch neither block nor are blocked, without changing the management mode: with Multiple mode their offers keep several rows. It applies only when every current category of the opportunity has the rule on. Single-mode categories never block. The ROOT category sets the rule and the whole subtree follows it.',
+    multipleOpenOpportunitiesInfoLabel: 'More info about Several open opportunities per registry',
+    multipleOpenOpportunitiesOffWarning: 'Off: in Gestione Richieste a new request for a client with an open opportunity is refused.',
     generatesContract: 'Includes a contract',
     generatesContractHint:
       'When on, an offer of this category that closes with a positive outcome opens a contract.',
@@ -180,6 +193,10 @@ export const productCategories = {
     generatesContractLockedByMulti: 'Turn off Multi-offer work order first.',
     generatesContractInfoLabel: 'More info about Includes a contract',
     multiQuoteWorkOrder: "Multi-offer work order",
+    usageArea: 'Used in',
+    usageAreaHint:
+      'The modules where this category and all its subcategories can be picked: elsewhere it is not offered and has no tab. Values already saved are kept.',
+    usageAreaInheritedHint: 'Inherited from the root category "{{category}}". To change it, edit that category.',
     multiQuoteWorkOrderHint:
       "Lets you schedule from the Contracts table a single work order with lines of several won contracts of this branch.",
     multiQuoteWorkOrderInheritedHint:
@@ -199,6 +216,7 @@ export const productCategories = {
     simplifiedOfferLineInfo:
       "Removes the manual compilation of the offer row in Gestione Richieste: on requests of this branch the operator picks ONLY the product and the system fills in quantity (always 1), unit price and VAT rate from the product. The Offerte module is untouched: whoever works the commercial offer keeps governing quantity and prices even on a simplified category. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).",
     simplifiedOfferLineInfoLabel: 'More info about Simplified offer line',
+    simplifiedOfferLineNeedsRequests: 'No effect: the branch is not used in Gestione Richieste (Used in).',
     isSelectableInfo:
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
     isSelectableInfoLabel: 'More info about Selectable',

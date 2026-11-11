@@ -29,15 +29,16 @@ use Spatie\Activitylog\Models\Activity;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    // Single mode, like Orientamento specialistico: a client may carry another open opportunity.
+    // Single mode, like Orientamento specialistico: a client may carry another open
+    // opportunity (since 2026-11-11 through the flag the migration set on single-mode categories).
     $this->singleCategory = static function (): ProductCategory {
         $category = requestImportScenario()['category'];
-        $category->update(['management_mode' => CategoryManagementMode::Single]);
+        $category->update(['management_mode' => CategoryManagementMode::Single, 'multiple_open_opportunities' => true]);
 
         return $category;
     };
     $scenario = requestImportScenario();
-    $scenario['category']->update(['management_mode' => CategoryManagementMode::Single]);
+    $scenario['category']->update(['management_mode' => CategoryManagementMode::Single, 'multiple_open_opportunities' => true]);
     $this->category = $scenario['category'];
     $this->statuses = $scenario['statuses'];
     $this->productId = Product::factory()->create(['category_id' => $this->category->id, 'name' => 'Prodotto Test'])->id;

@@ -157,6 +157,12 @@ trait ResolvesColumnConfig
             $resolved['editor'] = $editor;
         }
 
+        // Spec 0389: the module a `product_lines` editor picks categories
+        // for. A UI narrowing; the write path validates the area on its own.
+        if (isset($column['categoryUsageArea'])) {
+            $resolved['categoryUsageArea'] = $column['categoryUsageArea'];
+        }
+
         // Spec 0078, D-2/D-7: present ONLY when the column's field is
         // protected for this actor (see protectedFieldFor()) — absent
         // (never null) for every other column, so the client uses its mere

@@ -6,6 +6,7 @@ use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryManagementModeInheritance;
 use App\Services\ProductCategories\ContractGenerationInheritance;
+use App\Services\ProductCategories\MultipleOpenOpportunitiesInheritance;
 use App\Services\ProductCategories\MultiQuoteWorkOrderInheritance;
 use App\Services\ProductCategories\SimplifiedOfferLineInheritance;
 use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
@@ -54,6 +55,11 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * directive 2026-08-31), and "APL" with it; "Consulenza" omits the key entirely rather
  * than realigning to null, which would wipe labels configured from the UI.
  *
+ * "Formazione" and "APL" also allow several open opportunities per anagrafica
+ * (user decision 2026-11-11: the flag replaced the exemption their `single`
+ * mode gave). Declared on the training rules only, like the multi-offer rule,
+ * so the other roots keep whatever the UI set.
+ *
  * NODE_OVERRIDES then lets one node of a branch declare its own
  * `simplified_offer_line` (spec 0188), handed down to its subtree: applied
  * after the root re-sync, which leaves an override and its subtree alone.
@@ -63,11 +69,12 @@ final class CatalogRootRules
     /**
      * The rules of a training deal, shared by "Formazione" and "APL".
      *
-     * @var array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line: bool, manager_labels: array<string, string>}
+     * @var array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line: bool, multiple_open_opportunities: bool, manager_labels: array<string, string>}
      */
     private const array TRAINING_RULES = [
         'management_mode' => CategoryManagementMode::Single,
         'single_quote_per_opportunity' => true,
+        'multiple_open_opportunities' => true,
         'generates_contract' => false,
         'simplified_offer_line' => true,
         // The four G.A. levels of a training deal (user directive
@@ -99,7 +106,7 @@ final class CatalogRootRules
     /**
      * Root name => the rules it owns, as `product_categories` columns.
      *
-     * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line?: bool, multi_quote_work_order?: bool, manager_labels?: array<string, string>}>
+     * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line?: bool, multi_quote_work_order?: bool, multiple_open_opportunities?: bool, manager_labels?: array<string, string>}>
      */
     private const array RULES = [
         'Formazione' => [...self::TRAINING_RULES, 'generates_contract' => true, 'multi_quote_work_order' => true],
@@ -134,6 +141,7 @@ final class CatalogRootRules
         private readonly ContractGenerationInheritance $contractGeneration,
         private readonly SimplifiedOfferLineInheritance $simplifiedOfferLine,
         private readonly MultiQuoteWorkOrderInheritance $multiQuoteWorkOrder,
+        private readonly MultipleOpenOpportunitiesInheritance $multipleOpenOpportunities,
     ) {}
 
     public function apply(): void
@@ -170,5 +178,6 @@ final class CatalogRootRules
         $this->contractGeneration->syncSubtree($root);
         $this->simplifiedOfferLine->syncSubtree($root);
         $this->multiQuoteWorkOrder->syncSubtree($root);
+        $this->multipleOpenOpportunities->syncSubtree($root);
     }
 }

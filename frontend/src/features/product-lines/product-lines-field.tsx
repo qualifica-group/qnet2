@@ -8,6 +8,7 @@ import { ProductCategoryRootSelect } from '@/features/product-lines/product-cate
 import { ProductCategoryTreeSelect } from '@/features/product-lines/product-category-tree-select'
 import { useProductLinesField } from '@/features/product-lines/use-product-lines-field'
 import type { ProductLine, ProductLineRow } from '@/features/product-lines/types'
+import type { CategoryPickArea } from '@/features/product-categories/types'
 
 export type { ProductLine, ProductLineRow }
 
@@ -15,6 +16,8 @@ interface ProductLinesFieldProps {
   value: ProductLineRow[]
   onChange: (rows: ProductLineRow[]) => void
   disabled?: boolean
+  /** The module the card belongs to (spec 0389); omitted where every branch is usable. */
+  area?: CategoryPickArea
 }
 
 /**
@@ -34,7 +37,7 @@ interface ProductLinesFieldProps {
  * is no longer a variant of this one. All non-render logic lives in
  * `useProductLinesField` — this component only renders it.
  */
-export function ProductLinesField({ value, onChange, disabled = false }: ProductLinesFieldProps) {
+export function ProductLinesField({ value, onChange, disabled = false, area }: ProductLinesFieldProps) {
   const { t } = useTranslation()
   const {
     addRow,
@@ -86,6 +89,7 @@ export function ProductLinesField({ value, onChange, disabled = false }: Product
                     disabled={disabled}
                     otherRowsFilled={otherRowsFilled(index)}
                     triggerLabel={t('productLines.rootCategory', { n: index + 1 })}
+                    area={area}
                   />
                 </div>
                 <PathSeparator />

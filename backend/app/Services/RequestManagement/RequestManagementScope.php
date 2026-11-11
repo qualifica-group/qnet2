@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
 use App\Services\Assignment\ActorCompetenceReach;
 use App\Services\Assignment\CompetenceReach;
 use App\Services\Opportunities\OpportunityVisibilityScope;
+use App\Services\ProductCategories\UsageAreaRowFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -78,7 +80,9 @@ final class RequestManagementScope
      */
     public function assertInScope(User $user, Quote $quote, RequestModule $module = RequestModule::Requests): void
     {
-        if (! self::isInStatusScope($quote, $module)) {
+        // Spec 0389 rev.2: a request whose categories are all reserved to
+        // Opportunita' is not part of this section, like an out-of-state one.
+        if (! self::isInStatusScope($quote, $module) || ! UsageAreaRowFilter::allows($quote->loadMissing('opportunity')->opportunity, CategoryUsageArea::Requests)) {
             abort(403, __('This request is outside the scope of this section.'));
         }
 
@@ -261,6 +265,8 @@ final class RequestManagementScope
     public static function scopeToActor(Builder $query, ?User $user, RequestModule $module = RequestModule::Requests): Builder
     {
         self::applyStatusFilter($query, $module);
+        // Spec 0389 rev.2: same for every actor, like the state filter above.
+        UsageAreaRowFilter::apply($query, 'quotes.opportunity_id', CategoryUsageArea::Requests);
 
         if ($user?->can($module->permission('viewAll'))) {
             return $query;

@@ -4,6 +4,7 @@ namespace App\Services\ProductCategories;
 
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
+use App\Enums\CategoryUsageArea;
 use App\Models\ProductCategory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -76,6 +77,11 @@ class ProductCategoryForSelectResolver
 
         if ($query->rootCategoryId !== null) {
             $base->whereIn('id', $this->subtreeIds($query->rootCategoryId));
+        }
+
+        // Spec 0389 rev.2: a grid filter lists only the categories of its module.
+        if ($query->usageArea !== null) {
+            $base->whereIn('usage_area', CategoryUsageArea::valuesVisibleIn($query->usageArea));
         }
 
         $total = (clone $base)->count();
@@ -165,6 +171,10 @@ class ProductCategoryForSelectResolver
     public function resolveRoots(ForSelectQuery $query, bool $currentOnly = false, bool $hideLinkedLegacy = false): ForSelectResult
     {
         $roots = ProductCategory::query()->select(['id', 'name'])->whereNull('parent_id');
+
+        if ($query->usageArea !== null) {
+            $roots->whereIn('usage_area', CategoryUsageArea::valuesVisibleIn($query->usageArea));
+        }
 
         // Spec 0374 D-12: a linked legacy root is reached through its current one.
         if ($hideLinkedLegacy) {

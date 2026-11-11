@@ -24,7 +24,11 @@
  */
 import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { collectSelectableIds } from '@/features/product-categories/flatten-tree'
-import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
+import type {
+  CategoryManagementMode,
+  CategoryPickArea,
+  ProductCategoryTreeNode,
+} from '@/features/product-categories/types'
 
 export interface PickableCategoryOptions {
   /**
@@ -264,6 +268,15 @@ export function cardCategoryTree(
   }
 
   return prune(activeCategoryTree(nodes, keepIds), null)
+}
+
+/**
+ * Whether a ROOT may be offered to a card of `area` (spec 0389): a branch
+ * reserved to the other area is not. No area (projects, campaigns) admits
+ * every root. Read off the root itself — it owns `usage_area`.
+ */
+export function isRootUsableIn(root: ProductCategoryTreeNode, area: CategoryPickArea | undefined): boolean {
+  return area === undefined || root.usage_area === 'all' || root.usage_area === area
 }
 
 /**

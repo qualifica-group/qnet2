@@ -28,6 +28,12 @@ export const enums = {
     single: 'Singola',
     multiple: 'Multipla',
   },
+  // Moduli in cui si usa un ramo di categorie (spec 0389).
+  category_usage_area: {
+    all: 'Tutti i moduli',
+    requests: 'Gestione Richieste / Iscritti',
+    opportunities: 'Opportunità / Offerte',
+  },
   personal_data_type: {
     individual: 'Persona fisica',
     company: 'Azienda',

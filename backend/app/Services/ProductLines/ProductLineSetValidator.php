@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\ProductLines;
 
 use App\Enums\CategoryManagementMode;
+use App\Enums\CategoryUsageArea;
+use App\Rules\ProductCategoryUsableInArea;
 use App\Rules\SelectableProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Facades\Validator;
@@ -95,16 +97,23 @@ final class ProductLineSetValidator
      * `validated()`, never reaching the DataObjects that write the row.
      *
      * @param  array<int, int>  $exemptCategoryIds  categories already persisted on the record being updated (spec 0074, D-3b)
+     * @param  CategoryUsageArea|null  $area  the module the collection is written from (spec 0389); null = any
      * @return array<string, array<int, mixed>>
      */
-    public function rules(string $attribute, array $exemptCategoryIds): array
+    public function rules(string $attribute, array $exemptCategoryIds, ?CategoryUsageArea $area = null): array
     {
+        $categoryRules = ['required', 'integer', new SelectableProductCategory($exemptCategoryIds)];
+
+        if ($area !== null) {
+            $categoryRules[] = new ProductCategoryUsableInArea($area, $exemptCategoryIds);
+        }
+
         return [
             // Spec 0074: only SELECTABLE categories may classify a line. The
             // categories already on the record are exempt (D-3b), so a
             // full-replace sync that resubmits the current lines unchanged
             // never fails because one of them was made unselectable meanwhile.
-            $attribute.'.*.product_category_id' => ['required', 'integer', new SelectableProductCategory($exemptCategoryIds)],
+            $attribute.'.*.product_category_id' => $categoryRules,
         ];
     }
 
@@ -177,7 +186,7 @@ final class ProductLineSetValidator
      *
      * @throws ValidationException
      */
-    public function assert(array $lines, array $exemptCategoryIds, string $errorField): void
+    public function assert(array $lines, array $exemptCategoryIds, string $errorField, ?CategoryUsageArea $area = null): void
     {
         $attribute = 'product_lines';
 
@@ -185,7 +194,7 @@ final class ProductLineSetValidator
             [$attribute => $lines],
             [
                 $attribute => ['required', 'array', 'min:1'],
-                ...$this->rules($attribute, $exemptCategoryIds),
+                ...$this->rules($attribute, $exemptCategoryIds, $area),
             ],
         );
 

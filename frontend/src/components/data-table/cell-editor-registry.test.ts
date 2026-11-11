@@ -316,7 +316,13 @@ describe('resolveCellEditorSpec', () => {
 
       expect(spec?.cellEditor).toBe(ProductLinesCellEditor)
       expect(spec?.cellEditorPopup).toBe(true)
-      expect(spec?.cellEditorParams).toBeUndefined()
+    })
+
+    // Spec 0389: the grid's module reaches the editor, which lists only its roots.
+    it('hands the `product_lines` editor the column usage area', () => {
+      const spec = resolveCellEditorSpec('product_lines')
+
+      expect(spec?.cellEditorParams?.(stubColumn({ id: 'product_categories', type: 'text', categoryUsageArea: 'requests' }))).toEqual({ usageArea: 'requests' })
     })
 
     // User directive 2026-09-07: an offer's whole REVENUE collection. Its

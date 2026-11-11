@@ -42,6 +42,10 @@ export interface ProductCategoryTreeNode {
   generates_contract: boolean
   /** The EFFECTIVE multi-offer work order rule: authored by the branch root, mirrored on every descendant server-side (spec 0267). */
   multi_quote_work_order: boolean
+  /** The EFFECTIVE usage area: authored by the branch root, mirrored on every descendant server-side (spec 0389). */
+  usage_area: CategoryUsageArea
+  /** The EFFECTIVE "several open opportunities per anagrafica" rule: authored by the branch root, mirrored on every descendant server-side. */
+  multiple_open_opportunities: boolean
   /** The EFFECTIVE simplified-offer-line rule: the nearest declaring ancestor's value, denormalized on every node (spec 0114, 0188). */
   simplified_offer_line: boolean
   /** The node's OWN simplified-offer-line override (spec 0188): null inherits; always null on a root. */
@@ -55,6 +59,16 @@ export interface ProductCategoryTreeNode {
  * `requires_quote` — see `management-mode-inheritance.ts`.
  */
 export type CategoryManagementMode = 'single' | 'multiple'
+
+/**
+ * The modules a branch is used in (spec 0389): every module, Gestione
+ * Richieste / Iscritti only, or Opportunita' / Offerte only. Authored on the
+ * ROOT and inherited by every descendant, like `management_mode`.
+ */
+export type CategoryUsageArea = 'all' | 'requests' | 'opportunities'
+
+/** The two areas a card picks categories for (spec 0389). */
+export type CategoryPickArea = Exclude<CategoryUsageArea, 'all'>
 
 /**
  * The three attribute-catalogue usage contexts (spec 0061, extended by spec
@@ -198,6 +212,14 @@ export interface ProductCategoryDetail {
   multi_quote_work_order: boolean
   /** The root `multi_quote_work_order` is inherited from; null when this category IS the root and owns the flag. */
   multi_quote_work_order_source_category: { id: number; name: string } | null
+  /** The modules the branch is used in (spec 0389) — authored by the branch ROOT, mirrored here on every descendant. */
+  usage_area: CategoryUsageArea
+  /** The root `usage_area` is inherited from; null when this category IS the root and owns the value. */
+  usage_area_source_category: { id: number; name: string } | null
+  /** Whether an anagrafica may keep several open opportunities of this branch — authored by the branch ROOT, mirrored here on every descendant. */
+  multiple_open_opportunities: boolean
+  /** The root `multiple_open_opportunities` is inherited from; null when this category IS the root and owns the flag. */
+  multiple_open_opportunities_source_category: { id: number; name: string } | null
   /** The EFFECTIVE simplified-offer-line rule (spec 0114): the root's own value, or the nearest override (spec 0188). */
   simplified_offer_line: boolean
   /** The category's OWN override (spec 0188): null inherits; always null on a root. */
@@ -317,6 +339,10 @@ export interface CreateProductCategoryPayload {
   generates_contract?: boolean
   /** Same root-only rule for the multi-offer work order rule (spec 0267). */
   multi_quote_work_order?: boolean
+  /** Same root-only rule for the modules the branch is used in (spec 0389). */
+  usage_area?: CategoryUsageArea
+  /** Same root-only rule for several open opportunities per anagrafica. */
+  multiple_open_opportunities?: boolean
   /** Same root-only rule again for the simplified-offer-line rule (spec 0114): a child sends the override instead. */
   simplified_offer_line?: boolean
   /** Child-only (spec 0188): true/false forces the rule, null inherits. Never sent for a root. */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\RequestManagement;
 
+use App\Enums\CategoryUsageArea;
 use App\Enums\ContactTypeEnum;
 use App\Rules\TaxCode;
 use App\Rules\VatNumber;
@@ -145,6 +146,8 @@ final class RequestColumnCatalog
                 'editable' => true,
                 'editor' => 'product_lines',
                 'editableField' => 'product_lines',
+                // Spec 0389: the editor lists only the branches used here.
+                'categoryUsageArea' => CategoryUsageArea::Requests->value,
             ],
             [
                 // "Stato di lavorazione" (user directive 2026-08-31).

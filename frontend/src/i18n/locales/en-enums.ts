@@ -29,6 +29,12 @@ export const enums = {
     single: 'Single',
     multiple: 'Multiple',
   },
+  // The modules a category branch is used in (spec 0389).
+  category_usage_area: {
+    all: 'All modules',
+    requests: 'Requests / Enrollees',
+    opportunities: 'Opportunities / Quotes',
+  },
   personal_data_type: {
     individual: 'Individual',
     company: 'Company',

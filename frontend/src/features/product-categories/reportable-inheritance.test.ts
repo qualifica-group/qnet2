@@ -23,6 +23,8 @@ function node(overrides: Partial<ProductCategoryTreeNode>): ProductCategoryTreeN
     single_quote_per_opportunity: false,
     generates_contract: true,
     multi_quote_work_order: false,
+    usage_area: 'all',
+    multiple_open_opportunities: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     ...overrides,

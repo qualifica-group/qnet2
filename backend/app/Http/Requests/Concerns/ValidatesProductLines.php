@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Concerns;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\Quote;
 use App\Services\ProductLines\ProductLineSetValidator;
 use Illuminate\Contracts\Validation\Validator;
@@ -33,15 +34,18 @@ trait ValidatesProductLines
      * @param  bool  $required  create passes true (collection mandatory);
      *                          update passes false (`sometimes`, but `min:1`
      *                          still bars a clear-to-empty).
+     * @param  CategoryUsageArea|null  $area  spec 0389: the module writing the
+     *                                        collection; null (projects,
+     *                                        campaigns) admits every area
      * @return array<string, array<int, mixed>>
      */
-    protected function productLinesRules(bool $required): array
+    protected function productLinesRules(bool $required, ?CategoryUsageArea $area = null): array
     {
         return [
             'product_lines' => $required
                 ? ['required', 'array', 'min:1']
                 : ['sometimes', 'array', 'min:1'],
-            ...$this->productLineSetValidator()->rules('product_lines', $this->exemptProductCategoryIds()),
+            ...$this->productLineSetValidator()->rules('product_lines', $this->exemptProductCategoryIds(), $area),
         ];
     }
 

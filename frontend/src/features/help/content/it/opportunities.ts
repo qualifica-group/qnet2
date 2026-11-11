@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['Note generali', 'Testo libero'],
             ['Dettagli', '**Titolo** (facoltativo), **Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
             ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Segnalatore** con i **Buoni assegnati**'],
-            ['Classificazione', '**Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto), **Prodotti di interesse**'],
+            ['Classificazione', '**Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto; non compaiono le categorie con **Visibile in** su **Gestione Richieste / Iscritti**), **Prodotti di interesse**'],
             ['Team', '**Supervisore**, **Gestori account**'],
           ],
         },
@@ -111,6 +111,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Le categorie con **Visibile in** su **Gestione Richieste / Iscritti** non fanno parte di questa pagina: non compaiono in **Categoria madre** e **Categoria prodotto**, e le opportunità che hanno **solo** categorie di questo tipo non sono nell'elenco né nelle statistiche (il dettaglio resta apribile, per esempio da un contratto). Se un'opportunità ha anche una categoria usata qui resta visibile.",
+        },
+        {
+          type: 'paragraph',
           text: "Scegliendo in **Categoria madre** una categoria attuale (per esempio ISO) entrano nell'elenco anche le opportunità delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte. Per vedere solo quelle di una categoria vecchia o solo di una nuova usa **Categoria prodotto**.",
         },
         {
@@ -147,7 +151,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie a offerta unica: un'opportunità a offerta unica non blocca le altre e si crea anche se l'anagrafica ne ha già una aperta. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD]).",
+          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie con la regola **Più opportunità aperte per anagrafica**: le loro opportunità non bloccano le altre e si creano anche se l'anagrafica ne ha già una aperta, e con la modalità Multipla l'offerta può avere più righe. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD]).",
         },
       ],
     },

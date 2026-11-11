@@ -33,6 +33,8 @@ export const productCategories = {
     single_quote_per_opportunity: 'Offerta unica per opportunità',
     generates_contract: 'Prevede un contratto',
     multi_quote_work_order: "Commessa multi-offerta",
+    usage_area: 'Visibile in',
+    multiple_open_opportunities: 'Più opportunità aperte per anagrafica',
     simplified_offer_line: 'Semplificazione riga offerta',
     created_at: 'Creato il',
     tooltipEmpty: 'Nessun elemento da mostrare.',
@@ -48,8 +50,10 @@ export const productCategories = {
     reportColumnsInherited: 'Ereditato da {{category}}',
     managementModeInherited: 'Ereditata da {{category}}',
     singleQuotePerOpportunityInherited: 'Ereditata da {{category}}',
+    multipleOpenOpportunitiesInherited: 'Ereditata da {{category}}',
     generatesContractInherited: 'Ereditata da {{category}}',
     multiQuoteWorkOrderInherited: "Ereditata da {{category}}",
+    usageAreaInherited: 'Ereditato da {{category}}',
     simplifiedOfferLineInherited: 'Ereditata da {{category}}',
     managerLabelInherited: 'Ereditata',
     inheritedCount: '+{{count}} ereditati',
@@ -172,6 +176,15 @@ export const productCategories = {
     singleQuotePerOpportunityInfo:
       "Limita quanti DOCUMENTI OFFERTA può contenere un'opportunità: è una regola diversa dalla modalità di gestione, che limita invece le righe prodotto di una scheda. Se attivo, la creazione di una seconda offerta su un'opportunità di questo ramo viene rifiutata. Le opportunità che ne hanno già più di una le mantengono e restano modificabili. La regola è decisa dalla categoria RADICE e tutto il sottoalbero la segue, a meno che una sottocategoria non forzi un proprio valore (che vale poi per il suo sottoalbero).",
     singleQuotePerOpportunityInfoLabel: 'Maggiori informazioni su Offerta unica per opportunità',
+    multipleOpenOpportunities: 'Più opportunità aperte per anagrafica',
+    multipleOpenOpportunitiesHint:
+      "Se attivo, un'anagrafica può avere più opportunità aperte su questa categoria.",
+    multipleOpenOpportunitiesInheritedHint:
+      'La regola è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
+    multipleOpenOpportunitiesInfo:
+      "Di norma un'anagrafica può avere una sola opportunità aperta: la seconda viene rifiutata e si rimanda a quella esistente. Se attivo, le opportunità di questo ramo non bloccano e non vengono bloccate, senza cambiare la modalità di gestione: con la modalità Multipla le offerte restano su più righe. Vale solo se tutte le categorie attuali dell'opportunità hanno la regola attiva. Le categorie a gestione Singola non bloccano mai. La regola è decisa dalla categoria RADICE e tutto il sottoalbero la segue.",
+    multipleOpenOpportunitiesInfoLabel: 'Maggiori informazioni su Più opportunità aperte per anagrafica',
+    multipleOpenOpportunitiesOffWarning: "Spenta: in Gestione Richieste una nuova richiesta per un cliente con un'opportunità aperta viene rifiutata.",
     generatesContract: 'Prevede un contratto',
     generatesContractHint:
       "Se attivo, un'offerta di questa categoria che si chiude con esito positivo apre un contratto.",
@@ -182,6 +195,10 @@ export const productCategories = {
     generatesContractLockedByMulti: 'Spegni prima Commessa multi-offerta.',
     generatesContractInfoLabel: 'Maggiori informazioni su Prevede un contratto',
     multiQuoteWorkOrder: "Commessa multi-offerta",
+    usageArea: 'Visibile in',
+    usageAreaHint:
+      'In quali moduli si sceglie questa categoria e tutte le sue sottocategorie: negli altri non compare nelle scelte né nelle tab. I valori già salvati restano.',
+    usageAreaInheritedHint: 'Ereditato dalla categoria radice "{{category}}". Per modificarlo, agisci su quella categoria.',
     multiQuoteWorkOrderHint:
       "Consente di programmare dalla tabella Contratti un'unica commessa con righe di piu' contratti vinti di questo ramo.",
     multiQuoteWorkOrderInheritedHint:
@@ -201,6 +218,7 @@ export const productCategories = {
     simplifiedOfferLineInfo:
       "Elimina la compilazione manuale della riga offerta in Gestione Richieste: sulle richieste di questo ramo l'operatore sceglie SOLO il prodotto e il sistema valorizza quantità (sempre 1), prezzo unitario e aliquota IVA con quelli del prodotto. Il modulo Offerte non è toccato: chi lavora l'offerta commerciale continua a governare quantità e prezzi anche su una categoria semplificata. La regola è decisa dalla categoria RADICE e tutto il sottoalbero la segue, a meno che una sottocategoria non forzi un proprio valore (che vale poi per il suo sottoalbero).",
     simplifiedOfferLineInfoLabel: 'Maggiori informazioni su Semplificazione riga offerta',
+    simplifiedOfferLineNeedsRequests: 'Non ha effetto: il ramo non si usa in Gestione Richieste (Visibile in).',
     isSelectableInfo:
       "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
     isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',

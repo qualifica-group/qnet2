@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Opportunities;
 
 use App\DataObjects\Opportunities\UpdateOpportunityData;
+use App\Enums\CategoryUsageArea;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
@@ -103,7 +104,7 @@ class UpdateOpportunityRequest extends FormRequest
             // (OpportunityProductInterestWriter), not here.
             'products_of_interest' => ['sometimes', 'array'],
             'products_of_interest.*' => ['integer', new ActiveProduct($this->exemptProductsOfInterestIds())],
-        ], $this->managerSlotsRules(), $this->productLinesRules(required: false), $this->rewardsRules());
+        ], $this->managerSlotsRules(), $this->productLinesRules(required: false, area: CategoryUsageArea::Opportunities), $this->rewardsRules());
     }
 
     /**

@@ -143,11 +143,11 @@ export const CELL_EDITOR_REGISTRY: Partial<Record<CellEditorKind, CellEditorSpec
     cellEditorPopup: true,
   },
   // Spec 0075: the {funzione aziendale, categoria prodotto} collection, edited
-  // in the same two-step flow as the form. It needs no `cellEditorParams`: its
-  // two `/for-select` resources ARE what the editor is, and the pairs it edits
-  // are the cell's own value.
+  // in the same two-step flow as the form; the pairs it edits are the cell's
+  // own value. Its only param is the grid's module (spec 0389).
   product_lines: {
     cellEditor: ProductLinesCellEditor as ComponentType<CustomCellEditorProps>,
+    cellEditorParams: (column) => ({ usageArea: column.categoryUsageArea }),
     cellEditorPopup: true,
   },
   // User directive 2026-09-07: the whole collection of an offer's REVENUE

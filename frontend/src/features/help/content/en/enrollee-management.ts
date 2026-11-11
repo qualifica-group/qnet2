@@ -27,6 +27,7 @@ const guide: HelpGuide = {
               'It has no creation button: a request enters the enrollees only by changing status.',
             ],
             ['Permissions', 'It has its own permissions, separate from Request Management.'],
+            ['Categories', 'As in Request Management: categories whose **Used in** is **Opportunities / Quotes** have no tab and cannot be picked, and enrollees with only such categories are not listed.'],
             [
               'Documents and notes',
               'An enrollee is the same request: the documents and notes written in Request Management stay the same, with no copies. The **Documents** tab shows with the Enrollee Management **View documents** permission, which sales operators, the training office and the training supervisor also have.',

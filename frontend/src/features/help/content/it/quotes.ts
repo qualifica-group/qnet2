@@ -133,6 +133,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Le categorie con **Visibile in** su **Gestione Richieste / Iscritti** non fanno parte di questa pagina: non compaiono in **Categoria madre** e **Categoria prodotto**, e le offerte che hanno **solo** categorie di questo tipo non sono nell'elenco né nelle statistiche (il dettaglio resta apribile, per esempio da un contratto). Se un'offerta ha anche una categoria usata qui resta visibile.",
+        },
+        {
+          type: 'paragraph',
           text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con **Tutte**. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Le colonne si ordinano, si filtrano e si esportano; se hai il permesso di modificare le offerte si modificano nella cella, tranne quando il campo non riguarda quell'offerta (la cella resta in sola lettura). I valori restano leggibili anche nel dettaglio.",
         },
         {

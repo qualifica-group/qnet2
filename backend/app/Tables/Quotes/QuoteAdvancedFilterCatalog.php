@@ -3,6 +3,7 @@
 namespace App\Tables\Quotes;
 
 use App\Enums\AdvancedFilterType;
+use App\Enums\CategoryUsageArea;
 use App\Models\QuoteWorkflowStatus;
 use App\Tables\Shared\PresetListFilters;
 
@@ -115,7 +116,7 @@ final class QuoteAdvancedFilterCatalog
                 'source' => ['resource' => 'registries'],
                 'target' => 'opportunity.registry',
             ],
-            PresetListFilters::productCategoryFilter('quotes', 8),
+            PresetListFilters::productCategoryFilter('quotes', 8, CategoryUsageArea::Opportunities),
         ];
     }
 

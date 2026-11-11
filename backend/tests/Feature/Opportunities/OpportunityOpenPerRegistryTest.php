@@ -27,9 +27,10 @@ use Spatie\Permission\Models\Permission;
  * `open` row. Only the two terminal outcomes (`closed_won`/`closed_lost`)
  * free the anagrafica.
  *
- * Refinement of the same directive: an open opportunity managed on a SINGLE
- * product category (spec 0077) never blocks — it is a one-shot deal, not the
- * anagrafica's running business.
+ * User decision 2026-11-11 (REQUIREMENT CHANGED): the exemption is the
+ * category flag `multiple_open_opportunities`, no longer the `single`
+ * management mode (the migration turned the flag on for the `single`
+ * categories, then it is edited by hand).
  */
 uses(RefreshDatabase::class);
 
@@ -69,12 +70,13 @@ if (! function_exists('openPerRegistryPayload')) {
 
 if (! function_exists('opportunityOnCategory')) {
     /** An opportunity of $registry whose only product line sits on a root category in $mode. */
-    function opportunityOnCategory(Registry $registry, CategoryManagementMode $mode): Opportunity
+    function opportunityOnCategory(Registry $registry, CategoryManagementMode $mode, bool $multipleOpen = false): Opportunity
     {
         $businessFunction = BusinessFunction::factory()->create();
         $category = ProductCategory::factory()->create([
             'business_function_id' => $businessFunction->id,
             'management_mode' => $mode,
+            'multiple_open_opportunities' => $multipleOpen,
         ]);
 
         $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
@@ -180,15 +182,25 @@ it('blocks when only SOME of the quotes are closed', function () {
 });
 
 // ---------------------------------------------------------------------------
-// C) The single-mode exemption
+// C) The exemption of the branches that allow several open opportunities
 // ---------------------------------------------------------------------------
 
-it('lets the anagrafica open another opportunity beside a single-category one', function () {
+it('lets the anagrafica open another opportunity beside one whose branch allows several', function () {
+    Sanctum::actingAs(openPerRegistryActor());
+    $registry = Registry::factory()->create();
+    opportunityOnCategory($registry, CategoryManagementMode::Single, multipleOpen: true);
+
+    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))->assertCreated();
+});
+
+it('blocks on a single-category opportunity whose branch does not allow several', function () {
     Sanctum::actingAs(openPerRegistryActor());
     $registry = Registry::factory()->create();
     opportunityOnCategory($registry, CategoryManagementMode::Single);
 
-    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))->assertCreated();
+    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['registry_id']);
 });
 
 it('keeps blocking on an open opportunity managed on multiple categories', function () {
@@ -201,14 +213,14 @@ it('keeps blocking on an open opportunity managed on multiple categories', funct
         ->assertJsonValidationErrors(['registry_id']);
 });
 
-it('creates a single-category opportunity beside an open multiple-mode one', function () {
+it('creates an opportunity of a branch that allows several beside an open one', function () {
     Sanctum::actingAs(openPerRegistryActor());
     $registry = Registry::factory()->create();
     opportunityOnCategory($registry, CategoryManagementMode::Multiple);
 
     $payload = openPerRegistryPayload($registry);
     ProductCategory::query()->whereKey($payload['product_lines'][0]['product_category_id'])
-        ->update(['management_mode' => CategoryManagementMode::Single]);
+        ->update(['multiple_open_opportunities' => true]);
 
     $this->postJson('/api/opportunities', $payload)->assertCreated();
     expect(Opportunity::query()->where('registry_id', $registry->id)->count())->toBe(2);
@@ -251,10 +263,10 @@ it('keeps blocking on a current category named like a legacy one', function () {
         ->assertJsonValidationErrors(['registry_id']);
 });
 
-it('blocks on the multiple-mode one even when a single-mode one sits beside it', function () {
+it('blocks on the strict one even when one of a branch that allows several sits beside it', function () {
     Sanctum::actingAs(openPerRegistryActor());
     $registry = Registry::factory()->create();
-    opportunityOnCategory($registry, CategoryManagementMode::Single);
+    opportunityOnCategory($registry, CategoryManagementMode::Single, multipleOpen: true);
     $blocking = opportunityOnCategory($registry, CategoryManagementMode::Multiple);
 
     $response = $this->postJson('/api/opportunities', openPerRegistryPayload($registry))->assertStatus(422);
@@ -263,10 +275,10 @@ it('blocks on the multiple-mode one even when a single-mode one sits beside it',
         ->toBe((string) $blocking->id);
 });
 
-it('converts a lead whose anagrafica only has a single-category opportunity', function () {
+it('converts a lead whose anagrafica only has an opportunity of a branch that allows several', function () {
     Sanctum::actingAs(openPerRegistryActor());
     $registry = Registry::factory()->create();
-    opportunityOnCategory($registry, CategoryManagementMode::Single);
+    opportunityOnCategory($registry, CategoryManagementMode::Single, multipleOpen: true);
     $lead = Lead::factory()->create(['registry_id' => $registry->id, 'source_id' => Source::factory()]);
 
     $this->postJson('/api/leads/convert-to-opportunities', ['lead_ids' => [$lead->id]])->assertOk();

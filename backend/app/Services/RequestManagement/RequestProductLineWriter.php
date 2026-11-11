@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\Opportunity;
 use App\Services\ProductLines\ProductLineSetValidator;
 use App\Services\ProductLines\ProductLineWriter;
@@ -80,6 +81,8 @@ final class RequestProductLineWriter
             array_values($submitted),
             $current,
             self::ERROR_FIELD,
+            // Spec 0389: Gestione Richieste/Iscritti only links categories used there.
+            CategoryUsageArea::Requests,
         );
 
         // Step 2: replace, and report the change for the caller's audit entry

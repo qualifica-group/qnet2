@@ -133,6 +133,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Categories whose **Used in** is **Requests / Enrollees** are not part of this page: they do not show in **Parent category** and **Product category**, and quotes that have **only** such categories are not in the list or the statistics (the detail can still be opened, for example from a contract). If a quote also has a category used here it stays visible.",
+        },
+        {
+          type: 'paragraph',
           text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with **All**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. The columns can be sorted, filtered and exported; if you may edit quotes they are edited in the cell, except when the field does not concern that quote (the cell stays read-only). The values can still be read in the detail too.",
         },
         {

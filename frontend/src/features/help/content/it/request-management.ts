@@ -20,6 +20,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Le categorie la cui impostazione **Visibile in** (nella scheda della categoria) è **Opportunità / Offerte** non fanno parte di Gestione Richieste: non hanno una scheda, non si possono scegliere (né nel form né nella cella **Categoria prodotto**) e non compaiono nei filtri e nelle statistiche. Una richiesta che ha **solo** categorie di questo tipo non compare nell'elenco, nei conteggi e nella ricerca, e il suo link risponde **Accesso negato**; se ha anche una categoria usata qui resta visibile. Rimettendo **Tutti i moduli** sulla categoria tutto torna come prima: nessun dato viene cancellato.",
+        },
+        {
+          type: 'paragraph',
           text: 'Cosa vedi dipende dai permessi. Senza altri permessi vedi le richieste del cui **Team** fai parte: come operatore, Supervisore o Gestore account. **Visualizza per sede** aggiunge quelle delle tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Se crei una richiesta fuori dal tuo ambito, non la vedrai più a meno di avere uno di questi permessi.',
         },
         {
