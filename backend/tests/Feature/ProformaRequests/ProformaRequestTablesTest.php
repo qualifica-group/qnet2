@@ -70,5 +70,6 @@ it('exposes the work order customer (the quote opportunity registry) on the grid
 
     expect($rows[0]['customer'])->toBe($expected)
         ->and($columnIds)->toContain('customer');
-    $this->getJson("/api/proforma-requests/{$request->id}")->assertOk()->assertJsonPath('data.customer', $expected);
+    // REQUIREMENT CHANGED 2026-11-12: the record also carries the "name - VAT number/tax code" label.
+    $this->getJson("/api/proforma-requests/{$request->id}")->assertOk()->assertJsonPath('data.customer', $expected + ['label' => $customer->name]);
 });

@@ -8,7 +8,7 @@ export function makePurchaseInvoiceView(overrides: Partial<PurchaseInvoice> = {}
     document_number: null,
     document_date: '2026-10-01',
     company: { id: 1, name: 'Qualifica Srl' },
-    supplier: { id: 8, name: 'Acme Supplies' },
+    supplier: { id: 8, name: 'Acme Supplies', label: 'Acme Supplies - 01234567890' },
     payment_method: { id: 3, name: 'Bank transfer 30 days' },
     financial_account: null,
     company_site: null,

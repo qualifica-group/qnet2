@@ -14,6 +14,7 @@ use App\Models\RevenueType;
 use App\Services\ChartOfAccounts\RevenueTypeRef;
 use App\Services\ChartOfAccounts\RevenueTypeResolver;
 use App\Support\Amounts\LineAmountCalculator;
+use App\Support\RegistryFiscalLabel;
 use DateTimeImmutable;
 
 /**
@@ -152,6 +153,12 @@ final class InvoiceDraftBuilder
      */
     private function ref(?Registry $registry): ?array
     {
-        return $registry === null ? null : ['id' => $registry->id, 'name' => $registry->name];
+        if ($registry === null) {
+            return null;
+        }
+
+        $registry->loadMissing('personalData:id,personable_type,personable_id,vat_number,tax_code');
+
+        return ['id' => $registry->id, 'name' => $registry->name, 'label' => RegistryFiscalLabel::forRegistry($registry)];
     }
 }

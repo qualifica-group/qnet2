@@ -55,7 +55,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           <span>{invoice.company.name}</span>
         </RecordField>
         <RecordField label={field('supplier')}>
-          <span>{invoice.supplier.name}</span>
+          <span>{invoice.supplier.label}</span>
         </RecordField>
         <RecordInlineField
           field="payment_method_id"

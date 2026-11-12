@@ -5,12 +5,14 @@ namespace App\Http\Resources;
 use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Registry;
 use App\Models\User;
+use App\Support\RegistryFiscalLabel;
 use Illuminate\Http\Request;
 
 /**
  * For-select projection of a Registry (GET /api/registries/for-select).
  *
- * Minimal by design (ADR 0011): label = name, no subtitle/avatar. `meta`
+ * Minimal by design (ADR 0011): label = name with the VAT number or tax code
+ * (RegistryFiscalLabel, user request 2026-11-12), no subtitle/avatar. `meta`
  * (spec 0040 BR-4 + A-5) carries the registry's default commercial/reporter
  * referents, its supervisor (directive 2026-07-29) and its ordered account
  * managers, feeding the Opportunity form's prefill — always present (each key
@@ -28,7 +30,7 @@ class RegistryForSelectResource extends ForSelectResource
     {
         return [
             'id' => $this->id,
-            'label' => $this->name,
+            'label' => RegistryFiscalLabel::forRegistry($this->resource),
             'meta' => [
                 // Spec 0210 D-15: the purchase order form warns on a non-qualified supplier.
                 'is_qualified_supplier' => (bool) $this->is_qualified_supplier,

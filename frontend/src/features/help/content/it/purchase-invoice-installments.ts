@@ -25,6 +25,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Le rate di un documento sommano al suo **Netto da pagare**: se la fattura ha **Ritenuta d’acconto** o **ENASARCO a carico**, le rate sono calcolate al netto delle trattenute e il totale delle scadenze è inferiore al totale del documento. Le rate delle fatture create da un estratto di provvigioni si pagano da qui.',
         },
+        { type: 'paragraph', text: 'La colonna **Fornitore** mostra il nome seguito dalla **partita IVA** (es. *Rossi Srl - 01234567890*); se l’anagrafica non ha la partita IVA compare il **codice fiscale**, se non ha nessuno dei due solo il nome.' },
       ],
     },
     {

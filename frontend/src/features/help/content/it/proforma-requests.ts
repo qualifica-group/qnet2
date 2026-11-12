@@ -31,9 +31,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [
-            ['**Cliente**', 'Il cliente della commessa (l\'anagrafica dell\'opportunità da cui nasce l\'offerta).'],
+            ['**Cliente**', 'Il cliente della commessa (l\'anagrafica dell\'opportunità da cui nasce l\'offerta), seguito dalla partita IVA (es. Rossi Srl - 01234567890); senza partita IVA compare il codice fiscale.'],
             ['**Tipo**', 'Consulenza oppure Ente.'],
-            ['**Fornitore**', 'Il fornitore dell\'Ente a cui si riferisce la richiesta (vuoto per le Consulenze).'],
+            ['**Fornitore**', 'Il fornitore dell\'Ente a cui si riferisce la richiesta (vuoto per le Consulenze), con partita IVA o codice fiscale come il Cliente.'],
             ['**Modalità di pagamento**', 'Quella dell\'offerta al momento dell\'invio: se l\'offerta cambia dopo, la richiesta resta com\'era.'],
             ['**Stato**', '**Da evadere** finché la fatturazione non emette la proforma, poi **Evasa**.'],
             ['**Assegnata a / Richiesta da**', 'L\'utente che ha inviato la richiesta.'],

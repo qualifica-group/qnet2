@@ -225,7 +225,12 @@ class RegistryService
         }
 
         if ($query->hasSearch()) {
-            $base->where('name', 'like', '%'.$query->search.'%');
+            // The label shows the VAT number or tax code, so the search matches them too.
+            $pattern = '%'.$query->search.'%';
+            $base->where(static function (Builder $match) use ($pattern): void {
+                $match->where('name', 'like', $pattern)
+                    ->orWhereHas('personalData', static fn (Builder $card) => $card->where('vat_number', 'like', $pattern)->orWhere('tax_code', 'like', $pattern));
+            });
         }
 
         $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('name')->orderBy('id'));
@@ -248,7 +253,7 @@ class RegistryService
     {
         return Registry::query()
             ->select(['id', 'name', 'is_qualified_supplier', 'commercial_id', 'reporter_id', 'supervisor_id', 'primary_referent_id'])
-            ->with(['commercial:id,name', 'reporter:id,name', 'supervisor:id,name', 'primaryReferent:id,name', 'managers:id,name']);
+            ->with(['personalData:id,personable_type,personable_id,vat_number,tax_code', 'commercial:id,name', 'reporter:id,name', 'supervisor:id,name', 'primaryReferent:id,name', 'managers:id,name']);
     }
 
     /**

@@ -23,7 +23,7 @@ const ORDERS: InvoiceableOrder[] = [
 const DRAFT: PurchaseInvoiceDraft = {
   defaults: {
     company: { id: 3, name: 'Qualifica Srl' },
-    supplier: { id: 8, name: 'Acme Supplies' },
+    supplier: { id: 8, name: 'Acme Supplies', label: 'Acme Supplies' },
     payment_method: null,
     company_site: null,
     operational_site: null,

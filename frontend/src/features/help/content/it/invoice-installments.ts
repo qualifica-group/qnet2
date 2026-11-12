@@ -17,6 +17,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Le scadenze **non si creano né si eliminano** da qui: nascono e spariscono solo dalla fattura. Da questo elenco puoi **aprire la fattura**, **registrare o annullare un incasso** e **cambiare data e modalità** di una rata aperta.',
         },
+        { type: 'paragraph', text: 'La colonna **Cliente** mostra il nome seguito dalla **partita IVA** (es. *Rossi Srl - 01234567890*); se l’anagrafica non ha la partita IVA compare il **codice fiscale**, se non ha nessuno dei due solo il nome.' },
       ],
     },
     {

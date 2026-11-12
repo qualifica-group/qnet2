@@ -7,6 +7,7 @@ use App\Enums\TreasuryMovementType;
 use App\Models\TreasuryMovement;
 use App\Models\User;
 use App\Services\Treasury\TreasuryMovementService;
+use App\Support\RegistryFiscalLabel;
 use App\Tables\TreasuryMovements\TreasuryMovementColumnCatalog;
 use App\Tables\TreasuryMovements\TreasuryMovementRelationColumns;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,7 +45,9 @@ class TreasuryMovementsTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        return TreasuryMovement::query()->with(TreasuryMovementService::RELATIONS);
+        return TreasuryMovement::query()
+            ->with(TreasuryMovementService::RELATIONS)
+            ->addSelect(['registry_fiscal_id' => RegistryFiscalLabel::fiscalIdSubquery('treasury_movements.registry_id')]);
     }
 
     /**
@@ -106,7 +109,7 @@ class TreasuryMovementsTableDefinition extends AbstractTableDefinition
             'company' => $row->account->company?->denomination,
             'description' => $row->description,
             'sub_account' => $sub === null ? null : $sub->code.' '.$sub->name,
-            'registry' => $row->registry?->name,
+            'registry' => RegistryFiscalLabel::compose($row->registry?->name, $row->getAttribute('registry_fiscal_id')),
             'work_order' => $row->workOrder?->code,
             'inflow' => $isInflow ? (string) $row->amount : null,
             'outflow' => $isInflow ? null : (string) $row->amount,

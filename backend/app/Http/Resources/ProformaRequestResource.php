@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\ProformaRequest;
+use App\Support\RegistryFiscalLabel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -31,8 +32,8 @@ class ProformaRequestResource extends JsonResource
             'work_order' => ['id' => $this->workOrder->id, 'code' => $this->workOrder->code, 'title' => $this->workOrder->title],
             'quote' => ['id' => $this->quote->id, 'code' => $this->quote->code],
             'company' => $company === null ? null : ['id' => $company->id, 'name' => $company->denomination],
-            'customer' => $customer === null ? null : ['id' => $customer->id, 'name' => $customer->name],
-            'supplier' => $this->supplier === null ? null : ['id' => $this->supplier->id, 'name' => $this->supplier->name],
+            'customer' => $customer === null ? null : ['id' => $customer->id, 'name' => $customer->name, 'label' => RegistryFiscalLabel::forRegistry($customer)],
+            'supplier' => $this->supplier === null ? null : ['id' => $this->supplier->id, 'name' => $this->supplier->name, 'label' => RegistryFiscalLabel::forRegistry($this->supplier)],
             'payment_method' => $this->paymentMethod === null ? null : ['id' => $this->paymentMethod->id, 'name' => $this->paymentMethod->name],
             'invoice' => $this->invoice === null ? null : ['id' => $this->invoice->id, 'number_label' => $this->invoice->number.'/'.$this->invoice->year],
             'assigned_to' => ['id' => $this->assignee->id, 'name' => $this->assignee->name],

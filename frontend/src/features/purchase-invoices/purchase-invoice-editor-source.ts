@@ -88,7 +88,8 @@ export function sourceFromDraft(draft: PurchaseInvoiceDraft): EditorSource {
     },
     vatRefs: vatRefsOf(draft.lines),
     company: defaults.company,
-    supplier: defaults.supplier,
+    // The registry picker shows "name - VAT number": the preset option reads the same.
+    supplier: { id: defaults.supplier.id, name: defaults.supplier.label },
     paymentMethod: defaults.payment_method,
     companySite: defaults.company_site,
     operationalSite: defaults.operational_site,

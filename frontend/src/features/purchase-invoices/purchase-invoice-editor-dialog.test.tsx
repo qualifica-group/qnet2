@@ -57,7 +57,7 @@ const COST_TYPE = { id: 1, name: 'Collaboratori', color: 'blue' }
 const DRAFT: PurchaseInvoiceDraft = {
   defaults: {
     company: { id: 3, name: 'Qualifica Srl' },
-    supplier: { id: 8, name: 'Acme Supplies' },
+    supplier: { id: 8, name: 'Acme Supplies', label: 'Acme Supplies' },
     payment_method: { id: 2, name: 'Bonifico 30 gg' },
     company_site: null,
     operational_site: null,

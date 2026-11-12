@@ -21,6 +21,11 @@ export interface NamedRef {
 }
 
 /** `ProformaRequestResource` returned by GET/PATCH/POST (envelope `data`). */
+/** A customer or supplier ref; `label` is the name with its VAT number or tax code. */
+export interface CounterpartyRef extends NamedRef {
+  label: string
+}
+
 export interface ProformaRequest {
   id: number
   kind: ProformaRequestKind
@@ -31,8 +36,9 @@ export interface ProformaRequest {
   /** Spec 0267 D-6: the offer this request invoices (a multi-offer work order has one request per offer). */
   quote: { id: number; code: string }
   company: NamedRef | null
-  customer: NamedRef | null
-  supplier: NamedRef | null
+  /** `label` = "name - VAT number" (tax code without VAT; just the name with neither). */
+  customer: CounterpartyRef | null
+  supplier: CounterpartyRef | null
   payment_method: NamedRef | null
   assigned_to: NamedRef
   assigned_by: NamedRef

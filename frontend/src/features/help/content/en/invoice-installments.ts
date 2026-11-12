@@ -17,6 +17,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Due dates **cannot be created or deleted** here: they appear and disappear only with the invoice. From this list you can **open the invoice**, **record or clear a collection** and **change the date and method** of an open installment.',
         },
+        { type: 'paragraph', text: 'The **Customer** column shows the name followed by the **VAT number** (e.g. *Rossi Srl - 01234567890*); when the registry has no VAT number the **tax code** is shown, and just the name when it has neither.' },
       ],
     },
     {

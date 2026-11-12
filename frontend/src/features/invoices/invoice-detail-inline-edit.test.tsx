@@ -47,7 +47,7 @@ function makeInvoice(overrides: Partial<InvoiceWithPermissions> = {}): InvoiceWi
     number_label: '3/2026',
     document_date: '2026-10-06',
     company: { id: 3, name: 'Qualifica Srl' },
-    customer: { id: 5, name: 'Acme Spa', vat_number: null },
+    customer: { id: 5, name: 'Acme Spa', vat_number: '01234567890', label: 'Acme Spa - 01234567890' },
     payment_method: { id: 2, name: 'Bonifico 30 gg' },
     financial_account: null,
     layout: null,
@@ -150,6 +150,12 @@ describe('invoice record edited in place (spec 0261)', () => {
     await waitFor(() =>
       expect(detailsMock).toHaveBeenCalledWith(5, { external_number: '42', external_date: '2026-10-10' }),
     )
+  })
+
+  it('shows the customer with its VAT number in the header and in the record', async () => {
+    renderDetail(makeInvoice())
+
+    expect(await screen.findAllByText('Acme Spa - 01234567890')).toHaveLength(2)
   })
 
   it('freezes date, customer and payment method once installments are collected', async () => {

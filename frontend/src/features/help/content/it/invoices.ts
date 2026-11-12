@@ -11,6 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'Il modulo si trova in **Contabilità › Attiva › Fatture Attive**. Elenca i documenti emessi: usa le schede **Tutte**, **Proforma** e **Fatture**, scegli l\'**anno** e, nella barra dei mesi, seleziona uno o più mesi (ognuno mostra il numero di documenti e il totale) oppure **tutti**.' },
         { type: 'paragraph', text: 'In fondo all\'elenco trovi i **totali del filtro corrente**: imponibile, IVA, totale, incassato e residuo. Puoi anche filtrare, ordinare ed esportare l\'elenco.' },
+        { type: 'paragraph', text: 'La colonna **Cliente** mostra il nome seguito dalla **partita IVA** (es. *Rossi Srl - 01234567890*); se l’anagrafica non ha la partita IVA compare il **codice fiscale**, se non ha nessuno dei due solo il nome. Lo stesso formato compare nell’intestazione e nel campo **Cliente** della scheda del documento.' },
       ],
     },
     {

@@ -69,7 +69,8 @@ export interface PurchaseInvoice {
   document_number: string | null
   document_date: string
   company: NamedRef
-  supplier: NamedRef
+  /** `label` = "name - VAT number" (tax code without VAT; just the name with neither). */
+  supplier: NamedRef & { label: string }
   payment_method: NamedRef
   financial_account: BankAccountRef | null
   company_site: NamedRef | null
@@ -152,7 +153,8 @@ export type PurchaseInvoiceDraftLine = Omit<PurchaseInvoiceLine, 'id'> & { id: n
 export interface PurchaseInvoiceDraft {
   defaults: {
     company: NamedRef
-    supplier: NamedRef
+    /** `label` = the name with the VAT number or tax code, as the registry picker shows it. */
+    supplier: NamedRef & { label: string }
     payment_method: NamedRef | null
     company_site: NamedRef | null
     operational_site: NamedRef | null

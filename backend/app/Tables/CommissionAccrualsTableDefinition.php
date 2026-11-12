@@ -9,6 +9,7 @@ use App\Enums\CommissionRecipientRole;
 use App\Models\CommissionAccrual;
 use App\Models\User;
 use App\Services\Table\RowGroupQuery;
+use App\Support\RegistryFiscalLabel;
 use App\Tables\CommissionAccruals\CommissionAccrualColumnCatalog as Catalog;
 use App\Tables\CommissionAccruals\CommissionAccrualDerivedQuery;
 use App\Tables\CommissionAccruals\CommissionAccrualSql;
@@ -67,7 +68,8 @@ class CommissionAccrualsTableDefinition extends AbstractTableDefinition
             ->selectRaw('invoices.number as invoice_number, invoices.year as invoice_year, companies.denomination as company_name')
             ->selectRaw(CommissionAccrualSql::settlementLabel().' as settlement_label')
             ->selectRaw(CommissionAccrualSql::status().' as derived_status')
-            ->selectRaw(CommissionAccrualSql::recipientName().' as recipient_name');
+            ->selectRaw(CommissionAccrualSql::recipientName().' as recipient_name')
+            ->addSelect(['customer_fiscal_id' => RegistryFiscalLabel::fiscalIdSubquery('invoices.customer_registry_id')]);
     }
 
     /**
@@ -189,7 +191,7 @@ class CommissionAccrualsTableDefinition extends AbstractTableDefinition
             'commission_settlement_id' => $row->commission_settlement_id,
             'settlement' => $row->getAttribute('settlement_label'),
             'invoice' => $number === null ? null : $number.'/'.$row->getAttribute('invoice_year'),
-            'customer' => $row->getAttribute('customer_name'),
+            'customer' => RegistryFiscalLabel::compose($row->getAttribute('customer_name'), $row->getAttribute('customer_fiscal_id')),
             'quote' => $row->getAttribute('quote_code'),
             'product' => $row->getAttribute('product_name'),
             'base_amount' => $row->base_amount,

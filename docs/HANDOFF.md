@@ -3,6 +3,39 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Contabilita': cliente/fornitore come "Nome - P.IVA" (CF senza P.IVA) (2026-11-12) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente: nella parte contabile, accanto al nome del cliente anche partita IVA o codice fiscale.
+- BE: nuovo `App\Support\RegistryFiscalLabel` (`fiscalIdSubquery(col)` = subquery correlata su `personal_data`
+  COALESCE P.IVA/CF con trim; `compose(name, fiscalId)`; `forRegistry(Registry)` con `personalData` gia' caricato).
+  Applicato alla cella di: Fatture attive `customer`, Scadenze attive `customer`, Fatture passive `supplier`, Scadenze
+  passive `supplier`, Movimenti di tesoreria `registry`, Provvigioni maturato `customer`, Richieste proforma
+  `customer`/`supplier` (qui la cella e' un ref `{id, name}`: `name` porta l'etichetta composta, cosi' cella ed export
+  coincidono; la scheda `ProformaRequestResource` tiene `name` puro + nuova `label`). Filtri, ordinamento,
+  raggruppamento e valori del set filter restano sul solo nome (`registries.name`). Export eredita il formato.
+  Dettaglio: `InvoiceResource.customer.label` e `PurchaseInvoiceResource.supplier.label` (nuova chiave; aggiunto
+  `supplier.personalData` a `PurchaseInvoiceService::RESOURCE_RELATIONS`).
+- FE: tipi `customer.label`/`supplier.label`, sottotitolo e campo Cliente/Fornitore delle schede fattura attiva/passiva.
+  Fixture aggiornate al nuovo contratto.
+- Select anagrafiche (richiesta successiva, "nei select dove sta Cliente"): `RegistryForSelectResource.label` =
+  etichetta composta OVUNQUE (tutti i picker `registries`, non solo contabilita'); `RegistryService::forSelect` cerca
+  anche per `vat_number`/`tax_code` (LIKE, 40-135 ms su 30.775 anagrafiche in dev) ed eager-loada `personalData`.
+  Bozze di emissione: `InvoiceDraftBuilder` (`defaults.customer.label`) e `PurchaseInvoiceDraftBuilder`
+  (`defaults.supplier.label`); il FE passa la label come `selected` (editor fattura, scheda fattura attiva) cosi' il
+  trigger mostra subito "Nome - P.IVA". Nei draft di create (opportunita', lead, task...) il nome provvisorio letto
+  dal for-select ora include la P.IVA: solo display fino al salvataggio.
+- Fuori scope, NON toccati: il filtro di testo delle colonne Cliente nelle griglie cerca ancora solo per nome.
+- Test: nuovo `tests/Feature/Accounting/CounterpartyFiscalLabelTest.php` (9); `ProformaRequestTablesTest` e
+  `PurchaseInvoiceDraftTest` AC-003 attesi con `label` (REQUIREMENT CHANGED); `invoice-editor-dialog.test` trigger con
+  P.IVA. Verdi: Registries, ForSelect, Opportunities, Leads, Referents, PurchaseOrders, PurchaseRequests, Tasks,
+  TimeEntries, Performance; RequestManagement solo il rosso noto `managers is not sortable`. Vitest 1748/1748 sui
+  moduli toccati. Manuale Claude Docs: paragrafo "Scelta di un'anagrafica" prima di "Creazione rapida"; guida
+  `general` IT/EN. ProformaRequests, WorkOrders verdi. Invoices, InvoiceInstallments,
+  PurchaseInvoices, PurchaseInvoiceInstallments, Treasury, CommissionAccruals(+Table), Tables, Ledger, Exports verdi;
+  rossi gia' noti: `SettlementApprovalTest` AC-006 (data), ManagementControl `*AccessTest` x4. FE invoices +
+  purchase-invoices + help 298/298, ESLint, `tsc -b --force`, Pint puliti. Guide IT/EN aggiornate (panoramica di 6 guide +
+  `proforma-requests`). PDF del manuale da rigenerare. Non provato nel browser.
+
 ## Niente filtro "Assegnazione"; Categoria madre limitata alle categorie abilitate (spec 0374 rev.4) (2026-11-12) — VERDE MIRATO, NON COMMITTATO
 
 - Direttiva utente: Commesse, Opportunita', Offerte, Contratti senza il campo "Assegnazione": chi vede tutto vede tutto, gli altri

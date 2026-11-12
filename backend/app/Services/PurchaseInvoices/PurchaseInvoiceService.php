@@ -28,6 +28,7 @@ class PurchaseInvoiceService
     public const array RESOURCE_RELATIONS = [
         'company:id,denomination',
         'supplier:id,name',
+        'supplier.personalData:id,personable_type,personable_id,vat_number,tax_code',
         'paymentMethod:id,name',
         'financialAccount:id,name,iban',
         'companySite:id,name',

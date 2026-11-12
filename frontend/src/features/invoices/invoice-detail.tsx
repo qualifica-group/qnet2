@@ -54,7 +54,7 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
           <RecordCardHeader
             media={<DetailMonogram name={invoice.number_label} icon={<FileText />} />}
             title={t('invoices.detail.title', { number: invoice.number_label })}
-            subtitle={invoice.customer.name}
+            subtitle={invoice.customer.label}
             actions={
               <Button variant="secondary" size="sm" disabled={isDownloading} onClick={() => void download(invoice.id)}>
                 <FileDown className="size-3.5" aria-hidden="true" />

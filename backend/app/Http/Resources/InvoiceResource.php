@@ -7,6 +7,7 @@ use App\Models\InvoiceInstallment;
 use App\Models\InvoiceLine;
 use App\Services\ChartOfAccounts\RevenueTypeRef;
 use App\Services\Invoices\InvoicePaymentStatusResolver;
+use App\Support\RegistryFiscalLabel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -46,6 +47,7 @@ class InvoiceResource extends JsonResource
                 'id' => $this->customer->id,
                 'name' => $this->customer->name,
                 'vat_number' => $this->customer->personalData?->vat_number,
+                'label' => RegistryFiscalLabel::forRegistry($this->customer),
             ],
             'payment_method' => ['id' => $this->paymentMethod->id, 'name' => $this->paymentMethod->name],
             'financial_account' => $this->financialAccount === null ? null : [

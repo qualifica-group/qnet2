@@ -65,9 +65,9 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           label={t('invoiceEditor.fields.customer')}
           inline={inline}
           canEdit={unfrozen}
-          editor={<RecordRelationEditor control={control} name="customer_registry_id" label={t('invoiceEditor.fields.customer')} resource={REGISTRIES_FOR_SELECT_RESOURCE} selected={invoice.customer} placeholder={t('invoiceEditor.fields.selectCustomer')} required />}
+          editor={<RecordRelationEditor control={control} name="customer_registry_id" label={t('invoiceEditor.fields.customer')} resource={REGISTRIES_FOR_SELECT_RESOURCE} selected={{ id: invoice.customer.id, name: invoice.customer.label }} placeholder={t('invoiceEditor.fields.selectCustomer')} required />}
         >
-          <span>{invoice.customer.name}</span>
+          <span>{invoice.customer.label}</span>
         </RecordInlineField>
         <RecordInlineField
           field="payment_method_id"

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Invoices\InvoicePaymentStatusResolver;
 use App\Services\PurchaseInvoices\PurchaseInvoiceService;
 use App\Services\Table\FormRequestCellValidator;
+use App\Support\RegistryFiscalLabel;
 use App\Tables\PurchaseInvoiceInstallments\PurchaseInstallmentSql;
 use App\Tables\PurchaseInvoices\PurchaseInvoiceColumnCatalog;
 use App\Tables\PurchaseInvoices\PurchaseInvoiceDerivedQuery;
@@ -66,6 +67,9 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
 
     private const string ORDERS_LABEL = 'purchase_orders_label';
 
+    /** Supplier VAT number or tax code, shown next to the name. */
+    private const string SUPPLIER_FISCAL_ID = 'supplier_fiscal_id';
+
     /** Row actions not offered for a registered invoice (409 on the server). */
     private const array INVOICE_HIDDEN_ACTIONS = ['delete'];
 
@@ -93,6 +97,7 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
         return PurchaseInvoice::query()
             ->select('purchase_invoices.*')
             ->selectRaw(PurchaseInstallmentSql::purchaseOrderCodes('purchase_invoices.id').' as '.self::ORDERS_LABEL)
+            ->addSelect([self::SUPPLIER_FISCAL_ID => RegistryFiscalLabel::fiscalIdSubquery('purchase_invoices.supplier_id')])
             ->with(['supplier:id,name', 'company:id,denomination'])
             ->withSum('installments', 'paid_amount')
             ->withSum('installments', 'write_off_amount')
@@ -186,7 +191,7 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
             'document_number' => $row->document_number,
             'document_date' => $row->document_date->toDateString(),
             'supplier_id' => $row->supplier_id,
-            'supplier' => $row->supplier?->name,
+            'supplier' => RegistryFiscalLabel::compose($row->supplier?->name, $row->getAttribute(self::SUPPLIER_FISCAL_ID)),
             'company' => $row->company?->denomination,
             'purchase_orders' => $row->getAttribute(self::ORDERS_LABEL),
             'net_amount' => $row->net_amount,

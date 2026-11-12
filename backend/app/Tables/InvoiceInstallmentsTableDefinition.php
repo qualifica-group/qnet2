@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Invoices\InvoiceInstallmentUpdater;
 use App\Services\Table\FormRequestCellValidator;
 use App\Services\Table\RowGroupQuery;
+use App\Support\RegistryFiscalLabel;
 use App\Tables\InvoiceInstallments\InstallmentColumnCatalog;
 use App\Tables\InvoiceInstallments\InstallmentDerivedQuery;
 use App\Tables\InvoiceInstallments\InstallmentSql;
@@ -89,6 +90,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             ->selectRaw('invoices.customer_registry_id as customer_id, registries.name as customer_name, companies.denomination as company_name, company_sites.name as company_site_name')
             ->selectRaw('work_orders.code as work_order_code, work_orders.title as work_order_title')
             ->selectRaw(InstallmentSql::operationalSiteLabel().' as operational_site_label')
+            ->addSelect(['customer_fiscal_id' => RegistryFiscalLabel::fiscalIdSubquery('invoices.customer_registry_id')])
             ->join('invoices', 'invoices.id', '=', 'invoice_installments.invoice_id')
             ->join('registries', 'registries.id', '=', 'invoices.customer_registry_id')
             ->join('companies', 'companies.id', '=', 'invoices.company_id')
@@ -199,7 +201,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'reconciled' => $row->reconciled_at !== null ? 'yes' : 'no',
             'compensated' => $row->compensation_id !== null ? 'yes' : 'no',
             'customer_id' => (int) $row->getAttribute('customer_id'),
-            'customer' => $row->getAttribute('customer_name'),
+            'customer' => RegistryFiscalLabel::compose($row->getAttribute('customer_name'), $row->getAttribute('customer_fiscal_id')),
             'work_order' => $workOrder === null ? null : $workOrder.' - '.$row->getAttribute('work_order_title'),
             'company' => $row->getAttribute('company_name'),
             'company_site' => $row->getAttribute('company_site_name'),

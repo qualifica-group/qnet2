@@ -17,6 +17,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'The **tabs** above narrow the list: **Open** (default: not yet in a statement), **In a statement** (in a draft or an issued statement), **Settled externally** and **All**. The **Statement** column shows the number (n/year) or **Draft**; you can also group by company. Below the table the **total** covers every movement of the current filter, not just the visible ones. As in every list you can sort, filter, export and **group** by recipient, role, accrual month, movement type or customer.',
         },
+        { type: 'paragraph', text: 'The **Customer** column shows the name followed by the **VAT number** (e.g. *Rossi Srl - 01234567890*); when the registry has no VAT number the **tax code** is shown, and just the name when it has neither.' },
       ],
     },
     {

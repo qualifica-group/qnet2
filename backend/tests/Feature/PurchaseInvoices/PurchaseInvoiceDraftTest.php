@@ -83,7 +83,8 @@ it('AC-003: builds the draft from two orders of the same supplier and company wi
 
     expect($data['purchase_order_ids'])->toBe([$first->id, $second->id])
         ->and($data['defaults']['company'])->toBe(['id' => $company->id, 'name' => $company->denomination])
-        ->and($data['defaults']['supplier'])->toBe(['id' => $supplier->id, 'name' => $supplier->name])
+        // REQUIREMENT CHANGED 2026-11-12: the supplier also carries the picker label (name - VAT number/tax code).
+        ->and($data['defaults']['supplier'])->toBe(['id' => $supplier->id, 'name' => $supplier->name, 'label' => $supplier->name])
         ->and($data['defaults']['payment_method'])->toBe(['id' => $method->id, 'name' => $method->name])
         ->and($data['defaults']['cost_type']['id'])->toBe($costType->id)
         ->and($data['defaults']['work_order'])->toBe(['id' => $workOrder->id, 'code' => $workOrder->code, 'title' => $workOrder->title])

@@ -6,6 +6,7 @@ use App\Models\ProformaRequest;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\ProformaRequestService;
+use App\Support\RegistryFiscalLabel;
 use App\Tables\ProformaRequests\ProformaRequestColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -51,7 +52,9 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
             'quote.company:id,denomination',
             'quote.opportunity:id,registry_id',
             'quote.opportunity.registry:id,name',
+            'quote.opportunity.registry.personalData:id,personable_type,personable_id,vat_number,tax_code',
             'supplier:id,name',
+            'supplier.personalData:id,personable_type,personable_id,vat_number,tax_code',
             'paymentMethod:id,name',
             'assignee:id,name',
             'assigner:id,name',
@@ -116,9 +119,10 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
             'work_order_title' => $row->workOrder->title,
             'quote' => ['id' => $row->quote->id, 'code' => $row->quote->code],
             'company' => $company === null ? null : ['id' => $company->id, 'name' => $company->denomination],
-            'customer' => $customer === null ? null : ['id' => $customer->id, 'name' => $customer->name],
+            // The cell and the export show `name`: here the name with the VAT number or tax code.
+            'customer' => $customer === null ? null : ['id' => $customer->id, 'name' => RegistryFiscalLabel::forRegistry($customer)],
             'kind' => $row->kind->value,
-            'supplier' => $row->supplier === null ? null : ['id' => $row->supplier->id, 'name' => $row->supplier->name],
+            'supplier' => $row->supplier === null ? null : ['id' => $row->supplier->id, 'name' => RegistryFiscalLabel::forRegistry($row->supplier)],
             'payment_method' => $row->paymentMethod === null ? null : ['id' => $row->paymentMethod->id, 'name' => $row->paymentMethod->name],
             'status' => $row->status->value,
             'invoice_id' => $row->invoice?->id,

@@ -74,7 +74,7 @@ export function ProformaRequestDetailView({ proformaRequest: request, onEdit }: 
                 {request.company ? request.company.name : <DetailEmpty />}
               </RecordField>
               <RecordField label={t('proformaRequests.columns.customer')}>
-                {request.customer ? request.customer.name : <DetailEmpty />}
+                {request.customer ? request.customer.label : <DetailEmpty />}
               </RecordField>
               <RecordField label={t('proformaRequests.columns.status')}>
                 {t(`proformaRequests.statuses.${request.status}`)}
@@ -83,7 +83,7 @@ export function ProformaRequestDetailView({ proformaRequest: request, onEdit }: 
                 <RecordField label={t('proformaRequests.detail.issuedAt')}>{issuedAt}</RecordField>
               ) : null}
               <RecordField label={t('proformaRequests.columns.supplier')}>
-                {request.supplier ? request.supplier.name : <DetailEmpty />}
+                {request.supplier ? request.supplier.label : <DetailEmpty />}
               </RecordField>
               <RecordField label={t('proformaRequests.columns.payment_method')}>
                 {request.payment_method ? request.payment_method.name : <DetailEmpty />}
