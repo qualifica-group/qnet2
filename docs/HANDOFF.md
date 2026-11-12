@@ -3,6 +3,11 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Eliminazione stato offerta in uso: il messaggio elenca le offerte (2026-11-12) — VERDE MIRATO, COMMITTATO
+
+- `QuoteWorkflowStatusUsageGuard` (spec 0377): il 409 ora dice `Nome (N): QUO-1, QUO-2, ...` per stato (max 10 codici, poi "e altre N"; stati separati da `; `). Nuova chiave `lang/it.json` "and :count more". 2 test nuovi in `QuoteWorkflowStatusUsageGuardTest` (78/78 verdi in `tests/Feature/QuoteWorkflows`). Guida in-app quote-workflows IT/EN + manuale Claude Docs aggiornati.
+- Il guard gemello `WorkOrderWorkflowStatusUsageGuard` mostra ancora solo i conteggi (non toccato, fuori scope).
+
 ## Le richieste seguono l'operatore del lead assegnato dopo la conversione (task 427463, spec 0048 AC-070) (2026-11-12) — VERDE MIRATO, COMMITTATO
 
 - Gap di 427463: l'operatore assegnato o cambiato sul lead DOPO la conversione non arrivava alla richiesta (lead 168 -> offerta 29953).
