@@ -4,8 +4,10 @@ use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
+use App\Models\Role;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
+use App\Services\RequestManagement\RequestTransferService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
@@ -15,9 +17,9 @@ use Spatie\Permission\Models\Permission;
 // assign-operators / assign-manager-ga1 / transfer — under `enrollee-management`
 // require `enrollee-management.update` + the action's own specific ability,
 // ignore ids outside the D-3 perimeter or outside the D-2 status filter (same
-// semantics as Gestione Richieste), and the transfer notifies the holders of
-// `enrollee-management.viewAll`, never `request-management.viewAll`
-// (decisione utente 2026-09-29, replacing `receiveTransferNotifications`).
+// semantics as Gestione Richieste), and the transfer copy goes to the holders
+// of the dedicated role `notifiche-trasferimenti-contatti` (spec 0081 rev.
+// 2026-11-12, replacing `{module}.viewAll`).
 
 uses(RefreshDatabase::class);
 
@@ -192,14 +194,15 @@ it('transfer reaches only requests in D-2/D-3 scope and leaves the rest untouche
         ->and($outOfState->fresh()->operational_site_id)->toBeNull();
 });
 
-it('transfer notifies holders of enrollee-management.viewAll, never request-management\'s', function () {
+// Spec 0081 rev. 2026-11-12 (task 427848), REQUIREMENT CHANGED: the copy goes to
+// the dedicated role in both modules, no longer to `enrollee-management.viewAll`.
+it('transfer notifies the holders of the transfer notification role, never a viewAll holder without it', function () {
     Notification::fake();
 
     $actor = bulkActor(['viewAny', 'viewAll', 'update', 'transferContact']);
-    $enrolleeSupervisor = User::factory()->create();
-    $enrolleeSupervisor->givePermissionTo('enrollee-management.viewAll');
+    $enrolleeSupervisor = User::factory()->create()->assignRole(Role::findOrCreate(RequestTransferService::NOTIFIED_ROLE, 'web'));
     $requestSupervisor = User::factory()->create();
-    $requestSupervisor->givePermissionTo('request-management.viewAll');
+    $requestSupervisor->givePermissionTo('enrollee-management.viewAll');
     $destination = OperationalSite::factory()->withAddress()->create();
     $newOperator = User::factory()->create();
     $quote = bulkQuote('closed_won');

@@ -24,6 +24,16 @@
   trasferimento. Precedente e nuovo operatore restano invariati. AC-020/AC-021 sono
   riformulati sotto con il prefisso (rev. 2026-09-29).
 
+  REVISIONE 2026-11-12 (decisione utente, task 427848): la copia di supervisione del
+  trasferimento va SOLO ai titolari attivi del ruolo `notifiche-trasferimenti-contatti`
+  (`RequestTransferService::NOTIFIED_ROLE`), in entrambi i moduli, non piu' a chi ha
+  `{module}.viewAll` (46 utenti in produzione: admin, contabilita', commerciali senior...).
+  Ruolo e non permesso: admin e super-admin ricevono per sync tutto il catalogo. Il seeder
+  one-shot `QualificaTransferNotificationSeeder` crea il ruolo (view/viewAny dei due moduli)
+  e lo assegna a Rosa Falzarano e Fabrizio Aliberti; `viewAll` resta invariato per tutti
+  (decide cosa si VEDE). AC-021, AC-024 e AC-028 sono riletti con "ruolo" al posto di
+  "permesso `viewAll`"; AC-028 ora richiede la lookup del ruolo e vieta quella del permesso.
+
   REVISIONE 2026-10-01 (decisione utente):
     - La notifica di assegnazione dell'Opportunita' ha SOLO il proprio link: /opportunities/{id}
       con `opportunities.view`, altrimenti nessun link. Niente piu' ricaduta su

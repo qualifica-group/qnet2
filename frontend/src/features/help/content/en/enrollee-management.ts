@@ -38,7 +38,7 @@ const guide: HelpGuide = {
             ],
             [
               'Transfer notifications',
-              'Same rules as Request Management; the summary of every transfer goes to whoever holds **View all** in Enrollee Management.',
+              'Same rules as Request Management; the summary of every transfer goes to the holders of the **notifiche-trasferimenti-contatti** role.',
             ],
           ],
         },

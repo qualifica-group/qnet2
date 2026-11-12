@@ -4,8 +4,10 @@ use App\Enums\TransferRecipientRoleEnum;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\Role;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
+use App\Services\RequestManagement\RequestTransferService;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -15,10 +17,10 @@ use Spatie\Permission\Models\Permission;
 // POST /api/request-management/transfer: notifications — spec 0079 AC-013 ->
 // AC-017, AMENDED by spec 0081. Two requirements changed here, so the
 // expectations below changed WITH them (never to make a test pass):
-//   1. The supervisory copy goes to holders of the PERMISSION
-//      `request-management.viewAll` (decisione utente 2026-09-29, replacing
-//      the dedicated `receiveTransferNotifications` grant of 2026-08-04),
-//      not to the spatie role `supervisor`.
+//   1. The supervisory copy goes to the active holders of the dedicated role
+//      `notifiche-trasferimenti-contatti` (spec 0081 rev. 2026-11-12, task
+//      427848), no longer to every holder of `request-management.viewAll`
+//      (rev. 2026-09-29), which reached 46 users in production.
 //   2. One transfer now produces THREE different texts. The full audit
 //      sentence (both operators, author, both Sedi) is the SUPERVISORY copy;
 //      the incoming operator gets a shorter, assignment-shaped one.
@@ -54,15 +56,12 @@ if (! function_exists('transferNotifSite')) {
 
 if (! function_exists('transferNotifSupervisor')) {
     /**
-     * A recipient of the supervisory copy: whoever HOLDS `viewAll`, however
-     * they got it (decisione utente 2026-09-29).
+     * A recipient of the supervisory copy: an active holder of the dedicated
+     * role (spec 0081 rev. 2026-11-12).
      */
     function transferNotifSupervisor(): User
     {
-        $user = User::factory()->create();
-        $user->givePermissionTo(Permission::findOrCreate('request-management.viewAll'));
-
-        return $user;
+        return User::factory()->create()->assignRole(Role::findOrCreate(RequestTransferService::NOTIFIED_ROLE, 'web'));
     }
 }
 
@@ -91,14 +90,14 @@ it('the new operator receives a database and a mail notification (AC-013)', func
 });
 
 // ---------------------------------------------------------------------------
-// AC-014 — every permission holder, actor always excluded
+// AC-014 — every role holder, actor always excluded
 // ---------------------------------------------------------------------------
 
-it('every holder of viewAll receives the copy; the actor never does, even as holder or new operator (AC-014)', function () {
+it('every holder of the role receives the copy; the actor never does, even as holder or new operator (AC-014)', function () {
     Notification::fake();
 
-    // The actor holds `viewAll` too: excluded all the same.
-    $actor = transferNotifActorWith(['update', 'viewAll', 'transferContact']);
+    // The actor holds the role too: excluded all the same.
+    $actor = transferNotifActorWith(['update', 'viewAll', 'transferContact'])->assignRole(Role::findOrCreate(RequestTransferService::NOTIFIED_ROLE, 'web'));
     $supervisor = transferNotifSupervisor();
     $destinationSite = transferNotifSite();
     $quote = Quote::factory()->create();
@@ -164,10 +163,14 @@ it('the supervisory copy carries contact, origin, destination, operators, author
 // AC-016 — nobody can receive the supervisory copy
 // ---------------------------------------------------------------------------
 
-it('with no holder of viewAll but the actor, the transfer succeeds and notifies only the operator (AC-016)', function () {
+it('with no holder of the role, the transfer succeeds and notifies only the operator, never the viewAll holders (AC-016)', function () {
     Notification::fake();
 
     $actor = transferNotifActorWith(['update', 'viewAll', 'transferContact']);
+    // Sees every request, but without the role: no copy (task 427848).
+    transferNotifActorWith(['viewAll']);
+    // Holds the role but is deactivated: no copy either.
+    transferNotifSupervisor()->update(['is_active' => false]);
     $destinationSite = transferNotifSite();
     $newOperator = User::factory()->create();
     $quote = Quote::factory()->create();

@@ -38,7 +38,7 @@ const guide: HelpGuide = {
             ],
             [
               'Notifiche di trasferimento',
-              'Stesse regole di Gestione Richieste; il riepilogo di ogni trasferimento arriva a chi ha **Visualizza tutti** in Gestione Iscritti.',
+              'Stesse regole di Gestione Richieste; il riepilogo di ogni trasferimento arriva a chi ha il ruolo **notifiche-trasferimenti-contatti**.',
             ],
           ],
         },

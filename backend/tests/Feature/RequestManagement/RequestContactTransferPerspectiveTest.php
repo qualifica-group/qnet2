@@ -6,6 +6,7 @@ use App\Models\Quote;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
+use App\Services\RequestManagement\RequestTransferService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
@@ -107,37 +108,36 @@ it('sends no "contact lost" notification when the request had no operator (AC-01
 });
 
 // ---------------------------------------------------------------------------
-// AC-021 — the recipient set is the `viewAll` PERMISSION, not a role name
-// (decisione utente 2026-09-29: it replaces `receiveTransferNotifications`)
+// AC-021 — the recipient set is the dedicated ROLE, not `viewAll`
+// (spec 0081 rev. 2026-11-12, task 427848: it replaces `{module}.viewAll`)
 // ---------------------------------------------------------------------------
 
-it('copies whoever holds viewAll through a role, and nobody once it is revoked (AC-021)', function () {
+it('copies the holders of the dedicated role, never a viewAll holder without it, and nobody once it is removed (AC-021)', function () {
     Notification::fake();
 
-    $permission = Permission::findOrCreate('request-management.viewAll');
-    $role = Role::findOrCreate('supervisor');
-    $role->givePermissionTo($permission);
-
+    $role = Role::findOrCreate(RequestTransferService::NOTIFIED_ROLE, 'web');
     $actor = transferPerspectiveActor();
-    $viaRole = User::factory()->create();
-    $viaRole->assignRole($role);
+    $holder = User::factory()->create()->assignRole($role);
+    $seesEverything = User::factory()->create();
+    $seesEverything->givePermissionTo(Permission::findOrCreate('request-management.viewAll'));
     $newOperator = User::factory()->create();
     $destination = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 
     transferPerspectivePost($this, [transferPerspectiveRequest(null)->id], $destination, $newOperator);
-    Notification::assertSentTo($viaRole, RequestTransferredNotification::class);
+    Notification::assertSentTo($holder, RequestTransferredNotification::class);
+    Notification::assertNotSentTo($seesEverything, RequestTransferredNotification::class);
 
-    // Same role, grant revoked: the copy stops.
+    // Role removed: the copy stops.
     Notification::fake();
-    $role->revokePermissionTo($permission);
+    $holder->removeRole($role);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     transferPerspectivePost($this, [transferPerspectiveRequest(null)->id], $destination, $newOperator);
-    Notification::assertNotSentTo($viaRole, RequestTransferredNotification::class);
+    Notification::assertNotSentTo($holder, RequestTransferredNotification::class);
 });
 
-it('does not notify an uninvolved user without viewAll, even one working the module per Sede', function () {
+it('does not notify an uninvolved user without the role, even one working the module per Sede', function () {
     Notification::fake();
 
     $actor = transferPerspectiveActor();
@@ -165,11 +165,10 @@ it('does not notify an uninvolved user without viewAll, even one working the mod
 it('sends the incoming operator exactly one notification, the assignment one (AC-022)', function () {
     Notification::fake();
 
-    $permission = Permission::findOrCreate('request-management.viewAll');
     $actor = transferPerspectiveActor();
     $newOperator = User::factory()->create();
-    // The incoming operator ALSO holds the supervisory grant: still one copy.
-    $newOperator->givePermissionTo($permission);
+    // The incoming operator ALSO holds the supervisory role: still one copy.
+    $newOperator->assignRole(Role::findOrCreate(RequestTransferService::NOTIFIED_ROLE, 'web'));
     $destination = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 
@@ -181,10 +180,10 @@ it('sends the incoming operator exactly one notification, the assignment one (AC
     });
 });
 
-it('never notifies the actor, even holding viewAll and being the incoming operator (AC-023)', function () {
+it('never notifies the actor, even holding the role and being the incoming operator (AC-023)', function () {
     Notification::fake();
 
-    $actor = transferPerspectiveActor();
+    $actor = transferPerspectiveActor()->assignRole(Role::findOrCreate(RequestTransferService::NOTIFIED_ROLE, 'web'));
     $destination = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 
@@ -194,10 +193,10 @@ it('never notifies the actor, even holding viewAll and being the incoming operat
 });
 
 // ---------------------------------------------------------------------------
-// AC-024 — nobody holds the grant
+// AC-024 — nobody holds the role
 // ---------------------------------------------------------------------------
 
-it('transfers fine with no grant holder, notifying only the two operators (AC-024)', function () {
+it('transfers fine with no role holder, notifying only the two operators (AC-024)', function () {
     Notification::fake();
 
     $actor = transferPerspectiveActor();
@@ -214,23 +213,18 @@ it('transfers fine with no grant holder, notifying only the two operators (AC-02
 });
 
 // ---------------------------------------------------------------------------
-// AC-028 — the role lookup is gone, not commented out
+// AC-028 — the audience is the dedicated role, the viewAll lookup is gone
 // ---------------------------------------------------------------------------
 
-// Spec 0130 REQUIREMENT CHANGE (declared, not test tampering, CORE §2): the
-// permission name is no longer the literal `request-management.` string —
-// RequestTransferService::supervisors() composes it from the caller's own
-// `RequestModule` so the SAME service serves `enrollee-management` too
-// (AC-007). Decisione utente 2026-09-29: the ability composed is now
-// `viewAll` (SUPERVISORY_ABILITY), no longer `receiveTransferNotifications`.
-// AC-028 still guards the same thing — no Spatie role lookup, and the
-// permission-based resolution genuinely present, not hardcoded to one
-// module's string.
-it('resolves the supervisory audience without any role lookup (AC-028)', function () {
+// Spec 0081 rev. 2026-11-12 REQUIREMENT CHANGE (declared, not test tampering,
+// CORE §2): AC-028 used to forbid any role lookup because the audience was a
+// permission (`{module}.viewAll`, rev. 2026-09-29). The client now picks the
+// recipients by name, and admin/super-admin receive every permission by sync,
+// so the audience is the dedicated role and the `viewAll` lookup must be gone.
+it('resolves the supervisory audience from the dedicated role only (AC-028)', function () {
     $source = (string) file_get_contents(app_path('Services/RequestManagement/RequestTransferService.php'));
 
-    expect($source)->not->toContain('User::role(')
-        ->and($source)->not->toContain('use App\Models\Role;')
-        ->and($source)->toContain("SUPERVISORY_ABILITY = 'viewAll'")
-        ->and($source)->toContain('$module->permission(self::SUPERVISORY_ABILITY)');
+    expect($source)->toContain('User::role(self::NOTIFIED_ROLE)')
+        ->and($source)->not->toContain('SUPERVISORY_ABILITY')
+        ->and($source)->not->toContain('User::permission(');
 });

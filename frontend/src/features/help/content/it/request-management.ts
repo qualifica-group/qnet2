@@ -225,8 +225,8 @@ const guide: HelpGuide = {
             ['Chi aveva il contatto', 'Avviso che il contatto non è più suo e a chi è passato.'],
             ['Chi riceve il contatto', 'Avviso che il contatto gli è stato assegnato.'],
             [
-              'Chi ha il permesso **Visualizza tutti**',
-              'Riepilogo di ogni trasferimento del modulo, anche quando non è coinvolto.',
+              'Chi ha il ruolo **notifiche-trasferimenti-contatti**',
+              'Riepilogo di ogni trasferimento, anche quando non è coinvolto. Il permesso **Visualizza tutti** fa vedere tutte le richieste ma non fa ricevere il riepilogo.',
             ],
           ],
         },

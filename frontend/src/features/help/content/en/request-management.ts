@@ -225,8 +225,8 @@ const guide: HelpGuide = {
             ['Whoever had the contact', 'A notice that the contact is no longer theirs, and who it went to.'],
             ['Whoever receives the contact', 'A notice that the contact was assigned to them.'],
             [
-              'Whoever holds the **View all** permission',
-              'A summary of every transfer in the module, even when not involved.',
+              'Whoever holds the **notifiche-trasferimenti-contatti** role',
+              'A summary of every transfer, even when not involved. The **View all** permission shows every request but does not send the summary.',
             ],
           ],
         },
