@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="3">
+<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="4">
+
+  <!-- rev.4 (2026-11-12): direttiva utente "togliere il campo assegnatario ... per categoria madre se sei abilitato a tutto
+       vedi tutto, altrimenti solo quelli in cui sei abilitato". Nuova D-13, AC-028..AC-031 (REQUIREMENT CHANGED su AC-026 per
+       l'attore limitato). -->
 
   <!-- rev.3 (2026-11-09): decisione utente "nei select solo le old non abbinate, cliccando ISO prende entrambi". Nuova D-12,
        AC-024..AC-027; cambia AC-019. D-1 resta valida per Categoria prodotto. Vale anche su Opportunita' (solo righe). -->
@@ -103,6 +107,17 @@
       sovrascrive collegamenti esistenti. In dev collega 10 vecchie a 9 attuali (APL, Costi, Finanza Agevolata, Formazione, Gare x2,
       GDPR, ISO, Istruzione, SOA). Eccezione esplicita, decisione utente: "[OLD] SICUREZZA 81/08" -> "Sicurezza". Le altre si collegano dal dettaglio categoria. Le categorie importate dopo l'esecuzione della
       migrazione non vengono collegate da sole.</decision>
+    <decision id="D-13">(rev.4, direttiva utente 2026-11-12) (a) Commesse, Opportunita', Offerte e Contratti non hanno piu' il filtro
+      avanzato `assignment` ("Assegnazione"): cosa vede un attore lo decide solo lo scope di visibilita' del modulo (viewAll = tutto,
+      altrimenti i record dove ha un ruolo, piu' sede/competenza se il profilo le concede). Il nome `assignment` su questi domini ora e' 422
+      come ogni filtro sconosciuto; gli enum `work_order_assignment_scope` e `commercial_assignment_scope` sono rimossi. Il filtro
+      `assignment` dei Task resta (concetto diverso: assegnatari del task). (b) Categoria madre: `Tables\Shared\ActorParentCategories::rootIdsFor`
+      = null (nessun limite) se la competenza copre tutte le categorie o se l'attore non ha competenze; altrimenti le radici attuali
+      toccate dalla competenza. Il descrittore `parent_category` invia `actor_roots=1`: per un attore limitato il select elenca solo
+      quelle radici, senza "Tutte"; il default sono tutte quelle radici. `PresetListFilters::branchIds($value, $actor)` interseca la
+      scelta con le radici dell'attore; "Tutte", o una scelta tutta fuori, vale come tutte le sue radici. `appliedAdvancedFilters` scarta
+      le radici salvate fuori limite (se non ne resta nessuna torna il default). Una richiesta senza `parent_category` (griglie dentro
+      una scheda, client API) resta non limitata, come prima. Categoria prodotto non cambia.</decision>
   </decisions>
 
   <scope>
@@ -197,6 +212,10 @@
     <criterion id="AC-021">(rev.2) Il salvataggio di `current_category_id` su una radice vecchia verso una radice attuale riesce e compare nella risposta con nome e voce di activity log; 422 su categoria non vecchia, su sottocategoria, su destinazione vecchia o sottocategoria, su destinazione inesistente; 403 senza permesso di campo; `null` toglie il collegamento; la cancellazione della categoria attuale azzera il campo.</criterion>
     <criterion id="AC-022">(rev.2) Frontend: nel dettaglio e nel form di una radice vecchia compare il campo "Categoria attuale" con la selezione delle sole radici attuali; non compare su categorie attuali o sottocategorie; il salvataggio invia `current_category_id`.</criterion>
     <criterion id="AC-023">(rev.2) Eseguendo la migrazione: "[OLD] ISO" -> "ISO", "[OLD] GARE-" e "[OLD] GARE" -> "Gare"; una vecchia senza corrispondente, una sottocategoria vecchia e una vecchia con due attuali omonime restano senza collegamento; un collegamento gia' presente non cambia; `down` rimuove la colonna.</criterion>
+    <criterion id="AC-028">(rev.4) `GET /tables/{work-orders|opportunities|quotes|contracts}/columns` non contiene il filtro `assignment`; `POST /rows` con `advancedFilters.assignment` risponde 422; un attore con viewAll vede tutti i record, uno senza solo quelli dove ha un ruolo.</criterion>
+    <criterion id="AC-029">(rev.4) Attore con competenza su un figlio di R: con Categoria madre [R], [0] o [X] (radice estranea) le righe sono solo quelle del ramo di R; con competenza su tutte le categorie [0] non limita.</criterion>
+    <criterion id="AC-030">(rev.4) `GET /product-category-roots/for-select?actor_roots=1` per l'attore limitato elenca solo [R], senza "Tutte"; per un attore con tutte le categorie elenca "Tutte" e tutte le radici.</criterion>
+    <criterion id="AC-031">(rev.4) Filtri salvati [R, X] per l'attore limitato: `appliedAdvancedFilters` = {parent_category: [R]}; salvati [X]: `appliedAdvancedFilters` null.</criterion>
   </acceptance_criteria>
 
   <constraints>

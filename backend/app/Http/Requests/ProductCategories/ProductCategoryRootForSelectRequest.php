@@ -3,13 +3,15 @@
 namespace App\Http\Requests\ProductCategories;
 
 use App\Enums\CategoryUsageArea;
+use App\Tables\Shared\PresetListFilters;
 use Illuminate\Validation\Rule;
 
 /**
  * The root picker query: the branch picker's plus `current_only` (spec 0374),
  * which keeps the non-legacy roots and drops the "Tutte" option, and
  * `hide_linked_legacy` (spec 0374 D-12), which hides the legacy roots linked to
- * a current one (`ids[]` still resolves them).
+ * a current one (`ids[]` still resolves them), and `actor_roots` (user directive
+ * 2026-11-12), which keeps only the roots the actor works on.
  */
 class ProductCategoryRootForSelectRequest extends ProductCategoryBranchForSelectRequest
 {
@@ -22,6 +24,7 @@ class ProductCategoryRootForSelectRequest extends ProductCategoryBranchForSelect
             ...parent::rules(),
             'current_only' => ['sometimes', 'boolean'],
             'hide_linked_legacy' => ['sometimes', 'boolean'],
+            PresetListFilters::ACTOR_ROOTS_PARAM => ['sometimes', 'boolean'],
             // Spec 0389 rev.2: only the roots used in that module.
             'usage_area' => ['sometimes', Rule::enum(CategoryUsageArea::class)->except(CategoryUsageArea::All)],
         ];
@@ -30,6 +33,11 @@ class ProductCategoryRootForSelectRequest extends ProductCategoryBranchForSelect
     public function hideLinkedLegacy(): bool
     {
         return (bool) $this->validated('hide_linked_legacy', false);
+    }
+
+    public function actorRootsOnly(): bool
+    {
+        return (bool) $this->validated(PresetListFilters::ACTOR_ROOTS_PARAM, false);
     }
 
     public function currentOnly(): bool

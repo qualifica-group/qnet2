@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tables\Contracts\Concerns;
 
-use App\Services\Contracts\ContractVisibilityScope;
 use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\Contracts\ContractAdvancedFilterCatalog;
 use App\Tables\Shared\CommercialListFilterApplier;
@@ -14,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * The advanced filters of the `contracts` domain, out of
- * ContractsTableDefinition (file-size limit, engineering.md §6). Roles and
+ * ContractsTableDefinition (file-size limit, engineering.md §6). The
  * categories live on the contract's offer.
  */
 trait HasContractListFilters
@@ -24,7 +23,7 @@ trait HasContractListFilters
      */
     public function advancedFilters(): array
     {
-        return [...app(CommercialListFilterApplier::class)->presetFilters('contracts', Auth::user(), ContractVisibilityScope::seesBeyondOwnRecords(Auth::user())), ...ContractAdvancedFilterCatalog::advancedFilters()];
+        return [...app(CommercialListFilterApplier::class)->presetFilters('contracts', Auth::user()), ...ContractAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**
@@ -37,7 +36,7 @@ trait HasContractListFilters
             $contracts->whereIn('contracts.quote_id', RevenueCategoryQuoteIds::subquery($categoryIds));
         };
 
-        return app(CommercialListFilterApplier::class)->apply($query, $name, $value, Auth::user(), $applyCategories, 'quote')
+        return app(CommercialListFilterApplier::class)->apply($query, $name, $value, Auth::user(), $applyCategories)
             || parent::applyAdvancedFilter($query, $name, $descriptor, $value);
     }
 }

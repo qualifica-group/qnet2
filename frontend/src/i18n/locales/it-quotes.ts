@@ -38,7 +38,6 @@ export const quotes = {
     missingOfferLines: 'Righe offerta mancanti',
   },
   advancedFilters: {
-    assignment: 'Assegnazione',
     parentCategory: 'Categoria madre',
     productCategory: 'Categoria prodotto',
     registry: 'Anagrafica',

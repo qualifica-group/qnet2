@@ -167,10 +167,18 @@ class ProductCategoryForSelectResolver
      * leads the first page and, like a hydrated id, does not count in the total.
      * `$currentOnly` (spec 0374) keeps the non-legacy roots and drops "Tutte";
      * `$hideLinkedLegacy` hides the legacy roots linked to a current one.
+     * `$onlyRootIds` (user directive 2026-11-12) keeps just those roots and
+     * drops "Tutte": the actor's limit, which "Tutte" would claim to lift.
+     *
+     * @param  array<int, int>|null  $onlyRootIds
      */
-    public function resolveRoots(ForSelectQuery $query, bool $currentOnly = false, bool $hideLinkedLegacy = false): ForSelectResult
+    public function resolveRoots(ForSelectQuery $query, bool $currentOnly = false, bool $hideLinkedLegacy = false, ?array $onlyRootIds = null): ForSelectResult
     {
         $roots = ProductCategory::query()->select(['id', 'name'])->whereNull('parent_id');
+
+        if ($onlyRootIds !== null) {
+            $roots->whereIn('id', $onlyRootIds);
+        }
 
         if ($query->usageArea !== null) {
             $roots->whereIn('usage_area', CategoryUsageArea::valuesVisibleIn($query->usageArea));
@@ -188,7 +196,7 @@ class ProductCategoryForSelectResolver
 
         $result = $this->resolvePlain($roots, $query, includeInactive: true);
 
-        if (! $this->offersAllRoots($query)) {
+        if ($onlyRootIds !== null || ! $this->offersAllRoots($query)) {
             return $result;
         }
 

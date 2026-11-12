@@ -75,7 +75,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "In alto a destra nella pagina **Commesse** trovi i tab **Tutte**, **Da pianificare**, **In lavorazione**, **Concluse**, **Annullate** e **Disdette**. Ogni tab filtra l'elenco in base al gruppo dello **Stato lavorazione**: esito negativo significa **Annullate**, oppure **Disdette** se il contratto della commessa è stato disdetto. **Tutte** toglie il filtro. Accanto a ogni tab c'è il numero di commesse: tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Il tab si combina con gli altri filtri e con **Assegnazione**: se non vedi una commessa, controlla anche quelli.",
+          text: "In alto a destra nella pagina **Commesse** trovi i tab **Tutte**, **Da pianificare**, **In lavorazione**, **Concluse**, **Annullate** e **Disdette**. Ogni tab filtra l'elenco in base al gruppo dello **Stato lavorazione**: esito negativo significa **Annullate**, oppure **Disdette** se il contratto della commessa è stato disdetto. **Tutte** toglie il filtro. Accanto a ogni tab c'è il numero di commesse: tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Il tab si combina con gli altri filtri, compresa la **Categoria madre**: se non vedi una commessa, controlla anche quelli.",
         },
       ],
     },
@@ -85,11 +85,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Commesse** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Responsabile** e **Partecipante** (le commesse dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme: una commessa deve soddisfarli entrambi. Per vedere anche le altre commesse che puoi consultare, scegli **Tutte le visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata. Il campo **Cerca** trova le commesse anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
+          text: "All'apertura la pagina **Commesse** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le commesse dove sei **Responsabile** o **Partecipante** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** è già compilata: se sei abilitato a tutte le categorie parte da **Tutte** e puoi scegliere qualsiasi categoria madre; altrimenti l'elenco del campo mostra solo le categorie madri in cui sei abilitato, parte con tutte selezionate e la pagina mostra solo le commesse di quelle categorie (con tutte le loro sottocategorie). Puoi restringere a una o più di esse e premere **Applica**: la scelta resta salvata. Il campo **Cerca** trova le commesse anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutte le visibili** non compare: non aggiungerebbe nulla.",
+          text: "Le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione). Se non hai categorie di competenza **Categoria madre** parte da **Tutte** e non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
@@ -101,7 +101,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Il campo **Assegnazione** e la **Categoria madre** precompilata esistono solo nella pagina **Commesse**: in **Commesse di Progetto** la **Categoria madre** parte vuota, e nelle sezioni **Commesse** di un contratto o di un'anagrafica non compare. L'esportazione segue i filtri attivi.",
+          text: "La **Categoria madre** precompilata esiste solo nella pagina **Commesse**: in **Commesse di Progetto** parte vuota (ed elenca anch'essa solo le categorie madri in cui sei abilitato), e nelle sezioni **Commesse** di un contratto o di un'anagrafica non compare. L'esportazione segue i filtri attivi.",
         },
       ],
     },

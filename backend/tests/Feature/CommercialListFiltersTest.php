@@ -7,7 +7,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
 // User request 2026-11-09: Opportunità, Offerte and Contratti open like Commesse,
-// on the actor's own records in the parent categories of their competence.
+// in the parent categories of the actor's competence.
+// REQUIREMENT CHANGED (user directive 2026-11-12): no "Assegnazione" filter, the
+// visibility scope alone decides which records an actor sees; "Categoria madre"
+// lists and accepts only the parent categories the actor is enabled on.
 
 uses(RefreshDatabase::class);
 
@@ -34,7 +37,7 @@ function commercialRecord(string $domain, ProductCategory $category): array
 
 dataset('commercial grids', ['opportunities', 'quotes', 'contracts']);
 
-it('offers the presets first, sent by the page and filled from the competence', function (string $domain) {
+it('offers the parent category preset first, sent by the page and filled from the competence', function (string $domain) {
     $actor = categoryTabGridActor($domain);
     [$function, $root] = competenceVisibilityCategory();
     grantCompetence($actor, $function, ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]));
@@ -42,29 +45,10 @@ it('offers the presets first, sent by the page and filled from the competence', 
 
     $filters = collect($this->getJson("/api/tables/{$domain}/columns")->assertOk()->json('data.advancedFilters'));
 
-    expect($filters->pluck('name')->take(2)->all())->toBe(['assignment', 'parent_category'])
-        ->and($filters->pluck('name')->all())->toContain('product_category')
-        ->and($filters->firstWhere('name', 'assignment'))->toMatchArray(['required' => true, 'sendDefault' => true, 'enumKey' => 'commercial_assignment_scope', 'defaultValue' => ['supervisor', 'manager']])
-        ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['required' => true, 'sendDefault' => true, 'defaultValue' => [$root->id]]);
-})->with('commercial grids');
-
-it('offers "all visible" only to who sees more than their own records', function (string $domain) {
-    $excluded = fn (): array => collect($this->getJson("/api/tables/{$domain}/columns")->assertOk()->json('data.advancedFilters'))->firstWhere('name', 'assignment')['excludedValues'];
-
-    Sanctum::actingAs(categoryTabGridActor($domain, viewAll: false));
-    expect($excluded())->toBe(['visible']);
-
-    Sanctum::actingAs(categoryTabGridActor($domain));
-    expect($excluded())->toBe([]);
-
-    $competent = competenceVisibilityActor($domain);
-    [$function, $category] = competenceVisibilityCategory();
-    grantCompetence($competent, $function, $category);
-    Sanctum::actingAs($competent);
-    expect($excluded())->toBe([]);
-
-    Sanctum::actingAs(competenceVisibilityActor($domain));
-    expect($excluded())->toBe(['visible']);
+    expect($filters->pluck('name')->first())->toBe('parent_category')
+        ->and($filters->pluck('name')->all())->toContain('product_category')->not->toContain('assignment')
+        ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['required' => true, 'sendDefault' => true, 'defaultValue' => [$root->id]])
+        ->and($filters->firstWhere('name', 'parent_category')['source']['params'])->toMatchArray(['actor_roots' => 1]);
 })->with('commercial grids');
 
 it('does not narrow a request that omits the presets', function (string $domain) {
@@ -74,20 +58,34 @@ it('does not narrow a request that omits the presets', function (string $domain)
     expect(commercialIds($domain))->toBe([$record->id]);
 })->with('commercial grids');
 
-it('filters by supervisor or account manager, until all visible is picked', function (string $domain) {
+it('lists every record the actor sees, without an assignment filter', function (string $domain) {
     $actor = categoryTabGridActor($domain);
     $category = ProductCategory::factory()->create();
     [$supervised, $supervisedOwner] = commercialRecord($domain, $category);
     $supervisedOwner->update(['supervisor_id' => $actor->id]);
-    [$managed, $managedOwner] = commercialRecord($domain, $category);
-    $managedOwner->managers()->attach($actor->id, ['position' => 1]);
     [$other] = commercialRecord($domain, $category);
     Sanctum::actingAs($actor);
 
-    expect(commercialIds($domain, ['assignment' => ['supervisor', 'manager']]))->toBe([$supervised->id, $managed->id])
-        ->and(commercialIds($domain, ['assignment' => ['supervisor']]))->toBe([$supervised->id])
-        ->and(commercialIds($domain, ['assignment' => ['manager']]))->toBe([$managed->id])
-        ->and(commercialIds($domain, ['assignment' => ['visible']]))->toBe([$supervised->id, $managed->id, $other->id]);
+    expect(commercialIds($domain, ['parent_category' => [0]]))->toBe([$supervised->id, $other->id]);
+
+    $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['assignment' => ['visible']]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['advancedFilters.assignment']);
+})->with('commercial grids');
+
+it('limits an actor enabled on some parent categories to those, whatever is picked', function (string $domain) {
+    $actor = categoryTabGridActor($domain);
+    [$function, $root] = competenceVisibilityCategory();
+    $child = ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]);
+    grantCompetence($actor, $function, $child);
+    $foreignRoot = ProductCategory::factory()->create();
+    [$inBranch] = commercialRecord($domain, $child);
+    commercialRecord($domain, $foreignRoot);
+    Sanctum::actingAs($actor);
+
+    expect(commercialIds($domain, ['parent_category' => [$root->id]]))->toBe([$inBranch->id])
+        ->and(commercialIds($domain, ['parent_category' => [0]]))->toBe([$inBranch->id])
+        ->and(commercialIds($domain, ['parent_category' => [$foreignRoot->id]]))->toBe([$inBranch->id]);
 })->with('commercial grids');
 
 it('filters by parent branch and exact category; "Tutte" lifts the parent filter', function (string $domain) {

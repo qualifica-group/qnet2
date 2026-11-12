@@ -188,7 +188,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return [...$this->listFilters->presetFilters('opportunities', Auth::user(), OpportunityVisibilityScope::seesBeyondOwnRecords(Auth::user()), CategoryUsageArea::Opportunities), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
+        return [...$this->listFilters->presetFilters('opportunities', Auth::user(), CategoryUsageArea::Opportunities), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**

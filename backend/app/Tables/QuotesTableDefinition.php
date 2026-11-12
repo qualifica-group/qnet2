@@ -178,7 +178,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return [...$this->listFilters->presetFilters('quotes', Auth::user(), QuoteVisibilityScope::seesBeyondOwnRecords(Auth::user()), CategoryUsageArea::Opportunities), ...QuoteAdvancedFilterCatalog::advancedFilters()];
+        return [...$this->listFilters->presetFilters('quotes', Auth::user(), CategoryUsageArea::Opportunities), ...QuoteAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**

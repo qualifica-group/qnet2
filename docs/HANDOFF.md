@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Niente filtro "Assegnazione"; Categoria madre limitata alle categorie abilitate (spec 0374 rev.4) (2026-11-12) — VERDE MIRATO, NON COMMITTATO
+
+- Direttiva utente: Commesse, Opportunita', Offerte, Contratti senza il campo "Assegnazione": chi vede tutto vede tutto, gli altri
+  quello dove hanno un ruolo (lo decide solo lo scope di visibilita'). Categoria madre: abilitato a tutto -> tutto e "Tutte";
+  altrimenti solo le categorie madri abilitate, anche nel select. Spec 0374 D-13, AC-028..AC-031.
+- BE: tolti `PresetListFilters::assignmentFilter`/`ASSIGNMENT`, gli enum `WorkOrderAssignmentScope`/`CommercialAssignmentScope`
+  (+ `config.php`), i `seesBeyondOwnRecords()` dei 4 scope, `applyAssignment` in `WorkOrderAdvancedFilterApplier` e
+  `CommercialListFilterApplier` (firma di `presetFilters`/`apply` ridotta). Nuovo `Tables\Shared\ActorParentCategories::rootIdsFor`
+  (null = nessun limite: competenza su tutte le categorie OPPURE nessuna competenza). `branchIds($value, $actor)` clampa la scelta
+  alle radici dell'attore ("Tutte" o scelta tutta fuori = tutte le sue). Il descrittore `parent_category` manda `actor_roots=1`:
+  `GET /product-category-roots/for-select` elenca solo le radici dell'attore, senza "Tutte". `TableFilterStateService` scarta le
+  radici salvate fuori limite. Il filtro `assignment` dei Task NON e' toccato (concetto diverso).
+- FE: solo i18n (chiavi `advancedFilters.assignment` dei 4 moduli e i due enum) + guide IT/EN `work-orders`, `quotes`,
+  `opportunities`, `contracts`. Manuale Claude Docs aggiornato (4 paragrafi "Filtri predefiniti"); PDF da rigenerare.
+- Test: `WorkOrderListFiltersTest` e `CommercialListFiltersTest` riscritti (REQUIREMENT CHANGED) 16+16 verdi. WorkOrders 497,
+  Opportunities 290, Contracts 225, CategoryTabs 80, Tables 66 verdi; Quotes/ProductCategories/Table/Unit solo i rossi gia' noti
+  (QuoteDocumentPdf, AttributeLayoutConditionalSection AC-004, TableBulkDelete super-admin, EmploymentProductLineTest). Vitest
+  help+i18n 405, ESLint, `tsc -b --force`, Pint puliti. NON provato nel browser.
+- Da decidere/verificare: un attore con competenza limitata ma `viewAll` vede solo le sue categorie madri sulle 4 pagine (scelta
+  coerente con la direttiva). Le griglie dentro una scheda (che non mandano `parent_category`) restano senza limite di categoria.
+
 ## Righe offerta: prezzo unitario negativo per il prodotto SCONTO (2026-11-12) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: in Gestione Offerte il prezzo negativo era rifiutato, ma il prodotto "SCONTO" serve a scontare

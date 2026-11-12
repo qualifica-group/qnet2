@@ -121,11 +121,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Offerte** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Supervisore** e **Gestore account** (le offerte dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme. Per allargare l'elenco scegli **Tutti i visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata. Il campo **Cerca** trova le offerte anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
+          text: "All'apertura la pagina **Offerte** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le offerte dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** è già compilata: se sei abilitato a tutte le categorie parte da **Tutte** e puoi scegliere qualsiasi categoria madre; altrimenti l'elenco del campo mostra solo le categorie madri in cui sei abilitato, parte con tutte selezionate e la pagina mostra solo le offerte di quelle categorie (con tutte le loro sottocategorie). Puoi restringere a una o più di esse e premere **Applica**: la scelta resta salvata. Il campo **Cerca** trova le offerte anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutti i visibili** non compare: non aggiungerebbe nulla. I filtri non allargano ciò che il tuo profilo può vedere.",
+          text: "Le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione). Se non hai categorie di competenza **Categoria madre** parte da **Tutte** e non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
@@ -141,7 +141,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Offerte**: non compaiono dentro una scheda e nelle sezioni Offerte di opportunità e anagrafiche. L'esportazione segue i filtri attivi.",
+          text: "La **Categoria madre** precompilata vale solo nella pagina **Offerte**: non compare dentro una scheda e nelle sezioni Offerte di opportunità e anagrafiche. L'esportazione segue i filtri attivi.",
         },
       ],
     },

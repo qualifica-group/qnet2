@@ -40,7 +40,6 @@ export const contracts = {
     renewalDue: 'Da rinnovare',
   },
   advancedFilters: {
-    assignment: 'Assegnazione',
     parentCategory: 'Categoria madre',
     productCategory: 'Categoria prodotto',
     registry: 'Cliente',

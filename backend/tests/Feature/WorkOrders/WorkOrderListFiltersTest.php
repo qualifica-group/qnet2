@@ -11,7 +11,10 @@ use Laravel\Sanctum\Sanctum;
 
 // User request 2026-11-09: the category strip of the Commesse page is replaced
 // by advanced filters (parent category, product category, Anagrafica) and the
-// page opens on the actor's own commesse in the actor's competence.
+// page opens in the actor's competence.
+// REQUIREMENT CHANGED (user directive 2026-11-12): no "Assegnazione" filter, the
+// visibility scope alone decides which commesse an actor sees; "Categoria madre"
+// lists and accepts only the parent categories the actor is enabled on.
 
 uses(RefreshDatabase::class);
 
@@ -36,10 +39,24 @@ function commessePageIds(array $advancedFilters = []): array
 /** @return array<string, mixed> */
 function personalViewOff(): array
 {
-    return ['assignment' => ['visible'], 'parent_category' => [0]];
+    return ['parent_category' => [0]];
 }
 
-it('offers assignment and parent category preset like the Task assignment, then the other filters', function () {
+/**
+ * An actor limited to the parent category $root through a competence on one of its children.
+ *
+ * @return array{0: User, 1: ProductCategory}
+ */
+function commesseLimitedActor(bool $viewAll = true): array
+{
+    $actor = categoryTabGridActor('work-orders', viewAll: $viewAll);
+    [$function, $root] = competenceVisibilityCategory();
+    grantCompetence($actor, $function, ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]));
+
+    return [$actor, $root];
+}
+
+it('offers the parent category preset with the other filters, without an assignment filter', function () {
     $actor = categoryTabGridActor('work-orders');
     [$function, $root] = competenceVisibilityCategory();
     $child = ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]);
@@ -48,21 +65,10 @@ it('offers assignment and parent category preset like the Task assignment, then 
 
     $filters = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'));
 
-    expect($filters->pluck('name')->all())->toBe(['assignment', 'supervisors', 'participants', 'parent_category', 'product_category', 'registry'])
-        ->and($filters->firstWhere('name', 'assignment'))->toMatchArray(['type' => 'enum', 'multiple' => true, 'required' => true, 'sendDefault' => true, 'enumKey' => 'work_order_assignment_scope', 'defaultValue' => ['supervisor', 'participant']])
+    expect($filters->pluck('name')->all())->toBe(['supervisors', 'participants', 'parent_category', 'product_category', 'registry'])
         ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['type' => 'relation', 'multiple' => true, 'required' => true, 'sendDefault' => true, 'defaultValue' => [$root->id]])
-        // REQUIREMENT CHANGED (spec 0374 rev.3, D-12): the picker hides the linked legacy roots.
-        ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1]]);
-});
-
-it('offers "all visible" only to who sees more than their own commesse', function () {
-    $excluded = fn (): array => collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'))->firstWhere('name', 'assignment')['excludedValues'];
-
-    Sanctum::actingAs(categoryTabGridActor('work-orders', viewAll: false));
-    expect($excluded())->toBe(['visible']);
-
-    Sanctum::actingAs(categoryTabGridActor('work-orders'));
-    expect($excluded())->toBe([]);
+        // REQUIREMENT CHANGED (spec 0374 rev.3, D-12): the picker hides the linked legacy roots; (2026-11-12) and lists the actor's roots only.
+        ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, 'actor_roots' => 1]]);
 });
 
 it('does not narrow a request that omits the presets, as the grids inside a record and API clients do', function () {
@@ -85,41 +91,76 @@ it('presets "Tutte" for an actor without competence or with every category', fun
     expect($preset())->toBe([0]);
 });
 
-it('opens on the commesse where the actor is a supervisor or a participant, even with viewAll', function () {
+it('lists every commessa an actor with viewAll sees, not only the ones where they hold a role', function () {
     $actor = categoryTabGridActor('work-orders');
     $supervised = WorkOrder::factory()->create(['type' => WorkOrderType::Processing]);
     $supervised->supervisors()->attach($actor->id);
-    $joined = WorkOrder::factory()->create(['type' => WorkOrderType::Processing]);
-    $joined->participants()->attach($actor->id, ['position' => 1]);
     $other = WorkOrder::factory()->create(['type' => WorkOrderType::Processing]);
     Sanctum::actingAs($actor);
 
-    expect(commessePageIds(['assignment' => ['supervisor', 'participant']]))->toBe([$supervised->id, $joined->id])
-        ->and(commessePageIds(['assignment' => ['supervisor']]))->toBe([$supervised->id])
-        ->and(commessePageIds(['assignment' => ['participant']]))->toBe([$joined->id])
-        ->and(commessePageIds(['assignment' => ['visible']]))->toBe([$supervised->id, $joined->id, $other->id]);
+    expect(commessePageIds(personalViewOff()))->toBe([$supervised->id, $other->id]);
 });
 
-it('opens on the whole branch of the competence parents, in AND with the commesse of the actor, until "Tutte" is picked', function () {
-    $actor = categoryTabGridActor('work-orders');
-    [$function, $root] = competenceVisibilityCategory();
-    $competent = ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]);
-    $sibling = ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]);
-    grantCompetence($actor, $function, $competent);
+it('rejects the removed assignment filter', function () {
+    Sanctum::actingAs(categoryTabGridActor('work-orders'));
+
+    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['assignment' => ['visible']]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['advancedFilters.assignment']);
+});
+
+it('limits an actor enabled on some parent categories to the whole branch of those, whatever is picked', function () {
+    [$actor, $root] = commesseLimitedActor();
+    $inBranch = categoryTabWorkOrder([ProductCategory::factory()->create(['parent_id' => $root->id])]);
     $foreignRoot = ProductCategory::factory()->create();
-    $inBranch = categoryTabWorkOrder([$sibling]);
-    $inBranch->supervisors()->attach($actor->id);
-    $outOfBranch = categoryTabWorkOrder([$foreignRoot]);
-    $outOfBranch->supervisors()->attach($actor->id);
-    $notMine = categoryTabWorkOrder([$competent]);
+    categoryTabWorkOrder([$foreignRoot]);
     Sanctum::actingAs($actor);
 
-    $mine = ['assignment' => ['supervisor', 'participant']];
+    expect(commessePageIds(['parent_category' => [$root->id]]))->toBe([$inBranch->id])
+        ->and(commessePageIds(['parent_category' => [0]]))->toBe([$inBranch->id])
+        ->and(commessePageIds(['parent_category' => [$foreignRoot->id]]))->toBe([$inBranch->id])
+        ->and(commessePageIds(['parent_category' => [$root->id, $foreignRoot->id]]))->toBe([$inBranch->id]);
+});
 
-    expect(commessePageIds([...$mine, 'parent_category' => [$root->id]]))->toBe([$inBranch->id])
-        ->and(commessePageIds([...$mine, 'parent_category' => [0]]))->toBe([$inBranch->id, $outOfBranch->id])
-        ->and(commessePageIds([...$mine, 'parent_category' => [$foreignRoot->id]]))->toBe([$outOfBranch->id])
-        ->and(commessePageIds(['assignment' => ['visible'], 'parent_category' => [$root->id]]))->toBe([$inBranch->id, $notMine->id]);
+it('does not limit an actor enabled on every category', function () {
+    $actor = categoryTabGridActor('work-orders');
+    grantCompetenceOnAllCategories($actor);
+    [$root, $child, , $unrelated] = categoryTabTree();
+    $onChild = categoryTabWorkOrder([$child]);
+    $elsewhere = categoryTabWorkOrder([$unrelated]);
+    Sanctum::actingAs($actor);
+
+    expect(commessePageIds(['parent_category' => [0]]))->toBe([$onChild->id, $elsewhere->id])
+        ->and(commessePageIds(['parent_category' => [$root->id]]))->toBe([$onChild->id]);
+});
+
+it('lists in the parent picker only the roots of a limited actor, without "Tutte"', function () {
+    [$actor, $root] = commesseLimitedActor();
+    $foreignRoot = ProductCategory::factory()->create();
+    $ids = fn (string $query = ''): array => collect($this->getJson("/api/product-category-roots/for-select?actor_roots=1{$query}")->assertOk()->json('items'))->pluck('id')->all();
+
+    Sanctum::actingAs($actor);
+    expect($ids())->toBe([$root->id]);
+
+    $unlimited = User::factory()->create();
+    grantCompetenceOnAllCategories($unlimited);
+    Sanctum::actingAs($unlimited);
+    app()->forgetScopedInstances();
+    expect($ids())->toContain(0, $root->id, $foreignRoot->id);
+});
+
+it('drops from the saved parent category the roots outside the actor ones', function () {
+    [$actor, $root] = commesseLimitedActor();
+    $foreignRoot = ProductCategory::factory()->create();
+    Sanctum::actingAs($actor);
+    $saved = function (array $roots): mixed {
+        categoryTabSaveFilters('work-orders', ['parent_category' => $roots])->assertOk();
+
+        return $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.appliedAdvancedFilters');
+    };
+
+    expect($saved([$root->id, $foreignRoot->id]))->toBe(['parent_category' => [$root->id]])
+        ->and($saved([$foreignRoot->id]))->toBeNull();
 });
 
 it('filters by parent category through the whole branch and by product category on that category alone', function () {
@@ -146,7 +187,7 @@ it('filters by registry, reaching a multi-offer commessa through the offers of i
         ->toBe([$mono->id, $multi->id]);
 });
 
-it('keeps the visibility rule of an actor without viewAll when the presets are lifted', function () {
+it('keeps the visibility rule of an actor without viewAll: only the commesse where they hold a role', function () {
     $actor = categoryTabGridActor('work-orders', viewAll: false);
     $own = WorkOrder::factory()->create(['type' => WorkOrderType::Processing]);
     $own->participants()->attach($actor->id, ['position' => 1]);
@@ -156,20 +197,21 @@ it('keeps the visibility rule of an actor without viewAll when the presets are l
     expect(commessePageIds(personalViewOff()))->toBe([$own->id]);
 });
 
-it('refuses a non-list assignment and a non-list category', function () {
+it('refuses a non-list category', function () {
     Sanctum::actingAs(categoryTabGridActor('work-orders'));
 
-    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['assignment' => 'visible', 'parent_category' => 'x']])
+    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['parent_category' => 'x']])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['advancedFilters.assignment', 'advancedFilters.parent_category']);
+        ->assertJsonValidationErrors(['advancedFilters.parent_category']);
 });
 
-it('does not add the personal view to the Commesse di Progetto', function () {
-    Sanctum::actingAs(categoryTabGridActor('work-orders'));
+it('does not preset the parent category in the Commesse di Progetto', function () {
+    [$actor] = commesseLimitedActor();
+    Sanctum::actingAs($actor);
 
-    $names = array_column($this->getJson('/api/tables/project-work-orders/columns')->assertOk()->json('data.advancedFilters'), 'name');
+    $parent = collect($this->getJson('/api/tables/project-work-orders/columns')->assertOk()->json('data.advancedFilters'))->firstWhere('name', 'parent_category');
 
-    expect($names)->not->toContain('assignment');
+    expect($parent)->not->toHaveKey('defaultValue');
 });
 
 it('lists the first-level categories for the parent filter, containers and inactive ones included', function () {

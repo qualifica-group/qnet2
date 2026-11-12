@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserTableFilter;
+use App\Tables\Shared\ActorParentCategories;
 use App\Tables\Shared\LinkedCategoryGroups;
 use App\Tables\Shared\PresetListFilters;
 use App\Tables\TableDefinition;
@@ -26,7 +27,10 @@ use App\Tables\TableDefinition;
  */
 class TableFilterStateService
 {
-    public function __construct(private readonly LinkedCategoryGroups $groups) {}
+    public function __construct(
+        private readonly LinkedCategoryGroups $groups,
+        private readonly ActorParentCategories $actorRoots,
+    ) {}
 
     /**
      * Merge the actor's saved filter state into a resolved config so the frontend
@@ -45,7 +49,7 @@ class TableFilterStateService
         $row = $this->rowFor($definition, $actor);
 
         $saved = $this->allowlistFilters($definition, $row?->filters ?? []);
-        $savedAdvanced = $this->currentRootsOf($definition, $this->allowlistAdvanced($definition, $row?->advanced_filters ?? []));
+        $savedAdvanced = $this->currentRootsOf($definition, $actor, $this->allowlistAdvanced($definition, $row?->advanced_filters ?? []));
 
         // Emit as an object so an empty state serializes to `{}` (a valid empty
         // AG Grid filterModel), never `[]`.
@@ -58,18 +62,34 @@ class TableFilterStateService
 
     /**
      * Spec 0374 D-12: a descriptor that hides the linked legacy roots shows the
-     * current root of a saved legacy one, without touching what is stored.
+     * current root of a saved legacy one, without touching what is stored. A
+     * descriptor listing only the actor's roots (user directive 2026-11-12)
+     * drops the saved roots outside them, and falls back to its default when
+     * none is left, as the rows query does (PresetListFilters::branchIds()).
      *
      * @param  array<string, mixed>  $advanced
      * @return array<string, mixed>
      */
-    private function currentRootsOf(TableDefinition $definition, array $advanced): array
+    private function currentRootsOf(TableDefinition $definition, User $actor, array $advanced): array
     {
+        $allowedRootIds = $this->actorRoots->rootIdsFor($actor);
+
         foreach ($definition->advancedFilters() as $descriptor) {
             $name = $descriptor['name'];
+            $params = $descriptor['source']['params'] ?? [];
 
-            if (($descriptor['source']['params']['hide_linked_legacy'] ?? null) !== null && is_array($advanced[$name] ?? null)) {
-                $advanced[$name] = $this->groups->currentRootIds(PresetListFilters::ids($advanced[$name]));
+            if (($params['hide_linked_legacy'] ?? null) === null || ! is_array($advanced[$name] ?? null)) {
+                continue;
+            }
+
+            $advanced[$name] = $this->groups->currentRootIds(PresetListFilters::ids($advanced[$name]));
+
+            if ($allowedRootIds !== null && ($params[PresetListFilters::ACTOR_ROOTS_PARAM] ?? null) !== null) {
+                $advanced[$name] = array_values(array_intersect($advanced[$name], $allowedRootIds));
+
+                if ($advanced[$name] === []) {
+                    unset($advanced[$name]);
+                }
             }
         }
 

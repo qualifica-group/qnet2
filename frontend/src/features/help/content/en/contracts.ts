@@ -189,11 +189,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Contracts** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Account manager** (the contracts where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together. To widen the list choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved. The **Search** field also finds contracts by client (registry) name: part of the name is enough, for example \"napoli\".",
+          text: "When it opens, the **Contracts** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the contracts where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** is already filled in: if you are enabled on every category it starts on **All** and you can pick any parent category; otherwise the field lists only the parent categories you are enabled on, starts with all of them selected and the page shows only the contracts of those categories (with all their subcategories). You can narrow it to one or more of them and press **Apply**: your choice is saved. The **Search** field also finds contracts by client (registry) name: part of the name is enough, for example \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing. The filters never widen what your profile can see.",
+          text: "The categories you are enabled on are the competence categories of your profile (the assignment scope). If you have no competence categories **Parent category** starts on **All** and limits nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
@@ -205,7 +205,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Contracts** page: they do not appear inside a record. The export follows the active filters.",
+          text: "The pre-filled **Parent category** applies only on the **Contracts** page: it does not appear inside a record. The export follows the active filters.",
         },
       ],
     },

@@ -8,12 +8,13 @@ use App\Enums\AdvancedFilterType;
 use App\Enums\CategoryUsageArea;
 use App\Models\User;
 use App\Products\ProductCategoryBranches;
-use App\Services\Assignment\ActorCompetenceReach;
 use App\Services\ProductCategories\ProductCategoryForSelectResolver;
 
 /**
- * The advanced filters the record list pages open with already filled in,
- * shared by Commesse, Opportunità, Offerte and Contratti.
+ * The category filters of the record list pages (Commesse, Opportunità,
+ * Offerte, Contratti). The "Categoria madre" picker lists only the roots the
+ * actor works on (ActorParentCategories, user directive 2026-11-12) and every
+ * value is clamped to them on the server, so the picker is never the only guard.
  *
  * `sendDefault` makes the page send its preset explicitly, so a request that
  * omits it (a grid inside a record, which hides these filters, or an API
@@ -21,11 +22,12 @@ use App\Services\ProductCategories\ProductCategoryForSelectResolver;
  */
 final class PresetListFilters
 {
-    public const string ASSIGNMENT = 'assignment';
-
     public const string PARENT_CATEGORY = 'parent_category';
 
     public const string PRODUCT_CATEGORY = 'product_category';
+
+    /** Source param of the root picker: list only the roots of the actor (ProductCategoryRootForSelectRequest). */
+    public const string ACTOR_ROOTS_PARAM = 'actor_roots';
 
     /** Same whereIn cardinality cap as the generic AdvancedFilterApplier. */
     private const int MAX_IDS = 500;
@@ -33,38 +35,15 @@ final class PresetListFilters
     public function __construct(
         private readonly ProductCategoryBranches $branches,
         private readonly LinkedCategoryGroups $groups,
+        private readonly ActorParentCategories $actorRoots,
     ) {}
-
-    /**
-     * @param  array<int, string>  $defaultValue
-     * @param  array<int, string>  $excludedValues  options the actor gains nothing from
-     * @return array<string, mixed>
-     */
-    public static function assignmentFilter(string $labelNamespace, string $enumKey, array $defaultValue, array $excludedValues): array
-    {
-        return [
-            'name' => self::ASSIGNMENT,
-            'label' => "{$labelNamespace}.advancedFilters.assignment",
-            'type' => AdvancedFilterType::Enum,
-            'order' => 0,
-            'required' => true,
-            'sendDefault' => true,
-            'visible' => true,
-            'width' => 'md',
-            'multiple' => true,
-            'target' => self::ASSIGNMENT,
-            'enumKey' => $enumKey,
-            'defaultValue' => $defaultValue,
-            'excludedValues' => $excludedValues,
-        ];
-    }
 
     /**
      * @return array<string, mixed>
      */
     public static function parentCategoryFilter(string $labelNamespace, int $order, ?CategoryUsageArea $area = null): array
     {
-        return self::categoryFilter(self::PARENT_CATEGORY, "{$labelNamespace}.advancedFilters.parentCategory", $order, ['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, ...self::areaParam($area)]]);
+        return self::categoryFilter(self::PARENT_CATEGORY, "{$labelNamespace}.advancedFilters.parentCategory", $order, ['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, self::ACTOR_ROOTS_PARAM => 1, ...self::areaParam($area)]]);
     }
 
     /**
@@ -99,15 +78,21 @@ final class PresetListFilters
     /**
      * The categories selected by a parent category value, every picked root
      * with its descendants and, as a group (spec 0374 D-12), the legacy roots
-     * linked to it; null when "Tutte" is among the picks.
+     * linked to it; null when nothing narrows ("Tutte" picked by an actor with
+     * no limit). For a limited actor the picks are clamped to their roots:
+     * "Tutte", or a pick outside them, stands for all of them.
      *
      * @return array<int, int>|null
      */
-    public function branchIds(mixed $value): ?array
+    public function branchIds(mixed $value, ?User $actor): ?array
     {
         $rootIds = self::ids($value);
+        $allowedRootIds = $this->actorRoots->rootIdsFor($actor);
 
-        if (in_array(ProductCategoryForSelectResolver::ALL_ROOTS_ID, $rootIds, true)) {
+        if ($allowedRootIds !== null) {
+            $rootIds = array_values(array_intersect($this->groups->currentRootIds($rootIds), $allowedRootIds));
+            $rootIds = $rootIds === [] ? $allowedRootIds : $rootIds;
+        } elseif (in_array(ProductCategoryForSelectResolver::ALL_ROOTS_ID, $rootIds, true)) {
             return null;
         }
 
@@ -133,24 +118,13 @@ final class PresetListFilters
     }
 
     /**
-     * The roots of the branches the actor's competence touches, a linked legacy root as its current one. An actor with
-     * no competence, or with every category, has nothing to preset and starts
-     * on "Tutte" (as spec 0193 D-2 does for the category tabs).
+     * "Tutte" for an actor with no limit, every root of theirs otherwise.
      *
      * @return array<int, int>
      */
     private function defaultParentCategories(?User $actor): array
     {
-        $reach = $actor === null ? null : ActorCompetenceReach::for($actor);
-
-        if ($reach === null || $reach->all || $reach->isEmpty()) {
-            return [ProductCategoryForSelectResolver::ALL_ROOTS_ID];
-        }
-
-        $rootIds = $this->groups->currentRootIds(array_values(array_unique(array_map($this->branches->rootIdOf(...), $reach->categoryIds))));
-        sort($rootIds);
-
-        return $rootIds;
+        return $this->actorRoots->rootIdsFor($actor) ?? [ProductCategoryForSelectResolver::ALL_ROOTS_ID];
     }
 
     /**

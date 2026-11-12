@@ -17,14 +17,14 @@ use App\Tables\Shared\PresetListFilters;
  * (a commessa reaches them through its source offers) and are applied by
  * WorkOrderAdvancedFilterApplier.
  *
- * The Commesse page adds the presets of WorkOrderAdvancedFilterApplier on top.
+ * The Commesse page presets the parent category (WorkOrderAdvancedFilterApplier).
  */
 final class WorkOrderAdvancedFilterCatalog
 {
     public const string REGISTRY = 'registry';
 
     /** Applied by WorkOrderAdvancedFilterApplier; every other filter by the generic engine. */
-    public const array DERIVED_FILTERS = [PresetListFilters::ASSIGNMENT, PresetListFilters::PARENT_CATEGORY, PresetListFilters::PRODUCT_CATEGORY, self::REGISTRY];
+    public const array DERIVED_FILTERS = [PresetListFilters::PARENT_CATEGORY, PresetListFilters::PRODUCT_CATEGORY, self::REGISTRY];
 
     /**
      * @return array<int, array<string, mixed>>
