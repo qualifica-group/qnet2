@@ -118,7 +118,8 @@ it('shows the menu entry only to a holder of request-statistics.view', function 
     expect(statisticsNavigationChild($this->getJson('/api/navigation')->assertOk()->json('data')))->toBeNull();
 });
 
-it('lists the module and its view permission in the Role form catalogue (AC-008)', function () {
+// REQUIREMENT CHANGED (spec 0391 D-5): the module also exposes `request-statistics.update`.
+it('lists the module and its view and update permissions in the Role form catalogue (AC-008)', function () {
     Artisan::call('permissions:sync');
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     Sanctum::actingAs(User::factory()->create()->givePermissionTo('roles.viewAny'));
@@ -128,5 +129,5 @@ it('lists the module and its view permission in the Role form catalogue (AC-008)
 
     expect($module)->not->toBeNull()
         ->and($module['label_key'])->toBe('navigation.requestStatistics')
-        ->and(collect($module['permissions'])->pluck('ability')->all())->toBe(['view']);
+        ->and(collect($module['permissions'])->pluck('ability')->all())->toBe(['view', 'update']);
 });

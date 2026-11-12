@@ -51,6 +51,8 @@ export const requestManagementKeys = {
   reportOperators: (moduleKey: RequestModuleKey) => [moduleKey, 'report-operators'] as const,
   /** Query key of the report's selectable operational sites (spec 0112). */
   reportSites: (moduleKey: RequestModuleKey) => [moduleKey, 'report-sites'] as const,
+  /** Query key of the statuses each status-based statistics column counts (spec 0391). */
+  reportColumnStatuses: (moduleKey: RequestModuleKey) => [moduleKey, 'report-column-statuses'] as const,
   /**
    * Prefix of EVERY dashboard entry, whatever the filters: what a write that
    * moves an indicator (e.g. a note, "N. Telefonate Effettuate") invalidates.

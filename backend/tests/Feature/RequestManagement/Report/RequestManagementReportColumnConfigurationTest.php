@@ -123,6 +123,8 @@ if (! function_exists('columnConfigFixture')) {
         $aplOpportunity = columnConfigOpportunity($categories['apl']);
         columnConfigQuote($aplOpportunity, $bruno->id, $won->id);
         columnConfigTransitionLog($aplOpportunity, $won->id, now());
+        // Spec 0391: the columns count only configured statuses.
+        configureReportColumnsByGroup();
 
         return ['categories' => $categories, 'ada' => $ada, 'bruno' => $bruno];
     }

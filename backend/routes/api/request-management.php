@@ -6,6 +6,7 @@ use App\Http\Controllers\RequestManagement\RequestManagementController;
 use App\Http\Controllers\RequestManagement\RequestManagementDashboardController;
 use App\Http\Controllers\RequestManagement\RequestManagementReportController;
 use App\Http\Controllers\RequestManagement\RequestStatisticsCategoryPreferencesController;
+use App\Http\Controllers\RequestManagement\RequestStatisticsColumnStatusesController;
 use App\RequestManagement\RequestModule;
 use Illuminate\Support\Facades\Route;
 
@@ -116,6 +117,12 @@ foreach (RequestModule::cases() as $module) {
         Route::get("{$module->value}/report/category-tab-preferences", [RequestStatisticsCategoryPreferencesController::class, 'show'])
             ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
         Route::put("{$module->value}/report/category-tab-preferences", [RequestStatisticsCategoryPreferencesController::class, 'update'])
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        // Spec 0391: which statuses the status-based columns count. Same
+        // "declared before report/{exportRun}" rule as the literal segments above.
+        Route::get("{$module->value}/report/column-statuses", [RequestStatisticsColumnStatusesController::class, 'show'])
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        Route::put("{$module->value}/report/column-statuses", [RequestStatisticsColumnStatusesController::class, 'update'])
             ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
         // ->whereNumber() on top of the declaration order (rev-2 routing_trap):
         // the order alone works until the file gets reorganised, the constraint

@@ -308,6 +308,9 @@ it('counts requests created in range still in the first state (AC-013)', functio
     reportQuoteWithOpenAdvance($categories['gol']);
     Carbon::setTestNow();
 
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
+
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
 

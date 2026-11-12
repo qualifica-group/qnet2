@@ -63,6 +63,9 @@ it('splits the Potenziali tile by current status, largest first; a column with n
         breakdownQuote($this->category, $status);
     }
 
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
+
     $tiles = collect(breakdownDashboard($this->category, RequestManagementReportRowMode::TotalOnly)->summary)->keyBy('key');
 
     expect($tiles['current_potentials']->breakdown)->toBe([['label' => 'Attesa DOC', 'value' => 2], ['label' => 'Validato', 'value' => 1]])
@@ -77,6 +80,9 @@ it('gives each operator of the ranking their own split by status', function (): 
     breakdownQuote($this->category, $this->validated, $anna);
     breakdownQuote($this->category, $this->waiting, $bruno);
 
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
+
     $result = breakdownDashboard($this->category, RequestManagementReportRowMode::All);
     $chart = collect($result->categories[0]->charts)->firstWhere('id', "operator-{$this->category->id}-current_potentials");
     $points = collect($chart->points)->keyBy('label');
@@ -89,6 +95,9 @@ it('splits the other request columns too, never Aziende inserite', function (): 
     $won = QuoteWorkflowStatus::factory()->for($this->workflow, 'workflow')->create(['group' => WorkflowStatusGroup::ClosedWon, 'name' => 'Associato SI']);
     breakdownQuote($this->category, $won)->forceFill(['created_at' => Carbon::parse('2026-09-10')])->save();
     breakdownQuote($this->category, $won)->forceFill(['created_at' => Carbon::parse('2026-09-11')])->save();
+
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
     $tiles = collect(breakdownDashboard($this->category, RequestManagementReportRowMode::TotalOnly)->summary)->keyBy('key');
 

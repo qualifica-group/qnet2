@@ -74,6 +74,7 @@ import { dashboard } from './it-dashboard'
 import { agentSalesReport } from './it-agent-sales-report'
 import { requestManagement } from './it-request-management'
 import { categoryTabs } from './it-category-tabs'
+import { requestStatisticsColumns } from './it-request-statistics-columns'
 import { enrolleeManagement } from './it-enrollee-management'
 import { fieldChangeRequests } from './it-field-change-requests'
 import { notes } from './it-notes'
@@ -454,6 +455,7 @@ export const it: TranslationResources = {
   agentSalesReport,
   requestManagement,
   categoryTabs,
+  requestStatisticsColumns,
   enrolleeManagement,
   // Messaggi di validazione condivisi della mappa dinamica `attribute_values`
   // (spec 0084): namespace neutro riusato da ogni contesto che la raccoglie

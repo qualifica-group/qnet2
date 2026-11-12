@@ -4,6 +4,9 @@ return [
 
     // GA2 cell labels (spec 0106, AC-005/AC-007): "TOTALE" is the branch
     // aggregate row, "Non assegnato" the requests with no GA2 Operatore.
+    // Spec 0391: the global status set (requests without a workflow) in the column configurator.
+    'default_statuses' => 'Stati predefiniti',
+
     'labels' => [
         'total' => 'TOTALE',
         'unassigned' => 'Non assegnato',

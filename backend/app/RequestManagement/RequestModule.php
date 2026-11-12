@@ -46,6 +46,9 @@ enum RequestModule: string
      */
     public const string STATISTICS_PERMISSION = 'request-statistics.view';
 
+    /** Spec 0391 D-5: saving which statuses the statistics columns count. */
+    public const string STATISTICS_CONFIGURE_PERMISSION = 'request-statistics.update';
+
     /**
      * "{value}.{ability}" — the same concatenation BasePolicy::permission()
      * performs, exposed here so every scope/authorization caller reads the

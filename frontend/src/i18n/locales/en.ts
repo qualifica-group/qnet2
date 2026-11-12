@@ -82,6 +82,7 @@ import { settings } from './en-settings'
 import { agentSalesReport } from './en-agent-sales-report'
 import { requestManagement } from './en-request-management'
 import { categoryTabs } from './en-category-tabs'
+import { requestStatisticsColumns } from './en-request-statistics-columns'
 import { enrolleeManagement } from './en-enrollee-management'
 import { notes } from './en-notes'
 import { richText } from './en-rich-text'
@@ -468,6 +469,7 @@ export const en = {
   agentSalesReport,
   requestManagement,
   categoryTabs,
+  requestStatisticsColumns,
   enrolleeManagement,
   // Shared validation messages of the `attribute_values` dynamic map (spec
   // 0084): a neutral namespace reused by every context that collects it

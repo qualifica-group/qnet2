@@ -110,19 +110,28 @@ it('AC-004: unhandled_new_contacts counts first-state requests created at any ti
     rangeFreeQuote($this->category, ['created_at' => Carbon::parse('2026-01-15')]);
     rangeFreeQuote($this->category, ['created_at' => Carbon::parse('2026-09-10')]);
     rangeFreeQuote($this->category, ['quote_workflow_status_id' => rangeFreeStatus(WorkflowStatusGroup::Pending)]);
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
     expect(rangeFreeTotal('unhandled_new_contacts', $this->category))->toBe(2)
         ->and(rangeFreeTotal('nuovi_contatti', $this->category))->toBe(1);
 });
 
-it('AC-005: current_potentials counts requests currently pending or validated, with no transition needed', function (): void {
+it('AC-005: current_potentials counts requests in a configured status whatever the range, potenziali only those created in it', function (): void {
     rangeFreeQuote($this->category, ['quote_workflow_status_id' => rangeFreeStatus(WorkflowStatusGroup::Pending)]);
     rangeFreeQuote($this->category, ['quote_workflow_status_id' => rangeFreeStatus(WorkflowStatusGroup::Validated)]);
     rangeFreeQuote($this->category, ['quote_workflow_status_id' => rangeFreeStatus(WorkflowStatusGroup::ClosedWon)]);
+    rangeFreeQuote($this->category, [
+        'quote_workflow_status_id' => rangeFreeStatus(WorkflowStatusGroup::Pending),
+        'created_at' => Carbon::parse('2026-01-10'),
+    ]);
     rangeFreeQuote($this->category);
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
-    expect(rangeFreeTotal('current_potentials', $this->category))->toBe(2)
-        ->and(rangeFreeTotal('potenziali', $this->category))->toBe(0); // no logged transition in range
+    // REQUIREMENT CHANGED (spec 0391 D-3): "potenziali" follows the creation date (today, inside the range), not the history.
+    expect(rangeFreeTotal('current_potentials', $this->category))->toBe(3)
+        ->and(rangeFreeTotal('potenziali', $this->category))->toBe(2);
 });
 
 it('AC-006: only the three range-bound twins carry the period suffix, range-free ones keep the original names', function (): void {

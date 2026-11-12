@@ -28,6 +28,7 @@ const guide: HelpGuide = {
             "Serve il permesso **Statistiche Gestione Richieste › Visualizza**, che si assegna in **Configurazione › Sistema › Ruoli**: senza, la voce di menu non compare e la pagina mostra l'accesso negato.",
             "Ognuno vede solo le richieste che vede già nell'elenco: con **Visualizza tutti** tutte; altrimenti quelle di cui è GA2, più quelle delle proprie sedi con **Visualizza per sede**.",
             'I filtri possono solo restringere questa visibilità, mai allargarla.',
+            'Per scegliere quali stati contano le colonne serve anche **Statistiche Gestione Richieste › Modifica** (vedi "Scegliere gli stati delle colonne").',
           ],
         },
       ],
@@ -219,7 +220,7 @@ const guide: HelpGuide = {
             [
               'N. Telefonate Effettuate',
               'Le note collegate alla richiesta e scritte dal suo GA2: ogni nota vale una telefonata.',
-              'Data di creazione della nota. Escluse le richieste ancora Aperte, le note cancellate, generali o scritte da altri; per Non assegnato vale sempre 0.',
+              'Data di creazione della nota. Escluse le richieste ancora nello stato iniziale del flusso (Nuovo Contatto), le note cancellate, generali o scritte da altri; per Non assegnato vale sempre 0.',
             ],
             [
               'N. Richiami non gestiti',
@@ -233,31 +234,31 @@ const guide: HelpGuide = {
             ],
             [
               'N. Nuovi contatti non gestiti',
-              'Le richieste ancora nello stato Aperto.',
+              'Le richieste che oggi sono in uno degli stati scelti per la colonna (di solito "Nuovo Contatto").',
               'Ignora il periodo: conta anche le richieste create prima.',
             ],
             [
               'N. Nuovi contatti non gestiti (nel periodo selezionato)',
-              'Le richieste create nel periodo e ancora nello stato Aperto.',
+              'Gli stessi stati della colonna precedente, solo per le richieste create nel periodo.',
               'Data di creazione della richiesta.',
             ],
             [
               'N. Potenziali associati',
-              'Le richieste che oggi si trovano in uno stato del gruppo In attesa o Validato.',
+              'Le richieste che oggi sono in uno degli stati scelti per la colonna (per esempio "In trattativa").',
               'Ignora il periodo: guarda lo stato attuale.',
             ],
             [
               'N. Potenziali associati (nel periodo selezionato)',
-              'Le richieste passate nel periodo a uno stato del gruppo In attesa o Validato.',
-              'Data del cambio di stato; ogni richiesta conta una volta.',
+              'Gli stessi stati della colonna precedente, solo per le richieste create nel periodo.',
+              'Data di creazione della richiesta. Guarda lo stato attuale: una richiesta passata a uno stato non scelto (per esempio "Rimandata") non conta.',
             ],
             [
               'Associati',
-              'Le richieste che oggi si trovano in uno stato del gruppo Chiuso con esito positivo.',
-              'Data di creazione della richiesta. Guarda lo stato attuale: una richiesta chiusa positiva e poi spostata in un altro stato non conta.',
+              'Le richieste che oggi sono in uno degli stati scelti per la colonna (di solito quelli chiusi con esito positivo).',
+              'Data di creazione della richiesta. Guarda lo stato attuale: una richiesta spostata poi in uno stato non scelto non conta.',
             ],
-            ['Trattative Concluse', 'Stesso calcolo di Associati.', 'Cambia solo il nome, secondo le categorie che lo usano.'],
-            ['Invio Presa in carico', 'Stesso calcolo di Associati.', 'Cambia solo il nome, secondo le categorie che lo usano.'],
+            ['Trattative Concluse', 'Come Associati, con gli stati scelti per questa colonna.', 'Data di creazione della richiesta.'],
+            ['Invio Presa in carico', 'Come Associati, con gli stati scelti per questa colonna (per Orientamento specialistico: "Da convocare").', 'Data di creazione della richiesta.'],
             [
               'Aziende inserite',
               'Le anagrafiche di tipo azienda create nel periodo e collegate come cliente a una richiesta.',
@@ -278,7 +279,30 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'I cambi di stato contano sia se fatti da Gestione Richieste sia dal modulo Offerte.',
+          text: 'Per Presa Appuntamenti i cambi di stato contano sia se fatti da Gestione Richieste sia dal modulo Offerte.',
+        },
+      ],
+    },
+    {
+      id: 'statistics-column-statuses',
+      title: 'Scegliere gli stati delle colonne',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Le colonne N. Nuovi contatti non gestiti, N. Potenziali associati, Associati, Trattative Concluse e Invio Presa in carico contano solo le richieste che si trovano in uno degli stati di lavorazione scelti per quella colonna. La versione "(nel periodo selezionato)" di una colonna usa la stessa scelta: in più conta solo le richieste create nel periodo.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Clicca **Colonne e stati** (icona delle colonne in alto a destra nella pagina). Serve il permesso **Statistiche Gestione Richieste › Modifica**.',
+            'Scegli la colonna dalle schede in alto: tra parentesi il numero di stati già scelti.',
+            'Spunta gli stati che la colonna deve contare. Gli stati sono raggruppati per flusso (con le categorie a cui si applica); **Stati predefiniti** sono quelli delle richieste senza flusso. **Tutti** e **Nessuno** agiscono sul singolo flusso; la ricerca filtra per flusso, categoria o stato.',
+            'Ripeti per le altre colonne e premi **Salva**: la scelta di tutte le colonne si salva insieme e i numeri della pagina si aggiornano. **Ripristina** annulla le modifiche non salvate.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Uno stato non scelto non conta in nessuna colonna. Per contare qualcosa di nuovo, crea lo stato nel **Configuratore Stati Offerta** del flusso e poi sceglilo qui. Una colonna senza stati scelti vale 0; quali colonne mostra una categoria si decide sempre in Colonne report di Categorie Prodotto.',
         },
       ],
     },
@@ -312,14 +336,14 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Perché vedo 0?** La colonna è tra quelle non ancora calcolate; nel periodo non è successo nulla; le note sono di un utente diverso dal GA2; la richiesta è ancora in Aperto; sede e operatore scelti non hanno nulla in comune.',
+            '**Perché vedo 0?** La colonna è tra quelle non ancora calcolate; nel periodo non è successo nulla; le note sono di un utente diverso dal GA2; la richiesta è ancora in Nuovo Contatto; sede e operatore scelti non hanno nulla in comune; per quella colonna non è scelto nessuno stato del flusso della categoria (vedi **Colonne e stati**).',
             '**Perché una cella è vuota e non 0?** La colonna non è configurata per quella categoria: controlla Colonne report in Categorie Prodotto.',
             '**Perché un operatore non compare?** Non ha valori diversi da zero nel periodo, hai scelto Solo totale, è escluso dai filtri Operatori o Sedi, oppure non vedi le sue richieste con i tuoi permessi.',
             '**Perché manca "Non assegnato"?** Non ci sono richieste senza operatore che contribuiscono ai conteggi, oppure hai filtrato per sede.',
             '**Perché i totali del padre non includono una sottocategoria?** La sottocategoria ha Visibile nei report a no, direttamente o per eredità.',
             "**Perché i numeri di un operatore sono cambiati dopo un trasferimento?** I conteggi guardano l'operatore attuale: le note del vecchio operatore non contano più come telefonate.",
             '**Perché alcune colonne non cambiano con il periodo?** N. Richiami non gestiti, N. Nuovi contatti non gestiti e N. Potenziali associati guardano sempre alla situazione di oggi. Per il dato del periodo usa la loro versione "(nel periodo selezionato)", da attivare in Colonne report della categoria.',
-            '**Perché Associati vale 0 anche se ho richieste chiuse con esito positivo?** Associati, Trattative Concluse e Invio Presa in carico contano le richieste create nel periodo scelto: con il periodo di oggi restano fuori quelle create nei giorni precedenti. Allarga il periodo Dal/Al.',
+            '**Perché Associati vale 0 anche se ho richieste chiuse con esito positivo?** Associati, Trattative Concluse e Invio Presa in carico contano le richieste create nel periodo scelto: con il periodo di oggi restano fuori quelle create nei giorni precedenti. Allarga il periodo Dal/Al, e controlla in **Colonne e stati** che lo stato sia scelto per la colonna.',
             '**Perché il Totale complessivo è più basso della somma delle categorie?** Una richiesta presente in più categorie selezionate conta una volta sola nel totale complessivo.',
             '**Perché non vedo la variazione percentuale?** Serve un periodo con entrambe le date Dal e Al (Tutto o un solo estremo non hanno un periodo precedente); se il valore è 0 sia ora sia nel periodo precedente la variazione non compare.',
           ],

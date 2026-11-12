@@ -193,7 +193,9 @@ class QualificaRoleSeeder extends Seeder
                 || $this->isSelectOnlyGrant($resource, $ability, Catalogue::OWN_REQUESTS_SELECT_ONLY_RESOURCES),
             Catalogue::CATALOG_AND_REGISTRIES => in_array($resource, Catalogue::CATALOG_AND_REGISTRIES_MODULES, true)
                 || $this->isSelectOnlyGrant($resource, $ability, Catalogue::CATALOG_AND_REGISTRIES_SELECT_ONLY_RESOURCES),
-            Catalogue::STATUS_CONFIGURATOR => in_array($resource, Catalogue::STATUS_CONFIGURATOR_MODULES, true),
+            // Spec 0391 D-5: who manages the statuses also chooses which ones the statistics count.
+            Catalogue::STATUS_CONFIGURATOR => in_array($resource, Catalogue::STATUS_CONFIGURATOR_MODULES, true)
+                || $permission === RequestModule::STATISTICS_CONFIGURE_PERMISSION,
             Catalogue::REWARDS => in_array($resource, Catalogue::REWARDS_MODULES, true),
             Catalogue::USERS_AND_ROLES => in_array($resource, Catalogue::USERS_AND_ROLES_MODULES, true)
                 && ! in_array($ability, Catalogue::USERS_AND_ROLES_DENIED_ABILITIES, true),
