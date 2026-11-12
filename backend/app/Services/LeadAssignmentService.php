@@ -9,6 +9,7 @@ use App\Services\Assignment\AssignmentCandidates;
 use App\Services\Assignment\AssignmentSiteResolver;
 use App\Services\Assignment\LeadCompetence;
 use App\Services\Assignment\OperatorsBySitePoolRestriction;
+use App\Services\Leads\LeadRequestOperatorFollower;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -31,6 +32,7 @@ class LeadAssignmentService
         private readonly AssignmentSiteResolver $siteResolver,
         private readonly AssignmentCandidates $candidates,
         private readonly OperatorsBySitePoolRestriction $poolRestriction,
+        private readonly LeadRequestOperatorFollower $requestFollower,
     ) {}
 
     /**
@@ -54,10 +56,17 @@ class LeadAssignmentService
             $siteByLead = $this->resolveSites($orderedLeadIds);
             $this->writeResolvedSites($siteByLead);
 
-            // Step 2: apply the operator(s) per mode.
-            return $mode === LeadAssignmentMode::Single
+            // Step 2: apply the operator(s) per mode, remembering the previous ones.
+            $previousOperators = $this->currentOperators($orderedLeadIds);
+            $outcome = $mode === LeadAssignmentMode::Single
                 ? $this->assignSingleOperator($orderedLeadIds, $operatorId)
                 : $this->assignBalanced($orderedLeadIds, $siteByLead, $operatorsBySite, $useCurrentLoad);
+
+            // Step 3 (task 427463): the requests born from these leads follow
+            // the new operator; the mass UPDATE fires no model event.
+            $this->requestFollower->follow($previousOperators);
+
+            return $outcome;
         });
     }
 
@@ -104,6 +113,19 @@ class LeadAssignmentService
         foreach ($leadIdsBySite as $siteId => $leadIds) {
             Lead::query()->whereIn('id', $leadIds)->update(['operational_site_id' => $siteId]);
         }
+    }
+
+    /**
+     * @param  array<int, int>  $orderedLeadIds
+     * @return array<int, int|null> lead id => operator before this assignment
+     */
+    private function currentOperators(array $orderedLeadIds): array
+    {
+        return Lead::query()
+            ->whereIn('id', $orderedLeadIds)
+            ->pluck('operator_id', 'id')
+            ->map(static fn (mixed $operatorId): ?int => $operatorId === null ? null : (int) $operatorId)
+            ->all();
     }
 
     /**

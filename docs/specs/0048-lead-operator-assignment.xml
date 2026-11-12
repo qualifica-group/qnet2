@@ -201,6 +201,17 @@
       (se di un'altra Sede) viene azzerato.</ac>
     <ac id="AC-063">In edit, se il Lead ha gia' Sede e/o Operatore, i campi sono
       correttamente precompilati e coerenti tra loro.</ac>
+
+    <!-- Rettifica 2026-11-12 (task 427463): le richieste seguono l'operatore del lead -->
+    <ac id="AC-070">Quando l'operatore di un lead GIA' convertito cambia verso un utente
+      (form, cella griglia, import, assegnazione massiva), ogni richiesta (Offerta) della sua
+      opportunita' con Operatore vuoto o uguale al precedente operatore del lead, e non chiusa
+      (gruppo stato diverso da closed_won/closed_lost), prende il nuovo operatore via
+      `RequestOperatorWriter::apply()` (squadra coerente), con notifica di assegnazione e voce
+      di attivita' sull'opportunita'. Operatore scelto a mano in Gestione Richieste, richieste
+      chiuse e operatore del lead svuotato: nessuna modifica. Implementazione:
+      `LeadRequestOperatorFollower`, chiamato da `Lead::booted()` (evento updated) e da
+      `LeadAssignmentService` (UPDATE massivo senza eventi).</ac>
   </acceptance-criteria>
 
   <non-goals>

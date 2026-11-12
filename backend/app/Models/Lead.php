@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\LeadLifecycleStatus;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
+use App\Services\Leads\LeadRequestOperatorFollower;
 use Database\Factories\LeadFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,21 @@ class Lead extends BaseModel
 {
     /** @use HasFactory<LeadFactory> */
     use HasFactory, LogsModelActivity;
+
+    /**
+     * Task 427463: every per-record write of the Operatore (form, grid cell,
+     * import) reaches the requests born from this lead. The bulk assignment
+     * writes by query and calls the follower itself.
+     */
+    protected static function booted(): void
+    {
+        static::updated(static function (Lead $lead): void {
+            if ($lead->wasChanged('operator_id')) {
+                $previous = $lead->getOriginal('operator_id');
+                app(LeadRequestOperatorFollower::class)->follow([$lead->id => $previous === null ? null : (int) $previous]);
+            }
+        });
+    }
 
     /**
      * @return array<string, string>

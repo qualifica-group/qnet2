@@ -143,6 +143,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Se assegni o cambi l'**Operatore** del lead dopo la conversione, anche le richieste nate dal lead passano al nuovo operatore, che riceve la notifica. Restano invariate le richieste chiuse e quelle a cui hai assegnato a mano un altro operatore in Gestione Richieste; togliere l'operatore dal lead non lo toglie dalle richieste.",
+        },
+        {
+          type: 'paragraph',
           text: "La conversione viene bloccata se il lead ha già un'opportunità, se la campagna non ha funzione aziendale o categoria prodotto, o se l'anagrafica ha già un'opportunità aperta (in quel caso aggiungi l'offerta a quella esistente).",
         },
         {
