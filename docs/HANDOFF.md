@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Risponde a / sottoposti allineati al legacy `user_responses` (2026-11-12) — VERDE MIRATO, COMMITTATO
+
+- Causa: nel legacy la gerarchia vera e' la tabella molti-a-molti `user_responses` (`User::rispondeA/subordinati`,
+  usata da form e tabella utenti); la colonna `users.risponde_a` e' vecchia (22 utenti, 9 incoerenti). L'API mandava
+  `reports_to_id` = `risponde_a`; su Qualifica (link-only) "Risponde a" lo scrivono invece i seeder (ReportsToRoster +
+  superiori dell'organigramma in QualificaHrCatalogSeeder). Es. Nicoletta Esposito: legacy -> Ilaria Striano con 5
+  sottoposti; qnet-2 -> Jessica Chentrens, nessun sottoposto. Sul DB dev 115 utenti su 161 diversi.
+- Legacy (`../qnet`, non committato): `UserMigrationController` manda `reports_to_ids` (lista da `user_responses`,
+  ordinata) al posto di `reports_to_id`; `LegacyPlaceholderUser` `reports_to_ids => []`. `php -l` + tinker ok.
+- qnet-2: `MapsExternalUserRecord` legge `reports_to_ids` (tutti i responsabili, warning per quelli non migrati;
+  backfill "fill once" invariato); `UsersSource` tolta la colonna di anteprima, lista nel `sampleResponse`.
+  Fixture `UsersSource*Test` passate a `reports_to_ids` (REQUIREMENT CHANGED).
+- Nuovo one-shot (direttiva utente): `php artisan db:seed --class=QualificaLegacyReportsToSeeder --force`, DOPO la
+  sorgente `users`. Legge dal vivo l'endpoint legacy `users` e SOSTITUISCE il pivot `employment_profile_manager` di ogni
+  utente con `old_id` elencato dal legacy; non tocca utenti senza `old_id` o non elencati. Simulazione in sola lettura
+  su dev: 402 utenti legacy, 115 da riallineare, 0 responsabili non migrati. NON eseguito su dev (regola no seed).
+  Test `tests/Feature/Seeding/QualificaLegacyReportsToSeederTest.php` 4/4.
+- Attenzione: `QualificaReportsToSeeder` e `QualificaHrCatalogSeeder` restano nella catena di produzione; rieseguirli
+  rimette (in parte) la gerarchia dei seeder. Il legacy va deployato prima del seeder.
+- Test: Migration 925, Seeding 276, Users 292 verdi; Pint ok; Vitest help 161/161. Guide migrations IT/EN + manuale
+  Claude Docs (Migrazioni, sorgente Utenti) aggiornati.
+
 ## Eliminazione stato offerta in uso: il messaggio elenca le offerte (2026-11-12) — VERDE MIRATO, COMMITTATO
 
 - `QuoteWorkflowStatusUsageGuard` (spec 0377): il 409 ora dice `Nome (N): QUO-1, QUO-2, ...` per stato (max 10 codici, poi "e altre N"; stati separati da `; `). Nuova chiave `lang/it.json` "and :count more". 2 test nuovi in `QuoteWorkflowStatusUsageGuardTest` (78/78 verdi in `tests/Feature/QuoteWorkflows`). Guida in-app quote-workflows IT/EN + manuale Claude Docs aggiornati.

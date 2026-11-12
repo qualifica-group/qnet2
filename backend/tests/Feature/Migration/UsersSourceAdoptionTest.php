@@ -240,7 +240,7 @@ it('in link-only mode relinks the manager of a created user, never the employmen
 
     // The created user (501) reports to 600, created later in the same run.
     runLegacyUsersImport([
-        legacyUserRecord(['reports_to_id' => 600]),
+        legacyUserRecord(['reports_to_ids' => [600]]),
         legacyUserRecord(['id' => 502, 'email' => 'anna.bianchi@legacy.test', 'first_name' => 'Anna', 'last_name' => 'Bianchi', 'company_id' => 920, 'relationship_type' => 'employee']),
         legacyUserRecord(['id' => 600, 'email' => 'luca.verdi@legacy.test', 'first_name' => 'Luca', 'last_name' => 'Verdi']),
     ]);

@@ -58,6 +58,7 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
     $country = Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     $state = State::factory()->for($country)->create(['name' => 'Lazio']);
     $manager = User::factory()->create(['old_id' => 900]);
+    $secondManager = User::factory()->create(['old_id' => 901]);
     $company = Company::factory()->create(['old_id' => 920]);
     $operationalSite = OperationalSite::factory()->create(['old_id' => 930]);
     $role = Role::factory()->create(['name' => 'Admin', 'old_id' => 68]);
@@ -84,7 +85,7 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
                 'personal_phone' => '+39 333 1234567',
                 'is_active' => true,
                 'job_description' => 'Engineer',
-                'reports_to_id' => 900,
+                'reports_to_ids' => [900, 901],
                 'business_function_id' => 910,
                 'relationship_type' => 'employee',
                 'company_id' => 920,
@@ -136,7 +137,8 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
 
     $employment = $ada->employment;
     expect($employment)->not->toBeNull()
-        ->and($employment->reportsToIds)->toBe([$manager->id])
+        // Every legacy manager (`user_responses`), not just one.
+        ->and(collect($employment->reportsToIds)->sort()->values()->all())->toBe([$manager->id, $secondManager->id])
         ->and($employment->company_id)->toBe($company->id)
         ->and($employment->primary_operational_site_id)->toBe($operationalSite->id)
         ->and($employment->remote_operational_site_ids)->toBe([])
@@ -222,7 +224,7 @@ it('warns (non-fatally) on unresolved role and employment references', function 
                 'first_name' => 'Grace',
                 'last_name' => 'Hopper',
                 'roles' => [['id' => 55, 'name' => 'operator'], ['id' => 999, 'name' => 'ghost']],
-                'reports_to_id' => 777,
+                'reports_to_ids' => [777],
                 'operational_site_id' => 888,
                 'relationship_type' => 'not-a-real-type',
             ]],
@@ -296,10 +298,14 @@ it('rejects a row whose password is not a valid bcrypt hash', function () {
 // ---------------------------------------------------------------------------
 
 it('no longer exposes business_function_id in the users column catalogue', function () {
-    $columns = collect(app(MigrationRegistry::class)->resolve('users')->columns())->pluck('id');
+    $source = app(MigrationRegistry::class)->resolve('users');
+    $columns = collect($source->columns())->pluck('id');
 
-    expect($columns)->not->toContain('business_function_id')
-        ->and($columns)->toContain('reports_to_id', 'company_id', 'operational_site_id');
+    // REQUIREMENT CHANGED 2026-11-12: the managers come as the `reports_to_ids`
+    // list (legacy `user_responses`), shown in the sample, not as a column.
+    expect($columns)->not->toContain('business_function_id', 'reports_to_id')
+        ->and($columns)->toContain('company_id', 'operational_site_id')
+        ->and($source->sampleResponse()['items'][0]['reports_to_ids'])->toBe([1, 2]);
 });
 
 it('imports a record still carrying business_function_id without error, ignoring the field', function () {
