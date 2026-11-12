@@ -34,4 +34,5 @@ export const agentSalesReportRenderers: TableRendererMap = {
   reporter: quoteColumnRenderers.reporter,
   managers: quoteColumnRenderers.managers,
   revenue_net: quoteColumnRenderers.revenue_net,
+  revenue_net_after_reporter: quoteColumnRenderers.revenue_net,
 }

@@ -7,6 +7,8 @@ export const agentSalesReport = {
     acceptedAt: 'Data accettazione',
     registry: 'Azienda',
     title: 'Titolo',
+    rootCategory: 'Linea prodotto',
+    category: 'Categoria prodotto',
     address: 'Indirizzo',
     postalCode: 'CAP',
     city: 'Città',
@@ -18,6 +20,7 @@ export const agentSalesReport = {
     revenueNet: 'Imponibile',
     commercial: 'Commerciale',
     reporter: 'Segnalatore',
+    revenueNetAfterReporter: 'Imponibile al netto segnalatore',
   },
   export: {
     menu: 'Esporta',

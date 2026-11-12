@@ -7,6 +7,8 @@ export const agentSalesReport = {
     acceptedAt: 'Accepted on',
     registry: 'Company',
     title: 'Title',
+    rootCategory: 'Product line',
+    category: 'Product category',
     address: 'Address',
     postalCode: 'Postal code',
     city: 'City',
@@ -18,6 +20,7 @@ export const agentSalesReport = {
     revenueNet: 'Net revenue',
     commercial: 'Sales agent',
     reporter: 'Reporter',
+    revenueNetAfterReporter: 'Net revenue after reporter',
   },
   export: {
     menu: 'Export',

@@ -19,7 +19,7 @@ const guide: HelpGuide = {
           items: [
             'Serve il permesso **Report Vendite Agenti › Visualizza**, che si assegna in **Configurazione › Sistema › Ruoli**: senza, la voce di menu non compare e la pagina mostra l’accesso negato.',
             'Ognuno vede solo le offerte a cui ha accesso nel modulo **Offerte**: il report non allarga mai la tua visibilità, e vale anche per i file scaricati.',
-            'Clicca il **N. offerta** di una riga per aprire l’offerta.',
+            'Il pulsante **Visualizza** (l’occhio) nella colonna **Azioni** apre l’offerta in una finestra sopra il report: chiudendola torni all’elenco con i tuoi filtri. Serve il permesso di vedere le Offerte. Con Ctrl/Cmd+clic, o cliccando il **N. offerta**, si apre invece la pagina dell’offerta.',
           ],
         },
       ],
@@ -37,11 +37,14 @@ const guide: HelpGuide = {
             ['Data accettazione', 'La data in cui l’offerta è entrata in uno stato vinto (chiuso con esito positivo). Resta vuota se l’offerta non è vinta; se torna in uno stato non vinto si svuota, se passa tra due stati vinti non cambia.'],
             ['Azienda, Indirizzo, CAP, Città, Telefono, Email', 'Anagrafica del cliente: indirizzo e contatti principali.'],
             ['Titolo', 'Il titolo dell’offerta.'],
+            ['Linea prodotto', 'La categoria madre dei prodotti venduti (ISO, SOA, GDPR, Sicurezza, Gare, APL, Formazione…). Se l’offerta non ha ancora prodotti, quella delle categorie indicate sull’opportunità. Più valori sono separati da virgola.'],
+            ['Categoria prodotto', 'La categoria dei prodotti venduti (per esempio ISO - 14001), con la stessa regola della Linea prodotto.'],
             ['Unità aziendale', 'La sede aziendale dell’offerta.'],
             ['Responsabili', 'I gestori account dell’offerta.'],
             ['Fase', 'Lo stato di lavorazione dell’offerta.'],
             ['Imponibile', 'L’importo dell’offerta al netto dell’IVA.'],
             ['Commerciale, Segnalatore', 'Le persone che hanno venduto e segnalato l’offerta.'],
+            ['Imponibile al netto segnalatore', 'L’imponibile meno le provvigioni del segnalatore sulle righe dell’offerta (la percentuale del segnalatore applicata a ogni prodotto). Le provvigioni di commerciale, supervisore e fornitore non vengono tolte.'],
           ],
         },
         {
@@ -56,7 +59,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Usa la ricerca in alto per cercare nel titolo e nel numero offerta, i filtri delle colonne (per esempio **Azienda**, **Commerciale**, **Fase**, **Data accettazione**) e i **filtri salvati** per ritrovare le tue combinazioni abituali. Il numero di offerte trovate compare nella barra sopra la tabella.',
+          text: 'Usa la ricerca in alto per cercare nel titolo e nel numero offerta, i filtri delle colonne (per esempio **Azienda**, **Linea prodotto**, **Categoria prodotto**, **Commerciale**, **Fase**, **Data accettazione**) e i **filtri salvati** per ritrovare le tue combinazioni abituali. Il numero di offerte trovate compare nella barra sopra la tabella.',
         },
         {
           type: 'tip',

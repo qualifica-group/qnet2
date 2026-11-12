@@ -6,9 +6,11 @@ namespace App\Tables\AgentSalesReport;
 
 /**
  * Declarative column catalogue of the `agent-sales-report` domain (spec 0365, D-4/D-5): the 16
- * columns of the legacy "Sommario" export in the same order, all read-only. The three real
- * `quotes` columns (`code`, `title`, `revenue_net`, dates) are handled by the generic engine;
- * the rest is derived (AgentSalesReportRegistryColumns, QuoteRelationColumns).
+ * columns of the legacy "Sommario" export in the same order, all read-only, plus the product
+ * line and category (tasks 427625/427940, AgentSalesReportCategoryColumns) after the title and
+ * the taxable amount net of the reporter's commission after the reporter. The real `quotes`
+ * columns (`code`, `title`, `revenue_net`, dates) are handled by the generic engine; the rest
+ * is derived (AgentSalesReportRegistryColumns, QuoteRelationColumns).
  */
 final class AgentSalesReportColumnCatalog
 {
@@ -23,6 +25,8 @@ final class AgentSalesReportColumnCatalog
             self::column('accepted_at', 'date', filter: 'date'),
             self::column('registry', 'text', filter: 'set'),
             self::column('title', 'text', filter: 'text', searchable: true),
+            self::column('root_category', 'text', sortable: false, filter: 'set'),
+            self::column('category', 'text', sortable: false, filter: 'set'),
             self::column('address', 'text', sortable: false),
             self::column('postal_code', 'text', sortable: false),
             self::column('city', 'text', filter: 'text'),
@@ -34,7 +38,25 @@ final class AgentSalesReportColumnCatalog
             self::column('revenue_net', 'number', filter: 'number'),
             self::column('commercial', 'text', filter: 'set'),
             self::column('reporter', 'text', filter: 'set'),
+            self::column('revenue_net_after_reporter', 'number', sortable: false),
         ];
+    }
+
+    /**
+     * The only row action: open the offer (task 427625). The grid links it to `/quotes/{id}`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function actions(): array
+    {
+        return [[
+            'key' => 'view',
+            'label' => 'actions.view',
+            'icon' => 'eye',
+            'type' => 'link',
+            'confirm' => false,
+            'permission' => 'quotes.view',
+        ]];
     }
 
     /**
