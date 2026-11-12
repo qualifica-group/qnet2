@@ -16,7 +16,8 @@ use Throwable;
  *
  * Same `{id, label}` shape as the branch picker, so it reuses its resource. No permission gate beyond `auth:sanctum` (ADR 0011,
  * amended 2026-07-31). With `actor_roots` an actor limited to some parent
- * categories gets only those, without "Tutte" (ActorParentCategories).
+ * categories gets only those, and nobody gets "Tutte": the list pages read an
+ * empty filter as every root of the actor (ActorParentCategories).
  *
  * @see ProductCategoryForSelectResolver::resolveRoots
  */
@@ -30,8 +31,9 @@ class ProductCategoryRootForSelectController extends BaseApiController
     public function __invoke(ProductCategoryRootForSelectRequest $request): JsonResponse
     {
         try {
-            $onlyRootIds = $request->actorRootsOnly() ? $this->actorRoots->rootIdsFor($request->user()) : null;
-            $result = $this->resolver->resolveRoots($request->toData(), $request->currentOnly(), $request->hideLinkedLegacy(), $onlyRootIds);
+            $actorRootsOnly = $request->actorRootsOnly();
+            $onlyRootIds = $actorRootsOnly ? $this->actorRoots->rootIdsFor($request->user()) : null;
+            $result = $this->resolver->resolveRoots($request->toData(), $request->currentOnly(), $request->hideLinkedLegacy(), $onlyRootIds, offerAllRoots: ! $actorRootsOnly);
 
             return $this->paginatedResponse(
                 ProductCategoryBranchForSelectResource::collection($result->items),

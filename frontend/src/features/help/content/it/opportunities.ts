@@ -99,11 +99,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Opportunità** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le opportunità dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** è già compilata: se sei abilitato a tutte le categorie parte da **Tutte** e puoi scegliere qualsiasi categoria madre; altrimenti l'elenco del campo mostra solo le categorie madri in cui sei abilitato, parte con tutte selezionate e la pagina mostra solo le opportunità di quelle categorie (con tutte le loro sottocategorie). Puoi restringere a una o più di esse e premere **Applica**: la scelta resta salvata. Il campo **Cerca** trova le opportunità anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
+          text: "All'apertura la pagina **Opportunità** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le opportunità dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le opportunità di ogni categoria, altrimenti solo le opportunità delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova le opportunità anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "Le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione). Se non hai categorie di competenza **Categoria madre** parte da **Tutte** e non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
+          text: "Le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione). Se non hai categorie di competenza **Categoria madre** non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
@@ -119,7 +119,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La **Categoria madre** precompilata vale solo nella pagina **Opportunità**: non compare dentro una scheda e nella sezione Opportunità di un'anagrafica. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
+          text: "Il limite alle tue categorie con la **Categoria madre** vuota vale solo nella pagina **Opportunità**: il campo non compare dentro una scheda e nella sezione Opportunità di un'anagrafica. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
         },
       ],
     },

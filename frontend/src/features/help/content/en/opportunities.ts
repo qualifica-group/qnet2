@@ -99,11 +99,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Opportunities** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the opportunities where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** is already filled in: if you are enabled on every category it starts on **All** and you can pick any parent category; otherwise the field lists only the parent categories you are enabled on, starts with all of them selected and the page shows only the opportunities of those categories (with all their subcategories). You can narrow it to one or more of them and press **Apply**: your choice is saved. The **Search** field also finds opportunities by client (registry) name: part of the name is enough, for example \"napoli\".",
+          text: "When it opens, the **Opportunities** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the opportunities where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the opportunities of every category, otherwise only the opportunities of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds opportunities by client (registry) name: part of the name is enough, for example \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "The categories you are enabled on are the competence categories of your profile (the assignment scope). If you have no competence categories **Parent category** starts on **All** and limits nothing. The filters never widen what your profile can see.",
+          text: "The categories you are enabled on are the competence categories of your profile (the assignment scope). If you have no competence categories **Parent category** limits nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
@@ -119,7 +119,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The pre-filled **Parent category** applies only on the **Opportunities** page: it does not appear inside a record and in a client's Opportunities section. The export follows the active filters. Flexible fields are read and edited from the detail.",
+          text: "The limit to your categories with an empty **Parent category** applies only on the **Opportunities** page: the field does not appear inside a record and in a client's Opportunities section. The export follows the active filters. Flexible fields are read and edited from the detail.",
         },
       ],
     },

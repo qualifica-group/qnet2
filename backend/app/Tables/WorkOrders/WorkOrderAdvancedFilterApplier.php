@@ -26,10 +26,10 @@ final class WorkOrderAdvancedFilterApplier
      *
      * @return array<int, array<string, mixed>>
      */
-    public function commessePageFilters(?User $actor): array
+    public function commessePageFilters(): array
     {
         return array_map(
-            fn (array $filter): array => $filter['name'] === PresetListFilters::PARENT_CATEGORY ? $this->presets->presetParentCategory($filter, $actor) : $filter,
+            static fn (array $filter): array => $filter['name'] === PresetListFilters::PARENT_CATEGORY ? PresetListFilters::presetParentCategory($filter) : $filter,
             WorkOrderAdvancedFilterCatalog::advancedFilters(),
         );
     }

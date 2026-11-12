@@ -200,7 +200,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return $this->advancedFilterApplier->commessePageFilters(Auth::user());
+        return $this->advancedFilterApplier->commessePageFilters();
     }
 
     /**

@@ -24,10 +24,10 @@ final class CommercialListFilterApplier
      * @param  CategoryUsageArea|null  $area  spec 0389 rev.2: the module whose roots the category filter lists
      * @return array<int, array<string, mixed>>
      */
-    public function presetFilters(string $labelNamespace, ?User $actor, ?CategoryUsageArea $area = null): array
+    public function presetFilters(string $labelNamespace, ?CategoryUsageArea $area = null): array
     {
         return [
-            $this->presets->presetParentCategory(PresetListFilters::parentCategoryFilter($labelNamespace, 0, $area), $actor),
+            PresetListFilters::presetParentCategory(PresetListFilters::parentCategoryFilter($labelNamespace, 0, $area)),
         ];
     }
 

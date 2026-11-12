@@ -23,7 +23,7 @@ trait HasContractListFilters
      */
     public function advancedFilters(): array
     {
-        return [...app(CommercialListFilterApplier::class)->presetFilters('contracts', Auth::user()), ...ContractAdvancedFilterCatalog::advancedFilters()];
+        return [...app(CommercialListFilterApplier::class)->presetFilters('contracts'), ...ContractAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**

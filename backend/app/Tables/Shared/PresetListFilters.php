@@ -65,34 +65,52 @@ final class PresetListFilters
     }
 
     /**
-     * Fills a parent category filter with the actor's competence.
+     * The parent category filter of a list page (user directive 2026-11-12):
+     * empty by default, and the page sends it even empty, because empty means
+     * "every root of the actor" (branchIds()), not "no filter".
      *
      * @param  array<string, mixed>  $filter
      * @return array<string, mixed>
      */
-    public function presetParentCategory(array $filter, ?User $actor): array
+    public static function presetParentCategory(array $filter): array
     {
-        return [...$filter, 'required' => true, 'sendDefault' => true, 'defaultValue' => $this->defaultParentCategories($actor)];
+        return [...$filter, 'sendDefault' => true, 'defaultValue' => []];
     }
 
     /**
-     * The categories selected by a parent category value, every picked root
-     * with its descendants and, as a group (spec 0374 D-12), the legacy roots
-     * linked to it; null when nothing narrows ("Tutte" picked by an actor with
-     * no limit). For a limited actor the picks are clamped to their roots:
-     * "Tutte", or a pick outside them, stands for all of them.
+     * The roots a parent category value narrows to: for a limited actor the
+     * picks clamped to their roots, where no pick, "Tutte" (the sentinel of
+     * older saved views) or a pick outside them stands for all of them; for an
+     * actor with no limit the picks, null when there is none or "Tutte".
      *
      * @return array<int, int>|null
      */
-    public function branchIds(mixed $value, ?User $actor): ?array
+    public function effectiveRootIds(mixed $value, ?User $actor): ?array
     {
         $rootIds = self::ids($value);
         $allowedRootIds = $this->actorRoots->rootIdsFor($actor);
 
         if ($allowedRootIds !== null) {
-            $rootIds = array_values(array_intersect($this->groups->currentRootIds($rootIds), $allowedRootIds));
-            $rootIds = $rootIds === [] ? $allowedRootIds : $rootIds;
-        } elseif (in_array(ProductCategoryForSelectResolver::ALL_ROOTS_ID, $rootIds, true)) {
+            $picked = array_values(array_intersect($this->groups->currentRootIds($rootIds), $allowedRootIds));
+
+            return $picked === [] ? $allowedRootIds : $picked;
+        }
+
+        return $rootIds === [] || in_array(ProductCategoryForSelectResolver::ALL_ROOTS_ID, $rootIds, true) ? null : $rootIds;
+    }
+
+    /**
+     * The categories of effectiveRootIds(), every root with its descendants
+     * and, as a group (spec 0374 D-12), the legacy roots linked to it; null
+     * when nothing narrows.
+     *
+     * @return array<int, int>|null
+     */
+    public function branchIds(mixed $value, ?User $actor): ?array
+    {
+        $rootIds = $this->effectiveRootIds($value, $actor);
+
+        if ($rootIds === null) {
             return null;
         }
 
@@ -115,16 +133,6 @@ final class PresetListFilters
         }
 
         return array_slice(array_map(intval(...), array_values(array_filter($value, is_numeric(...)))), 0, self::MAX_IDS);
-    }
-
-    /**
-     * "Tutte" for an actor with no limit, every root of theirs otherwise.
-     *
-     * @return array<int, int>
-     */
-    private function defaultParentCategories(?User $actor): array
-    {
-        return $this->actorRoots->rootIdsFor($actor) ?? [ProductCategoryForSelectResolver::ALL_ROOTS_ID];
     }
 
     /**

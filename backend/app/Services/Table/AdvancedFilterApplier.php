@@ -60,7 +60,11 @@ class AdvancedFilterApplier
             $descriptor = $catalog[$name];
             $type = $descriptor['type'] ?? null;
 
-            if (! $type instanceof AdvancedFilterType || ! $this->isValidValue($type, $value, $descriptor)) {
+            // A value equal to the declared default is the page's own preset (e.g. the empty parent category,
+            // which the definition reads as "every root of the actor"), valid whatever the type's shape rule says.
+            $isDefault = array_key_exists('defaultValue', $descriptor) && $value === $descriptor['defaultValue'];
+
+            if (! $type instanceof AdvancedFilterType || (! $isDefault && ! $this->isValidValue($type, $value, $descriptor))) {
                 $errors[$name] = "Invalid value for advanced filter [{$name}].";
             }
         }

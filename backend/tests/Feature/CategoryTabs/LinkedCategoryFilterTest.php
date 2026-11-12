@@ -6,6 +6,7 @@ use App\Enums\AttributeContext;
 use App\Models\ExportRun;
 use App\Models\ProductCategory;
 use App\Models\UserTableFilter;
+use App\Tables\Shared\PresetListFilters;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -73,25 +74,23 @@ it('shows no attribute column when two different groups are selected (AC-025)', 
         ->and(array_keys($rows([$current->id, $other->id])))->not->toContain('attr.r_field');
 });
 
-it('defaults the parent category to the current root once, whatever the competence on its legacy roots (AC-026)', function () {
+// REQUIREMENT CHANGED (spec 0374 rev.5): the parent category starts empty for everyone; empty is read as the actor's
+// current roots, so the rows and the columns still follow the competence, a legacy root counted as its current one.
+it('reads the empty parent category as the current roots of the competence, whatever its legacy roots (AC-026)', function () {
     [$function, $current] = competenceVisibilityCategory();
     [, $legacy] = competenceVisibilityCategory($function);
     $legacy->forceFill(['is_legacy' => true, 'current_category_id' => $current->id])->save();
-    $both = competenceVisibilityActor('quotes', ['viewAny', 'view', 'viewCompetence']);
-    grantCompetence($both, $function, $current, $legacy);
     $legacyOnly = competenceVisibilityActor('quotes', ['viewAny', 'view', 'viewCompetence']);
     grantCompetence($legacyOnly, $function, $legacy);
-    $default = fn (): array => collect($this->getJson('/api/tables/quotes/columns')->json('data.advancedFilters'))->firstWhere('name', 'parent_category')['defaultValue'];
-
-    Sanctum::actingAs($both);
-    expect($default())->toBe([$current->id]);
-
     Sanctum::actingAs($legacyOnly);
     $onCurrent = categoryTabQuote([$current]);
     $onLegacy = categoryTabQuote([$legacy]);
-    $rows = $this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['parent_category' => $default()]])->assertOk()->json('items');
 
-    expect($default())->toBe([$current->id])
+    $default = collect($this->getJson('/api/tables/quotes/columns')->json('data.advancedFilters'))->firstWhere('name', 'parent_category')['defaultValue'];
+    $rows = $this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['parent_category' => []]])->assertOk()->json('items');
+
+    expect($default)->toBe([])
+        ->and(app(PresetListFilters::class)->effectiveRootIds([], $legacyOnly))->toBe([$current->id])
         ->and(array_column($rows, 'id'))->toBe([$onLegacy->id])
         ->and($onCurrent->id)->not->toBe($onLegacy->id);
 });

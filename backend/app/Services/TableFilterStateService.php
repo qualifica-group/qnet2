@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserTableFilter;
+use App\Services\ProductCategories\ProductCategoryForSelectResolver;
 use App\Tables\Shared\ActorParentCategories;
 use App\Tables\Shared\LinkedCategoryGroups;
 use App\Tables\Shared\PresetListFilters;
@@ -64,8 +65,8 @@ class TableFilterStateService
      * Spec 0374 D-12: a descriptor that hides the linked legacy roots shows the
      * current root of a saved legacy one, without touching what is stored. A
      * descriptor listing only the actor's roots (user directive 2026-11-12)
-     * drops the saved roots outside them, and falls back to its default when
-     * none is left, as the rows query does (PresetListFilters::branchIds()).
+     * drops the saved "Tutte" and the saved roots outside them, and falls back
+     * to its empty default when none is left (PresetListFilters::branchIds()).
      *
      * @param  array<string, mixed>  $advanced
      * @return array<string, mixed>
@@ -84,12 +85,16 @@ class TableFilterStateService
 
             $advanced[$name] = $this->groups->currentRootIds(PresetListFilters::ids($advanced[$name]));
 
-            if ($allowedRootIds !== null && ($params[PresetListFilters::ACTOR_ROOTS_PARAM] ?? null) !== null) {
-                $advanced[$name] = array_values(array_intersect($advanced[$name], $allowedRootIds));
+            if (($params[PresetListFilters::ACTOR_ROOTS_PARAM] ?? null) === null) {
+                continue;
+            }
 
-                if ($advanced[$name] === []) {
-                    unset($advanced[$name]);
-                }
+            $advanced[$name] = $allowedRootIds === null
+                ? array_values(array_diff($advanced[$name], [ProductCategoryForSelectResolver::ALL_ROOTS_ID]))
+                : array_values(array_intersect($advanced[$name], $allowedRootIds));
+
+            if ($advanced[$name] === []) {
+                unset($advanced[$name]);
             }
         }
 

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="4">
+<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="5">
+
+  <!-- rev.5 (2026-11-12): direttiva utente "categoria madre vuota, di default prende tutte le categorie di competenza, poi
+       nella lista selezioni quello che puoi". Cambiano D-13(b), AC-026, AC-029..AC-031; nuovo AC-032. -->
 
   <!-- rev.4 (2026-11-12): direttiva utente "togliere il campo assegnatario ... per categoria madre se sei abilitato a tutto
        vedi tutto, altrimenti solo quelli in cui sei abilitato". Nuova D-13, AC-028..AC-031 (REQUIREMENT CHANGED su AC-026 per
@@ -113,10 +116,13 @@
       come ogni filtro sconosciuto; gli enum `work_order_assignment_scope` e `commercial_assignment_scope` sono rimossi. Il filtro
       `assignment` dei Task resta (concetto diverso: assegnatari del task). (b) Categoria madre: `Tables\Shared\ActorParentCategories::rootIdsFor`
       = null (nessun limite) se la competenza copre tutte le categorie o se l'attore non ha competenze; altrimenti le radici attuali
-      toccate dalla competenza. Il descrittore `parent_category` invia `actor_roots=1`: per un attore limitato il select elenca solo
-      quelle radici, senza "Tutte"; il default sono tutte quelle radici. `PresetListFilters::branchIds($value, $actor)` interseca la
-      scelta con le radici dell'attore; "Tutte", o una scelta tutta fuori, vale come tutte le sue radici. `appliedAdvancedFilters` scarta
-      le radici salvate fuori limite (se non ne resta nessuna torna il default). Una richiesta senza `parent_category` (griglie dentro
+      toccate dalla competenza. (rev.5) Il descrittore `parent_category` delle 4 pagine ha `defaultValue` `[]`, `required` false e
+      `sendDefault`: la pagina manda `[]` anche a campo vuoto (svuotato = default), e `[]` vale "tutte le radici dell'attore" (nessun
+      filtro per chi non ha limite). Invia `actor_roots=1`: il select elenca le sole radici dell'attore (tutte per chi non ha limite) e
+      a nessuno la voce "Tutte". `PresetListFilters::branchIds($value, $actor)` interseca la scelta con le radici dell'attore; vuoto,
+      "Tutte" (sentinella 0 di viste salvate) o una scelta tutta fuori valgono come tutte le sue radici. `appliedAdvancedFilters` scarta
+      lo 0 e le radici salvate fuori limite (se non ne resta nessuna torna il default vuoto). Il validatore generico accetta un valore
+      uguale al `defaultValue` del descrittore (qui la lista vuota, altrove ancora 422). Una richiesta senza `parent_category` (griglie dentro
       una scheda, client API) resta non limitata, come prima. Categoria prodotto non cambia.</decision>
   </decisions>
 
@@ -206,16 +212,17 @@
     <criterion id="AC-019">(rev.2) Date le radici R (attuale) e L1, L2 (vecchie) con `current_category_id` = R: `fromFilters` con madre [R,L1], [L1,L2] o [R,L1,L2] restituisce la selezione ordinata; con [R,X] (X non collegata), oppure con [L1,X], restituisce []. (rev.3) In Categoria madre [R] restituisce [R,L1,L2] e [L1] vale come [R]; in Categoria prodotto [R] resta [R]. Se L1 non e' piu' radice, non appartiene al gruppo.</criterion>
     <criterion id="AC-024">(rev.3) `GET /product-category-roots/for-select?hide_linked_legacy=1` non elenca le radici vecchie collegate, elenca attuali, vecchie non collegate e "Tutte"; con `ids[]` di una vecchia collegata la risolve; senza parametro l'elenco non cambia. Il descrittore `parent_category` invia il parametro.</criterion>
     <criterion id="AC-025">(rev.3) Con Categoria madre [R], `POST /rows` di `quotes`, `work-orders`, `contracts` e `opportunities` riporta i record del ramo di R e dei rami delle vecchie collegate, l'export lo stesso; un'altra categoria resta esclusa; `[R,X]` riporta entrambi i gruppi senza `attr.*`.</criterion>
-    <criterion id="AC-026">(rev.3) Un utente con competenza su R e L1 ha come default `parent_category` = [R], una sola volta; con competenza solo su L1 ha [R]; le righe restano limitate dalla visibilita' del suo profilo.</criterion>
+    <criterion id="AC-026">(rev.5: il default non viene piu' dalla competenza, e' [] per tutti; resta la mappatura vecchia->attuale per i valori salvati) (rev.3) Un utente con competenza su R e L1 ha come default `parent_category` = [R], una sola volta; con competenza solo su L1 ha [R]; le righe restano limitate dalla visibilita' del suo profilo.</criterion>
     <criterion id="AC-027">(rev.3) Filtri salvati con `parent_category` [L1]: `appliedAdvancedFilters` riporta [R], senza doppioni con [R,L1]; una radice vecchia non collegata resta invariata.</criterion>
     <criterion id="AC-020">(rev.2) Con madre [R,L1] il config riporta le colonne di R e poi quelle di L1, deduplicate per `code`, e `attributeCategoryIds` = [R,L1] ordinati; le righe riportano i valori di entrambe; filtro, ordinamento, valori distinti ed export funzionano su ciascuna. Un PATCH su un campo non applicabile al record risponde 422 senza scrivere.</criterion>
     <criterion id="AC-021">(rev.2) Il salvataggio di `current_category_id` su una radice vecchia verso una radice attuale riesce e compare nella risposta con nome e voce di activity log; 422 su categoria non vecchia, su sottocategoria, su destinazione vecchia o sottocategoria, su destinazione inesistente; 403 senza permesso di campo; `null` toglie il collegamento; la cancellazione della categoria attuale azzera il campo.</criterion>
     <criterion id="AC-022">(rev.2) Frontend: nel dettaglio e nel form di una radice vecchia compare il campo "Categoria attuale" con la selezione delle sole radici attuali; non compare su categorie attuali o sottocategorie; il salvataggio invia `current_category_id`.</criterion>
     <criterion id="AC-023">(rev.2) Eseguendo la migrazione: "[OLD] ISO" -> "ISO", "[OLD] GARE-" e "[OLD] GARE" -> "Gare"; una vecchia senza corrispondente, una sottocategoria vecchia e una vecchia con due attuali omonime restano senza collegamento; un collegamento gia' presente non cambia; `down` rimuove la colonna.</criterion>
     <criterion id="AC-028">(rev.4) `GET /tables/{work-orders|opportunities|quotes|contracts}/columns` non contiene il filtro `assignment`; `POST /rows` con `advancedFilters.assignment` risponde 422; un attore con viewAll vede tutti i record, uno senza solo quelli dove ha un ruolo.</criterion>
-    <criterion id="AC-029">(rev.4) Attore con competenza su un figlio di R: con Categoria madre [R], [0] o [X] (radice estranea) le righe sono solo quelle del ramo di R; con competenza su tutte le categorie [0] non limita.</criterion>
-    <criterion id="AC-030">(rev.4) `GET /product-category-roots/for-select?actor_roots=1` per l'attore limitato elenca solo [R], senza "Tutte"; per un attore con tutte le categorie elenca "Tutte" e tutte le radici.</criterion>
-    <criterion id="AC-031">(rev.4) Filtri salvati [R, X] per l'attore limitato: `appliedAdvancedFilters` = {parent_category: [R]}; salvati [X]: `appliedAdvancedFilters` null.</criterion>
+    <criterion id="AC-029">(rev.5) Attore con competenza su un figlio di R: con Categoria madre [], [R], [0] o [X] (radice estranea) le righe sono solo quelle del ramo di R; con competenza su tutte le categorie [] e [0] non limitano. Il default del descrittore e' [] per entrambi.</criterion>
+    <criterion id="AC-030">(rev.5) `GET /product-category-roots/for-select?actor_roots=1` per l'attore limitato elenca solo [R]; per un attore con tutte le categorie elenca tutte le radici; "Tutte" (id 0) non compare per nessuno.</criterion>
+    <criterion id="AC-031">(rev.4) Filtri salvati [R, X] per l'attore limitato: `appliedAdvancedFilters` = {parent_category: [R]}; salvati [X]: `appliedAdvancedFilters` null. (rev.5) Salvati [0]: null; [0, R]: [R].</criterion>
+    <criterion id="AC-032">(rev.5) `advancedFilters.product_category` = [] risponde 422 (il suo default non e' vuoto). Frontend: un preset `sendDefault` con default [] e' inviato come [] anche dopo averlo svuotato e non conta come filtro attivo.</criterion>
   </acceptance_criteria>
 
   <constraints>

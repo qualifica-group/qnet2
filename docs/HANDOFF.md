@@ -36,7 +36,21 @@
   purchase-invoices + help 298/298, ESLint, `tsc -b --force`, Pint puliti. Guide IT/EN aggiornate (panoramica di 6 guide +
   `proforma-requests`). PDF del manuale da rigenerare. Non provato nel browser.
 
-## Niente filtro "Assegnazione"; Categoria madre limitata alle categorie abilitate (spec 0374 rev.4) (2026-11-12) — VERDE MIRATO, NON COMMITTATO
+## Categoria madre vuota = tutte le categorie abilitate (spec 0374 rev.5) (2026-11-12) — VERDE MIRATO, COMMITTATO
+
+- Direttiva utente: "categoria madre vuota, di default prende tutte le categorie di competenza, poi nella lista selezioni quello
+  che puoi". `PresetListFilters::presetParentCategory` (statico): `defaultValue` [], `required` false, `sendDefault`; la pagina
+  manda `parent_category: []`. Nuovo `PresetListFilters::effectiveRootIds($value, $actor)` (vuoto/"Tutte"/scelta fuori = tutte
+  le radici dell'attore limitato; null = nessun filtro) usato da `branchIds` e da `AttributeColumnCategories::fromFilters`
+  (le colonne flessibili seguono la selezione effettiva: utente con una sola radice le vede ancora all'apertura).
+  `AdvancedFilterApplier::validate` accetta un valore uguale al `defaultValue` (la lista vuota; altrove [] resta 422).
+  "Tutte" tolto dal select (`actor_roots=1` -> `offerAllRoots` false); `TableFilterStateService` scarta lo 0 salvato.
+  FE `use-advanced-filters.ts`: default vuoto = nessun default (campo svuotato non conta come attivo) e un preset `sendDefault`
+  svuotato e' inviato come il suo default. Guide IT/EN dei 4 moduli e manuale Claude Docs aggiornati.
+- Test: WorkOrderListFilters 18, CommercialListFilters 16, CategoryTabs 80 (AC-026 riscritto, REQUIREMENT CHANGED) verdi;
+  Vitest table+help+i18n 780, ESLint, `tsc -b`, Pint puliti.
+
+## Niente filtro "Assegnazione"; Categoria madre limitata alle categorie abilitate (spec 0374 rev.4) (2026-11-12) — VERDE MIRATO, COMMITTATO
 
 - Direttiva utente: Commesse, Opportunita', Offerte, Contratti senza il campo "Assegnazione": chi vede tutto vede tutto, gli altri
   quello dove hanno un ruolo (lo decide solo lo scope di visibilita'). Categoria madre: abilitato a tutto -> tutto e "Tutte";

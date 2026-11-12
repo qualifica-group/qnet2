@@ -37,7 +37,7 @@ function commercialRecord(string $domain, ProductCategory $category): array
 
 dataset('commercial grids', ['opportunities', 'quotes', 'contracts']);
 
-it('offers the parent category preset first, sent by the page and filled from the competence', function (string $domain) {
+it('offers the parent category first, empty and sent by the page', function (string $domain) {
     $actor = categoryTabGridActor($domain);
     [$function, $root] = competenceVisibilityCategory();
     grantCompetence($actor, $function, ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]));
@@ -47,7 +47,7 @@ it('offers the parent category preset first, sent by the page and filled from th
 
     expect($filters->pluck('name')->first())->toBe('parent_category')
         ->and($filters->pluck('name')->all())->toContain('product_category')->not->toContain('assignment')
-        ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['required' => true, 'sendDefault' => true, 'defaultValue' => [$root->id]])
+        ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['required' => false, 'sendDefault' => true, 'defaultValue' => []])
         ->and($filters->firstWhere('name', 'parent_category')['source']['params'])->toMatchArray(['actor_roots' => 1]);
 })->with('commercial grids');
 
@@ -83,7 +83,8 @@ it('limits an actor enabled on some parent categories to those, whatever is pick
     commercialRecord($domain, $foreignRoot);
     Sanctum::actingAs($actor);
 
-    expect(commercialIds($domain, ['parent_category' => [$root->id]]))->toBe([$inBranch->id])
+    expect(commercialIds($domain, ['parent_category' => []]))->toBe([$inBranch->id])
+        ->and(commercialIds($domain, ['parent_category' => [$root->id]]))->toBe([$inBranch->id])
         ->and(commercialIds($domain, ['parent_category' => [0]]))->toBe([$inBranch->id])
         ->and(commercialIds($domain, ['parent_category' => [$foreignRoot->id]]))->toBe([$inBranch->id]);
 })->with('commercial grids');

@@ -121,11 +121,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Quotes** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the quotes where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** is already filled in: if you are enabled on every category it starts on **All** and you can pick any parent category; otherwise the field lists only the parent categories you are enabled on, starts with all of them selected and the page shows only the quotes of those categories (with all their subcategories). You can narrow it to one or more of them and press **Apply**: your choice is saved. The **Search** field also finds quotes by client (registry) name: part of the name is enough, for example \"napoli\".",
+          text: "When it opens, the **Quotes** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the quotes where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the quotes of every category, otherwise only the quotes of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds quotes by client (registry) name: part of the name is enough, for example \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "The categories you are enabled on are the competence categories of your profile (the assignment scope). If you have no competence categories **Parent category** starts on **All** and limits nothing. The filters never widen what your profile can see.",
+          text: "The categories you are enabled on are the competence categories of your profile (the assignment scope). If you have no competence categories **Parent category** limits nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
@@ -137,11 +137,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with **All**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. The columns can be sorted, filtered and exported; if you may edit quotes they are edited in the cell, except when the field does not concern that quote (the cell stays read-only). The values can still be read in the detail too.",
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with an empty **Parent category**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. The columns can be sorted, filtered and exported; if you may edit quotes they are edited in the cell, except when the field does not concern that quote (the cell stays read-only). The values can still be read in the detail too.",
         },
         {
           type: 'note',
-          text: "The pre-filled **Parent category** applies only on the **Quotes** page: it does not appear inside a record and in the Quotes sections of opportunities and clients. The export follows the active filters.",
+          text: "The limit to your categories with an empty **Parent category** applies only on the **Quotes** page: the field does not appear inside a record and in the Quotes sections of opportunities and clients. The export follows the active filters.",
         },
       ],
     },

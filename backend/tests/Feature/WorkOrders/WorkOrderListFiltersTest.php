@@ -14,7 +14,8 @@ use Laravel\Sanctum\Sanctum;
 // page opens in the actor's competence.
 // REQUIREMENT CHANGED (user directive 2026-11-12): no "Assegnazione" filter, the
 // visibility scope alone decides which commesse an actor sees; "Categoria madre"
-// lists and accepts only the parent categories the actor is enabled on.
+// lists and accepts only the parent categories the actor is enabled on; (later the same day) it starts empty,
+// and empty means every parent category of the actor.
 
 uses(RefreshDatabase::class);
 
@@ -66,7 +67,7 @@ it('offers the parent category preset with the other filters, without an assignm
     $filters = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'));
 
     expect($filters->pluck('name')->all())->toBe(['supervisors', 'participants', 'parent_category', 'product_category', 'registry'])
-        ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['type' => 'relation', 'multiple' => true, 'required' => true, 'sendDefault' => true, 'defaultValue' => [$root->id]])
+        ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['type' => 'relation', 'multiple' => true, 'required' => false, 'sendDefault' => true, 'defaultValue' => []])
         // REQUIREMENT CHANGED (spec 0374 rev.3, D-12): the picker hides the linked legacy roots; (2026-11-12) and lists the actor's roots only.
         ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, 'actor_roots' => 1]]);
 });
@@ -78,17 +79,17 @@ it('does not narrow a request that omits the presets, as the grids inside a reco
     expect(commessePageIds())->toBe([$workOrder->id]);
 });
 
-it('presets "Tutte" for an actor without competence or with every category', function () {
-    $actor = categoryTabGridActor('work-orders');
+it('starts the parent category empty for every actor', function () {
+    [$actor] = commesseLimitedActor();
     Sanctum::actingAs($actor);
     $preset = fn (): array => collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'))->firstWhere('name', 'parent_category')['defaultValue'];
 
-    expect($preset())->toBe([0]);
+    expect($preset())->toBe([]);
 
     competenceVisibilityProfile($actor)->update(['covers_all_product_categories' => true]);
     app()->forgetScopedInstances();
 
-    expect($preset())->toBe([0]);
+    expect($preset())->toBe([]);
 });
 
 it('lists every commessa an actor with viewAll sees, not only the ones where they hold a role', function () {
@@ -116,7 +117,8 @@ it('limits an actor enabled on some parent categories to the whole branch of tho
     categoryTabWorkOrder([$foreignRoot]);
     Sanctum::actingAs($actor);
 
-    expect(commessePageIds(['parent_category' => [$root->id]]))->toBe([$inBranch->id])
+    expect(commessePageIds(['parent_category' => []]))->toBe([$inBranch->id])
+        ->and(commessePageIds(['parent_category' => [$root->id]]))->toBe([$inBranch->id])
         ->and(commessePageIds(['parent_category' => [0]]))->toBe([$inBranch->id])
         ->and(commessePageIds(['parent_category' => [$foreignRoot->id]]))->toBe([$inBranch->id])
         ->and(commessePageIds(['parent_category' => [$root->id, $foreignRoot->id]]))->toBe([$inBranch->id]);
@@ -130,11 +132,12 @@ it('does not limit an actor enabled on every category', function () {
     $elsewhere = categoryTabWorkOrder([$unrelated]);
     Sanctum::actingAs($actor);
 
-    expect(commessePageIds(['parent_category' => [0]]))->toBe([$onChild->id, $elsewhere->id])
+    expect(commessePageIds(['parent_category' => []]))->toBe([$onChild->id, $elsewhere->id])
+        ->and(commessePageIds(['parent_category' => [0]]))->toBe([$onChild->id, $elsewhere->id])
         ->and(commessePageIds(['parent_category' => [$root->id]]))->toBe([$onChild->id]);
 });
 
-it('lists in the parent picker only the roots of a limited actor, without "Tutte"', function () {
+it('lists in the parent picker only the roots of a limited actor, and "Tutte" to nobody', function () {
     [$actor, $root] = commesseLimitedActor();
     $foreignRoot = ProductCategory::factory()->create();
     $ids = fn (string $query = ''): array => collect($this->getJson("/api/product-category-roots/for-select?actor_roots=1{$query}")->assertOk()->json('items'))->pluck('id')->all();
@@ -146,7 +149,7 @@ it('lists in the parent picker only the roots of a limited actor, without "Tutte
     grantCompetenceOnAllCategories($unlimited);
     Sanctum::actingAs($unlimited);
     app()->forgetScopedInstances();
-    expect($ids())->toContain(0, $root->id, $foreignRoot->id);
+    expect($ids())->toContain($root->id, $foreignRoot->id)->not->toContain(0);
 });
 
 it('drops from the saved parent category the roots outside the actor ones', function () {
@@ -161,6 +164,28 @@ it('drops from the saved parent category the roots outside the actor ones', func
 
     expect($saved([$root->id, $foreignRoot->id]))->toBe(['parent_category' => [$root->id]])
         ->and($saved([$foreignRoot->id]))->toBeNull();
+});
+
+it('drops a saved "Tutte" from the parent category, empty now meaning every root', function () {
+    $actor = categoryTabGridActor('work-orders');
+    $root = ProductCategory::factory()->create();
+    Sanctum::actingAs($actor);
+    $saved = function (array $roots): mixed {
+        categoryTabSaveFilters('work-orders', ['parent_category' => $roots])->assertOk();
+
+        return $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.appliedAdvancedFilters');
+    };
+
+    expect($saved([0]))->toBeNull()
+        ->and($saved([0, $root->id]))->toBe(['parent_category' => [$root->id]]);
+});
+
+it('refuses an empty list on a filter whose default is not empty', function () {
+    Sanctum::actingAs(categoryTabGridActor('work-orders'));
+
+    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['product_category' => []]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['advancedFilters.product_category']);
 });
 
 it('filters by parent category through the whole branch and by product category on that category alone', function () {
