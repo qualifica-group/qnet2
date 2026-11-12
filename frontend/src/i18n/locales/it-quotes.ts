@@ -355,7 +355,7 @@ export const quotes = {
     lineQuantityDecimals: 'La quantità può avere al massimo 2 decimali.',
     lineUnitPrice: 'Prezzo unitario riga {{n}}',
     lineUnitPriceRequired: 'Il prezzo unitario è obbligatorio.',
-    lineUnitPriceInvalid: 'Inserisci un prezzo non negativo.',
+    lineUnitPriceInvalid: 'Il prezzo è fuori dal limite consentito.',
     lineUnitPriceDecimals: 'Il prezzo unitario può avere al massimo 2 decimali.',
     lineVatRate: 'Aliquota IVA riga {{n}}',
     lineVatRatePlaceholder: 'Aliquota…',

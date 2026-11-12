@@ -162,7 +162,7 @@ it('AC-033: submitting net_amount/vat_amount/total_amount on a line is rejected 
         ->and($validator->errors()->has('offer_lines.0.net_amount'))->toBeTrue();
 });
 
-it('AC-034: quantity 0/-1 and a negative unit_price are rejected; unit_price 0 is accepted', function () {
+it('AC-034: quantity 0/-1 are rejected; a negative (discount) and a zero unit_price are accepted within the bound', function () {
     $opportunity = Opportunity::factory()->create();
     $product = Product::factory()->create();
     $rules = (new StoreQuoteRequest)->rules();
@@ -174,7 +174,9 @@ it('AC-034: quantity 0/-1 and a negative unit_price are rejected; unit_price 0 i
 
     expect($withLine(['quantity' => 0])->fails())->toBeTrue()
         ->and($withLine(['quantity' => -1])->fails())->toBeTrue()
-        ->and($withLine(['unit_price' => -1])->fails())->toBeTrue()
+        ->and($withLine(['unit_price' => -1])->fails())->toBeFalse()
+        ->and($withLine(['unit_price' => -99999999.99])->fails())->toBeFalse()
+        ->and($withLine(['unit_price' => -100000000])->fails())->toBeTrue()
         ->and($withLine(['unit_price' => 0])->fails())->toBeFalse();
 });
 

@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Righe offerta: prezzo unitario negativo per il prodotto SCONTO (2026-11-12) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente: in Gestione Offerte il prezzo negativo era rifiutato, ma il prodotto "SCONTO" serve a scontare
+  (qta 1 x -importo, come nel legacy: 627 righe migrate hanno gia' `unit_price < 0`). Spec 0065 AC-034 rev. (REQUIREMENT CHANGED).
+- BE: `QuoteLineRules` `unit_price` tra `-UNIT_PRICE_MAX` e `UNIT_PRICE_MAX` (nuova costante `'99999999.99'`), per
+  ogni prodotto e su tutti i canali (Offerte, Gestione Richieste, contratto, cella inline); quantita' resta `gt:0`.
+  `QuoteCommissionDefaultsRequest` accetta `line_net_amount` negativo e `QuoteCommissionDefaultsData::fromValidated`
+  lo porta a 0 (stesso floor di `QuoteLineCommissionBaseResolver`, spec 0145 D-1): una riga sconto non da' provvigioni.
+- FE: `quote-schema.ts` bound `Math.abs`, tolto `min={0}` dal prezzo in `quote-line-card.tsx`, messaggio
+  `lineUnitPriceInvalid` IT/EN ("fuori dal limite"). Guide `quotes` IT/EN e manuale Claude Docs (tabella campi riga) aggiornati, PDF da rigenerare.
+- Test: QuoteTotalsTest/QuoteCrudHttpTest AC-034 riscritti, nuovo test commission-defaults a netto negativo,
+  `quote-schema.test.ts`. Quotes 487/490 e RequestManagement 1004/1005: solo i rossi gia' noti (QuoteDocumentPdf x3 LibreOffice,
+  managers sortable). FE quotes+request-management 1033, help 161, tsc -b, ESLint, Pint puliti.
+- Fuori scope, NON toccati: il prezzo del Prodotto (`StoreProductRequest` `min:0`) resta non negativo -> il prezzo
+  si mette sulla riga; costi commessa (`work-order-costs-schema`) e ODA/RDA restano non negativi.
+- Rossi preesistenti visti per caso: `AgentSalesReportCategoryColumnsTest` chiama `agentSalesReportRows()` dichiarata in
+  un altro file di test (in parallelo fallisce, va spostata in `tests/Helpers/`); `SettlementApprovalTest` AC-006
+  (`not_due`/`overdue`, dipende dalla data); `TableBulkDeleteTest` ultimo super-admin (`guarded`/`forbidden`).
+
 ## Risponde a / sottoposti allineati al legacy `user_responses` (2026-11-12) — VERDE MIRATO, COMMITTATO
 
 - Causa: nel legacy la gerarchia vera e' la tabella molti-a-molti `user_responses` (`User::rispondeA/subordinati`,
@@ -40,7 +59,7 @@
 - Manuale: guide in-app `agent-sales-report`, `work-orders`, `request-management`, `enrollee-management` IT/EN aggiornate. Manuale Claude Docs: corrette le frasi sulle notifiche di trasferimento (Gestione Richieste e Iscritti). Mancano ancora nel manuale la sezione Report Vendite Agenti e il paragrafo sul pulsante € delle Commesse.
 - Aperti di Martina: 427523, 427544 (attende .docx), 427944, 427945, 427947.
 
-## Statistiche: configuratore "Colonne e stati" (spec 0391, task 427235/427248/427656) (2026-11-12) — VERDE MIRATO, NON COMMITTATO
+## Statistiche: configuratore "Colonne e stati" (spec 0391, task 427235/427248/427656) (2026-11-12) — VERDE MIRATO, COMMITTATO
 
 - Direttiva utente: un configuratore per colonna dentro Statistiche Gestione Richieste, basato sugli stati; le gemelle "(nel periodo selezionato)" identiche alla colonna senza periodo, solo con il range. Sostituisce la config per stato ritirata l'11/11 (`report_columns` sugli stati): niente conteggi per gruppo, niente fallback, stato non scelto = non conta.
 - BE: tabella `report_column_statuses` (`column_key` + `quote_workflow_status_id`, unique `report_column_statuses_column_status_unique`, cascade) — migrazione `2026_12_08_100000`; permesso `request-statistics.update` (`RequestStatisticsPolicy` view+update, `RequestModule::STATISTICS_CONFIGURE_PERMISSION`) dato dalla migrazione `2026_12_08_100001` ai ruoli con `request-statistics.view` + `quote-workflows.update` (locale: super-admin, admin, supervisore-commerciale), nel catalogo Qualifica blocco `STATUS_CONFIGURATOR`. Enum `ReportStatusColumn` (5 colonne, `twin()` = `nuovi_contatti`/`potenziali`), `ReportColumnStatusMap` (letta una volta per istanza, `replace()`), unico `ConfiguredStatusIndicator` (stato attuale tra gli scelti; con range = `quotes.created_at` nel periodo). Cancellati `CurrentStatusGroupIndicator`, `UnhandledNewContactsIndicator`, `WorkflowTransitionIndicator`. "Potenziali (nel periodo)" non legge piu' lo storico (D-3). Presa Appuntamenti invariata.
@@ -98,7 +117,7 @@
 - **rev.2 "a 360 gradi"** (stesso giorno): `UsageAreaRowFilter` nasconde un record quando TUTTE le categorie della sua opportunita' sono dell'altra area (misti e non classificati restano; nessuna subquery se nessuna categoria e' riservata). Gestione Richieste/Iscritti: in `RequestManagementScope::scopeToActor` (righe, conteggi, ricerca, report/dashboard, assegnazioni, trasferimenti) e `assertInScope` (link -> 403). Opportunita'/Offerte: `baseQuery` delle griglie + `OpportunitiesStatsDefinition`/`QuotesStatsDefinition`; dettaglio apribile (Contratti/Commesse restano condivisi). Report: `ReportBranchResolver` scarta i rami `opportunities`. Filtri "Categoria madre"/"Categoria" di Opportunita'/Offerte: `usage_area=opportunities` sui for-select `product-categories` e `product-category-roots` (`ForSelectQuery::$usageArea`, `PresetListFilters::areaParam`); Contratti/Commesse invariati.
 - Test rev.2: nuovo `ProductCategoryUsageAreaRowsTest` (6); helper condivisi spostati in `tests/Helpers/ProductCategoryHelpers.php`; 2 casi di `ProductCategoryUsageAreaEffectsTest` e AC-017 di `OpportunityTableTest` aggiornati (REQUIREMENT CHANGED). Suite ProductCategories/RequestManagement/Opportunities/Quotes/Tables/Contracts/WorkOrders/Stats/EnrolleeManagement: rossi solo i noti (`AllColumnsSortFilter`, `AttributeLayoutConditionalSection`, `QuoteDocumentPdf` senza LibreOffice) + `DemoOpportunitySeederTest` casuale (da solo 3/3 verde). Guide `quotes` IT/EN aggiunte; manuale Claude Docs aggiornato.
 
-## Interruttore personale "Notifiche via email" (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+## Interruttore personale "Notifiche via email" (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: un'impostazione per non ricevere le notifiche via email e tenere solo quelle di sistema (campanella), come in Reezl (`gym-pro`, `users.email_notifications_enabled`).
 - Backend: colonna `users.email_notifications_enabled` (bool, default **true**, migrazione `2026_12_05_100000`, gia' applicata su qnet2 dev con `--path`), fillable + cast + `$attributes` default sul model, `User::wantsEmailNotifications()` (switch acceso **e** email presente). Esposta in `UserResource`, scritta da `PATCH /auth/me` (`sometimes|required|boolean`, `UpdateProfileRequest::accountAttributes`). Nessun endpoint nuovo.
@@ -116,7 +135,7 @@
 - Rossi preesistenti non correlati: `AC-026: approval` (asserisce `via((object) [])` = database+mail, rotto dalla preferenza email), `PendingChangeRequestsColumnTest` AC-037 (colonna sortable).
 - Manuale Claude Docs aggiornato (paragrafo Notifiche di Richieste di modifica).
 
-## Codice fiscale e partita IVA esteri (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+## Codice fiscale e partita IVA esteri (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione utente: non si potevano inserire partita IVA e codice fiscale esteri (validazione solo italiana).
 - Decisione: un codice estero si riconosce dalla **sigla paese in testa** (2 lettere, mai `IT`) + 2-16 alfanumerici; solo controllo di forma. Guardia: un valore che inizia con 6 lettere e' un CF italiano sbagliato, non estero. Nessuna migrazione/colonna nuova.
@@ -125,7 +144,7 @@
 - Verifica: Pest `tests/Unit/Fiscal` + PersonalData/Identity/Registries/RequestManagement/Companies/CompanySites/profilo: 1529/1532, i 3 rossi (notifica trasferimento x2, colonna `managers` non sortable) sono del lavoro non committato di un'altra sessione (notifiche email/categorie prodotto), non fiscali. Vitest aree toccate verde; `tsc -b` rosso solo per fixture `User` senza `email_notifications_enabled` (stesso lavoro esterno). ESLint/Pint puliti.
 - Manuale: tip "codici esteri con sigla paese" in guida `general` sezione `master-data-and-custom-fields` IT/EN e nel manuale Claude Docs (dopo "Dati anagrafici").
 
-## File firmati salvati come .pdf riconosciuti dal contenuto (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+## File firmati salvati come .pdf riconosciuti dal contenuto (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione utente: un `attestato.pdf` veniva rifiutato. Non era un PDF ma una busta CAdES (DER CMS SignedData, il PDF dentro) salvata senza `.p7m`: finfo -> `application/octet-stream`, quindi 422 "tipo non ammesso" (l'utente lo leggeva come permesso).
 - Nuovo `App\Support\Attachments\SignedEnvelope`: `isSignedData()` (header DER `0x30` + OID 1.2.840.113549.1.7.2 nei primi 32 byte) e `originalName()` (aggiunge `.p7m` se il contenuto e' firmato e l'estensione non lo e').
@@ -134,7 +153,7 @@
 - Manuale: nota formati/file firmati in guida `general` sezione `notes-and-documents` IT/EN e nel manuale Claude Docs (dopo il suggerimento pop-up).
 - Ambiente locale: Herd `qnet-2-backend.test` e' isolato su PHP 8.5 con nginx proprio; limiti upload alzati (64M nginx, 20M/64M in php 8.5 e 8.4) perche' oltre 2 MB rispondeva 413. Sul server (PHP 8.4) servono valori equivalenti.
 
-## Allegati p7m ammessi (documenti, allegati email, ticket IT) (2026-11-11) — VERDE MIRATO, NON COMMITTATO
+## Allegati p7m ammessi (documenti, allegati email, ticket IT) (2026-11-11) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione utente: allegando un p7m alle email (e ai documenti) compariva "tipo di file non ammesso". PDF e ZIP erano gia' ammessi (test esistenti); mancava solo il p7m, che finfo rileva come `application/octet-stream` (DER) o `text/plain` (PEM).
 - `config/attachments.php`: `p7m` in `allowed_extensions`; nuove chiavi `opaque_types` (estensione -> MIME salvato, `p7m => application/pkcs7-mime`) e `opaque_detected_mime_types` (MIME rilevati accettati solo per quelle estensioni).

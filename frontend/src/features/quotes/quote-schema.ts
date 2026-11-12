@@ -55,7 +55,7 @@ export const DEFAULT_MANAGER_SLOTS = 4
 /** Backend `quantity` ceiling (`max:999999.99`). */
 export const QUANTITY_MAX = 999999.99
 
-/** Backend `unit_price` ceiling (`max:99999999.99`). */
+/** Backend `unit_price` absolute bound (`QuoteLineRules::UNIT_PRICE_MAX`): negative allowed for discount rows. */
 export const UNIT_PRICE_MAX = 99999999.99
 
 /** Backend `QuoteLineRules::ADDITIONAL_DESCRIPTION_MAX_LENGTH`. */
@@ -219,7 +219,7 @@ export function quoteLineRowSchema(t: TFunction) {
           path: ['unit_price'],
           message: t('quotes.form.lineUnitPriceRequired'),
         })
-      } else if (row.unit_price < 0 || row.unit_price > UNIT_PRICE_MAX) {
+      } else if (Math.abs(row.unit_price) > UNIT_PRICE_MAX) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['unit_price'],

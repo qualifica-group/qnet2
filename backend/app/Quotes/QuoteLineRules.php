@@ -33,6 +33,9 @@ final class QuoteLineRules
     /** Backend per-collection row ceiling, mirrored by the frontend's `MAX_LINES_PER_TAB`. */
     public const int MAX_ROWS = 200;
 
+    /** Absolute bound of a row's unit price, mirrored by the frontend's `UNIT_PRICE_MAX`. */
+    public const string UNIT_PRICE_MAX = '99999999.99';
+
     /** Mirrored by the frontend's `ADDITIONAL_DESCRIPTION_MAX_LENGTH`. */
     public const int ADDITIONAL_DESCRIPTION_MAX_LENGTH = 5000;
 
@@ -60,8 +63,10 @@ final class QuoteLineRules
             // input to <= 2 decimal places (AC-032), the SAME rounding scale
             // QuoteTotalsCalculator freezes on the row.
             "{$field}.*.quantity" => ['required', 'numeric', 'gt:0', 'decimal:0,2', 'max:999999.99'],
-            // unit_price 0 IS accepted (AC-034); negative is not.
-            "{$field}.*.unit_price" => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:99999999.99'],
+            // AC-034 (rev. 2026-11-12): a negative unit_price IS accepted —
+            // a discount is sold as its own row (product "SCONTO", qty 1 x
+            // -amount), as in the legacy. The bound is symmetric.
+            "{$field}.*.unit_price" => ['required', 'numeric', 'min:-'.self::UNIT_PRICE_MAX, 'decimal:0,2', 'max:'.self::UNIT_PRICE_MAX],
             "{$field}.*.vat_rate_id" => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],
             "{$field}.*.sort_order" => ['nullable', 'integer', 'min:0'],
             "{$field}.*.additional_description" => ['sometimes', 'nullable', 'string', 'max:'.self::ADDITIONAL_DESCRIPTION_MAX_LENGTH],

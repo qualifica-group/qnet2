@@ -178,7 +178,7 @@ const guide: HelpGuide = {
             ['**Product** / **Code**', 'The product chosen from the catalogue.'],
             ['**Quantity**', 'Greater than zero, at most 2 decimals.'],
             ['**Unit**', 'The unit of measure.'],
-            ['**Unit price**', 'Non-negative, at most 2 decimals.'],
+            ['**Unit price**', 'At most 2 decimals. It can be negative to apply a discount: add the **SCONTO** (discount) product with quantity 1 and a price of, for example, -100; the row lowers the offer net and total and earns no commissions.'],
             ['**VAT**', "The row's VAT rate."],
             ['**Net**, **VAT**, **Total**', 'Calculated automatically.'],
           ],

@@ -375,7 +375,7 @@
         QuoteLineInput := {
           product_id: int (required, exists:products,id),
           quantity: numeric (required, > 0, max 999999.99, max 2 decimali),
-          unit_price: numeric (required, >= 0, max 99999999.99, max 2 decimali),
+          unit_price: numeric (required, -99999999.99..99999999.99, max 2 decimali; negativo = sconto, AC-034 rev.),
           vat_rate_id?: int|null (exists:vat_rates,id),
           sort_order?: int (>= 0; se assente vale l'indice nell'array)
         }
@@ -621,8 +621,11 @@
       (arrotondamento half-up a 2 decimali, D-12).</criterion>
     <criterion id="AC-033">Un payload che invia `net_amount`, `vat_amount` o `total_amount` su una riga
       riceve 422 (campi calcolati dal server, non accettati in input).</criterion>
-    <criterion id="AC-034">`quantity: 0` e `quantity: -1` producono 422; `unit_price: -1` produce 422;
-      `unit_price: 0` e' accettato.</criterion>
+    <criterion id="AC-034">`quantity: 0` e `quantity: -1` producono 422; `unit_price: 0` e' accettato.
+      Rev. 2026-11-12 (richiesta utente, prodotto "SCONTO"): `unit_price` negativo e' accettato
+      (riga di sconto, quantita' 1 x -importo, come nel legacy) entro `-99999999.99`; oltre produce 422.
+      Una riga a netto negativo ha base provvigionale 0 (stesso floor di spec 0145 D-1, anche
+      sull'endpoint commission-defaults).</criterion>
     <criterion id="AC-035">Un payload con 201 righe in `offer_lines` produce 422.</criterion>
     <criterion id="AC-036">Aggiornando un'offerta con `offer_lines` che contiene solo una delle due
       righe esistenti, allora resta esattamente quella riga (full-replace, D-8); con `offer_lines: []`

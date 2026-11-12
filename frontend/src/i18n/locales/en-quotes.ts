@@ -355,7 +355,7 @@ export const quotes = {
     lineQuantityDecimals: 'Quantity may have at most 2 decimals.',
     lineUnitPrice: 'Row {{n}} unit price',
     lineUnitPriceRequired: 'Unit price is required.',
-    lineUnitPriceInvalid: 'Enter a non-negative price.',
+    lineUnitPriceInvalid: 'The price is out of the allowed range.',
     lineUnitPriceDecimals: 'Unit price may have at most 2 decimals.',
     lineVatRate: 'Row {{n}} VAT rate',
     lineVatRatePlaceholder: 'VAT rate…',

@@ -178,7 +178,7 @@ const guide: HelpGuide = {
             ['**Prodotto** / **Codice**', 'Il prodotto scelto dal catalogo.'],
             ['**Quantità**', 'Maggiore di zero, al massimo 2 decimali.'],
             ['**Unita**', "L'unità di misura."],
-            ['**Prezzo unitario**', 'Non negativo, al massimo 2 decimali.'],
+            ['**Prezzo unitario**', 'Al massimo 2 decimali. Può essere negativo per applicare uno sconto: aggiungi il prodotto **SCONTO** con quantità 1 e prezzo, per esempio, -100; la riga riduce imponibile e totale dell\'offerta e non genera provvigioni.'],
             ['**IVA**', "L'aliquota della riga."],
             ['**Imponibile**, **IVA**, **Totale**', 'Calcolati in automatico.'],
           ],

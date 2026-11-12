@@ -30,7 +30,10 @@ final readonly class QuoteCommissionDefaultsData
         return new self(
             quoteId: isset($data['quote_id']) ? (int) $data['quote_id'] : null,
             productId: (int) $data['product_id'],
-            lineNetAmount: (string) $data['line_net_amount'],
+            // A discount row (negative net) earns no commission: the same
+            // floor at zero QuoteLineCommissionBaseResolver applies to a
+            // persisted line (spec 0145, D-1).
+            lineNetAmount: (float) $data['line_net_amount'] < 0 ? '0.00' : (string) $data['line_net_amount'],
             commercialId: isset($data['commercial_id']) ? (int) $data['commercial_id'] : null,
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,

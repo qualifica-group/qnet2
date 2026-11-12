@@ -18,7 +18,8 @@ class QuoteCommissionDefaultsRequest extends FormRequest
         return [
             'quote_id' => ['nullable', 'integer', Rule::exists('quotes', 'id')],
             'product_id' => ['required', 'integer', Rule::exists('products', 'id')],
-            'line_net_amount' => ['required', 'numeric', 'min:0', 'decimal:0,2'],
+            // Negative on a discount row (AC-034 rev.): accepted, the DTO clamps it.
+            'line_net_amount' => ['required', 'numeric', 'decimal:0,2'],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
