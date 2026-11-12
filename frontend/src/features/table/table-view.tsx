@@ -13,6 +13,7 @@ import {
   INLINE_ACTION_LIMIT,
   LABELED_ACTIONS_COLUMN_WIDTH,
   inlineActionsColumnWidth,
+  splitInlineActions,
 } from '@/features/table/row-actions'
 import { RowGroupingBar } from '@/features/table/row-grouping-bar'
 import { useRowGroupColumns } from '@/features/table/use-row-group-columns'
@@ -21,21 +22,31 @@ import { buildTableViewSlots } from '@/features/table/table-view-slots'
 import { useTableViewController, type TableViewHandle } from '@/features/table/use-table-view-controller'
 import { gridMountKey } from '@/features/table/grid-mount-key'
 import type { TableViewProps } from '@/features/table/table-view-props'
+import type { TableActionDefinition } from '@/features/table/types'
 
 export type { TableViewHandle } from '@/features/table/use-table-view-controller'
 
 const GROUP_KEY_SEPARATOR = ','
 
-/** Explicit actions-column width for the opt-in action layouts; undefined = DataTable default. */
+/**
+ * Explicit actions-column width for the opt-in action layouts and for pinned
+ * actions (one slot per inline icon, plus the overflow button); undefined =
+ * DataTable default.
+ */
 function actionsColumnWidthFor(
-  actionCount: number,
+  actions: TableActionDefinition[],
   labeledActions: boolean | undefined,
   inlineAllActions: boolean | undefined,
 ): number | undefined {
   if (labeledActions) {
     return LABELED_ACTIONS_COLUMN_WIDTH
   }
-  return inlineAllActions && actionCount > INLINE_ACTION_LIMIT ? inlineActionsColumnWidth(actionCount) : undefined
+  if (inlineAllActions) {
+    return actions.length > INLINE_ACTION_LIMIT ? inlineActionsColumnWidth(actions.length) : undefined
+  }
+  const { visible, overflow } = splitInlineActions(actions)
+  const slots = visible.length + (overflow.length > 0 ? 1 : 0)
+  return actions.some((action) => action.pinned) && slots > INLINE_ACTION_LIMIT + 1 ? inlineActionsColumnWidth(slots) : undefined
 }
 
 /**
@@ -198,8 +209,8 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           cellRenderers={renderers}
           renderRowActions={view.renderRowActions}
           actionsHeaderLabel="table.actionsHeader"
-          actionsColumnHasOverflow={!inlineAllActions && config.actions.length > INLINE_ACTION_LIMIT}
-          actionsColumnWidth={actionsColumnWidthFor(config.actions.length, labeledActions, inlineAllActions)}
+          actionsColumnHasOverflow={!inlineAllActions && splitInlineActions(config.actions).overflow.length > 0}
+          actionsColumnWidth={actionsColumnWidthFor(config.actions, labeledActions, inlineAllActions)}
           onGridReady={view.handleGridReady}
           onColumnStateChanged={view.handleColumnStateChanged}
           initialFilterModel={view.initialFilterModel}

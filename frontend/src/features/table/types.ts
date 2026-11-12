@@ -270,6 +270,8 @@ export interface TableActionDefinition {
   confirm: boolean
   /** The row field whose numeric value renders as a count badge on the action. */
   count_field?: string | null
+  /** Always rendered on the row, on top of the first `INLINE_ACTION_LIMIT` actions, never in the overflow menu. */
+  pinned?: boolean
 }
 
 /** A single sort directive. */

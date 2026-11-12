@@ -331,11 +331,13 @@ final class WorkOrderColumnCatalog
                 // Spec 0193 (D-11, rev. 2026-10-06): the "€" proforma request,
                 // after the common actions (spec 0363 D-1); its colour and the
                 // disabled "issued" state come from the row's `proforma_status`.
+                // Pinned (task 427151): always on the row, never in the "..." menu.
                 'key' => 'proforma',
                 'label' => 'proformaRequests.cell.none',
                 'icon' => 'euro',
                 'type' => 'action',
                 'confirm' => false,
+                'pinned' => true,
                 'permission' => 'proforma-requests.create',
             ],
             [

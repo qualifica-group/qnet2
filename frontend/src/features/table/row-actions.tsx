@@ -31,8 +31,31 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
  * they all show inline; beyond it, the first `INLINE_ACTION_LIMIT` stay inline
  * and every remaining action moves into the overflow (three-dots) menu, keeping
  * the actions column narrow while the most frequent actions stay one click away.
+ * A `pinned` action is inline on top of the limit (task 427151).
  */
 export const INLINE_ACTION_LIMIT = 3
+
+/** Splits the row's actions into inline and overflow, catalog order kept. */
+export function splitInlineActions(
+  available: TableActionDefinition[],
+  inlineAll = false,
+): { visible: TableActionDefinition[]; overflow: TableActionDefinition[] } {
+  const unpinnedCount = available.filter((action) => !action.pinned).length
+  if (inlineAll || unpinnedCount <= INLINE_ACTION_LIMIT) {
+    return { visible: available, overflow: [] }
+  }
+  let unpinnedSeen = 0
+  const visible: TableActionDefinition[] = []
+  const overflow: TableActionDefinition[] = []
+  for (const action of available) {
+    const inline = action.pinned === true || unpinnedSeen < INLINE_ACTION_LIMIT
+    if (!action.pinned) {
+      unpinnedSeen += 1
+    }
+    ;(inline ? visible : overflow).push(action)
+  }
+  return { visible, overflow }
+}
 
 /** Width of one inline icon action (icon-xs button + gap) and the cell's side padding. */
 const INLINE_ICON_SLOT_WIDTH = 26
@@ -158,15 +181,10 @@ function RowActions({
 
   // Split into always-visible inline icons and the overflow remainder. With few
   // enough actions the overflow stays empty and everything renders inline.
-  const { visible, overflow } = useMemo(() => {
-    if (inlineAllActions || available.length <= INLINE_ACTION_LIMIT) {
-      return { visible: available, overflow: [] as TableActionDefinition[] }
-    }
-    return {
-      visible: available.slice(0, INLINE_ACTION_LIMIT),
-      overflow: available.slice(INLINE_ACTION_LIMIT),
-    }
-  }, [available, inlineAllActions])
+  const { visible, overflow } = useMemo(
+    () => splitInlineActions(available, inlineAllActions),
+    [available, inlineAllActions],
+  )
 
   if (available.length === 0) {
     return null
