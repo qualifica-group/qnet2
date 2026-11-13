@@ -9,6 +9,7 @@ use App\Enums\AssignmentRoleEnum;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordLinkResolver;
 use App\Support\Notifications\RecordMail;
@@ -37,7 +38,7 @@ use Illuminate\Notifications\Notification;
  */
 class RecordAssignmentNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  array<string, string>  $details  the record's detail card,

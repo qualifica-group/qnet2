@@ -8,6 +8,7 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordLinkResolver;
 use App\Support\Notifications\RecordMail;
@@ -28,7 +29,7 @@ use Illuminate\Notifications\Notification;
  */
 class TableRowNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  ?string  $triggerLabel  label of the yes/no column that fired, null when a row was added

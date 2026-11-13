@@ -8,6 +8,7 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordLinkResolver;
 use App\Support\Notifications\RecordMail;
@@ -27,7 +28,7 @@ use Illuminate\Notifications\Notification;
  */
 class WorkOrderTasksAssignedNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  array<string, string>  $workOrderDetails  the commessa's card

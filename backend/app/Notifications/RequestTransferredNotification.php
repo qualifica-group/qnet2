@@ -9,6 +9,7 @@ use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\RequestManagement\RequestModule;
 use App\Support\Notifications\RecordLinkResolver;
@@ -42,7 +43,7 @@ use Illuminate\Support\Carbon;
  */
 class RequestTransferredNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  int  $requestId  the transferred Offerta's own id (spec 0086,

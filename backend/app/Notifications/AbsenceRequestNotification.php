@@ -7,6 +7,7 @@ namespace App\Notifications;
 use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\DetailFields;
 use App\Support\Notifications\RecordMail;
@@ -25,7 +26,7 @@ use Illuminate\Notifications\Notification;
  */
 class AbsenceRequestNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     public const string EVENT_SUBMITTED = 'submitted';
 

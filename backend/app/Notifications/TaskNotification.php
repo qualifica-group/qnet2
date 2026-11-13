@@ -8,6 +8,7 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Services\Tasks\TaskNotable;
 use App\Support\Notifications\RecordMail;
@@ -40,7 +41,7 @@ use Illuminate\Notifications\Notification;
  */
 abstract class TaskNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  ?User  $actor  who performed the write; null for a

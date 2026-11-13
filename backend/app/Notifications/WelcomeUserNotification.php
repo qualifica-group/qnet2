@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Notifications\Concerns\QueuesMailSeparately;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
@@ -18,7 +19,7 @@ use Illuminate\Notifications\Notification;
  */
 class WelcomeUserNotification extends Notification implements ShouldBeEncrypted, ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately;
 
     public function __construct(private readonly string $password) {}
 

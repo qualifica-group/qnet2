@@ -8,6 +8,7 @@ use App\Models\Note;
 use App\Models\User;
 use App\Notes\Mentions\MentionParser;
 use App\Notes\NoteEntityRegistry;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordDetails;
 use App\Support\Notifications\RecordMail;
@@ -39,7 +40,7 @@ use Illuminate\Notifications\Notification;
  */
 class NoteMentionNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     private const int EXCERPT_LENGTH = 140;
 

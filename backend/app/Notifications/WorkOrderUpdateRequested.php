@@ -9,6 +9,7 @@ use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordDetails;
 use App\Support\Notifications\RecordLinkResolver;
@@ -29,7 +30,7 @@ use Illuminate\Support\Str;
  */
 class WorkOrderUpdateRequested extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     private const int MESSAGE_LIMIT = 2000;
 

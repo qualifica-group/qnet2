@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Email delle notifiche su coda `mail` dedicata — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+
+- Incidente prod 2026-11-13 (disservizio Microsoft): 129 job su `default`, 108 email di notifica che fallivano ogni
+  ~21 s e venivano rimesse in coda senza backoff; campanelle (`database`), `GenerateApiDocsJob` e
+  `SendOutboundEmailJob` fermi dietro. 47 job restavano `reserved` da ore: verificare `retry_after` reale in prod.
+- Fix: trait `App\Notifications\Concerns\QueuesMailSeparately` (`viaQueues()` -> `['mail' => config('mail.notifications_queue')]`)
+  sulle 15 notifiche `ShouldQueue` con canale mail (le 11 Task via `TaskNotification`, Welcome e ResetPassword
+  incluse). Il canale `database` resta sulla coda di default. Config `mail.notifications_queue`
+  (env `MAIL_NOTIFICATIONS_QUEUE`, default `mail`); SMTP `timeout` da `null` a `env('MAIL_TIMEOUT', 30)`.
+- Guardia: `tests/Feature/Notifications/NotificationMailQueueTest.php` fallisce se una nuova notifica in coda non usa il trait.
+- `composer dev`: il listener default legge `--queue=default,mail`.
+- **Deploy (obbligatorio):** worker dedicato `php artisan queue:work --queue=mail --tries=5 --backoff=60,300,900`
+  accanto a `default`, `imports`, `migrations`; senza, le email di notifica non partono. Durante un disservizio del
+  provider si ferma solo quel worker. Le email gia' accodate su `default` prima del deploy restano li'.
+- Fuori scope (segnalato): `SendOutboundEmailJob` (Graph) resta su `default`.
+
 ## Opportunita' migrate senza categoria non bloccano piu' l'anagrafica — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Segnalazione utente: "Questa anagrafica ha gia' un'opportunita' aperta: Crescere Green_Classe1_..." pur con la regola
@@ -17,6 +33,26 @@
 - Manuale: guida Opportunita' IT/EN + manuale Claude Docs (paragrafo "Attenzione" del modulo Opportunita').
 - Aperto (non toccato): il pre-check della conversione massiva lead (`ConvertLeadsToOpportunities::blockers`) non
   considera il flag della categoria della campagna.
+
+## Documentazione API leggibile da un'altra IA: guida + descrizioni dei moduli — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+
+- Richiesta utente: descrizioni su cosa fanno le API, come rispondono e come si usano, da dare in pasto a un'altra IA.
+  Spec 0210 F-6.
+- BE (`app/Services/ApiDocs/Docs/`): `ApiGuideTransformer` scrive la guida in `info.description` (sostituisce la
+  descrizione in `config/scramble.php`); `ApiModuleTagsTransformer` ritagga ogni operazione col modulo (primo segmento
+  del path: 129 moduli invece di 307 tag per controller) e crea i tag descritti da `ApiModuleDescriptions` (+ riga List
+  se c'e' il dominio tabellare omonimo). Registrato in `ApiDocsServiceProvider` dentro `app->booted()`: altrimenti
+  `AddDocumentTags` di Scramble, appeso al suo boot, azzera `document->tags`. Postman: una cartella per modulo.
+- Descrizioni dei 129 moduli scritte da 4 subagent leggendo il codice; campione verificato. **Ogni nuovo modulo API
+  (primo segmento nuovo) richiede una voce in `ApiModuleDescriptions`**, altrimenti `ApiDocsDescriptionsTest` fallisce;
+  una voce di un modulo sparito fa fallire lo stesso test.
+- FE: `ApiModule.description` (da `document.tags`, `moduleDescriptions()`), mostrata sotto il titolo in
+  `ApiModulePanel`.
+- Test: `tests/Feature/ApiClients` 92 verdi (nuovo `ApiDocsDescriptionsTest`); Vitest api-integrations + help 247;
+  ESLint, Pint, `tsc -b --force` puliti. `api-docs:warm` locale: 777 operazioni, 129 tag.
+- Manuale: guide in-app IT/EN `api-docs` (sezioni `navigation`, `downloads`); manuale Claude Docs senza sezione API.
+- Prossimo: fase 3, descrizione per singolo endpoint (PHPDoc del metodo del controller: prima riga = summary, resto =
+  description), modulo per modulo; oggi 489/777 hanno solo il summary e 29 una description.
 
 ## Documentazione API: niente generazione alla visita, Aggiorna + notturna — VERDE MIRATO, COMMITTATO (2026-11-13)
 

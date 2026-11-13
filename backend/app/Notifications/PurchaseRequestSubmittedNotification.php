@@ -7,6 +7,7 @@ namespace App\Notifications;
 use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
@@ -23,7 +24,7 @@ use Illuminate\Notifications\Notification;
  */
 class PurchaseRequestSubmittedNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  array<string, string>  $details  i18n label key => value (ModuleRecordDetails), shown in the email

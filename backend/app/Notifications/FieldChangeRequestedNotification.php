@@ -8,6 +8,7 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\FieldChangeRequest;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
 use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\DetailFields;
 use App\Support\Notifications\RecordMail;
@@ -32,7 +33,7 @@ use Illuminate\Notifications\Notification;
  */
 class FieldChangeRequestedNotification extends Notification implements ShouldQueue
 {
-    use Queueable, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  array<string, string>  $subjectDetails  the card of the record
