@@ -62,6 +62,7 @@ class ProcessStagedImportJob implements ShouldQueue
     public function __construct(private readonly int $importRunId)
     {
         $this->timeout = (int) config('imports.job_timeout');
+        $this->onQueue(config('imports.queue'));
     }
 
     public function handle(ImportRegistry $registry, ImportService $importService, StagingErrorReporter $errorReporter): void

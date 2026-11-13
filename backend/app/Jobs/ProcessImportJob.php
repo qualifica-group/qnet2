@@ -34,7 +34,10 @@ class ProcessImportJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(private readonly int $importRunId) {}
+    public function __construct(private readonly int $importRunId)
+    {
+        $this->onQueue(config('imports.queue'));
+    }
 
     public function handle(ImportRegistry $registry, CsvReader $reader, ImportService $importService): void
     {

@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Coda dedicata per i job di import — VERDE MIRATO, COMMITTATO (2026-11-13)
+
+- Stesso schema della coda `migrations`: `AnalyzeImportJob`, `StageImportJob`, `ProcessStagedImportJob`,
+  `ValidateImportJob`, `ProcessImportJob` fanno `onQueue(config('imports.queue'))` nel costruttore (env `IMPORT_QUEUE`,
+  default `imports`), non piu' `default`: uno staging/commit occupa il worker fino a `imports.job_timeout` (1800 s).
+- **Deploy (obbligatorio):** worker dedicato `php artisan queue:work --queue=imports` accanto a `default` e
+  `migrations`, altrimenti gli import restano in `analyzing`/`staging`. `composer dev` ne avvia gia' uno.
+- Test: `tests/Feature/Imports/ImportJobsQueueTest.php` (dataset dei 5 job). Verdi `tests/Feature/Imports` 324,
+  `tests/Unit/Jobs` 25, `tests/Unit/Imports` 109. Pint pulito. Manuale: nessun impatto.
+
 ## Contabilita': cliente/fornitore come "Nome - P.IVA" (CF senza P.IVA) (2026-11-12) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: nella parte contabile, accanto al nome del cliente anche partita IVA o codice fiscale.

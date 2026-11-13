@@ -49,6 +49,7 @@ class StageImportJob implements ShouldQueue
     public function __construct(private readonly int $importRunId)
     {
         $this->timeout = (int) config('imports.job_timeout');
+        $this->onQueue(config('imports.queue'));
     }
 
     public function handle(
