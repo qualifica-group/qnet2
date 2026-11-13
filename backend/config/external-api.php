@@ -57,11 +57,5 @@ return [
             // Spec 0359: Echo's private-channel auth for the in-app realtime chat.
             'broadcasting',
         ],
-
-        // Seconds the generated OpenAPI document stays cached. The cache key already
-        // embeds a signature of the route and source files, so edits show up at once;
-        // the long default keeps the copy warmed by `api-docs:warm` until the next
-        // deploy, since a cold generation takes tens of seconds.
-        'cache_ttl' => (int) env('EXTERNAL_API_DOCS_CACHE_TTL', 60 * 60 * 24 * 30),
     ],
 ];

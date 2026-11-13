@@ -18,6 +18,23 @@
 - Aperto (non toccato): il pre-check della conversione massiva lead (`ConvertLeadsToOpportunities::blockers`) non
   considera il flag della categoria della campagna.
 
+## Documentazione API: niente generazione alla visita, Aggiorna + notturna — VERDE MIRATO, COMMITTATO (2026-11-13)
+
+- Decisione utente (spec 0210 F-5): aprire Develop > Documentazione API non genera piu' nulla. Rigenerazione solo con
+  `php artisan api-docs:warm` (deploy + `Schedule` ogni giorno alle 00:00 in `routes/console.php`) o col pulsante
+  **Aggiorna** (`POST /api/api-clients/docs/refresh`, policy `ApiClientPolicy::refreshDocs` = `api-clients.update`, 202).
+- BE: `OpenApiDocumentProvider` senza firma/TTL: chiave fissa `api-docs.openapi` (`Cache::forever`, `{document,
+  generated_at}`), flag `api-docs.generating` (600 s, tolto da `generate()` in `finally`), `status()`, `refresh()`.
+  `GET api-clients/docs/status`; GET openapi/postman senza copia = 404 enveloped `data.status = missing`. Rimossi
+  `external-api.docs.cache_ttl`, `signature()`, `ensureGenerating()`, la 202 con Retry-After.
+- FE: `useApiDocsStatus` (poll 5 s solo se `generating`), `useRefreshApiDocs`, `useOpenApiDocument` (query documento
+  chiavata su `generated_at`, `keepPreviousData`); `ApiDocsRefreshButton` (`<Can api-clients.update>`), "Aggiornata il"
+  in testata, download disattivati senza copia, stato `missing` in `ApiDocsStatus`.
+- Test: `tests/Feature/ApiClients` 88 verdi; Vitest `api-integrations` + `i18n` 329, `help` 161; ESLint e
+  `tsc -b --force` puliti. Pint pulito. Rosso preesistente non correlato: `tests/Unit/Models/EmploymentProductLineTest`
+  (fillable con `covers_*_categories`), gia' rosso su main.
+- Manuale: guide in-app IT/EN `api-docs` (summary, overview, sezione `preparing` ora "Aggiornare la documentazione").
+
 ## Coda dedicata per i job di import — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Stesso schema della coda `migrations`: `AnalyzeImportJob`, `StageImportJob`, `ProcessStagedImportJob`,

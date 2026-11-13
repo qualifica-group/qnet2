@@ -22,6 +22,8 @@ Route::post('auth/client-login', ClientLoginController::class)->middleware('thro
 // Static segments are declared BEFORE the {apiClient} wildcard.
 Route::get('api-clients/docs/openapi', [ApiDocsController::class, 'openapi']);
 Route::get('api-clients/docs/postman', [ApiDocsController::class, 'postman']);
+Route::get('api-clients/docs/status', [ApiDocsController::class, 'status']);
+Route::post('api-clients/docs/refresh', [ApiDocsController::class, 'refresh']);
 
 Route::post('api-clients/{apiClient}/rotate-key', [ApiClientController::class, 'rotateKey']);
 

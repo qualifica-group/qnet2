@@ -3,23 +3,32 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
-interface ApiDocsGeneratingProps {
-  /** The server gave up waiting or the request failed. */
-  failed: boolean
+export type ApiDocsStatusState = 'generating' | 'missing' | 'failed'
+
+interface ApiDocsStatusProps {
+  state: ApiDocsStatusState
   onRetry: () => void
 }
 
-/** Compact status card: the document is being prepared (polite live region) or could not be loaded. */
-export function ApiDocsStatus({ failed, onRetry }: ApiDocsGeneratingProps) {
+/** Compact status card shown while there is no document to render. */
+export function ApiDocsStatus({ state, onRetry }: ApiDocsStatusProps) {
   const { t } = useTranslation()
 
-  if (failed) {
+  if (state === 'failed') {
     return (
       <Card role="alert" className="flex-row flex-wrap items-center gap-3 p-3">
         <p className="text-sm text-destructive">{t('apiIntegrations.docs.loadError')}</p>
         <Button type="button" size="sm" variant="secondary" onClick={onRetry}>
           {t('apiIntegrations.docs.retry')}
         </Button>
+      </Card>
+    )
+  }
+
+  if (state === 'missing') {
+    return (
+      <Card role="status" className="p-3">
+        <p className="text-sm text-muted-foreground">{t('apiIntegrations.docs.missing')}</p>
       </Card>
     )
   }

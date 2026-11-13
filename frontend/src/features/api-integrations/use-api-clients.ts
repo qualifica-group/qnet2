@@ -14,7 +14,6 @@ import type {
   ApiClient,
   ApiClientPayload,
   ApiClientWithKey,
-  ApiDocDownloadResult,
   ApiDocKind,
 } from '@/features/api-integrations/types'
 
@@ -68,5 +67,5 @@ export function useDeleteApiClient() {
 }
 
 export function useApiDocDownload() {
-  return useMutation<ApiDocDownloadResult, ApiError, ApiDocKind>({ mutationFn: (kind) => downloadApiDoc(kind) })
+  return useMutation<void, ApiError, ApiDocKind>({ mutationFn: (kind) => downloadApiDoc(kind) })
 }

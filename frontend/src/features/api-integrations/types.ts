@@ -43,5 +43,9 @@ export interface ApiClientPayload {
 
 export type ApiDocKind = 'openapi' | 'postman'
 
-/** 'generating': the server has no cached document yet (HTTP 202), nothing was saved. */
-export type ApiDocDownloadResult = 'saved' | 'generating'
+/** State of the generated documentation: it is produced only on demand (Refresh, nightly, deploy). */
+export interface ApiDocsStatus {
+  status: 'ready' | 'generating' | 'missing'
+  /** ISO 8601 instant of the document being served, null when none exists yet. */
+  generated_at: string | null
+}

@@ -9,7 +9,13 @@ import {
 } from '@/features/api-integrations/components/api-docs-fixtures'
 import type { NavigationItem } from '@/features/navigation/types'
 
-const api = vi.hoisted(() => ({ fetchOpenApiDocument: vi.fn(), downloadApiDoc: vi.fn() }))
+const api = vi.hoisted(() => ({
+  fetchOpenApiDocument: vi.fn(),
+  fetchApiDocsStatus: vi.fn(),
+  refreshApiDocs: vi.fn(),
+  downloadApiDoc: vi.fn(),
+}))
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => true, isLoading: false }) }))
 const navigation = vi.hoisted(() => ({ items: [] as NavigationItem[] }))
 vi.mock('@/features/api-integrations/api', () => api)
 vi.mock('@/features/navigation/use-navigation', () => ({ useNavigation: () => ({ data: navigation.items }) }))

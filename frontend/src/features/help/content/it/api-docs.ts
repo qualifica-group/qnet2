@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'api-docs',
   title: 'Documentazione API',
   summary:
-    'Documentazione API elenca tutte le API di QNet con parametri, risposte ed esempi pronti da copiare, e si aggiorna da sola.',
+    'Documentazione API elenca tutte le API di QNet con parametri, risposte ed esempi pronti da copiare, e viene rigenerata ogni notte o su richiesta.',
   sections: [
     {
       id: 'overview',
@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina si trova in **Develop › Documentazione API**. Descrive le API che i sistemi esterni possono usare con una chiave di un **client API** e **si genera da sola** a partire dalle API di QNet: quando l\'applicazione cambia, la documentazione resta allineata senza interventi manuali.',
+          text: 'La pagina si trova in **Develop › Documentazione API**. Descrive le API che i sistemi esterni possono usare con una chiave di un **client API** e **viene generata** a partire dalle API di QNet: aprire la pagina non la rigenera, mostra l\'ultima versione generata con data e ora in testata.',
         },
         {
           type: 'note',
@@ -70,11 +70,15 @@ const guide: HelpGuide = {
     },
     {
       id: 'preparing',
-      title: 'Documentazione in preparazione',
+      title: 'Aggiornare la documentazione',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dopo un aggiornamento di QNet la documentazione viene rigenerata e **la preparazione richiede qualche minuto**: la pagina mostra lo stato **in preparazione** e **si aggiorna da sola** appena è pronta, senza ricaricarla.',
+          text: 'La documentazione viene rigenerata **ogni notte a mezzanotte** e dopo ogni rilascio di QNet. Per averla subito allineata usa il pulsante **Aggiorna** in testata: la rigenerazione richiede **qualche minuto**, nel frattempo resta visibile la versione precedente e la pagina **si aggiorna da sola** appena la nuova è pronta, senza ricaricarla.',
+        },
+        {
+          type: 'note',
+          text: 'Il pulsante **Aggiorna** è visibile a chi può modificare i client API. Se la documentazione non è mai stata generata la pagina lo segnala e i download restano disattivati fino alla prima generazione.',
         },
       ],
     },

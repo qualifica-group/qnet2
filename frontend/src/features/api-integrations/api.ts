@@ -5,10 +5,10 @@ import type {
   ApiClient,
   ApiClientPayload,
   ApiClientWithKey,
-  ApiDocDownloadResult,
   ApiDocKind,
+  ApiDocsStatus,
 } from '@/features/api-integrations/types'
-import type { OpenApiDocument, OpenApiFetchResult } from '@/features/api-integrations/openapi-types'
+import type { OpenApiDocument } from '@/features/api-integrations/openapi-types'
 
 export const API_DOC_FILENAMES: Record<ApiDocKind, string> = {
   openapi: 'qnet-api.openapi.json',
@@ -42,36 +42,29 @@ export async function deleteApiClient(id: number): Promise<void> {
   await apiClient.delete(`/api-clients/${id}`)
 }
 
-const GENERATING_STATUS = 202
-const DEFAULT_RETRY_AFTER_SECONDS = 5
-
-/** `Retry-After` in seconds; anything unusable falls back to the default. */
-function parseRetryAfter(value: unknown): number {
-  const seconds = Number(value)
-  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : DEFAULT_RETRY_AFTER_SECONDS
+/**
+ * GET /api/api-clients/docs/openapi — the raw OpenAPI document (not enveloped).
+ * 404 while no document was generated yet.
+ */
+export async function fetchOpenApiDocument(): Promise<OpenApiDocument> {
+  const { data } = await apiClient.get<OpenApiDocument>('/api-clients/docs/openapi')
+  return data
 }
 
-/**
- * GET /api/api-clients/docs/openapi — the raw OpenAPI document (not enveloped),
- * or 202 `{ data: { status: 'generating' } }` while the server builds it.
- */
-export async function fetchOpenApiDocument(): Promise<OpenApiFetchResult> {
-  const response = await apiClient.get<OpenApiDocument>('/api-clients/docs/openapi')
-  if (response.status === GENERATING_STATUS) {
-    return { status: 'generating', retryAfterSeconds: parseRetryAfter(response.headers['retry-after']) }
-  }
-  return { status: 'ready', document: response.data }
+/** GET /api/api-clients/docs/status — whether a document exists and whether a regeneration runs. */
+export async function fetchApiDocsStatus(): Promise<ApiDocsStatus> {
+  const { data } = await apiClient.get<ApiResponse<ApiDocsStatus>>('/api-clients/docs/status')
+  return data.data
 }
 
-/**
- * Downloads the OpenAPI document or the Postman collection under its fixed
- * filename; 'generating' when the server answered 202 and there is no file yet.
- */
-export async function downloadApiDoc(kind: ApiDocKind): Promise<ApiDocDownloadResult> {
+/** POST /api/api-clients/docs/refresh — starts a background regeneration (202). */
+export async function refreshApiDocs(): Promise<ApiDocsStatus> {
+  const { data } = await apiClient.post<ApiResponse<ApiDocsStatus>>('/api-clients/docs/refresh')
+  return data.data
+}
+
+/** Downloads the OpenAPI document or the Postman collection under its fixed filename. */
+export async function downloadApiDoc(kind: ApiDocKind): Promise<void> {
   const response = await apiClient.get<Blob>(`/api-clients/docs/${kind}`, { responseType: 'blob' })
-  if (response.status === GENERATING_STATUS) {
-    return 'generating'
-  }
   saveBlob(response.data, API_DOC_FILENAMES[kind])
-  return 'saved'
 }

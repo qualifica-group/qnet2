@@ -5,9 +5,12 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { ApiDocsRefreshButton } from '@/features/api-integrations/components/api-docs-refresh-button'
 import { CopyButton } from '@/features/api-integrations/components/copy-button'
 import type { ApiDocKind } from '@/features/api-integrations/types'
 import { useApiDocDownload } from '@/features/api-integrations/use-api-clients'
+import { useApiDocsStatus } from '@/features/api-integrations/use-openapi-document'
+import { formatDateTime } from '@/lib/formatting/date-display'
 
 interface ApiReferenceHeaderProps {
   /** Null while the document is not available yet: base URL and totals are hidden. */
@@ -17,18 +20,16 @@ interface ApiReferenceHeaderProps {
   moduleCount: number | null
 }
 
-/** Title, base URL, version, totals and the OpenAPI / Postman downloads. */
+/** Title, base URL, version, totals, generation instant, Refresh and the OpenAPI / Postman downloads. */
 export function ApiReferenceHeader({ baseUrl, version, endpointCount, moduleCount }: ApiReferenceHeaderProps) {
   const { t, i18n } = useTranslation()
   const download = useApiDocDownload()
+  const { data: docsStatus } = useApiDocsStatus()
+  const generatedAt = docsStatus?.generated_at ?? null
+  const downloadDisabled = download.isPending || generatedAt === null
 
   const handleDownload = (kind: ApiDocKind) =>
     download.mutate(kind, {
-      onSuccess: (result) => {
-        if (result === 'generating') {
-          toast.info(t('apiIntegrations.docs.downloadGenerating'))
-        }
-      },
       onError: (error) => toast.error(apiErrorMessage(error, t('apiIntegrations.docs.downloadError'), i18n)),
     })
 
@@ -40,10 +41,11 @@ export function ApiReferenceHeader({ baseUrl, version, endpointCount, moduleCoun
           <p className="text-xs text-muted-foreground">{t('apiIntegrations.docs.referenceSubtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <ApiDocsRefreshButton isGenerating={docsStatus?.status === 'generating'} />
           <Button
             size="sm"
             variant="secondary"
-            disabled={download.isPending}
+            disabled={downloadDisabled}
             aria-label={t('apiIntegrations.docs.downloadOpenApi')}
             onClick={() => handleDownload('openapi')}
           >
@@ -53,7 +55,7 @@ export function ApiReferenceHeader({ baseUrl, version, endpointCount, moduleCoun
           <Button
             size="sm"
             variant="secondary"
-            disabled={download.isPending}
+            disabled={downloadDisabled}
             aria-label={t('apiIntegrations.docs.downloadPostman')}
             onClick={() => handleDownload('postman')}
           >
@@ -78,6 +80,11 @@ export function ApiReferenceHeader({ baseUrl, version, endpointCount, moduleCoun
         {endpointCount !== null && moduleCount !== null ? (
           <span className="text-xs text-muted-foreground">
             {t('apiIntegrations.docs.totals', { endpoints: endpointCount, modules: moduleCount })}
+          </span>
+        ) : null}
+        {generatedAt ? (
+          <span className="text-xs text-muted-foreground">
+            {t('apiIntegrations.docs.generatedAt', { date: formatDateTime(generatedAt) })}
           </span>
         ) : null}
       </div>

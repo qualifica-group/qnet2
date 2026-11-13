@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { ApiDocsContent } from '@/features/api-integrations/components/api-docs-content'
 import { createWrapper } from '@/features/api-integrations/test-support'
 import type { OpenApiDocument } from '@/features/api-integrations/openapi-types'
+import type { ApiDocsStatus } from '@/features/api-integrations/types'
 import type { NavigationItem } from '@/features/navigation/types'
 
 export const document: OpenApiDocument = {
@@ -56,15 +57,29 @@ export const menu: NavigationItem[] = [
   },
 ]
 
+export const GENERATED_AT = '2026-11-13T00:00:00Z'
+
+export const readyStatus: ApiDocsStatus = { status: 'ready', generated_at: GENERATED_AT }
+
+export interface DocsApiMock {
+  fetchOpenApiDocument: ReturnType<typeof vi.fn>
+  fetchApiDocsStatus: ReturnType<typeof vi.fn>
+  refreshApiDocs: ReturnType<typeof vi.fn>
+  downloadApiDoc: ReturnType<typeof vi.fn>
+}
+
 export function resetDocsMocks(mocks: {
-  api: { fetchOpenApiDocument: ReturnType<typeof vi.fn>; downloadApiDoc: ReturnType<typeof vi.fn> }
+  api: DocsApiMock
   navigation: { items: NavigationItem[] }
   toast: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn> }
   writeText: ReturnType<typeof vi.fn>
 }) {
-  mocks.api.fetchOpenApiDocument.mockReset().mockResolvedValue({ status: 'ready', document })
-  mocks.api.downloadApiDoc.mockReset().mockResolvedValue('saved')
+  mocks.api.fetchOpenApiDocument.mockReset().mockResolvedValue(document)
+  mocks.api.fetchApiDocsStatus.mockReset().mockResolvedValue(readyStatus)
+  mocks.api.refreshApiDocs.mockReset()
+  mocks.api.downloadApiDoc.mockReset().mockResolvedValue(undefined)
   mocks.toast.info.mockReset()
+  mocks.toast.error.mockReset()
   mocks.navigation.items = menu
   mocks.writeText.mockReset().mockResolvedValue(undefined)
   Object.defineProperty(navigator, 'clipboard', { value: { writeText: mocks.writeText }, configurable: true })

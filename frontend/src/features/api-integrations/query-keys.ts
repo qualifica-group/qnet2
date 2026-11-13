@@ -2,5 +2,8 @@
 export const apiIntegrationsKeys = {
   all: ['api-integrations'] as const,
   detail: (id: number) => [...apiIntegrationsKeys.all, 'detail', id] as const,
-  openApi: () => [...apiIntegrationsKeys.all, 'openapi'] as const,
+  docs: () => [...apiIntegrationsKeys.all, 'docs'] as const,
+  docsStatus: () => [...apiIntegrationsKeys.docs(), 'status'] as const,
+  /** Keyed by generation instant: a regenerated document is a new cache entry. */
+  openApi: (generatedAt: string) => [...apiIntegrationsKeys.docs(), 'openapi', generatedAt] as const,
 }

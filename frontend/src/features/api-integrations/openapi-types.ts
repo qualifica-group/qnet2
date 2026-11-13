@@ -42,8 +42,3 @@ export interface OpenApiDocument {
     parameters?: Record<string, OpenApiParameter>
   }
 }
-
-/** Outcome of `GET /api-clients/docs/openapi`: the document, or a 202 while the server builds it. */
-export type OpenApiFetchResult =
-  | { status: 'ready'; document: OpenApiDocument }
-  | { status: 'generating'; retryAfterSeconds: number }

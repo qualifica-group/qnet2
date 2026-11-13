@@ -11,8 +11,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Background generation of the OpenAPI document (spec 0210): a cold Scramble run
- * takes tens of seconds, so it never happens inside the Documentation request.
+ * Background regeneration of the OpenAPI document started by the Refresh button
+ * (spec 0210): a Scramble run takes tens of seconds, so it never happens inside
+ * the request.
  */
 class GenerateApiDocsJob implements ShouldBeUnique, ShouldQueue
 {
