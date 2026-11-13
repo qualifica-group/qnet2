@@ -52,6 +52,8 @@ export const proformaRequests = {
     deleted: 'Request deleted.',
     deleteError: 'Unable to delete the request. Please try again.',
   },
+  /** Ticket #427857: the work order detail header button. */
+  detailAction: 'Request proforma',
   cell: {
     none: 'Request proforma issue',
     pending: 'Proforma requested: open the request',

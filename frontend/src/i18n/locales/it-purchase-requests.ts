@@ -10,7 +10,7 @@ export const purchaseRequests = {
   forbidden: 'Non hai il permesso di visualizzare le richieste di acquisto.',
   newRequest: 'Nuova RDA',
   columns: {
-    id: 'ID',
+    id: 'N. RDA',
     subject: 'Oggetto',
     requested_at: 'Data richiesta',
     priority: 'Priorità',

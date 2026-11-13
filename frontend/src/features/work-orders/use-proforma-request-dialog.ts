@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import type { UseFormSetError } from 'react-hook-form'
@@ -43,10 +43,13 @@ interface UseSendProformaRequestArgs {
  */
 export function useSendProformaRequest({ workOrderId, setError, onSent }: UseSendProformaRequestArgs) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (values: ProformaNoteFormValues) => createProformaRequests(workOrderId, values),
     onSuccess: () => {
+      // The detail can reopen the dialog at once: it must read "pending", not the cached "none".
+      void queryClient.invalidateQueries({ queryKey: proformaSummaryQueryKey(workOrderId) })
       toast.success(t('proformaRequests.dialog.sent'))
       onSent()
     },

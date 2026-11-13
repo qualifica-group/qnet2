@@ -182,7 +182,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From a single row's menu: **Documents**, **Notes**, **Transfer contact**, **Delete**, **History**. Selecting several rows, the **Actions** menu offers:",
+          text: "From a single row's menu: **Documents**, **Notes** (the top of the window shows the row's **Callback date**, so you see it while writing), **Transfer contact**, **Delete**, **History**. Selecting several rows, the **Actions** menu offers:",
         },
         {
           type: 'table',

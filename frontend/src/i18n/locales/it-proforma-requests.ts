@@ -52,6 +52,8 @@ export const proformaRequests = {
     deleted: 'Richiesta eliminata.',
     deleteError: 'Impossibile eliminare la richiesta. Riprova.',
   },
+  /** Ticket #427857: the work order detail header button. */
+  detailAction: 'Richiedi proforma',
   cell: {
     none: 'Richiedi emissione proforma',
     pending: 'Proforma richiesta: apri la richiesta',

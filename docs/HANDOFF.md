@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ticket da QNet (lotto 2026-11-13) — VERDE MIRATO, NON COMMITTATO
+
+- **#428417 import contatti:** `config/imports.php` `column_aliases.phone` + 'phone number', 'telephone', 'mobile',
+  'mobile phone', 'numero di telefono', 'numero telefono'. Test: `ColumnMapperTest` (dataset).
+- **#427831 statistiche gestione richieste:** default periodo = Dal vuoto (dall'inizio dello storico), Al oggi
+  (`defaultReportRange`, sostituisce `todayReportRange` e la D-1 della spec 0169). Chiave localStorage dei filtri
+  `<module>.report-filters.v2`: i filtri salvati col vecchio default si azzerano una volta. Le scelte rapide (Oggi,
+  Ieri, ...) restano invariate. Con Dal vuoto il confronto col periodo precedente non c'e' (previousPeriod -> null).
+  Test aggiornati (REQUIREMENT CHANGED) in request-dashboard*, request-report-*, use-request-report-filters.
+- **#427857 proforma dal dettaglio commessa:** flag `permissions.actions.request_proforma`
+  (`WorkOrdersAuthorization`, = `proforma-requests.create`) + pulsante "Richiedi proforma" in
+  `work-order-detail-header.tsx` che apre lo stesso `ProformaRequestDialog`. `useSendProformaRequest` invalida il
+  summary dopo l'invio. Test: `ProformaRequestEndpointsTest` (#427857), `work-order-proforma-action.test.tsx`.
+- **#427847 data richiamo nelle note:** `NotesDialog` prop opzionale `context`; Gestione richieste passa
+  `RequestNotesCallback` (nuovo file) con `next_callback_at` della riga. Test: `request-management-table-notes.test.tsx`.
+- **#426856 RDA:** colonna `id` ("N. RDA") visibile, prima, ordinabile e filtrabile; azioni `close` (lucchetto) e
+  `activity` `pinned` (sempre sulla riga). Erano gia' concesse ma finivano nel menu "...". Chi ha un layout griglia
+  salvato potrebbe dover riattivare la colonna. Test: `PurchaseRequestTablesTest` (#426856).
+- Guide in-app aggiornate IT+EN: request-statistics, work-orders, request-management, purchase-requests.
+
+## Attributi di tipo data mostrati nel formato utente — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+
+- Ticket #428276 (commessa 16201): "Data inizio corso" / "Data fine corso" in "Informazioni aggiuntive" uscivano in ISO
+  (`2025-10-07`). Causa: `formatAttributeScalar` in `features/attributes/attribute-value-display.tsx` non aveva il ramo
+  `date` (solo `datetime`) e cadeva su `String(rawValue)`. Fix: `case 'date'` -> `formatDate` (preferenza utente,
+  default `dmy`). Vale per Commesse, Offerte e Prodotti (unico display condiviso).
+- Test: `attribute-layout-view.test.tsx` ("renders a date attribute in the user date format").
+- Non toccato: l'editor resta `<input type="date">` nativo, il cui formato segue la lingua del browser (85 input in app).
+
 ## Email delle notifiche su coda `mail` dedicata — VERDE MIRATO, NON COMMITTATO (2026-11-13)
 
 - Incidente prod 2026-11-13 (disservizio Microsoft): 129 job su `default`, 108 email di notifica che fallivano ogni

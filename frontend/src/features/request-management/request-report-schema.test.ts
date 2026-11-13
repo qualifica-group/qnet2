@@ -3,7 +3,7 @@ import i18n from '@/i18n'
 import {
   buildRequestReportSchema,
   isRequestReportQueryReady,
-  todayReportRange,
+  defaultReportRange,
   toRequestReportFilterPayload,
   type RequestReportFormValues,
 } from '@/features/request-management/request-report-schema'
@@ -25,10 +25,10 @@ afterEach(() => {
   process.env.TZ = ORIGINAL_TZ
 })
 
-describe('todayReportRange', () => {
-  it('proposes today as both From and To (spec 0169 D-1)', () => {
-    expect(todayReportRange(new Date(2026, 8, 9, 12, 0))).toEqual({
-      date_from: '2026-09-09',
+describe('defaultReportRange', () => {
+  it('leaves From open and proposes today as To (ticket #427831)', () => {
+    expect(defaultReportRange(new Date(2026, 8, 9, 12, 0))).toEqual({
+      date_from: '',
       date_to: '2026-09-09',
     })
   })
@@ -37,8 +37,8 @@ describe('todayReportRange', () => {
     process.env.TZ = 'Asia/Tokyo'
     // 2026-09-07 00:30 Tokyo time (UTC+9) is locally the 7th; its UTC
     // equivalent is 2026-09-06 15:30 — `toISOString()` would read the 6th.
-    expect(todayReportRange(new Date(2026, 8, 7, 0, 30))).toEqual({
-      date_from: '2026-09-07',
+    expect(defaultReportRange(new Date(2026, 8, 7, 0, 30))).toEqual({
+      date_from: '',
       date_to: '2026-09-07',
     })
   })

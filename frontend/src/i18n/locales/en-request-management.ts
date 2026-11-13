@@ -34,6 +34,11 @@ export const requestManagement = {
     transferred: 'Transferred',
     quoteWorkflowStatus: 'Working status',
   },
+  /** Ticket #427847: the row's callback date shown above its notes. */
+  notesDialog: {
+    callback: 'Callback date: {{date}}',
+    callbackNone: 'No callback date set',
+  },
   pendingChangeRequests: {
     alert_one: '{{count}} pending change request',
     alert_other: '{{count}} pending change requests',

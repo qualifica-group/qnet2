@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Dall’elenco puoi filtrare, ordinare ed esportare, e **modificare direttamente nelle celle** Oggetto, Data richiesta, Priorità, Richiedente, Responsabile di funzione, Cliente, Commessa, Società / Sede (solo tra le sedi della società della RDA), Sede operativa e Funzione aziendale: fai doppio clic sulla cella, scegli il valore e conferma. Valgono le stesse regole della scheda; le RDA chiuse e i campi che il tuo ruolo non può modificare restano in sola lettura. La **Società aziendale** si cambia dalla scheda, insieme alla sede. Le **schede per stato** in alto mostrano solo le RDA che hanno almeno una riga in quello stato. Espandi una riga con la freccia per vederne le righe e cambiarne lo stato senza aprire la RDA. Vedi solo le RDA di cui sei richiedente, responsabile o autore, salvo che tu abbia il permesso di vedere tutto.',
+          text: 'La prima colonna dell’elenco è **N. RDA**, lo stesso numero che compare nel dettaglio (RDA #numero): puoi ordinarla e filtrarla. Dall’elenco puoi filtrare, ordinare ed esportare, e **modificare direttamente nelle celle** Oggetto, Data richiesta, Priorità, Richiedente, Responsabile di funzione, Cliente, Commessa, Società / Sede (solo tra le sedi della società della RDA), Sede operativa e Funzione aziendale: fai doppio clic sulla cella, scegli il valore e conferma. Valgono le stesse regole della scheda; le RDA chiuse e i campi che il tuo ruolo non può modificare restano in sola lettura. La **Società aziendale** si cambia dalla scheda, insieme alla sede. Le **schede per stato** in alto mostrano solo le RDA che hanno almeno una riga in quello stato. Espandi una riga con la freccia per vederne le righe e cambiarne lo stato senza aprire la RDA. Vedi solo le RDA di cui sei richiedente, responsabile o autore, salvo che tu abbia il permesso di vedere tutto.',
         },
         {
           type: 'note',
@@ -126,7 +126,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Chiusura automatica**: la RDA si chiude da sola quando non restano righe aperte, cioè tutte sono in uno stato finale (Ricevuto, Stand by o Rifiutato), anche dopo aver eliminato delle righe.',
-            '**Chiudi RDA**: chiusura a mano. Se restano righe non finali la chiusura è **forzata** e la **motivazione è obbligatoria**. Una RDA chiusa non si riapre.',
+            '**Chiudi RDA** (il lucchetto, sempre visibile sulla riga dell’elenco come lo storico **Attività**): chiusura a mano. Se restano righe non finali la chiusura è **forzata** e la **motivazione è obbligatoria**. Una RDA chiusa non si riapre.',
             '**Invia al responsabile**: rinvia al Responsabile di funzione la notifica (app ed email) che riceve alla creazione.',
             '**Elimina**: rimuove la RDA con righe, storico e documenti dopo conferma; non è possibile se una riga è già Ordinata o Ricevuta.',
           ],

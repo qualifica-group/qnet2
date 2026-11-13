@@ -109,19 +109,19 @@ export function toLocalIsoDate(date: Date): string {
 }
 
 /**
- * Today as both bounds, local `YYYY-MM-DD` (spec 0169 D-1, replacing the
- * current week of rev-2 AC-056).
+ * The default period: "Dal" open, so the figures start from the beginning of
+ * the history, and "Al" today, local `YYYY-MM-DD` (ticket #427831, replacing
+ * the today-today default of spec 0169 D-1).
  */
-export function todayReportRange(now: Date = new Date()): { date_from: string; date_to: string } {
-  const today = toLocalIsoDate(now)
-  return { date_from: today, date_to: today }
+export function defaultReportRange(now: Date = new Date()): { date_from: string; date_to: string } {
+  return { date_from: '', date_to: toLocalIsoDate(now) }
 }
 
 /**
  * `categoryKeys` seeds the checkbox group: every branch selected by default
  * (rev-2 D-11, AC-050), an empty array before the branch list has loaded.
- * `date_from`/`date_to` default to today (spec 0169 D-1) — both stay freely
- * editable and may be emptied, this is a default, not a constraint.
+ * `date_from` defaults to open and `date_to` to today (ticket #427831) — both
+ * stay freely editable, this is a default, not a constraint.
  */
 export function requestReportDefaultValues(
   categoryKeys: string[] = [],
@@ -129,7 +129,7 @@ export function requestReportDefaultValues(
   siteKeys: string[] = [],
 ): RequestReportFormValues {
   return {
-    ...todayReportRange(),
+    ...defaultReportRange(),
     category_keys: categoryKeys,
     row_mode: 'all',
     operator_keys: operatorKeys,

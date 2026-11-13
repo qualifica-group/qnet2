@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Hammer, MessageSquareMore, TrendingUp } from 'lucide-react'
+import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Euro, Hammer, MessageSquareMore, TrendingUp } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,7 @@ import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
+import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderRequestUpdateDialog } from '@/features/work-orders/work-order-request-update-dialog'
 import { WorkOrderClosureActions } from '@/features/work-orders/work-order-closure-actions'
@@ -91,6 +92,9 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
         <>
           <WorkOrderProgressAction workOrder={workOrder} onChanged={onChanged} />
           {workOrder.permissions.actions.request_update ? <WorkOrderRequestUpdateAction workOrder={workOrder} /> : null}
+          {workOrder.permissions.actions.request_proforma ? (
+            <WorkOrderProformaAction workOrder={workOrder} onChanged={onChanged} />
+          ) : null}
           <WorkOrderClosureActions workOrder={workOrder} onChanged={onChanged} />
         </>
       }
@@ -138,6 +142,39 @@ function WorkOrderRequestUpdateAction({ workOrder }: { workOrder: WorkOrderDetai
         {t('workOrders.actions.requestUpdate.label')}
       </Button>
       <WorkOrderRequestUpdateDialog open={open} onOpenChange={setOpen} workOrder={workOrder} />
+    </>
+  )
+}
+
+/** Ticket #427857: the grid's "€" proforma request, the same dialog, from inside the record. */
+function WorkOrderProformaAction({ workOrder, onChanged }: WorkOrderDetailHeaderProps) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant={ACTION_BUTTON_VARIANT.action}
+        className="bg-card"
+        size="sm"
+        onClick={() => setOpen(true)}
+      >
+        <Euro aria-hidden="true" />
+        {t('proformaRequests.detailAction')}
+      </Button>
+      {open ? (
+        <ProformaRequestDialog
+          workOrderId={workOrder.id}
+          workOrderCode={workOrder.code}
+          open
+          onOpenChange={setOpen}
+          onSent={() => {
+            setOpen(false)
+            onChanged?.()
+          }}
+        />
+      ) : null}
     </>
   )
 }

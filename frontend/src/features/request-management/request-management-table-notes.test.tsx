@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
@@ -64,6 +64,8 @@ const NOTES_ACTION: TableActionDefinition = {
 }
 
 const refreshMock = vi.fn()
+// The row the stub's trigger hands to `onAction`; a test may swap it.
+let triggerRow: TableRow = ROW
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<{ refresh: () => void }, { domain: string; onAction: RowActionHandler }>(
@@ -71,7 +73,7 @@ vi.mock('@/features/table/table-view', () => ({
       useImperativeHandle(ref, () => ({ refresh: refreshMock }))
       return (
         <div role="region" aria-label={`table-${domain}`}>
-          <button type="button" onClick={() => onAction(NOTES_ACTION, ROW)}>
+          <button type="button" onClick={() => onAction(NOTES_ACTION, triggerRow)}>
             trigger-notes
           </button>
         </div>
@@ -99,6 +101,7 @@ beforeEach(() => {
   canMock.mockReturnValue(true)
   refreshMock.mockReset()
   notesSectionMock.mockReset()
+  triggerRow = ROW
 })
 
 describe('RequestManagementTable — "notes" row action', () => {
@@ -137,5 +140,22 @@ describe('RequestManagementTable — "notes" row action', () => {
     act(() => props.onThreadChanged?.())
 
     expect(client.getQueryState(dashboardKey)?.isInvalidated).toBe(true)
+  })
+
+  it('shows the row\'s callback date above the thread (ticket #427847)', () => {
+    triggerRow = { ...ROW, next_callback_at: '2026-11-20T10:30:00' }
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-notes' }))
+
+    expect(within(screen.getByRole('dialog')).getByText('Callback date: 20/11/2026 10:30')).toBeInTheDocument()
+  })
+
+  it('says when the row has no callback date (ticket #427847)', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-notes' }))
+
+    expect(within(screen.getByRole('dialog')).getByText('No callback date set')).toBeInTheDocument()
   })
 })

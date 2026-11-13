@@ -197,3 +197,22 @@ it('AC-014: the value list of a related column offers its names and filters by t
     $ids = collect($rows)->map(fn (array $row): int => $row['purchase_request_id'] ?? $row['id'])->unique()->values()->all();
     expect($ids)->toBe([$first->id]);
 })->with(['purchase-requests', 'purchase-request-lines']);
+
+it('ticket #426856: the RDA number is the first visible column and close/activity stay on the row', function () {
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'close', 'viewActivity']));
+    $first = purchaseRequestWithLines([LineStatus::Approved], ['subject' => 'First']);
+    $second = purchaseRequestWithLines([LineStatus::Approved], ['subject' => 'Second']);
+
+    $config = $this->getJson('/api/tables/purchase-requests/columns')->assertOk()->json('data');
+    $idColumn = $config['columns'][0];
+    $pinned = collect($config['actions'])->filter(fn (array $action): bool => ($action['pinned'] ?? false) === true)->pluck('key');
+
+    expect($idColumn['id'])->toBe('id')
+        ->and($idColumn['visible'])->toBeTrue()
+        ->and($idColumn['label'])->toBe('purchaseRequests.columns.id')
+        ->and($pinned->all())->toEqualCanonicalizing(['close', 'activity'])
+        ->and(collect(requestRows($this, ['sortModel' => [['colId' => 'id', 'sort' => 'desc']]]))->pluck('id')->all())
+        ->toBe([$second->id, $first->id])
+        ->and(collect(requestRows($this, ['filterModel' => ['id' => ['filterType' => 'number', 'type' => 'equals', 'filter' => $first->id]]]))->pluck('id')->all())
+        ->toBe([$first->id]);
+});

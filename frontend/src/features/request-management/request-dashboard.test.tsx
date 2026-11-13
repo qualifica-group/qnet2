@@ -7,7 +7,7 @@ import i18n from '@/i18n'
 import { RequestDashboard } from '@/features/request-management/request-dashboard'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
 import { DASHBOARD_CATEGORIES, dashboardData } from '@/features/request-management/request-dashboard-fixtures'
-import { todayReportRange } from '@/features/request-management/request-report-schema'
+import { defaultReportRange } from '@/features/request-management/request-report-schema'
 
 /**
  * Spec 0107 AC-041..AC-044, AC-048: the dashboard panel, driven entirely
@@ -120,7 +120,7 @@ describe('RequestDashboard', () => {
 
   it('restores the filters applied in a previous session and fetches on them', async () => {
     window.localStorage.setItem(
-      'request-management.report-filters',
+      'request-management.report-filters.v2',
       JSON.stringify({
         date_from: '2026-03-02',
         date_to: '2026-03-06',
@@ -153,18 +153,17 @@ describe('RequestDashboard', () => {
 
     const dateFrom = screen.getByLabelText(/^From/) as HTMLInputElement
     const dateTo = screen.getByLabelText(/^To/) as HTMLInputElement
-    expect(dateFrom.value).not.toBe('')
-    expect(dateTo.value).not.toBe('')
-    expect(dateTo.value >= dateFrom.value).toBe(true)
+    expect(dateFrom.value).toBe('')
+    expect(dateTo.value).toBe(defaultReportRange().date_to)
   })
 
   it('fetches the dashboard on the seeded filters, and refetches on an applied change (AC-044)', async () => {
     renderDashboard()
 
-    const today = todayReportRange()
+    const defaults = defaultReportRange()
     await waitFor(() =>
       expect(fetchRequestManagementDashboardMock).toHaveBeenCalledWith('/request-management', {
-        ...today,
+        date_to: defaults.date_to,
         category_keys: ['gol', 'consulenza'],
         row_mode: 'all',
       }),
@@ -177,7 +176,7 @@ describe('RequestDashboard', () => {
     await waitFor(() =>
       expect(fetchRequestManagementDashboardMock).toHaveBeenCalledWith(
         '/request-management',
-        expect.objectContaining({ date_from: today.date_from, date_to: '2099-01-31' }),
+        expect.objectContaining({ date_to: '2099-01-31' }),
       ),
     )
   })
@@ -185,8 +184,8 @@ describe('RequestDashboard', () => {
   it('blocks the fetch and shows the validation error when every branch is deselected (AC-044)', async () => {
     renderDashboard()
     const gol = await openFilters()
-    // The applied period and, the default range being closed, its previous one.
-    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(2))
+    // Only the applied period: the default range has an open "From", so there is no previous one to compare.
+    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1))
 
     fireEvent.click(gol)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Consulenza' }))
@@ -195,7 +194,7 @@ describe('RequestDashboard', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Select at least one category.')
     // An empty selection is never applied, so it never reaches the server:
     // the panel is still on the filters of the calls made so far.
-    expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(2)
+    expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1)
   })
 
   it('shows a skeleton while loading, then the summary tiles and charts (AC-048)', async () => {
@@ -270,7 +269,7 @@ describe('RequestDashboard', () => {
     // A selection from an earlier session must not reach the server once no
     // category is offered any more: that was a 422 behind a generic error.
     window.localStorage.setItem(
-      'request-management.report-filters',
+      'request-management.report-filters.v2',
       JSON.stringify({ date_from: '2026-03-02', date_to: '2026-03-06', category_keys: ['gol'], row_mode: 'all' }),
     )
     fetchRequestManagementReportCategoriesMock.mockResolvedValue([])
@@ -284,7 +283,7 @@ describe('RequestDashboard', () => {
 
   it('never fetches on a restored category the report no longer offers', async () => {
     window.localStorage.setItem(
-      'request-management.report-filters',
+      'request-management.report-filters.v2',
       JSON.stringify({ date_from: '2026-03-02', date_to: '2026-03-06', category_keys: ['retired'], row_mode: 'all' }),
     )
 

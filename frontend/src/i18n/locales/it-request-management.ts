@@ -35,6 +35,11 @@ export const requestManagement = {
     transferred: 'Trasferito',
     quoteWorkflowStatus: 'Stato di lavorazione',
   },
+  /** Ticket #427847: the row's callback date shown above its notes. */
+  notesDialog: {
+    callback: 'Data richiamo: {{date}}',
+    callbackNone: 'Data richiamo non impostata',
+  },
   pendingChangeRequests: {
     alert_one: '{{count}} richiesta di modifica in attesa',
     alert_other: '{{count}} richieste di modifica in attesa',

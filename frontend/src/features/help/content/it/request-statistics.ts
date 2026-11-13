@@ -141,13 +141,13 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le scelte rapide del periodo cambiano solo le date. Per tutto il resto clicca **Filtri** (o **Personalizzato**) per aprire il pannello **Filtri report e statistiche**: modifica i valori e premi **Applica** (o **Annulla**). **Azzera filtri** riporta i valori iniziali (oggi, tutte le categorie, sedi e operatori, modalità Tutto): la modifica vale solo dopo **Applica**. Gli stessi filtri valgono per grafici e file.',
+          text: 'Le scelte rapide del periodo cambiano solo le date. Per tutto il resto clicca **Filtri** (o **Personalizzato**) per aprire il pannello **Filtri report e statistiche**: modifica i valori e premi **Applica** (o **Annulla**). **Azzera filtri** riporta i valori iniziali (Dal vuoto e Al oggi, tutte le categorie, sedi e operatori, modalità Tutto): la modifica vale solo dopo **Applica**. Gli stessi filtri valgono per grafici e file.',
         },
         {
           type: 'table',
           headers: ['Filtro', 'Cosa fa', 'Valore predefinito'],
           rows: [
-            ['Dal / Al', 'Periodo considerato, giorni inclusi per intero. Si può lasciare vuoto uno dei due campi o entrambi: solo Al = tutto fino a quella data; solo Dal = tutto da quella data in poi; entrambi vuoti = nessun limite di date.', 'Oggi (Dal e Al)'],
+            ['Dal / Al', 'Periodo considerato, giorni inclusi per intero. Si può lasciare vuoto uno dei due campi o entrambi: solo Al = tutto fino a quella data; solo Dal = tutto da quella data in poi; entrambi vuoti = nessun limite di date.', 'Dal vuoto (dall’inizio dello storico), Al oggi'],
             ['Categorie', 'Quali categorie includere.', 'Tutte'],
             ['Sedi', 'Limita agli operatori di quelle sedi.', 'Tutte'],
             ['Operatori', 'Limita a certi operatori GA2.', 'Tutti'],

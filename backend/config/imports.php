@@ -108,7 +108,11 @@ return [
         'last_name' => ['cognome', 'last name'],
         'email' => ['e mail', 'indirizzo email', 'indirizzo e mail'],
         // Spec 0139: one telephone field — a "cellulare" column maps here too.
-        'phone' => ['telefono', 'tel', 'cellulare', 'cell'],
+        // English and long headers too (ticket #428417: "phone number").
+        'phone' => [
+            'telefono', 'tel', 'cellulare', 'cell', 'numero di telefono', 'numero telefono',
+            'phone number', 'telephone', 'mobile', 'mobile phone',
+        ],
         'company_name' => ['ragione sociale', 'azienda', 'company', 'nome azienda'],
         'tax_code' => ['codice fiscale', 'cf'],
         'vat_number' => ['partita iva', 'piva', 'vat'],

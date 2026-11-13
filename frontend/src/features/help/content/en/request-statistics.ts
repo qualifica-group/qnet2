@@ -141,13 +141,13 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The quick period choices change the dates only. For everything else click **Filters** (or **Custom**) to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (today, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
+          text: 'The quick period choices change the dates only. For everything else click **Filters** (or **Custom**) to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (From empty and To today, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
         },
         {
           type: 'table',
           headers: ['Filter', 'What it does', 'Default value'],
           rows: [
-            ['From / To', 'The period considered, full days included. Either field, or both, can be left empty: only To = everything up to that date; only From = everything from that date on; both empty = no date limit.', 'Today (From and To)'],
+            ['From / To', 'The period considered, full days included. Either field, or both, can be left empty: only To = everything up to that date; only From = everything from that date on; both empty = no date limit.', 'From empty (from the start of the history), To today'],
             ['Categories', 'Which categories to include.', 'All'],
             ['Sites', 'Limits to the operators of those sites.', 'All'],
             ['Operators', 'Limits to certain GA2 operators.', 'All'],

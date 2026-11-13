@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { RequestReportFiltersDialog } from '@/features/request-management/request-report-filters-dialog'
-import { requestReportDefaultValues, todayReportRange } from '@/features/request-management/request-report-schema'
+import { requestReportDefaultValues, defaultReportRange } from '@/features/request-management/request-report-schema'
 import type { RequestReportCategory } from '@/features/request-management/report-api'
 
 /**
@@ -147,9 +147,9 @@ describe('RequestReportFiltersDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
 
-    const today = todayReportRange()
-    await waitFor(() => expect(screen.getByLabelText(/^From/)).toHaveValue(today.date_from))
-    expect(screen.getByLabelText(/^To/)).toHaveValue(today.date_to)
+    const defaults = defaultReportRange()
+    await waitFor(() => expect(screen.getByLabelText(/^From/)).toHaveValue(defaults.date_from))
+    expect(screen.getByLabelText(/^To/)).toHaveValue(defaults.date_to)
     expect(screen.getByRole('checkbox', { name: 'GOL' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Everything' })).toHaveAttribute('aria-checked', 'true')
     expect(onApply).not.toHaveBeenCalled()
@@ -159,7 +159,7 @@ describe('RequestReportFiltersDialog', () => {
 
     await waitFor(() =>
       expect(onApply).toHaveBeenCalledWith({
-        ...today,
+        ...defaults,
         category_keys: ['gol', 'consulenza'],
         row_mode: 'all',
         operator_keys: [],

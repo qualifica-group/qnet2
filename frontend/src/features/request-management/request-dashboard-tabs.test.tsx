@@ -185,7 +185,7 @@ describe('RequestDashboard tabs (spec 0192)', () => {
 
   it('compares a closed period with the previous one of equal length (spec 0192 D-4, AC-003/AC-004)', async () => {
     window.localStorage.setItem(
-      'request-management.report-filters',
+      'request-management.report-filters.v2',
       JSON.stringify({ date_from: '2026-03-02', date_to: '2026-03-06', category_keys: ['gol'], row_mode: 'all' }),
     )
     fetchRequestManagementDashboardMock.mockImplementation((_base: string, query: { date_from?: string }) =>
@@ -222,7 +222,7 @@ describe('RequestDashboard tabs (spec 0192)', () => {
 
   it('makes no comparison call and shows no change for an open period (spec 0192 AC-003)', async () => {
     window.localStorage.setItem(
-      'request-management.report-filters',
+      'request-management.report-filters.v2',
       JSON.stringify({ date_from: '2026-03-02', date_to: '', category_keys: ['gol'], row_mode: 'all' }),
     )
 

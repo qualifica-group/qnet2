@@ -412,7 +412,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Se hai il permesso di creare richieste proforma, nella colonna **Azioni** dell\'elenco Commesse (anche nel tab Commesse del contratto e dell\'anagrafica) trovi il pulsante **€**, sempre visibile sulla riga (non finisce mai nel menu con i tre puntini). Il colore indica lo stato: **grigio** nessuna richiesta, **blu** richiesta inviata e non ancora evasa, **giallo** richieste già evase (proforma emessa).',
+          text: 'Se hai il permesso di creare richieste proforma, nella colonna **Azioni** dell\'elenco Commesse (anche nel tab Commesse del contratto e dell\'anagrafica) trovi il pulsante **€**, sempre visibile sulla riga (non finisce mai nel menu con i tre puntini). Il colore indica lo stato: **grigio** nessuna richiesta, **blu** richiesta inviata e non ancora evasa, **giallo** richieste già evase (proforma emessa). La stessa richiesta si fa anche dentro la commessa, con il pulsante **Richiedi proforma** in alto accanto ad **Avanzamento commessa**: apre la stessa finestra.',
         },
         {
           type: 'steps',

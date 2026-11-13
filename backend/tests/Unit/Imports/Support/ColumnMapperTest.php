@@ -116,3 +116,11 @@ it('maps "Nome" to first_name when the file also has a "Cognome" column', functi
     expect($suggestion->mapping)->toBe(['Cognome' => 'last_name', 'Nome' => 'first_name'])
         ->and($suggestion->conflicts)->toBe([]);
 });
+
+it('maps the English and long Italian phone headers to phone', function (string $header) {
+    $fileColumns = [['name' => $header, 'index' => 0, 'duplicate' => false]];
+
+    $suggestion = (new ColumnMapper)->suggest($fileColumns, importMapperFields());
+
+    expect($suggestion->mapping)->toBe([$header => 'phone']);
+})->with(['phone number', 'Phone Number', 'Numero di telefono', 'Numero telefono', 'Mobile', 'Mobile phone', 'Telephone']);

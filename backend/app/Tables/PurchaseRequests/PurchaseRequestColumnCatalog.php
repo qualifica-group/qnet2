@@ -74,6 +74,8 @@ final class PurchaseRequestColumnCatalog
     public static function columns(): array
     {
         $columns = [
+            // Ticket #426856: the RDA number ("RDA #id" in the detail) on the list, as in the legacy screen.
+            self::column('id', 'number', sortable: true, filter: 'number'),
             self::column('subject', 'text', sortable: true, filter: 'text', searchable: true),
             self::column('requested_at', 'date', sortable: true, filter: 'date'),
             self::column(self::PRIORITY_COLUMN, 'badge', sortable: true, filter: 'set'),
@@ -165,9 +167,10 @@ final class PurchaseRequestColumnCatalog
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'purchase-requests.view'],
             ['key' => 'notes', 'label' => 'actions.notes', 'icon' => 'messages-square', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.view', 'count_field' => 'notes_count'],
             ['key' => 'notify_manager', 'label' => 'purchaseRequests.actions.notifyManager', 'icon' => 'send', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.update'],
-            ['key' => 'close', 'label' => 'purchaseRequests.actions.close', 'icon' => 'lock', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.close'],
+            // Ticket #426856: the lock and the history stay on the row, never in the "..." menu.
+            ['key' => 'close', 'label' => 'purchaseRequests.actions.close', 'icon' => 'lock', 'type' => 'action', 'confirm' => false, 'pinned' => true, 'permission' => 'purchase-requests.close'],
             ['key' => 'delete', 'label' => 'actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'purchase-requests.delete'],
-            ['key' => 'activity', 'label' => 'actions.activity', 'icon' => 'history', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.viewActivity'],
+            ['key' => 'activity', 'label' => 'actions.activity', 'icon' => 'history', 'type' => 'action', 'confirm' => false, 'pinned' => true, 'permission' => 'purchase-requests.viewActivity'],
         ];
     }
 

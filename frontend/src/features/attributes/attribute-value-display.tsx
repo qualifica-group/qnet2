@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { ReadonlyTableValue } from '@/features/custom-fields/components/readonly-table-value'
 import type { TableFieldConfig, TableFieldValue } from '@/features/custom-fields/types'
-import { formatDateTime } from '@/features/table/cell-renderers'
+import { formatDate, formatDateTime } from '@/lib/formatting/date-display'
 
 /**
  * The fields a read-only detail reads off an applicable Attribute. Structural,
@@ -34,6 +34,8 @@ function formatAttributeScalar(attribute: DisplayableAttribute, rawValue: unknow
     }
     case 'table':
       return null
+    case 'date':
+      return formatDate(rawValue) || String(rawValue)
     case 'datetime':
       return formatDateTime(rawValue) || String(rawValue)
     case 'relation': {

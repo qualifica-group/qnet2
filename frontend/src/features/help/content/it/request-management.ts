@@ -182,7 +182,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal menu della singola riga: **Documenti**, **Note**, **Trasferisci contatto**, **Elimina**, **Attività**. Selezionando più righe, il menu **Azioni** offre:',
+          text: 'Dal menu della singola riga: **Documenti**, **Note** (in alto nella finestra c\'è la **Data richiamo** della riga, così la vedi mentre scrivi), **Trasferisci contatto**, **Elimina**, **Attività**. Selezionando più righe, il menu **Azioni** offre:',
         },
         {
           type: 'table',

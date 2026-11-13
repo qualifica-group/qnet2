@@ -412,7 +412,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'If you can create proforma requests, the **Actions** column of the Work orders list (also in the Work orders tab of a contract and of a registry) shows the **€** button, always visible on the row (it never goes into the three-dots menu). Its color is the state: **grey** no request yet, **blue** request sent and not yet fulfilled, **yellow** requests already fulfilled (proforma issued).',
+          text: 'If you can create proforma requests, the **Actions** column of the Work orders list (also in the Work orders tab of a contract and of a registry) shows the **€** button, always visible on the row (it never goes into the three-dots menu). Its color is the state: **grey** no request yet, **blue** request sent and not yet fulfilled, **yellow** requests already fulfilled (proforma issued). The same request can be made from inside the work order too, with the **Request proforma** button at the top next to **Work order progress**: it opens the same window.',
         },
         {
           type: 'steps',
