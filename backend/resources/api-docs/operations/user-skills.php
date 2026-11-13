@@ -15,7 +15,7 @@ return [
     ],
     'PUT /user-skills/{userSkill}' => [
         'summary' => 'Update a skill of a person',
-        'description' => 'Partially updates person, skill, level, assessed_on (not in the future) and notes; the caller becomes the assessor. Level changes are kept in the activity log. Returns the skill record. Requires user-skills.manage; 404 when the record is not visible to the caller.',
+        'description' => 'Partially updates person, skill, level, assessed_on (not in the future) and notes; the caller becomes the assessor. Level changes are kept in the activity log. Returns the skill record. 422 when the person already has that skill in another record. Requires user-skills.manage; 404 when the record is not visible to the caller.',
     ],
     'DELETE /user-skills/{userSkill}' => [
         'summary' => 'Remove a skill from a person',

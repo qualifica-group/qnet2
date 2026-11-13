@@ -2,10 +2,14 @@
 
 use App\Enums\ChartAccountKind;
 use App\Models\ChartAccount;
+use App\Models\CostType;
+use App\Models\RevenueType;
 use App\Models\TreasuryMovement;
 use App\Models\TreasuryType;
 use App\Models\User;
+use App\Rules\UniqueChartCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Validator;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -122,4 +126,27 @@ it('AC-003: the tree shows the seeded financial group 90 with its four accounts 
             ])
             ->and($account['sub_accounts'][0])->toHaveKeys(['id', 'code', 'name', 'description', 'is_active']);
     }
+});
+
+it('a code already used anywhere in the chart of accounts is a 422, the own code is accepted', function () {
+    Sanctum::actingAs(treasuryTypesUser(['treasury-types.create', 'treasury-types.update']));
+    $account = financialAccount();
+    $treasuryType = TreasuryType::factory()->create(['chart_account_id' => $account->id, 'code' => 'TT.1']);
+    CostType::factory()->create(['code' => 'TT.COST']);
+    RevenueType::factory()->create(['code' => 'TT.REV']);
+
+    foreach (['TT.1', 'TT.COST', 'TT.REV', $account->code] as $taken) {
+        $this->postJson('/api/treasury-types', ['chart_account_id' => $account->id, 'code' => $taken, 'name' => 'Dup'])
+            ->assertStatus(422)->assertJsonValidationErrors('code');
+    }
+
+    $this->patchJson("/api/treasury-types/{$treasuryType->id}", ['code' => 'TT.COST'])->assertStatus(422)->assertJsonValidationErrors('code');
+    $this->patchJson("/api/treasury-types/{$treasuryType->id}", ['code' => 'TT.1', 'name' => 'Kept'])->assertOk();
+});
+
+it('a financial sub-account code cannot be reused by a cost or revenue sub-account', function () {
+    $account = financialAccount();
+    TreasuryType::factory()->create(['chart_account_id' => $account->id, 'code' => 'TT.SHARED']);
+
+    expect(Validator::make(['code' => 'TT.SHARED'], ['code' => UniqueChartCode::rules()])->fails())->toBeTrue();
 });

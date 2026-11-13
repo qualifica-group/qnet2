@@ -3,7 +3,7 @@
 return [
     'POST /chart-accounts' => [
         'summary' => 'Create a chart of accounts entry',
-        'description' => 'Creates a group or an account of the chart of accounts. level is group or account: a group requires kind (cost, revenue or financial) and has no parent; an account requires parent_id, the id of a group, and inherits its kind. code (letters, digits, dot, dash, max 20) must be unused across groups, accounts and cost or revenue sub-accounts. Answers 201 with the entry. Requires chart-accounts.create.',
+        'description' => 'Creates a group or an account of the chart of accounts. level is group or account: a group requires kind (cost, revenue or financial) and has no parent; an account requires parent_id, the id of a group, and inherits its kind. code (letters, digits, dot, dash, max 20) must be unused across groups, accounts and cost, revenue or financial sub-accounts. Answers 201 with the entry. Requires chart-accounts.create.',
     ],
     'GET /chart-accounts/{chartAccount}' => [
         'summary' => 'Get a chart of accounts entry',

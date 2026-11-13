@@ -61,11 +61,25 @@ class PostmanCollectionBuilder
                 ['key' => 'user_token', 'value' => ''],
             ],
             'item' => array_map(
-                static fn (string $name, array $items): array => ['name' => $name, 'item' => $items],
+                fn (string $name, array $items): array => $this->folder($name, $items, $document),
                 array_keys($folders),
                 array_values($folders),
             ),
         ];
+    }
+
+    /**
+     * A folder per module, carrying the description of its tag.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @param  array<string, mixed>  $document
+     * @return array<string, mixed>
+     */
+    private function folder(string $name, array $items, array $document): array
+    {
+        $description = collect($document['tags'] ?? [])->firstWhere('name', $name)['description'] ?? null;
+
+        return array_filter(['name' => $name, 'description' => $description, 'item' => $items], static fn (mixed $value): bool => $value !== null);
     }
 
     /**

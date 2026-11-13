@@ -3,7 +3,7 @@
 return [
     'POST /treasury-types' => [
         'summary' => 'Create a financial sub-account',
-        'description' => 'Creates a financial (treasury) sub-account of the managerial chart of accounts, used to classify treasury movements, under chart_account_id, which must be an account (not a group) of a financial-kind group. code (letters, digits, dots and dashes, max 20) must be unique; name (max 150) required; description and is_active optional. Returns 201 with the sub-account and the caller\'s update/delete abilities. Requires treasury-types.create.',
+        'description' => 'Creates a financial (treasury) sub-account of the managerial chart of accounts, used to classify treasury movements, under chart_account_id, which must be an account (not a group) of a financial-kind group. code (letters, digits, dots and dashes, max 20) must not be used anywhere else in the chart (groups, accounts, cost, revenue or financial sub-accounts), else 422; name (max 150) required; description and is_active optional. Returns 201 with the sub-account and the caller\'s update/delete abilities. Requires treasury-types.create.',
     ],
     'GET /treasury-types/for-select' => [
         'summary' => 'List financial sub-accounts for a select',

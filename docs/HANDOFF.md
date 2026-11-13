@@ -34,6 +34,21 @@
 - Aperto (non toccato): il pre-check della conversione massiva lead (`ConvertLeadsToOpportunities::blockers`) non
   considera il flag della categoria della campagna.
 
+## Codici dei sottoconti finanziari + descrizioni nelle cartelle Postman — VERDE MIRATO, COMMITTATO (2026-11-13)
+
+- Bug: un codice duplicato su `POST/PATCH /api/treasury-types` dava 500 (indice unico DB). `UniqueChartCode::TABLES`
+  ora include `treasury_types`: mastri/conti e sottoconti di costo, ricavo e finanziari condividono un solo spazio di
+  codici (spec 0360: "CRUD come i sottoconti di ricavo"). Test in `tests/Feature/Treasury/TreasuryTypesTest.php`.
+  Nota: l'import del piano dei conti (`ExistingChart`) non conosce i sottoconti finanziari (fuori scope).
+- Verificati e NON cambiati: `PUT /user-skills/{id}` duplicato da gia' 422 (test esistente, l'agente si sbagliava);
+  le DELETE di revenue-types/treasury-types/support-topics rispondono 200 `data: null` per contratto (spec 0348, come
+  chart-accounts e altri 21 controller), non e' un bug.
+- Postman: ogni cartella (modulo) porta la descrizione del tag (`PostmanCollectionBuilder::folder`). Test in
+  `ApiDocsEndpointsTest`. Descrizioni API aggiornate (treasury/revenue/cost-types, chart-accounts, user-skills).
+- Test: Treasury + ChartOfAccounts + CostTypes 285 verdi; ApiClients + UserSkills verdi (1 fallimento era il mio
+  nuovo test sull'ordine delle cartelle, corretto). Pint pulito. Durante la sessione la macchina era carica (`api-docs:warm`
+  153 s invece di 17 s), da cui i tempi lunghi dei run Pest.
+
 ## Documentazione API: descrizione di ogni endpoint (777) — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Fase 3 della richiesta "descrizioni per un'altra IA". Spec 0210 F-6 (aggiornata).

@@ -3,7 +3,7 @@
 return [
     'POST /cost-types' => [
         'summary' => 'Create a cost type',
-        'description' => 'Creates a cost type, the lookup that classifies purchase costs. name is unique; nature is direct (chargeable to a work order), indirect (production cost to apportion) or general (overhead); color is a badge colour token (slate, gray, red, orange, amber, yellow, green, emerald, teal, blue, indigo, violet, purple, pink). chart_account_id places it under a cost account of the chart of accounts and then requires code, unique across chart accounts, cost types and revenue types. sort_order is server-managed (appended last). Returns 201 with the cost type. Requires cost-types.create.',
+        'description' => 'Creates a cost type, the lookup that classifies purchase costs. name is unique; nature is direct (chargeable to a work order), indirect (production cost to apportion) or general (overhead); color is a badge colour token (slate, gray, red, orange, amber, yellow, green, emerald, teal, blue, indigo, violet, purple, pink). chart_account_id places it under a cost account of the chart of accounts and then requires code, unique across chart accounts and cost, revenue and financial sub-accounts. sort_order is server-managed (appended last). Returns 201 with the cost type. Requires cost-types.create.',
     ],
     'GET /cost-types/for-select' => [
         'summary' => 'List cost types for a select',

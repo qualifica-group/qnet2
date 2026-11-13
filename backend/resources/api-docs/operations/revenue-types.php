@@ -3,7 +3,7 @@
 return [
     'POST /revenue-types' => [
         'summary' => 'Create a revenue sub-account',
-        'description' => 'Creates a revenue sub-account of the managerial chart of accounts under chart_account_id, which must be an account (not a group) of a revenue-kind group. code (letters, digits, dots and dashes, max 20) must not be used anywhere else in the chart (groups, accounts, cost or revenue sub-accounts); name (max 150) required; description and is_active optional. Returns 201 with the sub-account and the caller\'s update/delete abilities. Requires revenue-types.create.',
+        'description' => 'Creates a revenue sub-account of the managerial chart of accounts under chart_account_id, which must be an account (not a group) of a revenue-kind group. code (letters, digits, dots and dashes, max 20) must not be used anywhere else in the chart (groups, accounts, cost, revenue or financial sub-accounts); name (max 150) required; description and is_active optional. Returns 201 with the sub-account and the caller\'s update/delete abilities. Requires revenue-types.create.',
     ],
     'GET /revenue-types/for-select' => [
         'summary' => 'List revenue sub-accounts for a select',
