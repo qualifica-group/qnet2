@@ -1,11 +1,15 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import type { ApiClientMethod } from '@/features/api-integrations/types'
 
 /** Backend limits (spec 0209 data_contract). */
 export const NAME_MAX_LENGTH = 120
 export const DESCRIPTION_MAX_LENGTH = 2000
 export const RATE_LIMIT_MIN = 1
 export const RATE_LIMIT_MAX = 1000
+
+/** Every method, in display order; a new client gets them all (spec 0392). */
+export const API_CLIENT_METHODS = ['GET', 'POST', 'PUT', 'DELETE'] as const satisfies readonly ApiClientMethod[]
 
 /**
  * Form schema of the API client create/edit dialog, mirroring the server
@@ -34,6 +38,9 @@ export function buildApiClientSchema(t: TFunction, initialExpiresAt: string | nu
         (value) => value === null || value === initialExpiresAt || new Date(value).getTime() > Date.now(),
         t('apiIntegrations.form.expiresAtFuture'),
       ),
+    allowed_methods: z
+      .array(z.enum(API_CLIENT_METHODS))
+      .min(1, t('apiIntegrations.form.allowedMethodsRequired')),
     is_active: z.boolean(),
   })
 }

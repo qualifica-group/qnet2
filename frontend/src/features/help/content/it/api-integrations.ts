@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'api-integrations',
   title: 'API e integrazioni',
   summary:
-    'API e integrazioni permette ai sistemi esterni di usare le API di QNet con una chiave dedicata e di consultare la documentazione, che si aggiorna da sola.',
+    'API e integrazioni permette ai sistemi esterni di usare le API di QNet con una chiave dedicata e di consultare la documentazione, rigenerata ogni notte o su richiesta.',
   sections: [
     {
       id: 'overview',
@@ -29,7 +29,7 @@ const guide: HelpGuide = {
           items: [
             'Fai clic su **Nuovo client**.',
             'Scrivi un **nome** che riconosca il sistema esterno e, se vuoi, una descrizione.',
-            'Se serve imposta il **limite di richieste** e la **scadenza** della chiave, poi fai clic su **Crea client**.',
+            'Se serve imposta il **limite di richieste**, la **scadenza** della chiave e i **metodi consentiti**, poi fai clic su **Crea client**.',
           ],
         },
         {
@@ -107,7 +107,7 @@ const guide: HelpGuide = {
     },
     {
       id: 'expiry-rate-limit',
-      title: 'Scadenza e limite di richieste',
+      title: 'Scadenza, limite di richieste e metodi',
       blocks: [
         {
           type: 'table',
@@ -115,6 +115,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Scadenza della chiave**', 'Dopo la data indicata la chiave smette di funzionare. Vuota: la chiave non scade.'],
             ['**Limite di richieste**', 'Numero massimo di chiamate al minuto del client (da 1 a 1000), condiviso tra chiave e accessi utente. Vuoto: si applica il limite predefinito di 60 al minuto. Oltre il limite il sistema esterno riceve un errore 429 e deve attendere.'],
+            ['**Metodi consentiti**', 'I metodi HTTP che il client può usare: **GET** (leggere), **POST** (creare), **PUT / PATCH** (modificare), **DELETE** (eliminare). Valgono per la chiave e per gli utenti entrati tramite il client; un metodo spento risponde 403. Le chiamate POST che leggono soltanto (elenchi, anteprime) contano come GET; accesso e uscita degli utenti restano sempre possibili. Un nuovo client li ha tutti accesi.'],
           ],
         },
       ],
@@ -125,7 +126,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Documentazione API** (sezione **Develop**, raggiungibile anche dal link in alto in questa pagina) è un riferimento delle API di QNet. A sinistra trovi la **ricerca** (la scorciatoia **/** la mette a fuoco), i filtri per **metodo** (GET, POST, PUT, PATCH, DELETE) e i **moduli** raggruppati come nel menu di QNet, ciascuno con il numero di endpoint. **Introduzione** spiega l\'autenticazione con esempi cURL e JavaScript per le due modalità, gli errori comuni e il limite di richieste. Scegliendo un modulo vedi i suoi endpoint: aprendone uno trovi descrizione, tabella di parametri, body e risposta, e a destra l\'esempio già compilato da copiare. **Copia link** produce un indirizzo che apre direttamente quell\'endpoint. Le API sono quelle usate da QNet e possono cambiare con gli aggiornamenti: la documentazione si aggiorna da sola.',
+          text: 'La pagina **Documentazione API** (sezione **Develop**, raggiungibile anche dal link in alto in questa pagina) è un riferimento delle API di QNet. A sinistra trovi la **ricerca** (la scorciatoia **/** la mette a fuoco), i filtri per **metodo** (GET, POST, PUT, PATCH, DELETE) e i **moduli** raggruppati come nel menu di QNet, ciascuno con il numero di endpoint. **Introduzione** spiega l\'autenticazione con esempi cURL e JavaScript per le due modalità, gli errori comuni e il limite di richieste. Scegliendo un modulo vedi i suoi endpoint: aprendone uno trovi descrizione, tabella di parametri, body e risposta, e a destra l\'esempio già compilato da copiare. **Copia link** produce un indirizzo che apre direttamente quell\'endpoint. Le API sono quelle usate da QNet e possono cambiare con gli aggiornamenti: la documentazione viene rigenerata ogni notte o con il pulsante **Aggiorna**.',
         },
         {
           type: 'list',

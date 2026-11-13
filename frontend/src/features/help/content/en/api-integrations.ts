@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'api-integrations',
   title: 'API & integrations',
   summary:
-    'API & integrations lets external systems use the QNet APIs with a dedicated key and consult the documentation, which updates itself.',
+    'API & integrations lets external systems use the QNet APIs with a dedicated key and consult the documentation, regenerated every night or on demand.',
   sections: [
     {
       id: 'overview',
@@ -29,7 +29,7 @@ const guide: HelpGuide = {
           items: [
             'Click **New client**.',
             'Enter a **name** that identifies the external system and, if you like, a description.',
-            'If needed set the **rate limit** and the key **expiry**, then click **Create client**.',
+            'If needed set the **rate limit**, the key **expiry** and the **allowed methods**, then click **Create client**.',
           ],
         },
         {
@@ -107,7 +107,7 @@ const guide: HelpGuide = {
     },
     {
       id: 'expiry-rate-limit',
-      title: 'Expiry and rate limit',
+      title: 'Expiry, rate limit and methods',
       blocks: [
         {
           type: 'table',
@@ -115,6 +115,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Key expiry**', 'After the given date the key stops working. Empty: the key never expires.'],
             ['**Rate limit**', 'Maximum calls per minute for the client (1 to 1000), shared between the key and user logins. Empty: the default of 60 per minute applies. Beyond the limit the external system gets a 429 error and must wait.'],
+            ['**Allowed methods**', 'The HTTP methods the client may use: **GET** (read), **POST** (create), **PUT / PATCH** (update), **DELETE** (delete). They apply to the key and to users signed in through the client; a disabled method answers 403. POST calls that only read (lists, previews) count as GET; signing users in and out always stays possible. A new client has them all enabled.'],
           ],
         },
       ],
@@ -125,7 +126,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **API documentation** page (**Develop** section, also reachable from the link at the top of this page) is a reference of the QNet APIs. On the left are the **search** (the **/** shortcut focuses it), the **method** filters (GET, POST, PUT, PATCH, DELETE) and the **modules** grouped like the QNet menu, each with its endpoint count. **Introduction** explains authentication with cURL and JavaScript examples for both modes, the common errors and the request limit. Choosing a module shows its endpoints: opening one gives the description, the table of parameters, body and response, and on the right a ready-made example to copy. **Copy link** produces an address that opens that endpoint directly. The APIs are the ones used by QNet and may change with updates: the documentation updates itself.',
+          text: 'The **API documentation** page (**Develop** section, also reachable from the link at the top of this page) is a reference of the QNet APIs. On the left are the **search** (the **/** shortcut focuses it), the **method** filters (GET, POST, PUT, PATCH, DELETE) and the **modules** grouped like the QNet menu, each with its endpoint count. **Introduction** explains authentication with cURL and JavaScript examples for both modes, the common errors and the request limit. Choosing a module shows its endpoints: opening one gives the description, the table of parameters, body and response, and on the right a ready-made example to copy. **Copy link** produces an address that opens that endpoint directly. The APIs are the ones used by QNet and may change with updates: the documentation is regenerated every night or with the **Refresh** button.',
         },
         {
           type: 'list',

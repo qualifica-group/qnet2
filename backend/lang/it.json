@@ -238,6 +238,7 @@
     "This fiscal profile is used by a commission settlement.": "Il profilo fiscale è usato da un estratto provvigioni.",
     "The documentation has not been generated yet.": "La documentazione non è ancora stata generata.",
     "The documentation is being regenerated.": "La documentazione è in aggiornamento.",
+    "This API client is not allowed to use the :method method.": "Questo client API non può usare il metodo :method.",
     "A contract cannot be deleted manually.": "Un contratto non può essere eliminato manualmente.",
     "These statuses are used by quotes and cannot be deleted: :statuses": "Questi stati sono usati da offerte e non si possono eliminare: :statuses",
     "These statuses are used by work orders or tasks and cannot be deleted: :statuses": "Questi stati sono usati da commesse o task e non si possono eliminare: :statuses",

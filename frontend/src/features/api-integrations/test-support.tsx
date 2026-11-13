@@ -9,6 +9,7 @@ export function buildClient(overrides: Partial<ApiClient> = {}): ApiClient {
     description: null,
     rate_limit_per_minute: null,
     effective_rate_limit_per_minute: 60,
+    allowed_methods: ['GET', 'POST', 'PUT', 'DELETE'],
     expires_at: null,
     is_active: true,
     is_expired: false,

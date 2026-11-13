@@ -4,7 +4,7 @@ namespace App\Tables\ApiClients;
 
 /**
  * Declarative column/filter/action catalogue for the `api-clients` domain
- * (spec 0209). Pure data. `key_last_four`, `last_used_at` and
+ * (spec 0209). Pure data. `allowed_methods`, `key_last_four`, `last_used_at` and
  * `created_by` are display-only: derived values, neither filterable
  * nor (except last_used_at, sorted by the definition) sortable.
  */
@@ -43,6 +43,16 @@ final class ApiClientColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'boolean',
+            ],
+            [
+                // Spec 0392: the HTTP methods the client may use, display-only.
+                'id' => 'allowed_methods',
+                'label' => 'apiClients.columns.allowed_methods',
+                'type' => 'tags',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => false,
+                'filterType' => null,
             ],
             [
                 'id' => 'expires_at',

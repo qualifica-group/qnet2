@@ -34,6 +34,26 @@
 - Aperto (non toccato): il pre-check della conversione massiva lead (`ConvertLeadsToOpportunities::blockers`) non
   considera il flag della categoria della campagna.
 
+## Client API: metodi HTTP consentiti (spec 0392) — VERDE MIRATO, COMMITTATO (2026-11-13)
+
+- Richiesta utente: nel client API abilitare/disabilitare GET, POST, DELETE ecc.
+- BE: colonna `api_clients.allowed_methods` (JSON, migrazione `2026_11_13_120000` con backfill a tutti i metodi:
+  nessun client esistente cambia), enum `ApiClientMethod` (GET, POST, PUT che copre PATCH, DELETE; HEAD/OPTIONS = GET),
+  `ApiClient::allowsMethod()`, default tutti in `creating`. Middleware `EnsureApiClientMethodAllowed` nel gruppo `api`
+  dopo il rate limit del client: solo token legati a un client (chiave o client-login); 403 enveloped. POST di sola
+  lettura (tables rows/values, rows degli import, anteprime, render-template, form-context, selection-scope,
+  duplicate-check) contano come GET: elenco in `external-api.method_gate.read_only_post_routes`; `auth/client-login` e
+  `auth/logout` sempre consentiti. **Un nuovo endpoint POST di sola lettura va aggiunto a quella lista**, altrimenti un
+  client solo-GET non lo puo' chiamare (il test verifica solo che le voci esistano).
+- Validazione `allowed_methods`: facoltativo in creazione, sostituisce la lista in modifica, min 1, distinti, enum.
+  Risorsa e riga tabella (colonna "Metodi", tags) in ordine canonico.
+- FE: `ApiClientMethodsField` (4 caselle compatte GET, POST, PUT / PATCH, DELETE, almeno una), schema/payload/tipi,
+  i18n IT/EN, guida `api-integrations` IT/EN (anche due frasi superate sulla documentazione "che si aggiorna da sola").
+- Documentazione API: guida generale (403 per metodo), descrizione modulo e POST/PUT `api-clients`.
+- Test: `ApiClientAllowedMethodsTest` (14), `ApiClientAdminTest`/`ApiClientTableTest` aggiornati (campo/colonna nuovi:
+  REQUIREMENT CHANGED); Vitest api-integrations + i18n 333, help 161 (test AC-013 "nessuna checkbox" ora "solo le 4 dei
+  metodi"). tsc, ESLint, Pint puliti. Migrazione applicata in dev (0 client presenti).
+
 ## Codici dei sottoconti finanziari + descrizioni nelle cartelle Postman — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Bug: un codice duplicato su `POST/PATCH /api/treasury-types` dava 500 (indice unico DB). `UniqueChartCode::TABLES`

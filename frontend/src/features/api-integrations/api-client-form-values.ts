@@ -1,11 +1,12 @@
 import type { ApiClient, ApiClientPayload } from '@/features/api-integrations/types'
-import type { ApiClientFormValues } from '@/features/api-integrations/api-client-schema'
+import { API_CLIENT_METHODS, type ApiClientFormValues } from '@/features/api-integrations/api-client-schema'
 
 export const EMPTY_API_CLIENT_FORM: ApiClientFormValues = {
   name: '',
   description: '',
   rate_limit_per_minute: null,
   expires_at: null,
+  allowed_methods: [...API_CLIENT_METHODS],
   is_active: true,
 }
 
@@ -28,6 +29,7 @@ export function apiClientToFormValues(client: ApiClient): ApiClientFormValues {
     description: client.description ?? '',
     rate_limit_per_minute: client.rate_limit_per_minute,
     expires_at: toDateTimeLocal(client.expires_at),
+    allowed_methods: client.allowed_methods,
     is_active: client.is_active,
   }
 }
@@ -43,6 +45,7 @@ export function buildCreatePayload(values: ApiClientFormValues): ApiClientPayloa
     description: values.description.trim() === '' ? null : values.description.trim(),
     rate_limit_per_minute: values.rate_limit_per_minute,
     expires_at: toIsoInstant(values.expires_at),
+    allowed_methods: API_CLIENT_METHODS.filter((method) => values.allowed_methods.includes(method)),
   }
 }
 

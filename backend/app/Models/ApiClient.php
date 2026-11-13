@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ApiClientMethod;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\ApiClientFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,6 +23,7 @@ use Laravel\Sanctum\Sanctum;
     'name',
     'description',
     'rate_limit_per_minute',
+    'allowed_methods',
     'expires_at',
     'is_active',
     'key_last_four',
@@ -41,7 +43,23 @@ class ApiClient extends Model
             'expires_at' => 'datetime',
             'is_active' => 'boolean',
             'rate_limit_per_minute' => 'integer',
+            'allowed_methods' => 'array',
         ];
+    }
+
+    /**
+     * Every method allowed until the client is configured otherwise (spec 0392 D-2).
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $client): void {
+            $client->allowed_methods ??= ApiClientMethod::values();
+        });
+    }
+
+    public function allowsMethod(ApiClientMethod $method): bool
+    {
+        return in_array($method->value, $this->allowed_methods ?? [], true);
     }
 
     public function creator(): BelongsTo

@@ -3,7 +3,7 @@
 return [
     'POST /api-clients' => [
         'summary' => 'Create an API integration client',
-        'description' => 'Creates an external integration client together with its technical user (a service account with the super-admin role that authors every write made with the key) and issues its API key. The response holds the client and plain_text_key: the key is shown only here and never again, only its last four characters are kept. rate_limit_per_minute empty means the default limit; expires_at must be in the future. 422 when the name is already used. Requires api-clients.create.',
+        'description' => 'Creates an external integration client together with its technical user (a service account with the super-admin role that authors every write made with the key) and issues its API key. The response holds the client and plain_text_key: the key is shown only here and never again, only its last four characters are kept. allowed_methods (any of GET, POST, PUT, DELETE; PUT also covers PATCH) lists the HTTP methods the client may use, every method when omitted. rate_limit_per_minute empty means the default limit; expires_at must be in the future. 422 when the name is already used. Requires api-clients.create.',
     ],
     'GET /api-clients/docs/openapi' => [
         'summary' => 'Download the OpenAPI document of the API',
@@ -27,7 +27,7 @@ return [
     ],
     'PUT /api-clients/{apiClient}' => [
         'summary' => 'Update an API integration client',
-        'description' => 'Updates name, description, rate_limit_per_minute, expires_at and is_active; every field is optional. Renaming the client also renames its technical user. The key is not changed. 422 when the name is already used by another client or expires_at is not in the future. Requires api-clients.update.',
+        'description' => 'Updates name, description, rate_limit_per_minute, allowed_methods (replaces the whole list, at least one of GET, POST, PUT, DELETE), expires_at and is_active; every field is optional. Renaming the client also renames its technical user. The key is not changed. 422 when the name is already used by another client or expires_at is not in the future. Requires api-clients.update.',
     ],
     'DELETE /api-clients/{apiClient}' => [
         'summary' => 'Delete an API integration client',

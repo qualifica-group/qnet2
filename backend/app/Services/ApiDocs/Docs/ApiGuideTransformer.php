@@ -25,7 +25,7 @@ Every call carries `Authorization: Bearer <token>` and `Accept: application/json
 - **Client key**: the key of an API client, created in QNet under *Develop > API & integrations*. The request acts as the client's technical user, a super-admin with every permission.
 - **User token**: `POST /api/auth/client-login`, authenticated with the client key, exchanges a QNet user's `email` and `password` for a user token. Requests with it act with that user's permissions and visibility. `POST /api/auth/logout` revokes it.
 
-Each client has a rate limit per minute; past it the API answers `429` with a `Retry-After` header.
+Each client has a rate limit per minute; past it the API answers `429` with a `Retry-After` header. A client may also be limited to some HTTP methods (GET, POST, PUT/PATCH, DELETE): a call with a method it is not allowed answers `403`, whatever the token. POST endpoints that only read (`tables/{domain}/rows`, `values`, previews, `form-context`) count as GET; `auth/client-login` and `auth/logout` are always allowed.
 
 ## Request conventions
 

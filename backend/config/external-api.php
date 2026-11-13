@@ -36,6 +36,37 @@ return [
         'ttl_minutes' => (int) env('EXTERNAL_API_USER_TOKEN_TTL_MINUTES', 1440),
     ],
 
+    // Spec 0392: the HTTP methods each API client may use. Route URIs relative to
+    // the prefix, exactly as registered.
+    'method_gate' => [
+        // POST endpoints that only read or compute (lists, previews, rendering):
+        // they count as GET, so a read-only client can still list records.
+        'read_only_post_routes' => [
+            'tables/{domain}/rows',
+            'tables/{domain}/values',
+            'imports/{domain}/{importRun}/rows',
+            'assignment/selection-scope',
+            'identity/duplicate-check',
+            'absence-requests/preview',
+            'document-layouts/{documentLayout}/preview',
+            'invoices/installment-preview',
+            'purchase-invoices/installment-preview',
+            'invoices/{invoice}/emails/render-template',
+            'purchase-orders/{purchaseOrder}/emails/render-template',
+            'work-orders/{workOrder}/emails/render-template',
+            'quotes/form-context',
+            'request-management/form-context',
+            'work-orders/form-context',
+        ],
+
+        // Always reachable whatever the client allows: logging users in and
+        // revoking tokens must keep working for a client without POST.
+        'always_allowed_routes' => [
+            'auth/client-login',
+            'auth/logout',
+        ],
+    ],
+
     'docs' => [
         // Route paths (relative to the prefix) that only the QNet app uses and so are
         // left out of the generated documentation. An entry also covers its sub-paths;

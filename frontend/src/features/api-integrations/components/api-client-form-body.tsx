@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Can } from '@/features/auth/can'
+import { ApiClientMethodsField } from '@/features/api-integrations/components/api-client-methods-field'
 import { useApiClientForm } from '@/features/api-integrations/use-api-client-form'
 import type { ApiKeyReveal } from '@/features/api-integrations/components/api-key-dialog'
 import type { ApiClient } from '@/features/api-integrations/types'
@@ -113,6 +114,7 @@ export function ApiClientFormBody({
               )}
             />
           </div>
+          <ApiClientMethodsField control={form.control} />
           {client ? (
             <div className="grid gap-0.5">
               <p className="text-sm font-medium">{t('apiIntegrations.form.serviceUser')}</p>

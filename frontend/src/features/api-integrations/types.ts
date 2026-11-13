@@ -8,6 +8,9 @@ export interface ApiClientCreator {
 /** Technical user (spec 0210) that authors the writes made with the key alone. */
 export type ApiClientServiceUser = ApiClientCreator
 
+/** HTTP methods a client may be allowed (spec 0392): PUT also covers PATCH. */
+export type ApiClientMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
+
 /** `ApiClientResource`: never carries the plain-text key nor its hash. */
 export interface ApiClient {
   id: number
@@ -15,6 +18,7 @@ export interface ApiClient {
   description: string | null
   rate_limit_per_minute: number | null
   effective_rate_limit_per_minute: number
+  allowed_methods: ApiClientMethod[]
   expires_at: string | null
   is_active: boolean
   is_expired: boolean
@@ -37,6 +41,7 @@ export interface ApiClientPayload {
   name?: string
   description?: string | null
   rate_limit_per_minute?: number | null
+  allowed_methods?: ApiClientMethod[]
   expires_at?: string | null
   is_active?: boolean
 }

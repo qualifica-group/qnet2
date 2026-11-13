@@ -44,7 +44,7 @@ it('creates a client with its technical user and a single database-backed key, n
     expect($show->getContent())->not->toContain($key)
         ->and($show->json('data'))->not->toHaveKeys(['plain_text_key', 'token', 'scopes'])
         ->and(array_keys($show->json('data')))->toBe([
-            'id', 'name', 'description', 'rate_limit_per_minute', 'effective_rate_limit_per_minute',
+            'id', 'name', 'description', 'rate_limit_per_minute', 'effective_rate_limit_per_minute', 'allowed_methods',
             'expires_at', 'is_active', 'is_expired', 'key_last_four', 'last_used_at', 'service_user',
             'created_by', 'created_at', 'updated_at',
         ]);
