@@ -235,6 +235,14 @@ it('lets the anagrafica open another opportunity beside one on legacy categories
     $this->postJson('/api/opportunities', openPerRegistryPayload($registry))->assertCreated();
 });
 
+it('lets the anagrafica open another opportunity beside a migrated one without any category', function () {
+    Sanctum::actingAs(openPerRegistryActor());
+    $registry = Registry::factory()->create();
+    Opportunity::factory()->create(['registry_id' => $registry->id, 'old_id' => 98479]);
+
+    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))->assertCreated();
+});
+
 it('keeps blocking when the open opportunity has a current category beside a legacy one', function () {
     Sanctum::actingAs(openPerRegistryActor());
     $registry = Registry::factory()->create();

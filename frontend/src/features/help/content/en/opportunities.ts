@@ -151,7 +151,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Categories with the **Several open opportunities per registry** rule are the exception: their opportunities never block the others and are created even when the registry already has an open one, and with Multiple mode the offer can carry several rows. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either.',
+          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Categories with the **Several open opportunities per registry** rule are the exception: their opportunities never block the others and are created even when the registry already has an open one, and with Multiple mode the offer can carry several rows. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either, nor do those migrated from the old system without any category.',
         },
       ],
     },

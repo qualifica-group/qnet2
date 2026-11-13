@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Opportunita' migrate senza categoria non bloccano piu' l'anagrafica — VERDE MIRATO, COMMITTATO (2026-11-13)
+
+- Segnalazione utente: "Questa anagrafica ha gia' un'opportunita' aperta: Crescere Green_Classe1_..." pur con la regola
+  Piu' opportunita' aperte. Causa: la bloccante (24109, legacy 98479) e' migrata SENZA righe prodotto (il legacy non
+  aveva `service_id` ne' offerta) e senza offerte, quindi stato calcolato "aperta" e nessun flag la puo' esentare.
+  In dev: 1113 opportunita' cosi', 825 anagrafiche bloccate.
+- Fix `RegistryOpenOpportunityGuard::blockingOpportunities`: una senza righe blocca solo se nativa (`old_id` null);
+  le native non possono restare senza righe (`product_lines` min:1 su create/update).
+- Test: `OpportunityOpenPerRegistryTest` +1; `OpportunitiesSourceImportTest` REQUIREMENT CHANGED (la migrata senza
+  categoria non blocca piu'). Verdi Opportunities 291, Leads 164, Migration 925. RequestManagement 1004/1005: il rosso
+  `RequestManagementAllColumnsSortFilterTest` e' preesistente (fallisce anche senza la modifica).
+- Manuale: guida Opportunita' IT/EN + manuale Claude Docs (paragrafo "Attenzione" del modulo Opportunita').
+- Aperto (non toccato): il pre-check della conversione massiva lead (`ConvertLeadsToOpportunities::blockers`) non
+  considera il flag della categoria della campagna.
+
 ## Coda dedicata per i job di import — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Stesso schema della coda `migrations`: `AnalyzeImportJob`, `StageImportJob`, `ProcessStagedImportJob`,

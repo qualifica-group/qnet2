@@ -25,7 +25,8 @@ use Illuminate\Validation\ValidationException;
  * row of the workflow its own product category resolves to).
  *
  * User directive 2026-11-07: an open opportunity whose product lines all sit on
- * legacy categories (`product_categories.is_legacy`) does not block.
+ * legacy categories (`product_categories.is_legacy`) does not block; user
+ * report 2026-11-13: nor does a migrated one (`old_id`) without any line.
  *
  * User decision 2026-11-11: the exemption is the root-owned category flag
  * `multiple_open_opportunities`, in both directions — an open opportunity of
@@ -131,11 +132,14 @@ final class RegistryOpenOpportunityGuard
 
         // User directive 2026-11-07: an opportunity whose product lines all sit on
         // legacy categories (`is_legacy`, the migrated catalogue) is history, not
-        // running business, so it never blocks. One with no line still does.
+        // running business, so it never blocks. User report 2026-11-13: neither
+        // does a MIGRATED one (`old_id`) with no line at all — the legacy record
+        // had no category, so no flag can ever exempt it. A native one cannot
+        // lose its lines (`product_lines` min:1), so it still blocks if lineless.
         $opportunities = Opportunity::query()
             ->whereIn('registry_id', $registryIds)
             ->where(static fn ($query) => $query
-                ->whereDoesntHave('productLines')
+                ->where(static fn ($lineless) => $lineless->whereNull('old_id')->whereDoesntHave('productLines'))
                 ->orWhereHas('productLines.productCategory', static fn ($category) => $category->where('is_legacy', false)));
 
         // The quote-less branch resolves a workflow per row (it is the row's
