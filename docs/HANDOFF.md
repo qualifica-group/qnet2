@@ -34,6 +34,24 @@
 - Aperto (non toccato): il pre-check della conversione massiva lead (`ConvertLeadsToOpportunities::blockers`) non
   considera il flag della categoria della campagna.
 
+## Documentazione API: descrizione di ogni endpoint (777) — VERDE MIRATO, COMMITTATO (2026-11-13)
+
+- Fase 3 della richiesta "descrizioni per un'altra IA". Spec 0210 F-6 (aggiornata).
+- `backend/resources/api-docs/operations/{module}.php` (129 file): `'METHOD /path' => ['summary', 'description']`
+  scritti per l'integratore (cosa fa, input non ovvi, effetti collaterali, risposta, 409/422 notevoli, permesso).
+  `ApiOperationDescriptionsTransformer` (registrato in `ApiDocsServiceProvider`) li applica e sostituisce i
+  summary/description inferiti dal PHPDoc, che restano note interne per sviluppatori.
+- **Nuovo endpoint, endpoint rimosso o path cambiato -> aggiornare il file del modulo**, altrimenti
+  `ApiDocsDescriptionsTest` fallisce. Se cambia il comportamento di un endpoint, aggiornarne la descrizione.
+- Scritte da 8 subagent leggendo controller, FormRequest, policy e service; dove i commenti nel codice erano superati
+  (es. delete di task/workflow/campagne/metodi di pagamento) seguono il codice. Corrette di conseguenza 3 descrizioni di
+  modulo in `ApiModuleDescriptions` (tasks, quote-workflows, work-order-workflows). Scansione: nessun riferimento interno,
+  summary max 60 caratteri, description mediana 310 (max 645).
+- Note degli agenti da tenere presenti (comportamento reale, non bug corretti qui): `PUT /user-skills/{id}` duplicato
+  -> errore DB non pulito; codici `treasury-types` duplicati -> errore DB invece di 422; `DELETE` di revenue-types,
+  treasury-types, support-topics risponde 200 con data null invece di 204.
+- Test: `tests/Feature/ApiClients` 93 verdi; Pint pulito. `api-docs:warm` locale: 777 operazioni.
+
 ## Documentazione API leggibile da un'altra IA: guida + descrizioni dei moduli — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Richiesta utente: descrizioni su cosa fanno le API, come rispondono e come si usano, da dare in pasto a un'altra IA.

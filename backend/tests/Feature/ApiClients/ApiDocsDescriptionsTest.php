@@ -2,6 +2,7 @@
 
 use App\Services\ApiDocs\Docs\ApiModuleDescriptions;
 use App\Services\ApiDocs\Docs\ApiModuleTagsTransformer;
+use App\Services\ApiDocs\Docs\ApiOperationDescriptionsTransformer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -62,4 +63,30 @@ it('points a table-backed module to the endpoint that lists its records', functi
     $leads = collect(generatedApiDocument()['tags'])->firstWhere('name', 'leads');
 
     expect($leads['description'])->toContain('POST /api/tables/leads/rows');
+});
+
+it('describes every operation from its module file and keeps no entry of a removed operation', function () {
+    $operations = apiDocOperations();
+    $described = [];
+
+    foreach (glob(resource_path(ApiOperationDescriptionsTransformer::DIRECTORY.'/*.php')) as $file) {
+        $module = basename($file, '.php');
+
+        foreach (ApiOperationDescriptionsTransformer::forModule($module) as $key => $entry) {
+            expect(ApiModuleTagsTransformer::moduleOf(explode(' ', $key, 2)[1]))->toBe($module, "{$key} is in {$module}.php");
+            expect(trim($entry['summary'] ?? ''))->not->toBe('', "{$key} summary")
+                ->and(trim($entry['description'] ?? ''))->not->toBe('', "{$key} description");
+            $described[] = $key;
+        }
+    }
+
+    expect(array_values(array_diff(array_keys($operations), $described)))->toBe([], 'Describe these operations')
+        ->and(array_values(array_diff($described, array_keys($operations))))->toBe([], 'Remove these entries');
+
+    foreach ($operations as $key => $operation) {
+        $entry = ApiOperationDescriptionsTransformer::forModule($operation['tags'][0])[$key];
+
+        expect($operation['summary'])->toBe($entry['summary'])
+            ->and($operation['description'])->toBe($entry['description']);
+    }
 });
