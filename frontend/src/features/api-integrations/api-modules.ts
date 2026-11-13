@@ -3,6 +3,7 @@ import type { NavigationItem } from '@/features/navigation/types'
 
 export const OTHER_SECTION_KEY = 'other'
 const ROOT_MODULE_KEY = 'root'
+const NO_DESCRIPTIONS: ReadonlyMap<string, string> = new Map()
 
 export interface ApiModule {
   /** First path segment of its operations (`leads`). */
@@ -14,6 +15,8 @@ export interface ApiModule {
   fallbackLabel: string
   /** Icon name from the menu entry, null for the generic icon. */
   icon: string | null
+  /** Description of the module (its OpenAPI tag), null when the document has none. */
+  description: string | null
   sectionKey: string
   /** i18n key of the menu section; null for the "Other" section. */
   sectionLabelKey: string | null
@@ -97,6 +100,7 @@ function indexMenuEntries(entries: MenuEntry[]): (moduleKey: string) => MenuEntr
 export function buildApiModules(
   operations: ParsedOperation[],
   navigation: NavigationItem[],
+  descriptions: ReadonlyMap<string, string> = NO_DESCRIPTIONS,
 ): ApiModule[] {
   const byModule = new Map<string, ParsedOperation[]>()
   for (const operation of operations) {
@@ -113,6 +117,7 @@ export function buildApiModules(
       labelKey: entry?.item.label ?? null,
       fallbackLabel: humanizeSegment(key),
       icon: entry?.item.icon ?? null,
+      description: descriptions.get(key) ?? null,
       sectionKey: entry?.section?.key ?? OTHER_SECTION_KEY,
       sectionLabelKey: entry?.section?.label ?? null,
       operations: moduleOperations,
@@ -123,6 +128,13 @@ export function buildApiModules(
   return ranked
     .sort((a, b) => a.order - b.order || a.module.key.localeCompare(b.module.key))
     .map(({ module }) => module)
+}
+
+/** Module descriptions keyed by module, read from the document tags. */
+export function moduleDescriptions(tags: { name: string; description?: string }[] | undefined): Map<string, string> {
+  return new Map(
+    (tags ?? []).flatMap((tag) => (tag.description ? [[tag.name, tag.description] as const] : [])),
+  )
 }
 
 /** Sections in the order their first module appears, "Other" always last; modules keep their order. */

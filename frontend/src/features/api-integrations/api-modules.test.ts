@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildApiModules, groupModulesBySection, humanizeSegment } from '@/features/api-integrations/api-modules'
+import { buildApiModules, groupModulesBySection, humanizeSegment, moduleDescriptions } from '@/features/api-integrations/api-modules'
 import type { ParsedOperation } from '@/features/api-integrations/openapi-operations'
 import type { NavigationItem } from '@/features/navigation/types'
 
@@ -99,6 +99,16 @@ describe('buildApiModules with an area prefix in the menu routes', () => {
     const [dev] = buildApiModules([op('/dev')], prefixed)
     expect(dev).toMatchObject({ labelKey: 'navigation.apiClients' })
     expect(buildApiModules([op('/legacy')], prefixed)[0]).toMatchObject({ labelKey: 'navigation.usersArea' })
+  })
+})
+
+describe('moduleDescriptions', () => {
+  it('attaches the tag description to its module, null when the tag has none', () => {
+    const descriptions = moduleDescriptions([{ name: 'leads', description: 'Leads (Lead).' }, { name: 'users' }])
+    const byKey = Object.fromEntries(buildApiModules(operations, navigation, descriptions).map((module) => [module.key, module]))
+
+    expect(byKey.leads.description).toBe('Leads (Lead).')
+    expect(byKey.users.description).toBeNull()
   })
 })
 

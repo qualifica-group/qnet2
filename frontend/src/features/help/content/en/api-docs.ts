@@ -27,7 +27,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'Endpoints are **grouped by module**, in the same order as the menu.',
+            'Endpoints are **grouped by module**, in the same order as the menu; under each module name a **short description** says what it manages and how its records are listed.',
             'Use the **search** to find an endpoint by its path or description.',
             'Use the **method** filters (GET, POST, PUT, PATCH, DELETE) to see only one kind of call.',
           ],
@@ -61,10 +61,14 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Click the **OpenAPI** download for the full specification, or **Postman** for the collection.',
+            'Click the **OpenAPI** download for the full specification, or **Postman** for the collection (one folder per module).',
             'In Postman choose **Import** and select the downloaded file.',
             'Set the client key in the collection variables and run the requests.',
           ],
+        },
+        {
+          type: 'note',
+          text: 'The **OpenAPI** file opens with a usage guide (authentication, response shapes, errors, how to search and filter records) and describes every module: you can hand it as it is to an AI assistant so it knows which APIs to call and how.',
         },
       ],
     },

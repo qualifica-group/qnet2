@@ -34,7 +34,7 @@
 - Aperto (non toccato): il pre-check della conversione massiva lead (`ConvertLeadsToOpportunities::blockers`) non
   considera il flag della categoria della campagna.
 
-## Documentazione API leggibile da un'altra IA: guida + descrizioni dei moduli — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+## Documentazione API leggibile da un'altra IA: guida + descrizioni dei moduli — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Richiesta utente: descrizioni su cosa fanno le API, come rispondono e come si usano, da dare in pasto a un'altra IA.
   Spec 0210 F-6.

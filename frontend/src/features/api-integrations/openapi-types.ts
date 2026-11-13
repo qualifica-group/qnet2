@@ -36,6 +36,8 @@ export interface OpenApiDocument {
   openapi: string
   info?: { title?: string; version?: string; description?: string }
   servers?: { url: string }[]
+  /** One tag per module (first path segment), with its description. */
+  tags?: { name: string; description?: string }[]
   paths?: Record<string, OpenApiPathItem>
   components?: {
     schemas?: Record<string, JsonObject>

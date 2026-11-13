@@ -84,6 +84,7 @@ describe('ApiDocsContent sidebar and introduction', () => {
 describe('ApiDocsContent module panel', () => {
   it('lists the endpoints sorted by path then method with cleaned summaries', async () => {
     await openLeads()
+    expect(screen.getByText('Prospective customers (Lead) collected by marketing campaigns.')).toBeInTheDocument()
 
     expect(screen.getByRole('heading', { name: 'Leads' })).toBeInTheDocument()
     expect(screen.getByText('3 endpoints')).toBeInTheDocument()

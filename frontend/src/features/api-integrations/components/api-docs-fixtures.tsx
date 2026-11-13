@@ -10,6 +10,7 @@ export const document: OpenApiDocument = {
   openapi: '3.1.0',
   info: { version: '1.0' },
   servers: [{ url: 'https://qnet.test/api' }],
+  tags: [{ name: 'leads', description: 'Prospective customers (Lead) collected by marketing campaigns.' }],
   paths: {
     '/leads': {
       post: {

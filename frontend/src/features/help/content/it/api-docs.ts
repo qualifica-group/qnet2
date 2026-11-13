@@ -27,7 +27,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'Gli endpoint sono **raggruppati per modulo**, nello stesso ordine del menu.',
+            'Gli endpoint sono **raggruppati per modulo**, nello stesso ordine del menu; sotto il nome di ogni modulo una **breve descrizione** spiega cosa gestisce e come si elencano i suoi record.',
             'Usa la **ricerca** per trovare un endpoint dal percorso o dalla descrizione.',
             'Usa i filtri per **metodo** (GET, POST, PUT, PATCH, DELETE) per vedere solo un tipo di chiamata.',
           ],
@@ -61,10 +61,14 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Fai clic sul download **OpenAPI** per ottenere la specifica completa, oppure su **Postman** per la collezione.',
+            'Fai clic sul download **OpenAPI** per ottenere la specifica completa, oppure su **Postman** per la collezione (una cartella per modulo).',
             'In Postman scegli **Import** e seleziona il file scaricato.',
             'Imposta la chiave del client nelle variabili della collezione e lancia le richieste.',
           ],
+        },
+        {
+          type: 'note',
+          text: 'Il file **OpenAPI** si apre con una guida d\'uso (autenticazione, forma delle risposte, errori, come cercare e filtrare i record) e descrive ogni modulo: puoi darlo così com\'è a un assistente AI perché sappia quali API chiamare e come.',
         },
       ],
     },

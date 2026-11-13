@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\ApiDocs\Docs\ApiGuideTransformer;
+use App\Services\ApiDocs\Docs\ApiModuleTagsTransformer;
 use App\Services\ApiDocs\Docs\BearerSecuritySchemeTransformer;
 use App\Services\ApiDocs\Infer\ApiEnvelopeReturnTypeExtension;
 use Dedoc\Scramble\Scramble;
@@ -24,6 +26,13 @@ class ApiDocsServiceProvider extends ServiceProvider
 
         Scramble::registerExtension(ApiEnvelopeReturnTypeExtension::class);
 
-        Scramble::configure()->withDocumentTransformers(BearerSecuritySchemeTransformer::class);
+        Scramble::configure()->withDocumentTransformers([
+            BearerSecuritySchemeTransformer::class,
+            ApiGuideTransformer::class,
+        ]);
+
+        // Scramble appends its own AddDocumentTags while booting, which replaces
+        // the document tags: the module tags must be written after it.
+        $this->app->booted(static fn () => Scramble::configure()->withDocumentTransformers(ApiModuleTagsTransformer::class));
     }
 }
