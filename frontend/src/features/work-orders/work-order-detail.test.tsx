@@ -94,7 +94,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     title: 'Installazione impianto',
     title_is_manual: true,
     type: 'processing',
-    status: { value: 'open', is_force_closed: false },
+    status: { value: 'to_plan', is_force_closed: false },
     completion_percentage: 0,
     is_force_closed: false,
     ...WORKFLOW_STATUS_FIELDS,
@@ -149,7 +149,7 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     // Header subtitle/KPI and the in-place "Details" rows both show these.
     expect(screen.getAllByText('COM-0001').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Processing').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('To plan').length).toBeGreaterThan(0)
     expect(screen.getAllByText(formatDate('2026-09-30')).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'QUO-0004 — Fornitura annuale' })).toHaveAttribute('href', '/contracts/9')
   })
@@ -192,21 +192,24 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
         workOrder={workOrder({
           is_force_closed: true,
           force_close_reason: 'Cliente insolvente',
-          status: { value: 'closed', is_force_closed: true },
+          status: { value: 'cancelled', is_force_closed: true },
         })}
       />,
     )
 
     expect(screen.getByText('Force close reason')).toBeInTheDocument()
     expect(screen.getByText('Cliente insolvente')).toBeInTheDocument()
-    expect(screen.getAllByText('Closed').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Cancelled').length).toBeGreaterThan(0)
   })
 })
 
-describe('WorkOrderDetailView — computed status and completion (spec 0149 AC-014)', () => {
+// Spec 0395 (REQUIREMENT CHANGED): the badge is the working phase, no longer computed.
+describe('WorkOrderDetailView — working phase and completion (spec 0149 AC-014, spec 0395)', () => {
   it.each([
+    ['to_plan', 'To plan'],
     ['in_progress', 'In progress'],
     ['completed', 'Completed'],
+    ['terminated', 'Terminated'],
   ] as const)('badges the %s status with its localized label', (value, label) => {
     render(<WorkOrderDetailView workOrder={workOrder({ status: { value, is_force_closed: false } })} />)
 

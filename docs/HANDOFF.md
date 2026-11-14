@@ -3,6 +3,54 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse: tab di fase identici al legacy, fase salvata (spec 0395) — VERDE MIRATO, COMMITTATO (2026-11-14)
+
+- Richiesta utente: tab in alto delle Commesse con flusso, filtri e stati identici al vecchio QNet. Causa: la fase era
+  ricavata dal gruppo dello "Stato lavorazione" (+ contratto), mentre nel legacy `orders.status` e' un campo a se'.
+  Dev prima: Da pianificare 4261 vs 3106 legacy, In lavorazione 1226 vs 2579, Disdette 194 vs 37 (1201 commesse
+  "In lavorazione" legacy stavano su uno stato del gruppo open). Supera la decisione 2026-11-09 "Disdette 190 invece di 37".
+- Fix: colonne `work_orders.work_phase` (enum `WorkOrderWorkPhase`, default to_plan, indice) e
+  `work_phase_before_termination` (migrazione `2026_12_10_100000_add_work_phase_to_work_orders_table`, con backfill
+  euristico D-6). Non fillable. Regole in `App\Services\WorkOrders\WorkOrderWorkPhaseTracker`: `follow()` chiamato da
+  `WorkOrderService::create/update` (chiusura forzata -> completed/cancelled per gruppo dello stato di chiusura;
+  riapertura -> in_progress con Responsabili, altrimenti to_plan; Responsabile aggiunto su to_plan -> in_progress);
+  `cancelContract`/`terminateContract`/`restoreContract` da `ContractWorkOrderClosure` (legacy ConfirmDelete e
+  DisdettaCommesseService). `WorkOrderWorkPhaseColumn` legge la colonna (filtro whereIn, conteggi group by); tolto
+  l'eager `quote.contract.contractStatus`. FE: "Tutte" senza conteggio, come nel legacy.
+- Legacy: `WorkOrderMigrationController` invia `work_phase` (1..5) e `work_phase_before_termination` (da `last_status`,
+  solo status 5); verificato con tinker su record reali di ogni status. qnet-2: `MapsLegacyWorkOrderFields::legacyWorkPhase`,
+  scritto all'import (`finalizeLegacyRecord`) e al riallineamento (`LegacyWorkOrderRealigner`); valore ignoto -> warning.
+- DA FARE SU DEV (serve ok utente, memoria no-destructive-db): `php artisan migrate --path=database/migrations/2026_12_10_100000_add_work_phase_to_work_orders_table.php`,
+  poi sorgente `work-orders` con "aggiorna esistenti" per allineare le ~590 commesse "Da pianificare" con Responsabile
+  (il backfill coincide gia' col legacy su Concluse 8690, Annullate 2164, Disdette 37). Le commesse toccate in qnet-2
+  restano col backfill.
+- Test: REQUIREMENT CHANGED `WorkOrderWorkPhaseTest` (ora sulla colonna), `use-work-phase-tabs.test.tsx` ("Tutte" senza
+  numero), fixture `legacyWorkOrderRecord` (+ work_phase). Nuovi `WorkOrderWorkPhaseLifecycleTest` (AC-001..004),
+  `WorkOrderWorkPhaseBackfillTest`, casi in `WorkOrdersSourceImportTest`/`WorkOrdersRealignTest`. Pest WorkOrders 522,
+  ProjectWorkOrders 18, Contracts 225, Migration 928, CategoryTabs 83 verdi; Table 306/307 (rosso noto
+  `TableBulkDeleteTest`:131). Vitest help + work-orders 486, Pint, ESLint, `tsc -b --force` puliti. Non provato nel browser.
+- Non replicato (segnalato): nel legacy il tab "Da Pianificare" e i conteggi Annullate/Disdette erano solo per il ruolo
+  Admin; i filtri legacy (titolo, cliente, mese, servizio, utente) restano coperti da filtri colonna e filtri avanzati.
+- Manuale: guida in-app `work-orders` IT/EN (sezione `work-phase-tabs`) e Manuale Claude Docs (paragrafo "Fasi di
+  lavorazione") aggiornati; il PDF derivato va rigenerato.
+- Passo 2 (D-7, richiesta utente "sostituirli con questi, anche sulle colonne"): la fase sostituisce lo stato calcolato
+  dall'avanzamento. Colonna `status` = fase (`WorkOrderWorkPhaseColumn::COLUMN = 'status'`, legge `work_orders.work_phase`),
+  tolta la colonna nascosta `work_phase`; FE `WORK_PHASE_FILTER_KEY = 'status'`, badge dettaglio con
+  `enums.work_order_work_phase`. `WorkOrderStatusResolver` calcola solo percentuale/data (`WorkOrderProgress` senza
+  status, via `applyFilter`). Chat (`WorkOrderChatAccess`), "Richiedi aggiornamento" (`WorkOrderUpdateRequester`,
+  `WorkOrdersAuthorization`, azione di riga) e ricorrenza email (`WorkOrderEmailOwner`) usano
+  `WorkOrderWorkPhase::isOngoing()`. `WorkOrderStatus` ridotto a vocabolario dei gruppi dello Stato lavorazione
+  (via HasMeta, config `work_order_status`, i18n `enums.work_order_status`). Effetto: una commessa al 100% non diventa
+  piu' "Completata" da sola; va in Concluse solo con chiusura forzata positiva (o dal legacy).
+- REQUIREMENT CHANGED passo 2: `WorkOrderComputedStatusTest`, `WorkOrderCrudTest` AC-032/033, `WorkOrderRequestUpdateTest`
+  AC-007/009/010, `WorkOrderTableTest` (colonne, enumKey, valori, AC-034), `WorkOrderWorkflowStatusAssignmentTest`,
+  helper `chatClose`/`chatComplete`, `RecurringEmail*Test` AC-006/AC-012, FE fixture `status.value` e
+  `work-order-detail.test.tsx`. Pest WorkOrders 521, WorkOrderChat 54, Spec0362 32, WorkOrderEmails 66, Notifications 204,
+  Tasks 711, Config 23 verdi; rossi estranei e preesistenti: `TableBulkDeleteTest`:131, `EmploymentProductLineTest`,
+  `ApiDocsParityTest` (rotta allegati non documentata), `TaskBoardEndpointsTest` AC-011 e 4 `ManagementControl` (menu),
+  in file non toccati. Vitest work-orders/help/i18n/table 1109, ESLint, `tsc -b --force` puliti. Guide `work-orders` e
+  `project-work-orders` IT/EN e Manuale Claude Docs aggiornati.
+
 ## Unione di anagrafiche e referenti duplicati (spec 0394, task 427945) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 427945 (Martina, /registries): "Posso unire i doppioni presenti in anagrafica azienda?". Direttiva utente: azione

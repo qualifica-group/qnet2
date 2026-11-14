@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tables;
 
 use App\Enums\ProformaRequestStatus;
-use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
 use App\Enums\WorkOrderWorkPhase;
 use App\Models\Registry;
@@ -39,10 +38,10 @@ use Illuminate\Support\Facades\Gate;
  * relation (D-2: `quotes.code`/`quotes.title`, never copied), `supervisors`
  * is a to-many derived through the `work_order_supervisor` pivot (spec 0096,
  * D-7), `registry` is the client reached through `quote.opportunity` and
- * `status`/`completion_percentage` are COMPUTED from the manual progress
- * entries (spec 0321) by WorkOrderStatusResolver — the `status` filter through
- * WorkOrderDerivedColumns (file-size split, engineering.md §6), the
- * completion sort directly — so badge, filter and sort can never disagree.
+ * `completion_percentage` is COMPUTED from the manual progress entries
+ * (spec 0321) by WorkOrderStatusResolver, sorted through it too; `status` is
+ * the persisted working phase (spec 0395, WorkOrderWorkPhaseColumn), filtered
+ * through WorkOrderDerivedColumns (file-size split, engineering.md §6).
  *
  * baseQuery() is scoped by WorkOrderVisibilityScope (user directive
  * 2026-09-02): without `work-orders.viewAll` the actor lists only the
@@ -125,7 +124,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // `completion_recorded_on` (spec 0321) without one query per row.
         $query = $this->statusResolver->withProgress(WorkOrderVisibilityScope::withCompetenceVerdict(WorkOrder::query(), Auth::user())->with([
             'quote.opportunity.registry',
-            'quote.contract.contractStatus',
+            'quote.contract',
             'supervisors.avatar',
             'participants.avatar',
             // Spec 0322: the "Stato lavorazione" cell, and its per-row set
@@ -253,7 +252,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
     /**
      * Badge metadata for the `type`/`status` columns, driven by
-     * WorkOrderType/WorkOrderStatus (mirrors ProductsTableDefinition's own
+     * WorkOrderType/WorkOrderWorkPhase (mirrors ProductsTableDefinition's own
      * `product_type`).
      *
      * @return array<int, array<string, mixed>>|null
@@ -262,7 +261,6 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     {
         return match ($columnId) {
             'type' => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderType::options()),
-            'status' => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderStatus::options()),
             WorkOrderWorkPhaseColumn::COLUMN => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderWorkPhase::options()),
             default => null,
         };
@@ -280,9 +278,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * The `type`/`status` badges are driven by WorkOrderType/WorkOrderStatus,
+     * The `type`/`status` badges are driven by WorkOrderType/WorkOrderWorkPhase,
      * exposed to the frontend config under the `work_order_type`/
-     * `work_order_status` enum keys (config/config.php form_enums), so the
+     * `work_order_work_phase` enum keys (config/config.php form_enums), so the
      * client localizes the badge label from its own i18n resources instead
      * of the backend-supplied one.
      */
@@ -290,7 +288,6 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     {
         return match ($columnId) {
             'type' => 'work_order_type',
-            'status' => 'work_order_status',
             WorkOrderWorkPhaseColumn::COLUMN => 'work_order_work_phase',
             default => null,
         };
@@ -330,7 +327,6 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'participants' => $row->participants->map(fn (User $user): array => $this->userSummary($user))->all(),
             'callback_date' => $row->callback_date,
             'is_force_closed' => $row->is_force_closed,
-            'status' => $progress->status->value,
             WorkOrderWorkPhaseColumn::COLUMN => $this->workPhaseColumn->project($row),
             ...$this->workflowStatusColumn->project($row),
             'completion_percentage' => $progress->completionPercentage,
@@ -415,9 +411,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             $allowed[] = 'progress';
         }
 
-        // Spec 0352: only while open / in progress (progress is preloaded per row).
-        if (Gate::forUser($actor)->allows('requestUpdate', $row)
-            && $this->statusResolver->progress($row)->status->acceptsUpdateRequest()) {
+        // Spec 0352: only while the work is ongoing (spec 0395 phase).
+        if (Gate::forUser($actor)->allows('requestUpdate', $row) && $row->work_phase->isOngoing()) {
             $allowed[] = 'request_update';
         }
 

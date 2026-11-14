@@ -194,14 +194,16 @@ it('update: is_force_closed true->false zeroes force_close_reason in the same sa
     $this->assertDatabaseHas('work_orders', ['id' => $workOrder->id, 'is_force_closed' => false, 'force_close_reason' => null]);
 });
 
-it('status.value is open when is_force_closed=false, closed when true (AC-032)', function () {
+// Spec 0395 (REQUIREMENT CHANGED): `status.value` is the persisted working phase, not derived from is_force_closed.
+it('status.value is the working phase of the commessa (AC-032)', function () {
     $actor = workOrderUserWith(['view']);
     $open = WorkOrder::factory()->create(['is_force_closed' => false]);
     $closed = WorkOrder::factory()->forceClosed()->create();
+    $closed->forceFill(['work_phase' => 'cancelled'])->save();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/work-orders/{$open->id}")->assertOk()->assertJsonPath('data.status.value', 'open');
-    $this->getJson("/api/work-orders/{$closed->id}")->assertOk()->assertJsonPath('data.status.value', 'closed');
+    $this->getJson("/api/work-orders/{$open->id}")->assertOk()->assertJsonPath('data.status.value', 'to_plan');
+    $this->getJson("/api/work-orders/{$closed->id}")->assertOk()->assertJsonPath('data.status.value', 'cancelled');
 
     expect(Schema::hasColumn('work_orders', 'status'))->toBeFalse();
 });
@@ -212,16 +214,17 @@ it('create/update: a submitted status is not persisted, not client-writable (AC-
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/work-orders', [...workOrderRequiredFields(),
-        'quote_id' => $quote->id, 'title' => 'Status ignored', 'type' => 'processing', 'status' => 'closed',
+        'quote_id' => $quote->id, 'title' => 'Status ignored', 'type' => 'processing', 'status' => 'closed', 'work_phase' => 'cancelled',
     ])->assertCreated();
 
-    expect($response->json('data.status.value'))->toBe('open');
-    $this->assertDatabaseMissing('work_orders', ['title' => 'Status ignored', 'status' => 'closed']);
+    // Spec 0395: born with a Responsabile (workOrderRequiredFields) -> in progress.
+    expect($response->json('data.status.value'))->toBe('in_progress');
+    $this->assertDatabaseMissing('work_orders', ['title' => 'Status ignored', 'work_phase' => 'cancelled']);
 
     $workOrder = WorkOrder::find($response->json('data.id'));
-    $this->patchJson("/api/work-orders/{$workOrder->id}", ['status' => 'closed'])
+    $this->patchJson("/api/work-orders/{$workOrder->id}", ['status' => 'closed', 'work_phase' => 'cancelled'])
         ->assertOk()
-        ->assertJsonPath('data.status.value', 'open');
+        ->assertJsonPath('data.status.value', 'in_progress');
 });
 
 // ---------------------------------------------------------------------------

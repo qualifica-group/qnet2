@@ -16,17 +16,17 @@ import type { PrimaryContact } from '@/features/table/types'
 /** `App\Enums\WorkOrderType` (D-10): "Lavorazione" / "Progetto" live only in i18n. */
 export type WorkOrderType = 'processing' | 'project'
 
-/** `App\Enums\WorkOrderStatus` value, calculated in read from the root tasks (spec 0149), never persisted. */
-export type WorkOrderStatusValue = 'open' | 'in_progress' | 'completed' | 'closed'
+/** `App\Enums\WorkOrderWorkPhase` (spec 0395): the persisted status of the commessa, the legacy `orders.status`. */
+export type WorkOrderWorkPhase = 'to_plan' | 'in_progress' | 'completed' | 'cancelled' | 'terminated'
 
-/** The status badge shape: calculated `value` plus the one input driving it. */
+/** The status badge shape: the working phase plus the forced-closure flag. */
 export interface WorkOrderStatus {
-  value: WorkOrderStatusValue
+  value: WorkOrderWorkPhase
   is_force_closed: boolean
 }
 
-/** `WorkOrderStatus` group of a working status (spec 0322 D-7): the same vocabulary as the computed status. */
-export type WorkOrderWorkflowStatusGroup = WorkOrderStatusValue
+/** `App\Enums\WorkOrderStatus` group of a working status (spec 0322 D-7). */
+export type WorkOrderWorkflowStatusGroup = 'open' | 'in_progress' | 'completed' | 'closed'
 
 /**
  * One "Stato lavorazione" row (spec 0322). `system_key` pins the three system

@@ -14,7 +14,7 @@ import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-d
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderRequestUpdateDialog } from '@/features/work-orders/work-order-request-update-dialog'
 import { WorkOrderClosureActions } from '@/features/work-orders/work-order-closure-actions'
-import type { WorkOrderDetailWithPermissions, WorkOrderStatusValue, WorkOrderType } from '@/features/work-orders/types'
+import type { WorkOrderDetailWithPermissions, WorkOrderType, WorkOrderWorkPhase } from '@/features/work-orders/types'
 
 /**
  * Identity band and KPI strip of the work order record card, mirroring
@@ -22,22 +22,23 @@ import type { WorkOrderDetailWithPermissions, WorkOrderStatusValue, WorkOrderTyp
  * top-level fields and are always mounted together.
  */
 
-/** Badge colour per computed status (spec 0149 D-9), the same tokens the grid's `#[Color]` badges use. */
-const STATUS_TONES: Record<WorkOrderStatusValue, { badge: string; dot: string }> = {
-  open: { badge: BADGE_COLOR_CLASSES.blue, dot: 'bg-blue-500' },
+/** Badge colour per working phase (spec 0395), the same tokens as the grid's `#[Color]` badges of `WorkOrderWorkPhase`. */
+const STATUS_TONES: Record<WorkOrderWorkPhase, { badge: string; dot: string }> = {
+  to_plan: { badge: BADGE_COLOR_CLASSES.blue, dot: 'bg-blue-500' },
   in_progress: { badge: BADGE_COLOR_CLASSES.amber, dot: 'bg-amber-500' },
   completed: { badge: BADGE_COLOR_CLASSES.green, dot: 'bg-green-500' },
-  closed: { badge: BADGE_COLOR_CLASSES.slate, dot: 'bg-slate-500' },
+  cancelled: { badge: BADGE_COLOR_CLASSES.red, dot: 'bg-red-500' },
+  terminated: { badge: BADGE_COLOR_CLASSES.slate, dot: 'bg-slate-500' },
 }
 
-/** Colored status pill for the record header (spec 0149: calculated from the tasks, read-only). */
-function WorkOrderStatusBadge({ status }: { status: WorkOrderStatusValue }) {
+/** Colored status pill for the record header: the working phase (spec 0395), read-only. */
+function WorkOrderStatusBadge({ status }: { status: WorkOrderWorkPhase }) {
   const { t } = useTranslation()
   const tone = STATUS_TONES[status]
   return (
     <Badge variant="secondary" className={cn(BADGE_BASE, 'gap-1.5', tone.badge)}>
       <span className={cn('size-1.5 shrink-0 rounded-full', tone.dot)} aria-hidden="true" />
-      {t(`enums.work_order_status.${status}`)}
+      {t(`enums.work_order_work_phase.${status}`)}
     </Badge>
   )
 }

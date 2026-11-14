@@ -7,10 +7,11 @@ use App\Enums\Attributes\Label;
 use App\Enums\Concerns\HasMeta;
 
 /**
- * The working phase behind the status tabs of the Commesse page, the five
- * legacy `orders.status` values. NEVER persisted: resolved by
- * App\Tables\WorkOrders\WorkOrderWorkPhaseColumn from the group of the
- * commessa's "Stato lavorazione" and, for the `closed` group, from its contract.
+ * The working phase behind the status tabs of the Commesse page: the five
+ * legacy `orders.status` values, persisted in `work_orders.work_phase` and
+ * independent from "Stato lavorazione" (spec 0395). It is the commessa's
+ * status everywhere (grid `status` column, detail badge, chat, update request). Moved only by
+ * App\Services\WorkOrders\WorkOrderWorkPhaseTracker and the legacy import.
  */
 enum WorkOrderWorkPhase: string
 {
@@ -36,15 +37,13 @@ enum WorkOrderWorkPhase: string
     #[Color('slate')]
     case Terminated = 'terminated';
 
-    /** The "Stato lavorazione" group this phase reads. */
-    public function statusGroup(): WorkOrderStatus
+    /**
+     * Still to do or being done (legacy statuses 1 and 2): "Richiedi aggiornamento"
+     * is offered and the chat is writable (spec 0352 D-3, spec 0359) only then.
+     */
+    public function isOngoing(): bool
     {
-        return match ($this) {
-            self::ToPlan => WorkOrderStatus::Open,
-            self::InProgress => WorkOrderStatus::InProgress,
-            self::Completed => WorkOrderStatus::Completed,
-            self::Cancelled, self::Terminated => WorkOrderStatus::Closed,
-        };
+        return $this === self::ToPlan || $this === self::InProgress;
     }
 
     /**

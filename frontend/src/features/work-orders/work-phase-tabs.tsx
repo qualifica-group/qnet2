@@ -12,12 +12,13 @@ interface WorkPhaseTabsProps {
   onSelect: (tab: WorkPhaseTab) => void
 }
 
-/** Compact tab strip per working phase, as on the legacy list: "All" first, then the five phases, each with its count. */
+/** Compact tab strip per working phase, as on the legacy list: "All" first, then the five phases, each with its count when not zero. */
 export function WorkPhaseTabs({ active, counts, onSelect }: WorkPhaseTabsProps) {
   const { t, i18n } = useTranslation()
   const tabs = TAB_VALUES.map((value) => {
     const label = t(`workOrders.workPhaseTabs.${value}`)
-    const count = counts?.[value] ?? 0
+    // As on the legacy list, "All" never shows a figure.
+    const count = value === ALL_WORK_PHASES_TAB ? 0 : (counts?.[value] ?? 0)
     return { value, label: count > 0 ? `${label} (${count.toLocaleString(i18n.language)})` : label }
   })
 

@@ -124,7 +124,8 @@ it('AC-011: the last send on ends_on ends the series; so does a next date beyond
 it('AC-012: a work order no longer in progress ends the series without a copy', function () {
     [$workOrder, $author] = recurrenceFixture();
     $email = programmedEmail($workOrder, $author, ['next_send_on' => '2026-11-02', 'starts_on' => '2026-11-02', 'ends_on' => '2026-12-28']);
-    $workOrder->forceFill(['is_force_closed' => true])->save();
+    // Spec 0395 (REQUIREMENT CHANGED): "no longer in progress" is the working phase.
+    $workOrder->forceFill(['is_force_closed' => true, 'work_phase' => 'cancelled'])->save();
 
     runRecurrences('2026-11-02 09:00');
 

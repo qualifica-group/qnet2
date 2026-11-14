@@ -16,7 +16,6 @@ use App\Services\DocumentLayouts\QuoteDocumentLayoutResolver;
 use App\Services\OutboundEmails\EmailOwner;
 use App\Services\OutboundEmails\WorkOrderEmailVariableCatalog;
 use App\Services\OutboundEmails\WorkOrderEmailVariableResolver;
-use App\Services\WorkOrders\WorkOrderStatusResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
@@ -50,7 +49,6 @@ final class WorkOrderEmailOwner implements EmailOwner
         private readonly WorkOrderEmailVariableCatalog $catalog,
         private readonly WorkOrderEmailVariableResolver $resolver,
         private readonly ContactSuggestionBuilder $contacts,
-        private readonly WorkOrderStatusResolver $statusResolver,
     ) {}
 
     public function alias(): string
@@ -74,11 +72,11 @@ final class WorkOrderEmailOwner implements EmailOwner
     }
 
     /**
-     * Spec 0362, D-5: only while the (calculated) status still accepts work.
+     * Spec 0362, D-5: only while the work is ongoing (spec 0395 phase).
      */
     public function allowsRecurrence(Model $owner): bool
     {
-        return $this->statusResolver->progress($this->workOrder($owner))->status->acceptsUpdateRequest();
+        return $this->workOrder($owner)->work_phase->isOngoing();
     }
 
     public function defaultTo(Model $owner): array

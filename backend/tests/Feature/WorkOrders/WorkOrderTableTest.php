@@ -25,8 +25,9 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
     $data = $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data');
 
     // Spec 0322 appends `work_order_workflow_status` (REQUIREMENT CHANGED); spec 0358 D-14 adds `renewal_number` after `contract_expiry_date` (REQUIREMENT CHANGED).
+    // Spec 0395 (REQUIREMENT CHANGED): `status` is the working phase, the hidden `work_phase` column is gone.
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'renewal_number', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'work_phase', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors', 'participants', 'work_order_workflow_status']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'renewal_number', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors', 'participants', 'work_order_workflow_status']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()
@@ -57,8 +58,8 @@ it('the `type`/`status` badge columns declare their enumKey + full badges catalo
 
     expect($columns['type']['enumKey'])->toBe('work_order_type')
         ->and(collect($columns['type']['badges'])->pluck('value')->all())->toEqualCanonicalizing(['processing', 'project'])
-        ->and($columns['status']['enumKey'])->toBe('work_order_status')
-        ->and(collect($columns['status']['badges'])->pluck('value')->all())->toEqualCanonicalizing(['open', 'in_progress', 'completed', 'closed'])
+        ->and($columns['status']['enumKey'])->toBe('work_order_work_phase')
+        ->and(collect($columns['status']['badges'])->pluck('value')->all())->toEqualCanonicalizing(['to_plan', 'in_progress', 'completed', 'cancelled', 'terminated'])
         ->and($columns['is_force_closed'])->not->toHaveKey('enumKey');
 });
 
@@ -73,7 +74,7 @@ it('distinct-values for `type`/`status` returns the FULL declared set, not just 
 
     $statusValues = $this->postJson('/api/tables/work-orders/values', ['columnId' => 'status', 'limit' => 25])
         ->assertOk()->json('data.values');
-    expect($statusValues)->toEqualCanonicalizing(['open', 'in_progress', 'completed', 'closed']);
+    expect($statusValues)->toEqualCanonicalizing(['to_plan', 'in_progress', 'completed', 'cancelled', 'terminated']);
 });
 
 it('403 without work-orders.viewAny', function () {
@@ -269,25 +270,27 @@ it('distinct-values for `registry` lists only the registries reached by a work o
 // status filter matches the badge exactly — AC-034
 // ---------------------------------------------------------------------------
 
-it('filtering status=closed returns exactly the rows the Resource badges closed (AC-034)', function () {
+// Spec 0395 (REQUIREMENT CHANGED): the status is the persisted working phase.
+it('filtering a status returns exactly the rows the Resource badges with it (AC-034)', function () {
     $actor = workOrderUserWith(['viewAny', 'view']);
     $open = WorkOrder::factory()->create(['is_force_closed' => false, 'title' => 'Open one']);
     $closed = WorkOrder::factory()->forceClosed()->create(['title' => 'Closed one']);
+    $closed->forceFill(['work_phase' => 'cancelled'])->save();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/work-orders/rows', [
         'startRow' => 0, 'endRow' => 25,
-        'filterModel' => ['status' => ['filterType' => 'set', 'values' => ['closed']]],
+        'filterModel' => ['status' => ['filterType' => 'set', 'values' => ['cancelled']]],
     ])->assertOk();
 
     $titles = collect($response->json('items'))->pluck('title')->all();
     expect($titles)->toBe(['Closed one']);
 
     $detail = $this->getJson("/api/work-orders/{$closed->id}")->json('data');
-    expect($detail['status']['value'])->toBe('closed');
+    expect($detail['status']['value'])->toBe('cancelled');
 
     $openDetail = $this->getJson("/api/work-orders/{$open->id}")->json('data');
-    expect($openDetail['status']['value'])->toBe('open');
+    expect($openDetail['status']['value'])->toBe('to_plan');
 });
 
 // ---------------------------------------------------------------------------

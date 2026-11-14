@@ -25,8 +25,6 @@ class WorkOrderUpdateRequester
 
     public const array TARGETS = [self::TARGET_PARTICIPANTS, self::TARGET_SUPERVISORS, self::TARGET_ALL];
 
-    public function __construct(private readonly WorkOrderStatusResolver $statusResolver) {}
-
     public function handle(WorkOrder $workOrder, RequestWorkOrderUpdateData $data, User $actor): void
     {
         // Step 1: only open / in progress work orders can be asked for an update
@@ -52,7 +50,7 @@ class WorkOrderUpdateRequester
 
     private function assertAvailable(WorkOrder $workOrder): void
     {
-        if (! $this->statusResolver->progress($workOrder)->status->acceptsUpdateRequest()) {
+        if (! $workOrder->work_phase->isOngoing()) {
             abort(422, 'This work order is already completed or closed.');
         }
     }

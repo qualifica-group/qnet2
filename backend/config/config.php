@@ -19,7 +19,6 @@ use App\Enums\SupplierCommissionDirection;
 use App\Enums\TaskAssignmentScope;
 use App\Enums\TaskDueWindow;
 use App\Enums\TaskListStatus;
-use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
 use App\Enums\WorkOrderWorkPhase;
 
@@ -85,17 +84,13 @@ return [
         // and the work-orders grid's `type` badge, which declares
         // `enumKey: work_order_type`.
         'work_order_type' => WorkOrderType::class,
-        // Work order computed status (spec 0093, D-3): never a form field —
-        // registered so the work-orders grid's `status` badge, which
-        // declares `enumKey: work_order_status`, has a catalogue to read.
-        'work_order_status' => WorkOrderStatus::class,
         // Task table advanced filters (spec 0147): the option lists of the
         // `status`/`due`/`assignment` filters (fixed presentation buckets,
         // NON-SENSITIVE — no task data).
         'task_list_status' => TaskListStatus::class,
         'task_due_window' => TaskDueWindow::class,
         'task_assignment_scope' => TaskAssignmentScope::class,
-        // The status tabs of the Commesse page (never persisted).
+        // The status of a commessa (spec 0395): grid `status` badge and the Commesse tabs.
         'work_order_work_phase' => WorkOrderWorkPhase::class,
         // Product typology Supplier commission direction (spec 0202): the
         // typology form's Received/Paid select and the grid's badge column.

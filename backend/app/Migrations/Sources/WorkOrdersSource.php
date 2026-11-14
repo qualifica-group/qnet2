@@ -182,8 +182,8 @@ class WorkOrdersSource extends AbstractMigrationSource
         $this->linePaymentWriter->write($workOrder, $record, $warnings);
         $this->costWriter->write($workOrder, (array) ($record['costs'] ?? []), $lineIdsByOldId, $warnings);
 
-        // Step 4: old_id, the attribute values and the legacy timestamps in one quiet save.
-        $this->finalizeLegacyRecord($workOrder, $externalId, $record);
+        // Step 4: old_id, the attribute values, the working phase and the legacy timestamps in one quiet save.
+        $this->finalizeLegacyRecord($workOrder, $externalId, $record, $this->legacyWorkPhase($record, $warnings));
 
         return MigrationRowOutcome::created($warnings, $workOrder);
     }
@@ -220,6 +220,7 @@ class WorkOrdersSource extends AbstractMigrationSource
             'force_close_reason' => $forceCloseReason,
             'supervisor_ids' => $this->remapLegacyIds(User::class, $record['supervisor_user_ids'] ?? [], 'supervisor_user_ids', $warnings),
             'participant_slots' => $this->legacyManagerSlots($record['participant_user_ids'] ?? [], $warnings, 'participant_user_ids'),
+            'work_phase_attributes' => $this->legacyWorkPhase($record, $warnings),
         ];
         $updatedAt = $this->legacyTimestamp($record['updated_at'] ?? null) ?? $this->legacyTimestamp($record['created_at'] ?? null);
 

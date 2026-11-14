@@ -203,20 +203,13 @@ export const enums = {
     processing: 'Processing',
     project: 'Project',
   },
-  // Calculated work order status (spec 0149) from the root tasks and
-  // `is_force_closed`, the grid's `status` badge column — no DB column.
+  // Work order status (spec 0395, the legacy phase): `status` column, tabs and detail badge.
   work_order_work_phase: {
     to_plan: 'To plan',
     in_progress: 'In progress',
     completed: 'Completed',
     cancelled: 'Cancelled',
     terminated: 'Terminated',
-  },
-  work_order_status: {
-    open: 'Open',
-    in_progress: 'In progress',
-    completed: 'Completed',
-    closed: 'Closed',
   },
   // Task table advanced filters (spec 0147), as on the work order board.
   task_list_status: {

@@ -7,7 +7,7 @@ import { buildWorkOrderColumnRenderers } from '@/features/work-orders/column-ren
 
 /**
  * Spec 0093 `data_contract`. `type`/`status` declare an `enumKey`
- * (`work_order_type`/`work_order_status`, confirmed by the backend) and are
+ * (`work_order_type`/`work_order_work_phase`, confirmed by the backend) and are
  * therefore covered by the generic `BadgeCell` fallback, not by this map —
  * this suite only locks down the entries `workOrderColumnRenderers` DOES
  * own: `code`, `registry`, `is_force_closed` (a plain boolean with no backend `enumKey`/

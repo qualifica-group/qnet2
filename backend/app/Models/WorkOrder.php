@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\WorkOrderType;
+use App\Enums\WorkOrderWorkPhase;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasNotes;
@@ -27,9 +28,9 @@ use Illuminate\Support\Facades\DB;
  * exactly like `Quote::code`.
  *
  * `is_force_closed`/`force_close_reason` (D-4) are the only client-writable
- * "state": the working status itself (open, in progress, completed or closed) is ALWAYS computed at
- * read time by `App\Services\WorkOrders\WorkOrderStatusResolver` (D-3), never
- * a column on this table.
+ * "state": the status itself is the persisted `work_phase` (spec 0395), moved
+ * only by WorkOrderWorkPhaseTracker; the completion percentage is computed at
+ * read time by `App\Services\WorkOrders\WorkOrderStatusResolver`.
  *
  * `attribute_values` (spec 0098, D-5) is the dynamic "Informazioni
  * aggiuntive" map, twin of `Quote::attribute_values` (spec 0084): JSON,
@@ -50,7 +51,7 @@ use Illuminate\Support\Facades\DB;
  * `quote_line_work_order` pivot (sourceQuoteIds()), with no extra pivot.
  *
  * `work_order_workflow_status_id` (spec 0322, D-1 — the "Stato lavorazione",
- * distinct from the computed status above) is DELIBERATELY absent from
+ * distinct from the status above) is DELIBERATELY absent from
  * #[Fillable], mirroring `Quote::quote_workflow_status_id`: mandatory,
  * restrictOnDelete, written only by the services through
  * App\Services\WorkOrders\WorkOrderWorkflowResolver.
@@ -60,6 +61,10 @@ use Illuminate\Support\Facades\DB;
  * `quote_id`: mass-assignable on the model, with its post-create
  * immutability enforced one layer up by `UpdateWorkOrderRequest`'s own
  * `prohibited` rule, not by omitting it here.
+ *
+ * `work_phase` / `work_phase_before_termination` (spec 0395, the legacy
+ * `orders.status` / `last_status`) are absent from #[Fillable]: moved only
+ * by WorkOrderWorkPhaseTracker and the legacy import.
  */
 #[Fillable([
     'quote_id',
@@ -81,6 +86,9 @@ class WorkOrder extends BaseModel
     /** Relations whose rows block deleting the commessa (spec 0243, D-1). */
     private const array ACCOUNTING_RELATIONS = ['proformaRequests', 'invoices', 'purchaseOrders', 'purchaseOrderLines', 'purchaseInvoices'];
 
+    /** A new commessa is still to be planned (legacy status 1), as the column default says. */
+    protected $attributes = ['work_phase' => 'to_plan'];
+
     /**
      * @return array<string, string>
      */
@@ -92,6 +100,8 @@ class WorkOrder extends BaseModel
             'callback_date' => 'date:Y-m-d',
             'title_is_manual' => 'boolean',
             'is_force_closed' => 'boolean',
+            'work_phase' => WorkOrderWorkPhase::class,
+            'work_phase_before_termination' => WorkOrderWorkPhase::class,
             'attribute_values' => 'array',
         ];
     }

@@ -145,5 +145,5 @@ it('detail: exposes the status, its resolved set and leaves the computed status 
         ->and(array_keys($response->json('data.work_order_workflow_status')))->toBe(['id', 'name', 'color', 'group', 'system_key', 'progress_percentage', 'description'])
         ->and(collect($response->json('data.work_order_workflow_statuses'))->pluck('system_key')->all())->toBe(['open', 'completed', 'closed'])
         ->and(array_keys($response->json('data.work_order_workflow_statuses.0')))->toBe(['id', 'name', 'description', 'color', 'group', 'system_key', 'progress_percentage', 'sort_order'])
-        ->and($response->json('data.status.value'))->toBe('open');
+        ->and($response->json('data.status.value'))->toBe('to_plan');
 });

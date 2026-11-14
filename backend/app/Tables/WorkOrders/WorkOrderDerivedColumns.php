@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tables\WorkOrders;
 
-use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
 use App\Enums\WorkOrderWorkPhase;
 use App\Services\Table\FilterApplier;
-use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -19,9 +17,9 @@ use Illuminate\Support\Facades\DB;
  * The derived-column machinery for the `work-orders` domain (spec 0093),
  * extracted out of WorkOrdersTableDefinition (file-size split,
  * engineering.md §6): `contract_number`/`quote` (D-2, plain `quotes.code`/
- * `quotes.title` scalars reached via the `quote` relation), `status` (D-3,
- * delegated entirely to WorkOrderStatusResolver so the badge and the filter
- * can never disagree — AC-034), `is_force_closed` (a real boolean column
+ * `quotes.title` scalars reached via the `quote` relation), `status` (the
+ * persisted working phase, spec 0395, delegated to WorkOrderWorkPhaseColumn
+ * so the badge, the filter and the tabs can never disagree), `is_force_closed` (a real boolean column
  * rendered as `badge`+`set`, D-4) and `type` (a real WorkOrderType-cast
  * column, D-10) and `supervisors`/`participants` (spec 0096 D-7, the
  * Responsabili and the Partecipanti reached through their pivots — to-many
@@ -46,8 +44,6 @@ final class WorkOrderDerivedColumns
 
     private const string IS_FORCE_CLOSED_COLUMN = 'is_force_closed';
 
-    private const string STATUS_COLUMN = 'status';
-
     private const string SUPERVISORS_COLUMN = 'supervisors';
 
     private const string PARTICIPANTS_COLUMN = 'participants';
@@ -69,7 +65,6 @@ final class WorkOrderDerivedColumns
     ];
 
     public function __construct(
-        private readonly WorkOrderStatusResolver $statusResolver,
         private readonly FilterApplier $filterApplier,
         private readonly WorkOrderRegistryColumn $registryColumn,
         private readonly WorkOrderContractExpiryColumn $contractExpiryColumn,
@@ -85,12 +80,6 @@ final class WorkOrderDerivedColumns
      */
     public function applyFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        if ($columnId === self::STATUS_COLUMN) {
-            $this->statusResolver->applyFilter($query, $this->setFilterValues($filter));
-
-            return true;
-        }
-
         if ($columnId === WorkOrderWorkPhaseColumn::COLUMN) {
             $this->workPhaseColumn->applyFilter($query, $this->setFilterValues($filter));
 
@@ -253,7 +242,6 @@ final class WorkOrderDerivedColumns
         return match ($columnId) {
             self::TYPE_COLUMN => $this->filterOptions($search, WorkOrderType::values()),
             self::IS_FORCE_CLOSED_COLUMN => $this->filterOptions($search, ['true', 'false']),
-            self::STATUS_COLUMN => $this->filterOptions($search, WorkOrderStatus::values()),
             WorkOrderWorkPhaseColumn::COLUMN => $this->filterOptions($search, WorkOrderWorkPhase::values()),
             self::SUPERVISORS_COLUMN, self::PARTICIPANTS_COLUMN => $this->withBlankEntry(
                 $this->distinctTeamNames(self::TEAM_PIVOTS[$columnId], $search, $query, $limit),

@@ -25,9 +25,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * WorkOrderDetail shape (spec 0093 data_contract). `status` and
- * `completion_percentage` (+ `completion_recorded_on`) are ALWAYS computed via
- * WorkOrderStatusResolver (spec 0321, manual progress entries), never read off a column.
+ * WorkOrderDetail shape (spec 0093 data_contract). `status.value` is the
+ * persisted working phase (spec 0395); `completion_percentage` (+
+ * `completion_recorded_on`) is ALWAYS computed via WorkOrderStatusResolver
+ * (spec 0321, manual progress entries), never read off a column.
  * `contract_number` is `quote.code`, derived and read-only (D-2) — never a
  * column of its own. `quote_lines` composes its label live from
  * `product.code`/`product.name` (D-8, spec 0065 D-7's own precedent).
@@ -65,7 +66,8 @@ class WorkOrderResource extends JsonResource
             'title_is_manual' => $this->title_is_manual,
             'type' => $this->type?->value,
             'status' => [
-                'value' => $progress->status->value,
+                // Spec 0395: the persisted working phase, as in the legacy.
+                'value' => $this->work_phase?->value,
                 'is_force_closed' => $this->is_force_closed,
             ],
             'work_order_workflow_status_id' => $this->work_order_workflow_status_id,
@@ -119,7 +121,7 @@ class WorkOrderResource extends JsonResource
     }
 
     /**
-     * The "Stato lavorazione" (spec 0322, D-1), distinct from the computed `status`.
+     * The "Stato lavorazione" (spec 0322, D-1), distinct from `status` (the working phase).
      *
      * @return array{id: int, name: string, color: string|null, group: string, system_key: string|null, progress_percentage: int|null, description: string|null}|null
      */

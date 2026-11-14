@@ -23,6 +23,7 @@ use App\Services\WorkOrders\WorkOrderTaskGenerator;
 use App\Services\WorkOrders\WorkOrderTitleWriter;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrders\WorkOrderWorkflowStatusAssigner;
+use App\Services\WorkOrders\WorkOrderWorkPhaseTracker;
 use App\Support\ManagerPositions;
 use App\Support\PeopleChangeLog;
 use App\Support\PositionalPivotSync;
@@ -117,6 +118,7 @@ class WorkOrderService
         private readonly WorkOrderProgressEntryService $progressEntries,
         private readonly AssignmentNotifier $assignmentNotifier,
         private readonly WorkOrderAssignmentDateStamper $assignmentDateStamper,
+        private readonly WorkOrderWorkPhaseTracker $workPhaseTracker,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -257,10 +259,8 @@ class WorkOrderService
             // No actor outside a request (the demo seeder): the entry is then authorless.
             $this->progressEntries->completeOnPositiveClosure($workOrder, wasForceClosed: false, actor: Auth::user());
 
-            // Step 2b (spec 0098, D-6): "Informazioni aggiuntive" — written
-            // AFTER the quote lines, so the applicable set validated against
-            // is the one THOSE lines' categories produce, exactly the set the
-            // create form rendered its fields from.
+            // Step 2b (spec 0098, D-6): "Informazioni aggiuntive", AFTER the quote lines: their
+            // categories produce the applicable set, the one the create form rendered.
             if ($data->attributeValues !== null) {
                 $changed = [];
                 $old = [];
@@ -280,6 +280,7 @@ class WorkOrderService
             $participantSync = PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots));
             // Task 428419: the "Data di assegnazione" follows the Responsabili just added.
             $this->assignmentDateStamper->stamp($workOrder, $supervisorSync['attached'], [], FormMode::Create);
+            $this->workPhaseTracker->follow($workOrder, wasForceClosed: false, addedSupervisorIds: $supervisorSync['attached']);
 
             // Step 4 (spec 0124, D-7): generate the Modello di Task's tasks,
             // AFTER the supervisors are synced (D-2: they are the generated
@@ -364,11 +365,8 @@ class WorkOrderService
             // auth:sanctum guarantees a resolved actor on the update route.
             $this->progressEntries->completeOnPositiveClosure($workOrder, $wasForceClosed, Auth::user());
 
-            // "Informazioni aggiuntive" (spec 0098, D-6): validated against
-            // the applicable set as it is AFTER any submitted
-            // `quote_line_ids` replace it above — i.e. the set the form
-            // rendered its fields from — then merged sparsely (a code the
-            // map leaves out keeps its persisted value).
+            // "Informazioni aggiuntive" (spec 0098, D-6): validated against the set AFTER any submitted
+            // `quote_line_ids`, then merged sparsely (an omitted code keeps its persisted value).
             if ($data->attributeValues !== null) {
                 $changed = [];
                 $old = [];
@@ -399,6 +397,8 @@ class WorkOrderService
             }
 
             PeopleChangeLog::log($peopleBefore);
+            // Spec 0395: the legacy working phase follows the closure and the new Responsabili.
+            $this->workPhaseTracker->follow($workOrder, $wasForceClosed, $addedSupervisorIds);
 
             // Spec 0351, D-2: only who just ENTERED the team; a slot move is not an assignment.
             $this->notifyAddedMembers($workOrder, $addedSupervisorIds, $addedParticipantIds);

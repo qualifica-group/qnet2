@@ -79,7 +79,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "At the top right of the **Work orders** page you find the tabs **All**, **To plan**, **In progress**, **Completed**, **Cancelled** and **Terminated**. Each tab filters the list on the group of the **Working status**: a negative outcome means **Cancelled**, or **Terminated** when the work order's contract was terminated. **All** removes the filter. Each tab shows how many work orders it holds: the number follows the search and the active filters, so it matches what you see when you open the tab. The tab adds up with the other filters, **Parent category** included: if a work order is missing, check those too.",
+          text: "At the top right of the **Work orders** page you find the tabs **All**, **To plan**, **In progress**, **Completed**, **Cancelled** and **Terminated**. The phase is the work order **Status** (the **Status** column of the table and the badge at the top of the detail), separate from the **Working status** and from progress, and moves on its own as in the old QNet: a new work order is **To plan**; it becomes **In progress** when you add a **Supervisor**; a forced closure moves it to **Completed** (positive closing status) or **Cancelled** (negative); reopening it brings it back to **In progress**, or **To plan** when it has no Supervisors. From the contract: **Cancelled** moves all its work orders to **Cancelled**; **Terminated** moves to **Terminated** only those to plan or in progress, and reactivating the contract puts them back. **All** removes the filter. Every tab except **All** shows how many work orders it holds (only when not zero): the number follows the search and the active filters, so it matches what you see when you open the tab. The tab adds up with the other filters, **Parent category** included: if a work order is missing, check those too.",
         },
       ],
     },
@@ -150,18 +150,8 @@ const guide: HelpGuide = {
           ],
         },
         {
-          type: 'table',
-          headers: ['Progress', 'Work order status'],
-          rows: [
-            ['0% (no records)', 'Open'],
-            ['1% to 99%', 'In progress'],
-            ['100% or more', 'Completed'],
-            ['any, when force-closed', 'Closed'],
-          ],
-        },
-        {
           type: 'note',
-          text: 'You record and delete records if you may edit the work order, otherwise you only see the list. Task statuses no longer change the work order status; the tasks percentage stays visible in the task board.',
+          text: 'You record and delete records if you may edit the work order, otherwise you only see the list. Progress does not change the work order status (see **Working phases**), nor do task statuses; the tasks percentage stays visible in the task board.',
         },
       ],
     },
@@ -171,7 +161,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The button is at the top of the detail and among the row actions of the Work orders table; it shows only if you hold the **Request updates** permission and only on an Open or In progress work order (not on a Completed or Closed one). The work order is not changed.',
+          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The button is at the top of the detail and among the row actions of the Work orders table; it shows only if you hold the **Request updates** permission and only on a **To plan** or **In progress** work order (not on a Completed, Cancelled or Terminated one). The work order is not changed.',
         },
         {
           type: 'table',
@@ -194,7 +184,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Besides the computed status (Open, In progress, Completed, Closed, which depends on progress and is unchanged), every work order has a **Processing status** field: the operational status you choose. You find it in the detail and as a table column, with a colored badge and the name.",
+          text: "Besides the **Status** (the phase: To plan, In progress, Completed, Cancelled, Terminated, see **Working phases**), every work order has a **Processing status** field: the operational status you choose. You find it in the detail and as a table column, with a colored badge and the name.",
         },
         {
           type: 'paragraph',

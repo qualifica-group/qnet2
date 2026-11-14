@@ -10,9 +10,9 @@ import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progres
 /**
  * Custom cell renderers keyed by the backend column `id` (spec 0093
  * `data_contract`). `type`/`status` declare `enumKey` (`work_order_type`/
- * `work_order_status`, confirmed by backend): the generic `DataTable` already
+ * `work_order_work_phase`, confirmed by backend): the generic `DataTable` already
  * renders those via the agnostic `BadgeCell` fallback (`resolveCellRenderer`),
- * localizing through `enums.work_order_type.*`/`enums.work_order_status.*`
+ * localizing through `enums.work_order_type.*`/`enums.work_order_work_phase.*`
  * (`it-enums.ts`/`en-enums.ts`), so they need no entry here. `is_force_closed`
  * is a plain boolean `badge` column with NO `enumKey`/`badges` (backend
  * confirmed): the generic fallback would render an empty cell, so it gets its
