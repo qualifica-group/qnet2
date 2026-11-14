@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Comando `tasks:bulk-complete` — VERDE MIRATO, COMMITTATO (2026-11-14)
+
+- Richiesta utente: chiudere da artisan una lista di task (`1,2,3,4`) con un tempo totale in minuti.
+- `app/Console/Commands/BulkCompleteTasks.php`: `tasks:bulk-complete {ids} {minutes} --user=<id|email>
+  [--date=Y-m-d] [--start=H:i] [--type=<task_type_id>] [--notes=] [--feedback=] [--force]`. Riusa
+  `TaskBulkService` (stesso percorso di `POST /api/tasks/bulk`, tutto-o-niente, ability per task) e valida con
+  `TimeEntryValidationRules` + `BulkTimeEntrySharesRules`; permesso base `tasks.complete` sull'utente indicato.
+  Tipologia default = `TaskDefaultLookupResolver::taskTypeId()` (is_default). Anteprima + conferma (salta con `--force`).
+- `TaskBulkTimeEntrySplitter::evenShares()`: ripartizione uguale, resto ai primi task (gemella di `splitMinutesEvenly` FE).
+- Test: `tests/Feature/Tasks/BulkCompleteTasksCommandTest.php` (10) + bulk esistenti, 59 verdi. Manuale: nessun impatto (solo CLI).
+
 ## Opportunita' + offerta in un unico passaggio (spec 0396) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Richiesta utente: in "Nuova offerta" scegliere tra offerta da opportunita' esistente e opportunita' + offerta insieme,
