@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Referente 1/2 del legacy sulle anagrafiche + principale non piu' il commerciale (spec 0398, task 427822) — VERDE MIRATO, COMMITTATO E PUSHATO (qnet-2 e legacy, legacy anche su master) (2026-11-14)
+
+- Segnalazione: commesse 737 (SWINGUYS, nessun referente) e 8398 (DEMOLTECH, principale = commerciale). Cause: nel legacy
+  "Referente 1/2" sono colonne di testo di `companies` (`responsible*`, `responsible2*`) mai migrate; i contatti
+  `company_contacts.contact_type_id = 1` (Commerciale) arrivano tra i referenti e il backfill
+  `2026_11_10_100100_backfill_registries_primary_referent_id` li ha resi principali.
+- Legacy (`../qnet`, commit e88a1693; non toccate le modifiche locali dell'utente in `AppServiceProvider`/`config/database.php`):
+  nuovo `App\Support\Migration\LegacyResponsibleReferents::build` (pulizia nome: titoli, ruoli, parentesi, seconda persona,
+  numeri/email; divisione con `CompanyManage::separaNomeCognome` + correzione "COGNOME NOME"; una parola = solo nome;
+  abbinamento ai contatti collegati per nome in qualsiasi ordine; Referente 2 = Referente 1 non ripetuto; canali senza
+  nome in `extra_contacts` con label "Referente N"). `RegistryMigrationController`: `responsible_referents`,
+  `commercial_contact_ids` (contratto additivo). Verificato con tinker (DEMOLTECH, SWINGUYS, record senza nome) e
+  `php -l`. Dati locali: 7.008 Referente 1, 688 Referente 2, 1.731 abbinati, 1.481 col solo nome, 1.521 canali senza
+  nome; ~20 casi estremi (elenchi di persone separate da spazi) restano da correggere a mano.
+- qnet-2: `App\Migrations\Support\RegistryResponsibleReferents::align` (condivisa da `RegistriesSource` step 6 e dal
+  comando): abbina (`contact_id` -> `old_id`, poi nome tra i collegati) o crea via `ReferentService::create` (tipo
+  Referente old_id 2, ambito external), collega, aggiunge ai referenti esistenti solo i contatti mancanti; principale
+  D-9 (Referente 1; altrimenti un Commerciale cede al primo collegato non Commerciale o a nessuno) salvo cambio a mano
+  (voce `activity_log` non `created` con `properties.attributes.primary_referent_id`). Senza `responsible_referents`
+  nel record non fa nulla. Profilo in `ResponsibleReferentProfile`.
+- Comando `php artisan migrations:reimport-registry-referents [--apply] [--output=]` (`RegistryReferentsBackfill`):
+  una transazione per anagrafica, rollback in simulazione, nessun activity log; report fogli `Referenti collegati`,
+  `Principali cambiati`, `Anagrafiche saltate`. Attore = primo super-admin.
+- Refactor senza cambio di comportamento: `MissingCardContacts::of` (estratto da `RegistryContactsBackfill`),
+  `buildExtraContacts` spostato in `MapsExternalProfileRecord`, `ReportSheetsWriter` usato dai due comandi di reimport.
+- Test: `RegistriesSourceImportTest` (+3), nuovo `Realign/RegistryReferentsBackfillTest` (7). Migration 938,
+  Registries 155, Referents 104 verdi; Pint pulito. Simulazione DB dev contro legacy locale: 29.771 anagrafiche,
+  5.962 referenti da creare, 1.734 abbinati, 8.167 principali da cambiare (6.730 Referente 1, 1.437 commerciale),
+  4 lasciati perche' cambiati a mano, 0 saltate. DEMOLTECH -> Palladino principale + Francesca; SWINGUYS -> FILIPPO + Tiziana.
+- Verifier: AC-001..014 PASS. Suite completa 15.078 test, 26 rossi tutti fuori da Migration e dai file della 0398
+  (LibreOffice, `ApiDocsDescriptionsTest` merge, catalogo permessi 713/696, ManagementControl, AiAssistant PDF,
+  `AgentSalesReportCategoryColumnsTest` helper `agentSalesReportRows()` definito in un altro file di test, altri);
+  non verificati su albero pulito, da girare ai rispettivi owner.
+- Da fare: deploy prima del legacy poi di qnet-2; in produzione simulazione, `--apply`,
+  poi `migrations:reimport-registry-contacts --apply` per i canali dei referenti senza nome. Manuale: nessun impatto.
+
 ## Comando `tasks:bulk-complete` — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Richiesta utente: chiudere da artisan una lista di task (`1,2,3,4`) con un tempo totale in minuti.

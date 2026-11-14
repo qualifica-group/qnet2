@@ -6,10 +6,8 @@ namespace App\Console\Commands;
 
 use App\Exceptions\ExternalApiException;
 use App\Migrations\Realign\RegistryContactsBackfill;
+use App\Migrations\Realign\ReportSheetsWriter;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use OpenSpout\Common\Entity\Row;
-use OpenSpout\Writer\XLSX\Writer;
 
 /**
  * One-off: adds to the anagrafiche already migrated the contacts the legacy now sends
@@ -49,39 +47,15 @@ class ReimportLegacyRegistryContacts extends Command
         // Step 3: the report, then the summary.
         $path = (string) ($this->option('output')
             ?: storage_path('app/private/realign/registry-contacts-'.now()->format('Ymd-His').'-'.($apply ? 'apply' : 'dry').'.xlsx'));
-        $this->writeReport($path, $result['added'], $result['skipped']);
+        ReportSheetsWriter::write($path, [
+            'Contatti aggiunti' => [self::ADDED_HEADER, ...$result['added']],
+            'Anagrafiche saltate' => [self::SKIPPED_HEADER, ...$result['skipped']],
+        ]);
 
         $this->table(['anagrafiche read', 'contacts added', 'anagrafiche skipped'], [[$result['read'], count($result['added']), count($result['skipped'])]]);
         $this->info($apply ? 'Contacts written.' : 'Simulation: nothing was written.');
         $this->info("Report: {$path}");
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param  list<list<string|int|bool|null>>  $added
-     * @param  list<list<string|int|null>>  $skipped
-     */
-    private function writeReport(string $path, array $added, array $skipped): void
-    {
-        File::ensureDirectoryExists(dirname($path));
-
-        $writer = new Writer;
-        $writer->openToFile($path);
-        $writer->getCurrentSheet()->setName('Contatti aggiunti');
-        $this->rows($writer, [self::ADDED_HEADER, ...$added]);
-        $writer->addNewSheetAndMakeItCurrent()->setName('Anagrafiche saltate');
-        $this->rows($writer, [self::SKIPPED_HEADER, ...$skipped]);
-        $writer->close();
-    }
-
-    /**
-     * @param  list<list<string|int|bool|null>>  $rows
-     */
-    private function rows(Writer $writer, array $rows): void
-    {
-        foreach ($rows as $row) {
-            $writer->addRow(Row::fromValues($row));
-        }
     }
 }

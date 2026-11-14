@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Migrations\Realign;
 
-use App\DataObjects\Users\ContactInput;
 use App\Exceptions\ExternalApiException;
 use App\Migrations\Realign\Support\RegistryLegacyProfile;
-use App\Models\PersonalData;
+use App\Migrations\Support\MissingCardContacts;
 use App\Models\Registry;
-use App\Support\ContactValueNormalizer;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -83,7 +81,7 @@ final class RegistryContactsBackfill
             return;
         }
 
-        $missing = $this->missingContacts($card, $contacts);
+        $missing = MissingCardContacts::of($card, $contacts);
 
         if ($apply && $missing !== []) {
             DB::transaction(static fn () => activity()->withoutLogs(static function () use ($card, $missing): void {
@@ -96,39 +94,5 @@ final class RegistryContactsBackfill
         foreach ($missing as $attributes) {
             $result['added'][] = [$registry->old_id, $registry->id, $registry->name, $attributes['type'], $attributes['value'], $attributes['label'], $attributes['is_primary']];
         }
-    }
-
-    /**
-     * @param  array<int, ContactInput>  $inputs
-     * @return list<array{type: string, value: string, label: ?string, is_primary: bool}>
-     */
-    private function missingContacts(PersonalData $card, array $inputs): array
-    {
-        $known = [];
-        $hasPrimary = [];
-
-        foreach ($card->contacts as $contact) {
-            $type = (string) $contact->getRawOriginal('type');
-            $known[$type.'|'.$contact->getRawOriginal('normalized_value')] = true;
-            $hasPrimary[$type] = ($hasPrimary[$type] ?? false) || (bool) $contact->getRawOriginal('is_primary');
-        }
-
-        $missing = [];
-
-        foreach ($inputs as $input) {
-            $type = $input->data->type->value;
-            $key = $type.'|'.ContactValueNormalizer::contact($input->data->type, $input->data->value);
-
-            if (isset($known[$key])) {
-                continue;
-            }
-
-            $isPrimary = $input->data->isPrimary && ! ($hasPrimary[$type] ?? false);
-            $known[$key] = true;
-            $hasPrimary[$type] = ($hasPrimary[$type] ?? false) || $isPrimary;
-            $missing[] = ['type' => $type, 'value' => $input->data->value, 'label' => $input->data->label, 'is_primary' => $isPrimary];
-        }
-
-        return $missing;
     }
 }

@@ -4,6 +4,7 @@ use App\Models\Country;
 use App\Models\CustomFieldDefinition;
 use App\Models\MigrationRun;
 use App\Models\Referent;
+use App\Models\ReferentType;
 use App\Models\Registry;
 use App\Models\Sector;
 use App\Models\Source;
@@ -259,4 +260,75 @@ it('reports the tags when the tags custom field is not defined', function () {
 
     expect($run->created_rows)->toBe(1)
         ->and(registriesRunWarnings($run))->toBe(['Tags not imported: the registries "tags" custom field is not defined.']);
+});
+
+// ---------------------------------------------------------------------------
+// Referente 1/2 of the legacy (spec 0398)
+// ---------------------------------------------------------------------------
+
+it('creates Referente 1, links the matched Referente 2 and makes Referente 1 the principale', function () {
+    $type = ReferentType::factory()->create(['name' => 'Referente']);
+    $type->forceFill(['old_id' => 2])->save();
+    [$commercial, $palladino] = Referent::factory()->count(2)->create();
+    $commercial->forceFill(['old_id' => 701])->save();
+    $palladino->forceFill(['old_id' => 702])->save();
+
+    fakeLegacyRegistries([[
+        'id' => 50, 'is_private' => false, 'company_name' => 'Demoltech Srl',
+        'commercial_referent_id' => 701, 'referent_ids' => [701, 702], 'commercial_contact_ids' => [701],
+        'responsible_referents' => [
+            ['slot' => 1, 'contact_id' => null, 'referent_type_id' => 2, 'first_name' => 'Francesca', 'last_name' => 'Rossi',
+                'email' => 'francesca@demoltech.test', 'phone' => '3346459555', 'extra_contacts' => []],
+            ['slot' => 2, 'contact_id' => 702, 'referent_type_id' => 2, 'first_name' => 'Francesco', 'last_name' => 'Palladino'],
+        ],
+    ]]);
+
+    $run = runRegistriesMigration();
+
+    $registry = Registry::query()->where('old_id', 50)->firstOrFail();
+    $created = Referent::query()->where('name', 'Francesca Rossi')->with('personalData.contacts')->firstOrFail();
+
+    expect($run->created_rows)->toBe(1)
+        ->and($registry->referents()->pluck('referents.id')->all())->toBe([$commercial->id, $palladino->id, $created->id])
+        ->and($registry->primary_referent_id)->toBe($created->id)
+        ->and($registry->commercial_id)->toBe($commercial->id)
+        ->and($created->referent_type_id)->toBe($type->id)
+        ->and($created->contact_scope->value)->toBe('external')
+        ->and($created->old_id)->toBeNull()
+        ->and($created->personalData->contacts->pluck('value')->all())->toEqualCanonicalizing(['francesca@demoltech.test', '3346459555']);
+});
+
+it('creates a referent with the first name only when the legacy has a single word', function () {
+    fakeLegacyRegistries([[
+        'id' => 51, 'is_private' => false, 'company_name' => 'Swinguys',
+        'responsible_referents' => [['slot' => 1, 'contact_id' => null, 'referent_type_id' => null, 'first_name' => 'FILIPPO', 'last_name' => null, 'phone' => '3357109699']],
+    ]]);
+
+    $run = runRegistriesMigration();
+
+    $registry = Registry::query()->where('old_id', 51)->firstOrFail();
+    $referent = $registry->primaryReferent()->with('personalData')->firstOrFail();
+
+    expect($run->created_rows)->toBe(1)
+        ->and(registriesRunWarnings($run))->toBe([])
+        ->and($referent->name)->toBe('FILIPPO')
+        ->and($referent->personalData->first_name)->toBe('FILIPPO')
+        ->and($referent->personalData->last_name)->toBeNull();
+});
+
+it('keeps the first linked referent as principale when the legacy sends no Referente 1/2 fields', function () {
+    $commercial = Referent::factory()->create();
+    $commercial->forceFill(['old_id' => 701])->save();
+
+    fakeLegacyRegistries([[
+        'id' => 52, 'is_private' => false, 'company_name' => 'Old Legacy Srl',
+        'commercial_referent_id' => 701, 'referent_ids' => [701],
+    ]]);
+
+    runRegistriesMigration();
+
+    $registry = Registry::query()->where('old_id', 52)->firstOrFail();
+
+    expect($registry->primary_referent_id)->toBe($commercial->id)
+        ->and(Referent::query()->count())->toBe(1);
 });
