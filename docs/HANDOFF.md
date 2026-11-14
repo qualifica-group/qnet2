@@ -20,10 +20,13 @@
 - Legacy: `WorkOrderMigrationController` invia `work_phase` (1..5) e `work_phase_before_termination` (da `last_status`,
   solo status 5); verificato con tinker su record reali di ogni status. qnet-2: `MapsLegacyWorkOrderFields::legacyWorkPhase`,
   scritto all'import (`finalizeLegacyRecord`) e al riallineamento (`LegacyWorkOrderRealigner`); valore ignoto -> warning.
-- DA FARE SU DEV (serve ok utente, memoria no-destructive-db): `php artisan migrate --path=database/migrations/2026_12_10_100000_add_work_phase_to_work_orders_table.php`,
-  poi sorgente `work-orders` con "aggiorna esistenti" per allineare le ~590 commesse "Da pianificare" con Responsabile
-  (il backfill coincide gia' col legacy su Concluse 8690, Annullate 2164, Disdette 37). Le commesse toccate in qnet-2
-  restano col backfill.
+- Dev 2026-11-14: migrazione `2026_12_10_100000` eseguita dall'utente. Fasi: Da pianificare 2475, In lavorazione 3186,
+  Concluse 8722, Annullate 2176, Disdette 41 (legacy 3106/2579/8712/2182/37). Restano 609 diverse dal legacy, di cui 586
+  "Da pianificare" nel legacy con Responsabile messo alla creazione (finestra `ResponsabiliPartecipanti` e
+  `ResponsabileServices` del legacy non muovono la fase, "Aggiungi tecnico"/pianificazione si'): nel legacy sono
+  incoerenti con la sua stessa regola. Raccomandazione data all'utente: NON riallineare (fasi coerenti con le regole);
+  se serve la parita' dei conteggi col legacy, sorgente `work-orders` con "aggiorna esistenti". Decisione: l'utente la
+  riferisce, in attesa.
 - Test: REQUIREMENT CHANGED `WorkOrderWorkPhaseTest` (ora sulla colonna), `use-work-phase-tabs.test.tsx` ("Tutte" senza
   numero), fixture `legacyWorkOrderRecord` (+ work_phase). Nuovi `WorkOrderWorkPhaseLifecycleTest` (AC-001..004),
   `WorkOrderWorkPhaseBackfillTest`, casi in `WorkOrdersSourceImportTest`/`WorkOrdersRealignTest`. Pest WorkOrders 522,
