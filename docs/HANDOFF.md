@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Filtri data a giorno intero su colonne data+ora (#428096) — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+
+- Causa: `AdvancedFilterApplier` (date_range) e `FilterApplier::applyDate` (inRange/greaterThan) confrontavano un
+  giorno nudo ("2026-11-13", o "2026-11-13 00:00:00" da AG Grid) con una colonna DATETIME: l'estremo "a" valeva
+  mezzanotte. Su `quotes.next_callback_at` "dal 13 al 13" prendeva solo i richiami senza ora (dati locali: 41 su 115).
+- Fix: `App\Services\Table\CalendarDayBound` (`day()`, `dayAfter()`); range = `>= da` e `< a + 1 giorno`,
+  "dopo X" = `>= X + 1 giorno`, "prima di X" = `< X`; uguale/diverso restano `whereDate`. Identico a prima su DATE.
+  Vale per tutte le tabelle generiche. Test: `RequestManagementCallbackTest` (#428096, anche OR combinato).
+- NON risolto: la parte "il filtro non si salva / si toglie da solo" (anche #428054) non e' riproducibile dal codice;
+  serve un caso concreto (quale filtro: colonna o Filtri avanzati, quali passi).
+
 ## Ticket da QNet (lotto 2026-11-13) — VERDE MIRATO, NON COMMITTATO
 
 - **#428417 import contatti:** `config/imports.php` `column_aliases.phone` + 'phone number', 'telephone', 'mobile',

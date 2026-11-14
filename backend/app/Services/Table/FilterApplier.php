@@ -330,18 +330,25 @@ class FilterApplier
     }
 
     /**
-     * Apply a date filter (equals or inRange) on a datetime column.
+     * Apply a date filter on a date or datetime column. Every bound is a whole
+     * calendar day (ticket #428096, CalendarDayBound): "in range" keeps the
+     * timed values of its last day, "after" starts the day after.
      *
      * @param  array<string, mixed>  $filter
      */
     private function applyDate(Builder $query, string $column, array $filter, string $boolean): void
     {
         $type = is_string($filter['type'] ?? null) ? $filter['type'] : 'equals';
-        $from = is_string($filter['dateFrom'] ?? null) ? $filter['dateFrom'] : null;
-        $to = is_string($filter['dateTo'] ?? null) ? $filter['dateTo'] : null;
+        $from = CalendarDayBound::day($filter['dateFrom'] ?? null);
+        $to = CalendarDayBound::day($filter['dateTo'] ?? null);
 
         if ($type === 'inRange' && $from !== null && $to !== null) {
-            $query->whereBetween($column, [$from, $to], $boolean);
+            $query->where(
+                fn (Builder $range): Builder => $range->where($column, '>=', $from)->where($column, '<', CalendarDayBound::dayAfter($to)),
+                null,
+                null,
+                $boolean,
+            );
 
             return;
         }
@@ -351,7 +358,7 @@ class FilterApplier
         }
 
         match ($type) {
-            'greaterThan' => $query->where($column, '>', $from, $boolean),
+            'greaterThan' => $query->where($column, '>=', CalendarDayBound::dayAfter($from), $boolean),
             'lessThan' => $query->where($column, '<', $from, $boolean),
             'notEqual' => $query->whereDate($column, '!=', $from, $boolean),
             default => $query->whereDate($column, '=', $from, $boolean),

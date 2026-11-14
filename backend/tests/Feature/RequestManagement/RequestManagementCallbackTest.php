@@ -327,3 +327,38 @@ it('rows: the next_callback_range advanced filter narrows to {from, to} (AC-007)
     $ids = collect($response->json('items'))->pluck('id');
     expect($ids->all())->toBe([$inRange->id])->and($ids)->not->toContain($outOfRange->id);
 });
+
+it('ticket #428096: a same-day callback range keeps every callback of that day, timed ones included', function () {
+    $actor = requestManagementUserWith(['viewAny', 'viewAll']);
+    $midnight = quoteWithCallback('2026-11-13 00:00:00');
+    $morning = quoteWithCallback('2026-11-13 09:30:00');
+    $evening = quoteWithCallback('2026-11-13 23:59:00');
+    $nextDay = quoteWithCallback('2026-11-14 00:00:00');
+    $dayBefore = quoteWithCallback('2026-11-12 18:00:00');
+    Sanctum::actingAs($actor);
+
+    $ids = fn (array $state): array => collect($this->postJson('/api/tables/request-management/rows', [
+        'startRow' => 0, 'endRow' => 25,
+    ] + $state)->assertOk()->json('items'))->pluck('id')->sort()->values()->all();
+    $today = [$midnight->id, $morning->id, $evening->id];
+    sort($today);
+
+    expect($ids(['advancedFilters' => ['next_callback_range' => ['from' => '2026-11-13', 'to' => '2026-11-13']]]))->toBe($today)
+        ->and($ids(['advancedFilters' => ['next_callback_range' => ['to' => '2026-11-13']]]))->toBe(collect([...$today, $dayBefore->id])->sort()->values()->all())
+        ->and($ids(['filterModel' => ['next_callback_at' => [
+            'filterType' => 'date', 'type' => 'inRange', 'dateFrom' => '2026-11-13 00:00:00', 'dateTo' => '2026-11-13 00:00:00',
+        ]]]))->toBe($today)
+        ->and($ids(['filterModel' => ['next_callback_at' => [
+            'filterType' => 'date', 'type' => 'greaterThan', 'dateFrom' => '2026-11-13 00:00:00',
+        ]]]))->toBe([$nextDay->id])
+        ->and($ids(['filterModel' => ['next_callback_at' => [
+            'filterType' => 'date', 'type' => 'lessThan', 'dateFrom' => '2026-11-13 00:00:00',
+        ]]]))->toBe([$dayBefore->id])
+        // OR of two conditions: the whole-day bounds keep the combining boolean.
+        ->and($ids(['filterModel' => ['next_callback_at' => [
+            'filterType' => 'date', 'operator' => 'OR', 'conditions' => [
+                ['filterType' => 'date', 'type' => 'lessThan', 'dateFrom' => '2026-11-13 00:00:00'],
+                ['filterType' => 'date', 'type' => 'greaterThan', 'dateFrom' => '2026-11-13 00:00:00'],
+            ],
+        ]]]))->toBe(collect([$dayBefore->id, $nextDay->id])->sort()->values()->all());
+});
