@@ -28,6 +28,7 @@ import { purchaseOrders } from './it-purchase-orders'
 import { purchaseOrderForm } from './it-purchase-order-form'
 import { purchaseOrderActions } from './it-purchase-order-actions'
 import { sources } from './it-sources'
+import { recordMerge } from './it-record-merge'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
 import { chartOfAccounts } from './it-chart-of-accounts'
@@ -400,6 +401,7 @@ export const it: TranslationResources = {
   identityDuplicates,
   referents: { ...referents, stats: moduleStats.referents },
   referentTypes,
+  recordMerge,
   registries: { ...registries, stats: moduleStats.registries },
   attributes,
   customFields,

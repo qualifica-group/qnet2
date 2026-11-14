@@ -284,5 +284,20 @@
     "Documents": "Documenti",
     "Documents not included.txt": "Documenti non inclusi.txt",
     "These documents could not be included because their file is no longer available:": "Questi documenti non sono stati inclusi perché il loro file non è più disponibile:",
-    "There are no documents to download.": "Non ci sono documenti da scaricare."
+    "There are no documents to download.": "Non ci sono documenti da scaricare.",
+    "Records merged.": "Record uniti.",
+    "Unknown field.": "Campo sconosciuto.",
+    "Only long text fields can be combined.": "Solo i campi di testo lungo possono essere combinati.",
+    "The chosen record is not part of this merge.": "Il record scelto non fa parte di questa unione.",
+    "Unknown collection.": "Elenco sconosciuto.",
+    "Only elements of the merged duplicates can be discarded.": "Si possono scartare solo gli elementi dei duplicati da unire.",
+    "The field choice must be a record id or \"combine\".": "La scelta del campo deve essere l'id di un record oppure \"combine\".",
+    "The resulting record needs a valid type.": "Il record risultante richiede un tipo valido.",
+    "The resulting record needs this value.": "Il record risultante richiede questo valore.",
+    "Too many internal managers: discard some of them.": "Troppi gestori interni: scartane qualcuno.",
+    "The merge would create a duplicate that is not allowed (for example the same purchase invoice number for the same supplier).": "L'unione creerebbe un doppione non consentito (ad esempio lo stesso numero di fattura di acquisto per lo stesso fornitore).",
+    "You cannot change this field.": "Non puoi modificare questo campo.",
+    "The combined text is longer than :max characters: keep one of the texts.": "Il testo unito supera i :max caratteri: tieni uno dei due testi.",
+    "You cannot add these elements to the kept record: discard them.": "Non puoi aggiungere questi elementi al record mantenuto: scartali.",
+    "One of the records has just been merged or deleted: reload the list and try again.": "Uno dei record e' appena stato unito o eliminato: ricarica l'elenco e riprova."
 }

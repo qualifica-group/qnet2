@@ -252,13 +252,42 @@ const guide: HelpGuide = {
           items: [
             'Leggi il nome indicato nel riquadro.',
             'Cerca quella scheda nella tabella per verificare.',
-            'Se è la stessa persona o azienda, premi Annulla e usa la scheda esistente.',
+            'Se è la stessa persona o azienda, premi Annulla e usa la scheda esistente. Se i doppioni sono già in elenco, uniscili (vedi **Unire i duplicati**).',
             'Se è un caso diverso, puoi salvare lo stesso.',
           ],
         },
         {
           type: 'warning',
           text: "Codice fiscale, partita IVA e telefono già presenti su un'altra scheda bloccano il salvataggio, ovunque li inserisci: creazione, modifica, contatti del dettaglio e Gestione Richieste. Fa eccezione il telefono condiviso tra un'anagrafica e i suoi referenti collegati: l'azienda può avere lo stesso numero del proprio referente (e viceversa), mentre resta bloccato il numero di un referente collegato a un'altra anagrafica. L'email invece genera solo l'avviso: tocca a te decidere se la scheda è davvero un duplicato.",
+        },
+      ],
+    },
+    {
+      id: 'merging-duplicates',
+      title: 'Unire i duplicati',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Se nell'elenco trovi la stessa persona o azienda più volte, puoi **unire i duplicati** in una sola anagrafica senza perdere nulla: opportunità, offerte, commesse, attività, fatture, acquisti, provvigioni, note e documenti passano sull'anagrafica che mantieni.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Nella tabella spunta da **2 a 5 righe** da unire.',
+            'Apri il menu **Azioni** e scegli **Unisci duplicati**: si apre la finestra con un\'anteprima.',
+            'In alto scegli con **Mantieni questo** il record che resta: QNet ti consiglia quello con più collegamenti, a parità il più vecchio.',
+            'Nella sezione **Dati** vedi i campi che differiscono (spunta **Mostra anche i campi uguali** per vederli tutti): per ognuno scegli da quale record prendere il valore. Per le note lunghe puoi anche scegliere **Unisci i testi**.',
+            'Nelle sezioni sotto (contatti, indirizzi, settori, referenti, gestori interni, note, documenti) togli la spunta alle informazioni dei duplicati che non vuoi portare sul record mantenuto. Quelle già presenti sul principale sono segnate **Già presente** e non vengono duplicate.',
+            'Controlla **Collegamenti che passano al record mantenuto**, poi premi **Unisci** e conferma.',
+          ],
+        },
+        {
+          type: 'warning',
+          text: "Dopo la conferma i duplicati vengono **eliminati** e l'operazione **non si può annullare**. I collegamenti con gli altri moduli passano sempre sul record mantenuto; si scartano solo le informazioni che togli dalla spunta.",
+        },
+        {
+          type: 'note',
+          text: "L'azione è disponibile solo se hai i permessi per **modificare** e per **eliminare** le anagrafiche. Se la scheda risultante non è valida (per esempio un'azienda senza ragione sociale) o i gestori interni sono troppi, la finestra ti mostra il motivo e non cambia nulla.",
         },
       ],
     },

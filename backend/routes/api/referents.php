@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Merge\RecordMergeController;
 use App\Http\Controllers\Referents\ReferentController;
 use App\Http\Controllers\Referents\ReferentForSelectController;
 use App\Http\Controllers\Referents\ReferentRewardsController;
@@ -26,6 +27,10 @@ use Illuminate\Support\Facades\Route;
 // `for-select` segment wins over the bound wildcard. The only gate is
 // auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('referents/for-select', ReferentForSelectController::class);
+
+// Spec 0394: merge duplicates (see routes/api/registries.php).
+Route::post('referents/merge/preview', [RecordMergeController::class, 'preview'])->defaults('entity', 'referents');
+Route::post('referents/merge', [RecordMergeController::class, 'merge'])->defaults('entity', 'referents');
 
 Route::get('referents/{referent}', [ReferentController::class, 'show']);
 Route::post('referents', [ReferentController::class, 'store']);

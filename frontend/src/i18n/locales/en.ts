@@ -33,6 +33,7 @@ import { purchaseOrders } from './en-purchase-orders'
 import { purchaseOrderForm } from './en-purchase-order-form'
 import { purchaseOrderActions } from './en-purchase-order-actions'
 import { sources } from './en-sources'
+import { recordMerge } from './en-record-merge'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
 import { chartOfAccounts } from './en-chart-of-accounts'
@@ -414,6 +415,7 @@ export const en = {
   identityDuplicates,
   referents: { ...referents, stats: moduleStats.referents },
   referentTypes,
+  recordMerge,
   registries: { ...registries, stats: moduleStats.registries },
   attributes,
   customFields,

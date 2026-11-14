@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Merge\RecordMergeController;
 use App\Http\Controllers\Registries\RegistryController;
 use App\Http\Controllers\Registries\RegistryForSelectController;
 use App\Http\Controllers\Registries\RegistryLedgerController;
@@ -25,6 +26,11 @@ use Illuminate\Support\Facades\Route;
 // so the literal `for-select` segment wins over the bound wildcard.
 // The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('registries/for-select', RegistryForSelectController::class);
+
+// Spec 0394: merge duplicates. Literal `merge` segments, declared ABOVE
+// registries/{registry}; the entity key rides on the route default.
+Route::post('registries/merge/preview', [RecordMergeController::class, 'preview'])->defaults('entity', 'registries');
+Route::post('registries/merge', [RecordMergeController::class, 'merge'])->defaults('entity', 'registries');
 
 Route::get('registries/{registry}', [RegistryController::class, 'show']);
 // Spec 0266: Partitario of the registry; gated by `ledger.view` in the FormRequest.

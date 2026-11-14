@@ -114,6 +114,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'merging-duplicates',
+      title: 'Unire i duplicati',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Se lo stesso referente compare più volte, spunta **da 2 a 5 righe** nella tabella, apri il menu **Azioni** e scegli **Unisci duplicati**. Nella finestra scegli con **Mantieni questo** il referente che resta, poi per ogni campo che differisce da quale record prendere il valore (le **Note** si possono anche unire con **Unisci i testi**) e togli la spunta ai contatti, indirizzi, anagrafiche collegate e note dei duplicati che non vuoi portare con te.",
+        },
+        {
+          type: 'paragraph',
+          text: 'Opportunità, offerte, attività, premi, liquidazioni, profili fiscali, progetti, campagne, provvigioni e i ruoli (commerciale, segnalatore, referente principale) sulle anagrafiche passano sempre sul referente mantenuto: li vedi elencati in **Collegamenti che passano al record mantenuto**.',
+        },
+        {
+          type: 'warning',
+          text: "Dopo la conferma con **Unisci** i duplicati vengono **eliminati** e l'operazione **non si può annullare**. Serve il permesso di modificare e di eliminare i referenti.",
+        },
+      ],
+    },
+    {
       id: 'linking-a-referent',
       title: 'Collegare un referente a un cliente',
       blocks: [

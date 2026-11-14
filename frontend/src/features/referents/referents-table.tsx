@@ -19,6 +19,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { referentColumnRenderers } from '@/features/referents/column-renderers'
 import { deleteReferent } from '@/features/referents/api'
+import { useRecordMergeBulkAction } from '@/features/record-merge/use-record-merge-bulk-action'
 
 /** Domain key used to mount the generic table for referents. */
 const REFERENTS_DOMAIN = 'referents'
@@ -44,6 +45,7 @@ export function ReferentsTable() {
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
+  const recordMerge = useRecordMergeBulkAction('referents', tableRef)
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
@@ -129,7 +131,10 @@ export function ReferentsTable() {
         onAction={handleAction}
         isBusy={isBusy}
         iconMap={REFERENTS_ACTION_ICONS}
+        getBulkActions={recordMerge.getBulkActions}
       />
+
+      {recordMerge.dialog}
 
       {sheet}
 

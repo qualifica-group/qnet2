@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0394-registry-referent-merge" status="approved" owner="nicola" date="2026-11-14">
+
+  <goal>
+    Unire anagrafiche (Anagrafiche) e referenti (Referenti) duplicati (task 427945: "Posso unire i doppioni presenti in anagrafica azienda? se si', come?", pagina /registries). L'operatore seleziona 2-5 record nella griglia, vede in anteprima cosa verra' unito, sceglie il record da mantenere e campo per campo il valore da tenere, puo' scartare singole informazioni dei duplicati; tutti i collegamenti dei moduli (opportunita', offerte, commesse, documenti, note, attivita', fatture, acquisti, provvigioni...) passano sul record mantenuto senza perdite. I duplicati vengono eliminati.
+  </goal>
+
+  <context>
+    D-1 Ingresso: azione di massa "Unisci duplicati" nelle griglie /registries e /referents, attiva con 2-5 righe selezionate (`MERGE_MAX_RECORDS = 5`), visibile solo con `{module}.update` E `{module}.delete` (affordance; il backend riautorizza). Nessun nuovo permesso: unire = modificare il record mantenuto + eliminare i duplicati.
+    D-2 Autorizzazione server: `RegistryPolicy::update` sul record mantenuto e `RegistryPolicy::delete` su ogni duplicato (idem `ReferentPolicy`), compresi eventuali scope di visibilita' gia' applicati da quelle policy. Anteprima: `view` su ogni record.
+    D-3 Il record mantenuto ("principale") e' scelto dall'operatore; l'anteprima suggerisce `suggested_survivor_id` = il record con piu' collegamenti (totale di `linked[].count` + collezioni), a parita' il piu' vecchio (id piu' basso).
+    D-4 Campi scalari (dati anagrafici della scheda personal-data + campi propri del modulo): per ogni campo l'operatore sceglie da quale record prendere il valore. Default FE: valore del principale se non vuoto, altrimenti il primo non vuoto tra i duplicati in ordine di id. Chiave omessa nel payload = valore del principale. Campi testo lungo marcati `combinable` (Anagrafica: `general_notes`, `agreement_notes`; Referente: `notes`) accettano anche `"combine"` = testi non vuoti uniti in ordine principale-poi-duplicati, separati da una riga vuota, senza duplicare testi identici.
+    D-5 La scheda anagrafica risultante si scrive col writer esistente del modulo (`RegistryProfileWriter` / `ReferentProfileWriter`), cosi' `name` resta derivato in un solo punto e i campi incoerenti col tipo (persona/azienda) seguono le regole gia' esistenti. Una combinazione non valida (es. azienda senza ragione sociale) = 422 con messaggio leggibile.
+    D-6 Collezioni scartabili (solo elementi dei DUPLICATI; quelli del principale restano sempre): Anagrafica = contatti, indirizzi, settori, referenti collegati, gestori interni, note, documenti. Referente = contatti, indirizzi, anagrafiche collegate, note. Default: tutto mantenuto. Ogni elemento ha una `match_key` (contatto = `type|normalized_value`; indirizzo = `line1|postal_code|city_id` normalizzati in minuscolo e senza spazi doppi; settori/referenti/gestori/anagrafiche = id dell'entita' collegata; note e documenti = null). Il FE marca "Gia' presente" (non selezionabile) un elemento di un duplicato la cui `match_key` esiste tra gli elementi del principale SCELTO (rev. 2026-11-14: non dipende dal principale suggerito). In esecuzione un elemento con `match_key` gia' presente sul principale (o gia' spostato da un duplicato precedente) NON viene copiato (nessun doppione), senza bisogno di scartarlo. I contatti/indirizzi spostati perdono `is_primary` se il principale ha gia' un primario dello stesso tipo.
+    D-7 Gestori interni: quelli del principale tengono la posizione; quelli dei duplicati occupano le posizioni libere in ordine; oltre `ManagerPositions::MAX` = 422 "Troppi gestori interni: scartane qualcuno". Nessuna notifica di assegnazione durante l'unione.
+    D-8 Collegamenti NON scartabili, sempre spostati sul principale (UPDATE di massa nella stessa transazione). Anagrafica: opportunities.registry_id (offerte e commesse seguono l'opportunita'), leads.registry_id, tasks.registry_id, time_entries.registry_id, invoices.customer_registry_id, purchase_invoices.supplier_id, purchase_orders.supplier_id/customer_id, purchase_requests.customer_id, purchase_request_lines.supplier_id, proforma_requests.supplier_id, quote_lines.supplier_id, work_order_costs.supplier_id, product_suppliers.supplier_id, treasury_movements.registry_id, installment_compensations.registry_id, referents.supplier_registry_id, commission_configurations / commission_accruals / quote_line_commissions con recipient_type=registry. Referente: opportunities.referent_id/commercial_id/reporter_id, quotes.commercial_id/reporter_id, registries.commercial_id/reporter_id/primary_referent_id, tasks.referent_id, rewards.referent_id, commission_settlements.referent_id, agent_fiscal_profiles.referent_id, projects.partner_id, campaigns.partner_id, commission_* con recipient_type=referent. Valori degli attributi "relazione" (`attributes.relation_target.entity_type` = registries/referents) nei JSON `attribute_values` di ogni tabella che li ha, e campi personalizzati relazione nei JSON `custom_field_values.values`, riscritti dall'id del duplicato all'id del principale. activity_log con subject = duplicato riassegnato al principale (la cronologia resta consultabile).
+    D-9 Conflitti di unicita': `product_suppliers (product_id, supplier_id)` e `rewards (referent_id, reward_type_id, source_type, source_id)`: se la riga esiste gia' sul principale, quella del duplicato viene eliminata (copiata nello snapshot, D-11). `referents.user_id` (unico): vince il valore scelto per il campo `user_id`, gli altri vengono azzerati prima. Pivot (`sector_registry`, `referent_registry`, `registry_user`) deduplicati.
+    D-10 Campi personalizzati (`custom_field_values`, una riga JSON per record): il principale tiene i suoi valori; le chiavi vuote o assenti prendono il primo valore non vuoto dei duplicati in ordine di id. Non scelti campo per campo.
+    D-11 Tracciabilita': tabella `record_merges` (entity_type `registry`|`referent`, survivor_id, merged_id, merged_old_id nullable, merged_name, snapshot JSON = anteprima completa del duplicato + elementi scartati e righe eliminate per conflitto, merged_by nullable FK users nullOnDelete, timestamps). Una riga per duplicato. Sul principale si registra un'attivita' `merged` con l'elenco {id, name} dei duplicati.
+    D-12 Migrazione dal legacy (backend.md §9): un duplicato eliminato non deve rinascere ne' far perdere i collegamenti importati dopo. `AbstractMigrationSource::existsByOldId` e `resolveOldId` per Registry/Referent consultano `record_merges.merged_old_id` e risolvono al principale (seguendo eventuali unioni a catena). Le altre ricerche dirette per old_id fuori da quei due metodi restano invariate (segnalate, non in scope).
+    D-13 Documenti scartati: eliminati con l'eliminazione del duplicato (cascata esistente di `HasAttachments`). Note scartate: soft-delete (una radice scartata porta con se' le risposte). Contatti/indirizzi scartati: eliminati con la scheda del duplicato (cascata esistente).
+    D-13-bis (rev. 2026-11-14) Le regole di scrittura della modifica normale valgono anche per l'unione: un campo non modificabile per l'operatore (permessi per campo, spec 0004) non puo' cambiare valore e una collezione non modificabile non puo' ricevere elementi (422, va scartato); un testo unito oltre 5000 caratteri = 422. Le note gia' eliminate del duplicato passano al principale restando eliminate (la cronologia resta raggiungibile). I record sono bloccati (lockForUpdate) all'inizio della transazione: un'unione concorrente che trova un record gia' unito risponde 409.
+    D-14 Tutto in una transazione; errore = nessuna modifica. Il principale non puo' comparire tra i duplicati; record inesistenti = 422; piu' di 5 record totali = 422.
+  </context>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/registries/merge/preview">
+      <request>{ ids: int[] (2..5, distinct) }</request>
+      <response>
+        200 { success: true, data: MergePreview }
+        MergePreview = {
+          suggested_survivor_id: int,
+          records: [{ id, name, old_id: int|null, created_at: ISO8601 }],
+          fields: [{ key: string, type: "text"|"number"|"boolean"|"date"|"enum"|"relation", combinable: bool,
+                     values: [{ record_id: int, value: string|number|boolean|null, display: string|null }] }],
+          collections: [{ key: "contacts"|"addresses"|"sectors"|"referents"|"managers"|"notes"|"documents"|"registries",
+                          items: [{ id: int, record_id: int, label: string, detail: string|null, match_key: string|null }] }],
+          linked: [{ key: string, count: int (totale su tutti i record), counts: [{ record_id: int, count: int }], items: [{ id: int, record_id: int, label: string }] (max 20 per record) }]
+        }
+        Campi Anagrafica (key): type, first_name, last_name, company_name, tax_code, vat_number, sdi_code, birth_date, gender, birth_city_id, residence_city_id, source_id, vat_group, is_supplier, is_qualified_supplier, agreement_status, agreement_notes, general_notes, size_class, employee_count, supervisor_id, commercial_id, reporter_id, primary_referent_id.
+        Campi Referente (key): type, first_name, last_name, company_name, tax_code, vat_number, sdi_code, birth_date, gender, birth_city_id, residence_city_id, referent_type_id, contact_scope, notes, user_id, supplier_registry_id.
+        `display` = etichetta leggibile per relation (nome), null altrimenti (il FE formatta per `type`; enum = valore grezzo tradotto lato FE).
+        Chiavi `linked` Anagrafica: opportunities, quotes, work_orders, leads, tasks, time_entries, invoices, purchase_invoices, purchase_orders, purchase_requests, proforma_requests, supplied_products, treasury_movements, supplied_quote_lines, work_order_costs, installment_compensations, paid_agents, commissions, attribute_values. Referente: opportunities, quotes, registries_roles, tasks, rewards, commission_settlements, agent_fiscal_profiles, projects, campaigns, commissions, attribute_values. Le chiavi con count 0 sono omesse. Il FE mostra solo i conteggi e gli esempi dei record diversi dal principale scelto (rev. 2026-11-14: si spostano solo quelli) e nasconde le chiavi che restano a 0. `quotes`/`work_orders` dell'Anagrafica = quelli raggiunti tramite le sue opportunita' (seguono, non si spostano direttamente).
+      </response>
+    </endpoint>
+    <endpoint method="POST" path="/api/registries/merge">
+      <request>
+        { survivor_id: int, merged_ids: int[] (1..4, distinct, != survivor_id),
+          fields?: { [key]: record_id | "combine" },
+          discard?: { contacts?: int[], addresses?: int[], sectors?: int[], referents?: int[], managers?: int[], notes?: int[], documents?: int[] } }
+        record_id deve essere survivor_id o uno dei merged_ids; "combine" solo sui campi combinable; gli id in discard devono appartenere a un duplicato (sectors/referents/managers = id dell'entita' collegata, notes = id della nota radice, gli altri = id della riga).
+      </request>
+      <response>200 { success: true, message, data: RegistryResource del principale (stessa shape di GET /registries/{id}) }</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/referents/merge/preview">
+      <request>{ ids: int[] (2..5) }</request>
+      <response>200 { success: true, data: MergePreview } (collezioni: contacts, addresses, registries, notes)</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/referents/merge">
+      <request>{ survivor_id, merged_ids, fields?, discard?: { contacts?, addresses?, registries?, notes? } }</request>
+      <response>200 { success: true, message, data: ReferentResource del principale }</response>
+    </endpoint>
+    <error status="403">{ success: false, message } senza view (anteprima) o senza update sul principale / delete su un duplicato</error>
+    <error status="409">{ success: false, message } un record e' stato appena unito o eliminato da un'altra operazione</error>
+    <error status="422">{ success: false, message, errors } validazione (numero record, id ripetuti, principale tra i duplicati, chiave campo sconosciuta, combine su campo non combinable, id di discard estraneo, troppi gestori, scheda anagrafica risultante non valida)</error>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Anteprima Anagrafiche: con 2 anagrafiche restituisce records, fields con un valore per record, collections con gli elementi di entrambe (con match_key), linked con conteggi ed etichette; suggested_survivor_id = record con piu' collegamenti.</criterion>
+    <criterion id="AC-002">Unione Anagrafiche: dopo il merge il duplicato non esiste piu'; opportunita' (con offerte e commesse), lead, task, segnatempo, fatture, acquisti, fornitori prodotto, movimenti, provvigioni e attributi relazione puntano al principale; record_merges ha una riga con snapshot e merged_old_id; activity `merged` sul principale.</criterion>
+    <criterion id="AC-003">Scelta campi: un campo con record_id del duplicato prende il suo valore; "combine" su general_notes unisce i testi; il `name` del principale e' riderivato dalla scheda.</criterion>
+    <criterion id="AC-004">Scarto: contatti, indirizzi, note e documenti scartati non arrivano sul principale (note soft-deleted, documenti eliminati); quelli non scartati si spostano; i doppioni non vengono duplicati; i primari del principale restano primari.</criterion>
+    <criterion id="AC-005">Pivot e conflitti: settori/referenti/gestori uniti senza doppioni (gestori nelle posizioni libere, oltre il massimo 422); product_suppliers in conflitto -> resta la riga del principale, quella del duplicato nello snapshot.</criterion>
+    <criterion id="AC-006">Unione Referenti: anagrafiche collegate, ruoli commerciale/segnalatore/principale sulle anagrafiche, opportunita', offerte, task, premi, liquidazioni, profili fiscali, progetti, campagne, provvigioni passano al principale; user_id scelto resta, nessuna violazione di unicita'.</criterion>
+    <criterion id="AC-007">Autorizzazione: 403 senza update sul principale o senza delete su un duplicato; 403 anteprima senza view; 401 ospite.</criterion>
+    <criterion id="AC-008">Validazione: 422 con 1 o 6 record, id ripetuti, principale tra i duplicati, campo sconosciuto, combine non ammesso, id di discard non appartenente a un duplicato; in caso di errore nessuna modifica.</criterion>
+    <criterion id="AC-009">Migrazione legacy: dopo il merge, `existsByOldId(Registry, old_id del duplicato)` e' vero e `resolveOldId` restituisce il principale (anche a catena); idem Referent.</criterion>
+    <criterion id="AC-010">Frontend: con 2-5 righe selezionate e i permessi compare "Unisci duplicati"; la finestra mostra i record come colonne con la scelta del principale, i campi diversi con una scelta per record (default D-4), le collezioni dei duplicati con caselle (default tutte spuntate, "Gia' presente" per match_key presente sul principale scelto), i collegamenti che verranno spostati; la conferma invia il payload del contratto e aggiorna la griglia.</criterion>
+  </acceptance>
+</spec>

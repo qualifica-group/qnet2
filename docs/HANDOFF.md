@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Unione di anagrafiche e referenti duplicati (spec 0394, task 427945) — VERDE MIRATO, COMMITTATO (2026-11-14)
+
+- Task 427945 (Martina, /registries): "Posso unire i doppioni presenti in anagrafica azienda?". Direttiva utente: azione
+  di unione per anagrafiche e referenti, tutti i collegamenti spostati senza perdite, anteprima con scelta e scarto.
+- Flusso: griglia /registries o /referents, 2-5 righe (`MERGE_MAX_RECORDS`), Azioni > "Unisci duplicati" (serve
+  `{modulo}.update` + `{modulo}.delete`, nessun permesso nuovo). Finestra: scelta del principale (suggerito = piu'
+  collegamenti, poi id piu' basso), valore per campo (default D-4, "Unisci i testi" sui campi `combinable`),
+  caselle per scartare contatti/indirizzi/settori/referenti/gestori/note/documenti (referenti: contatti/indirizzi/
+  anagrafiche/note) dei soli duplicati, elenco dei collegamenti che si spostano sempre. Conferma, poi duplicati eliminati.
+- BE: `POST /api/{registries|referents}/merge/preview` e `/merge` (`RecordMergeController`, entita' come route
+  default, `MergePreviewRequest`/`MergeRecordsRequest`); motore in `app/Services/Merge/` (`RecordMergeService::handle`,
+  `RegistryMergeDefinition`/`ReferentMergeDefinition` con campi, collezioni e riferimenti, `MergeReferenceReassigner`,
+  `RelationValueRewriter` per `attribute_values` di ogni tabella che li ha (anche `products`) e campi personalizzati
+  relazione, `Collections/*`). Authz: view per l'anteprima; update sul principale e delete sui duplicati.
+- Contratto (spec rev. 2026-11-14): elementi delle collezioni con `match_key` (non `duplicate_of`), il FE calcola
+  "Gia' presente" sul principale scelto; `linked[].counts` per record ed esempi max 20 per record, il FE mostra solo i
+  collegamenti dei duplicati.
+- Nuova tabella `record_merges` (migrazione `2026_12_09_100000_create_record_merges_table`): snapshot del duplicato,
+  elementi scartati, righe eliminate per conflitto di unicita' (product_suppliers, rewards). **NON eseguita su qnet2:
+  serve `php artisan migrate` (ok utente) prima di provare la funzione in locale e dopo il deploy in produzione.**
+- Migrazione legacy: `AbstractMigrationSource::existsByOldId`/`resolveOldId` risolvono un old_id di un duplicato
+  unito al principale (`MergedRecordResolver`, anche a catena): il duplicato non rinasce e i collegamenti importati dopo
+  arrivano al principale. Le ricerche dirette per old_id fuori da quei metodi (es. realign `RegistriesTarget`) no.
+- Regole di scrittura (spec D-13-bis, `MergeWriteGuard`): permessi per campo come nella modifica (campo bloccato non
+  cambia valore, collezione bloccata non riceve elementi: 422 da scartare), testo unito max 5000 caratteri (422), note
+  gia' eliminate spostate restando eliminate, record bloccati con lockForUpdate (unione concorrente = 409). Anteprima
+  Anagrafiche anche con `supplied_quote_lines`, `work_order_costs`, `installment_compensations`, `paid_agents`.
+- Rischio noto: due fornitori con fatture passive dallo stesso numero/anno violano l'unico
+  `(supplier_id, document_number, document_year)`: l'unione viene rifiutata con 422 e nulla cambia.
+- FE: `features/record-merge/` (api, types, `merge-selection.ts` puro, `use-record-merge.ts`, dialog + 4 sezioni,
+  `use-record-merge-bulk-action.tsx`), i18n `it/en-record-merge.ts`; wiring in `registries-table.tsx`/`referents-table.tsx`.
+- Test: Pest `tests/Feature/RegistryMerge` + `ReferentMerge` 46/46 (nuovo `RegistryMergeWriteRulesTest`); Attachments, Authorization, Identity, Migration,
+  Notes, Referents, ReferentTypes, Registries, RewardedReferents + merge = 1712/1713 (rosso preesistente
+  `PermissionCatalogueEndpointTest` AC-004 713 vs 696). Vitest record-merge/registries/referents/help/table/i18n
+  1032/1032; ESLint e `tsc -b --force` puliti; Pint pulito. NON provato in un browser reale (manca la migrazione su dev).
+- Manuale: guide in-app registries/referents IT+EN (sezione `merging-duplicates`); manuale Claude Docs, nuova sezione
+  "Unire i duplicati" sotto "Gestire i duplicati".
+
 ## Data di assegnazione automatica sulle commesse (task 428419) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 428419 (/work-orders): "quando assegno le pratiche non mi riporta nella colonna data assegnazione la data".

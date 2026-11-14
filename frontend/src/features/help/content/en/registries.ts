@@ -252,13 +252,42 @@ const guide: HelpGuide = {
           items: [
             'Read the name shown in the panel.',
             'Search for that card in the table to verify it.',
-            'If it is the same person or company, press Cancel and use the existing card.',
+            'If it is the same person or company, press Cancel and use the existing card. If the duplicates are already in the list, merge them (see **Merging duplicates**).',
             'If it is a different case, you can save anyway.',
           ],
         },
         {
           type: 'warning',
           text: 'A tax code, VAT number or phone already on another card blocks saving, wherever you enter it: creation, editing, the contacts of the detail and Request management. The exception is a phone shared between a registry and its linked referents: the company may have the same number as its own referent (and vice versa), while the number of a referent linked to another registry stays blocked. An email only raises the notice: it is up to you to decide whether the card is really a duplicate.',
+        },
+      ],
+    },
+    {
+      id: 'merging-duplicates',
+      title: 'Merging duplicates',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'If the same person or company appears several times in the list, you can **merge the duplicates** into a single registry without losing anything: opportunities, quotes, work orders, tasks, invoices, purchases, commissions, notes and documents move to the registry you keep.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'In the table, tick **2 to 5 rows** to merge.',
+            'Open the **Actions** menu and choose **Merge duplicates**: a dialog opens with a preview.',
+            'At the top, pick the record to keep with **Keep this one**: QNet suggests the one with the most links, the oldest in a tie.',
+            'In the **Data** section you see the fields that differ (tick **Also show identical fields** to see them all): for each one choose which record the value comes from. For long notes you can also choose **Combine texts**.',
+            'In the sections below (contacts, addresses, sectors, referents, internal managers, notes, documents) untick the information of the duplicates you do not want on the kept record. Items already on the kept record are marked **Already present** and are not duplicated.',
+            'Review **Links moving to the kept record**, then press **Merge** and confirm.',
+          ],
+        },
+        {
+          type: 'warning',
+          text: 'After you confirm, the duplicates are **deleted** and the operation **cannot be undone**. Links with the other modules always move to the kept record; only the information you untick is discarded.',
+        },
+        {
+          type: 'note',
+          text: 'The action is available only if you can both **edit** and **delete** registries. If the resulting card is not valid (for example a company without a company name) or there are too many internal managers, the dialog shows the reason and nothing changes.',
         },
       ],
     },
