@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, FolderOpen, Loader2, Upload, UploadCloud } from 'lucide-react'
+import { AlertCircle, Download, FolderOpen, Loader2, Upload, UploadCloud } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,6 +9,7 @@ import { AttachmentTile } from '@/features/attachments/attachment-tile'
 import { LegacyRecordNote } from '@/components/detail/legacy-record-note'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { useAttachments } from '@/features/attachments/use-attachments'
+import { useAttachmentArchiveDownload } from '@/features/attachments/use-attachment-binary'
 import type { Attachment } from '@/features/attachments/types'
 
 export interface DocumentsSectionProps {
@@ -25,11 +26,14 @@ export interface DocumentsSectionProps {
 }
 
 const SKELETON_TILES = 4
+/** "Scarica tutti" only pays off from two files up: one file has its own download. */
+const MIN_DOCUMENTS_FOR_ARCHIVE = 2
 
 /**
  * Self-contained document manager for a polymorphic owner: a compact
  * drag-and-drop upload strip, a grid of files (thumbnail/icon, preview,
- * download, delete) and its own loading/empty/error states. This component
+ * download, delete), a "download all" ZIP from two files up and its own
+ * loading/empty/error states. This component
  * owns no authorization gating of its own — the caller decides when it is
  * authorized to mount (mirrors `ActivityLogSection`).
  */
@@ -47,6 +51,7 @@ export function DocumentsSection({
     id,
     collection,
   )
+  const { downloadAll, isDownloadingAll } = useAttachmentArchiveDownload(resource, id, collection)
   const [isDragging, setIsDragging] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -192,11 +197,25 @@ export function DocumentsSection({
           <p className="max-w-[32ch] text-xs text-muted-foreground">{t('attachments.emptyHint')}</p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {documents.map((document) => (
-            <AttachmentTile key={document.id} attachment={document} canDelete={canDelete} onDelete={handleDelete} />
-          ))}
-        </ul>
+        <>
+          {documents.length >= MIN_DOCUMENTS_FOR_ARCHIVE ? (
+            <div className="flex justify-end">
+              <Button type="button" variant="secondary" size="xs" onClick={downloadAll} disabled={isDownloadingAll}>
+                {isDownloadingAll ? (
+                  <Loader2 className="animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download aria-hidden="true" />
+                )}
+                {isDownloadingAll ? t('attachments.downloadingAll') : t('attachments.downloadAll')}
+              </Button>
+            </div>
+          ) : null}
+          <ul className="flex flex-col gap-2">
+            {documents.map((document) => (
+              <AttachmentTile key={document.id} attachment={document} canDelete={canDelete} onDelete={handleDelete} />
+            ))}
+          </ul>
+        </>
       )}
 
       <LegacyRecordNote url={legacyUrl} note={t('attachments.legacyNote')} />

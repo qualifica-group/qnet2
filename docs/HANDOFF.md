@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Documenti: "Scarica tutti" in un unico ZIP (task 427111, spec 0393) — VERDE MIRATO, COMMITTATO (2026-11-14)
+
+- Task 427111 (qnet2 task id 427111, pagina /work-orders/12840): i documenti si scaricavano solo uno alla volta; il
+  legacy aveva "Scarica tutti i documenti commessa" (ZIP, `Manageorder::dowloadDocuments`).
+- BE: `GET /api/attachments/archive` (stessi parametri/filtri/authz dell'elenco + `view` per file; 404 se vuoto),
+  `AttachmentController::archive` + `ownerAttachments()` condiviso con `index`; `App\Services\Attachments\AttachmentArchiveBuilder`
+  (copia in cartella temporanea, nomi duplicati numerati, file mancanti elencati in "Documenti non inclusi.txt" dentro lo ZIP);
+  `LegacyAttachmentFetcher::saveTo()` (stream su file). Traduzioni `lang/it.json`.
+- FE: `downloadAttachmentArchive` (api.ts), `useAttachmentArchiveDownload` (use-attachment-binary.ts), pulsante
+  "Scarica tutti" in `DocumentsSection` da 2 documenti in su: vale per tutti i moduli con la sezione Documenti.
+- Test: `AttachmentArchiveTest` (6), Attachments 104/104, WorkOrders 499/499; Vitest attachments/work-orders/opportunities/
+  registries/rich-text 792/792, help 161/161; Pint, ESLint, `tsc -b --force` puliti.
+- In locale i file legacy non sono raggiungibili (base URL non configurata): su WO 12840 lo ZIP contiene solo l'elenco
+  dei mancanti. Verificare in produzione/staging su /work-orders/12840.
+- Manuale: guida `general` IT/EN (tabella comandi Documenti). Manuale Claude Docs: riga "Scarica tutti" nella sezione
+  Note e documenti.
+
 ## Filtri data a giorno intero su colonne data+ora (#428096) — VERDE MIRATO, NON COMMITTATO (2026-11-13)
 
 - Causa: `AdvancedFilterApplier` (date_range) e `FilterApplier::applyDate` (inRange/greaterThan) confrontavano un

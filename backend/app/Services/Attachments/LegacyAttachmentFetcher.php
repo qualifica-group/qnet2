@@ -61,6 +61,24 @@ final class LegacyAttachmentFetcher
         return $this->readBounded($body, $maxBytes);
     }
 
+    /**
+     * Streams the legacy file into a local file, chunk by chunk, so a large
+     * document never sits in memory (used by AttachmentArchiveBuilder).
+     */
+    public function saveTo(Attachment $attachment, string $target): void
+    {
+        $body = $this->open($attachment)->toPsrResponse()->getBody();
+        $handle = fopen($target, 'wb');
+
+        try {
+            while (! $body->eof()) {
+                fwrite($handle, $body->read(self::CHUNK_BYTES));
+            }
+        } finally {
+            fclose($handle);
+        }
+    }
+
     private function open(Attachment $attachment): Response
     {
         $url = $attachment->external_url;

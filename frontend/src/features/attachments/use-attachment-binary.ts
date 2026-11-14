@@ -1,10 +1,14 @@
 import { useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
-import { attachmentBinaryQueryKey, fetchAttachmentBinary } from '@/features/attachments/api'
+import {
+  attachmentBinaryQueryKey,
+  downloadAttachmentArchive,
+  fetchAttachmentBinary,
+} from '@/features/attachments/api'
 import type { Attachment } from '@/features/attachments/types'
 import { saveBlob } from '@/lib/download'
 
@@ -80,4 +84,19 @@ export function useAttachmentBinaryActions(attachment: Attachment) {
   }
 
   return { openPreview, download }
+}
+
+/**
+ * "Scarica tutti" (spec 0393): saves every document of the owner's collection
+ * as one ZIP built by the server, like the legacy work order download.
+ */
+export function useAttachmentArchiveDownload(resource: string, id: number, collection: string) {
+  const { t, i18n } = useTranslation()
+  const mutation = useMutation<{ blob: Blob; filename: string }, AxiosError>({
+    mutationFn: () => downloadAttachmentArchive(resource, id, collection),
+    onSuccess: ({ blob, filename }) => saveBlob(blob, filename),
+    onError: (error) => toast.error(apiErrorMessage(error, t('attachments.errors.downloadAll'), i18n)),
+  })
+
+  return { downloadAll: () => mutation.mutate(), isDownloadingAll: mutation.isPending }
 }

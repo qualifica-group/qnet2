@@ -1,6 +1,7 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import type { Attachment, AttachmentList } from '@/features/attachments/types'
+import { filenameFromContentDisposition } from '@/lib/download'
 
 /**
  * TanStack Query key for an attachable owner's document list, scoped by
@@ -89,6 +90,22 @@ export async function fetchAttachmentBinary(
     responseType: 'blob',
   })
   return data
+}
+
+/** Every document of one owner and collection, packed by the server in a single ZIP (spec 0393). */
+export async function downloadAttachmentArchive(
+  resource: string,
+  id: number,
+  collection: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.get<Blob>('/attachments/archive', {
+    params: { attachable_type: resource, attachable_id: id, collection },
+    responseType: 'blob',
+  })
+  return {
+    blob: response.data,
+    filename: filenameFromContentDisposition(response.headers['content-disposition']) ?? `documents-${id}.zip`,
+  }
 }
 
 /** Deletes an attachment (metadata + binary) by id. */

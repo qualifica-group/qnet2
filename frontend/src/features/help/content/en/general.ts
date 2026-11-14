@@ -179,6 +179,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Preview**', 'Opens the file in a new browser window.'],
             ['**Download**', 'Saves the file to your computer.'],
+            ['**Download all**', 'Shown above the list when there are at least two documents: saves them all at once in a single ZIP file. Files with the same name are numbered (for example “Quote (2).pdf”); a file that is no longer available is left out of the ZIP and its name is listed in a text file inside the ZIP.'],
             ['**Delete document**', 'Removes the file, after confirmation and with no way to undo it.'],
           ],
         },

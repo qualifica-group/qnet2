@@ -23,6 +23,7 @@ const listAttachmentsMock = vi.fn()
 const uploadAttachmentMock = vi.fn()
 const deleteAttachmentMock = vi.fn()
 const fetchAttachmentBinaryMock = vi.fn()
+const downloadAttachmentArchiveMock = vi.fn()
 const saveBlobMock = vi.fn()
 
 vi.mock('@/features/attachments/api', () => ({
@@ -33,6 +34,7 @@ vi.mock('@/features/attachments/api', () => ({
   uploadAttachment: (...args: unknown[]) => uploadAttachmentMock(...args),
   deleteAttachment: (...args: unknown[]) => deleteAttachmentMock(...args),
   fetchAttachmentBinary: (...args: unknown[]) => fetchAttachmentBinaryMock(...args),
+  downloadAttachmentArchive: (...args: unknown[]) => downloadAttachmentArchiveMock(...args),
 }))
 
 vi.mock('@/lib/download', () => ({
@@ -186,6 +188,34 @@ describe('DocumentsSection', () => {
 
     await waitFor(() => expect(fetchAttachmentBinaryMock).toHaveBeenCalledWith(1, 'download'))
     expect(saveBlobMock).toHaveBeenCalledWith(expect.any(Blob), 'contract.pdf')
+  })
+
+  it('downloads every document as one ZIP from two files up (spec 0393, task 427111)', async () => {
+    const zip = new Blob(['zip'], { type: 'application/zip' })
+    downloadAttachmentArchiveMock.mockResolvedValue({ blob: zip, filename: 'Documenti-42.zip' })
+    listAttachmentsMock.mockResolvedValue(
+      documentList([attachment(), attachment({ id: 2, original_name: 'quote.pdf' })]),
+    )
+
+    renderSection(
+      <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Download all' }))
+
+    await waitFor(() => expect(saveBlobMock).toHaveBeenCalledWith(zip, 'Documenti-42.zip'))
+    expect(downloadAttachmentArchiveMock).toHaveBeenCalledWith('opportunity', 42, 'documents')
+  })
+
+  it('offers no "Download all" for a single document (spec 0393)', async () => {
+    listAttachmentsMock.mockResolvedValue(documentList([attachment()]))
+
+    renderSection(
+      <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
+    )
+
+    expect(await screen.findByText('contract.pdf')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Download all' })).not.toBeInTheDocument()
   })
 
   it('uploads the dropped/selected file and refreshes the list', async () => {

@@ -179,6 +179,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Anteprima**', 'Apre il file in una nuova finestra del browser.'],
             ['**Scarica**', 'Salva il file sul computer.'],
+            ['**Scarica tutti**', 'Compare sopra l’elenco quando ci sono almeno due documenti: li salva tutti insieme in un unico file ZIP. I file con lo stesso nome vengono numerati (per esempio “Preventivo (2).pdf”); se un file non è più disponibile non entra nello ZIP e il suo nome è scritto nel file “Documenti non inclusi.txt” dentro lo ZIP.'],
             ['**Elimina documento**', 'Rimuove il file, dopo conferma e senza possibilità di annullare.'],
           ],
         },

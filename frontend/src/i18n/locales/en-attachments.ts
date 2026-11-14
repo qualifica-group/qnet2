@@ -14,6 +14,8 @@ export const attachments = {
   emptyHint: 'Drop one or more files into the area above to add the first ones.',
   preview: 'Preview',
   download: 'Download',
+  downloadAll: 'Download all',
+  downloadingAll: 'Preparing the ZIP…',
   deleteAction: 'Delete document',
   deleteConfirm: 'Delete "{{name}}"? This cannot be undone.',
   legacyNote: "Can't find a document?",
@@ -26,5 +28,6 @@ export const attachments = {
     preview: 'Unable to open the document. Please try again.',
     previewBlocked: 'Your browser blocked the preview window. Allow pop-ups for this site.',
     download: 'Unable to download the document. Please try again.',
+    downloadAll: 'Unable to download the documents. Please try again.',
   },
 }

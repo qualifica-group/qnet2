@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0393-documents-download-all" status="approved" owner="nicola" date="2026-11-14">
+
+  <goal>
+    Nella sezione Documenti di un record un pulsante "Scarica tutti" salva tutti i documenti in un unico ZIP, come faceva il legacy per i documenti commessa (task 427111: "I documenti da scaricare non vengono scaricati simultaneamente come prima, bensi' solo uno alla volta", pagina /work-orders/12840).
+  </goal>
+
+  <context>
+    D-1 Legacy: `Manageorder::dowloadDocuments()` (pulsante "Scarica tutti i documenti commessa") creava `documenti_ordine_{id}.zip`. In qnet-2 la sezione Documenti e' condivisa (`DocumentsSection`): il pulsante vale per ogni modulo che la usa, non solo per le Commesse.
+    D-2 Il pulsante compare sopra l'elenco solo con almeno due documenti (con uno basta lo scarico del singolo file). Durante la preparazione mostra "Preparazione dello ZIP..." ed e' disabilitato.
+    D-3 Endpoint `GET /api/attachments/archive`, stessi parametri e stessi filtri dell'elenco (`IndexAttachmentRequest`, collection chiuse escluse); autorizzazione: `viewAny` + `accessOwner` come l'elenco, piu' `view` su ogni file incluso. Nessun documento = 404.
+    D-4 `AttachmentArchiveBuilder`: ogni file viene copiato in una cartella temporanea (disco locale o proxy legacy via `LegacyAttachmentFetcher::saveTo`, a blocchi, mai tutto in memoria), poi zippato; lo ZIP temporaneo si cancella dopo l'invio. Nome dello ZIP: "Documenti-{id}.zip".
+    D-5 Nomi duplicati numerati ("Preventivo (2).pdf"); separatori di cartella nel nome sostituiti con "_".
+    D-6 Un file non piu' disponibile (assente dal disco, 404/502 dal legacy) non blocca lo scarico: resta fuori ed e' elencato nel file "Documenti non inclusi.txt" dentro lo ZIP (niente header custom: in produzione il CORS non li espone).
+  </context>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/attachments/archive">
+      <request>attachable_type (alias in attachments.attachable_types), attachable_id, collection?</request>
+      <response>200 application/zip, Content-Disposition attachment; filename="Documenti-{id}.zip"</response>
+    </endpoint>
+    <error status="403">{ success: false, message } senza attachments.viewAny/view o record non visibile</error>
+    <error status="404">{ success: false, message: "Non ci sono documenti da scaricare." }</error>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Lo ZIP contiene tutti i documenti della collection (non quelli di altre collection) con il contenuto giusto; nomi duplicati numerati.</criterion>
+    <criterion id="AC-002">Un file assente e' escluso e nominato in "Documenti non inclusi.txt".</criterion>
+    <criterion id="AC-003">I documenti legacy sono letti dal legacy; uno irraggiungibile e' elencato come mancante.</criterion>
+    <criterion id="AC-004">403 senza attachments.view o su una commessa non visibile.</criterion>
+    <criterion id="AC-005">404 senza documenti, 401 per un ospite.</criterion>
+    <criterion id="AC-006">Frontend: "Scarica tutti" con almeno due documenti chiama l'endpoint e salva lo ZIP; con un solo documento non compare.</criterion>
+  </acceptance>
+</spec>

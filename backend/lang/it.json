@@ -280,5 +280,9 @@
     "The renewal period already has work orders.": "Il periodo del rinnovo ha già commesse.",
     "Account manager :position": "Gestore account :position",
     ":actor added a row to \":field\" on :record.": ":actor ha aggiunto una riga a \":field\" in :record.",
-    ":actor turned on \":column\" on a row of \":field\" on :record.": ":actor ha attivato \":column\" su una riga di \":field\" in :record."
+    ":actor turned on \":column\" on a row of \":field\" on :record.": ":actor ha attivato \":column\" su una riga di \":field\" in :record.",
+    "Documents": "Documenti",
+    "Documents not included.txt": "Documenti non inclusi.txt",
+    "These documents could not be included because their file is no longer available:": "Questi documenti non sono stati inclusi perché il loro file non è più disponibile:",
+    "There are no documents to download.": "Non ci sono documenti da scaricare."
 }
