@@ -54,6 +54,23 @@
 - Task 427789 (qnet2 task id, /work-orders): "Data inizio" ha lo stesso problema di Anagrafica: tutto gennaio 2026
   introvabile. Causa: l'elenco di `start_date` sono le prime 200 date in ordine crescente (dev, utente 162: si ferma al
   23/11/2022) e mostrava il valore grezzo `2026-01-01 00:00:00`; la ricerca lato server del task 427169 fa LIKE sul
+## Commessa: referente principale dell'anagrafica e recapiti (task 428287) — VERDE MIRATO, COMMITTATO (2026-11-14)
+
+- Task 428287 (qnet2 task id, /work-orders/2492): "Non visualizzo ne referente ne numero". Causa: il Referente della
+  commessa veniva solo da `quote.opportunity.referent`, nullo su 16.407 commesse su 16.600 (anche nel legacy:
+  `opportunities.contact_id`/`orders.contact_id` nulli), e la scheda non esponeva nessun recapito.
+- Fix: nuovo trait `Http/Resources/Concerns/SummarizesWorkOrderContacts` (usato da `WorkOrderResource`, che ora sta a
+  362 righe): `referent` = referente dell'offerta, altrimenti `registry.primaryReferent`, con `is_registry_primary`;
+  `registry` e `referent` portano `primary_contacts` (shape `PrimaryContactColumn`), vuoti senza policy `view` su
+  anagrafica/referente (stesso confine di `LeadResource`). Eager-load aggiunti in `WorkOrderService::DETAIL_RELATIONS`.
+- Frontend: `ReferentRef` (+ `primary_contacts?`, `is_registry_primary?`), `ReferentValue` mostra nota
+  `referents.detail.registryPrimary` e `ContactChips`; `ProjectedContactsSection` mostra i `ContactChips` dell'anagrafica.
+  Offerta e Contratto non inviano i nuovi campi: invariati (stesso buco del referente vuoto, da estendere se richiesto).
+- Test: `WorkOrderContactsProjectionTest` (4, nuovo), `WorkOrderDocumentsTest` AC-006 aggiornato (REQUIREMENT CHANGED:
+  `data.registry` porta `primary_contacts`), `referent-value.test.tsx` (+2). Pest WorkOrders 503 + Contracts 225 verdi,
+  Vitest referents/work-orders/quotes/contracts/i18n/help 1498 verdi, Pint/ESLint/`tsc -b --force` puliti. NON provato
+  in browser. Manuale: guida in-app `work-orders` IT/EN + paragrafo "Referente e recapiti nella commessa" nel manuale Docs.
+
   valore salvato, quindi "01/2026" non trovava nulla ("2026-01" si', 29 date). Il filtro "Tra" in Filtri data e la
   selezione delle date funzionano (315 commesse in entrambi i casi).
 - Fix solo frontend, generico per ogni colonna con filterType/type `date`/`datetime`: `column-filters.ts`

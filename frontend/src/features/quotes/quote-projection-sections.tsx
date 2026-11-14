@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Briefcase, Contact, CreditCard, Handshake, UserRound, Users } from 'lucide-react'
+import { ContactChips } from '@/components/detail/contact-chips'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RECORD_PERSON_ROW_CLASS, RecordPerson } from '@/components/detail/record-person'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
@@ -13,6 +14,7 @@ import type { QuoteManagerRef } from '@/features/quotes/types'
 import { ReferentValue } from '@/features/referents/referent-value'
 import type { ReferentRef } from '@/features/referents/types'
 import { managerPositionLabel } from '@/features/shared/manager-position-label'
+import type { PrimaryContact } from '@/features/table/types'
 
 /**
  * Read-only sections of data an Offerta owns and other records only PROJECT
@@ -24,6 +26,7 @@ import { managerPositionLabel } from '@/features/shared/manager-position-label'
 /** Stable empty defaults: a missing key on older payloads reads the same as `[]`. */
 const EMPTY_PRODUCT_LINES: ProductLine[] = []
 const EMPTY_MANAGERS: QuoteManagerRef[] = []
+const EMPTY_CONTACTS: PrimaryContact[] = []
 
 interface ProjectedContextSectionProps {
   source: RelationFieldRef | null | undefined
@@ -46,14 +49,17 @@ export function ProjectedContextSection({ source, productLines }: ProjectedConte
   )
 }
 
+/** The commessa detail also sends the client's primary contacts (task 428287); the other projections do not. */
+type ProjectedRegistryRef = RelationFieldRef & { primary_contacts?: PrimaryContact[] }
+
 interface ProjectedContactsSectionProps {
-  registry: RelationFieldRef | null | undefined
+  registry: ProjectedRegistryRef | null | undefined
   referent: ReferentRef | null | undefined
   commercial: RelationFieldRef | null | undefined
   reporter: RelationFieldRef | null | undefined
 }
 
-/** Anagrafica e contatti: Anagrafica, Referente (with its Tipo), Commerciale and Segnalatore. */
+/** Anagrafica e contatti: Anagrafica, Referente (with its Tipo), Commerciale and Segnalatore; contacts when the payload carries them. */
 export function ProjectedContactsSection({ registry, referent, commercial, reporter }: ProjectedContactsSectionProps) {
   const { t } = useTranslation()
 
@@ -61,7 +67,10 @@ export function ProjectedContactsSection({ registry, referent, commercial, repor
     <RecordSection title={t('quotes.detail.sections.identity')} icon={<Contact />}>
       <RecordFieldList>
         <RecordField label={t('quotes.detail.registry')}>
-          <LinkedValue domain="registries" record={registry ?? null} />
+          <div className="flex min-w-0 flex-col gap-1">
+            <LinkedValue domain="registries" record={registry ?? null} />
+            <ContactChips contacts={registry?.primary_contacts ?? EMPTY_CONTACTS} />
+          </div>
         </RecordField>
         <RecordField label={t('quotes.detail.referent')}>
           <ReferentValue referent={referent ?? null} />

@@ -6,6 +6,7 @@ use App\Authorization\LegacyIdVisibility;
 use App\Enums\FormMode;
 use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
+use App\Http\Resources\Concerns\SummarizesWorkOrderContacts;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -16,7 +17,6 @@ use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\Services\WorkOrders\WorkOrderWorkflowResolver;
 use App\Support\OperationalSiteLabel;
-use App\Support\ReferentRef;
 use App\WorkOrders\WorkOrderAttributeResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -48,6 +48,7 @@ class WorkOrderResource extends JsonResource
 {
     use SummarizesProductLines;
     use SummarizesRewards;
+    use SummarizesWorkOrderContacts;
 
     /**
      * @return array<string, mixed>
@@ -90,13 +91,13 @@ class WorkOrderResource extends JsonResource
             'source_quotes' => $this->summarizeSourceQuotes(),
             'quote' => $this->summarizeQuote(),
             'contract' => $this->summarizeContract(),
-            'registry' => $this->summarizeRegistry(),
+            'registry' => $this->summarizeRegistry($request),
             'company' => $this->summarizeCompany(),
             'company_site' => $this->summarizeCompanySite(),
             'operational_site' => OperationalSiteLabel::summarize($this->quote?->operationalSite),
             // Spec 0331: read-only projection of the single offer; a multi-offer
             // commessa has no `quote`, so these are null / [].
-            'referent' => ReferentRef::summarize($this->quote?->opportunity?->referent),
+            'referent' => $this->summarizeReferent($request),
             'commercial' => $this->summarizeByName($this->quote?->commercial),
             'reporter' => $this->summarizeByName($this->quote?->reporter),
             'source' => $this->summarizeByName($this->quote?->source),
@@ -288,24 +289,6 @@ class WorkOrderResource extends JsonResource
             'title' => $this->quote->title,
             'expiry_date' => $this->formatDate($contract->expiry_date),
         ];
-    }
-
-    /**
-     * The client of the commessa, reached through `quote.opportunity` (a work
-     * order has no `registry_id` of its own). Spec 0173: the detail mounts its
-     * documents read-only.
-     *
-     * @return array{id: int, name: string}|null
-     */
-    private function summarizeRegistry(): ?array
-    {
-        $registry = $this->quote?->opportunity?->registry;
-
-        if ($registry === null) {
-            return null;
-        }
-
-        return ['id' => $registry->id, 'name' => $registry->name];
     }
 
     /**

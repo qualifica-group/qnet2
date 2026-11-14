@@ -11,6 +11,7 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ProductLine } from '@/features/product-lines/types'
 import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
+import type { PrimaryContact } from '@/features/table/types'
 
 /** `App\Enums\WorkOrderType` (D-10): "Lavorazione" / "Progetto" live only in i18n. */
 export type WorkOrderType = 'processing' | 'project'
@@ -214,9 +215,10 @@ export interface WorkOrderDetail {
   /**
    * Spec 0173: the client reached through `quote.opportunity`, whose documents
    * the detail mounts read-only. Optional (like `QuoteDetail.registry`) so the
-   * pre-existing fixtures stay valid; a missing key reads as `null`.
+   * pre-existing fixtures stay valid; a missing key reads as `null`. Task
+   * 428287: with its primary contacts (empty without `registries.view`).
    */
-  registry?: { id: number; name: string } | null
+  registry?: { id: number; name: string; primary_contacts?: PrimaryContact[] } | null
   /**
    * Societa' e sedi of the linked quote, the same live projection the Contract
    * detail shows (`ContractResource`). Optional like `registry`; a missing key

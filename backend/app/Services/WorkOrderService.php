@@ -90,6 +90,12 @@ class WorkOrderService
         // Spec 0331: the offer data WorkOrderResource projects read-only.
         'quote.opportunity.referent.referentType',
         'quote.source',
+        // Task 428287: the client and its Referente (the offer's own, else the
+        // anagrafica's primary one) carry their primary contacts on the detail.
+        'quote.opportunity.referent.personalData.contacts',
+        'quote.opportunity.registry.personalData.contacts',
+        'quote.opportunity.registry.primaryReferent.referentType',
+        'quote.opportunity.registry.primaryReferent.personalData.contacts',
         'quote.opportunity.productLines.productCategory',
         'quote.opportunity.productLines.businessFunction',
         'quote.commercial',

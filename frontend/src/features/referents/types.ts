@@ -10,6 +10,7 @@ import type { PersonalDataCard } from '@/features/personal-data/types'
 import type { PersonalDataPayload } from '@/features/personal-data/drafts'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import type { PrimaryContact } from '@/features/table/types'
 
 /** The contact ambit of a referent: internal to the organization, or external. */
 export const REFERENT_CONTACT_SCOPES = ['internal', 'external'] as const
@@ -30,6 +31,13 @@ export interface ReferentRef {
   id: number
   name: string
   referent_type?: ReferentTypeRef | null
+  /**
+   * Task 428287, commessa detail only: the referent's primary contacts (empty
+   * when the actor may not view referents) and whether it is the anagrafica's
+   * primary referent standing in for an offer that names none.
+   */
+  primary_contacts?: PrimaryContact[]
+  is_registry_primary?: boolean
 }
 
 /** The linked user reference as hydrated in the referent resource ({id, name}, spec 0090). */
