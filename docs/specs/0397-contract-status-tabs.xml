@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0397-contract-status-tabs" status="approved" owner="utente" date="2026-11-14">
+
+  <goal>
+    Richiesta utente 2026-11-14: "in contratti, voglio il tab come in commesse ma per gli stati dei contratti (che puoi
+    prendere da qnet vecchio)". Tab in alto a destra nella pagina Contratti, uno per stato, con conteggio, come i tab di
+    fase delle Commesse (spec 0395).
+  </goal>
+
+  <context>
+    Legacy (../qnet, `App\Livewire\Contracts\Contracts` + `contracts.blade.php`, rotte `contracts*`): tab Tutti (nessun
+    conteggio), Da Validare (`status_quotation` 1), Da Programmare (3), Programmati (2), Annullati (5), Scadenza
+    Contratti (4; il conteggio aggiunge `renewal_date` &lt;= oggi, l'elenco no), Contratti Disdetti (8); "(N)" solo se
+    N &gt; 0. In qnet-2 questi stati esistono gia' come righe di `contract_statuses` (migrazione: `LegacyQuoteStatusApplier`,
+    1/2/3/4/8 -> Da validare/Programmato/Da programmare/In scadenza/Disdetto; i contratti annullati del legacy migrano
+    come offerte perse), piu' Validato e Sospeso propri di qnet-2.
+  </context>
+
+  <decisions>
+    D-1 Un tab per ogni stato contratto ATTIVO, nell'ordine `sort_order` (for-select `contract-statuses`), etichetta =
+        nome dello stato: gli stati sono configurabili, quindi i tab li seguono invece di cablare i 6 del legacy. Su dati
+        migrati coincidono coi tab legacy, piu' Validato e Sospeso (senza tab i loro contratti sarebbero raggiungibili
+        solo da "Tutti").
+    D-2 Il tab scrive il filtro set della colonna `contract_status` (per nome, come il filtro colonna esistente): filtro
+        e tab hanno una sola fonte di verita', il filter model della griglia.
+    D-3 Conteggi in `meta.aggregates` della griglia `contracts`, chiave = nome stato, calcolati sullo stesso set
+        filtrato (ricerca, filtri, visibilita') ignorando il solo filtro `contract_status`. "Tutti" senza conteggio.
+    D-4 "Scadenza Contratti": nel legacy il conteggio usava anche `renewal_date` &lt;= oggi ma l'elenco no; qui conteggio
+        ed elenco coincidono (tutti i contratti In scadenza).
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/tables/contracts/rows">
+      <response>`meta.aggregates` = { "&lt;nome stato&gt;": N, ... } per gli stati con almeno un contratto nel set filtrato
+        (stati assenti = 0). Filtro dei tab: `filterModel.contract_status` = { filterType: "set", values: ["&lt;nome&gt;"] }.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/contract-statuses/for-select?limit=100">
+      <response>Invariato: stati attivi in ordine `sort_order`; `label` = nome.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">I conteggi per stato non cambiano col tab attivo e coincidono con le righe di ogni tab, sotto la stessa ricerca.</criterion>
+    <criterion id="AC-002">I conteggi includono solo i contratti visibili all'attore.</criterion>
+    <criterion id="AC-003">FE: "Tutti" primo e senza conteggio, poi gli stati nell'ordine configurato con "(N)" solo se N &gt; 0; il tab scrive/rimuove il filtro `contract_status`; filtro con piu' stati -> nessun tab attivo.</criterion>
+  </acceptance>
+</spec>

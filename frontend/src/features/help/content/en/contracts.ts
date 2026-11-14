@@ -184,6 +184,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'status-tabs',
+      title: "Contract statuses",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top right of the **Contracts** page you find the status tabs, as in the old QNet: **All**, then one for each active contract status, in the order of the **Contract statuses** page (for example **Da validare**, **Validato**, **Da programmare**, **Programmato**, **In scadenza**, **Sospeso**, **Annullato**, **Disdetto**). A tab shows only the contracts in that status, i.e. it filters the **Contract status** column; **All** removes the filter. Next to each tab, except **All**, is the number of contracts (only when not zero): it follows the search and the active filters, so it matches what you see when you open the tab. When you rename, add or deactivate a status, the tabs follow. The tab combines with the other filters, including **Parent category**: if you cannot find a contract, check those too.",
+        },
+      ],
+    },
+    {
       id: 'list-filters',
       title: "Default filters and category",
       blocks: [

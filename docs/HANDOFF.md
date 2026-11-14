@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Contratti: tab degli stati come in Commesse (spec 0397) — VERDE MIRATO, COMMITTATO (2026-11-14)
+
+- Richiesta utente: nella pagina Contratti i tab in alto come in Commesse, per gli stati contratto del vecchio QNet
+  (legacy: Tutti, Da validare, Da programmare, Programmati, Annullati, Scadenza contratti, Disdetti).
+- Scelta (D-1): un tab per ogni stato contratto ATTIVO in ordine `sort_order`, etichetta = nome (gli stati legacy esistono
+  gia' come righe di `contract_statuses`; in piu' Validato e Sospeso). "Tutti" senza conteggio, "(N)" solo se N > 0.
+- BE: trait `App\Tables\Contracts\Concerns\HasContractStatusTabs` (in `ContractsTableDefinition`, 496 righe: vicino al
+  limite 500) -> `aggregates()` = conteggio per nome stato sul set filtrato, `filtersIgnoredByAggregates()` =
+  `contract_status`. FE: `use-contract-status-tabs.ts` (for-select `contract-statuses` limit 100, filtro set
+  `contract_status` per nome, tab "Tutti" = `''`), `contract-status-tabs.tsx`, cablati in `contracts-table.tsx`
+  (`PageHeader actions`, `onFilterModelChange`/`onAggregatesChange`); i18n `contracts.statusTabs`.
+- D-4: nel legacy il conteggio "Scadenza contratti" filtrava anche `renewal_date <= oggi` ma l'elenco no; qui coincidono.
+- Test: nuovi `ContractStatusTabsTest` (3), `contract-status-tabs.test.tsx` (6). Pest Contracts 228 verdi, Table 306/307
+  (rosso noto `TableBulkDeleteTest`:131). Vitest contracts+help verdi, ESLint, Pint, `tsc -b --force` puliti. Non provato
+  nel browser.
+- Manuale: guida in-app `contracts` IT/EN, sezione `status-tabs`; Manuale Claude Docs aggiornato (paragrafo "Tab degli
+  stati" nella sezione Contratti, prima di "Filtri predefiniti e categoria"); il PDF derivato va rigenerato.
+- Nota: questo file e' ~1,3 MB, ben oltre il limite di ~50 KB: va archiviato in `docs/handoff-archive/`.
+
 ## Commesse: tab di fase identici al legacy, fase salvata (spec 0395) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Richiesta utente: tab in alto delle Commesse con flusso, filtri e stati identici al vecchio QNet. Causa: la fase era

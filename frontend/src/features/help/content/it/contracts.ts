@@ -184,6 +184,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'status-tabs',
+      title: "Stati del contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In alto a destra nella pagina **Contratti** trovi i tab degli stati, come nel vecchio QNet: **Tutti** e poi uno per ogni stato contratto attivo, nell'ordine della pagina **Stati contratto** (per esempio **Da validare**, **Validato**, **Da programmare**, **Programmato**, **In scadenza**, **Sospeso**, **Annullato**, **Disdetto**). Un tab mostra solo i contratti in quello stato, cioè filtra la colonna **Stato contratto**; **Tutti** toglie il filtro. Accanto a ogni tab, tranne **Tutti**, c'è il numero di contratti (solo se diverso da zero): tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Se rinomini, aggiungi o disattivi uno stato, i tab si aggiornano di conseguenza. Il tab si combina con gli altri filtri, compresa la **Categoria madre**: se non vedi un contratto, controlla anche quelli.",
+        },
+      ],
+    },
+    {
       id: 'list-filters',
       title: "Filtri predefiniti e categoria",
       blocks: [

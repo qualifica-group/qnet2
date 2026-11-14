@@ -8,6 +8,10 @@
 
 export const contracts = {
   forbidden: "You don't have permission to view contracts.",
+  statusTabs: {
+    label: 'Contract statuses',
+    all: 'All',
+  },
   columns: {
     offerLines: 'Product lines',
     rootCategories: 'Parent category',
