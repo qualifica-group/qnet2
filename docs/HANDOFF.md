@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Data di assegnazione automatica sulle commesse (task 428419) — VERDE MIRATO, COMMITTATO (2026-11-14)
+
+- Task 428419 (/work-orders): "quando assegno le pratiche non mi riporta nella colonna data assegnazione la data".
+- Causa: il legacy (`Orders/AddTecnico.php`, `Orders/Detail::storeTecnico`) scriveva `orderisos.data_inizio_lavorazione`
+  (etichetta "Data di Assegnazione") = oggi a ogni nuovo tecnico (`responsabile_services` = i nostri `supervisors`);
+  qnet-2 non aveva l'automatismo. In piu' la riga del PATCH di griglia non portava le colonne `attr.*` (scope dai
+  Filtri avanzati assente) e `node.setData` le svuotava fino al ricaricamento.
+- Fix: `config/work-orders.php` (`assignment_date_attribute_codes` = `data_inizio_lavorazione`, `iso_assignment_date`;
+  timezone Europe/Rome) + `App\Services\WorkOrders\WorkOrderAssignmentDateStamper`, chiamato da `WorkOrderService`
+  create/update dopo il sync dei Responsabili: solo se un Responsabile e' stato AGGIUNTO, solo i codici applicabili
+  alla commessa, sovrascrive (parita' legacy) salvo data scritta a mano nello stesso salvataggio, mai sotto
+  `AssignmentNotifier::muted()` (migrazione legacy). `WritesCategoryAttributeCells::updateCell` ora mette sempre gli
+  attributi propri del record nella riga di risposta (vale anche per Offerte).
+- Test: `tests/Feature/WorkOrders/WorkOrderAssignmentDateTest.php` (8; quello di griglia fallisce senza il fix del
+  trait). Suite WorkOrders/CategoryTabs/Migration/Notifications verdi; Quotes verde tranne 3 test PDF (LibreOffice
+  non installato in locale). Pint, ESLint, `tsc -b --force` puliti. NON provato nel browser.
+- Manuale: guida in-app `work-orders` IT/EN (nota dopo quella delle notifiche) + Manuale Claude Docs (paragrafo
+  "Data di assegnazione" dopo "Notifiche" nella sezione Commesse).
+- Da notare: durante la sessione `git diff` mostrava modifiche di un'altra sessione (WorkOrderResource,
+  AttributeGridColumns, data-table column-filters/summary-cell, i18n custom-fields/referents): non toccate.
+
 ## Colonna tabella "N righe": badge + filtro sulle righe (task 427477) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
 
 - Task 427477 (qnet2 task id, /work-orders): in "Verifiche Ispettive" (attributo 455 `orderiso_verificas`, tipo

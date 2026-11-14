@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Notifications\AssignmentNotifier;
+use App\Services\WorkOrders\WorkOrderAssignmentDateStamper;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
 use App\Services\WorkOrders\WorkOrderProgressEntryService;
@@ -115,6 +116,7 @@ class WorkOrderService
         private readonly WorkOrderWorkflowStatusAssigner $statusAssigner,
         private readonly WorkOrderProgressEntryService $progressEntries,
         private readonly AssignmentNotifier $assignmentNotifier,
+        private readonly WorkOrderAssignmentDateStamper $assignmentDateStamper,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -276,6 +278,8 @@ class WorkOrderService
             // same transaction: a 422 from Step 2 rolls both back (AC-027).
             $supervisorSync = $workOrder->supervisors()->sync($data->supervisorIds);
             $participantSync = PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots));
+            // Task 428419: the "Data di assegnazione" follows the Responsabili just added.
+            $this->assignmentDateStamper->stamp($workOrder, $supervisorSync['attached'], [], FormMode::Create);
 
             // Step 4 (spec 0124, D-7): generate the Modello di Task's tasks,
             // AFTER the supervisors are synced (D-2: they are the generated
@@ -319,6 +323,7 @@ class WorkOrderService
         DB::transaction(function () use ($workOrder, $data): void {
             $wasForceClosed = $workOrder->is_force_closed;
             $previousStatusId = $workOrder->work_order_workflow_status_id;
+            $attributeValuesBefore = $workOrder->attribute_values ?? [];
             // Spec 0372, D-7: people and flexible fields are invisible to the model log.
             $peopleBefore = $data->hasSupervisorIds() || $data->hasParticipantSlots() || $data->attributeValues !== null
                 ? PeopleChangeLog::capture($workOrder)
@@ -385,6 +390,7 @@ class WorkOrderService
             if ($data->hasSupervisorIds()) {
                 $addedSupervisorIds = $workOrder->supervisors()->sync($data->supervisorIds ?? [])['attached'];
                 $workOrder->unsetRelation('supervisors');
+                $this->assignmentDateStamper->stamp($workOrder, $addedSupervisorIds, $attributeValuesBefore, FormMode::View);
             }
 
             if ($data->hasParticipantSlots()) {

@@ -37,6 +37,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "Quando aggiungi un **Responsabile** a una commessa (alla creazione, dal dettaglio o dall'elenco), il campo **Data di assegnazione** delle Informazioni aggiuntive prende la data di oggi, anche se ne aveva già una. Se nello stesso salvataggio scrivi tu la data, resta la tua. Togliere un Responsabile o aggiungere solo Partecipanti non cambia la data; le commesse le cui righe non prevedono il campo non cambiano.",
+        },
+        {
+          type: 'note',
           text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {

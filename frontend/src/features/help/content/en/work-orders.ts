@@ -37,6 +37,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "When you add a **Supervisor** to a work order (at creation, from the detail or from the list), the **Data di assegnazione** (assignment date) field of the Additional information takes today's date, even if it already had one. If you type the date yourself in the same save, yours is kept. Removing a Supervisor or adding only Participants does not change the date; work orders whose lines do not carry the field are not changed.",
+        },
+        {
+          type: 'note',
           text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
