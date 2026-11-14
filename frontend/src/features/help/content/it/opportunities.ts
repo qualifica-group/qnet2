@@ -46,6 +46,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Chi inserisci come **Supervisore** o tra i **Gestori account** riceve la notifica **Sei stato inserito come Supervisore** o **Sei stato inserito come Gestore Account** (campanella ed email). Il link apre l'opportunità; chi non ha accesso alle Opportunità riceve la notifica senza link. Chi è anche Gestore account di un'offerta dell'opportunità, per esempio perché viene copiato nell'offerta collegata di un lead convertito o di una categoria con gestori sincronizzati, riceve solo la notifica dell'offerta.",
         },
+        {
+          type: 'note',
+          text: "Se devi creare anche la prima offerta, da **Offerte › Nuova offerta** puoi scegliere **Nuova opportunità + offerta**: opportunità e offerta si compilano in due passi e si salvano insieme (vedi la guida **Offerte**).",
+        },
       ],
     },
     {

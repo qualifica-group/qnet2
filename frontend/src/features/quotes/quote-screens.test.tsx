@@ -25,6 +25,10 @@ vi.mock('@/features/quotes/quote-form', () => ({
   ),
 }))
 
+vi.mock('@/features/quotes/with-opportunity/quote-with-opportunity-form', () => ({
+  QuoteWithOpportunityForm: () => <p>procedure ready</p>,
+}))
+
 function renderScreen(mode: ModuleFormScreenMode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -62,6 +66,23 @@ describe('QuoteFormScreen create adapter (spec 0067)', () => {
 
   it('drops registry_id when an opportunity is preset: the opportunity already fixes the client', () => {
     renderScreen({ type: 'create', params: { opportunity_id: 55, registry_id: 8 } })
+
+    expect(screen.getByText('form ready, opportunity 55, registry none')).toBeInTheDocument()
+  })
+
+  // Spec 0396 D-2: the same page hosts the new opportunity + offer procedure.
+  it('AC-012: with_opportunity=1 renders the procedure instead of the plain form (number or query-string)', () => {
+    const { unmount } = renderScreen({ type: 'create', params: { with_opportunity: 1 } })
+    expect(screen.getByText('procedure ready')).toBeInTheDocument()
+    expect(screen.queryByText(/form ready/)).not.toBeInTheDocument()
+    unmount()
+
+    renderScreen({ type: 'create', params: { with_opportunity: '1' } })
+    expect(screen.getByText('procedure ready')).toBeInTheDocument()
+  })
+
+  it('a preset opportunity wins over with_opportunity', () => {
+    renderScreen({ type: 'create', params: { with_opportunity: 1, opportunity_id: 55 } })
 
     expect(screen.getByText('form ready, opportunity 55, registry none')).toBeInTheDocument()
   })

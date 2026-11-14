@@ -57,7 +57,7 @@ class QuoteController extends BaseApiController
             $this->authorize('create', Quote::class);
 
             return $this->ok(new QuoteFormContextResource(
-                $this->attributeResolver->formContext($request->opportunityId(), $request->productIds(), FormMode::Create),
+                $this->attributeResolver->formContext($request->opportunityId(), $request->productIds(), FormMode::Create, $request->productCategoryIds()),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

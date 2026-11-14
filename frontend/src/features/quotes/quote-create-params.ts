@@ -23,6 +23,14 @@ export const QUOTE_CREATE_PRODUCT_IDS_PARAM = 'product_ids'
 
 export const QUOTE_CREATE_REGISTRY_PARAM = 'registry_id'
 
+/** Spec 0396: opens the "new opportunity + offer" procedure instead of the plain offer form. */
+export const QUOTE_CREATE_WITH_OPPORTUNITY_PARAM = 'with_opportunity'
+
+/** The flag arrives as `1` (modal opener) or `'1'` (query string). */
+export function isWithOpportunityCreate(params?: ModuleCreateParams): boolean {
+  return String(params?.[QUOTE_CREATE_WITH_OPPORTUNITY_PARAM] ?? '') === '1'
+}
+
 /** Multi-valued params travel as one comma-separated string: `URLSearchParams` has no list shape. */
 const PRODUCT_IDS_SEPARATOR = ','
 

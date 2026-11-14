@@ -7,6 +7,8 @@ import type { QuoteFormContext } from '@/features/quotes/types'
 /** Nessuna Opportunita' ne' prodotto scelti: nessuna categoria, quindi nessun attributo. Hoistato per riferimento stabile. */
 const EMPTY_CONTEXT: QuoteFormContext = { applicable_attributes: [], attribute_layout: null }
 
+const NO_CATEGORY_IDS: number[] = []
+
 /** What a persisted quote already resolved for its own offer lines' products (`QuoteResource`). */
 export interface PersistedQuoteContext {
   productIds: number[]
@@ -38,14 +40,20 @@ export function useQuoteFormContext(
   opportunityId: number | null,
   productIds: number[],
   persisted?: PersistedQuoteContext,
+  categoryIds: number[] = NO_CATEGORY_IDS,
 ) {
   const stableIds = Array.from(new Set(productIds)).sort((a, b) => a - b)
+  const stableCategoryIds = Array.from(new Set(categoryIds)).sort((a, b) => a - b)
   const isPersistedSet = persisted !== undefined && sameIdSet(stableIds, persisted.productIds)
-  const enabled = (opportunityId !== null || stableIds.length > 0) && !isPersistedSet
+  const enabled =
+    (opportunityId !== null || stableIds.length > 0 || stableCategoryIds.length > 0) && !isPersistedSet
 
   const query = useQuery<QuoteFormContext, AxiosError>({
-    queryKey: ['quotes', 'form-context', opportunityId, stableIds],
-    queryFn: () => fetchQuoteFormContext(opportunityId, stableIds),
+    queryKey: ['quotes', 'form-context', opportunityId, stableIds, ...(stableCategoryIds.length > 0 ? [stableCategoryIds] : [])],
+    queryFn: () =>
+      stableCategoryIds.length > 0
+        ? fetchQuoteFormContext(opportunityId, stableIds, stableCategoryIds)
+        : fetchQuoteFormContext(opportunityId, stableIds),
     enabled,
     placeholderData: (previous) => previous,
   })

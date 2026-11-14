@@ -46,6 +46,9 @@ class QuoteFormContextRequest extends FormRequest
     {
         return [
             'opportunity_id' => ['nullable', 'integer', Rule::exists('opportunities', 'id')],
+            // Spec 0396, D-7: categories of an opportunity not saved yet.
+            'product_category_ids' => ['sometimes', 'array'],
+            'product_category_ids.*' => ['integer', Rule::exists('product_categories', 'id')],
             'offer_lines' => ['sometimes', 'array'],
             'offer_lines.*.product_id' => ['nullable', 'integer', Rule::exists('products', 'id')],
         ];
@@ -56,6 +59,18 @@ class QuoteFormContextRequest extends FormRequest
         $opportunityId = $this->validated('opportunity_id');
 
         return $opportunityId === null ? null : (int) $opportunityId;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function productCategoryIds(): array
+    {
+        return collect((array) ($this->validated('product_category_ids') ?? []))
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

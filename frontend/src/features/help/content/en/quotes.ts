@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Quotes** and click **New quote** (or start from the opportunity record).',
+            'Open **Quotes** and click **New quote** (or start from the opportunity record). If you may also create opportunities, a window opens first: choose **From an existing opportunity** (the steps below) or **New opportunity + quote** (see the dedicated section).',
             'In **Quote data**, pick the **Opportunity**: Commercial, Reporter, Supervisor, Account managers and Operational site are prefilled from it (you can change them); the **Source** is prefilled when the opportunity was born from a lead.',
             'Fill in the other rows you need (see table).',
             'At the bottom, add the sold product rows on the **Offer** tab, picking them from the **Product catalogue**, and the cost rows on the **Costs** tab: the editors are already open and the summary updates as you type.',
@@ -59,6 +59,30 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'The **Follow-up date** is an optional date to note when to pick the quote up again: set and change it from the detail or the list, and empty it by clearing the date. It sends no reminder and is not the **Next callback**, which is planned from **Request Management**.',
+        },
+      ],
+    },
+    {
+      id: 'create-quote-with-opportunity',
+      title: 'Creating an opportunity and its quote together',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'When the deal does not exist yet, you can create it together with the quote in a single procedure. It is available only if you may create both quotes and opportunities: otherwise **New quote** opens the quote form directly.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'In **Quotes** click **New quote** and choose **New opportunity + quote**.',
+            "In **step 1 - Opportunity** you fill in the same fields as **New opportunity** (without the lead: converting a lead stays in the Leads and Opportunities modules). Click **Next**.",
+            'If required fields are empty, the errors show and you do not move on. If the registry already has an **open opportunity** that blocks the new one, a warning appears with **Create the quote on this opportunity** (opens the quote form already linked) and **Go to the opportunity**: the procedure does not continue.',
+            'In **step 2 - Quote** you fill in the same fields as **New quote**. Commercial, Reporter, Supervisor, Operational site and Account managers are already filled in from step 1 and you can change them. The **Opportunity** reads **new**: it is created on save. The **Additional information** follows the product lines of step 1.',
+            'Click **Save**: the opportunity and the quote are created together and the quote opens. If something fails, nothing is created; the errors take you back to the step and field to fix.',
+          ],
+        },
+        {
+          type: 'note',
+          text: "**Back** keeps everything you typed. If from step 1 you change Commercial, Reporter, Supervisor, Operational site or Account managers, step 2 realigns only on the fields you did not edit by hand. Nothing is created before saving: leaving the page loses what you entered (you are asked to confirm). The quote's Account managers also join the new opportunity's team.",
         },
       ],
     },

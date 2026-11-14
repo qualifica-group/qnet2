@@ -9,6 +9,10 @@ return [
         'summary' => 'List opportunities for a dropdown',
         'description' => 'Returns the opportunities visible to the caller as id, label (name) and meta (commercial, reporter, supervisor, operational site, lead source, managers), ordered by name. Filters: search (name contains) and registry_id; ids[] also returns those opportunities for display of a saved value. Paginated with offset and limit; include_total=false skips the count and reports has_more instead. Response is a list (items + pagination). Requires authentication only.',
     ],
+    'POST /opportunities/open-check' => [
+        'summary' => 'Check for a blocking open opportunity',
+        'description' => 'Read-only: for a registry_id and the optional product_lines (product_category_id) of an opportunity about to be created, returns blocking_opportunity (id, name) when the registry already has an open opportunity that would block the creation, null otherwise. Uses the same rule as POST /opportunities, exemptions included. Nothing is saved. Requires opportunities.create.',
+    ],
     'GET /opportunities/{opportunity}' => [
         'summary' => 'Get an opportunity',
         'description' => 'Returns the opportunity with its registry, referent, commercial, reporter, supervisor, operational site, product lines, products of interest, rewards, managers, originating lead and computed status, the count of its quotes visible to the caller, plus the caller\'s resource, field and action permissions on it. Requires opportunities.view and the opportunity within the caller\'s visibility (view all, supervisor, manager or competence), otherwise 403.',

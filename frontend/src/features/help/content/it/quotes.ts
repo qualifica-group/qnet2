@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità).",
+            "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità). Se puoi creare anche le opportunità, prima si apre una finestra: scegli **Da un'opportunità esistente** (i passi seguenti) oppure **Nuova opportunità + offerta** (vedi la sezione dedicata).",
             "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli); la **Fonte** si precompila se l'opportunità è nata da un lead.",
             'Compila le altre righe che ti servono (vedi tabella).',
             'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti scegliendoli dal **Catalogo prodotti** e nella scheda **Costi** le righe di costo: gli editor sono già aperti e il riepilogo si aggiorna mentre scrivi.',
@@ -59,6 +59,30 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "La **Data ricontatto** è una data facoltativa per segnarti quando riprendere in mano l'offerta: si imposta e si cambia dal dettaglio o dall'elenco, e si svuota cancellando la data. Non invia promemoria ed è diversa dal **Prossimo richiamo**, che si pianifica da **Gestione Richieste**.",
+        },
+      ],
+    },
+    {
+      id: 'create-quote-with-opportunity',
+      title: "Creare un'opportunità e la sua offerta insieme",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Quando la trattativa non esiste ancora, puoi crearla insieme all'offerta in un'unica procedura. È disponibile solo se hai i permessi per creare sia le offerte sia le opportunità: altrimenti **Nuova offerta** apre direttamente il modulo dell'offerta.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'In **Offerte** clicca **Nuova offerta** e scegli **Nuova opportunità + offerta**.',
+            "Nel **passo 1 - Opportunità** compili gli stessi campi della **Nuova opportunità** (senza il lead: la conversione da lead resta nei moduli Lead e Opportunità). Clicca **Avanti**.",
+            "Se i campi obbligatori non sono compilati, compaiono gli errori e non si avanza. Se l'anagrafica ha già un'**opportunità aperta** che blocca la nuova, compare un avviso con **Crea l'offerta su questa opportunità** (apre il modulo dell'offerta già collegato) e **Vai all'opportunità**: la procedura non prosegue.",
+            "Nel **passo 2 - Offerta** compili gli stessi campi della **Nuova offerta**. Commerciale, Segnalatore, Supervisore, Sede operativa e Gestori account sono già precompilati dal passo 1 e puoi cambiarli. L'**Opportunità** risulta **nuova**: viene creata al salvataggio. Le **Informazioni aggiuntive** seguono le linee prodotto del passo 1.",
+            "Clicca **Salva**: opportunità e offerta vengono create insieme e si apre l'offerta. Se qualcosa non va, non viene creato nulla; gli errori ti riportano al passo e al campo da correggere.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "**Indietro** conserva tutto quello che hai scritto. Se dal passo 1 cambi Commerciale, Segnalatore, Supervisore, Sede operativa o Gestori account, il passo 2 si riallinea solo sui campi che non hai modificato a mano. Prima del salvataggio non viene creato nulla: uscendo dalla pagina perdi quanto inserito (ti viene chiesta conferma). I Gestori account dell'offerta entrano anche nel team della nuova opportunità.",
         },
       ],
     },

@@ -68,12 +68,13 @@ final class QuoteAttributeResolver
      * products, not a persisted Quote.
      *
      * @param  array<int, int>  $productIds
+     * @param  array<int, int>  $extraCategoryIds  categories of an opportunity not saved yet (spec 0396, D-7)
      * @return array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
      */
-    public function formContext(?int $opportunityId, array $productIds, FormMode $formMode): array
+    public function formContext(?int $opportunityId, array $productIds, FormMode $formMode, array $extraCategoryIds = []): array
     {
         $categoryIds = $this->unionOf(
-            $this->categoryIdsForOpportunityId($opportunityId),
+            [...$this->categoryIdsForOpportunityId($opportunityId), ...$extraCategoryIds],
             $this->categoryIdsForProductIds($productIds),
         );
 

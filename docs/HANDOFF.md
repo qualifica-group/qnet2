@@ -3,6 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Opportunita' + offerta in un unico passaggio (spec 0396) — VERDE MIRATO, COMMITTATO (2026-11-14)
+
+- Richiesta utente: in "Nuova offerta" scegliere tra offerta da opportunita' esistente e opportunita' + offerta insieme,
+  con tutti i campi dei due form, salvataggio unico, anti-duplicato dell'opportunita'.
+- BE: `POST /api/quotes/with-opportunity` (`QuoteWithOpportunityController`, `StoreQuoteWithOpportunityRequest` busta
+  `{opportunity, quote}`, `App\Actions\Quotes\CreateQuoteWithOpportunity::handle` in `DB::transaction`): valida i due
+  blocchi con `StoreOpportunityRequest`/`StoreQuoteRequest` INVARIATE come sotto-richieste, poi `OpportunityService`/
+  `QuoteService`; errori prefissati `opportunity.*`/`quote.*`; `opportunity.lead_id` e `quote.opportunity_id`
+  prohibited; `promote_managers_to_opportunity` forzato true. `POST /api/opportunities/open-check` ->
+  `{blocking_opportunity:{id,name}|null}` con `RegistryOpenOpportunityGuard::blockingOpportunityFor` (lo stesso
+  predicato di `assertNoOpenOpportunity`). `POST /api/quotes/form-context` accetta `product_category_ids`
+  (`QuoteAttributeResolver::formContext` 4o parametro). Descrizioni in `resources/api-docs/operations/{quotes,opportunities}.php`.
+- FE: finestra `quote-new-mode-dialog.tsx` sul pulsante della lista (solo con `opportunities.create`); param
+  `with_opportunity=1` -> `QuoteFormScreen` monta `features/quotes/with-opportunity/` (tab 1 Opportunita' / 2 Offerta,
+  Avanti valida + open-check, passo 2 ereditato dal passo 1 riallineando solo i campi non toccati, un solo POST,
+  422 riportati al passo giusto). `use-quote-form.ts` opzione `withNewOpportunity` (sceso a 293 righe, helper in
+  `use-quote-form-helpers.ts`); `OpportunityCreateSections` prop `hideLead`; `ExistingOpportunityAlert` prop
+  `offerLinkLabel`; i18n in `{it,en}-quotes-with-opportunity.ts` (`quotes.withOpportunity`).
+- Test: `QuoteWithOpportunityTest` (13) + `OpportunityOpenCheckTest` (6) verdi; Quotes+Opportunities 797/800 (3
+  `QuoteDocumentPdfTest`, LibreOffice). Vitest quotes/opportunities/help/i18n 1190 verdi, suite FE completa 10436
+  verde (al secondo giro: il primo aveva un flaky `toast.error is not a function`). ESLint, Pint, `tsc -b --force` puliti.
+  `quotes-table.test.tsx` "opens the create form" REQUIREMENT CHANGED (con opportunities.create ora apre la scelta).
+- Suite BE completa: 15027/15055, rossi non della 0396 (AttributeLayoutConditionalSection AC-004 firma formContext a
+  2 argomenti gia' rotta a HEAD, AgentSalesReportCategoryColumns helper non in tests/Helpers, ManagementControl
+  access, PermissionCatalogue 713 vs 696, AiAssistant, ecc.). `ApiDocsDescriptionsTest` resta rosso solo per
+  operazioni di altre feature: `GET /attachments/archive` (0393), `/registries|referents/merge[/preview]` (0394).
+- Manuale: guide `quotes`/`opportunities` IT/EN + manuale Claude Docs (Offerte: finestra di scelta e paragrafo
+  della procedura; Opportunita': rimando). PDF da rigenerare.
+- Prossimo: prova manuale nel browser della procedura; nota minore: un utente senza permessi con busta malformata
+  riceve 422 prima del 403 (nessun record creato).
+
 ## Contratti: tab degli stati come in Commesse (spec 0397) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Richiesta utente: nella pagina Contratti i tab in alto come in Commesse, per gli stati contratto del vecchio QNet

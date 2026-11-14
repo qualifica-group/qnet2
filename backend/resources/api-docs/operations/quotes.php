@@ -19,7 +19,11 @@ return [
     ],
     'POST /quotes/form-context' => [
         'summary' => 'Get the additional fields for a quote being composed',
-        'description' => 'Read-only: given an optional opportunity_id and the product_id of the offer lines composed so far, returns the dynamic attributes that apply to the quote (applicable_attributes) and their form layout (attribute_layout), so the create form can show and validate the right additional fields. Nothing is saved. Requires quotes.create.',
+        'description' => 'Read-only: given an optional opportunity_id, optional product_category_ids (the categories of an opportunity not saved yet) and the product_id of the offer lines composed so far, returns the dynamic attributes that apply to the quote (applicable_attributes) and their form layout (attribute_layout), so the create form can show and validate the right additional fields. Nothing is saved. Requires quotes.create.',
+    ],
+    'POST /quotes/with-opportunity' => [
+        'summary' => 'Create an opportunity and its quote together',
+        'description' => 'Creates a new opportunity and its first quote in one transaction. Body: opportunity (same fields as POST /opportunities, without lead_id) and quote (same fields as POST /quotes, without opportunity_id; the quote account managers are added to the new opportunity). Validation errors are keyed opportunity.<field> or quote.<field>; any error creates nothing. 422 on opportunity.registry_id with opportunity.existing_opportunity_id when the registry already has an open opportunity, unless its categories allow several. Returns 201 with the created quote, as POST /quotes. Requires opportunities.create and quotes.create.',
     ],
     'GET /quotes/next-code' => [
         'summary' => 'Preview the next quote code',

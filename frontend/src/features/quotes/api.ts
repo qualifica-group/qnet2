@@ -48,10 +48,13 @@ export async function fetchQuote(id: number): Promise<QuoteDetailWithPermissions
 export async function fetchQuoteFormContext(
   opportunityId: number | null,
   productIds: number[],
+  categoryIds: number[] = [],
 ): Promise<QuoteFormContext> {
   const { data } = await apiClient.post<ApiResponse<QuoteFormContext>>('/quotes/form-context', {
     opportunity_id: opportunityId,
     offer_lines: productIds.map((productId) => ({ product_id: productId })),
+    // Spec 0396 D-7: the product lines of a not-yet-saved opportunity (new opportunity + offer procedure).
+    ...(categoryIds.length > 0 ? { product_category_ids: categoryIds } : {}),
   })
   return data.data
 }

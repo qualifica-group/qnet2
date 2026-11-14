@@ -45,6 +45,8 @@ interface OpportunityCreateSectionsProps {
   onSelectLead: (leadId: number | null) => void
   /** The open opportunity the chosen anagrafica already has, when the server refused the create over it. */
   blockingOpportunity: BlockingOpportunity | null
+  /** Spec 0396: the new opportunity + offer procedure never converts a lead, so the Lead section is left out. */
+  hideLead?: boolean
 }
 
 /**
@@ -65,6 +67,7 @@ export function OpportunityCreateSections({
   leadSelection,
   onSelectLead,
   blockingOpportunity,
+  hideLead = false,
 }: OpportunityCreateSectionsProps) {
   const { t } = useTranslation()
   const { field } = useResourcePermissions()
@@ -74,7 +77,7 @@ export function OpportunityCreateSections({
 
   return (
     <RecordSectionsGrid>
-      {field('lead_id').visible ? (
+      {field('lead_id').visible && !hideLead ? (
         <RecordSection
           title={t('opportunities.form.sections.lead.title')}
           icon={<Link2 />}

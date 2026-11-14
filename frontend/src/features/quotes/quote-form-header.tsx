@@ -13,8 +13,8 @@ import type { QuoteFormState } from '@/features/quotes/use-quote-form'
 interface QuoteFormHeaderProps {
   quoteForm: QuoteFormState
   /** id of the RHF `<form>` the save action attaches to via the HTML `form=` attribute. */
-  formId: string
-  onCancel: () => void
+  formId?: string
+  onCancel?: () => void
 }
 
 /**
@@ -23,7 +23,8 @@ interface QuoteFormHeaderProps {
  * and code follow what is being typed, the strip follows the live totals of
  * the rows, and the actions sit where the detail keeps "Scarica preventivo".
  * The status only exists once created. A refused submit is reported right
- * under the actions.
+ * under the actions. Without `formId`/`onCancel` (the new opportunity + offer
+ * procedure, spec 0396, whose own bar carries them) the band has no actions.
  */
 export function QuoteFormHeader({ quoteForm, formId, onCancel }: QuoteFormHeaderProps) {
   const { t } = useTranslation()
@@ -41,15 +42,17 @@ export function QuoteFormHeader({ quoteForm, formId, onCancel }: QuoteFormHeader
         title={heading}
         subtitle={code.trim() || t('quotes.form.createSubtitle')}
         actions={
-          <>
-            <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
-              {t('quotes.form.cancel')}
-            </Button>
-            <Button type="submit" form={formId} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-              {isSubmitting ? t('quotes.form.saving') : t('quotes.form.save')}
-            </Button>
-          </>
+          formId === undefined || onCancel === undefined ? undefined : (
+            <>
+              <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+                {t('quotes.form.cancel')}
+              </Button>
+              <Button type="submit" form={formId} disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                {isSubmitting ? t('quotes.form.saving') : t('quotes.form.save')}
+              </Button>
+            </>
+          )
         }
       />
 

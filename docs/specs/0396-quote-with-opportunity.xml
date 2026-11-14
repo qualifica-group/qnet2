@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0396-quote-with-opportunity" status="draft" owner="utente" date="2026-11-14">
+
+  <goal>
+    Dal pulsante "Nuova offerta" del modulo Offerte l'operatore sceglie se creare l'offerta su un'opportunita'
+    esistente (flusso attuale) oppure creare opportunita' + offerta insieme, con tutti i campi dei due form, in un
+    solo salvataggio. Al termine esistono entrambe; un'anagrafica con un'opportunita' gia' aperta non ne riceve
+    una seconda.
+  </goal>
+
+  <context>
+    - Offerta: `Quote` (`quotes`), creata solo da `QuoteService::create(CreateQuoteData, User)`; validazione
+      `StoreQuoteRequest` (opportunity_id required; concerns ValidatesQuoteLines, ValidatesQuoteWorkflowStatus,
+      ValidatesQuoteLineCommissions, ValidatesSingleQuotePerOpportunity, ValidatesManagerSlots, ValidatesRewards,
+      EnforcesFieldPermissions...), endpoint `POST /api/quotes` (`QuoteController::store`, 201 + `QuoteResource`
+      via `okWithPermissions`). Route in `backend/routes/api/quotes.php`.
+    - Opportunita': `Opportunity`, creata solo da `OpportunityService::create(CreateOpportunityData, User)`;
+      validazione `StoreOpportunityRequest` (registry_id, product_lines required, ruoli, manager_slots, previsione,
+      products_of_interest, rewards, general_notes, name, lead_id). Route in `backend/routes/api/opportunities.php`.
+    - Anti-duplicato esistente: `RegistryOpenOpportunityGuard::assertNoOpenOpportunity(registryId, categoryIds)`,
+      chiamato DENTRO `OpportunityService::create()`: 422 su `registry_id` con
+      `existing_opportunity_id` (costante `EXISTING_OPPORTUNITY_KEY`). Esenzioni gia' in vigore: categorie
+      `multiple_open_opportunities`, categorie legacy, migrate senza righe. Il FE ha gia'
+      `ExistingOpportunityAlert` (`features/opportunities/existing-opportunity-alert.tsx`).
+    - Precedente di creazione congiunta: `RequestCreationService` (Gestione Richieste) crea Opportunita' + Offerta
+      in UNA transazione riusando i due service. Questa feature ne riprende il modello ("in background come
+      Gestione Richieste") ma con i form completi di Opportunita' e Offerta, non quelli semplificati.
+    - FE: lista `features/quotes/quotes-table.tsx` (pulsante `quotes.form.newQuote` -> `openCreate` di
+      `useQuoteRowActions`); form `QuoteFormScreen` (`quote-screens.tsx`) legge i create-params da
+      `quote-create-params.ts`; form opportunita' `OpportunityFormBody` + `OpportunityCreateSections` +
+      `useOpportunityForm`; form offerta `QuoteFormBody` + `QuoteCreateSections`/`QuoteCreateLines`/
+      `QuoteCreateAttributes` + `useQuoteForm` + `useQuoteCreateDefaults` (eredita commerciale, segnalatore,
+      supervisore, sede operativa, fonte, team GA dalla `meta` dell'opportunita' scelta).
+    - Anteprima "Informazioni aggiuntive": `POST /api/quotes/form-context` (`QuoteFormContextRequest`,
+      `QuoteAttributeResolver::formContext(opportunityId, productIds, formMode)`) unisce le categorie
+      dell'opportunita' a quelle dei prodotti delle righe.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Scelta all'apertura: "Nuova offerta" nella lista Offerte apre una finestra con due opzioni,
+      "Da un'opportunita' esistente" (form attuale, invariato) e "Nuova opportunita' + offerta" (procedura
+      guidata). Senza il permesso `opportunities.create` la finestra non compare e si apre il form attuale.
+      Gli altri punti d'ingresso (scheda opportunita' "Crea offerta", tab Offerte dell'anagrafica, link
+      `quoteCreateHref`) restano invariati.</decision>
+    <decision id="D-2">La procedura guidata e' raggiunta da `/quotes/new?with_opportunity=1` (nuovo create-param
+      `QUOTE_CREATE_WITH_OPPORTUNITY_PARAM`), ospitata da `QuoteFormScreen`: stessa pagina, stesso leave guard.
+      Due passi in una striscia di tab: 1 Opportunita', 2 Offerta. "Avanti" valida il passo 1 lato client (schema
+      Zod dell'opportunita') ed esegue il controllo duplicati; "Indietro" conserva i valori. Il salvataggio e'
+      UNO, a fine passo 2.</decision>
+    <decision id="D-3">Backend: un solo endpoint transazionale `POST /api/quotes/with-opportunity`, con i due
+      blocchi `opportunity` e `quote`. Riusa INVARIATE le regole di `StoreOpportunityRequest` e
+      `StoreQuoteRequest` (validate come sotto-richieste) e i due service. Un errore qualsiasi annulla tutto:
+      nessuna opportunita' orfana.</decision>
+    <decision id="D-4">Blocco `quote`: `opportunity_id` vietato (lo imposta il server con l'id appena creato);
+      `promote_managers_to_opportunity` forzato a true (il team GA dell'offerta entra nell'opportunita' nuova,
+      come in Gestione Richieste). Blocco `opportunity`: `lead_id` vietato (la conversione da lead resta nei
+      moduli Lead/Opportunita').</decision>
+    <decision id="D-5">Passo 2 precompilato dal passo 1, come quando si sceglie un'opportunita' esistente:
+      commerciale, segnalatore, supervisore, sede operativa, team GA. Modificabili. Se l'operatore torna al
+      passo 1 e cambia questi campi, il passo 2 si riallinea solo sui campi che non ha toccato a mano.</decision>
+    <decision id="D-6">Anti-duplicato su due livelli. (a) Pre-controllo `POST /api/opportunities/open-check` al
+      click di "Avanti" (stesso predicato del guard, esenzioni comprese): se c'e' un'opportunita' aperta il passo
+      2 resta bloccato e compare `ExistingOpportunityAlert` con "Crea l'offerta su questa opportunita'" (apre il
+      form attuale con `opportunity_id` preimpostato) e "Vai all'opportunita'". (b) Il guard dentro
+      `OpportunityService::create()` resta l'autorita' al salvataggio (corsa tra due operatori): 422
+      `opportunity.registry_id` + `opportunity.existing_opportunity_id`, il FE torna al passo 1 e mostra lo
+      stesso avviso.</decision>
+    <decision id="D-7">`POST /api/quotes/form-context` accetta in piu' `product_category_ids` (categorie delle righe
+      prodotto dell'opportunita' non ancora salvata), unite come oggi quelle di `opportunity_id`: le
+      Informazioni aggiuntive del passo 2 sono le stesse che l'offerta avra' dopo il salvataggio.</decision>
+    <decision id="D-8">Esito: 201 con la stessa risposta di `POST /api/quotes`; il FE apre il dettaglio della nuova
+      offerta (come oggi) con un toast che cita anche l'opportunita' creata.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Finestra di scelta su "Nuova offerta" nella lista Offerte (D-1).</item>
+      <item>Procedura guidata a due passi con tutti i campi di creazione di Opportunita' e Offerta (righe,
+        provvigioni, costi, stato di lavorazione, informazioni aggiuntive, team GA, previsione, prodotti di
+        interesse, premi, note) (D-2, D-5).</item>
+      <item>Endpoint transazionale `POST /api/quotes/with-opportunity` (D-3, D-4).</item>
+      <item>Pre-controllo duplicati `POST /api/opportunities/open-check` + gestione 422 del guard (D-6).</item>
+      <item>`product_category_ids` su `POST /api/quotes/form-context` (D-7).</item>
+      <item>i18n IT/EN, guide in-app `quotes` (e richiamo in `opportunities`) IT/EN, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Creazione dell'anagrafica nella procedura (si sceglie un'anagrafica esistente; la creazione rapida gia'
+        presente nel selettore resta disponibile come oggi).</item>
+      <item>Conversione da lead (`lead_id`) dentro la procedura.</item>
+      <item>Modifiche a Gestione Richieste, al form Opportunita' standalone e agli altri punti d'ingresso
+        dell'offerta.</item>
+      <item>Modifiche alle regole del guard (esenzioni, definizione di "aperta").</item>
+      <item>Bozze salvate a meta' procedura: chiudendo la pagina si perde tutto (con conferma del leave guard).</item>
+      <item>Nuovi permessi: si riusano `quotes.create` e `opportunities.create`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/quotes/with-opportunity">
+      <request>
+        {
+          "opportunity": { ...stesso body di POST /api/opportunities, senza `lead_id` },
+          "quote": { ...stesso body di POST /api/quotes, senza `opportunity_id` e senza
+                     `promote_managers_to_opportunity` (forzato true dal server) }
+        }
+        Tipi e regole dei campi: identici a StoreOpportunityRequest / StoreQuoteRequest.
+      </request>
+      <response status="201">
+        Identica a POST /api/quotes: { success: true, message: "Created", data: QuoteResource, permissions }.
+        `data.opportunity_id` = id dell'opportunita' creata nella stessa transazione.
+      </response>
+      <errors>
+        403: manca `quotes.create` o `opportunities.create` (nessun record creato).
+        422: errori con chiavi prefissate `opportunity.&lt;campo&gt;` o `quote.&lt;campo&gt;` (es. `quote.offer_lines.0.product_id`).
+             Prima si valida `opportunity`; se valido si crea l'opportunita' e si valida `quote` sull'id nuovo,
+             nella stessa transazione. Un 422 su `quote` annulla l'opportunita'.
+        422 duplicato: `errors["opportunity.registry_id"]` = messaggio del guard, `errors["opportunity.existing_opportunity_id"]` = [id].
+        `opportunity.lead_id` / `quote.opportunity_id` inviati: 422 prohibited.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/opportunities/open-check">
+      <request>
+        { "registry_id": int (required, exists), "product_lines": [{ "product_category_id": int }] (sometimes, array) }
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: { blocking_opportunity: { id: int, name: string } | null } }
+        Stesso predicato di RegistryOpenOpportunityGuard::assertNoOpenOpportunity (esenzioni comprese).
+      </response>
+      <errors>
+        403: manca `opportunities.create`. 422: registry_id assente/inesistente.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/quotes/form-context">
+      <request>
+        Invariato + `product_category_ids`: int[] (sometimes, ognuno exists in product_categories).
+        Le categorie si uniscono a quelle di `opportunity_id` e dei prodotti delle righe.
+      </request>
+      <response status="200">Invariata.</response>
+      <errors>Invariati; 422 su un id di categoria inesistente.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con quotes.create e opportunities.create, quando invia un payload valido
+      a POST /api/quotes/with-opportunity, allora risponde 201, esistono una nuova Opportunity e una nuova Quote
+      con quote.opportunity_id = id dell'opportunita', codice QUO- generato e righe/team/ruoli salvati.</criterion>
+    <criterion id="AC-002">Dato un blocco quote non valido (es. nessuna riga offerta), quando invia, allora 422 con
+      chiave `quote.*` e NESSUNA opportunita' viene creata (conteggio invariato).</criterion>
+    <criterion id="AC-003">Dato un blocco opportunity non valido (es. product_lines vuoto), allora 422 con chiave
+      `opportunity.*` e nessun record creato.</criterion>
+    <criterion id="AC-004">Data un'anagrafica con un'opportunita' aperta che blocca, quando invia, allora 422 con
+      `opportunity.registry_id` e `opportunity.existing_opportunity_id` = id della bloccante; nessun record creato.</criterion>
+    <criterion id="AC-005">Data un'anagrafica con opportunita' aperta su categorie `multiple_open_opportunities` e
+      nuove righe su categorie esenti, quando invia, allora 201 (esenzione rispettata).</criterion>
+    <criterion id="AC-006">Utente senza opportunities.create oppure senza quotes.create: 403, nessun record creato.</criterion>
+    <criterion id="AC-007">Payload con `opportunity.lead_id` o `quote.opportunity_id`: 422 prohibited.</criterion>
+    <criterion id="AC-008">Un utente in quote.manager_slots non presente nel team dell'opportunita' viene promosso
+      sull'opportunita' nuova (promote forzato), senza 422 di appartenenza.</criterion>
+    <criterion id="AC-009">Un campo che l'utente non puo' modificare (field permission) in uno dei due blocchi da' 422
+      sulla chiave prefissata.</criterion>
+    <criterion id="AC-010">POST /api/opportunities/open-check restituisce blocking_opportunity {id,name} con
+      un'aperta bloccante, null senza aperte o con categorie esenti; 403 senza opportunities.create.</criterion>
+    <criterion id="AC-011">POST /api/quotes/form-context con product_category_ids restituisce gli attributi
+      applicabili a quelle categorie; senza il parametro la risposta e' invariata.</criterion>
+    <criterion id="AC-012">FE: con entrambi i permessi, il click su "Nuova offerta" apre la finestra con le due
+      opzioni; "Da un'opportunita' esistente" apre il form attuale; "Nuova opportunita' + offerta" apre
+      /quotes/new?with_opportunity=1. Senza opportunities.create la finestra non compare.</criterion>
+    <criterion id="AC-013">FE: al passo 1 "Avanti" con campi obbligatori vuoti mostra gli errori e non avanza.</criterion>
+    <criterion id="AC-014">FE: con open-check che restituisce una bloccante, il passo 2 non si apre, compare
+      l'avviso con il link "Crea l'offerta su questa opportunita'" verso /quotes/new?opportunity_id=N.</criterion>
+    <criterion id="AC-015">FE: al passo 2 commerciale, segnalatore, supervisore, sede operativa e team GA sono
+      precompilati dai valori del passo 1.</criterion>
+    <criterion id="AC-016">FE: il salvataggio invia UN payload {opportunity, quote} conforme al contratto; al 201
+      apre il dettaglio dell'offerta.</criterion>
+    <criterion id="AC-017">FE: un 422 `opportunity.*` riporta al passo 1 con l'errore sul campo; un 422 `quote.*`
+      resta/porta al passo 2 con l'errore sul campo; il 422 duplicato mostra ExistingOpportunityAlert al passo 1.</criterion>
+    <criterion id="AC-018">i18n e guide in-app IT/EN aggiornate con gli stessi id di sezione; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Nessuna modifica alle regole di StoreOpportunityRequest/StoreQuoteRequest ne' a
+      OpportunityService/QuoteService: si riusano.
+    - Layering: controller sottile -> FormRequest -> Action `CreateQuoteWithOpportunity::handle()` con `// Step N`
+      dentro `DB::transaction`. Authz server-side: `authorize('create', Opportunity::class)` e
+      `authorize('create', Quote::class)`.
+    - Nessun throttle (backend.md §2). Envelope `{ success, message, data }`.
+    - Il guard resta l'unico punto che decide "aperta": open-check ne riusa il predicato tramite un metodo
+      pubblico, non lo duplica.
+    - FE: TanStack Query/useMutation, RHF + Zod, nessun fetch in useEffect; riuso di OpportunityCreateSections e
+      delle sezioni del form offerta, nessuna copia dei campi. File sotto 300 righe (use-quote-form.ts e' gia' a
+      316: le nuove responsabilita' vanno in file nuovi). UI compatta (ui-design.md §2), responsive 375/768/1024.
+    - Test: Pest mirati Quotes/Opportunities, Vitest quotes; Pint, ESLint, `tsc -b --force`.
+  </constraints>
+
+</spec>

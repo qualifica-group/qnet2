@@ -46,6 +46,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Whoever you add as **Supervisor** or among the **Account managers** receives the **You were assigned as Supervisor** or **You were assigned as Account Manager** notification (bell and email). The link opens the opportunity; whoever cannot access Opportunities receives it without a link. Whoever is also an Account manager of one of the opportunity's quotes, for example because they are copied onto the linked quote of a converted lead or of a category with synchronized managers, receives the quote notification only.",
         },
+        {
+          type: 'note',
+          text: "If you also need to create the first quote, from **Quotes › New quote** you can choose **New opportunity + quote**: the opportunity and the quote are filled in two steps and saved together (see the **Quotes** guide).",
+        },
       ],
     },
     {

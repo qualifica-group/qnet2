@@ -6,6 +6,7 @@ use App\Http\Controllers\Quotes\QuoteCommissionRecipientsController;
 use App\Http\Controllers\Quotes\QuoteController;
 use App\Http\Controllers\Quotes\QuoteDocumentController;
 use App\Http\Controllers\Quotes\QuoteForSelectController;
+use App\Http\Controllers\Quotes\QuoteWithOpportunityController;
 use App\Http\Controllers\Quotes\RecalculateQuoteCommissionsController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +37,8 @@ Route::post('quotes/commission-recipients', QuoteCommissionRecipientsController:
 // quotes/{quote} so the literal segment wins over the route-model-binding
 // wildcard (mirrors next-code above).
 Route::post('quotes/form-context', [QuoteController::class, 'formContext']);
+// Spec 0396: Opportunity + Offerta created together in one transaction.
+Route::post('quotes/with-opportunity', QuoteWithOpportunityController::class);
 
 // Quotes CRUD. Authorization (quotes.view/create/update/delete) is enforced
 // server-side in QuoteController via QuotePolicy on every endpoint.

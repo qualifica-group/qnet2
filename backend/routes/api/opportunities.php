@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Opportunities\OpportunityController;
 use App\Http\Controllers\Opportunities\OpportunityForSelectController;
+use App\Http\Controllers\Opportunities\OpportunityOpenCheckController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('opportunities/for-select', OpportunityForSelectController::class);
+// Spec 0396, D-6: read-only duplicate pre-check (POST, so no wildcard clash).
+Route::post('opportunities/open-check', OpportunityOpenCheckController::class);
 
 // Opportunities CRUD. Authorization (opportunities.view/create/update/
 // delete) is enforced server-side in OpportunityController via

@@ -68,11 +68,7 @@ final class RegistryOpenOpportunityGuard
      */
     public function assertNoOpenOpportunity(int $registryId, array $newCategoryIds = []): void
     {
-        if ($this->allowMultipleOpen(ProductCategory::query()->whereKey($newCategoryIds)->get(['id', 'is_legacy', 'multiple_open_opportunities']))) {
-            return;
-        }
-
-        $existing = $this->openOpportunityFor($registryId);
+        $existing = $this->blockingOpportunityFor($registryId, $newCategoryIds);
 
         if ($existing === null) {
             return;
@@ -82,6 +78,23 @@ final class RegistryOpenOpportunityGuard
             'registry_id' => [__(self::OPEN_OPPORTUNITY_MESSAGE, ['opportunity' => $existing->name])],
             self::EXISTING_OPPORTUNITY_KEY => [(string) $existing->id],
         ]);
+    }
+
+    /**
+     * The opportunity that blocks creating a new one for $registryId with the
+     * given categories, or null when the creation is allowed (new categories
+     * all exempt, or no blocking open opportunity). The single predicate behind
+     * both the write-time refusal and the read-only pre-check.
+     *
+     * @param  array<int, int>  $newCategoryIds  the product categories of the opportunity being created
+     */
+    public function blockingOpportunityFor(int $registryId, array $newCategoryIds = []): ?Opportunity
+    {
+        if ($this->allowMultipleOpen(ProductCategory::query()->whereKey($newCategoryIds)->get(['id', 'is_legacy', 'multiple_open_opportunities']))) {
+            return null;
+        }
+
+        return $this->openOpportunityFor($registryId);
     }
 
     /**

@@ -7,7 +7,9 @@ import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { fetchQuote, quoteDetailQueryKey } from '@/features/quotes/api'
 import { QuoteForm } from '@/features/quotes/quote-form'
 import { QuoteDetailView } from '@/features/quotes/quote-detail'
+import { QuoteWithOpportunityForm } from '@/features/quotes/with-opportunity/quote-with-opportunity-form'
 import {
+  isWithOpportunityCreate,
   QUOTE_CREATE_OPPORTUNITY_PARAM,
   QUOTE_CREATE_PRODUCT_IDS_PARAM,
   QUOTE_CREATE_REGISTRY_PARAM,
@@ -108,6 +110,16 @@ export function QuoteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenP
   const productIds = mode.params?.[QUOTE_CREATE_PRODUCT_IDS_PARAM]
   // Spec 0199: the anagrafica's Offerte tab narrows the Opportunita' picker.
   const registryId = parseEntityId(String(mode.params?.[QUOTE_CREATE_REGISTRY_PARAM] ?? ''))
+  // Spec 0396: the "new opportunity + offer" procedure, under the same leave guard. A preset opportunity wins over it.
+  if (opportunityId === null && isWithOpportunityCreate(mode.params)) {
+    return (
+      <>
+        {leaveGuard.navigationGuard}
+        <QuoteWithOpportunityForm onSuccess={handleSuccess} onCancel={() => void handleCancel()} />
+      </>
+    )
+  }
+
   const params: ModuleCreateParams | undefined =
     opportunityId !== null
       ? {

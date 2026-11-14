@@ -236,7 +236,7 @@ export function quoteLineRowSchema(t: TFunction) {
 }
 
 /** Shared fields common to create and edit. */
-function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
+function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[], opportunityPending = false) {
   return {
     // Manual code (D-13/D-1b): trimmed, required (the create form auto-fills
     // the next sequential suggestion, editable), max 32. Read-only in edit
@@ -256,7 +256,8 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     // Immutable after create (AC-025); still part of both schemas since the
     // form always displays it (read-only in edit) and the create form must
     // block submit until it is set.
-    opportunity_id: requiredRelationId(t('quotes.form.opportunityRequired')),
+    // Spec 0396: in the new opportunity + offer procedure the opportunity does not exist yet.
+    opportunity_id: opportunityPending ? z.number().nullable() : requiredRelationId(t('quotes.form.opportunityRequired')),
     // Spec 0083: the operational status of the quote, picked from the set the
     // backend resolved for it. Nullable on create — omitted means "assign the
     // `open` row of the resolved set" (AC-020).
@@ -368,8 +369,9 @@ export function buildCreateQuoteSchema(
   t: TFunction,
   attributes: ApplicableAttributeSummary[] = [],
   layout: LayoutBlob | null = null,
+  opportunityPending = false,
 ) {
-  return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
+  return z.object(baseFields(t, attributes, opportunityPending)).superRefine((values, ctx) => {
     addMissingRequiredAttributes(
       values.attribute_values,
       requiredAttributeCodes(attributes, layout, values.attribute_values),

@@ -5,7 +5,6 @@ import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { toast } from 'sonner'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
@@ -16,6 +15,7 @@ import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-
 import { createDefaults, editDefaults } from '@/features/quotes/quote-form-defaults'
 import { buildCreateQuoteSchema, buildUpdateQuoteSchema, type QuoteFormValues } from '@/features/quotes/quote-schema'
 import { useQuoteFormContext, type PersistedQuoteContext } from '@/features/quotes/use-quote-form-context'
+import { managerSlotsMembershipMessage, withStoredFallback } from '@/features/quotes/use-quote-form-helpers'
 import { useQuoteLineCaches } from '@/features/quotes/use-quote-line-caches'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { QuoteDetail, QuoteFormMode, QuoteWorkflowStatusRef } from '@/features/quotes/types'
@@ -49,49 +49,19 @@ const SERVER_ERROR_FIELDS = [
   'cost_lines',
 ] as const
 
-/**
- * Spec 0087 (D-6/AC-004): the create/update 422 is the "not a G.A. of the
- * Opportunity yet" refusal when the error bag carries a `manager_slots` (or
- * `manager_slots.<n>`) key — the client never rejects it earlier (MAX is the
- * only client-side rule), so a 422 landing there past that point is this
- * violation. Returns the server's own message (AC-004 names the user) or
- * `null` when the failure is unrelated.
- */
-/**
- * The form's map over the stored one. A key the form holds as `undefined` is
- * a field that registered before its seed (a new product's row mounting), not
- * a value: it must not hide the stored one.
- */
-function withStoredFallback(
-  current: Record<string, CustomFieldValue | undefined>,
-  stored: Record<string, CustomFieldValue>,
-): Record<string, CustomFieldValue> {
-  const merged = { ...stored }
-  for (const [code, value] of Object.entries(current)) {
-    if (value !== undefined) {
-      merged[code] = value
-    }
-  }
-  return merged
-}
-
-function managerSlotsMembershipMessage(error: unknown): string | null {
-  if (!axios.isAxiosError(error) || error.response?.status !== 422) {
-    return null
-  }
-  const errors = error.response.data?.errors as Record<string, string[]> | undefined
-  const key = Object.keys(errors ?? {}).find(
-    (field) => field === 'manager_slots' || field.startsWith('manager_slots.'),
-  )
-  return key ? (errors as Record<string, string[]>)[key][0] : null
-}
-
 interface UseQuoteFormArgs {
   mode: QuoteFormMode
   /** Called after a successful create/update so the caller can close + refresh. */
   onSuccess: (quote: QuoteDetail) => void
   /** Create-only: sequential code suggestion prefilled into the `code` default (D-13/AC-082). */
   initialCode?: string
+  /**
+   * Spec 0396: set by the new opportunity + offer procedure, where the
+   * opportunity does not exist yet. The Opportunita' is then not required, and
+   * `categoryIds` (the unsaved opportunity's product lines) feed the live
+   * Attributes in its place.
+   */
+  withNewOpportunity?: { categoryIds: number[] }
 }
 
 /**
@@ -101,7 +71,7 @@ interface UseQuoteFormArgs {
  * caches the live summary reads, server 422 mapping and the create/update
  * submit (with the spec 0087 D-6 promotion retry).
  */
-export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs) {
+export function useQuoteForm({ mode, onSuccess, initialCode, withNewOpportunity }: UseQuoteFormArgs) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const confirm = useConfirm()
@@ -181,6 +151,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     opportunityId ?? null,
     pickedProductIds,
     persistedContext,
+    withNewOpportunity?.categoryIds,
   )
 
   // Lo schema vero, ricostruito ogni volta che il set applicabile cambia, cosi'
@@ -203,9 +174,15 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
             attributeContext.applicable_attributes,
             renderedLayout,
           )
-        : buildCreateQuoteSchema(t, attributeContext.applicable_attributes, renderedLayout),
+        : buildCreateQuoteSchema(
+            t,
+            attributeContext.applicable_attributes,
+            renderedLayout,
+            withNewOpportunity !== undefined,
+          ),
     [
       isEdit,
+      withNewOpportunity,
       t,
       workflowStatuses,
       originalStatusId,

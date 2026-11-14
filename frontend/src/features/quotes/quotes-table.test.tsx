@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import axios from 'axios'
@@ -32,10 +32,11 @@ vi.mock('@/components/page-header', () => ({
 }))
 
 const openCreateMock = vi.fn()
+const openCreateWithMock = vi.fn()
 vi.mock('@/features/modules/use-module-opener', () => ({
   useModuleOpener: () => ({
     openCreate: openCreateMock,
-    openCreateWith: vi.fn(),
+    openCreateWith: openCreateWithMock,
     openView: vi.fn(),
     openDuplicate: vi.fn(),
     sheet: null,
@@ -119,6 +120,7 @@ beforeEach(() => {
   canMock.mockReturnValue(true)
   deleteQuoteMock.mockReset()
   openCreateMock.mockReset()
+  openCreateWithMock.mockReset()
   toastSuccessMock.mockReset()
   toastErrorMock.mockReset()
   generateQuoteDocumentMock.mockReset()
@@ -150,11 +152,48 @@ describe('QuotesTable — create gating', () => {
     expect(screen.queryByRole('button', { name: 'New quote' })).not.toBeInTheDocument()
   })
 
-  it('opens the create form when clicked', () => {
-    canMock.mockReturnValue(true)
+  // REQUIREMENT CHANGED (spec 0396 D-1): with opportunities.create too, the button first asks how to start.
+  it('opens the create form straight away without opportunities.create (AC-012)', () => {
+    canMock.mockImplementation((permission) => permission === 'quotes.create')
     renderTable()
     screen.getByRole('button', { name: 'New quote' }).click()
     expect(openCreateMock).toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('QuotesTable — how to start a new quote (spec 0396 AC-012)', () => {
+  it('opens the choice window instead of the form when the user may also create opportunities', () => {
+    canMock.mockReturnValue(true)
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'New quote' }))
+
+    expect(screen.getByRole('dialog', { name: 'New quote' })).toBeInTheDocument()
+    expect(openCreateMock).not.toHaveBeenCalled()
+  })
+
+  it('"From an existing opportunity" opens the current form', () => {
+    canMock.mockReturnValue(true)
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'New quote' }))
+    fireEvent.click(screen.getByRole('button', { name: /From an existing opportunity/ }))
+
+    expect(openCreateMock).toHaveBeenCalledTimes(1)
+    expect(openCreateWithMock).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('"New opportunity + quote" opens the create with with_opportunity=1', () => {
+    canMock.mockReturnValue(true)
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'New quote' }))
+    fireEvent.click(screen.getByRole('button', { name: /New opportunity \+ quote/ }))
+
+    expect(openCreateWithMock).toHaveBeenCalledWith({ with_opportunity: 1 })
+    expect(openCreateMock).not.toHaveBeenCalled()
   })
 })
 
