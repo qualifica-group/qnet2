@@ -169,7 +169,7 @@ export function buildSetFilterParams(
   referentId?: number,
   productCategoryBranchId?: number,
 ): ISetFilterParams {
-  const isDate = isDateColumn(column)
+  const dateKind = dateKindOf(column)
   const params: ISetFilterParams = {
     values: createColumnValuesGetter(
       domain,
@@ -181,7 +181,7 @@ export function buildSetFilterParams(
       registryId,
       referentId,
       productCategoryBranchId,
-      isDate ? toDateServerSearch : undefined,
+      dateKind ? toDateServerSearch : undefined,
     ),
     refreshValuesOnOpen: true,
     suppressClearModelOnRefreshValues: true,
@@ -200,17 +200,30 @@ export function buildSetFilterParams(
     params.valueFormatter = (formatterParams: ValueFormatterParams): string =>
       formatBadgeFilterValue(formatterParams.value, column)
   }
-  if (isDate) {
-    const format = column.type === 'datetime' ? formatDateTimeOptionalTime : formatDate
+  if (dateKind) {
+    const format = dateKind === 'datetime' ? formatDateTimeOptionalTime : formatDate
     params.valueFormatter = (formatterParams: ValueFormatterParams): string => format(formatterParams.value)
   }
   return params
 }
 
-function isDateColumn(column: TableColumn): boolean {
-  const kind = column.filterType ?? column.type
+/**
+ * Whether the column's filter values are dates, and with or without time. A
+ * `table` column lists the values of its summary column (task 427477).
+ */
+function dateKindOf(column: TableColumn): 'date' | 'datetime' | null {
+  if (column.type === 'table') {
+    const summaryKey = column.table?.summary?.column
+    const summaryType = column.table?.columns.find((tableColumn) => tableColumn.key === summaryKey)?.type
 
-  return kind === 'date' || kind === 'datetime'
+    return summaryType === 'date' || summaryType === 'datetime' ? summaryType : null
+  }
+  const kind = column.filterType ?? column.type
+  if (kind === 'date' || kind === 'datetime') {
+    return column.type === 'datetime' ? 'datetime' : 'date'
+  }
+
+  return null
 }
 
 const BOOLEAN_YES_KEY = 'common.yes'

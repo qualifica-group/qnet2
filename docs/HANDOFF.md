@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Colonna tabella "N righe": badge + filtro sulle righe (task 427477) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+
+- Task 427477 (qnet2 task id, /work-orders): in "Verifiche Ispettive" (attributo 455 `orderiso_verificas`, tipo
+  `table`, riepilogo = riga Attivo) la cella mostrava "1 righe"/"2 righe". Dati dev: 3187 commesse su 3302 non hanno
+  nessuna riga Attivo, quindi `summary` null. Richiesta utente: badge che inviti al passaggio del mouse, e filtri
+  che trovino comunque una delle righe.
+- Causa filtro (confermata con test): le colonne `attr.*` ricevono dalla griglia il payload `multi`
+  (agMultiColumnFilter) e `AttributeGridColumns::applyFilter` lo passava all'handler, che legge solo il formato
+  piatto: filtro IGNORATO (tornano tutte le righe). `TableFieldType` filtrava solo sul `summary`, `/values` vuoto.
+- Fix backend: `AttributeTableFilterApplier` (nuovo, accanto a `AttributeDateFilterApplier`), usato da
+  `AttributeGridColumns` per il tipo `table` in applyFilter e distinctValues. Regola: match sul `summary` se
+  presente, altrimenti sulla colonna di riepilogo di QUALSIASI riga; notEqual/notContains = negazione del tutto.
+  Legge multi, set, text piatto e `{operator, conditions}`. SQL: MySQL/MariaDB `JSON_SEARCH(col,'one',?,'\\',
+  '$."code".rows[*]."col"')`, SQLite `json_each`; percorsi e pattern bound. `/values` = summary o, senza, tutte le
+  date delle righe. Verificato sul DB dev (MariaDB 11.3): "2024-04" 74 + notContains 3228 = 3302, valori 1280 in 50 ms.
+- Fix frontend: `TableSummaryCell` mostra `Badge secondary` "N righe" + icona `Info` + `cursor-help` quando non c'e'
+  ne' riga selezionata ne' riepilogo; plurale `rowsCount_one/_other` IT/EN ("1 riga"). `column-filters.ts`
+  `dateKindOf`: una colonna `table` con colonna di riepilogo data/datetime formatta la lista del Set Filter nel
+  formato utente e usa `toDateServerSearch`.
+- Test: `tests/Feature/CategoryTabs/WorkOrderTableAttributeFilterTest.php` (3, falliscono senza fix),
+  `table-summary-cell.test.tsx` (+2), `column-filters.test.ts` (+1). Pest CategoryTabs/CustomFields/WorkOrders/
+  Attributes/Unit CustomFields verdi; RequestManagement 1007/1008: fallisce `RequestManagementAllColumnsSortFilterTest`
+  "managers is not sortable", colonna nativa non toccata (da indagare a parte). Vitest data-table/custom-fields/
+  i18n/help 766 verdi, ESLint, Pint e `tsc -b --force` puliti. NON provato in un browser reale.
+- Manuale: guida `custom-fields` IT/EN e Manuale Utente Claude Docs (paragrafo "Campi Tabella") aggiornati.
+- Aperti (segnalati, non fatti): (1) il payload `multi` e' ignorato anche per le colonne `attr.*` di tipo testo/
+  numero/data (provato: text "alp" su multi torna tutto); (2) i campi personalizzati `custom.*` di tipo tabella
+  filtrano ancora solo sul riepilogo e il loro multi fa LIKE sull'intero JSON. File oltre 300 righe:
+  `AttributeGridColumns.php` (~330), `column-filters.ts` (~330).
+
 ## Filtro personalizzato che si disattiva da solo (task 428054) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
 
 - Task 428054 (qnet2 task id, /request-management): "metto il filtro dei richiami di oggi, dopo poco si toglie da

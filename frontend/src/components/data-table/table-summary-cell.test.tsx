@@ -54,6 +54,24 @@ describe('TableSummaryCell (spec 0180, AC-022)', () => {
     expect(visibleText(container)).toBe('2 rows')
   })
 
+  // Task 427477: without a summary the count is a badge whose info icon invites to hover.
+  it('shows the row count as a badge with an info icon when no row is selected and there is no summary', () => {
+    const rows = ROWS.map((row) => ({ ...row, is_last: false }))
+    const { container } = renderCell({ rows, summary: null }, TABLE)
+
+    const badge = container.querySelector('[data-slot="badge"]')
+    expect(badge).toHaveTextContent('2 rows')
+    expect(badge).toHaveClass('cursor-help')
+    expect(badge?.querySelector('svg')).not.toBeNull()
+  })
+
+  it('uses the singular for a single row', () => {
+    const { container } = renderCell({ rows: [{ id: 'a' }], summary: null })
+
+    expect(visibleText(container)).toBe('1 row')
+    expect(container.querySelector('[data-slot="badge"] svg')).toBeNull()
+  })
+
   it('degrades to summary + count without a tooltip when the definition is missing', () => {
     const { container } = renderCell({ rows: ROWS, summary: 'Passed' })
 

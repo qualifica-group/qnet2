@@ -41,6 +41,9 @@ final class AttributeGridColumns
     /** The two attribute types whose contract `filterType` is `date` (see applyFilter). */
     private const array DATE_TYPES = ['date', 'datetime'];
 
+    /** Filtered on its summary or, without one, on its rows (see AttributeTableFilterApplier). */
+    private const string TABLE_TYPE = 'table';
+
     private readonly AttributeGridTarget $target;
 
     /**
@@ -51,6 +54,7 @@ final class AttributeGridColumns
         private readonly AttributeScopeResolver $scopeResolver,
         private readonly AttributeColumnBuilder $columnBuilder,
         private readonly AttributeDateFilterApplier $dateFilterApplier,
+        private readonly AttributeTableFilterApplier $tableFilterApplier,
         private readonly AuthorizationRegistry $authorizationRegistry,
         private readonly RequestAttributeResolver $attributesResolver,
         ?AttributeGridTarget $target = null,
@@ -68,6 +72,7 @@ final class AttributeGridColumns
             $this->scopeResolver->forContext($target->context),
             $this->columnBuilder,
             $this->dateFilterApplier,
+            $this->tableFilterApplier,
             $this->authorizationRegistry,
             $this->attributesResolver,
             $target,
@@ -243,6 +248,12 @@ final class AttributeGridColumns
             return;
         }
 
+        if ($attributeRow['type'] === self::TABLE_TYPE) {
+            $this->tableFilterApplier->apply($query, $this->target->valuesColumn, $attributeRow, $filter);
+
+            return;
+        }
+
         $this->columnBuilder->handlerFor($attributeRow)->applyFilter($query, $this->target->valuesColumn, $attributeRow['code'], $filter);
     }
 
@@ -266,7 +277,9 @@ final class AttributeGridColumns
      */
     public function distinctValues(Builder $query, array $attributeRow, ?string $search, int $limit): array
     {
-        $values = $this->columnBuilder->handlerFor($attributeRow)->distinctValues($query, $this->target->valuesColumn, $attributeRow['code']);
+        $values = $attributeRow['type'] === self::TABLE_TYPE
+            ? $this->tableFilterApplier->distinctValues($query, $this->target->valuesColumn, $attributeRow)
+            : $this->columnBuilder->handlerFor($attributeRow)->distinctValues($query, $this->target->valuesColumn, $attributeRow['code']);
 
         if ($search !== null && $search !== '') {
             $needle = mb_strtolower($search);

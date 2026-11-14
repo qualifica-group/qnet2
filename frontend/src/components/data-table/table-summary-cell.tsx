@@ -1,9 +1,11 @@
 import type { ICellRendererParams } from 'ag-grid-community'
+import { Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   findSelectedRow,
   formatTableRowInline,
 } from '@/components/data-table/format-table-row-inline'
+import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ReadonlyTableValue } from '@/features/custom-fields/components/readonly-table-value'
 import type { TableFieldConfig, TableFieldValue } from '@/features/custom-fields/types'
@@ -34,9 +36,10 @@ function isTableValue(value: unknown): value is TableFieldValue {
 /**
  * Grid cell of a `type:'table'` column (spec 0180, AC-022): the selected row
  * inline when the definition has a selectable column and a row is flagged,
- * else the formatted summary plus the row count. With the definition at hand
- * a keyboard-focusable trigger opens a read-only table of every row. Blank
- * for a null value or no rows.
+ * else the formatted summary plus the row count, else a row-count badge whose
+ * info icon invites to hover (task 427477). With the definition at hand a
+ * keyboard-focusable trigger opens a read-only table of every row. Blank for
+ * a null value or no rows.
  */
 export function TableSummaryCell({ value, table }: ICellRendererParams & TableSummaryCellProps) {
   const { t } = useTranslation()
@@ -48,8 +51,14 @@ export function TableSummaryCell({ value, table }: ICellRendererParams & TableSu
   const selected = table ? findSelectedRow(table, value.rows) : undefined
   const inline = table && selected ? formatTableRowInline(table, selected, t) : ''
   const summary = formatSummary(value.summary)
-  const visible = inline || (summary ? `${summary} · ${value.rows.length}` : count)
+  const text = inline || (summary ? `${summary} · ${value.rows.length}` : '')
   const accessible = inline ? `${inline}, ${count}` : summary ? `${summary}, ${count}` : count
+  const visible = text || (
+    <Badge variant="secondary" className={table ? 'cursor-help' : undefined}>
+      {count}
+      {table ? <Info /> : null}
+    </Badge>
+  )
 
   const label = (
     <span className="block truncate">

@@ -268,6 +268,33 @@ describe('buildColumnFilter', () => {
     expect(setParams.valueFormatter({ value: null })).toBe('')
   })
 
+  // Task 427477: a table column lists the values of its summary column.
+  it('lists a table column checklist in the user date pattern only when its summary column is a date', () => {
+    const table = {
+      columns: [
+        { key: 'inspection_date', label: 'Date', type: 'date' as const },
+        { key: 'inspector', label: 'Inspector', type: 'text' as const },
+      ],
+      summary: { column: 'inspection_date', strategy: 'selected' as const },
+    }
+    const setParamsOf = (summaryColumn: string) => {
+      const column = stubColumn({
+        id: 'attr.inspections',
+        type: 'table',
+        filterType: 'text',
+        table: { ...table, summary: { ...table.summary, column: summaryColumn } },
+      })
+      const { filterParams } = buildColumnFilter('work-orders', column, vi.fn(), translate)
+
+      return (filterParams as IMultiFilterParams).filters?.[0]?.filterParams as {
+        valueFormatter?: (p: { value: unknown }) => string
+      }
+    }
+
+    expect(setParamsOf('inspection_date').valueFormatter?.({ value: '2024-04-10' })).toBe('10/04/2024')
+    expect(setParamsOf('inspector').valueFormatter).toBeUndefined()
+  })
+
   it('does not attach a boolean valueFormatter to a non-boolean Set Filter column', () => {
     const { filterParams } = buildColumnFilter(
       'users',
