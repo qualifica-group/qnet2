@@ -3,6 +3,61 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Filtro personalizzato che si disattiva da solo (task 428054) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+
+- Task 428054 (qnet2 task id, /request-management): "metto il filtro dei richiami di oggi, dopo poco si toglie da
+  solo" (+ "non prende tutti i richiami", gia' risolto da #428096, commit 60e2f89fe).
+- Causa (verificata con AG Grid reale in jsdom): `setFilterModel()` emette `filterChanged` in modo ASINCRONO. Il
+  filtro personalizzato (operatore "Oggi" su Prossimo richiamo) in `applyRules` svuota i filtri di colonna dentro la
+  soppressione sincrona di `useCustomFilterState.activate`; l'eco arrivava dopo e `notifyExternalChange` lo
+  disattivava, poi la SSRM ricaricava senza filtro. Solo se c'era gia' un filtro di colonna attivo.
+- Fix: `useTableCustomFilters.handleGridFilterChanged` (usato da `use-table-view-filters-state.ts`) disattiva il
+  filtro personalizzato solo se dopo il cambio resta un filtro di colonna. D-2 della spec 0158 invariata.
+- Test: `use-table-custom-filters.test.ts` (+2, quello #428054 fallisce senza fix); stub di `use-table-filter-chips.test.ts`
+  completato col nuovo membro. Vitest table/request-management/data-table 1166 verdi, ESLint e `tsc -b --force` puliti.
+  NON provato in un browser reale. Manuale: nessun impatto (la guida `general` gia' descrive il comportamento giusto).
+- Non escluso: se l'utente usava invece il filtro di colonna o i Filtri avanzati, chiedere i passi (nessuna altra causa
+  trovata; il giro salva/rileggi dei filtri sul backend e' corretto).
+
+## Filtro "Data inizio" sulle commesse: ricerca in formato utente (task 427789) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+
+- Task 427789 (qnet2 task id, /work-orders): "Data inizio" ha lo stesso problema di Anagrafica: tutto gennaio 2026
+  introvabile. Causa: l'elenco di `start_date` sono le prime 200 date in ordine crescente (dev, utente 162: si ferma al
+  23/11/2022) e mostrava il valore grezzo `2026-01-01 00:00:00`; la ricerca lato server del task 427169 fa LIKE sul
+  valore salvato, quindi "01/2026" non trovava nulla ("2026-01" si', 29 date). Il filtro "Tra" in Filtri data e la
+  selezione delle date funzionano (315 commesse in entrambi i casi).
+- Fix solo frontend, generico per ogni colonna con filterType/type `date`/`datetime`: `column-filters.ts`
+  `buildSetFilterParams` formatta l'elenco col formato data dell'utente (`formatDate`, `formatDateTimeOptionalTime`
+  per `datetime`) e passa `toDateServerSearch` (nuovo `date-filter-search.ts`) come ultimo argomento di
+  `createColumnValuesGetter`: la ricerca in formato utente diventa il pezzo del valore salvato (`01/2026` -> `2026-01`,
+  `15/01` -> `-01-15`, `15/01/2026` -> `2026-01-15`; anno solo, ore o testo libero restano invariati). La mini-ricerca
+  di AG Grid confronta il valore formattato, quindi le date tornate dal server restano visibili e spuntate.
+- Nota: il backend serve `type: 'date'`, assente dall'unione `ColumnType` del frontend (i test lo castano). Non toccata.
+- Test: `date-filter-search.test.ts`, `column-filters.test.ts` (formatter), `set-filter-server-search.test.ts`.
+  Guida in-app `general` IT/EN (riga "Filtro di colonna") e Manuale Utente Claude Docs (stessa riga) aggiornati.
+
+## Ricerca lato server nei filtri "stile Excel" (task 427169) — VERDE, NON COMMITTATO (2026-11-14)
+
+- Task 427169 (qnet2 task id, /work-orders): "non funziona il filtro di ricerca della colonna COMMESSA N e ANAGRAFICA".
+  Causa: la casella Cerca del Set Filter filtrava solo l'elenco caricato, che `/tables/{domain}/values` tronca ai primi
+  200 valori in ordine (`TableValuesRequest::DEFAULT_LIMIT`): ~16.500 codici commessa, migliaia di anagrafiche ->
+  COM-2xxxx e anagrafiche oltre la "A" introvabili. `registry` (filtro solo set) non aveva nemmeno il ripiego Filtri
+  testo. Backend corretto (filtri e `search` verificati sul DB dev con l'utente 124): fix solo frontend, generico.
+- `components/data-table/set-filter-server-search.ts`: una colonna il cui elenco torna `hasMore` viene marcata
+  troncata (WeakMap per GridApi); da li' il testo della ricerca va al server come `search` (`setFilterServerSearch`,
+  letto da `SetFilterUi.getMiniFilter`), la digitazione ricarica l'elenco con debounce 300 ms
+  (`hookSetFilterServerSearch`, cablato in `DataTable.onFilterOpened`, refresh via `getColumnFilterHandler`) e dopo il
+  ricaricamento `checkServerSearchMatches` riapplica la ricerca (`setMiniFilter(null)` + testo) perche' in Excel
+  mode le corrispondenze arrivate dal server risultino spuntate. Elenchi completi: ricerca client invariata (match
+  sulle etichette localizzate di badge/enum).
+- `withPresetSetFilterValues` ora include anche i valori APPLICATI della colonna (set o figlio set di un multi): AG
+  Grid scarta dal modello i valori assenti dalla lista ricaricata (in Excel mode, se non ne resta nessuno, azzera il
+  filtro). Puo' riguardare anche #428054 ("il filtro si toglie da solo").
+- Toast `table.filterValuesTruncated` e guida `general` (IT/EN) aggiornati: "scrivi nella casella Cerca".
+- Test: `set-filter-server-search.test.ts`, `preset-set-filter-values.test.ts`. Suite FE completa 1378/10344 verde,
+  `tsc -b --force` pulito. NON verificato in un browser reale (nessuno strumento browser in sessione): da provare a mano
+  su /work-orders (Commessa n. "20265", Anagrafica "ferro", Applica, riapertura del filtro).
+
 ## Documenti: "Scarica tutti" in un unico ZIP (task 427111, spec 0393) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 427111 (qnet2 task id 427111, pagina /work-orders/12840): i documenti si scaricavano solo uno alla volta; il
@@ -20,6 +75,18 @@
 - Manuale: guida `general` IT/EN (tabella comandi Documenti). Manuale Claude Docs: riga "Scarica tutti" nella sezione
   Note e documenti.
 
+## Nuova anagrafica da Gestione Richieste eredita Fonte/Commerciale/Segnalatore (#427523) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+
+- Ticket di Martina: creando una richiesta con un NUOVO cliente, Fonte, Commerciale e Segnalatore restavano solo su
+  offerta/opportunita'; l'anagrafica nasceva vuota. Causa: `RequestCreationService::newClientRegistryData()` passava
+  `sourceId`/`commercialId`/`reporterId` null.
+- Fix: il nuovo Registry riceve i tre valori della richiesta. Anagrafica esistente invariata (D-2). Spec 0057 D-2/AC-003 rev.
+  "Referente" del ticket letto come Segnalatore (unico campo referente del form); non si aggiungono referenti alla lista.
+- Test: 2 nuovi in `RequestManagementCreateTest` (#427523). RequestManagement 1007/1008 (rosso noto `managers is not
+  sortable`), Registries 155/155, Pint ok, Vitest help 161/161.
+- Manuale: guida `request-management` IT/EN (passo Attribuzione) + manuale Claude Docs (stesso passo).
+- Le anagrafiche gia' create cosi' in passato restano senza i tre campi (nessun backfill).
+
 ## Filtri data a giorno intero su colonne data+ora (#428096) — VERDE MIRATO, NON COMMITTATO (2026-11-13)
 
 - Causa: `AdvancedFilterApplier` (date_range) e `FilterApplier::applyDate` (inRange/greaterThan) confrontavano un
@@ -28,8 +95,7 @@
 - Fix: `App\Services\Table\CalendarDayBound` (`day()`, `dayAfter()`); range = `>= da` e `< a + 1 giorno`,
   "dopo X" = `>= X + 1 giorno`, "prima di X" = `< X`; uguale/diverso restano `whereDate`. Identico a prima su DATE.
   Vale per tutte le tabelle generiche. Test: `RequestManagementCallbackTest` (#428096, anche OR combinato).
-- NON risolto: la parte "il filtro non si salva / si toglie da solo" (anche #428054) non e' riproducibile dal codice;
-  serve un caso concreto (quale filtro: colonna o Filtri avanzati, quali passi).
+- La parte "il filtro si toglie da solo" e' il task 428054: vedi la sua voce (filtro personalizzato).
 
 ## Ticket da QNet (lotto 2026-11-13) — VERDE MIRATO, NON COMMITTATO
 

@@ -42,6 +42,7 @@ function stubCustomFilters(deactivate: () => void): UseTableCustomFiltersResult 
     openEditFilter: vi.fn(),
     closeBuilder: vi.fn(),
     applyRules: vi.fn(),
+    handleGridFilterChanged: vi.fn(),
   }
 }
 

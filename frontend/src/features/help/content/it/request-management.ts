@@ -88,7 +88,7 @@ const guide: HelpGuide = {
             'In **Linee di prodotto** aggiungi almeno una riga: categoria genitore, poi categoria prodotto. Se la categoria genitore ha dei gruppi (ad esempio Consulenza › ISO), con **Filtro** scegli il gruppo e la categoria prodotto elenca solo le sue sottocategorie; il filtro non viene salvato, solo la categoria prodotto.',
             "Nel **Catalogo prodotti** spunta i prodotti e premi **Aggiungi N selezionati**, poi controlla quantità, prezzo unitario e IVA delle righe (vedi **Righe dell'offerta e catalogo prodotti**).",
             "In **Anagrafica cliente** scegli un'**Anagrafica esistente** oppure inserisci un nuovo cliente.",
-            'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore**, **Commerciale** e **Sede operativa**. Il Commerciale scelto qui vale sia per la richiesta sia per la sua opportunità.',
+            'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore**, **Commerciale** e **Sede operativa**. Il Commerciale scelto qui vale sia per la richiesta sia per la sua opportunità. Se stai inserendo un nuovo cliente, Fonte, Segnalatore e Commerciale vengono salvati anche sulla sua anagrafica.',
             'Compila le **Informazioni aggiuntive**, se presenti.',
             'Premi **Crea richiesta**: torni alla tabella, sulla scheda categoria che avevi aperto.',
           ],

@@ -77,7 +77,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Search…**', "Type and the list updates. **Ctrl+K** (Mac **Cmd+K**) jumps straight into the field. Next to it you see how many rows were found. With the **Legacy IDs** permission the search also finds the id from the old system."],
             ['Sorting', 'Click a column header; click again to reverse it.'],
-            ['Column filter', 'Hover the header and open the filter: check values or set a condition, for example "Contains". When the column has many values, the checklist shows only the first ones (a notice says so the first time): for the others use the condition.'],
+            ['Column filter', 'Hover the header and open the filter: check values or set a condition, for example "Contains". When the column has many values, the checklist shows only the first ones (a notice says so the first time): type in the **Search** box and the list reloads with the matching values, beyond the first ones too. In date columns the list uses your date format and so does the search: for example **01/2026** finds every day of January 2026.'],
             ['**Advanced filters**', 'Where available, opens extra search fields: fill them in and press **Apply**; **Clear** empties them.'],
             ['**Clear filters**', 'Removes all filters at once.'],
             ['Columns', 'Drag the headers to reorder them and their edges to resize them. The **Columns** tab on the right shows or hides them: the hidden ones include **ID** and, in modules with data imported from the old system, **Legacy ID** (only with the **Legacy IDs** permission), which you can sort and filter as a number to find a record by its id in the old system.'],

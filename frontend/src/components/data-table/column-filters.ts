@@ -11,10 +11,17 @@ import type {
   SetFilterValuesFuncParams,
   ValueFormatterParams,
 } from 'ag-grid-community'
+import { toDateServerSearch } from '@/components/data-table/date-filter-search'
 import { withPresetSetFilterValues } from '@/components/data-table/preset-set-filter-values'
+import {
+  checkServerSearchMatches,
+  markSetFilterTruncated,
+  setFilterServerSearch,
+} from '@/components/data-table/set-filter-server-search'
 import { fetchTableColumnValues } from '@/features/table/api'
 import type { TableColumn } from '@/features/table/types'
 import { enumLabelOf } from '@/features/config/enum-label'
+import { formatDate, formatDateTimeOptionalTime } from '@/lib/formatting/date-display'
 
 /**
  * Maps a backend column to the AG Grid filter component, or false.
@@ -76,6 +83,10 @@ export function resolveTypedFilter(
  * the filter is opened (paired with `refreshValuesOnOpen`). A fetch failure
  * resolves to an empty list so the filter UI never crashes.
  *
+ * Once the list came back truncated, the checklist's search text rides along
+ * as `search` (task 427169, see `set-filter-server-search.ts`), rewritten by
+ * `toServerSearch` when the column needs it (dates, task 427789).
+ *
  * `productCategoryId` (spec 0064, request-management's category tabs) rides
  * along so an `attr.<code>` column's set filter resolves against the right
  * category; omitted for every native/`custom.*` column.
@@ -98,28 +109,37 @@ export function createColumnValuesGetter(
   registryId?: number,
   referentId?: number,
   productCategoryBranchId?: number,
+  toServerSearch?: (search: string) => string,
 ): SetFilterValuesFunc {
   return (params: SetFilterValuesFuncParams) => {
     const filterModel: Record<string, unknown> = { ...params.api.getFilterModel() }
     delete filterModel[columnId]
 
-    fetchTableColumnValues(domain, {
-      columnId,
-      filterModel,
-      ...(productCategoryId != null ? { productCategoryId } : {}),
-      ...(productCategoryBranchId != null ? { productCategoryBranchId } : {}),
-      ...(opportunityId != null ? { opportunityId } : {}),
-      ...(quoteId != null ? { quoteId } : {}),
-      ...(registryId != null ? { registryId } : {}),
-      ...(referentId != null ? { referentId } : {}),
-    })
-      .then((response) => {
-        if (response.hasMore) {
-          onTruncated()
-        }
-        params.success(withPresetSetFilterValues(params.api, columnId, response.values))
+    const load = async (): Promise<void> => {
+      const search = await setFilterServerSearch(params.api, columnId)
+      const response = await fetchTableColumnValues(domain, {
+        columnId,
+        filterModel,
+        ...(search !== null ? { search: toServerSearch ? toServerSearch(search) : search } : {}),
+        ...(productCategoryId != null ? { productCategoryId } : {}),
+        ...(productCategoryBranchId != null ? { productCategoryBranchId } : {}),
+        ...(opportunityId != null ? { opportunityId } : {}),
+        ...(quoteId != null ? { quoteId } : {}),
+        ...(registryId != null ? { registryId } : {}),
+        ...(referentId != null ? { referentId } : {}),
       })
-      .catch(() => params.success([]))
+      if (response.hasMore) {
+        markSetFilterTruncated(params.api, columnId)
+        onTruncated()
+      }
+      params.success(withPresetSetFilterValues(params.api, columnId, response.values))
+      if (search !== null) {
+        // After AG Grid has taken the new list (it settles on microtasks).
+        setTimeout(() => void checkServerSearchMatches(params.api, columnId), 0)
+      }
+    }
+
+    load().catch(() => params.success([]))
   }
 }
 
@@ -133,6 +153,9 @@ export function createColumnValuesGetter(
  * keeps the current selection even if a refreshed value list temporarily
  * doesn't include it yet — recommended by AG Grid for SSRM setups that derive
  * one column's values from the others.
+ *
+ * A date column lists its values in the user's date pattern, like its cells,
+ * and its search is rewritten for the stored values (task 427789).
  */
 export function buildSetFilterParams(
   domain: string,
@@ -146,8 +169,20 @@ export function buildSetFilterParams(
   referentId?: number,
   productCategoryBranchId?: number,
 ): ISetFilterParams {
+  const isDate = isDateColumn(column)
   const params: ISetFilterParams = {
-    values: createColumnValuesGetter(domain, column.id, onTruncated, productCategoryId, opportunityId, quoteId, registryId, referentId, productCategoryBranchId),
+    values: createColumnValuesGetter(
+      domain,
+      column.id,
+      onTruncated,
+      productCategoryId,
+      opportunityId,
+      quoteId,
+      registryId,
+      referentId,
+      productCategoryBranchId,
+      isDate ? toDateServerSearch : undefined,
+    ),
     refreshValuesOnOpen: true,
     suppressClearModelOnRefreshValues: true,
     excelMode: 'windows',
@@ -165,7 +200,17 @@ export function buildSetFilterParams(
     params.valueFormatter = (formatterParams: ValueFormatterParams): string =>
       formatBadgeFilterValue(formatterParams.value, column)
   }
+  if (isDate) {
+    const format = column.type === 'datetime' ? formatDateTimeOptionalTime : formatDate
+    params.valueFormatter = (formatterParams: ValueFormatterParams): string => format(formatterParams.value)
+  }
   return params
+}
+
+function isDateColumn(column: TableColumn): boolean {
+  const kind = column.filterType ?? column.type
+
+  return kind === 'date' || kind === 'datetime'
 }
 
 const BOOLEAN_YES_KEY = 'common.yes'

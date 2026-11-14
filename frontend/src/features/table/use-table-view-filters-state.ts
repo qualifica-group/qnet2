@@ -155,12 +155,13 @@ export function useTableViewFiltersState(
   })
 
   // A column filter change "wins" over an active custom filter (spec 0158
-  // D-2); a no-op when nothing is active or the change is the custom
-  // filter's own programmatic reset (suppressed, see `use-custom-filter-state.ts`).
+  // D-2); never the grid's echo of the custom filter's own reset (#428054,
+  // see `use-table-custom-filters.ts`).
+  const { handleGridFilterChanged: handleCustomFilterGridChange } = customFilters
   const handleGridFilterChanged = useCallback(() => {
-    customFilterState.notifyExternalChange()
+    handleCustomFilterGridChange()
     handleFilterChanged()
-  }, [customFilterState, handleFilterChanged])
+  }, [handleCustomFilterGridChange, handleFilterChanged])
 
   // Placeholder built from the searchable columns' localized labels, mirroring
   // the backend allow-list (e.g. "Cerca nome/email…").

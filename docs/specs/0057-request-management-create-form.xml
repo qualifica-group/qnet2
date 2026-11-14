@@ -60,6 +60,8 @@
       rifiutati (422); senza, `client_identity` e' obbligatorio e crea Registry + PersonalData
       (+ contatti e indirizzo se presenti). Regola esplicita: la creazione richiesta non modifica mai
       l'anagrafica di un Registry esistente — quella resta competenza del pannello di lavorazione.
+      Rev. 2026-11-14 (ticket #427523): il Registry NUOVO nasce con `source_id`, `commercial_id` e
+      `reporter_id` della richiesta (Fonte, Commerciale, Segnalatore). Un Registry esistente resta invariato.
     </d>
     <d id="D-3">
       `product_lines` e' obbligatorio (min 1 riga completa), con le stesse regole del form opportunita'
@@ -173,7 +175,7 @@ almeno una riga e ogni riga completa).
   <acceptance>
     <ac id="AC-001">POST /api/request-management senza il permesso `request-management.create` -> 403, nessuna riga creata.</ac>
     <ac id="AC-002">POST con `registry_id` valido + product_lines valide -> 201; l'Opportunity e' agganciata a quel Registry; l'anagrafica del Registry NON viene modificata.</ac>
-    <ac id="AC-003">POST con `client_identity` (individual) + contatti + indirizzo -> 201; esistono un nuovo Registry, la sua PersonalData, i contatti e l'indirizzo; `registries.name` e' derivato da RegistryProfileWriter.</ac>
+    <ac id="AC-003">POST con `client_identity` (individual) + contatti + indirizzo -> 201; esistono un nuovo Registry, la sua PersonalData, i contatti e l'indirizzo; `registries.name` e' derivato da RegistryProfileWriter; il nuovo Registry porta `source_id`/`commercial_id`/`reporter_id` della richiesta (rev. 2026-11-14, #427523).</ac>
     <ac id="AC-004">POST con `registry_id` E `client_identity` insieme -> 422.</ac>
     <ac id="AC-005">POST senza nessuno dei due rami anagrafica -> 422.</ac>
     <ac id="AC-006">POST senza `product_lines`, o con riga incompleta, o con categoria non appartenente alla funzione aziendale scelta -> 422, nessuna riga creata.</ac>

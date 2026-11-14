@@ -88,7 +88,7 @@ const guide: HelpGuide = {
             'In **Product lines** add at least one row: parent category, then product category. When the parent category has groups (for example Consulting › ISO), **Filter** lets you pick the group and the product category then lists only its subcategories; the filter is not saved, only the product category.',
             "In the **Product catalogue** tick the products and press **Add N selected**, then check quantity, unit price and VAT of the rows (see **Offer rows and product catalogue**).",
             'In **Client details** pick an **Existing registry** or enter a new client.',
-            'In **Attribution** pick the **Source** (required) and, if needed, **Reporter**, **Sales rep** and **Operational site**. The Sales rep picked here is set on both the request and its opportunity.',
+            'In **Attribution** pick the **Source** (required) and, if needed, **Reporter**, **Sales rep** and **Operational site**. The Sales rep picked here is set on both the request and its opportunity. When you are entering a new client, Source, Reporter and Sales rep are saved on its registry too.',
             'Fill in the **Additional information**, if present.',
             'Press **Create request**: you go back to the table, on the category tab you had open.',
           ],

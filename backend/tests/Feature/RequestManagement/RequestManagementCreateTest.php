@@ -3,6 +3,7 @@
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Quote;
+use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\User;
 use App\Services\QuoteService;
@@ -116,6 +117,48 @@ it('AC-003: POST with client_identity + contacts + address -> 201, new Registry+
     // registries.name is derived from the card (RegistryProfileWriter), same
     // precedent as POST /api/registries.
     expect($registry->name)->toBe($card->fresh()->full_name);
+});
+
+// Ticket #427523: the attribution chosen on the request (Fonte, Commerciale,
+// Segnalatore) is the anagrafica's own too when the request creates it.
+it('AC-003: a new client Registry inherits source_id, commercial_id and reporter_id from the request (#427523)', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $commercial = Referent::factory()->create();
+    $reporter = Referent::factory()->create();
+    $sourceId = aSourceId();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/request-management', [
+        'client_identity' => ['type' => 'individual', 'first_name' => 'Mario', 'last_name' => 'Rossi'],
+        'client_contacts' => [['type' => 'phone', 'value' => '3331234567', 'is_primary' => true]],
+        'product_lines' => oneProductLine(),
+        'source_id' => $sourceId,
+        'commercial_id' => $commercial->id,
+        'reporter_id' => $reporter->id,
+    ])->assertCreated();
+
+    $registry = Quote::findOrFail($response->json('data.id'))->opportunity->registry;
+
+    expect($registry->source_id)->toBe($sourceId)
+        ->and($registry->commercial_id)->toBe($commercial->id)
+        ->and($registry->reporter_id)->toBe($reporter->id);
+});
+
+it('AC-002: an existing Registry keeps its own attribution when the request carries a different one (#427523)', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->withPersonalData()->create(['source_id' => null, 'commercial_id' => null, 'reporter_id' => null]);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
+        'commercial_id' => Referent::factory()->create()->id,
+        'reporter_id' => Referent::factory()->create()->id,
+    ])->assertCreated();
+
+    expect($registry->fresh()->only(['source_id', 'commercial_id', 'reporter_id']))
+        ->toBe(['source_id' => null, 'commercial_id' => null, 'reporter_id' => null]);
 });
 
 // User directive 2026-09-15: the new client must be reachable by phone, the

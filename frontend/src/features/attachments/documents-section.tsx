@@ -200,7 +200,14 @@ export function DocumentsSection({
         <>
           {documents.length >= MIN_DOCUMENTS_FOR_ARCHIVE ? (
             <div className="flex justify-end">
-              <Button type="button" variant="secondary" size="xs" onClick={downloadAll} disabled={isDownloadingAll}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="xs"
+                className="cursor-pointer"
+                onClick={downloadAll}
+                disabled={isDownloadingAll}
+              >
                 {isDownloadingAll ? (
                   <Loader2 className="animate-spin" aria-hidden="true" />
                 ) : (

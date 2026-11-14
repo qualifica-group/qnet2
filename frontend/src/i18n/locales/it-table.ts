@@ -46,7 +46,7 @@ export const table = {
   filtersError: 'Impossibile azzerare i filtri della tabella.',
   filtersSaveError: 'Impossibile salvare i filtri della tabella.',
   filterValuesTruncated:
-    'Questa colonna ha molti valori: l’elenco mostra solo i primi. Se non trovi quello che cerchi, usa il filtro per condizione (Filtri testo, numero o data) nello stesso menu.',
+    'Questa colonna ha molti valori: l’elenco mostra solo i primi. Scrivi nella casella Cerca per trovare gli altri.',
   textFilters: 'Filtri testo',
   numberFilters: 'Filtri numero',
   dateFilters: 'Filtri data',

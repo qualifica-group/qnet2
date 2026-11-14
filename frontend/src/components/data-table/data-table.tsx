@@ -6,6 +6,7 @@ import {
   type ColumnMovedEvent,
   type ColumnResizedEvent,
   type ColumnVisibleEvent,
+  type FilterOpenedEvent,
   type GetRowIdParams,
   type GridOptions,
   type GridState,
@@ -41,6 +42,7 @@ import {
   restorablePosition,
 } from '@/components/data-table/grid-position'
 import { createFilterTruncationNotice } from '@/components/data-table/filter-truncation-notice'
+import { hookSetFilterServerSearch } from '@/components/data-table/set-filter-server-search'
 import { buildRowGroupingGridOptions, resolveRowId } from '@/components/data-table/row-grouping-grid-options'
 import { buildTreeDataGridOptions } from '@/components/data-table/tree-data-grid-options'
 import { syncCacheBlockToPageSize } from '@/components/data-table/pagination-block-size'
@@ -144,6 +146,15 @@ export function DataTable({
     createFilterTruncationNotice(() =>
       toast.info(i18n.t('table.filterValuesTruncated'), { id: FILTER_TRUNCATED_TOAST_ID }),
     ),
+  )
+
+  // The notice gate, plus the server search of a truncated Set Filter list (task 427169).
+  const handleFilterOpened = useCallback(
+    (event: FilterOpenedEvent) => {
+      filterTruncationNotice.markOpened(event)
+      hookSetFilterServerSearch(event)
+    },
+    [filterTruncationNotice],
   )
 
   const colDefs = useMemo<ColDef[]>(
@@ -395,7 +406,7 @@ export function DataTable({
         onColumnMoved={handleColumnMoved}
         onColumnVisible={handleColumnVisible}
         onFilterChanged={onFilterChanged}
-        onFilterOpened={filterTruncationNotice.markOpened}
+        onFilterOpened={handleFilterOpened}
         onModelUpdated={handleModelUpdated}
         onPaginationChanged={syncCacheBlockToPageSize}
         onStateUpdated={positionStore ? handleStateUpdated : undefined}

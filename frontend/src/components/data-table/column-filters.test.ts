@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { waitFor } from '@testing-library/react'
-import type { SetFilterValuesFuncParams } from 'ag-grid-community'
+import type { IMultiFilterParams, SetFilterValuesFuncParams } from 'ag-grid-community'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildColumnFilter,
@@ -249,6 +249,23 @@ describe('buildColumnFilter', () => {
     expect(format({ value: 'SALE' })).toBe('Vendibile')
     expect(format({ value: 'COST' })).toBe('Utilizzabile come costo')
     expect(format({ value: null })).toBe('')
+  })
+
+  // Task 427789: the "Data inizio" checklist listed the raw `2026-01-15 00:00:00`.
+  it('lists a date column checklist in the user date pattern', () => {
+    const { filterParams } = buildColumnFilter(
+      'work-orders',
+      // The backend serves `type: 'date'`, absent from the frontend ColumnType union.
+      stubColumn({ id: 'start_date', type: 'date' as TableColumn['type'], filterType: 'date' }),
+      vi.fn(),
+      translate,
+    )
+
+    const setParams = (filterParams as IMultiFilterParams).filters?.[0]?.filterParams as {
+      valueFormatter: (p: { value: unknown }) => string
+    }
+    expect(setParams.valueFormatter({ value: '2026-01-15 00:00:00' })).toBe('15/01/2026')
+    expect(setParams.valueFormatter({ value: null })).toBe('')
   })
 
   it('does not attach a boolean valueFormatter to a non-boolean Set Filter column', () => {

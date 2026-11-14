@@ -5,8 +5,13 @@ import {
   withPresetSetFilterValues,
 } from '@/components/data-table/preset-set-filter-values'
 
-function stubApi(initialFilterModel?: Record<string, unknown>, refreshFilterValues = vi.fn()) {
+function stubApi(
+  initialFilterModel?: Record<string, unknown>,
+  refreshFilterValues = vi.fn(),
+  appliedFilterModel: Record<string, unknown> = {},
+) {
   const api = {
+    getFilterModel: () => appliedFilterModel,
     getGridOption: (key: string) =>
       key === 'initialState' && initialFilterModel ? { filter: { filterModel: initialFilterModel } } : undefined,
     getColumnFilterHandler: vi.fn(() => ({ refreshFilterValues })),
@@ -33,6 +38,17 @@ describe('withPresetSetFilterValues', () => {
     const { api } = stubApi({ document_year: { filterType: 'set', values: [2026] } })
 
     expect(withPresetSetFilterValues(api, 'document_year', [])).toEqual(['2026'])
+  })
+
+  // Task 427169: a value picked through the server search is not among the first values listed on reopen.
+  it('keeps the values applied right now, standalone or inside a Multi Filter', () => {
+    const { api } = stubApi(undefined, vi.fn(), {
+      registry: { filterType: 'set', values: ['Ferro Sud'] },
+      code: { filterType: 'multi', filterModels: [{ filterType: 'set', values: ['COM-20265'] }, null] },
+    })
+
+    expect(withPresetSetFilterValues(api, 'registry', ['Acme'])).toEqual(['Acme', 'Ferro Sud'])
+    expect(withPresetSetFilterValues(api, 'code', ['COM-10000'])).toEqual(['COM-10000', 'COM-20265'])
   })
 
   it('drops a column preset once the handle clears that column', () => {
