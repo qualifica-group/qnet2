@@ -12,6 +12,7 @@ import {
   type WorkOrderDetailTab,
 } from '@/features/work-orders/use-work-order-detail-tabs'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
+import { useWorkOrderActiveTab } from '@/features/work-orders/use-work-order-active-tab'
 
 /** Padding of the collaboration sections, which leave it to their host. */
 const PADDED_CONTENT_CLASS = 'p-4'
@@ -84,14 +85,14 @@ interface WorkOrderDetailTabsProps {
  * The work order's tab card, below the identity band, laid out like the
  * legacy "Gestione commessa" (user directive 2026-11-16): Info | Task |
  * Documenti | Amministrazione | Note (+ Chat, Email, Attivita'), then the
- * title "tab" set apart. Info opens by default. The active tab's header
+ * title "tab" set apart. Info opens by default; on the work order's page the
+ * open tab follows the URL like a page (`useWorkOrderActiveTab`). The active tab's header
  * actions (the Task board's) are portaled into the slot on the right of the
  * strip, so the strip stays the only header row of the card.
  */
 export function WorkOrderDetailTabs({ workOrder, info }: WorkOrderDetailTabsProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState(WORK_ORDER_INFO_TAB)
   const [actionsContainer, setActionsContainer] = useState<HTMLDivElement | null>(null)
   const tabs = useWorkOrderDetailTabs({
     workOrder,
@@ -102,6 +103,10 @@ export function WorkOrderDetailTabs({ workOrder, info }: WorkOrderDetailTabsProp
       void queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(workOrder.id) })
     },
   })
+  const { activeTab, setActiveTab } = useWorkOrderActiveTab(
+    workOrder.id,
+    tabs.map((tab) => tab.value),
+  )
 
   return (
     <RecordCard>

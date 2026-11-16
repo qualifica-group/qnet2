@@ -32,7 +32,7 @@ const FILTERS_SHEET_DEFAULT_WIDTH = 420
 
 const FIELD_LABEL_CLASS = 'text-xs font-medium'
 
-const STATUS_OPTIONS: readonly TaskBoardStatusFilter[] = ['open', 'completed', 'blocked', 'all']
+const STATUS_OPTIONS: readonly TaskBoardStatusFilter[] = ['all', 'open', 'completed', 'blocked']
 const DUE_OPTIONS: readonly TaskBoardDueFilter[] = ['all', 'today', 'overdue', 'this_week']
 const ASSIGNMENT_OPTIONS: readonly TaskBoardAssignmentFilter[] = ['all', 'assigned_to_me', 'requested_by_me']
 

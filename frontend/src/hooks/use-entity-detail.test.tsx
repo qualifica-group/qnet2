@@ -99,4 +99,59 @@ describe('useEntityDetail', () => {
     await waitFor(() => expect(result.current.data).toEqual(fresh))
     expect(result.current.isError).toBe(false)
   })
+
+  it('keeps a mounted card on a background refetch when skeletonOnRefetch is false', async () => {
+    const { client, wrapper } = makeWrapper()
+    const key = ['work-orders', 'detail', 1] as const
+    let version = 0
+    const gate = deferred<Detail>()
+
+    const { result } = renderHook(
+      () =>
+        useEntityDetail<Detail>(
+          key,
+          () => {
+            version += 1
+            return version === 1 ? Promise.resolve({ id: 1, name: 'first' }) : gate.promise
+          },
+          true,
+          { skeletonOnRefetch: false },
+        ),
+      { wrapper },
+    )
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    // A save elsewhere invalidates the detail: it refetches in the background.
+    void client.invalidateQueries({ queryKey: key })
+    await waitFor(() => expect(client.isFetching({ queryKey: key })).toBe(1))
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.data).toEqual({ id: 1, name: 'first' })
+
+    gate.resolve({ id: 1, name: 'second' })
+    await waitFor(() => expect(result.current.data).toEqual({ id: 1, name: 'second' }))
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('still shows the skeleton on a background refetch by default', async () => {
+    const { client, wrapper } = makeWrapper()
+    const key = ['users', 'detail', 2] as const
+    let version = 0
+    const gate = deferred<Detail>()
+
+    const { result } = renderHook(
+      () =>
+        useEntityDetail<Detail>(key, () => {
+          version += 1
+          return version === 1 ? Promise.resolve({ id: 2, name: 'first' }) : gate.promise
+        }),
+      { wrapper },
+    )
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    void client.invalidateQueries({ queryKey: key })
+    await waitFor(() => expect(result.current.isLoading).toBe(true))
+    gate.resolve({ id: 2, name: 'second' })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+  })
 })

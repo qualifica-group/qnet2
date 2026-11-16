@@ -3,6 +3,30 @@ import type { HelpSection } from '../../../types'
 /** Task-tab sections of the work-orders guide, split out to stay under the file-size limit. */
 export const taskSections: HelpSection[] = [
     {
+      id: 'task-board-rows',
+      title: 'Tasks: rows and quick editing',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In the **List** view of the **Tasks** tab each task sits on **one row**, like in the Tasks table: above each phase's rows is the column header (Title, Status, Type, Priority, Start date, End date, Requester, Assignees, Completion, Hours worked / estimated). On narrow screens the row wraps and each value has its own label; when the columns do not fit, the phase scrolls sideways. The **Completion** column shows the percentage of the task's status; next to the phase name only the hours remain, no longer the completion. The tiles at the top no longer show completion either: Total tasks, Overdue, Due today, Estimated and Actual remain. The work order's progress stays in the detail header.",
+        },
+        {
+          type: 'list',
+          items: [
+            "**Check**: the circle before the title completes the task and opens the usual **Complete** pop-up. A completed task has a filled green circle; if you may reopen it, a click on the green circle **reopens** it.",
+            "**Edit in place**: click a cell (Status, Type, Priority, dates, Requester, Assignees, Hours) to change its value. Picks from a list are saved at once; dates, estimated time (in minutes) and assignees are saved with **Enter** or by clicking outside. **Esc** cancels.",
+            "The **title** opens the task; to rename it use the **pencil** that appears next to it on hover.",
+            "Picking a positively closed status opens the Complete pop-up; moving out of a closed status reopens the task, as in the Tasks table.",
+            "Rows are **dragged** by the handle on the left to change order or phase; a click on the rest of the row opens the task.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "A cell you may not edit (because of your role permissions or because the task is write-locked) does not open. The short task description shows when you hover the title. On opening, the filters show **every** task, closed ones included, with any end date; filters left that way do not appear among the **Applied filters**, which show only the ones narrowing the list.",
+        },
+      ],
+    },
+    {
       id: 'task-board-selection',
       title: 'Tasks: multiple selection',
       blocks: [

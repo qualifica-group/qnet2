@@ -12,8 +12,10 @@ const TODAY = '2026-09-22'
 const CURRENT_USER_ID = 21
 
 describe('DEFAULT_TASK_BOARD_FILTERS', () => {
-  it('defaults status to "open" and every other axis unrestricted (D-6)', () => {
-    expect(DEFAULT_TASK_BOARD_FILTERS.status).toBe('open')
+  // REQUIREMENT CHANGED (user directive 2026-11-16): the board opens on every task, closed ones and any end date included.
+  it('defaults every axis to unrestricted, status and end date included', () => {
+    expect(DEFAULT_TASK_BOARD_FILTERS.status).toBe('all')
+    expect(DEFAULT_TASK_BOARD_FILTERS.due).toBe('all')
     expect(DEFAULT_TASK_BOARD_FILTERS.search).toBe('')
     expect(DEFAULT_TASK_BOARD_FILTERS.taskTypeIds).toEqual([])
   })
@@ -144,9 +146,18 @@ describe('filterBoardTasks (AC-025)', () => {
     const open = boardTask({ id: 1, task_status: { id: 1, name: 'Aperto', color: 'blue', icon: null, system_key: 'open', group: 'open', completion_percentage: 0 } })
     const closed = boardTask({ id: 2, task_status: { id: 2, name: 'Chiuso', color: 'green', icon: null, system_key: 'closed_positive', group: 'closed_positive', completion_percentage: 100 } })
 
-    const result = filterBoardTasks([open, closed], DEFAULT_TASK_BOARD_FILTERS, CURRENT_USER_ID, TODAY)
+    const result = filterBoardTasks([open, closed], { ...DEFAULT_TASK_BOARD_FILTERS, status: 'open' }, CURRENT_USER_ID, TODAY)
 
     expect(result.map((task) => task.id)).toEqual([1])
+  })
+
+  it('shows closed tasks too with the default filters (user directive 2026-11-16)', () => {
+    const open = boardTask({ id: 1 })
+    const closed = boardTask({ id: 2, task_status: { id: 2, name: 'Chiuso', color: 'green', icon: null, system_key: 'closed_positive', group: 'closed_positive', completion_percentage: 100 } })
+
+    const result = filterBoardTasks([open, closed], DEFAULT_TASK_BOARD_FILTERS, CURRENT_USER_ID, TODAY)
+
+    expect(result.map((task) => task.id)).toEqual([1, 2])
   })
 
   it('status filter "completed" keeps only closed_positive/closed_negative', () => {

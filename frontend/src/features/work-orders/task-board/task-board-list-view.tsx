@@ -11,10 +11,17 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { GripVertical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { TaskBoardRowContent } from '@/features/work-orders/task-board/task-board-row-content'
+import {
+  TASK_BOARD_LEADING_CLASS,
+  TASK_BOARD_ROW_CLASS,
+  TaskBoardCellEditContext,
+} from '@/features/work-orders/task-board/task-board-row-columns'
 import { TaskBoardStageGroup } from '@/features/work-orders/task-board/task-board-stage-group'
 import type { BoardStageGroup } from '@/features/work-orders/task-board/task-board-filters'
 import { NO_STAGE_ACCENT, stageAccentAt, type StageAccent } from '@/features/work-orders/task-board/task-board-stage-accent'
 import { stageDraggableId, toDndGroups, useTaskBoardDnd } from '@/features/work-orders/task-board/use-task-board-dnd'
+import { useTaskBoardCellEdit } from '@/features/work-orders/task-board/use-task-board-cell-edit'
+import { cn } from '@/lib/utils'
 
 
 interface TaskBoardListViewProps {
@@ -51,6 +58,8 @@ export function TaskBoardListView({
   const allDndGroups = toDndGroups(allGroups)
   const tasksById = new Map(allGroups.flatMap((group) => group.roots.map((node) => [node.task.id, node.task] as const)))
 
+  const { cellEdit, dialogSlot } = useTaskBoardCellEdit(workOrderId)
+
   const { sensors, activeTask, activeStage, overGroupKey, handleDragStart, handleDragOver, handleDragEnd } =
     useTaskBoardDnd({
       workOrderId,
@@ -69,6 +78,7 @@ export function TaskBoardListView({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
+      <TaskBoardCellEditContext.Provider value={cellEdit}>
       <SortableContext items={stages.map((stage) => stageDraggableId(stage.id))} strategy={verticalListSortingStrategy}>
         <ul className="flex flex-col gap-6">
           {groups.map((group, index) =>
@@ -107,6 +117,7 @@ export function TaskBoardListView({
           )}
         </ul>
       </SortableContext>
+      </TaskBoardCellEditContext.Provider>
 
       <DragOverlay>
         {activeStage ? (
@@ -116,11 +127,15 @@ export function TaskBoardListView({
           </div>
         ) : null}
         {activeTask ? (
-          <div className="max-w-3xl rounded-lg bg-card px-3 py-2.5 shadow-lg ring-1 ring-border">
+          // Outside the cell-edit provider: the dragged copy is read-only.
+          <div className={cn(TASK_BOARD_ROW_CLASS, 'rounded-lg bg-card shadow-lg ring-1 ring-border')}>
+            <span className={TASK_BOARD_LEADING_CLASS} aria-hidden="true" />
             <TaskBoardRowContent task={activeTask} today={today} onOpen={() => undefined} />
           </div>
         ) : null}
       </DragOverlay>
+
+      {dialogSlot}
     </DndContext>
   )
 }

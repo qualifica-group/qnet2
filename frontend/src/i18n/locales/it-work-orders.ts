@@ -196,7 +196,6 @@ export const workOrders = {
     },
     kpi: {
       total: 'Task totali',
-      completion: 'Completamento',
       overdue: 'Scaduti',
       dueToday: 'In scadenza oggi',
       estimated: 'Stimato',
@@ -300,11 +299,12 @@ export const workOrders = {
       dueToday: 'Oggi',
       overdue: 'Scaduto',
       columns: {
+        title: 'Titolo',
+        start: 'Data inizio',
         due: 'Data fine',
         priority: 'Priorità',
         requester: 'Richiedente',
         assignees: 'Assegnatari',
-        watchers: 'Osservatori',
         status: 'Stato',
         type: 'Tipo',
         completion: 'Completamento',
@@ -314,6 +314,9 @@ export const workOrders = {
       nobody: 'Nessuno',
       noEstimate: 'senza stima',
       overEstimate: 'Oltre la stima',
+    },
+    cell: {
+      edit: 'Modifica {{field}}',
     },
     empty: {
       noTasks: 'Nessun task ancora per questa commessa.',
