@@ -79,6 +79,9 @@ function page(items: ForSelectItem[]): PaginatedResponse<ForSelectItem> {
 }
 
 const fetchForSelectMock = vi.fn()
+// The editor reads `quotes.updateLockedLines` (spec 0360 D-8): no ability granted here.
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => false }) }))
+
 vi.mock('@/features/for-select/api', () => ({
   FOR_SELECT_PAGE_SIZE: 25,
   fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args),

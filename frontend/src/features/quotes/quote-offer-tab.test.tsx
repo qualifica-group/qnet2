@@ -26,6 +26,9 @@ import type { ForSelectParams } from '@/features/for-select/types'
 
 const { categoryTree } = vi.hoisted(() => ({ categoryTree: { nodes: [] as unknown[] } }))
 
+// The editor reads `quotes.updateLockedLines` (spec 0360 D-8): no ability granted here.
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => false }) }))
+
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
   useProductCategoryTree: () => ({ data: categoryTree.nodes, isPending: false, isError: false }),
 }))

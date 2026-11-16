@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Righe offerta assegnate a commessa: sblocco per super-admin/permesso (spec 0360 D-8) — VERDE, COMMITTATO (2026-11-16)
+
+- Richiesta utente (offerta 290 = QUO-0293, tutte le 26 righe assegnate a COM-2597/2598/6429/6430/6431): "il super
+  admin o chi ha il permesso può modificare anche se c'è questo blocco". Decisione: il permesso
+  `quotes.updateLockedLines` (super-admin via `Gate::before`) toglie il blocco di MODIFICA D-4 su tutti i canali
+  (Offerte, Contratto, Gestione Richieste); la RIMOZIONE resta bloccata (cancellerebbe in cascata
+  `work_order_line_payments` e scollegherebbe fatture/costi/maturazioni). Riga aggiornata sul posto, stesso id: resta
+  collegata alla commessa. Spec 0360 D-8, AC-017/AC-018.
+- Backend: `QuoteLineWorkOrderLock::OVERRIDE_ABILITY` (attore da `Auth::user()`, senza utente blocco pieno),
+  `QuotePolicy::abilities()` + ability; migrazione `2026_12_11_100000_add_quotes_update_locked_lines_permission`
+  (crea la riga solo se esiste `quotes.update`, nessun ruolo la riceve). Deploy: basta `migrate`.
+- Frontend: `use-quote-line-editor.ts` legge `useAbilities().can('quotes.updateLockedLines')` -> `assignedRowsEditable`,
+  `isChangeLocked(row)`; `QuoteLineCard` prop `assignedRowEditable` (campi attivi, cestino sempre disabilitato,
+  "Assegnata a COM-..." resta). Etichetta permesso `updateLockedLines` IT/EN. Sei file di test che montano l'editor
+  ora mockano `use-abilities` (solo setup, nessuna asserzione cambiata).
+- Guide in-app `quotes` e `contracts` IT/EN aggiornate (stessi id). Manuale Claude Docs aggiornato (Offerte "Righe
+  assegnate a una commessa" e Contratti, rev 811); il PDF derivato va rigenerato.
+- Test: Pest `QuoteLineWorkOrderLockTest` 11/11 (+3 AC-017), Quotes 503/506, Contracts 228/228, Roles 52/52,
+  Authorization 171/172, RequestManagement 1007/1008: rossi tutti preesistenti (`QuoteDocumentPdfTest` senza
+  LibreOffice, `PermissionCatalogueEndpointTest` AC-004 714 vs 697, `managers is not sortable`). Vitest
+  quotes/contracts/request-management/enrollee 1285/1285, help/roles/line-editor 276/276; ESLint, Pint,
+  `tsc -b --force` puliti. DB locale: migrazione eseguita.
+
 ## Richieste Proforma: colonna Partita IVA cliente (2026-11-16) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: in elenco Richieste Proforma serve la partita IVA per controllare la richiesta. Nuova colonna `customer_vat_number` ("Partita IVA cliente"), visibile, subito dopo `customer`, in sola lettura, non ordinabile ne' filtrabile (come le altre colonne di relazione del modulo). Valore: `quote.opportunity.registry.personalData.vat_number`, eager-loaded in `ProformaRequestsTableDefinition::baseQuery()`. Solo griglia: `ProformaRequestResource` e il dettaglio sono invariati.

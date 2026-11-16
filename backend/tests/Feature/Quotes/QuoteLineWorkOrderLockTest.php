@@ -1,12 +1,16 @@
 <?php
 
 use App\Models\QuoteLine;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
 
 /**
  * Spec 0360, D-4: a REVENUE row assigned to a work order can be neither
  * removed nor changed (Offerte channel; the writer is shared by every channel).
+ * D-8: `quotes.updateLockedLines` (and the super-admin) lifts the change lock only.
  */
 uses(RefreshDatabase::class);
 
@@ -82,4 +86,45 @@ it('AC-012: the quote detail lists work_orders per row, empty when free', functi
 
     expect($byId[$locked->id]['work_orders'])->toBe([['id' => $workOrder->id, 'code' => 'COM-0042']])
         ->and($byId[$free->id]['work_orders'])->toBe([]);
+});
+
+it('AC-017: with quotes.updateLockedLines an assigned row can be changed and stays linked', function () {
+    ['quote' => $quote, 'lines' => [$locked, $free]] = inForceContract();
+    assignLineToWorkOrder($locked, 'COM-0042');
+    $product = revenueLineProduct();
+    Permission::findOrCreate('quotes.updateLockedLines');
+    Sanctum::actingAs(quoteTableUserWith(['view', 'update', 'updateLockedLines']));
+
+    $this->patchJson("/api/quotes/{$quote->id}", ['offer_lines' => [inForceRow($free), inForceRow($locked, ['quantity' => 3, 'product_id' => $product->id])]])
+        ->assertOk();
+
+    $line = QuoteLine::find($locked->id);
+    expect((float) $line->quantity)->toBe(3.0)
+        ->and($line->product_id)->toBe($product->id);
+    $this->assertDatabaseHas('quote_line_work_order', ['quote_line_id' => $locked->id]);
+});
+
+it('AC-017: the super-admin can change an assigned row', function () {
+    ['quote' => $quote, 'lines' => [$locked]] = inForceContract(lineCount: 1);
+    assignLineToWorkOrder($locked);
+    Role::query()->firstOrCreate(['name' => 'super-admin']);
+    Sanctum::actingAs(tap(User::factory()->create())->assignRole('super-admin'));
+
+    $this->patchJson("/api/quotes/{$quote->id}", ['offer_lines' => [inForceRow($locked, ['unit_price' => 150.5])]])
+        ->assertOk();
+
+    expect((float) QuoteLine::find($locked->id)->unit_price)->toBe(150.5);
+});
+
+it('AC-017: with quotes.updateLockedLines removing an assigned row is still 422', function () {
+    ['quote' => $quote, 'lines' => [$locked, $free]] = inForceContract();
+    assignLineToWorkOrder($locked, 'COM-0042');
+    Permission::findOrCreate('quotes.updateLockedLines');
+    Sanctum::actingAs(quoteTableUserWith(['view', 'update', 'updateLockedLines']));
+
+    $this->patchJson("/api/quotes/{$quote->id}", ['offer_lines' => [inForceRow($free)]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('offer_lines');
+
+    $this->assertDatabaseHas('quote_line_work_order', ['quote_line_id' => $locked->id]);
 });

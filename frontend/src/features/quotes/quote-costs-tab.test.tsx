@@ -15,6 +15,9 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 const costRowsSpy = vi.fn<(rows: QuoteLineFormValues[]) => void>()
 
 const fetchForSelectMock = vi.fn()
+// The editor reads `quotes.updateLockedLines` (spec 0360 D-8): no ability granted here.
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => false }) }))
+
 vi.mock('@/features/for-select/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
     '@/features/for-select/api',
