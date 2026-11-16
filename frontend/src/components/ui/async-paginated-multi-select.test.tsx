@@ -226,6 +226,22 @@ describe('AsyncPaginatedMultiSelect', () => {
     expect(onChange).toHaveBeenCalledWith([])
   })
 
+  it('wraps a long option label and its selected badge instead of ellipsizing them', () => {
+    const longLabel =
+      'PRD-0890 — Attività di consulenza per il sistema di gestione in conformità allo standard EN ISO 39001:2012 _ 1° Anno'
+    useForSelectMock.mockReturnValue(
+      queryState({ data: pagesOf([{ id: 1, label: longLabel }]) }),
+    )
+    renderSelect({ value: [1] })
+    open()
+
+    const [badgeText, optionText] = screen.getAllByText(longLabel)
+    expect(badgeText).not.toHaveClass('truncate')
+    expect(badgeText).toHaveClass('whitespace-normal')
+    expect(optionText).not.toHaveClass('truncate')
+    expect(optionText).toHaveClass('break-words')
+  })
+
   it('renders selected ids as removable badges using hydrated labels', () => {
     const { onChange } = renderSelect({
       value: [42],

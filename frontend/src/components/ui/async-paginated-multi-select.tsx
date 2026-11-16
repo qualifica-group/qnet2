@@ -289,7 +289,11 @@ export function AsyncPaginatedMultiSelect({
             {value.map((id) => {
               const item = labelById.get(id)
               return (
-                <Badge key={id} variant="secondary" className="gap-1 pl-1">
+                <Badge
+                  key={id}
+                  variant="secondary"
+                  className="h-auto max-w-full gap-1 pl-1 text-left break-words whitespace-normal"
+                >
                   {showAvatar ? (
                     <UserAvatar
                       // Never the `#id` placeholder: an unhydrated badge would
@@ -434,7 +438,10 @@ export function AsyncPaginatedMultiSelect({
                         />
                       ) : null}
                       <span className="flex min-w-0 flex-col">
-                        <span className="truncate">{item.label}</span>
+                        {/* Wraps, never ellipsizes: labels that differ only at
+                            the end (e.g. "... 1° Anno" / "... 2° Anno") must stay
+                            readable to be picked. */}
+                        <span className="break-words">{item.label}</span>
                         {item.subtitle ? (
                           <span className="truncate text-xs text-muted-foreground">
                             {item.subtitle}

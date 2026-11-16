@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Righe dell'offerta leggibili per intero nel selettore della commessa — VERDE MIRATO, COMMITTATO (2026-11-16)
+
+- Segnalazione: creando le commesse ISO 39001 dal contratto QUO-0015 i servizi "... _ 1° Anno / 2° Anno / 3° Anno"
+  (label da 134 caratteri, `PRD-0890..0895`) venivano troncati con i puntini oltre il tetto di 48rem del popup, e
+  senza tooltip: impossibile distinguere l'anno.
+- Fix nel componente condiviso `components/ui/async-paginated-multi-select.tsx`: l'etichetta dell'opzione va a capo
+  (`break-words` al posto di `truncate`; il sottotitolo resta troncato) e anche il badge selezionato nel trigger va a
+  capo (`max-w-full whitespace-normal break-words`) invece di essere tagliato da `overflow-hidden`. Commento di
+  `select-popup-width.ts` allineato. Vale per tutti i multi-select asincroni (etichette corte invariate).
+- Test: nuovo caso in `async-paginated-multi-select.test.tsx`; eseguiti work-orders, leads, users, roles, for-select,
+  components (181 file / 1454 test verdi), `tsc -b --force` pulito. Manuale: nessun impatto.
+
 ## Referente 1/2 del legacy sulle anagrafiche + principale non piu' il commerciale (spec 0398, task 427822) — VERDE MIRATO, COMMITTATO E PUSHATO (qnet-2 e legacy, legacy anche su master) (2026-11-14)
 
 - Segnalazione: commesse 737 (SWINGUYS, nessun referente) e 8398 (DEMOLTECH, principale = commerciale). Cause: nel legacy
