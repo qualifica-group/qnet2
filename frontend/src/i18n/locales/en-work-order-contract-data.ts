@@ -6,7 +6,7 @@
  */
 
 export const workOrderContractData = {
-  title: 'Contract data',
+  title: 'Work order contract data',
   loading: 'Loading contract data',
   loadError: 'Unable to load the work order contract data.',
   empty: 'The work order has no product lines.',
@@ -33,11 +33,11 @@ export const workOrderContractData = {
     consultancy: 'Consulting',
   },
   totals: {
-    netAmount: 'Net amount',
     revenue: 'Total revenue',
     commissions: 'Commissions',
     netOfCommissions: 'Net of commissions',
-    byTypology: 'Revenue by typology (net amount → revenue)',
+    typology: 'Total {{name}}',
+    typologyRevenue: 'revenue {{revenue}}',
   },
   hint: {
     netAmountRule: 'Quantity × unit price.',
@@ -58,7 +58,6 @@ export const workOrderContractData = {
     revenueOnly: 'Revenue {{revenue}}',
     receivedMissing: 'Commission missing → revenue {{revenue}}',
     totals: {
-      netAmount: 'Sum of the net amounts of all the lines.',
       revenue: 'Sum of the lines\' effective revenue: the received commission, otherwise the net amount.',
       commissions: 'Sum of the commissions of all the lines.',
       netOfCommissions: 'Net amount minus commissions.',

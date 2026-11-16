@@ -46,8 +46,9 @@ interface ContractDataTableProps {
 }
 
 /**
- * The lines. From `md` a one-row-per-line table that scrolls inside its own
- * container when narrow; below `md` the same markup lays each line out as a
+ * The lines. In a container of at least `@6xl` (72rem) a one-row-per-line
+ * table; narrower (the left column of the work order's Info tab, a phone),
+ * the same markup lays each line out as a
  * compact card (one DOM, so tooltips and the actions button stay single).
  */
 export function ContractDataTable({ workOrderId, data, canManage, showRegistry }: ContractDataTableProps) {
@@ -70,9 +71,9 @@ export function ContractDataTable({ workOrderId, data, canManage, showRegistry }
   const clearSelection = () => setSelectedIds(new Set())
 
   return (
-    <div className="relative overflow-x-auto rounded-lg border bg-surface">
+    <div className="@container relative overflow-x-auto rounded-lg border bg-surface">
       {canManage ? (
-        <div className="flex items-center gap-2 border-b px-2 py-1.5 md:hidden">
+        <div className="flex items-center gap-2 border-b px-2 py-1.5 @6xl:hidden">
           <Checkbox
             checked={selectAllState(selectedLineIds.length, data.lines.length)}
             onCheckedChange={toggleAll}
@@ -84,9 +85,9 @@ export function ContractDataTable({ workOrderId, data, canManage, showRegistry }
       {selectedLineIds.length > 0 ? (
         <ContractDataBulkBar workOrderId={workOrderId} selectedLineIds={selectedLineIds} onClear={clearSelection} />
       ) : null}
-      <table className="block w-full text-xs md:table md:min-w-[1100px]">
+      <table className="block w-full text-xs @6xl:table @6xl:min-w-[1100px]">
         <caption className="sr-only">{t('workOrders.contractData.tableCaption')}</caption>
-        <thead className="hidden bg-muted/40 text-[11px] text-muted-foreground md:table-header-group">
+        <thead className="hidden bg-muted/40 text-[11px] text-muted-foreground @6xl:table-header-group">
           <tr>
             {canManage ? (
               <th scope="col" className={`${HEAD_CELL} w-px`}>
@@ -117,7 +118,7 @@ export function ContractDataTable({ workOrderId, data, canManage, showRegistry }
             ) : null}
           </tr>
         </thead>
-        <tbody className="block md:table-row-group">
+        <tbody className="block @6xl:table-row-group">
           {data.lines.map((line) => (
             <ContractDataRow
               key={line.quote_line_id}

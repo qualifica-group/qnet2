@@ -6,6 +6,7 @@ use App\Authorization\LegacyIdVisibility;
 use App\Enums\FormMode;
 use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
+use App\Http\Resources\Concerns\SummarizesWorkOrderClientInfo;
 use App\Http\Resources\Concerns\SummarizesWorkOrderContacts;
 use App\Models\Quote;
 use App\Models\QuoteLine;
@@ -49,6 +50,7 @@ class WorkOrderResource extends JsonResource
 {
     use SummarizesProductLines;
     use SummarizesRewards;
+    use SummarizesWorkOrderClientInfo;
     use SummarizesWorkOrderContacts;
 
     /**
@@ -94,6 +96,8 @@ class WorkOrderResource extends JsonResource
             'quote' => $this->summarizeQuote(),
             'contract' => $this->summarizeContract(),
             'registry' => $this->summarizeRegistry($request),
+            // Spec 0400: the legacy "Info cliente" block, null without a single-offer client.
+            'client_info' => $this->summarizeClientInfo($request),
             'company' => $this->summarizeCompany(),
             'company_site' => $this->summarizeCompanySite(),
             'operational_site' => OperationalSiteLabel::summarize($this->quote?->operationalSite),

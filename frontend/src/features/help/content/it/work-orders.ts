@@ -17,7 +17,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Nella scheda **Info**, a sinistra ci sono i campi della commessa nello stesso ordine delle schede di Opportunità, Offerte e Contratti: **Dati commessa** (con il link al Contratto), **Contesto**, **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore), **Buoni**, **Team** (Supervisori e Partecipanti della commessa) e **Documento e pagamento**. A destra, in alto, i **Riferimenti società** (Società, Sede, Sede operativa) e sotto i campi flessibili (**Informazioni aggiuntive**), se le righe prodotto ne prevedono. In fondo, a tutta larghezza sotto le due colonne, ci sono i **Dati contrattuali**. Contesto, Anagrafica e contatti, Buoni, Riferimenti società e Documento e pagamento vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono. Se l'offerta non indica un referente, come Referente compare il **referente principale dell'anagrafica**, con la nota che lo indica. Sotto l'Anagrafica e sotto il Referente trovi i loro **recapiti principali** (telefono, email): toccando il telefono parte la chiamata. I recapiti si vedono solo se hai il permesso di vedere anagrafiche e referenti.",
+          text: "La scheda **Info** è divisa in due colonne come nel vecchio QNet. A sinistra: **Info cliente** (**Azienda** con il link all'anagrafica, **Sede legale** con P.IVA e codice fiscale, **Tag**, **Email/PEC**, **Telefono**, **Referente 1** cioè il referente principale dell'anagrafica, **Referente 2** cioè il referente collegato successivo, **Commerciale**, **Settore** e **Commenti** cioè le note generali dell'anagrafica; email, PEC e telefoni si toccano per scrivere o chiamare), poi **Dati contrattuali commessa** (Titolo, Data inizio, il link al Contratto, le **Linee prodotto**, poi le righe prodotto con il loro stato di pagamento e i totali Totale Consulenza, Totale Ente e Totale Ricavi), **Stato lavorazione** e **Team** (Supervisori e Partecipanti). A destra: **Riferimenti Società e Funzioni Aziendali** (Società, Sede, Sede operativa), **Data richiamo**, **Descrizione commessa** (Commessa n., Tipo commessa e la descrizione) e sotto i campi flessibili (**Informazioni aggiuntive**), se le righe prodotto ne prevedono. Info cliente viene dall'anagrafica e si modifica lì; Riferimenti e Linee prodotto vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono. Indirizzo, P.IVA, codice fiscale e recapiti si vedono solo se hai il permesso di vedere anagrafiche e referenti. Nella commessa non ci sono le sezioni Contesto (Fonte), Buoni, Documento e pagamento né il Modello di Task.",
         },
         {
           type: 'paragraph',
@@ -274,11 +274,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'contract-data',
-      title: 'Dati contrattuali',
+      title: 'Dati contrattuali commessa',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nella scheda **Info** del dettaglio Commessa, la sezione **Dati contrattuali** mostra per ogni riga prodotto gli importi già salvati sull\'offerta e **spiega come si arriva al ricavo**. Senza il permesso di vedere i dati contrattuali vedi solo l\'elenco dei prodotti. Senza il permesso di vedere i **costi** della commessa la sezione non compare affatto, nemmeno l\'elenco dei prodotti, e non puoi modificare i pagamenti. Il nome del prodotto è un **link** al prodotto. Ogni riga prodotto sta su **una sola riga** (codice, nome e tipologia affiancati); su schermi stretti ogni riga diventa una scheda compatta.',
+          text: 'Nella scheda **Info** del dettaglio Commessa, in fondo alla colonna di sinistra, la sezione **Dati contrattuali commessa** mostra per ogni riga prodotto gli importi già salvati sull\'offerta e **spiega come si arriva al ricavo**. Senza il permesso di vedere i dati contrattuali vedi solo l\'elenco dei prodotti. Senza il permesso di vedere i **costi** della commessa la sezione non compare affatto, nemmeno l\'elenco dei prodotti, e non puoi modificare i pagamenti. Il nome del prodotto è un **link** al prodotto. Ogni riga prodotto sta su **una sola riga** (codice, nome e tipologia affiancati); su schermi stretti ogni riga diventa una scheda compatta.',
         },
         {
           type: 'table',
@@ -296,7 +296,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il **come si calcola** ogni importo sta nel tooltip: passa il mouse, naviga con la tastiera (Tab) o tocca l\'importo sottolineato a tratti per vedere la formula, ad esempio "2 × 500,00 = 1.000,00" per l\'Imponibile, "10% di 2.000,00 = 200,00" per la Commissione Fornitore (con tipo, base = margine della riga e importo), "1.000,00 − 250,00 = 750,00" per il Netto commissioni e il perché del Ricavo effettivo (commissione ricevuta, oppure imponibile). In alto una riga di indicatori: Imponibile, Totale Ricavi e, se visibili, Commissioni e Netto commissioni, ciascuno col suo tooltip; sotto, **Ricavo per tipologia** con imponibile → ricavo di ogni tipologia (quelle a 0,00 sono attenuate). Se non vedi le commissioni, le relative colonne e indicatori non compaiono.'
+          text: 'Il **come si calcola** ogni importo sta nel tooltip: passa il mouse, naviga con la tastiera (Tab) o tocca l\'importo sottolineato a tratti per vedere la formula, ad esempio "2 × 500,00 = 1.000,00" per l\'Imponibile, "10% di 2.000,00 = 200,00" per la Commissione Fornitore (con tipo, base = margine della riga e importo), "1.000,00 − 250,00 = 750,00" per il Netto commissioni e il perché del Ricavo effettivo (commissione ricevuta, oppure imponibile). Sotto le righe ci sono i totali, come nel vecchio QNet: **Totale Consulenza**, **Totale Ente** (uno per tipologia: l\'imponibile, con accanto il ricavo quando è diverso; quelli a 0,00 sono attenuati), poi, se visibili, Commissioni e Netto commissioni, infine **Totale Ricavi**, ciascuno col suo tooltip. Se non vedi le commissioni, le relative colonne e totali non compaiono.'
         },
         {
           type: 'warning',

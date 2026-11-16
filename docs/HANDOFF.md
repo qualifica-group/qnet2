@@ -29,6 +29,49 @@
   (mancano le descrizioni di attachments/archive e merge referenti/anagrafiche), AgentSalesReport (helper non
   caricato in parallelo), ManagementControl access, LibreOffice assente, AiAssistant, altri singoli.
 
+## Commessa: sezione "Info cliente" come nel vecchio QNet (spec 0400) — VERDE MIRATO, COMMITTATO (2026-11-16)
+
+- Richiesta utente: nella scheda Info la sezione Info cliente del legacy (azienda, sede legale, tag, email/pec, telefono,
+  referente 1 e 2, commerciale, settore, commenti). Spec `docs/specs/0400-work-order-client-info.xml`.
+- BE: `WorkOrderResource` chiave `client_info` (concern `Http/Resources/Concerns/SummarizesWorkOrderClientInfo.php`),
+  eager loading aggiunto in `WorkOrderService::DETAIL_RELATIONS` (indirizzi con geo, referenti + contatti, commercial,
+  sectors, `customFieldValueRow`). Sede legale = indirizzo `legal_seat`, poi principale, poi primo. Tag = custom field
+  `tags` delle anagrafiche (nomi, 1 query). Referente 1 = principale, Referente 2 = primo altro collegato (lo slot 2 legacy
+  non e' salvato). Commenti = `registries.general_notes`. Dati personali solo con `can('view')` su anagrafica/referente.
+- FE: `work-order-client-info-section.tsx` (`WorkOrderClientInfoSection`), prima sezione della colonna sinistra; sostituisce
+  nella commessa `ProjectedContactsSection` (il Segnalatore dell'offerta non e' piu' sulla commessa). Tipo
+  `WorkOrderClientInfo` in `types.ts`, i18n `workOrders.detail.clientInfo.*`.
+- Dati contrattuali (stesso giro, spec 0400 D-6): `WorkOrderContractDataPanel` in fondo alla colonna sinistra (full width solo
+  senza colonna destra), titolo "Dati contrattuali commessa"; `WorkOrderContractDataSection` = righe poi totali;
+  `ContractDataTotals` riscritto come `RecordFieldList` (Totale {tipologia}, Commissioni, Netto commissioni, Totale Ricavi);
+  `TotalsHintKind` senza `netAmount`; chiavi i18n `totals.netAmount`, `totals.byTypology`, `hint.totals.netAmount` tolte,
+  aggiunte `totals.typology`/`typologyRevenue`. `contract-data-table.tsx`/`-row.tsx`: `md:` -> `@6xl:` con `@container` sul
+  wrapper di scroll (in mezza colonna le righe sono schede).
+- Buoni tolti dalla commessa e Team spostato (direttiva utente 2026-11-16): colonna sinistra = Info cliente, Dati commessa,
+  Contesto, Documento e pagamento, Dati contrattuali commessa, Team. `team` non e' piu' nello skeleton
+  (`work-order-detail-sections.tsx`); chiave i18n `workOrders.detail.sections.rewards` e `rewards` dal tipo FE tolti. Il
+  backend manda ancora `rewards` (API, possibili client esterni): da togliere solo se confermato inutile.
+- Disposizione finale scheda Info (direttive utente 2026-11-16, spec 0400 D-7). Sinistra: Info cliente, Dati commessa
+  (`WorkOrderIdentitySection variant="detail"`: Titolo, Data inizio, motivo chiusura, link Contratto), Dati contrattuali
+  commessa (Linee prodotto in cima, poi righe e totali; sezione presente anche senza `view_costs` se c'e' l'offerta singola),
+  Stato lavorazione (`WorkOrderWorkflowStatusSection`), Team. Destra: "Riferimenti Società e Funzioni Aziendali", Data
+  richiamo + Descrizione commessa (`work-order-record-description.tsx`: righe condivise col form di creazione), Informazioni
+  aggiuntive. Tolti: Contesto/Fonte, Buoni, Documento e pagamento, Modello di Task. Sempre due colonne
+  (`RecordSkeletonSections` non piu' usato dalla commessa). Tipo FE senza `referent/commercial/reporter/layout/payment_method`.
+- Fix overflow Stato lavorazione: `WorkflowStatusBadge` (kit Badge `shrink-0`/`nowrap`) con `max-w-full min-w-0` nel valore
+  della commessa; il badge condiviso ha ora `title={name}` sul testo troncato. Test in `work-order-workflow-status-field.test.tsx`.
+- "Dati commessa" unito a "Dati contrattuali commessa" (direttiva utente 2026-11-16): `WorkOrderContractDataPanel` riceve come
+  `children` Titolo, Data inizio, link Contratto e motivo chiusura forzata, poi Linee prodotto, righe e totali; la sezione c'e'
+  sempre. Righe dei campi in `work-order-record-rows.tsx` (Title/Code/Type/StartDate/CallbackDate/Description/
+  ForceCloseReason), condivise col form di creazione (`WorkOrderIdentitySection`, ora solo create, senza `variant`).
+  Chiave i18n `workOrders.detail.sections.data` tolta.
+- APERTO: i Commenti legacy (`companies.note`, 245 aziende) non sono migrati (general_notes pieno su 2 anagrafiche): va
+  corretto il `RegistryMigrationController` legacy + import/realign qnet-2 (backend.md §9), da fare a parte.
+- Test: Pest `WorkOrderClientInfoTest` (5) + cartella WorkOrders 538 verdi; Vitest `work-order-client-info-section.test.tsx`
+  (5) + work-orders/help/i18n/referents/quotes/contracts 1554 verdi (layout e detail test aggiornati, REQUIREMENT CHANGED);
+  Pint, ESLint, `tsc -b --force` puliti. Payload verificato su commessa reale 2492. NON provato nel browser.
+- Manuale: guida in-app `work-orders` IT/EN (paragrafo della scheda Info) e Manuale Claude Docs (paragrafo "Commessa.").
+
 ## Dettaglio commessa a schede come nel vecchio QNet — VERDE MIRATO, COMMITTATO (2026-11-16)
 
 - Richiesta utente: nel dettaglio Commessa le schede del legacy (`manageorder.blade.php`: Info | Task | Documenti | EUR |

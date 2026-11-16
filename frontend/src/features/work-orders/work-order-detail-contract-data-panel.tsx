@@ -1,8 +1,11 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BookUser, FileText } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
-import { RecordSection } from '@/components/detail/record-panel'
+import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
+import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
+import type { ProductLine } from '@/features/product-lines/types'
 import { WorkOrderContractDataSection } from '@/features/work-order-contract-data/work-order-contract-data-section'
 import type { WorkOrderDetailWithPermissions, WorkOrderQuoteLine } from '@/features/work-orders/types'
 
@@ -47,25 +50,43 @@ function WorkOrderLinesList({ lines, showRegistry }: { lines: WorkOrderQuoteLine
   )
 }
 
+/** Stable empty default: a missing `product_lines` key reads the same as `[]`. */
+const EMPTY_PRODUCT_LINES: ProductLine[] = []
+
+interface WorkOrderContractDataPanelProps {
+  workOrder: WorkOrderDetailWithPermissions
+  /** The work order's own data rows (Titolo, Data inizio, Contratto...) opening the section. */
+  children?: ReactNode
+}
+
 /**
- * "Contract data" section of the record card, full width. With
- * `view_contract_data` it is the contract data table (KPIs, revenue per
- * typology, lines with their calculation hints and payment actions); without
- * it, the plain list of the product lines. Without `view_costs` there is no
- * section at all, not even the products (spec 0380). The lines themselves are
- * not editable on a work order: they are chosen when it is created.
+ * "Dati contrattuali commessa", the Info tab's main left section (user
+ * directives 2026-11-16, "Dati commessa" merged in): the work order's own data
+ * rows first, then the opportunity's "Linee prodotto" (not money: shown
+ * whenever the work order has a single offer), then, with `view_costs`, the
+ * contract data: with `view_contract_data` the lines with their calculation
+ * hints and payment status/actions, then the totals per typology and the
+ * total revenue; without it, the plain list of the product lines. Without
+ * `view_costs` no contract data at all, not even the products (spec 0380).
+ * The lines themselves are not editable on a work order: they are chosen when
+ * it is created.
  */
-export function WorkOrderContractDataPanel({ workOrder, className }: { workOrder: WorkOrderDetailWithPermissions; className?: string }) {
+export function WorkOrderContractDataPanel({ workOrder, children }: WorkOrderContractDataPanelProps) {
   const { t } = useTranslation()
   const { actions } = workOrder.permissions
-
-  if (!actions.view_costs) {
-    return null
-  }
+  const hasProductLines = !workOrder.is_multi_quote
 
   return (
-    <RecordSection title={t('workOrders.contractData.title')} icon={<FileText />} full className={className}>
-      {actions.view_contract_data ? (
+    <RecordSection title={t('workOrders.contractData.title')} icon={<FileText />} full>
+      <RecordFieldList>
+        {children}
+        {hasProductLines ? (
+          <RecordField label={t('quotes.detail.productLines')}>
+            <ProductLinesReadOnlyList lines={workOrder.product_lines ?? EMPTY_PRODUCT_LINES} />
+          </RecordField>
+        ) : null}
+      </RecordFieldList>
+      {!actions.view_costs ? null : actions.view_contract_data ? (
         <WorkOrderContractDataSection
           workOrderId={workOrder.id}
           canManage={actions.manage_payments === true}

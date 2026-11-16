@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render as rtlRender, screen } from '@testing-library/react'
+import { render as rtlRender, screen, within } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -73,14 +73,20 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
     contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale', expiry_date: '2027-03-31' },
     registry: { id: 1, name: 'Acme S.p.A.' },
-    referent: { id: 15, name: 'Mario Bianchi', referent_type: { id: 3, name: 'Amministratore' } },
-    commercial: { id: 30, name: 'Luca Verdi' },
-    reporter: { id: 40, name: 'Giulia Neri' },
+    client_info: {
+      legal_address: 'Via Roma 1 - 20100 Milano',
+      vat_number: '01234567890',
+      tax_code: null,
+      tags: ['VIP'],
+      emails: [],
+      phones: [],
+      referents: [{ id: 15, name: 'Mario Bianchi', referent_type: { id: 3, name: 'Amministratore' } }],
+      commercial: { id: 30, name: 'Luca Verdi' },
+      sectors: ['EA 28 — Costruzioni'],
+      comments: null,
+    },
     source: { id: 4, name: 'Fiera' },
     product_lines: [],
-    rewards: [],
-    layout: { id: 9, name: 'Layout standard' },
-    payment_method: { id: 7, name: 'Bonifico 30 gg' },
     company: { id: 2, name: 'Acme Holding' },
     task_template: null,
     quote_lines: [],
@@ -128,40 +134,62 @@ function columnOf(title: RegExp): HTMLElement | null {
   return screen.getByRole('heading', { level: 3, name: title }).closest('section')?.parentElement ?? null
 }
 
+/** Section titles of one column, in order. */
+function columnTitles(column: HTMLElement | null): string[] {
+  return Array.from(column?.querySelectorAll(':scope > section h3') ?? []).map((heading) => heading.textContent?.toLowerCase() ?? '')
+}
+
 function sectionTitles(): string[] {
   return screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.toLowerCase() ?? '')
 }
 
 describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
-  it('renders the sections in the canonical order', () => {
-    render(<WorkOrderDetailView workOrder={workOrder()} />)
+  // REQUIREMENT CHANGED (user directives 2026-11-16): the Info tab follows the legacy "Info" layout.
+  it('renders the sections in the legacy order, left then right', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ applicable_attributes: [SITE_ACCESS_ATTRIBUTE] })} />)
 
-    const titles = sectionTitles()
-    const expected = [
-      'work order data',
-      'context',
-      'registry and contacts',
-      'rewards',
-      'team',
-      'document and payment',
-      'company references',
-    ]
-    const positions = expected.map((title) => titles.indexOf(title))
-
-    expect(positions.every((position) => position >= 0)).toBe(true)
-    expect(positions).toEqual([...positions].sort((a, b) => a - b))
+    const leftColumn = columnOf(/work order contract data/i)
+    const rightColumn = columnOf(/company references/i)
+    expect(rightColumn).not.toBe(leftColumn)
+    expect(rightColumn?.parentElement).toBe(leftColumn?.parentElement)
+    expect(columnTitles(leftColumn)).toEqual(['client info', 'work order contract data', 'work status', 'team'])
+    expect(columnTitles(rightColumn).slice(0, 4)).toEqual([
+      'company references and business functions',
+      'callback date',
+      'work order description',
+      'additional information',
+    ])
   })
 
-  it('projects registry, referent with its type, commercial, reporter, source, layout and payment method', () => {
+  // REQUIREMENT CHANGED spec 0400 / user directives 2026-11-16: "Info cliente" replaces "Registry and contacts";
+  // no Context (Source), Rewards, Document and payment or Task template on the commessa.
+  it('projects the client info and drops context, rewards, document and payment', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByText('Mario Bianchi')).toBeInTheDocument()
     expect(screen.getByText('Amministratore')).toBeInTheDocument()
     expect(screen.getByText('Luca Verdi')).toBeInTheDocument()
-    expect(screen.getByText('Giulia Neri')).toBeInTheDocument()
-    expect(screen.getByText('Fiera')).toBeInTheDocument()
-    expect(screen.getByText('Layout standard')).toBeInTheDocument()
-    expect(screen.getByText('Bonifico 30 gg')).toBeInTheDocument()
+    expect(screen.queryByText('Fiera')).not.toBeInTheDocument()
+    for (const dropped of ['context', 'rewards', 'document and payment']) {
+      expect(sectionTitles()).not.toContain(dropped)
+    }
+  })
+
+  it('moves code, type, callback date and description to the work order description on the right', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ callback_date: '2026-04-10', description: 'Testo libero' })} />)
+
+    const description = screen.getByRole('heading', { level: 3, name: /work order description/i }).closest('section') as HTMLElement
+    expect(within(description).getByText('COM-0001')).toBeInTheDocument()
+    expect(within(description).getByText('Processing')).toBeInTheDocument()
+    expect(within(description).getByText('Testo libero')).toBeInTheDocument()
+    const callback = screen.getByRole('heading', { level: 3, name: /callback date/i }).closest('section') as HTMLElement
+    expect(within(callback).getByText('10/04/2026')).toBeInTheDocument()
+    // REQUIREMENT CHANGED (user directive 2026-11-16): "Dati commessa" merged into "Dati contrattuali commessa".
+    const data = screen.getByRole('heading', { level: 3, name: /work order contract data/i }).closest('section') as HTMLElement
+    expect(within(data).getByText('Installazione impianto')).toBeInTheDocument()
+    expect(within(data).getByRole('link', { name: /QUO-0004/ })).toBeInTheDocument()
+    expect(within(data).queryByText('COM-0001')).not.toBeInTheDocument()
+    expect(sectionTitles()).not.toContain('work order data')
   })
 
   it('links the Contratto from the data section, not from a section of its own', () => {
@@ -169,12 +197,6 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
 
     expect(screen.getByRole('link', { name: /QUO-0004/ })).toBeInTheDocument()
     expect(sectionTitles()).not.toContain('contract')
-  })
-
-  it('shows the empty rewards placeholder when the offer has none', () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ rewards: [] })} />)
-
-    expect(screen.getByText('No rewards')).toBeInTheDocument()
   })
 
   it('has no pencil on the projected rows', () => {
@@ -190,47 +212,25 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
           is_multi_quote: true,
           contract: null,
           quote: null,
-          referent: null,
-          commercial: null,
-          reporter: null,
           source: null,
-          layout: null,
-          payment_method: null,
           registry: null,
+          client_info: null,
           company: null,
         })}
       />,
     )
 
     const titles = sectionTitles()
-    for (const dropped of ['context', 'registry and contacts', 'rewards', 'company references', 'document and payment']) {
+    for (const dropped of ['context', 'client info', 'company references']) {
       expect(titles).not.toContain(dropped)
     }
     expect(titles).toContain('team')
-    expect(screen.queryByText('No rewards')).not.toBeInTheDocument()
-  })
-
-  it('stacks the work order fields on the left, company references then additional information on the right, the contract data under both (user directive 2026-11-16)', () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ applicable_attributes: [SITE_ACCESS_ATTRIBUTE] })} />)
-
-    const leftColumn = columnOf(/work order data/i)
-    expect(leftColumn).not.toBeNull()
-    for (const title of [/^context$/i, /^rewards$/i, /^team$/i, /document and payment/i]) {
-      expect(columnOf(title)).toBe(leftColumn)
-    }
-    const rightColumn = columnOf(/company references/i)
-    expect(rightColumn).not.toBe(leftColumn)
-    expect(rightColumn?.parentElement).toBe(leftColumn?.parentElement)
-    expect(columnOf(/additional information/i)).toBe(rightColumn)
-    const rightTitles = Array.from(rightColumn?.querySelectorAll('h3') ?? []).map((heading) => heading.textContent?.toLowerCase())
-    expect(rightTitles.indexOf('company references')).toBeLessThan(rightTitles.indexOf('additional information'))
-    expect(columnOf(/contract data/i)).toBe(leftColumn?.parentElement)
   })
 
   it('keeps the company references on the right even without additional information (user directive 2026-11-16)', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    expect(columnOf(/company references/i)).not.toBe(columnOf(/work order data/i))
+    expect(columnOf(/company references/i)).not.toBe(columnOf(/work order contract data/i))
   })
 
   it('shows the additional information as a fixed section, not collapsible (user directive 2026-11-05)', () => {

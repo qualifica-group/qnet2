@@ -10,7 +10,6 @@ import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ProductLine } from '@/features/product-lines/types'
 import type { ReferentRef } from '@/features/referents/types'
-import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { PrimaryContact } from '@/features/table/types'
 
 /** `App\Enums\WorkOrderType` (D-10): "Lavorazione" / "Progetto" live only in i18n. */
@@ -220,6 +219,12 @@ export interface WorkOrderDetail {
    */
   registry?: { id: number; name: string; primary_contacts?: PrimaryContact[] } | null
   /**
+   * Spec 0400: the legacy "Info cliente" block of that client, `null` without a
+   * single-offer client. Optional like `registry`. Address, fiscal ids and
+   * contacts are empty without `registries.view` / `referents.view`.
+   */
+  client_info?: WorkOrderClientInfo | null
+  /**
    * Societa' e sedi of the linked quote, the same live projection the Contract
    * detail shows (`ContractResource`). Optional like `registry`; a missing key
    * reads as `null`. The operational site has no name: `label` is its address.
@@ -232,14 +237,8 @@ export interface WorkOrderDetail {
    * `quote` (null / `[]` on a multi-offer work order). Optional like
    * `registry`: a missing key reads the same as null / `[]`.
    */
-  referent?: ReferentRef | null
-  commercial?: { id: number; name: string } | null
-  reporter?: { id: number; name: string } | null
   source?: { id: number; name: string } | null
   product_lines?: ProductLine[]
-  rewards?: RewardAssignmentRef[]
-  layout?: { id: number; name: string } | null
-  payment_method?: { id: number; name: string } | null
   quote_lines: WorkOrderQuoteLine[]
   /** Spec 0124 D-9: `null` when the commessa was not generated from a Modello di Task. */
   task_template: WorkOrderTaskTemplateRef | null
@@ -251,6 +250,23 @@ export interface WorkOrderDetail {
   attribute_layout: LayoutBlob | null
   created_at: string
   updated_at: string
+}
+
+/** Spec 0400: the client's "Info cliente" block on the commessa detail (`WorkOrderResource::client_info`). */
+export interface WorkOrderClientInfo {
+  legal_address: string | null
+  vat_number: string | null
+  tax_code: string | null
+  tags: string[]
+  /** Email then PEC, the primary first. */
+  emails: PrimaryContact[]
+  phones: PrimaryContact[]
+  /** Referente 1 (the anagrafica's principale) and Referente 2, at most two. */
+  referents: ReferentRef[]
+  commercial: ReferentRef | null
+  sectors: string[]
+  /** The anagrafica's general notes (legacy "Commenti"). */
+  comments: string | null
 }
 
 /**

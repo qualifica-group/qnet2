@@ -106,12 +106,22 @@ beforeEach(() => {
 })
 
 describe('WorkOrderDetailView — Stato lavorazione', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-16): "Stato lavorazione" is its own section, under the contract data.
   it('shows the current working status next to its advancement', () => {
     renderDetail(workOrder())
 
-    expect(screen.getByText(FIELD_LABEL())).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: FIELD_LABEL() })).toBeInTheDocument()
     expect(screen.getByText(OPEN_WORKFLOW_STATUS.name)).toBeInTheDocument()
     expect(screen.getByText(`${label('workflowStatuses.progressPercentage')}: 0%`)).toBeInTheDocument()
+  })
+
+  it('keeps a long status name inside the column, truncated with the full name on hover', () => {
+    renderDetail(workOrder())
+
+    const name = screen.getByText(OPEN_WORKFLOW_STATUS.name)
+    expect(name).toHaveClass('truncate')
+    expect(name).toHaveAttribute('title', OPEN_WORKFLOW_STATUS.name)
+    expect(name.closest('[data-slot="badge"]')).toHaveClass('max-w-full', 'min-w-0')
   })
 
   it('lists only the resolved set and PATCHes the chosen id alone', async () => {

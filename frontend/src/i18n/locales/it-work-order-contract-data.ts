@@ -6,7 +6,7 @@
  */
 
 export const workOrderContractData = {
-  title: 'Dati contrattuali',
+  title: 'Dati contrattuali commessa',
   loading: 'Caricamento dei dati contrattuali',
   loadError: 'Impossibile caricare i dati contrattuali della commessa.',
   empty: 'La commessa non ha righe prodotto.',
@@ -33,11 +33,11 @@ export const workOrderContractData = {
     consultancy: 'Consulenza',
   },
   totals: {
-    netAmount: 'Imponibile',
     revenue: 'Totale Ricavi',
     commissions: 'Commissioni',
     netOfCommissions: 'Netto commissioni',
-    byTypology: 'Ricavo per tipologia (imponibile → ricavo)',
+    typology: 'Totale {{name}}',
+    typologyRevenue: 'ricavo {{revenue}}',
   },
   hint: {
     netAmountRule: 'Quantità × prezzo unitario.',
@@ -58,7 +58,6 @@ export const workOrderContractData = {
     revenueOnly: 'Ricavo {{revenue}}',
     receivedMissing: 'Commissione mancante → ricavo {{revenue}}',
     totals: {
-      netAmount: 'Somma degli imponibili di tutte le righe.',
       revenue: 'Somma dei ricavi effettivi delle righe: commissione ricevuta, altrimenti imponibile.',
       commissions: 'Somma delle commissioni di tutte le righe.',
       netOfCommissions: 'Imponibile meno commissioni.',

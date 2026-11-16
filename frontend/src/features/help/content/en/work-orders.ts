@@ -17,7 +17,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the **Info** tab, the work order fields are on the left, in the same order as Opportunity, Quote and Contract records: **Work order data** (with the link to the Contract), **Context**, **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter), **Rewards**, **Team** (the work order's Supervisors and Participants) and **Document and payment**. On the right, at the top, the **Company references** (Company, Site, Operational site) and below them the flexible fields (**Additional information**), when the product lines bring any. At the bottom, full width under both columns, is the **Contract data**. Context, Registry and contacts, Rewards, Company references and Document and payment come from the quote, read only; a work order with lines from several quotes does not show them. When the quote names no referent, the Referent row shows the **registry's primary referent**, with a note saying so. Under the Registry and under the Referent you find their **primary contacts** (phone, email): tapping the phone starts the call. The contacts show only if you may view registries and referents.",
+          text: "The **Info** tab has two columns as in the old QNet. On the left: **Client info** (**Company** with the link to the registry, **Registered office** with VAT number and tax code, **Tags**, **Email/PEC**, **Phone**, **Referent 1** i.e. the registry's primary referent, **Referent 2** i.e. the next linked referent, **Commercial**, **Sector** and **Comments** i.e. the registry's general notes; tap an email, PEC or phone to write or call), then **Work order contract data** (Title, Start date, the link to the Contract, the **Product lines**, then the product lines with their payment status and the totals Total Consulenza, Total Ente and Total revenue), **Work status** and **Team** (Supervisors and Participants). On the right: **Company references and business functions** (Company, Site, Operational site), **Callback date**, **Work order description** (Work order no., Work order type and the description) and below them the flexible fields (**Additional information**), when the product lines bring any. Client info comes from the registry and is edited there; the references and Product lines come from the quote, read only; a work order with lines from several quotes does not show them. Address, VAT number, tax code and contacts show only if you may view registries and referents. The work order has no Context (Source), Rewards, Document and payment or Task template sections.",
         },
         {
           type: 'paragraph',
@@ -274,11 +274,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'contract-data',
-      title: 'Contract data',
+      title: 'Work order contract data',
       blocks: [
         {
           type: 'paragraph',
-          text: 'In the **Info** tab of the Work order detail, the **Contract data** section shows for each product line the amounts already saved on the offer and **explains how the revenue comes about**. Without the permission to view contract data you only see the list of products. Without the permission to view the work order **costs** the section does not appear at all, not even the list of products, and you cannot edit the payments. The product name is a **link** to the product. Each product line sits on **a single row** (code, name and typology side by side); on narrow screens each row becomes a compact card.',
+          text: 'In the **Info** tab of the Work order detail, at the bottom of the left column, the **Work order contract data** section shows for each product line the amounts already saved on the offer and **explains how the revenue comes about**. Without the permission to view contract data you only see the list of products. Without the permission to view the work order **costs** the section does not appear at all, not even the list of products, and you cannot edit the payments. The product name is a **link** to the product. Each product line sits on **a single row** (code, name and typology side by side); on narrow screens each row becomes a compact card.',
         },
         {
           type: 'table',
@@ -296,7 +296,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The **how it is calculated** of each amount is in its tooltip: hover, use the keyboard (Tab) or tap the dashed-underlined amount to see the formula, for example "2 × 500.00 = 1,000.00" for the Net amount, "10% of 2,000.00 = 200.00" for the Supplier commission (with type, base = line margin and amount), "1,000.00 − 250.00 = 750.00" for the Net of commissions and the reason of the Effective revenue (received commission, or net amount). At the top a row of indicators: Net amount, Total revenue and, if visible, Commissions and Net of commissions, each with its tooltip; below, **Revenue by typology** with the net amount → revenue of each typology (those at 0.00 are dimmed). If you cannot see commissions, the related columns and indicators are not shown.'
+          text: 'The **how it is calculated** of each amount is in its tooltip: hover, use the keyboard (Tab) or tap the dashed-underlined amount to see the formula, for example "2 × 500.00 = 1,000.00" for the Net amount, "10% of 2,000.00 = 200.00" for the Supplier commission (with type, base = line margin and amount), "1,000.00 − 250.00 = 750.00" for the Net of commissions and the reason of the Effective revenue (received commission, or net amount). Under the lines are the totals, as in the old QNet: **Total Consulenza**, **Total Ente** (one per typology: the net amount, with the revenue beside it when different; those at 0.00 are dimmed), then, if visible, Commissions and Net of commissions, and last **Total revenue**, each with its tooltip. If you cannot see commissions, the related columns and totals are not shown.'
         },
         {
           type: 'warning',

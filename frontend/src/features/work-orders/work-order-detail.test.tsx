@@ -154,15 +154,16 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     expect(screen.getByRole('link', { name: 'QUO-0004 — Fornitura annuale' })).toHaveAttribute('href', '/contracts/9')
   })
 
-  it('shows the task template name when the commessa was generated from one (spec 0124 D-9)', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-16): the detail no longer shows the Modello di Task row.
+  it('does not show the task template the commessa was generated from', () => {
     render(
       <WorkOrderDetailView
         workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })}
       />,
     )
 
-    expect(screen.getByText('Task template')).toBeInTheDocument()
-    expect(screen.getByText('Onboarding cliente')).toBeInTheDocument()
+    expect(screen.queryByText('Task template')).not.toBeInTheDocument()
+    expect(screen.queryByText('Onboarding cliente')).not.toBeInTheDocument()
   })
 
   it('lists the linked product lines ordered by sort_order', () => {
@@ -321,12 +322,11 @@ describe('WorkOrderDetailView — no edit action', () => {
 
 describe('WorkOrderDetailView — related records', () => {
   // User directive 2026-09-16: the field names the Contratto, not the offer underneath it.
-  it('links the contract, the task template and every line product to their records', () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })} />)
+  it('links the contract and every line product to their records', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
     expect(hrefOf('QUO-0004 — Fornitura annuale')).toBe('/contracts/9')
-    expect(hrefOf('Onboarding cliente')).toBe('/task-templates/3')
     expect(hrefOf('Consulenza')).toBe('/products/1')
     expect(hrefOf('Installazione')).toBe('/products/2')
   })
@@ -339,7 +339,7 @@ describe('WorkOrderDetailView — related records', () => {
       />,
     )
 
-    expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Work order contract data' })).toBeInTheDocument()
     expect(screen.getByText('contract-data-section manage:true')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Consulenza' })).not.toBeInTheDocument()
   })
@@ -347,25 +347,44 @@ describe('WorkOrderDetailView — related records', () => {
   it('keeps the plain product list, links included, without view_contract_data', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Work order contract data' })).toBeInTheDocument()
     expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Consulenza' })).toHaveAttribute('href', '/products/1')
   })
 
-  it('has no contract data section at all, not even the products, without view_costs (spec 0380)', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-16): the section also hosts the Linee prodotto, shown without view_costs.
+  it('has no contract data, not even the products, without view_costs (spec 0380)', () => {
     const base = workOrder()
     render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_contract_data: true } } })} />)
 
-    expect(screen.queryByRole('heading', { name: 'Contract data' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Work order contract data' })).toBeInTheDocument()
     expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Consulenza' })).not.toBeInTheDocument()
   })
 
   it("links the client registry reached through the commessa's offer", () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ registry: { id: 7, name: 'Acme S.p.A.' } })} />)
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          registry: { id: 7, name: 'Acme S.p.A.' },
+          client_info: {
+            legal_address: null,
+            vat_number: null,
+            tax_code: null,
+            tags: [],
+            emails: [],
+            phones: [],
+            referents: [],
+            commercial: null,
+            sectors: [],
+            comments: null,
+          },
+        })}
+      />,
+    )
 
-    // REQUIREMENT CHANGED spec 0331: the row sits in the shared "Registry and contacts" section.
-    expect(screen.getByText('Registry')).toBeInTheDocument()
+    // REQUIREMENT CHANGED spec 0400: the row is "Company" of the "Client info" section.
+    expect(screen.getByRole('heading', { level: 3, name: 'Client info' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Acme S.p.A.' })).toHaveAttribute('href', '/registries/7')
   })
 
@@ -389,11 +408,11 @@ describe('WorkOrderDetailView — related records', () => {
     expect(screen.queryByText(formatDate('2027-03-31'))).not.toBeInTheDocument()
   })
 
-  it('shows the empty placeholder when the commessa has no client registry', () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ registry: null })} />)
+  it('has no client info section when the commessa has no client registry', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ registry: null, client_info: null })} />)
 
-    // REQUIREMENT CHANGED spec 0331: the row sits in the shared "Registry and contacts" section.
-    expect(screen.getByText('Registry')).toBeInTheDocument()
+    // REQUIREMENT CHANGED spec 0400: no client, no "Client info" section.
+    expect(screen.queryByRole('heading', { level: 3, name: 'Client info' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Acme S.p.A.' })).not.toBeInTheDocument()
   })
 
@@ -408,7 +427,7 @@ describe('WorkOrderDetailView — related records', () => {
       />,
     )
 
-    expect(screen.getByText('Company references')).toBeInTheDocument()
+    expect(screen.getByText('Company references and business functions')).toBeInTheDocument()
     const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
     expect(hrefOf('Qualifica Group S.r.l.')).toBe('/companies/4')
     expect(hrefOf('Sede Napoli')).toBe('/company-sites/5')
@@ -589,7 +608,7 @@ describe('WorkOrderDetailView — multi-offer work order (spec 0267 AC-016)', ()
     expect(screen.getByText('Multi-offer')).toBeInTheDocument()
     // REQUIREMENT CHANGED spec 0331: label renamed with the shared section.
     expect(screen.queryByText('Registry')).not.toBeInTheDocument()
-    expect(screen.queryByText('Company references')).not.toBeInTheDocument()
+    expect(screen.queryByText('Company references and business functions')).not.toBeInTheDocument()
   })
 
   it('keeps the single-offer sections and no badge on a single-offer work order', () => {
