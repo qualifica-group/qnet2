@@ -11,6 +11,8 @@ interface WorkOrderContractDataSectionProps {
   canManage: boolean
   /** `is_multi_quote` of the work order (spec 0267): each line names its own client. */
   showRegistry: boolean
+  /** `invoices.view`: the number of a line's document opens it. Absent = plain text. */
+  canOpenDocuments?: boolean
 }
 
 /**
@@ -20,7 +22,12 @@ interface WorkOrderContractDataSectionProps {
  * directives 2026-11-16). The caller mounts it only with
  * `view_contract_data`, so the query never fires for an actor who may not see it.
  */
-export function WorkOrderContractDataSection({ workOrderId, canManage, showRegistry }: WorkOrderContractDataSectionProps) {
+export function WorkOrderContractDataSection({
+  workOrderId,
+  canManage,
+  showRegistry,
+  canOpenDocuments = false,
+}: WorkOrderContractDataSectionProps) {
   const { t } = useTranslation()
   const contractData = useWorkOrderContractData(workOrderId)
 
@@ -52,7 +59,13 @@ export function WorkOrderContractDataSection({ workOrderId, canManage, showRegis
         <p className="text-sm text-muted-foreground">{t('workOrders.contractData.empty')}</p>
       ) : (
         <>
-          <ContractDataLines workOrderId={workOrderId} lines={data.lines} canManage={canManage} showRegistry={showRegistry} />
+          <ContractDataLines
+            workOrderId={workOrderId}
+            lines={data.lines}
+            canManage={canManage}
+            showRegistry={showRegistry}
+            canOpenDocuments={canOpenDocuments}
+          />
           <ContractDataTotals totals={data.totals} />
         </>
       )}

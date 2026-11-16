@@ -309,7 +309,7 @@ const guide: HelpGuide = {
             ['Titolo', 'Codice e nome del prodotto con il badge della tipologia (ad esempio **Ente**); in una commessa con più offerte anche il cliente della riga.'],
             ['Importo', 'L\'imponibile della riga, come salvato sull\'offerta. Il tooltip mostra il calcolo, ad esempio "2 × 500,00 = 1.000,00".'],
             ['Stato Pagamento', 'Lo stato di pagamento del prodotto (badge del colore dello stato), oppure **Nessuno stato**. Con il permesso di gestire i pagamenti accanto c\'è la matita.'],
-            ['Documento', 'La proforma o fattura della commessa che fattura il prodotto, con numero e stato del pagamento (Pagata, Non scaduta, Scaduta, Gravemente scaduta); se ce ne sono più, la più recente. **Nessuna proforma emessa** se il prodotto non è ancora stato fatturato.'],
+            ['Documento', 'La proforma o fattura della commessa che fattura il prodotto, con numero e stato del pagamento (Pagata, Non scaduta, Scaduta, Gravemente scaduta); se ce ne sono più, la più recente. Se puoi vedere le fatture, il **numero** è un link che apre il documento in un pannello laterale. **Nessuna proforma emessa** se il prodotto non è ancora stato fatturato.'],
             ['Accordo sui Pagamenti', 'Il testo dell\'accordo sui pagamenti del prodotto.'],
             ['Insoluti', '**Sì** se il prodotto ha insoluti, altrimenti **No**.'],
           ],

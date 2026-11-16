@@ -4,6 +4,7 @@ import { BookUser, FileText } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import type { ProductLine } from '@/features/product-lines/types'
 import { PaymentStatusBadge } from '@/features/work-order-contract-data/contract-data-cells'
@@ -85,6 +86,7 @@ interface WorkOrderContractDataPanelProps {
  */
 export function WorkOrderContractDataPanel({ workOrder, children }: WorkOrderContractDataPanelProps) {
   const { t } = useTranslation()
+  const { can } = useAbilities()
   const { actions } = workOrder.permissions
   const hasProductLines = !workOrder.is_multi_quote
 
@@ -103,6 +105,7 @@ export function WorkOrderContractDataPanel({ workOrder, children }: WorkOrderCon
           workOrderId={workOrder.id}
           canManage={actions.manage_payments === true}
           showRegistry={workOrder.is_multi_quote}
+          canOpenDocuments={can('invoices.view')}
         />
       ) : (
         <WorkOrderLinesList lines={workOrder.quote_lines} showRegistry={workOrder.is_multi_quote} />

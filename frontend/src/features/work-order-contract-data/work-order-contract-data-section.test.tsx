@@ -23,6 +23,11 @@ vi.mock('@/components/detail/record-link', () => ({
   ),
 }))
 
+vi.mock('@/features/invoices/invoice-detail-sheet', () => ({
+  InvoiceDetailSheet: ({ invoiceId }: { invoiceId: number | null }) =>
+    invoiceId === null ? null : <div role="dialog" aria-label={`invoice-${invoiceId}`} />,
+}))
+
 const fetchMock = vi.fn<(id: number) => Promise<WorkOrderContractData>>()
 vi.mock('@/features/work-order-contract-data/api', () => ({
   fetchWorkOrderContractData: (id: number) => fetchMock(id),
@@ -105,6 +110,23 @@ describe('WorkOrderContractDataSection - line fields (spec 0403 AC-004)', () => 
       Document: 'No proforma issued',
       Unpaid: 'No',
     })
+  })
+
+  it('links the document number to the proforma with invoices.view (user request 2026-11-16)', async () => {
+    renderSection(false, false, true)
+    await findLines()
+
+    fireEvent.click(within(lineGroup('ENT-001')).getByRole('button', { name: '12/2026' }))
+
+    expect(screen.getByRole('dialog', { name: /^invoice-\d+$/ })).toBeInTheDocument()
+  })
+
+  it('keeps the document number as plain text without invoices.view', async () => {
+    renderSection(false)
+    await findLines()
+
+    expect(within(lineGroup('ENT-001')).queryByRole('button', { name: '12/2026' })).not.toBeInTheDocument()
+    expect(within(lineGroup('ENT-001')).getByText('12/2026')).toBeInTheDocument()
   })
 
   it('puts each product in its own tinted box', async () => {

@@ -309,7 +309,7 @@ const guide: HelpGuide = {
             ['Title', 'Product code and name with the typology badge (for example **Ente**); on a multi-offer work order also the client of the line.'],
             ['Amount', 'The net amount of the line, as saved on the quote. The tooltip shows the calculation, for example "2 × 500.00 = 1,000.00".'],
             ['Payment status', 'The payment status of the product (badge in the status colour), or **No status**. With the permission to manage payments a pencil sits beside it.'],
-            ['Document', 'The work order proforma or invoice billing the product, with its number and payment status (Paid, Not due, Overdue, Seriously overdue); when there are several, the newest. **No proforma issued** when the product has not been billed yet.'],
+            ['Document', 'The work order proforma or invoice billing the product, with its number and payment status (Paid, Not due, Overdue, Seriously overdue); when there are several, the newest. If you can see invoices, the **number** is a link that opens the document in a side panel. **No proforma issued** when the product has not been billed yet.'],
             ['Payment agreement', 'The text of the payment agreement of the product.'],
             ['Unpaid', '**Yes** when the product has unpaid amounts, otherwise **No**.'],
           ],

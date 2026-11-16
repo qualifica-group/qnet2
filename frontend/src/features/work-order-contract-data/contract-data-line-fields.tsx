@@ -7,10 +7,17 @@ import { InvoiceTypeBadge, PaymentStatusIndicator } from '@/features/invoices/in
 import { Amount, PaymentStatusBadge, ProductCell } from '@/features/work-order-contract-data/contract-data-cells'
 import { ContractDataLineBox } from '@/features/work-order-contract-data/contract-data-line-box'
 import { netAmountHint } from '@/features/work-order-contract-data/contract-data-formulas'
+import { DocumentNumber } from '@/features/work-order-invoices/invoice-table-parts'
 import type { ContractDataLine, ContractLineDocument } from '@/features/work-order-contract-data/types'
 
+interface LineDocumentProps {
+  document: ContractLineDocument | null
+  /** Opens the document (its number is a link); null without `invoices.view`. */
+  onOpen: ((invoiceId: number) => void) | null
+}
+
 /** "Documento": the proforma/invoice billing the line and how far it is paid, as the legacy `controlPayment()`. */
-function LineDocument({ document }: { document: ContractLineDocument | null }) {
+function LineDocument({ document, onOpen }: LineDocumentProps) {
   const { t } = useTranslation()
 
   if (document === null) {
@@ -20,7 +27,9 @@ function LineDocument({ document }: { document: ContractLineDocument | null }) {
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
       <InvoiceTypeBadge type={document.type} />
-      <span className="tabular-nums">{document.number_label}</span>
+      <span className="tabular-nums">
+        <DocumentNumber label={document.number_label} canOpen={onOpen !== null} onOpen={() => onOpen?.(document.id)} />
+      </span>
       <PaymentStatusIndicator status={document.payment_status} />
     </span>
   )
@@ -33,6 +42,8 @@ interface ContractDataLineFieldsProps {
   /** Multi-offer work order: the line names its own client. */
   showRegistry: boolean
   onEdit: () => void
+  /** Opens the line's proforma/invoice; null without `invoices.view`. */
+  onOpenDocument: ((invoiceId: number) => void) | null
 }
 
 /**
@@ -40,7 +51,7 @@ interface ContractDataLineFieldsProps {
  * (spec 0403): Titolo, Importo, Stato pagamento, Documento, Accordo sui
  * pagamenti, Insoluti. Mounted only for an actor who may see the contract data.
  */
-export function ContractDataLineFields({ line, canManage, showRegistry, onEdit }: ContractDataLineFieldsProps) {
+export function ContractDataLineFields({ line, canManage, showRegistry, onEdit, onOpenDocument }: ContractDataLineFieldsProps) {
   const { t } = useTranslation()
   const label = (key: string) => t(`workOrders.contractData.fields.${key}`)
   const { status, payment_agreement: agreement, has_unpaid: hasUnpaid } = line.payment
@@ -72,7 +83,7 @@ export function ContractDataLineFields({ line, canManage, showRegistry, onEdit }
           </span>
         </RecordField>
         <RecordField label={label('document')}>
-          <LineDocument document={line.document} />
+          <LineDocument document={line.document} onOpen={onOpenDocument} />
         </RecordField>
         <RecordField label={label('agreement')}>
           {agreement ? <span className="whitespace-pre-line">{agreement}</span> : <DetailEmpty />}

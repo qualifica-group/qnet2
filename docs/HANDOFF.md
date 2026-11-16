@@ -3,6 +3,11 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commessa, Dati contrattuali: il Documento del prodotto apre la proforma (2026-11-16) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+
+- Richiesta utente 2026-11-16: "metti un link alla proforma su documenti". Nel blocco di ogni prodotto il numero del Documento e' un link (`DocumentNumber` di `work-order-invoices/invoice-table-parts.tsx`, lo stesso della scheda Proforma attiva) che apre `InvoiceDetailSheet`; `onChanged` invalida `workOrderContractDataKeys.detail` (un incasso cambia lo stato del documento). Solo con `invoices.view`: calcolato in `work-order-detail-contract-data-panel.tsx` e passato come prop `canOpenDocuments` (`WorkOrderContractDataSection` -> `ContractDataLines` -> `ContractDataLineFields`), senza hook di auth nei componenti contract-data. Nessun cambio backend.
+- Test: `work-order-contract-data-section.test.tsx` (+2: link con permesso, testo senza). Vitest work-order-contract-data+work-orders 399/399, help 161/161, ESLint e `tsc -b --force` puliti. Guide IT/EN `work-orders` (riga Documento) e manuale Claude Docs rev 824 aggiornati.
+
 ## Commessa: eliminati 5 campi flessibili legacy (2026-11-16) — VERDE MIRATO, NON COMMITTATO, SEEDER GIA' LANCIATO SU qnet2 DALL'UTENTE
 
 - Richiesta utente 2026-11-16: eliminare i campi flessibili "Accordo sui Pagamenti" (`accordo_pagamento`), "Insoluti" (`insoluti`), "Comunicazioni Email Commerciale" (`comunicazione_email`), "Proforma emessa" (`status_contabile`), "Totale commessa manuale" (`totale_commessa_manuale`) + seeder one-shot. Su qnet2 solo contesto Commessa: valori su 298/298/260/16392/416 commesse, 140-170 assegnazioni, 110 layout ciascuno.
