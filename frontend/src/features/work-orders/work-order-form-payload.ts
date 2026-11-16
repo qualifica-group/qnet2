@@ -93,13 +93,6 @@ export function buildUpdatePayload(
   ) {
     payload.work_order_workflow_status_id = values.work_order_workflow_status_id
   }
-  // Spec 0402: `undefined` = never hydrated (create shape); `null` clears the status.
-  if (
-    values.work_order_payment_status_id !== undefined &&
-    values.work_order_payment_status_id !== (original.work_order_payment_status_id ?? null)
-  ) {
-    payload.work_order_payment_status_id = values.work_order_payment_status_id
-  }
   const originalLineIds = original.quote_lines.map((line) => line.id)
   if (!sameIdSet(values.quote_line_ids, originalLineIds)) {
     payload.quote_line_ids = values.quote_line_ids

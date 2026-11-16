@@ -17,11 +17,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The **Info** tab has two columns as in the old QNet. On the left: **Client info** (**Company** with the link to the registry, **Registered office** with VAT number and tax code, **Tags**, **Email/PEC**, **Phone**, **Referent 1** i.e. the registry's primary referent, **Referent 2** i.e. the next linked referent, **Commercial**, **Sector** and **Comments** i.e. the registry's general notes; tap an email, PEC or phone to write or call), then **Work order contract data** (Title, **Amount** i.e. the total net amount of the products, visible to whoever may see the contract data, **Payment status**, Start date, the link to the Contract, the **Product lines**, then the product lines with their payment status and the totals Total Consulenza, Total Ente and Total revenue), **Work status** and **Team** (Supervisors and Participants). On the right: **Company references and business functions** (Company, Site, Operational site, Business function: the business functions of the Product lines), **Callback date**, **Work order description** (Work order no., Work order type and the description) and below them the flexible fields (**Additional information**), when the product lines bring any. Client info comes from the registry and is edited there; the references and Product lines come from the quote, read only; a work order with lines from several quotes does not show them. Address, VAT number, tax code and contacts show only if you may view registries and referents. The work order has no Context (Source), Rewards, Document and payment or Task template sections.",
+          text: "The **Info** tab has two columns as in the old QNet. On the left: **Client info** (**Company** with the link to the registry, **Registered office** with VAT number and tax code, **Tags**, **Email/PEC**, **Phone**, **Referent 1** i.e. the registry's primary referent, **Referent 2** i.e. the next linked referent, **Commercial**, **Sector** and **Comments** i.e. the registry's general notes; tap an email, PEC or phone to write or call), then **Work order contract data** (**Amount** i.e. the total net amount of the products, visible to whoever may see the contract data, Start date, the link to the Contract, the **Product lines**, then every product of the work order with its payment fields and the totals Total Consulenza, Total Ente and Total revenue), **Work status** and **Team** (Supervisors and Participants). On the right: **Company references and business functions** (Company, Site, Operational site, Business function: the business functions of the Product lines), **Callback date**, **Work order description** (Work order no., Work order type and the description) and below them the flexible fields (**Additional information**), when the product lines bring any. Client info comes from the registry and is edited there; the references and Product lines come from the quote, read only; a work order with lines from several quotes does not show them. Address, VAT number, tax code and contacts show only if you may view registries and referents. The work order has no Context (Source), Rewards, Document and payment or Task template sections.",
         },
         {
           type: 'note',
-          text: "The work order's **Payment status** is picked from the **Work order payment statuses** (the same as the lines') and edited in the detail with the pencil, only if you may manage the work order's payments. It is no longer a flexible field (neither in the Additional information nor among the categories' flexible fields): the values it had were moved here. The payment status of each product line stays in the Contract data.",
+          text: "The **Payment status** is not a field of the work order but of **each product**: you find it in **Work order contract data**, under the product. It is no longer a flexible field (neither in the Additional information nor among the categories' flexible fields): the values it had were copied onto the work order's products that had no status.",
         },
         {
           type: 'paragraph',
@@ -282,48 +282,45 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In the **Info** tab of the Work order detail, at the bottom of the left column, the **Work order contract data** section shows for each product line the amounts already saved on the offer and **explains how the revenue comes about**. Without the permission to view contract data you only see the list of products. Without the permission to view the work order **costs** the section does not appear at all, not even the list of products, and you cannot edit the payments. The product name is a **link** to the product. Each product line sits on **a single row** (code, name and typology side by side); on narrow screens each row becomes a compact card.',
+          text: 'In the **Info** tab of the work order detail, in the left column, the **Work order contract data** section shows **every product of the work order** one below the other, with the same fields as the old QNet. The product name is a **link** to the product.',
         },
         {
           type: 'table',
-          headers: ['Column', 'Meaning'],
+          headers: ['Field', 'Meaning'],
           rows: [
-            ['Product', 'Code, name and typology of the product.'],
-            ['Qty and Unit price', 'Quantity and price of the line.'],
-            ['Net amount', 'Quantity times unit price, as saved on the offer.'],
-            ['Supplier commission', 'The supplier commission on the line, if you can see it.'],
-            ['Net of commissions', 'Net amount minus all the line\'s commissions, if you can see them.'],
-            ['Effective revenue', 'If the line\'s typology has the Supplier commission **received** it is the Supplier commission alone; if it is **paid** or not calculated it is the net amount.'],
-            ['Payment', 'Payment status (a badge in the status colour), an **Unpaid** badge when there are unpaid amounts; the payment agreement is in the cell tooltip.'],
-            ['Actions', 'The pencil button opens the **Line payment** popup (only if you may manage payments).'],
+            ['Title', 'Product code and name with the typology badge (for example **Ente**); on a multi-offer work order also the client of the line.'],
+            ['Amount', 'The net amount of the line, as saved on the quote. The tooltip shows the calculation, for example "2 × 500.00 = 1,000.00".'],
+            ['Payment status', 'The payment status of the product (badge in the status colour), or **No status**. With the permission to manage payments a pencil sits beside it.'],
+            ['Document', 'The work order proforma or invoice billing the product, with its number and payment status (Paid, Not due, Overdue, Seriously overdue); when there are several, the newest. **No proforma issued** when the product has not been billed yet.'],
+            ['Payment agreement', 'The text of the payment agreement of the product.'],
+            ['Unpaid', '**Yes** when the product has unpaid amounts, otherwise **No**.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'The **how it is calculated** of each amount is in its tooltip: hover, use the keyboard (Tab) or tap the dashed-underlined amount to see the formula, for example "2 × 500.00 = 1,000.00" for the Net amount, "10% of 2,000.00 = 200.00" for the Supplier commission (with type, base = line margin and amount), "1,000.00 − 250.00 = 750.00" for the Net of commissions and the reason of the Effective revenue (received commission, or net amount). Under the lines are the totals, as in the old QNet: **Total Consulenza**, **Total Ente** (one per typology: the net amount, with the revenue beside it when different; those at 0.00 are dimmed), then, if visible, Commissions and Net of commissions, and last **Total revenue**, each with its tooltip. If you cannot see commissions, the related columns and totals are not shown.'
+          text: 'Without the permission to see the work order **costs** or **contract data** you see only the **Title** and **Payment status** of each product, with no amounts, document, agreement or unpaid flag, and you cannot edit the payments. Under the products come the totals, as in the old QNet: **Total Consulenza**, **Total Ente** (one per typology: the net amount, with the revenue beside it when different; those at 0.00 are dimmed), then, when visible, Commissions and Net of commissions, finally **Total revenue**, each with its tooltip explaining the calculation.',
         },
         {
           type: 'warning',
-          text: 'A warning icon next to the product (with the text in its tooltip) appears when a line with a received Supplier commission has none (revenue 0.00) or when the commission was calculated on a previous base: save the offer again to update it.',
+          text: 'A warning icon beside the product (with the text in its tooltip) appears when a line with a received Supplier commission has no commission (revenue 0.00) or when the commission was calculated on a previous base: save the quote again to update it.',
         },
         {
           type: 'steps',
           items: [
-            'Press the pencil button at the end of the line (only available if you may manage payments): the **Line payment** popup opens.',
+            'Press the pencil beside the product **Payment status** (only with the permission to manage payments): the **Line payment** popup opens.',
             'Choose the **payment status**, write the **payment agreement** and say whether there are **unpaid** amounts.',
-            'Press **Save** to save the line and close the popup, or **Cancel** to discard the changes.',
+            'Press **Save** to save the product and close the popup, or **Cancel** to discard the changes.',
           ],
         },
         {
           type: 'paragraph',
-          text: '**Bulk action**: if you may manage payments every line has a selection checkbox, and the one in the header selects every line. Use it to mark several products at once, for example all as **Paid** or as **Unpaid**.',
+          text: '**All products at once**: with the permission to manage payments and more than one product, above the products there is the **Set payment on every line** button. It marks every product in one go, for example as **Paid** or as **Unpaid**.',
         },
         {
           type: 'steps',
           items: [
-            'Select the lines with their checkboxes (or all of them with the header checkbox): a bar with the number of selected lines appears above the table.',
-            'Press **Set payment**: in the popup choose the **payment status** (also **No status**) and/or the **unpaid** flag (Yes/No). A field left on **Keep unchanged** stays as it is on every line.',
-            'Press **Apply**: the values are saved on all the selected lines together (if one cannot be saved none changes) and the selection is cleared. **Clear selection** drops the selection without saving.',
+            'Press **Set payment on every line**: in the popup choose the **payment status** (also **No status**) and/or the **unpaid** flag (Yes/No). A field left on **Keep unchanged** stays as it is on every product.',
+            'Press **Apply**: the values are saved on all the products together (if one cannot be saved, none changes).',
           ],
         },
         {

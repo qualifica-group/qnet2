@@ -17,11 +17,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "La scheda **Info** è divisa in due colonne come nel vecchio QNet. A sinistra: **Info cliente** (**Azienda** con il link all'anagrafica, **Sede legale** con P.IVA e codice fiscale, **Tag**, **Email/PEC**, **Telefono**, **Referente 1** cioè il referente principale dell'anagrafica, **Referente 2** cioè il referente collegato successivo, **Commerciale**, **Settore** e **Commenti** cioè le note generali dell'anagrafica; email, PEC e telefoni si toccano per scrivere o chiamare), poi **Dati contrattuali commessa** (Titolo, **Importo** cioè l'imponibile totale dei prodotti, visibile a chi vede i dati contrattuali, **Stato pagamento**, Data inizio, il link al Contratto, le **Linee prodotto**, poi le righe prodotto con il loro stato di pagamento e i totali Totale Consulenza, Totale Ente e Totale Ricavi), **Stato lavorazione** e **Team** (Supervisori e Partecipanti). A destra: **Riferimenti Società e Funzioni Aziendali** (Società, Sede, Sede operativa, Funzione aziendale: le funzioni aziendali delle Linee prodotto), **Data richiamo**, **Descrizione commessa** (Commessa n., Tipo commessa e la descrizione) e sotto i campi flessibili (**Informazioni aggiuntive**), se le righe prodotto ne prevedono. Info cliente viene dall'anagrafica e si modifica lì; Riferimenti e Linee prodotto vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono. Indirizzo, P.IVA, codice fiscale e recapiti si vedono solo se hai il permesso di vedere anagrafiche e referenti. Nella commessa non ci sono le sezioni Contesto (Fonte), Buoni, Documento e pagamento né il Modello di Task.",
+          text: "La scheda **Info** è divisa in due colonne come nel vecchio QNet. A sinistra: **Info cliente** (**Azienda** con il link all'anagrafica, **Sede legale** con P.IVA e codice fiscale, **Tag**, **Email/PEC**, **Telefono**, **Referente 1** cioè il referente principale dell'anagrafica, **Referente 2** cioè il referente collegato successivo, **Commerciale**, **Settore** e **Commenti** cioè le note generali dell'anagrafica; email, PEC e telefoni si toccano per scrivere o chiamare), poi **Dati contrattuali commessa** (**Importo** cioè l'imponibile totale dei prodotti, visibile a chi vede i dati contrattuali, Data inizio, il link al Contratto, le **Linee prodotto**, poi ogni prodotto della commessa con i suoi campi di pagamento e i totali Totale Consulenza, Totale Ente e Totale Ricavi), **Stato lavorazione** e **Team** (Supervisori e Partecipanti). A destra: **Riferimenti Società e Funzioni Aziendali** (Società, Sede, Sede operativa, Funzione aziendale: le funzioni aziendali delle Linee prodotto), **Data richiamo**, **Descrizione commessa** (Commessa n., Tipo commessa e la descrizione) e sotto i campi flessibili (**Informazioni aggiuntive**), se le righe prodotto ne prevedono. Info cliente viene dall'anagrafica e si modifica lì; Riferimenti e Linee prodotto vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono. Indirizzo, P.IVA, codice fiscale e recapiti si vedono solo se hai il permesso di vedere anagrafiche e referenti. Nella commessa non ci sono le sezioni Contesto (Fonte), Buoni, Documento e pagamento né il Modello di Task.",
         },
         {
           type: 'note',
-          text: "Lo **Stato pagamento** della commessa si sceglie dall'elenco degli **Stati pagamento commessa** (gli stessi delle righe) e si modifica nel dettaglio con la matita, solo se puoi gestire i pagamenti della commessa. Non è più un campo flessibile (non c'è più fra le Informazioni aggiuntive né fra i campi flessibili delle categorie): i valori che c'erano sono stati spostati qui. Lo stato pagamento di ogni riga prodotto resta nei Dati contrattuali.",
+          text: "Lo **Stato pagamento** non è un campo della commessa ma di **ogni prodotto**: lo trovi in **Dati contrattuali commessa**, sotto il prodotto. Non è più un campo flessibile (non c'è più fra le Informazioni aggiuntive né fra i campi flessibili delle categorie): i valori che c'erano sono stati copiati sui prodotti della commessa che non avevano uno stato.",
         },
         {
           type: 'paragraph',
@@ -282,25 +282,23 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nella scheda **Info** del dettaglio Commessa, in fondo alla colonna di sinistra, la sezione **Dati contrattuali commessa** mostra per ogni riga prodotto gli importi già salvati sull\'offerta e **spiega come si arriva al ricavo**. Senza il permesso di vedere i dati contrattuali vedi solo l\'elenco dei prodotti. Senza il permesso di vedere i **costi** della commessa la sezione non compare affatto, nemmeno l\'elenco dei prodotti, e non puoi modificare i pagamenti. Il nome del prodotto è un **link** al prodotto. Ogni riga prodotto sta su **una sola riga** (codice, nome e tipologia affiancati); su schermi stretti ogni riga diventa una scheda compatta.',
+          text: 'Nella scheda **Info** del dettaglio Commessa, nella colonna di sinistra, la sezione **Dati contrattuali commessa** mostra **ogni prodotto della commessa** uno sotto l\'altro, con gli stessi campi del vecchio QNet. Il nome del prodotto è un **link** al prodotto.',
         },
         {
           type: 'table',
-          headers: ['Colonna', 'Significato'],
+          headers: ['Campo', 'Significato'],
           rows: [
-            ['Prodotto', 'Codice, nome e tipologia del prodotto.'],
-            ['Q.tà e Prezzo unitario', 'Quantità e prezzo della riga.'],
-            ['Imponibile', 'Quantità per prezzo unitario, come salvato sull\'offerta.'],
-            ['Commissione Fornitore', 'La commissione del fornitore sulla riga, se la vedi.'],
-            ['Netto commissioni', 'Imponibile meno tutte le commissioni della riga, se le vedi.'],
-            ['Ricavo effettivo', 'Se la tipologia della riga ha la commissione Fornitore **ricevuta** è la sola commissione Fornitore; se è **pagata** o non calcolata è l\'imponibile.'],
-            ['Pagamento', 'Stato di pagamento (badge del colore dello stato), badge **Insoluto** se ci sono insoluti; l\'accordo sui pagamenti si legge nel tooltip della cella.'],
-            ['Azioni', 'Il pulsante con la matita apre il popup **Pagamento riga** (solo con il permesso di gestire i pagamenti).'],
+            ['Titolo', 'Codice e nome del prodotto con il badge della tipologia (ad esempio **Ente**); in una commessa con più offerte anche il cliente della riga.'],
+            ['Importo', 'L\'imponibile della riga, come salvato sull\'offerta. Il tooltip mostra il calcolo, ad esempio "2 × 500,00 = 1.000,00".'],
+            ['Stato Pagamento', 'Lo stato di pagamento del prodotto (badge del colore dello stato), oppure **Nessuno stato**. Con il permesso di gestire i pagamenti accanto c\'è la matita.'],
+            ['Documento', 'La proforma o fattura della commessa che fattura il prodotto, con numero e stato del pagamento (Pagata, Non scaduta, Scaduta, Gravemente scaduta); se ce ne sono più, la più recente. **Nessuna proforma emessa** se il prodotto non è ancora stato fatturato.'],
+            ['Accordo sui Pagamenti', 'Il testo dell\'accordo sui pagamenti del prodotto.'],
+            ['Insoluti', '**Sì** se il prodotto ha insoluti, altrimenti **No**.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Il **come si calcola** ogni importo sta nel tooltip: passa il mouse, naviga con la tastiera (Tab) o tocca l\'importo sottolineato a tratti per vedere la formula, ad esempio "2 × 500,00 = 1.000,00" per l\'Imponibile, "10% di 2.000,00 = 200,00" per la Commissione Fornitore (con tipo, base = margine della riga e importo), "1.000,00 − 250,00 = 750,00" per il Netto commissioni e il perché del Ricavo effettivo (commissione ricevuta, oppure imponibile). Sotto le righe ci sono i totali, come nel vecchio QNet: **Totale Consulenza**, **Totale Ente** (uno per tipologia: l\'imponibile, con accanto il ricavo quando è diverso; quelli a 0,00 sono attenuati), poi, se visibili, Commissioni e Netto commissioni, infine **Totale Ricavi**, ciascuno col suo tooltip. Se non vedi le commissioni, le relative colonne e totali non compaiono.'
+          text: 'Chi non ha il permesso di vedere i **costi** o i **dati contrattuali** della commessa vede per ogni prodotto solo **Titolo** e **Stato Pagamento**, senza importi, documento, accordo o insoluti, e non può modificare i pagamenti. Sotto i prodotti ci sono i totali, come nel vecchio QNet: **Totale Consulenza**, **Totale Ente** (uno per tipologia: l\'imponibile, con accanto il ricavo quando è diverso; quelli a 0,00 sono attenuati), poi, se visibili, Commissioni e Netto commissioni, infine **Totale Ricavi**, ciascuno col suo tooltip che spiega il calcolo.',
         },
         {
           type: 'warning',
@@ -309,21 +307,20 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Premi il pulsante con la matita a fine riga (disponibile solo con il permesso di gestire i pagamenti): si apre il popup **Pagamento riga**.',
+            'Premi la matita accanto allo **Stato Pagamento** del prodotto (disponibile solo con il permesso di gestire i pagamenti): si apre il popup **Pagamento riga**.',
             'Scegli lo **stato di pagamento**, scrivi l\'**accordo sui pagamenti** e indica se ci sono **insoluti**.',
-            'Premi **Salva** per salvare la riga e chiudere il popup, oppure **Annulla** per scartare le modifiche.',
+            'Premi **Salva** per salvare il prodotto e chiudere il popup, oppure **Annulla** per scartare le modifiche.',
           ],
         },
         {
           type: 'paragraph',
-          text: '**Azione massiva**: con il permesso di gestire i pagamenti ogni riga ha una casella di selezione, e quella nell\'intestazione seleziona tutte le righe. Serve per segnare in un colpo solo più prodotti, ad esempio tutti come **Saldato** o come **Insoluto**.',
+          text: '**Tutti i prodotti insieme**: con il permesso di gestire i pagamenti e più di un prodotto, sopra i prodotti c\'è il pulsante **Imposta pagamento su tutte le righe**. Serve per segnare in un colpo solo tutti i prodotti, ad esempio come **Saldato** o come **Insoluto**.',
         },
         {
           type: 'steps',
           items: [
-            'Seleziona le righe con le caselle (o tutte con la casella dell\'intestazione): sopra la tabella compare la barra con il numero di righe selezionate.',
-            'Premi **Imposta pagamento**: nel popup scegli lo **stato di pagamento** (anche **Nessuno stato**) e/o gli **insoluti** (Sì/No). Un campo lasciato su **Non modificare** resta com\'è su ogni riga.',
-            'Premi **Applica**: i valori vengono salvati su tutte le righe selezionate insieme (se una non può essere salvata non cambia nessuna) e la selezione si azzera. **Deseleziona** toglie la selezione senza salvare.',
+            'Premi **Imposta pagamento su tutte le righe**: nel popup scegli lo **stato di pagamento** (anche **Nessuno stato**) e/o gli **insoluti** (Sì/No). Un campo lasciato su **Non modificare** resta com\'è su ogni prodotto.',
+            'Premi **Applica**: i valori vengono salvati su tutti i prodotti insieme (se uno non può essere salvato non cambia nessuno).',
           ],
         },
         {

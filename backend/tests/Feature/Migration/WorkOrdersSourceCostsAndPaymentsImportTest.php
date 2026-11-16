@@ -65,7 +65,6 @@ it('writes the legacy payment data on every line of the work order, without acti
         ->and($payments->pluck('work_order_payment_status_id')->unique()->all())->toBe([WorkOrderPaymentStatus::where('old_id', 3)->value('id')])
         ->and($payments->pluck('payment_agreement')->unique()->all())->toBe(['Pagamento in due rate'])
         ->and($payments->pluck('has_unpaid')->unique()->all())->toBe([true])
-        ->and($workOrder->work_order_payment_status_id)->toBe(WorkOrderPaymentStatus::where('old_id', 3)->value('id'))
         ->and(DB::table('activity_log')->count())->toBe($activityBefore);
 });
 

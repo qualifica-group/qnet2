@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { BookUser, MessageSquareText } from 'lucide-react'
+import { BookUser } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { RecordLink } from '@/components/detail/record-link'
 import { cn } from '@/lib/utils'
@@ -9,7 +9,7 @@ import { colorBadgeClass } from '@/features/custom-fields/color-badge-class'
 import { ContractDataWarnings } from '@/features/work-order-contract-data/contract-data-warnings'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import { PaymentStatusLabel } from '@/features/work-order-contract-data/payment-status-label'
-import type { ContractDataLine } from '@/features/work-order-contract-data/types'
+import type { ContractDataLine, ContractPaymentStatusRef } from '@/features/work-order-contract-data/types'
 
 interface ProductCellProps {
   line: ContractDataLine
@@ -74,36 +74,17 @@ export function Amount({ value, hint, className }: AmountProps) {
   )
 }
 
-/** Payment on one line: status badge (colour dot + name), "Unpaid" badge, the agreement in the hint. */
-export function PaymentCell({ line }: { line: ContractDataLine }) {
+/** The payment status of a line: its colour and name, or "No status". */
+export function PaymentStatusBadge({ status }: { status: ContractPaymentStatusRef | null }) {
   const { t } = useTranslation()
-  const { status, payment_agreement: agreement, has_unpaid: hasUnpaid } = line.payment
 
-  const badges = (
-    <span className="inline-flex items-center gap-1">
-      {status ? (
-        <Badge variant="outline" title={status.name} className={cn('px-1.5 py-0 text-[11px]', colorBadgeClass(status.color))}>
-          <PaymentStatusLabel status={status} />
-        </Badge>
-      ) : (
-        <Badge variant="outline" className="border-border bg-muted px-1.5 py-0 text-[11px] text-muted-foreground">
-          {t('workOrders.contractData.payment.noStatus')}
-        </Badge>
-      )}
-      {hasUnpaid ? (
-        <Badge variant="destructive" className="px-1.5 py-0 text-[11px]">
-          {t('workOrders.contractData.payment.unpaid')}
-        </Badge>
-      ) : null}
-    </span>
-  )
-
-  return agreement ? (
-    <CalculationHint title={t('workOrders.contractData.editor.agreement')} lines={[agreement]} className="no-underline">
-      {badges}
-      <MessageSquareText aria-hidden="true" className="ml-1 inline size-3 text-muted-foreground" />
-    </CalculationHint>
+  return status ? (
+    <Badge variant="outline" title={status.name} className={cn('max-w-full min-w-0 px-1.5 py-0 text-xs', colorBadgeClass(status.color))}>
+      <PaymentStatusLabel status={status} />
+    </Badge>
   ) : (
-    badges
+    <Badge variant="outline" className="border-border bg-muted px-1.5 py-0 text-xs text-muted-foreground">
+      {t('workOrders.contractData.payment.noStatus')}
+    </Badge>
   )
 }

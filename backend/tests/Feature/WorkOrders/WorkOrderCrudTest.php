@@ -3,6 +3,8 @@
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderLinePayment;
+use App\Models\WorkOrderPaymentStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
@@ -242,4 +244,21 @@ it('DELETE /api/work-orders/{id}: 204 + removes the row and its pivot rows (AC-0
 
     $this->assertDatabaseMissing('work_orders', ['id' => $workOrder->id]);
     $this->assertDatabaseMissing('quote_line_work_order', ['work_order_id' => $workOrder->id]);
+});
+
+it('detail: quote_lines carry the payment status of the line in this commessa, no commessa-level payment_status (spec 0403 AC-003)', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $paid = contractDataLine($workOrder, 'consultancy', 100);
+    $unset = contractDataLine($workOrder, 'consultancy', 100);
+    $status = WorkOrderPaymentStatus::factory()->create(['name' => 'Saldato']);
+    WorkOrderLinePayment::query()->create(['work_order_id' => $workOrder->id, 'quote_line_id' => $paid->id, 'work_order_payment_status_id' => $status->id]);
+    Sanctum::actingAs(workOrderUserWith(['view']));
+
+    $response = $this->getJson("/api/work-orders/{$workOrder->id}")->assertOk();
+    $lines = collect($response->json('data.quote_lines'))->keyBy('id');
+
+    expect($lines[$paid->id]['payment_status'])->toMatchArray(['id' => $status->id, 'name' => 'Saldato'])
+        ->and($lines[$unset->id]['payment_status'])->toBeNull()
+        ->and($response->json('data'))->not->toHaveKeys(['payment_status', 'work_order_payment_status_id'])
+        ->and($response->json('permissions.fields'))->not->toHaveKey('work_order_payment_status_id');
 });

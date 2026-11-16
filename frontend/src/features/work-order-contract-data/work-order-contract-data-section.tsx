@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ContractDataTable } from '@/features/work-order-contract-data/contract-data-table'
+import { ContractDataLines } from '@/features/work-order-contract-data/contract-data-lines'
 import { ContractDataTotals } from '@/features/work-order-contract-data/contract-data-totals'
 import { useWorkOrderContractData } from '@/features/work-order-contract-data/use-work-order-contract-data'
 
@@ -15,9 +15,9 @@ interface WorkOrderContractDataSectionProps {
 
 /**
  * Contract data of the work order (spec 0201), at the bottom of the left
- * column of the Info tab: the product lines with their payment status first,
- * then the totals (legacy "Dati contrattuali commessa", user directive
- * 2026-11-16). The caller mounts it only with
+ * column of the Info tab: each product as its own block of fields (spec
+ * 0403), then the totals (legacy "Dati contrattuali commessa", user
+ * directives 2026-11-16). The caller mounts it only with
  * `view_contract_data`, so the query never fires for an actor who may not see it.
  */
 export function WorkOrderContractDataSection({ workOrderId, canManage, showRegistry }: WorkOrderContractDataSectionProps) {
@@ -52,7 +52,7 @@ export function WorkOrderContractDataSection({ workOrderId, canManage, showRegis
         <p className="text-sm text-muted-foreground">{t('workOrders.contractData.empty')}</p>
       ) : (
         <>
-          <ContractDataTable workOrderId={workOrderId} data={data} canManage={canManage} showRegistry={showRegistry} />
+          <ContractDataLines workOrderId={workOrderId} lines={data.lines} canManage={canManage} showRegistry={showRegistry} />
           <ContractDataTotals totals={data.totals} />
         </>
       )}

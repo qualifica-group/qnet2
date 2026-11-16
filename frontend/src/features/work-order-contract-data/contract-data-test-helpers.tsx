@@ -25,14 +25,16 @@ export function unprocessable(errors: Record<string, string[]>): AxiosError {
   } as AxiosResponse)
 }
 
-/** The body row of a line, found through its code (the row header). */
-export function lineRow(code: string): HTMLElement {
-  return screen.getByRole('row', { name: new RegExp(code) })
+/** The block of fields of a line (spec 0403), found through its product code. */
+export function lineGroup(code: string): HTMLElement {
+  return screen.getByRole('group', { name: new RegExp(code) })
 }
 
-/** Hint triggers of a line in column order: net amount, commission, net of commissions, revenue (commissions visible). */
-export function hintButtons(row: HTMLElement): HTMLElement[] {
-  return within(row).getAllByRole('button')
+/** The fields of a block in order: label -> displayed text. */
+export function lineFields(group: HTMLElement): Record<string, string> {
+  return Object.fromEntries(
+    within(group).getAllByRole('term').map((term) => [term.textContent ?? '', term.nextElementSibling?.textContent ?? '']),
+  )
 }
 
 /** jsdom has no `:focus-visible`: report it as matching, as a browser does after a keyboard focus. */

@@ -186,7 +186,8 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     expect(within(callback).getByText('10/04/2026')).toBeInTheDocument()
     // REQUIREMENT CHANGED (user directive 2026-11-16): "Dati commessa" merged into "Dati contrattuali commessa".
     const data = screen.getByRole('heading', { level: 3, name: /work order contract data/i }).closest('section') as HTMLElement
-    expect(within(data).getByText('Installazione impianto')).toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0403): no work order title in the contract data.
+    expect(within(data).queryByText('Installazione impianto')).not.toBeInTheDocument()
     expect(within(data).getByRole('link', { name: /QUO-0004/ })).toBeInTheDocument()
     expect(within(data).queryByText('COM-0001')).not.toBeInTheDocument()
     expect(sectionTitles()).not.toContain('work order data')

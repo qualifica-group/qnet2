@@ -78,7 +78,6 @@ use Illuminate\Support\Facades\DB;
     'is_force_closed',
     'force_close_reason',
     'task_template_id',
-    'work_order_payment_status_id',
 ])]
 class WorkOrder extends BaseModel
 {
@@ -137,17 +136,6 @@ class WorkOrder extends BaseModel
     public function workOrderWorkflowStatus(): BelongsTo
     {
         return $this->belongsTo(WorkOrderWorkflowStatus::class);
-    }
-
-    /**
-     * The commessa's own "Stato pagamento" (spec 0402), one of the configured
-     * payment statuses; the per-line ones live in `WorkOrderLinePayment`.
-     *
-     * @return BelongsTo<WorkOrderPaymentStatus, $this>
-     */
-    public function paymentStatus(): BelongsTo
-    {
-        return $this->belongsTo(WorkOrderPaymentStatus::class, 'work_order_payment_status_id');
     }
 
     /**
