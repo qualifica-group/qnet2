@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Filtro personalizzato sui campi flessibili (attr.*) e "Vuoto/Non vuoto" sulle date (2026-11-16) — VERDE MIRATO, NON COMMITTATO
+
+- Segnalazione utente: "Data verifica ispettiva" + "Non vuoto" (filtro personalizzato) non cambiava nulla. Root cause: `AttributeColumnBuilder::raw()` (la dichiarazione in `filterableColumnMap()`) non aveva `filterType` -> `CustomFilterRuleValidator::resolveType()` null -> ogni regola su un `attr.*` rifiutata con 422 ("cannot be used in a custom filter rule"), per TUTTI i campi flessibili. Ora `raw()` porta il `filterType` della tabella di mapping (lo stesso di `resolved()`).
+- Secondo buco, stessa area: `AttributeDateFilterApplier` ignorava Set e multi (dateFrom assente): blank/not_blank del filtro personalizzato (`values:[null]`) e la checklist della griglia sugli attributi data non filtravano. Ora `apply()` gestisce multi (AND), set (valori esatti + "(Vuoti)" = null/'') e condizione data; `AttributeSummaryDateColumn::applyFilter` delega tutto a lui (tolto il trait `AppliesSetFilter`).
+- Test: `WorkOrderSummaryDateAttributeColumnTest` (+1: blank/not_blank/gt via `customFilterRules`), nuovo `WorkOrderDateAttributeCustomFilterTest` (2). Mirati 132/132; suite CategoryTabs/RequestManagement/Contracts/Table/Attributes/CustomFields/WorkOrders 2365/2439: i rossi sono TUTTI del refactor in corso della sessione parallela sulle colonne manager/operatore di Gestione richieste (`RequestManagerColumns::OPERATOR_COLUMN_ID` ecc.) + 2 preesistenti (TableBulkDelete, TableDefinitionContract). Pint pulito. Manuale: nessun impatto (comportamento atteso gia' descritto).
+
 ## Commessa: colonna "Data verifica ispettiva" al posto di "Verifiche ispettive" (2026-11-16) — VERDE MIRATO, NON COMMITTATO, SEEDER DA LANCIARE
 
 - Richiesta utente 2026-11-16: nella griglia commesse la colonna delle verifiche ispettive mostra solo la data della riga attiva (vuota se nessuna riga attiva), e' una data e si chiama "Data verifica ispettiva". Il valore esiste gia': `summary` (strategia `selected` su `data_verifica`) salvato in `attribute_values.<code>.summary`; su qnet2 116 commesse con riga attiva, 0 incongruenze.

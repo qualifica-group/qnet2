@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement;
 
 use App\CustomFields\Table\TableFieldSchema;
-use App\CustomFields\Types\Concerns\AppliesSetFilter;
 use App\CustomFields\Types\Concerns\ResolvesDistinctJsonValues;
 use App\CustomFields\Types\Concerns\ResolvesJsonColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,9 +22,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class AttributeSummaryDateColumn
 {
-    use AppliesSetFilter {
-        applyFilter as private applySetFilter;
-    }
     use ResolvesDistinctJsonValues;
     use ResolvesJsonColumn;
 
@@ -87,8 +83,7 @@ final class AttributeSummaryDateColumn
     }
 
     /**
-     * The Set sub-filter matches exact summary values (blank included), the
-     * date sub-filter a range on the summary; a multi envelope ANDs both.
+     * Set (blank included), date and multi filters, on the summary alone.
      *
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $attributeRow
@@ -96,27 +91,9 @@ final class AttributeSummaryDateColumn
      */
     public function applyFilter(Builder $query, string $valuesColumn, array $attributeRow, array $filter): void
     {
-        if (($filter['filterType'] ?? null) === 'multi') {
-            foreach (is_array($filter['filterModels'] ?? null) ? $filter['filterModels'] : [] as $subFilter) {
-                if (is_array($subFilter) && $subFilter !== []) {
-                    $this->applyFilter($query, $valuesColumn, $attributeRow, $subFilter);
-                }
-            }
-
-            return;
-        }
-
-        $summaryKey = $this->summaryKey($attributeRow);
-
-        if (($filter['filterType'] ?? null) === 'set' || array_key_exists('values', $filter)) {
-            $this->applySetFilter($query, $valuesColumn, $summaryKey, $filter);
-
-            return;
-        }
-
         $this->dateFilterApplier->apply(
             $query,
-            $this->jsonColumn($valuesColumn, $summaryKey),
+            $this->jsonColumn($valuesColumn, $this->summaryKey($attributeRow)),
             $this->dateType($attributeRow) === 'datetime',
             $filter,
         );

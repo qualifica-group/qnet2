@@ -121,3 +121,14 @@ it('lists the summary dates and the blank entry as distinct filter values', func
 
     expect($values)->toBe([null, '2025-01-10', '2025-03-02']);
 });
+
+it('applies the custom filter rules (blank, not blank, after) to the summary date', function (): void {
+    [$category, $workOrders] = summaryDateGrid();
+    $ruled = fn (array $rule): array => collect(summaryDateRows($category, $workOrders, ['customFilterRules' => ['and' => [
+        ['field' => 'attr.inspections', ...$rule],
+    ]]]))->sort()->values()->all();
+
+    expect($ruled(['operator' => 'not_blank']))->toBe(['active', 'later'])
+        ->and($ruled(['operator' => 'blank']))->toBe(['inactive'])
+        ->and($ruled(['operator' => 'gt', 'value' => '2025-02-01']))->toBe(['later']);
+});

@@ -30,7 +30,9 @@ use App\CustomFields\Types\FieldTypeHandler;
  *    -> `QuoteAttributeValueWriter`),
  *    so this shape only needs to pass the STRUCTURAL "is this column
  *    declared editable" gate and stay permissive for Step 5's generic
- *    pre-check.
+ *    pre-check. It carries the `filterType` of the mapping table, which the
+ *    custom filter rules read (CustomFilterRuleValidator::resolveType()):
+ *    without it every `attr.*` rule was refused.
  *  - `resolved()` — the FULL shape `GET /columns` emits, per the frozen
  *    spec 0064 mapping table (type/filterType/editor/options/badges/relation).
  *
@@ -111,6 +113,7 @@ final class AttributeColumnBuilder
             'visible' => false,
             'sortable' => true,
             'filterable' => true,
+            'filterType' => $this->mapping($attributeRow)['filterType'],
             'editable' => ! $this->isTable($attributeRow),
             'editableField' => self::EDITABLE_FIELD,
             'nullable' => true,
