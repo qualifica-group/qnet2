@@ -13,6 +13,8 @@ import type { CustomFieldType } from '@/features/custom-fields/types'
 interface DefinitionTableColumnsEditorProps<T extends FieldDefinitionFormValues> {
   control: Control<T>
   type: CustomFieldType
+  /** See `DefinitionTableSettings.gridLabel`. */
+  gridLabel?: boolean
 }
 
 /**
@@ -27,15 +29,16 @@ interface DefinitionTableColumnsEditorProps<T extends FieldDefinitionFormValues>
 export function DefinitionTableColumnsEditor<T extends FieldDefinitionFormValues>({
   control,
   type,
+  gridLabel = false,
 }: DefinitionTableColumnsEditorProps<T>) {
   const baseControl = control as unknown as Control<FieldDefinitionFormValues>
   if (type !== 'table') {
     return null
   }
-  return <TableColumnsSection control={baseControl} />
+  return <TableColumnsSection control={baseControl} gridLabel={gridLabel} />
 }
 
-function TableColumnsSection({ control }: { control: Control<FieldDefinitionFormValues> }) {
+function TableColumnsSection({ control, gridLabel }: { control: Control<FieldDefinitionFormValues>; gridLabel: boolean }) {
   const { t } = useTranslation()
   const editor = useDefinitionTableColumns(control)
 
@@ -78,6 +81,7 @@ function TableColumnsSection({ control }: { control: Control<FieldDefinitionForm
         summaryColumns={editor.summaryColumns}
         onSelectableChange={editor.setSelectable}
         onSummaryColumnChange={editor.setSummaryColumn}
+        gridLabel={gridLabel}
       />
       <DefinitionTableNotifySettings control={control} table={editor.table} />
     </FormSection>

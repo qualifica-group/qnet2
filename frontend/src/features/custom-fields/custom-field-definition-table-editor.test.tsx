@@ -143,6 +143,7 @@ describe('DefinitionTableColumnsEditor in the custom field form (AC-021)', () =>
     fireEvent.change(screen.getByLabelText('Selection key'), { target: { value: 'active' } })
     pick(screen.getByRole('combobox', { name: 'Summary column' }), 'Inspection date')
     pick(screen.getByRole('combobox', { name: 'Strategy' }), 'Selected row')
+    expect(screen.queryByLabelText('Grid date column')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Maximum rows'), { target: { value: '10' } })
 
     save()

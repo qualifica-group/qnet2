@@ -55,6 +55,7 @@ final class AttributeGridColumns
         private readonly AttributeColumnBuilder $columnBuilder,
         private readonly AttributeDateFilterApplier $dateFilterApplier,
         private readonly AttributeTableFilterApplier $tableFilterApplier,
+        private readonly AttributeSummaryDateColumn $summaryDateColumn,
         private readonly AuthorizationRegistry $authorizationRegistry,
         private readonly RequestAttributeResolver $attributesResolver,
         ?AttributeGridTarget $target = null,
@@ -73,6 +74,7 @@ final class AttributeGridColumns
             $this->columnBuilder,
             $this->dateFilterApplier,
             $this->tableFilterApplier,
+            $this->summaryDateColumn,
             $this->authorizationRegistry,
             $this->attributesResolver,
             $target,
@@ -216,7 +218,10 @@ final class AttributeGridColumns
         $mapped = [];
 
         foreach ($attributes as $attributeRow) {
-            $mapped[$this->columnBuilder->id($attributeRow)] = $values[$attributeRow['code']] ?? null;
+            $stored = $values[$attributeRow['code']] ?? null;
+            $mapped[$this->columnBuilder->id($attributeRow)] = $this->summaryDateColumn->applies($attributeRow)
+                ? $this->summaryDateColumn->value($stored)
+                : $stored;
         }
 
         return $mapped;
@@ -244,6 +249,12 @@ final class AttributeGridColumns
                 $attributeRow['type'] === 'datetime',
                 $filter,
             );
+
+            return;
+        }
+
+        if ($this->summaryDateColumn->applies($attributeRow)) {
+            $this->summaryDateColumn->applyFilter($query, $this->target->valuesColumn, $attributeRow, $filter);
 
             return;
         }
@@ -277,9 +288,11 @@ final class AttributeGridColumns
      */
     public function distinctValues(Builder $query, array $attributeRow, ?string $search, int $limit): array
     {
-        $values = $attributeRow['type'] === self::TABLE_TYPE
-            ? $this->tableFilterApplier->distinctValues($query, $this->target->valuesColumn, $attributeRow)
-            : $this->columnBuilder->handlerFor($attributeRow)->distinctValues($query, $this->target->valuesColumn, $attributeRow['code']);
+        $values = match (true) {
+            $this->summaryDateColumn->applies($attributeRow) => $this->summaryDateColumn->summaryValues($query, $this->target->valuesColumn, $attributeRow),
+            $attributeRow['type'] === self::TABLE_TYPE => $this->tableFilterApplier->distinctValues($query, $this->target->valuesColumn, $attributeRow),
+            default => $this->columnBuilder->handlerFor($attributeRow)->distinctValues($query, $this->target->valuesColumn, $attributeRow['code']),
+        };
 
         if ($search !== null && $search !== '') {
             $needle = mb_strtolower($search);
