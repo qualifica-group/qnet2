@@ -209,10 +209,9 @@ class RequestManagementController extends BaseApiController
                         'supervisor_id',
                         // Spec 0097, D-5: the panel writes the WHOLE team.
                         // `operator_id` is deliberately NOT in this list any
-                        // more — UpdateRequestRequest no longer validates it,
-                        // so it could never reach `validated()`; it survives
-                        // as `updateWork()`'s internal key for the grid cell,
-                        // the bulk assign and the transfer.
+                        // more — UpdateRequestRequest prohibits it; the bulk
+                        // assign and the transfer write that slot through
+                        // RequestOperatorWriter.
                         'manager_slots',
                         // Spec 0056: the Sede operativa, same attribution block.
                         'operational_site_id',

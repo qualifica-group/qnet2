@@ -210,7 +210,8 @@ it('rows: a user supervising nothing and without viewAll gets empty rows, not a 
 // more.
 // ---------------------------------------------------------------------------
 
-it('rows: operator_ga2 + client anagraphic columns surface, no workflow_status key', function () {
+// REQUIREMENT CHANGED (spec 0406): the Operatore column is gone from the row.
+it('rows: client anagraphic columns surface, no workflow_status key', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
 
     $registry = Registry::factory()->create();
@@ -222,9 +223,8 @@ it('rows: operator_ga2 + client anagraphic columns surface, no workflow_status k
     ]);
     $card->contacts()->create(['type' => 'phone', 'value' => '+39 02 1234567', 'is_primary' => true]);
 
-    $operator = User::factory()->create(['name' => 'Giulia Bianchi']);
     $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
-    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
+    $quote = Quote::factory()->for($opportunity)->create();
 
     Sanctum::actingAs($actor);
 
@@ -232,7 +232,7 @@ it('rows: operator_ga2 + client anagraphic columns surface, no workflow_status k
     $row = collect($response->json('items'))->firstWhere('id', $quote->id);
 
     expect($row)->not->toHaveKey('workflow_status')
-        ->and($row['operator_ga2'])->toMatchArray(['id' => $operator->id, 'name' => 'Giulia Bianchi'])
+        ->and($row)->not->toHaveKey('operator_ga2')
         ->and($row['first_name'])->toBe('Mario')
         ->and($row['last_name'])->toBe('Rossi')
         ->and($row['tax_code'])->toBe('RSSMRA80A01H501U')

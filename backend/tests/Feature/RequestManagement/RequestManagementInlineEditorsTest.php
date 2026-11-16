@@ -3,8 +3,6 @@
 use App\Enums\ContactTypeEnum;
 use App\Enums\PersonalDataTypeEnum;
 use App\Models\Contact;
-use App\Models\EmploymentProfile;
-use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
@@ -85,23 +83,6 @@ if (! function_exists('inlineEditorsRequest')) {
     }
 }
 
-if (! function_exists('inlineEditorsMakeAssignable')) {
-    /**
-     * Direttiva utente 2026-09-10: the GA2 "Operatore" cell now refuses an
-     * operator the offer itself would not have accepted — a member of its own
-     * Sede, competent for its categories. These fixtures were born with a
-     * Sede-less offer and an unemployed user, which was enough before that
-     * rule and is not any more: the pair has to match. The offer demands no
-     * product category, so only the Sede half applies (INV-4a).
-     */
-    function inlineEditorsMakeAssignable(Quote $quote, User $operator): void
-    {
-        $site = OperationalSite::factory()->withAddress()->create();
-        $quote->update(['operational_site_id' => $site->id]);
-        EmploymentProfile::factory()->for($operator)->physicalSite($site)->create();
-    }
-}
-
 if (! function_exists('inlineEditorsColumns')) {
     /** @return Collection<string, array<string, mixed>> */
     function inlineEditorsColumns(): Collection
@@ -121,12 +102,11 @@ it('AC-001: every activated column advertises its own editor', function () {
     $columns = inlineEditorsColumns();
 
     expect($columns['next_callback_at']['editor'])->toBe('datetime')
-        ->and($columns['operator_ga2']['editor'])->toBe('relation')
-        ->and($columns['operator_ga2']['relation']['resource'])->toBe('users')
-        // Direttiva utente 2026-09-24 (superseding spec 0086 AC-011): the
-        // Operatore is sortable and set-filterable on the user's name.
-        ->and($columns['operator_ga2']['sortable'])->toBeTrue()
-        ->and($columns['operator_ga2']['filterable'])->toBeTrue();
+        // REQUIREMENT CHANGED (spec 0406): the Operatore column is gone, the
+        // team is edited from the single "Gestori account" column.
+        ->and($columns['managers']['editor'])->toBe('multiselect')
+        ->and($columns['managers']['relation']['resource'])->toBe('users')
+        ->and($columns['managers']['filterable'])->toBeTrue();
 
     foreach (['first_name', 'last_name', 'tax_code', 'phone'] as $id) {
         expect($columns[$id]['editable'])->toBeTrue()
@@ -173,7 +153,7 @@ it('AC-003: without request-management.update every column is read-only and ever
 
     $columns = inlineEditorsColumns();
 
-    foreach (['next_callback_at', 'operator_ga2', 'first_name', 'last_name', 'tax_code', 'phone'] as $id) {
+    foreach (['next_callback_at', 'managers', 'first_name', 'last_name', 'tax_code', 'phone'] as $id) {
         expect($columns[$id]['editable'])->toBeFalse();
 
         $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
@@ -369,52 +349,6 @@ it('AC-010: clearing phone removes the telephone row instead of leaving an empty
 });
 
 // ---------------------------------------------------------------------------
-// AC-008 — the GA2 operator (now the offer's own operator_id, spec 0087 D-9)
-// ---------------------------------------------------------------------------
-
-it('AC-008: PATCH operator_ga2 reassigns the Offerta\'s GA2 Operatore and promotes onto the Opportunity\'s first free slot, never touching supervisor_id (spec 0087, D-9/D-13/D-14)', function () {
-    $actor = inlineEditorsActor(['viewAny', 'update', 'viewAll']);
-    $quote = inlineEditorsRequest($actor);
-    $newOperator = User::factory()->create();
-    inlineEditorsMakeAssignable($quote, $newOperator);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
-        'column' => 'operator_ga2',
-        'value' => $newOperator->id,
-    ])->assertOk()->assertJsonPath('data.operator_ga2.id', $newOperator->id);
-
-    // D-14/AC-017: the commission-recipient column is never touched by this
-    // write path. D-13: $newOperator is promoted onto the Opportunity's
-    // first FREE slot (slot 1 here — $actor already occupies slot 2) rather
-    // than overwriting the Opportunity's own GA2, which stays $actor's.
-    expect($quote->fresh()->operator_id)->toBe($newOperator->id)
-        ->and($quote->fresh()->supervisor_id)->toBeNull()
-        ->and($quote->opportunity->fresh()->operatorManager()?->id)->toBe($actor->id);
-    $this->assertDatabaseHas('quote_user', [
-        'quote_id' => $quote->id,
-        'user_id' => $newOperator->id,
-        'position' => 2,
-    ]);
-    $this->assertDatabaseHas('opportunity_user', [
-        'opportunity_id' => $quote->opportunity_id,
-        'user_id' => $newOperator->id,
-        'position' => 1,
-    ]);
-});
-
-it('AC-008: an operator id the actor could not pick -> 422', function () {
-    $actor = inlineEditorsActor(['viewAny', 'update']);
-    $quote = inlineEditorsRequest($actor);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
-        'column' => 'operator_ga2',
-        'value' => 999999,
-    ])->assertStatus(422);
-});
-
-// ---------------------------------------------------------------------------
 // AC-011 — audit
 // ---------------------------------------------------------------------------
 
@@ -444,23 +378,23 @@ it('AC-011: an anagraphic inline edit leaves an activity entry on the request', 
 // The relation column does NOT depend on the target module's browse right
 // ---------------------------------------------------------------------------
 
-it('operator_ga2 is editable, pickable and savable for an actor without users.viewAny', function () {
+it('managers is editable, pickable and savable for an actor without users.viewAny', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
     $quote = inlineEditorsRequest($actor);
     $newOperator = User::factory()->create();
-    inlineEditorsMakeAssignable($quote, $newOperator);
     Sanctum::actingAs($actor);
 
     // The real complaint (2026-07-31): a commercial actor holds no browse right
     // on the users module, so the cell was advertised read-only, the picker
     // 403'd and the save 422'd. Since ADR 0011 was amended the three layers
     // agree — config, picker and write all accept the same actor.
-    expect(inlineEditorsColumns()['operator_ga2']['editable'])->toBeTrue();
+    // REQUIREMENT CHANGED (spec 0406): the relation column is now the team.
+    expect(inlineEditorsColumns()['managers']['editable'])->toBeTrue();
 
     $this->getJson('/api/users/for-select')->assertOk();
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
-        'column' => 'operator_ga2',
-        'value' => $newOperator->id,
-    ])->assertOk()->assertJsonPath('data.operator_ga2.id', $newOperator->id);
+        'column' => 'managers',
+        'value' => [$newOperator->id],
+    ])->assertOk()->assertJsonPath('data.managers.0.id', $newOperator->id);
 });

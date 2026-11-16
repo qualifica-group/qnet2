@@ -32,11 +32,11 @@ use Illuminate\Database\Eloquent\Model;
  * Spec 0097, D-3: `operator_id` is GONE from this catalogue, replaced by
  * `manager_slots` — the panel stopped editing the lone GA2 "Operatore" and
  * started editing the Offerta's whole team, of which that operator is slot
- * `ManagerPositions::OPERATOR`. Nothing became ungated: the grid column
- * `operator_ga2`, which still writes that one slot, now hangs off the new
- * key (see the field's own note below), and a migration renames the already
- * configured `role_field_permissions` rows so no administrator restriction
- * is lost in the move.
+ * `ManagerPositions::OPERATOR`. Nothing became ungated: the grid's
+ * "Gestori account" column hangs off the same key (see the field's own note
+ * below), and a migration renamed the already configured
+ * `role_field_permissions` rows so no administrator restriction was lost in
+ * the move.
  *
  * Spec 0097, D-9 (user directive 2026-09-02): `supervisor_id` is BACK in this
  * catalogue, and that deliberately REVERSES spec 0087 D-13/D-14/INV-5, which
@@ -117,19 +117,12 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             //
             // The old key's semantics did NOT disappear, they widened: the
             // GA2 "Operatore" is slot `ManagerPositions::OPERATOR` of this
-            // very collection, and the grid column `operator_ga2` — which
-            // still WRITES that single slot — is now gated by THIS key
-            // (`editableField` => `manager_slots`, RequestColumnCatalog), as
-            // is every other position column (`permissionField`, spec 0382
-            // D-6, which removed the GA1/GA5 rows of their own).
-            // The spec 0086 mt06 lesson that made `operator_id` the ONE key
-            // of both channels still holds and is unchanged: `editableField`
-            // is the LOGICAL permission key, never the DB column, and
-            // `updateWork()` keeps recognizing exactly one WRITE key per
-            // channel (`operator_id` for the cell/bulk/transfer, the new
-            // `manager_slots` for the panel) — WritesInlineEditableCells
-            // translates the cell's key back before calling it, so the two
-            // can never silently decouple into a 200 no-op again.
+            // very collection. The grid's only team column, "Gestori
+            // account" (spec 0373/0406), is gated by THIS key too
+            // (`editableField` => `manager_slots`, RequestManagerColumns) and
+            // writes the whole team through the panel's own rules
+            // (RequestTeamCellWriter); `operator_id` stays the single-slot
+            // WRITE key of the bulk assign and the transfer.
             new FieldDefinition('manager_slots', 'multiselect'),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block (see OpportunitiesAuthorization's docblock for

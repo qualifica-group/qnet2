@@ -20,7 +20,6 @@ export const requestManagement = {
     expectedCloseDate: 'Expected close date',
     managerGa1: 'Tutor',
     managers: 'Account managers',
-    otherManagers: 'Other account managers',
     operationalSite: 'Operational site',
     firstName: 'First name',
     lastName: 'Last name',

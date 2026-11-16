@@ -11,7 +11,6 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\Quotes\QuoteWorkflowResolver;
-use App\Support\ManagerPositions;
 use App\Support\OperationalSiteLabel;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\ProductLinePairsColumn;
@@ -99,19 +98,11 @@ final class RequestRowMapper
             // lines' products, replacing "Prodotti di interesse" on this
             // domain only (AC-021).
             ...OfferLinesColumn::project($row),
-            // Position 2, the Operatore: spec 0087, D-9 — a real FK on
-            // `quotes` (`operator_id`), denormalized from the pivot.
-            RequestManagerColumns::OPERATOR_COLUMN_ID => $this->userSummary($row->operator),
-            // Spec 0373 D-7: the whole team, in `managers()` position order.
-            // Each person carries its position, so a category tab can keep
-            // only the unnamed ones ("Altri gestori account", spec 0382 D-11).
+            // Spec 0373 D-7 / spec 0406: the whole team, in `managers()`
+            // position order, the grid's only Gestori Account column.
             RequestManagerColumns::MANAGERS_COLUMN_ID => $row->managers
                 ->map(fn (User $user): array => [...($this->userSummary($user) ?? []), 'position' => (int) $user->pivot->position])
                 ->all(),
-            // Every other position (spec 0382), read from the `quote_user`
-            // pivot: the team is eager-loaded for the whole page, so this
-            // costs no per-row query.
-            ...$this->positionOccupants($row),
             // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
             // FK — the site has no own name, so its label is composed
             // server-side from its primary address.
@@ -188,34 +179,6 @@ final class RequestRowMapper
             'phone' => $this->primaryContact($card?->contacts, [ContactTypeEnum::Phone]),
             'email' => $this->primaryContact($card?->contacts, [ContactTypeEnum::Email]),
         ];
-    }
-
-    /**
-     * The manager occupying one `quote_user` position, or null when the slot
-     * is empty — read off the ALREADY-LOADED relation (this mapper never
-     * queries, see the class docblock).
-     */
-    /**
-     * @return array<string, array{id: int, name: string, avatar_url: string|null}|null>
-     */
-    private function positionOccupants(Quote $row): array
-    {
-        $occupants = [];
-
-        foreach (RequestManagerColumns::positions() as $position => $columnId) {
-            if ($position !== ManagerPositions::OPERATOR) {
-                $occupants[$columnId] = $this->userSummary($this->managerAt($row, $position));
-            }
-        }
-
-        return $occupants;
-    }
-
-    private function managerAt(Quote $row, int $position): ?User
-    {
-        return $row->managers->first(
-            static fn (User $manager): bool => (int) $manager->pivot->position === $position,
-        );
     }
 
     /**

@@ -61,9 +61,8 @@ class TableController extends BaseApiController
      * with their saved column preferences (order/width/visibility) merged in.
      * `product_category_id` (spec 0064) narrows `request-management`'s
      * response to that category's `attr.*` columns (restored by the user
-     * directive 2026-08-31) and its `operator_ga2` column label (spec 0080);
-     * absent for every other domain, and for `request-management` itself with
-     * no category (D-3). `opportunity_id` (spec 0067) scopes `quotes`' ROWS to one
+     * directive 2026-08-31); absent for every other domain, and for
+     * `request-management` itself with no category (D-3). `opportunity_id` (spec 0067) scopes `quotes`' ROWS to one
      * Opportunity; this response's SHAPE never changes (D-1/AC-009).
      */
     public function columns(TableColumnsRequest $request, string $domain): JsonResponse

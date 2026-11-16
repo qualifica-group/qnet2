@@ -341,7 +341,7 @@ describe('resolveCellEditorSpec', () => {
     // the editor holds the row (user directive 2026-07-23).
     it('forwards the row-scoped `scope` map when the column declares one', () => {
       const column = stubColumn({
-        id: 'operator_ga2',
+        id: 'operator',
         type: 'text',
         relation: { resource: 'users', scope: { operational_site_id: 'operational_site' } },
       })

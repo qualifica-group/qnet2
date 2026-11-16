@@ -59,8 +59,7 @@ const guide: HelpGuide = {
             ['Source', 'The channel the request comes from (a field of the quote).'],
             ['Change requests', 'Change proposals still awaiting a decision.'],
             ['Product lines', 'Products present in the quote; the cell opens the editor with the product catalogue.'],
-            ['Account manager 1, 2, 3...', "One column per team position. In **All** they are called **Account manager** with the number and go up to the highest position in use. In a category tab only the positions the category names are shown (for example in Formazione **Tutor**, **Operator**, **Business partner**, **Referrer**, **APL operator**): when the category adds a name, the column appears. Position 2 is the **Operator**, the person working the request. They can be sorted, filtered by name and edited from the cell."],
-            ['Account managers / Other account managers', "In **All**, **Account managers** shows everyone on the team, operator included. In a category tab it is called **Other account managers** and shows only the people in a position the category does not name; editing it from the cell changes only these people, those in the named columns stay. It can be filtered by name."],
+            ['Account managers', "The only managers column: it shows everyone on the request's team (operator, tutor and every other manager), the same in **All** and in every category tab. It can be filtered by name, **(Blanks)** included for requests with no manager, and it does not sort. From the cell you add or remove people: whoever stays keeps their role, whoever you add takes the first free place and is notified. To choose each person's exact role (for example **Operator** or **Tutor**) open the request with **View** (**Team** section)."],
             ['Operational site', 'The site the request is assigned to.'],
             ['Next callback', 'Date of the next call to the client.'],
             ['Transferred', 'Whether the contact was transferred from another site.'],
@@ -160,7 +159,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'At the bottom you find the **Notes**, **Documents** and **History** tabs. Press **Save**: you go back to the table, on the category tab you started from (for example **GOL Abruzzo**). The same goes for **Transfer contact**, next to **Save**: once the transfer is done you go back to the table, because the contact moves to the new site and operator.',
+          text: 'At the bottom you find the **Notes**, **Documents** and **History** tabs. Press **Save**: you go back to the table, on the category tab you started from (for example **GOL Abruzzo**). The same goes for **Transfer contact**, next to **Save**: once the transfer is done you go back to the table, because the contact moves to the new site and operator. **Transfer to another registry** (same-name permission) moves the offer to another customer instead: choose the new registry and review the **Additional information**; the offer lands on the customer\'s open opportunity or on a new one, as explained in the **Quotes** guide. When a category has **Contact transfer before the contract** (for example **Orientamento specialistico**), the request cannot move to a **Won** status until you have used **Transfer contact**.',
         },
         {
           type: 'warning',

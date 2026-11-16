@@ -59,8 +59,7 @@ const guide: HelpGuide = {
             ['Fonte', "Canale da cui arriva la richiesta (è un campo dell'offerta)."],
             ['Richieste di modifica', 'Proposte di modifica ancora in attesa.'],
             ['Linee di prodotto', "Prodotti presenti nell'offerta; la cella apre l'editor con il catalogo prodotti."],
-            ['Gestore account 1, 2, 3...', "Una colonna per ogni posizione del team. In **Tutte** si chiamano **Gestore account** con il numero e arrivano fino alla posizione più alta occupata. In una scheda categoria ci sono solo le posizioni a cui la categoria dà un nome (ad esempio in Formazione **Tutor**, **Operatore**, **Partner commerciale**, **Segnalatore**, **Operatore APL**): se la categoria aggiunge un nome, compare la colonna. La posizione 2 è l'**Operatore**, la persona che lavora la richiesta. Si ordinano, si filtrano per nome e si modificano dalla cella."],
-            ['Gestori account / Altri gestori account', "In **Tutte**, **Gestori account** mostra tutte le persone del team, operatore compreso. In una scheda categoria si chiama **Altri gestori account** e mostra solo chi occupa una posizione senza nome nella categoria; modificandola dalla cella cambi solo queste persone, quelle nelle colonne con un nome restano. Si filtra per nome."],
+            ['Gestori account', "L'unica colonna dei gestori: mostra tutte le persone del team della richiesta (operatore, tutor e ogni altro gestore), uguale in **Tutte** e in ogni scheda categoria. Si filtra per nome, anche con **(Vuoti)** per le richieste senza gestori, e non si ordina. Dalla cella aggiungi o togli persone: chi resta mantiene il suo ruolo, chi aggiungi prende il primo posto libero e riceve la notifica. Per scegliere il ruolo preciso di ciascuno (ad esempio **Operatore** o **Tutor**) apri la richiesta con **Visualizza** (sezione **Team**)."],
             ['Sede operativa', 'Sede a cui è assegnata la richiesta.'],
             ['Prossimo richiamo', 'Data della prossima chiamata al cliente.'],
             ['Trasferito', "Se il contatto è stato trasferito da un'altra sede."],
@@ -160,7 +159,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'In fondo trovi le schede **Note**, **Documenti** e **Storico**. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**). Lo stesso vale per **Trasferisci contatto**, accanto a **Salva**: a trasferimento concluso torni alla tabella, perché il contatto passa alla nuova sede e al nuovo operatore.',
+          text: 'In fondo trovi le schede **Note**, **Documenti** e **Storico**. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**). Lo stesso vale per **Trasferisci contatto**, accanto a **Salva**: a trasferimento concluso torni alla tabella, perché il contatto passa alla nuova sede e al nuovo operatore. Con **Trasferisci ad altra anagrafica** (permesso omonimo) sposti invece l\'offerta su un altro cliente: scegli la nuova anagrafica e controlli le **Informazioni aggiuntive**; l\'offerta va sull\'opportunità aperta del cliente o su una nuova, come spiegato nella guida **Offerte**. Se una categoria ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), la richiesta non passa a uno stato **Vinto** finché non hai usato **Trasferisci contatto**.',
         },
         {
           type: 'warning',

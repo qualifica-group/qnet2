@@ -342,46 +342,12 @@ it('AC-007: a team submission identical to the persisted one writes nothing at a
 });
 
 // ---------------------------------------------------------------------------
-// AC-005 — the grid cell keeps writing the single OPERATOR slot, gated by the
-// team's key
+// AC-005 — the grid's team cell is gated by the team's key. REQUIREMENT
+// CHANGED (spec 0406): the single-slot Operatore cell no longer exists, the
+// "Gestori account" cell is the grid's only team editor.
 // ---------------------------------------------------------------------------
 
-it('AC-005: the operator_ga2 cell still writes ONLY the OPERATOR slot', function () {
-    $actor = teamSlotsActor();
-    $first = User::factory()->create();
-    $operator = User::factory()->create();
-    $quote = teamSlotsQuote([1 => $first->id, ManagerPositions::OPERATOR => $operator->id]);
-
-    // Direttiva utente 2026-09-10: the GA2 cell now refuses an operator the
-    // offer would not have accepted, so this Sede-less offer and unemployed
-    // user have to be paired. The slot-writing rule under test is unchanged.
-    $site = OperationalSite::factory()->withAddress()->create();
-    $quote->update(['operational_site_id' => $site->id]);
-
-    $newOperator = User::factory()->create();
-    EmploymentProfile::factory()->for($newOperator)->physicalSite($site)->create();
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
-        'column' => 'operator_ga2',
-        'value' => $newOperator->id,
-    ])->assertOk();
-
-    expect($quote->fresh()->operator_id)->toBe($newOperator->id);
-    $this->assertDatabaseHas('quote_user', [
-        'quote_id' => $quote->id,
-        'user_id' => $newOperator->id,
-        'position' => ManagerPositions::OPERATOR,
-    ]);
-    // The rest of the team is untouched: the cell edits one slot, not the team.
-    $this->assertDatabaseHas('quote_user', [
-        'quote_id' => $quote->id,
-        'user_id' => $first->id,
-        'position' => 1,
-    ]);
-});
-
-it('AC-005: the operator_ga2 cell is gated by the manager_slots permission', function () {
+it('AC-005: the managers cell is gated by the manager_slots permission', function () {
     $actor = teamSlotsActor(
         ['viewAny', 'view', 'update', 'viewAll'],
         ['resource' => 'request-management', 'field' => 'manager_slots', 'visible' => true, 'editable' => false, 'required' => false],
@@ -393,11 +359,11 @@ it('AC-005: the operator_ga2 cell is gated by the manager_slots permission', fun
     $columns = collect($this->getJson('/api/tables/request-management/columns')->assertOk()->json('data.columns'))
         ->keyBy('id');
 
-    expect($columns['operator_ga2']['editable'])->toBeFalse();
+    expect($columns['managers']['editable'])->toBeFalse();
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
-        'column' => 'operator_ga2',
-        'value' => User::factory()->create()->id,
+        'column' => 'managers',
+        'value' => [User::factory()->create()->id],
     ])->assertForbidden();
 
     expect($quote->fresh()->operator_id)->toBe($operator->id);

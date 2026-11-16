@@ -7,9 +7,9 @@ import { useTableCellEdit } from '@/features/table/use-table-cell-edit'
 import type { TableRow } from '@/features/table/types'
 
 /**
- * Spec 0382 D-11: a cell edited in a category tab carries that tab in its
- * PATCH, so the server knows which positions an "Altri gestori account"
- * cell holds. Outside a tab the body is unchanged (use-table-cell-edit.test.tsx).
+ * A cell edited in a category tab carries that tab in its PATCH, so the
+ * returned row has that tab's flexible columns (spec 0406 D-5). Outside a tab
+ * the body is unchanged (use-table-cell-edit.test.tsx).
  */
 
 const updateTableCellMock = vi.fn()

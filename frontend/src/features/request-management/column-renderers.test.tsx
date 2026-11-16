@@ -139,13 +139,8 @@ describe('request-management is_transferred cell (spec 0079, AC-022)', () => {
   })
 })
 
-/**
- * Direttiva utente 2026-09-07: the GA1 column is a second Gestore Account
- * slot, so it must render through the very same shared `UserCell` as the GA2
- * "Operatore" — a plain text cell there would drop the avatar and the
- * hover-card the operator already gets on GA2.
- */
-describe('request-management G.A. slot cells (GA2 + GA1)', () => {
+/** Spec 0406: the whole team in one column, the per-position columns are gone. */
+describe('request-management Gestori account cell', () => {
   function renderManagerCell(columnId: string, value: unknown) {
     const renderer = requestManagementColumnRenderers[columnId]
     if (!renderer) {
@@ -155,17 +150,8 @@ describe('request-management G.A. slot cells (GA2 + GA1)', () => {
     return render(<>{renderer({ value } as ICellRendererParams)}</>)
   }
 
-  // Spec 0382: one column per position, 1..12 (position 2 keeps `operator_ga2`).
-  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5', 'manager_ga12'])('renders the person behind %s', (columnId) => {
-    renderManagerCell(columnId, { id: 21, name: 'Mackenzie Stanton', avatar_url: null })
-
-    expect(screen.getByText('Mackenzie Stanton')).toBeInTheDocument()
-  })
-
-  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5', 'manager_ga12'])('renders an em dash when %s is unassigned', (columnId) => {
-    renderManagerCell(columnId, null)
-
-    expect(screen.getByText('—')).toBeInTheDocument()
+  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5'])('has no renderer for the removed %s column', (columnId) => {
+    expect(requestManagementColumnRenderers[columnId]).toBeUndefined()
   })
 
   it('renders the managers column as an avatar stack, em dash when the team is empty', () => {

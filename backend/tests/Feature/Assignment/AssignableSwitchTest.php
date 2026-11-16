@@ -3,9 +3,7 @@
 use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
-use App\Models\Opportunity;
 use App\Models\ProductCategory;
-use App\Models\Quote;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Assignment\OperatorCompetence;
@@ -83,27 +81,8 @@ it('AC-004: the Sede-scoped for-select drops a switched-off member; the unscoped
         ->and($unscoped)->toContain($switchedOff->user_id);
 });
 
-it('AC-005: an offer with no Sede and no category refuses a switched-off operator', function (): void {
-    $actor = assignableSwitchActor(['request-management.viewAny', 'request-management.update', 'request-management.viewAll']);
-    $quote = Quote::factory()->for(Opportunity::factory())->create(['operator_id' => $actor->id]);
-    $switchedOff = EmploymentProfile::factory()->notAssignable()->create();
-    $assignable = EmploymentProfile::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
-        'column' => 'operator_ga2',
-        'value' => $switchedOff->user_id,
-    ])->assertStatus(422);
-
-    expect($quote->fresh()->operator_id)->toBe($actor->id);
-
-    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
-        'column' => 'operator_ga2',
-        'value' => $assignable->user_id,
-    ])->assertOk();
-
-    expect($quote->fresh()->operator_id)->toBe($assignable->user_id);
-});
+// AC-005 (an offer with no Sede refusing a switched-off operator from the grid's
+// Operatore cell) is gone with that cell: REQUIREMENT CHANGED by spec 0406.
 
 it('AC-006: the switch is written when sent and left untouched when omitted', function (): void {
     $actor = assignableSwitchActor(['users.viewAny', 'users.view', 'users.update']);

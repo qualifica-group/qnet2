@@ -176,7 +176,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_positions?: array<int, int|null>, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, supervisor_id?: int|null, manager_slots?: array<int, int|null>, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
@@ -296,22 +296,10 @@ final class RequestManagementService
 
             // Step 3: the Offerta's Gestori Account (spec 0087, D-9; spec
             // 0097, D-5) — pivot rows plus a Quote column, written after both
-            // models are saved. TWO keys, never both at once (they address
-            // the same pivot from two vocabularies, and UpdateRequestRequest
-            // makes them mutually exclusive): `manager_slots` is the work
-            // panel's whole-team editor, `operator_id` the single-slot key of
-            // the grid cell, the bulk assign and the transfer.
+            // models are saved: `manager_slots`, the whole team, from the
+            // work panel and the grid's "Gestori account" cell (spec 0373).
             if (array_key_exists('manager_slots', $data)) {
                 $this->attributionWriter->applyTeam($quote, (array) $data['manager_slots'], $actor, $changed, $old);
-            } elseif (array_key_exists('operator_id', $data)) {
-                $this->attributionWriter->applyOperator($quote, $data['operator_id'], $actor, $changed, $old);
-            }
-
-            // Step 3-bis: single positions other than the Operatore (spec 0382
-            // D-7, the grid's position columns) — they address other slots of
-            // the same pivot, so they compose with the two keys above.
-            foreach ((array) ($data['manager_positions'] ?? []) as $position => $userId) {
-                $this->attributionWriter->applyManagerPosition($quote, (int) $position, $userId, $actor, $changed, $old);
             }
 
             // Step 4: reward assignments (spec 0059, AC-023; D-4/D-12) —

@@ -45,11 +45,8 @@ use Illuminate\Support\Facades\DB;
  *    the user directive 2026-09-04 moved the column onto `quotes`, so the
  *    generic engine now sorts and filters it with no hop at all.
  *
- * `operator_ga2` (the GA2 "Operatore", denormalized onto `quotes.operator_id`,
- * spec 0087 D-9) sits in QUOTE_RELATIONS: sortable + set-filterable on the
- * user's `name` since the direttiva utente 2026-09-24 (superseding spec 0086
- * AC-011). `manager_ga1` has no column on `quotes` — it is a `quote_user`
- * position — so it is delegated to RequestManagerSlotColumn. `operational_site`
+ * `managers` (spec 0373/0406, the whole `quote_user` team) is filtered through
+ * RequestManagerSlotColumn; it is not sortable. `operational_site`
  * (spec 0056) stays delegated to the shared App\Tables\Shared\OperationalSiteColumn:
  * a real FK on `quotes` itself (D-6), unchanged by this migration, with no
  * own `name` column.
@@ -78,7 +75,6 @@ final class RequestRelationColumns
     private const array QUOTE_RELATIONS = [
         'source' => ['relation' => 'source', 'table' => 'sources', 'fk' => 'source_id'],
         'quote_workflow_status' => ['relation' => 'quoteWorkflowStatus', 'table' => 'quote_workflow_statuses', 'fk' => 'quote_workflow_status_id'],
-        RequestManagerColumns::OPERATOR_COLUMN_ID => ['relation' => 'operator', 'table' => 'users', 'fk' => 'operator_id'],
     ];
 
     /**
@@ -170,7 +166,7 @@ final class RequestRelationColumns
         $subquery = $this->subqueryFor($columnId);
 
         if ($subquery === null) {
-            return $this->managerSlotColumn->applySort($query, $columnId, $direction);
+            return false;
         }
 
         $query->orderBy($subquery, $direction);

@@ -57,7 +57,7 @@ trait WritesAttributeCells
      * from the client's submitted `attr.<code>` to the raw declaration's
      * `editableField` (`AttributeColumnBuilder::EDITABLE_FIELD`) before ever
      * calling this method — the SAME convention every relation column uses
-     * (e.g. `operator_ga2` -> `operator_id`) — so the real code is recovered
+     * (e.g. `source` -> `source_id`) — so the real code is recovered
      * from the ambient request's own `column` input, mirroring how the
      * sibling `WritesInlineEditableCells::updateCell()` reads `note` the same
      * way (both live within the one authenticated HTTP request the PATCH
