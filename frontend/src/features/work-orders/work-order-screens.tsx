@@ -25,7 +25,7 @@ import type { WorkOrderDetail } from '@/features/work-orders/types'
  * its fields in place, so `onEdit` is never used; each save reports through
  * `onChanged` (the modal host refreshes its grid and keeps the record open).
  */
-export function WorkOrderDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
+export function WorkOrderDetailScreen({ id, onChanged, initialTab }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   // A save inside a tab (Task, Documenti...) refreshes the commessa too: swap
   // the data in place instead of remounting, so the open tab stays open.
@@ -52,7 +52,7 @@ export function WorkOrderDetailScreen({ id, onChanged }: ModuleDetailScreenProps
     return <DetailLoading />
   }
 
-  return <WorkOrderDetailView workOrder={workOrder} onChanged={onChanged} />
+  return <WorkOrderDetailView workOrder={workOrder} onChanged={onChanged} initialTab={initialTab} />
 }
 
 export function WorkOrderFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {

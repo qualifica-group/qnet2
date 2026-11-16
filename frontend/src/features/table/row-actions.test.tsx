@@ -138,6 +138,29 @@ describe('RowActions pinned action (task 427151)', () => {
   })
 })
 
+describe('RowActions menu action (spec 0405)', () => {
+  const menuFrom = (index: number) => catalogOf(6).map((entry, i) => (i >= index ? { ...entry, menu: true } : entry))
+
+  it('folds menu actions into the menu even when the rest fits inline', () => {
+    renderActions(menuFrom(2))
+
+    expect(screen.getByRole('button', { name: 'a0' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'a1' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'a2' })).not.toBeInTheDocument()
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More actions' }), { button: 0, ctrlKey: false })
+    const items = within(screen.getByRole('menu')).getAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['a2', 'a3', 'a4', 'a5'])
+  })
+
+  it('does not count menu actions toward the inline limit', () => {
+    const catalog = catalogOf(5).map((entry, i) => (i === 1 ? { ...entry, menu: true } : entry))
+
+    expect(splitInlineActions(catalog).visible.map((entry) => entry.key)).toEqual(['a0', 'a2', 'a3'])
+    expect(splitInlineActions(catalog).overflow.map((entry) => entry.key)).toEqual(['a1', 'a4'])
+  })
+})
+
 describe('RowActions count badge', () => {
   it('renders the count badge for an action with a count_field and includes it in the aria-label', () => {
     const catalog = [action('documents', 'action', 'documents_count')]

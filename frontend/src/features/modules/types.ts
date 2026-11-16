@@ -77,6 +77,11 @@ export interface ModuleDetailScreenProps {
    * whatever lists the record (grid, board) without leaving it.
    */
   onChanged?: () => void
+  /**
+   * The tab to open first, for a detail with tabs (`openViewTab`, spec 0405).
+   * Ignored by a detail without tabs.
+   */
+  initialTab?: string
 }
 
 export interface ModuleFormScreenProps {

@@ -38,14 +38,6 @@ function requestUpdateWorkOrder(): array
     return [$workOrder, $participants->all(), $supervisor];
 }
 
-/** @return array<int, string> the action keys of the grid row titled $title */
-function requestUpdateRowActions(string $title): array
-{
-    $items = test()->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items');
-
-    return collect($items)->firstWhere('title', $title)['actions'];
-}
-
 function requestUpdateUrl(WorkOrder $workOrder): string
 {
     return "/api/work-orders/{$workOrder->id}/request-update";
@@ -220,21 +212,6 @@ it('computes the request_update flag on the detail (AC-009)', function () {
 
     Sanctum::actingAs(workOrderUserWith(['viewAny', 'view']));
     $this->getJson("/api/work-orders/{$open->id}")->assertOk()->assertJsonPath('permissions.actions.request_update', false);
-});
-
-it('offers request_update in the grid row actions under the same conditions (AC-010)', function () {
-    WorkOrder::factory()->create(['title' => 'Aperta', 'is_force_closed' => false]);
-    WorkOrder::factory()->create(['title' => 'Chiusa', 'is_force_closed' => true, 'force_close_reason' => 'x'])
-        ->forceFill(['work_phase' => 'cancelled'])->save();
-
-    Sanctum::actingAs(requestUpdateActor());
-    expect(requestUpdateRowActions('Aperta'))->toContain('request_update')
-        ->and(requestUpdateRowActions('Chiusa'))->not->toContain('request_update');
-    $keys = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.actions'))->pluck('key');
-    expect($keys)->toContain('request_update');
-
-    Sanctum::actingAs(workOrderUserWith(['viewAny', 'view']));
-    expect(requestUpdateRowActions('Aperta'))->not->toContain('request_update');
 });
 
 it('registers the permission in the catalogue and leaves the work order untouched (AC-011)', function () {

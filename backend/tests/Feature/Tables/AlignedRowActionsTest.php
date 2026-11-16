@@ -57,7 +57,8 @@ it('AC-1: the four catalogs share the order of the common actions', function () 
     expect(alignedActionKeys('opportunities'))->toBe(['view', 'documents', 'notes', 'activity', 'delete'])
         ->and(alignedActionKeys('quotes'))->toBe(['view', 'documents', 'notes', 'generate_document', 'contract', 'activity', 'delete'])
         ->and(alignedActionKeys('contracts'))->toBe(['view', 'documents', 'validate', 'program', 'renew', 'change_status', 'terminate', 'reactivate', 'activity'])
-        ->and(alignedActionKeys('work-orders'))->toBe(['view', 'documents', 'notes', 'proforma', 'progress', 'request_update', 'force_close', 'reopen', 'activity', 'delete']);
+        // REQUIREMENT CHANGED (spec 0405): Commesse has the legacy actions, the tabs folded in its menu.
+        ->and(alignedActionKeys('work-orders'))->toBe(['view', 'team', 'info', 'notes', 'tasks', 'documents', 'delete']);
 });
 
 it('AC-2: a work order offers documents only with viewDocuments, notes with view, both counted', function () {

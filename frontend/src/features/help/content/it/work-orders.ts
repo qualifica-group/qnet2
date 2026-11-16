@@ -59,6 +59,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'row-actions',
+      title: "Azioni della tabella",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Nella colonna **Azioni** dell'elenco Commesse (anche nelle sezioni Commesse del Contratto e dell'Anagrafica) trovi le azioni del vecchio QNet: l'**occhio** apre la commessa, **Responsabili e Partecipanti** apre un popup con le persone della commessa, **Info** apre la commessa sulla scheda Info. Il menu con i tre puntini apre la commessa direttamente sulla scheda **Storico Note**, **Task** o **Documenti**.",
+        },
+        {
+          type: 'paragraph',
+          text: "Nel popup **Responsabili e Partecipanti** aggiungi o togli Responsabili e Partecipanti con la matita, con le stesse regole del dettaglio. In fondo, se puoi richiedere proforma, c'è **Richiedi proforma**; **Chiudi** chiude il popup.",
+        },
+        {
+          type: 'note',
+          text: "Task e Documenti compaiono nel menu solo se puoi vedere quelle schede. Chiusura forzata, Avanzamento, Richiedi aggiornamento, Richiedi proforma e Attività non sono più azioni di riga: le trovi nel dettaglio della commessa. L'avanzamento si apre anche dalla cella **Avanzamento** della tabella.",
+        },
+      ],
+    },
+    {
       id: 'list-editing',
       title: "Modifica rapida dall'elenco",
       blocks: [
@@ -68,7 +86,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). La colonna **Periodo** indica in quale periodo del contratto è stata programmata la commessa: **Iniziale** o **Rinnovo N** (vedi la guida Contratti, Rinnovare il contratto). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Periodo, Stato, Avanzamento, Creata il e Aggiornata il.",
+          text: "La **Chiusura forzata** si fa dal dettaglio della commessa (chiede il motivo), non da una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). La colonna **Periodo** indica in quale periodo del contratto è stata programmata la commessa: **Iniziale** o **Rinnovo N** (vedi la guida Contratti, Rinnovare il contratto). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Periodo, Stato, Avanzamento, Creata il e Aggiornata il.",
         },
       ],
     },
@@ -124,7 +142,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi in alto nel dettaglio della commessa e tra le azioni di riga della tabella Commesse (anche nella scheda Commesse del Contratto). Compare solo se puoi modificare la commessa.',
+          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi in alto nel dettaglio della commessa. Compare solo se puoi modificare la commessa.',
         },
         {
           type: 'steps',
@@ -152,7 +170,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            "Apri **Lista avanzamenti commessa**: clicca la cella **Avanzamento** della tabella, oppure premi **Avanzamento commessa** in alto nel dettaglio della commessa (accanto a Chiusura forzata) o tra le azioni di riga.",
+            "Apri **Lista avanzamenti commessa**: clicca la cella **Avanzamento** della tabella, oppure premi **Avanzamento commessa** in alto nel dettaglio della commessa (accanto a Chiusura forzata).",
             'Il campo **Totale % raggiunto** mostra la somma già registrata. Scrivi in **% Stato attuale** il nuovo totale (da 1 a 100): deve essere maggiore del totale raggiunto. Indica la **Data** (obbligatoria).',
             'Premi **Conferma**: la registrazione viene salvata (come differenza rispetto al totale) e il popup si chiude.',
             "Per eliminare una riga premi il cestino nella colonna Azioni, poi conferma con il cestino o annulla con la X: il totale scende dell'incremento di quella riga.",
@@ -170,7 +188,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio e tra le azioni di riga della tabella Commesse; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa **Da pianificare** o **In lavorazione** (non su una Conclusa, Annullata o Disdetta). La commessa non viene modificata.',
+          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio della commessa; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa **Da pianificare** o **In lavorazione** (non su una Conclusa, Annullata o Disdetta). La commessa non viene modificata.',
         },
         {
           type: 'table',
@@ -387,16 +405,16 @@ const guide: HelpGuide = {
     },
     {
       id: 'proforma-request',
-      title: 'Richiesta di proforma (pulsante €)',
+      title: 'Richiesta di proforma',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Se hai il permesso di creare richieste proforma, nella colonna **Azioni** dell\'elenco Commesse (anche nel tab Commesse del contratto e dell\'anagrafica) trovi il pulsante **€**, sempre visibile sulla riga (non finisce mai nel menu con i tre puntini). Il colore indica lo stato: **grigio** nessuna richiesta, **blu** richiesta inviata e non ancora evasa, **giallo** richieste già evase (proforma emessa). La stessa richiesta si fa anche dentro la commessa, con il pulsante **Richiedi proforma** in alto accanto ad **Avanzamento commessa**: apre la stessa finestra.',
+          text: 'Se hai il permesso di creare richieste proforma, trovi il pulsante **Richiedi proforma** in alto nel dettaglio della commessa, accanto ad **Avanzamento commessa**, e in fondo al popup **Responsabili e Partecipanti** dell\'elenco Commesse (vedi **Azioni della tabella**): entrambi aprono la stessa finestra.',
         },
         {
           type: 'steps',
           items: [
-            'Premi il pulsante **€** grigio: si apre la finestra **Richiesta emissione Proforma: Commessa #numero**.',
+            'Premi **Richiedi proforma**: si apre la finestra **Richiesta emissione Proforma: Commessa #numero**.',
             'Controlla la **Modalità di pagamento** presa dall\'offerta (se manca compare **Non indicata**).',
             'Scrivi le **Note per la Contabilità** (obbligatorie, massimo 5000 caratteri): il testo è precompilato con il titolo della finestra.',
             'Premi **Invia richiesta**. Il sistema crea una richiesta per le righe di tipo Consulenza e una per ciascun fornitore delle righe di tipo Ente (il fornitore scelto sulla riga dell’offerta).',
@@ -404,7 +422,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Con il pulsante **€** blu la finestra mostra **Ultima richiesta del** e la data: finché la richiesta non è evasa non se ne può inviare un\'altra e **Invia richiesta** resta disattivato. Con il pulsante giallo non si apre nulla: le richieste sono già evase e non se ne possono generare di nuove. Una commessa genera le richieste una sola volta.',
+          text: 'Se c\'è già una richiesta non evasa, la finestra mostra **Ultima richiesta del** e la data: non se ne può inviare un\'altra e **Invia richiesta** resta disattivato. Una commessa genera le richieste una sola volta: con le richieste già evase non se ne possono generare di nuove.',
         },
         {
           type: 'tip',
@@ -418,7 +436,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Una commessa **non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: in questo caso il pulsante **Elimina** non compare. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
+          text: 'Una commessa si elimina selezionandola nell\'elenco e usando **Elimina selezionati** (serve il permesso di eliminare). **Non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: in questo caso resta e il messaggio la conta tra quelle non eliminate. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
         },
       ],
     },

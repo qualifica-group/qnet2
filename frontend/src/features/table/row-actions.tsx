@@ -31,7 +31,8 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
  * they all show inline; beyond it, the first `INLINE_ACTION_LIMIT` stay inline
  * and every remaining action moves into the overflow (three-dots) menu, keeping
  * the actions column narrow while the most frequent actions stay one click away.
- * A `pinned` action is inline on top of the limit (task 427151).
+ * A `pinned` action is inline on top of the limit (task 427151); a `menu`
+ * action is always in the menu and does not count toward it (spec 0405).
  */
 export const INLINE_ACTION_LIMIT = 3
 
@@ -40,16 +41,17 @@ export function splitInlineActions(
   available: TableActionDefinition[],
   inlineAll = false,
 ): { visible: TableActionDefinition[]; overflow: TableActionDefinition[] } {
-  const unpinnedCount = available.filter((action) => !action.pinned).length
-  if (inlineAll || unpinnedCount <= INLINE_ACTION_LIMIT) {
+  if (inlineAll) {
     return { visible: available, overflow: [] }
   }
+  const unpinnedCount = available.filter((action) => !action.pinned && !action.menu).length
+  const fitsInline = unpinnedCount <= INLINE_ACTION_LIMIT
   let unpinnedSeen = 0
   const visible: TableActionDefinition[] = []
   const overflow: TableActionDefinition[] = []
   for (const action of available) {
-    const inline = action.pinned === true || unpinnedSeen < INLINE_ACTION_LIMIT
-    if (!action.pinned) {
+    const inline = action.menu !== true && (fitsInline || action.pinned === true || unpinnedSeen < INLINE_ACTION_LIMIT)
+    if (!action.pinned && !action.menu) {
       unpinnedSeen += 1
     }
     ;(inline ? visible : overflow).push(action)

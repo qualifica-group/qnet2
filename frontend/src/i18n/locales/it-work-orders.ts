@@ -147,8 +147,18 @@ export const workOrders = {
       countLabel: '{{count}} task',
     },
   },
-  /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
+  /** The grid row actions (spec 0405) and the detail actions, "Chiusura forzata" and its inverse included (user directive 2026-10-06). */
   actions: {
+    team: {
+      label: 'Responsabili e Partecipanti',
+      description: 'Commessa {{code}}: aggiungi o togli Responsabili e Partecipanti.',
+    },
+    openTab: {
+      info: 'Info',
+      notes: 'Storico Note',
+      tasks: 'Task',
+      documents: 'Documenti',
+    },
     requestUpdate: {
       label: 'Richiedi aggiornamento',
       title: 'Richiedi aggiornamento',
@@ -417,7 +427,6 @@ export const workOrders = {
     },
     created: 'Commessa creata con successo.',
     updated: 'Commessa aggiornata con successo.',
-    deleted: 'Commessa eliminata con successo.',
     codeRequired: 'Il numero commessa è obbligatorio.',
     codeMax: 'Il numero commessa può contenere al massimo 32 caratteri.',
     titlePlaceholder: 'Automatico: codice e prodotti della commessa',
@@ -434,8 +443,6 @@ export const workOrders = {
     openTasksWarning_one: '{{count}} task aperto verrà chiuso con esito negativo.',
     openTasksWarning_other: '{{count}} task aperti verranno chiusi con esito negativo.',
     genericError: 'Si è verificato un errore. Riprova.',
-    deleteError: 'Impossibile eliminare la commessa. Riprova.',
-    deleteConflict: 'Impossibile eliminare: la commessa è utilizzata altrove.',
     sections: {
       offer: {
         title: 'Offerta e righe prodotto',

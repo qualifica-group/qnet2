@@ -147,8 +147,18 @@ export const workOrders = {
       countLabel: '{{count}} tasks',
     },
   },
-  /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
+  /** The grid row actions (spec 0405) and the detail actions, "Chiusura forzata" and its inverse included (user directive 2026-10-06). */
   actions: {
+    team: {
+      label: 'Supervisors and Participants',
+      description: 'Work order {{code}}: add or remove Supervisors and Participants.',
+    },
+    openTab: {
+      info: 'Info',
+      notes: 'Notes history',
+      tasks: 'Tasks',
+      documents: 'Documents',
+    },
     requestUpdate: {
       label: 'Request update',
       title: 'Request update',
@@ -417,7 +427,6 @@ export const workOrders = {
     },
     created: 'Work order created successfully.',
     updated: 'Work order updated successfully.',
-    deleted: 'Work order deleted successfully.',
     codeRequired: 'Work order number is required.',
     codeMax: 'Work order number must be at most 32 characters.',
     titlePlaceholder: "Automatic: the work order's code and products",
@@ -434,8 +443,6 @@ export const workOrders = {
     openTasksWarning_one: '{{count}} open task will be closed with a negative outcome.',
     openTasksWarning_other: '{{count}} open tasks will be closed with a negative outcome.',
     genericError: 'Something went wrong. Please try again.',
-    deleteError: 'Unable to delete the work order. Please try again.',
-    deleteConflict: 'Cannot delete: the work order is used elsewhere.',
     sections: {
       offer: {
         title: 'Offer and product lines',

@@ -1,155 +1,73 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
-import i18n from '@/i18n'
-import { fetchWorkOrder, updateWorkOrder } from '@/features/work-orders/api'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, render, renderHook, screen } from '@testing-library/react'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import type { TableActionDefinition } from '@/features/table/types'
 
 /**
- * The grid's closure row actions (user directive 2026-10-06: "stessa action
- * sulla tabella commesse"): `force_close` opens the reason dialog — the row
- * does not carry the open tasks, the dialog reads them off the record —
- * and `reopen` (already confirmed by the grid, `confirm: true`) PATCHes back.
+ * Spec 0405: the legacy `OrdersTable` actions. The eye opens the record,
+ * "Responsabili e Partecipanti" its team dialog, Info and the menu entries
+ * open the record on that tab. REQUIREMENT CHANGED: replaces the closure/proforma/
+ * documents/notes row actions this hook used to run.
  */
 
-vi.mock('@/features/modules/use-module-open-mode', () => ({
-  useModuleOpenMode: () => 'modal',
+const openView = vi.fn()
+const openViewTab = vi.fn()
+vi.mock('@/features/modules/use-module-opener', () => ({
+  useModuleOpener: () => ({ openView, openViewTab, openCreateWith: vi.fn(), sheet: null }),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-
-vi.mock('@/features/work-orders/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/work-orders/api')>('@/features/work-orders/api')
-  return { ...actual, updateWorkOrder: vi.fn(), fetchWorkOrder: vi.fn(), deleteWorkOrder: vi.fn() }
-})
-
-vi.mock('@/features/attachments/documents-dialog', () => ({
-  DocumentsDialog: ({ resource, id }: { resource: string; id: number | null }) =>
-    id === null ? null : <div role="dialog" aria-label={`documents-${resource}-${id}`} />,
+vi.mock('@/features/work-orders/work-order-team-dialog', () => ({
+  WorkOrderTeamDialog: ({ workOrderId }: { workOrderId: number | null }) =>
+    workOrderId === null ? null : <div role="dialog" aria-label={`team-${workOrderId}`} />,
 }))
 
-vi.mock('@/features/notes/notes-dialog', () => ({
-  NotesDialog: ({ entityType, entityId }: { entityType: string; entityId: number | null }) =>
-    entityId === null ? null : <div role="dialog" aria-label={`notes-${entityType}-${entityId}`} />,
-}))
+vi.mock('@/features/work-orders/work-order-progress-dialog', () => ({ WorkOrderProgressDialog: () => null }))
 
-const label = (key: string, options?: Record<string, unknown>) => i18n.t(key, options)
-const CLOSED_STATUS = { id: 31, name: 'Closed', description: null, color: null, group: 'closed', system_key: 'closed', progress_percentage: null }
-const ROW = { id: 7, actions: ['force_close', 'reopen'] }
+const ROW = { id: 7, actions: ['view', 'team', 'info', 'notes', 'tasks', 'documents'] }
 
 function action(key: string): TableActionDefinition {
-  return { key, label: key, icon: 'lock', type: 'action', confirm: false, permission: 'work-orders.update' } as TableActionDefinition
+  return { key, label: key, icon: 'info', type: 'link', confirm: false }
 }
-
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <MemoryRouter>
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    </MemoryRouter>
-  )
-}
-
-beforeAll(async () => {
-  await i18n.changeLanguage('en')
-})
 
 beforeEach(() => {
-  vi.mocked(updateWorkOrder).mockReset()
-  vi.mocked(fetchWorkOrder).mockReset()
+  openView.mockReset()
+  openViewTab.mockReset()
 })
 
-describe('useWorkOrderRowActions — closure', () => {
-  it('opens the force-close dialog, warns about the open tasks and PATCHes the reason', async () => {
-    const record = { id: 7, open_tasks_count: 1, work_order_workflow_statuses: [CLOSED_STATUS] }
-    vi.mocked(fetchWorkOrder).mockResolvedValue(record as never)
-    vi.mocked(updateWorkOrder).mockResolvedValue(record as never)
-    const onMutated = vi.fn()
-    const Wrapper = wrapper()
-    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated }), { wrapper: Wrapper })
+describe('useWorkOrderRowActions (spec 0405)', () => {
+  it('the eye opens the record', () => {
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }))
 
-    act(() => result.current.handleAction(action('force_close'), ROW))
-    render(<>{result.current.forceCloseDialog}</>, { wrapper: Wrapper })
+    act(() => result.current.handleAction(action('view'), ROW))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('1 open task will be closed with a negative outcome.')
-    expect(fetchWorkOrder).toHaveBeenCalledWith(7)
-
-    // The reason is mandatory: nothing is sent without it.
-    fireEvent.click(screen.getByRole('button', { name: label('workOrders.actions.forceClose.submit') }))
-    expect(await screen.findByText(label('workOrders.form.forceCloseReasonRequired'))).toBeInTheDocument()
-    expect(updateWorkOrder).not.toHaveBeenCalled()
-
-    fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.form.forceCloseReason') }), {
-      target: { value: 'Annullata dal cliente' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: label('workOrders.actions.forceClose.submit') }))
-
-    await waitFor(() =>
-      expect(updateWorkOrder).toHaveBeenCalledWith(7, { is_force_closed: true, force_close_reason: 'Annullata dal cliente', force_close_status_id: 31 }),
-    )
-    await waitFor(() => expect(onMutated).toHaveBeenCalledOnce())
+    expect(openView).toHaveBeenCalledWith(ROW)
+    expect(openViewTab).not.toHaveBeenCalled()
   })
 
-  it('reopens the row and refreshes the grid', async () => {
-    vi.mocked(updateWorkOrder).mockResolvedValue({ id: 7 } as never)
-    const onMutated = vi.fn()
-    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated }), { wrapper: wrapper() })
-
-    act(() => result.current.handleAction(action('reopen'), ROW))
-
-    await waitFor(() => expect(updateWorkOrder).toHaveBeenCalledWith(7, { is_force_closed: false, force_close_reason: null }))
-    await waitFor(() => expect(onMutated).toHaveBeenCalledOnce())
-  })
-})
-
-describe('useWorkOrderRowActions — request update (spec 0352 AC-014)', () => {
-  it('loads the fresh record and opens the request-update dialog with its recipients', async () => {
-    vi.mocked(fetchWorkOrder).mockResolvedValue({
-      id: 7,
-      participants: [{ id: 1, name: 'Bruno Bianchi', position: 1 }],
-      supervisors: [{ id: 2, name: 'Ada Alberti' }],
-    } as never)
-    const Wrapper = wrapper()
-    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: Wrapper })
-
-    act(() => result.current.handleAction(action('request_update'), ROW))
-    await waitFor(() => expect(fetchWorkOrder).toHaveBeenCalledWith(7))
-    // The dialog mounts once the fetch resolved; render the latest slot.
-    await waitFor(() => expect(result.current.requestUpdateDialog).not.toBeNull())
-    render(<>{result.current.requestUpdateDialog}</>, { wrapper: Wrapper })
-
-    expect(await screen.findByRole('dialog', { name: 'Request update' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Participants (1)' })).toBeChecked()
-  })
-
-  it('exposes the message-square-more icon for the row action', () => {
-    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: wrapper() })
-
-    expect(result.current.iconMap['message-square-more']).toBeDefined()
-  })
-})
-
-describe('useWorkOrderRowActions — documents and notes (spec 0363)', () => {
-  it.each([
-    ['documents', 'documents-work_order-7'],
-    ['notes', 'notes-work-orders-7'],
-  ])('opens the %s dialog of the row', (key, dialogName) => {
-    const Wrapper = wrapper()
-    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: Wrapper })
+  it.each(['info', 'notes', 'tasks', 'documents'])('the "%s" entry opens the record on that tab', (key) => {
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }))
 
     act(() => result.current.handleAction(action(key), ROW))
-    render(<>{result.current.collaborationDialogs}</>, { wrapper: Wrapper })
 
-    expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
+    expect(openViewTab).toHaveBeenCalledWith(ROW, key)
   })
 
-  it('exposes the paperclip and messages-square icons', () => {
-    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }), { wrapper: wrapper() })
+  it('"Responsabili e Partecipanti" opens the team dialog of the row', () => {
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }))
 
-    expect(result.current.iconMap.paperclip).toBeDefined()
-    expect(result.current.iconMap['messages-square']).toBeDefined()
+    act(() => result.current.handleAction(action('team'), ROW))
+    render(<>{result.current.dialogs}</>)
+
+    expect(screen.getByRole('dialog', { name: 'team-7' })).toBeInTheDocument()
+    expect(openView).not.toHaveBeenCalled()
+  })
+
+  it('links the eye to the record page and the menu entries to the page on their tab', () => {
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }))
+    const { resolveActionHref } = result.current
+
+    expect(resolveActionHref(action('view'), ROW)).toBe('/work-orders/7')
+    expect(resolveActionHref(action('notes'), ROW)).toBe('/work-orders/7?tab=notes')
+    expect(resolveActionHref(action('team'), ROW)).toBeUndefined()
   })
 })

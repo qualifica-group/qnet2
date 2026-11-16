@@ -1,7 +1,5 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { PageHeader } from '@/components/page-header'
-import { moduleActionHref } from '@/features/modules/module-action-href'
-import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE, type TableConfigScope } from '@/features/table/use-table-config'
 import type { TableRowScope } from '@/features/table/types'
@@ -9,7 +7,6 @@ import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { useWorkPhaseTabs } from '@/features/work-orders/use-work-phase-tabs'
 import { WorkPhaseTabs } from '@/features/work-orders/work-phase-tabs'
-import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 
 /** Only the "Commesse" page lists `processing` work orders: project ones live under "Commesse di Progetto" (spec 0359 D-2). */
 const PROCESSING_ROW_SCOPE: TableRowScope = { workOrderType: 'processing' }
@@ -25,8 +22,8 @@ interface WorkOrdersGridProps {
 }
 
 /**
- * The shared body of the work orders pages (spec 0359): the grid with every row action
- * (view/delete/activity/force close/reopen/proforma, via `useWorkOrderRowActions`, spec 0095 D-9)
+ * The shared body of the work orders pages (spec 0359): the grid with the legacy row actions
+ * (Modifica, Responsabili e Partecipanti, the tab menu, via `useWorkOrderRowActions`, spec 0405)
  * and its dialogs. Permission gating is an affordance only; the backend re-authorizes each call.
  */
 export function WorkOrdersGrid({ domain, rowScope, scope, showWorkPhaseTabs = false }: WorkOrdersGridProps) {
@@ -36,24 +33,9 @@ export function WorkOrdersGrid({ domain, rowScope, scope, showWorkPhaseTabs = fa
   }, [])
   const workPhaseTabs = useWorkPhaseTabs(tableRef)
   // The project-only grid has its own domain, but its rows open the Commessa pages.
-  const resolveActionHref = useMemo(() => moduleActionHref(WORK_ORDERS_DOMAIN), [])
-
-  const {
-    handleAction,
-    isBusy,
-    activityRow,
-    closeActivity,
-    proformaRow,
-    closeProforma,
-    resolveActionState,
-    iconMap,
-    renderers,
-    sheet,
-    forceCloseDialog,
-    progressDialog,
-    requestUpdateDialog,
-    collaborationDialogs,
-  } = useWorkOrderRowActions({ onMutated: refreshGrid })
+  const { handleAction, resolveActionHref, iconMap, renderers, sheet, dialogs } = useWorkOrderRowActions({
+    onMutated: refreshGrid,
+  })
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -80,20 +62,11 @@ export function WorkOrdersGrid({ domain, rowScope, scope, showWorkPhaseTabs = fa
         renderers={renderers}
         onAction={handleAction}
         resolveActionHref={resolveActionHref}
-        isBusy={isBusy}
-        resolveActionState={resolveActionState}
         iconMap={iconMap}
       />
 
       {sheet}
-      {forceCloseDialog}
-      {progressDialog}
-      {requestUpdateDialog}
-      {collaborationDialogs}
-
-      <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refreshGrid} />
-
-      <ResourceActivityDialog resource={WORK_ORDERS_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
+      {dialogs}
     </div>
   )
 }

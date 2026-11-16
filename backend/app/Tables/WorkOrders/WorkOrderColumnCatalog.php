@@ -283,6 +283,13 @@ final class WorkOrderColumnCatalog
     }
 
     /**
+     * The legacy `OrdersTable` "Azioni" column (spec 0405): the eye (in place
+     * of the legacy "Modifica"), "Responsabili e Partecipanti" and Info on the
+     * row (user directives 2026-11-16), then a menu opening the commessa on its Storico
+     * Note / Task / Documenti tab (`menu`: always in the "..." menu). `delete` is never offered per row
+     * (WorkOrdersTableDefinition::actionsFor): it stays here only because the
+     * grid's bulk "Elimina selezionati" is enabled by it.
+     *
      * @return array<int, array<string, mixed>>
      */
     public static function actions(): array
@@ -296,84 +303,50 @@ final class WorkOrderColumnCatalog
                 'confirm' => false,
                 'permission' => 'work-orders.view',
             ],
-            // Spec 0363: documents and notes, like the detail tabs.
             [
-                'key' => 'documents',
-                'label' => 'actions.documents',
-                'icon' => 'paperclip',
+                'key' => 'team',
+                'label' => 'workOrders.actions.team.label',
+                'icon' => 'contact',
                 'type' => 'action',
                 'confirm' => false,
-                'permission' => 'work-orders.viewDocuments',
-                'count_field' => 'documents_count',
+                'permission' => 'work-orders.view',
+            ],
+            [
+                'key' => 'info',
+                'label' => 'workOrders.actions.openTab.info',
+                'icon' => 'info',
+                'type' => 'link',
+                'confirm' => false,
+                'permission' => 'work-orders.view',
             ],
             [
                 'key' => 'notes',
-                'label' => 'actions.notes',
+                'label' => 'workOrders.actions.openTab.notes',
                 'icon' => 'messages-square',
-                'type' => 'action',
+                'type' => 'link',
                 'confirm' => false,
+                'menu' => true,
                 'permission' => 'work-orders.view',
                 'count_field' => 'notes_count',
             ],
             [
-                // Spec 0193 (D-11, rev. 2026-10-06): the "€" proforma request,
-                // after the common actions (spec 0363 D-1); its colour and the
-                // disabled "issued" state come from the row's `proforma_status`.
-                // Pinned (task 427151): always on the row, never in the "..." menu.
-                'key' => 'proforma',
-                'label' => 'proformaRequests.cell.none',
-                'icon' => 'euro',
-                'type' => 'action',
+                'key' => 'tasks',
+                'label' => 'workOrders.actions.openTab.tasks',
+                'icon' => 'list-checks',
+                'type' => 'link',
                 'confirm' => false,
-                'pinned' => true,
-                'permission' => 'proforma-requests.create',
+                'menu' => true,
+                'permission' => 'tasks.viewAny',
             ],
             [
-                // Spec 0321: opens the manual progress dialog, read-only
-                // without `update` or on a force-closed work order.
-                'key' => 'progress',
-                'label' => 'workOrders.progress.action',
-                'icon' => 'trending-up',
-                'type' => 'action',
+                'key' => 'documents',
+                'label' => 'workOrders.actions.openTab.documents',
+                'icon' => 'paperclip',
+                'type' => 'link',
                 'confirm' => false,
-                'permission' => 'work-orders.view',
-            ],
-            [
-                // Spec 0352: opens the "Richiedi aggiornamento" dialog.
-                'key' => 'request_update',
-                'label' => 'workOrders.actions.requestUpdate.label',
-                'icon' => 'message-square-more',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'work-orders.requestUpdate',
-            ],
-            // "Chiusura forzata" as an action, not a field (user directive
-            // 2026-10-06): the client opens a reason dialog and PATCHes
-            // is_force_closed/force_close_reason. `reopen` is its inverse.
-            // Offered per row by WorkOrdersTableDefinition::actionsFor().
-            [
-                'key' => 'force_close',
-                'label' => 'actions.forceClose',
-                'icon' => 'lock',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'work-orders.update',
-            ],
-            [
-                'key' => 'reopen',
-                'label' => 'actions.reopen',
-                'icon' => 'lock-open',
-                'type' => 'action',
-                'confirm' => true,
-                'permission' => 'work-orders.update',
-            ],
-            [
-                'key' => 'activity',
-                'label' => 'actions.activity',
-                'icon' => 'history',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'work-orders.viewActivity',
+                'menu' => true,
+                'permission' => 'work-orders.viewDocuments',
+                'count_field' => 'documents_count',
             ],
             [
                 'key' => 'delete',

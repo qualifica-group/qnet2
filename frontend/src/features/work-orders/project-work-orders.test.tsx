@@ -11,23 +11,15 @@ import { WorkOrdersTable } from '@/features/work-orders/work-orders-table'
  * `project-work-orders` domain with no row scope. Neither page has the category strip. Grid and row actions are stubbed.
  */
 vi.mock('@/components/page-header', () => ({ PageHeader: () => <div /> }))
-vi.mock('@/features/work-orders/work-order-proforma-dialog', () => ({ WorkOrderProformaDialog: () => null }))
-vi.mock('@/features/activity-log/resource-activity-dialog', () => ({ ResourceActivityDialog: () => null }))
 vi.mock('@/features/auth/can', () => ({ Can: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
 vi.mock('@/features/work-orders/use-work-order-row-actions', () => ({
   useWorkOrderRowActions: () => ({
     handleAction: vi.fn(),
-    isBusy: () => false,
-    activityRow: null,
-    closeActivity: vi.fn(),
-    proformaRow: null,
-    closeProforma: vi.fn(),
-    resolveActionState: undefined,
+    resolveActionHref: vi.fn(),
     iconMap: {},
     renderers: {},
     sheet: null,
-    forceCloseDialog: null,
-    progressDialog: null,
+    dialogs: null,
   }),
 }))
 

@@ -59,6 +59,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'row-actions',
+      title: "Table actions",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "The **Actions** column of the Work orders list (also in the Work orders sections of a Contract and of a Registry) has the actions of the old QNet: the **eye** opens the work order, **Supervisors and Participants** opens a popup with the people of the work order, **Info** opens the work order on the Info tab. The three-dots menu opens the work order straight on the **Notes history**, **Tasks** or **Documents** tab.",
+        },
+        {
+          type: 'paragraph',
+          text: "In the **Supervisors and Participants** popup you add or remove Supervisors and Participants with the pencil, under the same rules as the detail. At the bottom, if you may request proformas, there is **Request proforma**; **Close** closes the popup.",
+        },
+        {
+          type: 'note',
+          text: "Tasks and Documents show in the menu only if you can see those tabs. Force close, Progress, Request update, Request proforma and Activity are no longer row actions: you find them in the work order detail. The progress also opens from the **Progress** cell of the table.",
+        },
+      ],
+    },
+    {
       id: 'list-editing',
       title: "Quick editing from the list",
       blocks: [
@@ -68,7 +86,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). The **Period** column shows the contract period the work order was programmed in: **Initial** or **Renewal N** (see the Contracts guide, Renewing the contract). Work order no., Contract no., Linked offer, Registry, Contract expiry, Period, Status, Progress, Created at and Updated at stay read-only.",
+          text: "**Force closing** is done from the work order detail (it asks for a reason), not from a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). The **Period** column shows the contract period the work order was programmed in: **Initial** or **Renewal N** (see the Contracts guide, Renewing the contract). Work order no., Contract no., Linked offer, Registry, Contract expiry, Period, Status, Progress, Created at and Updated at stay read-only.",
         },
       ],
     },
@@ -124,7 +142,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The forced closure is an **action**, not a field: you find it at the top of the work order detail and among the row actions of the Work orders table (also in the Contract\'s Work orders tab). It shows only if you may edit the work order.',
+          text: 'The forced closure is an **action**, not a field: you find it at the top of the work order detail. It shows only if you may edit the work order.',
         },
         {
           type: 'steps',
@@ -152,7 +170,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open the **Work order progress list**: click the **Progress** cell of the table, or press **Work order progress** at the top of the work order detail (next to Force close) or among the row actions.',
+            'Open the **Work order progress list**: click the **Progress** cell of the table, or press **Work order progress** at the top of the work order detail (next to Force close).',
             'The **Total % reached** field shows the sum already recorded. Type the new total (1 to 100) in **Current status %**: it must be greater than the total reached. Enter the **Date** (required).',
             'Press **Confirm**: the record is saved (as the difference from the total) and the popup closes.',
             "To delete a row press the trash in the Actions column, then confirm with the trash or cancel with the X: the total drops by that row's increment.",
@@ -170,7 +188,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The button is at the top of the detail and among the row actions of the Work orders table; it shows only if you hold the **Request updates** permission and only on a **To plan** or **In progress** work order (not on a Completed, Cancelled or Terminated one). The work order is not changed.',
+          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The button is at the top of the work order detail; it shows only if you hold the **Request updates** permission and only on a **To plan** or **In progress** work order (not on a Completed, Cancelled or Terminated one). The work order is not changed.',
         },
         {
           type: 'table',
@@ -387,16 +405,16 @@ const guide: HelpGuide = {
     },
     {
       id: 'proforma-request',
-      title: 'Proforma request (the € button)',
+      title: 'Proforma request',
       blocks: [
         {
           type: 'paragraph',
-          text: 'If you can create proforma requests, the **Actions** column of the Work orders list (also in the Work orders tab of a contract and of a registry) shows the **€** button, always visible on the row (it never goes into the three-dots menu). Its color is the state: **grey** no request yet, **blue** request sent and not yet fulfilled, **yellow** requests already fulfilled (proforma issued). The same request can be made from inside the work order too, with the **Request proforma** button at the top next to **Work order progress**: it opens the same window.',
+          text: 'If you can create proforma requests, the **Request proforma** button is at the top of the work order detail, next to **Work order progress**, and at the bottom of the **Supervisors and Participants** popup of the Work orders list (see **Table actions**): both open the same window.',
         },
         {
           type: 'steps',
           items: [
-            'Press the grey **€** button: the **Proforma issue request: Work order #number** window opens.',
+            'Press **Request proforma**: the **Proforma issue request: Work order #number** window opens.',
             'Check the **Payment method** taken from the quote (**Not specified** appears when it is missing).',
             'Write the **Notes for Accounting** (required, up to 5000 characters): the text is prefilled with the window title.',
             'Press **Send request**. The system creates one request for the Consultancy lines and one for each supplier of the Institution lines (the supplier chosen on the offer line).',
@@ -404,7 +422,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'With the blue **€** button the window shows **Last request on** and the date: until the request is fulfilled another one cannot be sent and **Send request** stays disabled. The yellow button opens nothing: the requests are already fulfilled and no new ones can be generated. A work order generates its requests only once.',
+          text: 'When a request is still pending, the window shows **Last request on** and the date: another one cannot be sent and **Send request** stays disabled. A work order generates its requests only once: once they are fulfilled no new ones can be generated.',
         },
         {
           type: 'tip',
@@ -418,7 +436,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'A work order **cannot be deleted** if it has linked proforma requests, active invoices, purchase orders or purchase invoices: in that case the **Delete** button does not appear. Tasks, hours and manually entered costs do not block deletion.',
+          text: 'A work order is deleted by selecting it in the list and using **Delete selected** (you need the delete permission). It **cannot be deleted** if it has linked proforma requests, active invoices, purchase orders or purchase invoices: in that case it stays and the message counts it among the ones not deleted. Tasks, hours and manually entered costs do not block deletion.',
         },
       ],
     },
