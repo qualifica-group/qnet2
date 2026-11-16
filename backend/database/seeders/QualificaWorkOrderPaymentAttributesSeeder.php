@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\DB;
  * `inherits_work_order_attributes` barrier that does not own an attribute
  * gets its own assignment; every other category inherits it from its parent.
  *
+ * "Stato Pagamento" is no longer one of them: it is the commessa's own
+ * column since spec 0402 (WorkOrderPaymentStatusAttributeMover).
+ *
  * Only ADDS, never creates an attribute (they come from the legacy catalogue)
  * and touches no layout: an unplaced field shows in "Altre informazioni".
  * Re-running it changes nothing.
@@ -30,7 +33,7 @@ class QualificaWorkOrderPaymentAttributesSeeder extends Seeder
     use SeedsCategoryAttributes;
 
     /** @var list<string> */
-    public const array ATTRIBUTE_CODES = ['stato_pagamento', 'accordo_pagamento', 'insoluti'];
+    public const array ATTRIBUTE_CODES = ['accordo_pagamento', 'insoluti'];
 
     public function run(): void
     {

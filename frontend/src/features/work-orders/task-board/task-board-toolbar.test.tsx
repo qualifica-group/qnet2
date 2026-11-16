@@ -40,12 +40,19 @@ async function openSheet() {
 }
 
 describe('TaskBoardToolbar — applied filters bar', () => {
-  it('shows Stato and Scadenza chips by default (AC-025: Stato "Aperti")', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-16): default filters show every task and get no chip, so the strip is gone.
+  it('shows no applied-filters strip while every filter is at its default', () => {
     renderToolbar()
+
+    expect(screen.queryByRole('list', { name: 'Filtri applicati' })).not.toBeInTheDocument()
+  })
+
+  it('shows Stato and Scadenza chips only once they narrow the tasks', () => {
+    renderToolbar({ filters: { ...DEFAULT_TASK_BOARD_FILTERS, status: 'open', due: 'today' } })
 
     const chips = screen.getByRole('list', { name: 'Filtri applicati' })
     expect(within(chips).getByText('Aperti')).toBeInTheDocument()
-    expect(within(chips).getByText('Tutte')).toBeInTheDocument()
+    expect(within(chips).getByText('Oggi')).toBeInTheDocument()
     expect(within(chips).queryByText('Tipo')).not.toBeInTheDocument()
   })
 
@@ -147,11 +154,22 @@ describe('TaskBoardToolbar — "Modifica filtri" sheet', () => {
     const { onFiltersChange } = renderToolbar()
     const sheet = await openSheet()
 
+    // "Tutti" is now the default (user directive 2026-11-16): the draft change has to pick another option.
     const statusGroup = within(sheet).getByRole('radiogroup', { name: 'Mostra' })
-    fireEvent.click(within(statusGroup).getByRole('radio', { name: 'Tutti' }))
+    fireEvent.click(within(statusGroup).getByRole('radio', { name: 'Completati' }))
     fireEvent.click(within(sheet).getByRole('button', { name: 'Annulla' }))
 
     expect(onFiltersChange).not.toHaveBeenCalled()
+  })
+
+  it('lists "Tutti"/"Tutte" first in every choice of the sheet (user directive 2026-11-16)', async () => {
+    renderToolbar()
+    const sheet = await openSheet()
+
+    const firstOption = (group: string) => within(within(sheet).getByRole('radiogroup', { name: group })).getAllByRole('radio')[0]
+    expect(firstOption('Mostra')).toHaveAccessibleName('Tutti')
+    expect(firstOption('Data fine')).toHaveAccessibleName('Tutte')
+    expect(firstOption('Assegnazione')).toHaveAccessibleName('Tutti')
   })
 
   it('resets the draft to the defaults but keeps the search', async () => {

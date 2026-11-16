@@ -68,7 +68,7 @@ const guide: HelpGuide = {
           items: [
             'Le modifiche si scrivono sull\'offerta di origine: totali e margini si ricalcolano, mentre lo stato del contratto e quello dell\'offerta non cambiano.',
             'Le **provvigioni** non si modificano da qui: restano quelle impostate nell\'offerta e i loro importi si ricalcolano sulle nuove righe.',
-            'Una riga **assegnata a una commessa** (mostra "Assegnata a COM-...") è bloccata: non si può né modificare né rimuovere finché la commessa non viene eliminata. La stessa regola vale dall\'offerta e da Gestione Richieste.',
+            'Una riga **assegnata a una commessa** (mostra "Assegnata a COM-...") è bloccata: non si può né modificare né rimuovere finché la commessa non viene eliminata. La stessa regola vale dall\'offerta e da Gestione Richieste. Il super-admin e chi ha il permesso **Modificare righe assegnate a commessa** possono modificarla, ma non rimuoverla.',
           ],
         },
         {

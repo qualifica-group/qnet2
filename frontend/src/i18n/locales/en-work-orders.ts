@@ -100,6 +100,9 @@ export const workOrders = {
     company: 'Company',
     companySite: 'Site',
     operationalSite: 'Operational site',
+    businessFunction: 'Business function',
+    amount: 'Amount',
+    paymentStatus: 'Payment status',
     forceCloseReason: 'Force close reason',
     description: 'Description',
     internalNotes: 'Work order notes',
@@ -193,7 +196,6 @@ export const workOrders = {
     },
     kpi: {
       total: 'Total tasks',
-      completion: 'Completion',
       overdue: 'Overdue',
       dueToday: 'Due today',
       estimated: 'Estimated',
@@ -297,11 +299,12 @@ export const workOrders = {
       dueToday: 'Due today',
       overdue: 'Overdue',
       columns: {
+        title: 'Title',
+        start: 'Start date',
         due: 'End date',
         priority: 'Priority',
         requester: 'Requester',
         assignees: 'Assignees',
-        watchers: 'Watchers',
         status: 'Status',
         type: 'Type',
         completion: 'Completion',
@@ -311,6 +314,9 @@ export const workOrders = {
       nobody: 'Nobody',
       noEstimate: 'no estimate',
       overEstimate: 'Over the estimate',
+    },
+    cell: {
+      edit: 'Edit {{field}}',
     },
     empty: {
       noTasks: 'No task yet in this work order.',

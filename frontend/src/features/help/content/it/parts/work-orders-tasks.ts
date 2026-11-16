@@ -3,6 +3,30 @@ import type { HelpSection } from '../../../types'
 /** Task-tab sections of the work-orders guide, split out to stay under the file-size limit. */
 export const taskSections: HelpSection[] = [
     {
+      id: 'task-board-rows',
+      title: 'Task: righe e modifica veloce',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Nella vista **Lista** della scheda **Task** ogni task sta su **una riga**, come nella tabella Task: sopra le righe di ogni fase c'è l'intestazione delle colonne (Titolo, Stato, Tipo, Priorità, Data inizio, Data fine, Richiedente, Assegnatari, Completamento, Ore lavorate / stimate). Su schermi stretti la riga va a capo e ogni valore ha la sua etichetta; se le colonne non ci stanno, la fase scorre in orizzontale. La colonna **Completamento** mostra la percentuale dello stato del task; accanto al nome della fase restano le ore, non più il completamento. Anche i riquadri in alto non mostrano più il completamento: restano Task totali, Scaduti, In scadenza oggi, Stimato ed Effettivo. L'avanzamento della commessa resta nell'intestazione del dettaglio.",
+        },
+        {
+          type: 'list',
+          items: [
+            "**Spunta**: il cerchio prima del titolo completa il task e apre il popup **Completa** di sempre. Un task completato ha il cerchio verde pieno; se puoi riaprirlo, un clic sul cerchio verde lo **riapre**.",
+            "**Modifica sul posto**: clicca una cella (Stato, Tipo, Priorità, date, Richiedente, Assegnatari, Ore) per cambiarne il valore. Le scelte da elenco si salvano subito; date, ore stimate (in minuti) e assegnatari si salvano con **Invio** o cliccando fuori. **Esc** annulla.",
+            "Il **titolo** apre il task; per rinominarlo usa la **matita** che compare accanto passando il mouse.",
+            "Scegliere uno stato di chiusura positiva apre il popup Completa; uscire da uno stato chiuso riapre il task, come nella tabella Task.",
+            "Le righe si **trascinano** dalla maniglia a sinistra per cambiare ordine o fase; un clic sul resto della riga apre il task.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "Una cella che non puoi modificare (per i permessi del tuo ruolo o perché il task è bloccato in scrittura) non si apre. La breve descrizione del task compare passando il mouse sul titolo. All'apertura i filtri mostrano **tutti** i task, anche quelli chiusi, con qualsiasi data fine; i filtri lasciati così non compaiono tra i **Filtri applicati**, che mostrano solo quelli che restringono l'elenco.",
+        },
+      ],
+    },
+    {
       id: 'task-board-selection',
       title: 'Task: selezione multipla',
       blocks: [

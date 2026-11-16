@@ -49,10 +49,12 @@ it('makes every category see the payment fields, assigning only roots and barrie
     }
 
     expect($child->attributes()->wherePivot('context', AttributeContext::WorkOrder->value)->count())->toBe(0)
-        ->and(workOrderPaymentAssignments())->toBe(9);
+        ->and(workOrderPaymentAssignments())->toBe(count(QualificaWorkOrderPaymentAttributesSeeder::ATTRIBUTE_CODES) * 3);
 });
 
-it('is idempotent and skips an attribute missing from the catalogue', function (): void {
+// REQUIREMENT CHANGED (spec 0402): "Stato Pagamento" is the commessa's own column, never assigned again.
+it('is idempotent, skips an attribute missing from the catalogue and never assigns stato_pagamento', function (): void {
+    Attribute::factory()->create(['code' => 'accordo_pagamento']);
     Attribute::factory()->create(['code' => 'stato_pagamento']);
     ProductCategory::factory()->create();
 
@@ -60,5 +62,6 @@ it('is idempotent and skips an attribute missing from the catalogue', function (
     test()->seed(QualificaWorkOrderPaymentAttributesSeeder::class);
 
     expect(workOrderPaymentAssignments())->toBe(1)
-        ->and(Attribute::query()->whereIn('code', ['accordo_pagamento', 'insoluti'])->count())->toBe(0);
+        ->and(Attribute::query()->where('code', 'insoluti')->count())->toBe(0)
+        ->and(DB::table('attribute_category')->where('attribute_id', Attribute::query()->where('code', 'stato_pagamento')->value('id'))->count())->toBe(0);
 });

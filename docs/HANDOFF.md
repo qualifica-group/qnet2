@@ -3,6 +3,41 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commessa, scheda Task: righe come la tabella Task (spec 0401, 2026-11-16) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+
+- Vista Lista: ogni task su una riga a colonne (Titolo, Stato, Tipo, Priorita', Data inizio, Data fine, Richiedente, Assegnatari, Completamento, Ore) sotto un'intestazione per fase (`task-board-column-header.tsx`, template unico in `task-board-row-columns.ts`). Sotto `lg` la riga si impila con etichette; da `lg` la card della fase scorre in orizzontale (min 91.75rem). Sotto-task: stesse colonne, solo il titolo rientra.
+- Spunta prima del titolo (`task-board-complete-toggle.tsx`, stessi stili della cella Titolo della griglia): completabile -> dialog Completa (`useTaskDomainRowActions.completeRow`); completato con `actions.uncomplete` -> Riapri.
+- Modifica in linea senza backend nuovo: `PATCH /tables/tasks/rows/{id}` `{column, value}` (TaskCellWriter) da `use-task-board-cell-edit.tsx`, fornito via `TaskBoardCellEditContext`; stato tramite `useTaskStatusCellIntercept` come la griglia. Editor: `task-board-cell-shell.tsx` (popover + input testo/data/minuti), `task-board-picker-cells.tsx` + `task-board-option-list.tsx` (for-select). Cella modificabile = `permissions.resource.update` && `fields[campo].editable` (assente = editabile).
+- Direttive utente 2026-11-16: completamento SULLA RIGA, tolto dal riepilogo della fase (`TaskBoardStageSummary`, lista e kanban) e dal riquadro KPI (rimossi `completionPercentage` da metrics e chiave `kpi.completion`). Tolti dalla riga osservatori ed estratto descrizione (ora tooltip del titolo). Card Kanban invariata.
+- Test: `task-board-row-content.test.tsx` riscritto (REQUIREMENT CHANGED), nuovo `use-task-board-cell-edit.test.tsx`, adeguati card-click/list-view/metrics/kpis. Vitest work-orders+help+i18n 755/755, ESLint, `tsc -b --force` puliti. Suite completa non eseguita.
+- Dettaglio commessa non si ricarica piu' (2026-11-16, richiesta utente): un salvataggio dentro una scheda (Task, Documenti...) invalida anche `workOrderDetailQueryKey` e `useEntityDetail` mostrava lo scheletro a OGNI refetch (`isFetching`), smontando il dettaglio e riportando la scheda su Info. Nuova opzione `useEntityDetail(..., enabled, { skeletonOnRefetch: false })` (scheletro solo sul fetch all'apertura, via `isFetchedAfterMount`), usata SOLO da `WorkOrderDetailScreen`; default invariato per gli altri 82 usi. Test: `use-entity-detail.test.tsx` (+2), `work-order-detail-screen.test.tsx` (fallisce senza la correzione). Da valutare con l'utente se estenderla agli altri dettagli con schede.
+- Scheda attiva della commessa "tipo pagina" (2026-11-16, richiesta utente): `use-work-order-active-tab.ts`. Sulla pagina `/work-orders/:id` la scheda sta nell'URL (`?tab=tasks`, rimosso per Info, `replace` senza voce di cronologia): il reload resta sulla scheda, un nuovo ingresso (occhio, link) apre Info. Fuori dalla pagina della commessa (Sheet modale) stato locale da Info. Scheda non visibile -> Info. Prima versione con `sessionStorage` scartata (riportava su Task anche entrando di nuovo). Test `work-order-detail-tabs.test.tsx` (+5, MemoryRouter). Le sotto-schede dei gruppi (Documenti, Amministrazione) ripartono dalla prima.
+- Filtri task board (2026-11-16): default `status: 'all'` (prima 'open', D-6 della 0146 superata), `due` gia' 'all'; "Tutti" prima opzione di Mostra; `TaskBoardAppliedFilters` mostra solo i filtri diversi dal default e sparisce se non ce ne sono (tolto lo stile "neutro" dei chip). Test filters/toolbar adeguati (REQUIREMENT CHANGED).
+- Guide IT/EN `work-orders` sezione `task-board-rows`. Manuale Claude Docs aggiornato (capitolo Task, dopo il paragrafo sulla selezione nella scheda Task della commessa). DA FARE: rigenerare il PDF del manuale.
+
+## Righe offerta assegnate a commessa: sblocco per super-admin/permesso (spec 0360 D-8) — VERDE, COMMITTATO (2026-11-16)
+
+- Richiesta utente (offerta 290 = QUO-0293, tutte le 26 righe assegnate a COM-2597/2598/6429/6430/6431): "il super
+  admin o chi ha il permesso può modificare anche se c'è questo blocco". Decisione: il permesso
+  `quotes.updateLockedLines` (super-admin via `Gate::before`) toglie il blocco di MODIFICA D-4 su tutti i canali
+  (Offerte, Contratto, Gestione Richieste); la RIMOZIONE resta bloccata (cancellerebbe in cascata
+  `work_order_line_payments` e scollegherebbe fatture/costi/maturazioni). Riga aggiornata sul posto, stesso id: resta
+  collegata alla commessa. Spec 0360 D-8, AC-017/AC-018.
+- Backend: `QuoteLineWorkOrderLock::OVERRIDE_ABILITY` (attore da `Auth::user()`, senza utente blocco pieno),
+  `QuotePolicy::abilities()` + ability; migrazione `2026_12_11_100000_add_quotes_update_locked_lines_permission`
+  (crea la riga solo se esiste `quotes.update`, nessun ruolo la riceve). Deploy: basta `migrate`.
+- Frontend: `use-quote-line-editor.ts` legge `useAbilities().can('quotes.updateLockedLines')` -> `assignedRowsEditable`,
+  `isChangeLocked(row)`; `QuoteLineCard` prop `assignedRowEditable` (campi attivi, cestino sempre disabilitato,
+  "Assegnata a COM-..." resta). Etichetta permesso `updateLockedLines` IT/EN. Sei file di test che montano l'editor
+  ora mockano `use-abilities` (solo setup, nessuna asserzione cambiata).
+- Guide in-app `quotes` e `contracts` IT/EN aggiornate (stessi id). Manuale Claude Docs aggiornato (Offerte "Righe
+  assegnate a una commessa" e Contratti, rev 811); il PDF derivato va rigenerato.
+- Test: Pest `QuoteLineWorkOrderLockTest` 11/11 (+3 AC-017), Quotes 503/506, Contracts 228/228, Roles 52/52,
+  Authorization 171/172, RequestManagement 1007/1008: rossi tutti preesistenti (`QuoteDocumentPdfTest` senza
+  LibreOffice, `PermissionCatalogueEndpointTest` AC-004 714 vs 697, `managers is not sortable`). Vitest
+  quotes/contracts/request-management/enrollee 1285/1285, help/roles/line-editor 276/276; ESLint, Pint,
+  `tsc -b --force` puliti. DB locale: migrazione eseguita.
+
 ## Richieste Proforma: colonna Partita IVA cliente (2026-11-16) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: in elenco Richieste Proforma serve la partita IVA per controllare la richiesta. Nuova colonna `customer_vat_number` ("Partita IVA cliente"), visibile, subito dopo `customer`, in sola lettura, non ordinabile ne' filtrabile (come le altre colonne di relazione del modulo). Valore: `quote.opportunity.registry.personalData.vat_number`, eager-loaded in `ProformaRequestsTableDefinition::baseQuery()`. Solo griglia: `ProformaRequestResource` e il dettaglio sono invariati.
@@ -52,6 +87,30 @@
   (mancano le descrizioni di attachments/archive e merge referenti/anagrafiche), AgentSalesReport (helper non
   caricato in parallelo), ManagementControl access, LibreOffice assente, AiAssistant, altri singoli.
 
+## Commessa: "Stato pagamento" campo della commessa, non piu' flessibile (spec 0402) — VERDE MIRATO, COMMITTATO (2026-11-16)
+
+- Richiesta utente: stato pagamento selezionabile su tutte le commesse dopo il Titolo, con l'Importo (totale prodotti); tolto
+  come campo flessibile da tutte le categorie, valori allineati. Spec `docs/specs/0402-work-order-payment-status-field.xml`
+  (la 0401 e' della Task board di un'altra sessione).
+- BE: colonna `work_orders.work_order_payment_status_id` (FK restrict a `work_order_payment_statuses`, migrazione
+  `2026_12_12_100000`); migrazione dati `2026_12_12_100100` -> `Services/WorkOrders/WorkOrderPaymentStatusAttributeMover`
+  (valore flessibile `stato_pagamento` = `old_id` dello stato; chiave tolta da `attribute_values`; attributo scollegato da
+  tutte le categorie e potato dai layout Commessa con il nuovo `ProductCategories/AttributeLayoutPruner`, estratto da
+  `AttributeLayoutCopier`; poi l'attributo viene CANCELLATO con le opzioni). Legacy: `stato_pagamento` tolto da
+  `AttributeMigrationController`, `MigrationAttributeCards::workOrderCommonAttributes`, `MigrationLayoutSections::contractual`
+  (modifiche NON committate nel repo legacy, accanto a quelle locali dell'utente). Resource: `work_order_payment_status_id`, `payment_status`, `amount` (somma `net_amount` righe,
+  solo con `viewContractData`; concern `SummarizesWorkOrderPayment`). PATCH: stato attivo, campo editabile solo con
+  `managePayments`. `UsageMap`: stato usato da commesse -> 409. Seeder `QualificaWorkOrderPaymentAttributesSeeder` senza
+  `stato_pagamento`.
+- FE: `work-order-payment-status-field.tsx` (`WorkOrderAmountRow`, `WorkOrderPaymentStatusRow`), righe dopo il Titolo in
+  "Dati contrattuali commessa"; schema/form/payload con `work_order_payment_status_id`.
+- Decisione utente: la colonna si riempie anche dallo stato delle righe (stesso dato legacy `orderisos.stato_pagamento`) dove
+  tutte le righe hanno lo stesso stato (il flessibile vince); import legacy (`LegacyWorkOrderLinePaymentWriter`) scrive anche
+  la colonna, il realign solo se vuota.
+- DB dev: migrazione LANCIATA con l'ok dell'utente (2026-11-16): attributo 357 cancellato, 170 assegnazioni e 110 layout
+  puliti, 467 commesse senza piu' la chiave, 12.151/16.601 commesse con stato pagamento (commessa 2492: Giallo, importo 1700.00).
+  `WorkOrderService.php` era gia' a 509 righe (oltre il limite 500), +2 righe qui: da spezzare a parte.
+
 ## Commessa: sezione "Info cliente" come nel vecchio QNet (spec 0400) — VERDE MIRATO, COMMITTATO (2026-11-16)
 
 - Richiesta utente: nella scheda Info la sezione Info cliente del legacy (azienda, sede legale, tag, email/pec, telefono,
@@ -88,6 +147,9 @@
   sempre. Righe dei campi in `work-order-record-rows.tsx` (Title/Code/Type/StartDate/CallbackDate/Description/
   ForceCloseReason), condivise col form di creazione (`WorkOrderIdentitySection`, ora solo create, senza `variant`).
   Chiave i18n `workOrders.detail.sections.data` tolta.
+- "Funzione aziendale" in Riferimenti Società e Funzioni Aziendali, dopo Sede operativa (direttiva utente 2026-11-16,
+  COMMITTATO): nomi distinti di `product_lines[].business_function` (legacy `opportunity->fas`), solo FE in
+  `WorkOrderCompanySection` (`work-order-detail-sections.tsx`), chiave `workOrders.detail.businessFunction`.
 - APERTO: i Commenti legacy (`companies.note`, 245 aziende) non sono migrati (general_notes pieno su 2 anagrafiche): va
   corretto il `RegistryMigrationController` legacy + import/realign qnet-2 (backend.md §9), da fare a parte.
 - Test: Pest `WorkOrderClientInfoTest` (5) + cartella WorkOrders 538 verdi; Vitest `work-order-client-info-section.test.tsx`

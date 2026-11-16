@@ -196,6 +196,7 @@ final class UsageMap
         ],
         'work_order_payment_statuses' => [
             'work_order_line_payments.work_order_payment_status_id' => 'work_order_line_payments',
+            'work_orders.work_order_payment_status_id' => 'work_orders',
         ],
         'attributes' => [
             'attribute_category.attribute_id' => 'product_categories',

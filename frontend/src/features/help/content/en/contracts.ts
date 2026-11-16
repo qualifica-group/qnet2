@@ -68,7 +68,7 @@ const guide: HelpGuide = {
           items: [
             'Changes are written to the source quote: totals and margins are recalculated, while the status of the contract and of the quote do not change.',
             '**Commissions** cannot be edited from here: they stay as set on the quote and their amounts are recalculated on the new lines.',
-            'A line **assigned to a work order** (it shows "Assigned to COM-...") is locked: it cannot be changed or removed until the work order is deleted. The same rule applies from the quote and from Request management.',
+            'A line **assigned to a work order** (it shows "Assigned to COM-...") is locked: it cannot be changed or removed until the work order is deleted. The same rule applies from the quote and from Request management. The super-admin and whoever holds the **Edit rows assigned to a work order** permission can change it, but not remove it.',
           ],
         },
         {

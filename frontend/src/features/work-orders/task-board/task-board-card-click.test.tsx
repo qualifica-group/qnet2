@@ -26,6 +26,8 @@ function node() {
 const variants = [
   {
     name: 'list row',
+    // Spec 0401 D-2 (REQUIREMENT CHANGED): the row no longer prints the description, so the click lands on a read-only cell.
+    plainText: 'In lavorazione',
     renderCard: (onOpenTask: (id: number) => void, onToggleSelection: (id: number) => void) =>
       renderBoard(
         <ul>
@@ -42,6 +44,7 @@ const variants = [
   },
   {
     name: 'kanban card',
+    plainText: DESCRIPTION,
     renderCard: (onOpenTask: (id: number) => void, onToggleSelection: (id: number) => void) =>
       renderBoard(
         <ul>
@@ -58,12 +61,12 @@ const variants = [
   },
 ]
 
-describe.each(variants)('TaskBoard $name — whole card opens the task', ({ renderCard }) => {
+describe.each(variants)('TaskBoard $name — whole card opens the task', ({ plainText, renderCard }) => {
   it('opens the task on a click anywhere in the card, not only on the title', () => {
     const onOpenTask = vi.fn()
     renderCard(onOpenTask, vi.fn())
 
-    fireEvent.click(screen.getByText(DESCRIPTION))
+    fireEvent.click(screen.getByText(plainText))
 
     expect(onOpenTask).toHaveBeenCalledExactlyOnceWith(TASK_ID)
   })

@@ -39,7 +39,12 @@ const ROW: QuoteLineFormValues = {
 
 const rememberVatRatePercent = vi.fn()
 
-function renderCard(slots?: QuoteLineCardSlots, row: QuoteLineFormValues = ROW, lockedWorkOrderCodes: string[] | null = null) {
+function renderCard(
+  slots?: QuoteLineCardSlots,
+  row: QuoteLineFormValues = ROW,
+  lockedWorkOrderCodes: string[] | null = null,
+  assignedRowEditable = false,
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -57,6 +62,7 @@ function renderCard(slots?: QuoteLineCardSlots, row: QuoteLineFormValues = ROW, 
           onRemove={vi.fn()}
           slots={slots}
           lockedWorkOrderCodes={lockedWorkOrderCodes}
+          assignedRowEditable={assignedRowEditable}
         />
       </ul>
     </QueryClientProvider>,
@@ -128,6 +134,16 @@ describe('QuoteLineCard', () => {
     expect(screen.getByRole('spinbutton', { name: 'Quantità riga 1' })).toBeDisabled()
     expect(screen.getByRole('spinbutton', { name: 'Prezzo unitario riga 1' })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'Aliquota IVA riga 1' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Rimuovi riga 1' })).toBeDisabled()
+  })
+
+  it('lets the holder of quotes.updateLockedLines change an assigned row, never remove it (spec 0360 AC-018)', () => {
+    renderCard(undefined, { ...ROW, id: 12 }, ['COM-001'], true)
+
+    expect(screen.getByText('Assegnata a COM-001')).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Quantità riga 1' })).toBeEnabled()
+    expect(screen.getByRole('spinbutton', { name: 'Prezzo unitario riga 1' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'Aliquota IVA riga 1' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Rimuovi riga 1' })).toBeDisabled()
   })
 

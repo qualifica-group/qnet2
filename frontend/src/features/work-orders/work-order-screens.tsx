@@ -27,13 +27,15 @@ import type { WorkOrderDetail } from '@/features/work-orders/types'
  */
 export function WorkOrderDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
+  // A save inside a tab (Task, Documenti...) refreshes the commessa too: swap
+  // the data in place instead of remounting, so the open tab stays open.
   const {
     data: workOrder,
     isLoading,
     isError,
     error,
     refetch,
-  } = useEntityDetail(workOrderDetailQueryKey(id), () => fetchWorkOrder(id))
+  } = useEntityDetail(workOrderDetailQueryKey(id), () => fetchWorkOrder(id), true, { skeletonOnRefetch: false })
 
   if (isError) {
     return (

@@ -141,6 +141,26 @@ it('realigns the payment data on every line without duplicating rows', function 
         ->and($warnings)->toBe([]);
 });
 
+// Spec 0402: the legacy status is also the commessa's own, written on import and on realign only while it has none.
+it('writes the commessa status on import and on realign only while it has none', function () {
+    $this->seed(WorkOrderPaymentStatusSeeder::class);
+    [$first, $second] = WorkOrderPaymentStatus::query()->whereNotNull('old_id')->orderBy('old_id')->take(2)->get()->all();
+    [$workOrder] = activity()->withoutLogs(fn () => workOrderWithPayments());
+    $writer = new LegacyWorkOrderLinePaymentWriter;
+    $warnings = [];
+
+    activity()->withoutLogs(fn () => $writer->write($workOrder, ['stato_pagamento' => $first->old_id], $warnings));
+    expect($workOrder->fresh()->work_order_payment_status_id)->toBe($first->id);
+
+    $writer->sync($workOrder->fresh(), ['stato_pagamento' => $second->old_id], $warnings);
+    expect($workOrder->fresh()->work_order_payment_status_id)->toBe($first->id);
+
+    $workOrder->forceFill(['work_order_payment_status_id' => null])->saveQuietly();
+    $written = $writer->sync($workOrder->fresh(), ['stato_pagamento' => $second->old_id], $warnings);
+    expect($written)->toBeTrue()
+        ->and($workOrder->fresh()->work_order_payment_status_id)->toBe($second->id);
+});
+
 it('creates the payment row of a line that has none yet', function () {
     [$workOrder, $lines] = activity()->withoutLogs(fn () => workOrderWithPayments());
     $warnings = [];

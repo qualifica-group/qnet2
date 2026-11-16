@@ -50,7 +50,7 @@ export interface QuoteLineEditorProps {
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
   commissions?: QuoteLineCommissionsAdapter
   onProductsPicked?: (items: QuoteCatalogProduct[]) => void
-  /** A channel's own extras on each card; `position` is the row's 1-based number, `locked` a row assigned to a work order (spec 0360 D-4). */
+  /** A channel's own extras on each card; `position` is the row's 1-based number, `locked` a row assigned to a work order the actor may not change (spec 0360 D-4/D-8). */
   renderRowSlots?: (
     row: QuoteLineFormValues,
     index: number,
@@ -148,6 +148,7 @@ export function QuoteLineEditor({
             knownVatRate={vatRateById(row.vat_rate_id)}
             disabled={disabled}
             lockedWorkOrderCodes={editor.lockedCodesOf(row)}
+            assignedRowEditable={editor.assignedRowsEditable}
             simplified={simplified}
             error={errors?.[index]}
             vatRatePercentFor={vatRatePercentFor}
@@ -157,7 +158,7 @@ export function QuoteLineEditor({
             supplierAmount={variant === 'revenue' ? 'price' : 'cost'}
             onChangeSupplier={(option) => void editor.changeSupplier(index, option)}
             onRemove={() => editor.removeRow(index)}
-            slots={renderRowSlots?.(row, index, position + 1, product, editor.lockedCodesOf(row) !== null)}
+            slots={renderRowSlots?.(row, index, position + 1, product, editor.isChangeLocked(row))}
           />
         )
       })}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import { productSuppliersOf, type ProductSupplierOption } from '@/features/products/product-suppliers'
@@ -30,6 +31,9 @@ interface UseQuoteLineEditorArgs {
   vatRatePercentFor: (vatRateId: number) => number | null
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
 }
+
+/** Spec 0360 D-8: lifts the change lock of a row assigned to a work order (never its removal). */
+const UPDATE_LOCKED_LINES_PERMISSION = 'quotes.updateLockedLines'
 
 function viewFromLine(line: QuoteLine): QuoteLineProductView {
   return {
@@ -86,6 +90,8 @@ export function useQuoteLineEditor({
   )
   const lockedCodesOf = (row: QuoteLineFormValues): string[] | null =>
     row.id === undefined ? null : (workOrderCodesById.get(row.id) ?? null)
+  const assignedRowsEditable = useAbilities().can(UPDATE_LOCKED_LINES_PERMISSION)
+  const isChangeLocked = (row: QuoteLineFormValues) => !assignedRowsEditable && lockedCodesOf(row) !== null
   const [pickedViews, setPickedViews] = useState<Map<number, QuoteLineProductView>>(() => new Map())
 
   const visibleLines = useMemo<VisibleQuoteLine[]>(
@@ -223,7 +229,7 @@ export function useQuoteLineEditor({
       await addProducts([item])
       return
     }
-    if (lockedCodesOf(value[index])) {
+    if (isChangeLocked(value[index])) {
       return
     }
     const defaults = commissions ? await commissions.defaultsForReplacement(value[index], item) : undefined
@@ -268,6 +274,8 @@ export function useQuoteLineEditor({
     pickSingle,
     suppliersOf,
     lockedCodesOf,
+    assignedRowsEditable,
+    isChangeLocked,
     changeSupplier,
     removeRow,
     setField,

@@ -107,6 +107,8 @@ class WorkOrderService
         'quote.opportunity.registry.commercial.referentType',
         'quote.opportunity.registry.sectors',
         'quote.opportunity.registry.customFieldValueRow',
+        // Spec 0402: the commessa's own "Stato pagamento".
+        'paymentStatus',
         'quote.source',
         'quote.opportunity.productLines.productCategory',
         'quote.opportunity.productLines.businessFunction',

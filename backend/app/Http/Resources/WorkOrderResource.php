@@ -8,6 +8,7 @@ use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Http\Resources\Concerns\SummarizesWorkOrderClientInfo;
 use App\Http\Resources\Concerns\SummarizesWorkOrderContacts;
+use App\Http\Resources\Concerns\SummarizesWorkOrderPayment;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -52,6 +53,7 @@ class WorkOrderResource extends JsonResource
     use SummarizesRewards;
     use SummarizesWorkOrderClientInfo;
     use SummarizesWorkOrderContacts;
+    use SummarizesWorkOrderPayment;
 
     /**
      * @return array<string, mixed>
@@ -75,6 +77,10 @@ class WorkOrderResource extends JsonResource
             'work_order_workflow_status_id' => $this->work_order_workflow_status_id,
             'work_order_workflow_status' => $this->summarizeWorkflowStatus(),
             'work_order_workflow_statuses' => $this->resolvedWorkflowStatuses(),
+            // Spec 0402: the commessa's own payment status and the net amount of its lines.
+            'work_order_payment_status_id' => $this->work_order_payment_status_id,
+            'payment_status' => $this->summarizePaymentStatus(),
+            'amount' => $this->summarizeAmount($request),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,
             'is_force_closed' => $this->is_force_closed,

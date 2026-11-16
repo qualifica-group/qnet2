@@ -3,6 +3,7 @@ import { render as rtlRender, fireEvent, screen, within } from '@testing-library
 import type { ReactElement, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import i18n from '@/i18n'
 import { WorkOrderDetailTabs } from '@/features/work-orders/work-order-detail-tabs'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
@@ -16,12 +17,25 @@ import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/type
  * collaboration side column.
  */
 
-function render(ui: ReactElement) {
+/** Renders inside a router at `url` (the list by default, i.e. the modal Sheet case); the probe prints the current URL. */
+function render(ui: ReactElement, url = '/work-orders') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    return (
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[url]}>
+          {children}
+          <LocationProbe />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
   }
   return rtlRender(ui, { wrapper: Wrapper })
+}
+
+function LocationProbe() {
+  const location = useLocation()
+  return <output aria-label="location">{`${location.pathname}${location.search}`}</output>
 }
 
 const canMock = vi.fn<(permission: string) => boolean>()
@@ -199,5 +213,51 @@ describe('WorkOrderDetailTabs', () => {
     renderTabs({ view_costs: true, write_chat: true })
 
     expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument()
+  })
+})
+
+describe('WorkOrderDetailTabs — tabs behave like pages', () => {
+  const PAGE_URL = '/work-orders/4'
+
+  it('writes the open tab in the URL of the work order page, and drops it for Info', () => {
+    render(<WorkOrderDetailTabs workOrder={workOrder({})} info={<div>info-sections</div>} />, PAGE_URL)
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Tasks' }))
+    expect(screen.getByRole('status', { name: 'location' })).toHaveTextContent('/work-orders/4?tab=tasks')
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Info' }))
+    expect(screen.getByRole('status', { name: 'location' })).toHaveTextContent(/^\/work-orders\/4$/)
+  })
+
+  it('opens the tab named in the URL, as after a reload', () => {
+    render(<WorkOrderDetailTabs workOrder={workOrder({})} info={<div>info-sections</div>} />, `${PAGE_URL}?tab=tasks`)
+
+    expect(screen.getByRole('tab', { name: 'Tasks' })).toHaveAttribute('data-state', 'active')
+    expect(screen.getByText('task-board')).toBeInTheDocument()
+  })
+
+  it('opens Info on a fresh visit, whatever tab was open last time', () => {
+    const { unmount } = render(<WorkOrderDetailTabs workOrder={workOrder({})} info={<div>info-sections</div>} />, PAGE_URL)
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Tasks' }))
+    unmount()
+
+    render(<WorkOrderDetailTabs workOrder={workOrder({})} info={<div>info-sections</div>} />, PAGE_URL)
+
+    expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('data-state', 'active')
+  })
+
+  it('falls back to Info when the URL names a tab the actor cannot see', () => {
+    render(<WorkOrderDetailTabs workOrder={workOrder({})} info={<div>info-sections</div>} />, `${PAGE_URL}?tab=costs`)
+
+    expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('data-state', 'active')
+  })
+
+  it('keeps the tab off the URL outside the work order page (modal Sheet over the list)', () => {
+    renderTabs({})
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Tasks' }))
+
+    expect(screen.getByRole('tab', { name: 'Tasks' })).toHaveAttribute('data-state', 'active')
+    expect(screen.getByRole('status', { name: 'location' })).toHaveTextContent(/^\/work-orders$/)
   })
 })

@@ -102,6 +102,8 @@ export const permissions = {
     // Spec 0279: calendario delle assenze, tre livelli di visibilita'.
     calendarOwn: 'Calendario: solo le proprie',
     calendarAll: 'Calendario: di tutti',
+    // Spec 0360 D-8: modificare (non rimuovere) le righe offerta assegnate a una commessa.
+    updateLockedLines: 'Modificare righe assegnate a commessa',
   },
   resources: {
     users: 'Utenti',

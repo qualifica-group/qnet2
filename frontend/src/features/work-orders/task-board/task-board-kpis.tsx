@@ -1,5 +1,5 @@
 /**
- * The global KPI strip above the board (D-5): six compact card-tiles over
+ * The global KPI strip above the board (D-5): five compact card-tiles over
  * `computeBoardMetrics`'s own pure numbers. Minutes go through the SAME
  * duration formatter every other minutes readout in the app uses
  * (`formatMinutesLabel`, `time-entries/time-entry-format.ts`) rather than
@@ -7,12 +7,10 @@
  * read as `7h 30m` here exactly like everywhere else.
  */
 
-import { AlertTriangle, CalendarClock, CheckCircle2, Clock, ListChecks, Timer } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Clock, ListChecks, Timer } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
-import { completionTone } from '@/components/completion-tone'
 import type { TaskBoardMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 
 interface KpiTileProps {
@@ -20,21 +18,14 @@ interface KpiTileProps {
   label: string
   value: string
   accent?: boolean
-  progress?: number
 }
 
 /** Raised white tiles on the board canvas; the icon sits in a tinted chip so each tile reads at a glance. */
 const TILE_CLASS = 'flex min-w-0 flex-1 basis-36 items-start gap-3 rounded-xl bg-card p-3 shadow-sm ring-1 ring-border/70'
 const ICON_CHIP_CLASS = 'flex size-8 shrink-0 items-center justify-center rounded-lg'
 
-function KpiTile({ icon: Icon, label, value, accent = false, progress }: KpiTileProps) {
-  // A tile with a progress bar takes the completion colour (same rule as rows and phases).
-  const tone = progress !== undefined ? completionTone(progress) : null
-  const iconChipTone = tone
-    ? cn(tone.track, tone.text)
-    : accent
-      ? 'bg-destructive/10 text-destructive'
-      : 'bg-primary/10 text-primary'
+function KpiTile({ icon: Icon, label, value, accent = false }: KpiTileProps) {
+  const iconChipTone = accent ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
 
   return (
     <div className={cn(TILE_CLASS, accent && 'ring-destructive/40')}>
@@ -43,18 +34,7 @@ function KpiTile({ icon: Icon, label, value, accent = false, progress }: KpiTile
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate text-xs text-muted-foreground">{label}</span>
-        <span className={cn('text-lg leading-tight font-semibold tabular-nums', accent && 'text-destructive', tone?.text)}>
-          {value}
-        </span>
-        {tone ? (
-          <Progress
-            value={progress}
-            size="xs"
-            className={cn('mt-1', tone.track)}
-            indicatorClassName={tone.indicator}
-            aria-label={label}
-          />
-        ) : null}
+        <span className={cn('text-lg leading-tight font-semibold tabular-nums', accent && 'text-destructive')}>{value}</span>
       </div>
     </div>
   )
@@ -70,12 +50,6 @@ export function TaskBoardKpis({ metrics }: TaskBoardKpisProps) {
   return (
     <div className="flex flex-wrap gap-3">
       <KpiTile icon={ListChecks} label={t('workOrders.taskBoard.kpi.total')} value={String(metrics.total)} />
-      <KpiTile
-        icon={CheckCircle2}
-        label={t('workOrders.taskBoard.kpi.completion')}
-        value={t('tasks.form.percentValue', { value: metrics.completionPercentage })}
-        progress={metrics.completionPercentage}
-      />
       <KpiTile
         icon={AlertTriangle}
         label={t('workOrders.taskBoard.kpi.overdue')}

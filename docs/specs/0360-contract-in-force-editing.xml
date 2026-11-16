@@ -37,6 +37,13 @@
       `contract-lifecycle.ts` (`edit`).
     - D-7: titolo = `quotes.title` con la semantica di `QuoteTitleWriter` (vuoto o uguale al titolo automatico =
       torna automatico, `title_is_manual`).
+    - D-8 (utente 2026-11-16, "il super admin o chi ha il permesso puo' modificare anche se c'e' questo blocco"):
+      il nuovo permesso `quotes.updateLockedLines` (super-admin via `Gate::before`) toglie il blocco di MODIFICA
+      di D-4 su ogni canale: la riga resta collegata alla commessa (aggiornata sul posto, stesso id). La RIMOZIONE
+      resta bloccata anche per lui: cancellare la riga eliminerebbe in cascata i pagamenti di riga della commessa
+      (`work_order_line_payments`) e scollegherebbe fatture, costi e maturazioni. Il lock legge l'attore da
+      `Auth::user()` (come `WorkOrderService`): senza utente (console, migrazioni) il blocco resta pieno. Nessun
+      ruolo lo riceve di default.
     - Riuso FE: l'editor righe e' `RequestOfferLinesField` (`features/request-management/request-offer-lines-section.tsx`,
       generico su ogni form con `product_lines` + `offer_lines`, catalogo + righe `QuoteLineEditor`, senza
       provvigioni). Il dettaglio contratto ha gia' `product_lines` e `offer_lines` (`ContractResource`);
@@ -118,6 +125,8 @@
     <criterion id="AC-014">(FE) Nell'editor righe (Contratto e Offerta) una riga assegnata a commessa ha campi e pulsante rimuovi disabilitati e mostra "Assegnata a {code}".</criterion>
     <criterion id="AC-015">(FE) Un 422 del blocco D-4 o di stato e' mostrato nell'editor aperto senza perdere le modifiche.</criterion>
     <criterion id="AC-016">Guide in-app IT/EN `contracts` e `quotes` aggiornate con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+    <criterion id="AC-017">(D-8) Dato un attore con `quotes.updateLockedLines` (o super-admin), quando cambia un campo di una riga assegnata a commessa, allora 200 e la riga resta collegata alla commessa; quando la rimuove, allora 422 come D-4.</criterion>
+    <criterion id="AC-018">(D-8, FE) Con `quotes.updateLockedLines` la riga assegnata mostra ancora "Assegnata a {code}" ma i campi sono modificabili; il pulsante rimuovi resta disabilitato.</criterion>
   </acceptance_criteria>
 
   <constraints>

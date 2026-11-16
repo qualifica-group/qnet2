@@ -23,6 +23,11 @@ vi.mock('@/features/work-orders/task-board/use-task-board-mutations', () => ({
   useReopenWorkOrderStage: () => ({ mutate: reopenMutateMock }),
 }))
 
+// In-place editing (spec 0401) is covered by its own tests; here it only has to mount.
+vi.mock('@/features/work-orders/task-board/use-task-board-cell-edit', () => ({
+  useTaskBoardCellEdit: () => ({ cellEdit: { commit: vi.fn(), complete: vi.fn(), reopen: vi.fn() }, dialogSlot: null }),
+}))
+
 const HANDLE_LABEL = 'Drag to move task'
 
 function noop() {}

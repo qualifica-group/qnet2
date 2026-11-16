@@ -29,6 +29,9 @@ import type { ProductCategoryTreeNode } from '@/features/product-categories/type
  */
 
 const fetchRequestWorkPanelMock = vi.fn()
+// The editor reads `quotes.updateLockedLines` (spec 0360 D-8): no ability granted here.
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => false }) }))
+
 vi.mock('@/features/request-management/api', () => ({
   fetchRequestWorkPanel: (...args: unknown[]) => fetchRequestWorkPanelMock(...args),
   updateRequestWork: vi.fn(),

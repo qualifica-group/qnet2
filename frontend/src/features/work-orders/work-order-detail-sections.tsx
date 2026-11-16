@@ -9,10 +9,12 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RECORD_COLUMN_CLASS } from '@/components/detail/record-layout'
+import type { ProductLine } from '@/features/product-lines/types'
 import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-attributes-section'
 import { WorkOrderClientInfoSection } from '@/features/work-orders/work-order-client-info-section'
 import { WorkOrderContractDataPanel } from '@/features/work-orders/work-order-detail-contract-data-panel'
 import { WorkOrderDescriptionSections } from '@/features/work-orders/work-order-record-description'
+import { WorkOrderAmountRow, WorkOrderPaymentStatusRow } from '@/features/work-orders/work-order-payment-status-field'
 import { WorkOrderInternalNotesRow, WorkOrderWorkflowStatusSection } from '@/features/work-orders/work-order-record-identity'
 import {
   WorkOrderForceCloseReasonRow,
@@ -25,6 +27,9 @@ import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/type
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
 const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
+
+/** Stable empty default: a missing `product_lines` key reads the same as `[]`. */
+const EMPTY_PRODUCT_LINES: ProductLine[] = []
 
 type LinkedRecord = { id: number; name: string } | null | undefined
 
@@ -49,13 +54,18 @@ interface DetailSectionProps {
 }
 
 /**
- * Riferimenti societa' (top of the Info tab's right column): the linked offer's
- * company and sites, the same three relations, labels and links the Contract
- * detail shows, projected live through `quote`.
+ * "Riferimenti Società e Funzioni Aziendali" (top of the Info tab's right
+ * column): the linked offer's company and sites, the same three relations,
+ * labels and links the Contract detail shows, projected live through `quote`,
+ * then the business functions of the opportunity's product lines.
  */
 function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
   const { t } = useTranslation()
   const operationalSite = workOrder.operational_site
+  // The legacy "Funzione Aziendale": in qnet-2 each opportunity product line pairs a business function with a category.
+  const businessFunctions = [
+    ...new Set((workOrder.product_lines ?? EMPTY_PRODUCT_LINES).map((line) => line.business_function.name)),
+  ]
 
   return (
     <RecordSection title={t('workOrders.detail.sections.company')} icon={<Building2 />}>
@@ -71,6 +81,9 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
           domain="operational-sites"
           record={operationalSite ? { id: operationalSite.id, name: operationalSite.label } : null}
         />
+        <RecordField label={t('workOrders.detail.businessFunction')}>
+          {businessFunctions.length > 0 ? businessFunctions.join(', ') : <DetailEmpty />}
+        </RecordField>
       </RecordFieldList>
     </RecordSection>
   )
@@ -81,7 +94,8 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
  * directives 2026-11-16), every user-written field editable in place (spec
  * 0195 applied to Commesse): the internal notes callout first, then two
  * columns. Left: "Info cliente" (spec 0400), "Dati contrattuali commessa"
- * (Titolo, Data inizio, the link to the Contratto, the Linee prodotto, then
+ * (Titolo, Importo, Stato pagamento (spec 0402), Data inizio, the link to the
+ * Contratto, the Linee prodotto, then
  * lines and totals: the former "Dati commessa" merged in), "Stato
  * lavorazione", "Team". Right: "Riferimenti società",
  * "Data richiamo", "Descrizione commessa" (Commessa n., Tipo commessa,
@@ -114,6 +128,8 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
         ) : null}
         <WorkOrderContractDataPanel workOrder={workOrder}>
           <WorkOrderTitleRow form={editor} inline={inline} title={workOrder.title} />
+          <WorkOrderAmountRow amount={workOrder.amount} />
+          <WorkOrderPaymentStatusRow form={editor} inline={inline} status={workOrder.payment_status} />
           <WorkOrderStartDateRow form={editor} inline={inline} startDate={workOrder.start_date} />
           {hasSingleQuote ? (
             <LinkedField

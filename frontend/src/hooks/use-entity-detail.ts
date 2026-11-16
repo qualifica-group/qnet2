@@ -30,10 +30,22 @@ export interface EntityDetailResult<T> {
  *
  * See `standards/coding-standards.md` → "Entity Detail Cards (Fresh On Open)".
  */
+export interface EntityDetailOptions {
+  /**
+   * `false`: the skeleton covers only the fetch made on open; a later refetch
+   * (an invalidation after a save somewhere inside the card) swaps the data in
+   * place, so the card is not unmounted and keeps its own state (active tab,
+   * scroll, open sections). Only for a card whose forms re-sync on new data.
+   * Default `true` (unchanged behaviour).
+   */
+  skeletonOnRefetch?: boolean
+}
+
 export function useEntityDetail<T>(
   queryKey: QueryKey,
   queryFn: () => Promise<T>,
   enabled = true,
+  { skeletonOnRefetch = true }: EntityDetailOptions = {},
 ): EntityDetailResult<T> {
   const query = useQuery({
     queryKey,
@@ -52,6 +64,8 @@ export function useEntityDetail<T>(
     // the on-open refetch replaces an existing (stale) snapshot. Guarded by
     // `enabled` so a deferred card does not spin forever before it is allowed to
     // fetch.
-    isLoading: enabled && (query.isPending || query.isFetching),
+    // `isFetchedAfterMount` stays true once the on-open fetch has settled, so a
+    // later background refetch does not bring the skeleton back.
+    isLoading: enabled && (query.isPending || (skeletonOnRefetch ? query.isFetching : !query.isFetchedAfterMount)),
   }
 }

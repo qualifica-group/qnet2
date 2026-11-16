@@ -360,11 +360,12 @@ it('AC-004: imports a table attribute with its config and rejects an invalid one
 });
 
 it('AC-005: adopts an existing attribute by code without touching its name or options', function () {
+    // Fixture: a code the legacy really sends (spec 0402: `stato_pagamento` is no longer a flexible field).
     seedMigrationsConfig();
-    $existing = Attribute::factory()->create(['old_id' => null, 'code' => 'stato_pagamento', 'name' => 'Nome locale', 'type' => 'text']);
+    $existing = Attribute::factory()->create(['old_id' => null, 'code' => 'accordo_pagamento', 'name' => 'Nome locale', 'type' => 'text']);
     Http::fake([
         fakeMigrationsBaseUrl().'/attributes*' => Http::response([
-            'items' => [['id' => 40, 'code' => 'stato_pagamento', 'name' => 'Nome legacy', 'type' => 'text']],
+            'items' => [['id' => 40, 'code' => 'accordo_pagamento', 'name' => 'Nome legacy', 'type' => 'text']],
             'pagination' => ['total' => 1],
         ]),
     ]);
@@ -375,7 +376,7 @@ it('AC-005: adopts an existing attribute by code without touching its name or op
     $existing->refresh();
     expect($existing->old_id)->toEqual(40)
         ->and($existing->name)->toBe('Nome locale')
-        ->and(Attribute::query()->where('code', 'stato_pagamento')->count())->toBe(1)
+        ->and(Attribute::query()->where('code', 'accordo_pagamento')->count())->toBe(1)
         ->and($run->fresh()->failed_rows)->toBe(0)
         ->and($run->fresh()->created_rows)->toBe(1);
 });
