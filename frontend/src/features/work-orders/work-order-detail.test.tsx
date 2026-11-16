@@ -434,6 +434,26 @@ describe('WorkOrderDetailView — related records', () => {
     expect(hrefOf('Via Roma 1 - Napoli')).toBe('/operational-sites/6')
   })
 
+  it('lists the business functions of the opportunity product lines after the operational site, once each', () => {
+    const line = (id: number, fn: string, category: string) => ({
+      id,
+      business_function: { id: id * 10, name: fn },
+      product_category: { id: id * 100, name: category },
+    })
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          product_lines: [line(1, 'Formazione', 'Corsi'), line(2, 'Consulenza', 'ISO'), line(3, 'Formazione', 'Webinar')],
+        })}
+      />,
+    )
+
+    const section = screen.getByRole('heading', { level: 3, name: 'Company references and business functions' }).closest('section') as HTMLElement
+    const terms = within(section).getAllByRole('term').map((term) => term.textContent)
+    expect(terms.slice(-2)).toEqual(['Operational site', 'Business function'])
+    expect(within(section).getByText('Formazione, Consulenza')).toBeInTheDocument()
+  })
+
   it('shows the company and sites rows with the empty placeholder when the offer has none', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ company: null, company_site: null, operational_site: null })} />)
 

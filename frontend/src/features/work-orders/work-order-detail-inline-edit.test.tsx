@@ -198,7 +198,7 @@ describe('WorkOrderDetailView — in-place editing', () => {
         ...record.permissions,
         fields: Object.fromEntries(
           ['code', 'task_template_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'supervisor_ids',
-            'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id'].map((key) => [key, READ_ONLY_FIELD]),
+            'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id', 'work_order_payment_status_id'].map((key) => [key, READ_ONLY_FIELD]),
         ),
       },
     })

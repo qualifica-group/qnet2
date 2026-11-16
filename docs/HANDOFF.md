@@ -68,6 +68,30 @@
   (mancano le descrizioni di attachments/archive e merge referenti/anagrafiche), AgentSalesReport (helper non
   caricato in parallelo), ManagementControl access, LibreOffice assente, AiAssistant, altri singoli.
 
+## Commessa: "Stato pagamento" campo della commessa, non piu' flessibile (spec 0402) — VERDE MIRATO, COMMITTATO (2026-11-16)
+
+- Richiesta utente: stato pagamento selezionabile su tutte le commesse dopo il Titolo, con l'Importo (totale prodotti); tolto
+  come campo flessibile da tutte le categorie, valori allineati. Spec `docs/specs/0402-work-order-payment-status-field.xml`
+  (la 0401 e' della Task board di un'altra sessione).
+- BE: colonna `work_orders.work_order_payment_status_id` (FK restrict a `work_order_payment_statuses`, migrazione
+  `2026_12_12_100000`); migrazione dati `2026_12_12_100100` -> `Services/WorkOrders/WorkOrderPaymentStatusAttributeMover`
+  (valore flessibile `stato_pagamento` = `old_id` dello stato; chiave tolta da `attribute_values`; attributo scollegato da
+  tutte le categorie e potato dai layout Commessa con il nuovo `ProductCategories/AttributeLayoutPruner`, estratto da
+  `AttributeLayoutCopier`; poi l'attributo viene CANCELLATO con le opzioni). Legacy: `stato_pagamento` tolto da
+  `AttributeMigrationController`, `MigrationAttributeCards::workOrderCommonAttributes`, `MigrationLayoutSections::contractual`
+  (modifiche NON committate nel repo legacy, accanto a quelle locali dell'utente). Resource: `work_order_payment_status_id`, `payment_status`, `amount` (somma `net_amount` righe,
+  solo con `viewContractData`; concern `SummarizesWorkOrderPayment`). PATCH: stato attivo, campo editabile solo con
+  `managePayments`. `UsageMap`: stato usato da commesse -> 409. Seeder `QualificaWorkOrderPaymentAttributesSeeder` senza
+  `stato_pagamento`.
+- FE: `work-order-payment-status-field.tsx` (`WorkOrderAmountRow`, `WorkOrderPaymentStatusRow`), righe dopo il Titolo in
+  "Dati contrattuali commessa"; schema/form/payload con `work_order_payment_status_id`.
+- Decisione utente: la colonna si riempie anche dallo stato delle righe (stesso dato legacy `orderisos.stato_pagamento`) dove
+  tutte le righe hanno lo stesso stato (il flessibile vince); import legacy (`LegacyWorkOrderLinePaymentWriter`) scrive anche
+  la colonna, il realign solo se vuota.
+- DB dev: migrazione LANCIATA con l'ok dell'utente (2026-11-16): attributo 357 cancellato, 170 assegnazioni e 110 layout
+  puliti, 467 commesse senza piu' la chiave, 12.151/16.601 commesse con stato pagamento (commessa 2492: Giallo, importo 1700.00).
+  `WorkOrderService.php` era gia' a 509 righe (oltre il limite 500), +2 righe qui: da spezzare a parte.
+
 ## Commessa: sezione "Info cliente" come nel vecchio QNet (spec 0400) — VERDE MIRATO, COMMITTATO (2026-11-16)
 
 - Richiesta utente: nella scheda Info la sezione Info cliente del legacy (azienda, sede legale, tag, email/pec, telefono,
@@ -104,6 +128,9 @@
   sempre. Righe dei campi in `work-order-record-rows.tsx` (Title/Code/Type/StartDate/CallbackDate/Description/
   ForceCloseReason), condivise col form di creazione (`WorkOrderIdentitySection`, ora solo create, senza `variant`).
   Chiave i18n `workOrders.detail.sections.data` tolta.
+- "Funzione aziendale" in Riferimenti Società e Funzioni Aziendali, dopo Sede operativa (direttiva utente 2026-11-16,
+  COMMITTATO): nomi distinti di `product_lines[].business_function` (legacy `opportunity->fas`), solo FE in
+  `WorkOrderCompanySection` (`work-order-detail-sections.tsx`), chiave `workOrders.detail.businessFunction`.
 - APERTO: i Commenti legacy (`companies.note`, 245 aziende) non sono migrati (general_notes pieno su 2 anagrafiche): va
   corretto il `RegistryMigrationController` legacy + import/realign qnet-2 (backend.md §9), da fare a parte.
 - Test: Pest `WorkOrderClientInfoTest` (5) + cartella WorkOrders 538 verdi; Vitest `work-order-client-info-section.test.tsx`

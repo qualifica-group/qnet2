@@ -106,6 +106,10 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'task_template_id' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'work_order_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            // Spec 0402: set on the detail only, by whoever manages the payments of this commessa.
+            'work_order_payment_status_id' => $model instanceof WorkOrder && $mayWrite && $actor->can('managePayments', $model)
+                ? FieldPermission::visibleEditable()
+                : FieldPermission::visibleReadonly(),
         ];
     }
 

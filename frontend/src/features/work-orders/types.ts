@@ -11,6 +11,7 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ProductLine } from '@/features/product-lines/types'
 import type { ReferentRef } from '@/features/referents/types'
 import type { PrimaryContact } from '@/features/table/types'
+import type { ContractPaymentStatusRef } from '@/features/work-order-contract-data/types'
 
 /** `App\Enums\WorkOrderType` (D-10): "Lavorazione" / "Progetto" live only in i18n. */
 export type WorkOrderType = 'processing' | 'project'
@@ -187,6 +188,14 @@ export interface WorkOrderDetail {
   /** The set resolved for THIS work order: the picker never offers anything outside it (422 otherwise). */
   work_order_workflow_statuses: WorkOrderWorkflowStatusRef[]
   /**
+   * Spec 0402: the commessa's own "Stato pagamento" (a configured payment
+   * status) and the net amount of its lines, `null` without
+   * `view_contract_data`. Optional so older fixtures stay valid.
+   */
+  work_order_payment_status_id?: number | null
+  payment_status?: ContractPaymentStatusRef | null
+  amount?: string | null
+  /**
    * Spec 0146 D-8/AC-023: task of this commessa NOT closed, counted WITHOUT
    * visibility (the actor may not see all of them) — the exact set the
    * force-close side effect would flip to `ClosedNegative`. Drives the
@@ -315,6 +324,8 @@ export type UpdateWorkOrderPayload = Partial<
 > & {
   /** Spec 0322: update-only, the create resolves the `open` row server-side. */
   work_order_workflow_status_id?: number
+  /** Spec 0402: update-only, `null` clears it. */
+  work_order_payment_status_id?: number | null
 }
 
 /**

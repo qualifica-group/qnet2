@@ -15,6 +15,10 @@ use App\Models\WorkOrderPaymentStatus;
  * one per line. A legacy status key with no `work_order_payment_statuses.old_id`
  * leaves the status empty with a warning. The caller runs without activity
  * log: a migration notifies nobody (D-13).
+ *
+ * The same legacy status is also the commessa's own "Stato pagamento" (spec
+ * 0402): written on import, and on realign only while the commessa has none
+ * (a status chosen in qnet-2 is never overwritten).
  */
 final class LegacyWorkOrderLinePaymentWriter
 {
@@ -31,6 +35,9 @@ final class LegacyWorkOrderLinePaymentWriter
         foreach ($workOrder->quoteLines()->pluck('quote_lines.id') as $lineId) {
             WorkOrderLinePayment::query()->create(['work_order_id' => $workOrder->id, 'quote_line_id' => $lineId, ...$values]);
         }
+
+        // Step 3: the status of the commessa itself.
+        $this->writeWorkOrderStatus($workOrder, $values['work_order_payment_status_id']);
     }
 
     /**
@@ -59,7 +66,24 @@ final class LegacyWorkOrderLinePaymentWriter
             }
         }
 
+        // Step 3: the status of the commessa itself, only where it has none.
+        if ($workOrder->work_order_payment_status_id === null && $this->writeWorkOrderStatus($workOrder, $values['work_order_payment_status_id'])) {
+            $written = true;
+        }
+
         return $written;
+    }
+
+    /** @return bool true when the status changed */
+    private function writeWorkOrderStatus(WorkOrder $workOrder, ?int $statusId): bool
+    {
+        if ($statusId === null || $workOrder->work_order_payment_status_id === $statusId) {
+            return false;
+        }
+
+        $workOrder->forceFill(['work_order_payment_status_id' => $statusId])->saveQuietly();
+
+        return true;
     }
 
     /**
