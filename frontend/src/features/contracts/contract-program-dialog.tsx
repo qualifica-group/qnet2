@@ -55,7 +55,7 @@ export function ContractProgramDialog({ open, onOpenChange, contractId, renewalN
         {/* Flex column with a scrolling body: with many lines/groups the content would otherwise
             grow past the viewport. The popups of the selects portal into the content node, so the
             inner scroller never clips them. */}
-        <DialogContent size="xl" className="flex max-h-[85vh] flex-col gap-0 p-0">
+        <DialogContent size="xl" className="flex max-h-[85vh] flex-col gap-0 p-0 sm:w-[90vw] sm:max-w-[90vw]">
           <DialogHeader className="shrink-0 rounded-t-lg border-b bg-surface p-4">
             <DialogTitle>{t('contracts.actions.program')}</DialogTitle>
             <DialogDescription>{t('contracts.actions.programDialog.description')}</DialogDescription>

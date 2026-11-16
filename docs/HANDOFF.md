@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Finestra "Programma" del contratto: nomi interi, ricerca, filtro categoria, piu' larga — VERDE MIRATO, COMMITTATO (2026-11-16)
+
+- Il punto segnalato (GEMA QUO-0015, servizi "... EN ISO 39001:2012 _ 1°/2°/3° Anno") era la tabella "Righe
+  dell'offerta" del dialog `ContractProgramDialog`, non il picker del form commessa (fix precedente, resta valido).
+- Nomi prodotto a capo (`break-words`) in: tabella righe (anche Categoria), righe dentro il gruppo
+  (`contract-program-group-card.tsx`), pannello di "Programma commessa unica" (`contract-multi-program-lines-panel.tsx`).
+- Ricerca + filtro categoria lato client: `use-contract-program-lines-filter.ts` (`filterProgramLines`: tutte le parole,
+  nome o codice, senza maiuscole/accenti; `ALL_CATEGORIES`/`NO_CATEGORY`), `contract-program-lines-filter-bar.tsx`,
+  tabella estratta in `contract-program-lines-table.tsx`. La selezione non cambia filtrando; la checkbox di intestazione
+  agisce solo sulle righe libere visibili. Le azioni rapide senza selezione usano ancora TUTTE le righe libere.
+- Dialog `sm:w-[90vw] sm:max-w-[90vw]` (richiesta utente: almeno 80%). i18n `programDialog.lines{Search,CategoryFilter,
+  CategoryAll,CategoryNone,NoMatch}` IT/EN.
+- Test: `use-contract-program-lines-filter.test.ts` (nuovo) + 5 casi in `contract-program-dialog.test.tsx`; contracts
+  24 file/220 test, help 14/161 verdi; ESLint e `tsc -b --force` puliti. Manuale: guida in-app contratti IT/EN e
+  manuale Claude Docs (voce "Programma" nell'elenco azioni del contratto) aggiornati.
+
 ## Righe dell'offerta leggibili per intero nel selettore della commessa — VERDE MIRATO, COMMITTATO (2026-11-16)
 
 - Segnalazione: creando le commesse ISO 39001 dal contratto QUO-0015 i servizi "... _ 1° Anno / 2° Anno / 3° Anno"

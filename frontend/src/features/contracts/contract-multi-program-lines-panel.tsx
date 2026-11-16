@@ -102,7 +102,7 @@ export function ContractMultiProgramLinesPanel({
                         onCheckedChange={(next) => toggle(line.id, next === true)}
                         aria-label={t('contracts.actions.programDialog.lineSelectLabel', { name })}
                       />
-                      <span className="min-w-0 flex-1 truncate">{name}</span>
+                      <span className="min-w-0 flex-1 break-words">{name}</span>
                       <span className="hidden shrink-0 truncate text-muted-foreground sm:inline">
                         {line.branch_root?.name ?? '—'}
                       </span>

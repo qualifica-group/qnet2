@@ -97,6 +97,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            '**Search product** and the **category** filter above the table narrow the lines shown (the search finds the product name or code, several words too). The selection does not change: hidden lines stay selected, and the header checkbox selects only the free lines shown. Long names wrap, so you always read the whole name (for example 1st Year, 2nd Year).',
             '**One work order per line**: creates a group for each selected line (with no selection, for every free line).',
             '**Group by category**: creates a group per product category, plus one for the lines **without a category**.',
             '**Common values**: Type, Start date, Supervisors and Task template that **new** groups inherit; the Start date starts at today and can be changed. Changing them later does not touch existing groups, unless you use **Apply to all groups** (it never changes titles or lines).',

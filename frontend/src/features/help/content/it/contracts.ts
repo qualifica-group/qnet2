@@ -97,6 +97,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            '**Cerca prodotto** e il filtro **categoria** sopra la tabella restringono le righe mostrate (la ricerca trova nome o codice del prodotto, anche con più parole). La selezione non cambia: le righe nascoste restano selezionate, e la casella in intestazione seleziona solo le righe libere mostrate. I nomi lunghi vanno a capo, così leggi sempre il nome intero (per esempio 1° Anno, 2° Anno).',
             '**Una commessa per riga**: crea un gruppo per ogni riga selezionata (senza selezione, per tutte le righe libere).',
             '**Raggruppa per categoria**: crea un gruppo per categoria di prodotto, più uno per le righe **senza categoria**.',
             '**Valori comuni**: Tipo, Data inizio, Responsabili e Modello di Task che i **nuovi** gruppi ereditano; la Data inizio parte da oggi ed è modificabile. Cambiarli dopo non tocca i gruppi già creati, salvo **Applica a tutti i gruppi** (non cambia mai titoli e righe).',
