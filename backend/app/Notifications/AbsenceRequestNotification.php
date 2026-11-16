@@ -7,6 +7,10 @@ namespace App\Notifications;
 use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
+use App\Notifications\Concerns\RespectsEmailPreference;
+use App\Support\Notifications\DetailFields;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -17,11 +21,12 @@ use Illuminate\Notifications\Notification;
  * (submitted | approved | rejected | cancelled) and the audience (the person,
  * an approver, or the HR office in copy) only pick a sentence. Facts are precomputed by
  * AbsenceRequestNotifier; the link is resolved per recipient (no button for
- * someone who cannot open the page). Mail is skipped without an address.
+ * someone who cannot open the page). Mail only per the recipient's
+ * preference (RespectsEmailPreference).
  */
 class AbsenceRequestNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     public const string EVENT_SUBMITTED = 'submitted';
 
@@ -49,7 +54,7 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return filled($notifiable->email) ? ['database', 'mail'] : ['database'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**
@@ -67,18 +72,29 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
-            ->subject(__("absence_requests.notification.{$this->event}.title"))
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message($notifiable));
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject(__("absence_requests.notification.{$this->event}.title"))
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message($notifiable),
+            $this->details(),
+            $this->pathFor($notifiable),
+        );
+    }
 
-        $path = $this->pathFor($notifiable);
-
-        if ($path !== null) {
-            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+    /**
+     * Spec 0381: the request itself, from the facts already passed in.
+     *
+     * @return array<string, string>
+     */
+    private function details(): array
+    {
+        return DetailFields::compact([
+            'notifications.fields.person' => $this->personName,
+            'notifications.fields.type' => $this->typeName,
+            'notifications.fields.period' => $this->period,
+            'notifications.fields.reason' => $this->reason,
+        ]);
     }
 
     private function pathFor(object $notifiable): ?string

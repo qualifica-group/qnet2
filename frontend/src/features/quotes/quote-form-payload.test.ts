@@ -416,6 +416,20 @@ describe('buildUpdatePayload', () => {
     )
     expect(payload.attribute_values).toEqual({ urgent: true, colour: null })
   })
+
+  // Segnalazione 2026-11-11: un codice appena diventato applicabile parte dal
+  // valore SALVATO; se resta quello, non e' un cambiamento da spedire.
+  it('omits attribute_values when a newly applicable code still holds its stored value', () => {
+    const original = detail({
+      applicable_attributes: [attribute('colour', 'text')],
+      attribute_values: { colour: null, sites: 'stored in Gestione Richieste' },
+    })
+    const payload = buildUpdatePayload(
+      formValues({ attribute_values: { colour: null, sites: 'stored in Gestione Richieste' } }),
+      original,
+    )
+    expect(payload.attribute_values).toBeUndefined()
+  })
 })
 
 /**

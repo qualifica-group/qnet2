@@ -243,6 +243,14 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Chi può modificare il task gestisce anche tutte le voci del suo **Segnatempo**, comprese quelle inserite da un altro assegnatario.',
         },
+        {
+          type: 'note',
+          text: 'Un **sotto-task senza assegnatari** è visibile agli assegnatari del task padre diretto, che possono completarlo (e riaprirlo) ma non modificarlo né eliminarlo. Così chi ha il task padre chiude i suoi sotto-task e poi completa il padre. Appena il sotto-task riceve un assegnatario proprio, vale solo quello.',
+        },
+        {
+          type: 'note',
+          text: 'Un **task di commessa senza assegnatari** può essere completato da un **Responsabile** o da un **Partecipante** della commessa, anche se non ne è assegnatario. Completandolo ne diventi **assegnatario** e da lì valgono le regole di sempre: se il task richiede la validazione va in validazione, il segnatempo è registrato a tuo nome e la commessa avanza come per gli altri task. Prima di completarlo non puoi modificarlo. Se il task ha già un assegnatario, vale solo quello.',
+        },
       ],
     },
     {
@@ -400,7 +408,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nel dettaglio del task trovi **Note**, **Documenti**, **Cronologia attività** e **Segnatempo**.',
+          text: 'Nel dettaglio del task trovi **Note**, **Documenti**, **Cronologia attività** e **Segnatempo**. Sull\'icona di **Note**, **Documenti** e **Segnatempo** un numero indica quante note (risposte comprese), documenti e registrazioni di tempo ha il task; accanto a **Segnatempo** resta il totale delle ore.',
         },
         {
           type: 'paragraph',
@@ -415,7 +423,7 @@ const guide: HelpGuide = {
           items: [
             'ti viene assegnato un task come nuovo assegnatario (a meno che tu ne sia anche il creatore) o come nuovo osservatore (sempre, anche se sei il creatore);',
             'un task va in validazione, oppure la sua validazione viene approvata o rifiutata;',
-            'un task viene chiuso: la notifica arriva al richiedente e agli osservatori, e agli assegnatari solo se sono più di uno; se il task era in validazione, gli assegnatari ricevono comunque una notifica separata di approvazione;',
+            'un task viene chiuso: la notifica arriva al richiedente e agli osservatori, e agli assegnatari solo se sono più di uno; sui task generati da un **Modello di Task** di una commessa il richiedente (chi ha creato la commessa) non la riceve, a meno che non sia anche osservatore o assegnatario; se il task era in validazione, gli assegnatari ricevono comunque una notifica separata di approvazione;',
             'un task viene riaperto, bloccato o sbloccato;',
             'qualcuno ti chiede un aggiornamento: la ricevono i destinatari scelti, con una copia (**In copia**) agli osservatori quando la richiesta va agli assegnatari.',
             'qualcuno ti menziona in una nota con **Menziona chiunque** e ti aggiunge come osservatore: ricevi solo la notifica di menzione ("ti ha menzionato e ti ha aggiunto come Osservatore"), non quella di nuovo osservatore.',

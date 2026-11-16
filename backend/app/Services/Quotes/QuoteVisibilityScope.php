@@ -44,16 +44,6 @@ final class QuoteVisibilityScope
     public const COMPETENCE_VERDICT_ATTRIBUTE = 'competence_scoped';
 
     /**
-     * Whether the actor can see records beyond the ones where they hold a role:
-     * the same tiers as scopeToActor(), read by the "Assegnazione" filter.
-     */
-    public static function seesBeyondOwnRecords(?User $user, string $resource = self::DEFAULT_RESOURCE): bool
-    {
-        return $user !== null
-            && ($user->can($resource.'.'.self::VIEW_ALL_ABILITY) || self::siteIds($user, $resource) !== [] || self::competenceReach($user, $resource) !== null);
-    }
-
-    /**
      * @template TModel of Quote
      *
      * @param  Builder<TModel>  $query  rooted on (or nested under) `quotes`

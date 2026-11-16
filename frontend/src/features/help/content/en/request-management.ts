@@ -20,6 +20,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Categories whose **Used in** setting (in the category record) is **Opportunities / Quotes** are not part of Request Management: they have no tab, cannot be picked (neither in the form nor in the **Product category** cell) and do not show in filters and statistics. A request that has **only** such categories is not listed, counted or found by search, and its link answers **Access denied**; if it also has a category used here it stays visible. Setting **All modules** back on the category restores everything: no data is deleted.",
+        },
+        {
+          type: 'paragraph',
           text: 'What you see depends on your permissions. With no other permission you see the requests whose **Team** you belong to: as operator, Supervisor or Account Manager. **View by site** adds those of your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. If you create a request outside your scope, you will no longer see it unless you have one of these permissions.',
         },
         {
@@ -55,9 +59,8 @@ const guide: HelpGuide = {
             ['Source', 'The channel the request comes from (a field of the quote).'],
             ['Change requests', 'Change proposals still awaiting a decision.'],
             ['Product lines', 'Products present in the quote; the cell opens the editor with the product catalogue.'],
-            ['Operator', 'The person working the request.'],
-            ['APL operator', 'The account manager in the fifth team position. It can be sorted and filtered by name and edited from the cell.'],
-            ['Account managers', 'Everyone on the team, operator included. It can be filtered by name and edited from the cell.'],
+            ['Account manager 1, 2, 3...', "One column per team position. In **All** they are called **Account manager** with the number and go up to the highest position in use. In a category tab only the positions the category names are shown (for example in Formazione **Tutor**, **Operator**, **Business partner**, **Referrer**, **APL operator**): when the category adds a name, the column appears. Position 2 is the **Operator**, the person working the request. They can be sorted, filtered by name and edited from the cell."],
+            ['Account managers / Other account managers', "In **All**, **Account managers** shows everyone on the team, operator included. In a category tab it is called **Other account managers** and shows only the people in a position the category does not name; editing it from the cell changes only these people, those in the named columns stay. It can be filtered by name."],
             ['Operational site', 'The site the request is assigned to.'],
             ['Next callback', 'Date of the next call to the client.'],
             ['Transferred', 'Whether the contact was transferred from another site.'],
@@ -85,7 +88,7 @@ const guide: HelpGuide = {
             'In **Product lines** add at least one row: parent category, then product category. When the parent category has groups (for example Consulting › ISO), **Filter** lets you pick the group and the product category then lists only its subcategories; the filter is not saved, only the product category.',
             "In the **Product catalogue** tick the products and press **Add N selected**, then check quantity, unit price and VAT of the rows (see **Offer rows and product catalogue**).",
             'In **Client details** pick an **Existing registry** or enter a new client.',
-            'In **Attribution** pick the **Source** (required) and, if needed, **Reporter**, **Sales rep** and **Operational site**. The Sales rep picked here is set on both the request and its opportunity.',
+            'In **Attribution** pick the **Source** (required) and, if needed, **Reporter**, **Sales rep** and **Operational site**. The Sales rep picked here is set on both the request and its opportunity. When you are entering a new client, Source, Reporter and Sales rep are saved on its registry too.',
             'Fill in the **Additional information**, if present.',
             'Press **Create request**: you go back to the table, on the category tab you had open.',
           ],
@@ -96,7 +99,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'If the new client you are entering already exists, **Possible duplicate** appears under the registry picker: pick that registry instead of creating another one. A tax code, VAT number or phone already on another card blocks saving (see the **Registries** guide).',
+          text: 'If the new client you are entering already exists, **Possible duplicate** appears under the registry picker: pick that registry instead of creating another one. The **Use** button next to the duplicate picks it at once; if the phone or email belongs to a referent, the button picks the company the referent is linked to. A tax code, VAT number or phone already on another card blocks saving (see the **Registries** guide).',
         },
         {
           type: 'warning',
@@ -151,7 +154,7 @@ const guide: HelpGuide = {
             "**Sales forecast**: expected close date, estimated value and success probability. They are the opportunity's values: changing them here changes them in **Opportunities** and in the other requests of the same opportunity too.",
             '**Status**: some statuses require a **Note**. A validated status requires at least one offer row. Closing does not, with either a positive or a negative outcome: the product row becomes mandatory when the contract is validated.',
             "**Client details**: the field at the top shows the request's client and lets you pick another one. The change applies to every offer on the opportunity. After picking another client, its details appear once you save, and any edits to the previous client's details are not saved. If a contract already exists, or the client comes from the lead, the field cannot be changed.",
-            '**Attribution** (**Source**, **Reporter**, **Sales rep**) and **Team** (**Supervisor** and **Account managers**). A **Sales rep** changed here applies to this request (the quote) only: the opportunity\'s one does not change.',
+            '**Attribution** (**Source**, **Reporter**, **Sales rep**) and **Team** (**Supervisor** and **Account managers**). A **Sales rep** changed here applies to this request (the quote) only: the opportunity\'s one does not change. Whoever you add among the **Account managers**, in any position (also from the table\'s **Account manager** columns), receives the **You were assigned as Account Manager** notification in the bell and by email; people only moved to another position and people adding themselves do not.',
             'The **Additional information**, which depends on the categories picked.',
           ],
         },
@@ -165,7 +168,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'When you edit the client details, from the panel or directly in the table cell, you cannot enter a tax code, VAT number or phone that already belongs to another card: the save is refused. The values already on the client stay editable.',
+          text: 'When you edit the client details, from the panel or directly in the table cell, you cannot enter a tax code, VAT number or phone that already belongs to another card: the save is refused. You can instead enter the phone of a referent linked to that client. The values already on the client stay editable.',
         },
         {
           type: 'paragraph',
@@ -179,7 +182,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From a single row's menu: **Documents**, **Notes**, **Transfer contact**, **Delete**, **History**. Selecting several rows, the **Actions** menu offers:",
+          text: "From a single row's menu: **Documents**, **Notes** (the top of the window shows the row's **Callback date**, so you see it while writing), **Transfer contact**, **Delete**, **History**. Selecting several rows, the **Actions** menu offers:",
         },
         {
           type: 'table',
@@ -187,7 +190,7 @@ const guide: HelpGuide = {
           rows: [
             [
               'Assign operators',
-              '**Balanced split** shows the operators grouped by Site (all selected, deselectable per group or individually) and distributes across whoever stays selected; **Assign to operator** assigns everything to the same person.',
+              '**Balanced split** shows the operators grouped by Site (all selected, deselectable per group or individually) and distributes across whoever stays selected — with **Take the current load into account** on it favours whoever operates fewer offers, off it splits equally; **Assign to operator** assigns everything to the same person.',
             ],
             [
               'Assign Tutor',
@@ -222,8 +225,8 @@ const guide: HelpGuide = {
             ['Whoever had the contact', 'A notice that the contact is no longer theirs, and who it went to.'],
             ['Whoever receives the contact', 'A notice that the contact was assigned to them.'],
             [
-              'Whoever holds the **View all** permission',
-              'A summary of every transfer in the module, even when not involved.',
+              'Whoever holds the **notifiche-trasferimenti-contatti** role',
+              'A summary of every transfer, even when not involved. The **View all** permission shows every request but does not send the summary.',
             ],
           ],
         },

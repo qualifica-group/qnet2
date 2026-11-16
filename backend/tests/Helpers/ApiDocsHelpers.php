@@ -22,13 +22,11 @@ if (! function_exists('generatedApiDocument')) {
 
 if (! function_exists('seedApiDocumentCache')) {
     /**
-     * Pre-fills the document cache with the shared document under the current
-     * signature, so an HTTP call in the test serves it without regenerating.
+     * Pre-fills the document cache with the shared document, so an HTTP call in
+     * the test serves it without regenerating.
      */
-    function seedApiDocumentCache(): void
+    function seedApiDocumentCache(string $generatedAt = '2026-11-13T00:00:00+00:00'): void
     {
-        $document = generatedApiDocument();
-
-        Cache::put(OpenApiDocumentProvider::CACHE_KEY_PREFIX.app(OpenApiDocumentProvider::class)->signature(), $document, 600);
+        Cache::forever(OpenApiDocumentProvider::CACHE_KEY, ['document' => generatedApiDocument(), 'generated_at' => $generatedAt]);
     }
 }

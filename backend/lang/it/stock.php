@@ -11,6 +11,5 @@ return [
     'filter_required' => 'Indica almeno un filtro: prodotto, utente o sede.',
     'product_has_stock' => 'Il prodotto ha giacenza: non può smettere di essere un bene fisico tracciato.',
     'product_has_movements' => 'Il prodotto ha movimenti di giacenza e non può essere eliminato.',
-    'site_has_movements' => 'La sede ha movimenti di giacenza e non può essere eliminata.',
     'user_has_movements' => 'L\'utente ha movimenti di giacenza e non può essere eliminato.',
 ];

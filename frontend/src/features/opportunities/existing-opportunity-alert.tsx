@@ -16,6 +16,11 @@ interface ExistingOpportunityAlertProps {
    * — so the operator adds the offer there instead of duplicating the deal.
    */
   productIds?: readonly number[]
+  /**
+   * Spec 0396: when set, the primary action is always offered with this label
+   * (the new opportunity + offer procedure carries no products to preset).
+   */
+  offerLinkLabel?: string
 }
 
 /**
@@ -30,6 +35,7 @@ export function ExistingOpportunityAlert({
   opportunityId,
   message,
   productIds = [],
+  offerLinkLabel,
 }: ExistingOpportunityAlertProps) {
   const { t } = useTranslation()
 
@@ -44,10 +50,10 @@ export function ExistingOpportunityAlert({
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
-        {productIds.length > 0 ? (
+        {productIds.length > 0 || offerLinkLabel !== undefined ? (
           <Button asChild size="sm" variant="secondary">
             <Link to={quoteCreateHref(opportunityId, productIds)}>
-              {t('opportunities.form.addOfferToExistingOpportunity')}
+              {offerLinkLabel ?? t('opportunities.form.addOfferToExistingOpportunity')}
             </Link>
           </Button>
         ) : null}

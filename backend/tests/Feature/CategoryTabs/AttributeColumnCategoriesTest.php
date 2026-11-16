@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\ProductCategory;
 use App\Tables\CategoryTabs\AttributeColumnCategories;
+use App\Tables\Shared\ParentCategoryListModule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 // Spec 0374, D-1, D-9, D-10: the categories whose flexible fields a grid shows (AC-001, AC-019).
@@ -12,7 +13,7 @@ uses(RefreshDatabase::class);
 
 function attributeColumnsFor(array $values): array
 {
-    return app(AttributeColumnCategories::class)->fromFilters($values);
+    return app(AttributeColumnCategories::class)->fromFilters($values, ParentCategoryListModule::WorkOrders);
 }
 
 it('deduces the categories from the product and parent category filters (AC-001)', function () {

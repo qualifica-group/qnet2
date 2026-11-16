@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0395-work-order-legacy-work-phase" status="approved" owner="utente" date="2026-11-14">
+
+  <goal>
+    Richiesta utente 2026-11-14: "bisogna controllare i tab in alto per quanto riguarda le commesse, il flusso deve essere
+    lo stesso di qnet vecchio, quindi i filtri, gli stati devono essere identici". I tab di fase della pagina Commesse
+    (Tutte, Da pianificare, In lavorazione, Concluse, Annullate, Disdette) devono contare e filtrare le stesse commesse
+    del legacy (`/commesse/{status}`, `orders.status` 1-5).
+  </goal>
+
+  <context>
+    Stato prima di questa spec (HANDOFF 2026-11-09): fase mai persistita, ricavata dal gruppo dello "Stato lavorazione"
+    e, per il gruppo `closed`, dallo stato del contratto. Nel legacy invece `orders.status` e' un campo a se',
+    indipendente dallo stato lavorazione (`progress`). Confronto sui dati dev (commesse migrate, per `old_id`):
+    legacy 1/2/3/4/5 = 3106/2579/8712/2182/37; qnet-2 Da pianificare/In lavorazione/Concluse/Annullate/Disdette =
+    4261/1226/8850/2069/194. 1201 commesse "In lavorazione" nel legacy stanno su uno stato lavorazione del gruppo `open`
+    (quindi in "Da pianificare"), 179 su uno del gruppo `completed`. Nessuna derivazione dai dati di qnet-2 riproduce
+    il legacy (586 commesse "Da pianificare" del legacy hanno gia' un Responsabile).
+
+    Ciclo di vita di `orders.status` nel legacy (../qnet):
+    - nasce 1 PROGRAMMAZIONE (Contractplanning*, Orderdetail);
+    - 2 LAVORAZIONE quando si aggiunge un Responsabile (AddTecnico::storeResponsabile, Orders/Detail::storeTecnico,
+      ContractplanningFast) o a fine pianificazione (Orderdetail);
+    - 3 CHIUSA con la chiusura forzata (Manageorder::forzaChiusura) o quando tutte le milestone sono fatte (TaskServizi);
+    - 4 ANNULLATA quando il contratto viene annullato: TUTTE le commesse del contratto (Contracts/ConfirmDelete);
+    - 5 DISDETTA con "Disdetta contratto": solo le commesse in 1/2, lo stato precedente in `last_status`; la revoca le
+      riporta a COALESCE(last_status, 1) (DisdettaCommesseService).
+    Tab legacy (orders.blade.php): Tutte (nessun conteggio), Da Pianificare, In Lavorazione, Concluse, Annullate,
+    Disdette, conteggio "(N)" solo se N > 0; i conteggi seguono ricerca/cliente/mese/servizio/utente/visibilita'.
+  </context>
+
+  <decisions>
+    D-1 La fase diventa una colonna: `work_orders.work_phase` (string, enum `WorkOrderWorkPhase`, default `to_plan`,
+        indice) + `work_orders.work_phase_before_termination` (enum nullable, gemello di `orders.last_status`).
+        Indipendente dallo "Stato lavorazione", come nel legacy. Non scrivibile dai client (non fillable, nessun campo
+        nelle request): la muovono solo le regole sotto e la migrazione dal legacy.
+    D-2 Regole (`App\Services\WorkOrders\WorkOrderWorkPhaseTracker`), dopo ogni create/update di WorkOrderService:
+        - chiusura forzata (false->true): `completed` se lo stato di chiusura e' del gruppo `completed`, `cancelled` se
+          del gruppo `closed` (il legacy chiudeva sempre in 3; qnet-2 permette di scegliere uno stato negativo, che il
+          legacy migrato tratta come Annullata);
+        - riapertura (true->false, solo qnet-2): `in_progress` se la commessa ha almeno un Responsabile, altrimenti
+          `to_plan`; `work_phase_before_termination` azzerato;
+        - altrimenti, Responsabile aggiunto a una commessa `to_plan` -> `in_progress` (anche alla creazione).
+    D-3 Contratto (`ContractWorkOrderClosure`): "Annullato" -> TUTTE le commesse del contratto `cancelled` (precedente
+        azzerato); altra chiusura negativa (Disdetto) -> solo `to_plan`/`in_progress` diventano `terminated`, la fase
+        precedente in `work_phase_before_termination`; riapertura del contratto -> le `terminated` tornano a
+        COALESCE(precedente, `to_plan`). La parte "Stato lavorazione" della chiusura da contratto resta invariata.
+    D-4 Tab: filtro e conteggi leggono la colonna (`WorkOrderWorkPhaseColumn`). "Tutte" senza conteggio, come nel legacy.
+    D-5 Migrazione dal legacy (backend.md §9, decodifica nel legacy): il record `work-orders` porta
+        `work_phase` (1 to_plan, 2 in_progress, 3 completed, 4 cancelled, 5 terminated, altro null) e
+        `work_phase_before_termination` (decodifica di `last_status`, solo per status 5, altrimenti null). qnet-2: valore
+        non valido -> warning e fase lasciata alle regole; import e riallineamento (spec 0372, "aggiorna esistenti",
+        commesse non toccate) scrivono entrambi i campi.
+    D-6 Backfill della migrazione di schema per le commesse esistenti (prod non vede il DB legacy): non chiusa ->
+        `in_progress` se ha Responsabili, altrimenti `to_plan`; chiusa -> per `force_close_reason` legacy
+        ("Chiusa (legacy)" completed, "Annullata (legacy)" cancelled, "Disdetta (legacy)" terminated), poi
+        `status_before_contract_termination_id` valorizzato -> terminated (precedente da Responsabili), poi gruppo dello
+        stato `completed` -> completed, altrimenti cancelled. Su dev coincide col legacy su 3/4/5; le ~590 commesse
+        "Da pianificare" con Responsabile si allineano rieseguendo la sorgente `work-orders` con "aggiorna esistenti".
+    D-7 (utente 2026-11-14, "sostituirli con questi, anche sulle colonne") La fase sostituisce lo stato calcolato
+        dall'avanzamento (spec 0321 D-2) ovunque: colonna `status` della griglia (badge, filtro set sui 5 valori, enumKey
+        `work_order_work_phase`; sparisce la colonna nascosta `work_phase`, i tab filtrano `status`), `status.value` del
+        dettaglio, chat in sola lettura (fase non to_plan/in_progress), "Richiedi aggiornamento" e ricorrenza email
+        (solo fase to_plan/in_progress). La percentuale di avanzamento resta calcolata e non muove lo stato.
+        `WorkOrderStatus` resta solo come vocabolario dei gruppi dello "Stato lavorazione" (via catalogo config e i18n
+        `work_order_status`).
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/tables/work-orders/rows">
+      <response>`status` della riga = fase (D-7); `meta.aggregates` = { all, to_plan, in_progress, completed, cancelled,
+        terminated } (il FE non mostra piu' `all`). Filtro dei tab: `filterModel.status` set.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/work-orders/{id}">
+      <response>`status.value` = fase: "to_plan"|"in_progress"|"completed"|"cancelled"|"terminated" (D-7).</response>
+    </endpoint>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/work-orders">
+      <response>Record + `work_phase`: "to_plan"|"in_progress"|"completed"|"cancelled"|"terminated"|null,
+        `work_phase_before_termination`: "to_plan"|"in_progress"|null.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Una commessa creata senza Responsabili e' `to_plan`; creata con un Responsabile e' `in_progress`.</criterion>
+    <criterion id="AC-002">PATCH che aggiunge un Responsabile a una commessa `to_plan` -> `in_progress`; su una commessa in altra fase -> invariata.</criterion>
+    <criterion id="AC-003">Chiusura forzata su stato del gruppo completed -> `completed`; del gruppo closed -> `cancelled`. Riapertura -> `in_progress` con Responsabili, `to_plan` senza.</criterion>
+    <criterion id="AC-004">Contratto Annullato -> tutte le commesse `cancelled` (anche concluse e disdette). Contratto Disdetto -> solo `to_plan`/`in_progress` diventano `terminated` col precedente; riapertura -> fase precedente.</criterion>
+    <criterion id="AC-005">Ogni tab elenca esattamente le commesse della sua fase e i conteggi coincidono con le righe del tab, sotto gli stessi filtri.</criterion>
+    <criterion id="AC-006">Import e riallineamento dal legacy scrivono `work_phase` e `work_phase_before_termination`; valore non valido -> warning.</criterion>
+    <criterion id="AC-007">Legacy: l'endpoint invia `work_phase` per ogni record (tinker sui dati reali: conteggi per fase = conteggi di `orders.status`).</criterion>
+    <criterion id="AC-009">La colonna Stato e il badge del dettaglio mostrano la fase; il 100% di avanzamento non cambia lo stato; chat, "Richiedi aggiornamento" ed email ricorrenti si fermano su Conclusa/Annullata/Disdetta.</criterion>
+    <criterion id="AC-008">FE: il tab "Tutte" non mostra il conteggio; gli altri "(N)" solo se N > 0.</criterion>
+  </acceptance>
+</spec>

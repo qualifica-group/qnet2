@@ -15,7 +15,7 @@ describe('useWorkPhaseTabs', () => {
     const { result } = renderHook(() => useWorkPhaseTabs(tableRefWith(vi.fn())))
     expect(result.current.active).toBe('all')
 
-    act(() => result.current.onFilterModelChange({ work_phase: { filterType: 'set', values: ['terminated'] } }))
+    act(() => result.current.onFilterModelChange({ status: { filterType: 'set', values: ['terminated'] } }))
     expect(result.current.active).toBe('terminated')
 
     act(() => result.current.onFilterModelChange({}))
@@ -33,7 +33,7 @@ describe('useWorkPhaseTabs', () => {
   it('selects no tab when the column filter holds several phases', () => {
     const { result } = renderHook(() => useWorkPhaseTabs(tableRefWith(vi.fn())))
 
-    act(() => result.current.onFilterModelChange({ work_phase: { filterType: 'set', values: ['to_plan', 'completed'] } }))
+    act(() => result.current.onFilterModelChange({ status: { filterType: 'set', values: ['to_plan', 'completed'] } }))
 
     expect(result.current.active).toBeNull()
   })
@@ -43,10 +43,10 @@ describe('useWorkPhaseTabs', () => {
     const { result } = renderHook(() => useWorkPhaseTabs(tableRefWith(setFilterModel)))
 
     result.current.select('cancelled')
-    expect(setFilterModel).toHaveBeenLastCalledWith({ work_phase: { filterType: 'set', values: ['cancelled'] } })
+    expect(setFilterModel).toHaveBeenLastCalledWith({ status: { filterType: 'set', values: ['cancelled'] } })
 
     result.current.select('all')
-    expect(setFilterModel).toHaveBeenLastCalledWith({ work_phase: null })
+    expect(setFilterModel).toHaveBeenLastCalledWith({ status: null })
   })
 })
 
@@ -62,11 +62,12 @@ describe('WorkPhaseTabs', () => {
     expect(onSelect).toHaveBeenCalledWith('terminated')
   })
 
-  it('shows the count of each tab, and none when it is zero or not known yet', () => {
+  // Spec 0395 (REQUIREMENT CHANGED): "All" has no figure, as on the legacy list.
+  it('shows the count of each phase tab, none on all, and none when it is zero or not known yet', () => {
     const { rerender } = render(<WorkPhaseTabs active="all" counts={{ all: 3, to_plan: 3, terminated: 0 }} onSelect={vi.fn()} />)
 
     const [all, toPlan, , , , terminated] = screen.getAllByRole('tab')
-    expect(all.textContent).toMatch(/\(3\)$/)
+    expect(all.textContent).not.toMatch(/\(/)
     expect(toPlan.textContent).toMatch(/\(3\)$/)
     expect(terminated.textContent).not.toMatch(/\(/)
 

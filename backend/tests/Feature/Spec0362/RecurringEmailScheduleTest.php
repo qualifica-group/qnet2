@@ -128,7 +128,8 @@ it('AC-005: authz - no ability, out of perimeter, not author, foreign draft, for
 
 it('AC-006: a completed or closed work order cannot be programmed (409)', function () {
     $workOrder = WorkOrder::factory()->create();
-    $workOrder->forceFill(['is_force_closed' => true])->save();
+    // Spec 0395 (REQUIREMENT CHANGED): "no longer in progress" is the working phase.
+    $workOrder->forceFill(['is_force_closed' => true, 'work_phase' => 'cancelled'])->save();
     $actor = workOrderEmailActor($workOrder, ['sendEmail']);
     $email = recurringDraft($workOrder, $actor);
     Sanctum::actingAs($actor);

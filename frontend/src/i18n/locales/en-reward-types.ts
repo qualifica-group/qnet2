@@ -47,7 +47,6 @@ export const rewardTypes = {
     deleted: 'Reward type deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the reward type. Please try again.',
-    deleteInUseFallback: 'This reward type is in use and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The record has not been created yet: what you entered will be lost.',

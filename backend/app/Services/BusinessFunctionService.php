@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\BusinessFunctions\BusinessFunctionActivity;
 use App\Services\BusinessFunctions\BusinessFunctionHierarchy;
 use App\Services\BusinessFunctions\BusinessFunctionMembershipGuard;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -45,6 +46,7 @@ class BusinessFunctionService
         private readonly BusinessFunctionHierarchy $hierarchy,
         private readonly BusinessFunctionMembershipGuard $membershipGuard,
         private readonly BusinessFunctionActivity $activity,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     public function create(User $actor, CreateBusinessFunctionData $data): BusinessFunction
@@ -120,19 +122,8 @@ class BusinessFunctionService
      */
     public function delete(BusinessFunction $businessFunction): void
     {
-        if ($businessFunction->children()->exists()) {
-            abort(409, 'This business function has child functions and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($businessFunction);
 
-        if ($businessFunction->opportunities()->exists()) {
-            abort(409, 'This business function has opportunities and cannot be deleted.');
-        }
-
-        $this->membershipGuard->assertCanDelete($businessFunction);
-
-        // The business_function_user/business_function_operational_site pivot
-        // rows cascade on delete (migration FK constraint), so no explicit
-        // detach is needed here.
         $businessFunction->delete();
     }
 

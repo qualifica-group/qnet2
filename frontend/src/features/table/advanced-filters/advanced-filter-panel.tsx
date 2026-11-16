@@ -32,6 +32,8 @@ interface AdvancedFilterPanelProps {
   descriptors: AdvancedFilterDescriptor[]
   /** Draft/applied state and actions owned by `useAdvancedFilters`. */
   filters: UseAdvancedFiltersResult
+  /** Frame adjustments of the host (e.g. which edge carries the hairline). */
+  className?: string
 }
 
 /**
@@ -41,7 +43,7 @@ interface AdvancedFilterPanelProps {
  * footer. Domain-agnostic: the same component serves all 21 domains, driven
  * entirely by the descriptor catalog `TableView` passes in.
  */
-export function AdvancedFilterPanel({ descriptors, filters }: AdvancedFilterPanelProps) {
+export function AdvancedFilterPanel({ descriptors, filters, className }: AdvancedFilterPanelProps) {
   const { t } = useTranslation()
   const panelId = useId()
 
@@ -55,7 +57,7 @@ export function AdvancedFilterPanel({ descriptors, filters }: AdvancedFilterPane
     // laid over the page, and the fields' own `--field` fill (94%) only reads as
     // "editable" against it — on the previous `bg-muted/30` the two tones nearly
     // matched and the inputs lost their edge.
-    <div className="border-b border-border bg-card">
+    <div className={cn('border-b border-border bg-card', className)}>
       <div className="flex flex-wrap gap-3 p-3">
         {visible.map((descriptor) => {
           const fieldId = `${panelId}-${descriptor.name}`
@@ -99,12 +101,12 @@ export function AdvancedFilterPanel({ descriptors, filters }: AdvancedFilterPane
         })}
       </div>
 
-      {/* Action bar sits one rung off the white panel on `--muted`, the scale's
-          intermediate surface — the hairline above it carries the split, the
-          tone only backs it. Not `bg-border`: the hairline is now a line colour,
-          too dark to flood a whole zone with. Solid, never an alpha: a tint
-          would recomposite against the panel. */}
-      <div className="flex items-center justify-end gap-2 border-t border-border bg-muted px-3 py-2">
+      {/* Action bar on `--surface`, the scale's intermediate rung: apart from
+          both the white panel and the page body around the filter block.
+          Not `--muted`: that tint sits beyond the end of the scale, next to the
+          body (79 vs 81 in light), so the bar read as the page showing through.
+          Solid, never an alpha: a tint would recomposite against the panel. */}
+      <div className="flex items-center justify-end gap-2 border-t border-border bg-surface px-3 py-2">
         <Button
           type="button"
           variant="ghost"

@@ -13,6 +13,8 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { BulkAction } from '@/features/table/use-bulk-actions-slot'
+import { ContractStatusTabs } from '@/features/contracts/contract-status-tabs'
+import { useContractStatusTabs } from '@/features/contracts/use-contract-status-tabs'
 import { ContractMultiProgramDialog } from '@/features/contracts/contract-multi-program-dialog'
 import { MULTI_PROGRAM_MAX_CONTRACTS } from '@/features/contracts/contract-multi-program-schema'
 import { contractColumnRenderers } from '@/features/contracts/column-renderers'
@@ -71,6 +73,7 @@ export function ContractsTable() {
   const refreshGrid = useCallback(() => {
     tableRef.current?.refresh()
   }, [])
+  const statusTabs = useContractStatusTabs(tableRef)
 
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const [documentsRowId, setDocumentsRowId] = useState<number | null>(null)
@@ -128,7 +131,16 @@ export function ContractsTable() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <PageHeader />
+      <PageHeader
+        actions={
+          <ContractStatusTabs
+            statuses={statusTabs.statuses}
+            active={statusTabs.active}
+            counts={statusTabs.counts}
+            onSelect={statusTabs.select}
+          />
+        }
+      />
 
       <TableView
         ref={tableRef}
@@ -138,6 +150,8 @@ export function ContractsTable() {
         iconMap={CONTRACT_ACTION_ICONS}
         onAction={handleAction}
         getBulkActions={getBulkActions}
+        onFilterModelChange={statusTabs.onFilterModelChange}
+        onAggregatesChange={statusTabs.onAggregatesChange}
       />
 
       <ContractMultiProgramDialog

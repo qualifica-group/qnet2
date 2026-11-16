@@ -10,6 +10,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\ContractStatus;
 use App\Services\Contracts\ContractStatusDefaultManager;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Statuses\StatusOrderManager;
 use App\Services\Statuses\SystemStatusGuard;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -39,6 +40,7 @@ class ContractStatusService
         private readonly StatusOrderManager $orderManager,
         private readonly SystemStatusGuard $systemStatusGuard,
         private readonly ContractStatusDefaultManager $defaultManager,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     /**
@@ -129,9 +131,7 @@ class ContractStatusService
     {
         $this->systemStatusGuard->assertDeletable($contractStatus);
 
-        if ($contractStatus->contracts()->exists()) {
-            abort(409, 'This contract status is used by a contract and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($contractStatus);
 
         $contractStatus->delete();
     }

@@ -10,6 +10,7 @@ use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeSectionVisibility;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
+use App\Services\Notifications\TableRowNotifier;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -38,6 +39,7 @@ final class QuoteAttributeValueWriter
         private readonly AttributeValueValidator $validator,
         private readonly AttributeValueNormalizer $normalizer,
         private readonly AttributeSectionVisibility $visibility,
+        private readonly TableRowNotifier $tableRowNotifier,
     ) {}
 
     /**
@@ -49,7 +51,7 @@ final class QuoteAttributeValueWriter
      * @param  array<string, mixed>  $submitted
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
-     * @param  Collection<int, ApplicableAttribute>|null  $applicable  the set to validate against; `null` = the quote's own offer-line set. Gestione Richieste passes its own (App\RequestManagement\RequestAttributeResolver, D-1): same values map, wider category source — the merge/validation pipeline stays this single one
+     * @param  Collection<int, ApplicableAttribute>|null  $applicable  the set to validate against; `null` = the quote's own set (App\Quotes\QuoteAttributeResolver: opportunity product lines + offer lines, the same one Gestione Richieste resolves)
      * @param  array<string, mixed>|null  $layout  the layout the writing surface shows (spec 0288, D-5), whose hidden conditional sections relax `is_required` and are emptied; `null` = no conditions (e.g. the legacy migration)
      *
      * @throws ValidationException a submitted code is not applicable, has the wrong type, or a required one is empty
@@ -76,5 +78,8 @@ final class QuoteAttributeValueWriter
         // guard): forceFill is the deliberate, single write path.
         $quote->forceFill(['attribute_values' => $merged]);
         $changed['attribute_values'] = $merged;
+
+        // Step 4: a table row that fired its event tells who the field names (spec 0390)
+        $this->tableRowNotifier->notifyAttributes($quote, $applicable, $current, $merged);
     }
 }

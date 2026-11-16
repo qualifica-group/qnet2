@@ -80,7 +80,7 @@ final class InputFormat
         return ItalianTaxCode::normalize($value);
     }
 
-    /** Eleven digits, stripped of separators and of the optional `IT` country prefix. */
+    /** Uppercase alphanumerics, stripped of the optional `IT` prefix (a foreign code keeps its own). */
     public static function vatNumber(string $value): string
     {
         return ItalianVatNumber::normalize($value);

@@ -175,14 +175,13 @@ it('carries the detail card in the mail but not in the bell (AC-029, D-8)', func
 
     $notification = new TaskClosed($task, User::factory()->create());
 
-    $mailBody = collect($notification->toMail($recipient)->introLines)
-        ->map(static fn ($line): string => (string) $line)
-        ->implode("\n");
+    // REQUIREMENT CHANGED (spec 0381, D-1): the card travels as view rows,
+    // not as a markdown table among the mail lines.
+    $rows = collect($notification->toMail($recipient)->viewData['details']);
 
-    expect($mailBody)->toContain('| :--- | :--- |')
-        ->and($mailBody)->toContain('Rinnovo contratto Acme');
+    expect($rows->pluck('value'))->toContain('Rinnovo contratto Acme');
 
-    expect($notification->toArray($recipient)['message'])->not->toContain('| :--- |');
+    expect($notification->toArray($recipient))->not->toHaveKey('details');
 });
 
 it('presents already-known facts instead of querying for more (AC-005)', function () {

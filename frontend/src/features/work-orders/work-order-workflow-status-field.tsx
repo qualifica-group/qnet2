@@ -43,7 +43,8 @@ interface WorkOrderWorkflowStatusValueProps {
 export function WorkOrderWorkflowStatusValue({ status }: WorkOrderWorkflowStatusValueProps) {
   return (
     <span className="flex min-w-0 flex-wrap items-center gap-2">
-      <WorkflowStatusBadge name={status.name} color={status.color} />
+      {/* The Badge kit is `shrink-0` + `nowrap`: capped here, a long name truncates instead of leaving the column. */}
+      <WorkflowStatusBadge name={status.name} color={status.color} className="max-w-full min-w-0" />
       <StatusDescriptionHint description={status.description} />
       <ProgressHint percentage={status.progress_percentage} />
     </span>

@@ -180,6 +180,10 @@ export const leads = {
       load: '{{count}} assigned',
       groupWarning: 'No operator selected: these {{count}} record(s) will not be assigned.',
       globalWarning: '{{count}} record(s) have no available operator and will not be assigned.',
+      useCurrentLoad: 'Take the current load into account',
+      useCurrentLoadOnHint: 'Whoever holds fewer records receives more, until the loads even out.',
+      useCurrentLoadOffHint:
+        'Records are split equally among the selected operators, regardless of what they already hold.',
     },
     actions: {
       balanced: 'Balanced split',

@@ -68,7 +68,6 @@ export const rewardStatuses = {
     colorMax: 'Color must be at most 32 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the reward status. Please try again.',
-    deleteInUseFallback: 'This reward status is used by a linked reward and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The record has not been created yet: what you entered will be lost.',

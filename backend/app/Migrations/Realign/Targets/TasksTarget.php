@@ -36,7 +36,7 @@ final class TasksTarget extends AbstractLegacyRealignTarget
 
     private const array COLUMNS = [
         'title', 'description', 'estimated_minutes', 'is_blocked', 'requires_closure_feedback', 'requires_validation',
-        'closure_feedback', 'registry_id', 'referent_id', 'opportunity_id', 'work_order_id', 'work_order_stage_id',
+        'is_template_generated', 'closure_feedback', 'registry_id', 'referent_id', 'opportunity_id', 'work_order_id', 'work_order_stage_id',
     ];
 
     /** Task column => legacy reference: sent but unresolved keeps the current link. */
@@ -147,6 +147,7 @@ final class TasksTarget extends AbstractLegacyRealignTarget
             'is_blocked' => (bool) ($legacy['is_blocked'] ?? false),
             'requires_closure_feedback' => (bool) ($legacy['requires_closure_feedback'] ?? false),
             'requires_validation' => (bool) ($legacy['requires_validation'] ?? false),
+            'is_template_generated' => (bool) ($legacy['is_template_generated'] ?? false),
             'closure_feedback' => $this->blankToNull($legacy['closure_feedback'] ?? null),
         ];
     }

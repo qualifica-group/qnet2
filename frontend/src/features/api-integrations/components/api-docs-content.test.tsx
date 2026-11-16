@@ -4,15 +4,26 @@ import i18n from '@/i18n'
 import {
   document,
   findSidebar,
+  readyStatus,
   renderContent,
   resetDocsMocks,
 } from '@/features/api-integrations/components/api-docs-fixtures'
+import { GENERATING_POLL_MS } from '@/features/api-integrations/use-openapi-document'
 import type { NavigationItem } from '@/features/navigation/types'
 
-const api = vi.hoisted(() => ({ fetchOpenApiDocument: vi.fn(), downloadApiDoc: vi.fn() }))
+const api = vi.hoisted(() => ({
+  fetchOpenApiDocument: vi.fn(),
+  fetchApiDocsStatus: vi.fn(),
+  refreshApiDocs: vi.fn(),
+  downloadApiDoc: vi.fn(),
+}))
 const navigation = vi.hoisted(() => ({ items: [] as NavigationItem[] }))
+const abilities = vi.hoisted(() => ({ granted: ['api-clients.view', 'api-clients.update'] }))
 vi.mock('@/features/api-integrations/api', () => api)
 vi.mock('@/features/navigation/use-navigation', () => ({ useNavigation: () => ({ data: navigation.items }) }))
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: (permission: string) => abilities.granted.includes(permission), isLoading: false }),
+}))
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
 const writeText = vi.fn()
@@ -23,6 +34,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   resetDocsMocks({ api, navigation, toast, writeText })
+  abilities.granted = ['api-clients.view', 'api-clients.update']
 })
 
 afterEach(() => {
@@ -30,14 +42,15 @@ afterEach(() => {
 })
 
 describe('ApiDocsContent header', () => {
-  it('shows title, base URL, version and totals', async () => {
+  it('shows title, base URL, version, totals and the generation instant', async () => {
     renderContent()
 
     expect(await screen.findByRole('heading', { name: 'API reference' })).toBeInTheDocument()
     expect(screen.getByText('https://qnet.test/api')).toBeInTheDocument()
     expect(screen.getByText('Version 1.0')).toBeInTheDocument()
     expect(screen.getByText('5 endpoints · 3 modules')).toBeInTheDocument()
-    expect(screen.getByText(/may change with updates/)).toBeInTheDocument()
+    expect(screen.getByText(/^Updated on /)).toBeInTheDocument()
+    expect(screen.getByText(/regenerated every night/)).toBeInTheDocument()
   })
 
   it('copies the base URL', async () => {
@@ -61,56 +74,69 @@ describe('ApiDocsContent header', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load the API documentation.')
   })
 })
-describe('ApiDocsContent while the server generates the document (202)', () => {
-  const generating = (retryAfterSeconds: number) => ({ status: 'generating', retryAfterSeconds })
 
+describe('ApiDocsContent without a generated document', () => {
+  it('never asks for the document and tells how to generate it', async () => {
+    api.fetchApiDocsStatus.mockResolvedValue({ status: 'missing', generated_at: null })
+    renderContent()
+
+    expect(await screen.findByRole('status')).toHaveTextContent('The documentation has not been generated yet.')
+    expect(api.fetchOpenApiDocument).not.toHaveBeenCalled()
+    expect(api.refreshApiDocs).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Download OpenAPI' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled()
+  })
+})
+
+describe('ApiDocsContent refresh', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('shows the preparing status with the header, then the reference once the document is ready', async () => {
+  it('regenerates on demand, keeps the current document meanwhile and loads the new one when ready', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    api.fetchOpenApiDocument
-      .mockReset()
-      .mockResolvedValueOnce(generating(5))
-      .mockResolvedValue({ status: 'ready', document })
+    const regenerated = { ...document, info: { version: '2.0' } }
+    api.refreshApiDocs.mockResolvedValue({ ...readyStatus, status: 'generating' })
     renderContent()
-
-    const status = await screen.findByRole('status')
-    expect(status).toHaveTextContent('We are preparing the API documentation.')
-    expect(status).toHaveAttribute('aria-live', 'polite')
-    expect(screen.getByRole('heading', { name: 'API reference' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Download OpenAPI' })).toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'API modules' })).not.toBeInTheDocument()
-
-    await vi.advanceTimersByTimeAsync(5000)
     expect(await findSidebar()).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    api.fetchApiDocsStatus.mockResolvedValue({ status: 'generating', generated_at: readyStatus.generated_at })
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+
+    expect(await screen.findByRole('button', { name: 'Refreshing…' })).toBeDisabled()
+    expect(screen.getByText('Version 1.0')).toBeInTheDocument()
+
+    api.fetchApiDocsStatus.mockResolvedValue({ status: 'ready', generated_at: '2026-11-14T00:00:00Z' })
+    api.fetchOpenApiDocument.mockResolvedValue(regenerated)
+    await vi.advanceTimersByTimeAsync(GENERATING_POLL_MS)
+
+    expect(await screen.findByText('Version 2.0')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled()
     expect(api.fetchOpenApiDocument).toHaveBeenCalledTimes(2)
   })
 
-  it('gives up after the maximum wait and offers a retry', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    api.fetchOpenApiDocument.mockReset().mockResolvedValue(generating(150))
+  it('shows the updating status when the first generation is running', async () => {
+    api.fetchApiDocsStatus.mockResolvedValue({ status: 'generating', generated_at: null })
     renderContent()
-    await screen.findByRole('status')
 
-    await vi.advanceTimersByTimeAsync(150_000)
-    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load the API documentation.')
-
-    api.fetchOpenApiDocument.mockResolvedValue({ status: 'ready', document })
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await findSidebar()).toBeInTheDocument()
+    const status = await screen.findByRole('status')
+    expect(status).toHaveTextContent('We are updating the API documentation.')
+    expect(status).toHaveAttribute('aria-live', 'polite')
   })
 
-  it('tells that the documentation is being prepared when a download answers 202', async () => {
-    api.downloadApiDoc.mockResolvedValue('generating')
+  it('reports a refresh that cannot start', async () => {
+    api.refreshApiDocs.mockRejectedValue(new Error('boom'))
     renderContent()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Download Postman collection' }))
-    await vi.waitFor(() =>
-      expect(toast.info).toHaveBeenCalledWith('Documentation is being prepared, try again shortly.'),
-    )
-    expect(toast.error).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }))
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Unable to start the documentation refresh.'))
+  })
+
+  it('hides Refresh without the update permission', async () => {
+    abilities.granted = ['api-clients.view']
+    renderContent()
+
+    expect(await findSidebar()).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Refresh' })).not.toBeInTheDocument()
   })
 })

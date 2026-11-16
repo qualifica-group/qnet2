@@ -2,17 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Models\Contract;
-use App\Models\ContractStatus;
+use App\Enums\WorkOrderWorkPhase;
 use App\Models\User;
 use App\Models\WorkOrder;
-use App\Models\WorkOrderWorkflowStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// User request 2026-11-09: the legacy status tabs of the Commesse page, mapped
-// on the groups of "Stato lavorazione" and, for `closed`, on the contract.
+// Spec 0395 (REQUIREMENT CHANGED, was the 2026-11-09 derivation from "Stato
+// lavorazione" and the contract): the `status` column and the tabs read the persisted legacy phase.
 
 uses(RefreshDatabase::class);
 
@@ -26,20 +24,10 @@ beforeEach(function () {
     Sanctum::actingAs($actor);
 });
 
-function phaseWorkOrder(string $group, ?string $contractSystemKey = null): WorkOrder
+function phaseWorkOrder(string $phase): WorkOrder
 {
-    $status = WorkOrderWorkflowStatus::query()->whereNull('work_order_workflow_id')->where('group', $group)->first()
-        ?? WorkOrderWorkflowStatus::factory()->global()->create(['group' => $group]);
-
     $workOrder = WorkOrder::factory()->create();
-    $workOrder->forceFill(['work_order_workflow_status_id' => $status->id])->save();
-
-    if ($contractSystemKey !== null) {
-        Contract::factory()->create([
-            'quote_id' => $workOrder->quote_id,
-            'contract_status_id' => ContractStatus::where('system_key', $contractSystemKey)->sole()->id,
-        ]);
-    }
+    $workOrder->forceFill(['work_phase' => WorkOrderWorkPhase::from($phase)])->save();
 
     return $workOrder;
 }
@@ -53,47 +41,39 @@ function phaseRows(array $phases): array
     return test()->postJson('/api/tables/work-orders/rows', [
         'startRow' => 0,
         'endRow' => 50,
-        'filterModel' => ['work_phase' => ['filterType' => 'set', 'values' => $phases]],
+        'filterModel' => ['status' => ['filterType' => 'set', 'values' => $phases]],
     ])->assertOk()->json('items');
 }
 
-dataset('phases', [
-    'to plan' => ['to_plan', 'open', null],
-    'in progress' => ['in_progress', 'in_progress', null],
-    'completed' => ['completed', 'completed', null],
-    'cancelled, no contract' => ['cancelled', 'closed', null],
-    'cancelled contract' => ['cancelled', 'closed', 'cancelled'],
-    'closed on a working contract' => ['cancelled', 'closed', 'new'],
-    'terminated contract' => ['terminated', 'closed', 'terminated'],
-]);
-
-it('each tab lists exactly its own commesse and labels them', function (string $phase, string $group, ?string $contractKey) {
-    $match = phaseWorkOrder($group, $contractKey);
-
-    foreach ([['open', null], ['in_progress', null], ['completed', null], ['closed', null], ['closed', 'terminated']] as [$otherGroup, $otherKey]) {
-        if ($otherGroup !== $group || (($otherKey === 'terminated') !== ($contractKey === 'terminated'))) {
-            phaseWorkOrder($otherGroup, $otherKey);
-        }
-    }
+it('each tab lists exactly its own commesse and labels them', function (string $phase) {
+    $byPhase = collect(WorkOrderWorkPhase::values())->mapWithKeys(fn (string $value) => [$value => phaseWorkOrder($value)]);
 
     $rows = phaseRows([$phase]);
 
-    expect(collect($rows)->pluck('id')->all())->toBe([$match->id])
-        ->and($rows[0]['work_phase'])->toBe($phase);
-})->with('phases');
+    expect(collect($rows)->pluck('id')->all())->toBe([$byPhase[$phase]->id])
+        ->and($rows[0]['status'])->toBe($phase);
+})->with(WorkOrderWorkPhase::values());
 
-it('declares the column hidden, with the five phases as filter values', function () {
-    $column = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.columns'))->firstWhere('id', 'work_phase');
+it('the phase does not follow "Stato lavorazione" nor the contract, as in the legacy', function () {
+    $workOrder = phaseWorkOrder('in_progress');
+    $workOrder->forceFill(['work_order_workflow_status_id' => globalWorkOrderStatus('open')->id])->save();
 
-    expect($column['visible'])->toBeFalse()->and($column['filterType'])->toBe('set');
+    expect(collect(phaseRows(['in_progress']))->pluck('id')->all())->toBe([$workOrder->id])
+        ->and(phaseRows(['to_plan']))->toBeEmpty();
+});
 
-    $values = $this->postJson('/api/tables/work-orders/values', ['columnId' => 'work_phase', 'limit' => 50])->assertOk()->json('data.values');
+it('the status column is the phase: visible, set-filtered over the five phases', function () {
+    $column = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.columns'))->firstWhere('id', 'status');
+
+    expect($column['visible'])->toBeTrue()->and($column['filterType'])->toBe('set');
+
+    $values = $this->postJson('/api/tables/work-orders/values', ['columnId' => 'status', 'limit' => 50])->assertOk()->json('data.values');
 
     expect($values)->toEqualCanonicalizing(['to_plan', 'in_progress', 'completed', 'cancelled', 'terminated']);
 });
 
 it('ignores an unknown phase rather than failing', function () {
-    phaseWorkOrder('open');
+    phaseWorkOrder('to_plan');
 
     expect(phaseRows(['nope']))->toHaveCount(1);
 });
@@ -115,25 +95,25 @@ function phaseResponse(array $state = []): array
 /** @param  array<int, string>  $phases */
 function phaseFilter(array $phases): array
 {
-    return ['filterModel' => ['work_phase' => ['filterType' => 'set', 'values' => $phases]]];
+    return ['filterModel' => ['status' => ['filterType' => 'set', 'values' => $phases]]];
 }
 
-function phaseProcessingWorkOrder(string $group, ?string $contractKey = null, string $title = 'Plain'): WorkOrder
+function phaseProcessingWorkOrder(string $phase, string $title = 'Plain'): WorkOrder
 {
-    $workOrder = phaseWorkOrder($group, $contractKey);
+    $workOrder = phaseWorkOrder($phase);
     $workOrder->forceFill(['type' => 'processing', 'title' => $title])->save();
 
     return $workOrder;
 }
 
 it('counts every phase, and the active tab does not change the figures', function () {
-    phaseProcessingWorkOrder('open');
-    phaseProcessingWorkOrder('open');
+    phaseProcessingWorkOrder('to_plan');
+    phaseProcessingWorkOrder('to_plan');
     phaseProcessingWorkOrder('in_progress');
     phaseProcessingWorkOrder('completed');
-    phaseProcessingWorkOrder('closed');
-    phaseProcessingWorkOrder('closed', 'cancelled');
-    phaseProcessingWorkOrder('closed', 'terminated');
+    phaseProcessingWorkOrder('cancelled');
+    phaseProcessingWorkOrder('cancelled');
+    phaseProcessingWorkOrder('terminated');
 
     $expected = ['all' => 7, 'to_plan' => 2, 'in_progress' => 1, 'completed' => 1, 'cancelled' => 2, 'terminated' => 1];
 
@@ -142,10 +122,10 @@ it('counts every phase, and the active tab does not change the figures', functio
 });
 
 it('each count equals the rows its tab returns, under the same search and column filters', function () {
-    phaseProcessingWorkOrder('open', null, 'Alpha one');
-    phaseProcessingWorkOrder('open', null, 'Beta one');
-    phaseProcessingWorkOrder('closed', 'terminated', 'Alpha two');
-    phaseProcessingWorkOrder('closed', null, 'Beta two');
+    phaseProcessingWorkOrder('to_plan', 'Alpha one');
+    phaseProcessingWorkOrder('to_plan', 'Beta one');
+    phaseProcessingWorkOrder('terminated', 'Alpha two');
+    phaseProcessingWorkOrder('cancelled', 'Beta two');
 
     $state = ['filterModel' => ['title' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'Alpha']]];
     $counts = phaseResponse($state)['meta']['aggregates'];
@@ -154,7 +134,7 @@ it('each count equals the rows its tab returns, under the same search and column
 
     foreach (['to_plan', 'in_progress', 'completed', 'cancelled', 'terminated'] as $phase) {
         $tabState = $state;
-        $tabState['filterModel']['work_phase'] = ['filterType' => 'set', 'values' => [$phase]];
+        $tabState['filterModel']['status'] = ['filterType' => 'set', 'values' => [$phase]];
 
         expect(phaseResponse($tabState)['items'])->toHaveCount($counts[$phase]);
     }
@@ -165,9 +145,9 @@ it('counts only the commesse the actor can see', function () {
     $actor->givePermissionTo(Permission::findOrCreate('work-orders.viewAny', 'web'));
     Sanctum::actingAs($actor);
 
-    $own = phaseProcessingWorkOrder('open');
+    $own = phaseProcessingWorkOrder('to_plan');
     $own->supervisors()->attach($actor->id);
-    phaseProcessingWorkOrder('open');
+    phaseProcessingWorkOrder('to_plan');
 
     $response = phaseResponse();
 
@@ -175,7 +155,7 @@ it('counts only the commesse the actor can see', function () {
 });
 
 it('does not compute the figures for the other grids of the domain', function () {
-    phaseProcessingWorkOrder('open');
+    phaseProcessingWorkOrder('to_plan');
 
     $response = test()->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50])->assertOk()->json();
 

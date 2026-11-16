@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità).",
+            "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità). Se puoi creare anche le opportunità, prima si apre una finestra: scegli **Da un'opportunità esistente** (i passi seguenti) oppure **Nuova opportunità + offerta** (vedi la sezione dedicata).",
             "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli); la **Fonte** si precompila se l'opportunità è nata da un lead.",
             'Compila le altre righe che ti servono (vedi tabella).',
             'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti scegliendoli dal **Catalogo prodotti** e nella scheda **Costi** le righe di costo: gli editor sono già aperti e il riepilogo si aggiorna mentre scrivi.',
@@ -42,7 +42,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Le **Informazioni aggiuntive** compaiono, sotto le righe **Offerta** e **Costi**, appena una riga offerta ha un prodotto che le prevede. Alcune sezioni compaiono solo quando un campo sì/no è attivo: spento il campo, la sezione sparisce, i suoi obbligatori non servono e al salvataggio i suoi valori vengono svuotati. Uscendo senza salvare (Annulla, chiusura del pannello, un link) ti viene chiesta conferma.",
+          text: "Le **Informazioni aggiuntive** compaiono, sotto le righe **Offerta** e **Costi**, appena l'opportunità scelta o una riga offerta hanno una categoria che le prevede: sono le stesse che vedi in **Gestione Richieste** per la stessa richiesta, con gli stessi valori. Alcune sezioni compaiono solo quando un campo sì/no è attivo: spento il campo, la sezione sparisce, i suoi obbligatori non servono e al salvataggio i suoi valori vengono svuotati. Uscendo senza salvare (Annulla, chiusura del pannello, un link) ti viene chiesta conferma.",
         },
         {
           type: 'note',
@@ -59,6 +59,30 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "La **Data ricontatto** è una data facoltativa per segnarti quando riprendere in mano l'offerta: si imposta e si cambia dal dettaglio o dall'elenco, e si svuota cancellando la data. Non invia promemoria ed è diversa dal **Prossimo richiamo**, che si pianifica da **Gestione Richieste**.",
+        },
+      ],
+    },
+    {
+      id: 'create-quote-with-opportunity',
+      title: "Creare un'opportunità e la sua offerta insieme",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Quando la trattativa non esiste ancora, puoi crearla insieme all'offerta in un'unica procedura. È disponibile solo se hai i permessi per creare sia le offerte sia le opportunità: altrimenti **Nuova offerta** apre direttamente il modulo dell'offerta.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'In **Offerte** clicca **Nuova offerta** e scegli **Nuova opportunità + offerta**.',
+            "Nel **passo 1 - Opportunità** compili gli stessi campi della **Nuova opportunità** (senza il lead: la conversione da lead resta nei moduli Lead e Opportunità). Clicca **Avanti**.",
+            "Se i campi obbligatori non sono compilati, compaiono gli errori e non si avanza. Se l'anagrafica ha già un'**opportunità aperta** che blocca la nuova, compare un avviso con **Crea l'offerta su questa opportunità** (apre il modulo dell'offerta già collegato) e **Vai all'opportunità**: la procedura non prosegue.",
+            "Nel **passo 2 - Offerta** compili gli stessi campi della **Nuova offerta**. Commerciale, Segnalatore, Supervisore, Sede operativa e Gestori account sono già precompilati dal passo 1 e puoi cambiarli. L'**Opportunità** risulta **nuova**: viene creata al salvataggio. Le **Informazioni aggiuntive** seguono le linee prodotto del passo 1.",
+            "Clicca **Salva**: opportunità e offerta vengono create insieme e si apre l'offerta. Se qualcosa non va, non viene creato nulla; gli errori ti riportano al passo e al campo da correggere.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "**Indietro** conserva tutto quello che hai scritto. Se dal passo 1 cambi Commerciale, Segnalatore, Supervisore, Sede operativa o Gestori account, il passo 2 si riallinea solo sui campi che non hai modificato a mano. Prima del salvataggio non viene creato nulla: uscendo dalla pagina perdi quanto inserito (ti viene chiesta conferma). I Gestori account dell'offerta entrano anche nel team della nuova opportunità.",
         },
       ],
     },
@@ -121,11 +145,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Offerte** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Supervisore** e **Gestore account** (le offerte dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme. Per allargare l'elenco scegli **Tutti i visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata.",
+          text: "All'apertura la pagina **Offerte** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le offerte dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le offerte di ogni categoria, altrimenti solo le offerte delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova le offerte anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutti i visibili** non compare: non aggiungerebbe nulla. I filtri non allargano ciò che il tuo profilo può vedere.",
+          text: "Con il permesso di vedere tutto (per esempio il ruolo admin) sei abilitato a tutte le categorie madri, qualunque sia la tua competenza. Altrimenti le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione); se non hai categorie di competenza **Categoria madre** non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
@@ -133,11 +157,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con **Tutte**. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Le colonne si ordinano, si filtrano e si esportano; se hai il permesso di modificare le offerte si modificano nella cella, tranne quando il campo non riguarda quell'offerta (la cella resta in sola lettura). I valori restano leggibili anche nel dettaglio.",
+          text: "Le categorie con **Visibile in** su **Gestione Richieste / Iscritti** non fanno parte di questa pagina: non compaiono in **Categoria madre** e **Categoria prodotto**, e le offerte che hanno **solo** categorie di questo tipo non sono nell'elenco né nelle statistiche (il dettaglio resta apribile, per esempio da un contratto). Se un'offerta ha anche una categoria usata qui resta visibile.",
+        },
+        {
+          type: 'paragraph',
+          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con la **Categoria madre** vuota. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Le colonne si ordinano, si filtrano e si esportano; se hai il permesso di modificare le offerte si modificano nella cella, tranne quando il campo non riguarda quell'offerta (la cella resta in sola lettura). I valori restano leggibili anche nel dettaglio.",
         },
         {
           type: 'note',
-          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Offerte**: non compaiono dentro una scheda e nelle sezioni Offerte di opportunità e anagrafiche. L'esportazione segue i filtri attivi.",
+          text: "Il limite alle tue categorie con la **Categoria madre** vuota vale solo nella pagina **Offerte**: il campo non compare dentro una scheda e nelle sezioni Offerte di opportunità e anagrafiche. L'esportazione segue i filtri attivi.",
         },
       ],
     },
@@ -174,7 +202,7 @@ const guide: HelpGuide = {
             ['**Prodotto** / **Codice**', 'Il prodotto scelto dal catalogo.'],
             ['**Quantità**', 'Maggiore di zero, al massimo 2 decimali.'],
             ['**Unita**', "L'unità di misura."],
-            ['**Prezzo unitario**', 'Non negativo, al massimo 2 decimali.'],
+            ['**Prezzo unitario**', 'Al massimo 2 decimali. Può essere negativo per applicare uno sconto: aggiungi il prodotto **SCONTO** con quantità 1 e prezzo, per esempio, -100; la riga riduce imponibile e totale dell\'offerta e non genera provvigioni.'],
             ['**IVA**', "L'aliquota della riga."],
             ['**Imponibile**, **IVA**, **Totale**', 'Calcolati in automatico.'],
           ],

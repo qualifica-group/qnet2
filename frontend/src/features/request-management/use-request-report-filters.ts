@@ -12,8 +12,12 @@ import {
   type RequestReportFormValues,
 } from '@/features/request-management/request-report-schema'
 
+/**
+ * `v2` since ticket #427831: the default period changed (open "Dal"), and the
+ * dates stored under the old key would keep every operator on the old one.
+ */
 function storageKey(moduleKey: string): string {
-  return `${moduleKey}.report-filters`
+  return `${moduleKey}.report-filters.v2`
 }
 
 /** An absent key list, or a real one: the shape both narrowing fields are stored in. */
@@ -156,7 +160,7 @@ export function reconcileSiteKeys(
 /**
  * Persists the filters applied to the Gestione Richieste dashboard across
  * reloads (user directive 2026-09-08), so reopening the panel comes back to
- * the selection the operator was working on instead of today with
+ * the selection the operator was working on instead of the default period with
  * every branch. Mirrors `useCategoryTabSelection`'s hook shape.
  *
  * This hook only round-trips the raw preference: whether the stored branch

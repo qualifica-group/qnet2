@@ -15,7 +15,8 @@ use Illuminate\Database\Eloquent\Builder;
  * closes every commessa, for good. Any other negative closure ("Disdetto")
  * stops only the work still open and remembers the status each commessa held,
  * so reopening the contract puts it back. The tasks are left alone, like in
- * the legacy: closing them could not be undone by the reopening.
+ * the legacy: closing them could not be undone by the reopening. The legacy
+ * working phase of the tabs follows its own rules (WorkOrderWorkPhaseTracker).
  *
  * Must run inside the transaction of the contract's own write.
  */
@@ -26,11 +27,22 @@ final class ContractWorkOrderClosure
     /** The groups of the work a termination interrupts (legacy statuses 1 and 2). */
     private const array OPEN_GROUPS = [WorkOrderStatus::Open, WorkOrderStatus::InProgress];
 
-    public function __construct(private readonly WorkOrderWorkflowStatusAssigner $statusAssigner) {}
+    public function __construct(
+        private readonly WorkOrderWorkflowStatusAssigner $statusAssigner,
+        private readonly WorkOrderWorkPhaseTracker $workPhaseTracker,
+    ) {}
 
     public function close(Contract $contract, ContractStatus $destination): void
     {
-        $destination->closesAsTermination() ? $this->terminateOpen($contract) : $this->cancelAll($contract);
+        if ($destination->closesAsTermination()) {
+            $this->terminateOpen($contract);
+            $this->workPhaseTracker->terminateContract($contract);
+
+            return;
+        }
+
+        $this->cancelAll($contract);
+        $this->workPhaseTracker->cancelContract($contract);
     }
 
     public function restore(Contract $contract): void
@@ -49,6 +61,8 @@ final class ContractWorkOrderClosure
 
                 $this->statusAssigner->restore($workOrder, $previousStatusId);
             });
+
+        $this->workPhaseTracker->restoreContract($contract);
     }
 
     private function terminateOpen(Contract $contract): void

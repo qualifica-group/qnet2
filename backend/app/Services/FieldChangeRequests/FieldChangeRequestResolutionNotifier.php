@@ -8,6 +8,7 @@ use App\FieldChangeRequests\ProtectedFieldRegistry;
 use App\Models\FieldChangeRequest;
 use App\Models\User;
 use App\Notifications\FieldChangeRequestResolvedNotification;
+use App\Support\Notifications\RecordDetails;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -35,10 +36,19 @@ final class FieldChangeRequestResolutionNotifier
         $subjectPath = $protectedField !== null
             ? $this->resolver->subjectPath($protectedField, $fieldChangeRequest->subject_id)
             : "/{$fieldChangeRequest->subject_id}";
+        // Spec 0381: the card of the record the request is about.
+        $subject = $fieldChangeRequest->subject;
+        $subjectDetails = $subject === null ? [] : RecordDetails::for($subject);
 
         Notification::send(
             $fieldChangeRequest->requestedBy,
-            new FieldChangeRequestResolvedNotification($fieldChangeRequest, $handler, $subjectLabel, $subjectPath),
+            new FieldChangeRequestResolvedNotification(
+                $fieldChangeRequest,
+                $handler,
+                $subjectLabel,
+                $subjectPath,
+                $subjectDetails,
+            ),
         );
     }
 }

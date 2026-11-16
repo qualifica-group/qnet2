@@ -13,13 +13,14 @@ import { buildColDefs } from '@/components/data-table/column-def-builder'
 import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useUiScale } from '@/features/appearance/ui-scale-context'
+import { withModuleActionHref } from '@/features/modules/module-action-href'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { QUOTES_DOMAIN } from '@/features/quotes/api'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
-import { useQuoteRowActions } from '@/features/quotes/use-quote-row-actions'
+import { quoteActionHref, useQuoteRowActions } from '@/features/quotes/use-quote-row-actions'
 import { createRowActionsRenderer, INLINE_ACTION_LIMIT } from '@/features/table/row-actions'
 import { useTableConfig } from '@/features/table/use-table-config'
 import type { RowActionsRenderer } from '@/components/data-table/data-table'
@@ -212,6 +213,7 @@ export function OpportunityQuotesDetailRenderer({
         ? createRowActionsRenderer(actions, handleAction, {
             isBusy,
             iconMap: QUOTES_ACTION_ICONS,
+            resolveActionHref: withModuleActionHref(QUOTES_DOMAIN, quoteActionHref),
           })
         : undefined,
     [actions, handleAction, isBusy],

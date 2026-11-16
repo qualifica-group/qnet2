@@ -3,6 +3,8 @@
 namespace App\Tables\Opportunities;
 
 use App\Enums\AdvancedFilterType;
+use App\Enums\CategoryUsageArea;
+use App\Tables\Shared\PresetListFilters;
 
 /**
  * Advanced-filter catalogue for the `opportunities` domain (spec 0032/0040).
@@ -112,7 +114,8 @@ final class OpportunityAdvancedFilterCatalog
                 'visible' => true,
                 'width' => 'md',
                 'multiple' => true,
-                'source' => ['resource' => 'product-categories', 'params' => ['include_inactive' => 1]],
+                // Spec 0389 rev.2: only the categories used in Opportunita'.
+                'source' => ['resource' => 'product-categories', 'params' => ['include_inactive' => 1, ...PresetListFilters::areaParam(CategoryUsageArea::Opportunities)]],
                 'target' => 'productLines.productCategory',
             ],
             [

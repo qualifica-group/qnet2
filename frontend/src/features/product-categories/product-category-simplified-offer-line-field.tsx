@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import type { Control } from 'react-hook-form'
+import { useWatch, type Control } from 'react-hook-form'
 import { ListChecks } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { FormControl, FormDescription } from '@/components/ui/form'
@@ -26,7 +26,9 @@ interface ProductCategorySimplifiedOfferLineFieldProps {
  * product. A ROOT declares the value itself; a child inherits the nearest
  * declaring ancestor's value and can force its own (override), like
  * `is_reportable`. The backend congeals the values at write time regardless of
- * what the client sends (0114 D-4). The Offerte module never reads this flag.
+ * what the client sends (0114 D-4). The Offerte module never reads this flag,
+ * so a branch used only in Opportunita'/Offerte cannot turn it on (it may still
+ * turn it off).
  */
 export function ProductCategorySimplifiedOfferLineField({
   control,
@@ -34,6 +36,7 @@ export function ProductCategorySimplifiedOfferLineField({
   parentId,
 }: ProductCategorySimplifiedOfferLineFieldProps) {
   const { t } = useTranslation()
+  const [usageArea, simplified] = useWatch({ control, name: ['usage_area', 'simplified_offer_line'] })
 
   if (parentId === null) {
     return (
@@ -41,6 +44,9 @@ export function ProductCategorySimplifiedOfferLineField({
         control={control}
         name="simplified_offer_line"
         inheritance={null}
+        lockedReason={
+          usageArea === 'opportunities' && !simplified ? t('productCategories.form.simplifiedOfferLineNeedsRequests') : null
+        }
         icon={ListChecks}
         label={t('productCategories.form.simplifiedOfferLine')}
         hint={t('productCategories.form.simplifiedOfferLineInfo')}
@@ -67,8 +73,10 @@ interface SimplifiedOfferLineOverrideRuleProps {
 function SimplifiedOfferLineOverrideRule({ control, mode }: SimplifiedOfferLineOverrideRuleProps) {
   const { t } = useTranslation()
   const { override, inherited, effective } = useSimplifiedOfferLineInheritance(control, mode)
+  const usageArea = useWatch({ control, name: 'usage_area' })
   const sourceName = inherited?.sourceCategory.name ?? ''
   const forced = override !== null
+  const lockedOn = usageArea === 'opportunities' && !effective
 
   let description = t('productCategories.form.simplifiedOfferLineHint')
   if (forced) {
@@ -87,7 +95,14 @@ function SimplifiedOfferLineOverrideRule({ control, mode }: SimplifiedOfferLineO
         label={t('productCategories.form.simplifiedOfferLine')}
         hint={t('productCategories.form.simplifiedOfferLineInfo')}
         hintLabel={t('productCategories.form.simplifiedOfferLineInfoLabel')}
-        description={<FormDescription>{description}</FormDescription>}
+        description={
+          <FormDescription>
+            {description}
+            {lockedOn ? (
+              <span className="mt-0.5 block font-medium">{t('productCategories.form.simplifiedOfferLineNeedsRequests')}</span>
+            ) : null}
+          </FormDescription>
+        }
       >
         {({ field, disabled }) => (
           <FormControl>
@@ -96,7 +111,7 @@ function SimplifiedOfferLineOverrideRule({ control, mode }: SimplifiedOfferLineO
               onCheckedChange={(checked) =>
                 inherited !== null && field.onChange(simplifiedOfferLineOverrideFor(checked, inherited))
               }
-              disabled={disabled || inherited === null}
+              disabled={disabled || inherited === null || lockedOn}
             />
           </FormControl>
         )}

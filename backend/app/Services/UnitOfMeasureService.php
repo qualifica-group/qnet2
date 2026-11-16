@@ -7,6 +7,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\UnitsOfMeasure\CreateUnitOfMeasureData;
 use App\DataObjects\UnitsOfMeasure\UpdateUnitOfMeasureData;
 use App\Models\UnitOfMeasure;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 
 /**
@@ -17,6 +18,8 @@ use Illuminate\Support\Collection;
  */
 class UnitOfMeasureService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(CreateUnitOfMeasureData $data): UnitOfMeasure
     {
         return UnitOfMeasure::create($data->attributes());
@@ -42,13 +45,7 @@ class UnitOfMeasureService
      */
     public function delete(UnitOfMeasure $unitOfMeasure): void
     {
-        if ($unitOfMeasure->products()->exists()) {
-            abort(409, 'This unit of measure is used by a product and cannot be deleted.');
-        }
-
-        if ($unitOfMeasure->quoteLines()->exists()) {
-            abort(409, 'This unit of measure is used by a quote line and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($unitOfMeasure);
 
         $unitOfMeasure->delete();
     }

@@ -9,6 +9,7 @@ use App\DataObjects\PurchaseRequestPriorities\UpdatePurchaseRequestPriorityData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\PurchaseRequestPriority;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Lookups\DefaultRowManager;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -41,6 +42,7 @@ class PurchaseRequestPriorityService
     public function __construct(
         private readonly LookupOrderManager $orderManager,
         private readonly DefaultRowManager $defaultRow,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     public function create(CreatePurchaseRequestPriorityData $data): PurchaseRequestPriority
@@ -94,9 +96,7 @@ class PurchaseRequestPriorityService
      */
     public function delete(PurchaseRequestPriority $purchaseRequestPriority): void
     {
-        if ($purchaseRequestPriority->purchaseRequests()->exists()) {
-            abort(409, __('purchase_request_priorities.in_use'));
-        }
+        $this->inUseGuard->assertUnused($purchaseRequestPriority);
 
         $purchaseRequestPriority->delete();
     }

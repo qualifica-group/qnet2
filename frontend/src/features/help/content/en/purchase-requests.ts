@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'From the list you can filter, sort and export, and **edit directly in the cells** Subject, Request date, Priority, Requester, Function manager, Customer, Work order, Company site (only among the sites of the company of the RDA), Operational site and Business function: double-click the cell, pick the value and confirm. The same rules as the record apply; closed RDAs and fields your role cannot edit stay read-only. The **Company** is changed from the record, together with its site. The **status tabs** at the top show only the RDAs that have at least one line in that status. Expand a row with the arrow to see its lines and change their status without opening the RDA. You only see the RDAs you requested, manage or created, unless you are allowed to see everything.',
+          text: 'The first column of the list is **RDA no.**, the same number shown in the detail (RDA #number): you can sort and filter it. From the list you can filter, sort and export, and **edit directly in the cells** Subject, Request date, Priority, Requester, Function manager, Customer, Work order, Company site (only among the sites of the company of the RDA), Operational site and Business function: double-click the cell, pick the value and confirm. The same rules as the record apply; closed RDAs and fields your role cannot edit stay read-only. The **Company** is changed from the record, together with its site. The **status tabs** at the top show only the RDAs that have at least one line in that status. Expand a row with the arrow to see its lines and change their status without opening the RDA. You only see the RDAs you requested, manage or created, unless you are allowed to see everything.',
         },
         {
           type: 'note',
@@ -126,7 +126,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Automatic closing**: the RDA closes by itself when no open lines are left, that is all of them are in a final status (Received, On hold or Rejected), even after deleting lines.',
-            '**Close RDA**: manual closing. If non-final lines remain the closing is **forced** and the **reason is mandatory**. A closed RDA is never reopened.',
+            '**Close RDA** (the lock, always visible on the list row like the **History** action): manual closing. If non-final lines remain the closing is **forced** and the **reason is mandatory**. A closed RDA is never reopened.',
             '**Send to manager**: sends the Function manager again the notification (app and email) received on creation.',
             '**Delete**: removes the RDA with its lines, history and documents after confirmation; not possible when a line is already Ordered or Received.',
           ],

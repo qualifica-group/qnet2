@@ -103,11 +103,16 @@ final class TaskAbilityResolver
     /**
      * Covers both directions of the completion toggle — complete and
      * uncomplete share the same row of the matrix (creator/requester,
-     * assignee, manager; not the watcher).
+     * assignee, manager; not the watcher). Spec 0383 adds the inherited
+     * assignee of an unassigned sub-task: it may complete it, never edit
+     * or delete it. Spec 0387 adds the Responsabile/Partecipante of the
+     * commessa of an unassigned Task: completing it makes them its assignee.
      */
     public static function canComplete(User $actor, Task $task): bool
     {
-        return self::canUpdate($actor, $task);
+        return self::canUpdate($actor, $task)
+            || TaskRecordRoles::isInheritedAssignee($actor, $task)
+            || TaskRecordRoles::isWorkOrderMemberClaimant($actor, $task);
     }
 
     public static function canValidate(User $actor, Task $task): bool

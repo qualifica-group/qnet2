@@ -76,11 +76,14 @@ function transitionsEndToEndTotals(User $actor, ProductCategory $category): arra
     return $branch['rows'][0]->values;
 }
 
-it('counts a request moved to a pending status from Gestione Richieste as a potential', function () {
+// REQUIREMENT CHANGED (spec 0391 D-3): a potential is a request CURRENT in a configured status.
+it('counts a request moved to a configured pending status from Gestione Richieste as a potential', function () {
     $gol = ProductCategory::factory()->reportable()->create(['name' => 'GOL']);
     $actor = transitionsEndToEndActor();
     $quote = transitionsEndToEndQuote($gol, $actor);
     $pending = QuoteWorkflowStatus::factory()->global()->create(['system_key' => null, 'group' => WorkflowStatusGroup::Pending, 'requires_note' => false]);
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
     expect(transitionsEndToEndTotals($actor, $gol)['potenziali'])->toBe(0);
 
@@ -90,7 +93,8 @@ it('counts a request moved to a pending status from Gestione Richieste as a pote
     expect(transitionsEndToEndTotals($actor, $gol)['potenziali'])->toBe(1);
 });
 
-it('counts a request moved to a validated status from Gestione Richieste as a potential', function () {
+// REQUIREMENT CHANGED (spec 0391 D-3): a potential is a request CURRENT in a configured status.
+it('counts a request moved to a configured validated status from Gestione Richieste as a potential', function () {
     $gol = ProductCategory::factory()->reportable()->create([
         'name' => 'GOL',
         'business_function_id' => BusinessFunction::factory()->create()->id,
@@ -98,6 +102,9 @@ it('counts a request moved to a validated status from Gestione Richieste as a po
     $actor = transitionsEndToEndActor();
     $quote = transitionsEndToEndQuote($gol, $actor);
     $validated = QuoteWorkflowStatus::factory()->global()->create(['system_key' => null, 'group' => WorkflowStatusGroup::Validated, 'requires_note' => false]);
+
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
     // A validating destination demands an offer line (spec 0102): sent in the same request.
     $product = Product::factory()->create(['category_id' => $gol->id]);
@@ -111,7 +118,8 @@ it('counts a request moved to a validated status from Gestione Richieste as a po
     expect(transitionsEndToEndTotals($actor, $gol)['potenziali'])->toBe(1);
 });
 
-it('counts a request moved to a pending status from the Offerte module as a potential', function () {
+// REQUIREMENT CHANGED (spec 0391 D-3): a potential is a request CURRENT in a configured status.
+it('counts a request moved to a configured pending status from the Offerte module as a potential', function () {
     $gol = ProductCategory::factory()->reportable()->create(['name' => 'GOL']);
     foreach (['viewAny', 'view', 'update', 'viewAll'] as $ability) {
         Permission::findOrCreate("quotes.{$ability}");
@@ -120,6 +128,8 @@ it('counts a request moved to a pending status from the Offerte module as a pote
     $actor->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.update', 'quotes.viewAll']);
     $quote = transitionsEndToEndQuote($gol, $actor);
     $pending = QuoteWorkflowStatus::factory()->global()->create(['system_key' => null, 'group' => WorkflowStatusGroup::Pending, 'requires_note' => false]);
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
     Sanctum::actingAs($actor);
     $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $pending->id])->assertOk();

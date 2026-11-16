@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { useForm } from 'react-hook-form'
-import { render, screen, waitFor } from '@testing-library/react'
+import { useForm, useWatch } from 'react-hook-form'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { Form } from '@/components/ui/form'
@@ -62,9 +62,11 @@ interface HarnessProps {
 
 function Harness({ identity, usingExistingRegistry }: HarnessProps) {
   const form = useForm<RequestCreateFormValues>()
+  const registryId = useWatch({ control: form.control, name: 'registry_id' })
 
   return (
     <Form {...form}>
+      <input aria-label="registry_id" readOnly value={String(registryId ?? '')} />
       <RequestCreateClientSection
       control={form.control}
       identity={identity}
@@ -102,7 +104,7 @@ beforeEach(() => {
 describe('RequestCreateClientSection — duplicate warning', () => {
   it('announces an existing holder of the new client tax code and phone', async () => {
     checkIdentityDuplicatesMock.mockResolvedValue({
-      matches: [{ owner_type: 'registry', owner_id: 3, name: 'Mario Rossi', matched_on: ['phone', 'tax_code'] }],
+      matches: [{ owner_type: 'registry', owner_id: 3, name: 'Mario Rossi', matched_on: ['phone', 'tax_code'], registries: [{ id: 3, name: 'Mario Rossi' }] }],
     })
 
     render(
@@ -120,6 +122,18 @@ describe('RequestCreateClientSection — duplicate warning', () => {
       vat_number: undefined,
       contacts: [{ type: 'phone', value: '3331234567' }],
     })
+  })
+
+  it('picks the existing anagrafica a matched referent belongs to in one click (task 427519)', async () => {
+    checkIdentityDuplicatesMock.mockResolvedValue({
+      matches: [{ owner_type: 'referent', owner_id: 9, name: 'Mario Rossi', matched_on: ['phone'], registries: [{ id: 42, name: 'Alfa Srl' }] }],
+    })
+
+    render(<Harness identity={completeIdentity()} usingExistingRegistry={false} />, { wrapper: wrapper() })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Use Alfa Srl' }))
+
+    expect(screen.getByLabelText('registry_id')).toHaveValue('42')
   })
 
   it('does not check once an existing anagrafica is picked', async () => {

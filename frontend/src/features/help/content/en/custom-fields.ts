@@ -70,9 +70,26 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'The **Table** type collects several rows of data sharing the same columns, for example audit date, inspector, On/Off Site support and Stage 1/Stage 2 phase. The field form shows the **Columns** editor.' },
         { type: 'steps', items: ['Choose the **Table** type.', 'Use **Add column** to insert columns (up to 20); use the arrows to move them up and down and the bin to remove them.', 'For each column enter **Label**, **Key** (suggested automatically from the label: lowercase letters, numbers and underscores; **id** is reserved), **Type** and whether it is **Required**.', 'Optional: set **Minimum rows** and **Maximum rows** (up to 200).', 'Click **Save**.'] },
         { type: 'list', items: ['**Column types:** Text, Long text, Integer, Decimal, Yes/No, Choice (with Value and Label options), Date, Date and time, Time, Email, URL, Color.', '**Row selection:** turn on the option and enter a label and key: each row gets a selection button and in each record you can select at most one row.', '**Grid summary:** choose the column to show in lists (date, date and time, time, integer, decimal, text or choice) and the strategy: **Selected row** (requires row selection), **Maximum** or **Minimum**. Or no summary.'] },
-        { type: 'paragraph', text: 'In lists, if the field has row selection and a row is selected, the cell shows the values of that row inline (dates in the local format, choices with their label, Yes/No with the column name); otherwise it shows the summary followed by the number of rows, for example “12/10/2026 · 3”. With no rows the cell is empty. Hovering the cell with the mouse or moving keyboard focus onto it opens a panel with the full table, with the selected row highlighted. Sorting and text filtering work on the summary. The column cannot be edited in the list: edit it from the record. In document templates the field variable shows the summary.' },
+        { type: 'paragraph', text: 'In lists, if the field has row selection and a row is selected, the cell shows the values of that row inline (dates in the local format, choices with their label, Yes/No with the column name); otherwise it shows the summary followed by the number of rows, for example “12/10/2026 · 3”. With no summary (for example no selected row) a badge shows the number of rows, such as “2 rows”, with an **i** icon: hover the badge to see the rows. With no rows the cell is empty. Hovering the cell with the mouse or moving keyboard focus onto it opens a panel with the full table, with the selected row highlighted. Sorting and text filtering work on the summary. In the Additional information columns (for example Inspections in Work orders), when the record has no summary the filter searches the summary column of all its rows, and the filter value list shows those dates in the local format. The column cannot be edited in the list: edit it from the record. In document templates the field variable shows the summary.' },
         { type: 'note', text: 'The **Indexed** option is not available for a Table field. If the field is **Required**, at least one row is needed.' },
         { type: 'warning', text: 'You can change the columns even when data already exists: a removed column is no longer shown, while changing a column type does not convert the values already saved.' },
+      ],
+    },
+    {
+      id: 'table-notification',
+      title: 'Table notification',
+      blocks: [
+        { type: 'paragraph', text: 'A Table field can alert someone when a row is added or when a Yes/No column is switched on in a row (for example the Alert column of the inspection audits). In the Columns editor turn on **Send a notification when a row is added or switched on**.' },
+        {
+          type: 'list',
+          items: [
+            '**When:** **A row is added**, or **"…" is switched on in a row** for a Yes/No column or for the row selection. The notification goes out when the row is saved switched on and was not before (a new row or a box just ticked); saving again without changes, or unticking, sends nothing.',
+            '**Email to send:** pick an **Email template** (the work order placeholders, such as the code or the client, are filled in with the record data) or leave it empty for the standard email. Either way the email shows the row values and the button that opens the record.',
+            '**Recipients:** **People assigned to the record** (work order: Supervisors and Participants; quote: Supervisor, Account Managers and Operator; opportunity and registry: Supervisor and Account Managers), **Users**, **Roles** (every active user of the role) and **Other email addresses**, external ones included. At least one recipient is needed.',
+          ],
+        },
+        { type: 'paragraph', text: 'Users get the notification in the bell and, unless they turned off notification emails, the email too. Free addresses get the email only, with the row values but without the internal record card. Whoever saves the row does not get their own notification; deactivated users are left out.' },
+        { type: 'note', text: 'Imports and the migration from the previous QNet send no notifications.' },
       ],
     },
     {
@@ -102,8 +119,8 @@ const guide: HelpGuide = {
       id: 'edit-deactivate-delete',
       title: 'Editing, deactivating and deleting',
       blocks: [
-        { type: 'list', items: ['**Edit:** open the record with **View** and edit the rows in place (see the previous section).', '**Deactivate:** turn off **Active**. The field disappears everywhere, but the values already entered remain.', '**Delete:** choose **Delete** and confirm.'] },
-        { type: 'warning', text: "Once a field already holds values, you can no longer change its **Module**, **Type** and **Key**. Deleting a field also deletes all its values: when in doubt, deactivate it instead." },
+        { type: 'list', items: ['**Edit:** open the record with **View** and edit the rows in place (see the previous section).', '**Deactivate:** turn off **Active**. The field disappears everywhere, but the values already entered remain.', '**Delete:** choose **Delete** and confirm. Only a field with no recorded values can be deleted.'] },
+        { type: 'warning', text: "Once a field already holds values, you can no longer change its **Module**, **Type** and **Key**, nor delete it: the message says how many records have a value. If you no longer need it, deactivate it: the values remain." },
       ],
     },
   ],

@@ -6,8 +6,8 @@ use App\DataObjects\RewardTypes\CreateRewardTypeData;
 use App\DataObjects\RewardTypes\UpdateRewardTypeData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
-use App\Models\Reward;
 use App\Models\RewardType;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 
 /**
@@ -21,6 +21,8 @@ class RewardTypeService
 {
     /** The columns RewardTypeForSelectResource projects: `color` feeds its `meta`. */
     private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color'];
+
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
 
     /**
      * Shared by show (controller)/create/update — a hook point kept for
@@ -50,18 +52,11 @@ class RewardTypeService
     }
 
     /**
-     * Restrictive delete (spec 0059, AC-003): `rewards.reward_type_id` is the
-     * FIRST FK ever to reference `reward_types` (BR-3 no longer holds) — a
-     * type still assigned to at least one reward cannot be removed, mirroring
-     * ReferentService::delete()'s own 409 guard. Queried directly against
-     * `Reward` (no inverse relation added to RewardType — out of this
-     * service's write surface) rather than via a relation method.
+     * Restrictive delete (spec 0059, AC-003; spec 0384): a type still assigned to a reward cannot be removed.
      */
     public function delete(RewardType $rewardType): void
     {
-        $isReferenced = Reward::query()->where('reward_type_id', $rewardType->id)->exists();
-
-        abort_if($isReferenced, 409, 'This reward type is assigned to at least one reward and cannot be deleted.');
+        $this->inUseGuard->assertUnused($rewardType);
 
         $rewardType->delete();
     }

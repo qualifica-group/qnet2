@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement\Report;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\ReportableInheritance;
 use App\Services\ProductCategories\ReportColumnsInheritance;
@@ -44,8 +45,12 @@ final class ReportBranchResolver
     {
         // Step 1: the whole tree, indexed by id, the effective report flag
         // and the effective columns of every node.
-        $categories = ProductCategory::query()->get(['id', 'parent_id', 'name', 'is_reportable', 'report_columns'])->keyBy('id');
+        $categories = ProductCategory::query()->get(['id', 'parent_id', 'name', 'is_reportable', 'report_columns', 'usage_area'])->keyBy('id');
+        // Spec 0389 rev.2: a branch reserved to Opportunita' is never a report row.
         $reportable = $this->reportable->effectiveMap($categories);
+        foreach ($categories as $id => $category) {
+            $reportable[$id] = ($reportable[$id] ?? false) && $category->usage_area->allows(CategoryUsageArea::Requests);
+        }
         $columnsMap = $this->columns->effectiveMap($categories);
         $childrenByParent = $categories
             ->filter(fn (ProductCategory $category): bool => $reportable[$category->id])

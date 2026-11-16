@@ -39,7 +39,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'I tre stati di sistema (uno fissato in testa, due in coda) permettono di cambiare solo nome, colore, icona e percentuale di completamento: gli altri campi restano fissi e sulle loro righe non compare la matita.',
+          text: 'Gli stati di sistema permettono di cambiare solo nome, colore, icona e percentuale di completamento: gli altri campi restano fissi e sulle loro righe non compare la matita. Si possono però spostare nell\'ordine come tutti gli altri.',
         },
         {
           type: 'note',
@@ -61,7 +61,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Gli stati di sistema restano bloccati in testa o in coda: solo gli stati personalizzati si spostano liberamente.",
+          text: "Si spostano tutti gli stati, compresi quelli di sistema. La posizione cambia solo l'ordine di tabella, menu a tendina e colonne della Kanban: non cambia il comportamento dello stato, che dipende dalla sua fase. Un nuovo stato viene aggiunto in fondo all'elenco.",
         },
       ],
     },

@@ -6,6 +6,7 @@ namespace App\Tables\RequestManagement\Concerns;
 
 use App\Models\Quote;
 use App\Models\User;
+use App\Tables\RequestManagement\RequestManagerColumns;
 use App\Tables\Shared\QuoteWorkflowStatusOptions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -49,7 +50,7 @@ trait WritesInlineEditableCells
     private const string WORKFLOW_STATUS_COLUMN = 'quote_workflow_status';
 
     /**
-     * The `operator_ga2` column's field-permission key since spec 0097
+     * The Operatore position column's field-permission key since spec 0097
      * (D-3a): the TEAM, because the lone `operator_id` key no longer exists
      * in RequestManagementAuthorization.
      */
@@ -80,11 +81,7 @@ trait WritesInlineEditableCells
         /** @var User $actor */
         $actor = Auth::user();
 
-        // Spec 0373 D-8: a list is the `managers` column, the whole team; the
-        // Operatore cell under the same key holds a single id.
-        $data = $columnId === self::MANAGER_SLOTS_FIELD && is_array($value)
-            ? $this->teamCellWriter->payload($row, $actor, $this->module(), $value)
-            : [$this->writeKeyFor($columnId) => $value];
+        $data = $this->writePayload($row, $actor, $columnId, $value);
 
         // `note` is not part of this contract method's signature (spec 0053)
         // and is read from the ambient request the same way `$actor` is read
@@ -100,6 +97,28 @@ trait WritesInlineEditableCells
         $result = $this->service->updateWork($row, $actor, $data);
 
         return $result['quote'];
+    }
+
+    /**
+     * The `updateWork()` payload of one cell. Spec 0373 D-8: under the team
+     * key a list is the `managers` column, a single id the Operatore cell;
+     * spec 0382 D-7: a position key writes that one slot.
+     *
+     * @return array<string, mixed>
+     */
+    private function writePayload(Quote $row, User $actor, string $columnId, mixed $value): array
+    {
+        if ($columnId === self::MANAGER_SLOTS_FIELD && is_array($value)) {
+            return $this->teamCellWriter->payload($row, $actor, $this->module(), $value);
+        }
+
+        $position = RequestManagerColumns::positionOfField($columnId);
+
+        if ($position !== null) {
+            return ['manager_positions' => [$position => $value]];
+        }
+
+        return [$this->writeKeyFor($columnId) => $value];
     }
 
     /**

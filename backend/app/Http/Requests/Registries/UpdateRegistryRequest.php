@@ -10,6 +10,7 @@ use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesPrimaryReferent;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
+use App\Models\Referent;
 use App\Models\Registry;
 use App\Rules\ActiveSector;
 use Illuminate\Contracts\Validation\Validator;
@@ -140,6 +141,17 @@ class UpdateRegistryRequest extends FormRequest
         $registry = $this->route('registry');
 
         return $registry->referents()->pluck('referents.id')->map(static fn ($id): int => (int) $id)->all();
+    }
+
+    /**
+     * Its referenti may already hold the number it is given (user directive
+     * 2026-11-11), the submitted links counting as they will be once saved.
+     *
+     * @return array<class-string<Model>, array<int, int>>
+     */
+    protected function phoneSharingOwners(): array
+    {
+        return [Referent::class => $this->resultingReferentIds()];
     }
 
     protected function authorizationResource(): string

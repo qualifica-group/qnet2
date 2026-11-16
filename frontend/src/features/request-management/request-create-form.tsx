@@ -220,6 +220,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                           field.onChange(rows)
                           resetUncoveredOfferRows(rows)
                         }}
+                        area="requests"
                       />
                       <p className="text-xs text-muted-foreground">
                         {t('requestManagement.workPanel.productLines.hint')}

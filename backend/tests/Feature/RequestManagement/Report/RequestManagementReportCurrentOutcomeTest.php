@@ -113,6 +113,8 @@ it('AC-002/AC-003: counts requests closed_won today and created in the range, wi
     currentOutcomeQuote($this->category, $won, '2026-09-30 23:30:00');
     currentOutcomeQuote($this->category, $won, '2026-08-31');
     currentOutcomeQuote($this->category, currentOutcomeStatus($this->workflow, WorkflowStatusGroup::Pending));
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
     foreach (CURRENT_OUTCOME_CLOSED_WON_COLUMNS as $column) {
         expect(currentOutcomeTotal($column, $this->category))->toBe(2);

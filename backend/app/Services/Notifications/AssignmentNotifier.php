@@ -61,6 +61,15 @@ final class AssignmentNotifier
     }
 
     /**
+     * Whether a bulk system write is running under muted(): other notifiers
+     * of a write (TableRowNotifier, spec 0390) stay silent with it.
+     */
+    public static function isMuted(): bool
+    {
+        return self::$muted;
+    }
+
+    /**
      * @param  Model  $record  the Registry, Opportunity or Quote just
      *                         written; its label and detail card are
      *                         derived here

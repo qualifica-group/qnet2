@@ -5,6 +5,7 @@ namespace App\Http\Requests\ProductCategories;
 use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\Enums\AttributeContext;
 use App\Enums\CategoryManagementMode;
+use App\Enums\CategoryUsageArea;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use App\Http\Requests\Concerns\ValidatesManagerLabelPositions;
@@ -80,6 +81,9 @@ class StoreProductCategoryRequest extends FormRequest
             // Spec 0267: same root-only semantics again — omitted = server-resolved
             // (inherited, or false at a fresh root); true requires generates_contract.
             'multi_quote_work_order' => ['sometimes', 'boolean'],
+            // Spec 0389: same root-only semantics — omitted = inherited, or `all` at a fresh root.
+            'usage_area' => ['sometimes', Rule::enum(CategoryUsageArea::class)],
+            'multiple_open_opportunities' => ['sometimes', 'boolean'],
             // Spec 0114: same root-only semantics again — omitted =
             // server-resolved (inherited, or false at a fresh root).
             'simplified_offer_line' => ['sometimes', 'boolean'],

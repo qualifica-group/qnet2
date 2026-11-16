@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\WorkOrders;
 
 use App\Enums\AdvancedFilterType;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\PresetListFilters;
 
 /**
@@ -17,14 +18,14 @@ use App\Tables\Shared\PresetListFilters;
  * (a commessa reaches them through its source offers) and are applied by
  * WorkOrderAdvancedFilterApplier.
  *
- * The Commesse page adds the presets of WorkOrderAdvancedFilterApplier on top.
+ * The Commesse page presets the parent category (WorkOrderAdvancedFilterApplier).
  */
 final class WorkOrderAdvancedFilterCatalog
 {
     public const string REGISTRY = 'registry';
 
     /** Applied by WorkOrderAdvancedFilterApplier; every other filter by the generic engine. */
-    public const array DERIVED_FILTERS = [PresetListFilters::ASSIGNMENT, PresetListFilters::PARENT_CATEGORY, PresetListFilters::PRODUCT_CATEGORY, self::REGISTRY];
+    public const array DERIVED_FILTERS = [PresetListFilters::PARENT_CATEGORY, PresetListFilters::PRODUCT_CATEGORY, self::REGISTRY];
 
     /**
      * @return array<int, array<string, mixed>>
@@ -34,7 +35,7 @@ final class WorkOrderAdvancedFilterCatalog
         return [
             self::teamFilter('supervisors', 3),
             self::teamFilter('participants', 4),
-            PresetListFilters::parentCategoryFilter('workOrders', 5),
+            PresetListFilters::parentCategoryFilter('workOrders', 5, ParentCategoryListModule::WorkOrders),
             PresetListFilters::productCategoryFilter('workOrders', 6),
             self::lookupFilter(self::REGISTRY, 'registry', 7, ['resource' => 'registries']),
         ];

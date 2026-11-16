@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
-use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Exceptions\RoleDoesNotExist;
 
 /**
  * Business logic for POST /api/request-management/transfer (spec 0079;
@@ -41,18 +41,18 @@ use Spatie\Permission\Models\Permission;
  * dialog only offers Sede + Operatore).
  *
  * Spec 0130: every call is parameterized by `RequestModule` — the D-3 row
- * scope, the `viewAll` grant that selects the supervisory audience and the
- * notification's deep link (RequestTransferredNotification) all come off it.
+ * scope and the notification's deep link (RequestTransferredNotification)
+ * both come off it.
  * Defaults to `Requests`, so the refactor is at parity for Gestione Richieste.
  */
 final class RequestTransferService
 {
     /**
-     * The grant that makes a user part of the supervisory audience (decisione
-     * utente 2026-09-29): whoever sees EVERY record of the module is told of
-     * every transfer; everyone else only hears about the ones they lose or gain.
+     * Holders of this role receive the supervisory copy of every transfer, in
+     * both modules (spec 0081 rev. 2026-11-12, task 427848); everyone else only
+     * hears about the transfers they lose or gain.
      */
-    private const string SUPERVISORY_ABILITY = 'viewAll';
+    public const string NOTIFIED_ROLE = 'notifiche-trasferimenti-contatti';
 
     public function __construct(
         private readonly RequestOperatorWriter $operatorWriter,
@@ -60,9 +60,7 @@ final class RequestTransferService
 
     /**
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
-     * @param  RequestModule  $module  spec 0130: governs the D-3 row scope,
-     *                                 the recipients of the supervisory copy
-     *                                 (`{module}.viewAll`)
+     * @param  RequestModule  $module  spec 0130: governs the D-3 row scope
      *                                 and the notification's deep link.
      *                                 Defaults to `Requests`, at parity for
      *                                 every pre-0130 caller.
@@ -224,7 +222,7 @@ final class RequestTransferService
         $destinationLabel = OperationalSiteLabel::compose($destinationSite->primaryAddress);
         $transferredAt = Carbon::now();
         $previousOperators = $this->previousOperators($notices);
-        $supervisors = $this->supervisors($actor, $newOperator, $previousOperators, $module);
+        $supervisors = $this->supervisors($actor, $newOperator, $previousOperators);
 
         foreach ($notices as $notice) {
             $build = fn (TransferRecipientRoleEnum $role): RequestTransferredNotification => new RequestTransferredNotification(
@@ -282,38 +280,31 @@ final class RequestTransferService
     }
 
     /**
-     * Everyone holding `{module}.viewAll` (decisione utente 2026-09-29, it
-     * replaces the dedicated `receiveTransferNotifications` grant of spec
-     * 0081, which every role scoped to its own records inherited with the
-     * whole module and so spammed every operator): who sees all the module's
-     * records is told of all its transfers. A PERMISSION, not the
-     * `supervisor` role this service used to hardcode: the grant survives
-     * roles being renamed or split.
+     * The active holders of NOTIFIED_ROLE (spec 0081 rev. 2026-11-12): a ROLE,
+     * not a permission, because `admin` and `super-admin` receive the whole
+     * permission catalogue by sync, so a permission could never narrow the
+     * audience to the people the client chose. Before this revision the copy
+     * went to every holder of `{module}.viewAll` (46 users in production).
      *
      * The actor, the incoming operator and every outgoing operator are
      * removed: they each already receive their own, more specific text, and
-     * nobody is notified twice for one transfer.
-     *
-     * `User::permission()` THROWS PermissionDoesNotExist when the row is
-     * absent (an instance that never ran `permissions:sync`) — guarded here
-     * so that case degrades to "no supervisory copy" instead of a 500, the
-     * same defence the role lookup this method replaces used to carry.
+     * nobody is notified twice for one transfer. Nobody while the role has
+     * not been created yet.
      *
      * @param  Collection<int, User>  $previousOperators
      * @return Collection<int, User>
      */
-    private function supervisors(User $actor, User $newOperator, Collection $previousOperators, RequestModule $module): Collection
+    private function supervisors(User $actor, User $newOperator, Collection $previousOperators): Collection
     {
-        $permission = $module->permission(self::SUPERVISORY_ABILITY);
+        $excludedIds = [$actor->id, $newOperator->id, ...$previousOperators->modelKeys()];
 
-        if (! Permission::query()->where('name', $permission)->exists()) {
+        try {
+            $holders = User::role(self::NOTIFIED_ROLE)->where('users.is_active', true)->get();
+        } catch (RoleDoesNotExist) {
             return new Collection;
         }
 
-        $excludedIds = [$actor->id, $newOperator->id, ...$previousOperators->modelKeys()];
-
-        return User::permission($permission)
-            ->get()
+        return $holders
             ->reject(fn (User $user): bool => in_array($user->id, $excludedIds, true))
             ->values();
     }

@@ -94,7 +94,8 @@ export interface Invoice {
   number_label: string
   document_date: string
   company: NamedRef
-  customer: { id: number; name: string; vat_number: string | null }
+  /** `label` = "name - VAT number" (tax code without VAT; just the name with neither). */
+  customer: { id: number; name: string; vat_number: string | null; label: string }
   payment_method: NamedRef
   financial_account: BankAccountRef | null
   /** Print layout saved on the document; null = the active default of the module. */
@@ -227,7 +228,8 @@ export interface InvoiceDraft {
   defaults: {
     document_date: string
     company: NamedRef | null
-    customer: NamedRef | null
+    /** `label` = the name with the VAT number or tax code, as the registry picker shows it. */
+    customer: (NamedRef & { label: string }) | null
     payment_method: NamedRef | null
     financial_account: BankAccountRef | null
     layout: NamedRef | null

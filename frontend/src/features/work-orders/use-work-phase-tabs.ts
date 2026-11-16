@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState, type RefObject } from 'react'
 import type { TableViewHandle } from '@/features/table/table-view'
 import type { TableRowsAggregates } from '@/features/table/types'
+import type { WorkOrderWorkPhase } from '@/features/work-orders/types'
 
-/** Grid filter key of the status tabs: the hidden `work_phase` column (`WorkOrderWorkPhaseColumn`). */
-export const WORK_PHASE_FILTER_KEY = 'work_phase'
+/** Grid filter key of the status tabs: the `status` column, the persisted working phase (spec 0395). */
+export const WORK_PHASE_FILTER_KEY = 'status'
 export const ALL_WORK_PHASES_TAB = 'all'
-export const WORK_PHASES = ['to_plan', 'in_progress', 'completed', 'cancelled', 'terminated'] as const
+export const WORK_PHASES = ['to_plan', 'in_progress', 'completed', 'cancelled', 'terminated'] as const satisfies readonly WorkOrderWorkPhase[]
 
 type WorkPhase = (typeof WORK_PHASES)[number]
 export type WorkPhaseTab = WorkPhase | typeof ALL_WORK_PHASES_TAB

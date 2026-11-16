@@ -240,6 +240,14 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Whoever can edit the task also manages every entry of its **Time tracking**, including ones logged by another assignee.',
         },
+        {
+          type: 'note',
+          text: 'A **sub-task with no assignees** is visible to the assignees of its direct parent task, who can complete it (and reopen it) but not edit or delete it. This way whoever has the parent task closes its sub-tasks and then completes the parent. As soon as the sub-task gets an assignee of its own, only that assignee counts.',
+        },
+        {
+          type: 'note',
+          text: 'A **work order task with no assignees** can be completed by a **Supervisor** or a **Participant** of the work order, even without being its assignee. Completing it makes you its **assignee**, and from then on the usual rules apply: if the task requires validation it goes into validation, the time entry is logged in your name and the work order advances as with the other tasks. Before completing it you cannot edit it. If the task already has an assignee, only that assignee counts.',
+        },
       ],
     },
     {
@@ -397,7 +405,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "In the task's detail you find **Notes**, **Documents**, **History** and **Time tracking**.",
+          text: "In the task's detail you find **Notes**, **Documents**, **History** and **Time tracking**. On the **Notes**, **Documents** and **Time tracking** icons a number shows how many notes (replies included), documents and time entries the task has; next to **Time tracking** the total hours stay.",
         },
         {
           type: 'paragraph',
@@ -412,7 +420,7 @@ const guide: HelpGuide = {
           items: [
             'a task is assigned to you as a new assignee (unless you are also its creator) or as a new watcher (always, even as the creator);',
             'a task goes to validation, or its validation is approved or rejected;',
-            'a task is closed: the notification reaches the requester and the watchers, and the assignees only if there is more than one; if the task was in validation, the assignees still get a separate approval notification;',
+            'a task is closed: the notification reaches the requester and the watchers, and the assignees only if there is more than one; on tasks generated from the **Task Template** of a work order the requester (whoever created the work order) does not get it, unless they are also a watcher or an assignee; if the task was in validation, the assignees still get a separate approval notification;',
             'a task is reopened, blocked or unblocked;',
             'someone requests an update: the chosen recipients get it, with a copy (**CC**) to the watchers whenever the request targets the assignees.',
             'someone mentions you in a note with **Mention anyone** and adds you as a watcher: you only get the mention notification ("mentioned you and added you as Watcher"), not the new watcher one.',

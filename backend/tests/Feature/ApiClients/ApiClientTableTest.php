@@ -23,7 +23,7 @@ it('serves the declared columns, sort and the row action catalogue', function ()
         ->json('data');
 
     expect(collect($data['columns'])->pluck('id')->all())->toBe([
-        'id', 'name', 'is_active', 'expires_at', 'key_last_four', 'last_used_at', 'created_by', 'created_at',
+        'id', 'name', 'is_active', 'allowed_methods', 'expires_at', 'key_last_four', 'last_used_at', 'created_by', 'created_at',
     ])
         ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view', 'edit', 'rotate-key', 'delete']);
 
@@ -63,7 +63,7 @@ it('maps the row without any key material and sorts by last_used_at from the all
 
     expect(collect($rows)->pluck('name')->all())->toBe(['Recent', 'Stale'])
         ->and(array_keys($rows[0]))->toBe([
-            'id', 'name', 'is_active', 'expires_at', 'key_last_four', 'last_used_at', 'created_by', 'created_at', 'actions', 'editable',
+            'id', 'name', 'is_active', 'allowed_methods', 'expires_at', 'key_last_four', 'last_used_at', 'created_by', 'created_at', 'actions', 'editable',
         ])
         ->and(ApiClient::query()->count())->toBe(2);
 });

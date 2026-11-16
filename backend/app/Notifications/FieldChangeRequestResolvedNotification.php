@@ -9,6 +9,10 @@ use App\Enums\FieldChangeRequestStatus;
 use App\Enums\NotificationLevelEnum;
 use App\Models\FieldChangeRequest;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
+use App\Notifications\Concerns\RespectsEmailPreference;
+use App\Support\Notifications\DetailFields;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,13 +28,20 @@ use Illuminate\Notifications\Notification;
  */
 class FieldChangeRequestResolvedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
+    /**
+     * @param  array<string, string>  $subjectDetails  the card of the record
+     *                                                 the request is about
+     *                                                 (RecordDetails), built
+     *                                                 by the caller
+     */
     public function __construct(
         private readonly FieldChangeRequest $fieldChangeRequest,
         private readonly User $handler,
         private readonly string $subjectLabel,
         private readonly string $subjectPath,
+        private readonly array $subjectDetails = [],
     ) {}
 
     /**
@@ -38,7 +49,7 @@ class FieldChangeRequestResolvedNotification extends Notification implements Sho
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**
@@ -56,11 +67,32 @@ class FieldChangeRequestResolvedNotification extends Notification implements Sho
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject($this->title())
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message())
-            ->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$this->subjectPath);
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject($this->title())
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message(),
+            $this->details(),
+            $this->subjectPath,
+        );
+    }
+
+    /**
+     * Spec 0381: the outcome, then the record the request is about.
+     *
+     * @return array<string, string>
+     */
+    private function details(): array
+    {
+        return [
+            ...DetailFields::compact([
+                'notifications.fields.field' => $this->fieldChangeRequest->fieldLabel(),
+                'notifications.fields.outcome' => $this->approved() ? 'notifications.values.approved' : 'notifications.values.rejected',
+                'notifications.fields.note' => $this->fieldChangeRequest->handling_note,
+                'notifications.fields.handled_by' => $this->handler->name,
+            ]),
+            ...$this->subjectDetails,
+        ];
     }
 
     private function approved(): bool

@@ -7,6 +7,7 @@ use App\DataObjects\RewardStatuses\UpdateRewardStatusData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\RewardStatus;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Statuses\StatusOrderManager;
 use App\Services\Statuses\SystemStatusGuard;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -28,6 +29,7 @@ class RewardStatusService
     public function __construct(
         private readonly StatusOrderManager $orderManager,
         private readonly SystemStatusGuard $systemStatusGuard,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     /**
@@ -73,9 +75,7 @@ class RewardStatusService
     {
         $this->systemStatusGuard->assertDeletable($rewardStatus);
 
-        if ($rewardStatus->rewards()->exists()) {
-            abort(409, 'This reward status is used by a reward and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($rewardStatus);
 
         $rewardStatus->delete();
     }

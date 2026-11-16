@@ -7,6 +7,7 @@ use App\DataObjects\PipelineStatuses\UpdatePipelineStatusData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\PipelineStatus;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Statuses\StatusOrderManager;
 use App\Services\Statuses\SystemStatusGuard;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -29,6 +30,7 @@ class PipelineStatusService
     public function __construct(
         private readonly StatusOrderManager $orderManager,
         private readonly SystemStatusGuard $systemStatusGuard,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     /**
@@ -75,9 +77,7 @@ class PipelineStatusService
     {
         $this->systemStatusGuard->assertDeletable($pipelineStatus);
 
-        if ($pipelineStatus->projects()->exists() || $pipelineStatus->campaigns()->exists()) {
-            abort(409, 'This project status is used by a project or a campaign and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($pipelineStatus);
 
         $pipelineStatus->delete();
     }

@@ -1,72 +1,75 @@
 import { useTranslation } from 'react-i18next'
-import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
+import { RecordField, RecordFieldList } from '@/components/detail/record-panel'
 import { CalculationHint } from '@/components/calculation-hint'
 import { money } from '@/features/work-order-contract-data/contract-data-format'
 import { totalsHint, type TotalsHintKind } from '@/features/work-order-contract-data/contract-data-formulas'
-import type { ContractDataTotals as Totals } from '@/features/work-order-contract-data/types'
+import type { ContractDataTotals as Totals, ContractTypologyTotal } from '@/features/work-order-contract-data/types'
 import { cn } from '@/lib/utils'
 
-interface KpiProps {
+interface ExplainedTotalProps {
   kind: TotalsHintKind
   totals: Totals
   value: string
   emphasis?: boolean
 }
 
-function Kpi({ kind, totals, value, emphasis = false }: KpiProps) {
+/** A total row whose figure explains its calculation on hover/focus/tap. */
+function ExplainedTotal({ kind, totals, value, emphasis = false }: ExplainedTotalProps) {
   const { t } = useTranslation()
   const hint = totalsHint(kind, totals, t)
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 rounded-lg border bg-card px-3 py-1.5">
-      <dt className="truncate text-[11px] text-muted-foreground">{t(`workOrders.contractData.totals.${kind}`)}</dt>
-      <dd className={cn('text-sm tabular-nums', emphasis ? 'font-semibold' : 'font-medium')}>
+    <RecordField label={t(`workOrders.contractData.totals.${kind}`)}>
+      <span className={cn('tabular-nums', emphasis ? 'font-semibold' : 'font-medium')}>
         <CalculationHint title={hint.title} lines={hint.lines}>
           {money(value)}
         </CalculationHint>
-      </dd>
-    </div>
+      </span>
+    </RecordField>
   )
 }
 
 const isZero = (value: string) => Number(value) === 0
 
-/**
- * Compact summary: one row of KPIs (the commission ones only when the server
- * sends them), then the revenue per typology as a strip. The typologies come
- * from the server already ordered and zero-filled; the empty ones are dimmed.
- */
-export function ContractDataTotals({ totals }: { totals: Totals }) {
+/** "Totale Consulenza", "Totale Ente": the typology's net amount, its revenue beside it when they differ. */
+function TypologyTotal({ typology }: { typology: ContractTypologyTotal }) {
   const { t } = useTranslation()
+  const isEmpty = isZero(typology.net_amount) && isZero(typology.effective_revenue)
 
   return (
-    <div className="flex flex-col gap-2">
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Kpi kind="netAmount" totals={totals} value={totals.net_amount} />
-        <Kpi kind="revenue" totals={totals} value={totals.effective_revenue} emphasis />
-        {totals.commissions_amount !== null ? (
-          <Kpi kind="commissions" totals={totals} value={totals.commissions_amount} />
+    <RecordField label={t('workOrders.contractData.totals.typology', { name: typology.name })}>
+      <span className={cn('font-medium tabular-nums', isEmpty && 'text-muted-foreground')}>
+        {money(typology.net_amount)}
+        {typology.effective_revenue !== typology.net_amount ? (
+          <span className="ml-2 text-xs font-normal text-muted-foreground">
+            {t('workOrders.contractData.totals.typologyRevenue', { revenue: money(typology.effective_revenue) })}
+          </span>
         ) : null}
-        {totals.net_of_commissions !== null ? (
-          <Kpi kind="netOfCommissions" totals={totals} value={totals.net_of_commissions} />
-        ) : null}
-      </dl>
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs">
-        <span className="text-[11px] text-muted-foreground">{t('workOrders.contractData.totals.byTypology')}</span>
-        <ul className="contents">
-          {totals.typologies.map((typology) => (
-            <li
-              key={typology.id}
-              className={cn('flex min-w-0 items-baseline gap-1.5 tabular-nums', isZero(typology.effective_revenue) && isZero(typology.net_amount) ? 'text-muted-foreground' : null)}
-            >
-              <ProductTypologyBadge name={typology.name} color={typology.color} />
-              <span>
-                {money(typology.net_amount)} → {money(typology.effective_revenue)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+      </span>
+    </RecordField>
+  )
+}
+
+/**
+ * The totals under the lines, as the legacy "Dati contrattuali commessa"
+ * closes (user directive 2026-11-16): one row per typology ("Totale
+ * Consulenza", "Totale Ente", server-ordered and zero-filled, the empty ones
+ * dimmed), the commission totals when the server sends them, then "Totale
+ * ricavi" last and emphasised.
+ */
+export function ContractDataTotals({ totals }: { totals: Totals }) {
+  return (
+    <RecordFieldList>
+      {totals.typologies.map((typology) => (
+        <TypologyTotal key={typology.id} typology={typology} />
+      ))}
+      {totals.commissions_amount !== null ? (
+        <ExplainedTotal kind="commissions" totals={totals} value={totals.commissions_amount} />
+      ) : null}
+      {totals.net_of_commissions !== null ? (
+        <ExplainedTotal kind="netOfCommissions" totals={totals} value={totals.net_of_commissions} />
+      ) : null}
+      <ExplainedTotal kind="revenue" totals={totals} value={totals.effective_revenue} emphasis />
+    </RecordFieldList>
   )
 }

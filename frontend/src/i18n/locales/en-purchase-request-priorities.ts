@@ -50,7 +50,6 @@ export const purchaseRequestPriorities = {
     iconInvalid: 'Pick an icon from the catalogue.',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the RDA priority. Please retry.',
-    deleteInUse: 'This priority is used by a purchase request and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The RDA priority has not been created yet: what you entered will be lost.',

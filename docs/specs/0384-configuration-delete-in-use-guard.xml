@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0384-configuration-delete-in-use-guard" status="approved" owner="nicola" date="2026-11-10">
+
+  <goal>
+    Un template, un modello o una voce di un modulo di configurazione usata da qualche parte non si puo' eliminare: il server rifiuta e dice da cosa e' usata.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-10, dopo la spec 0377 (stati di lavorazione): "i template, i modelli task e tutti moduli di contorno, voglio che non siano possibile eliminarli se usati in qualche parte". Piano approvato lo stesso giorno.
+    D-2 Inventario sulle chiavi esterne reali del DB: molti moduli controllavano solo alcuni usi. Le FK `SET NULL`/`CASCADE` non controllate azzeravano o toglievano il collegamento in silenzio (settori su anagrafiche e ordini, ruoli sugli utenti, aliquote IVA, unita' di misura, metodi di pagamento, conti finanziari, sedi operative, fonti, tipi referente, template email); le FK `RESTRICT` non controllate davano un errore generico.
+    D-3 Un solo controllo, `App\Services\Deletion\InUseGuard`, legge gli usi di ogni tabella da `App\Services\Deletion\UsageMap::USAGES` (colonna `tabella.colonna` -> etichetta), li conta e rifiuta con 409 `{ success:false, message }`; il messaggio elenca gli usi con il loro numero ("3 fatture, 1 anagrafica"). Nel bulk-delete la riga risulta in `failed` (`TableBulkDeleteService`, invariato).
+    D-4 Conta come uso ogni record che punta alla voce, compresi i collegamenti tra configurazioni (competenza in una mansione, sede in una funzione), i ruoli assegnati agli utenti e le sotto-voci di un albero. Non conta come uso cio' che appartiene alla voce e si elimina con lei (`UsageMap::OWNED`: opzioni di un campo, permessi di un ruolo, righe di un modello, la configurazione di una mansione, le richieste di assenza generate da una chiusura aziendale, che la chiusura cancella e rigenera).
+    D-5 Template email: usato se almeno una email inviata lo riferisce (decisione utente 2026-11-10), anche se l'email conserva il proprio testo.
+    D-6 Campi personalizzati e attributi: usati se almeno un record ha un valore per la loro chiave/codice. Supera la spec 0021 (l'eliminazione di un campo personalizzato cancellava i valori registrati).
+    D-7 Restano invariati i controlli dedicati gia' completi: stati di lavorazione e workflow (0377), stati task, modelli di task, layout documenti, piano dei conti, configurazioni provvigionali, campagne; e i controlli che non riguardano l'uso (stati di sistema, chiusure non modificabili). Tag e raccolte documenti non hanno usi.
+    D-8 Rete per il futuro: un test legge lo schema e fallisce se una FK punta a una tabella di configurazione senza essere dichiarata in `USAGES`/`OWNED` o in un controllo dedicato.
+    D-9 Frontend: sul 409 di un'eliminazione si mostra il messaggio del server (`refusedActionMessage`), non una frase fissa, che non saprebbe quale uso blocca.
+  </context>
+
+  <scope>
+    <in>
+      <item>`InUseGuard`, `UsageMap`, `lang/{it,en}/deletion.php`.</item>
+      <item>I `delete()` dei service: tipi assenza, funzioni aziendali, stati contratto, tipi contratto, tipi costo, template email, conti finanziari, tag fattura, mansioni, attivita', sedi operative, metodi di pagamento, stati progetto, tipologie prodotto, categorie prodotto, priorita' RDA, stati e tipi buono, settori, competenze, corsi, importanza/priorita'/tipi/categorie task, unita' di misura, aliquote IVA, stati pagamento commessa, tipi referente, fonti, ruoli, attributi, campi personalizzati, topic di supporto, chiusure aziendali, tipi di ricavo (mancavano i movimenti di tesoreria).</item>
+      <item>Handler di eliminazione frontend di quei moduli: messaggio del server sul 409.</item>
+      <item>Guide in-app IT/EN dei moduli toccati e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Nascondere il cestino per le voci in uso: il blocco e' sul server.</item>
+      <item>Record operativi (anagrafiche, offerte, commesse, fatture...): la richiesta riguarda template e configurazioni.</item>
+      <item>Il messaggio del bulk-delete: resta il conteggio delle righe non eliminabili.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="DELETE" path="/api/{modulo}/{id} e POST /api/tables/{modulo}/bulk-delete">
+      <response status="204">Voce senza usi: eliminata (bulk: conta in `deleted`).</response>
+      <errors>409 `{ success:false, message }`, il messaggio elenca gli usi; bulk: la riga e' in `failed` con `reason: guarded`.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un settore collegato a un'anagrafica, quando lo elimino, allora ricevo 409, il messaggio nomina l'anagrafica e il collegamento resta.</criterion>
+    <criterion id="AC-002">Dato un ruolo assegnato a un utente, quando lo elimino, allora ricevo 409 e l'utente conserva il ruolo.</criterion>
+    <criterion id="AC-003">Data un'aliquota IVA usata solo da un costo di commessa, quando la elimino, allora ricevo 409 e il costo conserva l'aliquota.</criterion>
+    <criterion id="AC-004">Dato un template email usato da un'email inviata, quando lo elimino, allora ricevo 409.</criterion>
+    <criterion id="AC-005">Dato un campo personalizzato con un valore registrato, quando lo elimino, allora ricevo 409 e il valore resta; senza valori viene eliminato.</criterion>
+    <criterion id="AC-006">Dato un attributo con un valore su un prodotto, quando lo elimino, allora ricevo 409.</criterion>
+    <criterion id="AC-007">Data una voce di un modulo in scope senza usi, quando la elimino, allora viene eliminata con le parti che le appartengono.</criterion>
+    <criterion id="AC-008">Data una voce in uso, quando la elimino dal bulk-delete, allora non viene eliminata e non conta in `deleted`.</criterion>
+    <criterion id="AC-009">Lo schema non contiene FK verso una tabella di configurazione non dichiarata come uso, parte propria o controllo dedicato.</criterion>
+    <criterion id="AC-010">Dato un rifiuto 409 di un'eliminazione, quando elimino dalla tabella, allora vedo il messaggio del server.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Nessuna migrazione: le FK restano come sono, il blocco e' applicativo. Authz invariata (Policy `delete`).
+  </constraints>
+</spec>

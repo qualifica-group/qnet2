@@ -15,11 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { FilterViewRow } from '@/features/table/filter-view-row'
 import { FilterViewVisibilityPicker } from '@/features/table/filter-view-visibility-picker'
 import {
@@ -211,28 +206,19 @@ export function FilterViewsControl({
 
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="relative text-muted-foreground hover:text-foreground"
-              aria-label={t('table.savedFilters')}
-            >
-              <Bookmark aria-hidden="true" />
-              {count > 0 ? (
-                <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-                  {count}
-                </span>
-              ) : null}
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{t('table.savedFilters')}</TooltipContent>
-      </Tooltip>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 bg-card" aria-label={t('table.savedFilters')}>
+          <Bookmark aria-hidden="true" className="size-3.5" />
+          {t('table.savedFilters')}
+          {count > 0 ? (
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              {count}
+            </span>
+          ) : null}
+        </Button>
+      </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="w-80 p-0">
+      <DropdownMenuContent align="end" className="w-80 p-0">
         <div className="flex items-center gap-2 border-b px-3 py-2.5">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
             <Bookmark aria-hidden="true" className="size-4" />

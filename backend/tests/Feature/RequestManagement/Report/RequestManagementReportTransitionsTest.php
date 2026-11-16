@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PersonalDataTypeEnum;
+use App\Enums\ReportStatusColumn;
 use App\Enums\WorkflowStatusGroup;
 use App\Jobs\GenerateRequestManagementReportJob;
 use App\Models\BusinessFunction;
@@ -291,16 +292,16 @@ it('classifies a request on a descendant category under its branch root (AC-017)
 // AC-018/AC-019/AC-020 — transition indicators (potenziali/associati) + D-3
 // ---------------------------------------------------------------------------
 
-it('counts a transition to pending/validated only when logged inside the range (AC-018)', function () {
+// REQUIREMENT CHANGED (spec 0391 D-3): "potenziali" no longer reads the logged transitions;
+// it counts requests created in the range whose CURRENT status is configured.
+it('counts a request in a configured pending/validated status only when created inside the range (AC-018)', function () {
     $categories = reportCategoryTree();
     $workflow = QuoteWorkflow::factory()->create();
     $pending = QuoteWorkflowStatus::factory()->for($workflow, 'workflow')->create(['group' => WorkflowStatusGroup::Pending]);
 
-    $inRange = reportQuote($categories['gol'], null, $pending->id);
-    reportTransitionLog($inRange->opportunity, $pending->id, Carbon::parse('2026-09-10'));
-
-    $outOfRange = reportQuote($categories['gol'], null, $pending->id);
-    reportTransitionLog($outOfRange->opportunity, $pending->id, Carbon::parse('2026-08-01'));
+    reportQuote($categories['gol'], null, $pending->id)->forceFill(['created_at' => Carbon::parse('2026-09-10')])->save();
+    reportQuote($categories['gol'], null, $pending->id)->forceFill(['created_at' => Carbon::parse('2026-08-01')])->save();
+    configureReportColumnsByGroup();
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -331,6 +332,8 @@ it('counts a request closed_won today and created inside the range, under Associ
     $reverted = reportQuote($categories['consulenza'], null, $lostStatus->id);
     $reverted->forceFill(['created_at' => Carbon::parse('2026-09-10')])->save();
     reportTransitionLog($reverted->opportunity, $wonStatus->id, Carbon::parse('2026-09-10'));
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -343,7 +346,9 @@ it('counts a request closed_won today and created inside the range, under Associ
         ->and(reportRowsFor($rows, 'Consulenza')['TOTALE'][14])->toBe('1'); // Trattative Concluse — same formula, same value
 });
 
-it('attributes a logged transition to the offer on the SAME workflow only (two offers, two workflows) (AC-020)', function () {
+// REQUIREMENT CHANGED (spec 0391 D-3): the history is not read; of two offers on the same
+// request only the one whose current status is configured for "potenziali" counts.
+it('counts only the offer whose current status is configured for potenziali, across two workflows (AC-020)', function () {
     $categories = reportCategoryTree();
 
     $workflowA = QuoteWorkflow::factory()->create();
@@ -359,11 +364,12 @@ it('attributes a logged transition to the offer on the SAME workflow only (two o
         'product_category_id' => $categories['consulenza']->id,
     ]);
 
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $pendingA->id]);
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $pendingB->id]);
+    foreach ([$pendingA, $pendingB] as $status) {
+        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $status->id])
+            ->forceFill(['created_at' => Carbon::parse('2026-09-10')])->save();
+    }
 
-    // A single logged transition toward workflow A's own pending status.
-    reportTransitionLog($opportunity, $pendingA->id, Carbon::parse('2026-09-10'));
+    configureReportColumn(ReportStatusColumn::Potentials, [$pendingA]);
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -372,7 +378,7 @@ it('attributes a logged transition to the offer on the SAME workflow only (two o
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'Consulenza');
 
-    // Exactly ONE request counted under "potenziali" (the offer on workflow A), not two.
+    // Exactly ONE request counted under "potenziali" (the offer on the configured status), not two.
     expect($rows['TOTALE'][8])->toBe('1');
 });
 

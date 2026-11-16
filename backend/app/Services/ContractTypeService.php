@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\ContractType;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class ContractTypeService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     /**
      * @param  array<string, mixed>  $attributes
      */
@@ -36,9 +39,7 @@ class ContractTypeService
      */
     public function delete(ContractType $contractType): void
     {
-        if ($contractType->employmentContracts()->exists()) {
-            abort(409, __('contract_types.in_use'));
-        }
+        $this->inUseGuard->assertUnused($contractType);
 
         $contractType->delete();
     }

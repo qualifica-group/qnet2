@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0388-template-task-closure-skips-requester" status="approved" owner="nicola" date="2026-11-11">
+
+  <goal>
+    La notifica di chiusura di un task generato da un Modello di Task (commessa) non va piu' al richiedente in quanto tale: chi ha solo generato la commessa non riceve un'email per ogni task chiuso dai consulenti.
+  </goal>
+
+  <context>
+    D-1 Segnalazione utente 2026-11-11: chi crea la commessa (senza esserne Responsabile ne' Partecipante) riceve un'email per ogni task chiuso. Causa: WorkOrderTaskGenerator (spec 0124 D-4) e il legacy (`tasks.assigned_by`) mettono l'autore della commessa come richiedente di ogni task generato, e la chiusura (voci 2/3, spec 0153 D-11) notifica richiedente + osservatori (+ assegnatari se piu' di uno). Scelta utente: modificare la notifica di chiusura, non il richiedente.
+    D-2 Marcatore: nuova colonna `tasks.is_template_generated` (boolean, default false), fuori da #[Fillable] come `creator_id`: nessuna API la scrive. True per i task (radici e sotto-task) creati da WorkOrderTaskGenerator e per i task migrati con `generato_da_modello = 1` nel legacy (375.567 task di commessa su 377.636).
+    D-3 Notifica: TaskNotificationAudience::closure() esclude il richiedente quando il task e' generato da modello. Il richiedente la riceve comunque se e' anche osservatore, o assegnatario quando gli assegnatari sono inclusi. Tutte le altre notifiche (validazione richiesta, ritirata, riaperto, bloccato, sbloccato) restano invariate: il richiedente resta il validatore.
+    D-4 Legacy (backend.md par. 9): TaskMigrationController invia `is_template_generated` (bool) da `generato_da_modello`. qnet-2 lo scrive all'import; al ri-lancio della sorgente `tasks` un task gia' importato lo riceve se non lo ha ancora (stesso percorso "fill" di spec 0323 D-12); il riallineamento (spec 0375, TasksTarget) lo allinea come gli altri flag.
+  </context>
+
+  <contract>
+    <endpoint>Nessun endpoint nuovo ne' cambio di shape delle API dell'app. Payload di migrazione `tasks` (legacy -> qnet-2): nuovo campo `is_template_generated` (bool, assente = false).</endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>Migrazione `is_template_generated`, `Task` (cast), `WorkOrderTaskGenerator`, `TaskNotificationAudience`, `TasksSource`, `TasksTarget`.</item>
+      <item>Legacy `TaskMigrationController::mapTask`.</item>
+      <item>Guida `tasks` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Cambio del richiedente dei task generati.</item>
+      <item>Preferenze utente di disattivazione delle email.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Chiudendo un task generato da modello, il richiedente non riceve TaskClosed / TaskFeedbackInserted; gli osservatori si'.</criterion>
+    <criterion id="AC-002">Un task non generato da modello notifica ancora il richiedente alla chiusura.</criterion>
+    <criterion id="AC-003">Il richiedente che e' anche osservatore di un task generato riceve la notifica di chiusura.</criterion>
+    <criterion id="AC-004">WorkOrderTaskGenerator marca radici e sotto-task come generati; un task creato a mano non lo e'.</criterion>
+    <criterion id="AC-005">La migrazione scrive il flag dal payload; il ri-lancio lo riempie su un task gia' importato senza riscriverne altro; il riallineamento lo allinea.</criterion>
+  </acceptance>
+</spec>

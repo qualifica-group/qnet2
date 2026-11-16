@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\PurchaseInvoices\PurchaseInvoiceInstallmentUpdater;
 use App\Services\Table\FormRequestCellValidator;
 use App\Services\Table\RowGroupQuery;
+use App\Support\RegistryFiscalLabel;
 use App\Tables\PurchaseInvoiceInstallments\PurchaseInstallmentColumnCatalog;
 use App\Tables\PurchaseInvoiceInstallments\PurchaseInstallmentDerivedQuery;
 use App\Tables\PurchaseInvoiceInstallments\PurchaseInstallmentSql;
@@ -90,6 +91,7 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             ->selectRaw('registries.name as supplier_name, cost_types.name as cost_type_name, cost_types.color as cost_type_color, companies.denomination as company_name, company_sites.name as company_site_name, financial_accounts.name as financial_account_name')
             ->selectRaw('work_orders.code as work_order_code, work_orders.title as work_order_title')
             ->selectRaw(PurchaseInstallmentSql::operationalSiteLabel().' as operational_site_label')
+            ->addSelect(['supplier_fiscal_id' => RegistryFiscalLabel::fiscalIdSubquery('purchase_invoices.supplier_id')])
             ->selectRaw(PurchaseInstallmentSql::purchaseOrderCodes('purchase_invoices.id').' as purchase_orders_label')
             ->join('purchase_invoices', 'purchase_invoices.id', '=', 'purchase_invoice_installments.purchase_invoice_id')
             ->join('registries', 'registries.id', '=', 'purchase_invoices.supplier_id')
@@ -208,7 +210,7 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'overdue' => $daysOverdue > 0 ? 'yes' : 'no',
             'reconciled' => $row->reconciled_at !== null ? 'yes' : 'no',
             'compensated' => $row->compensation_id !== null ? 'yes' : 'no',
-            'supplier' => $row->getAttribute('supplier_name'),
+            'supplier' => RegistryFiscalLabel::compose($row->getAttribute('supplier_name'), $row->getAttribute('supplier_fiscal_id')),
             'cost_type' => $this->costTypeBadge($row),
             'work_order' => $workOrder === null ? null : $workOrder.' - '.$row->getAttribute('work_order_title'),
             'company' => $row->getAttribute('company_name'),

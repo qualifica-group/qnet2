@@ -1,10 +1,13 @@
 import { useTranslation } from 'react-i18next'
 import { History, MessagesSquare, Paperclip } from 'lucide-react'
+import { RecordTabIcon } from '@/components/detail/record-tab-icon'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { DocumentsSection } from '@/features/attachments/documents-section'
+import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { useRequestModule } from '@/features/request-management/request-module'
 import type { RequestWorkPanel } from '@/features/request-management/types'
@@ -51,12 +54,18 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
         <div className="px-4 py-3">
           <TabsList>
             <TabsTrigger value={NOTES_TAB}>
-              <MessagesSquare className="size-3.5" aria-hidden="true" />
+              <RecordTabIcon
+                icon={<MessagesSquare className="size-3.5" aria-hidden="true" />}
+                badge={<NotesTabCount entityType={module.key} entityId={panel.opportunity_id} quoteScope={panel.id} />}
+              />
               {t('requestManagement.workPanel.collaboration.notesTab', { defaultValue: 'Notes' })}
             </TabsTrigger>
             {canViewDocuments && (
               <TabsTrigger value={DOCUMENTS_TAB}>
-                <Paperclip className="size-3.5" aria-hidden="true" />
+                <RecordTabIcon
+                  icon={<Paperclip className="size-3.5" aria-hidden="true" />}
+                  badge={<DocumentsTabCount resource={OPPORTUNITY_ATTACHABLE_ALIAS} id={panel.opportunity_id} />}
+                />
                 {t('requestManagement.workPanel.collaboration.documentsTab', { defaultValue: 'Documents' })}
               </TabsTrigger>
             )}

@@ -163,6 +163,39 @@ describe('AssignOperatorsDialog — balanced operator list (spec 0168)', () => {
     )
   })
 
+  it('D-4: the current-load switch is on by default and, switched off, sends use_current_load false', async () => {
+    const { onAssign } = renderBalanced()
+
+    const loadSwitch = screen.getByRole('switch', { name: 'Take the current load into account' })
+    expect(loadSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Whoever holds fewer records receives more, until the loads even out.')).toBeInTheDocument()
+
+    fireEvent.click(loadSwitch)
+    expect(loadSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(
+      screen.getByText('Records are split equally among the selected operators, regardless of what they already hold.'),
+    ).toBeInTheDocument()
+    confirm()
+
+    await waitFor(() =>
+      expect(onAssign).toHaveBeenCalledWith({
+        mode: 'balanced',
+        operators_by_site: [
+          { operational_site_id: 1, operator_ids: [11, 12] },
+          { operational_site_id: 2, operator_ids: [13] },
+        ],
+        use_current_load: false,
+      }),
+    )
+  })
+
+  it('D-4: the current-load switch is not shown in single mode', () => {
+    renderBalanced()
+    pickMode('Assign to operator')
+
+    expect(screen.queryByRole('switch', { name: 'Take the current load into account' })).not.toBeInTheDocument()
+  })
+
   it('AC-015: Confirm stays disabled and the list shows a loading state while the scope resolves', () => {
     renderBalanced({ isResolving: true })
 

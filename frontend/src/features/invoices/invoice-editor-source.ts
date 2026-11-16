@@ -72,7 +72,8 @@ export function sourceFromDraft(draft: InvoiceDraft): EditorSource {
     availableLines: draft.available_lines,
     bankAccounts: draft.bank_accounts,
     company: defaults.company,
-    customer: defaults.customer,
+    // The registry picker shows "name - VAT number": the preset option reads the same.
+    customer: defaults.customer ? { id: defaults.customer.id, name: defaults.customer.label } : null,
     paymentMethod: defaults.payment_method,
     financialAccount: defaults.financial_account,
     layout: defaults.layout,

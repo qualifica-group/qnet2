@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Attachments;
 
 use App\DataObjects\Attachments\CreateAttachmentData;
+use App\Rules\AllowedAttachmentFile;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,20 +30,12 @@ class StoreAttachmentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rules = [
-            'file' => ['required', 'file', 'max:'.(int) config('attachments.max_size')],
+        return [
+            'file' => ['required', 'file', 'max:'.(int) config('attachments.max_size'), new AllowedAttachmentFile],
             'collection' => ['sometimes', 'nullable', 'string', 'max:255'],
             'attachable_type' => ['sometimes', 'required_with:attachable_id', 'string', Rule::in($this->allowedAliases())],
             'attachable_id' => ['sometimes', 'required_with:attachable_type', 'integer', 'min:1'],
         ];
-
-        $allowedMimeTypes = (array) config('attachments.allowed_mime_types');
-
-        if ($allowedMimeTypes !== []) {
-            $rules['file'][] = 'mimetypes:'.implode(',', $allowedMimeTypes);
-        }
-
-        return $rules;
     }
 
     /**

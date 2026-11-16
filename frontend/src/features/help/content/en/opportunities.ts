@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['General notes', 'Free-form text'],
             ['Details', '**Title** (optional), **Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
             ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Reporter** with the **Assigned rewards**'],
-            ['Classification', '**Product lines** (at least one row: parent category, optional intermediate **Filter**, product category), **Products of interest**'],
+            ['Classification', '**Product lines** (at least one row: parent category, optional intermediate **Filter**, product category; categories whose **Used in** is **Requests / Enrollees** are not offered), **Products of interest**'],
             ['Team', '**Supervisor**, **Account managers**'],
           ],
         },
@@ -45,6 +45,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Whoever you add as **Supervisor** or among the **Account managers** receives the **You were assigned as Supervisor** or **You were assigned as Account Manager** notification (bell and email). The link opens the opportunity; whoever cannot access Opportunities receives it without a link. Whoever is also an Account manager of one of the opportunity's quotes, for example because they are copied onto the linked quote of a converted lead or of a category with synchronized managers, receives the quote notification only.",
+        },
+        {
+          type: 'note',
+          text: "If you also need to create the first quote, from **Quotes › New quote** you can choose **New opportunity + quote**: the opportunity and the quote are filled in two steps and saved together (see the **Quotes** guide).",
         },
       ],
     },
@@ -99,11 +103,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Opportunities** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Account manager** (the opportunities where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together. To widen the list choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved.",
+          text: "When it opens, the **Opportunities** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the opportunities where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the opportunities of every category, otherwise only the opportunities of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds opportunities by client (registry) name: part of the name is enough, for example \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing. The filters never widen what your profile can see.",
+          text: "If you may see everything (for example with the admin role) you are enabled on every parent category, whatever your competence. Otherwise the categories you are enabled on are the competence categories of your profile (the assignment scope); if you have no competence categories **Parent category** limits nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
@@ -111,11 +115,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Categories whose **Used in** is **Requests / Enrollees** are not part of this page: they do not show in **Parent category** and **Product category**, and opportunities that have **only** such categories are not in the list or the statistics (the detail can still be opened, for example from a contract). If an opportunity also has a category used here it stays visible.",
+        },
+        {
+          type: 'paragraph',
           text: "Choosing a current parent category in **Parent category** (for example ISO) also brings in the opportunities of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter. To see only those of a legacy category or only of a new one use **Product category**.",
         },
         {
           type: 'note',
-          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Opportunities** page: they do not appear inside a record and in a client's Opportunities section. The export follows the active filters. Flexible fields are read and edited from the detail.",
+          text: "The limit to your categories with an empty **Parent category** applies only on the **Opportunities** page: the field does not appear inside a record and in a client's Opportunities section. The export follows the active filters. Flexible fields are read and edited from the detail.",
         },
       ],
     },
@@ -147,7 +155,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Single-offer categories are the exception: a single-offer opportunity never blocks the others and is created even when the registry already has an open one. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either.',
+          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Categories with the **Several open opportunities per registry** rule are the exception: their opportunities never block the others and are created even when the registry already has an open one, and with Multiple mode the offer can carry several rows. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either, nor do those migrated from the old system without any category.',
         },
       ],
     },

@@ -30,13 +30,14 @@ function linkedRoots(): array
     return [$current, $legacy];
 }
 
+// REQUIREMENT CHANGED (user directive 2026-11-16): the competence limit, hence the opening columns, applies without viewAll.
 it('opens on the columns of two linked competence roots (AC-003)', function () {
     [$function, $current] = competenceVisibilityCategory();
     categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'r_field'], $current);
     [, $legacy] = competenceVisibilityCategory($function);
     $legacy->forceFill(['is_legacy' => true, 'current_category_id' => $current->id])->save();
     categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'l_field'], $legacy);
-    $actor = competenceVisibilityActor('quotes', ['viewAny', 'viewAll']);
+    $actor = competenceVisibilityActor('quotes', ['viewAny', 'viewCompetence']);
     grantCompetence($actor, $function, $legacy, $current);
     Sanctum::actingAs($actor);
 

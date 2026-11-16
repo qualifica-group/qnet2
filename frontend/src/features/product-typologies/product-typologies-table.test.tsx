@@ -186,7 +186,8 @@ describe('ProductTypologiesTable — delete (D-8: 409 "in use" guard)', () => {
     )
   })
 
-  it('shows a distinct "in use" toast on a 409 (D-8: used by a product)', async () => {
+  // REQUIREMENT CHANGED (spec 0384): the 409 toast is the server message, not a fixed sentence.
+  it('shows the server message on a 409 (D-8: used by a product)', async () => {
     deleteProductTypologyMock.mockRejectedValue(
       new AxiosError('Conflict', '409', undefined, undefined, {
         status: 409,
@@ -198,9 +199,7 @@ describe('ProductTypologiesTable — delete (D-8: 409 "in use" guard)', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith(
-        'This product typology cannot be deleted because it is linked to one or more products.',
-      ),
+      expect(toastErrorMock).toHaveBeenCalledWith('This product typology is used by a product and cannot be deleted.'),
     )
   })
 

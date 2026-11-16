@@ -72,6 +72,51 @@ final class IdentityUniquenessScope
     }
 
     /**
+     * The records whose cards may share a phone number with $owner's card
+     * (user directive 2026-11-11): an anagrafica and the referenti linked to
+     * it through `referent_registry`, in both directions. A small company's
+     * switchboard is often its owner's mobile, so the company and its own
+     * contact person holding the same number is not a duplicate identity.
+     * Fiscal identifiers get no such exemption: a company and a person never
+     * share one.
+     *
+     * @return array<class-string<Model>, array<int, int>>
+     */
+    public static function phoneSharingOwners(?Model $owner): array
+    {
+        return match (true) {
+            $owner instanceof Registry => [Referent::class => self::ids($owner->referents()->pluck('referents.id')->all())],
+            $owner instanceof Referent => [Registry::class => self::ids($owner->registries()->pluck('registries.id')->all())],
+            default => [],
+        };
+    }
+
+    /**
+     * Drops from $cards those owned by the given records, as (type, id) pairs
+     * for the same reason `cards()` excludes its owner that way.
+     *
+     * @param  Builder<PersonalData>  $cards  a `cards()` query
+     * @param  array<class-string<Model>, array<int, int>>  $owners  see phoneSharingOwners()
+     * @return Builder<PersonalData>
+     */
+    public static function withoutOwners(Builder $cards, array $owners): Builder
+    {
+        foreach ($owners as $ownerClass => $ownerIds) {
+            if ($ownerIds === []) {
+                continue;
+            }
+
+            $cards->whereNot(
+                fn (Builder $owned) => $owned
+                    ->where('personable_type', self::morphClass($ownerClass))
+                    ->whereIn('personable_id', $ownerIds),
+            );
+        }
+
+        return $cards;
+    }
+
+    /**
      * Whether a card owned by $personableType (a morph alias) belongs to the
      * namespace at all — a company-site card does not, and is never checked.
      */
@@ -115,6 +160,15 @@ final class IdentityUniquenessScope
             ->where('normalized_value', $normalized)
             ->whereIn('contactable_id', $cards->select('id'))
             ->exists();
+    }
+
+    /**
+     * @param  array<int, mixed>  $ids
+     * @return array<int, int>
+     */
+    private static function ids(array $ids): array
+    {
+        return array_map(static fn (mixed $id): int => (int) $id, $ids);
     }
 
     /**

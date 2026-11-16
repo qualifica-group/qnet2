@@ -118,8 +118,8 @@ final class RequestAttributionWriter
 
         $this->assertOperatorCovers($quote, $operatorId);
 
-        $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
-        $this->notifyOperatorAssignment($quote, $actor, $changed);
+        $attached = $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
+        $this->notifyAssignments($quote, $actor, $attached, $changed);
     }
 
     /**
@@ -198,30 +198,18 @@ final class RequestAttributionWriter
     }
 
     /**
-     * The GA1 slot (direttiva utente 2026-09-07, moved onto position 1 by
-     * the direttiva utente 2026-09-08): the grid's other Gestore Account cell, delegated to the SAME RequestOperatorWriter as the
-     * Operatore above. NO notification follows it, deliberately — GA1 scopes
-     * no visibility and assigns nobody, exactly like a reshuffle of the other
-     * slots in applyTeam() (spec 0097, D-6/AC-007).
+     * One Gestore Account position other than the Operatore (spec 0382 D-7,
+     * the grid's position columns), delegated to the SAME RequestOperatorWriter
+     * as the Operatore above, and notified like it: a user newly put in that
+     * position is told so (task 426900, spec 0097 D-6 as amended 2026-11-10).
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      */
-    public function applyManagerGa1(Quote $quote, mixed $value, array &$changed, array &$old): void
+    public function applyManagerPosition(Quote $quote, int $position, mixed $value, User $actor, array &$changed, array &$old): void
     {
-        $this->operatorWriter->applyGa1($quote, $value === null ? null : (int) $value, $changed, $old);
-    }
-
-    /**
-     * The "Operatore APL" slot (spec 0373 D-10): same terms as the GA1 above,
-     * no notification.
-     *
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    public function applyManagerGa5(Quote $quote, mixed $value, array &$changed, array &$old): void
-    {
-        $this->operatorWriter->applyGa5($quote, $value === null ? null : (int) $value, $changed, $old);
+        $attached = $this->operatorWriter->applyPosition($quote, $position, $value === null ? null : (int) $value, $changed, $old);
+        $this->notifyAssignments($quote, $actor, $attached, $changed);
     }
 
     /**
@@ -231,7 +219,7 @@ final class RequestAttributionWriter
      * OPERATOR slot itself changes hands — and then through the SAME
      * notification path as applyOperator() above. That is the whole point of
      * D-6: an assignment is an assignment regardless of which editor produced
-     * it, and a reshuffle that leaves the operator in place notifies nobody.
+     * it, and a reshuffle of members already in the team notifies nobody.
      *
      * @param  array<int, int|null>  $slots
      * @param  array<string, mixed>  $changed
@@ -239,33 +227,35 @@ final class RequestAttributionWriter
      */
     public function applyTeam(Quote $quote, array $slots, User $actor, array &$changed, array &$old): void
     {
-        $this->operatorWriter->applySlots($quote, $slots, $changed, $old);
-        $this->notifyOperatorAssignment($quote, $actor, $changed);
+        $attached = $this->operatorWriter->applySlots($quote, $slots, $changed, $old);
+        $this->notifyAssignments($quote, $actor, $attached, $changed);
     }
 
     /**
-     * spec 0081: only a GENUINE transition is an assignment — the writer
-     * leaves `operator_id` unset in $changed when the slot already held this
-     * user, which is exactly the "renamed nothing" case that must notify
-     * nobody. Notified against the Offerta itself (spec 0186, D-2): its
-     * title, its card, its link.
+     * Who is newly put in charge, in which position, like the Offerta card
+     * (spec 0186, D-3; task 426900): every manager genuinely ATTACHED to the
+     * team, plus an existing member moved onto the Operatore slot (spec 0081:
+     * the writer reports `operator_id` only on a genuine transition). A member
+     * merely renumbered, and a removal, notify nobody. Notified against the
+     * Offerta itself (spec 0186, D-2): its title, its card, its link.
      *
+     * @param  array<int, int>  $attached  `userId => position`
      * @param  array<string, mixed>  $changed
      */
-    private function notifyOperatorAssignment(Quote $quote, User $actor, array $changed): void
+    private function notifyAssignments(Quote $quote, User $actor, array $attached, array $changed): void
     {
+        $positions = $attached;
         $newOperatorId = $changed['operator_id'] ?? null;
 
-        if ($newOperatorId === null) {
+        if ($newOperatorId !== null) {
+            $positions[(int) $newOperatorId] = ManagerPositions::OPERATOR;
+        }
+
+        if ($positions === []) {
             return;
         }
 
-        $this->assignmentNotifier->notify(
-            $quote,
-            $actor,
-            null,
-            [$newOperatorId => ManagerPositions::OPERATOR],
-        );
+        $this->assignmentNotifier->notify($quote, $actor, null, $positions);
     }
 
     /**

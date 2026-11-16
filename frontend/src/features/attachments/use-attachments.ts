@@ -22,6 +22,17 @@ export interface UploadBatchResult {
 }
 
 /**
+ * The document list of one owner's collection. Shared by `useAttachments` and
+ * the tab count (`DocumentsTabCount`): same key, one request.
+ */
+export function useAttachmentList(resource: string, id: number, collection: string) {
+  return useQuery<AttachmentList, AxiosError>({
+    queryKey: attachmentsQueryKey(resource, id, collection),
+    queryFn: () => listAttachments(resource, id, collection),
+  })
+}
+
+/**
  * Self-fetching document list for a polymorphic owner (`resource`/`id`),
  * scoped to a single `collection`. Upload and delete invalidate the same
  * list query key on success, so the grid stays in sync without any manual
@@ -31,10 +42,7 @@ export function useAttachments(resource: string, id: number, collection: string)
   const queryClient = useQueryClient()
   const queryKey = attachmentsQueryKey(resource, id, collection)
 
-  const listQuery = useQuery<AttachmentList, AxiosError>({
-    queryKey,
-    queryFn: () => listAttachments(resource, id, collection),
-  })
+  const listQuery = useAttachmentList(resource, id, collection)
 
   const uploadMutation = useMutation<UploadBatchResult, AxiosError, File[]>({
     mutationFn: async (files) => {

@@ -160,6 +160,73 @@ describe('ContractProgramDialog - lines (AC-028)', () => {
     expect(screen.getByRole('checkbox', { name: 'Select Consulenza' })).not.toBeDisabled()
   })
 
+  it('wraps a long product name in the lines table and in its group instead of ellipsizing it', async () => {
+    const longName =
+      'Attività di consulenza per il sistema di gestione in conformità allo standard EN ISO 39001:2012 _ 1° Anno'
+    vi.mocked(fetchContractProgrammableLines).mockResolvedValue([line(20, longName, 'Consulenza ISO')])
+    renderDialog()
+
+    const cell = await linesPanel().findByText(longName)
+    expect(cell).not.toHaveClass('truncate')
+    expect(cell).toHaveClass('break-words')
+
+    selectLines(longName)
+    click('New group')
+    const groupLine = group(1).getByText(longName)
+    expect(groupLine).not.toHaveClass('truncate')
+    expect(groupLine).toHaveClass('break-words')
+  })
+
+  it('opens at least 80% of the viewport wide', async () => {
+    renderDialog()
+    await screen.findByText('Consulenza')
+    expect(screen.getByRole('dialog')).toHaveClass('sm:w-[90vw]', 'sm:max-w-[90vw]')
+  })
+
+  it('narrows the table by product search and shows a message when nothing matches', async () => {
+    renderDialog()
+    await screen.findByText('Consulenza')
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search product' }), { target: { value: 'aud' } })
+    expect(linesPanel().getByText('Audit')).toBeInTheDocument()
+    expect(linesPanel().queryByText('Consulenza')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search product' }), { target: { value: 'nothing' } })
+    expect(screen.getByText('No line matches the search or the category.')).toBeInTheDocument()
+  })
+
+  it('filters by category, including the lines without one', async () => {
+    renderDialog()
+    await screen.findByText('Consulenza')
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by category' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Servizi' }))
+    expect(linesPanel().getByText('Consulenza')).toBeInTheDocument()
+    expect(linesPanel().getByText('Audit')).toBeInTheDocument()
+    expect(linesPanel().queryByText('Formazione')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by category' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'No category' }))
+    expect(linesPanel().getByText('Licenza')).toBeInTheDocument()
+    expect(linesPanel().queryByText('Consulenza')).not.toBeInTheDocument()
+  })
+
+  it('the header checkbox selects only the free lines shown, keeping a hidden selection', async () => {
+    renderDialog()
+    await screen.findByText('Consulenza')
+    selectLines('Formazione')
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search product' }), { target: { value: 'a' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all free lines' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search product' }), { target: { value: '' } })
+
+    // "a" shows Consulenza, Installazione (occupied), Audit, Formazione, Licenza: Supporto stays out.
+    expect(screen.getByRole('checkbox', { name: 'Select Consulenza' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Select Formazione' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Select Supporto' })).not.toBeChecked()
+    expect(screen.getByText('4 lines selected')).toBeInTheDocument()
+  })
+
   it('selects every free line from the header checkbox, leaving the occupied one out', async () => {
     renderDialog()
     await screen.findByText('Consulenza')

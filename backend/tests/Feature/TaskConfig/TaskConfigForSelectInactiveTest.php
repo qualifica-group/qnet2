@@ -133,18 +133,24 @@ it('the reorder set taken WITH include_inactive is accepted, and reorders the in
     expect($modelClass::query()->orderBy('sort_order')->pluck('id')->all())->toBe([$inactive->id, $active->id]);
 })->with('pureLookupsForInactiveReorder');
 
-it('task-statuses: the reorder set is the CUSTOM rows including the deactivated ones', function () {
+it('task-statuses: the reorder set is EVERY row, protected and deactivated ones included', function () {
     Sanctum::actingAs(taskConfigActorWith('task-statuses', ['update']));
     $activeCustom = TaskStatus::factory()->create(['name' => 'Custom attiva', 'is_active' => true]);
     $inactiveCustom = TaskStatus::factory()->create(['name' => 'Custom disattivata', 'is_active' => false]);
 
-    // The default for-select drops the deactivated custom AND carries the six
-    // system rows, so it is wrong in both directions at once.
-    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => [$activeCustom->id]])->assertStatus(422);
+    // The default for-select drops the deactivated row: an incomplete set.
+    $filteredIds = collect($this->getJson('/api/task-statuses/for-select?limit=100')->assertOk()->json('items'))->pluck('id')->all();
+    expect($filteredIds)->not->toContain($inactiveCustom->id);
 
-    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => [$inactiveCustom->id, $activeCustom->id]])
-        ->assertOk();
+    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => $filteredIds])->assertStatus(422);
 
-    $customOrder = TaskStatus::query()->whereNull('system_key')->orderBy('sort_order')->pluck('id')->all();
-    expect($customOrder)->toBe([$inactiveCustom->id, $activeCustom->id]);
+    // With include_inactive the set is complete; move the deactivated row first.
+    $fullIds = collect($this->getJson('/api/task-statuses/for-select?include_inactive=1&limit=100')->assertOk()->json('items'))
+        ->pluck('id')->all();
+    $orderedIds = [$inactiveCustom->id, ...array_values(array_diff($fullIds, [$inactiveCustom->id]))];
+
+    $this->postJson('/api/task-statuses/reorder', ['ordered_ids' => $orderedIds])->assertOk();
+
+    expect(TaskStatus::query()->orderBy('sort_order')->pluck('id')->all())->toBe($orderedIds)
+        ->and($orderedIds)->toContain($activeCustom->id);
 });

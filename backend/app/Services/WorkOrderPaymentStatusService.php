@@ -7,6 +7,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\WorkOrderPaymentStatuses\CreateWorkOrderPaymentStatusData;
 use App\DataObjects\WorkOrderPaymentStatuses\UpdateWorkOrderPaymentStatusData;
 use App\Models\WorkOrderPaymentStatus;
+use App\Services\Deletion\InUseGuard;
 use App\Services\WorkOrderPaymentStatuses\WorkOrderPaymentStatusOrderManager;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -23,7 +24,10 @@ class WorkOrderPaymentStatusService
     /** Columns the for-select projection reads (see WorkOrderPaymentStatusForSelectResource). */
     private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'allows_delivery'];
 
-    public function __construct(private readonly WorkOrderPaymentStatusOrderManager $orderManager) {}
+    public function __construct(
+        private readonly WorkOrderPaymentStatusOrderManager $orderManager,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(CreateWorkOrderPaymentStatusData $data): WorkOrderPaymentStatus
     {
@@ -43,9 +47,7 @@ class WorkOrderPaymentStatusService
      */
     public function delete(WorkOrderPaymentStatus $status): void
     {
-        if ($status->linePayments()->exists()) {
-            abort(409, 'This work order payment status is used by a work order line and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($status);
 
         $status->delete();
     }

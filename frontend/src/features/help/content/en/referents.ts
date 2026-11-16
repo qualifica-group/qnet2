@@ -114,6 +114,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'merging-duplicates',
+      title: 'Merging duplicates',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'If the same referent appears several times, tick **2 to 5 rows** in the table, open the **Actions** menu and choose **Merge duplicates**. In the dialog pick the referent to keep with **Keep this one**, then for each field that differs choose which record the value comes from (**Notes** can also be merged with **Combine texts**) and untick the contacts, addresses, linked registries and notes of the duplicates you do not want to carry over.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Opportunities, quotes, tasks, rewards, settlements, fiscal profiles, projects, campaigns, commissions and the roles (sales rep, reporter, primary referent) on registries always move to the kept referent: they are listed in **Links moving to the kept record**.',
+        },
+        {
+          type: 'warning',
+          text: 'After you confirm with **Merge** the duplicates are **deleted** and the operation **cannot be undone**. You need the permission to edit and to delete referents.',
+        },
+      ],
+    },
+    {
       id: 'linking-a-referent',
       title: 'Linking a referent to a client',
       blocks: [

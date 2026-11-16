@@ -42,6 +42,13 @@ describe('buildApiClientSchema', () => {
     expect(issueMessages({ ...valid, rate_limit_per_minute: 1000 })).toEqual([])
   })
 
+  it('starts with every method and requires at least one', () => {
+    expect(EMPTY_API_CLIENT_FORM.allowed_methods).toEqual(['GET', 'POST', 'PUT', 'DELETE'])
+    expect(issueMessages({ ...valid, allowed_methods: [] })).toContain('apiIntegrations.form.allowedMethodsRequired')
+    expect(issueMessages({ ...valid, allowed_methods: ['PATCH'] })).not.toEqual([])
+    expect(issueMessages({ ...valid, allowed_methods: ['DELETE'] })).toEqual([])
+  })
+
   it('rejects a past expiry unless it is the unchanged initial value', () => {
     const past = '2020-01-01T10:00'
     expect(issueMessages({ ...valid, expires_at: past })).toContain('apiIntegrations.form.expiresAtFuture')
@@ -56,6 +63,7 @@ const client: ApiClient = {
   description: null,
   rate_limit_per_minute: null,
   effective_rate_limit_per_minute: 60,
+  allowed_methods: ['GET', 'DELETE'],
   expires_at: '2020-01-01T10:00:00+00:00',
   is_active: true,
   is_expired: true,
@@ -81,6 +89,16 @@ describe('payload builders', () => {
     const payload = buildUpdatePayload({ ...initial, is_active: false }, initial)
     expect(payload).not.toHaveProperty('expires_at')
     expect(payload.is_active).toBe(false)
+  })
+
+  it('sends the allowed methods in canonical order and loads them from the client', () => {
+    const initial = apiClientToFormValues(client)
+    expect(initial.allowed_methods).toEqual(['GET', 'DELETE'])
+    expect(buildUpdatePayload({ ...initial, allowed_methods: ['DELETE', 'POST', 'GET'] }, initial).allowed_methods).toEqual([
+      'GET',
+      'POST',
+      'DELETE',
+    ])
   })
 
   it('update sends a changed expiry, including its removal', () => {

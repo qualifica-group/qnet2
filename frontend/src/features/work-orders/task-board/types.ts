@@ -187,6 +187,11 @@ export interface CloseStageConflictError extends ApiErrorResponse {
   data?: { open_tasks_count: number }
 }
 
+/** Error envelope of `POST /work-orders/{id}/task-template/reload` on 409 (spec 0399, D-3): how many tasks of the current template are already completed. */
+export interface TaskTemplateReloadConflictError extends ApiErrorResponse {
+  data?: { completed_tasks_count: number }
+}
+
 /** The two board layouts toggled by D-5, persisted in `localStorage` (see `use-task-board-view-mode.ts`). */
 export type TaskBoardViewMode = 'list' | 'kanban'
 

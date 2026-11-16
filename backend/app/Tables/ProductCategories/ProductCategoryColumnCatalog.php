@@ -3,6 +3,7 @@
 namespace App\Tables\ProductCategories;
 
 use App\Enums\CategoryManagementMode;
+use App\Enums\CategoryUsageArea;
 
 /**
  * Declarative column/filter/action catalogue for the `product-categories`
@@ -31,6 +32,9 @@ final class ProductCategoryColumnCatalog
 {
     /** Frontend i18n namespace of the `management_mode` badge labels (`enums.<key>.<value>`). */
     public const string MANAGEMENT_MODE_ENUM_KEY = 'category_management_mode';
+
+    /** Frontend i18n namespace of the `usage_area` badge labels (spec 0389). */
+    public const string USAGE_AREA_ENUM_KEY = 'category_usage_area';
 
     /**
      * @return array<int, array<string, mixed>>
@@ -151,6 +155,18 @@ final class ProductCategoryColumnCatalog
                 'options' => array_map(static fn (CategoryManagementMode $case): string => $case->value, CategoryManagementMode::cases()),
             ],
             [
+                // Spec 0389: the modules the branch is used in. Root-owned and
+                // mirrored by CategoryUsageAreaInheritance, so a real column.
+                'id' => 'usage_area',
+                'label' => 'productCategories.columns.usage_area',
+                'type' => 'badge',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+                'options' => array_map(static fn (CategoryUsageArea $case): string => $case->value, CategoryUsageArea::cases()),
+            ],
+            [
                 // "At most one quote per opportunity" policy. Owned by the
                 // branch ROOT and mirrored onto every descendant by
                 // SingleQuotePerOpportunityInheritance (user directive
@@ -259,6 +275,24 @@ final class ProductCategoryColumnCatalog
     }
 
     /**
+     * Badge metadata for the `usage_area` column (spec 0389), same shape as
+     * managementModeBadges().
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function usageAreaBadges(): array
+    {
+        $colors = [CategoryUsageArea::All->value => 'slate', CategoryUsageArea::Requests->value => 'blue', CategoryUsageArea::Opportunities->value => 'violet'];
+
+        return array_map(static fn (CategoryUsageArea $case): array => [
+            'value' => $case->value,
+            'label' => 'enums.'.self::USAGE_AREA_ENUM_KEY.'.'.$case->value,
+            'color' => $colors[$case->value],
+            'icon' => null,
+        ], CategoryUsageArea::cases());
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public static function filters(): array
@@ -273,6 +307,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'is_active', 'type' => 'boolean'],
             ['columnId' => 'is_reportable', 'type' => 'boolean'],
             ['columnId' => 'management_mode', 'type' => 'set'],
+            ['columnId' => 'usage_area', 'type' => 'set'],
             ['columnId' => 'single_quote_per_opportunity', 'type' => 'boolean'],
             ['columnId' => 'generates_contract', 'type' => 'boolean'],
             ['columnId' => 'simplified_offer_line', 'type' => 'boolean'],

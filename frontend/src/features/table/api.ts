@@ -140,6 +140,15 @@ export interface UpdateTableCellPayload {
   value: string | number | boolean | null | number[] | string[] | Record<string, number>[] | Record<string, number | null>[]
   /** Only for columns whose picked value requires one (e.g. a workflow status); omitted otherwise. */
   note?: string
+  /** The category tab the cell was edited in (spec 0382 D-11); omitted when there is none. */
+  product_category_id?: number
+  product_category_branch_id?: number
+}
+
+/** The category tab of a grid, as the cell PATCH carries it (spec 0382 D-11). */
+export interface CellEditTab {
+  productCategoryId?: number
+  productCategoryBranchId?: number
 }
 
 /**

@@ -17,11 +17,10 @@ use App\Enums\WorkOrderType;
  * generic engine. `contract_number`/`quote` are DERIVED through the `quote`
  * relation (D-2, resolved by WorkOrdersTableDefinition) and declare
  * `hasFilterValues: false`: no real DB column on `work_orders` to
- * `SELECT DISTINCT` on. `status` and `completion_percentage` are COMPUTED
- * from the manual progress entries (spec 0321, SUM of the increments / MAX of the date, resolved by WorkOrderStatusResolver):
- * `status` is `sortable: false` (no single sort key for a derived state) and
- * `set`-filterable over its 4 values; `completion_percentage` is sortable
- * but not filterable (D-10). `registry` (the Anagrafica) is DERIVED through
+ * `SELECT DISTINCT` on. `status` is the persisted working phase (spec 0395,
+ * WorkOrderWorkPhaseColumn), `set`-filterable over its 5 values;
+ * `completion_percentage` is COMPUTED from the manual progress entries (spec
+ * 0321, resolved by WorkOrderStatusResolver): sortable but not filterable (D-10). `registry` (the Anagrafica) is DERIVED through
  * `quote.opportunity.registry` and `set`-filtered by name.
  * `contract_expiry_date` is DERIVED through `quote.contract` (the Contratto's
  * own `expiry_date`): read-only, `date`-filterable and sortable.
@@ -119,6 +118,7 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
+                'searchable' => true,
             ],
             [
                 'id' => 'type',
@@ -154,21 +154,11 @@ final class WorkOrderColumnCatalog
                 'filterType' => 'set',
             ],
             [
-                // Computed (D-3), never a real column — see class docblock.
-                'id' => 'status',
+                // The persisted working phase (spec 0395), behind the Commesse tabs too.
+                'id' => WorkOrderWorkPhaseColumn::COLUMN,
                 'label' => 'workOrders.columns.status',
                 'type' => 'badge',
                 'visible' => true,
-                'sortable' => false,
-                'filterable' => true,
-                'filterType' => 'set',
-            ],
-            [
-                // Hidden: it only backs the status tabs of the Commesse page (WorkOrderWorkPhaseColumn).
-                'id' => WorkOrderWorkPhaseColumn::COLUMN,
-                'label' => 'workOrders.columns.work_phase',
-                'type' => 'badge',
-                'visible' => false,
                 'sortable' => false,
                 'filterable' => true,
                 'filterType' => 'set',
@@ -283,7 +273,6 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'callback_date', 'type' => 'date'],
             ['columnId' => 'is_force_closed', 'type' => 'set'],
             ['columnId' => 'status', 'type' => 'set'],
-            ['columnId' => WorkOrderWorkPhaseColumn::COLUMN, 'type' => 'set'],
             ['columnId' => 'work_order_workflow_status', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
             ['columnId' => 'updated_at', 'type' => 'date'],
@@ -330,11 +319,13 @@ final class WorkOrderColumnCatalog
                 // Spec 0193 (D-11, rev. 2026-10-06): the "€" proforma request,
                 // after the common actions (spec 0363 D-1); its colour and the
                 // disabled "issued" state come from the row's `proforma_status`.
+                // Pinned (task 427151): always on the row, never in the "..." menu.
                 'key' => 'proforma',
                 'label' => 'proformaRequests.cell.none',
                 'icon' => 'euro',
                 'type' => 'action',
                 'confirm' => false,
+                'pinned' => true,
                 'permission' => 'proforma-requests.create',
             ],
             [

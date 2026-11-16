@@ -4,209 +4,196 @@ declare(strict_types=1);
 
 namespace App\Tables\RequestManagement;
 
+use App\Services\RequestManagement\RequestOperatorWriter;
 use App\Support\ManagerPositions;
-use InvalidArgumentException;
 
 /**
- * The Gestori Account SLOT columns of the `request-management` grid: the GA2
- * "Operatore" (spec 0055/0086/0087/0097) and the GA1 (direttiva utente
- * 2026-09-07, moved from position 3 onto position 1 by the direttiva utente
- * 2026-09-08). Each is an in-cell `users/for-select` picker over ONE position
- * of the offer's `quote_user` team, and each carries the same three
- * peculiarities no other column of this domain has:
- *  - its WRITE lands on a pivot row, never on a column of the row's own
- *    table, so it travels through RequestManagementService::updateWork();
- *  - its HEADER is rewritten per category tab, from that category's effective
- *    `manager_labels` (spec 0080, extended to GA1) — POSITIONS below is the
- *    map RequestManagementScopedTableDefinition relabels through, so the
- *    "which position names which column" answer lives in ONE place;
- *  - its SORT and SET FILTER address the occupant's `users.name` (direttiva
- *    utente 2026-09-24, superseding spec 0086 AC-011): the Operatore through
- *    its denormalized `quotes.operator_id` (RequestRelationColumns'
- *    QUOTE_RELATIONS), the GA1 through its `quote_user` position
- *    (RequestManagerSlotColumn).
+ * The Gestori Account columns of the `request-management` grid: one column per
+ * `quote_user` POSITION (spec 0382, replacing the fixed Tutor/Operatore/
+ * Operatore APL columns) plus the whole team as a list (`managers`, spec 0373).
  *
- * Split out of RequestColumnCatalog, which had reached the file-size ceiling
- * (engineering.md §6), on that cohesion — the same reason the client
- * anagraphic columns already live in RequestClientColumns.
+ * The catalogue declares every position up to ManagerPositions::MAX, so the
+ * structural PATCH lookup and the preference allow-lists always know them;
+ * RequestManagerPositionLayout trims, names and hides them per tab.
+ *
+ * Column ids stay stable for saved views and filters (D-5): position 2 is the
+ * former Operatore `operator_ga2`, every other position `manager_ga{n}`.
+ * Position 2 keeps everything the Operatore did: its picker is scoped to the
+ * row's Sede and required categories, its write projects
+ * `quotes.operator_id` and notifies the new Operatore, and its sort/filter
+ * read that denormalized FK (RequestRelationColumns). Every other position
+ * reads the pivot (RequestManagerSlotColumn) and writes under its own field
+ * key (`manager_ga{n}_id`), gated by the TEAM permission (`permissionField`,
+ * D-6): `editableField` is also the key `updateCell()` receives, so the
+ * positions need distinct write keys while sharing one row of the role matrix.
  */
 final class RequestManagerColumns
 {
-    /** The GA2 "Operatore" column id — never changes, only its `label` does (spec 0080). */
+    /** The position-2 column id — the former "Operatore", kept for saved views (spec 0382 D-5). */
     public const string OPERATOR_COLUMN_ID = 'operator_ga2';
-
-    /** The GA1 column id (direttiva utente 2026-09-07). */
-    public const string GA1_COLUMN_ID = 'manager_ga1';
-
-    /** The "Operatore APL" column id (spec 0373 D-10). */
-    public const string GA5_COLUMN_ID = 'manager_ga5';
 
     /** The whole team as a list of people, the twin of the Offerte column (spec 0373). */
     public const string MANAGERS_COLUMN_ID = 'managers';
 
-    /**
-     * The `manager_labels` position each column is named after: the single
-     * source of the per-tab relabel (spec 0080, AC-045).
-     *
-     * @var array<int, string>
-     */
-    public const array POSITIONS = [
-        ManagerPositions::OPERATOR => self::OPERATOR_COLUMN_ID,
-        ManagerPositions::GA1 => self::GA1_COLUMN_ID,
-        ManagerPositions::GA5 => self::GA5_COLUMN_ID,
-    ];
+    /** The team's permission key, shared by every position column (spec 0382 D-6). */
+    public const string TEAM_FIELD = 'manager_slots';
 
-    /**
-     * One slot column by id: RequestColumnCatalog places the slots apart
-     * (direttiva utente 2026-09-17: Operatore second, GA1 after "Fonte").
-     *
-     * @return array<string, mixed>
-     */
-    public static function column(string $columnId): array
+    private const string POSITION_COLUMN_ID = 'manager_ga%d';
+
+    private const int OPERATOR_WIDTH = 201;
+
+    private const int POSITION_WIDTH = 177;
+
+    private const int MANAGERS_WIDTH = 140;
+
+    public static function columnId(int $position): string
     {
-        foreach (self::columns() as $column) {
-            if ($column['id'] === $columnId) {
-                return $column;
-            }
-        }
-
-        throw new InvalidArgumentException("Unknown Gestore Account column [{$columnId}].");
+        return $position === ManagerPositions::OPERATOR ? self::OPERATOR_COLUMN_ID : sprintf(self::POSITION_COLUMN_ID, $position);
     }
 
     /**
+     * The position a column id names, null for any other column.
+     */
+    public static function positionOf(string $columnId): ?int
+    {
+        $position = array_search($columnId, self::positions(), true);
+
+        return $position === false ? null : $position;
+    }
+
+    /**
+     * The position a cell write key names, null for any other key. The
+     * Operatore is not here: its cell writes under the team key (spec 0097 D-3b).
+     */
+    public static function positionOfField(string $fieldKey): ?int
+    {
+        foreach (array_keys(self::positions()) as $position) {
+            if ($position !== ManagerPositions::OPERATOR && RequestOperatorWriter::positionField($position) === $fieldKey) {
+                return $position;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Every position the catalogue declares, as position => column id.
+     *
+     * @return array<int, string>
+     */
+    public static function positions(): array
+    {
+        $positions = [];
+
+        for ($position = 1; $position <= ManagerPositions::MAX; $position++) {
+            $positions[$position] = self::columnId($position);
+        }
+
+        return $positions;
+    }
+
+    /**
+     * The position columns, in position order, then the team column.
+     *
      * @return array<int, array<string, mixed>>
      */
     public static function columns(): array
     {
         return [
-            [
-                // Inline cell-editing (spec 0055, D-6): the same relation
-                // column LeadColumnCatalog already declares for its operator —
-                // an async `/for-select` picker over `users`. Spec 0087, D-9:
-                // the value writes the offer's OWN GA2 slot, denormalized onto
-                // `quotes.operator_id`. Nullable: clearing the cell un-assigns
-                // the request.
-                //
-                // `editableField` (spec 0097, D-3a): `manager_slots`. The
-                // key is BOTH the field-permission key and the key
-                // TableCellUpdateService hands to `updateCell()` — and the
-                // two answer different questions for this column:
-                //  - PERMISSION: the cell writes a Gestore Account slot, and
-                //    the only catalogued key for that block is the TEAM's
-                //    (`operator_id` was deleted from
-                //    RequestManagementAuthorization, D-3), so this column is
-                //    gated by the team's permission;
-                //  - WRITE: still the single OPERATOR slot, never the whole
-                //    team — WritesInlineEditableCells translates the cell
-                //    back into `['operator_id' => $value]` before calling
-                //    `updateWork()` (D-3b).
-                // That translation is what keeps the spec 0086 mt06 lesson
-                // intact: `editableField` is the LOGICAL key, never the DB
-                // column, and `updateWork()` must RECOGNIZE the key it is
-                // handed. Sending it a key it never learned (`supervisor_id`,
-                // the first cut of spec 0086 D-3) produced a silent 200 no-op
-                // — no write, no error. Passing `manager_slots` raw would
-                // repeat the mistake in reverse: `updateWork()` does learn
-                // that key now, but it expects an ordered slot LIST there and
-                // the cell carries a single user id.
-                //
-                // `relation.scope` (direttiva utente 2026-07-23, extended by
-                // the direttiva utente 2026-09-10): the picker is narrowed to
-                // the operators of the row's OWN operational site AND
-                // competent for the categories the offer requires — the
-                // in-grid twin of the assignment popup's filtered picker,
-                // `users/for-select?operational_site_id=<the offer's
-                // site>&competence_category_ids[]=<its required categories>`.
-                // The Sede comes from the visible `operational_site` column
-                // (`quotes.operational_site_id`, spec 0113 D-4), the
-                // categories from the non-visible key RequestAssignmentScope
-                // projects. An offer missing either one keeps the full list on
-                // that half (an empty requirement means "requires nothing",
-                // not "nobody qualifies").
-                'id' => self::OPERATOR_COLUMN_ID,
-                'label' => 'requestManagement.columns.operator',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => true,
-                'filterable' => true,
-                'filterType' => 'set',
-                'editable' => true,
-                'editableField' => 'manager_slots',
-                'relation' => [
-                    'resource' => 'users',
-                    'scope' => [
-                        'operational_site_id' => 'operational_site',
-                        'competence_category_ids' => RequestAssignmentScope::CATEGORIES_KEY,
-                    ],
+            ...array_map(
+                static fn (int $position): array => $position === ManagerPositions::OPERATOR
+                    ? self::operatorColumn()
+                    : self::positionColumn($position),
+                array_keys(self::positions()),
+            ),
+            self::managersColumn(),
+        ];
+    }
+
+    /**
+     * The catalogue header of a position: "Gestore account N", which a
+     * category tab replaces with its own label (spec 0382 D-2/D-3).
+     */
+    public static function defaultLabel(int $position): string
+    {
+        return __('Account manager :position', ['position' => $position]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function operatorColumn(): array
+    {
+        // Spec 0055 D-6 / 0087 D-9: the offer's own Operatore slot,
+        // denormalized onto `quotes.operator_id`; clearing the cell
+        // un-assigns the request. `editableField` is the team key (spec 0097
+        // D-3a): WritesInlineEditableCells turns a single id under it back
+        // into `operator_id` before `updateWork()` (D-3b), the only reader
+        // that knows the Operatore write. `relation.scope` (direttive utente
+        // 2026-07-23 and 2026-09-10): the picker lists the operators of the
+        // row's own Sede competent for the categories the offer requires; an
+        // offer missing either keeps the full list on that half.
+        return [
+            ...self::positionColumn(ManagerPositions::OPERATOR),
+            'width' => self::OPERATOR_WIDTH,
+            'editableField' => self::TEAM_FIELD,
+            'relation' => [
+                'resource' => 'users',
+                'scope' => [
+                    'operational_site_id' => 'operational_site',
+                    'competence_category_ids' => RequestAssignmentScope::CATEGORIES_KEY,
                 ],
-                'nullable' => true,
             ],
-            [
-                // GA1 (direttiva utente 2026-09-08, which moved this column
-                // off position 3): editable in-cell exactly like the Operatore — same picker,
-                // same nullable "clear the slot" semantics, same per-tab
-                // relabel. Three deliberate differences, each mirroring how
-                // the FORM already treats the two slots:
-                //  - NO `relation.scope`: only the Operatore slot is bound to
-                //    the Sede operativa (`operatorSlotParams`), so this picker
-                //    lists every user, like every other slot of
-                //    ManagerSlotsField;
-                //  - its own field key `manager_ga1_id` instead of
-                //    `manager_slots`: `editableField` is both the permission
-                //    key and the key `updateCell()` receives, so two columns
-                //    sharing one key would be indistinguishable at write time
-                //    (the very silent-no-op class of bug spec 0086 mt06
-                //    documents). The role matrix therefore gates this slot on
-                //    its own row — configure it alongside `manager_slots`;
-                //  - no denormalized column and no assignment notification:
-                //    GA1 scopes nothing (RequestManagementScope reads
-                //    `operator_id` alone), and a move that leaves the operator
-                //    in place assigns nobody — the rule the whole-team editor
-                //    already follows (spec 0097, D-6/AC-007).
-                'id' => self::GA1_COLUMN_ID,
-                'label' => 'requestManagement.columns.managerGa1',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => true,
-                'filterable' => true,
-                'filterType' => 'set',
-                'editable' => true,
-                'editableField' => 'manager_ga1_id',
-                'relation' => ['resource' => 'users'],
-                'nullable' => true,
-            ],
-            [
-                // Spec 0373 D-10: position 5, "Operatore APL". The twin of the
-                // GA1 column above, for the same reasons and with its own
-                // field key.
-                'id' => self::GA5_COLUMN_ID,
-                'label' => 'requestManagement.columns.managerGa5',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => true,
-                'filterable' => true,
-                'filterType' => 'set',
-                'editable' => true,
-                'editableField' => 'manager_ga5_id',
-                'relation' => ['resource' => 'users'],
-                'nullable' => true,
-            ],
-            [
-                // Spec 0373 D-7/D-8: shares `manager_slots` with the Operatore
-                // slot, the same permission on the same team;
-                // WritesInlineEditableCells tells the two apart by the value.
-                'id' => self::MANAGERS_COLUMN_ID,
-                'label' => 'requestManagement.columns.managers',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => false,
-                'filterable' => true,
-                'filterType' => 'set',
-                'editable' => true,
-                'editor' => 'multiselect',
-                'relation' => ['resource' => 'users'],
-                'editableField' => 'manager_slots',
-            ],
+        ];
+    }
+
+    /**
+     * Any other position: an unscoped picker over every user (only the
+     * Operatore is bound to the Sede), no denormalized column and no
+     * notification (spec 0382 D-7).
+     *
+     * @return array<string, mixed>
+     */
+    private static function positionColumn(int $position): array
+    {
+        return [
+            'id' => self::columnId($position),
+            'label' => self::defaultLabel($position),
+            'type' => 'text',
+            'visible' => true,
+            'sortable' => true,
+            'filterable' => true,
+            'filterType' => 'set',
+            'editable' => true,
+            'editableField' => RequestOperatorWriter::positionField($position),
+            'permissionField' => self::TEAM_FIELD,
+            'relation' => ['resource' => 'users'],
+            'nullable' => true,
+            'width' => self::POSITION_WIDTH,
+        ];
+    }
+
+    /**
+     * Spec 0373 D-7/D-8: shares the team key with the Operatore slot;
+     * WritesInlineEditableCells tells the two apart by the value.
+     *
+     * @return array<string, mixed>
+     */
+    private static function managersColumn(): array
+    {
+        return [
+            'id' => self::MANAGERS_COLUMN_ID,
+            'label' => 'requestManagement.columns.managers',
+            'type' => 'text',
+            'visible' => true,
+            'sortable' => false,
+            'filterable' => true,
+            'filterType' => 'set',
+            'editable' => true,
+            'editor' => 'multiselect',
+            'relation' => ['resource' => 'users'],
+            'editableField' => self::TEAM_FIELD,
+            'width' => self::MANAGERS_WIDTH,
         ];
     }
 }

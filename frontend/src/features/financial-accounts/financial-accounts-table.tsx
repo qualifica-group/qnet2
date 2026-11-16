@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -17,15 +16,6 @@ import { deleteFinancialAccount } from '@/features/financial-accounts/api'
 
 /** Domain key used to mount the generic table for financial accounts. */
 const FINANCIAL_ACCOUNTS_DOMAIN = 'financial-accounts'
-
-/** Backend message of a restrictive 409, when the response carries one. */
-function conflictMessage(error: unknown): string | null {
-  if (!axios.isAxiosError(error)) {
-    return null
-  }
-  const message = (error.response?.data as { message?: unknown } | undefined)?.message
-  return typeof message === 'string' && message !== '' ? message : null
-}
 
 /**
  * Thin Financial Accounts adapter over the generic table: mounts `<TableView>`
@@ -56,15 +46,7 @@ export function FinancialAccountsTable() {
         toast.success(t('financialAccounts.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden) {
-          toast.error(forbidden)
-        } else if (status === 409) {
-          toast.error(conflictMessage(error) ?? t('financialAccounts.form.deleteInUse'))
-        } else {
-          toast.error(t('financialAccounts.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('financialAccounts.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

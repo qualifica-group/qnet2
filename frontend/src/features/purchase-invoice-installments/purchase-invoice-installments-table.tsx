@@ -17,7 +17,7 @@ import {
   parseQuickFilterParam,
   usePurchaseInstallmentQuickFilter,
 } from '@/features/purchase-invoice-installments/use-purchase-installment-quick-filter'
-import { usePurchaseInstallmentRowActions } from '@/features/purchase-invoice-installments/use-purchase-installment-row-actions'
+import { purchaseInstallmentActionHref, usePurchaseInstallmentRowActions } from '@/features/purchase-invoice-installments/use-purchase-installment-row-actions'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 
@@ -64,6 +64,7 @@ export function PurchaseInvoiceInstallmentsTable() {
         forcedFilterModel={quickFilter.forcedFilterModel}
         onFilterModelChange={quickFilter.onFilterModelChange}
         onAction={actions.handleAction}
+        resolveActionHref={purchaseInstallmentActionHref}
         resolveActionState={resolveActionState}
         isRowSelectable={isBulkPayable}
         getBulkActions={bulkPayment.getBulkActions}

@@ -20,6 +20,7 @@ import { ModuleOpenModeForm } from '@/features/modules/module-open-mode-form'
 import { UiScaleForm } from '@/features/appearance/ui-scale-form'
 import { DateFormatForm } from '@/features/appearance/date-format-form'
 import { ColorPresetForm } from '@/features/appearance/color-preset-form'
+import { EmailNotificationsForm } from '@/features/notifications/email-notifications-form'
 import { OnboardingSettingsForm } from '@/features/onboarding/components/onboarding-settings-form'
 
 interface SubSectionMeta {
@@ -62,6 +63,7 @@ const SECTIONS: readonly SectionMeta[] = [
       { id: 'ui-scale', titleKey: 'settings.uiScale.title' },
       { id: 'date-format', titleKey: 'settings.dateFormat.title' },
       { id: 'color-preset', titleKey: 'settings.colorPreset.title' },
+      { id: 'email-notifications', titleKey: 'settings.emailNotifications.title' },
       { id: 'onboarding-tour', titleKey: 'settings.onboardingTour.title' },
     ],
   },
@@ -196,6 +198,8 @@ function renderSubSection(id: string): ReactNode {
       return <DateFormatForm />
     case 'color-preset':
       return <ColorPresetForm />
+    case 'email-notifications':
+      return <EmailNotificationsForm />
     case 'onboarding-tour':
       return <OnboardingSettingsForm />
     default:

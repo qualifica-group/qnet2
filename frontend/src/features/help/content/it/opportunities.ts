@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['Note generali', 'Testo libero'],
             ['Dettagli', '**Titolo** (facoltativo), **Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
             ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Segnalatore** con i **Buoni assegnati**'],
-            ['Classificazione', '**Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto), **Prodotti di interesse**'],
+            ['Classificazione', '**Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto; non compaiono le categorie con **Visibile in** su **Gestione Richieste / Iscritti**), **Prodotti di interesse**'],
             ['Team', '**Supervisore**, **Gestori account**'],
           ],
         },
@@ -45,6 +45,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Chi inserisci come **Supervisore** o tra i **Gestori account** riceve la notifica **Sei stato inserito come Supervisore** o **Sei stato inserito come Gestore Account** (campanella ed email). Il link apre l'opportunità; chi non ha accesso alle Opportunità riceve la notifica senza link. Chi è anche Gestore account di un'offerta dell'opportunità, per esempio perché viene copiato nell'offerta collegata di un lead convertito o di una categoria con gestori sincronizzati, riceve solo la notifica dell'offerta.",
+        },
+        {
+          type: 'note',
+          text: "Se devi creare anche la prima offerta, da **Offerte › Nuova offerta** puoi scegliere **Nuova opportunità + offerta**: opportunità e offerta si compilano in due passi e si salvano insieme (vedi la guida **Offerte**).",
         },
       ],
     },
@@ -99,11 +103,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Opportunità** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Supervisore** e **Gestore account** (le opportunità dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme. Per allargare l'elenco scegli **Tutti i visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata.",
+          text: "All'apertura la pagina **Opportunità** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le opportunità dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le opportunità di ogni categoria, altrimenti solo le opportunità delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova le opportunità anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutti i visibili** non compare: non aggiungerebbe nulla. I filtri non allargano ciò che il tuo profilo può vedere.",
+          text: "Con il permesso di vedere tutto (per esempio il ruolo admin) sei abilitato a tutte le categorie madri, qualunque sia la tua competenza. Altrimenti le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione); se non hai categorie di competenza **Categoria madre** non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
@@ -111,11 +115,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Le categorie con **Visibile in** su **Gestione Richieste / Iscritti** non fanno parte di questa pagina: non compaiono in **Categoria madre** e **Categoria prodotto**, e le opportunità che hanno **solo** categorie di questo tipo non sono nell'elenco né nelle statistiche (il dettaglio resta apribile, per esempio da un contratto). Se un'opportunità ha anche una categoria usata qui resta visibile.",
+        },
+        {
+          type: 'paragraph',
           text: "Scegliendo in **Categoria madre** una categoria attuale (per esempio ISO) entrano nell'elenco anche le opportunità delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte. Per vedere solo quelle di una categoria vecchia o solo di una nuova usa **Categoria prodotto**.",
         },
         {
           type: 'note',
-          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Opportunità**: non compaiono dentro una scheda e nella sezione Opportunità di un'anagrafica. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
+          text: "Il limite alle tue categorie con la **Categoria madre** vuota vale solo nella pagina **Opportunità**: il campo non compare dentro una scheda e nella sezione Opportunità di un'anagrafica. L'esportazione segue i filtri attivi. I campi flessibili si leggono e si modificano dal dettaglio.",
         },
       ],
     },
@@ -147,7 +155,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie a offerta unica: un'opportunità a offerta unica non blocca le altre e si crea anche se l'anagrafica ne ha già una aperta. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD]).",
+          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie con la regola **Più opportunità aperte per anagrafica**: le loro opportunità non bloccano le altre e si creano anche se l'anagrafica ne ha già una aperta, e con la modalità Multipla l'offerta può avere più righe. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD]), né quelle migrate dal vecchio gestionale senza alcuna categoria.",
         },
       ],
     },

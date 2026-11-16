@@ -53,17 +53,7 @@ return [
          */
         'version' => config('external-api.version'),
 
-        /*
-         * Description rendered on the home page of the API documentation (`/docs/api`).
-         */
-        'description' => <<<'MD'
-QNet exposes the same `/api` endpoints to external systems through an API client. Send the key of the client as `Authorization: Bearer <key>`.
-
-- **Client key**: the request acts as the client's technical user, a super-admin with every permission.
-- **Client login**: `POST /api/auth/client-login` (authenticated with the client key) exchanges a user's email and password for a user token. Sending that token acts with the permissions of that user. `POST /api/auth/logout` revokes it.
-
-Every response uses the envelope `{ "success": bool, "message": string, "data": ... }`. These endpoints follow the QNet application and may change with each release.
-MD,
+        // The description (usage guide) is written by App\Services\ApiDocs\Docs\ApiGuideTransformer.
     ],
 
     'ui' => [

@@ -46,7 +46,7 @@ export const table = {
   filtersError: 'Unable to reset the table filters.',
   filtersSaveError: 'Unable to save the table filters.',
   filterValuesTruncated:
-    'This column has many values: the list shows only the first ones. If you cannot find the one you need, use the condition filter (Text, Number or Date Filters) in the same menu.',
+    'This column has many values: the list shows only the first ones. Type in the Search box to find the others.',
   textFilters: 'Text Filters',
   numberFilters: 'Number Filters',
   dateFilters: 'Date Filters',

@@ -10,7 +10,7 @@ use App\Policies\Abstracts\BasePolicy;
  *
  * Four permissions only (view/create/update/delete): the list is gated by
  * `api-clients.view` (there is no separate viewAny), and the documentation
- * endpoints reuse it. Auto-discovered by Laravel from the ApiClient model.
+ * endpoints reuse it; regenerating the documentation reuses `update`. Auto-discovered by Laravel from the ApiClient model.
  */
 class ApiClientPolicy extends BasePolicy
 {
@@ -30,5 +30,10 @@ class ApiClientPolicy extends BasePolicy
     public function viewAny(User $user): bool
     {
         return $user->can($this->permission('view'));
+    }
+
+    public function refreshDocs(User $user): bool
+    {
+        return $user->can($this->permission('update'));
     }
 }

@@ -9,6 +9,7 @@ use App\DataObjects\DocumentBundles\UpdateDocumentBundleData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\DocumentBundle;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 
 /**
@@ -22,6 +23,8 @@ class DocumentBundleService
 {
     /** @var array<int, string> */
     private const array FOR_SELECT_COLUMNS = ['id', 'name', 'is_active'];
+
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
 
     public function create(CreateDocumentBundleData $data): DocumentBundle
     {
@@ -42,6 +45,8 @@ class DocumentBundleService
 
     public function delete(DocumentBundle $documentBundle): void
     {
+        $this->inUseGuard->assertUnused($documentBundle);
+
         // HasAttachments::bootHasAttachments() cascades: every file under
         // this bundle (collection `documents`) is removed with it.
         $documentBundle->delete();

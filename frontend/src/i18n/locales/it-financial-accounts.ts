@@ -104,7 +104,6 @@ export const financialAccounts = {
     cardExpiryInvalid: 'Usa il formato MM/AAAA.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il conto. Riprova.',
-    deleteInUse: 'Questo conto ha carte collegate e non può essere eliminato.',
     sections: {
       details: {
         title: 'Dettagli',

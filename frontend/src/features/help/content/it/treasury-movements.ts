@@ -11,6 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'Il modulo si trova in **Contabilità › Finanziario › Movimenti di tesoreria**. Serve a registrare i **fatti di cassa e di banca che non passano da una fattura**: interessi, commissioni, versamenti dei soci, F24, stipendi, prelievi. Gli incassi e i pagamenti delle fatture restano sulle rispettive rate e compaiono da soli nell’**Estratto conto**.' },
         { type: 'note', text: 'Non è una contabilità in partita doppia: ogni movimento incide sul saldo del conto che scegli.' },
+        { type: 'paragraph', text: 'La colonna **Anagrafica** mostra il nome seguito dalla **partita IVA** (es. *Rossi Srl - 01234567890*); se l’anagrafica non ha la partita IVA compare il **codice fiscale**, se non ha nessuno dei due solo il nome.' },
       ],
     },
     {

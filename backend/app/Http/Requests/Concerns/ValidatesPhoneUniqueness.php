@@ -8,6 +8,7 @@ use App\Enums\ContactTypeEnum;
 use App\Support\ContactValueNormalizer;
 use App\Support\IdentityUniquenessScope;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -51,6 +52,18 @@ trait ValidatesPhoneUniqueness
     protected function phoneUniquenessContactsKey(): string
     {
         return 'personal_data.contacts';
+    }
+
+    /**
+     * The records whose cards may already hold a submitted number (see
+     * `IdentityUniquenessScope::phoneSharingOwners`). None by default: a new
+     * card is linked to nothing yet.
+     *
+     * @return array<class-string<Model>, array<int, int>>
+     */
+    protected function phoneSharingOwners(): array
+    {
+        return [];
     }
 
     /**
@@ -114,7 +127,10 @@ trait ValidatesPhoneUniqueness
     private function phoneValueTaken(string $normalized): bool
     {
         return IdentityUniquenessScope::phoneTaken(
-            IdentityUniquenessScope::cards($this->identityUniquenessOwner(), $this->identityUniquenessOwnerId()),
+            IdentityUniquenessScope::withoutOwners(
+                IdentityUniquenessScope::cards($this->identityUniquenessOwner(), $this->identityUniquenessOwnerId()),
+                $this->phoneSharingOwners(),
+            ),
             $normalized,
         );
     }

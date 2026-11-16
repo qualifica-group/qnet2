@@ -79,7 +79,6 @@ it('shows exactly the requested columns, in the requested order, and hides the r
 
     expect($columns->where('visible', true)->pluck('id')->all())->toBe([
         'product_categories',
-        'operator_ga2',
         'quote_workflow_status',
         'next_callback_at',
         'offer_lines',
@@ -94,9 +93,10 @@ it('shows exactly the requested columns, in the requested order, and hides the r
         'tax_code',
         'general_notes',
         'source',
+        // REQUIREMENT CHANGED (spec 0382 D-2/D-4): one column per position in
+        // use (here none, so up to the Operatore), grouped after "Fonte".
         'manager_ga1',
-        // REQUIREMENT CHANGED (spec 0373 D-10): "Operatore APL", beside the Tutor.
-        'manager_ga5',
+        'operator_ga2',
         // REQUIREMENT CHANGED (spec 0373 D-7): the whole team, as in Offerte.
         'managers',
     ])->and($columns->where('visible', false)->pluck('id')->all())->toBe([
@@ -121,7 +121,6 @@ it('gives every visible column its requested default width, and none to the hidd
 
     expect($columns->where('visible', true)->pluck('width', 'id')->all())->toBe([
         'product_categories' => 214,
-        'operator_ga2' => 201,
         'quote_workflow_status' => 212,
         'next_callback_at' => 198,
         'offer_lines' => 214,
@@ -134,8 +133,9 @@ it('gives every visible column its requested default width, and none to the hidd
         'tax_code' => 171,
         'general_notes' => 239,
         'source' => 127,
+        // REQUIREMENT CHANGED (spec 0382 D-4): positions grouped after "Fonte".
         'manager_ga1' => 177,
-        'manager_ga5' => 177,
+        'operator_ga2' => 201,
         'managers' => 140,
     ])->and($columns->where('visible', false)->pluck('width')->unique()->all())->toBe([null]);
 });

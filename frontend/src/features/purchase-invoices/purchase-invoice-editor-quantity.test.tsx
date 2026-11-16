@@ -56,7 +56,7 @@ const ORDER: InvoiceableOrder = { id: 7, code: 'ODA-7', order_date: '2026-10-01'
 const DRAFT: PurchaseInvoiceDraft = {
   defaults: {
     company: { id: 3, name: 'Qualifica Srl' },
-    supplier: { id: 8, name: 'Acme Supplies' },
+    supplier: { id: 8, name: 'Acme Supplies', label: 'Acme Supplies' },
     payment_method: { id: 2, name: 'Bonifico 30 gg' },
     company_site: null,
     operational_site: null,

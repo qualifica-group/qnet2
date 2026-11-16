@@ -5,18 +5,21 @@ namespace App\Services\ProductCategories;
 use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\Enums\CategoryManagementMode;
+use App\Enums\CategoryUsageArea;
 use App\Models\ProductCategory;
 
 /**
- * The write-side orchestration of the six ROOT-OWNED product-category
+ * The write-side orchestration of the eight ROOT-OWNED product-category
  * settings — `requires_quote`, `management_mode`,
  * `single_quote_per_opportunity` (user directive 2026-08-07),
- * `generates_contract` (spec 0091), `multi_quote_work_order` (spec 0267) and
- * `simplified_offer_line` (spec 0114, made overridable per node by spec 0188).
+ * `generates_contract` (spec 0091), `multi_quote_work_order` (spec 0267),
+ * `usage_area` (spec 0389), `multiple_open_opportunities` (user request
+ * 2026-11-11) and `simplified_offer_line` (spec 0114, made overridable per
+ * node by spec 0188).
  * Each has its own inheritance class holding the MECHANICS — a
- * RootOwnedCategorySetting subclass for the first five, the nearest-ancestor
+ * RootOwnedCategorySetting subclass for the first seven, the nearest-ancestor
  * SimplifiedOfferLineInheritance for the last; this class holds the three
- * things ProductCategoryService does with all six
+ * things ProductCategoryService does with all eight
  * at once, and which grew that file past its size limit (engineering.md §6):
  *
  *  - the no-override guard (only a root authors a value, a child may submit
@@ -27,8 +30,8 @@ use App\Models\ProductCategory;
  *  - the subtree resync after an update, triggered by a reparent (the branch
  *    root changed) or by an edit of the setting itself.
  *
- * The six defaults are deliberately NOT uniform: `generates_contract`
- * defaults to true and four others to their permissive/legacy value,
+ * The eight defaults are deliberately NOT uniform: `generates_contract`
+ * defaults to true and six others to their permissive/legacy value,
  * because that leaves an existing catalogue behaving exactly as it did
  * before the setting existed; `single_quote_per_opportunity` defaults to
  * true by user decision (2026-10-15): a new branch allows one offer per
@@ -42,16 +45,18 @@ final class RootOwnedSettingsWriter
         private readonly SingleQuotePerOpportunityInheritance $singleQuote,
         private readonly ContractGenerationInheritance $contractGeneration,
         private readonly MultiQuoteWorkOrderInheritance $multiQuoteWorkOrder,
+        private readonly CategoryUsageAreaInheritance $usageArea,
+        private readonly MultipleOpenOpportunitiesInheritance $multipleOpenOpportunities,
         private readonly SimplifiedOfferLineInheritance $simplifiedOfferLine,
     ) {}
 
     /**
-     * Rejects any of the six settings submitted on a CHILD with a value
+     * Rejects any of the eight settings submitted on a CHILD with a value
      * diverging from the one its branch root already imposes.
      */
     public function assertCreateNotOverridden(CreateProductCategoryData $data): void
     {
-        $this->assertNotOverridden($data->parentId, $data->requiresQuote, $data->managementMode, $data->singleQuotePerOpportunity, $data->generatesContract, $data->multiQuoteWorkOrder);
+        $this->assertNotOverridden($data->parentId, $data->requiresQuote, $data->managementMode, $data->singleQuotePerOpportunity, $data->generatesContract, $data->multiQuoteWorkOrder, $data->usageArea, $data->multipleOpenOpportunities);
         $this->assertSimplifiedOfferLine($data->parentId, $data->simplifiedOfferLine, $data->simplifiedOfferLineOverride, $data->simplifiedOfferLineOverride);
     }
 
@@ -70,6 +75,8 @@ final class RootOwnedSettingsWriter
             $data->singleQuotePerOpportunitySubmitted ? $data->singleQuotePerOpportunity : null,
             $data->generatesContractSubmitted ? $data->generatesContract : null,
             $data->multiQuoteWorkOrderSubmitted ? $data->multiQuoteWorkOrder : null,
+            $data->usageAreaSubmitted ? $data->usageArea : null,
+            $data->multipleOpenOpportunitiesSubmitted ? $data->multipleOpenOpportunities : null,
         );
 
         // A child that is only reparented keeps its own override (spec 0188 D-5).
@@ -82,8 +89,8 @@ final class RootOwnedSettingsWriter
     }
 
     /**
-     * The six columns (plus the simplified-offer-line override) as they must
-     * be written at CREATE time. A child never authors the five root-owned
+     * The eight columns (plus the simplified-offer-line override) as they must
+     * be written at CREATE time. A child never authors the seven root-owned
      * ones: it takes its root's value, whatever was (or was not) submitted.
      * The simplified offer-line rule is the exception (spec 0188): a child
      * may declare its own override, and its effective value is that override
@@ -105,6 +112,11 @@ final class RootOwnedSettingsWriter
             // Spec 0267: a fresh root with no submitted value is FALSE — a
             // work order spans a single quote until told otherwise.
             'multi_quote_work_order' => $this->multiQuoteWorkOrder->inheritedValueFor($data->parentId) ?? ($data->multiQuoteWorkOrder ?? false),
+            // Spec 0389: a fresh root with no submitted value is used everywhere.
+            'usage_area' => $this->usageArea->inheritedValueFor($data->parentId) ?? ($data->usageArea ?? CategoryUsageArea::All),
+            // User request 2026-11-11: a fresh root with no submitted value is
+            // FALSE — one open opportunity per anagrafica until told otherwise.
+            'multiple_open_opportunities' => $this->multipleOpenOpportunities->inheritedValueFor($data->parentId) ?? ($data->multipleOpenOpportunities ?? false),
             // Spec 0114: a fresh root with no submitted value is FALSE — the
             // pre-existing fully-manual offer line, until told otherwise.
             'simplified_offer_line' => $this->simplifiedOfferLineAtCreate($data),
@@ -143,6 +155,14 @@ final class RootOwnedSettingsWriter
             $this->multiQuoteWorkOrder->syncSubtree($category);
         }
 
+        if ($reparented || $data->usageAreaSubmitted) {
+            $this->usageArea->syncSubtree($category);
+        }
+
+        if ($reparented || $data->multipleOpenOpportunitiesSubmitted) {
+            $this->multipleOpenOpportunities->syncSubtree($category);
+        }
+
         if ($reparented || $data->simplifiedOfferLineSubmitted || $data->simplifiedOfferLineOverrideSubmitted) {
             $this->simplifiedOfferLine->syncSubtree($category);
         }
@@ -165,12 +185,14 @@ final class RootOwnedSettingsWriter
             'single_quote_per_opportunity_source_category' => $this->singleQuote->sourceCategoryFor($category),
             'generates_contract_source_category' => $this->contractGeneration->sourceCategoryFor($category),
             'multi_quote_work_order_source_category' => $this->multiQuoteWorkOrder->sourceCategoryFor($category),
+            'usage_area_source_category' => $this->usageArea->sourceCategoryFor($category),
+            'multiple_open_opportunities_source_category' => $this->multipleOpenOpportunities->sourceCategoryFor($category),
             'simplified_offer_line_source_category' => $this->simplifiedOfferLine->sourceCategoryFor($category),
         ];
     }
 
     /**
-     * Shared guard body for the five root-owned settings: a value submitted
+     * Shared guard body for the seven root-owned settings: a value submitted
      * under a parent that already imposes a different one is a 422. A null
      * argument means "not submitted", and is never checked.
      */
@@ -181,12 +203,16 @@ final class RootOwnedSettingsWriter
         ?bool $singleQuote,
         ?bool $generatesContract,
         ?bool $multiQuoteWorkOrder,
+        ?CategoryUsageArea $usageArea,
+        ?bool $multipleOpenOpportunities,
     ): void {
         $this->assertMatchesInherited($requiresQuote, $this->requiresQuote->inheritedValueFor($parentId), 'This category inherits the quote flag from its root category and cannot define its own.');
         $this->assertMatchesInherited($managementMode, $this->managementMode->inheritedValueFor($parentId), 'This category inherits the management mode from its root category and cannot define its own.');
         $this->assertMatchesInherited($singleQuote, $this->singleQuote->inheritedValueFor($parentId), 'This category inherits the single-quote rule from its root category and cannot define its own.');
         $this->assertMatchesInherited($generatesContract, $this->contractGeneration->inheritedValueFor($parentId), 'This category inherits the contract rule from its root category and cannot define its own.');
         $this->assertMatchesInherited($multiQuoteWorkOrder, $this->multiQuoteWorkOrder->inheritedValueFor($parentId), 'This category inherits the multi-quote work-order rule from its root category and cannot define its own.');
+        $this->assertMatchesInherited($usageArea, $this->usageArea->inheritedValueFor($parentId), 'This category inherits the modules it is used in from its root category and cannot define its own.');
+        $this->assertMatchesInherited($multipleOpenOpportunities, $this->multipleOpenOpportunities->inheritedValueFor($parentId), 'This category inherits the open-opportunities rule from its root category and cannot define its own.');
     }
 
     /**

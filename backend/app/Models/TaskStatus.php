@@ -33,42 +33,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * migration's phase assignment stays put.
  *
  * `sort_order` stays fillable: server-managed by
- * App\Services\Statuses\StatusOrderManager, never accepted at the
- * FormRequest layer (AC-045).
+ * App\Services\Lookups\LookupOrderManager, never accepted at the
+ * FormRequest layer (AC-045). EVERY row is freely reorderable, protected
+ * ones included (spec 0101 AC-047, rectified 2026-11-10): the order is
+ * display only (pickers, Kanban columns), what a row DOES is decided by
+ * `system_key` and `group`, never by its position.
  */
 #[Fillable(['name', 'description', 'color', 'icon', 'sort_order', 'is_active', 'completion_percentage', 'group'])]
 class TaskStatus extends BaseModel
 {
     /** @use HasFactory<TaskStatusFactory> */
     use HasFactory, LogsModelActivity;
-
-    /**
-     * The system rows pinned to the HEAD of the sort_order sequence
-     * (StatusOrderManager), in this declared order: the protected opening
-     * status, then the protected resume status (spec 0116 D-4) a Task lands
-     * on when reopened. Named by system_key, never by label — the label is
-     * admin-configurable and means nothing to this code (D-5). Every other
-     * row, protected or not, is placed between this head and the closing
-     * tail below.
-     *
-     * @var array<int, TaskStatusSystemKey>
-     */
-    public const array SYSTEM_HEAD_KEYS = [
-        TaskStatusSystemKey::Open,
-        TaskStatusSystemKey::InProgress,
-    ];
-
-    /**
-     * The system rows pinned to the TAIL, in the order they must appear: the
-     * two protected CLOSING rows. Pinned last so no ordinary row is ever
-     * ordered after them.
-     *
-     * @var array<int, TaskStatusSystemKey>
-     */
-    public const array SYSTEM_TAIL_KEYS = [
-        TaskStatusSystemKey::ClosedPositive,
-        TaskStatusSystemKey::ClosedNegative,
-    ];
 
     /**
      * @return array<string, string>

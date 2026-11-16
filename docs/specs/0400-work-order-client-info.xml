@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0400-work-order-client-info" status="approved" owner="nicola" date="2026-11-16">
+
+  <goal>
+    Il dettaglio commessa mostra in cima alla colonna sinistra della scheda Info la sezione "Info cliente" del vecchio QNet: Azienda, Sede legale, Tag, Email/PEC, Telefono, Referente 1, Referente 2, Commerciale, Settore, Commenti.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-16, dopo il dettaglio a schede: "sezione info cliente con azienda, sede legale dell'azienda, tag, email/pec, telefono, referente 1 referente 2, commerciale, settore, commenti". Fonte legacy: `manageorder.blade.php`, blocco "Info Cliente" della colonna sinistra.
+    D-2 Mappatura sui dati qnet-2 dell'anagrafica del cliente (`quote.opportunity.registry`): Azienda = `registries.name`; Sede legale = indirizzo con `site_type` legal_seat della scheda anagrafica (altrimenti il principale, altrimenti il primo) + P.IVA e codice fiscale; Tag = campo personalizzato `tags` delle anagrafiche (import `tag_ids`); Email/PEC e Telefono = contatti della scheda anagrafica di quei tipi, il principale prima; Referente 1 = referente principale (spec 0398: il Referente 1 del legacy diventa il principale); Referente 2 = il primo altro referente collegato, in ordine di collegamento (lo slot 2 del legacy non e' salvato); Commerciale = `registries.commercial_id`; Settore = settori dell'anagrafica; Commenti = note generali dell'anagrafica.
+    D-3 La sezione sostituisce, solo nel dettaglio commessa, "Anagrafica e contatti" dell'offerta (Anagrafica, Referente, Commerciale, Segnalatore): stessi dati a livello di anagrafica, come nel legacy. Il Segnalatore dell'offerta resta visibile su offerta e contratto.
+    D-4 Dati personali (indirizzo, P.IVA, codice fiscale, valori dei contatti) solo a chi puo' vedere quell'anagrafica / quel referente, come i recapiti del task 428287; Tag, Settore, Commerciale, nomi dei referenti e Commenti sempre.
+    D-6 Richiesta utente 2026-11-16 (stesso giro): "in basso dati contrattuali commessa: titolo, righe dei prodotti con lo stato pagato o meno, poi totale consulenza, totale ente, totale ricavi; tutto quello che sta in basso va a sinistra". La sezione Dati contrattuali (spec 0201) passa in fondo alla colonna sinistra della scheda Info, titolo "Dati contrattuali commessa"; prima le righe (in colonna stretta ogni riga e' una scheda: la tabella passa a container query `@6xl`), poi i totali in righe: "Totale {tipologia}" (imponibile, con il ricavo accanto se diverso), Commissioni e Netto commissioni se visibili, "Totale Ricavi". Tolti il totale Imponibile e la striscia "Ricavo per tipologia". Solo frontend, contratto API invariato.
+    D-7 Richieste utente 2026-11-16 (stesso giro), solo frontend: tolti dal dettaglio commessa Buoni, Documento e pagamento, Contesto (Fonte) e Modello di Task; Linee prodotto dentro "Dati contrattuali commessa" (mostrate anche senza `view_costs`: non sono importi); "Stato lavorazione" sezione propria dopo i Dati contrattuali, poi Team. Colonna destra come il legacy: "Riferimenti Società e Funzioni Aziendali" (Società, Sede, Sede operativa: le funzioni aziendali non esistono sull'offerta di qnet-2), "Data richiamo", "Descrizione commessa" (Commessa n., Tipo commessa, Descrizione), poi Informazioni aggiuntive. Il backend continua a inviare `rewards`, `layout`, `payment_method`, `referent`, `commercial`, `reporter`, `source` (API, possibili client esterni), non piu' letti dal dettaglio.
+    D-5 Dati legacy: i "Commenti" dell'azienda (`companies.note`, 245 aziende valorizzate sul DB locale) non sono migrati oggi: le note generali sono valorizzate su 2 anagrafiche. Fuori scope qui: correzione del controller legacy (backend.md §9) da fare a parte.
+  </context>
+
+  <scope>
+    <in>
+      <item>`WorkOrderResource`: nuova chiave `client_info` (concern `SummarizesWorkOrderClientInfo`), eager loading in `WorkOrderService::DETAIL_RELATIONS`.</item>
+      <item>Frontend: `WorkOrderClientInfoSection` in cima alla colonna sinistra della scheda Info; tipo `WorkOrderClientInfo`; i18n IT/EN.</item>
+      <item>Guida in-app `work-orders` IT/EN e Manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Migrazione dei Commenti legacy (D-5).</item>
+      <item>Modifica dei dati del cliente dalla commessa: tutto in sola lettura, si modifica sull'anagrafica.</item>
+      <item>"Comunicazioni Email Commerciale" del legacy: non richiesto.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/work-orders/{id}">
+      <response status="200">
+        Chiave AGGIUNTA `data.client_info`: null senza un cliente di una singola offerta (commessa multi-offerta), altrimenti {
+          legal_address: ?string, vat_number: ?string, tax_code: ?string,
+          tags: list&lt;string&gt; (ordinati per nome),
+          emails: list&lt;PrimaryContact&gt; (email poi PEC, il principale prima),
+          phones: list&lt;PrimaryContact&gt; (il principale prima),
+          referents: list (0..2) di { id, name, referent_type: ?{id,name}, primary_contacts: list&lt;PrimaryContact&gt; },
+          commercial: ?{ id, name, referent_type },
+          sectors: list&lt;string&gt; (etichetta "codice — nome"),
+          comments: ?string
+        }. Senza permesso di vedere l'anagrafica: legal_address/vat_number/tax_code null, emails/phones []. Senza permesso di vedere un referente: i suoi primary_contacts [].
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un cliente con sede legale, P.IVA, codice fiscale, tag, email, PEC, telefoni, settore e note generali, quando apro la commessa, allora `client_info` li riporta tutti, la sede legale preferita all'indirizzo principale. Test: `WorkOrderClientInfoTest`.</criterion>
+    <criterion id="AC-002">Dato un cliente con tre referenti collegati e un principale che non e' il primo collegato, allora Referente 1 e' il principale e Referente 2 il primo altro collegato, ciascuno con i suoi recapiti principali.</criterion>
+    <criterion id="AC-003">Dato un utente senza `registries.view` / `referents.view`, allora indirizzo, P.IVA, codice fiscale e recapiti sono vuoti; tag, nomi e commenti restano.</criterion>
+    <criterion id="AC-004">Data una commessa multi-offerta, allora `client_info` e' null e la sezione non compare.</criterion>
+    <criterion id="AC-005">Nella scheda Info la sezione "Info cliente" e' la prima della colonna sinistra, con le righe Azienda, Sede legale, Tag, Email/PEC, Telefono, Referente 1, Referente 2, Commerciale, Settore, Commenti; email e telefoni cliccabili; righe vuote con il segno di vuoto. Test: `work-order-client-info-section.test.tsx`, `work-order-detail-layout.test.tsx`.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Sola lettura; nessuna migrazione di schema, nessuna nuova dipendenza.</item>
+    <item>Nessuna N+1: tutto dall'eager loading del dettaglio, i nomi dei tag in una query.</item>
+  </constraints>
+
+</spec>

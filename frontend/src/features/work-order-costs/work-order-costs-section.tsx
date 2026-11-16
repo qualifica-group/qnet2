@@ -14,8 +14,8 @@ interface WorkOrderCostsSectionProps {
 }
 
 /**
- * "Costi" tab of the work order detail (spec 0190 D-9), hosted by
- * `WorkOrderDetailWorkTabs`: budget vs actual comparison and the real-cost
+ * "Costi" sub-tab of the work order detail's Amministrazione tab (spec 0190 D-9), hosted by
+ * `WorkOrderDetailTabs`: budget vs actual comparison and the real-cost
  * grid. The caller mounts it only with `view_costs`, so the costs query never
  * fires for an actor who may not see it.
  */

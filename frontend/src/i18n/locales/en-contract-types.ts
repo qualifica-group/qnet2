@@ -33,7 +33,6 @@ export const contractTypes = {
     sortOrderInvalid: 'The order must be an integer greater than or equal to 0.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the contract type. Please try again.',
-    deleteInUse: 'Cannot delete: the type is used by at least one contract condition. Deactivate it instead.',
     sections: {
       identity: {
         title: 'Details',

@@ -74,7 +74,7 @@ function PurchaseInvoiceDetailBody({
                   })
                 : t('purchaseInvoiceViews.detail.titleProforma')
             }
-            subtitle={invoice.supplier.name}
+            subtitle={invoice.supplier.label}
             actions={<PurchaseInvoiceHeaderActions invoice={invoice} onDelete={onDelete} />}
             badges={
               <>

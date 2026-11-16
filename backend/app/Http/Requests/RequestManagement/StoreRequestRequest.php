@@ -7,6 +7,7 @@ namespace App\Http\Requests\RequestManagement;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\RequestManagement\CreateRequestData;
 use App\DataObjects\Users\ProfileData;
+use App\Enums\CategoryUsageArea;
 use App\Http\Requests\Concerns\ValidatesClientIdentityUniqueness;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
@@ -147,7 +148,7 @@ class StoreRequestRequest extends FormRequest
             // `request-management.assignOperator` (controller, see above).
             $this->managerSlotsRules(),
             $this->clientProfileRules(),
-            $this->productLinesRules(required: true),
+            $this->productLinesRules(required: true, area: CategoryUsageArea::Requests),
             // Spec 0059: reward assignments for the reporter. Same shape/rules
             // as the opportunities create payload; the D-3 "rewards need a
             // reporter" invariant runs in withValidator() against THIS request.

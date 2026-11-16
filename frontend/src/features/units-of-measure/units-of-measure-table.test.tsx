@@ -182,7 +182,8 @@ describe('UnitsOfMeasureTable — delete (D-7: 409 "in use" guard)', () => {
     )
   })
 
-  it('shows a distinct "in use" toast on a 409 (D-7: used by a product or a quote line)', async () => {
+  // REQUIREMENT CHANGED (spec 0384): the 409 toast is the server message, not a fixed sentence.
+  it('shows the server message on a 409 (D-7: used by a product or a quote line)', async () => {
     deleteUnitOfMeasureMock.mockRejectedValue(
       new AxiosError('Conflict', '409', undefined, undefined, {
         status: 409,
@@ -194,9 +195,7 @@ describe('UnitsOfMeasureTable — delete (D-7: 409 "in use" guard)', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith(
-        'Cannot delete: the unit of measure is used by a product or a quote line.',
-      ),
+      expect(toastErrorMock).toHaveBeenCalledWith('This unit of measure is used by a product and cannot be deleted.'),
     )
   })
 

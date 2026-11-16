@@ -36,9 +36,10 @@ use RuntimeException;
  * the series constraints (LegacyTaskRecurrenceWriter), HTML sanitization and
  * the title cap. A person, or the commessa, not migrated fails the row.
  *
- * A task already imported is never rewritten, with one exception (spec 0323
- * D-12): a re-run fills its working status snapshot when it is still empty,
- * `created` when filled, `skipped` otherwise. It never moves the commessa.
+ * A task already imported is never rewritten, with two exceptions filled on
+ * a re-run when still empty: its working status snapshot (spec 0323 D-12)
+ * and its "generated from a Modello di Task" flag (spec 0388 D-4); `created`
+ * when something is filled, `skipped` otherwise. It never moves the commessa.
  */
 class TasksSource extends AbstractMigrationSource
 {
@@ -131,37 +132,54 @@ class TasksSource extends AbstractMigrationSource
             throw new RuntimeException('External id is required.');
         }
 
-        $existing = Task::query()->where('old_id', $externalId)->first(['id', 'work_order_workflow_status_id']);
+        $existing = Task::query()->where('old_id', $externalId)->first(['id', 'work_order_workflow_status_id', 'is_template_generated']);
 
         if ($existing !== null) {
-            return $this->backfillWorkOrderStatus($existing, $record);
+            return $this->fillEmptySnapshots($existing, $record);
         }
 
         return activity()->withoutLogs(fn (): MigrationRowOutcome => $this->importRecord($externalId, $record));
     }
 
     /**
-     * Spec 0323 D-12: a plain query update (no activity log, no event), and
-     * no model on the outcome so the re-run never rewrites custom fields.
+     * Spec 0323 D-12 / spec 0388 D-4: a plain query update (no activity log,
+     * no event), and no model on the outcome so the re-run never rewrites
+     * custom fields.
      *
      * @param  array<string, mixed>  $record
      */
-    private function backfillWorkOrderStatus(Task $task, array $record): MigrationRowOutcome
+    private function fillEmptySnapshots(Task $task, array $record): MigrationRowOutcome
     {
-        if ($task->work_order_workflow_status_id !== null) {
-            return MigrationRowOutcome::skipped();
+        $warnings = [];
+        $values = [];
+
+        if ($task->work_order_workflow_status_id === null) {
+            $statusId = $this->statusLink->resolve($record['work_order_workflow_status_old_id'] ?? null, $warnings);
+
+            if ($statusId !== null) {
+                $values['work_order_workflow_status_id'] = $statusId;
+            }
         }
 
-        $warnings = [];
-        $statusId = $this->statusLink->resolve($record['work_order_workflow_status_old_id'] ?? null, $warnings);
+        if (! $task->is_template_generated && $this->isTemplateGenerated($record)) {
+            $values['is_template_generated'] = true;
+        }
 
-        if ($statusId === null) {
+        if ($values === []) {
             return MigrationRowOutcome::skipped($warnings);
         }
 
-        Task::query()->whereKey($task->id)->update(['work_order_workflow_status_id' => $statusId]);
+        Task::query()->whereKey($task->id)->update($values);
 
         return MigrationRowOutcome::created($warnings);
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     */
+    private function isTemplateGenerated(array $record): bool
+    {
+        return (bool) ($record['is_template_generated'] ?? false);
     }
 
     /**
@@ -211,7 +229,10 @@ class TasksSource extends AbstractMigrationSource
         $task->subtask_position = (int) ($record['subtask_position'] ?? 0);
         $task->stage_position = (int) ($record['stage_position'] ?? 0);
         // Snapshot only (spec 0323, D-10): the import never moves the work order or its progress.
-        $task->forceFill(['work_order_workflow_status_id' => $this->statusLink->resolve($record['work_order_workflow_status_old_id'] ?? null, $warnings)]);
+        $task->forceFill([
+            'work_order_workflow_status_id' => $this->statusLink->resolve($record['work_order_workflow_status_old_id'] ?? null, $warnings),
+            'is_template_generated' => $this->isTemplateGenerated($record),
+        ]);
         $task->save();
 
         $task->assignees()->sync($assigneeIds);

@@ -49,8 +49,10 @@ it('AC-012: every editable column has its resource registered in config/authoriz
 
         foreach ($editableColumns as $column) {
             // Spec 0054, D-1: a relation column's permission key is
-            // `editableField`, not the display column id.
-            $fieldKey = $column['editableField'] ?? $column['id'];
+            // `editableField`, not the display column id. REQUIREMENT
+            // CHANGED (spec 0382 D-6): `permissionField`, when declared,
+            // is the permission key instead.
+            $fieldKey = $column['permissionField'] ?? $column['editableField'] ?? $column['id'];
 
             if (! in_array($fieldKey, $fieldKeys, true)) {
                 $divergences[] = "{$domain}.{$column['id']}: no matching field key `{$fieldKey}` in `{$resource}`'s authorization catalogue";

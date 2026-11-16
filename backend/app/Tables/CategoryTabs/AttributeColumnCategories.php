@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Tables\CategoryTabs;
 
 use App\Models\ProductCategory;
-use App\Services\ProductCategories\ProductCategoryForSelectResolver;
 use App\Tables\Shared\LinkedCategoryGroups;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\PresetListFilters;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * The categories whose flexible fields a grid shows as `attr.<code>` columns,
  * deduced from the advanced filter values (spec 0374, D-1, D-9, D-10).
  *
- * The selection is `product_category`, else `parent_category`. In the parent
+ * The selection is `product_category`, else the effective roots of
+ * `parent_category` (PresetListFilters::effectiveRootIds(): an empty value is
+ * every root of an actor limited in that module, user directives 2026-11-12
+ * and 2026-11-16). In the parent
  * category a root stands for its whole group (D-12). In the product category one
  * category is taken as is; several only when they all belong to the same linked group: a
  * current root plus the legacy roots pointing at it (`current_category_id`),
@@ -21,28 +25,33 @@ use App\Tables\Shared\PresetListFilters;
  */
 final class AttributeColumnCategories
 {
-    public function __construct(private readonly LinkedCategoryGroups $groups) {}
+    public function __construct(
+        private readonly LinkedCategoryGroups $groups,
+        private readonly PresetListFilters $presets,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $values  advanced filter values by name
+     * @param  ParentCategoryListModule|null  $module  the module of the grid's parent category filter, null when it has none
      * @return array<int, int> the current category first, then the legacy ones by id; [] = no column
      */
-    public function fromFilters(array $values): array
+    public function fromFilters(array $values, ?ParentCategoryListModule $module): array
     {
-        $products = PresetListFilters::ids($values[PresetListFilters::PRODUCT_CATEGORY] ?? null);
-        $selection = $products !== [] ? $products : PresetListFilters::ids($values[PresetListFilters::PARENT_CATEGORY] ?? null);
-        $selection = array_values(array_unique($selection));
-        sort($selection);
+        $products = array_values(array_unique(PresetListFilters::ids($values[PresetListFilters::PRODUCT_CATEGORY] ?? null)));
+        sort($products);
 
-        if ($selection === [] || in_array(ProductCategoryForSelectResolver::ALL_ROOTS_ID, $selection, true)) {
+        if ($products !== []) {
+            return count($products) === 1 ? $products : $this->linkedGroup($products);
+        }
+
+        // A request without the parent category (a grid inside a record) shows no column.
+        if ($module === null || ! array_key_exists(PresetListFilters::PARENT_CATEGORY, $values)) {
             return [];
         }
 
-        if ($products === []) {
-            return $this->parentGroup($selection);
-        }
+        $roots = $this->presets->effectiveRootIds($values[PresetListFilters::PARENT_CATEGORY], Auth::user(), $module);
 
-        return count($selection) === 1 ? $selection : $this->linkedGroup($selection);
+        return $roots === null ? [] : $this->parentGroup($roots);
     }
 
     /**

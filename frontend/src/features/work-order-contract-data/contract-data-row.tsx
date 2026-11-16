@@ -13,12 +13,14 @@ import {
 import type { ContractDataLine } from '@/features/work-order-contract-data/types'
 
 /**
- * Below `md` each row is a card (grid of label/value pairs, the labels drawn
- * from `data-label`); from `md` it is a plain single-height table row.
+ * In a container narrower than `@6xl` each row is a card (grid of label/value
+ * pairs, the labels drawn from `data-label`); from `@6xl` it is a plain
+ * single-height table row. The breakpoint is the table's own container (its
+ * scroll wrapper), not the viewport: the table sits in a half-width column.
  */
-const CELL = 'px-2 py-1.5 md:table-cell md:align-middle'
-const NUMERIC_CELL = `${CELL} flex items-baseline justify-between gap-2 tabular-nums md:w-px md:text-right md:whitespace-nowrap`
-const LABEL = 'before:text-[11px] before:text-muted-foreground before:content-[attr(data-label)] md:before:content-none'
+const CELL = 'px-2 py-1.5 @6xl:table-cell @6xl:align-middle'
+const NUMERIC_CELL = `${CELL} flex items-baseline justify-between gap-2 tabular-nums @6xl:w-px @6xl:text-right @6xl:whitespace-nowrap`
+const LABEL = 'before:text-[11px] before:text-muted-foreground before:content-[attr(data-label)] @6xl:before:content-none'
 
 interface ContractDataRowProps {
   line: ContractDataLine
@@ -46,9 +48,9 @@ export function ContractDataRow({
   const label = (key: string) => t(`workOrders.contractData.columns.${key}`)
 
   return (
-    <tr className="relative grid grid-cols-2 gap-x-3 border-t first:border-t-0 md:table-row">
+    <tr className="relative grid grid-cols-2 gap-x-3 border-t first:border-t-0 @6xl:table-row">
       {canManage ? (
-        <td className="absolute top-1.5 left-2 md:static md:table-cell md:w-px md:px-2 md:py-1.5 md:align-middle">
+        <td className="absolute top-1.5 left-2 @6xl:static @6xl:table-cell @6xl:w-px @6xl:px-2 @6xl:py-1.5 @6xl:align-middle">
           <Checkbox
             checked={isSelected}
             onCheckedChange={onToggleSelection}
@@ -59,7 +61,7 @@ export function ContractDataRow({
       ) : null}
       <th
         scope="row"
-        className={`${CELL} col-span-2 pr-10 text-left font-normal md:w-full md:min-w-[20rem] md:max-w-0 md:pr-2 ${canManage ? 'pl-8 md:pl-2' : ''}`}
+        className={`${CELL} col-span-2 pr-10 text-left font-normal @6xl:w-full @6xl:min-w-[20rem] @6xl:max-w-0 @6xl:pr-2 ${canManage ? 'pl-8 @6xl:pl-2' : ''}`}
       >
         <ProductCell line={line} showRegistry={showRegistry} />
       </th>
@@ -85,11 +87,11 @@ export function ContractDataRow({
       <td data-label={label('effectiveRevenue')} className={`${NUMERIC_CELL} ${LABEL} font-medium`}>
         <Amount value={line.effective_revenue} hint={revenueHint(line, commissionsVisible, t)} />
       </td>
-      <td data-label={label('payment')} className={`${CELL} col-span-2 flex items-center justify-between gap-2 md:min-w-[16rem] md:whitespace-nowrap ${LABEL}`}>
+      <td data-label={label('payment')} className={`${CELL} col-span-2 flex items-center justify-between gap-2 @6xl:min-w-[16rem] @6xl:whitespace-nowrap ${LABEL}`}>
         <PaymentCell line={line} />
       </td>
       {canManage ? (
-        <td className="absolute top-1.5 right-2 md:sticky md:right-0 md:z-10 md:table-cell md:bg-surface md:px-2 md:py-1.5 md:text-right md:align-middle md:shadow-[-6px_0_6px_-6px_rgb(0_0_0/0.25)]">
+        <td className="absolute top-1.5 right-2 @6xl:sticky @6xl:right-0 @6xl:z-10 @6xl:table-cell @6xl:bg-surface @6xl:px-2 @6xl:py-1.5 @6xl:text-right @6xl:align-middle @6xl:shadow-[-6px_0_6px_-6px_rgb(0_0_0/0.25)]">
           <Button
             type="button"
             variant="outline"

@@ -239,6 +239,8 @@ export interface AssignRequestOperatorsPayload {
    * the dialog, restricting that Sede's pool to those ids.
    */
   operators_by_site?: BalancedOperatorsBySiteEntry[]
+  /** Spec 0168 D-4: `false` splits by headcount, ignoring the current load; absent = weigh it. */
+  use_current_load?: false
 }
 
 /**

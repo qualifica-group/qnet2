@@ -11,7 +11,7 @@ export const purchaseRequests = {
   forbidden: 'You do not have permission to view purchase requests.',
   newRequest: 'New RDA',
   columns: {
-    id: 'ID',
+    id: 'RDA no.',
     subject: 'Subject',
     requested_at: 'Request date',
     priority: 'Priority',

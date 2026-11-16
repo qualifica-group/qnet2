@@ -88,7 +88,7 @@ const guide: HelpGuide = {
             'entering Closed (won) generates the contract, unless the category has **Generates a contract** turned off;',
             'if the quote leaves Closed (won), the contract moves to **Suspended** (it is not deleted);',
             "if the quote's data changes, QNet recalculates the workflow: the status stays if it also exists in the new one, otherwise it becomes the equivalent fixed status or **Open**;",
-            'a status used by at least one quote cannot be deleted, nor can the workflow that holds it: move the quotes to another status first.',
+            'a status used by at least one quote cannot be deleted, nor can the workflow that holds it: move the quotes to another status first. The error message lists the quote codes (up to 10 per status, then how many more).',
           ],
         },
         {

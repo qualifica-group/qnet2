@@ -28,6 +28,7 @@ import { purchaseOrders } from './it-purchase-orders'
 import { purchaseOrderForm } from './it-purchase-order-form'
 import { purchaseOrderActions } from './it-purchase-order-actions'
 import { sources } from './it-sources'
+import { recordMerge } from './it-record-merge'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
 import { chartOfAccounts } from './it-chart-of-accounts'
@@ -46,6 +47,7 @@ import { quoteWorkflows } from './it-quote-workflows'
 import { workOrderWorkflows } from './it-work-order-workflows'
 import { workflowStatuses } from './it-workflow-statuses'
 import { quotes } from './it-quotes'
+import { quotesWithOpportunity } from './it-quotes-with-opportunity'
 import { contractStatuses } from './it-contract-statuses'
 import { contracts } from './it-contracts'
 import { workOrders } from './it-work-orders'
@@ -74,6 +76,7 @@ import { dashboard } from './it-dashboard'
 import { agentSalesReport } from './it-agent-sales-report'
 import { requestManagement } from './it-request-management'
 import { categoryTabs } from './it-category-tabs'
+import { requestStatisticsColumns } from './it-request-statistics-columns'
 import { enrolleeManagement } from './it-enrollee-management'
 import { fieldChangeRequests } from './it-field-change-requests'
 import { notes } from './it-notes'
@@ -399,6 +402,7 @@ export const it: TranslationResources = {
   identityDuplicates,
   referents: { ...referents, stats: moduleStats.referents },
   referentTypes,
+  recordMerge,
   registries: { ...registries, stats: moduleStats.registries },
   attributes,
   customFields,
@@ -433,7 +437,7 @@ export const it: TranslationResources = {
   quoteWorkflows,
   workOrderWorkflows,
   workflowStatuses,
-  quotes: { ...quotes, stats: moduleStats.quotes },
+  quotes: { ...quotes, withOpportunity: quotesWithOpportunity, stats: moduleStats.quotes },
   contractStatuses,
   contracts,
   workOrders,
@@ -454,6 +458,7 @@ export const it: TranslationResources = {
   agentSalesReport,
   requestManagement,
   categoryTabs,
+  requestStatisticsColumns,
   enrolleeManagement,
   // Messaggi di validazione condivisi della mappa dinamica `attribute_values`
   // (spec 0084): namespace neutro riusato da ogni contesto che la raccoglie

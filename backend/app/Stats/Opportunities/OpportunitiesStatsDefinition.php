@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Stats\Opportunities;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Opportunities\OpportunityVisibilityScope;
+use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
 use App\Stats\Widgets\DistributionChart;
@@ -140,6 +142,7 @@ class OpportunitiesStatsDefinition extends AbstractStatsDefinition
      */
     private function visible(): Builder
     {
-        return OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user());
+        // Spec 0389 rev.2: the same rows as the grid.
+        return UsageAreaRowFilter::apply(OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user()), 'opportunities.id', CategoryUsageArea::Opportunities);
     }
 }

@@ -9,6 +9,8 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { ProformaSummary } from '@/features/proforma-requests/types'
 import { PROFORMA_ACTION_ICONS, useProformaActionState } from '@/features/work-orders/proforma-row-action'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
+import { WorkOrderDetailHeader } from '@/features/work-orders/work-order-detail-header'
+import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 const fetchSummaryMock = vi.fn<(id: number) => Promise<ProformaSummary>>()
 const createRequestsMock = vi.fn()
@@ -122,5 +124,55 @@ describe('work order "€" row action (spec 0193 AC-007)', () => {
     expect(screen.getByText('Not specified')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /send request/i })).toBeDisabled()
     expect(createRequestsMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('work order detail "Request proforma" action (ticket #427857)', () => {
+  function renderHeader(requestProforma: boolean, onChanged = vi.fn()) {
+    const workOrder = {
+      id: 7,
+      code: 'C-2026-007',
+      title: 'Commessa',
+      old_id: null,
+      type: 'processing',
+      is_multi_quote: false,
+      is_force_closed: false,
+      status: { value: 'in_progress', is_force_closed: false },
+      permissions: { resource: { update: true }, fields: {}, actions: { request_proforma: requestProforma } },
+    } as unknown as WorkOrderDetailWithPermissions
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <ConfirmDialogProvider>
+          <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} />
+        </ConfirmDialogProvider>
+      </QueryClientProvider>,
+    )
+    return onChanged
+  }
+
+  it('opens the same proforma dialog as the grid and refreshes the record once sent', async () => {
+    fetchSummaryMock.mockResolvedValue(summary())
+    createRequestsMock.mockResolvedValue([])
+    const onChanged = renderHeader(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Request proforma' }))
+
+    expect(await screen.findByRole('heading', { name: /Work order #C-2026-007/ })).toBeInTheDocument()
+    fireEvent.change(await screen.findByRole('textbox', { name: /notes for accounting/i }), {
+      target: { value: 'Please issue' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /send request/i }))
+
+    await waitFor(() => expect(createRequestsMock).toHaveBeenCalledWith(7, { note: 'Please issue' }))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+    expect(screen.queryByRole('heading', { name: /Work order #C-2026-007/ })).not.toBeInTheDocument()
+  })
+
+  it('is absent without the request_proforma flag', () => {
+    renderHeader(false)
+
+    expect(screen.queryByRole('button', { name: 'Request proforma' })).not.toBeInTheDocument()
+    expect(fetchSummaryMock).not.toHaveBeenCalled()
   })
 })

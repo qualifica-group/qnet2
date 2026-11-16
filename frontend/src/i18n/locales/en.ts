@@ -33,6 +33,7 @@ import { purchaseOrders } from './en-purchase-orders'
 import { purchaseOrderForm } from './en-purchase-order-form'
 import { purchaseOrderActions } from './en-purchase-order-actions'
 import { sources } from './en-sources'
+import { recordMerge } from './en-record-merge'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
 import { chartOfAccounts } from './en-chart-of-accounts'
@@ -51,6 +52,7 @@ import { quoteWorkflows } from './en-quote-workflows'
 import { workOrderWorkflows } from './en-work-order-workflows'
 import { workflowStatuses } from './en-workflow-statuses'
 import { quotes } from './en-quotes'
+import { quotesWithOpportunity } from './en-quotes-with-opportunity'
 import { contractStatuses } from './en-contract-statuses'
 import { contracts } from './en-contracts'
 import { workOrders } from './en-work-orders'
@@ -82,6 +84,7 @@ import { settings } from './en-settings'
 import { agentSalesReport } from './en-agent-sales-report'
 import { requestManagement } from './en-request-management'
 import { categoryTabs } from './en-category-tabs'
+import { requestStatisticsColumns } from './en-request-statistics-columns'
 import { enrolleeManagement } from './en-enrollee-management'
 import { notes } from './en-notes'
 import { richText } from './en-rich-text'
@@ -413,6 +416,7 @@ export const en = {
   identityDuplicates,
   referents: { ...referents, stats: moduleStats.referents },
   referentTypes,
+  recordMerge,
   registries: { ...registries, stats: moduleStats.registries },
   attributes,
   customFields,
@@ -447,7 +451,7 @@ export const en = {
   quoteWorkflows,
   workOrderWorkflows,
   workflowStatuses,
-  quotes: { ...quotes, stats: moduleStats.quotes },
+  quotes: { ...quotes, withOpportunity: quotesWithOpportunity, stats: moduleStats.quotes },
   contractStatuses,
   contracts,
   workOrders,
@@ -468,6 +472,7 @@ export const en = {
   agentSalesReport,
   requestManagement,
   categoryTabs,
+  requestStatisticsColumns,
   enrolleeManagement,
   // Shared validation messages of the `attribute_values` dynamic map (spec
   // 0084): a neutral namespace reused by every context that collects it

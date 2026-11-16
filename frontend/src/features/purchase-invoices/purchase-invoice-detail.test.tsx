@@ -78,6 +78,12 @@ describe('PurchaseInvoiceDetailView (spec 0250 AC-013)', () => {
     expect(screen.getByRole('region', { name: 'Attachments' })).toHaveTextContent('purchase_invoice/31/upload:true')
   })
 
+  it('shows the supplier with its VAT number in the header and in the record', async () => {
+    renderDetail(makePurchaseInvoiceView())
+
+    expect(await screen.findAllByText('Acme Supplies - 01234567890')).toHaveLength(2)
+  })
+
   it('titles a proforma without number and a registered invoice with the supplier number', async () => {
     const { unmount } = renderDetail(makePurchaseInvoiceView())
     expect(await screen.findByRole('heading', { name: 'Passive proforma' })).toBeInTheDocument()

@@ -181,7 +181,6 @@ export function QuoteLineCard({
               <Input
                 type="number"
                 step="0.01"
-                min={0}
                 aria-label={t('quotes.form.lineUnitPrice', { n: position })}
                 aria-invalid={!!error?.unit_price}
                 aria-describedby={error?.unit_price ? unitPriceErrorId : priceLocked ? commissionNoteId : undefined}

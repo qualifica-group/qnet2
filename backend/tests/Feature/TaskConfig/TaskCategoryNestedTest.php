@@ -162,7 +162,8 @@ it('DELETE: a category with children is 409, naming the resource, and neither ro
     $this->deleteJson("/api/task-categories/{$parent->id}")
         ->assertStatus(409)
         ->assertJsonPath('success', false)
-        ->assertJsonPath('message', 'This task category has child categories and cannot be deleted.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 sub-item']));
 
     $this->assertDatabaseHas('task_categories', ['id' => $parent->id]);
     $this->assertDatabaseHas('task_categories', ['id' => $child->id]);
@@ -186,7 +187,8 @@ it('DELETE: a category still used by a Task is 409 even without children', funct
 
     $this->deleteJson("/api/task-categories/{$category->id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', 'This task category is used by a task and cannot be deleted.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 task']));
 
     $this->assertDatabaseHas('task_categories', ['id' => $category->id]);
     $this->assertDatabaseHas('tasks', ['id' => $task->id]);

@@ -135,16 +135,27 @@ it('update: 404 for a non-existent type', function () {
 // delete — DELETE /api/referent-types/{referentType} (AC-005)
 // ---------------------------------------------------------------------------
 
-it('delete: 204, removes the type and nulls out referents pointing at it', function () {
+it('delete: 204 removes an unused type', function () {
     $actor = referentTypeUserWith(['delete']);
     $target = ReferentType::factory()->create();
-    $referent = Referent::factory()->create(['referent_type_id' => $target->id]);
     Sanctum::actingAs($actor);
 
     $this->deleteJson("/api/referent-types/{$target->id}")->assertNoContent();
 
     $this->assertDatabaseMissing('referent_types', ['id' => $target->id]);
-    expect($referent->fresh()->referent_type_id)->toBeNull();
+});
+
+// REQUIREMENT CHANGED (spec 0384): a type used by a referent is no longer deleted with the link nulled: it is refused (409).
+it('delete: 409 when a referent uses the type, the link stays', function () {
+    $actor = referentTypeUserWith(['delete']);
+    $target = ReferentType::factory()->create();
+    $referent = Referent::factory()->create(['referent_type_id' => $target->id]);
+    Sanctum::actingAs($actor);
+
+    $this->deleteJson("/api/referent-types/{$target->id}")->assertStatus(409)->assertJsonPath('success', false);
+
+    $this->assertDatabaseHas('referent_types', ['id' => $target->id]);
+    expect($referent->fresh()->referent_type_id)->toBe($target->id);
 });
 
 it('delete: 403 without referent-types.delete', function () {

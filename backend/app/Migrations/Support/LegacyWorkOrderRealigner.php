@@ -29,7 +29,7 @@ final class LegacyWorkOrderRealigner
     ) {}
 
     /**
-     * @param  array{title: string, start_date: string, callback_date: ?string, description: ?string, internal_notes: ?string, force_close_reason: ?string, supervisor_ids: array<int, int>, participant_slots: array<int, int|null>}  $values  the mapped legacy values
+     * @param  array{title: string, start_date: string, callback_date: ?string, description: ?string, internal_notes: ?string, force_close_reason: ?string, supervisor_ids: array<int, int>, participant_slots: array<int, int|null>, work_phase_attributes: array<string, string|null>}  $values  the mapped legacy values
      * @param  array<string, mixed>  $record  the legacy commessa
      * @param  array<int, string>  $warnings
      * @return bool true only when something was written
@@ -59,7 +59,7 @@ final class LegacyWorkOrderRealigner
      * The title follows the creation rule (WorkOrderTitleWriter::write): the
      * legacy title equal to the automatic one stays automatic, any other is
      * manual; a closed-less commessa keeps `force_close_reason` null (the
-     * invariant of WorkOrderService).
+     * invariant of WorkOrderService); the working phase is the legacy one (spec 0395).
      *
      * @param  array<string, mixed>  $values
      * @return array<string, mixed>
@@ -78,6 +78,7 @@ final class LegacyWorkOrderRealigner
             'internal_notes' => $values['internal_notes'],
             'is_force_closed' => $values['force_close_reason'] !== null,
             'force_close_reason' => $values['force_close_reason'],
+            ...$values['work_phase_attributes'],
         ];
     }
 

@@ -52,6 +52,10 @@ const guide: HelpGuide = {
             'Gli eventuali campi flessibili compaiono come righe a parte e si modificano allo stesso modo.',
           ],
         },
+        {
+          type: 'note',
+          text: 'Un’aliquota usata da prodotti, righe di offerte, RDA o ODA, fatture, fatture passive, costi di commessa o profili fiscali agente non si può eliminare: il messaggio dice da cosa è usata.',
+        },
       ],
     },
   ],

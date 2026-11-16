@@ -60,7 +60,11 @@ class AdvancedFilterApplier
             $descriptor = $catalog[$name];
             $type = $descriptor['type'] ?? null;
 
-            if (! $type instanceof AdvancedFilterType || ! $this->isValidValue($type, $value, $descriptor)) {
+            // A value equal to the declared default is the page's own preset (e.g. the empty parent category,
+            // which the definition reads as "every root of the actor"), valid whatever the type's shape rule says.
+            $isDefault = array_key_exists('defaultValue', $descriptor) && $value === $descriptor['defaultValue'];
+
+            if (! $type instanceof AdvancedFilterType || (! $isDefault && ! $this->isValidValue($type, $value, $descriptor))) {
                 $errors[$name] = "Invalid value for advanced filter [{$name}].";
             }
         }
@@ -85,7 +89,7 @@ class AdvancedFilterApplier
             AdvancedFilterType::Number => $this->applyNumber($query, $target, $value, $operator ?? 'equals'),
             AdvancedFilterType::NumberRange => $this->applyRange($query, $target, $value, static fn (mixed $bound): int|float|null => is_numeric($bound) ? $bound + 0 : null),
             AdvancedFilterType::Date, AdvancedFilterType::Datetime => $this->applyDate($query, $target, $value, $operator ?? 'equals'),
-            AdvancedFilterType::DateRange => $this->applyRange($query, $target, $value, static fn (mixed $bound): ?string => is_string($bound) && $bound !== '' ? $bound : null),
+            AdvancedFilterType::DateRange => $this->applyDateRange($query, $target, $value),
             AdvancedFilterType::Enum => ($descriptor['multiple'] ?? false) === true
                 ? $this->applyWhereIn($query, $target, $value)
                 : $this->applyEquals($query, $target, $value),
@@ -219,8 +223,30 @@ class AdvancedFilterApplier
     }
 
     /**
-     * number_range / date_range: both bounds → whereBetween; a single bound →
-     * the matching gte/lte comparison.
+     * date_range: each bound is a whole calendar day (CalendarDayBound), so a
+     * DATETIME column keeps the timed values of the "to" day too.
+     */
+    private function applyDateRange(Builder $query, string $column, mixed $value): void
+    {
+        if (! is_array($value)) {
+            return;
+        }
+
+        $from = CalendarDayBound::day($value['from'] ?? null);
+        $to = CalendarDayBound::day($value['to'] ?? null);
+
+        if ($from !== null) {
+            $query->where($column, '>=', $from);
+        }
+
+        if ($to !== null) {
+            $query->where($column, '<', CalendarDayBound::dayAfter($to));
+        }
+    }
+
+    /**
+     * number_range: both bounds → whereBetween; a single bound → the matching
+     * gte/lte comparison.
      *
      * @param  callable(mixed): (int|float|string|null)  $normalize
      */

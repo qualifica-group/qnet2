@@ -118,6 +118,38 @@ trait MapsExternalProfileRecord
         return [$inputs, $warnings];
     }
 
+    /**
+     * The `extra_contacts` the legacy splits out of its contact columns (spec 0378):
+     * every value non-primary, with its label; an unknown type is skipped with a warning.
+     *
+     * @param  array<string, mixed>  $record
+     * @return array{0: array<int, ContactInput>, 1: array<int, string>}
+     */
+    private function buildExtraContacts(array $record): array
+    {
+        $inputs = [];
+        $warnings = [];
+
+        foreach ((array) ($record['extra_contacts'] ?? []) as $extra) {
+            $type = ContactTypeEnum::tryFrom((string) ($extra['type'] ?? ''));
+
+            if ($type === null) {
+                $warnings[] = "Unknown extra contact type '".($extra['type'] ?? '')."', skipped.";
+
+                continue;
+            }
+
+            $field = "extra_contacts.{$type->value}";
+            [$typeInputs, $typeWarnings] = $this->buildContactInputs([$field => $extra['value'] ?? null], [
+                ['field' => $field, 'type' => $type, 'label' => $this->blankToNull($extra['label'] ?? null), 'primary' => false],
+            ]);
+            array_push($inputs, ...$typeInputs);
+            array_push($warnings, ...$typeWarnings);
+        }
+
+        return [$inputs, $warnings];
+    }
+
     private function isValidContactValue(ContactTypeEnum $type, string $value): bool
     {
         return Validator::make(['value' => $value], ['value' => $type->valueRules()])->passes();

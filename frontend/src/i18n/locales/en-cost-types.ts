@@ -53,7 +53,6 @@ export const costTypes = {
     colorInvalid: 'Pick one of the available colors.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the cost type. Please try again.',
-    deleteInUse: 'Cannot delete: the cost type is used by purchase order lines.',
     hints: {
       nature:
         'Direct: chargeable to a work order. Indirect: production cost, allocated. General: structure and overhead.',

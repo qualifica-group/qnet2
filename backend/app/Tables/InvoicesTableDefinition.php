@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Invoices\InvoicePaymentStatusResolver;
 use App\Services\Invoices\InvoiceService;
 use App\Services\Table\FormRequestCellValidator;
+use App\Support\RegistryFiscalLabel;
 use App\Tables\Invoices\InvoiceColumnCatalog;
 use App\Tables\Invoices\InvoiceDerivedQuery;
 use App\Tables\Invoices\InvoiceReminderColumn;
@@ -57,6 +58,9 @@ class InvoicesTableDefinition extends AbstractTableDefinition
 
     private const string WRITE_OFF_SUM = 'installments_sum_write_off_amount';
 
+    /** Customer VAT number or tax code, shown next to the name. */
+    private const string CUSTOMER_FISCAL_ID = 'customer_fiscal_id';
+
     public function domain(): string
     {
         return 'invoices';
@@ -90,6 +94,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
             ->withSum('installments', 'collected_amount')
             ->withSum('installments', 'write_off_amount')
             ->addSelect([InvoiceReminderColumn::ID => InvoiceReminderColumn::subquery()])
+            ->addSelect([self::CUSTOMER_FISCAL_ID => RegistryFiscalLabel::fiscalIdSubquery('invoices.customer_registry_id')])
             ->addSelect([self::FIRST_UNPAID_DUE_DATE => InvoiceInstallment::query()
                 ->select('due_date')
                 ->whereColumn('invoice_installments.invoice_id', 'invoices.id')
@@ -164,7 +169,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
             'type' => $row->type->value,
             'external_number' => $row->external_number,
             'external_date' => $row->external_date?->toDateString(),
-            'customer' => $row->customer?->name,
+            'customer' => RegistryFiscalLabel::compose($row->customer?->name, $row->getAttribute(self::CUSTOMER_FISCAL_ID)),
             'company' => $row->company?->denomination,
             'payment_method' => $row->paymentMethod?->name,
             'work_order_code' => $row->workOrder?->code,

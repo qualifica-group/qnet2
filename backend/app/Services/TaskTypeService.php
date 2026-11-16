@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\TaskTypes\CreateTaskTypeData;
 use App\DataObjects\TaskTypes\UpdateTaskTypeData;
 use App\Models\TaskType;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Lookups\DefaultRowManager;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -41,6 +42,7 @@ class TaskTypeService
     public function __construct(
         private readonly LookupOrderManager $orderManager,
         private readonly DefaultRowManager $defaultRow,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     public function create(CreateTaskTypeData $data): TaskType
@@ -94,9 +96,7 @@ class TaskTypeService
      */
     public function delete(TaskType $taskType): void
     {
-        if ($taskType->tasks()->exists()) {
-            abort(409, 'This task type is used by a task and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($taskType);
 
         $taskType->delete();
     }

@@ -3,9 +3,12 @@ import type { TFunction } from 'i18next'
 import {
   TABLE_COLUMN_TYPES,
   TABLE_KEY_PATTERN,
+  TABLE_NOTIFY_MAX_EMAILS,
+  TABLE_NOTIFY_MAX_IDS,
   TABLE_RESERVED_KEY,
   type TableDefinitionBag,
 } from '@/features/custom-fields/field-definition-table'
+import { tableNotifyTriggerKeys } from '@/features/custom-fields/table-notify-triggers'
 
 /**
  * Zod pieces for the `table` definition bag, shared by the custom field and
@@ -34,6 +37,13 @@ export function fieldDefinitionTableFields() {
     summary_strategy: z.enum(['', 'selected', 'max', 'min']),
     min_rows: z.number().int().nonnegative().nullable(),
     max_rows: z.number().int().positive().nullable(),
+    notify_enabled: z.boolean(),
+    notify_trigger: z.string(),
+    notify_email_template_id: z.number().int().positive().nullable(),
+    notify_record_team: z.boolean(),
+    notify_user_ids: z.array(z.number().int().positive()).max(TABLE_NOTIFY_MAX_IDS),
+    notify_role_ids: z.array(z.number().int().positive()).max(TABLE_NOTIFY_MAX_IDS),
+    notify_emails: z.array(z.string().email()).max(TABLE_NOTIFY_MAX_EMAILS),
   })
 }
 
@@ -98,6 +108,24 @@ function checkSelectable(bag: TableDefinitionBag, t: TFunction, ctx: z.Refinemen
   }
 }
 
+/** Mirrors `TableRowNotifyConfigValidator` (spec 0390): a trigger the table still has, and at least one recipient. */
+function checkNotify(bag: TableDefinitionBag, t: TFunction, ctx: z.RefinementCtx): void {
+  if (!bag.notify_enabled) {
+    return
+  }
+  if (bag.notify_trigger !== '' && !tableNotifyTriggerKeys(bag).includes(bag.notify_trigger)) {
+    ctx.addIssue({ code: 'custom', path: ['table', 'notify_trigger'], message: t('customFields.tableEditor.notify.errors.trigger') })
+  }
+  const hasRecipient =
+    bag.notify_record_team ||
+    bag.notify_user_ids.length > 0 ||
+    bag.notify_role_ids.length > 0 ||
+    bag.notify_emails.length > 0
+  if (!hasRecipient) {
+    ctx.addIssue({ code: 'custom', path: ['table', 'notify_record_team'], message: t('customFields.tableEditor.notify.errors.noRecipient') })
+  }
+}
+
 /** Cross-field rules for `type === 'table'`. */
 export function validateTableDefinition(bag: TableDefinitionBag, t: TFunction, ctx: z.RefinementCtx): void {
   if (bag.columns.length === 0) {
@@ -113,4 +141,5 @@ export function validateTableDefinition(bag: TableDefinitionBag, t: TFunction, c
   if (bag.min_rows !== null && bag.max_rows !== null && bag.min_rows > bag.max_rows) {
     ctx.addIssue({ code: 'custom', path: ['table', 'max_rows'], message: t('customFields.tableEditor.errors.minGreaterThanMax') })
   }
+  checkNotify(bag, t, ctx)
 }

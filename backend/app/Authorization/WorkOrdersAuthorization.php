@@ -7,7 +7,6 @@ namespace App\Authorization;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\WorkOrders\Chat\WorkOrderChatAccess;
-use App\Services\WorkOrders\WorkOrderStatusResolver;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -73,7 +72,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat', 'request_proforma'];
     }
 
     /**
@@ -137,15 +136,16 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'send_email' => $model !== null && $actor->can('work-orders.sendEmail'),
             // Spec 0352, D-2/D-3: permission + perimeter, only while open / in progress.
             'request_update' => $model instanceof WorkOrder && $actor->can('requestUpdate', $model)
-                && app(WorkOrderStatusResolver::class)->progress($model)->status->acceptsUpdateRequest(),
+                && $model->work_phase->isOngoing(),
             // Spec 0190, D-4: gate the "Costi" section and its editor.
             'view_costs' => $model !== null && $actor->can('work-orders.viewCosts'),
             // Spec 0282, D-8: gates the "Proforma attiva/passiva" tabs.
             'view_invoices' => $model !== null && $actor->can('work-orders.viewInvoices'),
             'manage_costs' => $model !== null && $actor->can('work-orders.manageCosts'),
-            // Spec 0201, D-10: gate the "Dati contrattuali" tab and its payment editor.
-            'view_contract_data' => $model !== null && $actor->can('work-orders.viewContractData'),
-            'manage_payments' => $model !== null && $actor->can('work-orders.managePayments'),
+            // Spec 0201, D-10: gate the "Dati contrattuali" tab and its payment editor;
+            // spec 0380: both need the costs too (WorkOrderPolicy::withCosts).
+            'view_contract_data' => $model instanceof WorkOrder && $actor->can('viewContractData', $model),
+            'manage_payments' => $model instanceof WorkOrder && $actor->can('managePayments', $model),
             // "Chiusura forzata"/"Riapri" are detail actions, not fields (user
             // directive 2026-10-06): the same record-level update rule as the
             // PATCH they send, exactly one of the two by the closure state.
@@ -154,6 +154,10 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // Spec 0359: the single chat rule, never a Gate ability.
             'view_chat' => $model instanceof WorkOrder && $chat->canRead($actor, $model),
             'write_chat' => $model instanceof WorkOrder && $chat->canWrite($actor, $model),
+            // Ticket #427857: the grid's "€" action in the detail header. Reaching
+            // the detail already proves the record-level `view` the endpoint asks;
+            // whether a request may still be raised is the summary's call (spec 0193).
+            'request_proforma' => $model instanceof WorkOrder && $actor->can('proforma-requests.create'),
         ];
     }
 

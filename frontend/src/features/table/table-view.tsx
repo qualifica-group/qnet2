@@ -7,12 +7,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DataTable } from '@/components/data-table/data-table'
 import { useTableConfig } from '@/features/table/use-table-config'
 import { TableToolbar } from '@/features/table/table-toolbar'
-import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features/table/advanced-filters/advanced-filter-panel'
-import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
+import { TableFilterBar } from '@/features/table/table-filter-bar'
 import {
   INLINE_ACTION_LIMIT,
   LABELED_ACTIONS_COLUMN_WIDTH,
   inlineActionsColumnWidth,
+  splitInlineActions,
 } from '@/features/table/row-actions'
 import { RowGroupingBar } from '@/features/table/row-grouping-bar'
 import { useRowGroupColumns } from '@/features/table/use-row-group-columns'
@@ -21,29 +21,41 @@ import { buildTableViewSlots } from '@/features/table/table-view-slots'
 import { useTableViewController, type TableViewHandle } from '@/features/table/use-table-view-controller'
 import { gridMountKey } from '@/features/table/grid-mount-key'
 import type { TableViewProps } from '@/features/table/table-view-props'
+import type { TableActionDefinition } from '@/features/table/types'
 
 export type { TableViewHandle } from '@/features/table/use-table-view-controller'
 
 const GROUP_KEY_SEPARATOR = ','
 
-/** Explicit actions-column width for the opt-in action layouts; undefined = DataTable default. */
+/**
+ * Explicit actions-column width for the opt-in action layouts and for pinned
+ * actions (one slot per inline icon, plus the overflow button); undefined =
+ * DataTable default.
+ */
 function actionsColumnWidthFor(
-  actionCount: number,
+  actions: TableActionDefinition[],
   labeledActions: boolean | undefined,
   inlineAllActions: boolean | undefined,
 ): number | undefined {
   if (labeledActions) {
     return LABELED_ACTIONS_COLUMN_WIDTH
   }
-  return inlineAllActions && actionCount > INLINE_ACTION_LIMIT ? inlineActionsColumnWidth(actionCount) : undefined
+  if (inlineAllActions) {
+    return actions.length > INLINE_ACTION_LIMIT ? inlineActionsColumnWidth(actions.length) : undefined
+  }
+  const { visible, overflow } = splitInlineActions(actions)
+  const slots = visible.length + (overflow.length > 0 ? 1 : 0)
+  return actions.some((action) => action.pinned) && slots > INLINE_ACTION_LIMIT + 1 ? inlineActionsColumnWidth(slots) : undefined
 }
 
 /**
  * Generic, domain-driven table. Given a `domain`, it loads the backend config,
  * builds the SSRM datasource, and mounts the agnostic DataTable wrapper fused
- * under a single unified toolbar (spec 0009: search + row count on the left;
- * filter toggle, saved views, options and fullscreen on the right — one bordered
- * block, no detached buttons). It owns loading/error/empty states, the SSRM
+ * under a unified toolbar (spec 0009: row count on the left; reset filters,
+ * options and fullscreen on the right). The quick-search, the
+ * advanced filters and the saved filters sit in their own block ABOVE the grid
+ * (`TableFilterBar`).
+ * It owns loading/error/empty states, the SSRM
  * refresh mechanism, and the toolbar's client state (search term, floating
  * filters, fullscreen), but holds NO domain logic: custom rendering and action
  * behavior arrive entirely via props (`renderers`, `onAction`, `isBusy`,
@@ -71,6 +83,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       labeledActions,
       inlineAllActions,
       resolveActionState,
+      resolveActionHref,
       importSlot,
       isRowSelectable,
       getBulkActions,
@@ -125,6 +138,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         labeledActions,
         inlineAllActions,
         resolveActionState,
+        resolveActionHref,
         getBulkActions,
         disableBuiltinDelete,
         advancedFiltersOverride,
@@ -191,12 +205,13 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           referentId={referentId}
           columns={config.columns}
           datasource={view.datasource}
+          positionStore={view.positionStore}
           blockSize={config.defaultPagination.limit}
           cellRenderers={renderers}
           renderRowActions={view.renderRowActions}
           actionsHeaderLabel="table.actionsHeader"
-          actionsColumnHasOverflow={!inlineAllActions && config.actions.length > INLINE_ACTION_LIMIT}
-          actionsColumnWidth={actionsColumnWidthFor(config.actions.length, labeledActions, inlineAllActions)}
+          actionsColumnHasOverflow={!inlineAllActions && splitInlineActions(config.actions).overflow.length > 0}
+          actionsColumnWidth={actionsColumnWidthFor(config.actions, labeledActions, inlineAllActions)}
           onGridReady={view.handleGridReady}
           onColumnStateChanged={view.handleColumnStateChanged}
           initialFilterModel={view.initialFilterModel}
@@ -243,19 +258,27 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       <>
         <div
           className={cn(
-            'flex min-h-0 flex-col',
+            'flex min-h-0 flex-col gap-2',
             view.toolbar.fullscreen &&
               'fixed inset-0 z-50 bg-background/80 p-3 backdrop-blur-sm sm:p-4',
           )}
         >
+          <TableFilterBar
+            searchEnabled={view.searchEnabled}
+            searchPlaceholder={view.searchPlaceholder}
+            searchInputRef={view.toolbar.searchInputRef}
+            searchValue={view.toolbar.searchInput}
+            onSearchChange={view.toolbar.setSearchInput}
+            searchShortcut={view.toolbar.searchShortcut}
+            advancedFilterDescriptors={view.advancedFilterDescriptors}
+            advancedFilters={view.advancedFilters}
+            advancedFiltersOpen={view.toolbar.advancedFiltersOpen}
+            onToggleAdvancedFilters={view.toolbar.toggleAdvancedFilters}
+            savedViewsSlot={savedViewsSlot}
+          />
+
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <TableToolbar
-              searchEnabled={view.searchEnabled}
-              searchPlaceholder={view.searchPlaceholder}
-              searchInputRef={view.toolbar.searchInputRef}
-              searchValue={view.toolbar.searchInput}
-              onSearchChange={view.toolbar.setSearchInput}
-              searchShortcut={view.toolbar.searchShortcut}
               rowCount={view.toolbar.rowCount}
               bulkActionsSlot={view.bulkActionsSlot}
               filtersActive={view.isFilterCustomized}
@@ -266,11 +289,6 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
               resettingLayout={view.resettingLayout}
               fullscreen={view.toolbar.fullscreen}
               onToggleFullscreen={view.toolbar.toggleFullscreen}
-              advancedFiltersEnabled={view.advancedFilterDescriptors.length > 0}
-              advancedFiltersOpen={view.toolbar.advancedFiltersOpen}
-              onToggleAdvancedFilters={view.toolbar.toggleAdvancedFilters}
-              advancedFiltersActiveCount={view.advancedFilters.activeCount}
-              savedViewsSlot={savedViewsSlot}
               importSlot={importSlot}
               exportSlot={exportSlot}
             />
@@ -279,17 +297,6 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
 
             {config?.row_grouping?.enabled ? (
               <RowGroupingBar gridApi={view.gridApi} columns={config.columns} rowGrouping={config.row_grouping} />
-            ) : null}
-
-            {view.advancedFilterDescriptors.length > 0 ? (
-              <Collapsible open={view.toolbar.advancedFiltersOpen}>
-                <CollapsibleContent className={ADVANCED_FILTER_PANEL_ANIMATION}>
-                  <AdvancedFilterPanel
-                    descriptors={view.advancedFilterDescriptors}
-                    filters={view.advancedFilters}
-                  />
-                </CollapsibleContent>
-              </Collapsible>
             ) : null}
 
             <div

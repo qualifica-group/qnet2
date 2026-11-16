@@ -11,10 +11,13 @@ use App\Models\FieldChangeRequest;
 use App\Models\User;
 use App\Notifications\FieldChangeRequestedNotification;
 use App\Services\Table\CellValueValidator;
+use App\Support\Notifications\RecordDetails;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
+use Spatie\Permission\Exceptions\RoleDoesNotExist;
 
 /**
  * Creates a `pending` field-change-request (spec 0078). The guard order
@@ -35,6 +38,9 @@ use Illuminate\Support\Facades\Notification;
  */
 final class FieldChangeRequestCreator
 {
+    /** Holders of this role hear about every new request (spec 0078, D-8). */
+    public const string NOTIFIED_ROLE = 'notifiche-richieste-modifica';
+
     public function __construct(
         private readonly ProtectedFieldRegistry $registry,
         private readonly FieldChangeRequestValueResolver $resolver,
@@ -55,7 +61,7 @@ final class FieldChangeRequestCreator
     {
         $fieldChangeRequest = DB::transaction(fn (): FieldChangeRequest => $this->create($data, $actor));
 
-        $this->notifyViewers($fieldChangeRequest, $actor);
+        $this->notifyReviewers($fieldChangeRequest, $actor);
 
         return $fieldChangeRequest;
     }
@@ -137,15 +143,17 @@ final class FieldChangeRequestCreator
     }
 
     /**
-     * Notifies every titolare of `field-change-requests.viewAny` (AC-024),
+     * Notifies the active holders of NOTIFIED_ROLE (AC-024, delta D-8),
      * excluded the requester themselves — dispatched AFTER the creating
      * transaction commits (DB::transaction() above already returned) so a
      * slow/unavailable channel never holds the request open, mirroring
-     * NoteService::syncMentionsAndNotify.
+     * NoteService::syncMentionsAndNotify. A role, not a permission: `admin`
+     * and `super-admin` receive every permission of the catalogue, so a
+     * permission could never narrow the audience to the chosen reviewers.
      */
-    private function notifyViewers(FieldChangeRequest $fieldChangeRequest, User $actor): void
+    private function notifyReviewers(FieldChangeRequest $fieldChangeRequest, User $actor): void
     {
-        $recipients = User::permission('field-change-requests.viewAny')->get()
+        $recipients = $this->reviewers()
             ->reject(fn (User $user): bool => $user->id === $actor->id);
 
         if ($recipients->isEmpty()) {
@@ -153,11 +161,28 @@ final class FieldChangeRequestCreator
         }
 
         $subjectLabel = $this->resolver->subjectLabelOrFallback($fieldChangeRequest->resource, (int) $fieldChangeRequest->subject_id, $actor);
+        // Spec 0381: the card of the record the request is about.
+        $subject = $fieldChangeRequest->subject;
+        $subjectDetails = $subject === null ? [] : RecordDetails::for($subject);
 
         Notification::send(
             $recipients,
-            new FieldChangeRequestedNotification($fieldChangeRequest, $actor, $subjectLabel),
+            new FieldChangeRequestedNotification($fieldChangeRequest, $actor, $subjectLabel, $subjectDetails),
         );
+    }
+
+    /**
+     * Nobody when the role has not been created yet.
+     *
+     * @return Collection<int, User>
+     */
+    private function reviewers(): Collection
+    {
+        try {
+            return User::role(self::NOTIFIED_ROLE)->where('users.is_active', true)->get();
+        } catch (RoleDoesNotExist) {
+            return new Collection;
+        }
     }
 
     private function isUniqueViolation(QueryException $exception): bool

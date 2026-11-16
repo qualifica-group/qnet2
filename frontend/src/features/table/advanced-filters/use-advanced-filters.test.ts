@@ -445,4 +445,20 @@ describe('useAdvancedFilters sendDefault', () => {
     expect(result.current.requestValues).toEqual({ assignment: ['mine'] })
     expect(result.current.activeCount).toBe(0)
   })
+
+  it('sends an empty-list preset as the empty list, also after the field is cleared', () => {
+    const descriptors = [descriptor({ name: 'parent_category', type: 'relation', multiple: true, sendDefault: true, defaultValue: [] })]
+
+    const { result } = renderHook(() =>
+      useAdvancedFilters({ domain: 'work-orders', descriptors, applied: null, onApplied: vi.fn() }),
+    )
+
+    expect(result.current.requestValues).toEqual({ parent_category: [] })
+    expect(result.current.activeCount).toBe(0)
+
+    act(() => result.current.applyValues({ parent_category: null }))
+
+    expect(result.current.requestValues).toEqual({ parent_category: [] })
+    expect(result.current.activeCount).toBe(0)
+  })
 })

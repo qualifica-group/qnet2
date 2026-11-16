@@ -191,7 +191,7 @@ it('AC-033: a POST with net_amount on a line is rejected (server-computed)', fun
     expect(Quote::count())->toBe(0);
 });
 
-it('AC-034: quantity <= 0 and a negative unit_price are rejected via POST', function () {
+it('AC-034: quantity <= 0 is rejected via POST, a negative (discount) unit_price is saved', function () {
     $opportunity = Opportunity::factory()->create();
     $product = quoteHttpRevenueProduct();
     $actor = quoteHttpUserWith(['create']);
@@ -209,11 +209,12 @@ it('AC-034: quantity <= 0 and a negative unit_price are rejected via POST', func
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [
-            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => -1],
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => -50],
         ],
-    ])->assertStatus(422)->assertJsonValidationErrors('offer_lines.0.unit_price');
+    ])->assertCreated();
 
-    expect(Quote::count())->toBe(0);
+    expect(Quote::count())->toBe(1)
+        ->and(Quote::first()->offerLines()->first()->net_amount)->toBe('-50.00');
 });
 
 it('AC-035: 201 rows in offer_lines is rejected via POST (max 200)', function () {

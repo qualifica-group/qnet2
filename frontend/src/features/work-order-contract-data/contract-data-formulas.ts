@@ -109,7 +109,7 @@ export function revenueHint(line: ContractDataLine, commissionsVisible: boolean,
   }
 }
 
-export type TotalsHintKind = 'netAmount' | 'revenue' | 'commissions' | 'netOfCommissions'
+export type TotalsHintKind = 'revenue' | 'commissions' | 'netOfCommissions'
 
 export function totalsHint(kind: TotalsHintKind, totals: ContractDataTotals, t: TFunction): HintContent {
   const title = t(`workOrders.contractData.totals.${kind}`)

@@ -59,8 +59,6 @@ export const productTypologies = {
     proformaKind: 'Proforma request type',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the product typology. Please retry.',
-    deleteInUse:
-      'This product typology cannot be deleted because it is linked to one or more products.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The product typology has not been created yet: what you entered will be lost.',

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0383-unassigned-subtask-inherits-parent-assignees" status="approved" owner="nicola" date="2026-11-10">
+
+  <goal>
+    Un sotto-task senza assegnatari e' visibile e lavorabile dagli assegnatari del suo task padre diretto, cosi' chi ha il padre puo' chiudere i sotto-task e poi completare il padre.
+  </goal>
+
+  <context>
+    D-1 Segnalazione utente 2026-11-09 (task 426939, Desire' Romito): "Non mi fa spuntare le task che completo". 61 dei suoi 65 task aperti (serie ricorrenti "Gestione delle presenze e dei registri", "Gestione SIGEM") hanno sotto-task aperti senza assegnatari: la regola della spec 0123 D-6 (un padre con sotto-task diretti aperti non si completa) li blocca, e lei non vede ne' chiude i sotto-task perche' non ne e' membro. Nel DB 26.192 sotto-task senza assegnatari, 7.041 con il padre assegnato. TaskOccurrenceFactory copia gli assegnatari vuoti in ogni nuova occorrenza.
+    D-2 Decisione utente 2026-11-10 (opzione "a"): chi ha il task padre vede e chiude anche i sotto-task senza assegnatari. Scartata l'opzione "chiudere il padre chiude i sotto-task".
+    D-3 Regola: l'attore e' "assegnatario ereditato" di un Task quando il Task ha un padre, NON ha alcun assegnatario proprio e l'attore e' assegnatario del padre DIRETTO. Solo il padre diretto: nessuna risalita oltre (nel DB 4 casi di sotto-task senza assegnatari sotto un padre a sua volta senza assegnatari). Appena il sotto-task riceve un assegnatario proprio, l'ereditarieta' cessa.
+    D-4 Visibilita': ramo di membership di TaskVisibilityScope (query e verdetto per record), quindi vale anche per un sotto-task privato, come per gli altri membri. Resta richiesto `tasks.view`.
+    D-5 Matrice: "vede e chiude", niente di piu'. L'assegnatario ereditato entra solo in TaskAbilityResolver::canComplete() (completa e riapre, registra il segnatempo del completamento); NON in canUpdate(): non modifica i campi, non elimina (ne' direttamente ne' a cascata dal padre: la cascata della spec 0153 D-5 resta bloccata da un sotto-task altrui), non gestisce i segnatempo altrui, non possiede il mandato (validazione, blocco, "richiedi aggiornamento"). Se il sotto-task richiede validazione, completandolo va in validazione. TaskRecordRoles::isAssignee() resta invariato (deroga manageAll, notifiche, filtri "assegnati a me").
+  </context>
+
+  <contract>
+    <endpoint>Nessun endpoint nuovo ne' cambio di shape. Cambiano l'insieme di righe di POST /api/tables/tasks/rows (anche in modalita' albero), l'accesso a GET /api/tasks/{id} e i flag `permissions.actions` / l'esito di POST /api/tasks/{id}/complete per i sotto-task senza assegnatari.</endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>`TaskRecordRoles::isInheritedAssignee`, `TaskAbilityResolver::canComplete`, `TaskVisibilityScope` (membership UNION e verdetto per record).</item>
+      <item>Guida `tasks` IT/EN (sezione persone e ruoli).</item>
+    </in>
+    <out>
+      <item>Assegnare d'ufficio gli assegnatari del padre ai sotto-task esistenti.</item>
+      <item>Chiusura automatica dei sotto-task alla chiusura del padre.</item>
+      <item>Ereditarieta' dal nonno o da creatore/richiedente del padre.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">L'assegnatario del padre vede nel dettaglio e nell'elenco (anche in modalita' albero) un sotto-task diretto senza assegnatari.</criterion>
+    <criterion id="AC-002">L'assegnatario del padre completa quel sotto-task; chiusi tutti i sotto-task completa il padre.</criterion>
+    <criterion id="AC-003">Se il sotto-task ha un assegnatario proprio, l'assegnatario del padre non lo vede ne' lo completa (salvo altri tier).</criterion>
+    <criterion id="AC-004">Nessuna ereditarieta' dal nonno.</criterion>
+    <criterion id="AC-005">L'assegnatario ereditato non modifica e non elimina il sotto-task (403); un sotto-task con validazione richiesta, completato da lui, va in validazione.</criterion>
+    <criterion id="AC-006">Il verdetto per record coincide con la query, anche con relazioni gia' caricate e su un sotto-task privato.</criterion>
+  </acceptance>
+</spec>

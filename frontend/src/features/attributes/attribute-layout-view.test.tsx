@@ -128,6 +128,14 @@ describe('AttributeLayoutView', () => {
     expect(screen.getByText('Gold')).toBeInTheDocument()
   })
 
+  it('renders a date attribute in the user date format, not as the raw ISO value', () => {
+    const courseStart = attribute('course_start_date', { name: 'Course start', type: 'date' })
+    render(<AttributeLayoutView layout={null} attributes={[courseStart]} values={{ course_start_date: '2025-10-07' }} />)
+
+    expect(screen.getByText('07/10/2025')).toBeInTheDocument()
+    expect(screen.queryByText('2025-10-07')).not.toBeInTheDocument()
+  })
+
   it('drops a section none of whose attributes was handed in', () => {
     render(<AttributeLayoutView layout={LAYOUT} attributes={[ATTRIBUTES[2]]} values={{ tier: 'gold' }} />)
 

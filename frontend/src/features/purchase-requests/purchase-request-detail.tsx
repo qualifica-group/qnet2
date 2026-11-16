@@ -16,6 +16,7 @@ import { Form } from '@/components/ui/form'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import { PurchaseRequestFormActions } from '@/features/purchase-requests/purchase-request-form-actions'
 import { PurchaseRequestLinesRecord } from '@/features/purchase-requests/purchase-request-lines-record'
@@ -62,6 +63,7 @@ function PurchaseRequestDetailContent({ request, onBack, onDeleted, onChanged }:
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      badge: <NotesTabCount entityType={PURCHASE_REQUESTS_DOMAIN} entityId={request.id} />,
       content: <NotesSection entityType={PURCHASE_REQUESTS_DOMAIN} entityId={request.id} showHeader={false} />,
     })
   }

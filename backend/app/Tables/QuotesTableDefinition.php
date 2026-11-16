@@ -2,10 +2,12 @@
 
 namespace App\Tables;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\Company;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
@@ -20,6 +22,7 @@ use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
+use App\Tables\Shared\ParentCategoryListModule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -119,7 +122,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
         // before this migration).
         // Spec 0340: the competence verdict is projected per row, so the Gate's
         // isVisibleTo() never queries for a row visible by competence only.
-        $query = QuoteVisibilityScope::withCompetenceVerdict(Quote::query(), Auth::user());
+        // Spec 0389 rev.2: offers whose categories are all reserved to Gestione Richieste are not listed.
+        $query = UsageAreaRowFilter::apply(QuoteVisibilityScope::withCompetenceVerdict(Quote::query(), Auth::user()), 'quotes.opportunity_id', CategoryUsageArea::Opportunities);
 
         return QuoteVisibilityScope::scopeToActor($query, Auth::user())->with([
             // `opportunity.managers`: the `documents` gate (Opportunity view) stays query-free.
@@ -175,7 +179,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return [...$this->listFilters->presetFilters('quotes', Auth::user(), QuoteVisibilityScope::seesBeyondOwnRecords(Auth::user())), ...QuoteAdvancedFilterCatalog::advancedFilters()];
+        return [...$this->listFilters->presetFilters('quotes', ParentCategoryListModule::Quotes, CategoryUsageArea::Opportunities), ...QuoteAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**
@@ -374,7 +378,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             $quotes->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($categoryIds));
         };
 
-        if ($this->listFilters->apply($query, $name, $value, Auth::user(), $applyCategories)) {
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Quotes, $applyCategories)) {
             return true;
         }
 
@@ -406,6 +410,14 @@ class QuotesTableDefinition extends AbstractTableDefinition
             $values,
             static fn ($value): bool => is_string($value) && $value !== '',
         )) : [];
+    }
+
+    /**
+     * @param  Builder<Quote>  $query
+     */
+    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
+    {
+        return $this->relationColumns->applySearch($query, $columnId, $pattern);
     }
 
     /**

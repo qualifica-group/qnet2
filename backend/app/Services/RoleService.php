@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Guard;
@@ -26,6 +27,7 @@ class RoleService
     public function __construct(
         private readonly RoleAssignmentGuard $guard,
         private readonly AssignablePermissionCatalogue $permissionCatalogue,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     /**
@@ -297,6 +299,8 @@ class RoleService
         if ($role->name === RoleAssignmentGuard::PRIVILEGED_ROLE) {
             abort(422, 'The super-admin role is a system role and cannot be modified or deleted.');
         }
+
+        $this->inUseGuard->assertUnused($role);
 
         $role->delete();
     }

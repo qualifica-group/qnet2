@@ -7,6 +7,7 @@ import { RecordBody } from '@/components/detail/record-body'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
+import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { CONTRACT_ATTACHABLE_ALIAS, CONTRACTS_DOMAIN } from '@/features/contracts/api'
@@ -51,6 +52,7 @@ function useCollaborationTabs(contract: ContractDetailWithPermissions): RecordCo
       value: 'contract-documents',
       label: t('contracts.detail.tabs.contractDocuments'),
       icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: <DocumentsTabCount resource={CONTRACT_ATTACHABLE_ALIAS} id={contract.id} />,
       content: (
         <DocumentsSection
           resource={CONTRACT_ATTACHABLE_ALIAS}
@@ -64,6 +66,9 @@ function useCollaborationTabs(contract: ContractDetailWithPermissions): RecordCo
       value: 'opportunity-documents',
       label: t('contracts.detail.tabs.opportunityDocuments'),
       icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: contract.opportunity ? (
+        <DocumentsTabCount resource={OPPORTUNITY_ATTACHABLE_ALIAS} id={contract.opportunity.id} />
+      ) : null,
       content: contract.opportunity ? (
         <DocumentsSection
           resource={OPPORTUNITY_ATTACHABLE_ALIAS}

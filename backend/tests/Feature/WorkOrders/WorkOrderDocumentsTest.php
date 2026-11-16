@@ -119,7 +119,9 @@ it('spec 0173 AC-006: the detail exposes the client registry reached through quo
 
     $this->getJson("/api/work-orders/{$workOrder->id}")
         ->assertOk()
-        ->assertJsonPath('data.registry', ['id' => $registry->id, 'name' => $registry->name]);
+        // REQUIREMENT CHANGED (task 428287): the registry also carries its primary contacts.
+        ->assertJsonPath('data.registry.id', $registry->id)
+        ->assertJsonPath('data.registry.name', $registry->name);
 });
 
 it('AC-011: deleting a work order removes its attachment rows and their binaries', function () {

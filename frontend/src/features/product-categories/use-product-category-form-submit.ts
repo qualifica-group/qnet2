@@ -41,6 +41,8 @@ const SERVER_ERROR_FIELDS = [
   'single_quote_per_opportunity',
   'generates_contract',
   'multi_quote_work_order',
+  'usage_area',
+  'multiple_open_opportunities',
   'simplified_offer_line',
   'simplified_offer_line_override',
   'manager_labels',

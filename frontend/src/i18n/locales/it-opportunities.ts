@@ -32,7 +32,6 @@ export const opportunities = {
     empty: 'Nessuno stato',
   },
   advancedFilters: {
-    assignment: 'Assegnazione',
     parentCategory: 'Categoria madre',
     registry: 'Anagrafica',
     referent: 'Referente',

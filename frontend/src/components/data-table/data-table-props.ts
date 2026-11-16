@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { GridReadyEvent, ICellRendererParams, IServerSideDatasource } from 'ag-grid-community'
 import type { CellRenderer } from '@/components/data-table/column-defaults'
+import type { GridPositionStore } from '@/components/data-table/grid-position'
 import type { TableColumn, TableRow, TableRowGroupingConfig, TableRowId } from '@/features/table/types'
 import type { CellCommitInterceptor } from '@/features/table/use-table-cell-edit'
 
@@ -84,6 +85,11 @@ export interface DataTableProps {
    * is exactly how the caller drives a filter reset (bump the grid `key`).
    */
   initialFilterModel?: Record<string, unknown>
+  /**
+   * Keeps the sort, page and page size across remounts: read when the grid is
+   * created, written on every change. Omitted, every mount starts on page 1, unsorted.
+   */
+  positionStore?: GridPositionStore
   /**
    * Fired when the user changes a column filter. The wrapper does not read or
    * store the filter model; the caller pulls it from the grid API (debounced) to

@@ -6,17 +6,15 @@ use App\Services\ApiDocs\OpenApiDocumentProvider;
 use Illuminate\Console\Command;
 
 /**
- * Deploy step: run `php artisan api-docs:warm` after every release. Cold
- * generation of the OpenAPI document takes tens of seconds, so without
- * this step the first Documentation request answers 202 and triggers a background
- * generation instead. The document is stored under the same key and signature
- * OpenApiDocumentProvider reads.
+ * Regenerates the OpenAPI document: deploy step after every release and nightly
+ * schedule (routes/console.php). The Documentation page never generates it by
+ * itself, it serves the last copy stored here.
  */
 class WarmApiDocs extends Command
 {
     protected $signature = 'api-docs:warm';
 
-    protected $description = 'Generate the API OpenAPI document and store it in the cache';
+    protected $description = 'Regenerate the API OpenAPI document served by the Documentation page';
 
     public function handle(OpenApiDocumentProvider $documents): int
     {

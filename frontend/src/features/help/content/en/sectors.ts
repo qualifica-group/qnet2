@@ -36,7 +36,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: ['Open **Configuration › Sales › Sectors** and press **New sector**.', 'The record opens with its rows closed: for each row press the pencil (or the value), fill in **Name** and, if needed, **Parent sector**, and press **Done** (**Revert** puts the row back as it was).', 'Press **Save**.'] },
         { type: 'paragraph', text: 'On the list rows you find **View** and **Delete**, if your role allows it. There is no separate edit form: open the record with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.' },
-        { type: 'warning', text: 'A sector with sub-sectors cannot be deleted.' },
+        { type: 'warning', text: 'A sector with sub-sectors, or linked to a registry or a purchase order, cannot be deleted: the message says what uses it. To stop offering it, turn off **Active**.' },
       ],
     },
   ],

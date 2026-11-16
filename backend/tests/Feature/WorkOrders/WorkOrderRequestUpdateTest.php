@@ -152,16 +152,19 @@ it('answers 404 for a missing work order and 401 when unauthenticated', function
     $this->postJson('/api/work-orders/999999/request-update', requestUpdateBody())->assertNotFound();
 });
 
-it('refuses a completed or force-closed work order (AC-007)', function () {
+// Spec 0395 (REQUIREMENT CHANGED): "completed or closed" is the working phase, no longer the progress.
+it('refuses a work order completed, cancelled or terminated (AC-007)', function () {
     Notification::fake();
     Sanctum::actingAs(requestUpdateActor());
 
-    [$completed] = requestUpdateWorkOrder();
-    WorkOrderProgressEntry::factory()->forWorkOrder($completed)->increment(100, '2026-10-01')->create();
-    [$closed] = requestUpdateWorkOrder();
-    $closed->update(['is_force_closed' => true, 'force_close_reason' => 'Annullata']);
+    $closed = collect(['completed', 'cancelled', 'terminated'])->map(function (string $phase): WorkOrder {
+        [$workOrder] = requestUpdateWorkOrder();
+        $workOrder->forceFill(['work_phase' => $phase])->save();
 
-    foreach ([$completed, $closed] as $workOrder) {
+        return $workOrder;
+    });
+
+    foreach ($closed as $workOrder) {
         $this->postJson(requestUpdateUrl($workOrder), requestUpdateBody())
             ->assertUnprocessable()
             ->assertJsonPath('message', 'This work order is already completed or closed.')
@@ -209,7 +212,7 @@ it('stores and mails a notification with a per-recipient link (AC-008)', functio
 it('computes the request_update flag on the detail (AC-009)', function () {
     [$open] = requestUpdateWorkOrder();
     [$done] = requestUpdateWorkOrder();
-    WorkOrderProgressEntry::factory()->forWorkOrder($done)->increment(100, '2026-10-01')->create();
+    $done->forceFill(['work_phase' => 'completed'])->save();
 
     Sanctum::actingAs(requestUpdateActor());
     $this->getJson("/api/work-orders/{$open->id}")->assertOk()->assertJsonPath('permissions.actions.request_update', true);
@@ -221,7 +224,8 @@ it('computes the request_update flag on the detail (AC-009)', function () {
 
 it('offers request_update in the grid row actions under the same conditions (AC-010)', function () {
     WorkOrder::factory()->create(['title' => 'Aperta', 'is_force_closed' => false]);
-    WorkOrder::factory()->create(['title' => 'Chiusa', 'is_force_closed' => true, 'force_close_reason' => 'x']);
+    WorkOrder::factory()->create(['title' => 'Chiusa', 'is_force_closed' => true, 'force_close_reason' => 'x'])
+        ->forceFill(['work_phase' => 'cancelled'])->save();
 
     Sanctum::actingAs(requestUpdateActor());
     expect(requestUpdateRowActions('Aperta'))->toContain('request_update')

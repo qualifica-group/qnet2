@@ -26,6 +26,9 @@ use Illuminate\Validation\ValidationException;
  * rather than on a FormRequest: the inline cell's validation is column-driven
  * and knows nothing about the row's client.
  *
+ * A phone the client's own referenti already hold is free for it (user
+ * directive 2026-11-11, `IdentityUniquenessScope::phoneSharingOwners`).
+ *
  * Only a value the card does NOT already hold is checked. A legacy duplicate
  * already stored on the card must not lock the operator out of saving the
  * rest of the panel; what is refused is introducing a new one.
@@ -122,7 +125,12 @@ final class RequestClientUniquenessGuard
             return null;
         }
 
-        return IdentityUniquenessScope::phoneTaken($this->otherCards($registry), $normalized)
+        $cards = IdentityUniquenessScope::withoutOwners(
+            $this->otherCards($registry),
+            IdentityUniquenessScope::phoneSharingOwners($registry),
+        );
+
+        return IdentityUniquenessScope::phoneTaken($cards, $normalized)
             ? __(self::PHONE_TAKEN_MESSAGE)
             : null;
     }

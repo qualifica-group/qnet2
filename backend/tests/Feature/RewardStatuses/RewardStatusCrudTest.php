@@ -277,7 +277,8 @@ it('delete: 409 when referenced by a reward, status AND reward still exist (BR-4
 
     $this->deleteJson("/api/reward-statuses/{$target->id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', 'This reward status is used by a reward and cannot be deleted.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 reward']));
 
     $this->assertDatabaseHas('reward_statuses', ['id' => $target->id]);
     $this->assertDatabaseHas('rewards', ['id' => $reward->id]);

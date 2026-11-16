@@ -17,6 +17,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Un documento può nascere **da zero** oppure **da uno o più ODA** dello stesso fornitore e della stessa società. Gli ODA collegati sono sempre visibili nella scheda del documento. Gli imponibili delle righe con una **commessa** alimentano il **consuntivo** della commessa (scheda Costi), al posto delle righe ODA collegate.',
         },
+        { type: 'paragraph', text: 'La colonna **Fornitore** mostra il nome seguito dalla **partita IVA** (es. *Rossi Srl - 01234567890*); se l’anagrafica non ha la partita IVA compare il **codice fiscale**, se non ha nessuno dei due solo il nome. Lo stesso formato compare nell’intestazione e nel campo **Fornitore** della scheda del documento.' },
       ],
     },
     {

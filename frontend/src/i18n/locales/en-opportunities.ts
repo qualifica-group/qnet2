@@ -32,7 +32,6 @@ export const opportunities = {
     empty: 'No status',
   },
   advancedFilters: {
-    assignment: 'Assignment',
     parentCategory: 'Parent category',
     registry: 'Registry',
     referent: 'Contact',

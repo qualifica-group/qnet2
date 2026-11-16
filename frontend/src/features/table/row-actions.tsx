@@ -5,11 +5,11 @@ import { MoreHorizontal } from 'lucide-react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { IconCountBadge } from '@/components/ui/icon-count-badge'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -23,6 +23,7 @@ import {
   type ActionIconMap,
 } from '@/features/table/action-icon-map'
 import { ACTION_ICON_CLASS, actionMenuVariant } from '@/features/table/action-tone'
+import { RowActionButton, RowActionMenuItem } from '@/features/table/row-action-link'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 /**
@@ -30,8 +31,31 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
  * they all show inline; beyond it, the first `INLINE_ACTION_LIMIT` stay inline
  * and every remaining action moves into the overflow (three-dots) menu, keeping
  * the actions column narrow while the most frequent actions stay one click away.
+ * A `pinned` action is inline on top of the limit (task 427151).
  */
 export const INLINE_ACTION_LIMIT = 3
+
+/** Splits the row's actions into inline and overflow, catalog order kept. */
+export function splitInlineActions(
+  available: TableActionDefinition[],
+  inlineAll = false,
+): { visible: TableActionDefinition[]; overflow: TableActionDefinition[] } {
+  const unpinnedCount = available.filter((action) => !action.pinned).length
+  if (inlineAll || unpinnedCount <= INLINE_ACTION_LIMIT) {
+    return { visible: available, overflow: [] }
+  }
+  let unpinnedSeen = 0
+  const visible: TableActionDefinition[] = []
+  const overflow: TableActionDefinition[] = []
+  for (const action of available) {
+    const inline = action.pinned === true || unpinnedSeen < INLINE_ACTION_LIMIT
+    if (!action.pinned) {
+      unpinnedSeen += 1
+    }
+    ;(inline ? visible : overflow).push(action)
+  }
+  return { visible, overflow }
+}
 
 /** Width of one inline icon action (icon-xs button + gap) and the cell's side padding. */
 const INLINE_ICON_SLOT_WIDTH = 26
@@ -50,6 +74,9 @@ export type RowActionHandler = (
   action: TableActionDefinition,
   row: TableRow,
 ) => void
+
+/** The page an action leads to for a row, or `undefined` when it opens no page. */
+export type ActionHrefResolver = (action: TableActionDefinition, row: TableRow) => string | undefined
 
 /**
  * Per-row presentation of one action, decided by the owning domain: a tint, a
@@ -87,6 +114,13 @@ export interface RowActionsOptions {
    * over the menu. Opt-in; every other domain keeps INLINE_ACTION_LIMIT.
    */
   inlineAllActions?: boolean
+  /**
+   * The page an action leads to. An action with a page renders as a real
+   * link: a plain click still runs `onAction`, Ctrl/Cmd+click and middle click
+   * open the page in a new browser tab. `TableView` already resolves the
+   * registered module's `view`/`duplicate` pages (`withModuleActionHref`).
+   */
+  resolveActionHref?: ActionHrefResolver
 }
 
 interface RowActionsProps extends RowActionsOptions {
@@ -112,22 +146,6 @@ function resolveActionCount(action: TableActionDefinition, row: TableRow): numbe
 }
 
 /**
- * Small numeric badge overlaid on an inline icon button's top-right corner
- * (e.g. the "documents" row action's attachment count). Purely presentational;
- * the caller decides whether to render it at all (see `resolveActionCount`).
- */
-function ActionCountBadge({ count }: { count: number }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="pointer-events-none absolute -top-px -right-px flex h-2.5 min-w-2.5 items-center justify-center rounded-full bg-primary px-0.5 text-[7px] leading-none text-primary-foreground"
-    >
-      {count}
-    </span>
-  )
-}
-
-/**
  * Renders the actions available for a single row by crossing `row.actions`
  * (the per-row whitelist computed server-side) with the config action catalog
  * (label/icon/type/confirm). Actions not present in `row.actions` are never
@@ -147,6 +165,7 @@ function RowActions({
   labeledActions,
   inlineAllActions,
   resolveActionState,
+  resolveActionHref,
 }: RowActionsProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
@@ -162,15 +181,10 @@ function RowActions({
 
   // Split into always-visible inline icons and the overflow remainder. With few
   // enough actions the overflow stays empty and everything renders inline.
-  const { visible, overflow } = useMemo(() => {
-    if (inlineAllActions || available.length <= INLINE_ACTION_LIMIT) {
-      return { visible: available, overflow: [] as TableActionDefinition[] }
-    }
-    return {
-      visible: available.slice(0, INLINE_ACTION_LIMIT),
-      overflow: available.slice(INLINE_ACTION_LIMIT),
-    }
-  }, [available, inlineAllActions])
+  const { visible, overflow } = useMemo(
+    () => splitInlineActions(available, inlineAllActions),
+    [available, inlineAllActions],
+  )
 
   if (available.length === 0) {
     return null
@@ -200,20 +214,22 @@ function RowActions({
           const state = resolveActionState?.(action, effectiveRow)
           const label = state?.label ?? t(action.label)
           const disabled = busy || state?.disabled === true
+          const href = disabled ? undefined : resolveActionHref?.(action, effectiveRow)
           if (labeledActions) {
             const Icon = resolveActionIcon(action.icon, iconMap)
             return (
-              <Button
+              <RowActionButton
                 key={action.key}
                 variant="outline"
                 size="xs"
                 disabled={disabled}
-                onClick={() => handleSelect(action)}
+                href={href}
+                onSelect={() => void handleSelect(action)}
                 className={state?.className}
               >
                 <Icon aria-hidden="true" />
                 {label}
-              </Button>
+              </RowActionButton>
             )
           }
           const Icon = resolveActionIcon(action.icon, iconMap)
@@ -221,17 +237,18 @@ function RowActions({
           return (
             <Tooltip key={action.key}>
               <TooltipTrigger asChild>
-                <Button
+                <RowActionButton
                   variant="ghost"
                   size="icon-xs"
                   aria-label={count !== null ? `${label} (${count})` : label}
                   disabled={disabled}
-                  onClick={() => handleSelect(action)}
+                  href={href}
+                  onSelect={() => void handleSelect(action)}
                   className={cn('relative', ACTION_ICON_CLASS[action.type], state?.className)}
                 >
                   <Icon aria-hidden="true" />
-                  {count !== null && <ActionCountBadge count={count} />}
-                </Button>
+                  {count !== null && <IconCountBadge count={count} aria-hidden="true" />}
+                </RowActionButton>
               </TooltipTrigger>
               <TooltipContent>{label}</TooltipContent>
             </Tooltip>
@@ -256,19 +273,21 @@ function RowActions({
               const Icon = resolveActionIcon(action.icon, iconMap)
               const count = resolveActionCount(action, effectiveRow)
               const state = resolveActionState?.(action, effectiveRow)
+              const disabled = state?.disabled === true
               return (
-                <DropdownMenuItem
+                <RowActionMenuItem
                   key={action.key}
                   variant={actionMenuVariant(action.type)}
-                  disabled={state?.disabled === true}
-                  onSelect={() => handleSelect(action)}
+                  disabled={disabled}
+                  href={disabled ? undefined : resolveActionHref?.(action, effectiveRow)}
+                  onSelect={() => void handleSelect(action)}
                 >
                   <Icon aria-hidden="true" className={state?.className} />
                   {state?.label ?? t(action.label)}
                   {count !== null && (
                     <span className="text-muted-foreground">({count})</span>
                   )}
-                </DropdownMenuItem>
+                </RowActionMenuItem>
               )
             })}
           </DropdownMenuContent>
@@ -303,6 +322,7 @@ export function createRowActionsRenderer(
         labeledActions={options.labeledActions}
         inlineAllActions={options.inlineAllActions}
         resolveActionState={options.resolveActionState}
+        resolveActionHref={options.resolveActionHref}
       />
     )
   }

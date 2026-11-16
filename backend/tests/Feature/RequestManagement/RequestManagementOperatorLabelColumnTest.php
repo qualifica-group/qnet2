@@ -78,7 +78,8 @@ it('a category with a level-2 label but ZERO attributes still relabels operator_
     expect($columns->firstWhere('id', 'operator_ga2')['label'])->toBe('Solo Etichetta');
 });
 
-it('the "Tutte" tab (no product_category_id) leaves operator_ga2 on the i18n key', function (): void {
+// REQUIREMENT CHANGED (spec 0382 D-2): "Tutte" reads "Gestore account 2".
+it('the "Tutte" tab (no product_category_id) names operator_ga2 "Gestore account 2"', function (): void {
     $actor = operatorLabelColumnUserWith(['viewAny', 'viewAll']);
     ProductCategory::factory()->create(['manager_labels' => ['2' => 'Operatore Tecnico']]);
     Sanctum::actingAs($actor);
@@ -86,10 +87,12 @@ it('the "Tutte" tab (no product_category_id) leaves operator_ga2 on the i18n key
     $columns = collect($this->getJson('/api/tables/request-management/columns')
         ->assertOk()->json('data.columns'))->keyBy('id');
 
-    expect($columns['operator_ga2']['label'])->toBe('requestManagement.columns.operator');
+    expect($columns['operator_ga2']['label'])->toBe('Account manager 2');
 });
 
-it('a scoped category with no level-2 label leaves operator_ga2 on the i18n key', function (): void {
+// REQUIREMENT CHANGED (spec 0382 D-11): an unlabelled position has no column
+// in a category tab.
+it('a scoped category with no level-2 label shows no operator_ga2 column', function (): void {
     $actor = operatorLabelColumnUserWith(['viewAny', 'viewAll']);
     $category = ProductCategory::factory()->create(['manager_labels' => ['1' => 'Commerciale']]);
     Sanctum::actingAs($actor);
@@ -97,19 +100,21 @@ it('a scoped category with no level-2 label leaves operator_ga2 on the i18n key'
     $columns = collect($this->getJson("/api/tables/request-management/columns?product_category_id={$category->id}")
         ->assertOk()->json('data.columns'))->keyBy('id');
 
-    expect($columns['operator_ga2']['label'])->toBe('requestManagement.columns.operator');
+    expect($columns)->not->toHaveKey('operator_ga2');
 });
 
+// REQUIREMENT CHANGED (spec 0382 D-11): a labelled category drops its
+// unlabelled positions and renames the team column, so those are compared apart.
 it('the relabel does not disturb attr.* columns or any other native column', function (): void {
     $actor = operatorLabelColumnUserWith(['viewAny', 'viewAll']);
     $category = ProductCategory::factory()->create(['manager_labels' => ['2' => 'Consulente']]);
     Sanctum::actingAs($actor);
 
     $before = collect($this->getJson('/api/tables/request-management/columns')->assertOk()->json('data.columns'))
-        ->keyBy('id')->except('operator_ga2');
+        ->keyBy('id')->except(['operator_ga2', 'manager_ga1', 'managers']);
 
     $after = collect($this->getJson("/api/tables/request-management/columns?product_category_id={$category->id}")
-        ->assertOk()->json('data.columns'))->keyBy('id')->except('operator_ga2');
+        ->assertOk()->json('data.columns'))->keyBy('id')->except(['operator_ga2', 'manager_ga1', 'managers']);
 
     expect($after->all())->toBe($before->all());
 });

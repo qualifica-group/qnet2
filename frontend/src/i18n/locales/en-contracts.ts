@@ -8,6 +8,10 @@
 
 export const contracts = {
   forbidden: "You don't have permission to view contracts.",
+  statusTabs: {
+    label: 'Contract statuses',
+    all: 'All',
+  },
   columns: {
     offerLines: 'Product lines',
     rootCategories: 'Parent category',
@@ -40,7 +44,6 @@ export const contracts = {
     renewalDue: 'Renewal due',
   },
   advancedFilters: {
-    assignment: 'Assignment',
     parentCategory: 'Parent category',
     productCategory: 'Product category',
     registry: 'Client',
@@ -175,6 +178,11 @@ export const contracts = {
       linesLabel: 'Offer lines',
       linesLoadError: 'Unable to load the product lines. Please try again.',
       linesEmpty: 'No revenue line available on this offer.',
+      linesSearch: 'Search product',
+      linesCategoryFilter: 'Filter by category',
+      linesCategoryAll: 'All categories',
+      linesCategoryNone: 'No category',
+      linesNoMatch: 'No line matches the search or the category.',
       linesRequired: 'Select at least one line.',
       lineSelectHeader: 'Select',
       lineSelectLabel: 'Select {{name}}',

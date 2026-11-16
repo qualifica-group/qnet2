@@ -224,7 +224,8 @@ it('delete: 409 when referenced by a Contract, status AND contract still exist (
 
     $this->deleteJson("/api/contract-statuses/{$target->id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', 'This contract status is used by a contract and cannot be deleted.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 contract']));
 
     $this->assertDatabaseHas('contract_statuses', ['id' => $target->id]);
     $this->assertDatabaseHas('contracts', ['id' => $contract->id]);

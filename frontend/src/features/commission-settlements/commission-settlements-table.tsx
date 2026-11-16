@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
-import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionHrefResolver, RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { CommissionAdjustmentSheet } from '@/features/commission-settlements/commission-adjustment-sheet'
 import { commissionSettlementColumnRenderers } from '@/features/commission-settlements/column-renderers'
@@ -15,6 +15,10 @@ import { CommissionSettlementQuickFilterToolbar } from '@/features/commission-se
 import { CommissionSettlementTotalsFooter } from '@/features/commission-settlements/commission-settlement-totals-footer'
 import { COMMISSION_SETTLEMENTS_DOMAIN } from '@/features/commission-settlements/types'
 import { useSettlementQuickFilter } from '@/features/commission-settlements/use-settlement-quick-filter'
+
+/** The `view` row action also has a dedicated page: Ctrl/Cmd+click opens it in a new tab. */
+const settlementActionHref: ActionHrefResolver = (action, row) =>
+  action.key === 'view' ? `/${COMMISSION_SETTLEMENTS_DOMAIN}/${row.id}` : undefined
 
 /**
  * Settlements adapter over the generic table (spec 0213): the quick filter
@@ -60,6 +64,7 @@ export function CommissionSettlementsTable() {
         domain={COMMISSION_SETTLEMENTS_DOMAIN}
         renderers={commissionSettlementColumnRenderers}
         onAction={handleAction}
+        resolveActionHref={settlementActionHref}
         forcedFilterModel={quickFilter.forcedFilterModel}
         onFilterModelChange={quickFilter.onFilterModelChange}
         renderFooter={(aggregates) => <CommissionSettlementTotalsFooter aggregates={aggregates} />}

@@ -61,7 +61,6 @@ export const workOrderPaymentStatuses = {
     colorMax: 'Il colore può contenere al massimo 32 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare lo stato pagamento. Riprova.',
-    deleteInUseFallback: 'Questo stato pagamento è usato da una riga commessa e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',

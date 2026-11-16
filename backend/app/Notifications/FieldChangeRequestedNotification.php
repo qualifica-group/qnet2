@@ -8,14 +8,18 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\FieldChangeRequest;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
+use App\Notifications\Concerns\RespectsEmailPreference;
+use App\Support\Notifications\DetailFields;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Sent to every titolare of `field-change-requests.viewAny` when a NEW
- * request is created (spec 0078, AC-024), excluded the requester themselves
+ * Sent to the active holders of FieldChangeRequestCreator::NOTIFIED_ROLE when
+ * a NEW request is created (spec 0078, AC-024/D-8), excluded the requester themselves
  * (SentTo/exclusion handled by the caller, FieldChangeRequestCreator).
  * Modelled on NoteMentionNotification (database + mail, ShouldQueue): the
  * database payload goes through the SAME NotificationData shape (title,
@@ -29,12 +33,19 @@ use Illuminate\Notifications\Notification;
  */
 class FieldChangeRequestedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
+    /**
+     * @param  array<string, string>  $subjectDetails  the card of the record
+     *                                                 the request is about
+     *                                                 (RecordDetails), built
+     *                                                 by the caller
+     */
     public function __construct(
         private readonly FieldChangeRequest $fieldChangeRequest,
         private readonly User $requester,
         private readonly string $subjectLabel,
+        private readonly array $subjectDetails = [],
     ) {}
 
     /**
@@ -42,7 +53,7 @@ class FieldChangeRequestedNotification extends Notification implements ShouldQue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**
@@ -60,11 +71,32 @@ class FieldChangeRequestedNotification extends Notification implements ShouldQue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject(__('New change request'))
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message())
-            ->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$this->dataActionUrl());
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject(__('New change request'))
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message(),
+            $this->details(),
+            $this->dataActionUrl(),
+        );
+    }
+
+    /**
+     * Spec 0381: the change asked for, then the record it is about.
+     *
+     * @return array<string, string>
+     */
+    private function details(): array
+    {
+        return [
+            ...DetailFields::compact([
+                'notifications.fields.field' => $this->fieldChangeRequest->fieldLabel(),
+                'notifications.fields.current_value' => $this->fieldChangeRequest->current_label ?? __('notifications.values.empty'),
+                'notifications.fields.requested_value' => $this->fieldChangeRequest->requested_label ?? __('notifications.values.empty'),
+                'notifications.fields.requester' => $this->requester->name,
+            ]),
+            ...$this->subjectDetails,
+        ];
     }
 
     /**

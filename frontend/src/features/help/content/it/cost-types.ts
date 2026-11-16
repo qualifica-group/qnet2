@@ -68,7 +68,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Non puoi eliminare un tipo di costo già usato da righe di ordini di acquisto, da fatture passive, da prodotti o da costi di commessa: disattivalo. Nella griglia i tipi in uso non offrono Elimina.',
+          text: 'Non puoi eliminare un tipo di costo già usato da righe di ODA, fatture passive e loro righe, prodotti, costi di commessa, movimenti di tesoreria o profili fiscali agente: disattivalo. Nella griglia i tipi usati da ODA, fatture passive, prodotti o costi di commessa non offrono Elimina; negli altri casi il messaggio dice da cosa è usato.',
         },
       ],
     },

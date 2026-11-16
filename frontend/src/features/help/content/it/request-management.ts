@@ -20,6 +20,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: "Le categorie la cui impostazione **Visibile in** (nella scheda della categoria) è **Opportunità / Offerte** non fanno parte di Gestione Richieste: non hanno una scheda, non si possono scegliere (né nel form né nella cella **Categoria prodotto**) e non compaiono nei filtri e nelle statistiche. Una richiesta che ha **solo** categorie di questo tipo non compare nell'elenco, nei conteggi e nella ricerca, e il suo link risponde **Accesso negato**; se ha anche una categoria usata qui resta visibile. Rimettendo **Tutti i moduli** sulla categoria tutto torna come prima: nessun dato viene cancellato.",
+        },
+        {
+          type: 'paragraph',
           text: 'Cosa vedi dipende dai permessi. Senza altri permessi vedi le richieste del cui **Team** fai parte: come operatore, Supervisore o Gestore account. **Visualizza per sede** aggiunge quelle delle tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Se crei una richiesta fuori dal tuo ambito, non la vedrai più a meno di avere uno di questi permessi.',
         },
         {
@@ -55,9 +59,8 @@ const guide: HelpGuide = {
             ['Fonte', "Canale da cui arriva la richiesta (è un campo dell'offerta)."],
             ['Richieste di modifica', 'Proposte di modifica ancora in attesa.'],
             ['Linee di prodotto', "Prodotti presenti nell'offerta; la cella apre l'editor con il catalogo prodotti."],
-            ['Operatore', 'Persona che lavora la richiesta.'],
-            ['Operatore APL', 'Il Gestore account in quinta posizione del team. Si ordina e si filtra per nome e si modifica dalla cella.'],
-            ['Gestori account', 'Tutte le persone del team, operatore compreso. Si filtra per nome e si modifica dalla cella.'],
+            ['Gestore account 1, 2, 3...', "Una colonna per ogni posizione del team. In **Tutte** si chiamano **Gestore account** con il numero e arrivano fino alla posizione più alta occupata. In una scheda categoria ci sono solo le posizioni a cui la categoria dà un nome (ad esempio in Formazione **Tutor**, **Operatore**, **Partner commerciale**, **Segnalatore**, **Operatore APL**): se la categoria aggiunge un nome, compare la colonna. La posizione 2 è l'**Operatore**, la persona che lavora la richiesta. Si ordinano, si filtrano per nome e si modificano dalla cella."],
+            ['Gestori account / Altri gestori account', "In **Tutte**, **Gestori account** mostra tutte le persone del team, operatore compreso. In una scheda categoria si chiama **Altri gestori account** e mostra solo chi occupa una posizione senza nome nella categoria; modificandola dalla cella cambi solo queste persone, quelle nelle colonne con un nome restano. Si filtra per nome."],
             ['Sede operativa', 'Sede a cui è assegnata la richiesta.'],
             ['Prossimo richiamo', 'Data della prossima chiamata al cliente.'],
             ['Trasferito', "Se il contatto è stato trasferito da un'altra sede."],
@@ -85,7 +88,7 @@ const guide: HelpGuide = {
             'In **Linee di prodotto** aggiungi almeno una riga: categoria genitore, poi categoria prodotto. Se la categoria genitore ha dei gruppi (ad esempio Consulenza › ISO), con **Filtro** scegli il gruppo e la categoria prodotto elenca solo le sue sottocategorie; il filtro non viene salvato, solo la categoria prodotto.',
             "Nel **Catalogo prodotti** spunta i prodotti e premi **Aggiungi N selezionati**, poi controlla quantità, prezzo unitario e IVA delle righe (vedi **Righe dell'offerta e catalogo prodotti**).",
             "In **Anagrafica cliente** scegli un'**Anagrafica esistente** oppure inserisci un nuovo cliente.",
-            'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore**, **Commerciale** e **Sede operativa**. Il Commerciale scelto qui vale sia per la richiesta sia per la sua opportunità.',
+            'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore**, **Commerciale** e **Sede operativa**. Il Commerciale scelto qui vale sia per la richiesta sia per la sua opportunità. Se stai inserendo un nuovo cliente, Fonte, Segnalatore e Commerciale vengono salvati anche sulla sua anagrafica.',
             'Compila le **Informazioni aggiuntive**, se presenti.',
             'Premi **Crea richiesta**: torni alla tabella, sulla scheda categoria che avevi aperto.',
           ],
@@ -96,7 +99,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: "Se il nuovo cliente che stai inserendo esiste già, sotto la scelta dell'anagrafica compare **Possibile duplicato**: scegli quell'anagrafica invece di crearne un'altra. Codice fiscale, partita IVA o telefono già presenti su un'altra scheda bloccano il salvataggio (vedi la guida **Anagrafiche**).",
+          text: "Se il nuovo cliente che stai inserendo esiste già, sotto la scelta dell'anagrafica compare **Possibile duplicato**: scegli quell'anagrafica invece di crearne un'altra. Il pulsante **Usa** accanto al duplicato la seleziona subito; se il telefono o l'email appartengono a un referente, il pulsante seleziona l'azienda a cui il referente è collegato. Codice fiscale, partita IVA o telefono già presenti su un'altra scheda bloccano il salvataggio (vedi la guida **Anagrafiche**).",
         },
         {
           type: 'warning',
@@ -151,7 +154,7 @@ const guide: HelpGuide = {
             "**Previsione commerciale**: data chiusura prevista, valore stimato e probabilità di successo. Sono i valori dell'opportunità: se cambiano qui, cambiano anche in **Opportunità** e nelle altre richieste della stessa opportunità.",
             "**Stato**: alcuni stati richiedono una **Nota**. Per uno stato validato serve almeno una riga offerta. Per chiudere non serve, né con esito positivo né con esito negativo: la riga prodotto diventa obbligatoria quando si valida il contratto.",
             "**Anagrafica**: il campo in alto mostra il cliente della richiesta e permette di sceglierne un altro. Il cambio vale per tutte le offerte dell'opportunità. Scelto un altro cliente, i suoi dati compaiono dopo il salvataggio e le modifiche fatte ai dati del cliente precedente non vengono salvate. Se c'è già un contratto, o il cliente arriva dal lead, il campo non è modificabile.",
-            '**Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**) e **Team** (**Supervisore** e **Gestori account**). Il **Commerciale** modificato qui vale solo per questa richiesta (l\'offerta): quello dell\'opportunità non cambia.',
+            '**Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**) e **Team** (**Supervisore** e **Gestori account**). Il **Commerciale** modificato qui vale solo per questa richiesta (l\'offerta): quello dell\'opportunità non cambia. Chi aggiungi tra i **Gestori account**, in qualsiasi posizione (anche dalle colonne **Gestore account** della tabella), riceve la notifica **Sei stato inserito come Gestore Account** nella campanella e per email; non la ricevono chi viene solo spostato di posizione e chi inserisce se stesso.',
             'Le **Informazioni aggiuntive**, che dipendono dalle categorie scelte.',
           ],
         },
@@ -165,7 +168,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Se modifichi i dati del cliente, dal pannello o direttamente nella cella della tabella, non puoi inserire un codice fiscale, una partita IVA o un telefono che appartengono già a un'altra scheda: il salvataggio viene rifiutato. I valori già presenti sul cliente restano modificabili.",
+          text: "Se modifichi i dati del cliente, dal pannello o direttamente nella cella della tabella, non puoi inserire un codice fiscale, una partita IVA o un telefono che appartengono già a un'altra scheda: il salvataggio viene rifiutato. Puoi invece inserire il telefono di un referente collegato a quel cliente. I valori già presenti sul cliente restano modificabili.",
         },
         {
           type: 'paragraph',
@@ -179,7 +182,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal menu della singola riga: **Documenti**, **Note**, **Trasferisci contatto**, **Elimina**, **Attività**. Selezionando più righe, il menu **Azioni** offre:',
+          text: 'Dal menu della singola riga: **Documenti**, **Note** (in alto nella finestra c\'è la **Data richiamo** della riga, così la vedi mentre scrivi), **Trasferisci contatto**, **Elimina**, **Attività**. Selezionando più righe, il menu **Azioni** offre:',
         },
         {
           type: 'table',
@@ -187,7 +190,7 @@ const guide: HelpGuide = {
           rows: [
             [
               'Assegna operatori',
-              '**Smistamento equo** mostra gli operatori raggruppati per Sede (tutti selezionati, deselezionabili per gruppo o singolarmente) e distribuisce tra chi resta selezionato; **Assegna a operatore** assegna tutto alla stessa persona.',
+              '**Smistamento equo** mostra gli operatori raggruppati per Sede (tutti selezionati, deselezionabili per gruppo o singolarmente) e distribuisce tra chi resta selezionato — con **Tieni conto del carico attuale** acceso favorisce chi ha meno offerte in carico, spento divide in parti uguali; **Assegna a operatore** assegna tutto alla stessa persona.',
             ],
             [
               'Assegna Tutor',
@@ -222,8 +225,8 @@ const guide: HelpGuide = {
             ['Chi aveva il contatto', 'Avviso che il contatto non è più suo e a chi è passato.'],
             ['Chi riceve il contatto', 'Avviso che il contatto gli è stato assegnato.'],
             [
-              'Chi ha il permesso **Visualizza tutti**',
-              'Riepilogo di ogni trasferimento del modulo, anche quando non è coinvolto.',
+              'Chi ha il ruolo **notifiche-trasferimenti-contatti**',
+              'Riepilogo di ogni trasferimento, anche quando non è coinvolto. Il permesso **Visualizza tutti** fa vedere tutte le richieste ma non fa ricevere il riepilogo.',
             ],
           ],
         },

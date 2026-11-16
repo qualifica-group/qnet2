@@ -14,8 +14,10 @@ interface WorkOrderContractDataSectionProps {
 }
 
 /**
- * Contract data of the work order (spec 0201), hosted by the "product lines"
- * section of the work order record card. The caller mounts it only with
+ * Contract data of the work order (spec 0201), at the bottom of the left
+ * column of the Info tab: the product lines with their payment status first,
+ * then the totals (legacy "Dati contrattuali commessa", user directive
+ * 2026-11-16). The caller mounts it only with
  * `view_contract_data`, so the query never fires for an actor who may not see it.
  */
 export function WorkOrderContractDataSection({ workOrderId, canManage, showRegistry }: WorkOrderContractDataSectionProps) {
@@ -50,8 +52,8 @@ export function WorkOrderContractDataSection({ workOrderId, canManage, showRegis
         <p className="text-sm text-muted-foreground">{t('workOrders.contractData.empty')}</p>
       ) : (
         <>
-          <ContractDataTotals totals={data.totals} />
           <ContractDataTable workOrderId={workOrderId} data={data} canManage={canManage} showRegistry={showRegistry} />
+          <ContractDataTotals totals={data.totals} />
         </>
       )}
     </div>

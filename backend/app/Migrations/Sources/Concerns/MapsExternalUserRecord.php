@@ -120,10 +120,9 @@ trait MapsExternalUserRecord
      * unresolved, is the whole desired state of that side. The remote side is
      * left unprovided: the external system has no notion of it.
      *
-     * The external system likewise carries a SINGLE manager per user (spec
-     * 0166 context — the pivot's whole reason to keep a `reportsToIdsProvided`
-     * flag at all): `reportsToIdsProvided` is always true on a create too — the
-     * resolved id as a one-element array, or `[]` when absent/unresolved, is
+     * The managers come as a LIST (`reports_to_ids`, the legacy
+     * `user_responses`, spec 0166 D-7): `reportsToIdsProvided` is always true
+     * on a create too — the resolved ids, or `[]` when absent/unresolved, are
      * the whole desired state of the `reportsTo` pivot.
      *
      * @param  array<string, mixed>  $record
@@ -137,12 +136,12 @@ trait MapsExternalUserRecord
 
         $warnings = [];
 
-        $reportsToId = $this->resolveEmploymentRelation(User::class, $record['reports_to_id'] ?? null, 'reports_to_id', $warnings);
+        $reportsToIds = $this->resolveReportsToIds((array) ($record['reports_to_ids'] ?? []), $warnings);
         $operationalSiteId = $this->resolveEmploymentRelation(OperationalSite::class, $record['operational_site_id'] ?? null, 'operational_site_id', $warnings);
 
         $employment = new EmploymentData(
             reportsToIdsProvided: true,
-            reportsToIds: $reportsToId === null ? [] : [$reportsToId],
+            reportsToIds: $reportsToIds,
             primaryOperationalSiteIdProvided: true,
             primaryOperationalSiteId: $operationalSiteId,
             contractData: [
@@ -295,7 +294,7 @@ trait MapsExternalUserRecord
      * Self-healing counterpart of backfillPhysicalSite() for the reports-to
      * manager (spec 0166 D-10, replacing the former "fill once" gate on the
      * NULL `reports_to_id` column): a profile with NO manager AT
-     * ALL yet gets the resolved external manager attached to
+     * ALL yet gets the resolved external managers attached to
      * `employment_profile_manager` — the same "fill once, never overwrite"
      * property translated from a NULL column to an absent/empty pivot. A
      * profile that already has at least one manager (assigned by hand, or by
@@ -309,13 +308,11 @@ trait MapsExternalUserRecord
      */
     private function backfillManager(EmploymentProfile $existing, EmploymentData $desired): bool
     {
-        $managerId = $desired->reportsToIds[0] ?? null;
-
-        if ($managerId === null || $existing->reportsToIds !== []) {
+        if ($desired->reportsToIds === [] || $existing->reportsToIds !== []) {
             return false;
         }
 
-        $existing->reportsTo()->syncWithoutDetaching([$managerId]);
+        $existing->reportsTo()->syncWithoutDetaching($desired->reportsToIds);
 
         return true;
     }
@@ -326,18 +323,41 @@ trait MapsExternalUserRecord
     private function hasEmploymentPayload(array $record): bool
     {
         $employmentFields = [
-            'reports_to_id', 'relationship_type',
+            'reports_to_ids', 'relationship_type',
             'company_id', 'operational_site_id',
             'hired_at', 'terminated_at', 'standard_daily_minutes', 'break_daily_minutes',
         ];
 
         foreach ($employmentFields as $field) {
-            if (array_key_exists($field, $record) && $record[$field] !== null && $record[$field] !== '') {
+            if (array_key_exists($field, $record) && ! in_array($record[$field], [null, '', []], true)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Each external manager id remapped via `old_id`; an unresolved one is a
+     * non-fatal warning and is left out.
+     *
+     * @param  array<int, int|string>  $externalIds
+     * @param  array<int, string>  $warnings
+     * @return list<int>
+     */
+    private function resolveReportsToIds(array $externalIds, array &$warnings): array
+    {
+        $ids = [];
+
+        foreach ($externalIds as $externalId) {
+            $id = $this->resolveEmploymentRelation(User::class, $externalId, 'reports_to_ids', $warnings);
+
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\WorkOrderEmails;
 
+use App\Rules\AllowedAttachmentFile;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -30,16 +31,8 @@ class StoreWorkOrderEmailAttachmentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rules = [
-            'file' => ['required', 'file', 'max:'.(int) config('attachments.max_size')],
+        return [
+            'file' => ['required', 'file', 'max:'.(int) config('attachments.max_size'), new AllowedAttachmentFile],
         ];
-
-        $allowedMimeTypes = (array) config('attachments.allowed_mime_types');
-
-        if ($allowedMimeTypes !== []) {
-            $rules['file'][] = 'mimetypes:'.implode(',', $allowedMimeTypes);
-        }
-
-        return $rules;
     }
 }

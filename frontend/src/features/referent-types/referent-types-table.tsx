@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -52,7 +52,7 @@ export function ReferentTypesTable() {
         toast.success(t('referentTypes.form.deleted'))
         refreshGrid()
       } catch (error) {
-        toast.error(apiErrorMessage(error, t('referentTypes.form.deleteError'), i18n))
+        toast.error(refusedActionMessage(error, t('referentTypes.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

@@ -19,7 +19,7 @@ const request: ProformaRequestWithPermissions = {
   work_order: { id: 4, code: 'COM-0001', title: 'Installazione' },
   quote: { id: 7, code: 'QUO-0007' },
   company: { id: 2, name: 'Qualifica Group' },
-  customer: { id: 3, name: 'Rossi S.r.l.' },
+  customer: { id: 3, name: 'Rossi S.r.l.', label: 'Rossi S.r.l. - 01234567890' },
   supplier: null,
   payment_method: null,
   assigned_to: { id: 1, name: 'Ada' },
@@ -49,5 +49,17 @@ describe('ProformaRequestDetailView', () => {
 
     expect(screen.getByText('Quote')).toBeInTheDocument()
     expect(screen.getByText('QUO-0007')).toBeInTheDocument()
+  })
+
+  it('shows the customer with its VAT number', () => {
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={new QueryClient()}>
+          <ProformaRequestDetailView proformaRequest={request} />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Rossi S.r.l. - 01234567890')).toBeInTheDocument()
   })
 })

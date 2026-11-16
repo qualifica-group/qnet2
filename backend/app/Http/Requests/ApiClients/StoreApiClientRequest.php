@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ApiClients;
 
+use App\Enums\ApiClientMethod;
 use App\Models\ApiClient;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -38,6 +39,9 @@ class StoreApiClientRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:2000'],
             'rate_limit_per_minute' => ['nullable', 'integer', 'between:1,'.(int) config('external-api.rate_limit.max')],
             'expires_at' => ['nullable', 'date', 'after:now'],
+            // Spec 0392: omitted on creation = every method; on update it replaces the list.
+            'allowed_methods' => ['sometimes', 'array', 'min:1'],
+            'allowed_methods.*' => ['string', 'distinct', Rule::in(ApiClientMethod::values())],
         ];
     }
 }

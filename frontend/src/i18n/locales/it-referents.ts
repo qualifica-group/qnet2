@@ -21,6 +21,8 @@ export const referents = {
     subtitle: 'Dettaglio del referente selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il referente. Riprova.',
     details: 'Dettagli',
+    // Task 428287: il referente mostrato su una commessa la cui offerta non ne ha uno proprio.
+    registryPrimary: "Referente principale dell'anagrafica",
     // Le regole del Configuratore commissioni con destinatario il referente (spec 0336).
     related: {
       title: 'Record collegati',

@@ -421,9 +421,10 @@ it('advanced filters: product_category forwards source.params.include_inactive (
     $filters = collect($this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.advancedFilters'))
         ->keyBy('name');
 
+    // REQUIREMENT CHANGED (spec 0389 rev.2): the filter also lists only the categories used in Opportunita'.
     expect($filters['product_category']['source'])->toBe([
         'resource' => 'product-categories',
-        'params' => ['include_inactive' => 1],
+        'params' => ['include_inactive' => 1, 'usage_area' => 'opportunities'],
     ]);
 });
 

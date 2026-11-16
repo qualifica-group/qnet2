@@ -61,8 +61,6 @@ export const productTypologies = {
     proformaKind: 'Tipo richiesta proforma',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la tipologia prodotto. Riprova.',
-    deleteInUse:
-      'Impossibile eliminare la Tipologia Prodotto perché risulta associata a uno o più prodotti.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'La tipologia prodotto non è ancora stata creata: i dati inseriti andranno persi.',

@@ -4,6 +4,7 @@ export const apiClients = {
     id: 'ID',
     name: 'Name',
     is_active: 'Active',
+    allowed_methods: 'Methods',
     expires_at: 'Key expiry',
     key_last_four: 'Key ends with',
     last_used_at: 'Last used',

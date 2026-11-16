@@ -2,6 +2,7 @@
 
 namespace App\Tables;
 
+use App\Enums\ApiClientMethod;
 use App\Models\ApiClient;
 use App\Models\User;
 use App\Tables\ApiClients\ApiClientColumnCatalog;
@@ -108,6 +109,7 @@ class ApiClientsTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'name' => $row->name,
             'is_active' => $row->is_active,
+            'allowed_methods' => array_values(array_intersect(ApiClientMethod::values(), $row->allowed_methods ?? [])),
             'expires_at' => $row->expires_at,
             'key_last_four' => $row->key_last_four,
             'last_used_at' => $row->getAttribute(self::LAST_USED_ALIAS),

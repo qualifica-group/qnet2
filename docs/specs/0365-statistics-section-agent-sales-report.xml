@@ -117,6 +117,19 @@
     <decision id="D-11">App di menu (spec 0317): `agent-sales-report` aggiunta all'app `sales` in
       `WorkspaceCatalogue` e, con una migrazione dati idempotente (`insertOrIgnore`), alla workspace `sales` gia'
       esistente.</decision>
+    <decision id="D-12">(task 427625 e 427940 di Martina Mosca, 2026-11-12, REQUIREMENT CHANGED rispetto a D-4/D-5)
+      Il contratto della griglia cresce: dopo `title` le colonne `root_category` ("Linea prodotto", la categoria
+      madre) e `category` ("Categoria prodotto"), filtro a elenco + valori distinti, non ordinabili, valore = nomi
+      distinti separati da virgola. Regola delle categorie = quella dei workflow (`QuoteClassificationSource`):
+      prodotti delle righe di RICAVO dell'offerta, oppure, solo se l'offerta non ne ha, le righe prodotto
+      dell'Opportunita' (molte offerte ISO/SOA nate da Gestione Richieste non hanno prodotti). Implementazione:
+      `AgentSalesReportCategoryColumns`. Dopo `reporter` la colonna `revenue_net_after_reporter` ("Imponibile al
+      netto segnalatore") = `revenue_net` meno le provvigioni REPORTER (`calculated_amount`) delle righe di ricavo,
+      numerica, non ordinabile ne' filtrabile. Unica azione di riga `view` (permesso `quotes.view`): apre l'offerta
+      SEMPRE in modale sopra il report (`useModuleOpener(quotes, forceMode modal)`, direttiva utente 2026-11-12),
+      con link `/quotes/{id}` per Ctrl/Cmd+clic (resolver FE `agentSalesReportActionHref`).
+      Interpretazione: "linea prodotto" = categoria madre, la stessa richiesta del 427625. Le offerte migrate
+      ricadono sotto le radici `[OLD] ...` (es. `[OLD] ISO`), distinte dalle radici nuove.</decision>
   </decisions>
 
   <scope>

@@ -29,6 +29,12 @@ export const enums = {
     single: 'Single',
     multiple: 'Multiple',
   },
+  // The modules a category branch is used in (spec 0389).
+  category_usage_area: {
+    all: 'All modules',
+    requests: 'Requests / Enrollees',
+    opportunities: 'Opportunities / Quotes',
+  },
   personal_data_type: {
     individual: 'Individual',
     company: 'Company',
@@ -197,20 +203,13 @@ export const enums = {
     processing: 'Processing',
     project: 'Project',
   },
-  // Calculated work order status (spec 0149) from the root tasks and
-  // `is_force_closed`, the grid's `status` badge column — no DB column.
+  // Work order status (spec 0395, the legacy phase): `status` column, tabs and detail badge.
   work_order_work_phase: {
     to_plan: 'To plan',
     in_progress: 'In progress',
     completed: 'Completed',
     cancelled: 'Cancelled',
     terminated: 'Terminated',
-  },
-  work_order_status: {
-    open: 'Open',
-    in_progress: 'In progress',
-    completed: 'Completed',
-    closed: 'Closed',
   },
   // Task table advanced filters (spec 0147), as on the work order board.
   task_list_status: {
@@ -234,16 +233,6 @@ export const enums = {
     created_by_me: 'Created by me',
     observed_by_me: 'Observed by me',
     all: 'All',
-    visible: 'All visible',
-  },
-  commercial_assignment_scope: {
-    supervisor: 'Supervisor',
-    manager: 'Account manager',
-    visible: 'All visible',
-  },
-  work_order_assignment_scope: {
-    supervisor: 'Supervisor',
-    participant: 'Participant',
     visible: 'All visible',
   },
   // Spec 0284: outcome of a staff training (grid, filter, detail, form).

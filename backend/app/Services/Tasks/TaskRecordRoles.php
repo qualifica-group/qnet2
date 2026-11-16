@@ -7,6 +7,8 @@ namespace App\Services\Tasks;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\RoleAssignmentGuard;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * WHO the actor is on a given Task record (spec 0116, D-1): the four
@@ -40,6 +42,68 @@ final class TaskRecordRoles
         }
 
         return $task->assignees()->whereKey($actor->id)->exists();
+    }
+
+    /**
+     * Spec 0383: the actor assigned to the DIRECT parent of a sub-task with
+     * no assignee of its own. Never the grandparent; it stops as soon as the
+     * sub-task gets an assignee. Kept apart from isAssignee() so the
+     * manageAll deroga, notifications and "assigned to me" stay unchanged.
+     */
+    public static function isInheritedAssignee(User $actor, Task $task): bool
+    {
+        if ($task->parent_task_id === null) {
+            return false;
+        }
+
+        return ! self::hasAssignees($task) && DB::table('task_assignee')
+            ->where('task_id', $task->parent_task_id)
+            ->where('user_id', $actor->id)
+            ->exists();
+    }
+
+    /**
+     * Spec 0387: a Responsabile or Partecipante of the commessa of a Task
+     * with no assignee may take it over by completing it. Kept apart from
+     * isAssignee() like isInheritedAssignee(): it only grants the
+     * completion, and TaskCompletionService::complete() turns the actor
+     * into a real assignee as the first step of that completion.
+     */
+    public static function isWorkOrderMemberClaimant(User $actor, Task $task): bool
+    {
+        if ($task->work_order_id === null || self::hasAssignees($task)) {
+            return false;
+        }
+
+        return DB::table('work_order_participant')
+            ->where('work_order_id', $task->work_order_id)
+            ->where('user_id', $actor->id)
+            ->exists()
+            || DB::table('work_order_supervisor')
+                ->where('work_order_id', $task->work_order_id)
+                ->where('user_id', $actor->id)
+                ->exists();
+    }
+
+    /**
+     * The query shape of isInheritedAssignee(): the ids of the sub-tasks
+     * $actor inherits, driven by the per-user index of `task_assignee`.
+     */
+    public static function inheritedAssigneeTaskIds(User $actor): QueryBuilder
+    {
+        return DB::table('task_assignee as parent_assignee')
+            ->join('tasks as subtask', 'subtask.parent_task_id', '=', 'parent_assignee.task_id')
+            ->select('subtask.id')
+            ->leftJoin('task_assignee as own_assignee', 'own_assignee.task_id', '=', 'subtask.id')
+            ->where('parent_assignee.user_id', $actor->id)
+            ->whereNull('own_assignee.id');
+    }
+
+    private static function hasAssignees(Task $task): bool
+    {
+        return $task->relationLoaded('assignees')
+            ? $task->assignees->isNotEmpty()
+            : $task->assignees()->exists();
     }
 
     public static function isWatcher(User $actor, Task $task): bool

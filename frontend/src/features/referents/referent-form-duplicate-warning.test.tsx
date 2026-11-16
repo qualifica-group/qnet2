@@ -104,7 +104,7 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
 
   it('shows a non-blocking, role="status" warning after typing a matching email, and the save stays usable (AC-007, AC-009)', async () => {
     checkIdentityDuplicatesMock.mockResolvedValue({
-      matches: [{ owner_type: 'referent', owner_id: 9, name: 'Existing Referent', matched_on: ['email'] }],
+      matches: [{ owner_type: 'referent', owner_id: 9, name: 'Existing Referent', matched_on: ['email'], registries: [] }],
     })
     createReferentMock.mockResolvedValue({
       id: 1,
@@ -149,7 +149,7 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
 
   it('hides the warning again once the matching field is cleared (AC-008)', async () => {
     checkIdentityDuplicatesMock.mockResolvedValue({
-      matches: [{ owner_type: 'referent', owner_id: 9, name: 'Existing Referent', matched_on: ['email'] }],
+      matches: [{ owner_type: 'referent', owner_id: 9, name: 'Existing Referent', matched_on: ['email'], registries: [] }],
     })
 
     render(

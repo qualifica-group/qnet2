@@ -6,8 +6,12 @@ namespace App\Support\Notifications;
 
 use App\Enums\AssignmentTargetEnum;
 use App\Models\Opportunity;
+use App\Models\ProformaRequest;
+use App\Models\PurchaseRequest;
 use App\Models\Quote;
+use App\Models\Referent;
 use App\Models\Registry;
+use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -41,7 +45,7 @@ final class RecordDetails
      *
      * @var array<int, string>
      */
-    private const array REGISTRY_RELATIONS = ['source', 'supervisor', 'managers'];
+    private const array REGISTRY_RELATIONS = ['personalData', 'source', 'supervisor', 'managers'];
 
     /**
      * @var array<int, string>
@@ -78,6 +82,10 @@ final class RecordDetails
             $record instanceof Opportunity => self::forOpportunity($record),
             $record instanceof Quote => self::forQuote($record),
             $record instanceof WorkOrder => self::forWorkOrder($record),
+            $record instanceof Task => TaskDetails::for($record),
+            $record instanceof Referent => ModuleRecordDetails::forReferent($record),
+            $record instanceof ProformaRequest => ModuleRecordDetails::forProformaRequest($record),
+            $record instanceof PurchaseRequest => ModuleRecordDetails::forPurchaseRequest($record),
             default => [],
         };
     }
@@ -114,11 +122,18 @@ final class RecordDetails
     {
         $registry->loadMissing(self::REGISTRY_RELATIONS);
 
-        return self::compact([
+        $personalData = $registry->personalData;
+
+        return DetailFields::compact([
             'notifications.fields.name' => $registry->name,
             // The i18n KEY, not a rendered word: DetailsTable translates it in
             // the recipient's locale (see its value() method).
             'notifications.fields.type' => $registry->is_supplier ? 'notifications.values.supplier' : 'notifications.values.client',
+            // Spec 0381 (U-1): the tax data, hidden by RecordMail from a
+            // recipient who cannot open the record (D-4).
+            'notifications.fields.vat_number' => $personalData?->vat_number,
+            'notifications.fields.tax_code' => $personalData?->tax_code,
+            'notifications.fields.sdi_code' => $personalData?->sdi_code,
             'notifications.fields.source' => $registry->source?->name,
             'notifications.fields.supervisor' => $registry->supervisor?->name,
             'notifications.fields.account_managers' => self::managerList($registry->managers),
@@ -134,7 +149,7 @@ final class RecordDetails
 
         $site = $opportunity->operationalSite;
 
-        return self::compact([
+        return DetailFields::compact([
             'notifications.fields.title' => $opportunity->name,
             'notifications.fields.client' => $opportunity->registry?->name,
             'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
@@ -158,7 +173,7 @@ final class RecordDetails
 
         $site = $quote->operationalSite;
 
-        return self::compact([
+        return DetailFields::compact([
             'notifications.fields.title' => $quote->title,
             'notifications.fields.client' => $quote->opportunity?->registry?->name,
             'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
@@ -180,7 +195,7 @@ final class RecordDetails
     {
         $workOrder->loadMissing(self::WORK_ORDER_RELATIONS);
 
-        return self::compact([
+        return DetailFields::compact([
             'notifications.fields.title' => self::labelFor($workOrder),
             'notifications.fields.client' => $workOrder->quote?->opportunity?->registry?->name,
             'notifications.fields.status' => $workOrder->workOrderWorkflowStatus?->name,
@@ -218,24 +233,5 @@ final class RecordDetails
         }
 
         return $parts === [] ? null : implode(', ', $parts);
-    }
-
-    /**
-     * Drop every empty field and normalize what survives to a string.
-     *
-     * @param  array<string, string|null>  $fields
-     * @return array<string, string>
-     */
-    private static function compact(array $fields): array
-    {
-        $details = [];
-
-        foreach ($fields as $label => $value) {
-            if ($value !== null && trim($value) !== '') {
-                $details[$label] = trim($value);
-            }
-        }
-
-        return $details;
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Fiscal\ForeignFiscalCode;
 use App\Support\Fiscal\ItalianTaxCode;
 use App\Support\Fiscal\ItalianVatNumber;
 use App\Support\Fiscal\TaxCodeNameEncoder;
@@ -100,5 +101,30 @@ it('rejects an invalid VAT number', function (string $value) {
     'too short' => '0074311015',
     'letters' => '0074311015A',
     'all zeros' => '00000000000',
+    'empty' => '',
+]);
+
+// ---------------------------------------------------------------------------
+// Foreign code
+// ---------------------------------------------------------------------------
+
+it('accepts a foreign code written with its country prefix', function (string $value) {
+    expect(ForeignFiscalCode::isValid($value))->toBeTrue();
+})->with([
+    'German VAT' => 'DE123456789',
+    'French VAT with spaces' => 'fr 12 345678901',
+    'Swiss UID' => 'CHE-123.456.789',
+    'Spanish NIF' => 'ES12345678Z',
+    'Greek VIES prefix' => 'EL123456789',
+]);
+
+it('rejects a value that is not a prefixed foreign code', function (string $value) {
+    expect(ForeignFiscalCode::isValid($value))->toBeFalse();
+})->with([
+    'no prefix' => '123456789',
+    'Italian prefix' => 'IT00743110157',
+    'Italian personal code shape' => 'RSSMRA80A01H501',
+    'too short' => 'DE1',
+    'too long' => 'DE12345678901234567',
     'empty' => '',
 ]);

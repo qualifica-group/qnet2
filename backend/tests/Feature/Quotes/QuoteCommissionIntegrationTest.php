@@ -340,6 +340,29 @@ it('moves an automatic commission to the current quote recipient without refresh
         ->value->toBe('5.0000');
 });
 
+it('AC-034 rev.: a discount row (negative net) gets its defaults on a zero base, never a negative commission', function () {
+    $commercial = Referent::factory()->create();
+    $product = Product::factory()->create();
+    CommissionConfiguration::factory()->create([
+        'recipient_role' => CommissionRecipientRole::Commercial,
+        'application_scope' => CommissionApplicationScope::Product,
+        'product_id' => $product->id,
+        'product_category_id' => null,
+        'value' => 7,
+        'valid_from' => '2026-01-01',
+    ]);
+
+    Sanctum::actingAs(quoteCommissionActor(['create']));
+    $this->postJson('/api/quotes/commission-defaults', [
+        'product_id' => $product->id,
+        'line_net_amount' => -100,
+        'commercial_id' => $commercial->id,
+        'reference_date' => '2026-07-29',
+    ])->assertOk()
+        ->assertJsonPath('data.commissions.0.recipient_role', 'COMMERCIAL')
+        ->assertJsonPath('data.commissions.0.calculated_amount', '0.00');
+});
+
 it('rejects duplicate, foreign and wrong-line-type ids during quote-line reconciliation', function () {
     $category = ProductCategory::factory()->create([
         'business_function_id' => BusinessFunction::factory()->create()->id,

@@ -132,7 +132,7 @@ export function ContractProgramGroupCard({
                   <ul className="min-w-0 divide-y rounded-md border text-xs">
                     {groupLines.map((line) => (
                       <li key={line.id} className="flex items-center gap-2 px-2 py-1">
-                        <span className="min-w-0 flex-1 truncate">{line.product?.name ?? '—'}</span>
+                        <span className="min-w-0 flex-1 break-words">{line.product?.name ?? '—'}</span>
                         <Button
                           type="button"
                           variant="ghost"

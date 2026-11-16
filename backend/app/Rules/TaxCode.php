@@ -6,6 +6,7 @@ namespace App\Rules;
 
 use App\Enums\GenderEnum;
 use App\Enums\PersonalDataTypeEnum;
+use App\Support\Fiscal\ForeignFiscalCode;
 use App\Support\Fiscal\ItalianTaxCode;
 use App\Support\Fiscal\ItalianVatNumber;
 use App\Support\Fiscal\TaxCodeNameEncoder;
@@ -20,7 +21,9 @@ use Illuminate\Support\Arr;
  * eleven-digit numeric one. On top of the control character, an individual's
  * code is checked for CONSISTENCY with the anagraphic fields submitted in the
  * same payload (surname, name, birth date, gender) — a well-formed code that
- * belongs to someone else is rejected.
+ * belongs to someone else is rejected. A foreign code, written with its
+ * country prefix, is accepted on its shape alone (ForeignFiscalCode): it
+ * encodes nothing to compare against the card.
  *
  * The sibling fields live under a per-payload prefix (`''` for the standalone
  * card endpoint, `personal_data.` for the entity forms, `client_identity.` for
@@ -32,6 +35,8 @@ use Illuminate\Support\Arr;
  */
 final class TaxCode implements DataAwareRule, ValidationRule
 {
+    private const string INVALID_MESSAGE = 'The tax code is not valid. A foreign one needs its country prefix (e.g. DE12345678901).';
+
     /** @var array<string, mixed> */
     private array $data = [];
 
@@ -56,11 +61,15 @@ final class TaxCode implements DataAwareRule, ValidationRule
             return;
         }
 
+        if (ForeignFiscalCode::isValid($value)) {
+            return;
+        }
+
         $type = $this->cardType();
 
         if ($type === PersonalDataTypeEnum::Company) {
             if (! ItalianVatNumber::isValid($value)) {
-                $fail(__('The tax code of a company must be 11 digits with a valid control digit.'));
+                $fail(__('The tax code of a company must be 11 digits with a valid control digit, or a foreign code with its country prefix.'));
             }
 
             return;
@@ -71,14 +80,14 @@ final class TaxCode implements DataAwareRule, ValidationRule
         // guessing "individual" would reject every legal entity's code.
         if ($type === null) {
             if (! ItalianTaxCode::isValid($value) && ! ItalianVatNumber::isValid($value)) {
-                $fail(__('The tax code is not valid.'));
+                $fail(__(self::INVALID_MESSAGE));
             }
 
             return;
         }
 
         if (! ItalianTaxCode::isValid($value)) {
-            $fail(__('The tax code is not valid.'));
+            $fail(__(self::INVALID_MESSAGE));
 
             return;
         }

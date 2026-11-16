@@ -8,7 +8,18 @@ import { useNavigate } from 'react-router-dom'
 import { PURCHASE_INVOICES_DOMAIN } from '@/features/purchase-invoices/api'
 import { getPurchaseInstallment, purchaseInstallmentKeys } from '@/features/purchase-invoice-installments/api'
 import { usePurchaseInstallmentPaymentActions } from '@/features/purchase-invoice-installments/use-purchase-installment-payment-actions'
-import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionHrefResolver, RowActionHandler } from '@/features/table/row-actions'
+import type { TableRow } from '@/features/table/types'
+
+const OPEN_DOCUMENT_ACTION_KEY = 'open_document'
+
+function purchaseInvoicePath(row: TableRow): string {
+  return `/${PURCHASE_INVOICES_DOMAIN}/${Number(row.purchase_invoice_id)}`
+}
+
+/** "Open document" leads to the passive invoice page (Ctrl/Cmd+click opens it in a new tab). */
+export const purchaseInstallmentActionHref: ActionHrefResolver = (action, row) =>
+  action.key === OPEN_DOCUMENT_ACTION_KEY ? purchaseInvoicePath(row) : undefined
 
 /**
  * Which dialog each row action of the payable installments grid opens: the
@@ -50,8 +61,8 @@ export function usePurchaseInstallmentRowActions(onChanged: () => void) {
                 toast.error(apiErrorMessage(error, t('purchaseInvoiceInstallments.lookupError'), i18n)),
             )
           break
-        case 'open_document':
-          void navigate(`/${PURCHASE_INVOICES_DOMAIN}/${Number(row.purchase_invoice_id)}`)
+        case OPEN_DOCUMENT_ACTION_KEY:
+          void navigate(purchaseInvoicePath(row))
           break
         default:
           break

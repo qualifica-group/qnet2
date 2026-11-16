@@ -7,6 +7,7 @@ use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\Enums\AttributeContext;
 use App\Jobs\ClassifyRevenueLinesJob;
 use App\Models\ProductCategory;
+use App\Services\Deletion\InUseGuard;
 use App\Services\ProductCategories\AttributeLayoutCopier;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductCategories\CategoryManagerLabelResolver;
@@ -33,6 +34,7 @@ class ProductCategoryService
         private readonly RootSettingsCoherence $coherence,
         private readonly CategoryManagerLabelResolver $managerLabels,
         private readonly AttributeLayoutCopier $layoutCopier,
+        private readonly InUseGuard $inUseGuard,
     ) {}
 
     /**
@@ -164,13 +166,7 @@ class ProductCategoryService
      */
     public function delete(ProductCategory $category): void
     {
-        if ($category->children()->exists() || $category->products()->exists()) {
-            abort(409, 'This category has child categories or products and cannot be deleted.');
-        }
-
-        if ($category->opportunities()->exists()) {
-            abort(409, 'This product category has opportunities and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($category);
 
         $category->delete();
     }

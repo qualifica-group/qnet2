@@ -7,10 +7,12 @@ import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { ProductCategoryGeneratesContractField } from '@/features/product-categories/product-category-generates-contract-field'
 import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
 import { ProductCategoryMultiQuoteWorkOrderField } from '@/features/product-categories/product-category-multi-quote-work-order-field'
+import { ProductCategoryMultipleOpenOpportunitiesField } from '@/features/product-categories/product-category-multiple-open-opportunities-field'
 import { ProductCategoryReportColumnsField } from '@/features/product-categories/product-category-report-columns-field'
 import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
 import { ProductCategorySingleQuoteField } from '@/features/product-categories/product-category-single-quote-field'
+import { ProductCategoryUsageAreaField } from '@/features/product-categories/product-category-usage-area-field'
 import { ActiveRule, ReportableRule, SelectableRule } from '@/features/product-categories/product-category-flag-rules'
 import type { ProductCategoryRecordSectionProps } from '@/features/product-categories/product-category-record-props'
 import { ReportColumnsValue, RuleValue } from '@/features/product-categories/product-category-rule-values'
@@ -87,6 +89,16 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
           editor={<ProductCategoryManagementModeField {...editorProps} />}
         />
         <RuleRow
+          field="usage_area"
+          label={t('productCategories.form.usageArea')}
+          inline={inline}
+          canEdit={canEdit && values.usage_area_source_category === null}
+          value={t(`enums.category_usage_area.${values.usage_area}`)}
+          inheritedFrom={values.usage_area_source_category?.name}
+          inheritedLabel={inheritedLabel('usageAreaInherited', values.usage_area_source_category)}
+          editor={<ProductCategoryUsageAreaField {...editorProps} />}
+        />
+        <RuleRow
           field="single_quote_per_opportunity"
           label={t('productCategories.form.singleQuotePerOpportunity')}
           inline={inline}
@@ -98,6 +110,19 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
             values.single_quote_per_opportunity_source_category,
           )}
           editor={<ProductCategorySingleQuoteField {...editorProps} />}
+        />
+        <RuleRow
+          field="multiple_open_opportunities"
+          label={t('productCategories.form.multipleOpenOpportunities')}
+          inline={inline}
+          canEdit={canEdit && values.multiple_open_opportunities_source_category === null}
+          value={yesNo(values.multiple_open_opportunities)}
+          inheritedFrom={values.multiple_open_opportunities_source_category?.name}
+          inheritedLabel={inheritedLabel(
+            'multipleOpenOpportunitiesInherited',
+            values.multiple_open_opportunities_source_category,
+          )}
+          editor={<ProductCategoryMultipleOpenOpportunitiesField {...editorProps} />}
         />
         <RuleRow
           field="generates_contract"

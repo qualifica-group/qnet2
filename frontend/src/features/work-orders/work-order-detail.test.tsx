@@ -94,7 +94,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     title: 'Installazione impianto',
     title_is_manual: true,
     type: 'processing',
-    status: { value: 'open', is_force_closed: false },
+    status: { value: 'to_plan', is_force_closed: false },
     completion_percentage: 0,
     is_force_closed: false,
     ...WORKFLOW_STATUS_FIELDS,
@@ -124,7 +124,8 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},
-      actions: { view_activity: false },
+      // Spec 0380: the contract data section (plain product list included) needs view_costs.
+      actions: { view_activity: false, view_costs: true },
     },
     ...overrides,
   }
@@ -148,20 +149,21 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     // Header subtitle/KPI and the in-place "Details" rows both show these.
     expect(screen.getAllByText('COM-0001').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Processing').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('To plan').length).toBeGreaterThan(0)
     expect(screen.getAllByText(formatDate('2026-09-30')).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'QUO-0004 — Fornitura annuale' })).toHaveAttribute('href', '/contracts/9')
   })
 
-  it('shows the task template name when the commessa was generated from one (spec 0124 D-9)', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-16): the detail no longer shows the Modello di Task row.
+  it('does not show the task template the commessa was generated from', () => {
     render(
       <WorkOrderDetailView
         workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })}
       />,
     )
 
-    expect(screen.getByText('Task template')).toBeInTheDocument()
-    expect(screen.getByText('Onboarding cliente')).toBeInTheDocument()
+    expect(screen.queryByText('Task template')).not.toBeInTheDocument()
+    expect(screen.queryByText('Onboarding cliente')).not.toBeInTheDocument()
   })
 
   it('lists the linked product lines ordered by sort_order', () => {
@@ -191,21 +193,24 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
         workOrder={workOrder({
           is_force_closed: true,
           force_close_reason: 'Cliente insolvente',
-          status: { value: 'closed', is_force_closed: true },
+          status: { value: 'cancelled', is_force_closed: true },
         })}
       />,
     )
 
     expect(screen.getByText('Force close reason')).toBeInTheDocument()
     expect(screen.getByText('Cliente insolvente')).toBeInTheDocument()
-    expect(screen.getAllByText('Closed').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Cancelled').length).toBeGreaterThan(0)
   })
 })
 
-describe('WorkOrderDetailView — computed status and completion (spec 0149 AC-014)', () => {
+// Spec 0395 (REQUIREMENT CHANGED): the badge is the working phase, no longer computed.
+describe('WorkOrderDetailView — working phase and completion (spec 0149 AC-014, spec 0395)', () => {
   it.each([
+    ['to_plan', 'To plan'],
     ['in_progress', 'In progress'],
     ['completed', 'Completed'],
+    ['terminated', 'Terminated'],
   ] as const)('badges the %s status with its localized label', (value, label) => {
     render(<WorkOrderDetailView workOrder={workOrder({ status: { value, is_force_closed: false } })} />)
 
@@ -317,12 +322,11 @@ describe('WorkOrderDetailView — no edit action', () => {
 
 describe('WorkOrderDetailView — related records', () => {
   // User directive 2026-09-16: the field names the Contratto, not the offer underneath it.
-  it('links the contract, the task template and every line product to their records', () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })} />)
+  it('links the contract and every line product to their records', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
     expect(hrefOf('QUO-0004 — Fornitura annuale')).toBe('/contracts/9')
-    expect(hrefOf('Onboarding cliente')).toBe('/task-templates/3')
     expect(hrefOf('Consulenza')).toBe('/products/1')
     expect(hrefOf('Installazione')).toBe('/products/2')
   })
@@ -331,11 +335,11 @@ describe('WorkOrderDetailView — related records', () => {
     const base = workOrder()
     render(
       <WorkOrderDetailView
-        workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_contract_data: true, manage_payments: true } } })}
+        workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_costs: true, view_contract_data: true, manage_payments: true } } })}
       />,
     )
 
-    expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Work order contract data' })).toBeInTheDocument()
     expect(screen.getByText('contract-data-section manage:true')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Consulenza' })).not.toBeInTheDocument()
   })
@@ -343,16 +347,44 @@ describe('WorkOrderDetailView — related records', () => {
   it('keeps the plain product list, links included, without view_contract_data', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Work order contract data' })).toBeInTheDocument()
     expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Consulenza' })).toHaveAttribute('href', '/products/1')
   })
 
-  it("links the client registry reached through the commessa's offer", () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ registry: { id: 7, name: 'Acme S.p.A.' } })} />)
+  // REQUIREMENT CHANGED (user directive 2026-11-16): the section also hosts the Linee prodotto, shown without view_costs.
+  it('has no contract data, not even the products, without view_costs (spec 0380)', () => {
+    const base = workOrder()
+    render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_contract_data: true } } })} />)
 
-    // REQUIREMENT CHANGED spec 0331: the row sits in the shared "Registry and contacts" section.
-    expect(screen.getByText('Registry')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Work order contract data' })).toBeInTheDocument()
+    expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Consulenza' })).not.toBeInTheDocument()
+  })
+
+  it("links the client registry reached through the commessa's offer", () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          registry: { id: 7, name: 'Acme S.p.A.' },
+          client_info: {
+            legal_address: null,
+            vat_number: null,
+            tax_code: null,
+            tags: [],
+            emails: [],
+            phones: [],
+            referents: [],
+            commercial: null,
+            sectors: [],
+            comments: null,
+          },
+        })}
+      />,
+    )
+
+    // REQUIREMENT CHANGED spec 0400: the row is "Company" of the "Client info" section.
+    expect(screen.getByRole('heading', { level: 3, name: 'Client info' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Acme S.p.A.' })).toHaveAttribute('href', '/registries/7')
   })
 
@@ -376,11 +408,11 @@ describe('WorkOrderDetailView — related records', () => {
     expect(screen.queryByText(formatDate('2027-03-31'))).not.toBeInTheDocument()
   })
 
-  it('shows the empty placeholder when the commessa has no client registry', () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ registry: null })} />)
+  it('has no client info section when the commessa has no client registry', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ registry: null, client_info: null })} />)
 
-    // REQUIREMENT CHANGED spec 0331: the row sits in the shared "Registry and contacts" section.
-    expect(screen.getByText('Registry')).toBeInTheDocument()
+    // REQUIREMENT CHANGED spec 0400: no client, no "Client info" section.
+    expect(screen.queryByRole('heading', { level: 3, name: 'Client info' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Acme S.p.A.' })).not.toBeInTheDocument()
   })
 
@@ -395,7 +427,7 @@ describe('WorkOrderDetailView — related records', () => {
       />,
     )
 
-    expect(screen.getByText('Company and sites')).toBeInTheDocument()
+    expect(screen.getByText('Company references and business functions')).toBeInTheDocument()
     const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
     expect(hrefOf('Qualifica Group S.r.l.')).toBe('/companies/4')
     expect(hrefOf('Sede Napoli')).toBe('/company-sites/5')
@@ -413,26 +445,27 @@ describe('WorkOrderDetailView — related records', () => {
 })
 
 /**
- * The collaboration card mirrors `OpportunityDetailView`'s: one card, a
- * Notes | Documents | Activity tab strip, each tab gated by its own
- * authorization source (spec 0134 D-3), absent as a whole when nothing is
- * authorized.
+ * Notes, documents and activity are tabs of the work order's tab card, each
+ * gated by its own authorization source (spec 0134 D-3). REQUIREMENT CHANGED
+ * (user directive 2026-11-16): they left the side column for the legacy-like
+ * strip, where Info is always present and open by default.
  */
 describe('WorkOrderDetailView — collaboration', () => {
-  it('renders no collaboration card when nothing is authorized', () => {
+  it('keeps only the Info tab when nothing else is authorized', () => {
     canMock.mockImplementation((): boolean => false)
-    render(<WorkOrderDetailView workOrder={workOrder()} />)
+    const base = workOrder()
+    render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...base.permissions, actions: {} } })} />)
 
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Info'])
   })
 
-  it('shows the Notes tab, selected by default, when work-orders.view is granted', () => {
+  it('shows the Notes tab, Info selected by default, when work-orders.view is granted', () => {
     canMock.mockImplementation((permission: string) => permission === 'work-orders.view')
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    const notesTab = screen.getByRole('tab', { name: 'Notes' })
-    expect(notesTab).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByRole('tab', { name: 'Documents' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: /documents/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Activity log' })).not.toBeInTheDocument()
   })
 
@@ -440,7 +473,7 @@ describe('WorkOrderDetailView — collaboration', () => {
     canMock.mockImplementation((): boolean => false)
     render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...workOrder().permissions, actions: { view_documents: true } } })} />)
 
-    expect(screen.getByRole('tab', { name: 'Documents' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Work order documents' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument()
   })
 
@@ -469,7 +502,6 @@ describe('WorkOrderDetailView — collaboration', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Activity log' }))
 
     expect(activityLogSectionMock).toHaveBeenCalledWith({ resource: 'work-orders', id: 4 })
-    // The Task board sits below the record, outside the collaboration card.
   })
 
   it('hides the Activity log tab when view_activity is not granted', () => {
@@ -479,10 +511,12 @@ describe('WorkOrderDetailView — collaboration', () => {
     expect(activityLogSectionMock).not.toHaveBeenCalled()
   })
 
-  it('renders the Task board below the record regardless of the collaboration card', () => {
+  it('opens the Task board from its own tab', () => {
     canMock.mockImplementation((permission: string) => permission === 'tasks.viewAny')
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
+    expect(screen.queryByText('task-board')).not.toBeInTheDocument()
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Tasks' }))
     expect(screen.getByText('task-board')).toBeInTheDocument()
   })
 })
@@ -574,7 +608,7 @@ describe('WorkOrderDetailView — multi-offer work order (spec 0267 AC-016)', ()
     expect(screen.getByText('Multi-offer')).toBeInTheDocument()
     // REQUIREMENT CHANGED spec 0331: label renamed with the shared section.
     expect(screen.queryByText('Registry')).not.toBeInTheDocument()
-    expect(screen.queryByText('Company and sites')).not.toBeInTheDocument()
+    expect(screen.queryByText('Company references and business functions')).not.toBeInTheDocument()
   })
 
   it('keeps the single-offer sections and no badge on a single-offer work order', () => {

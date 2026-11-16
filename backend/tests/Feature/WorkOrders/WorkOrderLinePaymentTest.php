@@ -212,3 +212,13 @@ it('AC-010: the notification links to the commessa only for a recipient who may 
     expect($notification->toArray($viewer)['action_url'])->toBe("/work-orders/{$workOrder->id}")
         ->and($notification->toArray(User::factory()->create())['action_url'])->toBeNull();
 });
+
+it('spec 0380: without viewCosts the payment PATCH is 403, single and bulk', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $line = contractDataLine($workOrder, 'consultancy', 500);
+    Sanctum::actingAs(workOrderPaymentsUserWith(['managePayments'], viewCosts: false));
+
+    $this->patchJson(linePaymentUrl($workOrder, $line->id), ['has_unpaid' => true])->assertForbidden();
+    $this->patchJson("/api/work-orders/{$workOrder->id}/contract-data/lines", ['quote_line_ids' => [$line->id], 'has_unpaid' => true])->assertForbidden();
+    expect(WorkOrderLinePayment::count())->toBe(0);
+});

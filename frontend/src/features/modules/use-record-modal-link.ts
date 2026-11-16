@@ -1,17 +1,13 @@
 import { useCallback, type MouseEvent, type ReactNode } from 'react'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
+import { isModifiedClick } from '@/lib/modified-click'
 
 export interface UseRecordModalLinkResult {
   /** `onClick` for the record's `<Link>`: a plain click opens the modal, a modified click is left to the browser. */
   onClick: (event: MouseEvent<HTMLAnchorElement>) => void
   /** The modal Sheet; render it once next to the link. */
   sheet: ReactNode
-}
-
-/** A click the browser should handle itself: new tab/window, download, non-primary button. */
-function isModifiedClick(event: MouseEvent<HTMLAnchorElement>): boolean {
-  return event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
 }
 
 /**

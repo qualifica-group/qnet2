@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react'
 import type { GridApi } from 'ag-grid-community'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { appliedSearchTerm, useTableToolbarState } from '@/features/table/use-table-toolbar-state'
+import { advancedFiltersOpenKey } from '@/features/table/table-advanced-filters-open-storage'
 
 const DEBOUNCE_MS = 350
 
@@ -72,5 +73,56 @@ describe('useTableToolbarState — minimum search length (spec 0179)', () => {
     const { hook } = renderToolbar(3, 'ro')
 
     expect(hook.result.current.getSearchTerm()).toBe('')
+  })
+})
+
+describe('useTableToolbarState — advanced-filters panel open state', () => {
+  const KEY = advancedFiltersOpenKey(7, 'leads')
+
+  function renderWithKey(advancedFiltersOpenKey: string | null) {
+    return renderHook(
+      ({ key }) => useTableToolbarState({ gridApi: null, searchEnabled: false, advancedFiltersOpenKey: key }),
+      { initialProps: { key: advancedFiltersOpenKey } },
+    )
+  }
+
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('starts closed when the user never opened the panel', () => {
+    expect(renderWithKey(KEY).result.current.advancedFiltersOpen).toBe(false)
+  })
+
+  it('remembers an opened panel on the next mount, and forgets it once closed', () => {
+    const first = renderWithKey(KEY)
+    act(() => first.result.current.toggleAdvancedFilters())
+    expect(first.result.current.advancedFiltersOpen).toBe(true)
+    first.unmount()
+
+    const second = renderWithKey(KEY)
+    expect(second.result.current.advancedFiltersOpen).toBe(true)
+
+    act(() => second.result.current.toggleAdvancedFilters())
+    second.unmount()
+    expect(window.localStorage.getItem(KEY)).toBeNull()
+    expect(renderWithKey(KEY).result.current.advancedFiltersOpen).toBe(false)
+  })
+
+  it('keeps each table apart and re-reads when the key changes', () => {
+    window.localStorage.setItem(advancedFiltersOpenKey(7, 'tasks'), '1')
+    const hook = renderWithKey(KEY)
+    expect(hook.result.current.advancedFiltersOpen).toBe(false)
+
+    hook.rerender({ key: advancedFiltersOpenKey(7, 'tasks') })
+    expect(hook.result.current.advancedFiltersOpen).toBe(true)
+  })
+
+  it('toggles without persisting when there is no key', () => {
+    const hook = renderWithKey(null)
+    act(() => hook.result.current.toggleAdvancedFilters())
+
+    expect(hook.result.current.advancedFiltersOpen).toBe(true)
+    expect(window.localStorage.length).toBe(0)
   })
 })

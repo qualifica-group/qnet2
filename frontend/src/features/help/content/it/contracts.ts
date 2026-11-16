@@ -97,6 +97,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            '**Cerca prodotto** e il filtro **categoria** sopra la tabella restringono le righe mostrate (la ricerca trova nome o codice del prodotto, anche con più parole). La selezione non cambia: le righe nascoste restano selezionate, e la casella in intestazione seleziona solo le righe libere mostrate. I nomi lunghi vanno a capo, così leggi sempre il nome intero (per esempio 1° Anno, 2° Anno).',
             '**Una commessa per riga**: crea un gruppo per ogni riga selezionata (senza selezione, per tutte le righe libere).',
             '**Raggruppa per categoria**: crea un gruppo per categoria di prodotto, più uno per le righe **senza categoria**.',
             '**Valori comuni**: Tipo, Data inizio, Responsabili e Modello di Task che i **nuovi** gruppi ereditano; la Data inizio parte da oggi ed è modificabile. Cambiarli dopo non tocca i gruppi già creati, salvo **Applica a tutti i gruppi** (non cambia mai titoli e righe).',
@@ -184,16 +185,26 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'status-tabs',
+      title: "Stati del contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In alto a destra nella pagina **Contratti** trovi i tab degli stati, come nel vecchio QNet: **Tutti** e poi uno per ogni stato contratto attivo, nell'ordine della pagina **Stati contratto** (per esempio **Da validare**, **Validato**, **Da programmare**, **Programmato**, **In scadenza**, **Sospeso**, **Annullato**, **Disdetto**). Un tab mostra solo i contratti in quello stato, cioè filtra la colonna **Stato contratto**; **Tutti** toglie il filtro. Accanto a ogni tab, tranne **Tutti**, c'è il numero di contratti (solo se diverso da zero): tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Se rinomini, aggiungi o disattivi uno stato, i tab si aggiornano di conseguenza. Il tab si combina con gli altri filtri, compresa la **Categoria madre**: se non vedi un contratto, controlla anche quelli.",
+        },
+      ],
+    },
+    {
       id: 'list-filters',
       title: "Filtri predefiniti e categoria",
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Contratti** mostra solo il tuo lavoro. Nel pannello **Filtri avanzati** due campi sono già compilati, come **Assegnazione** nei Task: **Assegnazione** su **Supervisore** e **Gestore account** (i contratti dove hai almeno uno dei due ruoli) e **Categoria madre** sulle categorie madri di tua competenza (con tutte le loro sottocategorie). Valgono insieme. Per allargare l'elenco scegli **Tutti i visibili** in **Assegnazione** e, in **Categoria madre**, altre categorie oppure **Tutte** (la trovi anche scrivendo \"tutti\" nella ricerca), poi premi **Applica**: la scelta resta salvata.",
+          text: "All'apertura la pagina **Contratti** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi i contratti dove sei **Supervisore** o **Gestore account** (e quelli della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi i contratti di ogni categoria, altrimenti solo i contratti delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova i contratti anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "Se non hai categorie di competenza, oppure le hai tutte, **Categoria madre** parte da **Tutte**. Se il tuo profilo ti fa vedere solo i record dove hai un ruolo, la voce **Tutti i visibili** non compare: non aggiungerebbe nulla. I filtri non allargano ciò che il tuo profilo può vedere.",
+          text: "Con il permesso di vedere tutto (per esempio il ruolo admin) sei abilitato a tutte le categorie madri, qualunque sia la tua competenza. Altrimenti le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione); se non hai categorie di competenza **Categoria madre** non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',
@@ -201,11 +212,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con **Tutte**. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Mostrano i campi dell'offerta di origine del contratto, in sola lettura: si ordinano, si filtrano e si esportano, mentre i valori si modificano dall'offerta.",
+          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con la **Categoria madre** vuota. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Mostrano i campi dell'offerta di origine del contratto, in sola lettura: si ordinano, si filtrano e si esportano, mentre i valori si modificano dall'offerta.",
         },
         {
           type: 'note',
-          text: "**Assegnazione** e **Categoria madre** precompilate valgono solo nella pagina **Contratti**: non compaiono dentro una scheda. L'esportazione segue i filtri attivi.",
+          text: "Il limite alle tue categorie con la **Categoria madre** vuota vale solo nella pagina **Contratti**: il campo non compare dentro una scheda. L'esportazione segue i filtri attivi.",
         },
       ],
     },

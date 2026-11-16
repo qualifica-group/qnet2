@@ -81,7 +81,7 @@ const guide: HelpGuide = {
       id: 'delete-role',
       title: 'Deleting a role',
       blocks: [
-        { type: 'paragraph', text: 'Choose **Delete** on the role row and confirm. Users who had it lose the permissions that came from it.' },
+        { type: 'paragraph', text: 'Choose **Delete** on the role row and confirm. A role assigned to at least one user cannot be deleted: the message says how many users have it. Remove it from those users first.' },
       ],
     },
     {

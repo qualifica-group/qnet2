@@ -2,6 +2,7 @@
 
 namespace App\DataObjects\Shared;
 
+use App\Enums\CategoryUsageArea;
 use App\Enums\EmailTemplateModule;
 use App\Enums\ProductUsage;
 use Closure;
@@ -110,6 +111,7 @@ final readonly class ForSelectQuery
         public ?ProductUsage $productUsage = null,
         public ?EmailTemplateModule $emailTemplateModule = null,
         public bool $includeTotal = true,
+        public ?CategoryUsageArea $usageArea = null,
     ) {}
 
     /**
@@ -163,6 +165,7 @@ final readonly class ForSelectQuery
             productUsage: isset($data['usage']) ? ProductUsage::from((string) $data['usage']) : null,
             emailTemplateModule: isset($data['email_template_module']) ? EmailTemplateModule::from((string) $data['email_template_module']) : null,
             includeTotal: filter_var($data['include_total'] ?? true, FILTER_VALIDATE_BOOLEAN),
+            usageArea: isset($data['usage_area']) ? CategoryUsageArea::from((string) $data['usage_area']) : null,
         );
     }
 

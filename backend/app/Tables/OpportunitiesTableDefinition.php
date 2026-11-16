@@ -2,10 +2,12 @@
 
 namespace App\Tables;
 
+use App\Enums\CategoryUsageArea;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\OpportunityVisibilityScope;
+use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
 use App\Tables\Opportunities\OpportunityCellWriter;
@@ -15,6 +17,7 @@ use App\Tables\Opportunities\OpportunityStatusColumn;
 use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OperationalSiteColumn;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\ProductLinePairsColumn;
 use App\Tables\Shared\ProductsOfInterestColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -107,7 +110,8 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // project the inline avatar (data URI) without a per-row query.
         // Spec 0316: rows, totals, filters, export, inline edit and bulk delete
         // all start here, so the visibility rule lives in one place.
-        $query = OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user())
+        // Spec 0389 rev.2: opportunities whose categories are all reserved to Gestione Richieste are not listed.
+        $query = UsageAreaRowFilter::apply(OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user()), 'opportunities.id', CategoryUsageArea::Opportunities)
             ->with([
                 'registry', 'referent', 'commercial', 'supervisor.avatar',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
@@ -185,7 +189,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return [...$this->listFilters->presetFilters('opportunities', Auth::user(), OpportunityVisibilityScope::seesBeyondOwnRecords(Auth::user())), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
+        return [...$this->listFilters->presetFilters('opportunities', ParentCategoryListModule::Opportunities, CategoryUsageArea::Opportunities), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**
@@ -370,7 +374,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
                 ->whereIn('product_category_id', $categoryIds));
         };
 
-        if ($this->listFilters->apply($query, $name, $value, Auth::user(), $applyCategories)) {
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Opportunities, $applyCategories)) {
             return true;
         }
 
@@ -435,6 +439,14 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             $values,
             static fn ($value): bool => is_string($value) && $value !== '',
         )) : [];
+    }
+
+    /**
+     * @param  Builder<Opportunity>  $query
+     */
+    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
+    {
+        return $this->relationColumns->applySearch($query, $columnId, $pattern);
     }
 
     /**

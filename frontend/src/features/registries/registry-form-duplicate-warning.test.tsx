@@ -106,7 +106,7 @@ describe('RegistryForm — duplicate warning (user directive 2026-09-09)', () =>
 
   it('announces a holder found ANYWHERE in the namespace when a tax code is typed', async () => {
     checkIdentityDuplicatesMock.mockResolvedValue({
-      matches: [{ owner_type: 'user', owner_id: 3, name: 'Ada Lovelace', matched_on: ['tax_code'] }],
+      matches: [{ owner_type: 'user', owner_id: 3, name: 'Ada Lovelace', matched_on: ['tax_code'], registries: [] }],
     })
 
     render(
@@ -137,7 +137,7 @@ describe('RegistryForm — duplicate warning (user directive 2026-09-09)', () =>
 
   it('hides the warning again once the matching field is cleared', async () => {
     checkIdentityDuplicatesMock.mockResolvedValue({
-      matches: [{ owner_type: 'registry', owner_id: 3, name: 'Acme Srl', matched_on: ['tax_code'] }],
+      matches: [{ owner_type: 'registry', owner_id: 3, name: 'Acme Srl', matched_on: ['tax_code'], registries: [{ id: 3, name: 'Acme Srl' }] }],
     })
 
     render(

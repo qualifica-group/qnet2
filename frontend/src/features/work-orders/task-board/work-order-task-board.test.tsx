@@ -104,6 +104,25 @@ describe('WorkOrderTaskBoard — header "..." menu', () => {
   })
 })
 
+describe('WorkOrderTaskBoard — load task template (spec 0399)', () => {
+  it('offers the template load on an empty work order and opens its dialog', async () => {
+    fetchTaskBoardMock.mockResolvedValue(taskBoardPayload({ stages: [], tasks: [] }))
+    renderBoard()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Load task template' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Load task template' })).toBeInTheDocument()
+  })
+
+  it('hides the empty-state load button on a read-only board', async () => {
+    fetchTaskBoardMock.mockResolvedValue(taskBoardPayload({ stages: [], tasks: [], is_read_only: true }))
+    renderBoard()
+
+    expect(await screen.findByText('No task yet in this work order.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Load task template' })).not.toBeInTheDocument()
+  })
+})
+
 describe('WorkOrderTaskBoard — phases without tasks', () => {
   it('shows the phases even when the work order has no task yet', async () => {
     fetchTaskBoardMock.mockResolvedValue(
