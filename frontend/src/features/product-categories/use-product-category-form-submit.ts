@@ -35,6 +35,7 @@ const SERVER_ERROR_FIELDS = [
   'requires_quote',
   'is_selectable',
   'is_active',
+  'requires_contact_transfer_before_contract',
   'is_reportable',
   'report_columns',
   'management_mode',

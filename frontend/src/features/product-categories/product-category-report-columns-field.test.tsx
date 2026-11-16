@@ -98,6 +98,7 @@ function category(
     requires_quote_source_category: null,
     is_selectable: true,
     is_active: true,
+    requires_contact_transfer_before_contract: false,
     is_reportable: true,
     effective_is_reportable: true,
     is_reportable_source_category: null,

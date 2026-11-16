@@ -16,6 +16,7 @@ use App\Services\Commissions\QuoteCommissionPayloadRedactor;
 use App\Services\Commissions\QuoteCommissionSummaryCalculator;
 use App\Services\Quotes\QuoteManagerLabelResolver;
 use App\Services\Quotes\QuoteManagerSyncMode;
+use App\Services\Quotes\QuoteRegistryTransferNotice;
 use App\Services\Quotes\QuoteTypologySummaryCalculator;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
@@ -143,6 +144,8 @@ class QuoteResource extends JsonResource
             'follow_up_date' => $this->follow_up_date?->toDateString(),
             'opportunity_id' => $this->opportunity_id,
             'opportunity' => $this->summarizeByName($this->opportunity),
+            // Spec 0404 B-D5: the latest move to another anagrafica, or null.
+            'registry_transfer' => app(QuoteRegistryTransferNotice::class)->latestFor($this->resource),
             // Proiezione READ-ONLY del record padre (richiesta utente
             // 2026-08-31): l'anagrafica e il suo referente non hanno colonna
             // propria su `quotes` e non sono scrivibili da qui — il dettaglio

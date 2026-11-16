@@ -67,6 +67,7 @@ export function buildCreatePayload(
     is_selectable: values.is_selectable,
     // Per-node (spec 0208): the effective value is resolved on read.
     is_active: values.is_active,
+    requires_contact_transfer_before_contract: values.requires_contact_transfer_before_contract,
     // Per-node and never inherited, same shape as `is_selectable`.
     is_reportable: values.is_reportable,
     // Own statistics-column selection (spec 0141): null inherits the nearest
@@ -159,6 +160,10 @@ export function buildUpdatePayload(
 
   if (values.is_active !== original.is_active) {
     payload.is_active = values.is_active
+  }
+
+  if (values.requires_contact_transfer_before_contract !== original.requires_contact_transfer_before_contract) {
+    payload.requires_contact_transfer_before_contract = values.requires_contact_transfer_before_contract
   }
 
   // Same per-node, never-inherited shape as `is_selectable`.

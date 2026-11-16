@@ -44,6 +44,8 @@ export const permissions = {
     // Operator at creation (user directive 2026-07-29).
     assignOperator: 'Assign operator',
     appendTeamMember: 'Add to team',
+    // Spec 0404 B-D1: move the offer to another registry.
+    transferRegistry: 'Transfer to another registry',
     impersonate: 'Impersonate',
     // Non-canonical abilities introduced by spec 0078: `manage` gates
     // approve/reject on a field-change-request (FieldChangeRequestPolicy);

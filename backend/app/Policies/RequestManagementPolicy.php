@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
+use App\Services\Quotes\QuoteRegistryTransferService;
 
 /**
  * Dedicated policy for the `request-management` resource (spec 0049,
@@ -147,6 +148,6 @@ class RequestManagementPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', 'appendTeamMember'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', QuoteRegistryTransferService::ABILITY, 'appendTeamMember'];
     }
 }

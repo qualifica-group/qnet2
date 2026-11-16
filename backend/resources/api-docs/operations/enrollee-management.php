@@ -37,4 +37,8 @@ return [
         'summary' => 'Update the work panel of an enrollee',
         'description' => 'Sparse update (PATCH accepted): only the keys sent change, written on the offer or its opportunity. Covers customer, client identity/contacts/address, attribution, manager_slots, rewards, product_lines, offer_lines (full replacement), attribute_values, quote_workflow_status_id with note when the destination requires it, next_callback_at, general_notes and forecast. A status change can create or suspend the contract. A change to a non-editable field is a 422; 403 when out of scope. Requires enrollee-management.update. Returns the work panel.',
     ],
+    'POST /enrollee-management/{quote}/transfer-registry' => [
+        'summary' => 'Transfer the offer to another registry',
+        'description' => "Moves the offer to another registry: registry_id (required, different from the current one) and optional attribute_values (the offer's additional information, validated like the offer update). The offer joins the destination's open opportunity when its categories allow only one open opportunity per registry, otherwise a new opportunity is created with the old one's product lines, commercial, reporter, supervisor, operational site and team, without a referent. The old opportunity is kept; notes scoped to the offer move with it. A registry_transferred activity entry is written on the offer and on both opportunities. 422 for the same registry, an offer under contract, or a destination opportunity that accepts a single offer and already has one; nothing is written on error. Requires enrollee-management.update and enrollee-management.transferRegistry. Returns id, opportunity_id and registry_id.",
+    ],
 ];

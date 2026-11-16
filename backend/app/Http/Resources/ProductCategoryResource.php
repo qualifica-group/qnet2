@@ -61,6 +61,8 @@ class ProductCategoryResource extends JsonResource
             // Spec 0208: this node's OWN flag; the effective value (an
             // inactive ancestor deactivates the subtree) is CategoryActivity's.
             'is_active' => (bool) $this->is_active,
+            // Spec 0404 C-D1: this node's OWN flag, never inherited.
+            'requires_contact_transfer_before_contract' => (bool) $this->requires_contact_transfer_before_contract,
             // Spec 0131 (user directive 2026-09-18): this node's OWN override
             // of the report flag, null = inherited. The effective value and
             // its source are attached by the controller.

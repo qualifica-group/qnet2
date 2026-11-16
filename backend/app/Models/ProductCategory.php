@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'multi_quote_work_order', 'usage_area', 'multiple_open_opportunities', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels', 'revenue_type_id', 'current_category_id'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'requires_contact_transfer_before_contract', 'multi_quote_work_order', 'usage_area', 'multiple_open_opportunities', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels', 'revenue_type_id', 'current_category_id'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -68,6 +68,10 @@ class ProductCategory extends BaseModel
             // the EFFECTIVE activity (an inactive ancestor deactivates the
             // whole subtree, D-1) is resolved at read time by CategoryActivity.
             'is_active' => 'boolean',
+            // Spec 0404 C-D1 — this node's OWN flag, never inherited
+            // (ContactTransferBeforeContractRule reads it on the categories
+            // the opportunity covers).
+            'requires_contact_transfer_before_contract' => 'boolean',
             // Legacy catalogue marker (user directive 2026-11-07), set by the
             // migration writers only, never mass-assignable.
             'is_legacy' => 'boolean',

@@ -24,6 +24,7 @@ export type ProductCategoryRecordValues = Pick<
   | 'description'
   | 'is_selectable'
   | 'is_active'
+  | 'requires_contact_transfer_before_contract'
   | 'effective_business_function'
   | 'requires_quote'
   | 'requires_quote_source_category'
@@ -77,6 +78,7 @@ export type ProductCategoryDraft = Partial<
     | 'simplified_offer_line_override'
     | 'is_selectable'
     | 'is_active'
+    | 'requires_contact_transfer_before_contract'
     | 'is_reportable'
     | 'report_columns'
   >
@@ -146,6 +148,7 @@ export function buildDraftRecordValues(
     description: draft.description ?? null,
     is_selectable: draft.is_selectable ?? true,
     is_active: draft.is_active ?? true,
+    requires_contact_transfer_before_contract: draft.requires_contact_transfer_before_contract ?? false,
     effective_business_function: effectiveBusinessFunction,
     requires_quote: quote ? quote.requiresQuote : (draft.requires_quote ?? false),
     requires_quote_source_category: quote?.sourceCategory ?? null,

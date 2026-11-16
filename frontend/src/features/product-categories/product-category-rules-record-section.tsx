@@ -13,7 +13,7 @@ import { ProductCategoryRequiresQuoteField } from '@/features/product-categories
 import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
 import { ProductCategorySingleQuoteField } from '@/features/product-categories/product-category-single-quote-field'
 import { ProductCategoryUsageAreaField } from '@/features/product-categories/product-category-usage-area-field'
-import { ActiveRule, ReportableRule, SelectableRule } from '@/features/product-categories/product-category-flag-rules'
+import { ActiveRule, ContactTransferRule, ReportableRule, SelectableRule } from '@/features/product-categories/product-category-flag-rules'
 import type { ProductCategoryRecordSectionProps } from '@/features/product-categories/product-category-record-props'
 import { ReportColumnsValue, RuleValue } from '@/features/product-categories/product-category-rule-values'
 import { useReportColumnsCatalog } from '@/features/product-categories/use-report-columns-catalog'
@@ -44,7 +44,8 @@ function RuleRow({ field, label, inline, canEdit, value, inheritedFrom, inherite
 /**
  * The behavioural rules a category imposes downstream (spec 0229 D-3), one row
  * per rule in the order of the form's old "Regole di gestione" section. Every
- * rule but `is_selectable`/`is_active`/`is_reportable`/the report columns is
+ * rule but `is_selectable`/`is_active`/`is_reportable`/the report columns/the
+ * contact-transfer obligation is
  * owned by the branch ROOT: under a parent it only displays, naming the root,
  * so it offers no pencil. The report columns row appears while the category is
  * effectively reportable (spec 0141).
@@ -133,6 +134,14 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
           inheritedFrom={values.generates_contract_source_category?.name}
           inheritedLabel={inheritedLabel('generatesContractInherited', values.generates_contract_source_category)}
           editor={<ProductCategoryGeneratesContractField {...editorProps} />}
+        />
+        <RuleRow
+          field="requires_contact_transfer_before_contract"
+          label={t('productCategories.form.requiresContactTransfer')}
+          inline={inline}
+          canEdit={canEdit}
+          value={yesNo(values.requires_contact_transfer_before_contract)}
+          editor={<ContactTransferRule control={control} />}
         />
         <RuleRow
           field="multi_quote_work_order"

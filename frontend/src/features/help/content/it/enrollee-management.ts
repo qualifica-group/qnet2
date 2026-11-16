@@ -26,7 +26,7 @@ const guide: HelpGuide = {
               'Creazione',
               'Non ha il pulsante di creazione: una richiesta entra negli iscritti solo cambiando stato.',
             ],
-            ['Permessi', 'Ha permessi propri, separati da quelli di Gestione Richieste.'],
+            ['Permessi', 'Ha permessi propri, separati da quelli di Gestione Richieste (anche **Trasferisci contatto** e **Trasferisci ad altra anagrafica**).'],
             ['Categorie', 'Come in Gestione Richieste: le categorie con **Visibile in** su **Opportunità / Offerte** non hanno una scheda e non si possono scegliere, e gli iscritti che hanno solo categorie di questo tipo non compaiono.'],
             [
               'Documenti e note',

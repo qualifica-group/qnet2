@@ -125,6 +125,27 @@ export const quotes = {
    * The "catalogue + rows" editor shared by Quotes (Products and Costs tabs)
    * and Request/Enrollee Management (spec 0268, 0269).
    */
+  // Spec 0404, part B: moving the offer to another registry.
+  registryTransfer: {
+    button: 'Transfer to another registry',
+    title: 'Transfer offer to another registry',
+    description:
+      "The offer leaves the registry {{registry}}. It joins the new registry's open opportunity when the category allows only one, otherwise a new opportunity is created with the same product lines. The old opportunity stays as it is.",
+    registry: 'New registry',
+    registryPlaceholder: 'Select the registry',
+    registrySearch: 'Search registry…',
+    registryEmpty: 'No registry found',
+    registryError: 'Unable to load the registries',
+    registryRequired: 'Choose the destination registry',
+    sameRegistry: 'The offer already belongs to this registry',
+    attributes: 'Additional information',
+    confirm: 'Transfer',
+    success: 'Offer transferred',
+    notice: 'Transferred from {{from}} to {{to}} on {{date}} by {{causer}}',
+    errors: {
+      generic: 'Unable to transfer the offer. Try again.',
+    },
+  },
   recalculateCommissions: {
     button: 'Recalculate commissions',
     title: 'Recalculate commissions',

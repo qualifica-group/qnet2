@@ -130,6 +130,14 @@ export interface QuoteTypologyTotal {
  * quote itself, never re-derived from the opportunity again. `company`/
  * `company_site` have no opportunity counterpart: always picked by hand.
  */
+/** Spec 0404 B-D5: names stored at transfer time, `transferred_at` ISO 8601. */
+export interface QuoteRegistryTransfer {
+  from_registry_name: string | null
+  to_registry_name: string | null
+  transferred_at: string | null
+  causer_name: string | null
+}
+
 export interface QuoteDetail {
   id: number
   /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
@@ -142,6 +150,8 @@ export interface QuoteDetail {
   follow_up_date: string | null
   opportunity_id: number
   opportunity: QuoteRelationRef
+  /** Spec 0404 B-D5: the latest move to another anagrafica, `null` when never moved. */
+  registry_transfer: QuoteRegistryTransfer | null
   /**
    * Read-only projection of the parent Opportunity (user directive
    * 2026-08-31): its anagrafica, referente, righe

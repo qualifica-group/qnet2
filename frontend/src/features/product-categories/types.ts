@@ -174,6 +174,8 @@ export interface ProductCategoryDetail {
   is_selectable: boolean
   /** The category's OWN active flag (spec 0208); the effective value also depends on the ancestors. */
   is_active: boolean
+  /** Per-node (spec 0404 C-D1): its offers need the contact transfer before they can be won into a contract. */
+  requires_contact_transfer_before_contract: boolean
   /** The category's OWN report override: null inherits the parent's effective value (user directive 2026-09-18). */
   is_reportable: boolean | null
   /** Whether the category is a row of the Gestione Richieste/Iscritti reports and dashboard: own override, else inherited. */
@@ -327,6 +329,8 @@ export interface CreateProductCategoryPayload {
   is_selectable?: boolean
   /** Whether the category is active (spec 0208); omitted on create means active. */
   is_active?: boolean
+  /** Per-node (spec 0404 C-D1); omitted on create means false. */
+  requires_contact_transfer_before_contract?: boolean
   /** Own report override: true/false forces it, null (or omitted on create) inherits the parent's. */
   is_reportable?: boolean | null
   /** Own report-columns selection (spec 0141): an array forces it, null inherits the nearest configured ancestor's. An empty array is normalized server-side to null. */

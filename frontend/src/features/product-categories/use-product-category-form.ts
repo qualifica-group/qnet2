@@ -63,6 +63,7 @@ function mapCategoryToFormValues(
     requires_quote: category.requires_quote,
     is_selectable: category.is_selectable,
     is_active: category.is_active,
+    requires_contact_transfer_before_contract: category.requires_contact_transfer_before_contract,
     is_reportable: category.is_reportable,
     report_columns: category.report_columns,
     management_mode: category.management_mode,
@@ -154,6 +155,7 @@ export function useProductCategoryForm({ mode }: UseProductCategoryFormArgs) {
       is_selectable: true,
       // A new category is active unless the operator switches it off (spec 0208).
       is_active: true,
+      requires_contact_transfer_before_contract: false,
       // A new category inherits its parent's report flag (a root: not
       // reportable) until the operator forces it — mirrors the backend default.
       is_reportable: null,

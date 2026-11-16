@@ -15,6 +15,7 @@ export type ActivityLogEvent =
   | 'deleted'
   | 'restored'
   | 'moved'
+  | 'registry_transferred'
   | 'impersonation.started'
   | 'impersonation.stopped'
 

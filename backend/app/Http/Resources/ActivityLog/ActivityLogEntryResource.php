@@ -25,6 +25,9 @@ class ActivityLogEntryResource extends JsonResource
     /** Org chart move (spec 0273 D-8): `{ kind, from: {id,name}|null, to: {id,name}|null }`. */
     private const string EVENT_MOVED = 'moved';
 
+    /** Same `{ kind, from, to }` shape (spec 0404 B-D5, QuoteRegistryTransferService). */
+    private const string EVENT_REGISTRY_TRANSFERRED = 'registry_transferred';
+
     /**
      * @param  Activity  $resource
      * @param  array<string, array<string, array<int, string>>>  $labels  [subject_type alias][field][id] => label, resolved for the whole page (see ForeignKeyLabelResolver)
@@ -78,7 +81,7 @@ class ActivityLogEntryResource extends JsonResource
     {
         $properties = $activity->properties ?? new Collection;
 
-        if ($activity->event === self::EVENT_MOVED) {
+        if (in_array($activity->event, [self::EVENT_MOVED, self::EVENT_REGISTRY_TRANSFERRED], true)) {
             return $this->moveChanges($properties);
         }
 

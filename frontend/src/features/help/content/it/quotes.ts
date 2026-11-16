@@ -261,6 +261,44 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Portando l'offerta in uno stato **Chiuso con esito positivo** nasce il contratto. Da quel momento il pulsante **Apri contratto** in cima al dettaglio dell'offerta, e la voce **Apri contratto** nel menu delle altre azioni (i tre puntini) della riga in tabella, aprono il contratto in una finestra sopra l'offerta. Li vedi solo se il tuo ruolo può consultare i Contratti.",
         },
+        {
+          type: 'note',
+          text: "Se una categoria dell'opportunità ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), l'offerta non passa a **Vinto** finché il contatto non è stato trasferito con **Trasferisci contatto** in Gestione Richieste: il salvataggio viene rifiutato con \"Questa categoria richiede il trasferimento del contatto prima del contratto\". **Vinto provvisorio** resta sempre possibile.",
+        },
+      ],
+    },
+    {
+      id: 'transfer-to-another-registry',
+      title: "Trasferire un'offerta a un'altra anagrafica",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Se l'offerta va intestata a un altro cliente, nel dettaglio premi **Trasferisci ad altra anagrafica** (serve il permesso **Trasferisci ad altra anagrafica** oltre a **Modifica**; lo stesso pulsante c'è nel pannello **Lavora** di Gestione Richieste e Gestione Iscritti, con i permessi di quel modulo).",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Scegli la **Nuova anagrafica**: deve essere diversa da quella attuale.',
+            'Controlla e, se serve, aggiorna le **Informazioni aggiuntive** (i campi flessibili): sono già compilate con i valori attuali.',
+            'Clicca **Trasferisci**.',
+          ],
+        },
+        {
+          type: 'table',
+          headers: ['Situazione della nuova anagrafica', "Dove va l'offerta"],
+          rows: [
+            ["Ha già un'opportunità aperta e la categoria non ammette più opportunità aperte per anagrafica", "Sull'opportunità aperta, che riceve le categorie dei prodotti dell'offerta se non le ha."],
+            ["Non ha opportunità aperte, oppure la categoria ammette più opportunità aperte", "Su una nuova opportunità con le stesse linee di prodotto, commerciale, segnalatore, supervisore, sede operativa e gestori della vecchia; senza referente."],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: "La vecchia opportunità resta com'è, con le sue note e i suoi documenti; le note scritte su questa offerta la seguono. Il trasferimento resta registrato nello **Storico** dell'offerta e delle due opportunità (**Trasferimento ad altra anagrafica**, da quale a quale anagrafica, chi e quando), e in cima al dettaglio dell'offerta compare la riga **Trasferita da A a B il gg/mm/aaaa da Nome**.",
+        },
+        {
+          type: 'warning',
+          text: "Non si può trasferire un'offerta a contratto (contratto, commesse e fatture sono già intestati al cliente) né spostarla su un'opportunità che ammette una sola offerta e ne ha già una: il messaggio compare sotto il campo **Nuova anagrafica** e non viene salvato nulla.",
+        },
       ],
     },
     {

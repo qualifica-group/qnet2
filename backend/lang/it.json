@@ -298,5 +298,6 @@
     "You cannot change this field.": "Non puoi modificare questo campo.",
     "The combined text is longer than :max characters: keep one of the texts.": "Il testo unito supera i :max caratteri: tieni uno dei due testi.",
     "You cannot add these elements to the kept record: discard them.": "Non puoi aggiungere questi elementi al record mantenuto: scartali.",
-    "One of the records has just been merged or deleted: reload the list and try again.": "Uno dei record e' appena stato unito o eliminato: ricarica l'elenco e riprova."
+    "One of the records has just been merged or deleted: reload the list and try again.": "Uno dei record e' appena stato unito o eliminato: ricarica l'elenco e riprova.",
+    "Offer transferred to :registry": "Offerta trasferita a :registry"
 }

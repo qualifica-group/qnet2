@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Authorization;
 
 use App\Models\User;
+use App\Services\Quotes\QuoteRegistryTransferService;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -177,7 +178,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['export', 'view_activity', 'transfer_contact', 'append_team_member'];
+        return ['export', 'view_activity', 'transfer_contact', 'transfer_registry', 'append_team_member'];
     }
 
     /**
@@ -242,6 +243,11 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'transfer_contact' => $model !== null
                 && $actor->can($this->permission('update'))
                 && $actor->can($this->permission('transferContact')),
+            // Spec 0404 B-D1: the "transfer to another anagrafica" action,
+            // same double gate as its endpoint (QuoteRegistryTransferController).
+            'transfer_registry' => $model !== null
+                && $actor->can($this->permission('update'))
+                && $actor->can($this->permission(QuoteRegistryTransferService::ABILITY)),
             // Direttiva utente 2026-09-08: the RAW grant behind the team
             // block's third state — squadra visible, members already there
             // frozen, only additions allowed. Per-record like the two above:

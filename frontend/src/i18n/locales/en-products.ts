@@ -132,6 +132,12 @@ export const productCategories = {
     requiresQuoteInheritedHint:
       'Quoting is inherited from the root category "{{category}}". To change it, edit that category instead.',
     isSelectable: 'Selectable',
+    requiresContactTransfer: 'Contact transfer before the contract',
+    requiresContactTransferHint:
+      'When on, an offer of this category cannot move to Won (and open its contract) until its contact has been transferred with Transfer contact. Provisional win is always allowed.',
+    requiresContactTransferInfo:
+      'It applies to this category only, not to its subcategories. The check runs when the offer would move to Won opening a contract, from any module (Offers, Gestione Richieste, Gestione Iscritti, grid). Offers already won and categories without a contract are not affected.',
+    requiresContactTransferInfoLabel: 'More info about Contact transfer before the contract',
     isSelectableHint:
       'When off, the category can only group subcategories: it disappears from the pickers and can no longer be assigned to a product, a product line, a project, a campaign or a commission rule. Existing associations are kept.',
     isActive: 'Active',

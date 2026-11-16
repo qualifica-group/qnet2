@@ -6,6 +6,7 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\Quotes\QuoteLineWorkOrderLock;
+use App\Services\Quotes\QuoteRegistryTransferService;
 use App\Services\Quotes\QuoteVisibilityScope;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
@@ -61,7 +62,7 @@ class QuotePolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY, QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY, QuoteLineWorkOrderLock::OVERRIDE_ABILITY];
+        return [...parent::abilities(), QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY, QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY, QuoteLineWorkOrderLock::OVERRIDE_ABILITY, QuoteRegistryTransferService::ABILITY];
     }
 
     private function isInScope(User $user, Model $model): bool

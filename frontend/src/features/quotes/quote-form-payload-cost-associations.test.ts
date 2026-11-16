@@ -48,6 +48,7 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     follow_up_date: null,
     opportunity_id: 10,
     opportunity: { id: 10, name: 'Deal Acme' },
+    registry_transfer: null,
     quote_workflow_status_id: 1,
     quote_workflow_status: WORKFLOW_STATUS_OPEN,
     quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],

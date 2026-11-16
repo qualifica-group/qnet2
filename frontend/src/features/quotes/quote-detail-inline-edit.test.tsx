@@ -100,6 +100,7 @@ function quote(overrides: Partial<QuoteDetailWithPermissions> = {}): QuoteDetail
     follow_up_date: null,
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
+    registry_transfer: null,
     quote_workflow_status_id: 1,
     quote_workflow_status: WORKFLOW_STATUS_OPEN,
     quote_workflow_statuses: [WORKFLOW_STATUS_OPEN, WORKFLOW_STATUS_REQUIRES_NOTE],

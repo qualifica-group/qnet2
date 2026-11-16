@@ -7,6 +7,7 @@ namespace App\Authorization;
 use App\Models\Quote;
 use App\Models\User;
 use App\Services\Commissions\CommissionRecalculationImpact;
+use App\Services\Quotes\QuoteRegistryTransferService;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -97,7 +98,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'generate_document', 'recalculate_commissions'];
+        return ['delete', 'export', 'import', 'view_activity', 'generate_document', 'recalculate_commissions', 'transfer_registry'];
     }
 
     /**
@@ -162,6 +163,12 @@ class QuotesAuthorization extends AbstractResourceAuthorization
                 && $this->actorMayWrite($actor, $model)
                 && $this->fieldPermissions($actor, $model)['commissions']->editable
                 && ! $this->recalculationImpact->isClosed($model),
+            // Spec 0404 B-D1/B-D6: same gate as QuoteRegistryTransferController;
+            // an offer under contract cannot move.
+            'transfer_registry' => $model instanceof Quote
+                && $this->actorMayWrite($actor, $model)
+                && $actor->can('quotes.'.QuoteRegistryTransferService::ABILITY)
+                && ! $model->contract()->exists(),
         ];
     }
 }

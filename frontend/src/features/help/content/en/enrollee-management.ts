@@ -26,7 +26,7 @@ const guide: HelpGuide = {
               'Creation',
               'It has no creation button: a request enters the enrollees only by changing status.',
             ],
-            ['Permissions', 'It has its own permissions, separate from Request Management.'],
+            ['Permissions', 'It has its own permissions, separate from Request Management (including **Transfer contact** and **Transfer to another registry**).'],
             ['Categories', 'As in Request Management: categories whose **Used in** is **Opportunities / Quotes** have no tab and cannot be picked, and enrollees with only such categories are not listed.'],
             [
               'Documents and notes',

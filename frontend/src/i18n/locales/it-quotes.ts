@@ -125,6 +125,27 @@ export const quotes = {
    * Editor "catalogo + righe" condiviso da Offerte (schede Prodotti e Costi)
    * e Gestione Richieste/Iscritti (spec 0268, 0269).
    */
+  // Spec 0404, parte B: trasferimento dell'offerta ad altra anagrafica.
+  registryTransfer: {
+    button: 'Trasferisci ad altra anagrafica',
+    title: 'Trasferisci offerta ad altra anagrafica',
+    description:
+      "L'offerta lascia l'anagrafica {{registry}}. Va sull'opportunità aperta della nuova anagrafica se la categoria non ne ammette più di una, altrimenti nasce una nuova opportunità con le stesse linee di prodotto. La vecchia opportunità resta com'è.",
+    registry: 'Nuova anagrafica',
+    registryPlaceholder: "Seleziona l'anagrafica",
+    registrySearch: 'Cerca anagrafica…',
+    registryEmpty: 'Nessuna anagrafica trovata',
+    registryError: 'Impossibile caricare le anagrafiche',
+    registryRequired: "Scegli l'anagrafica di destinazione",
+    sameRegistry: "L'offerta è già di questa anagrafica",
+    attributes: 'Informazioni aggiuntive',
+    confirm: 'Trasferisci',
+    success: 'Offerta trasferita',
+    notice: 'Trasferita da {{from}} a {{to}} il {{date}} da {{causer}}',
+    errors: {
+      generic: "Impossibile trasferire l'offerta. Riprova.",
+    },
+  },
   recalculateCommissions: {
     button: 'Ricalcola commissioni',
     title: 'Ricalcola commissioni',

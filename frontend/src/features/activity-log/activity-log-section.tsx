@@ -31,6 +31,7 @@ const EVENT_BADGE_VARIANT: Record<ActivityLogEvent, 'default' | 'secondary' | 'd
   deleted: 'destructive',
   restored: 'outline',
   moved: 'outline',
+  registry_transferred: 'outline',
   'impersonation.started': 'outline',
   'impersonation.stopped': 'outline',
 }

@@ -62,6 +62,8 @@ class UpdateProductCategoryRequest extends FormRequest
             // classification target. Never inherited, so no guard here.
             'is_selectable' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
+            // Spec 0404 C-D1: per-node, never inherited, so no guard here.
+            'requires_contact_transfer_before_contract' => ['sometimes', 'boolean'],
             // Spec 0131 (user directive 2026-09-18): the node's own override of
             // the inherited report flag — null = inherit from the parent.
             'is_reportable' => ['sometimes', 'nullable', 'boolean'],

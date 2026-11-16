@@ -204,6 +204,7 @@ function RequestWorkPanelBody({ panel, onSaved }: RequestWorkPanelBodyProps) {
         submitError={submitError}
         canTransfer={transfer.canTransfer}
         onTransfer={transfer.open}
+        onRegistryTransferred={onSaved}
       />
 
       {/* The RHF provider wraps BOTH columns: the side column carries fields of

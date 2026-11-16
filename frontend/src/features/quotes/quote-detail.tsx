@@ -12,6 +12,7 @@ import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
 import { QuoteDetailHeader, QuoteDetailStats } from '@/features/quotes/quote-detail-header'
+import { QuoteRegistryTransferNotice } from '@/features/quotes/registry-transfer/quote-registry-transfer-notice'
 import { QuoteDetailLines } from '@/features/quotes/quote-detail-lines'
 import { QuoteDetailAttributes, QuoteDetailSections } from '@/features/quotes/quote-detail-sections'
 import { useQuoteInlineEdit } from '@/features/quotes/use-quote-inline-edit'
@@ -126,6 +127,7 @@ function QuoteDetailContent({ quote, onChanged }: QuoteDetailViewProps) {
         header={
           <>
             <QuoteDetailHeader quote={quote} onChanged={onChanged} />
+            {quote.registry_transfer ? <QuoteRegistryTransferNotice transfer={quote.registry_transfer} /> : null}
             <QuoteDetailStats quote={quote} />
           </>
         }

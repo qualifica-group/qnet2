@@ -21,6 +21,7 @@ export const activityLog = {
     deleted: 'Eliminazione',
     restored: 'Ripristino',
     moved: 'Spostamento (organigramma)',
+    registry_transferred: 'Trasferimento ad altra anagrafica',
     impersonation: {
       started: 'Inizio impersonificazione',
       stopped: 'Fine impersonificazione',

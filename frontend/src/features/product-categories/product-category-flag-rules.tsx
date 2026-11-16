@@ -1,6 +1,6 @@
 import { useController, type Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { ChartNoAxesColumn, MousePointerClick, Power } from 'lucide-react'
+import { ArrowRightLeft, ChartNoAxesColumn, MousePointerClick, Power, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { FormControl, FormDescription } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
@@ -16,28 +16,34 @@ interface SelectableRuleProps {
   control: Control<ProductCategoryFormValues>
 }
 
+type NodeSwitchName = 'is_selectable' | 'requires_contact_transfer_before_contract'
+
+interface NodeSwitchRuleProps extends SelectableRuleProps {
+  name: NodeSwitchName
+  icon: LucideIcon
+  /** i18n prefix under `productCategories.form` (label, `Hint`, `Info`, `InfoLabel`). */
+  labelKey: string
+}
+
 /**
- * `is_selectable` as a rule tile. Per-node and never inherited (spec 0074), so
- * it needs none of the root-owned chrome — defined at module level, never
- * inside the section component.
+ * A per-node, never-inherited switch as a rule tile: it needs none of the
+ * root-owned chrome. Defined at module level, never inside the section.
  */
-export function SelectableRule({ control }: SelectableRuleProps) {
+function NodeSwitchRule({ control, name, icon, labelKey }: NodeSwitchRuleProps) {
   const { t } = useTranslation()
-  const { field } = useController({ control, name: 'is_selectable' })
+  const { field } = useController({ control, name })
 
   return (
-    <ProductCategoryRuleCard icon={MousePointerClick} active={field.value}>
+    <ProductCategoryRuleCard icon={icon} active={field.value}>
       <MetaField
         control={control}
-        name="is_selectable"
-        metaKey="is_selectable"
+        name={name}
+        metaKey={name}
         layout="inline"
-        label={t('productCategories.form.isSelectable')}
-        hint={t('productCategories.form.isSelectableInfo')}
-        hintLabel={t('productCategories.form.isSelectableInfoLabel')}
-        description={
-          <FormDescription>{t('productCategories.form.isSelectableHint')}</FormDescription>
-        }
+        label={t(`productCategories.form.${labelKey}`)}
+        hint={t(`productCategories.form.${labelKey}Info`)}
+        hintLabel={t(`productCategories.form.${labelKey}InfoLabel`)}
+        description={<FormDescription>{t(`productCategories.form.${labelKey}Hint`)}</FormDescription>}
       >
         {({ field: switchField, disabled }) => (
           <FormControl>
@@ -50,6 +56,23 @@ export function SelectableRule({ control }: SelectableRuleProps) {
         )}
       </MetaField>
     </ProductCategoryRuleCard>
+  )
+}
+
+/** `is_selectable` as a rule tile (spec 0074). */
+export function SelectableRule({ control }: SelectableRuleProps) {
+  return <NodeSwitchRule control={control} name="is_selectable" icon={MousePointerClick} labelKey="isSelectable" />
+}
+
+/** The contact-transfer obligation before the contract (spec 0404 C-D1), per-node like `is_selectable`. */
+export function ContactTransferRule({ control }: SelectableRuleProps) {
+  return (
+    <NodeSwitchRule
+      control={control}
+      name="requires_contact_transfer_before_contract"
+      icon={ArrowRightLeft}
+      labelKey="requiresContactTransfer"
+    />
   )
 }
 

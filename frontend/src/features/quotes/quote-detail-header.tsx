@@ -8,6 +8,7 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { useViewableDomain } from '@/features/modules/use-viewable-domain'
 import { WorkflowStatusBadge } from '@/features/workflow-statuses/workflow-status-badge'
 import { QuoteRecalculateCommissions } from '@/features/quotes/quote-recalculate-commissions'
+import { QuoteDetailRegistryTransfer } from '@/features/quotes/registry-transfer/quote-registry-transfer-button'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import { useQuoteDocument } from '@/features/quotes/use-quote-document'
 import { cn } from '@/lib/utils'
@@ -92,6 +93,9 @@ export function QuoteDetailHeader({ quote, onChanged }: QuoteDetailHeaderProps) 
       actions={
         <>
           {quote.contract_id ? <QuoteContractButton contractId={quote.contract_id} /> : null}
+          {quote.permissions.actions.transfer_registry ? (
+            <QuoteDetailRegistryTransfer quote={quote} onChanged={onChanged} />
+          ) : null}
           {quote.permissions.actions.recalculate_commissions ? (
             <QuoteRecalculateCommissions quoteId={quote.id} onChanged={onChanged} />
           ) : null}

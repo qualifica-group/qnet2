@@ -261,6 +261,44 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Moving the quote to a **Closed (won)** status generates the contract. From then on the **Open contract** button at the top of the quote detail, and the **Open contract** entry in the more-actions menu (the three dots) of the row in the table, open the contract in a window over the quote. You see them only if your role may view Contracts.',
         },
+        {
+          type: 'note',
+          text: 'When a category of the opportunity has **Contact transfer before the contract** (for example **Orientamento specialistico**), the quote cannot move to **Won** until its contact has been transferred with **Transfer contact** in Gestione Richieste: the save is refused with "This category requires the contact transfer before the contract". **Provisionally won** is always allowed.',
+        },
+      ],
+    },
+    {
+      id: 'transfer-to-another-registry',
+      title: 'Transferring a quote to another registry',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'When the quote must belong to another customer, press **Transfer to another registry** in the detail (it needs the **Transfer to another registry** permission on top of **Update**; the same button is in the **Work** panel of Gestione Richieste and Gestione Iscritti, with that module\'s permissions).',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Choose the **New registry**: it must differ from the current one.',
+            'Review and, if needed, update the **Additional information** (the flexible fields): they are prefilled with the current values.',
+            'Click **Transfer**.',
+          ],
+        },
+        {
+          type: 'table',
+          headers: ["The new registry's situation", 'Where the quote goes'],
+          rows: [
+            ['It already has an open opportunity and the category allows only one open opportunity per registry', "On that open opportunity, which receives the categories of the quote's products if it lacks them."],
+            ['It has no open opportunity, or the category allows several open opportunities', "On a new opportunity with the old one's product lines, commercial, reporter, supervisor, operational site and account managers; without a referent."],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'The old opportunity stays as it is, with its notes and documents; the notes written on this quote follow it. The transfer is recorded in the **History** of the quote and of both opportunities (**Transferred to another registry**, from which registry to which, who and when), and the top of the quote detail shows **Transferred from A to B on dd/mm/yyyy by Name**.',
+        },
+        {
+          type: 'warning',
+          text: 'A quote under contract cannot be transferred (contract, work orders and invoices already belong to the customer), nor moved onto an opportunity that allows a single quote and already has one: the message appears under **New registry** and nothing is saved.',
+        },
       ],
     },
     {
