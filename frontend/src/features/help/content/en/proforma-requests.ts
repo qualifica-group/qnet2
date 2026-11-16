@@ -32,6 +32,7 @@ const guide: HelpGuide = {
           headers: ['Column', 'Meaning'],
           rows: [
             ['**Customer**', 'The work order customer (the registry of the opportunity the quote comes from).'],
+            ['**Customer VAT number**', 'The VAT number on the customer\'s registry card, to check the request before issuing the proforma. Empty when the registry has none.'],
             ['**Type**', 'Consultancy or Institution.'],
             ['**Supplier**', 'The institution supplier the request refers to (empty for Consultancy).'],
             ['**Payment method**', 'The quote\'s one at sending time: if the quote changes later, the request stays as it was.'],

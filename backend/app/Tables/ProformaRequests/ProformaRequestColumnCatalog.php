@@ -52,6 +52,14 @@ final class ProformaRequestColumnCatalog
                 'filterable' => false,
             ],
             [
+                'id' => 'customer_vat_number',
+                'label' => 'proformaRequests.columns.customer_vat_number',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => false,
+            ],
+            [
                 'id' => 'kind',
                 'label' => 'proformaRequests.columns.kind',
                 'type' => 'badge',

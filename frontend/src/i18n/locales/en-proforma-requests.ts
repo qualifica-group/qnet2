@@ -16,6 +16,7 @@ export const proformaRequests = {
     quote: 'Quote',
     company: 'Company',
     customer: 'Customer',
+    customer_vat_number: 'Customer VAT number',
     kind: 'Type',
     supplier: 'Supplier',
     payment_method: 'Payment method',

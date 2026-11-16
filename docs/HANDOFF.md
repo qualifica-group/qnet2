@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Richieste Proforma: colonna Partita IVA cliente (2026-11-16) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente: in elenco Richieste Proforma serve la partita IVA per controllare la richiesta. Nuova colonna `customer_vat_number` ("Partita IVA cliente"), visibile, subito dopo `customer`, in sola lettura, non ordinabile ne' filtrabile (come le altre colonne di relazione del modulo). Valore: `quote.opportunity.registry.personalData.vat_number`, eager-loaded in `ProformaRequestsTableDefinition::baseQuery()`. Solo griglia: `ProformaRequestResource` e il dettaglio sono invariati.
+- Assunzione da confermare con l'utente: "azienda" = il cliente della richiesta, non la Societa' emittente.
+- Verifica: Pest `tests/Feature/ProformaRequests` 27/27, Pint, Vitest help + proforma-requests 162/162, ESLint, `tsc -b --force` puliti. Non provato nel browser, suite completa non eseguita.
+- Guide IT/EN `proforma-requests` (tabella colonne) aggiornate. DA FARE: manuale Claude Docs (il connettore ha negato l'accesso al documento in questa sessione) — aggiungere la riga "Partita IVA cliente" nella tabella colonne di Richieste Proforma, poi rigenerare il PDF.
+
 ## Chi vede la commessa vede i suoi task (spec 0379) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 
 - Segnalazione: Noemi Nigliato, Responsabile di COM-20053, vedeva 0 task su 18 nel task board. I task migrati hanno solo creatore/richiedente (in produzione 341.345 task di commessa su 375.342 senza assegnatari), e nessun tier li raggiungeva.

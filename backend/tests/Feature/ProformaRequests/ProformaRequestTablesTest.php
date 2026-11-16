@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\PersonalData;
 use App\Models\ProformaRequest;
 use App\Models\WorkOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,4 +72,20 @@ it('exposes the work order customer (the quote opportunity registry) on the grid
     expect($rows[0]['customer'])->toBe($expected)
         ->and($columnIds)->toContain('customer');
     $this->getJson("/api/proforma-requests/{$request->id}")->assertOk()->assertJsonPath('data.customer', $expected);
+});
+
+it('shows the customer VAT number (the registry personal-data card) as a visible column right after the customer', function () {
+    Sanctum::actingAs(proformaUserWith(['viewAny', 'view']));
+    $withCard = ProformaRequest::factory()->create();
+    PersonalData::factory()->for($withCard->workOrder->quote->opportunity->registry, 'personable')->create(['vat_number' => '00743110157']);
+    $withoutCard = ProformaRequest::factory()->create();
+
+    $rows = collect($this->postJson('/api/tables/proforma-requests/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items'))->keyBy('id');
+    $columns = collect($this->getJson('/api/tables/proforma-requests/columns')->assertOk()->json('data.columns'));
+    $columnIds = $columns->pluck('id')->values();
+
+    expect($rows[$withCard->id]['customer_vat_number'])->toBe('00743110157')
+        ->and($rows[$withoutCard->id]['customer_vat_number'])->toBeNull()
+        ->and($columnIds->search('customer_vat_number'))->toBe($columnIds->search('customer') + 1)
+        ->and($columns->firstWhere('id', 'customer_vat_number')['visible'])->toBeTrue();
 });
