@@ -117,8 +117,14 @@ export const workOrders = {
       team: 'Responsabili e partecipanti',
       detailTeam: 'Team',
       rewards: 'Buoni',
-      company: 'Società e sedi',
+      company: 'Riferimenti società',
       closure: 'Chiusura',
+    },
+    tabs: {
+      info: 'Info',
+      label: 'Sezioni della commessa',
+      workOrderDocuments: 'Documenti commessa',
+      accounting: 'Amministrazione',
     },
     tasks: {
       title: 'Task',

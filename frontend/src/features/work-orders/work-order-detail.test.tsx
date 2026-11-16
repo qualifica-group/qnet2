@@ -408,7 +408,7 @@ describe('WorkOrderDetailView — related records', () => {
       />,
     )
 
-    expect(screen.getByText('Company and sites')).toBeInTheDocument()
+    expect(screen.getByText('Company references')).toBeInTheDocument()
     const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
     expect(hrefOf('Qualifica Group S.r.l.')).toBe('/companies/4')
     expect(hrefOf('Sede Napoli')).toBe('/company-sites/5')
@@ -426,27 +426,27 @@ describe('WorkOrderDetailView — related records', () => {
 })
 
 /**
- * The collaboration card mirrors `OpportunityDetailView`'s: one card, a
- * Notes | Documents | Activity tab strip, each tab gated by its own
- * authorization source (spec 0134 D-3), absent as a whole when nothing is
- * authorized.
+ * Notes, documents and activity are tabs of the work order's tab card, each
+ * gated by its own authorization source (spec 0134 D-3). REQUIREMENT CHANGED
+ * (user directive 2026-11-16): they left the side column for the legacy-like
+ * strip, where Info is always present and open by default.
  */
 describe('WorkOrderDetailView — collaboration', () => {
-  it('renders no collaboration card when nothing is authorized', () => {
+  it('keeps only the Info tab when nothing else is authorized', () => {
     canMock.mockImplementation((): boolean => false)
     const base = workOrder()
     render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...base.permissions, actions: {} } })} />)
 
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Info'])
   })
 
-  it('shows the Notes tab, selected by default, when work-orders.view is granted', () => {
+  it('shows the Notes tab, Info selected by default, when work-orders.view is granted', () => {
     canMock.mockImplementation((permission: string) => permission === 'work-orders.view')
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    const notesTab = screen.getByRole('tab', { name: 'Notes' })
-    expect(notesTab).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByRole('tab', { name: 'Documents' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: /documents/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Activity log' })).not.toBeInTheDocument()
   })
 
@@ -454,7 +454,7 @@ describe('WorkOrderDetailView — collaboration', () => {
     canMock.mockImplementation((): boolean => false)
     render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...workOrder().permissions, actions: { view_documents: true } } })} />)
 
-    expect(screen.getByRole('tab', { name: 'Documents' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Work order documents' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument()
   })
 
@@ -483,7 +483,6 @@ describe('WorkOrderDetailView — collaboration', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Activity log' }))
 
     expect(activityLogSectionMock).toHaveBeenCalledWith({ resource: 'work-orders', id: 4 })
-    // The Task board sits below the record, outside the collaboration card.
   })
 
   it('hides the Activity log tab when view_activity is not granted', () => {
@@ -493,10 +492,12 @@ describe('WorkOrderDetailView — collaboration', () => {
     expect(activityLogSectionMock).not.toHaveBeenCalled()
   })
 
-  it('renders the Task board below the record regardless of the collaboration card', () => {
+  it('opens the Task board from its own tab', () => {
     canMock.mockImplementation((permission: string) => permission === 'tasks.viewAny')
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
+    expect(screen.queryByText('task-board')).not.toBeInTheDocument()
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Tasks' }))
     expect(screen.getByText('task-board')).toBeInTheDocument()
   })
 })
@@ -588,7 +589,7 @@ describe('WorkOrderDetailView — multi-offer work order (spec 0267 AC-016)', ()
     expect(screen.getByText('Multi-offer')).toBeInTheDocument()
     // REQUIREMENT CHANGED spec 0331: label renamed with the shared section.
     expect(screen.queryByText('Registry')).not.toBeInTheDocument()
-    expect(screen.queryByText('Company and sites')).not.toBeInTheDocument()
+    expect(screen.queryByText('Company references')).not.toBeInTheDocument()
   })
 
   it('keeps the single-offer sections and no badge on a single-offer work order', () => {

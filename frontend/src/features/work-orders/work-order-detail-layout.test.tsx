@@ -143,8 +143,8 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
       'registry and contacts',
       'rewards',
       'team',
-      'company and sites',
       'document and payment',
+      'company references',
     ]
     const positions = expected.map((title) => titles.indexOf(title))
 
@@ -203,25 +203,34 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     )
 
     const titles = sectionTitles()
-    for (const dropped of ['context', 'registry and contacts', 'rewards', 'company and sites', 'document and payment']) {
+    for (const dropped of ['context', 'registry and contacts', 'rewards', 'company references', 'document and payment']) {
       expect(titles).not.toContain(dropped)
     }
     expect(titles).toContain('team')
     expect(screen.queryByText('No rewards')).not.toBeInTheDocument()
   })
 
-  it('stacks the skeleton on the left, the additional information on the right, the contract data under both (user directive 2026-11-05)', () => {
+  it('stacks the work order fields on the left, company references then additional information on the right, the contract data under both (user directive 2026-11-16)', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ applicable_attributes: [SITE_ACCESS_ATTRIBUTE] })} />)
 
     const leftColumn = columnOf(/work order data/i)
     expect(leftColumn).not.toBeNull()
-    for (const title of [/^context$/i, /^rewards$/i, /company and sites/i]) {
+    for (const title of [/^context$/i, /^rewards$/i, /^team$/i, /document and payment/i]) {
       expect(columnOf(title)).toBe(leftColumn)
     }
-    const rightColumn = columnOf(/additional information/i)
+    const rightColumn = columnOf(/company references/i)
     expect(rightColumn).not.toBe(leftColumn)
     expect(rightColumn?.parentElement).toBe(leftColumn?.parentElement)
+    expect(columnOf(/additional information/i)).toBe(rightColumn)
+    const rightTitles = Array.from(rightColumn?.querySelectorAll('h3') ?? []).map((heading) => heading.textContent?.toLowerCase())
+    expect(rightTitles.indexOf('company references')).toBeLessThan(rightTitles.indexOf('additional information'))
     expect(columnOf(/contract data/i)).toBe(leftColumn?.parentElement)
+  })
+
+  it('keeps the company references on the right even without additional information (user directive 2026-11-16)', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(columnOf(/company references/i)).not.toBe(columnOf(/work order data/i))
   })
 
   it('shows the additional information as a fixed section, not collapsible (user directive 2026-11-05)', () => {

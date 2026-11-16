@@ -1,6 +1,6 @@
 /**
  * The Commessa detail's Task board (spec 0146, D-5/AC-024), the "Task" tab of
- * `WorkOrderDetailWorkTabs`: replaces the
+ * `WorkOrderDetailTabs`: replaces the
  * `TableView domain="tasks"` panel (`work-order-tasks-section.tsx`, spec
  * 0133/D-10) with the grouped Lista/Board kanban pair. Orchestrates
  * `use-task-board-state.ts` (filters/selection/derived groups) and

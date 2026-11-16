@@ -12,7 +12,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Work order data** (with the link to the Contract) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the work order's Supervisors and Participants) and **Company and sites**, then **Document and payment**. When the product lines bring **Additional information**, these sections are stacked on the left and the Additional information fills the right column. At the bottom, full width under both columns, is the **Contract data**. Context, Registry and contacts, Rewards, Company and sites and Document and payment come from the quote, read only; a work order with lines from several quotes does not show them. When the quote names no referent, the Referent row shows the **registry's primary referent**, with a note saying so. Under the Registry and under the Referent you find their **primary contacts** (phone, email): tapping the phone starts the call. The contacts show only if you may view registries and referents.",
+          text: "The work order detail is organised in tabs as in the old QNet. Under the header (title, status, indicators) there is a row of tabs: **Info**, **Tasks**, **Documents** (Work order documents and Registry documents), **Administration** (Costs, Active proforma and Passive proforma), **Notes**, then **Chat**, **Email** and **Activity log** where available. Each tab appears only if you may see it; when a group has a single item available, the tab shows that item directly. **Info** is open by default. At the end of the row, set a little apart, is the **work order title**: clicking it takes you back to Info.",
+        },
+        {
+          type: 'paragraph',
+          text: "In the **Info** tab, the work order fields are on the left, in the same order as Opportunity, Quote and Contract records: **Work order data** (with the link to the Contract), **Context**, **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter), **Rewards**, **Team** (the work order's Supervisors and Participants) and **Document and payment**. On the right, at the top, the **Company references** (Company, Site, Operational site) and below them the flexible fields (**Additional information**), when the product lines bring any. At the bottom, full width under both columns, is the **Contract data**. Context, Registry and contacts, Rewards, Company references and Document and payment come from the quote, read only; a work order with lines from several quotes does not show them. When the quote names no referent, the Referent row shows the **registry's primary referent**, with a note saying so. Under the Registry and under the Referent you find their **primary contacts** (phone, email): tapping the phone starts the call. The contacts show only if you may view registries and referents.",
         },
         {
           type: 'paragraph',
@@ -252,7 +256,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In the Work order detail, below the main card, **Tasks** and **Costs** share one card as tabs you switch between: **Tasks** is open by default (or the first one you may see). The **Contract data** is not a tab: it sits in the main card, in the **Contract data** section. The **Costs** tab compares the **budgeted** costs (the offer cost lines imputed to the work order\'s revenue lines) with the **actual** costs entered here. It only appears if you may view costs.',
+          text: 'In the Work order detail, **Costs** is a tab of **Administration**, together with Active proforma and Passive proforma (if you may see only the Costs, the top tab is **Costs** itself). The **Contract data** is not a tab: it sits in the **Info** tab, in the **Contract data** section. The **Costs** tab compares the **budgeted** costs (the offer cost lines imputed to the work order\'s revenue lines) with the **actual** costs entered here. It only appears if you may view costs.',
         },
         {
           type: 'table',
@@ -294,7 +298,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In the main card of the Work order detail, the **Contract data** section shows for each product line the amounts already saved on the offer and **explains how the revenue comes about**. Without the permission to view contract data you only see the list of products. Without the permission to view the work order **costs** the section does not appear at all, not even the list of products, and you cannot edit the payments. The product name is a **link** to the product. Each product line sits on **a single row** (code, name and typology side by side); on narrow screens each row becomes a compact card.',
+          text: 'In the **Info** tab of the Work order detail, the **Contract data** section shows for each product line the amounts already saved on the offer and **explains how the revenue comes about**. Without the permission to view contract data you only see the list of products. Without the permission to view the work order **costs** the section does not appear at all, not even the list of products, and you cannot edit the payments. The product name is a **link** to the product. Each product line sits on **a single row** (code, name and typology side by side); on narrow screens each row becomes a compact card.',
         },
         {
           type: 'table',
@@ -354,7 +358,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In the Work order detail, in the same card as **Tasks** and **Costs**, the **Active proforma** and **Passive proforma** tabs list the documents tied to the work order. They only appear if you may view proforma and invoices (permission "View proforma and invoices"). They are **read-only**: nothing can be created, issued, collected or paid from here.',
+          text: 'In the Work order detail, in the **Administration** tab next to **Costs**, the **Active proforma** and **Passive proforma** tabs list the documents tied to the work order. They only appear if you may view proforma and invoices (permission "View proforma and invoices"). They are **read-only**: nothing can be created, issued, collected or paid from here.',
         },
         {
           type: 'table',

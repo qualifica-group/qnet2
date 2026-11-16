@@ -12,7 +12,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati commessa** (con il link al Contratto) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisori e Partecipanti della commessa) e **Società e sedi**, poi **Documento e pagamento**. Se le righe prodotto prevedono **Informazioni aggiuntive**, queste sezioni stanno una sotto l'altra a sinistra e le Informazioni aggiuntive occupano la colonna di destra. In fondo, a tutta larghezza sotto le due colonne, ci sono i **Dati contrattuali**. Contesto, Anagrafica e contatti, Buoni, Società e sedi e Documento e pagamento vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono. Se l'offerta non indica un referente, come Referente compare il **referente principale dell'anagrafica**, con la nota che lo indica. Sotto l'Anagrafica e sotto il Referente trovi i loro **recapiti principali** (telefono, email): toccando il telefono parte la chiamata. I recapiti si vedono solo se hai il permesso di vedere anagrafiche e referenti.",
+          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. Sotto l'intestazione (titolo, stato, indicatori) c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Chat**, **Email** e **Attività** dove previste. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. All'apertura è attiva **Info**. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
+        },
+        {
+          type: 'paragraph',
+          text: "Nella scheda **Info**, a sinistra ci sono i campi della commessa nello stesso ordine delle schede di Opportunità, Offerte e Contratti: **Dati commessa** (con il link al Contratto), **Contesto**, **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore), **Buoni**, **Team** (Supervisori e Partecipanti della commessa) e **Documento e pagamento**. A destra, in alto, i **Riferimenti società** (Società, Sede, Sede operativa) e sotto i campi flessibili (**Informazioni aggiuntive**), se le righe prodotto ne prevedono. In fondo, a tutta larghezza sotto le due colonne, ci sono i **Dati contrattuali**. Contesto, Anagrafica e contatti, Buoni, Riferimenti società e Documento e pagamento vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono. Se l'offerta non indica un referente, come Referente compare il **referente principale dell'anagrafica**, con la nota che lo indica. Sotto l'Anagrafica e sotto il Referente trovi i loro **recapiti principali** (telefono, email): toccando il telefono parte la chiamata. I recapiti si vedono solo se hai il permesso di vedere anagrafiche e referenti.",
         },
         {
           type: 'paragraph',
@@ -252,7 +256,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nel dettaglio della Commessa, sotto la scheda principale, **Task** e **Costi** stanno nella stessa card come schede da alternare: all\'apertura è attiva **Task** (se non hai il permesso di vederla, la prima disponibile). I **Dati contrattuali** non sono una scheda: stanno nella card principale, nella sezione **Dati contrattuali**. La scheda **Costi** confronta i costi **preventivati** (le righe di costo dell\'offerta imputate alle righe di ricavo della commessa) con i costi **effettivi** inseriti qui. Compare solo se hai il permesso di vedere i costi.',
+          text: 'Nel dettaglio della Commessa, **Costi** è una scheda di **Amministrazione**, insieme a Proforma attiva e Proforma passiva (se puoi vedere solo i Costi, la scheda in alto è direttamente **Costi**). I **Dati contrattuali** non sono una scheda: stanno nella scheda **Info**, nella sezione **Dati contrattuali**. La scheda **Costi** confronta i costi **preventivati** (le righe di costo dell\'offerta imputate alle righe di ricavo della commessa) con i costi **effettivi** inseriti qui. Compare solo se hai il permesso di vedere i costi.',
         },
         {
           type: 'table',
@@ -294,7 +298,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nella card principale del dettaglio Commessa, la sezione **Dati contrattuali** mostra per ogni riga prodotto gli importi già salvati sull\'offerta e **spiega come si arriva al ricavo**. Senza il permesso di vedere i dati contrattuali vedi solo l\'elenco dei prodotti. Senza il permesso di vedere i **costi** della commessa la sezione non compare affatto, nemmeno l\'elenco dei prodotti, e non puoi modificare i pagamenti. Il nome del prodotto è un **link** al prodotto. Ogni riga prodotto sta su **una sola riga** (codice, nome e tipologia affiancati); su schermi stretti ogni riga diventa una scheda compatta.',
+          text: 'Nella scheda **Info** del dettaglio Commessa, la sezione **Dati contrattuali** mostra per ogni riga prodotto gli importi già salvati sull\'offerta e **spiega come si arriva al ricavo**. Senza il permesso di vedere i dati contrattuali vedi solo l\'elenco dei prodotti. Senza il permesso di vedere i **costi** della commessa la sezione non compare affatto, nemmeno l\'elenco dei prodotti, e non puoi modificare i pagamenti. Il nome del prodotto è un **link** al prodotto. Ogni riga prodotto sta su **una sola riga** (codice, nome e tipologia affiancati); su schermi stretti ogni riga diventa una scheda compatta.',
         },
         {
           type: 'table',
@@ -354,7 +358,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nel dettaglio della commessa, nella stessa card di **Task** e **Costi**, le schede **Proforma attiva** e **Proforma passiva** elencano i documenti legati alla commessa. Compaiono solo se puoi vedere proforma e fatture (permesso "Vedere proforma e fatture"). Sono di **sola consultazione**: da qui non si crea, emette, incassa o paga nulla.',
+          text: 'Nel dettaglio della commessa, nella scheda **Amministrazione** accanto a **Costi**, le schede **Proforma attiva** e **Proforma passiva** elencano i documenti legati alla commessa. Compaiono solo se puoi vedere proforma e fatture (permesso "Vedere proforma e fatture"). Sono di **sola consultazione**: da qui non si crea, emette, incassa o paga nulla.',
         },
         {
           type: 'table',

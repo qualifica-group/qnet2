@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Dettaglio commessa a schede come nel vecchio QNet — VERDE MIRATO, COMMITTATO (2026-11-16)
+
+- Richiesta utente: nel dettaglio Commessa le schede del legacy (`manageorder.blade.php`: Info | Task | Documenti | EUR |
+  Note | Segnatempo + titolo commessa staccato), nella scheda Info a sinistra i campi di sistema, a destra in alto i
+  riferimenti societa' e sotto i campi flessibili.
+- Layout: `work-order-detail.tsx` = card intestazione (`RecordBody` solo header) + `WorkOrderDetailTabs`
+  (`work-order-detail-tabs.tsx`) + meta. Niente piu' colonna laterale di collaborazione ne' card Task/Costi:
+  `work-order-detail-work-tabs.tsx` e il suo test eliminati (sostituiti da `work-order-detail-tabs.test.tsx`).
+- Tab costruiti da `useWorkOrderDetailTabs` (`use-work-order-detail-tabs.tsx`), ordine: Info (sempre, aperta di default),
+  Task (`tasks.viewAny`), Documenti = gruppo Documenti commessa (`view_documents`) + Documenti anagrafica
+  (`registries.viewDocuments`), Amministrazione = gruppo Costi (`view_costs`) + Proforma attiva/passiva (`view_invoices`),
+  Note (`work-orders.view`), Chat (`view_chat`), Email, Attivita' (`view_activity`). Gruppo con una sola voce = la voce
+  stessa (niente sotto-striscia). `padded` = contenuti di collaborazione che si aspettano il p-4 dell'host.
+- Tab-titolo: bottone `WorkOrderTitleTab` dopo la `TabsList` (`sm:ml-4`), stile trough+chip attivo, clic = torna a Info.
+  Le azioni della Task board continuano a portalarsi nello slot a destra della striscia.
+- Info (`work-order-detail-sections.tsx`): sinistra lo skeleton senza `company`; destra `WorkOrderCompanySection` in alto
+  + `WorkOrderAttributesSection`. Colonna destra vuota (multi-offerta senza attributi) = skeleton su due colonne.
+  Titolo sezione `workOrders.detail.sections.company` = "Riferimenti societa'" / "Company references".
+  Nuove chiavi i18n `workOrders.detail.tabs.{info,label,workOrderDocuments,accounting}`.
+- NON fatto: tab **Segnatempo** (in qnet-2 non esiste un elenco ore per commessa incorporabile: va progettato, con
+  visibilita' backend). Funzioni Aziendali/Unita' aziendale del legacy non esistono sull'offerta di qnet-2.
+- Test (REQUIREMENT CHANGED dichiarato nei file): `work-order-detail-tabs.test.tsx` (nuovo, 10), aggiornati
+  `work-order-detail.test.tsx`, `work-order-detail-layout.test.tsx`, `work-order-detail-tasks-panel.test.tsx`.
+  Vitest work-orders 327, help+i18n 405, work-order-costs/invoices/chat/projects/components-detail 247 verdi;
+  ESLint e `tsc -b --force` puliti. NON provato nel browser.
+- Manuale: guida in-app `work-orders` IT/EN (sezioni editing-a-work-order, costs, invoices, contract-data) e Manuale
+  Claude Docs (paragrafo "Commessa." nella parte layout schede).
+
 ## Ricerca, filtri avanzati e filtri salvati sopra la tabella, pannello aperto ricordato — VERDE MIRATO, COMMITTATO (2026-11-16)
 
 - Ogni tabella `TableView` (tutte le AG Grid con ricerca/filtri avanzati) ha ora un blocco separato SOPRA la card

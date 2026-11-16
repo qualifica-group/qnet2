@@ -53,8 +53,9 @@ interface DetailSectionProps {
 }
 
 /**
- * Societa' e sedi of the linked offer: the same three relations, labels and
- * links the Contract detail shows, projected live through `quote`.
+ * Riferimenti societa' (top of the Info tab's right column): the linked offer's
+ * company and sites, the same three relations, labels and links the Contract
+ * detail shows, projected live through `quote`.
  */
 function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
   const { t } = useTranslation()
@@ -80,19 +81,20 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
 }
 
 /**
- * The work order record's `RecordSectionsGrid` body, every user-written field
- * editable in place (spec 0195 applied to Commesse, user directive
- * 2026-10-06): the internal notes callout first, then the shared record
- * skeleton (spec 0331): Dati commessa (with the link to the Contratto),
- * Contesto, Anagrafica e contatti, Buoni, its own Team, Societa' e sedi,
- * Documento e pagamento. With Attribute values to collect, the skeleton
- * stacks in the left column and "Informazioni aggiuntive" fills the right
- * one (user directive 2026-11-05); without, the skeleton keeps both columns.
- * The contract data close the card at full width, under both columns.
- * Everything the offer owns is a read-only projection. Status and completion are computed
- * (spec 0149): they stay the header pill and the KPI strip. The forced
- * closure is an action of the header (user directive 2026-10-06), its reason
- * a read-only row of the data.
+ * The work order's Info tab, every user-written field editable in place
+ * (spec 0195 applied to Commesse, user directive 2026-10-06): the internal
+ * notes callout first, then two columns as in the legacy "Info" tab (user
+ * directive 2026-11-16). On the left the work order's own fields in the
+ * shared record skeleton order (spec 0331): Dati commessa (with the link to
+ * the Contratto), Contesto, Anagrafica e contatti, Buoni, Team, Documento e
+ * pagamento. On the right the company references on top, then the flexible
+ * fields ("Informazioni aggiuntive"). With nothing for the right column (a
+ * multi-offer work order without Attributes) the skeleton keeps both
+ * columns. The contract data close the tab at full width, under both columns.
+ * Everything the offer owns is a read-only projection. Status and completion
+ * are computed (spec 0149): they stay the header pill and the KPI strip. The
+ * forced closure is an action of the header (user directive 2026-10-06), its
+ * reason a read-only row of the data.
  */
 export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProps) {
   const { t } = useTranslation()
@@ -169,7 +171,6 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
           inline={inline}
         />
       }
-      company={hasSingleQuote ? <WorkOrderCompanySection workOrder={workOrder} /> : null}
       document={
         hasSingleQuote ? (
           <ProjectedDocumentSection layout={workOrder.layout} paymentMethod={workOrder.payment_method} />
@@ -177,6 +178,8 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
       }
     />
   )
+
+  const hasRightColumn = hasSingleQuote || hasAttributes
 
   return (
     <RecordSectionsGrid>
@@ -187,19 +190,22 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
         className={FULL_WIDTH_SECTION_CLASS}
       />
 
-      {hasAttributes ? (
+      {hasRightColumn ? (
         <>
           {/* Own @container per column: the grids inside break on the column's width, not the card's. */}
           <div className={RECORD_COLUMN_CLASS}>{skeleton}</div>
           <div className={RECORD_COLUMN_CLASS}>
-            <WorkOrderAttributesSection
-              attributes={workOrder.applicable_attributes}
-              layout={workOrder.attribute_layout}
-              values={workOrder.attribute_values}
-              inline={inline}
-              control={editor.form.control}
-              collapsible={false}
-            />
+            {hasSingleQuote ? <WorkOrderCompanySection workOrder={workOrder} /> : null}
+            {hasAttributes ? (
+              <WorkOrderAttributesSection
+                attributes={workOrder.applicable_attributes}
+                layout={workOrder.attribute_layout}
+                values={workOrder.attribute_values}
+                inline={inline}
+                control={editor.form.control}
+                collapsible={false}
+              />
+            ) : null}
           </div>
         </>
       ) : (

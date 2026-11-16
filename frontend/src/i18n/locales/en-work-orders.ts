@@ -117,8 +117,14 @@ export const workOrders = {
       team: 'Supervisors and participants',
       detailTeam: 'Team',
       rewards: 'Rewards',
-      company: 'Company and sites',
+      company: 'Company references',
       closure: 'Closure',
+    },
+    tabs: {
+      info: 'Info',
+      label: 'Work order sections',
+      workOrderDocuments: 'Work order documents',
+      accounting: 'Administration',
     },
     tasks: {
       title: 'Tasks',
