@@ -210,6 +210,8 @@ it('ticket #426856: the RDA number is the first visible column and close/activit
     expect($idColumn['id'])->toBe('id')
         ->and($idColumn['visible'])->toBeTrue()
         ->and($idColumn['label'])->toBe('purchaseRequests.columns.id')
+        // No value checklist: it is capped (200 values), so a number past the cap could never be picked.
+        ->and($idColumn['hasFilterValues'])->toBeFalse()
         ->and($pinned->all())->toEqualCanonicalizing(['close', 'activity'])
         ->and(collect(requestRows($this, ['sortModel' => [['colId' => 'id', 'sort' => 'desc']]]))->pluck('id')->all())
         ->toBe([$second->id, $first->id])

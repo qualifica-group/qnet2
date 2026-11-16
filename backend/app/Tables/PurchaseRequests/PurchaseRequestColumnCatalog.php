@@ -75,7 +75,9 @@ final class PurchaseRequestColumnCatalog
     {
         $columns = [
             // Ticket #426856: the RDA number ("RDA #id" in the detail) on the list, as in the legacy screen.
-            self::column('id', 'number', sortable: true, filter: 'number'),
+            // Plain number filter, no value checklist: the list is capped (TableValuesRequest, 200),
+            // so a number past the cap could never be found by its search.
+            [...self::column('id', 'number', sortable: true, filter: 'number'), 'hasFilterValues' => false],
             self::column('subject', 'text', sortable: true, filter: 'text', searchable: true),
             self::column('requested_at', 'date', sortable: true, filter: 'date'),
             self::column(self::PRIORITY_COLUMN, 'badge', sortable: true, filter: 'set'),

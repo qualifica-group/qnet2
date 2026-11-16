@@ -11,7 +11,14 @@
 - Verifica: Pest `tests/Feature/ProformaRequests` 27/27, Pint, Vitest help + proforma-requests 162/162, ESLint, `tsc -b --force` puliti. Non provato nel browser, suite completa non eseguita.
 - Guide IT/EN `proforma-requests` (tabella colonne) aggiornate. DA FARE: manuale Claude Docs (il connettore ha negato l'accesso al documento in questa sessione) — aggiungere la riga "Partita IVA cliente" nella tabella colonne di Richieste Proforma, poi rigenerare il PDF.
 
-## Cambio stato riga RDA collegata a ODA: avviso con link all'ordine (2026-11-16) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Elenco RDA: filtro numerico semplice su N. RDA (2026-11-16) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+
+- Segnalazione utente (produzione): cercando un numero nel filtro di N. RDA su "Tutti" non usciva nulla, su "Ordinato" si'. Causa: la colonna `id` (ticket #426856) usava il filtro multi con elenco valori, che `TableValuesRequest` limita a 200 e che viene ristretto dagli altri filtri attivi; la ricerca dell'elenco guarda solo quei 200.
+- Fix: `'hasFilterValues' => false` sulla colonna `id` di `PurchaseRequestColumnCatalog` (stesso accorgimento di `old_id` in `InjectsDefaultIdColumn`): resta il solo filtro numerico, che interroga il server.
+- Verifica: `tests/Feature/PurchaseRequests` 148/148 (asserzione aggiunta al test del ticket #426856, visto fallire prima del fix), Pint ok. Nessun file frontend toccato. Manuale: nessun impatto (la colonna resta ordinabile e filtrabile).
+- Da verificare (fuori scope, non controllato): dichiarano una colonna `id` propria anche users, companies, company-sites, operational-sites, tasks, api-clients, rewarded-referents; dove e' filtrabile con elenco e la tabella supera 200 righe (es. tasks) il difetto sarebbe lo stesso.
+
+## Cambio stato riga RDA collegata a ODA: avviso con link all'ordine (2026-11-16) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente: portando da Ordinato a Ricevuto una riga RDA con ODA emesso il messaggio non diceva cosa fare. Regola invariata (spec 0245 D-8, 0254 D-7: lo stato lo governa l'ODA); cambia solo la presentazione.
 - Frontend: `drivingOrders()` in `line-status-transitions.ts` (righe `ordered`/`received` con `purchase_order` valorizzato); nuovo `line-status-order-notice.tsx`; `LineStatusDialog` mostra l'avviso con `OdaLink` al posto delle opzioni e disabilita la conferma. Chiavi i18n `purchaseRequests.statusDialog.orderDriven` / `orderDrivenOpen` (IT+EN).
