@@ -26,7 +26,7 @@ final readonly class CreateQuoteWorkflowData
 {
     /**
      * @param  array<int, array{field: string, value_id: int}>  $criteria
-     * @param  array<int, array{name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statuses  custom rows only
+     * @param  array<int, array{name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool}>  $statuses  custom rows only
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $openStatus  descriptive seed for the pinned 'open' row (null = writer default)
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedWonStatus  descriptive seed for the pinned 'closed_won' row (null = writer default)
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedLostStatus  descriptive seed for the pinned 'closed_lost' row (null = writer default)
@@ -93,7 +93,7 @@ final readonly class CreateQuoteWorkflowData
      * `system_key` seeds a pinned row instead (see extractSystemStatus()).
      *
      * @param  array<int, array{name: mixed, description?: mixed, color?: mixed, group: mixed, requires_note?: mixed, system_key?: mixed}>  $statuses
-     * @return array<int, array{name: string, description: ?string, color: ?string, group: string, requires_note: bool}>
+     * @return array<int, array{name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool}>
      */
     public static function normalizeStatuses(array $statuses): array
     {
@@ -102,7 +102,7 @@ final readonly class CreateQuoteWorkflowData
                 'name' => (string) $status['name'],
                 'description' => array_key_exists('description', $status) ? $status['description'] : null,
                 'color' => array_key_exists('color', $status) ? $status['color'] : null,
-                'group' => (string) $status['group'],
+                ...WorkflowStatusLink::fromPayload($status),
                 'requires_note' => (bool) ($status['requires_note'] ?? false),
             ],
             array_filter($statuses, static fn (array $status): bool => ($status['system_key'] ?? null) === null),

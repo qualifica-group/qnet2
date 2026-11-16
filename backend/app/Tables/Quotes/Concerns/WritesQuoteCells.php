@@ -6,7 +6,7 @@ namespace App\Tables\Quotes\Concerns;
 
 use App\Models\Quote;
 use App\Models\User;
-use App\Tables\Shared\QuoteWorkflowStatusOptions;
+use App\Tables\Quotes\QuoteSystemStatusColumn;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,13 +16,10 @@ use Illuminate\Support\Facades\Auth;
  * convention as Gestione Richieste's WritesInlineEditableCells.
  *
  * The using class must expose `private readonly QuoteCellWriter $cellWriter`
- * and `private readonly QuoteWorkflowResolver $workflowResolver`.
+ * and `private readonly QuoteSystemStatusMap $systemStatusMap`.
  */
 trait WritesQuoteCells
 {
-    /** The status column's displayed id (what `optionsFor()` is asked about). */
-    private const string WORKFLOW_STATUS_COLUMN = 'quote_workflow_status';
-
     /**
      * Every editable column writes through QuoteCellWriter (the form's own
      * UpdateQuoteRequest + QuoteService). `$actor` and the status `note` are
@@ -44,21 +41,24 @@ trait WritesQuoteCells
      */
     protected function optionsFor(string $columnId, User $actor): ?array
     {
-        return $columnId === self::WORKFLOW_STATUS_COLUMN ? QuoteWorkflowStatusOptions::catalog() : null;
+        return $columnId === QuoteSystemStatusColumn::COLUMN_ID ? QuoteSystemStatusColumn::catalog() : null;
     }
 
     /**
-     * The status ids the select editor offers for THIS offer: the set of the
-     * workflow QuoteWorkflowResolver resolves for it (memoized per request,
-     * so a page costs one query per distinct workflow, never one per row).
+     * Spec 0404 A-D7: the row's system status, the ones its select editor
+     * offers (linked in the offer's resolved set, memoized per workflow) and
+     * those whose destination demands a note.
      *
-     * @return array<int, int>
+     * @return array<string, mixed>
      */
-    private function allowedWorkflowStatusIds(Quote $quote): array
+    private function systemStatusCell(Quote $quote): array
     {
-        return $this->workflowResolver
-            ->statusesFor($this->workflowResolver->resolve($quote))
-            ->pluck('id')
-            ->all();
+        $rowOptions = $this->systemStatusMap->rowOptions($quote);
+
+        return [
+            QuoteSystemStatusColumn::COLUMN_ID => $this->systemStatusColumn->summarize($quote),
+            QuoteSystemStatusColumn::COLUMN_ID.'_options' => $rowOptions['options'],
+            QuoteSystemStatusColumn::COLUMN_ID.'_notes' => $rowOptions['notes'],
+        ];
     }
 }

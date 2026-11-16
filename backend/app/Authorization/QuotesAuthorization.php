@@ -67,6 +67,8 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('follow_up_date', 'date'),
             new FieldDefinition('opportunity_id', 'select', mandatory: true),
             new FieldDefinition('quote_workflow_status_id', 'select', mandatory: true),
+            // Spec 0404 A-D7: what Offerte shows and edits.
+            new FieldDefinition('quote_system_status_id', 'select'),
             new FieldDefinition('commercial_id', 'select'),
             new FieldDefinition('reporter_id', 'select'),
             new FieldDefinition('supervisor_id', 'select'),
@@ -119,6 +121,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             // already exists, regardless of write ability.
             'opportunity_id' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'quote_system_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

@@ -5,11 +5,10 @@ namespace App\Tables;
 use App\Enums\CategoryUsageArea;
 use App\Models\Company;
 use App\Models\Quote;
-use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\ProductCategories\UsageAreaRowFilter;
+use App\Services\Quotes\QuoteSystemStatusMap;
 use App\Services\Quotes\QuoteVisibilityScope;
-use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
 use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\Quotes\Concerns\WritesQuoteCells;
@@ -18,6 +17,7 @@ use App\Tables\Quotes\QuoteCellWriter;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
 use App\Tables\Quotes\QuoteRowActions;
+use App\Tables\Quotes\QuoteSystemStatusColumn;
 use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\Auth;
  *
  * `code`/`title`/`created_at` and the 3 persisted header aggregates
  * (`revenue_net`/`cost_net`/`margin_net`, D-9) are real DB columns handled
- * entirely by the generic engine. `opportunity`/`quote_workflow_status`/
+ * entirely by the generic engine. `opportunity`/`quote_system_status`/
  * `commercial`/`reporter`/`supervisor` are relation-derived columns delegated to
  * QuoteRelationColumns (file-size split, engineering.md §6): own-FK simple
  * relations, mirroring OpportunitiesTableDefinition.
@@ -69,23 +69,13 @@ class QuotesTableDefinition extends AbstractTableDefinition
     /** Mirrors QuoteColumnCatalog's own single `alert` option (AC-030/AC-033). */
     private const string ALERT_MISSING_OFFER_LINES = 'missing_offer_lines';
 
-    /**
-     * The `quote_workflow_status` advanced filter's name
-     * (QuoteAdvancedFilterCatalog): a SET filter matched by the related
-     * row's `name`, not by id — no `quote-workflow-statuses/for-select`
-     * route exists to back an id-based Relation/AsyncSearch picker.
-     */
-    private const string WORKFLOW_STATUS_ADVANCED_FILTER = 'quote_workflow_status';
-
-    /** Maximum number of names honoured in the advanced filter (caps the WHERE IN cardinality, defence in depth). */
-    private const int MAX_FILTER_VALUES = 200;
-
     public function __construct(
         private readonly QuoteRelationColumns $relationColumns,
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly QuoteService $service,
         private readonly QuoteCellWriter $cellWriter,
-        private readonly QuoteWorkflowResolver $workflowResolver,
+        private readonly QuoteSystemStatusMap $systemStatusMap,
+        private readonly QuoteSystemStatusColumn $systemStatusColumn,
         private readonly QuoteRowActions $rowActions,
         private readonly CommercialListFilterApplier $listFilters,
     ) {}
@@ -127,7 +117,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
 
         return QuoteVisibilityScope::scopeToActor($query, Auth::user())->with([
             // `opportunity.managers`: the `documents` gate (Opportunity view) stays query-free.
-            'opportunity.managers', 'opportunity.registry', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
+            'opportunity.managers', 'opportunity.registry', QuoteSystemStatusColumn::RELATION, 'commercial', 'reporter', 'supervisor.avatar',
             // "Gestori Account" (spec 0087, D-1/T-10): the Offerta's own team,
             // rendered as an avatar stack by the `managers` column.
             'managers.avatar',
@@ -217,8 +207,10 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'registry' => $this->summarize($row->opportunity?->registry),
             ...OfferLinesColumn::project($row),
             ...$this->relationColumns->projectRootCategories($row),
-            'quote_workflow_status' => $this->summarizeWorkflowStatus($row->quoteWorkflowStatus),
-            'quote_workflow_status_options' => $this->allowedWorkflowStatusIds($row),
+            // Spec 0404 A-D7: Offerte shows the system status; the editor
+            // offers the ones linked in the offer's set (`_options`) and asks
+            // for a note where the destination demands one (`_notes`).
+            ...$this->systemStatusCell($row),
             'commercial' => $this->summarize($row->commercial),
             'reporter' => $this->summarize($row->reporter),
             'supervisor' => $this->userSummary($row->supervisor),
@@ -273,18 +265,6 @@ class QuotesTableDefinition extends AbstractTableDefinition
     private function summarizeCompany(?Company $company): ?array
     {
         return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
-    }
-
-    /**
-     * The workflow status projected WITH its `color` token, so the grid
-     * renders the colored status badge; the generic summarize() would drop
-     * it.
-     *
-     * @return array{id: int, name: string, color: string|null}|null
-     */
-    private function summarizeWorkflowStatus(?QuoteWorkflowStatus $status): ?array
-    {
-        return $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color];
     }
 
     /**
@@ -364,9 +344,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * `quote_workflow_status`'s advanced filter (QuoteAdvancedFilterCatalog)
-     * is a SET filter matched by the related row's `name` (see the
-     * constant's docblock) — the generic default (a plain `whereHas`-by-id
+     * `quote_system_status`'s advanced filter (QuoteAdvancedFilterCatalog)
+     * is a SET filter matched by the system status `name` — the generic default (a plain `whereHas`-by-id
      * for `type: relation`/`async_search`) cannot express it.
      *
      * @param  Builder<Quote>  $query
@@ -382,15 +361,13 @@ class QuotesTableDefinition extends AbstractTableDefinition
             return true;
         }
 
-        if ($name === self::WORKFLOW_STATUS_ADVANCED_FILTER) {
-            $values = array_slice(array_values(array_filter(
+        if ($name === QuoteSystemStatusColumn::COLUMN_ID) {
+            $values = array_values(array_filter(
                 is_array($value) ? $value : [$value],
                 static fn (mixed $item): bool => is_string($item) && $item !== '',
-            )), 0, self::MAX_FILTER_VALUES);
+            ));
 
-            if ($values !== []) {
-                $this->relationColumns->applyNameWhereHas($query, 'quoteWorkflowStatus', $values);
-            }
+            $this->systemStatusColumn->applyNames($query, $values);
 
             return true;
         }

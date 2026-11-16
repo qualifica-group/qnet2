@@ -2,6 +2,7 @@
 
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\QuoteSystemStatus;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\User;
@@ -52,7 +53,7 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     // REQUIREMENT CHANGED: spec 0349 — `follow_up_date` is appended after `next_callback_at`.
     // REQUIREMENT CHANGED: user request 2026-11-09 — `registry` sits right after `opportunity`.
     expect($ids)->toBe([
-        'id', 'code', 'title', 'opportunity', 'registry', 'offer_lines', 'root_categories', 'quote_workflow_status', 'commercial',
+        'id', 'code', 'title', 'opportunity', 'registry', 'offer_lines', 'root_categories', 'quote_system_status', 'commercial',
         'reporter', 'supervisor', 'managers', 'revenue_net', 'cost_net', 'margin_net',
         'created_at', 'company', 'company_site', 'operational_site', 'source', 'next_callback_at',
         'follow_up_date', 'alert',
@@ -100,16 +101,19 @@ it('rows: view/delete/activity actions gated by QuotePolicy', function () {
         ->and($row['actions'])->not->toContain('delete', 'activity');
 });
 
-it('rows: the quote_workflow_status column carries id/name/color for the badge', function () {
+// REQUIREMENT CHANGED (spec 0404 A-D7): the grid shows the linked system status.
+it('rows: the quote_system_status column carries id/name/color for the badge', function () {
     $actor = quoteTableUserWith(['viewAny', 'view']);
-    $status = QuoteWorkflowStatus::factory()->create(['name' => 'In revisione', 'color' => 'amber']);
+    $systemStatus = QuoteSystemStatus::query()->create(['name' => 'In revisione', 'color' => 'amber', 'behavior' => 'pending', 'sort_order' => 15]);
+    $status = QuoteWorkflowStatus::factory()->create(['quote_system_status_id' => $systemStatus->id]);
     Quote::factory()->create(['quote_workflow_status_id' => $status->id, 'title' => 'Badge test']);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('title', 'Badge test');
 
-    expect($row['quote_workflow_status'])->toBe(['id' => $status->id, 'name' => 'In revisione', 'color' => 'amber']);
+    expect($row['quote_system_status'])->toBe(['id' => $systemStatus->id, 'name' => 'In revisione', 'color' => 'amber'])
+        ->and($row)->not->toHaveKey('quote_workflow_status');
 });
 
 /**
@@ -143,7 +147,7 @@ it('rows: a fully-populated quote projects the exact frontend-consumed shape (al
 
     expect($row)->not->toBeNull()
         ->and($row['opportunity'])->toBe(['id' => $opportunity->id, 'name' => 'Rinnovo contratto'])
-        ->and($row['quote_workflow_status'])->toBe(['id' => $status->id, 'name' => 'In negoziazione', 'color' => 'green'])
+        ->and($row['quote_system_status'])->toBe(['id' => $status->systemStatus->id, 'name' => $status->systemStatus->name, 'color' => $status->systemStatus->color])
         ->and($row['commercial'])->toBe(['id' => $commercial->id, 'name' => 'Mario Rossi'])
         ->and($row['reporter'])->toBe(['id' => $reporter->id, 'name' => 'Luca Bianchi'])
         // `supervisor` is rendered by the SAME shared `UserCell` component as

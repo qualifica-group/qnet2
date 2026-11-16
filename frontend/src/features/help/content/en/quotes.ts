@@ -179,7 +179,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Status** only offers the statuses of the quote's workflow and asks for the **note** when the chosen status requires it. Changing the **Company** clears the Company site; the Company site is picked among the row's company sites. Changing a role recalculates the line commissions as from the detail; an empty Title goes back to the automatic title.",
+          text: "**Status** offers the system statuses the quote can take and asks for the **note** when the destination working status requires it. Changing the **Company** clears the Company site; the Company site is picked among the row's company sites. Changing a role recalculates the line commissions as from the detail; an empty Title goes back to the automatic title.",
         },
         {
           type: 'paragraph',
@@ -246,7 +246,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The available statuses depend on the workflow configured in the **Offer status configurator**.',
+          text: 'Quotes show and let you pick the **system statuses** (**Open**, **Pending**, **Provisionally won**, **Won**, **Lost** and the ones you add in **Quote system statuses**), not the working statuses of Request Management. The available ones are those linked to at least one working status of the workflow set in the **Offer status configurator**.',
         },
         {
           type: 'steps',
@@ -259,7 +259,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Moving the quote to a **Closed (won)** status generates the contract. From then on the **Open contract** button at the top of the quote detail, and the **Open contract** entry in the more-actions menu (the three dots) of the row in the table, open the contract in a window over the quote. You see them only if your role may view Contracts.',
+          text: "Quotes and **Request Management** stay in sync: picking a system status moves the quote to the **first** working status (in the configured order) linked to that system status in the quote's workflow; if it is already in a linked status, nothing changes. And if you change the working status in Request Management, Quotes show the linked system status. If no working status of the workflow is linked to the chosen status, the save is refused.",
+        },
+        {
+          type: 'paragraph',
+          text: 'Moving the quote to a **Won** status generates the contract; **Provisionally won** does not. From then on the **Open contract** button at the top of the quote detail, and the **Open contract** entry in the more-actions menu (the three dots) of the row in the table, open the contract in a window over the quote. You see them only if your role may view Contracts.',
         },
         {
           type: 'note',

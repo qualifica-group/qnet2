@@ -79,6 +79,7 @@ use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\PurchaseRequestPriority;
 use App\Models\Quote;
 use App\Models\QuoteLineCommission;
+use App\Models\QuoteSystemStatus;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
@@ -330,6 +331,8 @@ class AppServiceProvider extends ServiceProvider
             'quote' => Quote::class,
             'quote_workflow' => QuoteWorkflow::class,
             'quote_workflow_status' => QuoteWorkflowStatus::class,
+            // Spec 0404 part A: LogsModelActivity.
+            'quote_system_status' => QuoteSystemStatus::class,
             'commission_configuration' => CommissionConfiguration::class,
             'quote_line_commission' => QuoteLineCommission::class,
             'payment_method' => PaymentMethod::class,

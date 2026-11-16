@@ -54,7 +54,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every workflow starts with three fixed statuses: **Open** at the top, **Closed (won)** and **Closed (lost)** at the bottom. In between, add statuses with **Add status** and reorder them by dragging. For each you set **Status name**, **Group** (Open, Pending, Validated, Closed (won), Closed (lost)), **Status description** and **Requires an explanatory note**.',
+          text: 'Every workflow starts with three fixed statuses: **Open** at the top, **Closed (won)** and **Closed (lost)** at the bottom. In between, add statuses with **Add status** and reorder them by dragging. For each you set **Status name**, **System status** (one of **Quote system statuses**: Open, Pending, Provisionally won, Won, Lost and the ones you add), **Status description** and **Requires an explanatory note**. The system status is required and links the working status to what Quotes show: changing one changes the other. On the fixed statuses the link cannot be changed. **Provisionally won** replaces the former **Validated**.',
         },
         {
           type: 'paragraph',
@@ -70,8 +70,8 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Open is the starting status of every quote.',
-            'From Open you move to Pending statuses, or directly to a Validated status.',
-            'From Pending or Validated statuses you reach Closed (won) or Closed (lost).',
+            'From Open you move to Pending statuses, or directly to a status linked to Provisionally won.',
+            'From Pending or Provisionally won statuses you reach Closed (won) or Closed (lost).',
             'Closed (won) generates the contract; if the quote leaves this status, the contract is suspended.',
           ],
         },
@@ -83,7 +83,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'a quote can only move to the statuses of the workflow that currently matches it;',
-            'the Validated statuses require at least one product row ("You cannot move the quote to this status without at least one product row."); Closed (won) and Closed (lost) do not;',
+            'the statuses linked to Provisionally won require at least one product row ("You cannot move the quote to this status without at least one product row."); Closed (won) and Closed (lost) do not;',
             'if the status requires a note, it must be written; it is saved among the notes of the opportunity;',
             'entering Closed (won) generates the contract, unless the category has **Generates a contract** turned off;',
             'if the quote leaves Closed (won), the contract moves to **Suspended** (it is not deleted);',

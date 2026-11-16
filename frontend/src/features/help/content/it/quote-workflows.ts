@@ -54,7 +54,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni workflow nasce con tre stati fissi: **Aperto** in testa, **Chiuso con esito positivo** e **Chiuso con esito negativo** in coda. In mezzo aggiungi stati con **Aggiungi stato** e li riordini trascinandoli. Per ognuno indichi **Nome stato**, **Gruppo** (Aperto, In attesa, Validato, Chiuso con esito positivo, Chiuso con esito negativo), **Descrizione dello stato** e **Richiede una nota esplicativa**.',
+          text: 'Ogni workflow nasce con tre stati fissi: **Aperto** in testa, **Chiuso con esito positivo** e **Chiuso con esito negativo** in coda. In mezzo aggiungi stati con **Aggiungi stato** e li riordini trascinandoli. Per ognuno indichi **Nome stato**, **Stato di sistema** (uno di quelli di **Stati di sistema offerta**: Aperto, In attesa, Vinto provvisorio, Vinto, Perso e quelli che aggiungi), **Descrizione dello stato** e **Richiede una nota esplicativa**. Lo stato di sistema è obbligatorio e collega lo stato di lavorazione a ciò che si vede in Offerte: cambiando uno dei due, cambia anche l\'altro. Negli stati fissi il collegamento non si cambia. **Vinto provvisorio** prende il posto del vecchio **Validato**.',
         },
         {
           type: 'paragraph',
@@ -70,8 +70,8 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Aperto è lo stato di partenza di ogni offerta.',
-            'Da Aperto si passa agli stati In attesa oppure direttamente a uno stato Validato.',
-            'Dagli stati In attesa o Validato si arriva a Chiuso con esito positivo oppure a Chiuso con esito negativo.',
+            'Da Aperto si passa agli stati In attesa oppure direttamente a uno stato collegato a Vinto provvisorio.',
+            'Dagli stati In attesa o Vinto provvisorio si arriva a Chiuso con esito positivo oppure a Chiuso con esito negativo.',
             "Chiuso con esito positivo fa nascere il contratto; se l'offerta esce da questo stato, il contratto viene sospeso.",
           ],
         },
@@ -83,7 +83,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             "un'offerta può passare solo agli stati del workflow che le corrisponde in quel momento;",
-            'per gli stati Validato serve almeno una riga prodotto ("Non puoi portare l\'offerta a questo stato senza almeno una riga prodotto."); Chiuso con esito positivo e Chiuso con esito negativo non la richiedono;',
+            'per gli stati collegati a Vinto provvisorio serve almeno una riga prodotto ("Non puoi portare l\'offerta a questo stato senza almeno una riga prodotto."); Chiuso con esito positivo e Chiuso con esito negativo non la richiedono;',
             "se lo stato richiede una nota, va scritta; viene salvata tra le note dell'opportunità;",
             'entrando in Chiuso con esito positivo nasce il contratto, salvo che la categoria abbia **Prevede un contratto** spento;',
             "se l'offerta esce da Chiuso con esito positivo, il contratto passa a **Sospeso** (non viene cancellato);",

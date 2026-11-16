@@ -11,4 +11,6 @@ export const workflowStatuses = {
   add: 'Aggiungi stato',
   remove: 'Rimuovi stato',
   groupLabel: 'Gruppo',
+  systemStatusLabel: 'Stato di sistema',
+  systemStatusPlaceholder: 'Stato di sistema',
 }

@@ -11,4 +11,6 @@ export const workflowStatuses = {
   add: 'Add status',
   remove: 'Remove status',
   groupLabel: 'Group',
+  systemStatusLabel: 'System status',
+  systemStatusPlaceholder: 'System status',
 }

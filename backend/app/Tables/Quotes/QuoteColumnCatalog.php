@@ -83,11 +83,12 @@ final class QuoteColumnCatalog
             OfferLinesColumn::readOnlyDeclaration('quotes.columns.offerLines'),
             RootCategoriesColumn::declaration('quotes.columns.rootCategories'),
             [
-                ...self::derivedColumn('quote_workflow_status', 'quotes.columns.quoteWorkflowStatus'),
-                // Spec 0206, D-6: same select + transition note as Gestione Richieste.
+                // Spec 0404 A-D7: Offerte shows the system status (select +
+                // transition note when the destination working status asks one).
+                ...self::derivedColumn('quote_system_status', 'quotes.columns.quoteSystemStatus'),
                 'editable' => true,
                 'editor' => 'select',
-                'editableField' => 'quote_workflow_status_id',
+                'editableField' => 'quote_system_status_id',
                 'nullable' => false,
                 'notable' => true,
             ],

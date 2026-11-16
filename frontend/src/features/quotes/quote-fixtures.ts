@@ -1,4 +1,4 @@
-import type { QuoteLine, QuoteWorkflowStatusRef } from '@/features/quotes/types'
+import type { QuoteLine, QuoteSystemStatusOption, QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
 /**
  * The `open` row every resolved quote workflow set carries (spec 0083): the
@@ -25,6 +25,24 @@ export const WORKFLOW_STATUS_REQUIRES_NOTE: QuoteWorkflowStatusRef = {
   color: 'green',
   description: null,
   group: 'closed_won',
+  requires_note: true,
+}
+
+/** The `open` system status option of a quote (spec 0404): what Offerte shows and edits. */
+export const SYSTEM_STATUS_OPEN: QuoteSystemStatusOption = {
+  id: 1,
+  name: 'Aperto',
+  color: 'slate',
+  behavior: 'open',
+  requires_note: false,
+}
+
+/** A system status option whose destination working status DEMANDS a transition note (AC-023). */
+export const SYSTEM_STATUS_REQUIRES_NOTE: QuoteSystemStatusOption = {
+  id: 2,
+  name: 'Vinto',
+  color: 'green',
+  behavior: 'closed_won',
   requires_note: true,
 }
 

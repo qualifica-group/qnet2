@@ -30,6 +30,15 @@ function buildCriteriaPayload(rows: CriterionFormRow[]): CreateQuoteWorkflowCrit
 }
 
 /**
+ * How a row names its system status (spec 0404 A-D4/A-D5): a custom row sends
+ * the id and the backend derives `group`; a pinned row's link is fixed by its
+ * `system_key`, so it keeps sending its own (matching) `group`.
+ */
+function systemStatusLink(row: WorkflowStatusFormRow): { quote_system_status_id: number | null } | { group: WorkflowStatusFormRow['group'] } {
+  return row.system_key === null ? { quote_system_status_id: row.quote_system_status_id } : { group: row.group }
+}
+
+/**
  * Builds the CREATE `statuses[]` payload: every row in visual order — the
  * custom (intermediate) rows plus the 3 pinned rows carrying their
  * `system_key`, so the backend seeds the auto-created open/closed rows with
@@ -40,7 +49,7 @@ function buildStatusesCreatePayload(rows: WorkflowStatusFormRow[]): CreateQuoteW
     name: row.name,
     description: row.description,
     color: row.color,
-    group: row.group,
+    ...systemStatusLink(row),
     requires_note: row.requires_note,
     system_key: row.system_key,
   }))
@@ -63,7 +72,7 @@ function buildStatusesUpdatePayload(rows: WorkflowStatusFormRow[]): UpdateQuoteW
       name: row.name,
       description: row.description,
       color: row.color,
-      group: row.group,
+      ...systemStatusLink(row),
       requires_note: row.requires_note,
     }))
 }

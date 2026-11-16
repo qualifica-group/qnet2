@@ -125,6 +125,7 @@ export const permissions = {
     companies: 'Società aziendali',
     'company-sites': 'Società sedi',
     'contract-statuses': 'Stati Contratto',
+    'quote-system-statuses': 'Stati di sistema offerta',
     contracts: 'Contratti',
     'custom-fields': 'Campi personalizzati',
     'document-layouts': 'Layout',

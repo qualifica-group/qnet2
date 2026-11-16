@@ -29,7 +29,7 @@ export function buildCreatePayload(values: QuoteFormValues, suggestedCode?: stri
     quote_date: values.quote_date,
     follow_up_date: values.follow_up_date,
     opportunity_id: values.opportunity_id as number,
-    quote_workflow_status_id: values.quote_workflow_status_id,
+    quote_system_status_id: values.quote_system_status_id,
     // Spec 0084: la mappa viaggia sempre alla create — non c'e' nulla di
     // persistito da conservare, quindi il merge sparso lato server non serve.
     attribute_values: values.attribute_values,
@@ -109,11 +109,11 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
     payload.attribute_values = values.attribute_values
   }
 
-  // Spec 0083: the transition note rides along ONLY when the status actually
+  // Spec 0404: the transition note rides along ONLY when the status actually
   // changes — the server demands it on the transition, not on the row (AC-026),
   // so a quote already parked on a `requires_note` row saves without one.
-  if (values.quote_workflow_status_id !== original.quote_workflow_status_id) {
-    payload.quote_workflow_status_id = values.quote_workflow_status_id
+  if (values.quote_system_status_id !== original.quote_system_status_id) {
+    payload.quote_system_status_id = values.quote_system_status_id
 
     const note = (values.note ?? '').trim()
 

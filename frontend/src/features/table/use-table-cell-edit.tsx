@@ -126,10 +126,19 @@ function isUnchangedCellValue(newValue: unknown, oldValue: unknown): boolean {
  * statuses actually carry it) and, as a fallback, from a badge column's
  * `badges`. The value compared is the PATCH value (an id for a select/relation
  * column, the scalar itself otherwise), so both shapes match on the same
- * comparison. The rule is enforced server-side regardless: this only lets the
- * grid ask before committing instead of surfacing a 422 afterwards.
+ * comparison. When the row carries `<columnId>_notes` (an array of values), it
+ * decides alone for THAT row: the note is required iff the value is in it (same
+ * row-scoped convention as `<columnId>_options`). The rule is enforced
+ * server-side regardless: this only lets the grid ask before committing
+ * instead of surfacing a 422 afterwards.
  */
-function resolveRequiresNote(columns: TableColumn[], columnId: string, patchValue: unknown): boolean {
+function resolveRequiresNote(columns: TableColumn[], columnId: string, patchValue: unknown, row: TableRow): boolean {
+  const rowNotes = row[`${columnId}_notes`]
+
+  if (Array.isArray(rowNotes)) {
+    return rowNotes.some((value) => String(value) === String(patchValue))
+  }
+
   const column = columns.find((candidate) => candidate.id === columnId)
 
   if (column === undefined) {
@@ -300,7 +309,7 @@ export function useTableCellEdit(
         return
       }
 
-      if (resolveRequiresNote(columns, columnId, patchValue)) {
+      if (resolveRequiresNote(columns, columnId, patchValue, event.data)) {
         setPendingNote({ event, patchValue, revertedData })
         return
       }

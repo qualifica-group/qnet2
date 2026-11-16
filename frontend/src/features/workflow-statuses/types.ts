@@ -14,13 +14,15 @@ export interface WorkflowStatusFormRow {
   color: string | null
   group: string
   system_key: string | null
+  /** Quote workflows only (spec 0404): the system status this working status links; `group` then derives from it server-side. */
+  quote_system_status_id?: number | null
   requires_note?: boolean
   progress_percentage?: number | null
 }
 
 /** The row fields the editor may patch (everything but the row identity and its pinned `system_key`). */
 export type WorkflowStatusRowPatch<R extends WorkflowStatusFormRow = WorkflowStatusFormRow> = Partial<
-  Pick<R, 'name' | 'description' | 'color' | 'group' | 'requires_note' | 'progress_percentage'>
+  Pick<R, 'name' | 'description' | 'color' | 'group' | 'quote_system_status_id' | 'requires_note' | 'progress_percentage'>
 >
 
 /** One entry of the group select; `label` is already translated by the domain that owns the vocabulary. */
@@ -29,4 +31,14 @@ export interface WorkflowStatusGroupOption {
   label: string
   /** Soft-badge classes shown for a pinned (system) row, whose group is read-only. */
   badgeClassName: string
+}
+
+/** One entry of the "Stato di sistema" select that replaces the group select on quote workflows (spec 0404). */
+export interface WorkflowSystemStatusOption {
+  id: number
+  label: string
+  color: string | null
+  behavior: string
+  /** Mandatory rows (`open`/`closed_won`/`closed_lost`): a pinned workflow row shows the option with its own key. */
+  systemKey: string | null
 }

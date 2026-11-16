@@ -179,7 +179,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Lo **Stato** offre solo gli stati del workflow dell'offerta e chiede la **nota** quando lo stato scelto la richiede. Cambiando la **Società** la Società sede si svuota; la Società sede si sceglie tra le sedi della società della riga. Cambiando un ruolo le commissioni delle righe si ricalcolano come dal dettaglio; un Titolo vuoto torna al titolo automatico.",
+          text: "Lo **Stato** offre gli stati di sistema che l'offerta può assumere e chiede la **nota** quando lo stato di lavorazione di destinazione la richiede. Cambiando la **Società** la Società sede si svuota; la Società sede si sceglie tra le sedi della società della riga. Cambiando un ruolo le commissioni delle righe si ricalcolano come dal dettaglio; un Titolo vuoto torna al titolo automatico.",
         },
         {
           type: 'paragraph',
@@ -246,7 +246,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Gli stati disponibili dipendono dal workflow configurato nel **Configuratore Stati Offerta**.',
+          text: "In Offerte si vedono e si scelgono gli **stati di sistema** (**Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso** e quelli che aggiungi in **Stati di sistema offerta**), non gli stati di lavorazione di Gestione Richieste. Sono disponibili quelli collegati ad almeno uno stato di lavorazione del workflow configurato nel **Configuratore Stati Offerta**.",
         },
         {
           type: 'steps',
@@ -259,7 +259,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Portando l'offerta in uno stato **Chiuso con esito positivo** nasce il contratto. Da quel momento il pulsante **Apri contratto** in cima al dettaglio dell'offerta, e la voce **Apri contratto** nel menu delle altre azioni (i tre puntini) della riga in tabella, aprono il contratto in una finestra sopra l'offerta. Li vedi solo se il tuo ruolo può consultare i Contratti.",
+          text: "Offerte e **Gestione Richieste** restano allineate: scegliendo uno stato di sistema, l'offerta passa al **primo** stato di lavorazione (nell'ordine configurato) collegato a quello stato di sistema nel workflow dell'offerta; se è già in uno stato collegato, non cambia nulla. E se cambi lo stato di lavorazione in Gestione Richieste, in Offerte compare lo stato di sistema collegato. Se nessuno stato di lavorazione del workflow è collegato allo stato scelto, il salvataggio viene rifiutato.",
+        },
+        {
+          type: 'paragraph',
+          text: "Portando l'offerta in uno stato **Vinto** nasce il contratto; **Vinto provvisorio** non lo genera. Da quel momento il pulsante **Apri contratto** in cima al dettaglio dell'offerta, e la voce **Apri contratto** nel menu delle altre azioni (i tre puntini) della riga in tabella, aprono il contratto in una finestra sopra l'offerta. Li vedi solo se il tuo ruolo può consultare i Contratti.",
         },
         {
           type: 'note',

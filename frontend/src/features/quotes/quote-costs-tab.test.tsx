@@ -42,7 +42,7 @@ const EMPTY_VALUES: QuoteFormValues = {
   quote_date: '2026-03-15',
   follow_up_date: null,
   opportunity_id: 55,
-  quote_workflow_status_id: null,
+  quote_system_status_id: null,
   note: null,
   commercial_id: null,
   reporter_id: null,

@@ -113,6 +113,9 @@ final readonly class UpdateQuoteData
         // ricontatto", null clears it.
         public ?string $followUpDate = null,
         public bool $followUpDateSubmitted = false,
+        // Appended (spec 0404 part A): the system status picked from Offerte,
+        // translated to a working status by QuoteWorkflowStatusAssigner.
+        public ?int $systemStatusId = null,
     ) {}
 
     /**
@@ -160,6 +163,7 @@ final readonly class UpdateQuoteData
             sourceIdSubmitted: array_key_exists('source_id', $data),
             followUpDate: $data['follow_up_date'] ?? null,
             followUpDateSubmitted: array_key_exists('follow_up_date', $data),
+            systemStatusId: self::nullableInt($data, 'quote_system_status_id'),
         );
     }
 

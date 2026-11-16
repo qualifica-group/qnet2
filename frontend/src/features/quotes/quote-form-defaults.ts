@@ -19,7 +19,7 @@ export function editDefaults(quote: QuoteDetail): QuoteFormValues {
     quote_date: quote.quote_date,
     follow_up_date: quote.follow_up_date ?? null,
     opportunity_id: quote.opportunity_id,
-    quote_workflow_status_id: quote.quote_workflow_status_id,
+    quote_system_status_id: quote.quote_system_status_id,
     note: null,
     // An empty PHP map serializes as a JSON ARRAY (`toAttributeValuesMap`),
     // and every applicable code needs its key for the Zod object: seeded
@@ -77,7 +77,7 @@ export function createDefaults(mode: QuoteCreateFormMode, initialCode: string | 
     quote_date: todayDate(),
     follow_up_date: null,
     opportunity_id: forcedOpportunityId,
-    quote_workflow_status_id: null,
+    quote_system_status_id: null,
     note: null,
     attribute_values: {},
     commercial_id: null,

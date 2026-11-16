@@ -122,6 +122,7 @@ export const permissions = {
     companies: 'Companies',
     'company-sites': 'Company Sites',
     'contract-statuses': 'Contract Statuses',
+    'quote-system-statuses': 'Quote system statuses',
     contracts: 'Contracts',
     'custom-fields': 'Custom Fields',
     'document-layouts': 'Layouts',

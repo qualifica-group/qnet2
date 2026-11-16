@@ -133,6 +133,9 @@ final readonly class CreateQuoteData
         // Appended after the pre-existing parameters (spec 0349): "Data
         // ricontatto", a plain optional date with nothing to inherit.
         public ?string $followUpDate = null,
+        // Appended (spec 0404 part A): the system status picked from Offerte,
+        // translated to a working status by QuoteWorkflowStatusAssigner.
+        public ?int $systemStatusId = null,
     ) {}
 
     /**
@@ -173,6 +176,7 @@ final readonly class CreateQuoteData
             quoteDate: $data['quote_date'] ?? null,
             sourceId: isset($data['source_id']) ? (int) $data['source_id'] : null,
             followUpDate: $data['follow_up_date'] ?? null,
+            systemStatusId: isset($data['quote_system_status_id']) ? (int) $data['quote_system_status_id'] : null,
         );
     }
 

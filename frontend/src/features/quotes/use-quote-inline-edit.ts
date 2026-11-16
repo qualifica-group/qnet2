@@ -16,7 +16,7 @@ import type { QuoteDetailWithPermissions, QuoteFormMode } from '@/features/quote
  */
 const EDITOR_COMPANION_FIELDS: Record<string, string[]> = {
   offer_lines: ['attribute_values'],
-  quote_workflow_status_id: ['note'],
+  quote_system_status_id: ['note'],
   reporter_id: ['rewards'],
 }
 

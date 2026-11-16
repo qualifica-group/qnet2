@@ -16,6 +16,7 @@ import type {
   WorkflowStatusFormRow,
   WorkflowStatusGroupOption,
   WorkflowStatusRowPatch,
+  WorkflowSystemStatusOption,
 } from '@/features/workflow-statuses/types'
 
 /** What the domain's default-statuses hook (fetch + explicit save) hands the sheet. */
@@ -47,7 +48,9 @@ interface DefaultStatusesSheetProps<R extends WorkflowStatusFormRow> extends Wor
   onOpenChange: (open: boolean) => void
   state: DefaultStatusesState<R>
   labels: DefaultStatusesSheetLabels
-  groups: WorkflowStatusGroupOption[]
+  /** Unused when `systemStatuses` is given (quote workflows, spec 0404). */
+  groups?: WorkflowStatusGroupOption[]
+  systemStatuses?: WorkflowSystemStatusOption[]
   storageKey: string
 }
 
@@ -64,6 +67,7 @@ export function DefaultStatusesSheet<R extends WorkflowStatusFormRow>({
   state,
   labels,
   groups,
+  systemStatuses,
   storageKey,
   showRequiresNote,
   showProgressPercentage,
@@ -106,6 +110,7 @@ export function DefaultStatusesSheet<R extends WorkflowStatusFormRow>({
             <WorkflowStatusesEditor
               rows={rows}
               groups={groups}
+              systemStatuses={systemStatuses}
               showRequiresNote={showRequiresNote}
               showProgressPercentage={showProgressPercentage}
               onReorder={reorder}

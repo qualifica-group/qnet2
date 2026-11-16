@@ -85,10 +85,9 @@ export function QuoteDetailHeader({ quote, onChanged }: QuoteDetailHeaderProps) 
       legacyId={quote.old_id}
       subtitle={quote.code}
       badges={
-        <WorkflowStatusBadge
-          name={quote.quote_workflow_status.name}
-          color={quote.quote_workflow_status.color}
-        />
+        quote.quote_system_status ? (
+          <WorkflowStatusBadge name={quote.quote_system_status.name} color={quote.quote_system_status.color} />
+        ) : null
       }
       actions={
         <>

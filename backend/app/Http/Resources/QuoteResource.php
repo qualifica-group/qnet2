@@ -10,6 +10,7 @@ use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Company;
 use App\Models\Quote;
+use App\Models\QuoteWorkflowStatus;
 use App\Quotes\QuoteAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
@@ -17,6 +18,7 @@ use App\Services\Commissions\QuoteCommissionSummaryCalculator;
 use App\Services\Quotes\QuoteManagerLabelResolver;
 use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Services\Quotes\QuoteRegistryTransferNotice;
+use App\Services\Quotes\QuoteSystemStatusMap;
 use App\Services\Quotes\QuoteTypologySummaryCalculator;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
@@ -159,6 +161,8 @@ class QuoteResource extends JsonResource
             'quote_workflow_status_id' => $this->quote_workflow_status_id,
             'quote_workflow_status' => $this->summarizeWorkflowStatus($this->quoteWorkflowStatus),
             'quote_workflow_statuses' => $this->resolveWorkflowStatuses(),
+            // Spec 0404 A-D7: what Offerte shows and offers (the system statuses).
+            ...$this->systemStatusFields(),
             'commercial_id' => $this->commercial_id,
             'commercial' => $this->summarizeByName($this->commercial),
             'reporter_id' => $this->reporter_id,
@@ -274,6 +278,31 @@ class QuoteResource extends JsonResource
                 'sort_order' => $status->sort_order,
             ])
             ->all();
+    }
+
+    /**
+     * Spec 0404 part A: the system status of the current working status, and
+     * the ones offered for THIS offer (linked in its resolved set, A-D7) with
+     * whether their destination working status demands a note.
+     *
+     * @return array<string, mixed>
+     */
+    private function systemStatusFields(): array
+    {
+        $this->resource->loadMissing('quoteWorkflowStatus.systemStatus');
+        $current = $this->resource->quoteWorkflowStatus;
+
+        return [
+            'quote_system_status_id' => $current?->quote_system_status_id,
+            'quote_system_status' => QuoteSystemStatusSummary::of($current?->systemStatus),
+            'quote_system_statuses' => app(QuoteSystemStatusMap::class)->targetsFor($this->resource)
+                ->map(static fn (QuoteWorkflowStatus $target): array => [
+                    ...QuoteSystemStatusSummary::of($target->systemStatus),
+                    'requires_note' => $target->requires_note,
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     /**

@@ -14,7 +14,7 @@ use App\Support\ManagerPositions;
 /**
  * The write behind the quotes grid's inline cell edit (spec 0206, D-2): the
  * cell's field goes through UpdateQuoteRequest — rules, company-site and
- * reward cross-checks, workflow-status set, field permissions — and then
+ * reward cross-checks, system status (spec 0404 A-D6), field permissions — and then
  * QuoteService::update(), so a role change resyncs the line commissions and
  * retargets the rewards exactly as from the detail.
  */
@@ -28,7 +28,7 @@ final class QuoteCellWriter
 
     private const string COMPANY_SITE_FIELD = 'company_site_id';
 
-    private const string WORKFLOW_STATUS_FIELD = 'quote_workflow_status_id';
+    private const string SYSTEM_STATUS_FIELD = 'quote_system_status_id';
 
     public function __construct(
         private readonly FormRequestCellValidator $formRequest,
@@ -57,7 +57,7 @@ final class QuoteCellWriter
             // D-5: like the form, a different company clears the site.
             self::COMPANY_FIELD => $this->companyPayload($quote, $value),
             // D-6: the transition note travels with the status, as in the form.
-            self::WORKFLOW_STATUS_FIELD => [$fieldKey => $value, 'note' => $note],
+            self::SYSTEM_STATUS_FIELD => [$fieldKey => $value, 'note' => $note],
             default => [$fieldKey => $value],
         };
     }

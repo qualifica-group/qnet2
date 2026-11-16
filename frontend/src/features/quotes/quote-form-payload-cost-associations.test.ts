@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { quoteLineFixture, WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
+import { quoteLineFixture, SYSTEM_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteDetail } from '@/features/quotes/types'
@@ -18,7 +18,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     quote_date: '2026-03-15',
     follow_up_date: null,
     opportunity_id: 10,
-    quote_workflow_status_id: 1,
+    quote_system_status_id: 1,
     note: null,
     commercial_id: null,
     reporter_id: null,
@@ -49,9 +49,9 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     opportunity_id: 10,
     opportunity: { id: 10, name: 'Deal Acme' },
     registry_transfer: null,
-    quote_workflow_status_id: 1,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
-    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
+    quote_system_status_id: 1,
+    quote_system_status: SYSTEM_STATUS_OPEN,
+    quote_system_statuses: [SYSTEM_STATUS_OPEN],
     applicable_attributes: [],
     attribute_layout: null,
     commercial_id: null,

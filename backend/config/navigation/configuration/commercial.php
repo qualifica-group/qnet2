@@ -30,6 +30,14 @@ return [
             'permission' => 'work-order-workflows.viewAny',
         ],
         [
+            // Spec 0404 part A: the system statuses the working statuses link.
+            'key' => 'quote-system-statuses',
+            'label' => 'navigation.quoteSystemStatuses',
+            'icon' => 'tag',
+            'route' => '/quote-system-statuses',
+            'permission' => 'quote-system-statuses.view',
+        ],
+        [
             'key' => 'contract-statuses',
             'label' => 'navigation.contractStatuses',
             'icon' => 'tag',

@@ -43,6 +43,7 @@ use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\PurchaseRequestPriority;
 use App\Models\Quote;
+use App\Models\QuoteSystemStatus;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
@@ -179,6 +180,9 @@ return [
         ],
         'contract-statuses' => [
             'model' => ContractStatus::class,
+        ],
+        'quote-system-statuses' => [
+            'model' => QuoteSystemStatus::class,
         ],
         'custom-fields' => [
             'model' => CustomFieldDefinition::class,

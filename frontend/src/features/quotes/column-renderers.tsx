@@ -50,6 +50,8 @@ export const quoteColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
   opportunity: (params) => <RelationCell {...params} icon={Handshake} />,
   registry: (params) => <RelationCell {...params} icon={Building2} />,
+  quote_system_status: (params) => <StatusBadgeCell {...params} />,
+  // No longer an Offerte column (spec 0404): the agent sales report grid reuses this renderer for its working-status column.
   quote_workflow_status: (params) => <StatusBadgeCell {...params} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
   reporter: (params) => <RelationCell {...params} icon={UserRound} />,

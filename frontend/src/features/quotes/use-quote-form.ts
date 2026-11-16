@@ -18,10 +18,10 @@ import { useQuoteFormContext, type PersistedQuoteContext } from '@/features/quot
 import { managerSlotsMembershipMessage, withStoredFallback } from '@/features/quotes/use-quote-form-helpers'
 import { useQuoteLineCaches } from '@/features/quotes/use-quote-line-caches'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
-import type { QuoteDetail, QuoteFormMode, QuoteWorkflowStatusRef } from '@/features/quotes/types'
+import type { QuoteDetail, QuoteFormMode, QuoteSystemStatusOption } from '@/features/quotes/types'
 
 /** Hoisted so the schema memo keeps a stable dependency in create mode (no set resolved yet). */
-const EMPTY_STATUSES: QuoteWorkflowStatusRef[] = []
+const EMPTY_STATUSES: QuoteSystemStatusOption[] = []
 const EMPTY_ATTRIBUTE_VALUES: Record<string, CustomFieldValue> = {}
 
 /** Server-side field names mapped onto the form for 422 handling (mirrors `opportunities`/`projects`). */
@@ -31,7 +31,7 @@ const SERVER_ERROR_FIELDS = [
   'quote_date',
   'follow_up_date',
   'opportunity_id',
-  'quote_workflow_status_id',
+  'quote_system_status_id',
   'note',
   'commercial_id',
   'reporter_id',
@@ -79,12 +79,12 @@ export function useQuoteForm({ mode, onSuccess, initialCode, withNewOpportunity 
   const isEdit = mode.type === 'edit'
   const original = mode.type === 'edit' ? mode.quote : null
 
-  // Spec 0083: the update schema needs the resolved set and the status the
+  // Spec 0404: the update schema needs the resolved options and the status the
   // quote currently holds to decide whether the transition note is mandatory
   // (AC-023/AC-026). Both are `null`/empty in create, where no transition
   // happens: the backend assigns the `open` row itself (AC-020).
-  const workflowStatuses = original?.quote_workflow_statuses ?? EMPTY_STATUSES
-  const originalStatusId = original?.quote_workflow_status_id ?? null
+  const systemStatuses = original?.quote_system_statuses ?? EMPTY_STATUSES
+  const originalStatusId = original?.quote_system_status_id ?? null
   // Spec 0102 D-2/AC-042/043: whether the PERSISTED offer already had at
   // least one line, the fact `buildUpdateQuoteSchema` needs to mirror the
   // server's grandfathering (an offer that was already at zero stays
@@ -103,7 +103,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode, withNewOpportunity 
   const resolverRef = useRef<Resolver<QuoteFormValues>>(
     zodResolver(
       isEdit
-        ? buildUpdateQuoteSchema(t, workflowStatuses, originalStatusId, originalHasOfferLines)
+        ? buildUpdateQuoteSchema(t, systemStatuses, originalStatusId, originalHasOfferLines)
         : buildCreateQuoteSchema(t),
     ),
   )
@@ -168,7 +168,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode, withNewOpportunity 
       isEdit
         ? buildUpdateQuoteSchema(
             t,
-            workflowStatuses,
+            systemStatuses,
             originalStatusId,
             originalHasOfferLines,
             attributeContext.applicable_attributes,
@@ -184,7 +184,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode, withNewOpportunity 
       isEdit,
       withNewOpportunity,
       t,
-      workflowStatuses,
+      systemStatuses,
       originalStatusId,
       originalHasOfferLines,
       attributeContext.applicable_attributes,

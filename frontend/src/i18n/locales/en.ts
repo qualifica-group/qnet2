@@ -54,6 +54,7 @@ import { workflowStatuses } from './en-workflow-statuses'
 import { quotes } from './en-quotes'
 import { quotesWithOpportunity } from './en-quotes-with-opportunity'
 import { contractStatuses } from './en-contract-statuses'
+import { quoteSystemStatuses } from './en-quote-system-statuses'
 import { contracts } from './en-contracts'
 import { workOrders } from './en-work-orders'
 import { outboundEmails } from './en-outbound-emails'
@@ -453,6 +454,7 @@ export const en = {
   workflowStatuses,
   quotes: { ...quotes, withOpportunity: quotesWithOpportunity, stats: moduleStats.quotes },
   contractStatuses,
+  quoteSystemStatuses,
   contracts,
   workOrders,
   outboundEmails,

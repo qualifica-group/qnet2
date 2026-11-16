@@ -6,7 +6,7 @@ import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { fetchQuoteFormContext, updateQuote } from '@/features/quotes/api'
 import { QuoteDetailView } from '@/features/quotes/quote-detail'
-import { quoteLineFixture, WORKFLOW_STATUS_OPEN, WORKFLOW_STATUS_REQUIRES_NOTE } from '@/features/quotes/quote-fixtures'
+import { quoteLineFixture, SYSTEM_STATUS_OPEN, SYSTEM_STATUS_REQUIRES_NOTE } from '@/features/quotes/quote-fixtures'
 import { openRow, pressRowButton, queryPencil, rowValue } from '@/features/quotes/quote-test-helpers'
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
 import type { ApplicableAttributeSummary, QuoteDetailWithPermissions } from '@/features/quotes/types'
@@ -101,9 +101,9 @@ function quote(overrides: Partial<QuoteDetailWithPermissions> = {}): QuoteDetail
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
     registry_transfer: null,
-    quote_workflow_status_id: 1,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
-    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN, WORKFLOW_STATUS_REQUIRES_NOTE],
+    quote_system_status_id: 1,
+    quote_system_status: SYSTEM_STATUS_OPEN,
+    quote_system_statuses: [SYSTEM_STATUS_OPEN, SYSTEM_STATUS_REQUIRES_NOTE],
     applicable_attributes: [SITE_ACCESS],
     attribute_layout: null,
     attribute_values: { site_access: 'Gate 3' },
@@ -303,10 +303,34 @@ describe('QuoteDetailView — in-place editing (spec 0197)', () => {
   it('opens the status on its own row, the persisted pill as its value', () => {
     renderDetail(quote())
 
-    expect(rowValue('Status')).toContain(WORKFLOW_STATUS_OPEN.name)
+    expect(rowValue('Status')).toContain(SYSTEM_STATUS_OPEN.name)
     openRow('Status')
 
     expect(screen.getByRole('combobox', { name: 'Status' })).toBeInTheDocument()
+  })
+
+  // Spec 0404: Offerte picks the system status; the write carries `quote_system_status_id`, never the working one.
+  it('saves a picked system status as quote_system_status_id, asking for the note only when its destination requires one', async () => {
+    const record = quote()
+    vi.mocked(updateQuote).mockResolvedValue(record)
+    renderDetail(record)
+
+    openRow('Status')
+    fireEvent.click(screen.getByRole('combobox', { name: 'Status' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Vinto/ }))
+
+    pressRowButton('Save')
+    expect(await screen.findByText('A note is required to move to this status.')).toBeInTheDocument()
+    expect(vi.mocked(updateQuote)).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note' }), { target: { value: 'Firmato dal cliente' } })
+    pressRowButton('Save')
+    await waitFor(() =>
+      expect(vi.mocked(updateQuote)).toHaveBeenCalledWith(9, {
+        quote_system_status_id: SYSTEM_STATUS_REQUIRES_NOTE.id,
+        note: 'Firmato dal cliente',
+      }),
+    )
   })
 
   it('shows the persisted document layout and payment method, even a deactivated layout (spec 0070 AC-312)', () => {

@@ -24,6 +24,9 @@ class QuoteWorkflowStatusResource extends JsonResource
             'sort_order' => $this->sort_order,
             'system_key' => $this->system_key,
             'group' => $this->group->value,
+            // Spec 0404 part A: the linked system status; `group` is its read-only copy.
+            'quote_system_status_id' => $this->quote_system_status_id,
+            'quote_system_status' => QuoteSystemStatusSummary::of($this->systemStatus),
             'requires_note' => $this->requires_note,
         ];
     }

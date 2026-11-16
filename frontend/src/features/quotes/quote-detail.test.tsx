@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { quoteLineFixture, WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
+import { quoteLineFixture, SYSTEM_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
@@ -64,9 +64,9 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
     registry_transfer: null,
-    quote_workflow_status_id: 1,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
-    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
+    quote_system_status_id: 1,
+    quote_system_status: SYSTEM_STATUS_OPEN,
+    quote_system_statuses: [SYSTEM_STATUS_OPEN],
     applicable_attributes: [],
     attribute_layout: null,
     commercial_id: null,

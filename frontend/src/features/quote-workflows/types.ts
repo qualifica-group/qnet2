@@ -75,6 +75,14 @@ export interface QuoteWorkflowCriterion {
   field_source: 'native' | 'custom'
 }
 
+/** The system status a working status links (spec 0404), as nested in `QuoteWorkflowStatusItem`. */
+export interface QuoteWorkflowSystemStatusRef {
+  id: number
+  name: string
+  color: string | null
+  behavior: WorkflowStatusGroupValue
+}
+
 /** One status row of a workflow's (or the global default's) set. */
 export interface QuoteWorkflowStatusItem {
   id: number
@@ -84,7 +92,10 @@ export interface QuoteWorkflowStatusItem {
   color: string | null
   sort_order: number
   system_key: WorkflowStatusSystemKey
+  /** Read-only projection of the linked system status's behavior (spec 0404): never sent by the client. */
   group: WorkflowStatusGroupValue
+  quote_system_status_id: number
+  quote_system_status: QuoteWorkflowSystemStatusRef
   /** Marks the status as one requiring an explanatory note. Configuration only: nothing enforces the note yet. */
   requires_note: boolean
 }
@@ -121,7 +132,9 @@ export interface CreateQuoteWorkflowStatusPayload {
   name: string
   description?: string | null
   color?: string | null
-  group: WorkflowStatusGroupValue
+  /** Custom rows send their `quote_system_status_id` (the backend derives the group); a pinned row keeps its own `group`, the fixed link of its `system_key`. */
+  quote_system_status_id?: number | null
+  group?: WorkflowStatusGroupValue
   requires_note?: boolean
   system_key?: WorkflowStatusSystemKey
 }
@@ -138,7 +151,8 @@ export interface UpdateQuoteWorkflowStatusPayload {
   name: string
   description?: string | null
   color?: string | null
-  group: WorkflowStatusGroupValue
+  quote_system_status_id?: number | null
+  group?: WorkflowStatusGroupValue
   requires_note?: boolean
 }
 
@@ -179,6 +193,8 @@ export type QuoteWorkflowFormMode =
 export interface WorkflowStatusFormRow extends SharedWorkflowStatusFormRow {
   group: WorkflowStatusGroupValue
   system_key: WorkflowStatusSystemKey
+  /** `null` until a custom row picks one; a pinned row never carries it (its link is fixed by `system_key`). */
+  quote_system_status_id: number | null
   requires_note: boolean
 }
 

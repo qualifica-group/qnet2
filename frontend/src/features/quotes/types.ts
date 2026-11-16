@@ -86,6 +86,27 @@ export interface QuoteWorkflowStatusRef {
   requires_note: boolean
 }
 
+/**
+ * The system status of a quote (spec 0404): the one Offerte shows and edits.
+ * It is never stored on the quote, it is the system status linked by the
+ * working status the quote holds (Gestione Richieste edits that one).
+ */
+export interface QuoteSystemStatusRef {
+  id: number
+  name: string
+  color: string | null
+  behavior: string
+}
+
+/**
+ * An option of the system status select for THIS quote (spec 0404 A-D7):
+ * only the system statuses with a linked working status in the quote's
+ * resolved set. `requires_note` makes the note mandatory when it is the TARGET.
+ */
+export interface QuoteSystemStatusOption extends QuoteSystemStatusRef {
+  requires_note: boolean
+}
+
 /** One side (`revenue`/`cost`) of the persisted economic summary (D-9). */
 export interface QuoteAmountBreakdown {
   net: string
@@ -165,10 +186,10 @@ export interface QuoteDetail {
   referent?: ReferentRef | null
   product_lines?: ProductLine[]
   general_notes?: string | null
-  quote_workflow_status_id: number
-  quote_workflow_status: QuoteWorkflowStatusRef
-  /** The set resolved by the backend for THIS quote: the select never offers anything outside it (AC-050). */
-  quote_workflow_statuses: QuoteWorkflowStatusRef[]
+  quote_system_status_id: number | null
+  quote_system_status: QuoteSystemStatusRef | null
+  /** The options resolved by the backend for THIS quote, in `sort_order`: the select never offers anything outside them. */
+  quote_system_statuses: QuoteSystemStatusOption[]
   commercial_id: number | null
   commercial: QuoteRelationRef | null
   reporter_id: number | null
@@ -286,8 +307,8 @@ export interface CreateQuotePayload {
   /** Spec 0349: `null` = no date (and clears it on update). */
   follow_up_date?: string | null
   opportunity_id: number
-  /** Omitted on create: the backend assigns the `open` row of the set it resolves (AC-020). */
-  quote_workflow_status_id?: number | null
+  /** Omitted on create: the backend assigns the `open` row of the set it resolves (AC-020). Never sent together with `quote_workflow_status_id`. */
+  quote_system_status_id?: number | null
   /** Mandatory only when the TARGET status carries `requires_note` (AC-023); never persisted on the quote. */
   note?: string | null
   /** Spec 0084: merge SPARSO server-side — i `code` assenti conservano il valore precedente. */

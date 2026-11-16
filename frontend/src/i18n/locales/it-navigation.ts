@@ -61,6 +61,7 @@ export const navigation = {
   quoteWorkflows: 'Configuratore Stati Offerta',
   quotes: 'Offerte',
   contractStatuses: 'Stati Contratto',
+  quoteSystemStatuses: 'Stati di sistema offerta',
   contracts: 'Contratti',
   workOrders: 'Commesse',
   projectWorkOrders: 'Commesse di Progetto',

@@ -68,9 +68,10 @@ it('AC-008: the grid inline edit stamps today when the quote becomes won', funct
     $quote = acceptedAtQuote();
     Sanctum::actingAs($actor);
 
+    // REQUIREMENT CHANGED (spec 0404 A-D7): Offerte edits the system status.
     $this->patchJson("/api/tables/quotes/rows/{$quote->id}", [
-        'column' => 'quote_workflow_status',
-        'value' => acceptedAtStatus('closed_won')->id,
+        'column' => 'quote_system_status',
+        'value' => acceptedAtStatus('closed_won')->quote_system_status_id,
     ])->assertOk();
 
     expect($quote->fresh()->accepted_at->toDateString())->toBe(acceptedAtToday());

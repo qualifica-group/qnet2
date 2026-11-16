@@ -16,10 +16,12 @@ import {
 import { SortableList } from '@/components/ui/sortable-list'
 import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
 import { RequiresNoteBadge } from '@/features/workflow-statuses/requires-note-badge'
+import { SystemStatusSelect } from '@/features/workflow-statuses/system-status-select'
 import type {
   WorkflowStatusFormRow,
   WorkflowStatusGroupOption,
   WorkflowStatusRowPatch,
+  WorkflowSystemStatusOption,
 } from '@/features/workflow-statuses/types'
 import { cn } from '@/lib/utils'
 
@@ -31,8 +33,10 @@ export interface WorkflowStatusesEditorFeatures {
 
 export interface WorkflowStatusesEditorProps<R extends WorkflowStatusFormRow> extends WorkflowStatusesEditorFeatures {
   rows: R[]
-  /** The domain's group vocabulary (already translated); drives the select and the pinned-row badge. */
-  groups: WorkflowStatusGroupOption[]
+  /** The domain's group vocabulary (already translated); drives the select and the pinned-row badge. Unused when `systemStatuses` is given. */
+  groups?: WorkflowStatusGroupOption[]
+  /** Quote workflows (spec 0404): the system statuses a row links; replaces the group select, whose group derives server-side. */
+  systemStatuses?: WorkflowSystemStatusOption[]
   onReorder: (orderedIds: string[]) => void
   onAddCustom: () => void
   onRemoveCustom: (id: string) => void
@@ -40,6 +44,9 @@ export interface WorkflowStatusesEditorProps<R extends WorkflowStatusFormRow> ex
   disabled?: boolean
   error?: string | null
 }
+
+/** Hoisted so an omitted `groups` keeps a stable reference. */
+const NO_GROUPS: WorkflowStatusGroupOption[] = []
 
 /** Backend status `description` column limit (`max:500`). */
 const STATUS_DESCRIPTION_MAX_LENGTH = 500
@@ -65,7 +72,8 @@ const PROGRESS_PERCENTAGE_MAX = 100
  */
 export function WorkflowStatusesEditor<R extends WorkflowStatusFormRow>({
   rows,
-  groups,
+  groups = NO_GROUPS,
+  systemStatuses,
   showRequiresNote = false,
   showProgressPercentage = false,
   onReorder,
@@ -89,6 +97,7 @@ export function WorkflowStatusesEditor<R extends WorkflowStatusFormRow>({
           <WorkflowStatusRowContent
             row={row}
             groups={groups}
+            systemStatuses={systemStatuses}
             showRequiresNote={showRequiresNote}
             showProgressPercentage={showProgressPercentage}
             onUpdateRow={onUpdateRow}
@@ -122,6 +131,7 @@ export function WorkflowStatusesEditor<R extends WorkflowStatusFormRow>({
 interface WorkflowStatusRowContentProps<R extends WorkflowStatusFormRow> extends WorkflowStatusesEditorFeatures {
   row: R
   groups: WorkflowStatusGroupOption[]
+  systemStatuses?: WorkflowSystemStatusOption[]
   onUpdateRow: WorkflowStatusesEditorProps<R>['onUpdateRow']
   onRemoveCustom: WorkflowStatusesEditorProps<R>['onRemoveCustom']
   disabled: boolean
@@ -142,6 +152,7 @@ function parseProgressPercentage(raw: string): number | null {
 function WorkflowStatusRowContent<R extends WorkflowStatusFormRow>({
   row,
   groups,
+  systemStatuses,
   showRequiresNote,
   showProgressPercentage,
   onUpdateRow,
@@ -185,7 +196,9 @@ function WorkflowStatusRowContent<R extends WorkflowStatusFormRow>({
           disabled={disabled}
           className="min-w-0 flex-1"
         />
-        {isCustom ? (
+        {systemStatuses ? (
+          <SystemStatusSelect row={row} options={systemStatuses} disabled={disabled} onUpdateRow={onUpdateRow} />
+        ) : isCustom ? (
           <Select
             value={row.group}
             onValueChange={(next) => onUpdateRow(row.id, { group: next } as WorkflowStatusRowPatch<R>)}

@@ -79,7 +79,7 @@ class QuoteService
         // e note generali del record padre, mostrate nel Contesto
         // dell'Offerta. `productLines.productCategory` e' gia' sopra.
         'opportunity.productLines.businessFunction',
-        'quoteWorkflowStatus',
+        'quoteWorkflowStatus.systemStatus',
         'commercial',
         'reporter',
         'supervisor',
@@ -247,12 +247,12 @@ class QuoteService
             // working status now that its criteria are final; an explicit
             // client choice advances FROM that resolved baseline, note-gated
             // when its destination `requires_note`.
-            $this->workflowStatusAssigner->assign($quote, $data->workflowStatusId, $data->note, $actor);
+            $this->workflowStatusAssigner->assign($quote, $data->workflowStatusId, $data->note, $actor, $data->systemStatusId);
             $quote->save();
 
             // Step 6b: an explicitly chosen status is a transition the report
             // must see (user directive 2026-09-18); the resolved baseline alone is not.
-            if ($data->workflowStatusId !== null) {
+            if ($data->workflowStatusId !== null || $data->systemStatusId !== null) {
                 $this->statusChangeLogger->log($quote, null, $actor);
             }
 
@@ -368,7 +368,7 @@ class QuoteService
             // spec 0083 (AC-020..026): re-resolve the baseline against the
             // (possibly changed by a submitted `offer_lines`) criteria, then
             // apply an explicit client choice on top, note-gated.
-            $this->workflowStatusAssigner->assign($quote, $data->workflowStatusIdSubmitted ? $data->workflowStatusId : null, $data->note, $actor);
+            $this->workflowStatusAssigner->assign($quote, $data->workflowStatusIdSubmitted ? $data->workflowStatusId : null, $data->note, $actor, $data->systemStatusId);
             $quote->save();
 
             // The change lands on the opportunity trail the report reads
