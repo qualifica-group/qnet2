@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0399-work-order-task-template-reload" status="approved" owner="nicola" date="2026-11-16">
+
+  <goal>
+    Su una commessa esistente si puo' caricare (o ricaricare) un Modello di Task: i task generati dal modello precedente vengono eliminati e sostituiti da quelli del modello scelto, purche' nessuno di essi sia gia' stato completato.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-16: una commessa creata senza modello deve poter ricevere un modello dopo; una commessa con modello deve poterlo ricaricare (stesso o altro modello). Supera l'immutabilita' di `work_orders.task_template_id` della spec 0124 D-5 solo tramite questo endpoint dedicato: PATCH /api/work-orders/{id} continua a rifiutarlo (`prohibited`).
+    D-2 Task "del modello" = task della commessa con `is_template_generated` true (generati da WorkOrderTaskGenerator o dalla migrazione legacy) piu' tutti i loro sotto-task a qualsiasi profondita', anche se aggiunti a mano. I task creati a mano alla radice restano intatti.
+    D-3 Blocco: se almeno uno dei task di D-2 e' in uno stato di fase chiusa (`closed_positive` o `closed_negative`, cioe' "spuntato") il ricaricamento e' rifiutato con 409 e non cambia nulla. Altrimenti i task di D-2 vengono eliminati (dalle foglie alla radice, come TaskService::delete) e i task del nuovo modello generati nella stessa transazione. Le ore del segnatempo gia' registrate su un task eliminato restano sulla commessa (`time_entries.task_id` nullOnDelete, comportamento esistente).
+    D-4 Fasi: le fasi che contenevano task eliminati e restano senza task e senza ore registrate vengono eliminate; le altre restano. Le fasi del nuovo modello riusano una fase esistente con lo stesso nome, altrimenti vengono accodate in fondo. I nuovi task radice prendono `stage_position` dopo i task gia' presenti nella stessa fase (o in "Senza fase").
+    D-5 Autorizzazione: WorkOrderPolicy::update (permesso `work-orders.update` + perimetro). Commessa chiusa (`is_force_closed`) = 409 come ogni scrittura sulla task board (WorkOrderClosedGuard). Il modello deve essere attivo.
+    D-6 La generazione e' quella della creazione (assegnatari = Responsabili, stati, allegati, notifica riepilogativa). `task_template_id` della commessa diventa il modello scelto.
+  </context>
+
+  <contract>
+    <endpoint>POST /api/work-orders/{workOrder}/task-template/reload
+      body: { "task_template_id": int (required, exists task_templates where is_active) }
+      200: { success: true, message, data: WorkOrderResource } (data.task_template = { id, name } del modello caricato)
+      403: senza `work-orders.update` o fuori perimetro
+      409: commessa chiusa; oppure task del modello gia' completati: { success: false, message, data: { completed_tasks_count: int } }
+      422: task_template_id mancante, inesistente o disattivato
+    </endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>Backend: FormRequest, controller invokable, WorkOrderTaskTemplateReloader, eccezione 409, WorkOrderTaskGenerator (fasi riusate/accodate, posizioni dopo i task esistenti).</item>
+      <item>Frontend: voce "Carica modello task" nel menu "..." della scheda Task della commessa, dialog con select del modello e avviso.</item>
+      <item>Guide `work-orders` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Modifica del campo "Modello di Task" dal dettaglio Info (resta in sola lettura).</item>
+      <item>Unione selettiva (mantenere i task non completati e aggiungere solo i mancanti).</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Commessa senza modello e con un task manuale: il caricamento genera i task del modello, imposta `task_template_id` e lascia il task manuale.</criterion>
+    <criterion id="AC-002">Commessa con modello e task generati non completati (anche con un sotto-task manuale): vengono eliminati e sostituiti dai task del nuovo modello.</criterion>
+    <criterion id="AC-003">Se un task del modello (o un suo sotto-task) e' completato: 409 con `completed_tasks_count`, nessun task eliminato, `task_template_id` invariato.</criterion>
+    <criterion id="AC-004">Fasi: una fase rimasta vuota viene eliminata, una fase con un task manuale resta; una fase del nuovo modello con lo stesso nome di una esistente la riusa.</criterion>
+    <criterion id="AC-005">403 senza `work-orders.update`; 409 su commessa chiusa; 422 con modello disattivato.</criterion>
+  </acceptance>
+</spec>

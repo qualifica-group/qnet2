@@ -60,7 +60,8 @@ use Illuminate\Support\Facades\DB;
  * genuine client input (`CreateWorkOrderData`), the same category as
  * `quote_id`: mass-assignable on the model, with its post-create
  * immutability enforced one layer up by `UpdateWorkOrderRequest`'s own
- * `prohibited` rule, not by omitting it here.
+ * `prohibited` rule, not by omitting it here. Spec 0399: the one later
+ * write is the dedicated reload (WorkOrderTaskTemplateReloader).
  *
  * `work_phase` / `work_phase_before_termination` (spec 0395, the legacy
  * `orders.status` / `last_status`) are absent from #[Fillable]: moved only

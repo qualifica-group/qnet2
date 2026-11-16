@@ -253,6 +253,17 @@ export const workOrders = {
       closeErrorOpenTasks_other: '{{count}} task di questa fase sono ancora aperti.',
       collapse: 'Comprimi fase',
       expand: 'Espandi fase',
+    templateReload: {
+      menu: 'Carica modello task',
+      title: 'Carica modello task',
+      description:
+        'I task creati dal modello attuale, con i loro sotto-task, vengono eliminati e sostituiti da quelli del modello scelto. I task creati a mano restano. Non si può fare se un task del modello è già completato.',
+      confirm: 'Carica modello',
+      success: 'Modello task caricato.',
+      blocked_one: '{{count}} task del modello attuale è già completato: il modello non può essere ricaricato.',
+      blocked_other: '{{count}} task del modello attuale sono già completati: il modello non può essere ricaricato.',
+      genericError: 'Impossibile caricare il modello task. Riprova.',
+    },
       addTask: 'Task',
       dragHandleLabel: 'Trascina per riordinare la fase',
       genericError: 'Si è verificato un errore. Riprova.',

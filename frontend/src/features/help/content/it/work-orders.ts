@@ -1,5 +1,6 @@
 import type { HelpGuide } from '../../types'
 import { recurringEmailSections } from './parts/work-orders-recurring-emails'
+import { taskSections } from './parts/work-orders-tasks'
 
 const guide: HelpGuide = {
   key: 'work-orders',
@@ -45,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata). Il **Modello di Task** si cambia dalla scheda **Task** (vedi **Task: caricare un modello**). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {
           type: 'note',
@@ -228,28 +229,7 @@ const guide: HelpGuide = {
         },
       ],
     },
-    {
-      id: 'task-board-selection',
-      title: 'Task: selezione multipla',
-      blocks: [
-        {
-          type: 'paragraph',
-          text: 'Nella scheda **Task** del dettaglio ogni task principale ha una casella di selezione: selezionandone uno o più compare in basso la barra con le azioni massive (Assegna, Completa, Riapri, Blocca, Priorità, Date). I sotto-task non si selezionano.',
-        },
-        {
-          type: 'list',
-          items: [
-            '**Seleziona tutti**, nella barra dei filtri, seleziona tutti i task visibili di tutte le fasi; cliccandola di nuovo li deseleziona.',
-            'La casella accanto al nome di ogni **fase** (anche **Senza fase**, e in testa a ogni colonna della vista Board) seleziona o deseleziona tutti i task di quella fase.',
-            'Se solo una parte dei task è selezionata la casella mostra un trattino: un clic completa la selezione.',
-          ],
-        },
-        {
-          type: 'note',
-          text: 'Le caselle "seleziona tutti" considerano solo i task mostrati con i filtri attuali. Su una commessa chiusa il board è in sola lettura e le caselle non compaiono.',
-        },
-      ],
-    },
+    ...taskSections,
     {
       id: 'costs',
       title: 'Costi',

@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ricarica Modello di Task sulla commessa (spec 0399) — VERDE, COMMITTATO (2026-11-16)
+
+- Richiesta utente: caricare un modello task su una commessa creata senza, o ricaricarlo; se i task del modello sono
+  spuntati non si puo', altrimenti il sistema li elimina e genera i nuovi.
+- Contratto: `POST /api/work-orders/{workOrder}/task-template/reload` body `{ task_template_id }` (attivo) -> 200
+  `WorkOrderResource`; 403 senza `work-orders.update`/fuori perimetro; 409 commessa chiusa; 409 `data.completed_tasks_count`
+  se un task del modello e' chiuso (`closed_positive`/`closed_negative`); 422 modello mancante/disattivo.
+  PATCH della commessa continua a rifiutare `task_template_id` (`prohibited`).
+- Backend: `WorkOrderTaskTemplateReloadController` (invokable), `ReloadWorkOrderTaskTemplateRequest`,
+  `WorkOrderTaskTemplateReloader` (lock riga, guard chiusa, task `is_template_generated` + discendenti per livelli,
+  delete foglie->radice, fasi svuotate senza task ne' ore eliminate, poi `WorkOrderTaskGenerator::generate`),
+  `WorkOrderTaskTemplateReloadBlockedException`. `WorkOrderTaskGenerator`: `copyStages` riusa una fase esistente con lo
+  stesso nome e accoda le altre dopo `max(sort_order)`; `stage_position` delle radici parte dopo i task esistenti
+  (`existingStagePositions`). Su commessa nuova comportamento invariato.
+- Frontend: voce "Carica modello task" nel menu "..." della scheda Task (`can('work-orders.update')`, non su board
+  read-only) e, su commessa senza task ne' fasi, pulsante nello stato vuoto della scheda -> `TaskBoardTemplateReloadDialog`; `useReloadWorkOrderTaskTemplate` invalida board, fasi e dettaglio.
+- Guide: sezioni Task della guida `work-orders` spostate in `content/{it,en}/parts/work-orders-tasks.ts`
+  (file principale a 464 righe) + nuova sezione `task-template-reload`. Manuale Claude Docs aggiornato.
+- Test: `WorkOrderTaskTemplateReloadTest` (11), `task-board-template-reload-dialog.test.tsx` (3); suite WorkOrders,
+  Contracts, TaskTemplates, Tasks verdi; tsc -b pulito.
+- API docs: voce in `resources/api-docs/operations/work-orders.php`.
+- Suite backend completa: 15070/15098 verdi; i 27 rossi sono preesistenti e fuori scope: `TaskStages/TaskBoardEndpointsTest`
+  AC-011 (si aspetta nascosto un task che dalla spec 0379 e' visibile a chi vede la commessa), `ApiDocsDescriptionsTest`
+  (mancano le descrizioni di attachments/archive e merge referenti/anagrafiche), AgentSalesReport (helper non
+  caricato in parallelo), ManagementControl access, LibreOffice assente, AiAssistant, altri singoli.
+
 ## Dettaglio commessa a schede come nel vecchio QNet — VERDE MIRATO, COMMITTATO (2026-11-16)
 
 - Richiesta utente: nel dettaglio Commessa le schede del legacy (`manageorder.blade.php`: Info | Task | Documenti | EUR |

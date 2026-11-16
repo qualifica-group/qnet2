@@ -82,7 +82,7 @@ final class WorkOrderTaskGenerator
         $stageIdsByTemplateStageId = $this->copyStages($workOrder, $template);
         $lookupIds = $this->defaultLookupIds();
         /** @var array<int, int> $stagePositions keyed by copied work_order_stage_id, 0 for "Senza fase" — ROOT rows only (spec 0172, AC-010) */
-        $stagePositions = [];
+        $stagePositions = $this->existingStagePositions($workOrder);
         /** @var array<int, int> $subtaskPositions keyed by the parent Task's own id */
         $subtaskPositions = [];
         /** @var array<int, Task> $taskByTemplateItemId keyed by TaskTemplateItem id, resolves a sub-item's parent_task_id */
@@ -256,19 +256,45 @@ final class WorkOrderTaskGenerator
      * unstaged template (`stages` empty) copies nothing, every generated
      * Task lands in "Senza fase".
      *
+     * Spec 0399, D-4: on a template reload the commessa may already have
+     * stages — one with the same name is reused, the others are appended
+     * after the last one. On a new commessa this is the plain copy.
+     *
      * @return array<int, int> template TaskTemplateStage id => copied
      *                         WorkOrderStage id
      */
     private function copyStages(WorkOrder $workOrder, TaskTemplate $template): array
     {
+        $existingIdsByName = $workOrder->stages()->pluck('id', 'name')->all();
+        $nextSortOrder = (int) $workOrder->stages()->max('sort_order') + ($existingIdsByName === [] ? 0 : 1);
         $stageIdsByTemplateStageId = [];
 
-        foreach ($template->stages as $index => $stage) {
-            $copy = $workOrder->stages()->create(['name' => $stage->name, 'sort_order' => $index]);
-            $stageIdsByTemplateStageId[$stage->id] = $copy->id;
+        foreach ($template->stages as $stage) {
+            $stageIdsByTemplateStageId[$stage->id] = $existingIdsByName[$stage->name]
+                ?? $workOrder->stages()->create(['name' => $stage->name, 'sort_order' => $nextSortOrder++])->id;
         }
 
         return $stageIdsByTemplateStageId;
+    }
+
+    /**
+     * Spec 0399, D-4: generated ROOT tasks are appended after the root tasks
+     * the commessa already has in the same stage (or "Senza fase", key 0).
+     * Empty on a new commessa.
+     *
+     * @return array<int, int> next free `stage_position` per stage id
+     */
+    private function existingStagePositions(WorkOrder $workOrder): array
+    {
+        return Task::query()
+            ->where('work_order_id', $workOrder->id)
+            ->whereNull('parent_task_id')
+            ->selectRaw('work_order_stage_id, MAX(stage_position) AS last_position')
+            ->groupBy('work_order_stage_id')
+            ->toBase()
+            ->get()
+            ->mapWithKeys(fn (object $row): array => [(int) $row->work_order_stage_id => (int) $row->last_position + 1])
+            ->all();
     }
 
     /**

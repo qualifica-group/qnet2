@@ -153,6 +153,10 @@ return [
         'summary' => 'Ask the work order team for an update',
         'description' => 'Sends a notification with message (3-2000 characters) asking for an update on the work order, without changing it. target is participants (supervisors who are not participants get a copy), supervisors, or all. 422 when the work order is completed or closed, or the chosen group is empty. Answers with data null. Requires work-orders.requestUpdate on a visible work order.',
     ],
+    'POST /work-orders/{workOrder}/task-template/reload' => [
+        'summary' => 'Load or reload the task template',
+        'description' => 'Sets task_template_id (an active template) on the work order and replaces the tasks generated from the previous template, with all their sub-tasks, by those of the chosen one; manually created tasks stay. Phases left without tasks or logged time are removed; a template phase reuses an existing phase with the same name. 409 when the work order is closed, or when a task of the previous template is already completed (data.completed_tasks_count). Answers with the work order. Requires work-orders.update on a visible work order.',
+    ],
     'GET /work-orders/{workOrder}/stages' => [
         'summary' => 'List the stages of a work order',
         'description' => 'Returns the stages (phases) of the work order in their order, each with name, sort_order, closed_at and closed_by, and the minutes of time logged on it. Requires work-orders.view on a visible work order.',

@@ -103,3 +103,8 @@ export async function bulkBoardTaskAction(
   )
   return data.data
 }
+
+/** POST /work-orders/{id}/task-template/reload (spec 0399): replaces the previous template's tasks with the chosen template's. 409 when one of them is completed — see `TaskTemplateReloadConflictError`. */
+export async function reloadWorkOrderTaskTemplate(workOrderId: number, taskTemplateId: number): Promise<void> {
+  await apiClient.post(`/work-orders/${workOrderId}/task-template/reload`, { task_template_id: taskTemplateId })
+}

@@ -1,5 +1,6 @@
 import type { HelpGuide } from '../../types'
 import { recurringEmailSections } from './parts/work-orders-recurring-emails'
+import { taskSections } from './parts/work-orders-tasks'
 
 const guide: HelpGuide = {
   key: 'work-orders',
@@ -45,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer). The **Task template** is changed from the **Tasks** tab (see **Tasks: loading a template**). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
           type: 'note',
@@ -228,28 +229,7 @@ const guide: HelpGuide = {
         },
       ],
     },
-    {
-      id: 'task-board-selection',
-      title: 'Tasks: multiple selection',
-      blocks: [
-        {
-          type: 'paragraph',
-          text: 'In the detail\'s **Task** tab every main task has a selection checkbox: selecting one or more shows the bulk action bar at the bottom (Assign, Complete, Reopen, Block, Priority, Dates). Sub-tasks cannot be selected.',
-        },
-        {
-          type: 'list',
-          items: [
-            '**Select all**, in the filter bar, selects every visible task of every phase; clicking it again clears them.',
-            'The checkbox next to each **phase** name (**No phase** included, and at the top of each column in the Board view) selects or clears every task of that phase.',
-            'When only some of the tasks are selected the checkbox shows a dash: one click completes the selection.',
-          ],
-        },
-        {
-          type: 'note',
-          text: '"Select all" checkboxes only cover the tasks shown under the current filters. On a closed work order the board is read-only and the checkboxes do not appear.',
-        },
-      ],
-    },
+    ...taskSections,
     {
       id: 'costs',
       title: 'Costs',

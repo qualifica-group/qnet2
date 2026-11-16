@@ -253,6 +253,17 @@ export const workOrders = {
       closeErrorOpenTasks_other: '{{count}} tasks in this phase are still open.',
       collapse: 'Collapse phase',
       expand: 'Expand phase',
+    templateReload: {
+      menu: 'Load task template',
+      title: 'Load task template',
+      description:
+        'The tasks created from the current template, with their sub-tasks, are deleted and replaced by those of the chosen template. Manually created tasks stay. Not allowed if a task of the template is already completed.',
+      confirm: 'Load template',
+      success: 'Task template loaded.',
+      blocked_one: '{{count}} task of the current template is already completed: the template cannot be reloaded.',
+      blocked_other: '{{count}} tasks of the current template are already completed: the template cannot be reloaded.',
+      genericError: 'Could not load the task template. Please try again.',
+    },
       addTask: 'Task',
       dragHandleLabel: 'Drag to reorder phase',
       genericError: 'Something went wrong. Please try again.',

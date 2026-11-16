@@ -10,6 +10,7 @@ import {
   createWorkOrderStage,
   deleteWorkOrderStage,
   moveBoardTask,
+  reloadWorkOrderTaskTemplate,
   renameWorkOrderStage,
   reopenWorkOrderStage,
   reorderWorkOrderStages,
@@ -23,6 +24,7 @@ import type {
   MoveBoardTaskPayload,
   MoveBoardTaskResult,
   TaskBoardPayload,
+  TaskTemplateReloadConflictError,
   WorkOrderStage,
 } from '@/features/work-orders/task-board/types'
 
@@ -55,6 +57,15 @@ export function useCreateWorkOrderStage(workOrderId: number) {
   const invalidate = useInvalidateStages(workOrderId)
   return useMutation<WorkOrderStage, AxiosError<ApiErrorResponse>, string>({
     mutationFn: (name) => createWorkOrderStage(workOrderId, name),
+    onSuccess: invalidate,
+  })
+}
+
+/** Spec 0399: the template reload rewrites tasks AND fasi, so it refreshes both like a fase write. */
+export function useReloadWorkOrderTaskTemplate(workOrderId: number) {
+  const invalidate = useInvalidateStages(workOrderId)
+  return useMutation<void, AxiosError<TaskTemplateReloadConflictError>, number>({
+    mutationFn: (taskTemplateId) => reloadWorkOrderTaskTemplate(workOrderId, taskTemplateId),
     onSuccess: invalidate,
   })
 }

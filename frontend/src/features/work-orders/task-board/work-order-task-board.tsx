@@ -11,7 +11,7 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Layers, MoreHorizontal, Plus } from 'lucide-react'
+import { Layers, ListRestart, MoreHorizontal, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -25,6 +25,7 @@ import { TaskBoardKpis } from '@/features/work-orders/task-board/task-board-kpis
 import { TaskBoardListView } from '@/features/work-orders/task-board/task-board-list-view'
 import { TaskBoardSelectAllCheckbox } from '@/features/work-orders/task-board/task-board-select-all-checkbox'
 import { TaskBoardStageCreateDialog } from '@/features/work-orders/task-board/task-board-stage-create-dialog'
+import { TaskBoardTemplateReloadDialog } from '@/features/work-orders/task-board/task-board-template-reload-dialog'
 import { TaskBoardToolbar } from '@/features/work-orders/task-board/task-board-toolbar'
 import { DEFAULT_TASK_BOARD_FILTERS } from '@/features/work-orders/task-board/task-board-filters'
 import { useInvalidateTaskBoard } from '@/features/work-orders/task-board/use-task-board-mutations'
@@ -63,8 +64,10 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
   const state = useTaskBoardState(workOrderId)
   const { viewMode, setViewMode } = useTaskBoardViewMode()
   const [isCreatingStage, setIsCreatingStage] = useState(false)
+  const [isReloadingTemplate, setIsReloadingTemplate] = useState(false)
 
   const hasAnyStage = (state.payload?.stages.length ?? 0) > 0
+  const canReloadTemplate = !state.isReadOnly && can('work-orders.update')
   const selectedIds = [...state.selectedTaskIds]
 
   const headerActions = (
@@ -87,6 +90,12 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
               <Layers aria-hidden="true" />
               {t('workOrders.taskBoard.stage.new')}
             </DropdownMenuItem>
+            {canReloadTemplate ? (
+              <DropdownMenuItem onSelect={() => setIsReloadingTemplate(true)}>
+                <ListRestart aria-hidden="true" />
+                {t('workOrders.taskBoard.templateReload.menu')}
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
@@ -121,7 +130,15 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
             </Button>
           </div>
         ) : !state.hasAnyTask && !hasAnyStage ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">{t('workOrders.taskBoard.empty.noTasks')}</p>
+          <div className="flex flex-col items-center gap-3 py-6">
+            <p className="text-center text-sm text-muted-foreground">{t('workOrders.taskBoard.empty.noTasks')}</p>
+            {canReloadTemplate ? (
+              <Button size="sm" variant="outline" className="bg-card" onClick={() => setIsReloadingTemplate(true)}>
+                <ListRestart aria-hidden="true" />
+                {t('workOrders.taskBoard.templateReload.menu')}
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <>
             <TaskBoardKpis metrics={state.metrics} />
@@ -190,6 +207,8 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
       <TaskBoardBulkBar workOrderId={workOrderId} selectedTaskIds={selectedIds} tasksById={state.tasksById} onClear={state.clearSelection} />
 
       <TaskBoardStageCreateDialog workOrderId={workOrderId} open={isCreatingStage} onOpenChange={setIsCreatingStage} />
+
+      <TaskBoardTemplateReloadDialog workOrderId={workOrderId} open={isReloadingTemplate} onOpenChange={setIsReloadingTemplate} />
 
       {sheet}
     </>
