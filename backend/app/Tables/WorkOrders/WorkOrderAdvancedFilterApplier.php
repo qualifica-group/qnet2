@@ -6,6 +6,7 @@ namespace App\Tables\WorkOrders;
 
 use App\Models\User;
 use App\Tables\CategoryTabs\WorkOrderSourceQuotes;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\PresetListFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -45,7 +46,7 @@ final class WorkOrderAdvancedFilterApplier
         }
 
         match ($name) {
-            PresetListFilters::PARENT_CATEGORY => $this->applyRevenueCategories($query, $this->presets->branchIds($value, $actor) ?? []),
+            PresetListFilters::PARENT_CATEGORY => $this->applyRevenueCategories($query, $this->presets->branchIds($value, $actor, ParentCategoryListModule::WorkOrders) ?? []),
             PresetListFilters::PRODUCT_CATEGORY => $this->applyRevenueCategories($query, PresetListFilters::ids($value)),
             WorkOrderAdvancedFilterCatalog::REGISTRY => $this->applyRegistries($query, PresetListFilters::ids($value)),
         };

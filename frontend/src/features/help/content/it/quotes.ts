@@ -149,7 +149,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione). Se non hai categorie di competenza **Categoria madre** non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
+          text: "Con il permesso di vedere tutto (per esempio il ruolo admin) sei abilitato a tutte le categorie madri, qualunque sia la tua competenza. Altrimenti le categorie in cui sei abilitato sono le categorie di competenza del tuo profilo (l'ambito di assegnazione); se non hai categorie di competenza **Categoria madre** non limita nulla. I filtri non allargano mai ciò che il tuo profilo può vedere.",
         },
         {
           type: 'paragraph',

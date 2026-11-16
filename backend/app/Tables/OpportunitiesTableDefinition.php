@@ -17,6 +17,7 @@ use App\Tables\Opportunities\OpportunityStatusColumn;
 use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OperationalSiteColumn;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\ProductLinePairsColumn;
 use App\Tables\Shared\ProductsOfInterestColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -188,7 +189,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return [...$this->listFilters->presetFilters('opportunities', CategoryUsageArea::Opportunities), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
+        return [...$this->listFilters->presetFilters('opportunities', ParentCategoryListModule::Opportunities, CategoryUsageArea::Opportunities), ...OpportunityAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**
@@ -373,7 +374,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
                 ->whereIn('product_category_id', $categoryIds));
         };
 
-        if ($this->listFilters->apply($query, $name, $value, Auth::user(), $applyCategories)) {
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Opportunities, $applyCategories)) {
             return true;
         }
 

@@ -6,6 +6,7 @@ use App\Enums\AttributeContext;
 use App\Models\ExportRun;
 use App\Models\ProductCategory;
 use App\Models\UserTableFilter;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\PresetListFilters;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -90,7 +91,7 @@ it('reads the empty parent category as the current roots of the competence, what
     $rows = $this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['parent_category' => []]])->assertOk()->json('items');
 
     expect($default)->toBe([])
-        ->and(app(PresetListFilters::class)->effectiveRootIds([], $legacyOnly))->toBe([$current->id])
+        ->and(app(PresetListFilters::class)->effectiveRootIds([], $legacyOnly, ParentCategoryListModule::Quotes))->toBe([$current->id])
         ->and(array_column($rows, 'id'))->toBe([$onLegacy->id])
         ->and($onCurrent->id)->not->toBe($onLegacy->id);
 });

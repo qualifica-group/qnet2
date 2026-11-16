@@ -11,6 +11,8 @@ use Laravel\Sanctum\Sanctum;
 // REQUIREMENT CHANGED (user directive 2026-11-12): no "Assegnazione" filter, the
 // visibility scope alone decides which records an actor sees; "Categoria madre"
 // lists and accepts only the parent categories the actor is enabled on.
+// REQUIREMENT CHANGED (user directive 2026-11-16): an actor with `<module>.viewAll` is never limited by the
+// competence; the limit applies only without it.
 
 uses(RefreshDatabase::class);
 
@@ -48,7 +50,7 @@ it('offers the parent category first, empty and sent by the page', function (str
     expect($filters->pluck('name')->first())->toBe('parent_category')
         ->and($filters->pluck('name')->all())->toContain('product_category')->not->toContain('assignment')
         ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['required' => false, 'sendDefault' => true, 'defaultValue' => []])
-        ->and($filters->firstWhere('name', 'parent_category')['source']['params'])->toMatchArray(['actor_roots' => 1]);
+        ->and($filters->firstWhere('name', 'parent_category')['source']['params'])->toMatchArray(['actor_roots' => $domain]);
 })->with('commercial grids');
 
 it('does not narrow a request that omits the presets', function (string $domain) {
@@ -73,20 +75,39 @@ it('lists every record the actor sees, without an assignment filter', function (
         ->assertJsonValidationErrors(['advancedFilters.assignment']);
 })->with('commercial grids');
 
-it('limits an actor enabled on some parent categories to those, whatever is picked', function (string $domain) {
-    $actor = categoryTabGridActor($domain);
+it('limits an actor without viewAll enabled on some parent categories to those, whatever is picked', function (string $domain) {
+    $actor = categoryTabGridActor($domain, viewAll: false);
     [$function, $root] = competenceVisibilityCategory();
     $child = ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]);
     grantCompetence($actor, $function, $child);
     $foreignRoot = ProductCategory::factory()->create();
-    [$inBranch] = commercialRecord($domain, $child);
-    commercialRecord($domain, $foreignRoot);
+    [$inBranch, $inBranchOwner] = commercialRecord($domain, $child);
+    [, $foreignOwner] = commercialRecord($domain, $foreignRoot);
+    // Without viewAll the actor sees only the records they supervise: both, so only the category limit narrows.
+    $inBranchOwner->update(['supervisor_id' => $actor->id]);
+    $foreignOwner->update(['supervisor_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
     expect(commercialIds($domain, ['parent_category' => []]))->toBe([$inBranch->id])
         ->and(commercialIds($domain, ['parent_category' => [$root->id]]))->toBe([$inBranch->id])
         ->and(commercialIds($domain, ['parent_category' => [0]]))->toBe([$inBranch->id])
         ->and(commercialIds($domain, ['parent_category' => [$foreignRoot->id]]))->toBe([$inBranch->id]);
+})->with('commercial grids');
+
+it('does not limit an actor with viewAll, whatever their competence', function (string $domain) {
+    $actor = categoryTabGridActor($domain);
+    [$function, $root] = competenceVisibilityCategory();
+    $child = ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]);
+    grantCompetence($actor, $function, $child);
+    $foreignRoot = ProductCategory::factory()->create();
+    [$inBranch] = commercialRecord($domain, $child);
+    [$foreign] = commercialRecord($domain, $foreignRoot);
+    Sanctum::actingAs($actor);
+    $pickerIds = collect($this->getJson("/api/product-category-roots/for-select?actor_roots={$domain}")->assertOk()->json('items'))->pluck('id')->all();
+
+    expect(commercialIds($domain, ['parent_category' => []]))->toBe([$inBranch->id, $foreign->id])
+        ->and(commercialIds($domain, ['parent_category' => [$foreignRoot->id]]))->toBe([$foreign->id])
+        ->and($pickerIds)->toContain($root->id, $foreignRoot->id);
 })->with('commercial grids');
 
 it('filters by parent branch and exact category; "Tutte" lifts the parent filter', function (string $domain) {

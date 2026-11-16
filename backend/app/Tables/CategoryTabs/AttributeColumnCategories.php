@@ -6,6 +6,7 @@ namespace App\Tables\CategoryTabs;
 
 use App\Models\ProductCategory;
 use App\Tables\Shared\LinkedCategoryGroups;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\PresetListFilters;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\Auth;
  *
  * The selection is `product_category`, else the effective roots of
  * `parent_category` (PresetListFilters::effectiveRootIds(): an empty value is
- * every root of a limited actor, user directive 2026-11-12). In the parent
+ * every root of an actor limited in that module, user directives 2026-11-12
+ * and 2026-11-16). In the parent
  * category a root stands for its whole group (D-12). In the product category one
  * category is taken as is; several only when they all belong to the same linked group: a
  * current root plus the legacy roots pointing at it (`current_category_id`),
@@ -30,9 +32,10 @@ final class AttributeColumnCategories
 
     /**
      * @param  array<string, mixed>  $values  advanced filter values by name
+     * @param  ParentCategoryListModule|null  $module  the module of the grid's parent category filter, null when it has none
      * @return array<int, int> the current category first, then the legacy ones by id; [] = no column
      */
-    public function fromFilters(array $values): array
+    public function fromFilters(array $values, ?ParentCategoryListModule $module): array
     {
         $products = array_values(array_unique(PresetListFilters::ids($values[PresetListFilters::PRODUCT_CATEGORY] ?? null)));
         sort($products);
@@ -42,11 +45,11 @@ final class AttributeColumnCategories
         }
 
         // A request without the parent category (a grid inside a record) shows no column.
-        if (! array_key_exists(PresetListFilters::PARENT_CATEGORY, $values)) {
+        if ($module === null || ! array_key_exists(PresetListFilters::PARENT_CATEGORY, $values)) {
             return [];
         }
 
-        $roots = $this->presets->effectiveRootIds($values[PresetListFilters::PARENT_CATEGORY], Auth::user());
+        $roots = $this->presets->effectiveRootIds($values[PresetListFilters::PARENT_CATEGORY], Auth::user(), $module);
 
         return $roots === null ? [] : $this->parentGroup($roots);
     }

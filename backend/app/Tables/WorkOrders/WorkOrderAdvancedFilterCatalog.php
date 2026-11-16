@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\WorkOrders;
 
 use App\Enums\AdvancedFilterType;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\PresetListFilters;
 
 /**
@@ -34,7 +35,7 @@ final class WorkOrderAdvancedFilterCatalog
         return [
             self::teamFilter('supervisors', 3),
             self::teamFilter('participants', 4),
-            PresetListFilters::parentCategoryFilter('workOrders', 5),
+            PresetListFilters::parentCategoryFilter('workOrders', 5, ParentCategoryListModule::WorkOrders),
             PresetListFilters::productCategoryFilter('workOrders', 6),
             self::lookupFilter(self::REGISTRY, 'registry', 7, ['resource' => 'registries']),
         ];

@@ -24,10 +24,10 @@ final class CommercialListFilterApplier
      * @param  CategoryUsageArea|null  $area  spec 0389 rev.2: the module whose roots the category filter lists
      * @return array<int, array<string, mixed>>
      */
-    public function presetFilters(string $labelNamespace, ?CategoryUsageArea $area = null): array
+    public function presetFilters(string $labelNamespace, ParentCategoryListModule $module, ?CategoryUsageArea $area = null): array
     {
         return [
-            PresetListFilters::presetParentCategory(PresetListFilters::parentCategoryFilter($labelNamespace, 0, $area)),
+            PresetListFilters::presetParentCategory(PresetListFilters::parentCategoryFilter($labelNamespace, 0, $module, $area)),
         ];
     }
 
@@ -36,13 +36,13 @@ final class CommercialListFilterApplier
      * @param  Closure(Builder<Model>, array<int, int>): void  $applyCategories
      * @return bool false when $name is not one of these filters
      */
-    public function apply(Builder $query, string $name, mixed $value, ?User $actor, Closure $applyCategories): bool
+    public function apply(Builder $query, string $name, mixed $value, ?User $actor, ParentCategoryListModule $module, Closure $applyCategories): bool
     {
         if ($name !== PresetListFilters::PARENT_CATEGORY && $name !== PresetListFilters::PRODUCT_CATEGORY) {
             return false;
         }
 
-        $categoryIds = $name === PresetListFilters::PARENT_CATEGORY ? $this->presets->branchIds($value, $actor) : PresetListFilters::ids($value);
+        $categoryIds = $name === PresetListFilters::PARENT_CATEGORY ? $this->presets->branchIds($value, $actor, $module) : PresetListFilters::ids($value);
 
         if ($categoryIds !== null && $categoryIds !== []) {
             $applyCategories($query, $categoryIds);

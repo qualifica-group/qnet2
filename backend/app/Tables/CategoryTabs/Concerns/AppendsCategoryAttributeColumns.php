@@ -6,6 +6,7 @@ namespace App\Tables\CategoryTabs\Concerns;
 
 use App\Models\User;
 use App\Tables\RequestManagement\AttributeGridColumns;
+use App\Tables\Shared\PresetListFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -57,12 +58,12 @@ trait AppendsCategoryAttributeColumns
 
     public function scopeAttributeColumnsForRows(array $advancedFilters): void
     {
-        $this->useAttributeCategories($this->columnCategories->fromFilters($advancedFilters), union: true);
+        $this->useAttributeCategories($this->columnCategories->fromFilters($advancedFilters, PresetListFilters::moduleOf($this->inner->advancedFilters())), union: true);
     }
 
     public function scopeAttributeColumnsForConfig(array $advancedFilters): void
     {
-        $this->useAttributeCategories($this->columnCategories->fromFilters($advancedFilters), union: false);
+        $this->useAttributeCategories($this->columnCategories->fromFilters($advancedFilters, PresetListFilters::moduleOf($this->inner->advancedFilters())), union: false);
     }
 
     public function scopeAttributeColumnsForValues(): void

@@ -22,6 +22,7 @@ use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
+use App\Tables\Shared\ParentCategoryListModule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -178,7 +179,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function advancedFilters(): array
     {
-        return [...$this->listFilters->presetFilters('quotes', CategoryUsageArea::Opportunities), ...QuoteAdvancedFilterCatalog::advancedFilters()];
+        return [...$this->listFilters->presetFilters('quotes', ParentCategoryListModule::Quotes, CategoryUsageArea::Opportunities), ...QuoteAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**
@@ -377,7 +378,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             $quotes->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($categoryIds));
         };
 
-        if ($this->listFilters->apply($query, $name, $value, Auth::user(), $applyCategories)) {
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Quotes, $applyCategories)) {
             return true;
         }
 

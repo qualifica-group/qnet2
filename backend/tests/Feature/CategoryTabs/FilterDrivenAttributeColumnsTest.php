@@ -49,13 +49,17 @@ it('lists the effective attributes of the saved parent category, visible and aft
         ->and($response->json('data.attributeCategoryIds'))->toBe([$root->id]);
 });
 
-it('opens on the competence root alone and on none with two roots or a wildcard (AC-003)', function () {
+// REQUIREMENT CHANGED (user directive 2026-11-16): only an actor without viewAll is limited to their competence
+// roots, so only they open on the columns of their single root; an actor with viewAll opens on none.
+it('opens on the competence root alone and on none with two roots, a wildcard or viewAll (AC-003)', function () {
     [$function, $root] = competenceVisibilityCategory();
     [, $second] = competenceVisibilityCategory($function);
     categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'r_field'], $root);
-    $single = competenceVisibilityActor('quotes', ['viewAny', 'viewAll']);
+    $single = competenceVisibilityActor('quotes', ['viewAny', 'viewCompetence']);
     grantCompetence($single, $function, $root);
-    $double = competenceVisibilityActor('quotes', ['viewAny', 'viewAll']);
+    $viewAll = competenceVisibilityActor('quotes', ['viewAny', 'viewAll']);
+    grantCompetence($viewAll, $function, $root);
+    $double = competenceVisibilityActor('quotes', ['viewAny', 'viewCompetence']);
     grantCompetence($double, $function, $root, $second);
     $wildcard = competenceVisibilityActor('quotes', ['viewAny', 'viewAll']);
     grantCompetenceOnAllCategories($wildcard);
@@ -65,7 +69,7 @@ it('opens on the competence root alone and on none with two roots or a wildcard 
     expect(filterDrivenAttrIds($one->json('data.columns')))->toBe(['attr.r_field'])
         ->and($one->json('data.attributeCategoryIds'))->toBe([$root->id]);
 
-    foreach ([$double, $wildcard] as $actor) {
+    foreach ([$double, $wildcard, $viewAll] as $actor) {
         Sanctum::actingAs($actor);
         $none = $this->getJson('/api/tables/quotes/columns?attribute_columns_from_filters=1')->assertOk();
 

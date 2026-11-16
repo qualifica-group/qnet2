@@ -7,6 +7,7 @@ namespace App\Tables\Contracts\Concerns;
 use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\Contracts\ContractAdvancedFilterCatalog;
 use App\Tables\Shared\CommercialListFilterApplier;
+use App\Tables\Shared\ParentCategoryListModule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +24,7 @@ trait HasContractListFilters
      */
     public function advancedFilters(): array
     {
-        return [...app(CommercialListFilterApplier::class)->presetFilters('contracts'), ...ContractAdvancedFilterCatalog::advancedFilters()];
+        return [...app(CommercialListFilterApplier::class)->presetFilters('contracts', ParentCategoryListModule::Contracts), ...ContractAdvancedFilterCatalog::advancedFilters()];
     }
 
     /**
@@ -36,7 +37,7 @@ trait HasContractListFilters
             $contracts->whereIn('contracts.quote_id', RevenueCategoryQuoteIds::subquery($categoryIds));
         };
 
-        return app(CommercialListFilterApplier::class)->apply($query, $name, $value, Auth::user(), $applyCategories)
+        return app(CommercialListFilterApplier::class)->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Contracts, $applyCategories)
             || parent::applyAdvancedFilter($query, $name, $descriptor, $value);
     }
 }

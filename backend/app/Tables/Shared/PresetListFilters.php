@@ -13,8 +13,9 @@ use App\Services\ProductCategories\ProductCategoryForSelectResolver;
 /**
  * The category filters of the record list pages (Commesse, Opportunità,
  * Offerte, Contratti). The "Categoria madre" picker lists only the roots the
- * actor works on (ActorParentCategories, user directive 2026-11-12) and every
- * value is clamped to them on the server, so the picker is never the only guard.
+ * actor works on in that module (ActorParentCategories, user directives
+ * 2026-11-12 and 2026-11-16) and every value is clamped to them on the server,
+ * so the picker is never the only guard.
  *
  * `sendDefault` makes the page send its preset explicitly, so a request that
  * omits it (a grid inside a record, which hides these filters, or an API
@@ -26,7 +27,10 @@ final class PresetListFilters
 
     public const string PRODUCT_CATEGORY = 'product_category';
 
-    /** Source param of the root picker: list only the roots of the actor (ProductCategoryRootForSelectRequest). */
+    /**
+     * Source param of the root picker: list only the roots of the actor in the
+     * module it names (ParentCategoryListModule, ProductCategoryRootForSelectRequest).
+     */
     public const string ACTOR_ROOTS_PARAM = 'actor_roots';
 
     /** Same whereIn cardinality cap as the generic AdvancedFilterApplier. */
@@ -41,9 +45,27 @@ final class PresetListFilters
     /**
      * @return array<string, mixed>
      */
-    public static function parentCategoryFilter(string $labelNamespace, int $order, ?CategoryUsageArea $area = null): array
+    public static function parentCategoryFilter(string $labelNamespace, int $order, ParentCategoryListModule $module, ?CategoryUsageArea $area = null): array
     {
-        return self::categoryFilter(self::PARENT_CATEGORY, "{$labelNamespace}.advancedFilters.parentCategory", $order, ['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, self::ACTOR_ROOTS_PARAM => 1, ...self::areaParam($area)]]);
+        return self::categoryFilter(self::PARENT_CATEGORY, "{$labelNamespace}.advancedFilters.parentCategory", $order, ['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, self::ACTOR_ROOTS_PARAM => $module->value, ...self::areaParam($area)]]);
+    }
+
+    /**
+     * The module named by a parent category descriptor among $descriptors; null when there is none.
+     *
+     * @param  array<int, array<string, mixed>>  $descriptors
+     */
+    public static function moduleOf(array $descriptors): ?ParentCategoryListModule
+    {
+        foreach ($descriptors as $descriptor) {
+            $module = $descriptor['source']['params'][self::ACTOR_ROOTS_PARAM] ?? null;
+
+            if (($descriptor['name'] ?? null) === self::PARENT_CATEGORY && is_string($module)) {
+                return ParentCategoryListModule::tryFrom($module);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -85,10 +107,10 @@ final class PresetListFilters
      *
      * @return array<int, int>|null
      */
-    public function effectiveRootIds(mixed $value, ?User $actor): ?array
+    public function effectiveRootIds(mixed $value, ?User $actor, ParentCategoryListModule $module): ?array
     {
         $rootIds = self::ids($value);
-        $allowedRootIds = $this->actorRoots->rootIdsFor($actor);
+        $allowedRootIds = $this->actorRoots->rootIdsFor($actor, $module);
 
         if ($allowedRootIds !== null) {
             $picked = array_values(array_intersect($this->groups->currentRootIds($rootIds), $allowedRootIds));
@@ -106,9 +128,9 @@ final class PresetListFilters
      *
      * @return array<int, int>|null
      */
-    public function branchIds(mixed $value, ?User $actor): ?array
+    public function branchIds(mixed $value, ?User $actor, ParentCategoryListModule $module): ?array
     {
-        $rootIds = $this->effectiveRootIds($value, $actor);
+        $rootIds = $this->effectiveRootIds($value, $actor, $module);
 
         if ($rootIds === null) {
             return null;

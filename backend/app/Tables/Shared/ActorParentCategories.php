@@ -9,14 +9,17 @@ use App\Products\ProductCategoryBranches;
 use App\Services\Assignment\ActorCompetenceReach;
 
 /**
- * The parent categories ("Categoria madre") an actor works on, read from their
- * assignment competence (user directive 2026-11-12): an actor whose competence
- * covers every category has no limit, any other actor is limited to the roots
- * their competence touches, a linked legacy root counted as its current one.
+ * The parent categories ("Categoria madre") an actor works on in a list page.
+ * An actor allowed to see every record of the module (`<module>.viewAll`) has
+ * no limit, whatever their competence (user directive 2026-11-16: an admin
+ * with an ISO competence still sees every parent category). Otherwise the
+ * assignment competence decides (user directive 2026-11-12): competence on
+ * every category means no limit, any other competence limits the actor to the
+ * roots it touches, a linked legacy root counted as its current one.
  *
  * An actor with no competence at all has no limit either: the competence is an
- * opt-in configuration, and an unconfigured actor (a super-admin, a newly
- * created user) must still see the records their visibility scope grants.
+ * opt-in configuration, and an unconfigured actor (a newly created user) must
+ * still see the records their visibility scope grants.
  */
 final class ActorParentCategories
 {
@@ -30,11 +33,15 @@ final class ActorParentCategories
      *
      * @return array<int, int>|null
      */
-    public function rootIdsFor(?User $actor): ?array
+    public function rootIdsFor(?User $actor, ParentCategoryListModule $module): ?array
     {
-        $reach = $actor === null ? null : ActorCompetenceReach::for($actor);
+        if ($actor === null || $actor->can($module->viewAllPermission())) {
+            return null;
+        }
 
-        if ($reach === null || $reach->all || $reach->isEmpty()) {
+        $reach = ActorCompetenceReach::for($actor);
+
+        if ($reach->all || $reach->isEmpty()) {
             return null;
         }
 

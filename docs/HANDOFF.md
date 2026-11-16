@@ -29,6 +29,27 @@
   ridotto; table/tasks/projects 121 file/1041 test, help+i18n 50/405 verdi; ESLint e `tsc -b --force` puliti.
   Manuale: guida in-app `general` IT/EN e manuale Claude Docs (tabella strumenti elenchi: Cerca, Filtri avanzati).
 
+## Categoria madre: chi ha `<modulo>.viewAll` non e' limitato dalla competenza (2026-11-16) — VERDE, COMMITTATO
+
+- Segnalazione: Annarita Palumbo (id 162, ruolo admin, competenza solo funzione ISO) vedeva solo ISO tra le categorie madri
+  di Commesse e, col filtro vuoto, solo le commesse ISO. Direttiva utente: il limite va deciso anche dai permessi.
+- Regola nuova (`Tables\Shared\ActorParentCategories::rootIdsFor($actor, ParentCategoryListModule $module)`): con
+  `<modulo>.viewAll` nessun limite; senza, la competenza come prima (tutto/nessuna = nessun limite). Per modulo, perche'
+  i ruoli differiscono (es. `commerciale-senior` ha viewAll su quotes/opportunities/work-orders ma non contracts).
+- Nuovo enum `Tables\Shared\ParentCategoryListModule` (work-orders, contracts, quotes, opportunities). Il modulo viaggia nel
+  descrittore: `actor_roots` ora vale la chiave del modulo (prima `1`), validato con `Rule::enum` in
+  `ProductCategoryRootForSelectRequest::actorRootsModule()`. Firme cambiate: `PresetListFilters::parentCategoryFilter(.., $module, $area)`,
+  `effectiveRootIds`/`branchIds(.., $module)`, `CommercialListFilterApplier::presetFilters/apply(.., $module, ..)`,
+  `AttributeColumnCategories::fromFilters($values, ?$module)` (modulo letto con `PresetListFilters::moduleOf($inner->advancedFilters())`).
+  `TableFilterStateService` legge il modulo dal descrittore.
+- Test (REQUIREMENT CHANGED dichiarati in testa ai file): WorkOrderListFiltersTest (attore limitato ora senza viewAll +
+  nuovo caso viewAll), CommercialListFiltersTest (idem x3 moduli), FilterDrivenAttributeColumnsTest e
+  LinkedCategoriesAttributeColumnsTest (apertura sulle colonne della competenza solo senza viewAll). Guide IT/EN dei 4
+  moduli e manuale Claude Docs (paragrafi Opportunita' e Commesse; Offerte/Contratti rimandano) aggiornati.
+- Suite completa (`COMPOSER_PROCESS_TIMEOUT=0`, serve: `composer test` va in timeout a 300 s): 15082 test, 26 rossi
+  in 18 file (AiAssistant, ApiDocsDescriptions, QuoteDocumentPdf, ManagementControl, AgentSalesReport, ...), gli stessi identici
+  sul codice senza questa modifica (verificato con stash): preesistenti. `tsc -b --force` pulito.
+
 ## Finestra "Programma" del contratto: nomi interi, ricerca, filtro categoria, piu' larga — VERDE MIRATO, COMMITTATO (2026-11-16)
 
 - Il punto segnalato (GEMA QUO-0015, servizi "... EN ISO 39001:2012 _ 1°/2°/3° Anno") era la tabella "Righe

@@ -6,6 +6,7 @@ use App\Enums\WorkOrderType;
 use App\Models\ProductCategory;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Tables\Shared\ParentCategoryListModule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
@@ -16,6 +17,8 @@ use Laravel\Sanctum\Sanctum;
 // visibility scope alone decides which commesse an actor sees; "Categoria madre"
 // lists and accepts only the parent categories the actor is enabled on; (later the same day) it starts empty,
 // and empty means every parent category of the actor.
+// REQUIREMENT CHANGED (user directive 2026-11-16): an actor with `work-orders.viewAll` is never limited by the
+// competence (an admin with an ISO competence still sees every parent category); the limit applies only without it.
 
 uses(RefreshDatabase::class);
 
@@ -44,11 +47,12 @@ function personalViewOff(): array
 }
 
 /**
- * An actor limited to the parent category $root through a competence on one of its children.
+ * An actor limited to the parent category $root through a competence on one of its children:
+ * without `work-orders.viewAll`, which lifts the limit.
  *
  * @return array{0: User, 1: ProductCategory}
  */
-function commesseLimitedActor(bool $viewAll = true): array
+function commesseLimitedActor(bool $viewAll = false): array
 {
     $actor = categoryTabGridActor('work-orders', viewAll: $viewAll);
     [$function, $root] = competenceVisibilityCategory();
@@ -69,7 +73,7 @@ it('offers the parent category preset with the other filters, without an assignm
     expect($filters->pluck('name')->all())->toBe(['supervisors', 'participants', 'parent_category', 'product_category', 'registry'])
         ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['type' => 'relation', 'multiple' => true, 'required' => false, 'sendDefault' => true, 'defaultValue' => []])
         // REQUIREMENT CHANGED (spec 0374 rev.3, D-12): the picker hides the linked legacy roots; (2026-11-12) and lists the actor's roots only.
-        ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, 'actor_roots' => 1]]);
+        ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, 'actor_roots' => ParentCategoryListModule::WorkOrders->value]]);
 });
 
 it('does not narrow a request that omits the presets, as the grids inside a record and API clients do', function () {
@@ -114,7 +118,10 @@ it('limits an actor enabled on some parent categories to the whole branch of tho
     [$actor, $root] = commesseLimitedActor();
     $inBranch = categoryTabWorkOrder([ProductCategory::factory()->create(['parent_id' => $root->id])]);
     $foreignRoot = ProductCategory::factory()->create();
-    categoryTabWorkOrder([$foreignRoot]);
+    $foreign = categoryTabWorkOrder([$foreignRoot]);
+    // Without viewAll the actor sees only the commesse where they hold a role: both, so only the category limit narrows.
+    $inBranch->supervisors()->attach($actor->id);
+    $foreign->supervisors()->attach($actor->id);
     Sanctum::actingAs($actor);
 
     expect(commessePageIds(['parent_category' => []]))->toBe([$inBranch->id])
@@ -122,6 +129,21 @@ it('limits an actor enabled on some parent categories to the whole branch of tho
         ->and(commessePageIds(['parent_category' => [0]]))->toBe([$inBranch->id])
         ->and(commessePageIds(['parent_category' => [$foreignRoot->id]]))->toBe([$inBranch->id])
         ->and(commessePageIds(['parent_category' => [$root->id, $foreignRoot->id]]))->toBe([$inBranch->id]);
+});
+
+it('does not limit an actor with viewAll, whatever their competence', function () {
+    [$actor, $root] = commesseLimitedActor(viewAll: true);
+    $inBranch = categoryTabWorkOrder([ProductCategory::factory()->create(['parent_id' => $root->id])]);
+    $foreignRoot = ProductCategory::factory()->create();
+    $foreign = categoryTabWorkOrder([$foreignRoot]);
+    Sanctum::actingAs($actor);
+    $pickerIds = collect($this->getJson('/api/product-category-roots/for-select?actor_roots=work-orders')->assertOk()->json('items'))->pluck('id')->all();
+    categoryTabSaveFilters('work-orders', ['parent_category' => [$foreignRoot->id]])->assertOk();
+
+    expect(commessePageIds(['parent_category' => []]))->toBe([$inBranch->id, $foreign->id])
+        ->and(commessePageIds(['parent_category' => [$foreignRoot->id]]))->toBe([$foreign->id])
+        ->and($pickerIds)->toContain($root->id, $foreignRoot->id)
+        ->and($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.appliedAdvancedFilters'))->toBe(['parent_category' => [$foreignRoot->id]]);
 });
 
 it('does not limit an actor enabled on every category', function () {
@@ -140,7 +162,7 @@ it('does not limit an actor enabled on every category', function () {
 it('lists in the parent picker only the roots of a limited actor, and "Tutte" to nobody', function () {
     [$actor, $root] = commesseLimitedActor();
     $foreignRoot = ProductCategory::factory()->create();
-    $ids = fn (string $query = ''): array => collect($this->getJson("/api/product-category-roots/for-select?actor_roots=1{$query}")->assertOk()->json('items'))->pluck('id')->all();
+    $ids = fn (string $query = ''): array => collect($this->getJson("/api/product-category-roots/for-select?actor_roots=work-orders{$query}")->assertOk()->json('items'))->pluck('id')->all();
 
     Sanctum::actingAs($actor);
     expect($ids())->toBe([$root->id]);

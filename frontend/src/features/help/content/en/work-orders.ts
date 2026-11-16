@@ -93,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The categories you are enabled on are the competence categories of your profile (the assignment scope). If you have no competence categories **Parent category** limits nothing. The filters never widen what your profile can see.",
+          text: "If you may see everything (for example with the admin role) you are enabled on every parent category, whatever your competence. Otherwise the categories you are enabled on are the competence categories of your profile (the assignment scope); if you have no competence categories **Parent category** limits nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',

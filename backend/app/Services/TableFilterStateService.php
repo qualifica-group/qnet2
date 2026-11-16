@@ -7,6 +7,7 @@ use App\Models\UserTableFilter;
 use App\Services\ProductCategories\ProductCategoryForSelectResolver;
 use App\Tables\Shared\ActorParentCategories;
 use App\Tables\Shared\LinkedCategoryGroups;
+use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\PresetListFilters;
 use App\Tables\TableDefinition;
 
@@ -73,8 +74,6 @@ class TableFilterStateService
      */
     private function currentRootsOf(TableDefinition $definition, User $actor, array $advanced): array
     {
-        $allowedRootIds = $this->actorRoots->rootIdsFor($actor);
-
         foreach ($definition->advancedFilters() as $descriptor) {
             $name = $descriptor['name'];
             $params = $descriptor['source']['params'] ?? [];
@@ -85,10 +84,13 @@ class TableFilterStateService
 
             $advanced[$name] = $this->groups->currentRootIds(PresetListFilters::ids($advanced[$name]));
 
-            if (($params[PresetListFilters::ACTOR_ROOTS_PARAM] ?? null) === null) {
+            $module = ParentCategoryListModule::tryFrom((string) ($params[PresetListFilters::ACTOR_ROOTS_PARAM] ?? ''));
+
+            if ($module === null) {
                 continue;
             }
 
+            $allowedRootIds = $this->actorRoots->rootIdsFor($actor, $module);
             $advanced[$name] = $allowedRootIds === null
                 ? array_values(array_diff($advanced[$name], [ProductCategoryForSelectResolver::ALL_ROOTS_ID]))
                 : array_values(array_intersect($advanced[$name], $allowedRootIds));
