@@ -19,6 +19,18 @@ import type { TableConfig } from '@/features/table/types'
 /** Stable empty column list (hoisted per `frontend.md §10`: never `?? []` inline). */
 const EMPTY_COLUMNS: TableConfig['columns'] = []
 
+/** The legacy-system id column the backend adds to every migrated table (`InjectsDefaultIdColumn`). */
+const LEGACY_ID_COLUMN_ID = 'old_id'
+
+/**
+ * The searchable columns named in the search placeholder. The legacy id stays
+ * searchable but is left out of the hint: it is a lookup for the few who know
+ * an old-system id, and it lengthened every table's placeholder.
+ */
+export function searchPlaceholderColumnIds(searchable: string[]): string[] {
+  return searchable.filter((id) => id !== LEGACY_ID_COLUMN_ID)
+}
+
 export interface UseTableViewFiltersStateArgs extends RowActionsOptions {
   domain: string
   scope?: TableConfigScope
@@ -169,7 +181,7 @@ export function useTableViewFiltersState(
     if (!config || searchable.length === 0) {
       return t('table.search')
     }
-    const labels = searchable
+    const labels = searchPlaceholderColumnIds(searchable)
       .map((id) => config.columns.find((column) => column.id === id))
       .filter((column): column is NonNullable<typeof column> => Boolean(column))
       .map((column) => t(column.label))

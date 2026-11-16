@@ -7,6 +7,7 @@ import { createSsrmDatasource, type SsrmDatasource } from '@/features/table/ssrm
 import { useTableToolbarState, type TableToolbarState } from '@/features/table/use-table-toolbar-state'
 import { useTableLocalFilters } from '@/features/table/use-table-local-filters'
 import { useTablePositionStore } from '@/features/table/table-position-store'
+import { useAdvancedFiltersOpenKey } from '@/features/table/table-advanced-filters-open-storage'
 import type { GridPositionStore } from '@/components/data-table/grid-position'
 import type { TableConfigScope } from '@/features/table/use-table-config'
 import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
@@ -202,11 +203,13 @@ export function useTableViewGridState(
   // Client-only toolbar state (search term + ⌘K, floating filters, fullscreen,
   // live row count), owned by a dedicated hook so this component stays a thin
   // orchestrator (engineering.md §6).
+  const advancedFiltersOpenKey = useAdvancedFiltersOpenKey(domain)
   const toolbar = useTableToolbarState({
     gridApi,
     searchEnabled,
     initialSearch: localFilters.initial.search,
     searchMinLength: config?.searchMinLength,
+    advancedFiltersOpenKey,
   })
 
   // Feeds the toolbar's own "N rows" counter AND, additively, the caller's

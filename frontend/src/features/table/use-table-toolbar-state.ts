@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GridApi } from 'ag-grid-community'
+import { readAdvancedFiltersOpen, writeAdvancedFiltersOpen } from '@/features/table/table-advanced-filters-open-storage'
 
 /** Debounce window for firing a server-side reload after the user stops typing. */
 const SEARCH_DEBOUNCE_MS = 350
@@ -26,6 +27,8 @@ interface UseTableToolbarStateArgs {
   initialSearch?: string
   /** Shortest term sent to the server (config `searchMinLength`, spec 0179). */
   searchMinLength?: number
+  /** Where the advanced-filters panel's open state is kept; null keeps it for this mount only. */
+  advancedFiltersOpenKey?: string | null
 }
 
 export interface TableToolbarState {
@@ -44,7 +47,7 @@ export interface TableToolbarState {
   searchShortcut: string
   /** Reads the applied (debounced, trimmed) term — passed to the datasource. */
   getSearchTerm: () => string
-  /** Whether the advanced-filters panel (spec 0032) is shown/hidden. */
+  /** Whether the advanced-filters panel (spec 0032) is shown: closed by default, then as the user left it. */
   advancedFiltersOpen: boolean
   toggleAdvancedFilters: () => void
 }
@@ -65,11 +68,18 @@ export function useTableToolbarState({
   searchEnabled,
   initialSearch = '',
   searchMinLength = 1,
+  advancedFiltersOpenKey = null,
 }: UseTableToolbarStateArgs): TableToolbarState {
   const [fullscreen, setFullscreen] = useState(false)
   const [rowCount, setRowCount] = useState<number | null>(null)
   const [searchInput, setSearchInput] = useState(initialSearch)
-  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false)
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(() => readAdvancedFiltersOpen(advancedFiltersOpenKey))
+  // Re-read when the key changes (the signed-in user arrives, another domain mounts here).
+  const [openStateKey, setOpenStateKey] = useState(advancedFiltersOpenKey)
+  if (openStateKey !== advancedFiltersOpenKey) {
+    setOpenStateKey(advancedFiltersOpenKey)
+    setAdvancedFiltersOpen(readAdvancedFiltersOpen(advancedFiltersOpenKey))
+  }
 
   const searchTermRef = useRef(initialSearch.trim())
   // Read by getSearchTerm at request time: the config (and so the minimum)
@@ -144,10 +154,11 @@ export function useTableToolbarState({
     () => appliedSearchTerm(searchTermRef.current, searchMinLengthRef.current),
     [],
   )
-  const toggleAdvancedFilters = useCallback(
-    () => setAdvancedFiltersOpen((value) => !value),
-    [],
-  )
+  const toggleAdvancedFilters = useCallback(() => {
+    const next = !advancedFiltersOpen
+    setAdvancedFiltersOpen(next)
+    writeAdvancedFiltersOpen(advancedFiltersOpenKey, next)
+  }, [advancedFiltersOpen, advancedFiltersOpenKey])
 
   return {
     fullscreen,

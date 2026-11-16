@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ricerca, filtri avanzati e filtri salvati sopra la tabella, pannello aperto ricordato — VERDE MIRATO, COMMITTATO (2026-11-16)
+
+- Ogni tabella `TableView` (tutte le AG Grid con ricerca/filtri avanzati) ha ora un blocco separato SOPRA la card
+  della griglia: `table-filter-bar.tsx` (`TableFilterBar`: campo Cerca + pulsante "Filtri avanzati" con badge +
+  pannello `AdvancedFilterPanel` collassabile). Nessun blocco se il dominio non ha ne' ricerca ne' filtri avanzati.
+  `SEARCH_MAX_LENGTH` si e' spostato da `table-toolbar.tsx` a `table-filter-bar.tsx`.
+- `TableToolbar` dentro la card tiene solo conteggio righe, azioni bulk, Azzera filtri, opzioni, schermo intero
+  (props search*/advancedFilters*/savedViewsSlot rimosse).
+- Anche "Filtri salvati" e' nella barra sopra (`savedViewsSlot` passato a `TableFilterBar`); il trigger di
+  `FilterViewsControl` e' ora un pulsante outline con etichetta + contatore viste (prima icona ghost con tooltip),
+  come "Filtri avanzati". La barra quindi compare su ogni `TableView`. Layout: Cerca a sinistra, i due pulsanti
+  raggruppati a destra (`ml-auto`); menu Filtri salvati `align="end"`.
+- Placeholder di Cerca senza "ID legacy": `searchPlaceholderColumnIds` (in `use-table-view-filters-state.ts`)
+  esclude `old_id` dalle etichette; la colonna resta ricercabile (backend `InjectsDefaultIdColumn` invariato).
+  Test: `use-table-view-filters-state.test.ts` (nuovo).
+- Stato aperto: chiuso di default; aperto -> salvato in localStorage `table-advanced-filters-open:<userId>:<domain>`
+  (`table-advanced-filters-open-storage.ts`, chiuso = chiave rimossa). `useTableToolbarState` riceve
+  `advancedFiltersOpenKey` (da `useAdvancedFiltersOpenKey(domain)` in `use-table-view-grid-state.ts`).
+- `AdvancedFilterPanel` accetta `className` (la barra lo usa per `border-b-0 border-t`). La riga Azzera/Applica passa
+  da `bg-muted` (79, quasi uguale al body 81) a `bg-surface` (90 light / 16 dark): vale anche per Kanban e Progetti.
+- Fuori scope, invariati: Kanban attivita' e griglia card Progetti (non AG Grid, gia' con barra propria, stato non
+  persistito).
+- Test: `table-filter-bar.test.tsx` (nuovo), 4 casi persistenza in `use-table-toolbar-state.test.ts`, toolbar test
+  ridotto; table/tasks/projects 121 file/1041 test, help+i18n 50/405 verdi; ESLint e `tsc -b --force` puliti.
+  Manuale: guida in-app `general` IT/EN e manuale Claude Docs (tabella strumenti elenchi: Cerca, Filtri avanzati).
+
 ## Finestra "Programma" del contratto: nomi interi, ricerca, filtro categoria, piu' larga — VERDE MIRATO, COMMITTATO (2026-11-16)
 
 - Il punto segnalato (GEMA QUO-0015, servizi "... EN ISO 39001:2012 _ 1°/2°/3° Anno") era la tabella "Righe
