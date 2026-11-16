@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'line_linked_to_order' => 'The line is linked to a purchase order: its status is driven by the order.',
+    'line_linked_to_order' => 'The line is linked to a purchase order: its status follows the order. Register the receipt on the order to mark it as received, or cancel the order to release it.',
     'reason_required' => 'A reason is required for this status change.',
     'status_change_not_allowed' => 'This status change is not allowed for the line.',
     'supplier_required' => 'A supplier is required to mark the line as ordered.',

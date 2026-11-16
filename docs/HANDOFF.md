@@ -10,6 +10,15 @@
 - Verifica: Pest `tests/Feature/ProformaRequests` 27/27, Pint, Vitest help + proforma-requests 162/162, ESLint, `tsc -b --force` puliti. Non provato nel browser, suite completa non eseguita.
 - Guide IT/EN `proforma-requests` (tabella colonne) aggiornate. DA FARE: manuale Claude Docs (il connettore ha negato l'accesso al documento in questa sessione) — aggiungere la riga "Partita IVA cliente" nella tabella colonne di Richieste Proforma, poi rigenerare il PDF.
 
+## Cambio stato riga RDA collegata a ODA: avviso con link all'ordine (2026-11-16) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+
+- Richiesta utente: portando da Ordinato a Ricevuto una riga RDA con ODA emesso il messaggio non diceva cosa fare. Regola invariata (spec 0245 D-8, 0254 D-7: lo stato lo governa l'ODA); cambia solo la presentazione.
+- Frontend: `drivingOrders()` in `line-status-transitions.ts` (righe `ordered`/`received` con `purchase_order` valorizzato); nuovo `line-status-order-notice.tsx`; `LineStatusDialog` mostra l'avviso con `OdaLink` al posto delle opzioni e disabilita la conferma. Chiavi i18n `purchaseRequests.statusDialog.orderDriven` / `orderDrivenOpen` (IT+EN).
+- Backend: solo testo di `purchase_request_lines.line_linked_to_order` (IT+EN), stessa chiave, nessun cambio di contratto.
+- Guide in-app `purchase-requests` e `purchase-request-lines` IT+EN aggiornate. **Manuale Claude Docs NON aggiornato** (documento non raggiungibile dalla sessione): va aggiunta la stessa frase nella sezione RDA, "Cambia stato della riga".
+- Verifica: `line-status-dialog.test.tsx`, `line-status-transitions.test.ts` e `features/help` (182 test) verdi; `PurchaseRequestLineOrderLinkGuardTest` 4/4; ESLint, Pint, `tsc -b --force` puliti. Suite completa non eseguita.
+- Da segnalare (fuori scope): la guida `purchase-request-lines` dice che le righe diventano Ricevute "quando l'ODA è Evasa"; in realta' il passaggio e' per riga, appena la singola riga ODA e' completa.
+
 ## Chi vede la commessa vede i suoi task (spec 0379) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 
 - Segnalazione: Noemi Nigliato, Responsabile di COM-20053, vedeva 0 task su 18 nel task board. I task migrati hanno solo creatore/richiedente (in produzione 341.345 task di commessa su 375.342 senza assegnatari), e nessun tier li raggiungeva.

@@ -154,6 +154,23 @@ export function sharedRequest(targets: readonly LineTarget[]): { id: number; sub
     : null
 }
 
+/** Statuses the purchase order owns once the line is linked to it (spec 0245 D-8). */
+const ORDER_DRIVEN_STATUSES: readonly LineStatus[] = ['ordered', 'received']
+
+/**
+ * The orders that own the status of some selected line: the server refuses any
+ * change on such a line (422), so the dialog sends the user to the order instead.
+ */
+export function drivingOrders(targets: readonly LineTarget[]): PurchaseOrderRef[] {
+  const orders = new Map<number, PurchaseOrderRef>()
+  for (const target of targets) {
+    if (target.purchaseOrder !== null && target.status !== null && ORDER_DRIVEN_STATUSES.includes(target.status)) {
+      orders.set(target.purchaseOrder.id, target.purchaseOrder)
+    }
+  }
+  return [...orders.values()]
+}
+
 /** Status that needs a supplier on every line (spec 0209 D-2). */
 export const SUPPLIER_REQUIRED_STATUS: LineStatus = 'ordered'
 
