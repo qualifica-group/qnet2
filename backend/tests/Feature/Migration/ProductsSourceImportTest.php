@@ -176,7 +176,7 @@ it('maps the legacy folder onto the product typology by name, case-insensitively
     Http::fake([
         fakeMigrationsBaseUrl().'/products*' => Http::response([
             'items' => [
-                ['id' => 1, 'name' => 'Consulting', 'category_id' => 5, 'folder' => 'Consulenza'],
+                ['id' => 1, 'name' => 'Consulting', 'category_id' => 5, 'folder' => 'consulenza'],
                 ['id' => 2, 'name' => 'Certification', 'category_id' => 5, 'folder' => ' ente '],
             ],
             'pagination' => ['total' => 2],

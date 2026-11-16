@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Prodotti: "Seleziona un valore valido" sul campo Cartella dei prodotti migrati (2026-11-16) — VERDE MIRATO, COMMITTATO (qnet-2 + legacy)
+
+- Causa: il legacy `ProductMigrationController` inviava `folder` come etichetta (`Consulenza`/`Ente`); la persistenza generica dei campi custom della migrazione la salvava cosi' com'era, mentre le opzioni del campo enum `folder` (QualificaTemplateSeeder) hanno valore `consulenza`/`ente`. Lo schema Zod del form prodotto rifiutava ogni salvataggio (es. prodotto 2211 su prod).
+- Fix legacy (`../qnet`): `folder` ora e' il valore dell'opzione (`consulenza`/`ente`); la tipologia prodotto in `ProductsSource::resolveTypology` matcha per nome case-insensitive, invariata. Verificato con tinker sui dati reali.
+- Riparazione dati qnet-2: migrazione `2026_12_16_100000_normalize_enum_custom_field_values_to_option_values` (generica su tutti i campi enum, singoli e multiselect: valore non valido che coincide case-insensitive con valore o etichetta di un'opzione -> valore dell'opzione; `down()` no-op). Test `tests/Feature/CustomFields/NormalizeEnumCustomFieldValuesMigrationTest.php`; fixture `ProductsSourceImportTest` allineata al nuovo contratto (`consulenza`). Applicata su qnet2 locale con `--path` (1.462 righe corrette); su prod gira al deploy.
+- Manuale: nessun impatto.
+
 ## Offerta: trasferimento ad altra anagrafica + obbligo di trasferimento contatto prima del contratto (spec 0404 parti B e C, 2026-11-16) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER, MIGRAZIONI NON LANCIATE SU qnet2
 
 - Richiesta utente 2026-11-16 (sessione qnet-2-89, in parallelo alla parte A di qnet-2-03). Decisioni di esecuzione in spec 0404 C-D4 e B-D7.
