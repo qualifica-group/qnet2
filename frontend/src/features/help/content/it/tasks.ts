@@ -249,7 +249,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un **task di commessa senza assegnatari** può essere completato da un **Responsabile** o da un **Partecipante** della commessa, anche se non ne è assegnatario. Completandolo ne diventi **assegnatario** e da lì valgono le regole di sempre: se il task richiede la validazione va in validazione, il segnatempo è registrato a tuo nome e la commessa avanza come per gli altri task. Prima di completarlo non puoi modificarlo. Se il task ha già un assegnatario, vale solo quello.',
+          text: 'Un **task di commessa** può essere completato da un **Responsabile** o da un **Partecipante** della commessa anche se non ne è assegnatario, sia quando il task non ha assegnatari sia quando è già assegnato a un collega. Lo completi **a tuo nome**: diventi uno dei suoi **assegnatari** (gli assegnatari già presenti restano e ricevono la notifica di chiusura) e da lì valgono le regole di sempre: se il task richiede la validazione va in validazione, il segnatempo è registrato a tuo nome e la commessa avanza come per gli altri task. Se lasci attivo **Registra il segnatempo per tutti gli assegnatari**, lo stesso tempo va anche ai colleghi assegnati: per registrarlo solo a te, disattivala. Prima di completarlo non puoi modificarlo.',
         },
       ],
     },

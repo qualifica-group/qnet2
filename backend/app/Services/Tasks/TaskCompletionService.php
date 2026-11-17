@@ -231,7 +231,8 @@ final class TaskCompletionService
 
     /**
      * Spec 0387: a Responsabile/Partecipante of the commessa completing a
-     * Task with no assignee becomes its assignee BEFORE the percorso is derived, so the
+     * Task (with or without assignees, rev.2) joins its assignees BEFORE
+     * the percorso is derived, so the
      * rest of complete() (validation, segnatempo, notifications) treats them
      * exactly as an assignee. Inside the transaction: a later guard rolls
      * the assignment back with the completion. An actor who may already

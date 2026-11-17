@@ -246,7 +246,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A **work order task with no assignees** can be completed by a **Supervisor** or a **Participant** of the work order, even without being its assignee. Completing it makes you its **assignee**, and from then on the usual rules apply: if the task requires validation it goes into validation, the time entry is logged in your name and the work order advances as with the other tasks. Before completing it you cannot edit it. If the task already has an assignee, only that assignee counts.',
+          text: 'A **work order task** can be completed by a **Supervisor** or a **Participant** of the work order even without being its assignee, both when the task has no assignees and when it is already assigned to a colleague. You complete it **in your own name**: you become one of its **assignees** (the existing assignees stay and receive the closing notification), and from then on the usual rules apply: if the task requires validation it goes into validation, the time entry is logged in your name and the work order advances as with the other tasks. If you leave **Log the time entry for all assignees** on, the same time also goes to the assigned colleagues: to log it only for you, turn it off. Before completing it you cannot edit it.',
         },
       ],
     },

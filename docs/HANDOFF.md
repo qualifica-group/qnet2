@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Task di commessa: Responsabile/Partecipante chiudono a loro nome anche i task gia' assegnati (decisione utente 2026-11-17) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+
+- Segnalazione: Raffaele Distico (Partecipante di COM-20355, /work-orders/16609) non poteva chiudere i task assegnati alla Responsabile Gessica Crispo: la regola 0387 valeva solo per i task senza assegnatari.
+- BE: `TaskRecordRoles::isWorkOrderMemberClaimant` non richiede piu' "nessun assegnatario" (basta `work_order_id` + attore in `work_order_participant`/`work_order_supervisor`). `TaskCompletionService::claimForWorkOrderMember` invariato: l'attore entra tra gli assegnatari, quelli presenti restano e ricevono la notifica di chiusura (assegnatari > 1). Riaprire e segnatempo sul task seguono `canComplete` (stessa riga, spec 0116).
+- Spec 0387 rev.2 (D-6, AC-003 riletto, AC-007). Test `TaskWorkOrderParticipantClaimTest` (AC-003 REQUIREMENT CHANGED, nuovo AC-007): Tasks+WorkOrders+TimeEntries 1.430 verdi; Pint ok. Guide `tasks` IT/EN aggiornate (le frasi di `work-orders` sono finite nel commit c137a4f4e), help 161 verdi; manuale Claude Docs aggiornato. Nessun cambio FE: i flag `complete` arrivano dal backend.
+
 ## Commessa: badge tipologia (Consulenza/Ente) sulla dicitura "Stato pagamento" di ogni prodotto + colonna griglia "Stato pagamento" (decisioni utente 2026-11-17) — VERDE MIRATO, NON PROVATO NEL BROWSER
 
 - FE: nuovo `PaymentStatusFieldLabel` (`contract-data-cells.tsx`) = "Stato Pagamento" + `ProductTypologyBadge`; usato in `ContractDataLineFields` (vista completa) e in `WorkOrderLinesList` (vista senza costi). Badge TOLTO dal Titolo (`ProductCell`). Senza tipologia legge "Consulenza" (come prima nel titolo, spec 0202 D-8). `RecordField.label` ora `ReactNode` (era `string`).
