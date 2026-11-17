@@ -206,6 +206,7 @@ export const table = {
     editRules: 'Modifica regole',
     rulesViewIndicator: 'Filtro personalizzato',
     unnamed: 'Filtro personalizzato',
+    applyWithoutSaving: 'Applica senza salvare',
     favoriteError: 'Impossibile aggiornare i preferiti.',
     activeFiltersLabel: 'Filtri attivi',
     removeChip: 'Rimuovi {{label}}',

@@ -206,6 +206,7 @@ export const table = {
     editRules: 'Edit rules',
     rulesViewIndicator: 'Custom filter',
     unnamed: 'Custom filter',
+    applyWithoutSaving: 'Apply without saving',
     favoriteError: 'Unable to update favorites.',
     activeFiltersLabel: 'Active filters',
     removeChip: 'Remove {{label}}',
