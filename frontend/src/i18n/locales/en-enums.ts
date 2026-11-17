@@ -211,6 +211,12 @@ export const enums = {
     cancelled: 'Cancelled',
     terminated: 'Terminated',
   },
+  // Work order proforma state (spec 0407), filter values of the "€" column.
+  work_order_proforma_status: {
+    none: 'Not requested',
+    pending: 'Requested',
+    issued: 'Issued',
+  },
   // Task table advanced filters (spec 0147), as on the work order board.
   task_list_status: {
     open: 'Open',

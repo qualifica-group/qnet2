@@ -12,7 +12,7 @@
     D-4 Dialog Responsabili e Partecipanti: legge il dettaglio della commessa e mostra il blocco Team gia' esistente (stesse regole di modifica in linea e permessi di campo del dettaglio, PATCH `supervisor_ids`/`participant_slots`); in fondo "Richiesta Proforma" (stesso dialog dell'intestazione del dettaglio, con `permissions.actions.request_proforma`) e "Chiudi". La voce legacy "Assegna Task a questo responsabile" non e' replicata: in qnet-2 l'assegnazione massiva sta nella barra di selezione della scheda Task.
     D-5 Escono dalla riga: proforma "€", Avanzamento, Richiedi aggiornamento, Chiusura forzata/Riapri, Attivita', Elimina. Proforma, Avanzamento, Richiedi aggiornamento e Chiusura forzata restano nell'intestazione del dettaglio; Attivita' resta come scheda del dettaglio; l'avanzamento resta apribile anche dalla cella Completamento della griglia. `delete` resta nel catalogo SOLO perche' abilita "Elimina selezionati" (eliminazione in blocco, autorizzata per riga dal server) ma non e' piu' offerto sulla singola riga.
     D-6 Apertura su una scheda: `useModuleOpener` espone `openViewTab(row, tab)`; in modalita' pagina naviga a `/work-orders/{id}?tab=...`, nello Sheet passa `initialTab` al `DetailScreen` (prop opzionale, ignorata dagli altri moduli). Una scheda dentro un gruppo (es. `documents` nel gruppo Documenti) apre il gruppo; una scheda non visibile ricade su Info.
-    D-7 La riga della griglia non porta piu' `proforma_status` (serviva solo all'azione "€").
+    D-7 La riga della griglia non porta piu' `proforma_status` (serviva solo all'azione "€"). SUPERATA dalla spec 0407 (2026-11-17): `proforma_status` torna come colonna "€".
   </context>
 
   <data_contract>

@@ -19,6 +19,7 @@ use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
+use App\Tables\WorkOrders\WorkOrderProformaStatusColumn;
 use App\Tables\WorkOrders\WorkOrderRenewalColumn;
 use App\Tables\WorkOrders\WorkOrderWorkflowStatusColumn;
 use App\Tables\WorkOrders\WorkOrderWorkPhaseColumn;
@@ -66,6 +67,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderRenewalColumn $renewalColumn,
         private readonly WorkOrderAdvancedFilterApplier $advancedFilterApplier,
         private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
+        private readonly WorkOrderProformaStatusColumn $proformaStatusColumn,
     ) {}
 
     /**
@@ -132,6 +134,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // Spec 0363: badges of the `documents` and `notes` row actions.
         $query->withCount([...DocumentsCountColumn::own(), 'notes']);
 
+        // Spec 0407: the "€" state, only for the actors who see that column.
+        if (WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())) {
+            $this->proformaStatusColumn->withFlags($query);
+        }
+
         return WorkOrderVisibilityScope::scopeToActor($query, Auth::user());
     }
 
@@ -140,7 +147,10 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function columns(): array
     {
-        return WorkOrderColumnCatalog::columns();
+        // Spec 0407: without the "€" column the actor can neither sort nor filter by it.
+        return WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())
+            ? [...WorkOrderColumnCatalog::columns(), WorkOrderColumnCatalog::proformaStatusColumn()]
+            : WorkOrderColumnCatalog::columns();
     }
 
     /**
@@ -148,7 +158,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function filters(): array
     {
-        return WorkOrderColumnCatalog::filters();
+        return WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())
+            ? [...WorkOrderColumnCatalog::filters(), ['columnId' => WorkOrderProformaStatusColumn::COLUMN, 'type' => 'set']]
+            : WorkOrderColumnCatalog::filters();
     }
 
     /**
@@ -247,13 +259,15 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      * exposed to the frontend config under the `work_order_type`/
      * `work_order_work_phase` enum keys (config/config.php form_enums), so the
      * client localizes the badge label from its own i18n resources instead
-     * of the backend-supplied one.
+     * of the backend-supplied one. `proforma_status` (spec 0407) has no enum
+     * class: its key only names the i18n labels of the filter values.
      */
     protected function enumKeyFor(string $columnId, User $actor): ?string
     {
         return match ($columnId) {
             'type' => 'work_order_type',
             WorkOrderWorkPhaseColumn::COLUMN => 'work_order_work_phase',
+            WorkOrderProformaStatusColumn::COLUMN => WorkOrderProformaStatusColumn::ENUM_KEY,
             default => null,
         };
     }
@@ -271,8 +285,12 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         $multi = $row->isMultiQuote();
         $sourceQuotes = $multi ? $this->sourceQuotes->fromLoadedLines($row) : null;
+        $proforma = WorkOrderProformaStatusColumn::isVisibleTo($actor)
+            ? [WorkOrderProformaStatusColumn::COLUMN => $this->proformaStatusColumn->project($row)]
+            : [];
 
         return [
+            ...$proforma,
             'id' => $row->id,
             'code' => $row->code,
             'title' => $row->title,

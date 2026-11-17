@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Colonna "€" proforma nelle Commesse (spec 0407, 2026-11-17) — VERDE, NON COMMITTATO, NON PROVATO NEL BROWSER
+
+- Richiesta utente: "€" come colonna (legacy `OrdersTable` campo `€` + colori dell'ex azione spec 0193), stato al passaggio del mouse, filtrabile e ordinabile. Supera spec 0405 D-7; l'azione di riga `proforma` resta tolta.
+- Backend: `App\Tables\WorkOrders\WorkOrderProformaStatusColumn` (COLUMN `proforma_status`, valori none/pending/issued, EXISTS flags `withFlags()`, `applyFilter` whereHas/whereDoesntHave, `applySort` subquery di rango MIN(CASE...) con NULL=none primo). Catalogo `WorkOrderColumnCatalog::proformaStatusColumn()` accodato da `WorkOrdersTableDefinition::columns()/filters()` SOLO con `proforma-requests.create` (senza: niente colonna/valore, filtro/sort -> 422). `enumKeyFor` -> `work_order_proforma_status` (solo i18n, nessuna enum PHP). Dispatch filtro/sort/values in `WorkOrderDerivedColumns`.
+- Frontend: `work-order-proforma-cell.tsx` (`WorkOrderProformaCell`, euro grigio/blu cliccabile, giallo inerte, Tooltip con `proformaRequests.cell.*`); `buildWorkOrderColumnRenderers(openProgress, openProforma)`; `useWorkOrderRowActions` monta `ProformaRequestDialog` nei `dialogs` (onSent -> onMutated). i18n `workOrders.columns.proforma_status` = '€', `enums.work_order_proforma_status.*`. Guide in-app IT/EN `work-orders` (row-actions, proforma-request) aggiornate.
+- Test: `WorkOrderProformaStatusColumnTest` (nuovo), `WorkOrderRowActionsLegacyTest` (REQUIREMENT CHANGED: l'ultimo caso ora verifica solo l'assenza dell'azione), `work-order-proforma-cell.test.tsx`, `use-work-order-row-actions.test.tsx`. Eseguiti: WorkOrders/ProformaRequests/Tables/CategoryTabs/ProjectWorkOrders/Spec0358 verdi; vitest mirati verdi; tsc -b, eslint, pint puliti.
+- Da verificare nel browser: tooltip e larghezza colonna, colori in dark mode.
+
 ## Offerta a contratto bloccata + campi flessibili offerta -> commessa (spec 0404 parti D ed E, 2026-11-16) — VERDE, COMMITTATO, MIGRAZIONE PERMESSO NON LANCIATA SU qnet2, NON PROVATO NEL BROWSER
 
 - Richiesta utente 2026-11-16: "procedi con D ed E. G e H elimina dallo spec" -> spec 0404 ora A-F (G/H tolte, R-5). E-D3 adottata senza conferma esplicita (dichiarata all'utente): campi operativi liberi.

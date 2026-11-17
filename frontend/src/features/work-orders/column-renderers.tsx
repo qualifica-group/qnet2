@@ -6,6 +6,7 @@ import { ChatUnreadCell } from '@/features/work-orders/chat-unread-cell'
 import { RenewalPeriodCell } from '@/features/work-orders/renewal-period-cell'
 import { RegistryCell } from '@/features/work-orders/registry-cell'
 import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progress-cell'
+import { WorkOrderProformaCell, type ProformaTarget } from '@/features/work-orders/work-order-proforma-cell'
 
 /**
  * Custom cell renderers keyed by the backend column `id` (spec 0093
@@ -33,9 +34,13 @@ import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progres
  * `title`/`contract_number`/`quote` stay on the AG Grid default text cell.
  * `completion_percentage` (spec 0321 R-6) renders `WorkOrderProgressCell`, a
  * button opening the progress popup: the renderer map is therefore built by a
- * factory taking that handler from `useWorkOrderRowActions`.
+ * factory taking that handler from `useWorkOrderRowActions`. `proforma_status`
+ * (the "€" column, spec 0407) likewise opens the proforma request dialog.
  */
-export function buildWorkOrderColumnRenderers(openProgress: (workOrderId: number) => void): TableRendererMap {
+export function buildWorkOrderColumnRenderers(
+  openProgress: (workOrderId: number) => void,
+  openProforma: (target: ProformaTarget) => void,
+): TableRendererMap {
   return {
     code: (params) => <CodeBadgeCell {...params} />,
     registry: (params) => <RegistryCell {...params} />,
@@ -47,6 +52,7 @@ export function buildWorkOrderColumnRenderers(openProgress: (workOrderId: number
     supervisors: (params) => <UserStackCell {...params} />,
     participants: (params) => <UserStackCell {...params} />,
     completion_percentage: (params) => <WorkOrderProgressCell {...params} onOpen={openProgress} />,
+    proforma_status: (params) => <WorkOrderProformaCell {...params} onOpen={openProforma} />,
     chat_unread_count: (params) => <ChatUnreadCell {...params} />,
     renewal_number: (params) => <RenewalPeriodCell {...params} />,
     created_at: (params) => <DateTimeCell {...params} />,
