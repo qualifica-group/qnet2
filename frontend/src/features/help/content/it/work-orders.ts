@@ -404,6 +404,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'copy-quote-attributes',
+      title: "Dati copiati dall'offerta",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Quando la commessa nasce da un contratto (**Programma**, creazione multipla o commessa multi-offerta), le **Informazioni aggiuntive** con lo stesso codice di quelle dell'offerta partono già compilate; nella commessa multi-offerta vale il primo valore non vuoto. Per le commesse esistenti usa **Copia dati dall'offerta** nell'intestazione (serve **Modifica**): riempie solo i campi vuoti, non sovrascrive mai, e ti dice quanti campi ha copiato.",
+        },
+      ],
+    },
+    {
       id: 'proforma-request',
       title: 'Richiesta di proforma',
       blocks: [

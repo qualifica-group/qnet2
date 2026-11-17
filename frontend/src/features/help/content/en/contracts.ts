@@ -78,6 +78,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'edit-quote-under-contract',
+      title: 'Title and rows of an offer under contract',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Editing the title or the rows of the offer from the contract detail changes an already accepted document: it requires the **Edit quotes under contract** permission and saving asks for confirmation in an **Offer under contract** popup. Without the permission the change is refused.",
+        },
+      ],
+    },
+    {
       id: 'program-work-orders',
       title: 'Programming work orders',
       blocks: [

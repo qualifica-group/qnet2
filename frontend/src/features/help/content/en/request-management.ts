@@ -210,6 +210,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'quote-under-contract',
+      title: 'Offer under contract',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "If the offer has a contract it is **frozen**: the **Work** panel shows the **Offer under contract** notice and, without the **Edit quotes under contract** permission, the fields are read-only (list cells too). With the permission, saving first asks for confirmation in a popup.",
+        },
+        {
+          type: 'note',
+          text: "The operational fields stay always editable: **Account managers** (team), **Next callback date**, **Operational site** and **General notes**.",
+        },
+      ],
+    },
+    {
       id: 'transfer-notifications',
       title: 'Who receives transfer notifications',
       blocks: [

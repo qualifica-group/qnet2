@@ -159,6 +159,10 @@ export const workOrders = {
       tasks: 'Task',
       documents: 'Documenti',
     },
+    copyQuoteAttributes: {
+      label: "Copia dati dall'offerta",
+      error: "Impossibile copiare i dati dall'offerta. Riprova.",
+    },
     requestUpdate: {
       label: 'Richiedi aggiornamento',
       title: 'Richiedi aggiornamento',

@@ -7,7 +7,9 @@ namespace App\Services;
 use App\DataObjects\Contracts\UpdateContractData;
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Models\Contract;
+use App\Models\Quote;
 use App\Models\User;
+use App\Services\Quotes\ContractedQuoteGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,7 +20,10 @@ use Illuminate\Support\Facades\DB;
  */
 class ContractService
 {
-    public function __construct(private readonly QuoteService $quoteService) {}
+    public function __construct(
+        private readonly QuoteService $quoteService,
+        private readonly ContractedQuoteGuard $contractedGuard,
+    ) {}
 
     /**
      * Relations eager-loaded for the detail read tree (ContractResource), so
@@ -90,10 +95,14 @@ class ContractService
 
             if ($quoteAttributes !== []) {
                 // The actor is only needed by the offer write; a data-only update (seeders, tools) has none.
-                $this->quoteService->update(
-                    $contract->quote()->firstOrFail(),
-                    UpdateQuoteData::fromValidated($quoteAttributes),
-                    $actor ?? throw new \InvalidArgumentException('An actor is required to update the offer title or lines.'),
+                $actor ?? throw new \InvalidArgumentException('An actor is required to update the offer title or lines.');
+                $quote = $contract->quote()->firstOrFail();
+                // Spec 0404 part E: the offer is under contract by definition here.
+                $this->contractedGuard->run(
+                    $quote,
+                    $actor,
+                    $quoteAttributes,
+                    fn (): Quote => $this->quoteService->update($quote, UpdateQuoteData::fromValidated($quoteAttributes), $actor),
                 );
             }
         });

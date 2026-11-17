@@ -13,23 +13,27 @@ use Spatie\Permission\Models\Permission;
  * Spec 0360: title, service lines and the four data fields are editable from
  * the contract of a working or validated contract, written to the origin offer.
  */
+// REQUIREMENT CHANGED (spec 0404 part E): the offers here are under contract, so the
+// actor holds `quotes.updateContracted` and the writes carry the confirmation.
 uses(RefreshDatabase::class);
 
 function inForceActor(array $abilities = ['view', 'update']): User
 {
-    return contractScopedUserWith([...$abilities, 'viewAll']);
+    $user = contractScopedUserWith([...$abilities, 'viewAll']);
+
+    return $user->givePermissionTo(Permission::findOrCreate('quotes.updateContracted'));
 }
 
 it('AC-001: title is written on the offer as manual, null returns it to automatic', function () {
     ['contract' => $contract, 'quote' => $quote] = inForceContract('validated');
     Sanctum::actingAs(inForceActor());
 
-    $this->patchJson("/api/contracts/{$contract->id}", ['title' => 'Custom title'])
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'title' => 'Custom title'])
         ->assertOk()
         ->assertJsonPath('data.quote.title', 'Custom title');
     expect($quote->fresh()->title_is_manual)->toBeTrue();
 
-    $this->patchJson("/api/contracts/{$contract->id}", ['title' => null])->assertOk();
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'title' => null])->assertOk();
     expect($quote->fresh()->title_is_manual)->toBeFalse();
 });
 
@@ -37,7 +41,7 @@ it('AC-002: a new row is added on an open or validated contract and totals are r
     ['contract' => $contract, 'quote' => $quote, 'lines' => $lines, 'product' => $product] = inForceContract($statusKey, 1);
     Sanctum::actingAs(inForceActor());
 
-    $response = $this->patchJson("/api/contracts/{$contract->id}", ['offer_lines' => [
+    $response = $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'offer_lines' => [
         inForceRow($lines[0]),
         ['product_id' => $product->id, 'quantity' => 3, 'unit_price' => 50],
     ]])->assertOk();
@@ -51,7 +55,7 @@ it('AC-003: an omitted free row is deleted and a changed one is saved', function
     ['contract' => $contract, 'lines' => [$keep, $drop]] = inForceContract('validated');
     Sanctum::actingAs(inForceActor());
 
-    $this->patchJson("/api/contracts/{$contract->id}", ['offer_lines' => [inForceRow($keep, ['quantity' => 5, 'unit_price' => 10])]])->assertOk();
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'offer_lines' => [inForceRow($keep, ['quantity' => 5, 'unit_price' => 10])]])->assertOk();
 
     $this->assertDatabaseMissing('quote_lines', ['id' => $drop->id]);
     expect((float) QuoteLine::find($keep->id)->quantity)->toBe(5.0)
@@ -71,7 +75,7 @@ it('AC-004: a closed_lost contract refuses every editable field, nothing is pers
     ][$field];
     Sanctum::actingAs(inForceActor());
 
-    $this->patchJson("/api/contracts/{$contract->id}", $payload)->assertUnprocessable();
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), ...$payload])->assertUnprocessable();
 
     expect($quote->fresh()->title)->toBe($title)
         ->and((float) $line->fresh()->quantity)->toBe(2.0)
@@ -85,7 +89,7 @@ it('AC-005: the four data fields are saved on a validated contract', function ()
     ['contract' => $contract] = inForceContract('validated');
     Sanctum::actingAs(inForceActor());
 
-    $this->patchJson("/api/contracts/{$contract->id}", [
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 
         'renewal_date' => '2027-01-15', 'expiry_date' => '2027-06-30', 'payment_notes' => 'Notes', 'comments' => 'Comments',
     ])->assertOk()->assertJsonPath('data.payment_notes', 'Notes');
 
@@ -97,16 +101,16 @@ it('AC-006/007: the contract channel blocks an assigned row too, with the work o
     assignLineToWorkOrder($locked, 'COM-0042');
     Sanctum::actingAs(inForceActor());
 
-    $omit = $this->patchJson("/api/contracts/{$contract->id}", ['offer_lines' => [inForceRow($free)]])
+    $omit = $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'offer_lines' => [inForceRow($free)]])
         ->assertUnprocessable()->assertJsonValidationErrors('offer_lines');
     expect($omit->json('errors.offer_lines.0'))->toContain('COM-0042');
 
-    $this->patchJson("/api/contracts/{$contract->id}", ['offer_lines' => [inForceRow($free), inForceRow($locked, ['quantity' => 9])]])
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'offer_lines' => [inForceRow($free), inForceRow($locked, ['quantity' => 9])]])
         ->assertUnprocessable()->assertJsonValidationErrors('offer_lines.1');
 
     $this->assertDatabaseHas('quote_line_work_order', ['quote_line_id' => $locked->id]);
 
-    $response = $this->patchJson("/api/contracts/{$contract->id}", ['offer_lines' => [inForceRow($free), inForceRow($locked)]])->assertOk();
+    $response = $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'offer_lines' => [inForceRow($free), inForceRow($locked)]])->assertOk();
     $byId = collect($response->json('data.offer_lines'))->keyBy('id');
     expect($byId[$locked->id]['work_orders'][0]['code'])->toBe('COM-0042')
         ->and($byId[$free->id]['work_orders'])->toBe([]);
@@ -119,22 +123,22 @@ it('AC-009: quotes.update without contracts.update is 403; a hidden contract is 
     $user->givePermissionTo('quotes.update');
     Sanctum::actingAs($user);
 
-    $this->patchJson("/api/contracts/{$contract->id}", ['title' => 'X'])->assertForbidden();
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'title' => 'X'])->assertForbidden();
 
     Sanctum::actingAs(contractScopedUserWith(['view', 'update']));
-    expect($this->patchJson("/api/contracts/{$contract->id}", ['title' => 'X'])->status())->toBeIn([403, 404]);
+    expect($this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'title' => 'X'])->status())->toBeIn([403, 404]);
 });
 
 it('AC-010: commissions are prohibited and absent ones keep the stored overrides', function () {
     ['contract' => $contract, 'lines' => [$line]] = inForceContract('validated', 1);
     Sanctum::actingAs(inForceActor());
 
-    $this->patchJson("/api/contracts/{$contract->id}", ['offer_lines' => [inForceRow($line, ['commissions' => [['recipient_role' => 'commercial', 'type' => 'percentage', 'value' => 5]]])]])
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'offer_lines' => [inForceRow($line, ['commissions' => [['recipient_role' => 'commercial', 'type' => 'percentage', 'value' => 5]]])]])
         ->assertUnprocessable()->assertJsonValidationErrors('offer_lines.0.commissions');
 
     $commission = QuoteLineCommission::factory()->create(['quote_line_id' => $line->id]);
 
-    $this->patchJson("/api/contracts/{$contract->id}", ['offer_lines' => [inForceRow($line, ['quantity' => 4])]])->assertOk();
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'offer_lines' => [inForceRow($line, ['quantity' => 4])]])->assertOk();
 
     $this->assertDatabaseHas('quote_line_commissions', ['id' => $commission->id]);
 });
@@ -145,7 +149,7 @@ it('AC-011: editing the rows moves neither the offer status nor the contract sta
     $contractStatus = $contract->contract_status_id;
     Sanctum::actingAs(inForceActor());
 
-    $this->patchJson("/api/contracts/{$contract->id}", ['offer_lines' => [inForceRow($line, ['quantity' => 7])]])->assertOk();
+    $this->patchJson("/api/contracts/{$contract->id}", [...contractedEditConfirmed(), 'offer_lines' => [inForceRow($line, ['quantity' => 7])]])->assertOk();
 
     expect($quote->fresh()->quote_workflow_status_id)->toBe($quoteStatus)
         ->and($contract->fresh()->contract_status_id)->toBe($contractStatus)

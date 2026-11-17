@@ -18,6 +18,7 @@ import type {
 } from '@/features/quotes/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { RequestForecast } from '@/features/request-management/request-forecast'
+import type { ContractedQuoteFlags } from '@/features/quotes/contracted-quote'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const REQUEST_MANAGEMENT_DOMAIN = 'request-management'
@@ -165,7 +166,7 @@ export interface ApplicableAttribute {
  * `data`). Matches `RequestManagementResource`. The forecast trio ("Previsione
  * commerciale", spec 0313) is the Opportunity's own, editable from the panel.
  */
-export interface RequestWorkPanel extends RequestForecast {
+export interface RequestWorkPanel extends RequestForecast, ContractedQuoteFlags {
   /** The Offerta (Quote) id — this module's own record id since spec 0086. */
   id: number
   /**

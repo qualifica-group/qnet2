@@ -182,6 +182,8 @@ class RequestManagementResource extends JsonResource
             // the full set QuoteWorkflowResolver resolves right now, which is
             // what limits the select (AC-021/050).
             'quote_workflow_status_id' => $quote->quote_workflow_status_id,
+            // Spec 0404 part E: the offer under contract is frozen (E-D3: operational fields stay free).
+            ...ContractedQuoteFlags::of($quote, $request->user()),
             'quote_workflow_status' => $this->summarizeWorkflowStatus($quote->quoteWorkflowStatus),
             'quote_workflow_statuses' => $this->resolveWorkflowStatuses($quote),
             // "Note generali" (user directive 2026-07-27): the Opportunity's

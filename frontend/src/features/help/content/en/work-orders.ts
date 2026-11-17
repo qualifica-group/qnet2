@@ -404,6 +404,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'copy-quote-attributes',
+      title: 'Data copied from the offer',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "When the work order is born from a contract (**Schedule**, batch creation or multi-offer work order), the **Additional information** fields sharing a code with the offer's start already filled; on a multi-offer work order the first non-empty value wins. For existing work orders use **Copy data from the offer** in the header (requires **Edit**): it fills only empty fields, never overwrites, and tells you how many fields it copied.",
+        },
+      ],
+    },
+    {
       id: 'proforma-request',
       title: 'Proforma request',
       blocks: [

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\ProductCategoryCoherence;
+use App\Services\Quotes\ContractedQuoteGuard;
 use App\Services\Quotes\QuoteAttributeValueWriter;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -159,6 +160,7 @@ final class RequestManagementService
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
         private readonly ContractLifecycleManager $contractLifecycleManager,
+        private readonly ContractedQuoteGuard $contractedGuard,
     ) {}
 
     /**
@@ -180,6 +182,16 @@ final class RequestManagementService
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
+    {
+        // Spec 0404 part E: an offer under contract needs the permission and a confirmation (E-D3: operational fields stay free).
+        return $this->contractedGuard->run($quote, $actor, $data, fn (): array => $this->writeWork($quote, $actor, $data));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{quote: Quote}
+     */
+    private function writeWork(Quote $quote, User $actor, array $data): array
     {
         return DB::transaction(function () use ($quote, $actor, $data): array {
             $changed = [];

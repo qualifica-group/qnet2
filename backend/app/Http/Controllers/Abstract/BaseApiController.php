@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Abstract;
 use App\Authorization\Denials\ForbiddenResponse;
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\Enums\HttpStatusEnum;
+use App\Exceptions\CodedHttpException;
 use App\Exceptions\ExternalApiException;
 use App\Models\Concerns\HasCustomFields;
 use App\Services\TeamsWebhookService;
@@ -261,6 +262,10 @@ abstract class BaseApiController
      */
     private function errorResponse(Throwable $exception, string $message, int $status): JsonResponse
     {
+        if ($exception instanceof CodedHttpException) {
+            return $exception->render();
+        }
+
         return $status === HttpStatusEnum::FORBIDDEN->value
             ? app(ForbiddenResponse::class)->make($exception)
             : $this->fail($message, $status);

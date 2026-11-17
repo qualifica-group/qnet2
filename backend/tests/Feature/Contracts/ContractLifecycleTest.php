@@ -17,6 +17,8 @@ use Spatie\Permission\Models\Permission;
  * (cascade delete) is already covered by MT-00's ContractStatusSeedTest, not
  * duplicated here.
  */
+// REQUIREMENT CHANGED (spec 0404 part E): the offers here are under contract, so the
+// actor holds `quotes.updateContracted` and the writes carry the confirmation.
 uses(RefreshDatabase::class);
 
 if (! function_exists('contractLifecycleUserWith')) {
@@ -37,6 +39,7 @@ if (! function_exists('contractLifecycleUserWith')) {
 
         // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1).
         $user->givePermissionTo('quotes.viewAll');
+        $user->givePermissionTo(Permission::findOrCreate('quotes.updateContracted'));
 
         return $user;
     }
@@ -65,7 +68,7 @@ it('AC-001: a quote status transition into closed_won creates a contract with th
 
     expect(Contract::where('quote_id', $quoteId)->exists())->toBeFalse();
 
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
 
     $defaultContractStatus = ContractStatus::where('is_default', true)->sole();
     $contract = Contract::where('quote_id', $quoteId)->first();
@@ -115,11 +118,11 @@ it('AC-002: re-entering closed_won a second time does not duplicate the contract
         ],
     ])->assertCreated()->json('data.id');
 
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
     $firstAcceptedAt = Contract::where('quote_id', $quoteId)->sole()->accepted_at->toDateString();
 
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $openStatus->id])->assertOk();
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $openStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
 
     expect(Contract::where('quote_id', $quoteId)->count())->toBe(1)
         ->and(Contract::where('quote_id', $quoteId)->sole()->accepted_at->toDateString())->toBe($firstAcceptedAt);
@@ -150,7 +153,7 @@ it('AC-004: leaving closed_won suspends the contract and remembers its prior sta
     $scheduledStatus = ContractStatus::where('name', 'Programmato')->sole();
     $contract->forceFill(['contract_status_id' => $scheduledStatus->id, 'payment_notes' => 'Keep me'])->save();
 
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $openStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $openStatus->id])->assertOk();
 
     $contract->refresh();
     $suspendedStatus = ContractStatus::where('system_key', 'suspended')->sole();
@@ -182,8 +185,8 @@ it('AC-005: a suspended contract stays suspended when its quote re-enters closed
         ],
     ])->assertCreated()->json('data.id');
 
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $openStatus->id])->assertOk();
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $openStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
 
     $contract = Contract::where('quote_id', $quoteId)->sole();
 

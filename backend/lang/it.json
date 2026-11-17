@@ -301,5 +301,8 @@
     "One of the records has just been merged or deleted: reload the list and try again.": "Uno dei record e' appena stato unito o eliminato: ricarica l'elenco e riprova.",
     "This system status is linked to working statuses and cannot be deleted: :statuses": "Questo stato di sistema e' collegato a stati di lavorazione e non si puo' eliminare: :statuses",
     "No working status of this offer's workflow is linked to the selected system status.": "Nessuno stato di lavorazione del workflow dell'offerta e' collegato allo stato di sistema scelto.",
-    "Offer transferred to :registry": "Offerta trasferita a :registry"
+    "Offer transferred to :registry": "Offerta trasferita a :registry",
+    "Quote under contract: editing is not allowed.": "Offerta a contratto: modifica non consentita",
+    "The quote is under contract: this change alters a document already accepted. Confirm to proceed.": "L'offerta e' a contratto: la modifica cambia un documento gia' accettato. Conferma per procedere.",
+    ":count field copied from the offer|:count fields copied from the offer": ":count campo copiato dall'offerta|:count campi copiati dall'offerta"
 }

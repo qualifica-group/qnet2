@@ -78,6 +78,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'edit-quote-under-contract',
+      title: "Titolo e righe di un'offerta a contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Modificare nel dettaglio del contratto il titolo o le righe dell'offerta cambia un documento già accettato: serve il permesso **Modifica offerte a contratto** e il salvataggio chiede conferma in un popup **Offerta a contratto**. Senza il permesso la modifica viene rifiutata.",
+        },
+      ],
+    },
+    {
       id: 'program-work-orders',
       title: 'Programmare le commesse',
       blocks: [

@@ -43,7 +43,7 @@ if (! function_exists('quoteScopedUserWith')) {
      */
     function quoteScopedUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewSite', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewSite', 'viewAll', 'updateContracted'] as $ability) {
             Permission::findOrCreate("quotes.{$ability}");
         }
 
@@ -178,5 +178,19 @@ if (! function_exists('nameDerivationOpportunityCreatePayload')) {
             ],
             'products_of_interest' => [Product::factory()->create(['category_id' => $category->id])->id],
         ];
+    }
+}
+
+if (! function_exists('contractedEditConfirmed')) {
+    /**
+     * Spec 0404 part E: the confirmation an edit of an offer under contract
+     * needs (ContractedQuoteGuard), spread into a request payload by the tests
+     * whose subject is another rule on such an offer.
+     *
+     * @return array{confirm_contracted_edit: true}
+     */
+    function contractedEditConfirmed(): array
+    {
+        return ['confirm_contracted_edit' => true];
     }
 }

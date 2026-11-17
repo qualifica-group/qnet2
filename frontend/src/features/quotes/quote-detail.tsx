@@ -13,6 +13,8 @@ import { ResourcePermissionsProvider } from '@/features/authorization/permission
 import { NotesSection } from '@/features/notes/notes-section'
 import { QuoteDetailHeader, QuoteDetailStats } from '@/features/quotes/quote-detail-header'
 import { QuoteRegistryTransferNotice } from '@/features/quotes/registry-transfer/quote-registry-transfer-notice'
+import { ContractedQuoteNotice } from '@/features/quotes/contracted-quote-notice'
+import { freezeContractedPermissions, isContractedFrozen } from '@/features/quotes/contracted-quote'
 import { QuoteDetailLines } from '@/features/quotes/quote-detail-lines'
 import { QuoteDetailAttributes, QuoteDetailSections } from '@/features/quotes/quote-detail-sections'
 import { useQuoteInlineEdit } from '@/features/quotes/use-quote-inline-edit'
@@ -106,8 +108,11 @@ function useCollaborationTabs(quote: QuoteDetailWithPermissions): RecordCollabor
 export function QuoteDetailView(props: QuoteDetailViewProps) {
   // The edit form reads the field permissions while it is built, so the
   // provider wraps the whole detail, not just the sections.
+  const { quote } = props
+  const permissions = isContractedFrozen(quote) ? freezeContractedPermissions(quote.permissions) : quote.permissions
+
   return (
-    <ResourcePermissionsProvider permissions={props.quote.permissions}>
+    <ResourcePermissionsProvider permissions={permissions}>
       <QuoteDetailContent {...props} />
     </ResourcePermissionsProvider>
   )
@@ -127,6 +132,7 @@ function QuoteDetailContent({ quote, onChanged }: QuoteDetailViewProps) {
         header={
           <>
             <QuoteDetailHeader quote={quote} onChanged={onChanged} />
+            <ContractedQuoteNotice flags={quote} />
             {quote.registry_transfer ? <QuoteRegistryTransferNotice transfer={quote.registry_transfer} /> : null}
             <QuoteDetailStats quote={quote} />
           </>

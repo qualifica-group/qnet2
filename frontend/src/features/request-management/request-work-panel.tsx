@@ -20,6 +20,8 @@ import { ResourcePermissionsProvider, useResourcePermissions } from '@/features/
 import { RecordFieldChangeRequests } from '@/features/field-change-requests/record-field-change-requests'
 import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
 import { AssignOperatorsDialog } from '@/features/leads/assign-operators-dialog'
+import { ContractedQuoteNotice } from '@/features/quotes/contracted-quote-notice'
+import { freezeContractedPermissions, isContractedFrozen } from '@/features/quotes/contracted-quote'
 import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
@@ -146,8 +148,10 @@ export function RequestWorkPanelScreen({ id, onSaved }: RequestWorkPanelScreenPr
     return <RequestWorkPanelSkeleton />
   }
 
+  const permissions = isContractedFrozen(panel) ? freezeContractedPermissions(panel.permissions) : panel.permissions
+
   return (
-    <ResourcePermissionsProvider permissions={panel.permissions}>
+    <ResourcePermissionsProvider permissions={permissions}>
       <RequestWorkPanelBody panel={panel} onSaved={onSaved} />
     </ResourcePermissionsProvider>
   )
@@ -212,6 +216,10 @@ function RequestWorkPanelBody({ panel, onSaved }: RequestWorkPanelBodyProps) {
           for callback/sede/team) while the rest sits in the native <form>
           below. Submission never depended on DOM nesting — the save button
           reaches the form by id (see REQUEST_WORK_FORM_ID). */}
+      <div className="px-4 pt-3 empty:hidden">
+        <ContractedQuoteNotice flags={panel} />
+      </div>
+
       <Form {...form}>
         <div className={WORK_PANEL_GRID_CLASS}>
           <aside className={WORK_SIDE_COLUMN_CLASS}>

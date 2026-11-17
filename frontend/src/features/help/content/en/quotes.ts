@@ -306,6 +306,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'quote-under-contract',
+      title: 'Offer under contract',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "An offer that has a contract (in any status) is **frozen**: it is an already accepted document. Editing it requires the **Edit quotes under contract** permission; without it the detail shows **Offer under contract: it can only be edited by those who have the permission** and the fields are read-only (also from the list cells, the **Work** panel of Request Management and Enrollee Management and the rows in the contract detail).",
+        },
+        {
+          type: 'paragraph',
+          text: "With the permission, every change opens an **Offer under contract** popup asking for confirmation: if you confirm the change is saved and recorded in the **History**, if you cancel nothing changes.",
+        },
+        {
+          type: 'note',
+          text: "The operational fields stay always editable: **Account managers** (team), **Next callback date**, **Operational site** and **General notes**. Notes, documents, tasks and activities are not frozen.",
+        },
+      ],
+    },
+    {
       id: 'quote-pdf',
       title: 'Quote PDF',
       blocks: [

@@ -18,6 +18,7 @@ import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ModuleCreateParams } from '@/features/modules/types'
+import type { ContractedQuoteFlags } from '@/features/quotes/contracted-quote'
 import type { QuoteLine, QuoteLineInput, QuoteRelationRef } from '@/features/quotes/quote-line-types'
 
 /**
@@ -159,7 +160,7 @@ export interface QuoteRegistryTransfer {
   causer_name: string | null
 }
 
-export interface QuoteDetail {
+export interface QuoteDetail extends ContractedQuoteFlags {
   id: number
   /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
   old_id?: number | null

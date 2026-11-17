@@ -149,6 +149,10 @@ return [
         'summary' => 'Delete a progress entry',
         'description' => 'Deletes one progress entry of the work order, lowering the progress by its increment. Answers with data null; 404 when the entry belongs to another work order. Requires work-orders.update on a visible work order.',
     ],
+    'POST /work-orders/{workOrder}/copy-quote-attributes' => [
+        'summary' => 'Copy the offer\'s flexible fields into a work order',
+        'description' => 'Fills the work order\'s empty flexible fields (attribute_values) with the values its offer holds under the same attribute code; a multi-offer work order takes the first non-empty value among the offers of its lines. It never overwrites a field already filled and skips a value the work order would reject. No body. Returns the work order with the user\'s permissions and a message with how many fields were copied (0 when nothing was empty or available). Requires work-orders.update on the work order.',
+    ],
     'POST /work-orders/{workOrder}/request-update' => [
         'summary' => 'Ask the work order team for an update',
         'description' => 'Sends a notification with message (3-2000 characters) asking for an update on the work order, without changing it. target is participants (supervisors who are not participants get a copy), supervisors, or all. 422 when the work order is completed or closed, or the chosen group is empty. Answers with data null. Requires work-orders.requestUpdate on a visible work order.',

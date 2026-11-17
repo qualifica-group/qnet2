@@ -187,6 +187,8 @@ class QuoteResource extends JsonResource
             'rewards' => $this->summarizeRewards($this->rewards),
             // Spec 0315: the Contract born from this Offerta (closed won), null when none.
             'contract_id' => $this->contract?->id,
+            // Spec 0404 part E: the offer under contract is frozen.
+            ...ContractedQuoteFlags::of($this->resource, $request->user()),
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),
             // Cast to object, non array: un array PHP vuoto serializza come `[]`,

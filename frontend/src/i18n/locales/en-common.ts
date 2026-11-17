@@ -10,6 +10,15 @@ export const common = {
   confirm: 'Confirm',
   cancel: 'Cancel',
   confirmTitle: 'Are you sure?',
+  /** Spec 0404 E: offer under contract, confirmation popup (409) and on-screen notice. */
+  contractedQuote: {
+    confirmTitle: 'Offer under contract',
+    confirmDescription:
+      'The offer is under contract: this change alters an already accepted document. Do you want to proceed?',
+    confirmAction: 'Proceed',
+    frozenNotice: 'Offer under contract: it can only be edited by those who have the permission.',
+    confirmNotice: 'Offer under contract: you will be asked to confirm before a change is saved.',
+  },
   yes: 'Yes',
   no: 'No',
   back: 'Back',

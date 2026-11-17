@@ -8,6 +8,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import type { CellValueChangedEvent, IRowNode } from 'ag-grid-community'
 import type { ApiErrorResponse } from '@/api/types'
+import { isContractedEditDeclined } from '@/api/contracted-edit'
 import { CellNoteDialog } from '@/components/data-table/cell-note-dialog'
 import { updateTableCell, type CellEditTab, type UpdateTableCellPayload } from '@/features/table/api'
 import type { TableColumn, TableRow } from '@/features/table/types'
@@ -250,6 +251,7 @@ export function useTableCellEdit(
         },
         onError: (error) => {
           node.setData(revertedData)
+          if (isContractedEditDeclined(error)) return
           toast.error(resolveCellUpdateErrorMessage(error, t, i18n))
         },
       })

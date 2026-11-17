@@ -35,7 +35,7 @@ return [
     ],
     'PUT /quotes/{quote}' => [
         'summary' => 'Update a quote',
-        'description' => 'Partially updates the quote; opportunity_id cannot change. offer_lines and cost_lines, when sent, replace the lines (offer lines cannot be emptied); manager_slots replaces the account managers; attribute_values are merged. Totals, commission amounts, title and opportunity name are recomputed. A status change follows the workflow rules (note when required), is logged, creates the contract when it becomes won or suspends it when it leaves won; managers are notified. Requires quotes.update and edit rights on the submitted fields.',
+        'description' => 'Partially updates the quote; opportunity_id cannot change. offer_lines and cost_lines, when sent, replace the lines (offer lines cannot be emptied); manager_slots replaces the account managers; attribute_values are merged. Totals, commission amounts, title and opportunity name are recomputed. A status change follows the workflow rules (note when required), is logged, creates the contract when it becomes won or suspends it when it leaves won; managers are notified. Requires quotes.update and edit rights on the submitted fields. On a quote under contract, changing anything but the team, the next callback and the operational site needs quotes.updateContracted (403 otherwise) and confirm_contracted_edit: true in the body (409 with code contracted_edit_confirmation_required otherwise).',
     ],
     'DELETE /quotes/{quote}' => [
         'summary' => 'Delete a quote',

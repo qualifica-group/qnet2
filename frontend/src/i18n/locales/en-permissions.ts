@@ -46,6 +46,8 @@ export const permissions = {
     appendTeamMember: 'Add to team',
     // Spec 0404 B-D1: move the offer to another registry.
     transferRegistry: 'Transfer to another registry',
+    // Spec 0404 E-D2: writing on an offer under contract (frozen).
+    updateContracted: 'Edit quotes under contract',
     impersonate: 'Impersonate',
     // Non-canonical abilities introduced by spec 0078: `manage` gates
     // approve/reject on a field-change-request (FieldChangeRequestPolicy);

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderRequestUpdateDialog } from '@/features/work-orders/work-order-request-update-dialog'
+import { WorkOrderCopyQuoteAttributesAction } from '@/features/work-orders/work-order-copy-quote-attributes-action'
 import { WorkOrderClosureActions } from '@/features/work-orders/work-order-closure-actions'
 import type { WorkOrderDetailWithPermissions, WorkOrderType, WorkOrderWorkPhase } from '@/features/work-orders/types'
 
@@ -92,6 +93,7 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
       actions={
         <>
           <WorkOrderProgressAction workOrder={workOrder} onChanged={onChanged} />
+          <WorkOrderCopyQuoteAttributesAction workOrder={workOrder} onChanged={onChanged} />
           {workOrder.permissions.actions.request_update ? <WorkOrderRequestUpdateAction workOrder={workOrder} /> : null}
           {workOrder.permissions.actions.request_proforma ? (
             <WorkOrderProformaAction workOrder={workOrder} onChanged={onChanged} />

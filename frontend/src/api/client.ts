@@ -3,6 +3,12 @@ import i18n from '@/i18n'
 import { env } from '@/config/env'
 import { isMaintenanceError, reportMaintenance } from '@/api/maintenance-state'
 import { tokenStorage } from '@/api/token-storage'
+import {
+  getContractedEditConfirmer,
+  isContractedEditConfirmationError,
+  markContractedEditDeclined,
+  withContractedEditConfirmation,
+} from '@/api/contracted-edit'
 
 /**
  * Custom DOM event dispatched when the API rejects a request with 401.
@@ -87,6 +93,29 @@ apiClient.interceptors.response.use(
     ) {
       window.dispatchEvent(new Event(PASSWORD_CHANGE_REQUIRED_EVENT))
     }
-    return Promise.reject(error)
+    return retryConfirmedContractedEdit(error)
   },
 )
+
+/**
+ * Spec 0404 E-D4, one mechanism for every channel: a 409 asking to confirm an
+ * edit of an offer under contract opens the confirm dialog and, once accepted,
+ * resends the SAME request with `confirm_contracted_edit: true`. A declined
+ * confirmation rejects the original error (marked, so the caller can treat it
+ * as a cancelled edit).
+ */
+async function retryConfirmedContractedEdit(error: unknown): Promise<unknown> {
+  const confirm = getContractedEditConfirmer()
+  if (!isContractedEditConfirmationError(error) || !error.config || !confirm) {
+    return Promise.reject(error)
+  }
+  const data = withContractedEditConfirmation(error.config)
+  if (data === null) {
+    return Promise.reject(error)
+  }
+  if (!(await confirm())) {
+    markContractedEditDeclined(error)
+    return Promise.reject(error)
+  }
+  return apiClient.request({ ...error.config, data })
+}

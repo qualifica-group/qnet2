@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Spec ombrello a 8 parti (A-H), una per punto della richiesta utente del 2026-11-16.
+  Spec ombrello a 6 parti (A-F), una per punto della richiesta utente del 2026-11-16.
   Ogni parte ha decisioni, contratto e AC propri; si consegnano a fasi (vedi <microtasks>).
+  Le parti G (tab degli stati in Opportunita') e H (piu' offerte per categoria madre) sono state
+  ELIMINATE dalla spec su decisione utente del 2026-11-16: non si implementano.
 -->
 <spec id="0404-quote-system-statuses-and-commercial-flow" status="draft" owner="nicola" date="2026-11-16">
 
@@ -11,8 +13,7 @@
     versi, con il nuovo stato "Vinto provvisorio"; (B) trasferimento di un'offerta a un'altra anagrafica, tracciato;
     (C) categorie che richiedono il trasferimento contatto prima del contratto; (D) campi flessibili dell'offerta replicati
     sulla commessa; (E) offerta a contratto congelata, modificabile solo con permesso e conferma; (F) una sola colonna
-    "Gestori account" in Gestione Richieste e Gestione Iscritti; (G) tab degli stati in Opportunita'; (H) richiesta con
-    piu' linee di prodotto di categorie madre diverse = piu' offerte.
+    "Gestori account" in Gestione Richieste e Gestione Iscritti.
   </goal>
 
   <context>
@@ -21,8 +22,9 @@
           stato di sistema nel set dell'offerta.
       R-2 Trasferimento ad altra anagrafica: la vecchia opportunita' RESTA intatta (note, documenti, attivita') e riceve
           una voce di log.
-      R-3 Piu' linee di prodotto: UNA opportunita' + N offerte (una per categoria madre distinta); le categorie dell'offerta sono quelle dei suoi prodotti (H-D1).
       R-4 Offerta a contratto: bloccato TUTTO, stato compreso, per chi non ha il nuovo permesso. Vedi E-D3 (Iscritti).
+      R-5 (2026-11-16) Procedere con D ed E; G e H eliminate dalla spec. E-D3 non confermato esplicitamente: si adotta la
+          proposta (campi operativi liberi in Gestione Iscritti), dichiarata nel riepilogo all'utente.
 
     Fatti verificati nel codice:
       - Gestione Richieste e Gestione Iscritti lavorano sulle Offerte (`quotes`, spec 0086, 0130); sono due configurazioni
@@ -178,7 +180,7 @@
     E-D2 Permesso nuovo `quotes.updateContracted`. Senza: ogni scrittura sull'offerta (testata, righe, campi flessibili,
          team, stato, celle di griglia) da Offerte, Gestione Richieste, Gestione Iscritti e Contratto -> 403
          "Offerta a contratto: modifica non consentita". Note, documenti, task, attivita' NON sono congelati.
-    E-D3 [DA CONFERMARE] Gestione Iscritti mostra proprio le offerte vinte (quindi a contratto): con R-4 alla lettera, chi
+    E-D3 [ADOTTATA 2026-11-16, proposta non contestata] Gestione Iscritti mostra proprio le offerte vinte (quindi a contratto): con R-4 alla lettera, chi
          lavora gli iscritti senza il permesso non potrebbe piu' cambiare team, prossimo richiamo, sede, ne' fare il
          trasferimento contatto. Proposta: restano liberi i campi OPERATIVI (team gestori account, prossimo richiamo,
          sede operativa / trasferimento contatto); congelati quelli commerciali e lo stato.
@@ -198,34 +200,6 @@
     F-D3 La posizione 2 (Operatore) resta nei dati con tutto il suo comportamento (`quotes.operator_id`, visibilita',
          notifiche, "Assegna Tutor" sulla posizione 1): cambia solo la presentazione in griglia.
 
-    <!-- G — Tab stati in Opportunita' -->
-    G-D1 Tab in alto a destra come Contratti (spec 0397): "Tutti" senza conteggio + uno per stato di sistema attivo in
-         sort_order, "(N)" solo se N &gt; 0. Il tab scrive il filtro set della colonna `status` per nome.
-    G-D2 La colonna `status` delle opportunita' passa agli stati di sistema: uno stato distinto fra le offerte -> quello;
-         piu' stati -> "N stati" con tooltip dei conteggi; nessuna offerta -> lo stato di sistema della riga `open` del
-         set di default risolto (cioe' "Aperto"). Un'opportunita' con offerte in due stati conta in entrambi i tab.
-    G-D3 Conteggi in `meta.aggregates` della griglia `opportunities`, calcolati sul set filtrato ignorando il solo filtro
-         `status`, solo righe visibili all'attore.
-
-    <!-- H — Piu' linee di prodotto = piu' offerte -->
-    H-D1 Decisione utente 2026-11-16: UNA opportunita' + N offerte, e le categorie di un'offerta sono quelle dei PRODOTTI
-         delle sue righe ricavo, non quelle dell'opportunita'. Nessun campo nuovo sull'offerta. E' la regola che
-         `QuoteClassificationSource` applica gia' al workflow (prodotti delle righe ricavo; le linee dell'opportunita' solo
-         come ripiego quando l'offerta non ha prodotti).
-    H-D2 I tab di Gestione Richieste / Iscritti (filtro della linguetta in `RequestManagementScopedTableDefinition` e
-         conteggi di `RequestCategoryTabsResolver`) passano alla stessa regola: un'offerta sta nel tab delle categorie dei
-         suoi prodotti; solo se non ha righe ricavo, in quello delle linee della sua opportunita' (come oggi). La query
-         resta un IN-subquery su indice (requisito di performance della spec 0086, stress test 2026-09-29).
-    H-D3 Creazione richiesta: le `productLines` inviate restano TUTTE sull'unica opportunita'. Le righe offerta inviate
-         si raggruppano per categoria madre (radice di `product_categories.parent_id` del prodotto): un gruppo -> 1 offerta
-         come oggi; k gruppi -> k offerte sulla stessa opportunita', ognuna con le righe del suo gruppo, stessi team,
-         attribuzione, sede, fonte, prossimo richiamo, stato. Tutto in una transazione.
-    H-D4 Con linee di prodotto di piu' categorie madre il form richiede almeno un prodotto per ogni categoria madre
-         (422 su `offer_lines` altrimenti): un'offerta nata senza prodotti ricadrebbe sulle linee dell'opportunita',
-         cioe' su tutte le categorie, e comparirebbe in tutti i tab. Con una sola categoria madre nulla cambia (si puo'
-         ancora creare senza prodotti).
-    H-D5 `single_quote_per_opportunity` (`OpportunityQuoteLimit`) non blocca le N offerte nate insieme (categorie madre
-         diverse); resta valido per le offerte aggiunte dopo, come oggi.
   </decisions>
 
   <scope>
@@ -236,8 +210,6 @@
       <item>D: replica alla generazione della commessa + azione "Copia dati dall'offerta".</item>
       <item>E: guardia di congelamento su tutti i canali di scrittura dell'offerta + permesso + popup di conferma + log.</item>
       <item>F: colonna unica `managers` in Gestione Richieste e Gestione Iscritti.</item>
-      <item>G: colonna `status` opportunita' su stati di sistema + tab con conteggi.</item>
-      <item>H: creazione richiesta con prodotti di piu' categorie madre = 1 opportunita' + N offerte; tab Gestione Richieste/Iscritti sulle categorie dei prodotti dell'offerta.</item>
       <item>Guide in-app IT+EN (§4-bis): quotes, request-management, enrollee-management, opportunities, quote-workflows, product-categories, work-orders, contracts + nuova guida `quote-system-statuses` e chiave in `HELP_GUIDE_KEYS`.</item>
     </in>
     <out>
@@ -245,7 +217,9 @@
       <item>Trasferimento di offerte gia' a contratto (B-D6), spostamento di contratti/commesse/fatture su altra anagrafica.</item>
       <item>Trasferimento massivo (piu' offerte in un colpo) ad altra anagrafica.</item>
       <item>Riempimento massivo dei campi flessibili sulle commesse gia' esistenti (D-D2: solo azione per commessa).</item>
-      <item>Stati di sistema per Contratti/Commesse/Opportunita' come entita' separate: Opportunita' riusa quelli dell'offerta.</item>
+      <item>Stati di sistema per Contratti/Commesse/Opportunita' come entita' separate.</item>
+      <item>Tab degli stati in Opportunita' e stato opportunita' sugli stati di sistema (ex parte G, eliminata 2026-11-16).</item>
+      <item>Piu' offerte per categoria madre alla creazione richiesta e tab sui prodotti dell'offerta (ex parte H, eliminata 2026-11-16).</item>
       <item>Modifiche al QNet legacy.</item>
       <item>Azione massiva "Assegna Tutor" e logica dell'Operatore (posizione 2): invariate.</item>
     </out>
@@ -298,7 +272,7 @@
         { value, label, color, requires_note:false }). Riga: `quote_system_status` { id, name, color } | null;
         `quote_system_status_options`: int[] (stati di sistema con almeno uno stato collegato nel set risolto);
         `quote_system_status_notes`: int[] (fra quelli, gli id il cui stato di lavorazione di destinazione `requires_note`).
-        Generico FE: `<columnId>_notes` sulla riga, se presente, decide la richiesta della nota per quella riga.
+        Generico FE: `&lt;columnId&gt;_notes` sulla riga, se presente, decide la richiesta della nota per quella riga.
         Filtro avanzato `quote_system_status` set per nome.</response>
     </endpoint>
     <endpoint method="PATCH" path="/api/tables/quotes/rows/{id}">
@@ -337,18 +311,23 @@
       <response>la commessa creata ha `attribute_values` precompilati (D-D1); valori inviati esplicitamente vincono.</response>
     </endpoint>
     <endpoint method="POST" path="/api/work-orders/{workOrder}/copy-quote-attributes">
-      <response status="200">WorkOrderResource; message "N campi copiati dall'offerta" (0 = nessun campo vuoto da riempire).</response>
+      <response status="200">{ data: WorkOrderResource, permissions, message: "N campi copiati dall'offerta" } (0 = nulla da copiare). Nessun body.
+        Commessa multi-offerta: offerte delle sue righe, in ordine di id.</response>
       <errors>403 senza update sulla commessa; 404 commessa non visibile.</errors>
     </endpoint>
 
     <!-- E -->
     <rule>
-      Ogni scrittura sull'offerta a contratto (Offerte store/update/celle, Gestione Richieste/Iscritti updateWork/celle per
-      i campi congelati, righe da Contratto, cambio stato, transfer-registry):
-        senza `quotes.updateContracted` -> 403 { success:false, message:"Offerta a contratto: modifica non consentita" };
-        con il permesso e senza `confirm_contracted_edit: true` -> 409 { success:false, code:"contracted_edit_confirmation_required", message };
-        con conferma -> scrittura + evento `quote.contracted_edit`.
-      Righe griglia/QuoteResource: `is_contracted`: bool, `can_update_contracted`: bool.
+      Ogni scrittura UTENTE sull'offerta a contratto passa da `ContractedQuoteGuard` (Offerte PATCH /quotes/{id} e celle
+      PATCH /tables/quotes/rows/{id}; Gestione Richieste/Iscritti PATCH /{request|enrollee}-management/{id} e celle;
+      titolo/righe da PATCH /contracts/{id}). Le scritture interne (validazione contratto, ricalcoli, migrazioni) no.
+      Contano solo i campi che CAMBIANO davvero (un valore reinviato uguale non conta). Campi liberi (E-D3, tutti i
+      canali): manager_slots/managers (team), next_callback_at, operational_site_id, general_notes, note.
+        senza `quotes.updateContracted` -> 403 { success:false, message:"Offerta a contratto: modifica non consentita", authorization };
+        con il permesso e senza `confirm_contracted_edit: true` nel body -> 409 { success:false, message, code:"contracted_edit_confirmation_required" };
+        con conferma -> scrittura + activity `contracted_edit` (properties.fields) sull'offerta.
+      QuoteResource e RequestManagementResource: `is_contracted`: bool, `can_update_contracted`: bool.
+      Il FE, su 409 con quel `code`, mostra il popup e ripete la STESSA richiesta aggiungendo `confirm_contracted_edit: true`.
     </rule>
 
     <!-- F -->
@@ -357,17 +336,6 @@
         sortable, editable. Righe: `managers`: [{ id, name, avatar_url, position, position_label }].</response>
     </endpoint>
 
-    <!-- G -->
-    <endpoint method="POST" path="/api/tables/opportunities/rows">
-      <response>riga `status` espressa in stati di sistema (G-D2); `meta.aggregates` = { "&lt;nome stato di sistema&gt;": N }.
-        Filtro tab: `filterModel.status` = { filterType:"set", values:["&lt;nome&gt;"] }.</response>
-    </endpoint>
-
-    <!-- H -->
-    <endpoint method="POST" path="/api/request-management (e enrollee-management)">
-      <request>invariato nella shape; 422 su `offer_lines` se le linee coprono piu' categorie madre e una non ha prodotti (H-D4).</request>
-      <response>data: { quote: QuoteResource (la prima), quotes: QuoteResource[] (tutte, una per categoria madre), stessa `opportunity_id` }.</response>
-    </endpoint>
   </data_contract>
 
   <acceptance_criteria>
@@ -404,13 +372,6 @@
     <!-- F -->
     <criterion id="AC-025">Config colonne Gestione Richieste e Iscritti: nessuna colonna di posizione, `managers` "Gestori account" sempre, anche nelle linguette con etichette.</criterion>
     <criterion id="AC-026">La riga elenca tutto il team con etichetta di posizione; filtro set per nome con "Vuoti"; scrittura dalla cella aggiorna il team e la posizione 2 continua ad aggiornare `operator_id`.</criterion>
-    <!-- G -->
-    <criterion id="AC-027">Opportunita': colonna `status` in stati di sistema (uno, "N stati", nessuna offerta = Aperto); filtro per nome coerente col badge.</criterion>
-    <criterion id="AC-028">`meta.aggregates` per stato di sistema, invariati col tab attivo, solo righe visibili; FE: "Tutti" senza conteggio, poi stati in ordine con "(N)" se N &gt; 0, il tab scrive/rimuove il filtro `status`.</criterion>
-    <!-- H -->
-    <criterion id="AC-029">Creazione richiesta con prodotti di 2 categorie madre: 1 opportunita' con tutte le linee + 2 offerte su di essa, ciascuna con le sole righe della sua categoria madre; risposta con `quotes` di 2 elementi.</criterion>
-    <criterion id="AC-030">Prodotti tutti della stessa categoria madre (o nessun prodotto con una sola categoria madre): 1 opportunita' + 1 offerta come oggi. Linee di 2 categorie madre e una senza prodotti -> 422, nessuna scrittura.</criterion>
-    <criterion id="AC-031">Tab di Gestione Richieste/Iscritti: un'offerta con prodotti compare (e conta) solo nei tab delle categorie dei suoi prodotti, anche se l'opportunita' ha altre linee; un'offerta senza prodotti segue le linee dell'opportunita' come oggi.</criterion>
   </acceptance_criteria>
 
   <constraints>
@@ -433,9 +394,7 @@
     <task id="MT-06" owner="backend"  lane="S"  deps="MT-05"        ac="AC-010..AC-014">B backend: QuoteRegistryTransferService, rotte dei 3 moduli, permessi, log, registry_transfer.</task>
     <task id="MT-07" owner="backend"  lane="P"  deps="-"            ac="AC-018..AC-020">D backend: replica alla generazione + copy-quote-attributes (solo WorkOrders/Contracts).</task>
     <task id="MT-08" owner="backend"  lane="P"  deps="-"            ac="AC-025,AC-026">F backend: colonna unica in RequestManagement tables (solo app/Tables/RequestManagement).</task>
-    <task id="MT-09" owner="backend"  lane="S"  deps="MT-01"        ac="AC-027,AC-028">G backend: OpportunityStatusColumn/Scope su stati di sistema + aggregates.</task>
-    <task id="MT-10" owner="frontend" lane="P"  deps="contratti MT-04..MT-09" ac="AC-015,AC-017,AC-020,AC-024,AC-026,AC-028">FE di C, B, D, E, F, G (file disgiunti per feature) + guide.</task>
-    <task id="MT-11" owner="backend+frontend" lane="S" deps="MT-08" ac="AC-029..AC-031">H: RequestCreationService a gruppi per categoria madre, filtro e conteggi dei tab sui prodotti dell'offerta, FE (vincolo H-D4 e risposta).</task>
+    <task id="MT-10" owner="frontend" lane="P"  deps="contratti MT-04..MT-08" ac="AC-015,AC-017,AC-020,AC-024,AC-026">FE di C, B, D, E, F (file disgiunti per feature) + guide.</task>
     <task id="MT-12" owner="verifier" lane="S"  deps="tutti"        ac="tutti">Suite mirate + suite completa a fine feature, tsc, lint, HANDOFF.</task>
   </microtasks>
 

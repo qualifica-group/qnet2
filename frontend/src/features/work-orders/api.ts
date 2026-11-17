@@ -94,3 +94,13 @@ export async function updateWorkOrder(
 export async function requestWorkOrderUpdate(id: number, payload: RequestWorkOrderUpdatePayload): Promise<void> {
   await apiClient.post<ApiResponse<null>>(`/work-orders/${id}/request-update`, payload)
 }
+
+/** Spec 0404 D-D2: fills the work order's EMPTY flexible fields from its offer(s); `message` carries the copied count. */
+export async function copyWorkOrderQuoteAttributes(
+  id: number,
+): Promise<{ message: string; workOrder: WorkOrderDetailWithPermissions }> {
+  const { data } = await apiClient.post<ApiResponseWithPermissions<WorkOrderDetail, ResourcePermissions>>(
+    `/work-orders/${id}/copy-quote-attributes`,
+  )
+  return { message: data.message, workOrder: { ...data.data, permissions: data.permissions } }
+}

@@ -68,6 +68,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'quote-under-contract',
+      title: "Offerta a contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Se l'offerta ha un contratto è **congelata**: nel pannello **Lavora** compare l'avviso **Offerta a contratto** e, senza il permesso **Modifica offerte a contratto**, i campi sono in sola lettura (anche le celle della lista). Con il permesso, il salvataggio chiede prima conferma in un popup.",
+        },
+        {
+          type: 'note',
+          text: "Restano sempre modificabili i campi operativi: **Gestori account** (team), **Data prossimo richiamo**, **Sede operativa** e **Note generali**.",
+        },
+      ],
+    },
+    {
       id: 'statistics-differences',
       title: "Le statistiche non ci sono più",
       blocks: [

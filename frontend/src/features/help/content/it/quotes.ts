@@ -306,6 +306,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'quote-under-contract',
+      title: "Offerta a contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Un'offerta che ha un contratto (in qualunque stato) è **congelata**: è un documento già accettato. Per modificarla serve il permesso **Modifica offerte a contratto**; senza, nel dettaglio compare l'avviso **Offerta a contratto: modificabile solo da chi ha il permesso** e i campi sono in sola lettura (anche dalle celle della lista, dal pannello **Lavora** di Gestione Richieste e Gestione Iscritti e dalle righe nel dettaglio del contratto).",
+        },
+        {
+          type: 'paragraph',
+          text: "Con il permesso, ogni modifica apre un popup **Offerta a contratto** che chiede conferma: se confermi la modifica viene salvata e registrata nello **Storico**, se annulli non cambia nulla.",
+        },
+        {
+          type: 'note',
+          text: "Restano sempre modificabili i campi operativi: **Gestori account** (team), **Data prossimo richiamo**, **Sede operativa** e **Note generali**. Note, documenti, task e attività non sono congelati.",
+        },
+      ],
+    },
+    {
       id: 'quote-pdf',
       title: 'Preventivo in PDF',
       blocks: [

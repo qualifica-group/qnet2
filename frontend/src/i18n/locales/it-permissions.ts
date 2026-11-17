@@ -48,6 +48,8 @@ export const permissions = {
     appendTeamMember: 'Aggiungi al team',
     // Spec 0404 B-D1: spostare l'offerta su un'altra anagrafica.
     transferRegistry: 'Trasferisci ad altra anagrafica',
+    // Spec 0404 E-D2: scrivere su un'offerta a contratto (congelata).
+    updateContracted: 'Modifica offerte a contratto',
     impersonate: 'Impersona',
     // Ability non canoniche introdotte dalla spec 0078: `manage` governa
     // l'approvazione/rifiuto di una richiesta di modifica campo

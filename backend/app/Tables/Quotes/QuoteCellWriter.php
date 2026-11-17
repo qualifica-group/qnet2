@@ -7,6 +7,7 @@ namespace App\Tables\Quotes;
 use App\Http\Requests\Quotes\UpdateQuoteRequest;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Quotes\ContractedQuoteGuard;
 use App\Services\QuoteService;
 use App\Services\Table\FormRequestCellValidator;
 use App\Support\ManagerPositions;
@@ -33,6 +34,7 @@ final class QuoteCellWriter
     public function __construct(
         private readonly FormRequestCellValidator $formRequest,
         private readonly QuoteService $service,
+        private readonly ContractedQuoteGuard $contractedGuard,
     ) {}
 
     public function write(Quote $quote, string $fieldKey, mixed $value, User $actor, ?string $note): Quote
@@ -43,7 +45,8 @@ final class QuoteCellWriter
         // Step 2: the form's own rules, then its own service.
         $request = $this->formRequest->validate(UpdateQuoteRequest::class, self::ROUTE_PARAMETER, $quote, $actor, $payload);
 
-        return $this->service->update($quote, $request->toData(), $actor);
+        // Step 3 (spec 0404 part E): an offer under contract needs the permission and a confirmation.
+        return $this->contractedGuard->run($quote, $actor, $request->validated(), fn (): Quote => $this->service->update($quote, $request->toData(), $actor));
     }
 
     /**
