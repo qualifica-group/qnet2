@@ -74,6 +74,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: "Task e Documenti compaiono nel menu solo se puoi vedere quelle schede. Chiusura forzata, Avanzamento, Richiedi aggiornamento, Richiedi proforma e Attività non sono più azioni di riga: le trovi nel dettaglio della commessa. L'avanzamento si apre anche dalla cella **Avanzamento** della tabella.",
         },
+        {
+          type: 'paragraph',
+          text: "Se puoi richiedere proforma, la tabella ha anche la colonna **€**, come nel vecchio QNet: l'icona dell'euro è **grigia** se la commessa non ha richieste proforma, **blu** se c'è una richiesta in attesa di emissione, **gialla** se le proforma richieste sono state emesse. Passando col mouse sull'icona leggi lo stato. Cliccando l'icona grigia o blu si apre la finestra **Richiesta emissione Proforma**; quella gialla non è cliccabile. La colonna si può ordinare (non richiesta, richiesta, emessa) e filtrare per **Non richiesta**, **Richiesta**, **Emessa**.",
+        },
       ],
     },
     {
@@ -409,7 +413,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Se hai il permesso di creare richieste proforma, trovi il pulsante **Richiedi proforma** in alto nel dettaglio della commessa, accanto ad **Avanzamento commessa**, e in fondo al popup **Responsabili e Partecipanti** dell\'elenco Commesse (vedi **Azioni della tabella**): entrambi aprono la stessa finestra.',
+          text: 'Se hai il permesso di creare richieste proforma, trovi il pulsante **Richiedi proforma** in alto nel dettaglio della commessa, accanto ad **Avanzamento commessa**, in fondo al popup **Responsabili e Partecipanti** dell\'elenco Commesse e nell\'icona della colonna **€** della tabella (vedi **Azioni della tabella**): aprono tutti la stessa finestra.',
         },
         {
           type: 'steps',

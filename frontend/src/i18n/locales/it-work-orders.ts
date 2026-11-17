@@ -73,6 +73,8 @@ export const workOrders = {
     work_phase: 'Fase',
     work_order_workflow_status: 'Stato lavorazione',
     completion_percentage: 'Avanzamento',
+    // Spec 0407: la colonna "€" del vecchio QNet, stato della richiesta proforma.
+    proforma_status: '€',
     created_at: 'Creata il',
     updated_at: 'Aggiornata il',
     chat_unread_count: 'Non letti',

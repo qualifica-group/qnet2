@@ -73,6 +73,8 @@ export const workOrders = {
     work_phase: 'Phase',
     work_order_workflow_status: 'Work status',
     completion_percentage: 'Progress',
+    // Spec 0407: the legacy "€" column, the proforma request state.
+    proforma_status: '€',
     created_at: 'Created at',
     updated_at: 'Updated at',
     chat_unread_count: 'Unread',

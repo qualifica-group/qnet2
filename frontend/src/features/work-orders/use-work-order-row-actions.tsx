@@ -6,6 +6,8 @@ import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { buildWorkOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 import { moduleDefinition } from '@/features/work-orders/work-order-module'
+import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
+import type { ProformaTarget } from '@/features/work-orders/work-order-proforma-cell'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderTeamDialog } from '@/features/work-orders/work-order-team-dialog'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
@@ -57,7 +59,7 @@ export interface UseWorkOrderRowActionsResult {
   /** Ctrl/Cmd+click pages of the row actions, for `<TableView resolveActionHref>`. */
   resolveActionHref: ActionHrefResolver
   iconMap: ActionIconMap
-  /** The Commesse cell renderers, its progress cell wired to this hook's popup (spec 0321 R-6). */
+  /** The Commesse cell renderers, the progress and "€" cells wired to this hook's dialogs (spec 0321 R-6, spec 0407). */
   renderers: TableRendererMap
   /**
    * Opens the create form seeded with `params`, in the same Sheet as view:
@@ -65,7 +67,7 @@ export interface UseWorkOrderRowActionsResult {
    */
   openCreateWith: (params: ModuleCreateParams) => void
   sheet: ReactNode
-  /** The "Responsabili e Partecipanti" and progress dialogs: the host mounts them. */
+  /** The "Responsabili e Partecipanti", progress and proforma request dialogs: the host mounts them. */
   dialogs: ReactNode
 }
 
@@ -76,7 +78,7 @@ export interface UseWorkOrderRowActionsResult {
  * opens the record, "Responsabili e Partecipanti" its team dialog, Info and
  * the menu entries (Storico Note / Task / Documenti) open the record on that
  * tab. The progress cell keeps its own
- * dialog (spec 0321).
+ * dialog (spec 0321), the "€" cell the proforma request one (spec 0407).
  */
 export function useWorkOrderRowActions({
   onMutated,
@@ -84,7 +86,8 @@ export function useWorkOrderRowActions({
 }: UseWorkOrderRowActionsOptions): UseWorkOrderRowActionsResult {
   const [teamId, setTeamId] = useState<number | null>(null)
   const [progressId, setProgressId] = useState<number | null>(null)
-  const renderers = useMemo(() => buildWorkOrderColumnRenderers(setProgressId), [])
+  const [proformaTarget, setProformaTarget] = useState<ProformaTarget | null>(null)
+  const renderers = useMemo(() => buildWorkOrderColumnRenderers(setProgressId, setProformaTarget), [])
 
   const { openCreateWith, openView, openViewTab, sheet } = useModuleOpener(WORK_ORDERS_DOMAIN, {
     onSaved: onMutated,
@@ -122,6 +125,18 @@ export function useWorkOrderRowActions({
         onOpenChange={closeOnFalse(() => setProgressId(null))}
         onMutated={onMutated}
       />
+      {proformaTarget !== null ? (
+        <ProformaRequestDialog
+          workOrderId={proformaTarget.id}
+          workOrderCode={proformaTarget.code}
+          open
+          onOpenChange={closeOnFalse(() => setProformaTarget(null))}
+          onSent={() => {
+            setProformaTarget(null)
+            onMutated()
+          }}
+        />
+      ) : null}
     </>
   )
 

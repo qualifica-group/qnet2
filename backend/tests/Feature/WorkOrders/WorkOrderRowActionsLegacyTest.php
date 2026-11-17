@@ -58,12 +58,10 @@ it('AC-001: the catalog keeps Info on the row, folds the other tabs into the men
         ->toBe(['notes']);
 });
 
-it('AC-001: the grid row no longer carries the proforma state', function () {
+// The proforma state came back as the "€" column (spec 0407): only the row action stays gone.
+it('AC-001: the grid row no longer carries the proforma action', function () {
     Sanctum::actingAs(grantWorkOrderRowPermission(workOrderUserWith(['viewAny', 'view']), 'proforma-requests.create'));
     WorkOrder::factory()->create();
 
-    $row = $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items.0');
-
-    expect($row)->not->toHaveKey('proforma_status')
-        ->and($row['actions'])->not->toContain('proforma');
+    expect(legacyRowActions())->not->toContain('proforma');
 });

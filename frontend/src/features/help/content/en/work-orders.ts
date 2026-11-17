@@ -74,6 +74,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: "Tasks and Documents show in the menu only if you can see those tabs. Force close, Progress, Request update, Request proforma and Activity are no longer row actions: you find them in the work order detail. The progress also opens from the **Progress** cell of the table.",
         },
+        {
+          type: 'paragraph',
+          text: "If you may request proformas, the table also has the **€** column, as in the old QNet: the euro icon is **grey** when the work order has no proforma request, **blue** when a request is waiting to be issued, **yellow** when the requested proformas have been issued. Hovering the icon shows the state. Clicking the grey or blue icon opens the **Proforma issue request** window; the yellow one is not clickable. The column can be sorted (not requested, requested, issued) and filtered by **Not requested**, **Requested**, **Issued**.",
+        },
       ],
     },
     {
@@ -409,7 +413,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'If you can create proforma requests, the **Request proforma** button is at the top of the work order detail, next to **Work order progress**, and at the bottom of the **Supervisors and Participants** popup of the Work orders list (see **Table actions**): both open the same window.',
+          text: 'If you can create proforma requests, the **Request proforma** button is at the top of the work order detail, next to **Work order progress**, at the bottom of the **Supervisors and Participants** popup of the Work orders list and in the icon of the table\'s **€** column (see **Table actions**): they all open the same window.',
         },
         {
           type: 'steps',

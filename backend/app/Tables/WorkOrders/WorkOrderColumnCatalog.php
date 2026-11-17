@@ -257,6 +257,27 @@ final class WorkOrderColumnCatalog
     }
 
     /**
+     * The "€" column (spec 0407): appended by WorkOrdersTableDefinition only
+     * for the actors who may raise a proforma request
+     * (WorkOrderProformaStatusColumn::isVisibleTo()).
+     *
+     * @return array<string, mixed>
+     */
+    public static function proformaStatusColumn(): array
+    {
+        return [
+            'id' => WorkOrderProformaStatusColumn::COLUMN,
+            'label' => 'workOrders.columns.proforma_status',
+            'type' => 'badge',
+            'visible' => true,
+            'sortable' => true,
+            'filterable' => true,
+            'filterType' => 'set',
+            'width' => 72,
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public static function filters(): array

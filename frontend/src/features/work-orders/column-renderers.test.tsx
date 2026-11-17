@@ -14,7 +14,7 @@ import { buildWorkOrderColumnRenderers } from '@/features/work-orders/column-ren
  * `badges`) and the date columns.
  */
 
-const workOrderColumnRenderers = buildWorkOrderColumnRenderers(vi.fn())
+const workOrderColumnRenderers = buildWorkOrderColumnRenderers(vi.fn(), vi.fn())
 
 function renderCell(columnId: string, value: unknown) {
   const renderer = workOrderColumnRenderers[columnId]
