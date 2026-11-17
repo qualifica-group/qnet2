@@ -51,6 +51,7 @@ final class DepartmentPermissionGrants
         // Opportunita' (13-19).
         'opportunities_view' => ['opportunities.viewAny', 'opportunities.view'],
         'opportunities_view_competence' => ['opportunities.viewCompetence'],
+        'opportunities_view_all' => ['opportunities.viewAll'],
         'opportunities_edit' => ['opportunities.create', 'opportunities.update'],
         'opportunities_delete' => ['opportunities.delete'],
         'opportunities_export' => ['opportunities.export'],
@@ -61,6 +62,8 @@ final class DepartmentPermissionGrants
         // Offerte (20-28): status change, PDF and commission recalculation ride on view/update.
         'quotes_view' => ['quotes.viewAny', 'quotes.view'],
         'quotes_view_competence' => ['quotes.viewCompetence'],
+        'quotes_view_site' => ['quotes.viewSite'],
+        'quotes_view_all' => ['quotes.viewAll'],
         'quotes_edit' => ['quotes.create', 'quotes.update'],
         'quotes_delete' => ['quotes.delete'],
         'quotes_transfer' => ['quotes.export', 'quotes.import'],
@@ -69,6 +72,8 @@ final class DepartmentPermissionGrants
         // Commesse (29-41): chat rides on view, force close on update.
         'work_orders_view' => ['work-orders.viewAny', 'work-orders.view'],
         'work_orders_view_competence' => ['work-orders.viewCompetence'],
+        'work_orders_view_site' => ['work-orders.viewSite'],
+        'work_orders_view_all' => ['work-orders.viewAll'],
         'work_orders_edit' => ['work-orders.create', 'work-orders.update', 'document-bundles.viewAny', 'document-bundles.view', 'document-bundles.create', 'document-bundles.update'],
         'work_orders_economics' => ['work-orders.viewCosts', 'work-orders.viewContractData'],
         'work_orders_manage_costs' => ['work-orders.manageCosts'],
@@ -83,6 +88,7 @@ final class DepartmentPermissionGrants
         // Contratti (42-49).
         'contracts_view' => ['contracts.viewAny', 'contracts.view'],
         'contracts_view_competence' => ['contracts.viewCompetence'],
+        'contracts_view_all' => ['contracts.viewAll'],
         'contracts_validate' => ['contracts.validate'],
         'contracts_program' => ['contracts.program'],
         'contracts_change_status' => ['contracts.changeStatus'],
@@ -93,6 +99,7 @@ final class DepartmentPermissionGrants
 
         // Attivita' (50-55).
         'tasks_view_all' => ['tasks.viewAll'],
+        'tasks_view_site' => ['tasks.viewSite'],
         'tasks_edit' => ['tasks.create', 'tasks.update'],
         'tasks_manage_all' => ['tasks.manageAll'],
         'tasks_validate' => ['tasks.validate', 'tasks.block'],
@@ -103,21 +110,37 @@ final class DepartmentPermissionGrants
         'proforma_view' => ['proforma-requests.viewAny', 'proforma-requests.view'],
         'proforma_request' => ['proforma-requests.create'],
         'invoices_view' => ['invoices.viewAny', 'invoices.view', 'invoice-installments.viewAny', 'invoice-installments.view'],
+        'invoices_edit' => ['invoices.create', 'invoices.update', 'invoices.downgrade', 'invoice-installments.update'],
+        'invoices_collect' => ['invoices.collect'],
         'invoices_send' => ['invoices.sendEmail', 'invoices.viewEmails'],
+        'invoices_delete' => ['invoices.delete'],
         'invoices_export' => ['invoices.export', 'invoice-installments.export'],
 
         // Acquisti (64-71).
         'purchase_requests_view' => ['purchase-requests.view'],
+        'purchase_requests_view_all' => ['purchase-requests.viewAll'],
         'purchase_requests_create' => ['purchase-requests.create', 'purchase-requests.update', 'purchase-requests.deleteLine'],
         'purchase_requests_fulfill' => ['purchase-requests.fulfill', 'purchase-requests.close'],
         'purchase_orders' => ['purchase-orders.view', 'purchase-orders.send'],
         'purchase_invoices_view' => ['purchase-invoices.viewAny', 'purchase-invoices.view', 'purchase-invoice-installments.viewAny', 'purchase-invoice-installments.view'],
+        'purchase_invoices_edit' => ['purchase-invoices.create', 'purchase-invoices.update', 'purchase-invoices.downgrade', 'purchase-invoice-installments.update'],
+        'purchase_invoices_pay' => ['purchase-invoices.pay'],
         'purchases_export' => ['purchase-requests.export', 'purchase-orders.export'],
+        'purchase_invoices_export' => ['purchase-invoices.export', 'purchase-invoice-installments.export'],
 
         // Provvigioni (72-78).
         'commission_accruals_view' => ['commission-accruals.viewAny', 'commission-accruals.view'],
+        'agent_fiscal_profiles_view' => ['agent-fiscal-profiles.viewAny', 'agent-fiscal-profiles.view'],
         'commission_settlements_view' => ['commission-settlements.viewAny', 'commission-settlements.view'],
         'commissions_export' => ['commission-accruals.export', 'commission-settlements.export'],
+
+        // Tesoreria e prima nota (79-84).
+        'treasury_view' => ['financial-accounts.viewAny', 'financial-accounts.view', 'treasury-movements.viewAny', 'treasury-movements.view'],
+        'treasury_edit' => ['treasury-movements.create', 'treasury-movements.update', 'treasury-movements.delete'],
+        'treasury_reconcile' => ['treasury-movements.reconcile'],
+        'ledger_view' => ['ledger.view'],
+        'payment_cards_reveal' => ['financial-accounts.revealCardNumber'],
+        'treasury_export' => ['treasury-movements.export'],
 
         // Controllo di gestione e statistiche (85-87).
         'management_control' => ['management-control.view'],
@@ -126,6 +149,7 @@ final class DepartmentPermissionGrants
 
         // Gestione richieste (88-92).
         'requests_view' => ['request-management.viewAny', 'request-management.view'],
+        'requests_view_all' => ['request-management.viewAll', 'enrollee-management.viewAll'],
         'requests_import' => ['request-management.import'],
         'enrollees_view' => ['enrollee-management.viewAny', 'enrollee-management.view'],
         'rewarded_referents' => ['rewarded-referents.viewAny', 'rewarded-referents.view', 'rewarded-referents.create', 'rewarded-referents.update', 'rewarded-referents.viewActivity'],
@@ -140,6 +164,7 @@ final class DepartmentPermissionGrants
         // Personale (98-107).
         'trainings_own' => ['staff-trainings.viewAny', 'user-skills.viewAny'],
         'users_view' => ['users.viewAny', 'users.view', 'org-chart.view'],
+        'staff_view_all' => ['staff-trainings.viewAll', 'user-skills.viewAll', 'absence-requests.calendarAll', 'time-entries.viewAll'],
         'hr_office' => [
             'users.viewAny', 'users.view', 'users.create', 'users.update', 'users.delete', 'users.export', 'users.import',
             'users.viewActivity', 'users.manageCompensation',

@@ -21,8 +21,8 @@ use Spatie\Permission\PermissionRegistrar;
  * The department roles of the questionnaires "permessi per reparti" (spec
  * 0408): syncs `reparto-<key>` and `reparto-<key>-senior` from
  * DepartmentRoleCatalogue, then moves every person of DepartmentRoster onto
- * them: the replaced mansione roles go, the targeted grants become direct
- * permissions, every other role stays. Whoever is not listed is untouched.
+ * them: the replaced mansione roles go, the department and add-on roles come,
+ * direct permissions are cleared (D-9), every other role stays. Whoever is not listed is untouched.
  *
  * `php artisan db:seed --class=QualificaDepartmentRoleSeeder`. One
  * transaction; a re-run converges.
@@ -51,7 +51,12 @@ class QualificaDepartmentRoleSeeder extends Seeder
                 );
             }
 
-            // Step 3: the listed people onto their department roles.
+            // Step 3: the add-on roles of single people, without the baseline.
+            foreach (Department::ADD_ON_ROLES as $role => $addOn) {
+                $this->syncDepartmentRole($role, $addOn['description'], $addOn['grants'], baseline: []);
+            }
+
+            // Step 4: the listed people onto their roles.
             foreach (DepartmentRoster::USERS as $email => $entry) {
                 $this->assignPerson($email, $entry);
             }
@@ -62,10 +67,11 @@ class QualificaDepartmentRoleSeeder extends Seeder
 
     /**
      * @param  array<int, string>  $grants
+     * @param  array<int, string>  $baseline
      */
-    private function syncDepartmentRole(string $name, string $description, array $grants): void
+    private function syncDepartmentRole(string $name, string $description, array $grants, array $baseline = Grants::BASELINE): void
     {
-        $permissions = $this->withUserFormStack($this->resolvePermissions([...Grants::BASELINE, ...$this->grantPermissions($grants)]), $this->catalogue);
+        $permissions = $this->withUserFormStack($this->resolvePermissions([...$baseline, ...$this->grantPermissions($grants)]), $this->catalogue);
         $role = $this->syncRole($name, $description, $permissions);
 
         // The HR department reads the user's contractual data like the HR
@@ -80,7 +86,7 @@ class QualificaDepartmentRoleSeeder extends Seeder
     }
 
     /**
-     * @param  array{roles: array<int, string>, grants?: array<int, string>, keep?: array<int, string>}  $entry
+     * @param  array{roles: array<int, string>, keep?: array<int, string>}  $entry
      */
     private function assignPerson(string $email, array $entry): void
     {
@@ -97,7 +103,8 @@ class QualificaDepartmentRoleSeeder extends Seeder
             || (in_array($role, Department::REPLACED_ROLES, true) && ! in_array($role, $keep, true)));
 
         $user->syncRoles([...$retained->all(), ...$entry['roles']]);
-        $user->syncPermissions($this->resolvePermissions($this->grantPermissions($entry['grants'] ?? []))->all());
+        // Everything comes from roles (D-9): earlier direct grants go.
+        $user->syncPermissions([]);
     }
 
     /**

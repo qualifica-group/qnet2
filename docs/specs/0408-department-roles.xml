@@ -10,8 +10,9 @@
   <context>
     D-1 Decisione utente 2026-11-17: un ruolo per reparto e per livello (`reparto-iso`, `reparto-iso-senior`, ...).
         Oggi base e senior hanno gli stessi permessi, in futuro divergeranno: due ruoli distinti da subito.
-        Eccezione gia' oggi: Finanza Agevolata, dove il questionario distingue "SOLO COMMESSE" (base) da
-        "livello alto / tutto il settore" (senior).
+        Eccezioni gia' oggi: Finanza Agevolata, dove il questionario distingue "SOLO COMMESSE" (base) da
+        "livello alto / tutto il settore" (senior); ISO/GDPR, dove la senior (responsabile di settore) ha in
+        piu' quanto la nota "UFFICIO PINIFICAZIONE E RESP SI" concede.
     D-2 Il contenuto dei ruoli e' la traduzione delle risposte in permessi: chiavi di concessione
         (`DepartmentPermissionGrants::GRANTS`, una per domanda o gruppo di domande) composte per reparto in
         `DepartmentRoleCatalogue`. Ogni ruolo ha anche la base comune (attivita', ore e assenze proprie,
@@ -27,7 +28,7 @@
         Chi non e' nell'elenco non cambia; l'elenco crescera'.
     D-6 Scelte sui punti ambigui dei questionari (da confermare con i responsabili):
         ISO: Russo Del Prete e Mario Esposito restano `admin` (indicati admin); Palumbo e Cosentino perdono
-        `admin` e ricevono i permessi mirati della nota "UFFICIO PIANIFICAZIONE E RESP SI".
+        `admin` e hanno `reparto-iso` + `reparto-pianificazione` (D-8).
         Sicurezza: commesse del settore (nota su tutte le persone "devono vedere tutto delle pratiche"),
         Annunziata con export commesse e provvigioni in lettura/export; resta `commerciale`.
         HR: azioni su commesse e contratti (30, 43-49) escluse, sono "di chi ha il ruolo di pianificazione".
@@ -37,12 +38,34 @@
         concessa, richiede `work-orders.update`.
     D-7 Ruolo HR: moduli dell'ufficio HR come `risorse-umane` (spec 0283) e la stessa matrice campi
         (dati contrattuali visibili); gli altri ruoli di reparto nascondono i dati contrattuali come le mansioni.
+    D-8 Decisione utente 2026-11-17: chi lavora in piu' reparti o uffici ha un ruolo per ciascuno, anche se i
+        permessi si sovrappongono. L'Ufficio Pianificazione e' un ruolo (`reparto-pianificazione`, base e senior:
+        permessi ISO + nota pianificazione), non piu' permessi diretti.
+    D-9 Decisione utente 2026-11-17: nessun permesso diretto. Cio' che il questionario da' a una sola persona e'
+        un ruolo aggiuntivo (`ADD_ON_ROLES`, un solo livello, senza base comune): `reparto-sicurezza-responsabile`
+        con gli 8 permessi "solo responsabile" / "SOLO FERNANDO" (export/import commesse, maturati, liquidazioni,
+        export provvigioni), assegnato ad Annunziata con `reparto-sicurezza-senior`. Il seeder azzera i permessi
+        diretti delle persone elencate.
+    D-10 Questionari APL e Contabilita' (aggiunti 2026-11-17). Le liste per reparto stanno in `DepartmentGrantSets`.
+        Livelli di visibilita': "Tutte" = `viewAll`, "della propria sede" = `viewSite`, "in cui e' coinvolto" = solo
+        `view` (record propri). Le offerte, senza domanda sul livello, seguono le commesse (APL sede, Contabilita' tutte).
+        APL: contratti "Non so" = nessun permesso finche' non si chiariscono le definizioni; attivita' della sede senza
+        `tasks.manageAll` (D-4); fatturazione attiva completa come risposto (le fatture non hanno un livello per sede).
+        `reparto-apl-senior` (Chiappetti, "deve vedere tutto") = tutte le offerte, commesse, attivita', richieste e i
+        contratti in lettura. Contabilita': chiusura forzata senza modifica commessa non concessa (come D-6);
+        `reparto-contabilita-senior` (Centore e Romano, "la Coordinatrice puo' consultare tutto") = in piu' formazione,
+        competenze, calendario assenze e ore di tutti in lettura. Alberto Russo (Gruppo Casiello) non ha un account.
+        Restano i ruoli trasversali (D-5): agli APL `commerciale`/`supervisore-commerciale`/`consulente-commerciale`, ai
+        contabili `contabilita`, che concede anche cio' a cui il questionario risponde No (es. liquidazioni provvigioni).
+    D-11 Questionario Progettazione (aggiunto 2026-11-17): risposte identiche a Finanza Agevolata, quindi
+        `reparto-progettazione` ha gli stessi livelli (base "solo commesse", senior tutto il settore). Unica persona
+        Giuseppe Agus ("SOLO COMMESSE", base), che compare anche in Accreditamenti e Finanza Agevolata: tre ruoli (D-8).
   </context>
 
   <acceptance_criteria>
-    <criterion id="AC-001">Dopo il seeder esistono i 18 ruoli `reparto-*`, base e senior con gli stessi permessi tranne Finanza Agevolata.</criterion>
+    <criterion id="AC-001">Dopo il seeder esistono i 27 ruoli `reparto-*` (26 di reparto + `reparto-sicurezza-responsabile`), base e senior con gli stessi permessi tranne ISO, Finanza Agevolata, Progettazione, APL e Contabilita'.</criterion>
     <criterion id="AC-002">Una persona elencata perde i ruoli sostituiti e ha solo i ruoli di reparto piu' quelli trasversali o in `keep`.</criterion>
-    <criterion id="AC-003">Le persone speciali hanno i permessi mirati come permessi diretti; le altre nessun permesso diretto.</criterion>
+    <criterion id="AC-003">Chi e' in piu' reparti o uffici ha un ruolo per ciascuno; cio' che e' di una sola persona e' un ruolo aggiuntivo; nessuna persona elencata ha permessi diretti.</criterion>
     <criterion id="AC-004">Chi non e' nell'elenco resta invariato; ri-eseguito, il seeder converge senza duplicati.</criterion>
     <criterion id="AC-005">Il ruolo HR vede i dati contrattuali dell'utente; gli altri ruoli di reparto no.</criterion>
   </acceptance_criteria>

@@ -6,43 +6,15 @@ use Database\Seeders\QualificaCatalog\DepartmentRoleCatalogue as Department;
 
 /**
  * The people of the department questionnaires (spec 0408), by account email:
- * the department roles they hold, the targeted grants they hold on top
- * (direct permissions, keys of DepartmentPermissionGrants) and the replaced
- * roles they keep. Whoever is not listed is left alone; the list grows as the
+ * the department and add-on roles they hold (one per department or office
+ * they work in, D-8/D-9) and the replaced roles they keep. Nobody holds direct
+ * permissions. Whoever is not listed is left alone; the list grows as the
  * other departments answer.
  */
 final class DepartmentRoster
 {
     /**
-     * ISO/GDPR: "UFFICIO PINIFICAZIONE E RESP SI" (D-6).
-     *
-     * @var array<int, string>
-     */
-    private const array ISO_PLANNING_GRANTS = [
-        'registries_edit', 'registries_delete', 'registries_transfer', 'registries_history',
-        'opportunities_view', 'opportunities_view_competence', 'opportunities_edit', 'opportunities_export',
-        'opportunities_documents', 'opportunities_history',
-        'quotes_view', 'quotes_view_competence', 'quotes_edit', 'quotes_delete', 'quotes_transfer', 'quotes_history',
-        'work_orders_view_competence', 'work_orders_edit', 'work_orders_economics', 'work_orders_manage_costs',
-        'work_orders_invoices', 'work_orders_payments', 'work_orders_delete', 'work_orders_transfer', 'work_orders_history',
-        'contracts_view', 'contracts_view_competence', 'contracts_validate', 'contracts_program', 'contracts_change_status',
-        'contracts_terminate', 'contracts_reactivate', 'contracts_export', 'contracts_history',
-        'tasks_transfer',
-        'proforma_view', 'proforma_request', 'invoices_view', 'invoices_export',
-        'purchase_invoices_view', 'commission_accruals_view',
-    ];
-
-    /**
-     * Sicurezza: "solo responsabile" / "SOLO FERNANDO SI".
-     *
-     * @var array<int, string>
-     */
-    private const array SAFETY_HEAD_GRANTS = [
-        'work_orders_transfer', 'commission_accruals_view', 'commission_settlements_view', 'commissions_export',
-    ];
-
-    /**
-     * @var array<string, array{roles: array<int, string>, grants?: array<int, string>, keep?: array<int, string>}>
+     * @var array<string, array{roles: array<int, string>, keep?: array<int, string>}>
      */
     public const array USERS = [
         // ISO/GDPR
@@ -53,13 +25,13 @@ final class DepartmentRoster
         'ivana.mango@qualificagroup.com' => ['roles' => [Department::ISO]],
         'antoniosalvatore.peluso@qualificagroup.com' => ['roles' => [Department::ISO]],
         'antonio.demartino@qualificagroup.com' => ['roles' => [Department::ISO]],
-        'francesca.russodelprete@qualificagroup.com' => ['roles' => [Department::ISO.Department::SENIOR_SUFFIX], 'grants' => self::ISO_PLANNING_GRANTS, 'keep' => ['admin']],
+        'francesca.russodelprete@qualificagroup.com' => ['roles' => [Department::ISO.Department::SENIOR_SUFFIX], 'keep' => ['admin']],
         'mario.esposito@qualificagroup.com' => ['roles' => [Department::ISO], 'keep' => ['admin']],
-        'annarita.palumbo@qualificagroup.com' => ['roles' => [Department::ISO], 'grants' => self::ISO_PLANNING_GRANTS],
-        'consiglia.cosentino@qualificagroup.com' => ['roles' => [Department::ISO], 'grants' => self::ISO_PLANNING_GRANTS],
+        'annarita.palumbo@qualificagroup.com' => ['roles' => [Department::ISO, Department::PLANNING]],
+        'consiglia.cosentino@qualificagroup.com' => ['roles' => [Department::ISO, Department::PLANNING]],
 
         // Sicurezza
-        'fernando.annunziata@qualificagroup.com' => ['roles' => [Department::SAFETY.Department::SENIOR_SUFFIX], 'grants' => self::SAFETY_HEAD_GRANTS],
+        'fernando.annunziata@qualificagroup.com' => ['roles' => [Department::SAFETY.Department::SENIOR_SUFFIX, Department::SAFETY_HEAD]],
         'pasquale.orsusanno@qualificagroup.com' => ['roles' => [Department::SAFETY.Department::SENIOR_SUFFIX]],
         'francesco.dimaio@qualificagroup.com' => ['roles' => [Department::SAFETY]],
         'elio.rettori@qualificagroup.com' => ['roles' => [Department::SAFETY]],
@@ -68,9 +40,9 @@ final class DepartmentRoster
         // Travel
         'maria.pezzella@qualificagroup.com' => ['roles' => [Department::TRAVEL]],
 
-        // Accreditamenti e Gestione Sedi (Agus also in Finanza Agevolata, "SOLO COMMESSE")
+        // Accreditamenti e Gestione Sedi (Agus also in Finanza Agevolata and Progettazione, "SOLO COMMESSE")
         'luigifabio.pescosolido@qualificagroup.com' => ['roles' => [Department::ACCREDITATION]],
-        'giuseppe.agus@qualificagroup.com' => ['roles' => [Department::ACCREDITATION, Department::SUBSIDISED_FINANCE]],
+        'giuseppe.agus@qualificagroup.com' => ['roles' => [Department::ACCREDITATION, Department::SUBSIDISED_FINANCE, Department::PROJECT_DESIGN]],
 
         // Finanza Agevolata, Istruzione e Progettazione
         'ferdinando.flagiello@qualificagroup.com' => ['roles' => [Department::SUBSIDISED_FINANCE.Department::SENIOR_SUFFIX]],
@@ -94,5 +66,26 @@ final class DepartmentRoster
         // SOA
         'roberto.sepe@qualificagroup.com' => ['roles' => [Department::SOA]],
         'francesca.mauriello@qualificagroup.com' => ['roles' => [Department::SOA]],
+
+        // APL (Luca Chiappetti, responsabile, "deve vedere tutto")
+        'luca.chiappetti@qualificagroup.com' => ['roles' => [Department::APL.Department::SENIOR_SUFFIX]],
+        'manuela.rivolta@qualificagroup.com' => ['roles' => [Department::APL]],
+        'jessica.faettini@qualificagroup.com' => ['roles' => [Department::APL]],
+        'samantha.castagna@qualificagroup.com' => ['roles' => [Department::APL]],
+        'emanuele.ascione@qualificagroup.com' => ['roles' => [Department::APL]],
+        'gessica.crispo@qualificagroup.com' => ['roles' => [Department::APL]],
+        'raffaele.distico@qualificagroup.com' => ['roles' => [Department::APL]],
+        'giovanna.gervasio@qualificagroup.com' => ['roles' => [Department::APL]],
+        'grazia.triola@qualificagroup.com' => ['roles' => [Department::APL]],
+        'desire.romito@qualificagroup.com' => ['roles' => [Department::APL]],
+        'daila.lobartolo@qualificagroup.com' => ['roles' => [Department::APL]],
+        'alessandra.gaspari@qualificagroup.com' => ['roles' => [Department::APL]],
+
+        // Contabilita' (responsabile Centore and coordinatrice Romano "consultare tutto";
+        // Alberto Russo, Gruppo Casiello, has no account yet)
+        'raffaele.centore@qualificagroup.it' => ['roles' => [Department::ACCOUNTING.Department::SENIOR_SUFFIX]],
+        'bernadetta.romano@qualificagroup.com' => ['roles' => [Department::ACCOUNTING.Department::SENIOR_SUFFIX]],
+        'anna.venere@qualificagroup.com' => ['roles' => [Department::ACCOUNTING]],
+        'l.manfredonia@studiocasiello.it' => ['roles' => [Department::ACCOUNTING]],
     ];
 }

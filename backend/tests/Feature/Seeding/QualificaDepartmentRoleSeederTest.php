@@ -22,14 +22,14 @@ function departmentRoleNames(User $user): array
     return $user->refresh()->getRoleNames()->sort()->values()->all();
 }
 
-it('creates a base and a senior role per department, identical but for Finanza Agevolata', function () {
+it('creates a base and a senior role per department, the senior one widened only where the questionnaire says so', function () {
     $this->seed(Seeder::class);
 
-    foreach (array_keys(Department::DEPARTMENTS) as $name) {
+    foreach (Department::DEPARTMENTS as $name => $department) {
         $base = Role::findByName($name)->permissions->pluck('name')->sort()->values();
         $senior = Role::findByName(Department::senior($name))->permissions->pluck('name')->sort()->values();
 
-        $name === Department::SUBSIDISED_FINANCE
+        $department['senior_grants'] !== []
             ? expect($senior->diff($base))->not->toBeEmpty()->and($base->diff($senior))->toBeEmpty()
             : expect($senior->all())->toBe($base->all());
     }
@@ -37,13 +37,16 @@ it('creates a base and a senior role per department, identical but for Finanza A
     $iso = Role::findByName(Department::ISO);
     $finance = Role::findByName(Department::SUBSIDISED_FINANCE);
 
-    expect(Role::query()->where('name', 'like', Department::ROLE_PREFIX.'%')->count())->toBe(count(Department::DEPARTMENTS) * 2)
+    expect(Role::query()->where('name', 'like', Department::ROLE_PREFIX.'%')->count())->toBe(count(Department::DEPARTMENTS) * 2 + count(Department::ADD_ON_ROLES))
         ->and($iso->hasPermissionTo('work-orders.view'))->toBeTrue()
         ->and($iso->hasPermissionTo('opportunities.viewAny'))->toBeFalse()
         ->and($iso->hasPermissionTo('tasks.viewAny'))->toBeTrue()
         ->and($finance->hasPermissionTo('work-orders.viewCompetence'))->toBeTrue()
         ->and($finance->hasPermissionTo('opportunities.viewAny'))->toBeFalse()
-        ->and(Role::findByName(Department::senior(Department::SUBSIDISED_FINANCE))->hasPermissionTo('opportunities.viewCompetence'))->toBeTrue();
+        ->and(Role::findByName(Department::senior(Department::SUBSIDISED_FINANCE))->hasPermissionTo('opportunities.viewCompetence'))->toBeTrue()
+        ->and(Role::findByName(Department::senior(Department::ISO))->hasPermissionTo('contracts.validate'))->toBeTrue()
+        ->and(Role::findByName(Department::PLANNING)->hasPermissionTo('contracts.validate'))->toBeTrue()
+        ->and(Role::findByName(Department::PLANNING)->hasPermissionTo('work-orders.viewDocuments'))->toBeTrue();
 });
 
 it('shows the contractual user data to the HR department only', function () {
@@ -67,8 +70,8 @@ it('moves the listed people onto their department roles, idempotently, and leave
     $head->assignRole(['operatore-base', 'admin']);
     $safetyHead = User::factory()->create(['email' => 'fernando.annunziata@qualificagroup.com']);
     $safetyHead->assignRole(['commerciale']);
-    $twoDepartments = User::factory()->create(['email' => 'giuseppe.agus@qualificagroup.com']);
-    $twoDepartments->assignRole(['operatore-base']);
+    $severalDepartments = User::factory()->create(['email' => 'giuseppe.agus@qualificagroup.com']);
+    $severalDepartments->assignRole(['operatore-base']);
     $unlisted = User::factory()->create(['email' => 'not.listed@qualificagroup.com']);
     $unlisted->assignRole(['operatore-base', 'coordinamento-operativo']);
 
@@ -77,19 +80,57 @@ it('moves the listed people onto their department roles, idempotently, and leave
 
     expect(departmentRoleNames($technician))->toBe([Department::ISO])
         ->and($technician->getDirectPermissions())->toBeEmpty()
-        ->and(departmentRoleNames($planner))->toBe([Department::ISO])
-        ->and($planner->hasDirectPermission('work-orders.viewCompetence'))->toBeTrue()
+        ->and(departmentRoleNames($planner))->toBe([Department::ISO, Department::PLANNING])
+        ->and($planner->getDirectPermissions())->toBeEmpty()
+        ->and($planner->hasPermissionTo('work-orders.viewCompetence'))->toBeTrue()
         ->and($planner->hasPermissionTo('invoices.create'))->toBeFalse()
         ->and(departmentRoleNames($head))->toBe(['admin', Department::senior(Department::ISO)])
-        ->and(departmentRoleNames($safetyHead))->toBe(['commerciale', Department::senior(Department::SAFETY)])
-        ->and($safetyHead->hasDirectPermission('commission-settlements.viewAny'))->toBeTrue()
-        ->and(departmentRoleNames($twoDepartments))->toBe([Department::ACCREDITATION, Department::SUBSIDISED_FINANCE])
+        ->and($head->getDirectPermissions())->toBeEmpty()
+        ->and($head->hasPermissionTo('contracts.validate'))->toBeTrue()
+        ->and(departmentRoleNames($safetyHead))->toBe(['commerciale', Department::SAFETY_HEAD, Department::senior(Department::SAFETY)])
+        ->and($safetyHead->getDirectPermissions())->toBeEmpty()
+        ->and($safetyHead->hasPermissionTo('commission-settlements.viewAny'))->toBeTrue()
+        ->and(departmentRoleNames($severalDepartments))->toBe([Department::ACCREDITATION, Department::SUBSIDISED_FINANCE, Department::PROJECT_DESIGN])
         ->and(departmentRoleNames($unlisted))->toBe(['coordinamento-operativo', 'operatore-base']);
 });
 
 it('assigns only department roles from the roster', function () {
     $roles = collect(DepartmentRoster::USERS)->flatMap(fn (array $entry): array => $entry['roles']);
-    $known = collect(array_keys(Department::DEPARTMENTS))->flatMap(fn (string $role): array => [$role, Department::senior($role)]);
+    $known = collect(array_keys(Department::DEPARTMENTS))->flatMap(fn (string $role): array => [$role, Department::senior($role)])
+        ->merge(array_keys(Department::ADD_ON_ROLES));
 
     expect($roles->diff($known))->toBeEmpty();
+});
+
+it('gives the add-on role only what the questionnaire grants to that one person', function () {
+    $this->seed(Seeder::class);
+
+    expect(Role::findByName(Department::SAFETY_HEAD)->permissions->pluck('name')->sort()->values()->all())->toBe([
+        'commission-accruals.export', 'commission-accruals.view', 'commission-accruals.viewAny',
+        'commission-settlements.export', 'commission-settlements.view', 'commission-settlements.viewAny',
+        'work-orders.export', 'work-orders.import',
+    ])->and(Role::findByName(Department::senior(Department::SAFETY))->hasPermissionTo('commission-settlements.viewAny'))->toBeFalse();
+});
+
+it('maps the APL and accounting answers onto the visibility tiers', function () {
+    $this->seed(Seeder::class);
+
+    $apl = Role::findByName(Department::APL);
+    $aplHead = Role::findByName(Department::senior(Department::APL));
+    $accounting = Role::findByName(Department::ACCOUNTING);
+    $coordinator = Role::findByName(Department::senior(Department::ACCOUNTING));
+
+    expect($apl->hasPermissionTo('opportunities.viewAll'))->toBeTrue()
+        ->and($apl->hasPermissionTo('work-orders.viewSite'))->toBeTrue()
+        ->and($apl->hasPermissionTo('work-orders.viewAll'))->toBeFalse()
+        ->and($apl->hasPermissionTo('tasks.viewSite'))->toBeTrue()
+        ->and($apl->hasPermissionTo('contracts.viewAny'))->toBeFalse()
+        ->and($aplHead->hasPermissionTo('work-orders.viewAll'))->toBeTrue()
+        ->and($aplHead->hasPermissionTo('contracts.viewAll'))->toBeTrue()
+        ->and($accounting->hasPermissionTo('work-orders.viewAll'))->toBeTrue()
+        ->and($accounting->hasPermissionTo('work-orders.update'))->toBeFalse()
+        ->and($accounting->hasPermissionTo('treasury-movements.reconcile'))->toBeTrue()
+        ->and($accounting->hasPermissionTo('commission-settlements.approve'))->toBeFalse()
+        ->and($accounting->hasPermissionTo('time-entries.viewAll'))->toBeFalse()
+        ->and($coordinator->hasPermissionTo('time-entries.viewAll'))->toBeTrue();
 });
