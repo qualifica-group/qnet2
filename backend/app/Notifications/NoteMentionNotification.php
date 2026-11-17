@@ -76,7 +76,7 @@ class NoteMentionNotification extends Notification implements ShouldQueue
     }
 
     /**
-     * @return array{title: string|null, message: string|null, level: string, action_url: string|null}
+     * @return array{title: string|null, message: string|null, level: string, action_url: string|null, is_cc: bool, actor: array{id: int, name: string}|null}
      */
     public function toArray(object $notifiable): array
     {
@@ -87,6 +87,7 @@ class NoteMentionNotification extends Notification implements ShouldQueue
             message: $this->message($path, $notifiable),
             level: NotificationLevelEnum::Info,
             actionUrl: $path,
+            actor: ['id' => $this->author->id, 'name' => $this->author->name],
         ))->toArray();
     }
 

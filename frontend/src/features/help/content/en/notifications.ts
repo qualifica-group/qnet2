@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The bell in the header shows the latest notifications and the unread count; this page is the full, filterable list. It opens from the **Notifications** link at the bottom of the side menu, right above **Settings**.',
+          text: 'The bell in the header shows the latest notifications and the unread count; this page is the full, filterable list. It opens from the **Notifications** link at the bottom of the side menu, right above **Settings**. In the bell, each mention shows the initials and name of who mentioned you next to its date.',
         },
       ],
     },

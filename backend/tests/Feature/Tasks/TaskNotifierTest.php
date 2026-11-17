@@ -319,5 +319,5 @@ it('persists one row per recipient once the transaction commits (AC-010)', funct
         ->and($rows->pluck('notifiable_id')->all())->not->toContain($people['actor']->id);
 
     $payload = json_decode((string) $rows->first()->data, true, flags: JSON_THROW_ON_ERROR);
-    expect(array_keys($payload))->toBe(['title', 'message', 'level', 'action_url', 'is_cc']);
+    expect(array_keys($payload))->toBe(['title', 'message', 'level', 'action_url', 'is_cc', 'actor']);
 });

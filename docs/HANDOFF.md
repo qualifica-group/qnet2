@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+
+- Riferimento legacy: `q-net/src/app/features/notifications/notifications-panel.tsx` (avatar + nome `assigned_by` accanto alla data).
+- BE: `NotificationData` ha la chiave `actor` `{id, name}|null` (sempre presente nel payload; malformata/assente -> null). `NoteMentionNotification::toArray()` la valorizza con l'autore della nota. Le notifiche gia' salvate restano senza actor (nessun backfill: il nome e' gia' nel messaggio).
+- FE: `NotificationActor` in `features/notifications/types.ts`; `NotificationItem` mostra `UserAvatar size="xs"` (solo iniziali: niente foto, il data URI peserebbe sul polling di unread-count) + nome accanto alla data, per qualunque notifica che porti `actor`.
+- Test REQUIREMENT CHANGED (nuova chiave `actor` nel set di chiavi): `NoteMentionNotificationTest`, `TaskNotifierTest`, `TaskNotificationClassesTest`. Nuovi: `NotificationResourceTest` (actor), `notification-item.test.tsx` (actor). Verdi: Notifications 205, Notes 121, i due Tasks; vitest notifications+help 216; tsc -b, eslint, pint puliti.
+- Guide in-app IT/EN `notifications` e `general` (sezione note) + manuale Claude Docs (paragrafo campanella) aggiornati.
+- Possibile seguito non fatto: colonna "Mittente" nella tabella Notifiche (q-net ce l'aveva, `user_sender`).
+
 ## Task di commessa: Responsabile/Partecipante chiudono a loro nome anche i task gia' assegnati (decisione utente 2026-11-17) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Segnalazione: Raffaele Distico (Partecipante di COM-20355, /work-orders/16609) non poteva chiudere i task assegnati alla Responsabile Gessica Crispo: la regola 0387 valeva solo per i task senza assegnatari.
