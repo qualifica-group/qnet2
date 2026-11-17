@@ -13,6 +13,7 @@ import { useTableLayoutPersistence } from '@/features/table/use-table-layout-per
 import type { UseCustomFilterStateResult } from '@/features/table/custom-filters/use-custom-filter-state'
 import { useTableCustomFilters, type UseTableCustomFiltersResult } from '@/features/table/custom-filters/use-table-custom-filters'
 import { useTableFilterChips } from '@/features/table/custom-filters/use-table-filter-chips'
+import { useSyncCustomFilterWithView } from '@/features/table/custom-filters/use-sync-custom-filter-with-view'
 import type { UseActiveFilterChipsResult } from '@/features/table/custom-filters/use-active-filter-chips'
 import type { TableConfig } from '@/features/table/types'
 
@@ -150,6 +151,10 @@ export function useTableViewFiltersState(
     refreshGrid,
     onFilterModelApplied: setFiltersCustomizedLocally,
   })
+
+  // A custom filter applied from a saved view follows that view's latest
+  // saved rules, whatever copy this tab restored from the browser.
+  useSyncCustomFilterWithView({ domain, active: customFilterState, refreshGrid })
 
   // The removable chip row below the toolbar (spec 0158 D-5) — see
   // `use-table-filter-chips.ts`.

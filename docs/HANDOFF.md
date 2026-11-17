@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Filtro personalizzato salvato che "torna alla data di creazione" (bug /request-management, 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+
+- Segnalazione: filtro personalizzato con data di richiamo aggiornata ogni giorno; cambiando scheda/pagina tornava alla data del 10/11 (creazione). Dato reale qnet2: vista 21 "Richiami Giornalieri" (user 20) mai aggiornata, `next_callback_at lte 2026-11-10`.
+- Root cause (due): (1) dalla matita il pulsante principale era "Applica", che attiva le regole SENZA salvarle e le marcava col `viewId` della vista; (2) il filtro attivo e' copiato in localStorage per scheda (`table-filters:<user>:<domain>:<categoria>...`), quindi ogni scheda ripristinava la propria copia vecchia anche dopo un salvataggio.
+- Fix FE: `rule-builder-dialog.tsx` in modifica apre gia' nome/visibilita', primario **Salva** (update vista), secondario **Applica senza salvare** (`table.customFilters.applyWithoutSaving`) che applica con meta `{}` (filtro ad-hoc, niente `viewId`). Nuovo `custom-filters/use-sync-custom-filter-with-view.ts` (chiamato da `use-table-view-filters-state.ts`): se il filtro attivo ha `viewId`, legge `useFilterViews(domain, enabled)` e, se regole o nome della vista salvata differiscono (`sameRules`, indipendente dall'ordine chiavi JSON del server), riattiva con le regole del server + `refreshGrid`. `useFilterViews` ha ora un secondo argomento `enabled` (default true).
+- Test: nuovo `use-sync-custom-filter-with-view.test.tsx`; `rule-builder-dialog.test.tsx` REQUIREMENT CHANGED (in modifica non c'e' piu' il passo "Save view") + test "Apply without saving". `vitest src/features/table` + help verdi, eslint pulito, `tsc -b --force` verde. `request-management-table.test.tsx` ha dato un timeout solo sotto carico (da solo 15/15).
+- Manuale: guida in-app `general` IT/EN (paragrafo filtro personalizzato) + manuale Claude Docs (paragrafo "Modificare un filtro personalizzato salvato" dopo i passi del filtro personalizzato).
+- Da verificare nel browser: matita su vista con regole -> Salva -> cambio scheda categoria -> stessa data. Nota: HANDOFF.md e' ~1,3 MB, ben oltre il limite di ~50 KB: va archiviato in `docs/handoff-archive/`.
+
 ## Filtro personalizzato sui campi flessibili (attr.*) e "Vuoto/Non vuoto" sulle date (2026-11-16) — VERDE MIRATO, NON COMMITTATO
 
 - Segnalazione utente: "Data verifica ispettiva" + "Non vuoto" (filtro personalizzato) non cambiava nulla. Root cause: `AttributeColumnBuilder::raw()` (la dichiarazione in `filterableColumnMap()`) non aveva `filterType` -> `CustomFilterRuleValidator::resolveType()` null -> ogni regola su un `attr.*` rifiutata con 422 ("cannot be used in a custom filter rule"), per TUTTI i campi flessibili. Ora `raw()` porta il `filterType` della tabella di mapping (lo stesso di `resolved()`).
