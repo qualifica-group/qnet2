@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ruoli per reparto dai questionari "permessi per reparti" (spec 0408, 2026-11-17) — VERDE, COMMITTATO SU STAGING, SEEDER NON ESEGUITO SUL DB
+
+- Fonte: `~/Downloads/permessi per reparti/*.xlsx` (9 reparti, 33 persone; FA e HR nella versione rivista da Mario). Verifica stato attuale: `~/Downloads/Verifica_permessi_reparti_2026-11-17.xlsx`.
+- `QualificaCatalog/DepartmentPermissionGrants` (BASELINE + GRANTS: chiave per domanda -> permessi, `<resource>.*` espanso; permesso inesistente = eccezione), `DepartmentRoleCatalogue` (18 ruoli `reparto-<x>` / `reparto-<x>-senior`, oggi identici tranne Finanza Agevolata: base "solo commesse"; `REPLACED_ROLES`), `DepartmentRoster` (email -> roles/grants mirati diretti/keep).
+- `QualificaDepartmentRoleSeeder` (`php artisan db:seed --class=QualificaDepartmentRoleSeeder`): permissions:sync, ruoli via `SyncsRoleMatrix` (HR con matrice campi dell'ufficio HR, gli altri con dati contrattuali nascosti), poi per persona `syncRoles` (toglie REPLACED_ROLES e altri `reparto-*`, tiene trasversali/keep) + `syncPermissions` dei grant mirati. Chi non e' elencato non cambia. Test `tests/Feature/Seeding/QualificaDepartmentRoleSeederTest.php`.
+- Verificato con dry-run sul DB locale in transazione annullata: residui solo dalle scelte D-6 della spec (admin a Russo Del Prete/Esposito, Palumbo/Cosentino senza admin con grant mirati, HR senza azioni "da pianificazione", chiusura forzata non concessa senza modifica commessa, Sicurezza commesse del settore, Gestione richieste/Iscritti automatici per chi vede opportunita'+offerte).
+- ATTENZIONE: rieseguire `QualificaTechnicianWithoutCostsSeeder` o `QualificaHrOfficeSeeder` ridarebbe `tecnico-consulenza-senza-costi` / `risorse-umane` alle persone dei reparti. "Del proprio team" dipende dai sottoposti in organigramma (Palumbo, Cosentino, De Gennaro oggi non ne hanno).
+- Prossimi passi: conferma dei punti D-6 con i responsabili; esecuzione del seeder sul DB (con ok utente); nuovi reparti = voci in DepartmentRoleCatalogue/DepartmentRoster. Manuale: nessun impatto (nessuna funzionalita' nuova, solo dati).
+
 ## Filtro personalizzato salvato che "torna alla data di creazione" (bug /request-management, 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
 
 - Segnalazione: filtro personalizzato con data di richiamo aggiornata ogni giorno; cambiando scheda/pagina tornava alla data del 10/11 (creazione). Dato reale qnet2: vista 21 "Richiami Giornalieri" (user 20) mai aggiornata, `next_callback_at lte 2026-11-10`.

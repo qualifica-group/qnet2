@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0408-department-roles" status="implemented" owner="nicola" date="2026-11-17">
+
+  <goal>
+    I permessi delle persone dei reparti arrivano dai questionari "permessi per reparti" (Download, 2026-11-17;
+    Finanza Agevolata e HR nella versione rivista da Mario). Ogni reparto ha due ruoli propri, base e senior;
+    chi ha qualcosa in piu' rispetto al reparto riceve permessi mirati sull'utente.
+  </goal>
+
+  <context>
+    D-1 Decisione utente 2026-11-17: un ruolo per reparto e per livello (`reparto-iso`, `reparto-iso-senior`, ...).
+        Oggi base e senior hanno gli stessi permessi, in futuro divergeranno: due ruoli distinti da subito.
+        Eccezione gia' oggi: Finanza Agevolata, dove il questionario distingue "SOLO COMMESSE" (base) da
+        "livello alto / tutto il settore" (senior).
+    D-2 Il contenuto dei ruoli e' la traduzione delle risposte in permessi: chiavi di concessione
+        (`DepartmentPermissionGrants::GRANTS`, una per domanda o gruppo di domande) composte per reparto in
+        `DepartmentRoleCatalogue`. Ogni ruolo ha anche la base comune (attivita', ore e assenze proprie,
+        note e allegati, tendine sedi/categorie/tag). Un permesso inesistente fa fallire il seeder.
+    D-3 "Quelle del settore" = livello di visibilita' di competenza (`viewCompetence`) su opportunita',
+        offerte, commesse e contratti. Clienti e referenti non hanno un livello di settore: visibili senza filtro.
+    D-4 "Del proprio team" non ha un permesso: lo danno i sottoposti nell'organigramma (specs 0214, 0309).
+        `tasks.manageAll` solo dove il reparto vede tutte le attivita' (HR).
+    D-5 Seeder `QualificaDepartmentRoleSeeder` (one-shot, ri-eseguibile, una transazione): alle persone di
+        `DepartmentRoster` toglie i ruoli di mansione sostituiti (`REPLACED_ROLES`) e ogni altro ruolo
+        `reparto-*`, assegna i ruoli di reparto e sincronizza i permessi diretti mirati. Restano i ruoli
+        trasversali (es. `commerciale`, `contabilita`, `ufficio-acquisti`, ruoli di notifica) e quelli in `keep`.
+        Chi non e' nell'elenco non cambia; l'elenco crescera'.
+    D-6 Scelte sui punti ambigui dei questionari (da confermare con i responsabili):
+        ISO: Russo Del Prete e Mario Esposito restano `admin` (indicati admin); Palumbo e Cosentino perdono
+        `admin` e ricevono i permessi mirati della nota "UFFICIO PIANIFICAZIONE E RESP SI".
+        Sicurezza: commesse del settore (nota su tutte le persone "devono vedere tutto delle pratiche"),
+        Annunziata con export commesse e provvigioni in lettura/export; resta `commerciale`.
+        HR: azioni su commesse e contratti (30, 43-49) escluse, sono "di chi ha il ruolo di pianificazione".
+        Finanza Agevolata: Agus ha `reparto-accreditamenti` + `reparto-finanza-agevolata` (solo commesse).
+        Pescosolido resta con `contabilita` e `ufficio-acquisti` (lavora su altri settori).
+        Chiusura forzata commessa senza "creare e modificare" (Sicurezza, Accreditamenti, Gare, SOA): non
+        concessa, richiede `work-orders.update`.
+    D-7 Ruolo HR: moduli dell'ufficio HR come `risorse-umane` (spec 0283) e la stessa matrice campi
+        (dati contrattuali visibili); gli altri ruoli di reparto nascondono i dati contrattuali come le mansioni.
+  </context>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo il seeder esistono i 18 ruoli `reparto-*`, base e senior con gli stessi permessi tranne Finanza Agevolata.</criterion>
+    <criterion id="AC-002">Una persona elencata perde i ruoli sostituiti e ha solo i ruoli di reparto piu' quelli trasversali o in `keep`.</criterion>
+    <criterion id="AC-003">Le persone speciali hanno i permessi mirati come permessi diretti; le altre nessun permesso diretto.</criterion>
+    <criterion id="AC-004">Chi non e' nell'elenco resta invariato; ri-eseguito, il seeder converge senza duplicati.</criterion>
+    <criterion id="AC-005">Il ruolo HR vede i dati contrattuali dell'utente; gli altri ruoli di reparto no.</criterion>
+  </acceptance_criteria>
+</spec>

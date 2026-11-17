@@ -1,0 +1,136 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use Database\Seeders\Concerns\SyncsRoleMatrix;
+use Database\Seeders\QualificaCatalog\DepartmentPermissionGrants as Grants;
+use Database\Seeders\QualificaCatalog\DepartmentRoleCatalogue as Department;
+use Database\Seeders\QualificaCatalog\DepartmentRoster;
+use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue as HrOffice;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use RuntimeException;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
+
+/**
+ * The department roles of the questionnaires "permessi per reparti" (spec
+ * 0408): syncs `reparto-<key>` and `reparto-<key>-senior` from
+ * DepartmentRoleCatalogue, then moves every person of DepartmentRoster onto
+ * them: the replaced mansione roles go, the targeted grants become direct
+ * permissions, every other role stays. Whoever is not listed is untouched.
+ *
+ * `php artisan db:seed --class=QualificaDepartmentRoleSeeder`. One
+ * transaction; a re-run converges.
+ */
+class QualificaDepartmentRoleSeeder extends Seeder
+{
+    use SyncsRoleMatrix;
+
+    /** @var Collection<int, string> */
+    private Collection $catalogue;
+
+    public function run(): void
+    {
+        // Step 1: the permission catalogue the grants resolve against.
+        Artisan::call('permissions:sync');
+        $this->catalogue = Permission::query()->pluck('name');
+
+        DB::transaction(function (): void {
+            // Step 2: the two roles of every department.
+            foreach (Department::DEPARTMENTS as $role => $department) {
+                $this->syncDepartmentRole($role, $department['description'], $department['grants']);
+                $this->syncDepartmentRole(
+                    Department::senior($role),
+                    $department['description'].Department::SENIOR_DESCRIPTION_SUFFIX,
+                    [...$department['grants'], ...$department['senior_grants']],
+                );
+            }
+
+            // Step 3: the listed people onto their department roles.
+            foreach (DepartmentRoster::USERS as $email => $entry) {
+                $this->assignPerson($email, $entry);
+            }
+        });
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    /**
+     * @param  array<int, string>  $grants
+     */
+    private function syncDepartmentRole(string $name, string $description, array $grants): void
+    {
+        $permissions = $this->withUserFormStack($this->resolvePermissions([...Grants::BASELINE, ...$this->grantPermissions($grants)]), $this->catalogue);
+        $role = $this->syncRole($name, $description, $permissions);
+
+        // The HR department reads the user's contractual data like the HR
+        // office (D-7); every other department has it hidden like a mansione.
+        if (in_array(Department::HR_OFFICE_GRANT, $grants, true)) {
+            $this->syncFieldPermissions($role, readonlyFields: HrOffice::READONLY_FIELDS, grantedFields: HrOffice::SENSITIVE_FIELDS);
+
+            return;
+        }
+
+        $this->syncFieldPermissions($role, hiddenFields: HrOffice::SENSITIVE_FIELDS);
+    }
+
+    /**
+     * @param  array{roles: array<int, string>, grants?: array<int, string>, keep?: array<int, string>}  $entry
+     */
+    private function assignPerson(string $email, array $entry): void
+    {
+        $user = User::query()->where('email', $email)->first();
+
+        if ($user === null) {
+            $this->command?->warn(sprintf('%s: no account, skipped.', $email));
+
+            return;
+        }
+
+        $keep = $entry['keep'] ?? [];
+        $retained = $user->getRoleNames()->reject(fn (string $role): bool => Str::startsWith($role, Department::ROLE_PREFIX)
+            || (in_array($role, Department::REPLACED_ROLES, true) && ! in_array($role, $keep, true)));
+
+        $user->syncRoles([...$retained->all(), ...$entry['roles']]);
+        $user->syncPermissions($this->resolvePermissions($this->grantPermissions($entry['grants'] ?? []))->all());
+    }
+
+    /**
+     * @param  array<int, string>  $grants
+     * @return array<int, string>
+     */
+    private function grantPermissions(array $grants): array
+    {
+        return collect($grants)->flatMap(static fn (string $grant): array => Grants::GRANTS[$grant]
+            ?? throw new RuntimeException(sprintf('Unknown department grant "%s".', $grant)))->all();
+    }
+
+    /**
+     * Expands `<resource>.*` against the catalogue and fails loudly on a
+     * permission the catalogue does not have: a typo must never become a
+     * silently missing grant.
+     *
+     * @param  array<int, string>  $permissions
+     * @return Collection<int, string>
+     */
+    private function resolvePermissions(array $permissions): Collection
+    {
+        return collect($permissions)
+            ->flatMap(function (string $permission): Collection {
+                $matches = Str::endsWith($permission, '.*')
+                    ? $this->catalogue->filter(static fn (string $name): bool => Str::beforeLast($name, '.') === Str::beforeLast($permission, '.'))
+                    : $this->catalogue->filter(static fn (string $name): bool => $name === $permission);
+
+                return $matches->isNotEmpty()
+                    ? $matches
+                    : throw new RuntimeException(sprintf('Permission "%s" is not in the catalogue.', $permission));
+            })
+            ->unique()
+            ->values();
+    }
+}
