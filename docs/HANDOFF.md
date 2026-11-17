@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse: tutti i tipi + ricerca rapida per ID esatto, senza ID legacy, su Commesse/Opportunita'/Offerte/Contratti (decisioni utente 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+
+- Tipi: la pagina "Commesse" (`WorkOrdersTable`) non invia piu' il row scope `workOrderType: 'processing'`: mostra lavorazione E progetto (colonna "Tipo commessa" per distinguerle/filtrare). Tolta la prop `rowScope` di `WorkOrdersGrid` (nessun chiamante). "Commesse di Progetto" invariata. Spec 0359 D-2 annotata come SUPERATA; il row scope `work_order_type` resta nel motore backend (nessun chiamante FE). `project-work-orders.test.tsx` REQUIREMENT CHANGED (region `table-work-orders-unscoped`).
+- Ricerca: cercando "16341" in Commesse non usciva la commessa con id 16341 (`COM-20084`), solo `COM-16341` (old_id 16341). Decisione: cercare per codice e per id, MAI per id legacy, su commesse, opportunita', offerte e contratti.
+- Motore: `TableQueryBuilder::applySearch()` tratta una colonna ricercabile `id` come match ESATTO su termine solo numerico (`applyExactIdSearch`, `qualifyColumn('id')`), mai LIKE ("1634" non trova 16341).
+- `InjectsDefaultIdColumn`: hook `quickSearchesById()` (default false) e `quickSearchesByLegacyId()` (default true). Nuovo trait `App\Tables\Concerns\SearchesByIdNotLegacyId` (id on, old_id off) in `WorkOrdersTableDefinition`, `OpportunitiesTableDefinition`, `QuotesTableDefinition`, `ContractsTableDefinition` (i decorator scoped ereditano). Rimossi `App\Tables\Tasks\TaskIdSearchMatcher` e `TasksTableDefinition::applyDerivedSearch()`: il match esatto dei task (spec 0156 D-1) lo fa il motore.
+- ATTENZIONE git: alle 14:39-15:08 del 2026-11-17 questo lavoro e' stato stashato e lo stash scartato piu' volte (sessione parallela?); recuperato dal commit pendente 404820683. Non usare `git stash` con sessioni parallele aperte.
+- Test: Pest Table+WorkOrders+Tasks+Opportunities+Quotes+Contracts 2612/2617: rossi preesistenti/ambientali (TableBulkDelete "guarded", QuoteDocumentPdf senza LibreOffice; DemoOpportunitySeeder flaky, verde da solo). Vitest work-orders pages + help 163/163; Pint, ESLint, `tsc -b --force` puliti. Guide IT/EN `work-orders` (project-work-orders), `general`, `opportunities`, `quotes`, `contracts` aggiornate. Manuale Claude Docs rev 846 (paragrafo "Ricerca per ID" della pagina Commesse: ora tutti i tipi; la ricerca per ID era gia' descritta). PDF del manuale da rigenerare.
+
 ## Colonna "€" proforma nelle Commesse (spec 0407, 2026-11-17) — VERDE, COMMITTATO (staging efac95c16, portato su main), NON PROVATO NEL BROWSER
 
 - Richiesta utente: "€" come colonna (legacy `OrdersTable` campo `€` + colori dell'ex azione spec 0193), stato al passaggio del mouse, filtrabile e ordinabile. Supera spec 0405 D-7; l'azione di riga `proforma` resta tolta.

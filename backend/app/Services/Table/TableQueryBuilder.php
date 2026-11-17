@@ -29,6 +29,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class TableQueryBuilder
 {
+    /** The primary key: quick-searched by exact match, never by LIKE. */
+    private const string ID_COLUMN = 'id';
+
     public function __construct(
         private readonly FilterApplier $filterApplier,
         private readonly CustomFilterRuleApplier $customFilterRuleApplier,
@@ -122,7 +125,8 @@ class TableQueryBuilder
      * `applyDerivedSearch()` hook; only when it returns false does the generic
      * plain `orWhere($column, 'like', $pattern)` run against the real column.
      * Before both, `applyGroupedSearch()` (spec 0179) may cover several
-     * columns with a single branch of the same OR group.
+     * columns with a single branch of the same OR group. A searchable `id`
+     * is an exact numeric match (applyExactIdSearch()), never a LIKE.
      *
      * @param  Builder<Model>  $query
      */
@@ -152,9 +156,29 @@ class TableQueryBuilder
                     continue;
                 }
 
+                if ($column === self::ID_COLUMN) {
+                    $this->applyExactIdSearch($group, $term);
+
+                    continue;
+                }
+
                 $group->orWhere($column, 'like', $pattern);
             }
         });
+    }
+
+    /**
+     * A searchable `id` matches only a purely-numeric term, exactly: "1634"
+     * must not bring up record 16341 (tasks spec 0156 D-1, work orders and
+     * the commercial grids 2026-11-17).
+     *
+     * @param  Builder<Model>  $group
+     */
+    private function applyExactIdSearch(Builder $group, string $term): void
+    {
+        if (ctype_digit($term)) {
+            $group->orWhere($group->qualifyColumn(self::ID_COLUMN), '=', (int) $term);
+        }
     }
 
     /**

@@ -13,6 +13,7 @@ use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
@@ -51,6 +52,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class WorkOrdersTableDefinition extends AbstractTableDefinition
 {
+    use SearchesByIdNotLegacyId;
+
     /** Computed from the manual progress entries (spec 0321), sorted by WorkOrderStatusResolver. */
     private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
 

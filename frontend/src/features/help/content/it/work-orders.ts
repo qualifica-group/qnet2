@@ -120,7 +120,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Commesse** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le commesse dove sei **Responsabile** o **Partecipante** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le commesse di ogni categoria, altrimenti solo le commesse delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova le commesse anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
+          text: "All'apertura la pagina **Commesse** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le commesse dove sei **Responsabile** o **Partecipante** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le commesse di ogni categoria, altrimenti solo le commesse delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova le commesse anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\". Digitando solo numeri trova anche la commessa con quell'**ID** esatto (la colonna nascosta **ID**), oltre a quelle che hanno il numero nel codice; l'id del vecchio gestionale non viene cercato.",
         },
         {
           type: 'paragraph',
@@ -450,7 +450,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "La pagina **Commesse** mostra solo le commesse di **lavorazione**. Le commesse di tipo **Progetto** hanno una pagina propria, **Commesse di Progetto**, con la colonna **Non letti** e la tab **Chat** nel dettaglio; per ora quella pagina non compare nel menu. Dentro un **Contratto** e un'**Anagrafica**, le sezioni **Commesse** mostrano ancora le commesse di tutti i tipi: da lì trovi anche quelle di progetto.",
+          text: "La pagina **Commesse** mostra le commesse di tutti i tipi, **Lavorazione** e **Progetto**: la colonna **Tipo commessa** le distingue e il suo filtro restringe l'elenco a un tipo solo. Le commesse di progetto hanno anche una pagina propria, **Commesse di Progetto**, con la colonna **Non letti** e la tab **Chat** nel dettaglio; per ora quella pagina non compare nel menu. Anche le sezioni **Commesse** di un **Contratto** e di un'**Anagrafica** mostrano le commesse di tutti i tipi.",
         },
         {
           type: 'note',

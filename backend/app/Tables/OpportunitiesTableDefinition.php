@@ -9,6 +9,7 @@ use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\OpportunityVisibilityScope;
 use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\RequestManagement\RequestManagementScope;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
 use App\Tables\Opportunities\OpportunityCellWriter;
 use App\Tables\Opportunities\OpportunityColumnCatalog;
@@ -51,6 +52,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class OpportunitiesTableDefinition extends AbstractTableDefinition
 {
+    use SearchesByIdNotLegacyId;
+
     private const string OPERATIONAL_SITE_COLUMN = 'operational_site';
 
     private const string OPERATIONAL_SITE_RELATION = 'operationalSite';

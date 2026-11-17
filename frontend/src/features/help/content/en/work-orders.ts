@@ -120,7 +120,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Work orders** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the work orders where you are **Supervisor** or **Participant** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the work orders of every category, otherwise only the work orders of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds work orders by client (registry) name: part of the name is enough, for example \"napoli\".",
+          text: "When it opens, the **Work orders** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the work orders where you are **Supervisor** or **Participant** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the work orders of every category, otherwise only the work orders of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds work orders by client (registry) name: part of the name is enough, for example \"napoli\". Typing digits only also finds the work order with that exact **ID** (the hidden **ID** column), on top of those whose code contains the number; the id from the old system is not searched.",
         },
         {
           type: 'paragraph',
@@ -450,7 +450,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Work Orders** page shows only **processing** work orders. Work orders of type **Project** have their own page, **Project Work Orders**, with the **Unread** column and the **Chat** tab in the detail; for now that page does not appear in the menu. Inside a **Contract** and a **Registry**, the **Work orders** sections still show work orders of every type: you can reach project work orders from there.',
+          text: 'The **Work Orders** page shows work orders of every type, **Processing** and **Project**: the **Work order type** column tells them apart and its filter narrows the list to one type. Project work orders also have their own page, **Project Work Orders**, with the **Unread** column and the **Chat** tab in the detail; for now that page does not appear in the menu. The **Work orders** sections of a **Contract** and a **Registry** also show work orders of every type.',
         },
         {
           type: 'note',

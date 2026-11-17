@@ -51,7 +51,7 @@ final class TaskColumnCatalog
             // Overrides InjectsDefaultIdColumn's own default (hidden,
             // sortable, NOT searchable): spec 0156, D-1 wants the quick
             // search to also match an exact numeric id
-            // (TasksTableDefinition::applyDerivedSearch()).
+            // (TableQueryBuilder::applySearch()).
             [
                 'id' => 'id',
                 'label' => 'table.columns.id',

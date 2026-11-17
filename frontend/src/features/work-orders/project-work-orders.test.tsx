@@ -7,7 +7,7 @@ import ProjectWorkOrdersPage from '@/pages/project-work-orders-page'
 import { WorkOrdersTable } from '@/features/work-orders/work-orders-table'
 
 /**
- * Spec 0359 D-1/D-2: "Commesse" sends `workOrderType: 'processing'`, "Commesse di Progetto" mounts the
+ * Spec 0359 D-1: "Commesse" lists every work order type (no row scope, user decision 2026-11-17), "Commesse di Progetto" mounts the
  * `project-work-orders` domain with no row scope. Neither page has the category strip. Grid and row actions are stubbed.
  */
 vi.mock('@/components/page-header', () => ({ PageHeader: () => <div /> }))
@@ -41,14 +41,14 @@ beforeAll(async () => {
 })
 
 describe('work orders pages (spec 0359)', () => {
-  it('"Commesse" narrows the work-orders grid to processing work orders, without the category strip', () => {
+  it('"Commesse" mounts the work-orders grid unscoped (processing and project), without the category strip', () => {
     render(
       <MemoryRouter>
         <WorkOrdersTable />
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('region', { name: 'table-work-orders-processing' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'table-work-orders-unscoped' })).toBeInTheDocument()
     expect(screen.getByText('attr-columns-from-filters')).toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })

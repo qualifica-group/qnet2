@@ -17,6 +17,9 @@
       `type = processing`. Ogni commessa sta in un solo elenco del menu. Le sezioni "Commesse" dentro
       altre schede (Contratto, spec 0095 via `rowScope.quoteId`; Anagrafica, spec 0199) continuano a
       mostrare TUTTI i tipi: il filtro vale solo per le due pagine del menu.
+      SUPERATA (decisione utente 2026-11-17): la pagina "Commesse" mostra di nuovo TUTTI i tipi
+      (lavorazione e progetto), senza row scope; "Commesse di Progetto" resta invariata. Il row
+      scope `work_order_type` resta nel motore (nessun chiamante nel frontend).
     - D-3: la chat e' un canale distinto dalle note (spec 0134), che restano invariate. Messaggi di
       solo testo, cronologici, senza thread, senza file, senza formattazione, massimo 2.000 caratteri.
       Presente solo sulle commesse `type = project`.

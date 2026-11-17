@@ -47,7 +47,24 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
         ->and($columns['contract_expiry_date']['sortable'])->toBeTrue()
         ->and($columns['contract_expiry_date']['hasFilterValues'])->toBeFalse()
         ->and($columns['contract_expiry_date']['editable'] ?? false)->toBeFalse()
-        ->and($data['searchable'])->toEqualCanonicalizing(['code', 'title', 'contract_number', 'registry']);
+        // REQUIREMENT CHANGED (2026-11-17): the hidden `id` joins the quick search, exact numeric match only (SearchesByIdNotLegacyId).
+        ->and($data['searchable'])->toEqualCanonicalizing(['id', 'code', 'title', 'contract_number', 'registry']);
+});
+
+it('the quick search also matches an exact numeric work order id, never a partial one', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    $target = WorkOrder::factory()->create(['id' => 16341, 'code' => 'COM-20084', 'title' => 'Target']);
+    $partial = WorkOrder::factory()->create(['id' => 163410, 'code' => 'COM-1', 'title' => 'Partial']);
+    $byCode = WorkOrder::factory()->create(['code' => 'COM-16341', 'title' => 'By code']);
+    Sanctum::actingAs($actor);
+
+    $search = fn (string $term): array => collect($this->postJson('/api/tables/work-orders/rows', [
+        'startRow' => 0, 'endRow' => 25, 'search' => $term,
+    ])->assertOk()->json('items'))->pluck('id')->all();
+
+    expect($search('16341'))->toEqualCanonicalizing([$target->id, $byCode->id]) // id OR code LIKE
+        ->and($search('COM-16341'))->toBe([$byCode->id]) // a non-numeric term never reaches the id
+        ->and($search('1634'))->not->toContain($partial->id);
 });
 
 it('the `type`/`status` badge columns declare their enumKey + full badges catalogue (AC-040)', function () {
