@@ -93,20 +93,21 @@ describe('WorkOrderContractDataSection - states', () => {
 })
 
 describe('WorkOrderContractDataSection - line fields (spec 0403 AC-004)', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-17): the typology badge left the title for the payment status label.
   it('shows the legacy fields of each product, in order', async () => {
     renderSection(false)
     await findLines()
 
     expect(lineFields(lineGroup('ENT-001'))).toEqual({
-      Title: 'ENT-001Certificazione enteEnte',
+      Title: 'ENT-001Certificazione ente',
       Amount: '2,000.00',
-      'Payment status': 'Pagato',
+      'Payment statusEnte': 'Pagato',
       Document: 'Proforma12/2026Seriously overdue',
       'Payment agreement': 'Saldo a 30 giorni',
       Unpaid: 'Yes',
     })
     expect(lineFields(lineGroup('CON-001'))).toMatchObject({
-      'Payment status': 'No status',
+      'Payment statusConsulenza': 'No status',
       Document: 'No proforma issued',
       Unpaid: 'No',
     })
@@ -137,15 +138,25 @@ describe('WorkOrderContractDataSection - line fields (spec 0403 AC-004)', () => 
     expect(lineGroup('ENT-001')).toHaveClass('rounded-lg', 'bg-muted/40')
   })
 
-  it('keeps code, name and typology badge in the title', async () => {
+  it('keeps code and name in the title', async () => {
     renderSection(false)
     await findLines()
 
     const line = lineGroup('CON-001')
     expect(within(line).getByText('Consulenza qualita')).toHaveAttribute('title', 'Consulenza qualita')
     expect(within(line).getByRole('link', { name: 'Consulenza qualita' })).toHaveAttribute('href', '/products/1')
-    expect(within(line).getByText('Consulenza')).toHaveClass('bg-blue-100')
-    expect(within(lineGroup('ENT-001')).getByText('Ente')).toHaveClass('bg-violet-100')
+  })
+
+  // REQUIREMENT CHANGED (user directive 2026-11-17): the typology badge moved from the title to the
+  // "Stato pagamento" label, so each payment status reads as Consulenza or Ente.
+  it('badges the typology on the payment status label', async () => {
+    renderSection(false)
+    await findLines()
+
+    const consultancyTerm = within(lineGroup('CON-001')).getByText('Payment status')
+    expect(within(consultancyTerm).getByText('Consulenza')).toHaveClass('bg-blue-100')
+    const institutionTerm = within(lineGroup('ENT-001')).getByText('Payment status')
+    expect(within(institutionTerm).getByText('Ente')).toHaveClass('bg-violet-100')
   })
 
   it('names the client of each line on a multi-offer work order (spec 0267)', async () => {

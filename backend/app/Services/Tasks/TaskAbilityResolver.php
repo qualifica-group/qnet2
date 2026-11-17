@@ -106,7 +106,8 @@ final class TaskAbilityResolver
      * assignee, manager; not the watcher). Spec 0383 adds the inherited
      * assignee of an unassigned sub-task: it may complete it, never edit
      * or delete it. Spec 0387 adds the Responsabile/Partecipante of the
-     * commessa of an unassigned Task: completing it makes them its assignee.
+     * commessa of the Task, assigned or not: completing it makes them one
+     * of its assignees.
      */
     public static function canComplete(User $actor, Task $task): bool
     {

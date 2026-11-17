@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'La campanella in testata mostra le ultime notifiche e il contatore delle non lette; questa pagina è l\'elenco completo, filtrabile. Si apre dal link **Notifiche** in fondo al menu laterale, appena sopra **Impostazioni**.',
+          text: 'La campanella in testata mostra le ultime notifiche e il contatore delle non lette; questa pagina è l\'elenco completo, filtrabile. Si apre dal link **Notifiche** in fondo al menu laterale, appena sopra **Impostazioni**. Nella campanella, sotto ogni menzione, accanto alla data compaiono le iniziali e il nome di chi ti ha menzionato.',
         },
       ],
     },

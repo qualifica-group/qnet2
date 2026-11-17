@@ -1,9 +1,13 @@
 <?php
 
+use App\Models\Contract;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\RewardType;
 use App\Models\Tag;
 use App\Models\User;
+use App\Models\WorkOrder;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -121,19 +125,23 @@ it('filters the rows by old_id', function () {
     expect(array_column($rows, 'old_id'))->toBe([20, 30]);
 });
 
-it('finds an opportunity by old_id through the quick search', function () {
+// REQUIREMENT CHANGED (user decision 2026-11-17): opportunities, quotes, work
+// orders and contracts quick-search the exact id, never old_id.
+it('quick-searches an opportunity by its exact id, never by old_id', function () {
     Sanctum::actingAs(legacyIdActor(['opportunities.viewAny', 'opportunities.viewAll']));
 
-    $target = Opportunity::factory()->create(['old_id' => 173029]);
-    Opportunity::factory()->create(['old_id' => 173030]);
+    $target = Opportunity::factory()->create(['id' => 173029, 'old_id' => 1, 'name' => 'Target']);
+    Opportunity::factory()->create(['old_id' => 173029, 'name' => 'Legacy match']);
 
+    $searchable = $this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.searchable');
     $response = $this->postJson('/api/tables/opportunities/rows', [
         'startRow' => 0,
         'endRow' => 25,
         'search' => '173029',
     ])->assertOk();
 
-    expect(array_column($response->json('items'), 'id'))->toBe([$target->id]);
+    expect(array_column($response->json('items'), 'id'))->toBe([$target->id])
+        ->and($searchable)->toContain('id')->not->toContain('old_id');
 });
 
 it('keeps old_id out of the quick search for an actor without legacy-ids.view', function () {
@@ -149,7 +157,35 @@ it('keeps old_id out of the quick search for an actor without legacy-ids.view', 
         ->and($rows)->toBeEmpty();
 });
 
-it('sorts, filters and searches by old_id on every grid that exposes it', function () {
+it('quick-searches the grid by exact id only: never a partial id, never old_id', function (string $domain, string $modelClass) {
+    $admin = User::factory()->create();
+    $admin->assignRole(Role::findOrCreate('super-admin'));
+    Sanctum::actingAs($admin);
+
+    $target = $modelClass::factory()->create(['id' => 987654]);
+    $partial = $modelClass::factory()->create(['id' => 9876540]);
+    $legacy = Schema::hasColumn((new $modelClass)->getTable(), 'old_id')
+        ? $modelClass::factory()->create(['old_id' => 987654])
+        : null;
+
+    $search = fn (string $term): array => array_column($this->postJson("/api/tables/{$domain}/rows", [
+        'startRow' => 0, 'endRow' => 25, 'search' => $term,
+    ])->assertOk()->json('items'), 'id');
+
+    expect($search('987654'))->toContain($target->id)->not->toContain($partial->id)
+        ->and($search('98765'))->not->toContain($target->id);
+
+    if ($legacy !== null) {
+        expect($search('987654'))->not->toContain($legacy->id);
+    }
+})->with([
+    'work orders' => ['work-orders', WorkOrder::class],
+    'opportunities' => ['opportunities', Opportunity::class],
+    'quotes' => ['quotes', Quote::class],
+    'contracts' => ['contracts', Contract::class],
+]);
+
+it('sorts, filters and searches by old_id on every grid that exposes it (search: not where the grid searches by id)', function () {
     $admin = User::factory()->create();
     $admin->assignRole(Role::findOrCreate('super-admin'));
     Sanctum::actingAs($admin);
@@ -169,8 +205,9 @@ it('sorts, filters and searches by old_id on every grid that exposes it', functi
         expect($column)->not->toBeNull("{$domain} does not expose old_id")
             ->sortable->toBeTrue()->filterable->toBeTrue()->filterType->toBe('number')
             ->hasFilterValues->toBeFalse("{$domain} offers a capped value checklist on old_id");
+        $searchesById = in_array(SearchesByIdNotLegacyId::class, class_uses_recursive(app(TableRegistry::class)->resolveRaw($domain)), true);
         expect(in_array('old_id', $this->getJson("/api/tables/{$domain}/columns")->json('data.searchable'), true))
-            ->toBeTrue("{$domain} does not search old_id");
+            ->toBe(! $searchesById, "{$domain} quick search on old_id is wrong");
 
         $this->postJson("/api/tables/{$domain}/rows", [
             'startRow' => 0,

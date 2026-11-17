@@ -71,6 +71,8 @@ class WorkOrderService
         // attribute trio (`applicable_attributes`/`attribute_layout`) never
         // N+1s on top of the pre-existing `quote_lines` projection.
         'quoteLines.product.category',
+        // The typology badge (Consulenza/Ente) on each line's "Stato pagamento".
+        'quoteLines.product.productTypology',
         // Spec 0267: the client each line comes from, shown on the line of a multi-offer commessa.
         'quoteLines.quote.opportunity.registry',
         'supervisors',

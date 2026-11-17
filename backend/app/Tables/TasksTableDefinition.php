@@ -16,7 +16,6 @@ use App\Tables\Tasks\TaskAggregateColumns;
 use App\Tables\Tasks\TaskCellWriter;
 use App\Tables\Tasks\TaskColumnCatalog;
 use App\Tables\Tasks\TaskDerivedColumnResolver;
-use App\Tables\Tasks\TaskIdSearchMatcher;
 use App\Tables\Tasks\TaskKanbanGroupScope;
 use App\Tables\Tasks\TaskRelationColumns;
 use App\Tables\Tasks\TaskRowActionResolver;
@@ -338,24 +337,6 @@ class TasksTableDefinition extends AbstractTableDefinition
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
         return $this->derivedColumnResolver->applySort($query, $columnId, $direction);
-    }
-
-    /**
-     * Spec 0156, D-1: the quick search also matches an exact numeric id,
-     * OR-combined with the `title` LIKE the generic engine already applies
-     * to the other searchable column (App\Tables\Tasks\TaskIdSearchMatcher).
-     *
-     * @param  Builder<Task>  $query
-     */
-    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
-    {
-        if ($columnId !== 'id') {
-            return false;
-        }
-
-        TaskIdSearchMatcher::apply($query, $pattern);
-
-        return true;
     }
 
     /**

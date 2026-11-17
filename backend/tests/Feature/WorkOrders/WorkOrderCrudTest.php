@@ -262,3 +262,16 @@ it('detail: quote_lines carry the payment status of the line in this commessa, n
         ->and($response->json('data'))->not->toHaveKeys(['payment_status', 'work_order_payment_status_id'])
         ->and($response->json('permissions.fields'))->not->toHaveKey('work_order_payment_status_id');
 });
+
+it('detail: quote_lines carry the product typology, the badge beside the line payment status', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $consultancy = contractDataLine($workOrder, 'consultancy', 100);
+    $institution = contractDataLine($workOrder, 'institution', 200);
+    Sanctum::actingAs(workOrderUserWith(['view']));
+
+    $lines = collect($this->getJson("/api/work-orders/{$workOrder->id}")->assertOk()->json('data.quote_lines'))->keyBy('id');
+
+    expect($lines[$consultancy->id]['typology'])->toMatchArray(['code' => 'consultancy'])
+        ->and($lines[$consultancy->id]['typology'])->toHaveKeys(['id', 'name', 'color'])
+        ->and($lines[$institution->id]['typology'])->toMatchArray(['code' => 'institution']);
+});

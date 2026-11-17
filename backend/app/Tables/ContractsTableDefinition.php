@@ -12,6 +12,7 @@ use App\Services\Contracts\ContractActionAvailability;
 use App\Services\Contracts\ContractAlertResolver;
 use App\Services\Contracts\ContractVisibilityScope;
 use App\Services\Quotes\QuoteVisibilityScope;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Contracts\Concerns\HasContractListFilters;
 use App\Tables\Contracts\Concerns\HasContractStatusTabs;
 use App\Tables\Contracts\ContractColumnCatalog;
@@ -52,6 +53,7 @@ use Illuminate\Support\Facades\Gate;
 class ContractsTableDefinition extends AbstractTableDefinition
 {
     use HasContractListFilters, HasContractStatusTabs;
+    use SearchesByIdNotLegacyId;
 
     private const string ALERT_COLUMN = 'alert';
 

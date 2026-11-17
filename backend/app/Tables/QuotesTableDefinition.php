@@ -11,6 +11,7 @@ use App\Services\Quotes\QuoteSystemStatusMap;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Services\QuoteService;
 use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Quotes\Concerns\WritesQuoteCells;
 use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
 use App\Tables\Quotes\QuoteCellWriter;
@@ -52,6 +53,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class QuotesTableDefinition extends AbstractTableDefinition
 {
+    use SearchesByIdNotLegacyId;
     use WritesQuoteCells;
 
     /** The specially-derived site column (no label column of its own). */

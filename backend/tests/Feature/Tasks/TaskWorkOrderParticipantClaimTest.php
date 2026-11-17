@@ -5,18 +5,20 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Notifications\TaskClosed;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 /*
 |--------------------------------------------------------------------------
-| Spec 0387 — a commessa member claims an unassigned task by closing it
+| Spec 0387 — a commessa member claims a task of the commessa by closing it
 |--------------------------------------------------------------------------
 |
-| A Responsabile or Partecipante of the commessa may complete one of its Tasks with no
-| assignee: the completion makes them its assignee and the rest of the
-| percorso is the assignee's one.
+| A Responsabile or Partecipante of the commessa may complete one of its Tasks,
+| with or without assignees (rev.2): the completion makes them one of its
+| assignees and the rest of the percorso is the assignee's one.
 */
 
 uses(RefreshDatabase::class);
@@ -89,18 +91,36 @@ it('AC-002: on a task requiring validation the participant becomes assignee and 
         ->assertJsonPath('data.assignees.0.id', $actor->id);
 });
 
-// REQUIREMENT CHANGED (user decision 2026-11-11): the Responsabile claims too.
-it('AC-003: no claim on an assigned task or on a task outside the commessa', function () {
+// REQUIREMENT CHANGED (user decision 2026-11-17, rev.2): an assigned task of the commessa is no longer excluded.
+it('AC-003: no claim on a task outside the commessa or by an actor who is not a member', function () {
     $actor = participantClaimActor();
-    $assigned = participantClaimTask(participantClaimWorkOrder($actor));
-    $assigned->assignees()->attach(User::factory()->create()->id);
     Sanctum::actingAs($actor);
-
-    $this->getJson("/api/tasks/{$assigned->id}")->assertJsonPath('permissions.actions.complete', false);
-    $this->postJson("/api/tasks/{$assigned->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertForbidden();
 
     $foreign = participantClaimTask(WorkOrder::factory()->create());
     $this->postJson("/api/tasks/{$foreign->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertForbidden();
+
+    $standalone = participantClaimTask(participantClaimWorkOrder(User::factory()->create()), ['work_order_id' => null]);
+    $this->postJson("/api/tasks/{$standalone->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertForbidden();
+});
+
+it('AC-007: the participant closes a task already assigned to someone else in their own name, the assignee keeps the task and is told', function () {
+    Notification::fake();
+    $actor = participantClaimActor();
+    $assignee = User::factory()->create();
+    $task = participantClaimTask(participantClaimWorkOrder($actor));
+    $task->assignees()->attach($assignee->id);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$task->id}")->assertJsonPath('permissions.actions.complete', true);
+
+    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload(), 'for_all_assignees' => false])
+        ->assertOk();
+
+    expect($task->fresh()->completion_date)->not->toBeNull()
+        ->and($task->assignees()->pluck('users.id')->sort()->values()->all())->toBe(collect([$actor->id, $assignee->id])->sort()->values()->all())
+        ->and($task->timeEntries()->where('user_id', $actor->id)->count())->toBe(1)
+        ->and($task->timeEntries()->where('user_id', $assignee->id)->count())->toBe(0);
+    Notification::assertSentTo($assignee, TaskClosed::class);
 });
 
 it('AC-004: before completing the participant cannot edit the task, and a failed guard leaves no assignment', function () {

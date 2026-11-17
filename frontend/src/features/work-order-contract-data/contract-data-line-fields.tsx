@@ -4,7 +4,7 @@ import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordField, RecordFieldList } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
 import { InvoiceTypeBadge, PaymentStatusIndicator } from '@/features/invoices/invoice-status-badges'
-import { Amount, PaymentStatusBadge, ProductCell } from '@/features/work-order-contract-data/contract-data-cells'
+import { Amount, PaymentStatusBadge, PaymentStatusFieldLabel, ProductCell } from '@/features/work-order-contract-data/contract-data-cells'
 import { ContractDataLineBox } from '@/features/work-order-contract-data/contract-data-line-box'
 import { netAmountHint } from '@/features/work-order-contract-data/contract-data-formulas'
 import { DocumentNumber } from '@/features/work-order-invoices/invoice-table-parts'
@@ -65,7 +65,7 @@ export function ContractDataLineFields({ line, canManage, showRegistry, onEdit, 
         <RecordField label={label('amount')}>
           <Amount value={line.net_amount} hint={netAmountHint(line, t)} className="font-semibold tabular-nums" />
         </RecordField>
-        <RecordField label={label('paymentStatus')}>
+        <RecordField label={<PaymentStatusFieldLabel typology={line.typology} />}>
           <span className="inline-flex max-w-full min-w-0 items-center gap-1">
             <PaymentStatusBadge status={status} />
             {canManage ? (

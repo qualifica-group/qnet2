@@ -11,6 +11,24 @@ import { ProductTypologyBadge } from '@/features/product-typologies/product-typo
 import { PaymentStatusLabel } from '@/features/work-order-contract-data/payment-status-label'
 import type { ContractDataLine, ContractPaymentStatusRef } from '@/features/work-order-contract-data/types'
 
+type LineTypology = Pick<NonNullable<ContractDataLine['typology']>, 'name' | 'color'>
+
+/**
+ * The "Stato pagamento" label of a product with its typology badge (Consulenza,
+ * Ente...) beside it (user directive 2026-11-17): whose payment the status is.
+ * A line without typology reads as Consulenza, as in the totals (spec 0202 D-8).
+ */
+export function PaymentStatusFieldLabel({ typology }: { typology: LineTypology | null }) {
+  const { t } = useTranslation()
+
+  return (
+    <>
+      {t('workOrders.contractData.fields.paymentStatus')}
+      <ProductTypologyBadge name={typology?.name ?? t('workOrders.contractData.kind.consultancy')} color={typology?.color} />
+    </>
+  )
+}
+
 interface ProductCellProps {
   line: ContractDataLine
   /** Multi-offer work order (spec 0267): the client of the line's own offer goes under the product. */
@@ -18,11 +36,10 @@ interface ProductCellProps {
 }
 
 /**
- * The product on ONE line: code, name (truncated, full name on hover), typology
- * badge, warning icons; on a multi-offer work order, the line's client below.
+ * The product on ONE line: code, name (truncated, full name on hover), warning
+ * icons; on a multi-offer work order, the line's client below.
  */
 export function ProductCell({ line, showRegistry }: ProductCellProps) {
-  const { t } = useTranslation()
   const { code, name } = line.product
 
   return (
@@ -34,10 +51,6 @@ export function ProductCell({ line, showRegistry }: ProductCellProps) {
             {name}
           </span>
         </RecordLink>
-        <ProductTypologyBadge
-          name={line.typology?.name ?? t('workOrders.contractData.kind.consultancy')}
-          color={line.typology?.color}
-        />
         <ContractDataWarnings warnings={line.warnings} />
       </div>
       {showRegistry && line.registry ? (

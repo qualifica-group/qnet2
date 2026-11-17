@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { UserAvatar } from '@/components/user-avatar'
 import { cn } from '@/lib/utils'
 import { safeInternalPath } from '@/features/notifications/safe-internal-path'
 import type { Notification } from '@/features/notifications/types'
@@ -47,6 +48,9 @@ interface NotificationItemProps {
  * watcher's courtesy copy of a "request update" notification sent to the
  * task's assignees. Generic like every other `data` field — any future
  * notification type carrying it gets the same marker for free.
+ *
+ * `data.actor` (who wrote the @mention, as q-net showed it) sits next to the
+ * timestamp with its initials avatar; the same generic rule applies.
  */
 export function NotificationItem({
   notification,
@@ -62,6 +66,7 @@ export function NotificationItem({
   const message = notification.data.message
   const timestamp = formatDateTime(notification.created_at)
   const targetPath = safeInternalPath(notification.data.action_url)
+  const actor = notification.data.actor ?? null
 
   const content = (
     <>
@@ -77,8 +82,16 @@ export function NotificationItem({
       {message ? (
         <p className="mt-0.5 text-sm text-muted-foreground">{message}</p>
       ) : null}
-      {timestamp ? (
-        <p className="mt-1 text-xs text-muted-foreground">{timestamp}</p>
+      {timestamp || actor ? (
+        <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {timestamp ? <span>{timestamp}</span> : null}
+          {actor ? (
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <UserAvatar name={actor.name} size="xs" />
+              <span className="truncate">{actor.name}</span>
+            </span>
+          ) : null}
+        </p>
       ) : null}
     </>
   )
