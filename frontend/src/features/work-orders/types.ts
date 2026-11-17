@@ -115,6 +115,8 @@ export interface WorkOrderQuoteLine {
   id: number
   sort_order: number
   product: WorkOrderQuoteLineProduct | null
+  /** The product's typology (Consulenza, Ente...), badged on the line's payment status. Optional so older fixtures stay valid. */
+  typology?: { id: number; code: string; name: string; color: string } | null
   /** Spec 0267: the client of the line's own offer, shown on the line of a multi-offer work order. */
   registry: { id: number; name: string } | null
   /** Spec 0403: the line's payment status in THIS commessa. Optional so older fixtures stay valid. */

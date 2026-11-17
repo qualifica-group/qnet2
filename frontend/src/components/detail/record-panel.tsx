@@ -191,7 +191,8 @@ export function RecordFieldList({ children, className }: { children: ReactNode; 
 }
 
 interface RecordFieldProps {
-  label: string
+  /** Usually plain text; may carry an inline badge qualifying the field. */
+  label: ReactNode
   icon?: ReactNode
   children: ReactNode
   className?: string

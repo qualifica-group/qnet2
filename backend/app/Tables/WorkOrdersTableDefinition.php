@@ -20,6 +20,7 @@ use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
+use App\Tables\WorkOrders\WorkOrderLinePaymentStatusColumn;
 use App\Tables\WorkOrders\WorkOrderProformaStatusColumn;
 use App\Tables\WorkOrders\WorkOrderRenewalColumn;
 use App\Tables\WorkOrders\WorkOrderWorkflowStatusColumn;
@@ -71,6 +72,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderAdvancedFilterApplier $advancedFilterApplier,
         private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
         private readonly WorkOrderProformaStatusColumn $proformaStatusColumn,
+        private readonly WorkOrderLinePaymentStatusColumn $linePaymentStatusColumn,
     ) {}
 
     /**
@@ -132,6 +134,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'quoteLines.product',
             // Spec 0267, D-8: only multi-offer rows read their lines' offers.
             'quoteLines.quote.opportunity.registry',
+            // The "Stato pagamento" cell: each line's status and product typology.
+            ...WorkOrderLinePaymentStatusColumn::EAGER_LOADS,
         ]));
 
         // Spec 0363: badges of the `documents` and `notes` row actions.
@@ -233,7 +237,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     /**
      * Badge metadata for the `type`/`status` columns, driven by
      * WorkOrderType/WorkOrderWorkPhase (mirrors ProductsTableDefinition's own
-     * `product_type`).
+     * `product_type`); for `line_payment_statuses` the labels of its
+     * typology + status filter values.
      *
      * @return array<int, array<string, mixed>>|null
      */
@@ -242,6 +247,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'type' => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderType::options()),
             WorkOrderWorkPhaseColumn::COLUMN => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderWorkPhase::options()),
+            WorkOrderLinePaymentStatusColumn::COLUMN => $this->linePaymentStatusColumn->badges(),
             default => null,
         };
     }
@@ -312,6 +318,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'is_force_closed' => $row->is_force_closed,
             WorkOrderWorkPhaseColumn::COLUMN => $this->workPhaseColumn->project($row),
             ...$this->workflowStatusColumn->project($row),
+            WorkOrderLinePaymentStatusColumn::COLUMN => $this->linePaymentStatusColumn->project($row),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,
             'created_at' => $row->created_at,

@@ -78,6 +78,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "If you may request proformas, the table also has the **€** column, as in the old QNet: the euro icon is **grey** when the work order has no proforma request, **blue** when a request is waiting to be issued, **yellow** when the requested proformas have been issued. Hovering the icon shows the state. Clicking the grey or blue icon opens the **Proforma issue request** window; the yellow one is not clickable. The column can be sorted (not requested, requested, issued) and filtered by **Not requested**, **Requested**, **Issued**.",
         },
+        {
+          type: 'paragraph',
+          text: "The **Payment status** column shows the payment statuses of the work order's products grouped by typology: the **Consulenza** or **Ente** badge and, beside it, the statuses of that typology's products (for example **Consulenza** Saldato, No status · **Ente** Da pagare). A product without a status counts as **No status**; several products with the same status show it once. Hovering the cell shows each product, with code and name, and its status. The column cannot be sorted. The filter lists the typology and status pairs present, for example **Ente: Da pagare** or **Consulenza: No status**: it keeps the work orders with at least one product in a picked pair, and the filter search also finds just the status or the typology.",
+        },
       ],
     },
     {
@@ -310,9 +314,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Field', 'Meaning'],
           rows: [
-            ['Title', 'Product code and name with the typology badge (for example **Ente**); on a multi-offer work order also the client of the line.'],
+            ['Title', 'Product code and name; on a multi-offer work order also the client of the line.'],
             ['Amount', 'The net amount of the line, as saved on the quote. The tooltip shows the calculation, for example "2 × 500.00 = 1,000.00".'],
-            ['Payment status', 'The payment status of the product (badge in the status colour), or **No status**. With the permission to manage payments a pencil sits beside it.'],
+            ['Payment status', 'Beside the label sits the product typology badge (**Consulenza** or **Ente**), so you know which payment it is. The value is the payment status of the product (badge in the status colour), or **No status**. With the permission to manage payments a pencil sits beside it.'],
             ['Document', 'The work order proforma or invoice billing the product, with its number and payment status (Paid, Not due, Overdue, Seriously overdue); when there are several, the newest. If you can see invoices, the **number** is a link that opens the document in a side panel. **No proforma issued** when the product has not been billed yet.'],
             ['Payment agreement', 'The text of the payment agreement of the product.'],
             ['Unpaid', '**Yes** when the product has unpaid amounts, otherwise **No**.'],
@@ -320,7 +324,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Without the permission to see the work order **costs** or **contract data** you see only the **Title** and **Payment status** of each product, with no amounts, document, agreement or unpaid flag, and you cannot edit the payments. Under the products come the totals, as in the old QNet: **Total Consulenza**, **Total Ente** (one per typology: the net amount, with the revenue beside it when different; those at 0.00 are dimmed), then, when visible, Commissions and Net of commissions, finally **Total revenue**, each with its tooltip explaining the calculation.',
+          text: 'Without the permission to see the work order **costs** or **contract data** you see only the **Title** and **Payment status** (with the Consulenza or Ente badge) of each product, with no amounts, document, agreement or unpaid flag, and you cannot edit the payments. Under the products come the totals, as in the old QNet: **Total Consulenza**, **Total Ente** (one per typology: the net amount, with the revenue beside it when different; those at 0.00 are dimmed), then, when visible, Commissions and Net of commissions, finally **Total revenue**, each with its tooltip explaining the calculation.',
         },
         {
           type: 'warning',
@@ -465,7 +469,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; the levels are cumulative:" },
         { type: 'table', headers: ["Permission", "Visible work orders"], rows: [["**View**", "Those where you are a **Supervisor** or a **Participant**."], ["**View by site**", "Your own plus those whose quote belongs to one of your sites. For a work order with several quotes, one is enough."], ["**View by competence**", "Your own plus those where at least one source quote has a category in your assignment scope, in any site. With **Scope on all categories**, all of them."], ["**View all**", "All of them."]] },
         { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to a work order you cannot see shows an access error. Seeing a work order does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
-        { type: 'paragraph', text: "Whoever sees a work order also sees its tasks on the task board and on the **Tasks** page, if they can view Tasks, even with no role on the task; private tasks stay excluded. Editing them takes a role on the task or the Tasks **Manage all** permission. Exception: a **Supervisor** or a **Participant** can complete a task of the work order that has no assignees, and completing it makes them its assignee." },
+        { type: 'paragraph', text: "Whoever sees a work order also sees its tasks on the task board and on the **Tasks** page, if they can view Tasks, even with no role on the task; private tasks stay excluded. Editing them takes a role on the task or the Tasks **Manage all** permission. Exception: a **Supervisor** or a **Participant** can complete a task of the work order in their own name, even when it is already assigned to a colleague, and completing it makes them one of its assignees." },
         { type: 'note', text: "If you create a work order without being a Supervisor or a Participant, you will no longer see it unless you have **View all**, **View by site** or **View by competence**." },
         { type: 'tip', text: "Whoever can edit the work order can involve a colleague who cannot see it by mentioning them in a note with **Mention anyone**: on save they become a **Participant** (see **Notes and documents** in the general guide)." },
       ],

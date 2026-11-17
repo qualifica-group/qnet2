@@ -26,8 +26,9 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
 
     // Spec 0322 appends `work_order_workflow_status` (REQUIREMENT CHANGED); spec 0358 D-14 adds `renewal_number` after `contract_expiry_date` (REQUIREMENT CHANGED).
     // Spec 0395 (REQUIREMENT CHANGED): `status` is the working phase, the hidden `work_phase` column is gone.
+    // REQUIREMENT CHANGED (user directive 2026-11-17): `line_payment_statuses` ("Stato pagamento") appended.
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'renewal_number', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors', 'participants', 'work_order_workflow_status']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'renewal_number', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors', 'participants', 'work_order_workflow_status', 'line_payment_statuses']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()

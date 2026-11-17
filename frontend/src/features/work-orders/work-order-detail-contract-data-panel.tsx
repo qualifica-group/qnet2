@@ -7,7 +7,7 @@ import { RecordField, RecordFieldList, RecordSection } from '@/components/detail
 import { useAbilities } from '@/features/auth/use-abilities'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import type { ProductLine } from '@/features/product-lines/types'
-import { PaymentStatusBadge } from '@/features/work-order-contract-data/contract-data-cells'
+import { PaymentStatusBadge, PaymentStatusFieldLabel } from '@/features/work-order-contract-data/contract-data-cells'
 import { ContractDataLineBox } from '@/features/work-order-contract-data/contract-data-line-box'
 import { WorkOrderContractDataSection } from '@/features/work-order-contract-data/work-order-contract-data-section'
 import type { WorkOrderDetailWithPermissions, WorkOrderQuoteLine } from '@/features/work-orders/types'
@@ -53,7 +53,7 @@ function WorkOrderLinesList({ lines, showRegistry }: { lines: WorkOrderQuoteLine
                 ) : null}
               </span>
             </RecordField>
-            <RecordField label={t('workOrders.contractData.fields.paymentStatus')}>
+            <RecordField label={<PaymentStatusFieldLabel typology={line.typology ?? null} />}>
               <PaymentStatusBadge status={line.payment_status ?? null} />
             </RecordField>
           </RecordFieldList>

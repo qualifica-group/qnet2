@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { formatDate } from '@/lib/formatting/date-display'
@@ -86,5 +86,52 @@ describe('workOrderColumnRenderers.renewal_number (spec 0358 AC-029)', () => {
   it('renders "Renewal N" for a renewed period', () => {
     renderCell('renewal_number', 2)
     expect(screen.getByText('Renewal 2')).toBeInTheDocument()
+  })
+})
+
+describe('workOrderColumnRenderers.line_payment_statuses', () => {
+  const groups = [
+    {
+      name: 'Consulenza: Saldato, Nessuno stato',
+      typology: { name: 'Consulenza', color: 'blue' },
+      statuses: [{ name: 'Saldato', color: 'green' }, null],
+      products: [
+        { code: 'CON-001', name: 'Consulenza qualita', status: 'Saldato' },
+        { code: 'CON-002', name: 'Consulenza ambiente', status: null },
+      ],
+    },
+    {
+      name: 'Ente: Da pagare',
+      typology: { name: 'Ente', color: 'violet' },
+      statuses: [{ name: 'Da pagare', color: 'red' }],
+      products: [{ code: 'ENT-001', name: 'Certificazione', status: 'Da pagare' }],
+    },
+  ]
+
+  it('shows each typology badge followed by the statuses of its products, a product without status as "No status"', () => {
+    renderCell('line_payment_statuses', groups)
+
+    const cell = screen.getByRole('group', { name: 'Consulenza: Saldato, Nessuno stato; Ente: Da pagare' })
+    expect(within(cell).getByText('Consulenza')).toHaveClass('bg-blue-100')
+    expect(within(cell).getByText('Ente')).toHaveClass('bg-violet-100')
+    expect(within(cell).getByText('Saldato')).toBeInTheDocument()
+    expect(within(cell).getByText('No status')).toBeInTheDocument()
+    expect(within(cell).getByText('Da pagare')).toBeInTheDocument()
+  })
+
+  it('lists every product with its own status on hover', async () => {
+    renderCell('line_payment_statuses', groups)
+
+    fireEvent.focus(screen.getByRole('group'))
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(within(tooltip).getByText('CON-002')).toBeInTheDocument()
+    expect(within(tooltip).getByText('Consulenza ambiente')).toBeInTheDocument()
+    expect(within(tooltip).getByText('ENT-001')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when the work order has no products', () => {
+    renderCell('line_payment_statuses', [])
+    expect(screen.getByText('—')).toBeInTheDocument()
   })
 })

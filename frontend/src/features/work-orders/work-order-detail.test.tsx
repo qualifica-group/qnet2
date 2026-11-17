@@ -361,7 +361,11 @@ describe('WorkOrderDetailView — related records', () => {
         workOrder={workOrder({
           amount: null,
           quote_lines: [
-            { ...base.quote_lines[0], payment_status: { id: 3, name: 'Saldato', color: 'green', allows_delivery: true } },
+            {
+              ...base.quote_lines[0],
+              typology: { id: 2, code: 'institution', name: 'Ente', color: 'violet' },
+              payment_status: { id: 3, name: 'Saldato', color: 'green', allows_delivery: true },
+            },
             { ...base.quote_lines[1], payment_status: null },
           ],
           permissions: { ...base.permissions, actions: { view_contract_data: true } },
@@ -375,7 +379,10 @@ describe('WorkOrderDetailView — related records', () => {
     expect(within(section).getByText('Saldato')).toBeInTheDocument()
     expect(within(section).getByText('No status')).toBeInTheDocument()
     expect(within(section).getAllByRole('term').map((term) => term.textContent)).not.toContain('Amount')
-    expect(within(section).getAllByText('Payment status')).toHaveLength(2)
+    const paymentTerms = within(section).getAllByText('Payment status')
+    expect(paymentTerms).toHaveLength(2)
+    // The typology badge sits on each payment status label; a line without one reads as consultancy.
+    expect(paymentTerms.map((term) => term.textContent)).toEqual(['Payment statusConsulting', 'Payment statusEnte'])
   })
 
   it('has neither the work order title nor a work order payment status in the contract data (spec 0403)', () => {
@@ -385,8 +392,8 @@ describe('WorkOrderDetailView — related records', () => {
     const terms = within(section).getAllByRole('term').map((term) => term.textContent)
     expect(terms[0]).toBe('Amount')
     expect(within(section).queryByText('Installazione impianto')).not.toBeInTheDocument()
-    // The only payment statuses are the two products' own.
-    expect(terms.filter((term) => term === 'Payment status')).toHaveLength(2)
+    // The only payment statuses are the two products' own (each label carries the product typology badge).
+    expect(terms.filter((term) => term?.startsWith('Payment status'))).toHaveLength(2)
     expect(within(section).getByText('1,250.50')).toBeInTheDocument()
   })
 

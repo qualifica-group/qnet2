@@ -253,6 +253,17 @@ final class WorkOrderColumnCatalog
                 'editableField' => 'work_order_workflow_status_id',
                 'nullable' => false,
             ],
+            [
+                // The products' payment statuses by typology (WorkOrderLinePaymentStatusColumn): a to-many,
+                // not sortable, `set`-filtered by typology + status pair, labelled by its `badges`.
+                'id' => WorkOrderLinePaymentStatusColumn::COLUMN,
+                'label' => 'workOrders.columns.line_payment_statuses',
+                'type' => 'badge',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
         ];
     }
 
@@ -300,6 +311,7 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'start_date', 'type' => 'date'],
             ['columnId' => 'supervisors', 'type' => 'set'],
             ['columnId' => 'participants', 'type' => 'set'],
+            ['columnId' => WorkOrderLinePaymentStatusColumn::COLUMN, 'type' => 'set'],
         ];
     }
 

@@ -4,6 +4,7 @@ import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import { ChatUnreadCell } from '@/features/work-orders/chat-unread-cell'
 import { RenewalPeriodCell } from '@/features/work-orders/renewal-period-cell'
+import { LinePaymentStatusesCell } from '@/features/work-orders/line-payment-statuses-cell'
 import { RegistryCell } from '@/features/work-orders/registry-cell'
 import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progress-cell'
 import { WorkOrderProformaCell, type ProformaTarget } from '@/features/work-orders/work-order-proforma-cell'
@@ -36,6 +37,8 @@ import { WorkOrderProformaCell, type ProformaTarget } from '@/features/work-orde
  * button opening the progress popup: the renderer map is therefore built by a
  * factory taking that handler from `useWorkOrderRowActions`. `proforma_status`
  * (the "€" column, spec 0407) likewise opens the proforma request dialog.
+ * `line_payment_statuses` ("Stato pagamento") lists the products' payment
+ * statuses, each with its Consulenza/Ente typology badge.
  */
 export function buildWorkOrderColumnRenderers(
   openProgress: (workOrderId: number) => void,
@@ -53,6 +56,7 @@ export function buildWorkOrderColumnRenderers(
     participants: (params) => <UserStackCell {...params} />,
     completion_percentage: (params) => <WorkOrderProgressCell {...params} onOpen={openProgress} />,
     proforma_status: (params) => <WorkOrderProformaCell {...params} onOpen={openProforma} />,
+    line_payment_statuses: (params) => <LinePaymentStatusesCell {...params} />,
     chat_unread_count: (params) => <ChatUnreadCell {...params} />,
     renewal_number: (params) => <RenewalPeriodCell {...params} />,
     created_at: (params) => <DateTimeCell {...params} />,

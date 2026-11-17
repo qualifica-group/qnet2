@@ -78,6 +78,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Se puoi richiedere proforma, la tabella ha anche la colonna **€**, come nel vecchio QNet: l'icona dell'euro è **grigia** se la commessa non ha richieste proforma, **blu** se c'è una richiesta in attesa di emissione, **gialla** se le proforma richieste sono state emesse. Passando col mouse sull'icona leggi lo stato. Cliccando l'icona grigia o blu si apre la finestra **Richiesta emissione Proforma**; quella gialla non è cliccabile. La colonna si può ordinare (non richiesta, richiesta, emessa) e filtrare per **Non richiesta**, **Richiesta**, **Emessa**.",
         },
+        {
+          type: 'paragraph',
+          text: "La colonna **Stato pagamento** mostra gli stati di pagamento dei prodotti della commessa raggruppati per tipologia: il badge **Consulenza** o **Ente** e, accanto, gli stati dei prodotti di quella tipologia (per esempio **Consulenza** Saldato, Nessuno stato · **Ente** Da pagare). Un prodotto senza stato conta come **Nessuno stato**; più prodotti con lo stesso stato lo mostrano una volta. Passando col mouse sulla cella vedi ogni prodotto, con codice e nome, e il suo stato. La colonna non si ordina. Il filtro elenca le coppie tipologia e stato presenti, per esempio **Ente: Da pagare** o **Consulenza: Nessuno stato**: tiene le commesse con almeno un prodotto in una delle coppie scelte, e la ricerca del filtro trova anche solo lo stato o la tipologia.",
+        },
       ],
     },
     {
@@ -310,9 +314,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Campo', 'Significato'],
           rows: [
-            ['Titolo', 'Codice e nome del prodotto con il badge della tipologia (ad esempio **Ente**); in una commessa con più offerte anche il cliente della riga.'],
+            ['Titolo', 'Codice e nome del prodotto; in una commessa con più offerte anche il cliente della riga.'],
             ['Importo', 'L\'imponibile della riga, come salvato sull\'offerta. Il tooltip mostra il calcolo, ad esempio "2 × 500,00 = 1.000,00".'],
-            ['Stato Pagamento', 'Lo stato di pagamento del prodotto (badge del colore dello stato), oppure **Nessuno stato**. Con il permesso di gestire i pagamenti accanto c\'è la matita.'],
+            ['Stato Pagamento', 'Accanto alla dicitura c\'è il badge della tipologia del prodotto (**Consulenza** o **Ente**), così sai di quale pagamento si tratta. Il valore è lo stato di pagamento del prodotto (badge del colore dello stato), oppure **Nessuno stato**. Con il permesso di gestire i pagamenti accanto c\'è la matita.'],
             ['Documento', 'La proforma o fattura della commessa che fattura il prodotto, con numero e stato del pagamento (Pagata, Non scaduta, Scaduta, Gravemente scaduta); se ce ne sono più, la più recente. Se puoi vedere le fatture, il **numero** è un link che apre il documento in un pannello laterale. **Nessuna proforma emessa** se il prodotto non è ancora stato fatturato.'],
             ['Accordo sui Pagamenti', 'Il testo dell\'accordo sui pagamenti del prodotto.'],
             ['Insoluti', '**Sì** se il prodotto ha insoluti, altrimenti **No**.'],
@@ -320,7 +324,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Chi non ha il permesso di vedere i **costi** o i **dati contrattuali** della commessa vede per ogni prodotto solo **Titolo** e **Stato Pagamento**, senza importi, documento, accordo o insoluti, e non può modificare i pagamenti. Sotto i prodotti ci sono i totali, come nel vecchio QNet: **Totale Consulenza**, **Totale Ente** (uno per tipologia: l\'imponibile, con accanto il ricavo quando è diverso; quelli a 0,00 sono attenuati), poi, se visibili, Commissioni e Netto commissioni, infine **Totale Ricavi**, ciascuno col suo tooltip che spiega il calcolo.',
+          text: 'Chi non ha il permesso di vedere i **costi** o i **dati contrattuali** della commessa vede per ogni prodotto solo **Titolo** e **Stato Pagamento** (con il badge Consulenza o Ente), senza importi, documento, accordo o insoluti, e non può modificare i pagamenti. Sotto i prodotti ci sono i totali, come nel vecchio QNet: **Totale Consulenza**, **Totale Ente** (uno per tipologia: l\'imponibile, con accanto il ricavo quando è diverso; quelli a 0,00 sono attenuati), poi, se visibili, Commissioni e Netto commissioni, infine **Totale Ricavi**, ciascuno col suo tooltip che spiega il calcolo.',
         },
         {
           type: 'warning',
@@ -465,7 +469,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; i livelli si sommano:" },
         { type: 'table', headers: ["Permesso", "Commesse visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Responsabile** o **Partecipante**."], ["**Visualizza per sede**", "Le tue e quelle la cui offerta è di una tua sede. Per una commessa con più offerte basta che lo sia una."], ["**Visualizza per competenza**", "Le tue e quelle in cui almeno una offerta di origine ha una categoria nel tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** tutte."], ["**Visualizza tutti**", "Tutte."]] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di una commessa che non puoi vedere mostra un errore di accesso. Vedere una commessa non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
-        { type: 'paragraph', text: "Chi vede una commessa vede anche i suoi task nel task board e nella pagina **Task**, se ha il permesso di vedere i Task, anche quando non ha un ruolo sul task; restano esclusi i task privati. Per modificarli serve un ruolo sul task o il permesso **Gestisci tutto** dei Task. Eccezione: un **Responsabile** o un **Partecipante** può completare un task della commessa che non ha assegnatari, e completandolo ne diventa assegnatario." },
+        { type: 'paragraph', text: "Chi vede una commessa vede anche i suoi task nel task board e nella pagina **Task**, se ha il permesso di vedere i Task, anche quando non ha un ruolo sul task; restano esclusi i task privati. Per modificarli serve un ruolo sul task o il permesso **Gestisci tutto** dei Task. Eccezione: un **Responsabile** o un **Partecipante** può completare a suo nome un task della commessa, anche se è già assegnato a un collega, e completandolo ne diventa uno degli assegnatari." },
         { type: 'note', text: "Se crei una commessa senza esserne Responsabile o Partecipante, non la vedrai più a meno di avere **Visualizza tutti**, **Visualizza per sede** o **Visualizza per competenza**." },
         { type: 'tip', text: "Chi può modificare la commessa può coinvolgere un collega che non la vede menzionandolo in una nota con **Menziona chiunque**: al salvataggio diventa **Partecipante** (vedi **Note e documenti** nella guida generale)." },
       ],
