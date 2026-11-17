@@ -7,14 +7,15 @@ use Database\Seeders\QualificaCatalog\DepartmentRoleCatalogue as Department;
 /**
  * The people of the department questionnaires (spec 0408), by account email:
  * the department and add-on roles they hold (one per department or office
- * they work in, D-8/D-9) and the replaced roles they keep. Nobody holds direct
+ * they work in, D-8/D-9) and the other roles the questionnaire names (ISO
+ * "ADMIN"). Those are all the roles they keep (D-12); nobody holds direct
  * permissions. Whoever is not listed is left alone; the list grows as the
  * other departments answer.
  */
 final class DepartmentRoster
 {
     /**
-     * @var array<string, array{roles: array<int, string>, keep?: array<int, string>}>
+     * @var array<string, array{roles: array<int, string>, other_roles?: array<int, string>}>
      */
     public const array USERS = [
         // ISO/GDPR
@@ -25,8 +26,8 @@ final class DepartmentRoster
         'ivana.mango@qualificagroup.com' => ['roles' => [Department::ISO]],
         'antoniosalvatore.peluso@qualificagroup.com' => ['roles' => [Department::ISO]],
         'antonio.demartino@qualificagroup.com' => ['roles' => [Department::ISO]],
-        'francesca.russodelprete@qualificagroup.com' => ['roles' => [Department::ISO.Department::SENIOR_SUFFIX], 'keep' => ['admin']],
-        'mario.esposito@qualificagroup.com' => ['roles' => [Department::ISO], 'keep' => ['admin']],
+        'francesca.russodelprete@qualificagroup.com' => ['roles' => [Department::ISO.Department::SENIOR_SUFFIX], 'other_roles' => ['admin']],
+        'mario.esposito@qualificagroup.com' => ['roles' => [Department::ISO], 'other_roles' => ['admin']],
         'annarita.palumbo@qualificagroup.com' => ['roles' => [Department::ISO, Department::PLANNING]],
         'consiglia.cosentino@qualificagroup.com' => ['roles' => [Department::ISO, Department::PLANNING]],
 

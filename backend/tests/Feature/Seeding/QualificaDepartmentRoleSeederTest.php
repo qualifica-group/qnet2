@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    foreach (['operatore-base', 'tecnico-consulenza-senza-costi', 'coordinamento-operativo', 'admin', 'commerciale'] as $role) {
+    foreach (['operatore-base', 'tecnico-consulenza-senza-costi', 'coordinamento-operativo', 'admin', 'commerciale', 'contabilita', 'super-admin'] as $role) {
         Role::create(['name' => $role]);
     }
 });
@@ -61,7 +61,7 @@ it('shows the contractual user data to the HR department only', function () {
         ->and($hidden(Department::ISO))->toBeTrue();
 });
 
-it('moves the listed people onto their department roles, idempotently, and leaves the others alone', function () {
+it('leaves the listed people only the roles of the questionnaires, idempotently, and the others alone', function () {
     $technician = User::factory()->create(['email' => 'francesco.ienco@qualificagroup.com']);
     $technician->assignRole(['operatore-base', 'tecnico-consulenza-senza-costi']);
     $planner = User::factory()->create(['email' => 'annarita.palumbo@qualificagroup.com']);
@@ -71,7 +71,9 @@ it('moves the listed people onto their department roles, idempotently, and leave
     $safetyHead = User::factory()->create(['email' => 'fernando.annunziata@qualificagroup.com']);
     $safetyHead->assignRole(['commerciale']);
     $severalDepartments = User::factory()->create(['email' => 'giuseppe.agus@qualificagroup.com']);
-    $severalDepartments->assignRole(['operatore-base']);
+    $severalDepartments->assignRole(['operatore-base', 'contabilita']);
+    $superAdmin = User::factory()->create(['email' => 'pina.derosa@qualificagroup.com']);
+    $superAdmin->assignRole(['super-admin', 'commerciale']);
     $unlisted = User::factory()->create(['email' => 'not.listed@qualificagroup.com']);
     $unlisted->assignRole(['operatore-base', 'coordinamento-operativo']);
 
@@ -87,11 +89,13 @@ it('moves the listed people onto their department roles, idempotently, and leave
         ->and(departmentRoleNames($head))->toBe(['admin', Department::senior(Department::ISO)])
         ->and($head->getDirectPermissions())->toBeEmpty()
         ->and($head->hasPermissionTo('contracts.validate'))->toBeTrue()
-        ->and(departmentRoleNames($safetyHead))->toBe(['commerciale', Department::SAFETY_HEAD, Department::senior(Department::SAFETY)])
+        ->and(departmentRoleNames($safetyHead))->toBe([Department::SAFETY_HEAD, Department::senior(Department::SAFETY)])
         ->and($safetyHead->getDirectPermissions())->toBeEmpty()
         ->and($safetyHead->hasPermissionTo('commission-settlements.viewAny'))->toBeTrue()
         ->and(departmentRoleNames($severalDepartments))->toBe([Department::ACCREDITATION, Department::SUBSIDISED_FINANCE, Department::PROJECT_DESIGN])
-        ->and(departmentRoleNames($unlisted))->toBe(['coordinamento-operativo', 'operatore-base']);
+        ->and(departmentRoleNames($superAdmin))->toBe([Department::TENDERS, 'super-admin'])
+        ->and(departmentRoleNames($unlisted))->toBe(['coordinamento-operativo', 'operatore-base'])
+        ->and(Role::query()->whereIn('name', ['commerciale', 'contabilita', 'coordinamento-operativo'])->count())->toBe(3);
 });
 
 it('assigns only department roles from the roster', function () {

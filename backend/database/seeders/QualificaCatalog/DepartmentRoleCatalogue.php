@@ -54,25 +54,6 @@ final class DepartmentRoleCatalogue
     public const string HR_OFFICE_GRANT = 'hr_office';
 
     /**
-     * The mansione roles a listed person loses (D-5); every other role they
-     * hold (cross-department, notifications) stays.
-     *
-     * @var array<int, string>
-     */
-    public const array REPLACED_ROLES = [
-        'operatore-base',
-        'tecnico-consulenza',
-        'tecnico-consulenza-senza-costi',
-        'coordinamento-operativo',
-        'responsabile-tecnico',
-        'risorse-umane',
-        'marketing',
-        'social-media-manager',
-        'accesso anagrafiche opportunita commesse',
-        'admin',
-    ];
-
-    /**
      * @var array<string, array{description: string, grants: array<int, string>, senior_grants: array<int, string>}>
      */
     public const array DEPARTMENTS = [

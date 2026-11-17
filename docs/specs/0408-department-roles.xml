@@ -60,11 +60,15 @@
     D-11 Questionario Progettazione (aggiunto 2026-11-17): risposte identiche a Finanza Agevolata, quindi
         `reparto-progettazione` ha gli stessi livelli (base "solo commesse", senior tutto il settore). Unica persona
         Giuseppe Agus ("SOLO COMMESSE", base), che compare anche in Accreditamenti e Finanza Agevolata: tre ruoli (D-8).
+    D-12 Decisione utente 2026-11-17, supera D-5 e le note su `commerciale`/`contabilita` di D-6 e D-10: alle persone
+        dell'elenco restano SOLO i ruoli dei questionari (`roles`, piu' `other_roles` per quanto il file nomina oltre al
+        reparto: `admin` di Russo Del Prete ed Esposito). Ogni altro ruolo viene tolto a loro (i ruoli restano nel
+        sistema per gli altri utenti); `super-admin` non e' mai toccato dal seeder. Chi non e' nell'elenco non cambia.
   </context>
 
   <acceptance_criteria>
     <criterion id="AC-001">Dopo il seeder esistono i 27 ruoli `reparto-*` (26 di reparto + `reparto-sicurezza-responsabile`), base e senior con gli stessi permessi tranne ISO, Finanza Agevolata, Progettazione, APL e Contabilita'.</criterion>
-    <criterion id="AC-002">Una persona elencata perde i ruoli sostituiti e ha solo i ruoli di reparto piu' quelli trasversali o in `keep`.</criterion>
+    <criterion id="AC-002">Una persona elencata ha solo i ruoli del questionario (reparto, aggiuntivi, `other_roles`), piu' `super-admin` se lo aveva.</criterion>
     <criterion id="AC-003">Chi e' in piu' reparti o uffici ha un ruolo per ciascuno; cio' che e' di una sola persona e' un ruolo aggiuntivo; nessuna persona elencata ha permessi diretti.</criterion>
     <criterion id="AC-004">Chi non e' nell'elenco resta invariato; ri-eseguito, il seeder converge senza duplicati.</criterion>
     <criterion id="AC-005">Il ruolo HR vede i dati contrattuali dell'utente; gli altri ruoli di reparto no.</criterion>

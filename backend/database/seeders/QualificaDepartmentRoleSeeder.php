@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Services\RoleAssignmentGuard;
 use Database\Seeders\Concerns\SyncsRoleMatrix;
 use Database\Seeders\QualificaCatalog\DepartmentPermissionGrants as Grants;
 use Database\Seeders\QualificaCatalog\DepartmentRoleCatalogue as Department;
@@ -21,8 +22,8 @@ use Spatie\Permission\PermissionRegistrar;
  * The department roles of the questionnaires "permessi per reparti" (spec
  * 0408): syncs `reparto-<key>` and `reparto-<key>-senior` from
  * DepartmentRoleCatalogue, then moves every person of DepartmentRoster onto
- * them: the replaced mansione roles go, the department and add-on roles come,
- * direct permissions are cleared (D-9), every other role stays. Whoever is not listed is untouched.
+ * them: they keep only the roles of the questionnaires (D-12), every earlier
+ * role and direct permission goes (D-9). Whoever is not listed is untouched.
  *
  * `php artisan db:seed --class=QualificaDepartmentRoleSeeder`. One
  * transaction; a re-run converges.
@@ -86,7 +87,7 @@ class QualificaDepartmentRoleSeeder extends Seeder
     }
 
     /**
-     * @param  array{roles: array<int, string>, keep?: array<int, string>}  $entry
+     * @param  array{roles: array<int, string>, other_roles?: array<int, string>}  $entry
      */
     private function assignPerson(string $email, array $entry): void
     {
@@ -98,11 +99,11 @@ class QualificaDepartmentRoleSeeder extends Seeder
             return;
         }
 
-        $keep = $entry['keep'] ?? [];
-        $retained = $user->getRoleNames()->reject(fn (string $role): bool => Str::startsWith($role, Department::ROLE_PREFIX)
-            || (in_array($role, Department::REPLACED_ROLES, true) && ! in_array($role, $keep, true)));
+        // Only the questionnaire's roles stay (D-12); a seeder never takes
+        // super-admin away.
+        $privileged = $user->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE) ? [RoleAssignmentGuard::PRIVILEGED_ROLE] : [];
 
-        $user->syncRoles([...$retained->all(), ...$entry['roles']]);
+        $user->syncRoles([...$privileged, ...($entry['other_roles'] ?? []), ...$entry['roles']]);
         // Everything comes from roles (D-9): earlier direct grants go.
         $user->syncPermissions([]);
     }
