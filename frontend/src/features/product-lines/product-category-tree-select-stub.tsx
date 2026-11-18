@@ -15,6 +15,7 @@
  *     await import('@/features/product-lines/product-category-tree-select-stub'))
  */
 import type { CategoryPickScope, ProductCategoryTreeSelectProps } from '@/features/product-lines/product-category-tree-select'
+import type { ProductCategoryTreeMultiSelectProps } from '@/features/product-lines/product-category-tree-multi-select'
 
 /** Mirrors the real component's own resolution of "has the row's first step been picked yet". */
 function scopeReady(scope: CategoryPickScope): boolean {
@@ -36,6 +37,26 @@ export function ProductCategoryTreeSelect({
       <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
       <span data-testid={`disabled-${triggerLabel}`}>{String(isDisabled)}</span>
       <span data-testid={`scope-${triggerLabel}`}>{JSON.stringify(scope)}</span>
+    </div>
+  )
+}
+
+/**
+ * Test double for `ProductCategoryTreeMultiSelect` (spec 0416), same probes as
+ * the single one, the values joined by commas. Usage:
+ *   vi.mock('@/features/product-lines/product-category-tree-multi-select', async () =>
+ *     await import('@/features/product-lines/product-category-tree-select-stub'))
+ */
+export function ProductCategoryTreeMultiSelect({
+  value,
+  scopeCategoryId,
+  disabled = false,
+  triggerLabel,
+}: ProductCategoryTreeMultiSelectProps) {
+  return (
+    <div data-testid={`select-${triggerLabel}`}>
+      <span data-testid={`value-${triggerLabel}`}>{value.join(',')}</span>
+      <span data-testid={`disabled-${triggerLabel}`}>{String(disabled || scopeCategoryId === null)}</span>
     </div>
   )
 }

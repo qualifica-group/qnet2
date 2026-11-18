@@ -5,6 +5,7 @@ import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { ProductCategoryFilterSelect } from '@/features/product-lines/product-category-filter-select'
 import { ProductCategoryRootSelect } from '@/features/product-lines/product-category-root-select'
+import { ProductCategoryTreeMultiSelect } from '@/features/product-lines/product-category-tree-multi-select'
 import { ProductCategoryTreeSelect } from '@/features/product-lines/product-category-tree-select'
 import { ProductLinesHints } from '@/features/product-lines/product-lines-hints'
 import { useProductLinesField } from '@/features/product-lines/use-product-lines-field'
@@ -31,8 +32,11 @@ const NO_EXTRA_HINTS: string[] = []
 /**
  * The CARD row editor (spec 0132, superseding the funzione+categoria
  * contract of spec 0057/0111): a commercial card — opportunity, project,
- * campaign, request — classifies each `product_lines` row by picking a ROOT
- * category first, then one of its `is_selectable` descendants; the effective
+ * campaign, request — classifies its `product_lines` by picking a ROOT
+ * category first, then its `is_selectable` descendants: since spec 0416 one
+ * editor row per root, holding every category picked under it (several for a
+ * `multiple` root, with "select all"), flattened back to one wire row per
+ * category; the effective
  * business function is derived and persisted server-side, never an input
  * here (D-3). Styled/interacted like `ManagerSlotsField`: "Add" appends an
  * empty row (full-width dashed button), each row edits its pair IN PLACE
@@ -55,11 +59,16 @@ export function ProductLinesField({
 }: ProductLinesFieldProps) {
   const { t } = useTranslation()
   const {
+    groups,
     addRow,
     removeRow,
     setRowRootCategory,
     setRowProductCategory,
+    setRowProductCategories,
+    addRowProductCategory,
     rootCategoryFor,
+    isMultipleRow,
+    takenRootIds,
     filterFor,
     canFilterRow,
     categoryScopeFor,
@@ -79,8 +88,8 @@ export function ProductLinesField({
     // in narrow detail columns where three selects would not fit one line.
     <div className="@container flex flex-col gap-2">
       <ul className="flex flex-col gap-2">
-        {value.map((row, index) => {
-          const rootCategoryId = rootCategoryFor(row)
+        {groups.map((group, index) => {
+          const rootCategoryId = rootCategoryFor(index)
           const filter = filterFor(index)
           return (
             // The row's identity IS its position, so the index is the correct key (mirrors ManagerSlotsField).
@@ -99,13 +108,14 @@ export function ProductLinesField({
                 <div className="min-w-0 flex-1">
                   <ProductCategoryRootSelect
                     value={rootCategoryId}
-                    categoryId={row.product_category_id}
+                    categoryId={group.categoryIds[0] ?? null}
                     onChange={(id) => setRowRootCategory(index, id)}
                     disabled={disabled}
                     otherRowsFilled={otherRowsFilled(index)}
                     triggerLabel={t('productLines.rootCategory', { n: index + 1 })}
                     area={area}
                     onlyRootId={lockedRootCategoryId}
+                    takenRootIds={takenRootIds(index)}
                   />
                 </div>
                 <PathSeparator />
@@ -116,7 +126,7 @@ export function ProductLinesField({
                       <ProductCategoryFilterSelect
                         rootCategoryId={filter.rootCategoryId}
                         value={filter.filterCategoryId}
-                        categoryId={row.product_category_id}
+                        categoryId={group.categoryIds[0] ?? null}
                         onChange={(id) => setRowFilterCategory(index, id)}
                         disabled={disabled}
                         triggerLabel={t('productLines.filterCategory', { n: index + 1 })}
@@ -164,18 +174,37 @@ export function ProductLinesField({
                       Without a root chosen there is nothing to scope it by:
                       the disabled placeholder keeps the row's two steps in
                       order, as before (AC-014). A picked filter narrows it
-                      to that filter's subtree. */}
-                  <ProductCategoryTreeSelect
-                    value={row.product_category_id}
-                    onChange={(id) => setRowProductCategory(index, id)}
-                    scope={{ kind: 'root', rootCategoryId: categoryScopeFor(index) }}
-                    disabled={disabled}
-                    action={productCategoryQuickCreate.renderAction(
-                      (ref) => setRowProductCategory(index, ref.id),
-                      disabled || rootCategoryId === null,
-                    )}
-                    triggerLabel={t('productLines.category', { n: index + 1 })}
-                  />
+                      to that filter's subtree. A `multiple` root takes all
+                      its categories in this one row (spec 0416). */}
+                  {isMultipleRow(index) ? (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        <ProductCategoryTreeMultiSelect
+                          value={group.categoryIds}
+                          onChange={(ids) => setRowProductCategories(index, ids)}
+                          scopeCategoryId={categoryScopeFor(index)}
+                          disabled={disabled}
+                          triggerLabel={t('productLines.category', { n: index + 1 })}
+                        />
+                      </div>
+                      {productCategoryQuickCreate.renderAction(
+                        (ref) => addRowProductCategory(index, ref.id),
+                        disabled || rootCategoryId === null,
+                      )}
+                    </div>
+                  ) : (
+                    <ProductCategoryTreeSelect
+                      value={group.categoryIds[0] ?? null}
+                      onChange={(id) => setRowProductCategory(index, id)}
+                      scope={{ kind: 'root', rootCategoryId: categoryScopeFor(index) }}
+                      disabled={disabled}
+                      action={productCategoryQuickCreate.renderAction(
+                        (ref) => setRowProductCategory(index, ref.id),
+                        disabled || rootCategoryId === null,
+                      )}
+                      triggerLabel={t('productLines.category', { n: index + 1 })}
+                    />
+                  )}
                 </div>
               </div>
 

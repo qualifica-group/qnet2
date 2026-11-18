@@ -18,7 +18,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Impostazione della categoria', 'Dove ha effetto'],
           rows: [
-            ["Categoria padre (posizione nell'albero)", 'Decide cosa la categoria eredita. Nelle righe prodotto di progetti, campagne, opportunità e lead scegli prima la Categoria genitore (una radice) e poi una sua discendente; con Filtro, facoltativo, restringi la scelta a una figlia diretta che raggruppa altre categorie (es. Consulenza › ISO › ISO 9001).'],
+            ["Categoria padre (posizione nell'albero)", 'Decide cosa la categoria eredita. Nelle righe prodotto di progetti, campagne, opportunità e lead scegli prima la Categoria genitore (una radice) e poi una o più sue discendenti, tutte nella stessa riga (Seleziona tutte le prende tutte); con Filtro, facoltativo, restringi la scelta a una figlia diretta che raggruppa altre categorie (es. Consulenza › ISO › ISO 9001).'],
             ['Funzione aziendale', "Ricavata in automatico nelle righe prodotto; serve per gli ambiti di assegnazione degli utenti e l'assegnazione di lead e richieste. Una categoria senza funzione, propria o ereditata (ad esempio Costi), non compare nelle righe prodotto: i suoi prodotti si usano solo nei costi di offerta e commessa. Il prodotto la mostra in sola lettura."],
             ['Attributi Prodotto', 'Campi aggiuntivi nella scheda Prodotto.'],
             ['Attributi Offerta', "Campi nelle Informazioni aggiuntive dell'Offerta e colonne nelle schede per categoria di Gestione Richieste."],
@@ -134,7 +134,7 @@ const guide: HelpGuide = {
           headers: ['Regola', 'Cosa indicare', 'Valore iniziale'],
           rows: [
             ['Prevede preventivo', 'Se il ramo lavora con le offerte.', 'No'],
-            ['Modalità di gestione', 'Singola (una riga per scheda) o Multipla (più righe per scheda).', 'Multipla'],
+            ['Modalità di gestione', 'Singola (una sola categoria per scheda) o Multipla (più categorie per scheda, scelte nella stessa riga).', 'Multipla'],
             ['Visibile in', 'In quali moduli si sceglie il ramo: Tutti i moduli, Gestione Richieste / Iscritti oppure Opportunità / Offerte.', 'Tutti i moduli'],
             ['Offerta unica per opportunità', 'Se ogni opportunità può avere una sola offerta.', 'Sì'],
             ['Più opportunità aperte per anagrafica', "Se un'anagrafica può avere più opportunità aperte su questo ramo.", 'No'],

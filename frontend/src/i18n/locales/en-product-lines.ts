@@ -15,7 +15,7 @@ export const productLines = {
   category: 'Product category {{n}}',
   add: 'Add product line',
   remove: 'Remove product line',
-  hint: 'Each row links one parent category to one of its descendant categories: pick the parent category first, then the category (scoped accordingly). With "Filter" you can narrow the choice to an intermediate group. Remove a row with the trash icon.',
+  hint: 'One row per parent category: pick the parent category, then one or more of its categories ("Select all" takes them all, a click on a group takes the whole group). Categories managed as a single row accept one category only. With "Filter" you can narrow the choice to an intermediate group. Remove a row with the trash icon.',
   /** Optional intermediate filter between parent category and category (user directive 2026-10-08), UI only: never saved. */
   filterCategory: 'Intermediate filter {{n}}',
   addFilter: 'Filter',
@@ -34,6 +34,12 @@ export const productLines = {
   selectPlaceholder: 'Select…',
   selectEmpty: 'No results found.',
   selectError: 'Unable to load the options.',
+  /** Spec 0416: multiple pick of a parent category's categories. */
+  selectAllSubcategories: 'Select all',
+  allSubcategoriesSelected: 'All categories',
+  clearSubcategories: 'Deselect all',
+  subcategoriesCount: '{{selected}} of {{total}} selected',
+  includeChildrenHint: 'Click again to include its subcategories too.',
   /** Spec 0129 D-5: per-row accessible name of the "All categories" checkbox (CompetenceLinesField). */
   allCategories: 'All categories, row {{n}}',
   /** Visible label next to the checkbox. */

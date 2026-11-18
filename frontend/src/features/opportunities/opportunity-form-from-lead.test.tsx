@@ -33,6 +33,8 @@ import {
  */
 vi.mock('@/features/product-lines/product-category-tree-select', async () =>
   await import('@/features/product-lines/product-category-tree-select-stub'))
+vi.mock('@/features/product-lines/product-category-tree-multi-select', async () =>
+  await import('@/features/product-lines/product-category-tree-select-stub'))
 
 /**
  * `useProductLinesField` (inside the real, unmocked `ProductLinesField`)

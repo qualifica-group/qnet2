@@ -16,6 +16,12 @@ export interface SearchableMultiSelectOption {
    * list). Options are expected in tree order.
    */
   parentValue?: string | null
+  /**
+   * `false` = a group header: listed for context, never part of the value.
+   * Clicking it picks (or drops) every selectable option beneath it in one go.
+   * Absent = selectable.
+   */
+  selectable?: boolean
 }
 
 /** Indent added per nesting level, on top of the row's own padding. */
@@ -54,6 +60,8 @@ interface SearchableMultiSelectProps {
   id?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean
+  /** Accessible name of the trigger, for call sites with no visible `<label>` (a repeated row editor). */
+  'aria-label'?: string
 }
 
 /** Picked labels shown as pills in the trigger before the rest collapses into "+N". */
@@ -120,13 +128,18 @@ function selectAllState(selected: Set<string>, listed: string[]): boolean | 'ind
   return pickedCount === listed.length ? true : 'indeterminate'
 }
 
+/** Whether the option may be part of the value (a group header may not). */
+function isSelectable(option: SearchableMultiSelectOption): boolean {
+  return option.selectable !== false
+}
+
 interface TriggerSummaryProps {
   options: SearchableMultiSelectOption[]
   selected: Set<string>
   labels: SearchableMultiSelectLabels
 }
 
-/** Nothing picked -> placeholder; everything -> one pill; otherwise the first picks as pills plus "+N". */
+/** Nothing picked -> placeholder; everything (2+) -> one pill; otherwise the first picks as pills plus "+N". */
 function TriggerSummary({ options, selected, labels }: TriggerSummaryProps) {
   const picked = options.filter((option) => selected.has(option.value))
 
@@ -134,7 +147,8 @@ function TriggerSummary({ options, selected, labels }: TriggerSummaryProps) {
     return <span className="truncate text-muted-foreground">{labels.placeholder}</span>
   }
 
-  if (picked.length === options.length) {
+  // A lone option reads better by its own name than as "all".
+  if (picked.length > 1 && picked.length === options.filter(isSelectable).length) {
     return <span className={PILL_CLASS}>{labels.allSelected}</span>
   }
 
@@ -161,7 +175,9 @@ function TriggerSummary({ options, selected, labels }: TriggerSummaryProps) {
  *
  * "Select all" acts on the options the search currently lists, so typing a
  * term and ticking it picks exactly the matches. The emitted value keeps the
- * options' declared order. Domain-agnostic: labels arrive translated and
+ * options' declared order. An option flagged `selectable: false` is a group
+ * header: shown for context, never emitted, and one click on it picks or
+ * drops its whole subtree. Domain-agnostic: labels arrive translated and
  * option labels are rendered as-is.
  */
 export function SearchableMultiSelect({
@@ -174,6 +190,7 @@ export function SearchableMultiSelect({
   id,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
+  'aria-label': ariaLabel,
 }: SearchableMultiSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -185,10 +202,19 @@ export function SearchableMultiSelect({
     const term = search.trim().toLowerCase()
     return term === '' ? options : options.filter((option) => option.label.toLowerCase().includes(term))
   }, [options, search])
-  const listedValues = listedOptions.map((option) => option.value)
+  const listedValues = listedOptions.filter(isSelectable).map((option) => option.value)
   const allState = selectAllState(selected, listedValues)
+  const selectableCount = options.filter(isSelectable).length
   const pickedCount = options.filter((option) => selected.has(option.value)).length
   const tree = useMemo(() => buildOptionTree(options), [options])
+  const headerValues = useMemo(
+    () => new Set(options.filter((option) => !isSelectable(option)).map((option) => option.value)),
+    [options],
+  )
+
+  /** The descendants of an option that may be part of the value (group headers excluded). */
+  const selectableDescendants = (optionValue: string): string[] =>
+    (tree.descendantsOf.get(optionValue) ?? []).filter((descendant) => !headerValues.has(descendant))
 
   const emit = (next: Set<string>) => {
     onChange(options.map((option) => option.value).filter((optionValue) => next.has(optionValue)))
@@ -196,11 +222,15 @@ export function SearchableMultiSelect({
 
   // A leaf toggles. A parent cycles on each click: itself only, then its
   // whole subtree too, then nothing (user directive 2026-09-18).
+  // A group header is never picked itself: it picks or drops its whole subtree.
   const toggle = (optionValue: string) => {
-    const descendants = tree.descendantsOf.get(optionValue) ?? []
+    const descendants = selectableDescendants(optionValue)
     const next = new Set(selected)
 
-    if (!selected.has(optionValue)) {
+    if (headerValues.has(optionValue)) {
+      const allPicked = descendants.every((descendant) => selected.has(descendant))
+      descendants.forEach((descendant) => (allPicked ? next.delete(descendant) : next.add(descendant)))
+    } else if (!selected.has(optionValue)) {
       next.add(optionValue)
     } else if (descendants.some((descendant) => !selected.has(descendant))) {
       descendants.forEach((descendant) => next.add(descendant))
@@ -218,10 +248,10 @@ export function SearchableMultiSelect({
    * every descendant.
    */
   const isPartialParent = (optionValue: string): boolean =>
-    selected.has(optionValue) &&
-    (tree.descendantsOf.get(optionValue) ?? []).some((descendant) => !selected.has(descendant))
+    selected.has(optionValue) && selectableDescendants(optionValue).some((descendant) => !selected.has(descendant))
 
   const rowState = (optionValue: string): boolean | 'indeterminate' => {
+    if (headerValues.has(optionValue)) return selectAllState(selected, selectableDescendants(optionValue))
     if (!selected.has(optionValue)) return false
     return isPartialParent(optionValue) ? 'indeterminate' : true
   }
@@ -261,6 +291,7 @@ export function SearchableMultiSelect({
           aria-controls={listId}
           aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
+          aria-label={ariaLabel}
           className={cn(TRIGGER_CLASS, className)}
         >
           <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-left">
@@ -314,14 +345,19 @@ export function SearchableMultiSelect({
                 </label>
                 <div role="separator" className="mx-2 my-0.5 h-px bg-border/60" />
                 {listedOptions.map((option) => {
-                  const isSelected = selected.has(option.value)
+                  const isHeader = headerValues.has(option.value)
+                  const isSelected = isHeader ? rowState(option.value) !== false : selected.has(option.value)
                   const depth = tree.depthOf.get(option.value) ?? 0
-                  const descendants = tree.descendantsOf.get(option.value) ?? []
+                  const descendants = selectableDescendants(option.value)
 
                   return (
                     <label
                       key={option.value}
-                      className={cn(ROW_CLASS, isSelected ? 'text-foreground' : 'text-muted-foreground')}
+                      className={cn(
+                        ROW_CLASS,
+                        isSelected ? 'text-foreground' : 'text-muted-foreground',
+                        isHeader && 'font-medium',
+                      )}
                       style={depth > 0 ? { paddingLeft: `${0.5 + INDENT_REM_PER_DEPTH * depth}rem` } : undefined}
                       title={isPartialParent(option.value) ? labels.includeChildrenHint : undefined}
                     >
@@ -341,7 +377,7 @@ export function SearchableMultiSelect({
 
           <div className={FOOTER_CLASS}>
             <span className="text-[11px] tabular-nums text-muted-foreground">
-              {labels.count(pickedCount, options.length)}
+              {labels.count(pickedCount, selectableCount)}
             </span>
             <button
               type="button"

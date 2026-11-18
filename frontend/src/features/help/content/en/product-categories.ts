@@ -18,7 +18,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Category setting', 'Where it applies'],
           rows: [
-            ['Parent category (position in the tree)', 'Decides what the category inherits. On product lines of projects, campaigns, opportunities and leads you first choose the Parent category (a root) and then one of its descendants; with the optional Filter you narrow the choice to a direct child that groups other categories (e.g. Consulting › ISO › ISO 9001).'],
+            ['Parent category (position in the tree)', 'Decides what the category inherits. On product lines of projects, campaigns, opportunities and leads you first choose the Parent category (a root) and then one or more of its descendants, all in the same row (Select all takes them all); with the optional Filter you narrow the choice to a direct child that groups other categories (e.g. Consulting › ISO › ISO 9001).'],
             ['Business function', 'Derived automatically on product lines; used for user assignment scopes and lead/request assignment. A category with no function, own or inherited (e.g. Costs), is not offered on product lines: its products are used only in quote and work order costs. The product shows it read-only.'],
             ['Product Attributes', 'Extra fields on the Product card.'],
             ['Offer Attributes', "Fields in the Offer's Additional information, and columns in the per-category cards of Request Management."],
@@ -134,7 +134,7 @@ const guide: HelpGuide = {
           headers: ['Rule', 'What to enter', 'Initial value'],
           rows: [
             ['Generates quote', 'Whether the branch works with offers.', 'No'],
-            ['Management mode', 'Single (one row per card) or Multiple (several rows per card).', 'Multiple'],
+            ['Management mode', 'Single (one category per card) or Multiple (several categories per card, picked in the same row).', 'Multiple'],
             ['Used in', 'The modules where the branch can be picked: All modules, Requests / Enrollees or Opportunities / Quotes.', 'All modules'],
             ['Single offer per opportunity', 'Whether each opportunity can have only one offer.', 'Yes'],
             ['Several open opportunities per registry', 'Whether a registry can keep several open opportunities on this branch.', 'No'],

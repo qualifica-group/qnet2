@@ -24,7 +24,11 @@ export interface ProductCategoryRootSelectProps {
   area?: CategoryPickArea
   /** Spec 0411: list only this root (a request bound to one parent category); the saved one stays. */
   onlyRootId?: number | null
+  /** Spec 0416: roots another row already holds, listed disabled — their categories go in that row. */
+  takenRootIds?: readonly number[]
 }
+
+const NO_TAKEN_ROOTS: readonly number[] = []
 
 /**
  * The card row's FIRST step (spec 0132 D-1): every root category (a node with
@@ -43,6 +47,7 @@ export function ProductCategoryRootSelect({
   triggerLabel,
   area,
   onlyRootId = null,
+  takenRootIds = NO_TAKEN_ROOTS,
 }: ProductCategoryRootSelectProps) {
   const { t } = useTranslation()
   const treeQuery = useProductCategoryTree()
@@ -60,9 +65,9 @@ export function ProductCategoryRootSelect({
         id: root.id,
         name: root.name,
         depth: 0,
-        disabled: isSingleRootBlocked(root, otherRowsFilled),
+        disabled: isSingleRootBlocked(root, otherRowsFilled) || (root.id !== value && takenRootIds.includes(root.id)),
       }))
-  }, [tree, otherRowsFilled, value, categoryId, area, onlyRootId])
+  }, [tree, otherRowsFilled, value, categoryId, area, onlyRootId, takenRootIds])
 
   return (
     <SearchableSelect

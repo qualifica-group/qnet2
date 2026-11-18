@@ -416,7 +416,8 @@ describe("work panel — Linee dell'offerta (offerta nascosta)", () => {
     renderPanel()
 
     // The panel is loaded once its classification shows; the offer section never does.
-    expect(await screen.findByRole('combobox', { name: 'Categoria prodotto 1' })).toBeInTheDocument()
+    // Spec 0416: a `multiple` root picks its categories with the multi-select (a button, not a combobox).
+    expect(await screen.findByRole('button', { name: 'Categoria prodotto 1' })).toBeInTheDocument()
     expect(screen.queryByText("Righe di ricavo previste dall'offerta.")).not.toBeInTheDocument()
     expect(screen.queryByRole('listbox', { name: 'Prodotti del catalogo' })).not.toBeInTheDocument()
   })

@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Linee di prodotto: una riga per categoria genitore, scelta multipla con "Seleziona tutte" (spec 0416, 2026-11-18) — VERDE MIRATO, COMMITTATO SU STAGING, NON PROVATO NEL BROWSER
+
+- Richiesta utente (Gestione Richieste): selezionare tutte le sottocategorie in un clic o quelle volute, senza una riga per ogni norma (ISO › 9001, ISO › 14001...).
+- Solo FE, contratto `product_lines` invariato (una linea per categoria): `ProductLinesField` mostra una riga per radice; `product-line-groups.ts` (`groupProductLineRows`/`flattenProductLineGroups`) raggruppa/appiattisce. Radice `multiple` -> `ProductCategoryTreeMultiSelect` (nuovo, su `SearchableMultiSelect`); radice `single` o modalita' ignota -> `ProductCategoryTreeSelect` come prima. Radice gia' usata da un'altra riga: disabilitata (`takenRootIds` di `ProductCategoryRootSelect`). Filtro intermedio su radice multipla: non cancella le scelte fuori filtro.
+- `SearchableMultiSelect`: opzioni `selectable: false` = intestazione di gruppo (clic = tutto il sottoalbero, mai nel valore), prop `aria-label`, trigger con il nome di una scelta unica invece di "Tutte".
+- Test: nuovi `product-lines-field-grouping.test.tsx`, `product-line-groups.test.ts`, `searchable-multi-select.test.tsx`; doppio condiviso `searchable-multi-select-probe.tsx` + stub multi in `product-category-tree-select-stub.tsx`. REQUIREMENT CHANGED: `product-lines-field.test.tsx` (AC-016 su radice libera, reset del filtro solo su radice single), `product-lines-field-management-mode.test.tsx` (righe stessa radice = una riga, radice presa disabilitata), `request-work-panel(-offer-lines).test.tsx` e `project-form-product-lines.test.tsx` (trigger multi = button). Vitest product-lines/ui/request-management/opportunities/projects/campaigns/help/leads 1749/1749, `tsc -b --force` ed ESLint puliti.
+- Manuale: guide in-app IT/EN `request-management` (Nuova richiesta), `opportunities`, `product-categories`; manuale Claude Docs da aggiornare (sezione Linee di prodotto).
+- Fuori scope (segnalato): cella "Categoria prodotto" della griglia (`ProductLinesCellEditor`) e resa in sola lettura restano una linea per categoria.
+- Da verificare nel browser: Nuova richiesta con ISO -> "Seleziona tutte"; pannello Lavora di una richiesta ISO con piu' norme (una riga sola).
+
 ## Opportunita' aperta per anagrafica: "No categoria" conta come legacy (2026-11-18) — VERDE MIRATO, COMMITTATO (guard finito in 463978fed, test+guide nel commit successivo)
 
 - Segnalazione: Qualifica Group (registry 134) bloccata dalla opp 2020 (migrata, old_id 2502, QUO-2334 senza esito) con linee [OLD] ISO (legacy) + "No categoria" (`is_legacy=false`), che la teneva "attuale".

@@ -150,7 +150,8 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     // is resolved by walking the tree up from the persisted category (500 ->
     // its root, 400 "Formazione"), never sent on the wire.
     expect(screen.getByRole('combobox', { name: 'Parent category 1' })).toHaveTextContent('Formazione')
-    expect(screen.getByRole('combobox', { name: 'Product category 1' })).toHaveTextContent('Consulting')
+    // Spec 0416: a `multiple` root picks its categories with the multi-select (a button, not a combobox).
+    expect(screen.getByRole('button', { name: 'Product category 1' })).toHaveTextContent('Consulting')
 
     // Anagrafica: the client's channels are ACTIVE, prefilled inputs — not a
     // read-only list behind an "edit" dialog.
