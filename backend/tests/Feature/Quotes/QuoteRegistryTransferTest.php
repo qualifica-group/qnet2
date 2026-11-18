@@ -222,3 +222,66 @@ it('AC-013: an invalid "Informazioni aggiuntive" value rolls the whole move back
     expect($quote->fresh()->opportunity_id)->toBe($origin->id)
         ->and(Opportunity::count())->toBe($before);
 });
+
+it('AC-015b: a title typed in the dialog is saved as manual', function () {
+    ['quote' => $quote] = registryTransferQuote();
+    Sanctum::actingAs(registryTransferActor());
+
+    $this->postJson("/api/quotes/{$quote->id}/transfer-registry", [
+        'registry_id' => Registry::factory()->create()->id,
+        'title' => 'Offerta per il nuovo cliente',
+    ])->assertOk()->assertJsonPath('data.title', 'Offerta per il nuovo cliente');
+
+    expect($quote->fresh()->title)->toBe('Offerta per il nuovo cliente')
+        ->and($quote->fresh()->title_is_manual)->toBeTrue();
+});
+
+it('AC-015b: a blank title goes back to the automatic one, an absent title is left as it is', function () {
+    ['quote' => $quote] = registryTransferQuote();
+    $quote->forceFill(['title' => 'Titolo a mano', 'title_is_manual' => true])->save();
+    Sanctum::actingAs(registryTransferActor());
+
+    $this->postJson("/api/quotes/{$quote->id}/transfer-registry", ['registry_id' => Registry::factory()->create()->id])
+        ->assertOk();
+
+    expect($quote->fresh()->title)->toBe('Titolo a mano')
+        ->and($quote->fresh()->title_is_manual)->toBeTrue();
+
+    $this->postJson("/api/quotes/{$quote->id}/transfer-registry", [
+        'registry_id' => Registry::factory()->create()->id,
+        'title' => '',
+    ])->assertOk();
+
+    expect($quote->fresh()->title)->not->toBe('Titolo a mano')
+        ->and($quote->fresh()->title_is_manual)->toBeFalse();
+});
+
+it('AC-015b: a title over 191 characters is refused without moving the offer', function () {
+    ['quote' => $quote, 'opportunity' => $origin] = registryTransferQuote();
+    $title = $quote->title;
+    Sanctum::actingAs(registryTransferActor());
+
+    $this->postJson("/api/quotes/{$quote->id}/transfer-registry", [
+        'registry_id' => Registry::factory()->create()->id,
+        'title' => str_repeat('a', 192),
+    ])->assertUnprocessable()->assertJsonValidationErrors('title');
+
+    expect($quote->fresh()->opportunity_id)->toBe($origin->id)
+        ->and($quote->fresh()->title)->toBe($title);
+});
+
+it('AC-015b: the Gestione Richieste route renames the offer and its panel exposes the title', function () {
+    ['quote' => $quote] = registryTransferQuote();
+    Sanctum::actingAs(registryTransferActor(['update', 'transferRegistry'], 'request-management'));
+
+    $this->postJson("/api/request-management/{$quote->id}/transfer-registry", [
+        'registry_id' => Registry::factory()->create()->id,
+        'title' => 'Percorso orientamento',
+    ])->assertOk();
+
+    expect($quote->fresh()->title)->toBe('Percorso orientamento');
+
+    $this->getJson("/api/request-management/{$quote->id}")
+        ->assertOk()
+        ->assertJsonPath('data.title', 'Percorso orientamento');
+});

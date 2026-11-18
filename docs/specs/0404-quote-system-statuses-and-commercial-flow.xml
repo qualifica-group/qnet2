@@ -165,6 +165,11 @@
          (ActivityLogEntryResource). Rotte di modulo: risposta { id, opportunity_id, registry_id } (il pannello si chiude
          come dopo Trasferisci contatto). Azione di riga nelle griglie NON fatta: il pulsante e' nel dettaglio offerta e
          nel pannello Lavora.
+    B-D8 [RICHIESTA UTENTE 2026-11-18] Nel dialog di trasferimento anche il TITOLO dell'offerta, precompilato col titolo
+         attuale e modificabile, con le regole del titolo dell'update (spec 0171 rev.2, `QuoteTitleWriter::write`): vuoto
+         o uguale al titolo automatico = titolo automatico, altro valore = manuale. Campo facoltativo nel body: se assente
+         il titolo non si tocca. Il pannello Lavora di Gestione Richieste/Iscritti espone `title` (titolo dell'offerta)
+         per precompilarlo. Il cambio titolo e' registrato dal log automatico dell'offerta, come nell'update.
 
     <!-- D — Replica campi flessibili offerta -> commessa -->
     D-D1 Alla generazione di una commessa da contratto (singola, batch, multi-offerta) gli `attribute_values` della
@@ -289,7 +294,7 @@
 
     <!-- B -->
     <endpoint method="POST" path="/api/quotes/{quote}/transfer-registry">
-      <request>{ registry_id:int req exists, diverso dall'attuale; attribute_values?: object (regole dell'update offerta) }</request>
+      <request>{ registry_id:int req exists, diverso dall'attuale; title?: string|null max 191 (B-D8, regole del titolo dell'update; assente = invariato); attribute_values?: object (regole dell'update offerta) }</request>
       <response status="200">QuoteResource (nuovo `opportunity_id`), message "Offerta trasferita a &lt;anagrafica&gt;".</response>
       <errors>403 senza `quotes.transferRegistry` (o `request-management|enrollee-management.transferRegistry` sulla rotta del modulo); 422 stessa anagrafica / offerta a contratto / violazione single_quote_per_opportunity.</errors>
     </endpoint>
@@ -357,6 +362,7 @@
     <criterion id="AC-013">I campi flessibili inviati nel trasferimento sono salvati con le regole dell'update (422 su valore non valido, nessuna scrittura parziale).</criterion>
     <criterion id="AC-014">403 senza permesso (per modulo); 422 stessa anagrafica, offerta a contratto, violazione single_quote_per_opportunity, senza scritture.</criterion>
     <criterion id="AC-015">FE: azione nel dettaglio e nelle righe, dialog con anagrafica + campi flessibili, avviso "Trasferita da A a B il ..." nel dettaglio.</criterion>
+    <criterion id="AC-015b">B-D8: il titolo inviato nel trasferimento e' salvato come manuale; vuoto o uguale all'automatico torna automatico; assente lascia il titolo com'e'; oltre 191 caratteri -> 422 senza scritture. Il dialog lo mostra precompilato nel dettaglio offerta e nel pannello Lavora.</criterion>
     <!-- C -->
     <criterion id="AC-016">Categoria col flag e offerta non trasferita: portarla in uno stato closed_won (da qualsiasi canale) -> 422 col messaggio; offerta trasferita -> contratto creato; categoria con generates_contract off -> nessun blocco.</criterion>
     <criterion id="AC-017">"Vinto provvisorio" e' permesso anche senza trasferimento; il flag si salva e si legge dal form categoria.</criterion>

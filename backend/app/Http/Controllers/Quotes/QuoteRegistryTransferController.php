@@ -46,7 +46,14 @@ class QuoteRegistryTransferController extends BaseApiController
             $this->authorize('update', $quote);
             Gate::forUser($actor)->authorize('quotes.'.QuoteRegistryTransferService::ABILITY);
 
-            $quote = $this->transferService->transfer($quote, $request->registryId(), $request->attributeValues(), $actor);
+            $quote = $this->transferService->transfer(
+                $quote,
+                $request->registryId(),
+                $request->attributeValues(),
+                $request->titleSubmitted(),
+                $request->title(),
+                $actor,
+            );
 
             return $this->okWithPermissions(
                 new QuoteResource($this->quoteService->loadDetail($quote)),
@@ -68,7 +75,14 @@ class QuoteRegistryTransferController extends BaseApiController
             Gate::forUser($actor)->authorize($module->permission(QuoteRegistryTransferService::ABILITY));
             $this->scope->assertInScope($actor, $quote, $module);
 
-            $quote = $this->transferService->transfer($quote, $request->registryId(), $request->attributeValues(), $actor);
+            $quote = $this->transferService->transfer(
+                $quote,
+                $request->registryId(),
+                $request->attributeValues(),
+                $request->titleSubmitted(),
+                $request->title(),
+                $actor,
+            );
 
             return $this->ok(
                 ['id' => $quote->id, 'opportunity_id' => $quote->opportunity_id, 'registry_id' => $quote->opportunity->registry_id],

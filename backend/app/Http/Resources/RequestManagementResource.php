@@ -95,6 +95,8 @@ class RequestManagementResource extends JsonResource
             // documents/notes/activity row actions key off this, never `id`.
             'opportunity_id' => $opportunity->id,
             'name' => $opportunity->name,
+            // Spec 0404 B-D8: the offer's own title, prefilled by "Trasferisci ad altra anagrafica".
+            'title' => $quote->title,
             'registry' => $this->summarizeByName($opportunity->registry),
             'registry_lock_reason' => app(RequestRegistryWriter::class)->lockReason($opportunity),
             'referent' => $this->summarizeByName($opportunity->referent),

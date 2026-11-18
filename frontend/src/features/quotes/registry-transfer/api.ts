@@ -5,6 +5,8 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 /** Body of `POST {basePath}/{id}/transfer-registry` (spec 0404, part B). */
 export interface QuoteRegistryTransferPayload {
   registry_id: number
+  /** Spec 0404 B-D8: absent = untouched, blank = back to the automatic title. */
+  title?: string
   attribute_values?: Record<string, CustomFieldValue>
 }
 

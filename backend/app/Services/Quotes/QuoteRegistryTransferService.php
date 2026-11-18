@@ -35,7 +35,8 @@ use Illuminate\Validation\ValidationException;
  * only the notes scoped to THIS offer (`notes.quote_id`) travel with it. One
  * explicit `registry_transferred` activity entry is written on the offer and
  * on both opportunities (B-D5); the automatic model log is suspended so the
- * move is not recorded twice.
+ * move is not recorded twice. The dialog may also rename the offer (B-D8),
+ * with the offer update's title rules; that change keeps its automatic log.
  */
 final class QuoteRegistryTransferService
 {
@@ -53,16 +54,18 @@ final class QuoteRegistryTransferService
         private readonly QuoteManagerWriter $managerWriter,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly OpportunityNameWriter $nameWriter,
+        private readonly QuoteTitleWriter $titleWriter,
     ) {}
 
     /**
      * @param  array<string, mixed>|null  $attributeValues  the "Informazioni aggiuntive" edited in the dialog, validated like the offer update
+     * @param  bool  $titleSubmitted  false leaves the title untouched; true applies `$title` (null = back to the automatic title)
      *
      * @throws ValidationException same anagrafica, offer under contract, or the destination opportunity accepts no further offer
      */
-    public function transfer(Quote $quote, int $registryId, ?array $attributeValues, User $actor): Quote
+    public function transfer(Quote $quote, int $registryId, ?array $attributeValues, bool $titleSubmitted, ?string $title, User $actor): Quote
     {
-        return DB::transaction(function () use ($quote, $registryId, $attributeValues, $actor): Quote {
+        return DB::transaction(function () use ($quote, $registryId, $attributeValues, $titleSubmitted, $title, $actor): Quote {
             $quote->loadMissing(['opportunity.registry', 'opportunity.productLines', 'opportunity.managers', 'managers']);
             $origin = $quote->opportunity;
             $destination = Registry::query()->findOrFail($registryId);
@@ -79,11 +82,16 @@ final class QuoteRegistryTransferService
             // Step 4: the dialog's "Informazioni aggiuntive", against the new set.
             $this->applyAttributeValues($quote, $attributeValues);
 
-            // Step 5: both cards re-derive their automatic title.
+            // Step 5: the dialog's title (B-D8), with the offer update's rules.
+            if ($titleSubmitted) {
+                $this->titleWriter->write($quote, $title);
+            }
+
+            // Step 6: both cards re-derive their automatic title.
             $this->nameWriter->recalculate($origin->id);
             $this->nameWriter->recalculate($target->id);
 
-            // Step 6: the explicit audit trail (B-D5).
+            // Step 7: the explicit audit trail (B-D5).
             $this->log($quote, $origin, $target, $destination, $actor);
 
             return $quote->refresh();

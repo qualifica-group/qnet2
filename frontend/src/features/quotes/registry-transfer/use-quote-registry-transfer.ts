@@ -5,13 +5,16 @@ import { toast } from 'sonner'
 import type { FieldPath, UseFormSetError } from 'react-hook-form'
 import { apiErrorMessage } from '@/lib/forbidden-message'
 import { transferQuoteRegistry, type QuoteRegistryTransferPayload } from '@/features/quotes/registry-transfer/api'
-import type { QuoteRegistryTransferFormValues } from '@/features/quotes/registry-transfer/schema'
+import {
+  toQuoteRegistryTransferPayload,
+  type QuoteRegistryTransferFormValues,
+} from '@/features/quotes/registry-transfer/schema'
 
 const ATTRIBUTE_ERROR_PREFIX = 'attribute_values.'
 
 /** The 422 keys the dialog can show on a field; anything else is a toast. */
 function isFormField(key: string): key is FieldPath<QuoteRegistryTransferFormValues> {
-  return key === 'registry_id' || key.startsWith(ATTRIBUTE_ERROR_PREFIX)
+  return key === 'registry_id' || key === 'title' || key.startsWith(ATTRIBUTE_ERROR_PREFIX)
 }
 
 /**
@@ -36,7 +39,12 @@ function applyFieldErrors(error: unknown, setError: UseFormSetError<QuoteRegistr
  * shared by the offer detail and the Gestione Richieste / Iscritti panel:
  * only the endpoint's base path differs.
  */
-export function useQuoteRegistryTransfer(basePath: string, quoteId: number, onTransferred: () => void) {
+export function useQuoteRegistryTransfer(
+  basePath: string,
+  quoteId: number,
+  currentTitle: string,
+  onTransferred: () => void,
+) {
   const { t, i18n } = useTranslation()
 
   const mutation = useMutation({
@@ -48,7 +56,7 @@ export function useQuoteRegistryTransfer(basePath: string, quoteId: number, onTr
     setError: UseFormSetError<QuoteRegistryTransferFormValues>,
   ): Promise<void> => {
     try {
-      await mutation.mutateAsync({ registry_id: values.registry_id as number, attribute_values: values.attribute_values })
+      await mutation.mutateAsync(toQuoteRegistryTransferPayload(values, currentTitle))
       toast.success(t('quotes.registryTransfer.success'))
       onTransferred()
     } catch (error) {

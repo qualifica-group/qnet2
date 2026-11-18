@@ -28,6 +28,7 @@ export function RequestRegistryTransfer({ panel, onTransferred }: RequestRegistr
       basePath={module.apiBasePath}
       quoteId={panel.id}
       currentRegistry={panel.registry}
+      currentTitle={panel.title ?? ''}
       attributes={panel.applicable_attributes}
       values={panel.attribute_values}
       onTransferred={() => onTransferred?.()}

@@ -11,7 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * the Offerte route and on the Gestione Richieste/Iscritti ones. The
  * "Informazioni aggiuntive" are validated per code by
  * QuoteAttributeValueWriter against the offer's set once moved, like the
- * offer update. Authorization lives in the controller (Policy/permissions).
+ * offer update; the optional `title` follows the offer update's title rules
+ * (spec 0404 B-D8). Authorization lives in the controller (Policy/permissions).
  */
 class TransferQuoteRegistryRequest extends FormRequest
 {
@@ -27,6 +28,8 @@ class TransferQuoteRegistryRequest extends FormRequest
     {
         return [
             'registry_id' => ['required', 'integer', 'exists:registries,id'],
+            // B-D8: absent = untouched, null/blank = back to the automatic title.
+            'title' => ['sometimes', 'nullable', 'string', 'max:191'],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }
@@ -34,6 +37,18 @@ class TransferQuoteRegistryRequest extends FormRequest
     public function registryId(): int
     {
         return $this->safe()->integer('registry_id');
+    }
+
+    public function titleSubmitted(): bool
+    {
+        return $this->safe()->has('title');
+    }
+
+    public function title(): ?string
+    {
+        $title = $this->safe()->input('title');
+
+        return $title === null ? null : (string) $title;
     }
 
     /**

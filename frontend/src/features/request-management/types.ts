@@ -185,6 +185,11 @@ export interface RequestWorkPanel extends RequestForecast, ContractedQuoteFlags 
    */
   opportunity_id: number
   name: string
+  /**
+   * Spec 0404 B-D8: the Offerta's own title, prefilled by "Trasferisci ad
+   * altra anagrafica". Optional for fixture compatibility, like `general_notes`.
+   */
+  title?: string
   registry: RequestRelationRef | null
   /** Why the client select is read-only (a contract exists, or the client comes from the lead); `null` when it can change. */
   registry_lock_reason: RequestRegistryLockReason | null

@@ -54,6 +54,7 @@ export function QuoteDetailRegistryTransfer({ quote, onChanged }: QuoteDetailReg
       basePath={QUOTES_BASE_PATH}
       quoteId={quote.id}
       currentRegistry={quote.registry ?? null}
+      currentTitle={quote.title}
       attributes={quote.applicable_attributes}
       values={quote.attribute_values}
       onTransferred={() => {
