@@ -87,7 +87,8 @@ it('registers metadata, backend-driven table, search, export and activity log', 
     );
     $columnsById = collect($columns)->keyBy('id');
     expect(collect($columnsById['recipient_role']['badges'])->pluck('value')->all())
-        ->toBe(['COMMERCIAL', 'REPORTER', 'SUPERVISOR', 'SUPPLIER'])
+        // REQUIREMENT CHANGED (spec 0417): partner commerciale
+        ->toBe(['COMMERCIAL', 'COMMERCIAL_PARTNER', 'REPORTER', 'SUPERVISOR', 'SUPPLIER'])
         ->and(collect($columnsById['application_scope']['badges'])->pluck('value')->all())
         // Spec 0089 D-2: application_scope grows a third value, RECIPIENT.
         ->toBe(['PRODUCT_CATEGORY', 'PRODUCT', 'RECIPIENT'])

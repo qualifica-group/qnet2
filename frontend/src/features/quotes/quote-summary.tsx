@@ -190,7 +190,7 @@ interface QuoteSummaryProps {
  */
 export function QuoteSummary({
   totals,
-  commissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 },
+  commissionTotals = { commercial: 0, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 0 },
   typologyBuckets = EMPTY_TYPOLOGY_BUCKETS,
   productMargins,
   showProductMargins = true,

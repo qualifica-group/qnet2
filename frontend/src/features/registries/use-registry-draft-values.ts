@@ -38,8 +38,8 @@ export function useRegistryDraftValues(control: Control<RegistryFormValues>): Re
   const sectorIds = useMemo(() => idsOf(...(draft.sector_ids ?? [])), [draft.sector_ids])
   const listedReferentIds = useMemo(() => idsOf(...(draft.referent_ids ?? [])), [draft.referent_ids])
   const referentIds = useMemo(
-    () => Array.from(new Set(idsOf(...listedReferentIds, draft.commercial_id, draft.reporter_id))),
-    [listedReferentIds, draft.commercial_id, draft.reporter_id],
+    () => Array.from(new Set(idsOf(...listedReferentIds, draft.commercial_id, draft.commercial_partner_id, draft.reporter_id))),
+    [listedReferentIds, draft.commercial_id, draft.commercial_partner_id, draft.reporter_id],
   )
   const userIds = useMemo(
     () => Array.from(new Set(idsOf(draft.supervisor_id, ...slots))),
@@ -57,6 +57,7 @@ export function useRegistryDraftValues(control: Control<RegistryFormValues>): Re
     referents: listedReferentIds.map((id) => ({ id, name: referents.get(id)?.label ?? PENDING_LABEL })),
     primary_referent: refOf(referents, draft.primary_referent_id),
     commercial: refOf(referents, draft.commercial_id),
+    commercial_partner: refOf(referents, draft.commercial_partner_id),
     reporter: refOf(referents, draft.reporter_id),
     supervisor: refOf(users, draft.supervisor_id),
     managers: slots.flatMap((id, index) =>

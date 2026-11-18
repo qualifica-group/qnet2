@@ -53,7 +53,8 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     // REQUIREMENT CHANGED: spec 0349 — `follow_up_date` is appended after `next_callback_at`.
     // REQUIREMENT CHANGED: user request 2026-11-09 — `registry` sits right after `opportunity`.
     expect($ids)->toBe([
-        'id', 'code', 'title', 'opportunity', 'registry', 'offer_lines', 'root_categories', 'quote_system_status', 'commercial',
+        // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+        'id', 'code', 'title', 'opportunity', 'registry', 'offer_lines', 'root_categories', 'quote_system_status', 'commercial', 'commercial_partner',
         'reporter', 'supervisor', 'managers', 'revenue_net', 'cost_net', 'margin_net',
         'created_at', 'company', 'company_site', 'operational_site', 'source', 'next_callback_at',
         'follow_up_date', 'alert',

@@ -36,6 +36,7 @@ final class QuoteCommissionInitializer
         $recipients = $this->recipients->resolve(
             $data->supplierId,
             $data->commercialId ?? $quote?->commercial_id,
+            $data->commercialPartnerId ?? $quote?->commercial_partner_id,
             $data->reporterId ?? $quote?->reporter_id,
             $data->supervisorId ?? $quote?->supervisor_id,
         );

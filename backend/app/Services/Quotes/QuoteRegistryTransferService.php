@@ -131,6 +131,7 @@ final class QuoteRegistryTransferService
             registryId: $destination->id,
             referentId: null,
             commercialId: $origin->commercial_id,
+            commercialPartnerId: $origin->commercial_partner_id,
             reporterId: $origin->reporter_id,
             supervisorId: $origin->supervisor_id,
             leadId: null,

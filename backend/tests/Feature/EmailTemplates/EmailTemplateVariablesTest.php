@@ -47,7 +47,8 @@ it('AC-003: exposes work_order, sender and the reused quote categories, NOT tota
 
     expect($categoryKeys)->toBe([
         'work_order', 'sender', 'quote', 'client', 'opportunity', 'referent',
-        'commercial', 'reporter', 'supervisor', 'company', 'company_site',
+        // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+        'commercial', 'commercial_partner', 'reporter', 'supervisor', 'company', 'company_site',
     ])->and($categoryKeys)->not->toContain('totals')
         ->and($categoryKeys)->not->toContain('document')
         ->and($categoryKeys)->not->toContain('custom_fields')

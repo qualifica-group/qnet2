@@ -14,6 +14,7 @@ export const opportunities = {
     systemStatus: 'Stato di sistema',
     referent: 'Referente',
     commercial: 'Commerciale',
+    commercial_partner: 'Partner commerciale',
     supervisor: 'Supervisore',
     managers: 'Gestori account',
     operationalSite: 'Sede operativa',
@@ -37,6 +38,7 @@ export const opportunities = {
     registry: 'Anagrafica',
     referent: 'Referente',
     commercial: 'Commerciale',
+    commercial_partner: 'Partner commerciale',
     supervisor: 'Supervisore',
     managers: 'Gestori account',
     operationalSite: 'Sede operativa',
@@ -108,6 +110,8 @@ export const opportunities = {
     referentSearch: 'Cerca referenti…',
     commercial: 'Commerciale',
     commercialSearch: 'Cerca commerciali…',
+    commercialPartner: 'Partner commerciale',
+    commercialPartnerSearch: 'Cerca un partner commerciale',
     reporter: 'Segnalatore',
     reporterSearch: 'Cerca segnalatori…',
     contactsRecap: 'Contatti principali',
@@ -140,7 +144,7 @@ export const opportunities = {
     registryRolesConfirm: {
       title: "Sostituire i ruoli con quelli dell'anagrafica?",
       description:
-        "Commerciale, Segnalatore, Supervisore o Gestori account inseriti sono diversi da quelli dell'anagrafica selezionata. Sostituendoli, i campi prendono i valori dell'anagrafica (vuoti se non ne ha).",
+        "Commerciale, Partner commerciale, Segnalatore, Supervisore o Gestori account inseriti sono diversi da quelli dell'anagrafica selezionata. Sostituendoli, i campi prendono i valori dell'anagrafica (vuoti se non ne ha).",
       replace: 'Sostituisci',
       keep: 'Mantieni i miei',
     },

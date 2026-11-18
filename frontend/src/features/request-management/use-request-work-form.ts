@@ -106,6 +106,7 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     source_id: panel.source_id,
     reporter_id: panel.reporter_id,
     commercial_id: panel.commercial_id,
+    commercial_partner_id: panel.commercial_partner_id,
     supervisor_id: panel.supervisor_id,
     // Spec 0097 D-1: the team, rebuilt from the pivot and padded out to the
     // module-wide default so an operator always sees a full set of editable
@@ -217,6 +218,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSav
     'source_id' as Path<RequestWorkFormValues>,
     'reporter_id' as Path<RequestWorkFormValues>,
     'commercial_id' as Path<RequestWorkFormValues>,
+    'commercial_partner_id' as Path<RequestWorkFormValues>,
     'supervisor_id' as Path<RequestWorkFormValues>,
     // A per-slot 422 (`manager_slots.<n>`) has no control of its own — the
     // editor binds the array as a whole — so the block root carries it.

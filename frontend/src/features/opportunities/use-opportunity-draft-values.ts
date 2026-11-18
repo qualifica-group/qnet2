@@ -73,7 +73,7 @@ export function useOpportunityDraftValues(
   const registries = useForSelectLabels({ resource: REGISTRIES_FOR_SELECT_RESOURCE, ids: idsOf(draft.registry_id) })
   const referents = useForSelectLabels({
     resource: REFERENTS_FOR_SELECT_RESOURCE,
-    ids: idsOf(draft.referent_id, draft.commercial_id, draft.reporter_id),
+    ids: idsOf(draft.referent_id, draft.commercial_id, draft.commercial_partner_id, draft.reporter_id),
   })
   const users = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: userIds })
   const products = useForSelectLabels({ resource: PRODUCTS_FOR_SELECT_RESOURCE, ids: productIds, params: productParams })
@@ -92,6 +92,7 @@ export function useOpportunityDraftValues(
     registry: leadRegistry?.id === registryId && registryId !== null ? leadRegistry : refOf(registries, registryId),
     referent: refOf(referents, draft.referent_id),
     commercial: refOf(referents, draft.commercial_id),
+    commercial_partner: refOf(referents, draft.commercial_partner_id),
     reporter: refOf(referents, draft.reporter_id),
     lead: null,
     supervisor: refOf(users, draft.supervisor_id),

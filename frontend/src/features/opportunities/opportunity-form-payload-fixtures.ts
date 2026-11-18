@@ -18,6 +18,7 @@ export function values(overrides: Partial<OpportunityFormValues> = {}): Opportun
     // Spec 0043 D-3: mandatory FK, mirrors registry_id.
     referent_id: null,
     commercial_id: null,
+    commercial_partner_id: null,
     reporter_id: null,
     supervisor_id: null,
     // Spec 0056: never submit-blocking; the payload-diff tests cover it independently.
@@ -51,7 +52,9 @@ export function original(overrides: Partial<OpportunityDetail> = {}): Opportunit
     referent_id: null,
     referent: null,
     commercial_id: null,
+    commercial_partner_id: null,
     commercial: null,
+    commercial_partner: null,
     reporter_id: null,
     reporter: null,
     supervisor_id: null,

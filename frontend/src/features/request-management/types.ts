@@ -203,6 +203,9 @@ export interface RequestWorkPanel extends RequestForecast, ContractedQuoteFlags 
   /** "Commerciale" (spec 0357): the Offerta's own commercial Referent, edited next to the Segnalatore. */
   commercial_id: number | null
   commercial: RequestRelationRef | null
+  /** "Partner commerciale" (spec 0417): a second commercial Referent, same shape as `commercial`. */
+  commercial_partner_id: number | null
+  commercial_partner: RequestRelationRef | null
   /**
    * Spec 0097 rev-2 D-9: the Offerta's Supervisore, editable from the panel's
    * team section again (user directive 2026-09-02, which reverses spec 0087

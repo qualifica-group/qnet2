@@ -40,6 +40,7 @@ const SERVER_ERROR_FIELDS = [
   'manager_slots',
   'supervisor_id',
   'commercial_id',
+  'commercial_partner_id',
   'reporter_id',
   'vat_group',
   'is_supplier',

@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Building2,
-  BriefcaseBusiness,
+  BriefcaseBusiness, Handshake,
   Megaphone,
   Plus,
   ShieldCheck,
@@ -27,6 +27,7 @@ const ROW_GRID_CLASS = 'md:grid md:grid-cols-[minmax(0,1fr)_6.5rem_8.5rem_7rem_2
 
 const ROLE_ICONS: Record<CommissionRole, LucideIcon> = {
   COMMERCIAL: BriefcaseBusiness,
+  COMMERCIAL_PARTNER: Handshake,
   REPORTER: Megaphone,
   SUPERVISOR: ShieldCheck,
   SUPPLIER: Building2,

@@ -18,6 +18,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     quote_system_status_id: 1,
     note: null,
     commercial_id: null,
+    commercial_partner_id: null,
     reporter_id: null,
     supervisor_id: null,
     manager_slots: [],
@@ -52,7 +53,9 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     applicable_attributes: [],
     attribute_layout: null,
     commercial_id: null,
+    commercial_partner_id: null,
     commercial: null,
+    commercial_partner: null,
     reporter_id: null,
     reporter: null,
     supervisor_id: null,
@@ -265,6 +268,12 @@ describe('buildUpdatePayload', () => {
 
   it('sends null for a cleared title, back to the automatic one (spec 0171 rev.2)', () => {
     expect(buildUpdatePayload(formValues({ title: '' }), detail())).toEqual({ title: null })
+  })
+
+  // Spec 0417 AC-022
+  it('includes commercial_partner_id only when it changed from the original', () => {
+    expect(buildUpdatePayload(formValues(), detail())).not.toHaveProperty('commercial_partner_id')
+    expect(buildUpdatePayload(formValues({ commercial_partner_id: 9 }), detail()).commercial_partner_id).toBe(9)
   })
 
   it('includes commercial_id only when it changed from the original', () => {

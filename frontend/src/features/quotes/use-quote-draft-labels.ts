@@ -72,7 +72,7 @@ export function useQuoteDraftLabels(control: Control<QuoteFormValues>, known: Qu
   })
   const referents = useForSelectLabels({
     resource: REFERENTS_FOR_SELECT_RESOURCE,
-    ids: idsOf(values.commercial_id, values.reporter_id),
+    ids: idsOf(values.commercial_id, values.commercial_partner_id, values.reporter_id),
   })
   const users = useForSelectLabels({
     resource: USERS_FOR_SELECT_RESOURCE,
@@ -122,6 +122,7 @@ export function useQuoteDraftLabels(control: Control<QuoteFormValues>, known: Qu
       known.opportunity ? { id: known.opportunity.id, name: known.opportunity.label } : null,
     ),
     commercial: refOf(values.commercial_id, referents, inheritedMeta?.commercial),
+    commercialPartner: refOf(values.commercial_partner_id, referents, inheritedMeta?.commercial_partner),
     reporter: refOf(values.reporter_id, referents, inheritedMeta?.reporter),
     supervisor: refOf(values.supervisor_id, users, inheritedMeta?.supervisor),
     managers,

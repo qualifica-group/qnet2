@@ -64,7 +64,7 @@ final class RequestAttributionWriter
     {
         $submitted = [];
 
-        foreach (['reporter_id', 'commercial_id', 'operational_site_id', 'supervisor_id', 'source_id'] as $key) {
+        foreach (['reporter_id', 'commercial_id', 'commercial_partner_id', 'operational_site_id', 'supervisor_id', 'source_id'] as $key) {
             if (! array_key_exists($key, $data)) {
                 continue;
             }

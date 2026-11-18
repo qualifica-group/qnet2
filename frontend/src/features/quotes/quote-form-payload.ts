@@ -34,6 +34,7 @@ export function buildCreatePayload(values: QuoteFormValues, suggestedCode?: stri
     // persistito da conservare, quindi il merge sparso lato server non serve.
     attribute_values: values.attribute_values,
     commercial_id: values.commercial_id,
+    commercial_partner_id: values.commercial_partner_id,
     reporter_id: values.reporter_id,
     supervisor_id: values.supervisor_id,
     // Spec 0087 (D-5): the create form opens on `DEFAULT_MANAGER_SLOTS` empty
@@ -125,6 +126,9 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   }
   if (values.commercial_id !== original.commercial_id) {
     payload.commercial_id = values.commercial_id
+  }
+  if (values.commercial_partner_id !== original.commercial_partner_id) {
+    payload.commercial_partner_id = values.commercial_partner_id
   }
   if (values.reporter_id !== original.reporter_id) {
     payload.reporter_id = values.reporter_id

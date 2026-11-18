@@ -62,6 +62,7 @@ class OpportunityService
         'registry',
         'referent.referentType',
         'commercial',
+        'commercialPartner',
         'reporter',
         'supervisor',
         // Spec 0056: the site has no own name, its label is composed

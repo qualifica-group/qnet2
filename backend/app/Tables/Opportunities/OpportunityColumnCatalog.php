@@ -70,6 +70,7 @@ final class OpportunityColumnCatalog
                 'relation' => ['resource' => 'referents', 'scope' => ['registry_id' => 'registry'], 'lockScope' => true],
             ],
             [...self::derivedColumn('commercial', 'opportunities.columns.commercial'), ...self::editableRelation('referents', 'commercial_id')],
+            [...self::derivedColumn('commercial_partner', 'opportunities.columns.commercial_partner'), ...self::editableRelation('referents', 'commercial_partner_id')],
             [...self::derivedColumn('supervisor', 'opportunities.columns.supervisor'), ...self::editableRelation('users', 'supervisor_id')],
             // Account managers (opportunity_user pivot, to-many), rendered as an
             // avatar stack. Not sortable (a to-many value has no single sort

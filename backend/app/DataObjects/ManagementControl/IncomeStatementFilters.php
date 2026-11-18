@@ -31,6 +31,8 @@ final readonly class IncomeStatementFilters
 
     public const string SEGMENT_COMMERCIAL = 'commercial';
 
+    public const string SEGMENT_COMMERCIAL_PARTNER = 'commercial_partner';
+
     public const array SEGMENT_BY_OPTIONS = [
         self::SEGMENT_NONE,
         self::SEGMENT_COMPANY,
@@ -38,6 +40,7 @@ final readonly class IncomeStatementFilters
         self::SEGMENT_OPERATIONAL_SITE,
         self::SEGMENT_WORK_ORDER_TYPE,
         self::SEGMENT_COMMERCIAL,
+        self::SEGMENT_COMMERCIAL_PARTNER,
     ];
 
     /**
@@ -47,6 +50,7 @@ final readonly class IncomeStatementFilters
      * @param  array<int, int>  $businessFunctionIds
      * @param  array<int, string>  $workOrderTypes
      * @param  array<int, int>  $commercialIds
+     * @param  array<int, int>  $commercialPartnerIds  spec 0417, D-6
      */
     public function __construct(
         public ?string $dateFrom = null,
@@ -57,6 +61,7 @@ final readonly class IncomeStatementFilters
         public array $businessFunctionIds = [],
         public array $workOrderTypes = [],
         public array $commercialIds = [],
+        public array $commercialPartnerIds = [],
         public string $revenueBasis = self::BASIS_CONTRACT,
         public string $segmentBy = self::SEGMENT_NONE,
     ) {}
@@ -77,6 +82,7 @@ final readonly class IncomeStatementFilters
             'business_function_id' => $this->businessFunctionIds,
             'work_order_type' => $this->workOrderTypes,
             'commercial_id' => $this->commercialIds,
+            'commercial_partner_id' => $this->commercialPartnerIds,
             'revenue_basis' => $this->revenueBasis,
             'segment_by' => $this->segmentBy,
         ];

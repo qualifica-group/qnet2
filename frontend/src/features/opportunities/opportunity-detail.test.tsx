@@ -87,7 +87,9 @@ function opportunity(
     referent_id: 60,
     referent: { id: 60, name: 'Mario Rossi' },
     commercial_id: 70,
+    commercial_partner_id: null,
     commercial: { id: 70, name: 'Luca Verdi' },
+    commercial_partner: null,
     reporter_id: 80,
     reporter: { id: 80, name: 'Giulia Neri' },
     supervisor_id: 90,
@@ -170,7 +172,7 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
   it('renders no editable control for an actor whose fields are all read-only', () => {
     const fields = Object.fromEntries(
       [
-        'name', 'registry_id', 'referent_id', 'commercial_id', 'reporter_id', 'supervisor_id', 'source_id',
+        'name', 'registry_id', 'referent_id', 'commercial_id', 'commercial_partner_id', 'reporter_id', 'supervisor_id', 'source_id',
         'product_lines', 'products_of_interest', 'manager_slots', 'start_date', 'estimated_value',
         'expected_close_date', 'success_probability', 'general_notes',
       ].map((field) => [field, READ_ONLY_FIELD]),
@@ -202,7 +204,9 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
           referent_id: null,
           referent: null,
           commercial_id: null,
+          commercial_partner_id: null,
           commercial: null,
+          commercial_partner: null,
           reporter_id: null,
           reporter: null,
           supervisor_id: null,

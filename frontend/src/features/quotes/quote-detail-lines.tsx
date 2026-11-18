@@ -59,6 +59,7 @@ function PersistedLinesSummary({ quote }: { quote: QuoteDetailWithPermissions })
       totals={totalsFromPersistedSummary(quote.summary)}
       commissionTotals={{
         commercial: Number(quote.summary.commissions?.commercial ?? 0),
+        commercial_partner: Number(quote.summary.commissions?.commercial_partner ?? 0),
         reporter: Number(quote.summary.commissions?.reporter ?? 0),
         supervisor: Number(quote.summary.commissions?.supervisor ?? 0),
         supplier: Number(quote.summary.commissions?.supplier ?? 0),

@@ -126,7 +126,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
 
         return QuoteVisibilityScope::scopeToActor($query, Auth::user())->with([
             // `opportunity.managers`: the `documents` gate (Opportunity view) stays query-free.
-            'opportunity.managers', 'opportunity.registry', QuoteSystemStatusColumn::RELATION, 'commercial', 'reporter', 'supervisor.avatar',
+            'opportunity.managers', 'opportunity.registry', QuoteSystemStatusColumn::RELATION, 'commercial', 'commercialPartner', 'reporter', 'supervisor.avatar',
             // "Gestori Account" (spec 0087, D-1/T-10): the Offerta's own team,
             // rendered as an avatar stack by the `managers` column.
             'managers.avatar',
@@ -230,6 +230,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // for a note where the destination demands one (`_notes`).
             ...$this->systemStatusCell($row),
             'commercial' => $this->summarize($row->commercial),
+            'commercial_partner' => $this->summarize($row->commercialPartner),
             'reporter' => $this->summarize($row->reporter),
             'supervisor' => $this->userSummary($row->supervisor),
             'revenue_net' => $row->revenue_net,

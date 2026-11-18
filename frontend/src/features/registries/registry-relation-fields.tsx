@@ -155,12 +155,12 @@ export function RegistryPrimaryReferentField({ control, selected }: SelectedList
 }
 
 interface ReferentRoleFieldProps extends SelectedFieldProps {
-  name: 'commercial_id' | 'reporter_id'
+  name: 'commercial_id' | 'commercial_partner_id' | 'reporter_id'
   label: string
   placeholder: string
 }
 
-/** "Commerciale" / "Segnalatore": both a single referente from the whole list. */
+/** "Commerciale" / "Partner commerciale" / "Segnalatore": both a single referente from the whole list. */
 export function RegistryReferentRoleField({ control, selected, name, label, placeholder }: ReferentRoleFieldProps) {
   const { t } = useTranslation()
   return (

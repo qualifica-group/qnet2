@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati contratto** (Offerta, Opportunità, Data offerta) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisore e Gestori account dell'offerta) e **Società e sedi**, poi **Documento e pagamento** e **Ciclo di vita**. I dati dell'offerta sono in sola lettura e si modificano dall'offerta; Titolo, righe dei servizi, Note di pagamento, Rinnovo, Scadenza e Commenti si modificano qui. Tra le schede a destra, **Documenti contratto** si gestisce qui; **Documenti offerta** (i file caricati sulla richiesta in Gestione Richieste o Gestione Iscritti) e **Documenti opportunità** sono in sola lettura.",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati contratto** (Offerta, Opportunità, Data offerta) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Partner commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisore e Gestori account dell'offerta) e **Società e sedi**, poi **Documento e pagamento** e **Ciclo di vita**. I dati dell'offerta sono in sola lettura e si modificano dall'offerta; Titolo, righe dei servizi, Note di pagamento, Rinnovo, Scadenza e Commenti si modificano qui. Tra le schede a destra, **Documenti contratto** si gestisce qui; **Documenti offerta** (i file caricati sulla richiesta in Gestione Richieste o Gestione Iscritti) e **Documenti opportunità** sono in sola lettura.",
         },
       ],
     },

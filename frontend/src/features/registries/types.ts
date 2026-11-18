@@ -87,6 +87,8 @@ export interface RegistryDetail {
   supervisor: ReferenceRef | null
   commercial_id: number | null
   commercial: ReferenceRef | null
+  commercial_partner_id: number | null
+  commercial_partner: ReferenceRef | null
   reporter_id: number | null
   reporter: ReferenceRef | null
   vat_group: string | null
@@ -133,6 +135,7 @@ export interface CreateRegistryPayload {
   manager_slots?: (number | null)[]
   supervisor_id?: number | null
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   reporter_id?: number | null
   vat_group?: string | null
   is_supplier: boolean
@@ -163,6 +166,7 @@ export interface UpdateRegistryPayload {
   manager_slots?: (number | null)[]
   supervisor_id?: number | null
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   reporter_id?: number | null
   vat_group?: string | null
   is_supplier?: boolean

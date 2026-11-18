@@ -63,6 +63,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('registry_id', 'select', mandatory: true),
             new FieldDefinition('referent_id', 'select'),
             new FieldDefinition('commercial_id', 'select'),
+            new FieldDefinition('commercial_partner_id', 'select'),
             new FieldDefinition('reporter_id', 'select'),
             new FieldDefinition('supervisor_id', 'select'),
             new FieldDefinition('operational_site_id', 'select'),
@@ -101,6 +102,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             'registry_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'referent_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commercial_partner_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0056: readonly unless the actor ALSO holds

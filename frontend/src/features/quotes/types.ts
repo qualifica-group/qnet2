@@ -125,7 +125,7 @@ export interface QuoteSummary {
   /** Spec 0412: absent without `permissions.actions.view_costs`, like `margin`. */
   cost?: QuoteAmountBreakdown
   margin?: { net: string }
-  commissions?: Record<'commercial' | 'reporter' | 'supervisor' | 'supplier', string>
+  commissions?: Record<'commercial' | 'commercial_partner' | 'reporter' | 'supervisor' | 'supplier', string>
   /**
    * Spec 0099 (D-6/D-7): the REVENUE lines' imponibile grouped by the
    * typology of their product — one entry per CONFIGURED typology, ordered by
@@ -194,6 +194,8 @@ export interface QuoteDetail extends ContractedQuoteFlags {
   quote_system_statuses: QuoteSystemStatusOption[]
   commercial_id: number | null
   commercial: QuoteRelationRef | null
+  commercial_partner_id: number | null
+  commercial_partner: QuoteRelationRef | null
   reporter_id: number | null
   reporter: QuoteRelationRef | null
   supervisor_id: number | null
@@ -317,6 +319,7 @@ export interface CreateQuotePayload {
   /** Spec 0084: merge SPARSO server-side — i `code` assenti conservano il valore precedente. */
   attribute_values?: Record<string, CustomFieldValue>
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   reporter_id?: number | null
   supervisor_id?: number | null
   /**

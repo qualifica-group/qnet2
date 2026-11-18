@@ -89,6 +89,7 @@ export function QuoteCreateSections({ quoteForm, draft, defaults, pendingOpportu
 
       <QuoteContactsSection
         commercial={refs.commercial}
+        commercialPartner={refs.commercialPartner}
         reporter={refs.reporter}
         rewards={NO_REWARDS}
         rewardCount={values.rewards?.length ?? 0}

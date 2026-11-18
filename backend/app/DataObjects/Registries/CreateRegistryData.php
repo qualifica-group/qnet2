@@ -43,6 +43,8 @@ final readonly class CreateRegistryData
         public ?int $employeeCount,
         public ?string $generalNotes = null,
         public ?int $primaryReferentId = null,
+        // Appended (spec 0417): partner commerciale, a Referent like the commercial.
+        public ?int $commercialPartnerId = null,
     ) {}
 
     /**
@@ -61,6 +63,7 @@ final readonly class CreateRegistryData
                 : null,
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
             commercialId: isset($data['commercial_id']) ? (int) $data['commercial_id'] : null,
+            commercialPartnerId: isset($data['commercial_partner_id']) ? (int) $data['commercial_partner_id'] : null,
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
             vatGroup: $data['vat_group'] ?? null,
             isSupplier: (bool) ($data['is_supplier'] ?? false),
@@ -109,6 +112,7 @@ final readonly class CreateRegistryData
             'size_class' => $this->sizeClass,
             'supervisor_id' => $this->supervisorId,
             'commercial_id' => $this->commercialId,
+            'commercial_partner_id' => $this->commercialPartnerId,
             'reporter_id' => $this->reporterId,
             'employee_count' => $this->employeeCount,
             'general_notes' => $this->generalNotes,

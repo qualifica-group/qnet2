@@ -86,7 +86,7 @@ final class SupplierCommissionLookup
             productCategoryId: $categoryId,
             roles: [CommissionRecipientRole::Supplier],
             referenceDate: Carbon::today()->toDateTimeImmutable(),
-            recipients: $this->recipients->resolve($supplierId, null, null, null),
+            recipients: $this->recipients->resolve($supplierId, null, null, null, null),
         ));
 
         return $rules[0] ?? null;

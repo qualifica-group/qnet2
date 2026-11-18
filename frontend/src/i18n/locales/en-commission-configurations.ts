@@ -47,7 +47,7 @@ export const commissionConfigurations = {
     impactError: 'Rule saved, but the impact on the quotes could not be checked.',
   },
   options: {
-    recipient_role: { COMMERCIAL: 'Commercial', REPORTER: 'Reporter', SUPERVISOR: 'Supervisor', SUPPLIER: 'Supplier' },
+    recipient_role: { COMMERCIAL: 'Commercial', COMMERCIAL_PARTNER: 'Commercial partner', REPORTER: 'Reporter', SUPERVISOR: 'Supervisor', SUPPLIER: 'Supplier' },
     application_scope: { PRODUCT_CATEGORY: 'Product category', PRODUCT: 'Product', RECIPIENT: 'Specific recipient' },
     commission_type: { FIXED_AMOUNT: 'Fixed amount', PERCENTAGE: 'Percentage' },
     status: { ACTIVE: 'Active', SUSPENDED: 'Suspended' },

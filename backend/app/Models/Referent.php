@@ -101,7 +101,7 @@ class Referent extends BaseModel
     /**
      * The opportunities that name this referent as their own contact person
      * (spec 0040, BR-3: restrict-on-delete — ReferentService::delete() guards
-     * on this, PLUS the commercial/reporter roles below, before deleting).
+     * on this, PLUS the commercial/commercial-partner/reporter roles below, before deleting).
      *
      * @return HasMany<Opportunity, $this>
      */
@@ -116,6 +116,14 @@ class Referent extends BaseModel
     public function opportunitiesAsCommercial(): HasMany
     {
         return $this->hasMany(Opportunity::class, 'commercial_id');
+    }
+
+    /**
+     * @return HasMany<Opportunity, $this>
+     */
+    public function opportunitiesAsCommercialPartner(): HasMany
+    {
+        return $this->hasMany(Opportunity::class, 'commercial_partner_id');
     }
 
     /**

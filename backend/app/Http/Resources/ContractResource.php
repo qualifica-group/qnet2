@@ -81,6 +81,7 @@ class ContractResource extends JsonResource
             'company_site' => $this->summarizeByName($quote->companySite),
             'operational_site' => OperationalSiteLabel::summarize($quote->operationalSite),
             'commercial' => $this->summarizeByName($quote->commercial),
+            'commercial_partner' => $this->summarizeByName($quote->commercialPartner),
             'reporter' => $this->summarizeByName($quote->reporter),
             'supervisor' => $this->summarizeByName($quote->supervisor),
             'payment_method' => $this->summarizeByName($quote->paymentMethod),

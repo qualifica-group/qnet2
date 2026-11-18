@@ -96,6 +96,7 @@ final class QuoteColumnCatalog
                 'notable' => true,
             ],
             [...self::derivedColumn('commercial', 'quotes.columns.commercial'), ...self::editableRelation('referents', 'commercial_id')],
+            [...self::derivedColumn('commercial_partner', 'quotes.columns.commercial_partner'), ...self::editableRelation('referents', 'commercial_partner_id')],
             [...self::derivedColumn('reporter', 'quotes.columns.reporter'), ...self::editableRelation('referents', 'reporter_id')],
             [...self::derivedColumn('supervisor', 'quotes.columns.supervisor'), ...self::editableRelation('users', 'supervisor_id')],
             // "Gestori Account" (spec 0087, D-1/T-10) — mirrors

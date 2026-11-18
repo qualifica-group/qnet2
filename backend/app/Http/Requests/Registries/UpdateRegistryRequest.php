@@ -80,6 +80,7 @@ class UpdateRegistryRequest extends FormRequest
             // stay external referents.
             'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'vat_group' => ['sometimes', 'nullable', 'string', 'max:191'],
             'is_supplier' => ['sometimes', 'boolean'],

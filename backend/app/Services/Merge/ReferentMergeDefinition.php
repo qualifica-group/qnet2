@@ -68,9 +68,9 @@ final class ReferentMergeDefinition extends MergeDefinition
     public function linkedSources(): array
     {
         return [
-            new LinkedSource('opportunities', 'opportunities', ['opportunities.referent_id', 'opportunities.commercial_id', 'opportunities.reporter_id']),
-            new LinkedSource('quotes', 'quotes', ['quotes.commercial_id', 'quotes.reporter_id']),
-            new LinkedSource('registries_roles', 'registries', ['registries.commercial_id', 'registries.reporter_id', 'registries.primary_referent_id']),
+            new LinkedSource('opportunities', 'opportunities', ['opportunities.referent_id', 'opportunities.commercial_id', 'opportunities.commercial_partner_id', 'opportunities.reporter_id']),
+            new LinkedSource('quotes', 'quotes', ['quotes.commercial_id', 'quotes.commercial_partner_id', 'quotes.reporter_id']),
+            new LinkedSource('registries_roles', 'registries', ['registries.commercial_id', 'registries.commercial_partner_id', 'registries.reporter_id', 'registries.primary_referent_id']),
             new LinkedSource('tasks', 'tasks', ['tasks.referent_id']),
             new LinkedSource('rewards', 'rewards', ['rewards.referent_id']),
             new LinkedSource('commission_settlements', 'commission_settlements', ['commission_settlements.referent_id']),
@@ -87,10 +87,13 @@ final class ReferentMergeDefinition extends MergeDefinition
             plain: [
                 ['opportunities', 'referent_id'],
                 ['opportunities', 'commercial_id'],
+                ['opportunities', 'commercial_partner_id'],
                 ['opportunities', 'reporter_id'],
                 ['quotes', 'commercial_id'],
+                ['quotes', 'commercial_partner_id'],
                 ['quotes', 'reporter_id'],
                 ['registries', 'commercial_id'],
+                ['registries', 'commercial_partner_id'],
                 ['registries', 'reporter_id'],
                 ['registries', 'primary_referent_id'],
                 ['tasks', 'referent_id'],

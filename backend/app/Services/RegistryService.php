@@ -38,6 +38,7 @@ class RegistryService
         'source',
         'supervisor',
         'commercial',
+        'commercialPartner',
         'reporter',
         'sectors',
         'referents',
@@ -61,6 +62,7 @@ class RegistryService
         // `position` order (the belongsToMany already orderByPivot).
         'supervisor.personalData.contacts',
         'commercial.personalData.contacts',
+        'commercialPartner.personalData.contacts',
         'reporter.personalData.contacts',
         'referents.personalData.contacts',
         'referents.referentType',
@@ -252,8 +254,8 @@ class RegistryService
     private function forSelectBaseQuery(): Builder
     {
         return Registry::query()
-            ->select(['id', 'name', 'is_qualified_supplier', 'commercial_id', 'reporter_id', 'supervisor_id', 'primary_referent_id'])
-            ->with(['personalData:id,personable_type,personable_id,vat_number,tax_code', 'commercial:id,name', 'reporter:id,name', 'supervisor:id,name', 'primaryReferent:id,name', 'managers:id,name']);
+            ->select(['id', 'name', 'is_qualified_supplier', 'commercial_id', 'commercial_partner_id', 'reporter_id', 'supervisor_id', 'primary_referent_id'])
+            ->with(['personalData:id,personable_type,personable_id,vat_number,tax_code', 'commercial:id,name', 'commercialPartner:id,name', 'reporter:id,name', 'supervisor:id,name', 'primaryReferent:id,name', 'managers:id,name']);
     }
 
     /**

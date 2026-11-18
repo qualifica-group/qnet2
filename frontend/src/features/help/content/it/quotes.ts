@@ -17,7 +17,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità). Se puoi creare anche le opportunità, prima si apre una finestra: scegli **Da un'opportunità esistente** (i passi seguenti) oppure **Nuova opportunità + offerta** (vedi la sezione dedicata).",
-            "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli); la **Fonte** si precompila se l'opportunità è nata da un lead.",
+            "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Partner commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli); la **Fonte** si precompila se l'opportunità è nata da un lead.",
             'Compila le altre righe che ti servono (vedi tabella).',
             'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti scegliendoli dal **Catalogo prodotti** e nella scheda **Costi** le righe di costo: gli editor sono già aperti e il riepilogo si aggiorna mentre scrivi.',
             'Clicca **Salva** (in alto o in fondo): QNet controlla tutti i campi e crea l\'offerta; gli errori compaiono sotto le righe da correggere.',
@@ -33,7 +33,7 @@ const guide: HelpGuide = {
               "La data offerta è proposta con la data di oggi. La data ricontatto è facoltativa. L'opportunità non si cambia dopo la creazione.",
             ],
             ['Contesto', '**Fonte**', "Campo dell'offerta: precompilata con la Fonte del lead se l'opportunità ne ha uno, altrimenti vuota; puoi sceglierla o cambiarla."],
-            ['Anagrafica e contatti', '**Commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità."],
+            ['Anagrafica e contatti', '**Commerciale**, **Partner commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità; il Partner commerciale viene copiato alla creazione e poi è indipendente."],
             ['Team', '**Supervisore**, **Gestori account**', "Sincronizzati con l'opportunità."],
             ['Società e sedi', '**Società**, **Società sede**, **Sede operativa**', 'Scegli prima la società.'],
             ['Documento e pagamento', '**Layout**, **Metodo di pagamento**', 'Il layout predefinito è già proposto.'],
@@ -76,13 +76,13 @@ const guide: HelpGuide = {
             'In **Offerte** clicca **Nuova offerta** e scegli **Nuova opportunità + offerta**.',
             "Nel **passo 1 - Opportunità** compili gli stessi campi della **Nuova opportunità** (senza il lead: la conversione da lead resta nei moduli Lead e Opportunità). Clicca **Avanti**.",
             "Se i campi obbligatori non sono compilati, compaiono gli errori e non si avanza. Se l'anagrafica ha già un'**opportunità aperta** che blocca la nuova, compare un avviso con **Crea l'offerta su questa opportunità** (apre il modulo dell'offerta già collegato) e **Vai all'opportunità**: la procedura non prosegue.",
-            "Nel **passo 2 - Offerta** compili gli stessi campi della **Nuova offerta**. Commerciale, Segnalatore, Supervisore, Sede operativa e Gestori account sono già precompilati dal passo 1 e puoi cambiarli. L'**Opportunità** risulta **nuova**: viene creata al salvataggio. Le **Informazioni aggiuntive** seguono le linee prodotto del passo 1.",
+            "Nel **passo 2 - Offerta** compili gli stessi campi della **Nuova offerta**. Commerciale, Partner commerciale, Segnalatore, Supervisore, Sede operativa e Gestori account sono già precompilati dal passo 1 e puoi cambiarli. L'**Opportunità** risulta **nuova**: viene creata al salvataggio. Le **Informazioni aggiuntive** seguono le linee prodotto del passo 1.",
             "Clicca **Salva**: opportunità e offerta vengono create insieme e si apre l'offerta. Se qualcosa non va, non viene creato nulla; gli errori ti riportano al passo e al campo da correggere.",
           ],
         },
         {
           type: 'note',
-          text: "**Indietro** conserva tutto quello che hai scritto. Se dal passo 1 cambi Commerciale, Segnalatore, Supervisore, Sede operativa o Gestori account, il passo 2 si riallinea solo sui campi che non hai modificato a mano. Prima del salvataggio non viene creato nulla: uscendo dalla pagina perdi quanto inserito (ti viene chiesta conferma). I Gestori account dell'offerta entrano anche nel team della nuova opportunità.",
+          text: "**Indietro** conserva tutto quello che hai scritto. Se dal passo 1 cambi Commerciale, Partner commerciale, Segnalatore, Supervisore, Sede operativa o Gestori account, il passo 2 si riallinea solo sui campi che non hai modificato a mano. Prima del salvataggio non viene creato nulla: uscendo dalla pagina perdi quanto inserito (ti viene chiesta conferma). I Gestori account dell'offerta entrano anche nel team della nuova opportunità.",
         },
       ],
     },
@@ -123,7 +123,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             "Le righe **Offerta** e **Costi** hanno una matita ciascuna: si apre l'editor con il catalogo e le righe, e il riepilogo sotto mostra i totali di ciò che stai scrivendo. Se i nuovi prodotti portano altre Informazioni aggiuntive, compaiono sotto la griglia: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).",
-            "I **Buoni** si modificano dalla riga **Segnalatore**. Cambiando Commerciale, Segnalatore o Supervisore QNet aggiorna da sé le commissioni delle righe.",
+            "I **Buoni** si modificano dalla riga **Segnalatore**. Cambiando Commerciale, Partner commerciale, Segnalatore o Supervisore QNet aggiorna da sé le commissioni delle righe.",
             "Cambiando la **Società** la **Società sede** viene svuotata nello stesso salvataggio.",
           ],
         },
@@ -189,7 +189,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte, Data ricontatto) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Partner commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte, Data ricontatto) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
@@ -235,7 +235,7 @@ const guide: HelpGuide = {
             'La scheda **Costi** mostra tutto il catalogo dei prodotti di costo, senza filtro per categoria, e lo stesso prodotto si può aggiungere più volte.',
             '**Descrizione aggiuntiva** aggiunge un testo alla riga, sia nella scheda **Offerta** sia nella scheda **Costi**; il testo è stampabile nel preventivo.',
             "Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga. Il popup mostra in alto imponibile della riga, costi imputati, base di calcolo e totale commissioni; per ogni ruolo un'etichetta indica l'origine della commissione (**Regola: Prodotto**, **Regola: Categoria** o **Regola personale** se viene da una regola del Configuratore, **Modifica manuale** se è stata cambiata a mano; passando sopra l'etichetta compare la spiegazione). In modifica, ogni ruolo mostra anche il **Calcolo di sistema** (quanto prevede il Configuratore Commissioni): se hai cambiato il valore a mano puoi tenerlo oppure tornare al calcolo con **Applica calcolo di sistema**. La riga **Fornitore** mostra anche il **Verso**: se la commissione viene da una regola è quello della regola; se la modifichi a mano scegli tu **Ricevuta** (è il ricavo della riga) o **Pagata** (costo verso il fornitore), e il margine si aggiorna di conseguenza.",
-            "Nel riepilogo, sotto le card, **Mostra dettaglio provvigioni** apre (e **Nascondi dettaglio provvigioni** richiude) il blocco **Dettaglio provvigioni per prodotto** dell'offerta salvata, che elenca ogni riga con commissioni: per **Commerciale**, **Segnalatore**, **Supervisore** e **Fornitore** il destinatario, la percentuale (o l'importo fisso) e l'importo; per il Fornitore anche il verso (**Ricevuta** o **Pagata**), con un (?) che spiega cosa significa. Il nome del destinatario porta alla sua scheda: passando sopra un utente compare la sua scheda profilo, passando sopra un referente o un'anagrafica compare il collegamento alla scheda, che si apre anche cliccando il nome (se hai il permesso di vederla). Passando sopra un importo compare il calcolo: per una percentuale la base (imponibile meno costi imputati alla riga) e la percentuale applicata, per i totali il saldo. Ogni importo ha il segno **+** se la commissione entra (Fornitore ricevuta) e **−** se esce (Commerciale, Segnalatore, Supervisore e Fornitore pagata). L'ultima riga e l'ultima colonna danno i totali come saldo: quello che entra meno quello che esce. È visibile solo a chi può vedere le commissioni.",
+            "Nel riepilogo, sotto le card, **Mostra dettaglio provvigioni** apre (e **Nascondi dettaglio provvigioni** richiude) il blocco **Dettaglio provvigioni per prodotto** dell'offerta salvata, che elenca ogni riga con commissioni: per **Commerciale**, **Partner commerciale**, **Segnalatore**, **Supervisore** e **Fornitore** il destinatario, la percentuale (o l'importo fisso) e l'importo; per il Fornitore anche il verso (**Ricevuta** o **Pagata**), con un (?) che spiega cosa significa. Il nome del destinatario porta alla sua scheda: passando sopra un utente compare la sua scheda profilo, passando sopra un referente o un'anagrafica compare il collegamento alla scheda, che si apre anche cliccando il nome (se hai il permesso di vederla). Passando sopra un importo compare il calcolo: per una percentuale la base (imponibile meno costi imputati alla riga) e la percentuale applicata, per i totali il saldo. Ogni importo ha il segno **+** se la commissione entra (Fornitore ricevuta) e **−** se esce (Commerciale, Partner commerciale, Segnalatore, Supervisore e Fornitore pagata). L'ultima riga e l'ultima colonna danno i totali come saldo: quello che entra meno quello che esce. È visibile solo a chi può vedere le commissioni.",
             'Ogni riga di costo ha un **Prodotto associato**: scegli "Nessuno (costo generico)" oppure una riga del tab Prodotti, per imputare quel costo a quella vendita. Eliminando la riga prodotto associata, il costo torna automaticamente "Nessuno".',
             'Al massimo 200 righe per scheda.',
           ],
@@ -246,7 +246,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** (ogni importo ha il segno **+** se la commissione entra e **−** se esce: Commerciale, Segnalatore e Supervisore sono sempre pagate; il Fornitore è **+** se ricevuto e **−** se pagato, e un\'offerta con entrambi i versi mostra le due righe **Fornitore (ricevute)** e **Fornitore (pagate)**) e il **Margine atteso** (somma dei margini delle righe meno i costi generici: una riga con commissione Fornitore **ricevuta** ha come ricavo la sola commissione, le altre sono imponibile meno costi e commissioni pagate; i **Ricavi attesi** non cambiano), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto, così che ricavo meno costo meno commissioni dia il margine (sulle righe con commissione Fornitore ricevuta compare "ricavo = commissione ricevuta": il ricavo è la commissione ricevuta e le commissioni sono solo quelle pagate), più una riga "Costi generici" per i costi non associati. Passando sopra il nome del prodotto compare il nome intero; ogni importo è sottolineato a tratti e, passandoci sopra o toccandolo, mostra il calcolo (per esempio 3.200,00 − 0,00 − 3.200,00 = 0,00). Il blocco si apre con **Mostra dati avanzati**, sotto le card del riepilogo, ed è visibile solo a chi può vedere le commissioni.',
+          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** (ogni importo ha il segno **+** se la commissione entra e **−** se esce: Commerciale, Partner commerciale, Segnalatore e Supervisore sono sempre pagate; il Fornitore è **+** se ricevuto e **−** se pagato, e un\'offerta con entrambi i versi mostra le due righe **Fornitore (ricevute)** e **Fornitore (pagate)**) e il **Margine atteso** (somma dei margini delle righe meno i costi generici: una riga con commissione Fornitore **ricevuta** ha come ricavo la sola commissione, le altre sono imponibile meno costi e commissioni pagate; i **Ricavi attesi** non cambiano), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto, così che ricavo meno costo meno commissioni dia il margine (sulle righe con commissione Fornitore ricevuta compare "ricavo = commissione ricevuta": il ricavo è la commissione ricevuta e le commissioni sono solo quelle pagate), più una riga "Costi generici" per i costi non associati. Passando sopra il nome del prodotto compare il nome intero; ogni importo è sottolineato a tratti e, passandoci sopra o toccandolo, mostra il calcolo (per esempio 3.200,00 − 0,00 − 3.200,00 = 0,00). Il blocco si apre con **Mostra dati avanzati**, sotto le card del riepilogo, ed è visibile solo a chi può vedere le commissioni.',
         },
         {
           type: 'warning',
@@ -307,7 +307,7 @@ const guide: HelpGuide = {
           headers: ['Situazione della nuova anagrafica', "Dove va l'offerta"],
           rows: [
             ["Ha già un'opportunità aperta e la categoria non ammette più opportunità aperte per anagrafica", "Sull'opportunità aperta, che riceve le categorie dei prodotti dell'offerta se non le ha."],
-            ["Non ha opportunità aperte, oppure la categoria ammette più opportunità aperte", "Su una nuova opportunità con le stesse linee di prodotto, commerciale, segnalatore, supervisore, sede operativa e gestori della vecchia; senza referente."],
+            ["Non ha opportunità aperte, oppure la categoria ammette più opportunità aperte", "Su una nuova opportunità con le stesse linee di prodotto, commerciale, partner commerciale, segnalatore, supervisore, sede operativa e gestori della vecchia; senza referente."],
           ],
         },
         {

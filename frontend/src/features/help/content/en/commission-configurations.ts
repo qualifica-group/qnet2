@@ -18,7 +18,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: [
           'Open **Configuration › Accounting › Commission Configurator** and press **New configuration**.',
-          'In **Recipient and scope**: type the **Configuration name**; choose the **Recipient role** (Salesperson, Referrer, Supervisor or Supplier); choose the **Application scope** (Product category, Product or Specific recipient).',
+          'In **Recipient and scope**: type the **Configuration name**; choose the **Recipient role** (Salesperson, Commercial partner, Referrer, Supervisor or Supplier); choose the **Application scope** (Product category, Product or Specific recipient).',
           'Depending on the scope, indicate **Product category**, **Product** or **Recipient type** (Referent, User or Registry) and **Recipient**.',
           'In **Calculation** choose the **Commission type** (Fixed amount or Percentage), the **Commission value**, the **Rule priority** and the **Status** (Active or Suspended). When the Role is **Supplier** also choose the **Direction** (required): **Received** when we collect the commission and it is the line revenue, **Paid** when it is a cost towards the supplier.',
           'In **Validity and notes** indicate the **Validity start date** (required) and the optional **Validity end date**.',
@@ -34,7 +34,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'list', items: [
           'Only **Active** rules valid at the reference date apply.',
-          'The recipient is not chosen on the line: Salesperson, Referrer and Supervisor are those of the quote, the Supplier is that of the product.',
+          'The recipient is not chosen on the line: Salesperson, Commercial partner, Referrer and Supervisor are those of the quote, the Supplier is that of the product.',
           'Rules for a specific recipient win over rules valid for the whole role.',
           'All else equal, a rule on a Product wins over a rule on a Category.',
           'A rule on a Category also applies to all its subcategories, and it can sit on a parent category too (for example ISO). When several category rules cover the product, the one on the category closest to the product wins.',

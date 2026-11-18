@@ -107,6 +107,7 @@ class WorkOrderService
         'quote.opportunity.registry.referents.referentType',
         'quote.opportunity.registry.referents.personalData.contacts',
         'quote.opportunity.registry.commercial.referentType',
+        'quote.opportunity.registry.commercialPartner.referentType',
         'quote.opportunity.registry.sectors',
         'quote.opportunity.registry.customFieldValueRow',
         // Spec 0403: the payment status of each line in THIS commessa.
@@ -115,6 +116,7 @@ class WorkOrderService
         'quote.opportunity.productLines.productCategory',
         'quote.opportunity.productLines.businessFunction',
         'quote.commercial',
+        'quote.commercialPartner',
         'quote.reporter',
         'quote.layout',
         'quote.paymentMethod',

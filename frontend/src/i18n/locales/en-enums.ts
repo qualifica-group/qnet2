@@ -96,6 +96,7 @@ export const enums = {
   },
   commission_recipient_role: {
     COMMERCIAL: 'Commercial',
+    COMMERCIAL_PARTNER: 'Commercial partner',
     REPORTER: 'Reporter',
     SUPERVISOR: 'Supervisor',
   },

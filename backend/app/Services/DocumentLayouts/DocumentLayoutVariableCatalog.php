@@ -128,6 +128,12 @@ final class DocumentLayoutVariableCatalog
                 ['key' => 'email', 'type' => self::TYPE_STRING, 'example' => 'marco.verdi@example.com'],
                 ['key' => 'phone', 'type' => self::TYPE_STRING, 'example' => '+39 335 1234567'],
             ]),
+            // Spec 0417 D-8: the Partner commerciale, same shape as the Commerciale.
+            $this->staticCategory('commercial_partner', [
+                ['key' => 'name', 'type' => self::TYPE_STRING, 'example' => 'Paola Gialli'],
+                ['key' => 'email', 'type' => self::TYPE_STRING, 'example' => 'paola.gialli@example.com'],
+                ['key' => 'phone', 'type' => self::TYPE_STRING, 'example' => '+39 335 2345678'],
+            ]),
             $this->staticCategory('reporter', [
                 ['key' => 'name', 'type' => self::TYPE_STRING, 'example' => 'Anna Neri'],
                 ['key' => 'email', 'type' => self::TYPE_STRING, 'example' => 'anna.neri@example.com'],

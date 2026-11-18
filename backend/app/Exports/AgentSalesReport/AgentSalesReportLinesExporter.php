@@ -18,7 +18,7 @@ final class AgentSalesReportLinesExporter
 
     private const array HEADERS = [
         'code', 'date', 'registry', 'root_category', 'category', 'product', 'quantity', 'unit_price', 'amount', 'typology',
-        'supervisor', 'supervisor_commission', 'commercial', 'commercial_commission', 'reporter', 'reporter_commission', 'net',
+        'supervisor', 'supervisor_commission', 'commercial', 'commercial_commission', 'commercial_partner', 'commercial_partner_commission', 'reporter', 'reporter_commission', 'net',
     ];
 
     public function __construct(private readonly ExportWriterFactory $writers) {}
@@ -45,6 +45,7 @@ final class AgentSalesReportLinesExporter
                     $line['quantity'], $line['unit_price'], $line['amount'], $line['typology'],
                     $block['supervisor'], $line['supervisor_commission'],
                     $header['commercial']['name'] ?? null, $line['commercial_commission'],
+                    $header['commercial_partner']['name'] ?? null, $line['commercial_partner_commission'],
                     $header['reporter']['name'] ?? null, $line['reporter_commission'],
                     $line['net'],
                 ]);

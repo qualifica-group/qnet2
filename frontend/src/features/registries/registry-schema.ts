@@ -39,6 +39,7 @@ function baseFields(t: TFunction) {
     source_id: z.number().nullable(),
     supervisor_id: z.number().nullable(),
     commercial_id: z.number().nullable(),
+    commercial_partner_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
     // Multiselect relations (for-select standard): ids, full-replace.
     sector_ids: z.array(z.number()),

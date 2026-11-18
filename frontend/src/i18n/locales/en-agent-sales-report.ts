@@ -19,6 +19,7 @@ export const agentSalesReport = {
     quoteWorkflowStatus: 'Stage',
     revenueNet: 'Net revenue',
     commercial: 'Sales agent',
+    commercial_partner: 'Commercial partner',
     reporter: 'Reporter',
     revenueNetAfterReporter: 'Net revenue after reporter',
   },

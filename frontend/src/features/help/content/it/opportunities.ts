@@ -29,7 +29,7 @@ const guide: HelpGuide = {
             ['Lead di origine', '**Lead** (facoltativo, precompila e blocca i campi derivati; visibile solo ai ruoli abilitati, di norma il super-admin)'],
             ['Note generali', 'Testo libero'],
             ['Dettagli', '**Titolo** (facoltativo), **Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
-            ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Segnalatore** con i **Buoni assegnati**'],
+            ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Partner commerciale**, **Segnalatore** con i **Buoni assegnati**'],
             ['Classificazione', '**Linee prodotto** (almeno una riga, una per categoria genitore: categoria genitore, **Filtro** intermedio facoltativo, una o più categorie prodotto con **Seleziona tutte**; non compaiono le categorie con **Visibile in** su **Gestione Richieste / Iscritti**), **Prodotti di interesse**'],
             ['Team', '**Supervisore**, **Gestori account**'],
           ],
@@ -40,7 +40,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: "Scegliendo l'**Anagrafica**, **Commerciale**, **Segnalatore**, **Supervisore** e **Gestori account** vengono compilati con quelli dell'anagrafica. Se li hai già inseriti tu e sono diversi, QNet chiede se **Sostituire** i tuoi valori o **Mantenere i tuoi**: nulla di ciò che hai scelto viene cancellato senza conferma.",
+          text: "Scegliendo l'**Anagrafica**, **Commerciale**, **Partner commerciale**, **Segnalatore**, **Supervisore** e **Gestori account** vengono compilati con quelli dell'anagrafica. Se li hai già inseriti tu e sono diversi, QNet chiede se **Sostituire** i tuoi valori o **Mantenere i tuoi**: nulla di ciò che hai scelto viene cancellato senza conferma.",
         },
         {
           type: 'paragraph',
@@ -79,7 +79,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente prende il referente principale della nuova anagrafica (resta vuoto se non ne ha; vale anche scegliendo un **Lead**, quando l'anagrafica cambia o il Referente è vuoto) e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti (se l'opportunità ha richieste create da Gestione Richieste, una per categoria madre, le righe possono cambiare solo dentro quelle categorie madri: non si aggiunge né si toglie una categoria madre); i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
+          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente prende il referente principale della nuova anagrafica (resta vuoto se non ne ha; vale anche scegliendo un **Lead**, quando l'anagrafica cambia o il Referente è vuoto) e Commerciale, Partner commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti (se l'opportunità ha richieste create da Gestione Richieste, una per categoria madre, le righe possono cambiare solo dentro quelle categorie madri: non si aggiunge né si toglie una categoria madre); i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
         },
         {
           type: 'note',
@@ -147,11 +147,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Supervisore, Gestori account, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Partner commerciale, Supervisore, Gestori account, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
-          text: "Cambiando l'**Anagrafica** dall'elenco il Referente prende il referente principale della nuova anagrafica (vuoto se non ne ha; se non puoi modificare il Referente e la riga ne ha già uno, il cambio di anagrafica non è ammesso) e i ruoli **vuoti** (Commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
+          text: "Cambiando l'**Anagrafica** dall'elenco il Referente prende il referente principale della nuova anagrafica (vuoto se non ne ha; se non puoi modificare il Referente e la riga ne ha già uno, il cambio di anagrafica non è ammesso) e i ruoli **vuoti** (Commerciale, Partner commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
         },
         {
           type: 'paragraph',

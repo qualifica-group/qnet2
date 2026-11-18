@@ -38,7 +38,7 @@ final class WorkOrderFigureSources
     public const array MINUTE_FIGURES = ['labor_minutes', 'unpriced_minutes'];
 
     /** Recipient roles whose line commission is always a cost of the commessa (D-8). */
-    private const array COST_ROLES = [CommissionRecipientRole::Commercial, CommissionRecipientRole::Reporter, CommissionRecipientRole::Supervisor];
+    private const array COST_ROLES = [CommissionRecipientRole::Commercial, CommissionRecipientRole::CommercialPartner, CommissionRecipientRole::Reporter, CommissionRecipientRole::Supervisor];
 
     public function __construct(
         private readonly CommittedOrderLineQuery $committed,

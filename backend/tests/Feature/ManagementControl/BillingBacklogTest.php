@@ -136,3 +136,20 @@ it('AC-003: the company filter restricts the commesse via the reference offer', 
 
     expect($data['work_orders_count'])->toBe(1)->and($data['contract'])->toEqual(20);
 });
+
+it('spec 0417 AC-012: group_by=commercial_partner takes the partner of the reference offer, none goes last; commercial still works', function () {
+    $mario = Referent::factory()->create(['name' => 'Mario']);
+    $paolo = Referent::factory()->create(['name' => 'Paolo']);
+    $first = mcWorkOrder([], ['commercial_id' => $mario->id, 'commercial_partner_id' => $paolo->id]);
+    mcRevenueLine($first, '100.00');
+    $second = mcWorkOrder([], ['commercial_id' => $mario->id]);
+    mcRevenueLine($second, '40.00');
+
+    $byPartner = mcGet('billing', ['group_by' => 'commercial_partner'])->assertOk()->json('data.backlog.by_dimension');
+    $byCommercial = mcGet('billing', ['group_by' => 'commercial'])->assertOk()->json('data.backlog.by_dimension');
+
+    expect(array_column($byPartner, 'key'))->toBe([(string) $paolo->id, 'unattributed'])
+        ->and($byPartner[0]['label'])->toBe('Paolo')
+        ->and($byPartner[1]['contract'])->toEqual(40)
+        ->and(array_column($byCommercial, 'key'))->toBe([(string) $mario->id]);
+});

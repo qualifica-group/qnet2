@@ -70,7 +70,9 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
     applicable_attributes: [],
     attribute_layout: null,
     commercial_id: null,
+    commercial_partner_id: null,
     commercial: null,
+    commercial_partner: null,
     reporter_id: null,
     reporter: null,
     supervisor_id: null,
@@ -321,6 +323,27 @@ describe('QuoteDetailView — Gestori Account', () => {
 
 
 describe('QuoteDetailView — related records', () => {
+  // Spec 0417 AC-022
+  it('shows the Commercial partner right after the Commercial', () => {
+    renderDetail(
+      <QuoteDetailView
+        quote={quoteFixture({
+          commercial_id: 3,
+          commercial: { id: 3, name: 'Bruno Bianchi' },
+          commercial_partner_id: 7,
+          commercial_partner: { id: 7, name: 'Lia Verdi' },
+        })}
+      />,
+    )
+
+    const labels = screen.getAllByText(/^Commercial( partner)?$/).filter((node) => node.tagName === 'DT')
+    const rowLabels = labels.map((node) => node.textContent)
+    const commercial = labels[rowLabels.indexOf('Commercial')]
+    const partner = labels[rowLabels.indexOf('Commercial partner')]
+    expect(commercial.parentElement?.nextElementSibling?.querySelector('dt')).toBe(partner)
+    expect(partner.nextElementSibling).toHaveTextContent('Lia Verdi')
+  })
+
   it('links the anagrafica, the referents, the company and both sites to their records', () => {
     renderDetail(
       <QuoteDetailView

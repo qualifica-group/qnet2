@@ -49,6 +49,7 @@ export type QuoteCommissionRecipientMap = Record<CommissionRole, QuoteCommission
 export interface QuoteCommissionContext {
   quoteId?: number
   commercialId: number | null
+  commercialPartnerId: number | null
   reporterId: number | null
   supervisorId: number | null
 }

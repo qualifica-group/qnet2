@@ -133,7 +133,7 @@ class ReferentService
      */
     public function delete(Referent $referent): void
     {
-        if ($referent->opportunities()->exists() || $referent->opportunitiesAsCommercial()->exists() || $referent->opportunitiesAsReporter()->exists()) {
+        if ($referent->opportunities()->exists() || $referent->opportunitiesAsCommercial()->exists() || $referent->opportunitiesAsCommercialPartner()->exists() || $referent->opportunitiesAsReporter()->exists()) {
             abort(409, 'This referent has opportunities and cannot be deleted.');
         }
 

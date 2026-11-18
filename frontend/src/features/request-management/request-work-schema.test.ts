@@ -71,6 +71,7 @@ function values(overrides: Record<string, unknown> = {}) {
     source_id: 30,
     reporter_id: null,
     commercial_id: null,
+    commercial_partner_id: null,
     supervisor_id: null,
     // Spec 0097 D-1: the team replaces the single "Operatore" field.
     manager_slots: [null, null, null, null],

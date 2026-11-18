@@ -101,6 +101,7 @@ export interface ContractDetail {
   company_site: ContractRelationRef | null
   operational_site: ContractOperationalSiteRef | null
   commercial: ContractRelationRef | null
+  commercial_partner: ContractRelationRef | null
   reporter: ContractRelationRef | null
   supervisor: ContractRelationRef | null
   payment_method: ContractRelationRef | null

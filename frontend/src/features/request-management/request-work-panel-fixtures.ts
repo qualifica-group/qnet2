@@ -77,6 +77,8 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     reporter: null,
     commercial_id: null,
     commercial: null,
+    commercial_partner_id: null,
+    commercial_partner: null,
     supervisor_id: null,
     supervisor: null,
     operator_id: null,

@@ -29,7 +29,7 @@ const guide: HelpGuide = {
             ['Originating lead', '**Lead** (optional, prefills and locks the derived fields; visible only to the roles allowed to, normally the super-admin)'],
             ['General notes', 'Free-form text'],
             ['Details', '**Title** (optional), **Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
-            ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Reporter** with the **Assigned rewards**'],
+            ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Commercial partner**, **Reporter** with the **Assigned rewards**'],
             ['Classification', '**Product lines** (at least one row, one per parent category: parent category, optional intermediate **Filter**, one or more product categories with **Select all**; categories whose **Used in** is **Requests / Enrollees** are not offered), **Products of interest**'],
             ['Team', '**Supervisor**, **Account managers**'],
           ],
@@ -40,7 +40,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'When you pick the **Registry**, **Sales rep**, **Reporter**, **Supervisor** and **Account managers** are filled with the registry\'s own. If you already entered different ones, QNet asks whether to **Replace** your values or **Keep mine**: nothing you chose is cleared without confirmation.',
+          text: 'When you pick the **Registry**, **Sales rep**, **Commercial partner**, **Reporter**, **Supervisor** and **Account managers** are filled with the registry\'s own. If you already entered different ones, QNet asks whether to **Replace** your values or **Keep mine**: nothing you chose is cleared without confirmation.',
         },
         {
           type: 'paragraph',
@@ -79,7 +79,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Some fields carry other values into the same save: changing the **Registry** gives the Contact the new registry's main referent (it stays empty if the registry has none; the same happens when you pick a **Lead**, if the registry changes or the Contact is empty) and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover (when the opportunity has requests created from Request management, one per parent category, the rows may change only inside those parent categories: no parent category is added or removed); the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
+          text: "Some fields carry other values into the same save: changing the **Registry** gives the Contact the new registry's main referent (it stays empty if the registry has none; the same happens when you pick a **Lead**, if the registry changes or the Contact is empty) and proposes the registry's Sales rep, Commercial partner, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover (when the opportunity has requests created from Request management, one per parent category, the rows may change only inside those parent categories: no parent category is added or removed); the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
         },
         {
           type: 'note',
@@ -147,11 +147,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Supervisor, Account managers, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Commercial partner, Supervisor, Account managers, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',
-          text: "Changing the **Registry** from the list gives the Contact the new registry's main referent (empty if it has none; if you cannot edit the Contact and the row already has one, the registry change is not allowed) and fills the **empty** roles (Sales rep, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
+          text: "Changing the **Registry** from the list gives the Contact the new registry's main referent (empty if it has none; if you cannot edit the Contact and the row already has one, the registry change is not allowed) and fills the **empty** roles (Sales rep, Commercial partner, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
         },
         {
           type: 'paragraph',

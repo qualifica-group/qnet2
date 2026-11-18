@@ -136,6 +136,7 @@ export const workOrders = {
       phones: 'Phone',
       referent: 'Referent {{slot}}',
       commercial: 'Commercial',
+      commercialPartner: 'Commercial partner',
       sectors: 'Sector',
       comments: 'Comments',
     },

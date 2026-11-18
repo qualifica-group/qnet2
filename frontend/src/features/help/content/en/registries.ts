@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'A registry can have several Referents, plus a Commercial referent and a Reporter. One of the Referents is the **Main referent** (usually the first one added): it is the one opportunities and tasks suggest when you pick the registry.',
+            'A registry can have several Referents, plus a Commercial referent, a Commercial partner and a Reporter. One of the Referents is the **Main referent** (usually the first one added): it is the one opportunities and tasks suggest when you pick the registry.',
             'Supervisor and Account managers are QNet users, not referents.',
             'Every Company Site belongs to a Company; Operational Sites are independent and are chosen, for example, on opportunities.',
           ],
@@ -35,7 +35,7 @@ const guide: HelpGuide = {
             'The search finds the name or company name (even a part inside it), the VAT number or tax code, a phone number of the registry (primary or not, with or without spaces) and the name or phone of a linked referent. For VAT number, tax code, phones and referents type the start of the word or number, at least 3 characters: for example "ros" finds the referent Rossi, "02 6885" finds 02 6885 7892.',
             'Use the tabs above the table to split the registries: All, Individuals or Companies. The Type column shows which group each row belongs to.',
             'To narrow the search use the column filters, for example Source, Supplier or Agreement status.',
-            "The Commercial, Supervisor, Reporter and Operators columns show the registry's team: Operators lists the Account managers in their order. You can filter them by name and sort them, except Operators, which can only be filtered.",
+            "The Commercial, Commercial partner, Supervisor, Reporter and Operators columns show the registry's team: Operators lists the Account managers in their order. You can filter them by name and sort them, except Operators, which can only be filtered.",
             'To see the card, open the row Actions menu and choose View.',
           ],
         },
@@ -58,7 +58,7 @@ const guide: HelpGuide = {
           headers: ['Section', 'What it contains'],
           rows: [
             ['Personal details', 'Denomination (companies) or Name and Surname (individuals), tax code, VAT number and, for individuals, date and place of birth.'],
-            ['Relations', 'Source, Business sectors, Commercial referent and Reporter.'],
+            ['Relations', 'Source, Business sectors, Commercial referent, Commercial partner and Reporter.'],
             ['Team', 'Supervisor and Account managers, in order of importance from the top; reorder them with Move up and Move down.'],
             ['Business data', 'VAT group, Supplier, Qualified supplier (suppliers only), Agreement status (In negotiation, Rejected or Agreed), Size class, Employee count and Agreement notes.'],
             ['General notes', 'The yellow box, the same as in Request management (at the top of the registry data on the record view, at the top of the right-hand column when creating): free text (up to 5000 characters) with what whoever opens the registry should read first.'],
@@ -115,7 +115,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Source, Supplier, Convention status, Size class, Commercial, Supervisor, Reporter, Operators) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Source, Supplier, Convention status, Size class, Commercial, Commercial partner, Supervisor, Reporter, Operators) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',
@@ -184,7 +184,7 @@ const guide: HelpGuide = {
           items: [
             'Open the tab of the module you need.',
             'Press New opportunity, New quote, New work order or New task above the table.',
-            "Fill in the form: the opportunity and the task already start on the registry (the opportunity also takes the client's Sales rep, Reporter, Supervisor and Account managers); for the quote and the work order, the opportunity or quote picker offers only the client's ones.",
+            "Fill in the form: the opportunity and the task already start on the registry (the opportunity also takes the client's Sales rep, Commercial partner, Reporter, Supervisor and Account managers); for the quote and the work order, the opportunity or quote picker offers only the client's ones.",
             "Save: the tab's table refreshes.",
           ],
         },
@@ -229,7 +229,7 @@ const guide: HelpGuide = {
             'If Possible duplicate appears, at the top of the right-hand column, check it before continuing.',
             'In Contacts, in the right-hand column, fill in at least the Phone.',
             'Fill in the address with the right Site type; with Add address enter the further sites.',
-            'Open the rows you need: in Relations, if needed, Commercial referent and Reporter; in Team Supervisor and Account managers; in Referents the contact people. Confirm each row with Done.',
+            'Open the rows you need: in Relations, if needed, Commercial referent, Commercial partner and Reporter; in Team Supervisor and Account managers; in Referents the contact people. Confirm each row with Done.',
             'Press Save.',
           ],
         },

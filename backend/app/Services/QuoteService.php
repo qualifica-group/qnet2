@@ -81,6 +81,7 @@ class QuoteService
         'opportunity.productLines.businessFunction',
         'quoteWorkflowStatus.systemStatus',
         'commercial',
+        'commercialPartner',
         'reporter',
         'supervisor',
         // Spec 0087, D-3/T-04: the Offerta's own "Gestori Account"
@@ -323,7 +324,7 @@ class QuoteService
                 $data->costLines,
             );
 
-            if ($data->commercialIdSubmitted || $data->reporterIdSubmitted || $data->supervisorIdSubmitted) {
+            if ($data->commercialIdSubmitted || $data->commercialPartnerIdSubmitted || $data->reporterIdSubmitted || $data->supervisorIdSubmitted) {
                 $quote->offerLines()->get()->each(
                     fn ($line) => $this->commissionWriter->sync($line, null),
                 );
@@ -444,6 +445,9 @@ class QuoteService
         $attributes = $data->attributes();
 
         $attributes['commercial_id'] = $data->commercialIdSubmitted ? $data->commercialId : $opportunity->commercial_id;
+        $attributes['commercial_partner_id'] = $data->commercialPartnerIdSubmitted
+            ? $data->commercialPartnerId
+            : $opportunity->commercial_partner_id;
         $attributes['reporter_id'] = $data->reporterIdSubmitted ? $data->reporterId : $opportunity->reporter_id;
         $attributes['supervisor_id'] = $data->supervisorIdSubmitted
             ? $data->supervisorId

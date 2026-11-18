@@ -66,6 +66,7 @@ trait SummarizesWorkOrderClientInfo
             'phones' => $this->clientContacts($contacts, [ContactTypeEnum::Phone]),
             'referents' => $this->clientReferents($request, $registry),
             'commercial' => ReferentRef::summarize($registry->commercial),
+            'commercial_partner' => ReferentRef::summarize($registry->commercialPartner),
             'sectors' => $registry->sectors->map(static fn (Sector $sector): string => $sector->selectLabel())->values()->all(),
             'comments' => filled($registry->general_notes) ? $registry->general_notes : null,
         ];

@@ -66,7 +66,8 @@ it('200: the response envelope carries {module, categories} with the frozen cate
 
     $categoryKeys = collect($response->json('data.categories'))->pluck('key')->all();
     expect($categoryKeys)->toBe([
-        'quote', 'totals', 'client', 'opportunity', 'referent', 'commercial',
+        // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+        'quote', 'totals', 'client', 'opportunity', 'referent', 'commercial', 'commercial_partner',
         'reporter', 'supervisor', 'company', 'company_site', 'operational_site',
         'custom_fields', 'quote_attributes', 'document',
     ]);

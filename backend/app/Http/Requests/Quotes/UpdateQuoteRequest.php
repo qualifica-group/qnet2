@@ -84,6 +84,7 @@ class UpdateQuoteRequest extends FormRequest
             'quote_system_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quote_system_statuses', 'id'), 'prohibits:quote_workflow_status_id'],
             'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
             'company_id' => ['sometimes', 'nullable', 'integer', Rule::exists('companies', 'id')],

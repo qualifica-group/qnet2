@@ -134,6 +134,7 @@ export const activityLog = {
     size_class: 'Classe dimensionale',
     supervisor_id: 'Supervisore',
     commercial_id: 'Commerciale',
+    commercial_partner_id: 'Partner commerciale',
     reporter_id: 'Segnalatore',
     employee_count: 'Numero dipendenti',
     guard_name: 'Guard',

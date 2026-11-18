@@ -49,6 +49,23 @@ export function QuoteCommercialField({ control, selected }: RelationFieldProps) 
   )
 }
 
+/** "Partner commerciale" (a referent, D-1): same snapshot rule as the Commerciale. */
+export function QuoteCommercialPartnerField({ control, selected }: RelationFieldProps) {
+  const { t } = useTranslation()
+  return (
+    <RelationSelectField
+      control={control}
+      name="commercial_partner_id"
+      metaKey="commercial_partner_id"
+      label={t('quotes.form.commercialPartner')}
+      resource={REFERENTS_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('quotes.form.commercialPartnerSearch')}
+      selected={selected}
+      {...quoteRelationLabels(t)}
+    />
+  )
+}
+
 /** "Supervisore" (a user, spec 0097 rev-2 D-8): same snapshot rule as the Commerciale. */
 export function QuoteSupervisorField({ control, selected }: RelationFieldProps) {
   const { t } = useTranslation()

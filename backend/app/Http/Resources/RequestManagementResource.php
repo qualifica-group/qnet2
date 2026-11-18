@@ -113,6 +113,9 @@ class RequestManagementResource extends JsonResource
             // Segnalatore (it replaced the read-only Opportunity one).
             'commercial_id' => $quote->commercial_id,
             'commercial' => $this->summarizeByName($quote->commercial),
+            // Spec 0417: "Partner commerciale", right after the Commerciale.
+            'commercial_partner_id' => $quote->commercial_partner_id,
+            'commercial_partner' => $this->summarizeByName($quote->commercialPartner),
             // Spec 0086, D-4: the "abbinamento buono" chips, whose origin is
             // the Quote and whose beneficiary is the Segnalatore above — the
             // same SummarizesRewards projection QuoteResource emits, so the

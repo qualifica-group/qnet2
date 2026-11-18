@@ -81,6 +81,7 @@ export function QuoteDetailSections({ quote, editor }: QuoteDetailSectionsProps)
           <QuoteContactsSection
             derived={{ registry: quote.registry ?? null, referent: quote.referent ?? null }}
             commercial={quote.commercial}
+            commercialPartner={quote.commercial_partner}
             reporter={quote.reporter}
             rewards={quote.rewards ?? []}
             form={form}

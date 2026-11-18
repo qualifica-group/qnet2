@@ -32,7 +32,7 @@ final class OpportunityCellWriter
     private const string REGISTRY_FIELD = 'registry_id';
 
     /** The single-id roles an anagrafica hands down to its opportunity (spec 0040 A-5). */
-    private const array INHERITED_ROLE_FIELDS = ['commercial_id', 'reporter_id', 'supervisor_id'];
+    private const array INHERITED_ROLE_FIELDS = ['commercial_id', 'commercial_partner_id', 'reporter_id', 'supervisor_id'];
 
     public function __construct(
         private readonly FormRequestCellValidator $formRequest,

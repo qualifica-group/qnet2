@@ -48,6 +48,7 @@ class ContractService
         'quote.companySite',
         'quote.operationalSite.addresses.city',
         'quote.commercial',
+        'quote.commercialPartner',
         'quote.reporter',
         'quote.supervisor',
         'quote.paymentMethod',

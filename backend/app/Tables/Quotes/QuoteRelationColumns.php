@@ -69,6 +69,7 @@ final class QuoteRelationColumns
     private const array DERIVED_RELATIONS = [
         'opportunity' => ['relation' => 'opportunity', 'table' => 'opportunities', 'fk' => 'opportunity_id'],
         'commercial' => ['relation' => 'commercial', 'table' => 'referents', 'fk' => 'commercial_id'],
+        'commercial_partner' => ['relation' => 'commercialPartner', 'table' => 'referents', 'fk' => 'commercial_partner_id'],
         'reporter' => ['relation' => 'reporter', 'table' => 'referents', 'fk' => 'reporter_id'],
         'supervisor' => ['relation' => 'supervisor', 'table' => 'users', 'fk' => 'supervisor_id'],
         'company' => ['relation' => 'company', 'table' => 'companies', 'fk' => 'company_id', 'label' => 'denomination'],

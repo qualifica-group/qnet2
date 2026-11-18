@@ -47,7 +47,7 @@ export const commissionConfigurations = {
     impactError: "Regola salvata, ma non è stato possibile verificare l'impatto sulle offerte.",
   },
   options: {
-    recipient_role: { COMMERCIAL: 'Commerciale', REPORTER: 'Segnalatore', SUPERVISOR: 'Supervisore', SUPPLIER: 'Fornitore' },
+    recipient_role: { COMMERCIAL: 'Commerciale', COMMERCIAL_PARTNER: 'Partner commerciale', REPORTER: 'Segnalatore', SUPERVISOR: 'Supervisore', SUPPLIER: 'Fornitore' },
     application_scope: { PRODUCT_CATEGORY: 'Categoria prodotto', PRODUCT: 'Prodotto', RECIPIENT: 'Destinatario specifico' },
     commission_type: { FIXED_AMOUNT: 'Importo fisso', PERCENTAGE: 'Percentuale' },
     status: { ACTIVE: 'Attiva', SUSPENDED: 'Sospesa' },

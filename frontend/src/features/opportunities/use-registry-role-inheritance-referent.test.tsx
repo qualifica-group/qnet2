@@ -18,6 +18,7 @@ function metaOf(primaryReferentId: number | null) {
   return {
     is_qualified_supplier: false,
     commercial: null,
+    commercial_partner: null,
     reporter: null,
     supervisor: null,
     managers: [],

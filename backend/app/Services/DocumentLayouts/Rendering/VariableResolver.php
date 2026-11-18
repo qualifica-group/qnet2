@@ -52,6 +52,7 @@ final class VariableResolver
             'client' => $this->partyFields->client($key, $quote, $actor) ?? '',
             'referent' => $this->partyFields->referent($key, $quote) ?? '',
             'commercial' => $this->partyFields->commercial($key, $quote) ?? '',
+            'commercial_partner' => $this->partyFields->commercialPartner($key, $quote) ?? '',
             'reporter' => $this->partyFields->reporter($key, $quote) ?? '',
             'supervisor' => $this->partyFields->supervisor($key, $quote) ?? '',
             'company' => $this->organizationFields->company($key, $quote) ?? '',

@@ -87,7 +87,7 @@ if (! function_exists('makeLabelledContract')) {
 // AC-029 — declared columns, in the frozen order
 // ---------------------------------------------------------------------------
 
-it('AC-029: GET /api/tables/contracts/columns declares the 20 columns in the exact frozen order', function () {
+it('AC-029: GET /api/tables/contracts/columns declares the 21 columns in the exact frozen order', function () {
     $actor = contractTableUserWith(['viewAny']);
     Sanctum::actingAs($actor);
 
@@ -101,7 +101,8 @@ it('AC-029: GET /api/tables/contracts/columns declares the 20 columns in the exa
     $ids = collect($data['columns'])->pluck('id')->all();
 
     expect($ids)->toBe([
-        'id', 'code', 'title', 'registry', 'opportunity', 'offer_lines', 'root_categories', 'commercial', 'reporter',
+        // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+        'id', 'code', 'title', 'registry', 'opportunity', 'offer_lines', 'root_categories', 'commercial', 'commercial_partner', 'reporter',
         'supervisor', 'managers', 'contract_status', 'quote_date', 'accepted_at', 'validated_at',
         'renewal_date', 'expiry_date', 'terminated_at', 'revenue_net', 'revenue_vat',
         'revenue_gross', 'alert',
@@ -295,7 +296,8 @@ it('hides commercial/supervisor/managers from the DEFAULT layout, leaving every 
     $columns = collect($this->getJson('/api/tables/contracts/columns')->assertOk()->json('data.columns'));
 
     // `id` is the generic engine's own hidden row-key column, not a catalogue entry.
-    expect($columns->reject->visible->pluck('id')->all())->toBe(['id', 'commercial', 'supervisor', 'managers']);
+    // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+    expect($columns->reject->visible->pluck('id')->all())->toBe(['id', 'commercial', 'commercial_partner', 'supervisor', 'managers']);
 });
 
 it('declares `managers` beside the supervisor: filterable as a set, never sortable', function () {

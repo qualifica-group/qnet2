@@ -125,6 +125,8 @@ export interface OpportunityDetail {
   referent: ReferentRef | null
   commercial_id: number | null
   commercial: OpportunityRelationRef | null
+  commercial_partner_id: number | null
+  commercial_partner: OpportunityRelationRef | null
   reporter_id: number | null
   reporter: OpportunityRelationRef | null
   supervisor_id: number | null
@@ -239,6 +241,7 @@ export interface CreateOpportunityPayload {
   registry_id?: number
   referent_id?: number | null
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   reporter_id?: number | null
   supervisor_id: number
   /** Spec 0056: facoltativa, never BR-2-locked (no server-side inheritance from another entity). */

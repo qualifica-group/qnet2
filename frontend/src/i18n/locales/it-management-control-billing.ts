@@ -10,7 +10,7 @@ export const billing = {
     title: 'Filtri della fatturazione',
     dateFrom: 'Proforma dal',
     groupBy: 'Raggruppa il da fatturare per',
-    groupBys: { business_function: 'Funzione aziendale', company: 'Società', commercial: 'Commerciale' },
+    groupBys: { business_function: 'Funzione aziendale', company: 'Società', commercial: 'Commerciale', commercial_partner: 'Partner commerciale' },
   },
   totals: {
     title: 'Totali del da fatturare',

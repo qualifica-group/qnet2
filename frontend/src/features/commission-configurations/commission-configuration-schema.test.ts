@@ -83,6 +83,15 @@ describe('commission configuration schema', () => {
     ).toBe(true)
   })
 
+  it('accepts referent and user recipients for a COMMERCIAL_PARTNER rule (spec 0417 AC-024)', () => {
+    for (const recipient_type of ['referent', 'user'] as const) {
+      expect(
+        buildCommissionConfigurationSchema(t).safeParse({ ...valid, recipient_role: 'COMMERCIAL_PARTNER', recipient_type })
+          .success,
+      ).toBe(true)
+    }
+  })
+
   it('rejects a recipient_type outside the role allow-list (AC-008, spec 0090 D-4)', () => {
     const result = buildCommissionConfigurationSchema(t).safeParse({
       ...valid,

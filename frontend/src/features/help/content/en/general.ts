@@ -256,6 +256,7 @@ const guide: HelpGuide = {
             ['Referent', 'A contact person, internal or external, linkable to registries.'],
             ["Referrer", 'The referent who referred the customer; receives any vouchers and commissions.'],
             ['Salesperson', 'The commercial referent of a registry, opportunity or quote.'],
+            ['Commercial partner', 'A second commercial referent, like the Salesperson, with its own commission role.'],
             ['Supervisor / Account managers', 'qnet users who follow the customer, in order of importance.'],
             ['Operational site', "A physical place where the organization works; decides assignments."],
             ['Business function', 'An organizational unit (Business Unit or Business Service) that product categories belong to.'],

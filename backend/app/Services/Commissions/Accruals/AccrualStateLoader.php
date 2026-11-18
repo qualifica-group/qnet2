@@ -24,6 +24,7 @@ final class AccrualStateLoader
     /** SUPPLIER commissions are not agent commissions (D-3). */
     private const array ROLES = [
         CommissionRecipientRole::Commercial,
+        CommissionRecipientRole::CommercialPartner,
         CommissionRecipientRole::Reporter,
         CommissionRecipientRole::Supervisor,
     ];

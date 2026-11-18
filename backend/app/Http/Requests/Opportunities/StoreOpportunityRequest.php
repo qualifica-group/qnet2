@@ -83,6 +83,7 @@ class StoreOpportunityRequest extends FormRequest
             'registry_id' => $this->derivableRule($locked, 'registry_id', table: 'registries'),
             'referent_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             // Spec 0056: a plain, optional relation — never derivable/locked.

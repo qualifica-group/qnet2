@@ -67,6 +67,22 @@ export function RegistryRelationsRecordSection({ values, form, inline }: Registr
           <PersonField person={values.commercial} />
         </RecordInlineField>
         <RecordInlineField
+          field="commercial_partner_id"
+          label={t('registries.form.commercialPartner')}
+          inline={inline}
+          editor={
+            <RegistryReferentRoleField
+              control={control}
+              name="commercial_partner_id"
+              label={t('registries.form.commercialPartner')}
+              placeholder={t('registries.form.commercialPartnerPlaceholder')}
+              selected={values.commercial_partner}
+            />
+          }
+        >
+          <PersonField person={values.commercial_partner} />
+        </RecordInlineField>
+        <RecordInlineField
           field="reporter_id"
           label={t('registries.form.reporter')}
           inline={inline}

@@ -103,6 +103,7 @@ export const opportunityColumnRenderers: TableRendererMap = {
   quote_system_status: (params) => <OpportunityStatusCell {...params} />,
   referent: (params) => <RelationCell {...params} icon={UserRound} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
+  commercial_partner: (params) => <RelationCell {...params} icon={Briefcase} />,
   supervisor: (params) => <UserCell {...params} />,
   managers: (params) => <UserStackCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,

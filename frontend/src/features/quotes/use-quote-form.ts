@@ -34,6 +34,7 @@ const SERVER_ERROR_FIELDS = [
   'quote_system_status_id',
   'note',
   'commercial_id',
+  'commercial_partner_id',
   'reporter_id',
   'supervisor_id',
   'manager_slots',

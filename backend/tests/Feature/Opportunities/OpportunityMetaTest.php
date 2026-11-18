@@ -33,7 +33,8 @@ const OPPORTUNITY_FIELD_KEYS = [
     // spec 0057 D-5).
     'name',
     'registry_id',
-    'referent_id', 'commercial_id', 'reporter_id', 'supervisor_id',
+    // REQUIREMENT CHANGED (spec 0417): partner commerciale
+    'referent_id', 'commercial_id', 'commercial_partner_id', 'reporter_id', 'supervisor_id',
     // REQUIREMENT CHANGED: spec 0332 — `source_id` moved to the Offerta.
     'operational_site_id', 'product_lines', 'products_of_interest', 'manager_slots', 'start_date',
     'estimated_value', 'expected_close_date', 'success_probability',
@@ -74,7 +75,8 @@ it('200: field catalogue has the 16 contract fields, in order (AC-031, spec 0314
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
     expect($keys)->toBe(OPPORTUNITY_FIELD_KEYS)
-        ->and($keys)->toHaveCount(16);
+        // REQUIREMENT CHANGED (spec 0417): partner commerciale adds one field
+        ->and($keys)->toHaveCount(17);
 
     foreach ($response->json('permissions.fields') as $field) {
         expect($field)->toHaveKeys(['visible', 'hidden', 'editable', 'readonly', 'required', 'disabled']);

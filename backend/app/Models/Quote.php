@@ -30,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * by the quote service, recalculated from `quote_lines` on every write —
  * never client input.
  *
- * `commercial_id`/`reporter_id`/`supervisor_id` are a deliberate SNAPSHOT
+ * `commercial_id`/`commercial_partner_id`/`reporter_id`/`supervisor_id` are a deliberate SNAPSHOT
  * (D-3): copied from the Opportunity at creation time by the service, then
  * independently editable — no live read-through, no re-sync when the
  * Opportunity's own values change later.
@@ -115,6 +115,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'follow_up_date',
     'opportunity_id',
     'commercial_id',
+    'commercial_partner_id',
     'reporter_id',
     'supervisor_id',
     'company_id',
@@ -208,6 +209,14 @@ class Quote extends BaseModel
     public function commercial(): BelongsTo
     {
         return $this->belongsTo(Referent::class, 'commercial_id');
+    }
+
+    /**
+     * The snapshot Referent "Partner commerciale" (spec 0417, D-3), via its own FK.
+     */
+    public function commercialPartner(): BelongsTo
+    {
+        return $this->belongsTo(Referent::class, 'commercial_partner_id');
     }
 
     /**

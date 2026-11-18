@@ -40,6 +40,8 @@ class IncomeStatementRequest extends FormRequest
             'work_order_type.*' => [Rule::in(WorkOrderType::values())],
             'commercial_id' => ['sometimes', 'array'],
             'commercial_id.*' => ['integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['sometimes', 'array'],
+            'commercial_partner_id.*' => ['integer', Rule::exists('referents', 'id')],
             'revenue_basis' => ['sometimes', Rule::in(IncomeStatementFilters::REVENUE_BASES)],
             'segment_by' => ['sometimes', Rule::in(IncomeStatementFilters::SEGMENT_BY_OPTIONS)],
         ];
@@ -58,6 +60,7 @@ class IncomeStatementRequest extends FormRequest
             businessFunctionIds: $this->ids($data['business_function_id'] ?? []),
             workOrderTypes: $this->strings($data['work_order_type'] ?? []),
             commercialIds: $this->ids($data['commercial_id'] ?? []),
+            commercialPartnerIds: $this->ids($data['commercial_partner_id'] ?? []),
             revenueBasis: (string) ($data['revenue_basis'] ?? IncomeStatementFilters::BASIS_CONTRACT),
             segmentBy: (string) ($data['segment_by'] ?? IncomeStatementFilters::SEGMENT_NONE),
         );

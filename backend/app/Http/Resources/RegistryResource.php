@@ -51,6 +51,8 @@ class RegistryResource extends JsonResource
             'supervisor' => $this->toPersonRef($this->supervisor),
             'commercial_id' => $this->commercial_id,
             'commercial' => $this->toPersonRef($this->commercial),
+            'commercial_partner_id' => $this->commercial_partner_id,
+            'commercial_partner' => $this->toPersonRef($this->commercialPartner),
             'reporter_id' => $this->reporter_id,
             'reporter' => $this->toPersonRef($this->reporter),
             'vat_group' => $this->vat_group,

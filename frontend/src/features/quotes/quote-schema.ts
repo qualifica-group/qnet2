@@ -268,6 +268,7 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[], oppo
     // update schema, not a field-level rule, because it depends on the options.
     note: z.string().max(INTERNAL_NOTES_MAX_LENGTH, t('quotes.form.noteMax')).nullable(),
     commercial_id: z.number().nullable(),
+    commercial_partner_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
     // Spec 0059 D-3, extended to the Offerta origin (directive 2026-08-31):
     // reward assignments for the Segnalatore, the chips under the reporter

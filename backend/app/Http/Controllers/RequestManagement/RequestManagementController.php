@@ -205,6 +205,8 @@ class RequestManagementController extends BaseApiController
                         // Spec 0357: the Offerta's "Commerciale", next to
                         // the Segnalatore in the attribution block.
                         'commercial_id',
+                        // Spec 0417: the "Partner commerciale" twin.
+                        'commercial_partner_id',
                         // Spec 0097, D-9: the "Supervisore", the Offerta's
                         // commission recipient — an attribution scalar
                         // written like the two above, independent of the

@@ -274,6 +274,7 @@ export interface WorkOrderClientInfo {
   /** Referente 1 (the anagrafica's principale) and Referente 2, at most two. */
   referents: ReferentRef[]
   commercial: ReferentRef | null
+  commercial_partner: ReferentRef | null
   sectors: string[]
   /** The anagrafica's general notes (legacy "Commenti"). */
   comments: string | null

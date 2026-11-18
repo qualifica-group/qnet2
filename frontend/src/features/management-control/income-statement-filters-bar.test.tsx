@@ -43,7 +43,7 @@ describe('IncomeStatementFiltersBar', () => {
 
     expect(screen.getByLabelText('Work orders starting from')).toHaveValue('2026-01-01')
     expect(screen.getByLabelText('to')).toHaveValue('2026-06-30')
-    for (const name of ['Company', 'Company site', 'Operational site', 'Business function', 'Sales representative']) {
+    for (const name of ['Company', 'Company site', 'Operational site', 'Business function', 'Sales representative', 'Commercial partner']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument()
     }
     expect(screen.getByRole('group', { name: 'Work order type' })).toBeInTheDocument()
@@ -70,6 +70,10 @@ describe('IncomeStatementFiltersBar', () => {
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Segmentation' }), { key: 'ArrowDown' })
     fireEvent.click(await screen.findByRole('option', { name: 'Sales representative' }))
     expect(onChange).toHaveBeenLastCalledWith({ ...filters, segmentBy: 'commercial' })
+
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Segmentation' }), { key: 'ArrowDown' })
+    fireEvent.click(await screen.findByRole('option', { name: 'Commercial partner' }))
+    expect(onChange).toHaveBeenLastCalledWith({ ...filters, segmentBy: 'commercial_partner' })
   })
 
   it('AC-016 toggling a work order type calls onChange with the type list', () => {

@@ -114,6 +114,8 @@ class OpportunityResource extends JsonResource
             'referent' => ReferentRef::summarize($this->referent),
             'commercial_id' => $this->commercial_id,
             'commercial' => $this->summarizeByName($this->commercial),
+            'commercial_partner_id' => $this->commercial_partner_id,
+            'commercial_partner' => $this->summarizeByName($this->commercialPartner),
             'reporter_id' => $this->reporter_id,
             'reporter' => $this->summarizeByName($this->reporter),
             'supervisor_id' => $this->supervisor_id,

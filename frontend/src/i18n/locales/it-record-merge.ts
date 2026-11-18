@@ -34,6 +34,7 @@ export const recordMerge = {
       employee_count: 'Numero dipendenti',
       supervisor_id: 'Supervisore',
       commercial_id: 'Commerciale',
+      commercial_partner_id: 'Partner commerciale',
       reporter_id: 'Segnalatore',
       primary_referent_id: 'Referente principale',
       referent_type_id: 'Tipo referente',

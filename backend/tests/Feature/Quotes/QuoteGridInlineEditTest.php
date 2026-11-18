@@ -54,7 +54,8 @@ it('declares every column the form edits as a single field', function () {
     // REQUIREMENT CHANGED: spec 0332 — `source` is an editable relation column.
     // REQUIREMENT CHANGED: spec 0349 — `follow_up_date` is an editable date column.
     expect($editable)->toBe([
-        'commercial', 'company', 'company_site', 'follow_up_date', 'managers', 'operational_site',
+        // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+        'commercial', 'commercial_partner', 'company', 'company_site', 'follow_up_date', 'managers', 'operational_site',
         'quote_system_status', 'reporter', 'source', 'supervisor', 'title',
     ]);
 });

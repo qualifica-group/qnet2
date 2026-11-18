@@ -40,6 +40,7 @@ const COMMERCIAL_SYSTEM_DEFAULT: QuoteLineCommission = {
 
 const ALL_ROLES_PICKED: QuoteCommissionRecipientMap = {
   COMMERCIAL: { type: 'referent', id: 9, name: 'Mario Rossi' },
+  COMMERCIAL_PARTNER: { type: 'referent', id: 14, name: 'Lia Verdi' },
   REPORTER: { type: 'referent', id: 11, name: 'Elio Fabbri' },
   SUPERVISOR: { type: 'user', id: 12, name: 'Ivo Bianchi' },
   SUPPLIER: { type: 'registry', id: 13, name: 'ACME Spa' },
@@ -65,7 +66,7 @@ const permissions: ResourcePermissions = {
   actions: {},
 }
 
-const COMMISSION_CONTEXT = { commercialId: 9, reporterId: 11, supervisorId: 12 }
+const COMMISSION_CONTEXT = { commercialId: 9, commercialPartnerId: 14, reporterId: 11, supervisorId: 12 }
 
 function renderDialog(
   children: ReactNode,
@@ -111,7 +112,7 @@ describe('QuoteCommissionsDialog', () => {
         onSave={onSave}
       />,
     )
-    expect(screen.getAllByText('No commission for this role.')).toHaveLength(4)
+    expect(screen.getAllByText('No commission for this role.')).toHaveLength(5) // REQUIREMENT CHANGED (spec 0417): partner commerciale
     await waitFor(() =>
       expect(screen.getAllByRole('button', { name: 'Add manual commission' })[0]).toBeEnabled(),
     )
@@ -223,7 +224,35 @@ describe('QuoteCommissionsDialog', () => {
         screen.getAllByText('No one is selected on the quote for this role, so it cannot be commissioned.'),
       ).toHaveLength(2),
     )
-    expect(screen.getAllByRole('button', { name: 'Add manual commission' })).toHaveLength(2)
+    // REQUIREMENT CHANGED (spec 0417): partner commerciale
+    expect(screen.getAllByRole('button', { name: 'Add manual commission' })).toHaveLength(3)
+  })
+
+  // Spec 0417 AC-023
+  it('shows the Commercial partner role locked to the quote partner, unavailable without one', async () => {
+    vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue({ ...ALL_ROLES_PICKED, COMMERCIAL_PARTNER: null })
+    renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        commissionContext={{ ...COMMISSION_CONTEXT, commercialPartnerId: null }}
+        quantity={1}
+        unitPrice={100}
+        commissions={[]}
+        disabled={false}
+        onSave={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByText('Commercial partner')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('No one is selected on the quote for this role, so it cannot be commissioned.'),
+      ).toHaveLength(1),
+    )
   })
 
   it('blocks the save when a drafted role lost its recipient upstream', async () => {
@@ -298,7 +327,7 @@ describe('QuoteCommissionsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove commission' }))
     expect(confirm).toHaveBeenCalled()
     await waitFor(() => {
-      expect(screen.getAllByText('No commission for this role.')).toHaveLength(4)
+      expect(screen.getAllByText('No commission for this role.')).toHaveLength(5) // REQUIREMENT CHANGED (spec 0417): partner commerciale
     })
   })
 
@@ -427,13 +456,14 @@ describe('QuoteCommissionsDialog', () => {
       confirm,
     )
 
+    // REQUIREMENT CHANGED (spec 0417): partner commerciale shifts the Supervisor row to index 3
     await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: 'Add manual commission' })[2]).toBeEnabled(),
+      expect(screen.getAllByRole('button', { name: 'Add manual commission' })[3]).toBeEnabled(),
     )
-    fireEvent.click(screen.getAllByRole('button', { name: 'Add manual commission' })[2])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add manual commission' })[3])
     fireEvent.click(screen.getByRole('button', { name: 'Remove commission' }))
     expect(confirm).not.toHaveBeenCalled()
-    expect(screen.getAllByText('No commission for this role.')).toHaveLength(4)
+    expect(screen.getAllByText('No commission for this role.')).toHaveLength(5) // REQUIREMENT CHANGED (spec 0417): partner commerciale
   })
 
   /** User directive 2026-10-07: the rules' own commission stays visible beside a manual override. */
@@ -470,7 +500,7 @@ describe('QuoteCommissionsDialog', () => {
     )
 
     expect(await screen.findByText(/5\.00%/)).toBeInTheDocument()
-    expect(screen.getAllByText('The Commission Configurator grants no commission for this role.')).toHaveLength(3)
+    expect(screen.getAllByText('The Commission Configurator grants no commission for this role.')).toHaveLength(4) // REQUIREMENT CHANGED (spec 0417): partner commerciale
 
     fireEvent.click(screen.getByRole('button', { name: 'Apply system calculation' }))
 
@@ -574,9 +604,10 @@ describe('QuoteCommissionsDialog Supplier direction (spec 0306)', () => {
   it('makes the direction mandatory on a manual Supplier commission and saves the chosen one', async () => {
     const onSave = vi.fn()
     renderSupplierDialog({ onSave })
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Add manual commission' })[3]).toBeEnabled())
+    // REQUIREMENT CHANGED (spec 0417): partner commerciale shifts the Supplier row to index 4
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Add manual commission' })[4]).toBeEnabled())
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Add manual commission' })[3])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add manual commission' })[4])
 
     expect(screen.getByRole('alert')).toHaveTextContent('Choose the Supplier commission direction')
     expect(screen.getByRole('button', { name: 'Save commissions' })).toBeDisabled()

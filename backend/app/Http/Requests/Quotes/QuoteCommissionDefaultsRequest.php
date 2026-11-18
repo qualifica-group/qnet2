@@ -21,6 +21,7 @@ class QuoteCommissionDefaultsRequest extends FormRequest
             // Negative on a discount row (AC-034 rev.): accepted, the DTO clamps it.
             'line_net_amount' => ['required', 'numeric', 'decimal:0,2'],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'reference_date' => ['nullable', 'date'],

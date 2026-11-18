@@ -1,6 +1,6 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 
-export const COMMISSION_ROLES = ['COMMERCIAL', 'REPORTER', 'SUPERVISOR', 'SUPPLIER'] as const
+export const COMMISSION_ROLES = ['COMMERCIAL', 'COMMERCIAL_PARTNER', 'REPORTER', 'SUPERVISOR', 'SUPPLIER'] as const
 export const COMMISSION_SCOPES = ['PRODUCT_CATEGORY', 'PRODUCT', 'RECIPIENT'] as const
 export const COMMISSION_TYPES = ['FIXED_AMOUNT', 'PERCENTAGE'] as const
 export const COMMISSION_STATUSES = ['ACTIVE', 'SUSPENDED'] as const
@@ -29,6 +29,7 @@ export const COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES: Record<
   readonly CommissionRecipientType[]
 > = {
   COMMERCIAL: ['referent', 'user'],
+  COMMERCIAL_PARTNER: ['referent', 'user'],
   REPORTER: ['referent', 'user'],
   SUPERVISOR: ['user', 'referent'],
   SUPPLIER: ['registry'],

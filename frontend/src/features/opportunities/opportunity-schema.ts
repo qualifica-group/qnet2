@@ -64,6 +64,7 @@ function baseFields(t: TFunction) {
     // Spec 0043 D-3: the opportunity status is a mandatory FK, mirrors registry_id.
     referent_id: z.number().nullable(),
     commercial_id: z.number().nullable(),
+    commercial_partner_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
     supervisor_id: z.number().nullable(),
     // Spec 0056: facoltativa, never a submit-blocking requirement — no

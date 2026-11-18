@@ -59,6 +59,7 @@ function contract(overrides: Partial<ContractDetailWithPermissions> = {}): Contr
     company_site: null,
     operational_site: null,
     commercial: null,
+    commercial_partner: null,
     reporter: null,
     supervisor: { id: 50, name: 'Paolo Blu' },
     payment_method: { id: 7, name: 'Bonifico 30 gg' },

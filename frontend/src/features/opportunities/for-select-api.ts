@@ -18,6 +18,7 @@ export const OPPORTUNITIES_FOR_SELECT_RESOURCE = 'opportunities'
  */
 export interface OpportunityForSelectMeta {
   commercial: RelationFieldRef | null
+  commercial_partner: RelationFieldRef | null
   reporter: RelationFieldRef | null
   supervisor: RelationFieldRef | null
   operational_site: { id: number; label: string } | null
@@ -27,8 +28,8 @@ export interface OpportunityForSelectMeta {
   managers: OpportunityManagerRef[]
 }
 
-/** The three role keys of `OpportunityForSelectMeta` — the `{id, name}` refs a role field can hydrate from. */
-export type OpportunityForSelectRoleKey = 'commercial' | 'reporter' | 'supervisor'
+/** The role keys of `OpportunityForSelectMeta` — the `{id, name}` refs a role field can hydrate from. */
+export type OpportunityForSelectRoleKey = 'commercial' | 'commercial_partner' | 'reporter' | 'supervisor'
 
 /** A single opportunity option as returned by `GET /api/opportunities/for-select`. */
 export interface OpportunityForSelectItem extends ForSelectItem {

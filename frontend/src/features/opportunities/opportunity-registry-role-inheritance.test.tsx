@@ -114,6 +114,7 @@ beforeEach(() => {
         label: 'Acme S.p.A.',
         meta: {
           commercial: { id: 71, name: 'Sara Conti' },
+          commercial_partner: { id: 72, name: 'Paolo Neri' },
           reporter: { id: 81, name: 'Elio Fabbri' },
           supervisor: { id: 61, name: 'Ivo Bianchi' },
           // A-5: account managers inherited into manager_slots (gap-aware by position).
@@ -128,7 +129,7 @@ beforeEach(() => {
       return hydratedRegistryPage({
         id: TEST_REGISTRY_WITHOUT_DEFAULTS,
         label: 'Beta Srl',
-        meta: { commercial: null, reporter: null, supervisor: null, managers: [] },
+        meta: { commercial: null, commercial_partner: null, reporter: null, supervisor: null, managers: [] },
       })
     }
     return resolveForSelectLabels(resource, params)
@@ -254,6 +255,33 @@ describe('OpportunityFormBody — referent scoping + free commercial/reporter (A
     expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('')
     expect(screen.getByTestId('value-Account manager 3')).toHaveTextContent('')
     expect(screen.getByTestId('value-Account manager 4')).toHaveTextContent('')
+  })
+})
+
+describe('OpportunityFormBody — commercial partner inheritance (spec 0417 AC-021)', () => {
+  it('shows the Commercial partner row right after the Commerciale and inherits the anagrafica partner', async () => {
+    await renderCreateForm()
+
+    const commercial = screen.getByRole('button', { name: `Edit ${ROW.commercial}` })
+    const partner = screen.getByRole('button', { name: `Edit ${ROW.commercialPartner}` })
+    expect(commercial.compareDocumentPosition(partner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    pickRegistry(TEST_REGISTRY_WITH_DEFAULTS)
+    applyRow()
+
+    expect(await screen.findByRole('link', { name: /Paolo Neri/ })).toBeInTheDocument()
+  })
+
+  it('asks before replacing a partner the user entered and keeps it on "Keep mine"', async () => {
+    await renderCreateForm()
+    pickIntoRow(ROW.commercialPartner, 'Commercial partner')
+
+    pickRegistry(TEST_REGISTRY_WITH_DEFAULTS)
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep mine' }))
+    applyRow()
+
+    openRow(ROW.commercialPartner)
+    expect(screen.getByTestId('value-Commercial partner')).toHaveTextContent('1')
   })
 })
 

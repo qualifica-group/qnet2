@@ -22,7 +22,7 @@ import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
  */
 
 /** The four commission roles of the persisted summary (D-9), in the order the summary card lists them. */
-const COMMISSION_ROLES = ['commercial', 'reporter', 'supervisor', 'supplier'] as const
+const COMMISSION_ROLES = ['commercial', 'commercial_partner', 'reporter', 'supervisor', 'supplier'] as const
 
 interface QuoteDetailHeaderProps {
   quote: QuoteDetailWithPermissions

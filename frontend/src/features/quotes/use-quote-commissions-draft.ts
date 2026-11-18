@@ -93,6 +93,7 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
     product_id: input.productId ?? 0,
     supplier_id: input.supplierId ?? null,
     commercial_id: input.commissionContext?.commercialId ?? null,
+    commercial_partner_id: input.commissionContext?.commercialPartnerId ?? null,
     reporter_id: input.commissionContext?.reporterId ?? null,
     supervisor_id: input.commissionContext?.supervisorId ?? null,
   }

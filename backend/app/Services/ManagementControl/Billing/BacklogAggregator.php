@@ -76,9 +76,11 @@ final class BacklogAggregator
         $query = WorkOrderReferenceQuote::join(DB::table('work_orders'))
             ->leftJoin('companies', 'companies.id', '=', 'quotes.company_id')
             ->leftJoin('referents', 'referents.id', '=', 'quotes.commercial_id')
+            // Spec 0417, D-6: second join on the same table, hence the alias.
+            ->leftJoin('referents as commercial_partners', 'commercial_partners.id', '=', 'quotes.commercial_partner_id')
             ->where('work_orders.is_force_closed', false)
             ->selectRaw(
-                'work_orders.id, quotes.company_id, companies.denomination AS company_name, quotes.commercial_id, referents.name AS commercial_name, CASE '
+                'work_orders.id, quotes.company_id, companies.denomination AS company_name, quotes.commercial_id, referents.name AS commercial_name, quotes.commercial_partner_id, commercial_partners.name AS commercial_partner_name, CASE '
                 .implode(' ', $cases).' END AS age_bucket',
                 $bindings,
             );
@@ -96,6 +98,7 @@ final class BacklogAggregator
         return match ($groupBy) {
             BillingFilters::GROUP_COMPANY => $this->bySimpleDimension($workOrders, $collected['figures'], 'company_id', 'company_name'),
             BillingFilters::GROUP_COMMERCIAL => $this->bySimpleDimension($workOrders, $collected['figures'], 'commercial_id', 'commercial_name'),
+            BillingFilters::GROUP_COMMERCIAL_PARTNER => $this->bySimpleDimension($workOrders, $collected['figures'], 'commercial_partner_id', 'commercial_partner_name'),
             default => $this->byFunction($workOrders, $collected),
         };
     }

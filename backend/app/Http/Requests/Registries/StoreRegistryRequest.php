@@ -98,6 +98,7 @@ class StoreRegistryRequest extends FormRequest
             // stay external referents.
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'vat_group' => ['nullable', 'string', 'max:191'],
             'is_supplier' => ['required', 'boolean'],

@@ -120,7 +120,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // Spec 0389 rev.2: opportunities whose categories are all reserved to Gestione Richieste are not listed.
         $query = UsageAreaRowFilter::apply(OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user()), 'opportunities.id', CategoryUsageArea::Opportunities)
             ->with([
-                'registry', 'referent', 'commercial', 'supervisor.avatar',
+                'registry', 'referent', 'commercial', 'commercialPartner', 'supervisor.avatar',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
                 // Spec 0082: the computed `status` cell — eager-loaded so the
                 // resolver stays query-free across the page (AC-007).
@@ -232,6 +232,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             'registry' => $this->summarize($row->registry),
             'referent' => $this->summarize($row->referent),
             'commercial' => $this->summarize($row->commercial),
+            'commercial_partner' => $this->summarize($row->commercialPartner),
             'supervisor' => $this->userSummary($row->supervisor),
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),

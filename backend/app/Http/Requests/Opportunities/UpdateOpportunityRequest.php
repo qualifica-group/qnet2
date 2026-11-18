@@ -82,6 +82,7 @@ class UpdateOpportunityRequest extends FormRequest
             'registry_id' => $this->lockableRule($locked, 'registry_id', 'registries'),
             'referent_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
             // Spec 0056: a plain, optional relation — never derivable/locked.

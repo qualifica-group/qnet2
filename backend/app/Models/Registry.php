@@ -43,6 +43,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'size_class',
     'supervisor_id',
     'commercial_id',
+    'commercial_partner_id',
     'reporter_id',
     'primary_referent_id',
     'employee_count',
@@ -87,6 +88,12 @@ class Registry extends BaseModel
     public function commercial(): BelongsTo
     {
         return $this->belongsTo(Referent::class, 'commercial_id');
+    }
+
+    /** "Partner commerciale" (spec 0417): a second commercial Referent, same role as `commercial`. */
+    public function commercialPartner(): BelongsTo
+    {
+        return $this->belongsTo(Referent::class, 'commercial_partner_id');
     }
 
     public function reporter(): BelongsTo

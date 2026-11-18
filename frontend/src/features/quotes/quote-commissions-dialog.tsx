@@ -10,7 +10,7 @@ import { useQuoteCommissionsDraft } from './use-quote-commissions-draft'
 import { useQuoteCostsVisible } from './use-quote-costs-visible'
 import type { QuoteCommissionContext, QuoteLineCommissionInput } from './types'
 
-const ROLES: CommissionRole[] = ['COMMERCIAL', 'REPORTER', 'SUPERVISOR', 'SUPPLIER']
+const ROLES: CommissionRole[] = ['COMMERCIAL', 'COMMERCIAL_PARTNER', 'REPORTER', 'SUPERVISOR', 'SUPPLIER']
 
 interface Props {
   open: boolean

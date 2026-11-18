@@ -14,6 +14,7 @@ export const opportunities = {
     systemStatus: 'System status',
     referent: 'Contact',
     commercial: 'Sales rep',
+    commercial_partner: 'Commercial partner',
     supervisor: 'Supervisor',
     managers: 'Account managers',
     operationalSite: 'Operational site',
@@ -37,6 +38,7 @@ export const opportunities = {
     registry: 'Registry',
     referent: 'Contact',
     commercial: 'Sales rep',
+    commercial_partner: 'Commercial partner',
     supervisor: 'Supervisor',
     managers: 'Account managers',
     operationalSite: 'Operational site',
@@ -108,6 +110,8 @@ export const opportunities = {
     referentSearch: 'Search contacts…',
     commercial: 'Sales rep',
     commercialSearch: 'Search sales reps…',
+    commercialPartner: 'Commercial partner',
+    commercialPartnerSearch: 'Search a commercial partner',
     reporter: 'Reporter',
     reporterSearch: 'Search reporters…',
     contactsRecap: 'Primary contacts',
@@ -139,7 +143,7 @@ export const opportunities = {
     registryRolesConfirm: {
       title: "Replace the roles with the registry's?",
       description:
-        "The Sales rep, Reporter, Supervisor or Account managers you entered differ from the selected registry's. Replacing them fills the fields with the registry's values (empty if it has none).",
+        "The Sales rep, Commercial partner, Reporter, Supervisor or Account managers you entered differ from the selected registry's. Replacing them fills the fields with the registry's values (empty if it has none).",
       replace: 'Replace',
       keep: 'Keep mine',
     },

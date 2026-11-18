@@ -28,7 +28,7 @@ function AlertCell({ value }: ICellRendererParams) {
  * quotes grid matches every other module (relation + icon, colored status
  * pill, money, avatar). `title` falls back to the AG Grid default text cell;
  * `code` renders as a compact monospace badge (mirrors `projects`/`products`);
- * `opportunity`/`commercial`/`reporter` are `{id, name}` relations (D-3:
+ * `opportunity`/`commercial`/`commercial_partner`/`reporter` are `{id, name}` relations (D-3:
  * commercial/reporter are a snapshot FK to `referents`, like on Opportunities);
  * `supervisor` is a `users` FK, rendered as a person avatar+name (mirrors
  * `opportunityColumnRenderers.supervisor`); `revenue_net`/`cost_net`/
@@ -54,6 +54,7 @@ export const quoteColumnRenderers: TableRendererMap = {
   // No longer an Offerte column (spec 0404): the agent sales report grid reuses this renderer for its working-status column.
   quote_workflow_status: (params) => <StatusBadgeCell {...params} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
+  commercial_partner: (params) => <RelationCell {...params} icon={Handshake} />,
   reporter: (params) => <RelationCell {...params} icon={UserRound} />,
   supervisor: (params) => <UserCell {...params} />,
   managers: (params) => <UserStackCell {...params} />,

@@ -256,6 +256,7 @@ const guide: HelpGuide = {
             ['Referente', 'Una persona di contatto, interna o esterna, collegabile alle anagrafiche.'],
             ['Segnalatore', 'Il referente che ha segnalato il cliente; riceve eventuali buoni e commissioni.'],
             ['Commerciale', 'Il referente commerciale di anagrafica, opportunità o offerta.'],
+            ['Partner commerciale', 'Un secondo referente commerciale, come il Commerciale, con un proprio ruolo provvigionale.'],
             ['Supervisore / Gestori account', 'Utenti QNet che seguono il cliente, in ordine di importanza.'],
             ['Sede operativa', 'Luogo fisico in cui l’organizzazione lavora; decide le assegnazioni.'],
             ['Funzione aziendale', 'Unità dell’organizzazione (Business Unit o Business Service) a cui appartengono le categorie prodotto.'],

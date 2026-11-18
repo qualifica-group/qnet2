@@ -411,6 +411,7 @@ describe('WorkOrderDetailView — related records', () => {
             phones: [],
             referents: [],
             commercial: null,
+            commercial_partner: null,
             sectors: [],
             comments: null,
           },

@@ -102,6 +102,8 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // "Commerciale" (spec 0357): the Offerta's commercial Referent,
             // next to the Segnalatore and gated on the same terms.
             new FieldDefinition('commercial_id', 'select'),
+            // "Partner commerciale" (spec 0417): same terms as the Commerciale.
+            new FieldDefinition('commercial_partner_id', 'select'),
             // "Supervisore" (spec 0097, D-9): the Offerta's commission
             // recipient, editable from this panel again — see the class
             // docblock for why that reverses spec 0087 and how narrowly.
@@ -195,6 +197,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'source_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commercial_partner_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0097, D-9: same ceiling QuotesAuthorization gives its own
             // `supervisor_id` — the two forms gate the identical field on
             // identical terms, no extra ability on top.

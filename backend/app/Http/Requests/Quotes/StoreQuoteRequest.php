@@ -91,6 +91,7 @@ class StoreQuoteRequest extends FormRequest
             // demands. Same bound as StoreNoteRequest's `body`.
             'note' => ['nullable', 'string', 'max:5000'],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'company_id' => ['nullable', 'integer', Rule::exists('companies', 'id')],

@@ -18,7 +18,19 @@ describe('commission calculator', () => {
       quantity: 2,
       unit_price: 100,
       commissions: [{ recipient_role: 'COMMERCIAL', commission_type: 'PERCENTAGE', value: 5 }],
-    }])).toEqual({ commercial: 10, reporter: 0, supervisor: 0, supplier: 0 })
+    }])).toEqual({ commercial: 10, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 0 })
+  })
+
+  // Spec 0417 AC-023
+  it('sums the Commercial partner into the totals and the live margin deductions', () => {
+    const lines = [{
+      quantity: 1,
+      unit_price: 100,
+      commissions: [{ recipient_role: 'COMMERCIAL_PARTNER' as const, commission_type: 'PERCENTAGE' as const, value: 7 }],
+    }]
+
+    expect(calculateCommissionTotals(lines).commercial_partner).toBe(7)
+    expect(sumCommissionTotals({ commercial: 0, commercial_partner: 7, reporter: 0, supervisor: 0, supplier: 0 })).toBe(7)
   })
 
   /**
@@ -86,6 +98,6 @@ describe('commission calculator', () => {
   })
 
   it('sums every role total', () => {
-    expect(sumCommissionTotals({ commercial: 10, reporter: 5, supervisor: 0, supplier: 2.5 })).toBe(17.5)
+    expect(sumCommissionTotals({ commercial: 10, commercial_partner: 0, reporter: 5, supervisor: 0, supplier: 2.5 })).toBe(17.5)
   })
 })

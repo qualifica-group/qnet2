@@ -69,6 +69,8 @@ function original(
     supervisor: { id: 40, name: 'Supervisor A' },
     commercial_id: null,
     commercial: null,
+    commercial_partner_id: null,
+    commercial_partner: null,
     reporter_id: null,
     reporter: null,
     vat_group: 'Group A',
@@ -98,6 +100,7 @@ const formValues: RegistryFormValues = {
   manager_slots: [30],
   supervisor_id: 40,
   commercial_id: null,
+  commercial_partner_id: null,
   reporter_id: null,
   vat_group: 'Group A',
   is_supplier: false,
@@ -191,6 +194,16 @@ describe('buildUpdatePayload', () => {
     expect(buildUpdatePayload({ ...formValues, general_notes: '' }, original(), individualDraft())).toEqual({
       general_notes: null,
     })
+  })
+
+  it('carries commercial_partner_id on create and sends it on update only when changed (spec 0417 AC-020)', () => {
+    expect(buildCreatePayload({ ...formValues, commercial_partner_id: 9 }, individualDraft()).commercial_partner_id).toBe(9)
+    expect(buildUpdatePayload({ ...formValues, commercial_partner_id: 9 }, original(), individualDraft())).toEqual({
+      commercial_partner_id: 9,
+    })
+    expect(
+      buildUpdatePayload(formValues, original({ commercial_partner_id: 9 }), individualDraft()),
+    ).toEqual({ commercial_partner_id: null })
   })
 
   it('sends supervisor_id: null when the relation is cleared', () => {

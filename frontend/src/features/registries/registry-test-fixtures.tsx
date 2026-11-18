@@ -97,6 +97,8 @@ export function registryFixture(overrides: Partial<RegistryDetailWithPermissions
     supervisor: null,
     commercial_id: null,
     commercial: null,
+    commercial_partner_id: null,
+    commercial_partner: null,
     reporter_id: null,
     reporter: null,
     vat_group: null,

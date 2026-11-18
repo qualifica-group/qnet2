@@ -109,6 +109,7 @@ class WorkOrderResource extends JsonResource
             // commessa has no `quote`, so these are null / [].
             'referent' => $this->summarizeReferent($request),
             'commercial' => $this->summarizeByName($this->quote?->commercial),
+            'commercial_partner' => $this->summarizeByName($this->quote?->commercialPartner),
             'reporter' => $this->summarizeByName($this->quote?->reporter),
             'source' => $this->summarizeByName($this->quote?->source),
             'product_lines' => $this->summarizeProductLines($this->quote?->opportunity?->productLines ?? []),

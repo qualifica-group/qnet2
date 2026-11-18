@@ -72,6 +72,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             // Spec 0404 A-D7: what Offerte shows and edits.
             new FieldDefinition('quote_system_status_id', 'select'),
             new FieldDefinition('commercial_id', 'select'),
+            new FieldDefinition('commercial_partner_id', 'select'),
             new FieldDefinition('reporter_id', 'select'),
             new FieldDefinition('supervisor_id', 'select'),
             new FieldDefinition('company_id', 'select'),
@@ -125,6 +126,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'quote_system_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commercial_partner_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'company_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

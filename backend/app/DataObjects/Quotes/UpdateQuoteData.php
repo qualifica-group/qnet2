@@ -61,6 +61,8 @@ final readonly class UpdateQuoteData
         public ?string $note = null,
         public ?int $commercialId = null,
         public bool $commercialIdSubmitted = false,
+        public ?int $commercialPartnerId = null,
+        public bool $commercialPartnerIdSubmitted = false,
         public ?int $reporterId = null,
         public bool $reporterIdSubmitted = false,
         public ?int $supervisorId = null,
@@ -133,6 +135,8 @@ final readonly class UpdateQuoteData
             note: array_key_exists('note', $data) ? $data['note'] : null,
             commercialId: self::nullableInt($data, 'commercial_id'),
             commercialIdSubmitted: array_key_exists('commercial_id', $data),
+            commercialPartnerId: self::nullableInt($data, 'commercial_partner_id'),
+            commercialPartnerIdSubmitted: array_key_exists('commercial_partner_id', $data),
             reporterId: self::nullableInt($data, 'reporter_id'),
             reporterIdSubmitted: array_key_exists('reporter_id', $data),
             supervisorId: self::nullableInt($data, 'supervisor_id'),
@@ -241,6 +245,10 @@ final readonly class UpdateQuoteData
 
         if ($this->commercialIdSubmitted) {
             $attributes['commercial_id'] = $this->commercialId;
+        }
+
+        if ($this->commercialPartnerIdSubmitted) {
+            $attributes['commercial_partner_id'] = $this->commercialPartnerId;
         }
 
         if ($this->reporterIdSubmitted) {

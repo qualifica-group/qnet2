@@ -40,6 +40,7 @@ final class QuoteRenderSubject implements DocumentRenderSubject
         'opportunity.referent.personalData.contacts',
         'opportunity.referent.referentType',
         'commercial.personalData.contacts',
+        'commercialPartner.personalData.contacts',
         'reporter.personalData.contacts',
         'supervisor',
         'company.addresses.city',

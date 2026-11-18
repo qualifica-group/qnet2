@@ -82,6 +82,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
       phones: [],
       referents: [{ id: 15, name: 'Mario Bianchi', referent_type: { id: 3, name: 'Amministratore' } }],
       commercial: { id: 30, name: 'Luca Verdi' },
+      commercial_partner: { id: 31, name: 'Anna Partner' },
       sectors: ['EA 28 — Costruzioni'],
       comments: null,
     },

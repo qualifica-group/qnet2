@@ -62,6 +62,7 @@ export function RequestCreateAttributionSection({
   const sourceQuickCreate = useQuickCreateAction(SOURCES_FOR_SELECT_RESOURCE)
   const reporterQuickCreate = useQuickCreateAction(REFERENTS_FOR_SELECT_RESOURCE)
   const commercialQuickCreate = useQuickCreateAction(REFERENTS_FOR_SELECT_RESOURCE)
+  const commercialPartnerQuickCreate = useQuickCreateAction(REFERENTS_FOR_SELECT_RESOURCE)
 
   const selectLabels = {
     placeholder: t('requestManagement.form.create.attribution.selectPlaceholder'),
@@ -154,6 +155,31 @@ export function RequestCreateAttributionSection({
                     ...selectLabels,
                     searchPlaceholder: t('requestManagement.form.create.attribution.commercialSearch'),
                     triggerLabel: t('requestManagement.form.create.attribution.commercial'),
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="commercial_partner_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('requestManagement.form.create.attribution.commercialPartner')}</FormLabel>
+              <FormControl>
+                <AsyncPaginatedSelect
+                  resource={REFERENTS_FOR_SELECT_RESOURCE}
+                  value={field.value}
+                  onChange={field.onChange}
+                  selectedItem={commercialPartnerQuickCreate.selectedItemFor(field.value)}
+                  action={commercialPartnerQuickCreate.renderAction((ref) => field.onChange(ref.id))}
+                  labels={{
+                    ...selectLabels,
+                    searchPlaceholder: t('requestManagement.form.create.attribution.commercialPartnerSearch'),
+                    triggerLabel: t('requestManagement.form.create.attribution.commercialPartner'),
                   }}
                 />
               </FormControl>

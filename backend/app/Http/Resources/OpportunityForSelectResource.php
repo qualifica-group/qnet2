@@ -51,6 +51,7 @@ class OpportunityForSelectResource extends ForSelectResource
             'label' => $this->name,
             'meta' => [
                 'commercial' => $this->relationRef($this->commercial),
+                'commercial_partner' => $this->relationRef($this->commercialPartner),
                 'reporter' => $this->relationRef($this->reporter),
                 'supervisor' => $this->relationRef($this->supervisor),
                 'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),

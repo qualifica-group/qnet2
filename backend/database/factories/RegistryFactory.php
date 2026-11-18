@@ -29,6 +29,7 @@ class RegistryFactory extends Factory
             'size_class' => null,
             'supervisor_id' => null,
             'commercial_id' => null,
+            'commercial_partner_id' => null,
             'reporter_id' => null,
             'employee_count' => fake()->optional()->numberBetween(1, 500),
         ];

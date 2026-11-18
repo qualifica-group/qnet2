@@ -39,6 +39,7 @@ function buildFieldLabels(t: TFunction): Record<string, string> {
     source_id: t('requestManagement.workPanel.attribution.source'),
     reporter_id: t('requestManagement.workPanel.attribution.reporter'),
     commercial_id: t('requestManagement.workPanel.attribution.commercial'),
+    commercial_partner_id: t('requestManagement.workPanel.attribution.commercialPartner'),
     supervisor_id: t('requestManagement.workPanel.team.supervisor'),
     manager_slots: t('requestManagement.workPanel.team.managers'),
     operational_site_id: t('requestManagement.workPanel.attribution.operationalSite'),

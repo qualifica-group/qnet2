@@ -57,6 +57,7 @@ const FORCED_OPPORTUNITY: OpportunityForSelectItem = {
   label: 'OPP_55',
   meta: {
     commercial: { id: 71, name: 'Sara Conti' },
+    commercial_partner: null,
     reporter: { id: 81, name: 'Elio Fabbri' },
     supervisor: { id: 61, name: 'Ivo Bianchi' },
     operational_site: { id: 91, label: 'Via Ereditata 1 - Milano' },

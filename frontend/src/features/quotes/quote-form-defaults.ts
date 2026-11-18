@@ -30,6 +30,7 @@ export function editDefaults(quote: QuoteDetail): QuoteFormValues {
       toAttributeValuesMap(quote.attribute_values),
     ),
     commercial_id: quote.commercial_id,
+    commercial_partner_id: quote.commercial_partner_id,
     reporter_id: quote.reporter_id,
     supervisor_id: quote.supervisor_id,
     manager_slots: managerSlotsFromRefs(quote.managers ?? []),
@@ -82,6 +83,7 @@ export function createDefaults(mode: QuoteCreateFormMode, initialCode: string | 
     note: null,
     attribute_values: {},
     commercial_id: null,
+    commercial_partner_id: null,
     reporter_id: null,
     supervisor_id: null,
     // Spec 0087 (D-5): left on the UX default (empty cards); the actual

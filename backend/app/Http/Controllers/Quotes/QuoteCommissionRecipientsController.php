@@ -59,6 +59,7 @@ class QuoteCommissionRecipientsController extends BaseApiController
             $recipients = $this->resolver->resolve(
                 $this->roleId($validated, 'supplier_id'),
                 $this->roleId($validated, 'commercial_id') ?? $quote?->commercial_id,
+                $this->roleId($validated, 'commercial_partner_id') ?? $quote?->commercial_partner_id,
                 $this->roleId($validated, 'reporter_id') ?? $quote?->reporter_id,
                 $this->roleId($validated, 'supervisor_id') ?? $quote?->supervisor_id,
             );

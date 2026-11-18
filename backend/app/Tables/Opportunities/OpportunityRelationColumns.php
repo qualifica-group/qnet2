@@ -53,6 +53,7 @@ final class OpportunityRelationColumns
         'registry' => ['relation' => 'registry', 'table' => 'registries', 'fk' => 'registry_id'],
         'referent' => ['relation' => 'referent', 'table' => 'referents', 'fk' => 'referent_id'],
         'commercial' => ['relation' => 'commercial', 'table' => 'referents', 'fk' => 'commercial_id'],
+        'commercial_partner' => ['relation' => 'commercialPartner', 'table' => 'referents', 'fk' => 'commercial_partner_id'],
         'supervisor' => ['relation' => 'supervisor', 'table' => 'users', 'fk' => 'supervisor_id'],
     ];
 

@@ -54,6 +54,7 @@ const OPPORTUNITY = {
   label: 'OPP_25',
   meta: {
     commercial: null,
+    commercial_partner: null,
     reporter: null,
     supervisor: null,
     operational_site: null,

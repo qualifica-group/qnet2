@@ -40,6 +40,7 @@ return [
             'opportunity' => 'Opportunity',
             'referent' => 'Referent',
             'commercial' => 'Sales rep',
+            'commercial_partner' => 'Commercial partner',
             'reporter' => 'Reporter',
             'supervisor' => 'Supervisor',
             'company' => 'Company',
@@ -115,6 +116,12 @@ return [
         ],
 
         'commercial' => [
+            'name' => 'Name',
+            'email' => 'Email',
+            'phone' => 'Phone',
+        ],
+
+        'commercial_partner' => [
             'name' => 'Name',
             'email' => 'Email',
             'phone' => 'Phone',

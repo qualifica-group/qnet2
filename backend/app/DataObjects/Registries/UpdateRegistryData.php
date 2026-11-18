@@ -35,6 +35,8 @@ final readonly class UpdateRegistryData
         public bool $supervisorIdSubmitted = false,
         public ?int $commercialId = null,
         public bool $commercialIdSubmitted = false,
+        public ?int $commercialPartnerId = null,
+        public bool $commercialPartnerIdSubmitted = false,
         public ?int $reporterId = null,
         public bool $reporterIdSubmitted = false,
         public ?string $vatGroup = null,
@@ -76,6 +78,8 @@ final readonly class UpdateRegistryData
             supervisorIdSubmitted: array_key_exists('supervisor_id', $data),
             commercialId: array_key_exists('commercial_id', $data) && $data['commercial_id'] !== null ? (int) $data['commercial_id'] : null,
             commercialIdSubmitted: array_key_exists('commercial_id', $data),
+            commercialPartnerId: array_key_exists('commercial_partner_id', $data) && $data['commercial_partner_id'] !== null ? (int) $data['commercial_partner_id'] : null,
+            commercialPartnerIdSubmitted: array_key_exists('commercial_partner_id', $data),
             reporterId: array_key_exists('reporter_id', $data) && $data['reporter_id'] !== null ? (int) $data['reporter_id'] : null,
             reporterIdSubmitted: array_key_exists('reporter_id', $data),
             vatGroup: array_key_exists('vat_group', $data) ? $data['vat_group'] : null,
@@ -134,6 +138,10 @@ final readonly class UpdateRegistryData
 
         if ($this->commercialIdSubmitted) {
             $attributes['commercial_id'] = $this->commercialId;
+        }
+
+        if ($this->commercialPartnerIdSubmitted) {
+            $attributes['commercial_partner_id'] = $this->commercialPartnerId;
         }
 
         if ($this->reporterIdSubmitted) {
