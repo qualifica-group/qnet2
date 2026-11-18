@@ -99,6 +99,8 @@ export function ProbabilityCell({ value }: ICellRendererParams) {
 export const opportunityColumnRenderers: TableRendererMap = {
   registry: (params) => <RelationCell {...params} icon={Building2} />,
   status: (params) => <OpportunityStatusCell {...params} />,
+  // Spec 0409: the offers' system statuses, same summary shape and badge as `status`.
+  quote_system_status: (params) => <OpportunityStatusCell {...params} />,
   referent: (params) => <RelationCell {...params} icon={UserRound} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
   supervisor: (params) => <UserCell {...params} />,

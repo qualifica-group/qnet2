@@ -88,6 +88,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'system-status-tabs',
+      title: "Tab degli stati di sistema",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In alto a destra nella pagina **Opportunità** trovi i tab degli stati di sistema delle offerte, gli stessi della pagina **Offerte**: **Tutti** e poi uno per ogni stato, nell'ordine della pagina **Stati di sistema offerta** (per esempio **Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso**). Un tab mostra le opportunità che hanno almeno un'offerta in quello stato; le opportunità senza offerte stanno nel tab dello stato di apertura (**Aperto**). **Tutti** toglie il filtro. Accanto a ogni tab, tranne **Tutti**, c'è il numero di opportunità (solo se diverso da zero): tiene conto di ricerca e filtri attivi. Un'opportunità con offerte in stati diversi compare, ed è contata, in ciascuno di quei tab.",
+        },
+        {
+          type: 'paragraph',
+          text: "Il tab filtra la colonna **Stato di sistema**, nascosta di default: puoi mostrarla dalle opzioni della tabella per vedere gli stati di sistema delle offerte di ogni opportunità. La colonna **Stato** resta quella degli stati di lavorazione.",
+        },
+      ],
+    },
+    {
       id: 'people-filters',
       title: "Filtrare per persona",
       blocks: [

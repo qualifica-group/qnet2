@@ -131,6 +131,7 @@ use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
+use App\Tables\Opportunities\OpportunitySystemStatusColumn;
 use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
@@ -167,6 +168,8 @@ class AppServiceProvider extends ServiceProvider
         // serve a stale name/color, or a stale workflow, forever).
         $this->app->scoped(OpportunityStatusResolver::class);
         $this->app->scoped(OpportunityDefaultStatusResolver::class);
+        // Spec 0409: the grid definition and its relation columns share one memo of the `open` system status.
+        $this->app->scoped(OpportunitySystemStatusColumn::class);
 
         // Singleton so the custom-fieldable entity map (spec 0021) — built by
         // intersecting config/tables.php with config/authorization.php and

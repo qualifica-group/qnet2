@@ -88,6 +88,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'system-status-tabs',
+      title: "System status tabs",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top right of the **Opportunities** page you find the tabs of the quotes' system statuses, the same as on the **Quotes** page: **All**, then one for each status, in the order of the **Quote system statuses** page (for example **Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso**). A tab shows the opportunities with at least one quote in that status; opportunities without quotes sit in the tab of the opening status (**Aperto**). **All** removes the filter. Next to each tab, except **All**, is the number of opportunities (only when not zero): it follows the search and the active filters. An opportunity with quotes in different statuses appears, and is counted, in each of those tabs.",
+        },
+        {
+          type: 'paragraph',
+          text: "The tab filters the **System status** column, hidden by default: you can show it from the table options to see the system statuses of each opportunity's quotes. The **Status** column keeps showing the working statuses.",
+        },
+      ],
+    },
+    {
       id: 'people-filters',
       title: "Filtering by person",
       blocks: [

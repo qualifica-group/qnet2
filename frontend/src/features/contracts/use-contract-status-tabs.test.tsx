@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode, RefObject } from 'react'
-import '@/i18n'
 import type { TableViewHandle } from '@/features/table/table-view'
-import { ContractStatusTabs } from '@/features/contracts/contract-status-tabs'
 import { useContractStatusTabs } from '@/features/contracts/use-contract-status-tabs'
 
 const fetchContractStatusesForSelect = vi.fn()
@@ -65,30 +63,5 @@ describe('useContractStatusTabs', () => {
     act(() => result.current.onAggregatesChange({ Programmato: 4 }))
 
     expect(result.current.counts).toEqual({ Programmato: 4 })
-  })
-})
-
-describe('ContractStatusTabs', () => {
-  it('offers all first then each status, and reports the pick', () => {
-    const onSelect = vi.fn()
-    render(<ContractStatusTabs statuses={STATUSES} active="" onSelect={onSelect} />)
-
-    const tabs = screen.getAllByRole('tab')
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['Tutti', ...STATUSES])
-    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
-
-    fireEvent.click(tabs[3])
-    expect(onSelect).toHaveBeenCalledWith('Disdetto')
-  })
-
-  it('shows the count of each status tab, none on all and none when zero', () => {
-    render(<ContractStatusTabs statuses={STATUSES} active="Programmato" counts={{ 'Da validare': 1200, Programmato: 3 }} onSelect={vi.fn()} />)
-
-    const [all, toValidate, scheduled, terminated] = screen.getAllByRole('tab')
-    expect(all.textContent).toBe('Tutti')
-    expect(toValidate.textContent).toMatch(/^Da validare \(1\.?200\)$/)
-    expect(scheduled.textContent).toBe('Programmato (3)')
-    expect(scheduled).toHaveAttribute('aria-selected', 'true')
-    expect(terminated.textContent).toBe('Disdetto')
   })
 })

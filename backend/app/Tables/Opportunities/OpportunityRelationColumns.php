@@ -24,13 +24,16 @@ use Illuminate\Support\Facades\DB;
  * `operational_site` (spec 0056) is deliberately NOT handled here: the site
  * has no own name (its identity is its primary address), so it is delegated
  * directly by the table definition to the shared
- * App\Tables\Shared\OperationalSiteColumn instead. `status` (spec 0082) is
- * likewise delegated, to OpportunityStatusColumn: it is COMPUTED from the
- * row's quotes, backed by no FK at all.
+ * App\Tables\Shared\OperationalSiteColumn instead. `status` (spec 0082) and
+ * `quote_system_status` (spec 0409) are dispatched from here to
+ * OpportunityStatusColumn/OpportunitySystemStatusColumn: they are COMPUTED
+ * from the row's quotes, backed by no FK at all.
  */
 final class OpportunityRelationColumns
 {
     use HandlesBlankSetFilter;
+
+    public function __construct(private readonly OpportunitySystemStatusColumn $systemStatusColumn) {}
 
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
@@ -82,6 +85,18 @@ final class OpportunityRelationColumns
      */
     public function applyFilter(Builder $query, string $columnId, array $filter): bool
     {
+        if ($columnId === OpportunityStatusColumn::COLUMN_ID) {
+            OpportunityStatusColumn::applyFilter($query, $this->filterValues($filter));
+
+            return true;
+        }
+
+        if ($columnId === OpportunitySystemStatusColumn::COLUMN_ID) {
+            $this->systemStatusColumn->applyFilter($query, $this->filterValues($filter));
+
+            return true;
+        }
+
         if ($columnId === 'managers') {
             $this->applyNameFilter($query, 'managers', $filter);
 
@@ -186,6 +201,14 @@ final class OpportunityRelationColumns
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
+        if ($columnId === OpportunityStatusColumn::COLUMN_ID) {
+            return OpportunityStatusColumn::distinctValues($query, $search, $limit);
+        }
+
+        if ($columnId === OpportunitySystemStatusColumn::COLUMN_ID) {
+            return $this->systemStatusColumn->distinctValues($query, $search, $limit);
+        }
+
         if ($columnId === 'managers') {
             // "No manager" is answered by the pivot alone: `user_id` cascades on
             // delete, so the join to `users` that whereDoesntHave() adds is pure cost

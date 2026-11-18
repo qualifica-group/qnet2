@@ -11,6 +11,10 @@ export const table = {
     id: 'ID',
     old_id: 'ID legacy',
   },
+  // Status tabs above a grid (specs 0397, 0409).
+  statusTabs: {
+    all: 'Tutti',
+  },
   actionsHeader: 'Azioni',
   rowActions: 'Azioni riga',
   moreActions: 'Altre azioni',

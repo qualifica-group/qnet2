@@ -8,7 +8,9 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { StatusFilterTabs } from '@/features/table/status-filter-tabs'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import { useQuoteSystemStatusTabs } from '@/features/quote-system-statuses/use-quote-system-status-tabs'
 import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE } from '@/features/table/use-table-config'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
@@ -33,6 +35,7 @@ export function QuotesTable() {
   const { t } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
+  const statusTabs = useQuoteSystemStatusTabs(tableRef)
   const refreshGrid = useCallback(() => {
     tableRef.current?.refresh()
   }, [])
@@ -63,12 +66,21 @@ export function QuotesTable() {
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         actions={
-          <Can permission="quotes.create">
-            <Button onClick={handleNewQuote}>
-              <Plus aria-hidden="true" />
-              {t('quotes.form.newQuote')}
-            </Button>
-          </Can>
+          <>
+            <StatusFilterTabs
+              statuses={statusTabs.statuses}
+              active={statusTabs.active}
+              counts={statusTabs.counts}
+              onSelect={statusTabs.select}
+              label={t('quoteSystemStatuses.tabsLabel')}
+            />
+            <Can permission="quotes.create">
+              <Button onClick={handleNewQuote}>
+                <Plus aria-hidden="true" />
+                {t('quotes.form.newQuote')}
+              </Button>
+            </Can>
+          </>
         }
       />
 
@@ -81,6 +93,8 @@ export function QuotesTable() {
         resolveActionHref={quoteActionHref}
         isBusy={isBusy}
         iconMap={QUOTES_ACTION_ICONS}
+        onFilterModelChange={statusTabs.onFilterModelChange}
+        onAggregatesChange={statusTabs.onAggregatesChange}
       />
 
       <QuoteNewModeDialog

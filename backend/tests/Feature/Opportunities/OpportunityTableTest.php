@@ -66,9 +66,10 @@ it('GET /api/tables/opportunities/columns: 200 with the declared columns, 403 wi
     // directive 2026-07-23): `products_of_interest` follows the two aggregated
     // classification columns.
     // REQUIREMENT CHANGED: spec 0332 — no `source` column any more.
+    // REQUIREMENT CHANGED: spec 0409 — `quote_system_status` (hidden, the status tabs' filter) follows `status`.
     expect($ids)->toBe([
         'id', 'name', 'registry', 'referent', 'commercial', 'supervisor', 'managers', 'operational_site', 'status',
-        'product_category', 'business_function', 'products_of_interest', 'estimated_value', 'success_probability', 'start_date',
+        'quote_system_status', 'product_category', 'business_function', 'products_of_interest', 'estimated_value', 'success_probability', 'start_date',
         'expected_close_date', 'created_at',
     ]);
 

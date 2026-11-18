@@ -89,6 +89,7 @@ final class OpportunityColumnCatalog
             ],
             self::derivedColumn('operational_site', 'opportunities.columns.operationalSite'),
             OpportunityStatusColumn::declaration('opportunities.columns.status'),
+            OpportunitySystemStatusColumn::declaration('opportunities.columns.systemStatus'),
             [
                 ...self::aggregatedColumn('product_category', 'opportunities.columns.productCategory'),
                 // Spec 0206, D-9: the same two-step editor as Gestione Richieste.

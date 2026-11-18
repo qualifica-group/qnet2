@@ -10,11 +10,13 @@ use App\Services\Opportunities\OpportunityVisibilityScope;
 use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Concerns\SearchesByIdNotLegacyId;
+use App\Tables\Opportunities\Concerns\HasOpportunitySystemStatusTabs;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
 use App\Tables\Opportunities\OpportunityCellWriter;
 use App\Tables\Opportunities\OpportunityColumnCatalog;
 use App\Tables\Opportunities\OpportunityRelationColumns;
 use App\Tables\Opportunities\OpportunityStatusColumn;
+use App\Tables\Opportunities\OpportunitySystemStatusColumn;
 use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\OperationalSiteColumn;
@@ -52,6 +54,7 @@ use Illuminate\Support\Facades\Gate;
  */
 class OpportunitiesTableDefinition extends AbstractTableDefinition
 {
+    use HasOpportunitySystemStatusTabs;
     use SearchesByIdNotLegacyId;
 
     private const string OPERATIONAL_SITE_COLUMN = 'operational_site';
@@ -69,6 +72,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         private readonly ProductLinePairsColumn $productLinePairs,
         private readonly OpportunityStatusResolver $statusResolver,
         private readonly CommercialListFilterApplier $listFilters,
+        private readonly OpportunitySystemStatusColumn $systemStatusColumn,
     ) {}
 
     /**
@@ -120,7 +124,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
                 // Spec 0082: the computed `status` cell — eager-loaded so the
                 // resolver stays query-free across the page (AC-007).
-                ...OpportunityStatusResolver::EAGER_LOADS,
+                ...OpportunityStatusResolver::EAGER_LOADS, OpportunitySystemStatusColumn::RELATION,
                 // User directive 2026-07-23: the "Prodotti di interesse"
                 // column projects its own `{id, name}` refs (the cell AND the
                 // multiselect editor's current selection).
@@ -232,6 +236,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
             OpportunityStatusColumn::COLUMN_ID => $this->statusResolver->resolve($row),
+            OpportunitySystemStatusColumn::COLUMN_ID => $this->systemStatusColumn->summarize($row),
             // Spec 0206, D-9: the pairs the `product_lines` editor edits.
             'product_category' => $this->productLinePairs->project($row),
             'business_function' => $this->summarizeNames($row->productLines->pluck('businessFunction')),
@@ -421,12 +426,6 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             return true;
         }
 
-        if ($columnId === OpportunityStatusColumn::COLUMN_ID) {
-            OpportunityStatusColumn::applyFilter($query, $this->filterValues($filter));
-
-            return true;
-        }
-
         return $this->relationColumns->applyFilter($query, $columnId, $filter);
     }
 
@@ -487,10 +486,6 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
 
         if ($columnId === ProductsOfInterestColumn::COLUMN_ID) {
             return ProductsOfInterestColumn::distinctValues($query, $search, $limit);
-        }
-
-        if ($columnId === OpportunityStatusColumn::COLUMN_ID) {
-            return OpportunityStatusColumn::distinctValues($query, $search, $limit);
         }
 
         return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);

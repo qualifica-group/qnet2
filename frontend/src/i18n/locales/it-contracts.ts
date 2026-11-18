@@ -10,7 +10,6 @@ export const contracts = {
   forbidden: 'Non hai i permessi per visualizzare i contratti.',
   statusTabs: {
     label: 'Stati contratto',
-    all: 'Tutti',
   },
   columns: {
     offerLines: 'Linee di prodotto',

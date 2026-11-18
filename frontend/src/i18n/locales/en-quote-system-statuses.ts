@@ -9,6 +9,8 @@ export const quoteSystemStatuses = {
   title: 'Quote system statuses',
   subtitle: 'The statuses shown in Quotes, linked to the working statuses.',
   forbidden: "You don't have permission to view quote system statuses.",
+  // Accessible name of the status tabs of Offerte and Opportunita' (spec 0409).
+  tabsLabel: 'System statuses',
   columns: {
     name: 'Name',
     color: 'Color',

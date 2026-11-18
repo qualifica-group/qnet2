@@ -130,6 +130,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'system-status-tabs',
+      title: "System status tabs",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top right of the **Quotes** page you find the system status tabs: **All**, then one for each status, in the order of the **Quote system statuses** page (for example **Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso**). A tab shows only the quotes in that status, i.e. it filters the **Status** column; **All** removes the filter. Next to each tab, except **All**, is the number of quotes (only when not zero): it follows the search and the active filters, so it matches what you see when you open the tab. When you rename, add or delete a system status, the tabs follow. The same tabs are on the **Opportunities** page.",
+        },
+      ],
+    },
+    {
       id: 'people-filters',
       title: "Filtering by person",
       blocks: [

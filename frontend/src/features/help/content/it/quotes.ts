@@ -130,6 +130,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'system-status-tabs',
+      title: "Tab degli stati di sistema",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In alto a destra nella pagina **Offerte** trovi i tab degli stati di sistema: **Tutti** e poi uno per ogni stato, nell'ordine della pagina **Stati di sistema offerta** (per esempio **Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso**). Un tab mostra solo le offerte in quello stato, cioè filtra la colonna **Stato**; **Tutti** toglie il filtro. Accanto a ogni tab, tranne **Tutti**, c'è il numero di offerte (solo se diverso da zero): tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Se rinomini, aggiungi o elimini uno stato di sistema, i tab si aggiornano di conseguenza. Gli stessi tab ci sono nella pagina **Opportunità**.",
+        },
+      ],
+    },
+    {
       id: 'people-filters',
       title: "Filtrare per persona",
       blocks: [

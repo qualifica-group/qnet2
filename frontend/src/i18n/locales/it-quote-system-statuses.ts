@@ -10,6 +10,8 @@ export const quoteSystemStatuses = {
   title: 'Stati di sistema offerta',
   subtitle: 'Gli stati che si vedono in Offerte, collegati agli stati di lavorazione.',
   forbidden: 'Non hai i permessi per visualizzare gli stati di sistema offerta.',
+  // Accessible name of the status tabs of Offerte and Opportunita' (spec 0409).
+  tabsLabel: 'Stati di sistema',
   columns: {
     name: 'Nome',
     color: 'Colore',

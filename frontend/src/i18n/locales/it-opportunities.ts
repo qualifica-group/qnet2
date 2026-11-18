@@ -11,6 +11,7 @@ export const opportunities = {
     name: 'Nome',
     registry: 'Anagrafica',
     status: 'Stato',
+    systemStatus: 'Stato di sistema',
     referent: 'Referente',
     commercial: 'Commerciale',
     supervisor: 'Supervisore',

@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tab degli stati di sistema in Opportunita' e Offerte (spec 0409, 2026-11-18) — VERDE MIRATO, NON COMMITTATO
+
+- Richiesta utente: filtri a tab "come in Contratti/Commesse" sugli stati di sistema delle offerte (`quote_system_statuses`), in Offerte e in Opportunita'. Riprende la parte G della 0404 (eliminata il 2026-11-16), ora sugli stati di sistema.
+- BE Offerte: trait `Tables/Quotes/Concerns/HasQuoteSystemStatusTabs` (aggregates per nome stato di sistema, ignora il filtro `quote_system_status`).
+- BE Opportunita': nuova colonna `quote_system_status` "Stato di sistema" (nascosta, set, non ordinabile) = `Tables/Opportunities/OpportunitySystemStatusColumn` (scoped nel container: memo dello stato `open`); cella con la stessa forma di `status` (`source`/`distinct_count`/`entries`, `group` = behavior); senza offerte = stato di sistema `open`. Filtro/valori dispatchati da `OpportunityRelationColumns` (anche `status` spostato li', per tenere `OpportunitiesTableDefinition` < 500 righe); conteggi = opportunita' distinte (`HasOpportunitySystemStatusTabs`).
+- FE: hook/componente condivisi `features/table/use-status-filter-tabs.ts` + `status-filter-tabs.tsx` (Contratti migrato, `contract-status-tabs.tsx` eliminato, `contracts.statusTabs.all` -> `table.statusTabs.all`); `useQuoteSystemStatusTabs` in `quote-system-statuses/`; renderer `quote_system_status` = `OpportunityStatusCell`.
+- Manuale: guide in-app IT/EN `opportunities`/`quotes` sezione `system-status-tabs`; manuale Claude Docs aggiornato (Opportunita' e Offerte, prima di "Filtrare per persona").
+- Test: Pest `OpportunitySystemStatusTabsTest`, `QuoteSystemStatusTabsTest`, `OpportunityTableTest` (ordine colonne, REQUIREMENT CHANGED); Vitest `status-filter-tabs`, `use-quote-system-status-tabs`, `use-contract-status-tabs`. Suite Opportunities/Tables/Contracts/QuoteSystemStatuses verdi; Quotes: solo i 3 test PDF (LibreOffice assente); RequestManagement: 2 rossi estranei (modifiche non committate di un'altra sessione su `RequestAssignmentService`/`ManagerPositions`). tsc -b pulito.
+- Da verificare a mano: resa dei tab accanto a "Statistiche"/"Nuova opportunita'" su schermi stretti (PageHeader non va a capo).
+
 ## Ruoli per reparto dai questionari "permessi per reparti" (spec 0408, 2026-11-17) — VERDE MIRATO; PRIMA VERSIONE GIA' ESEGUITA SUL DB LOCALE, D-8 (Pianificazione come ruolo) GIA' ESEGUITA SUL DB LOCALE, D-9 (ruolo responsabile Sicurezza), D-10 (APL, Contabilita') e D-11 (Progettazione) e D-12 (solo i ruoli dei file) COMMITTATE SU STAGING; SEEDER ESEGUITO SUL DB LOCALE 2026-11-17 (48 persone verificate, 27 ruoli `reparto-*`, nessun permesso diretto)
 
 - Fonte: `~/Downloads/permessi per reparti/*.xlsx` (9 reparti, 33 persone; FA e HR nella versione rivista da Mario). Verifica stato attuale: `~/Downloads/Verifica_permessi_reparti_2026-11-17.xlsx`.
