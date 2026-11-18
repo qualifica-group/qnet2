@@ -184,6 +184,8 @@ class QuoteService
             $quote = new Quote($attributes);
             $quote->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
             $quote->quote_workflow_status_id = $this->workflowStatusAssigner->globalDefaultOpenStatusId();
+            // Spec 0411, D-1: not fillable, set before anything reads the classification.
+            $quote->root_product_category_id = $data->rootProductCategoryId;
             $quote->save();
 
             // Step 3b (spec 0087, D-4/D-5): the Offerta's own Gestori

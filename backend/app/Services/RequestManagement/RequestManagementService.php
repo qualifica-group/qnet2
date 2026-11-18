@@ -99,6 +99,8 @@ final class RequestManagementService
         'opportunity.quotes.quoteWorkflowStatus',
         'opportunity.productLines.businessFunction',
         'opportunity.productLines.productCategory',
+        // Spec 0411: the root a bound offer belongs to, shown in the panel.
+        'rootProductCategory',
         'reporter',
         // Spec 0357: the Offerta's "Commerciale", next to the Segnalatore.
         'commercial',
@@ -230,7 +232,7 @@ final class RequestManagementService
 
             if (array_key_exists('product_lines', $data)) {
                 $classificationChanged = $this->productLineWriter
-                    ->apply($opportunity, (array) $data['product_lines'], $changed, $old);
+                    ->apply($opportunity, (array) $data['product_lines'], $changed, $old, $quote->root_product_category_id);
             }
 
             // Step 1-bis: the coherence rule (user directive 2026-07-31) —

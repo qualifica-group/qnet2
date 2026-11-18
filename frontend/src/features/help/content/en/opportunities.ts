@@ -79,7 +79,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Some fields carry other values into the same save: changing the **Registry** gives the Contact the new registry's main referent (it stays empty if the registry has none; the same happens when you pick a **Lead**, if the registry changes or the Contact is empty) and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover; the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
+          text: "Some fields carry other values into the same save: changing the **Registry** gives the Contact the new registry's main referent (it stays empty if the registry has none; the same happens when you pick a **Lead**, if the registry changes or the Contact is empty) and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover (when the opportunity has requests created from Request management, one per parent category, the rows may change only inside those parent categories: no parent category is added or removed); the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
         },
         {
           type: 'note',

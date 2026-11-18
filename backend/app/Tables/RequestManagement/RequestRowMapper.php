@@ -7,9 +7,11 @@ namespace App\Tables\RequestManagement;
 use App\Enums\ContactTypeEnum;
 use App\Models\Contact;
 use App\Models\Opportunity;
+use App\Models\OpportunityProductLine;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\Quotes\QuoteRootScope;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use App\Tables\Shared\OfferLinesColumn;
@@ -51,6 +53,7 @@ final class RequestRowMapper
     public function __construct(
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly ProductLinePairsColumn $productLinePairs,
+        private readonly QuoteRootScope $rootScope,
     ) {}
 
     /**
@@ -59,6 +62,7 @@ final class RequestRowMapper
     public function map(Quote $row): array
     {
         $opportunity = $row->opportunity;
+        $rootLines = $this->rootScope->filterLines($opportunity?->productLines ?? collect(), $row->root_product_category_id);
 
         return [
             'id' => $row->id,
@@ -87,13 +91,14 @@ final class RequestRowMapper
             // 0075), re-derived through `quote.opportunity` (spec 0086).
             // Projected as the {funzione aziendale, categoria} PAIRS — ids
             // for the inline editor to commit, names for the cell to render.
-            'product_categories' => $this->productLinePairs->project($opportunity),
+            // Spec 0411, D-3: a bound offer shows only its own root's lines.
+            'product_categories' => $this->productLinePairs->projectLines($rootLines),
             // The `product_categories` inline editor's OWN scope (spec 0075,
             // D-6): the opportunity's product-line category ids, unchanged in
             // shape from the former ProductsOfInterestColumn::SCOPE_COLUMN
             // projection (data contract: "invariata come scope dell'editor
             // delle linee").
-            'product_category_ids' => $this->productCategoryIds($opportunity),
+            'product_category_ids' => $this->productCategoryIds($rootLines),
             // "Linee di prodotto" (spec 0086, D-7): the offer's own REVENUE
             // lines' products, replacing "Prodotti di interesse" on this
             // domain only (AC-021).
@@ -232,11 +237,12 @@ final class RequestRowMapper
      * The `product_categories` inline editor's scope (spec 0075, D-6): the
      * distinct product-line category ids of the offer's opportunity.
      *
+     * @param  Collection<int, OpportunityProductLine>  $lines
      * @return array<int, int>
      */
-    private function productCategoryIds(?Opportunity $opportunity): array
+    private function productCategoryIds(Collection $lines): array
     {
-        return ($opportunity?->productLines ?? collect())
+        return $lines
             ->pluck('product_category_id')
             ->unique()
             ->values()

@@ -18,6 +18,8 @@ interface ProductLinesFieldProps {
   disabled?: boolean
   /** The module the card belongs to (spec 0389); omitted where every branch is usable. */
   area?: CategoryPickArea
+  /** Spec 0411: a request bound to one parent category offers only that root to its rows. */
+  lockedRootCategoryId?: number | null
 }
 
 /**
@@ -37,7 +39,13 @@ interface ProductLinesFieldProps {
  * is no longer a variant of this one. All non-render logic lives in
  * `useProductLinesField` — this component only renders it.
  */
-export function ProductLinesField({ value, onChange, disabled = false, area }: ProductLinesFieldProps) {
+export function ProductLinesField({
+  value,
+  onChange,
+  disabled = false,
+  area,
+  lockedRootCategoryId = null,
+}: ProductLinesFieldProps) {
   const { t } = useTranslation()
   const {
     addRow,
@@ -90,6 +98,7 @@ export function ProductLinesField({ value, onChange, disabled = false, area }: P
                     otherRowsFilled={otherRowsFilled(index)}
                     triggerLabel={t('productLines.rootCategory', { n: index + 1 })}
                     area={area}
+                    onlyRootId={lockedRootCategoryId}
                   />
                 </div>
                 <PathSeparator />

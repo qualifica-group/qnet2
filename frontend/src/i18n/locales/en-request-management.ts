@@ -174,6 +174,10 @@ export const requestManagement = {
       save: 'Create request',
       saving: 'Creating…',
       success: 'Request created.',
+      /** Spec 0411: one offer per parent category of the product lines. */
+      successPerRoot: '{{count}} requests created, one per parent category.',
+      /** Spec 0411: shown before saving when the lines span several parent categories. */
+      rootSplitNotice: 'Note: the product lines belong to {{count}} parent categories ({{roots}}). Saving will create {{count}} requests, one per parent category, on the same opportunity.',
       validation: {
         productLinesRequired: 'Add at least one product line.',
         productLineIncomplete: 'Select a parent category and a product category for every row.',
@@ -291,6 +295,8 @@ export const requestManagement = {
       description: "The request's product lines.",
       fieldLabel: 'Product lines',
       hint: 'The categories chosen here scope the products of interest and, once saved, the request-specific fields.',
+      /** Spec 0411: the request is bound to one parent category. */
+      rootLocked: 'This request belongs to the parent category {{root}}: only its categories can be chosen. For another category create a new request.',
     },
     collaboration: {
       notesTab: 'Notes',

@@ -6,11 +6,13 @@ namespace App\Services\RequestManagement;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Quotes\CreateQuoteData;
+use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\Registries\CreateRegistryData;
 use App\DataObjects\RequestManagement\CreateRequestData;
 use App\Enums\CategoryManagementMode;
 use App\Enums\FormMode;
 use App\Models\Opportunity;
+use App\Models\Product;
 use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
@@ -19,9 +21,13 @@ use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\OpportunityService;
 use App\Services\Quotes\QuoteAttributeValueWriter;
+use App\Services\Quotes\QuoteRootScope;
+use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
 use App\Services\RegistryService;
 use App\Support\ManagerPositions;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -51,6 +57,9 @@ use Illuminate\Validation\ValidationException;
  */
 final class RequestCreationService
 {
+    /** Spec 0411, D-2: an offer row whose product sits under none of the request's roots. */
+    public const string OFFER_LINE_OUTSIDE_ROOTS_MESSAGE = 'The product ":product" does not belong to any parent product category of the request: add its product category to the product lines, or remove the row.';
+
     public function __construct(
         private readonly RegistryService $registryService,
         private readonly OpportunityService $opportunityService,
@@ -61,10 +70,12 @@ final class RequestCreationService
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly OpportunityProductLineCoverage $coverage,
         private readonly SimplifiedOfferLineNormalizer $simplifiedOfferLineNormalizer,
+        private readonly QuoteRootScope $rootScope,
+        private readonly QuoteWorkflowResolver $workflowResolver,
     ) {}
 
     /**
-     * @return array{quote: Quote}
+     * @return array{quote: Quote, created_quote_ids: array<int, int>}
      */
     public function create(User $actor, CreateRequestData $data): array
     {
@@ -132,82 +143,41 @@ final class RequestCreationService
                 generalNotes: $data->generalNotes,
             ), $actor);
 
-            // Step 3: the Offerta itself (spec 0086, D-5), always through
-            // QuoteService::create() — the ONE entry point that generates
-            // `code`, bootstraps `quote_workflow_status_id` and recalculates
-            // every aggregate. Its REVENUE rows travel with it when the form
-            // filled any in (user directive 2026-08-07; AC-028's empty offer
-            // stays the default), so coverage/aggregates/derived name are the
-            // service's own concern here too, never duplicated.
-            // `source_id` (spec 0332) lives on the Offerta alone.
-            // `reporter_id`/`commercial_id`/`operational_site_id` are the SAME resolved
-            // values just used for the Opportunity, so the two records never
-            // disagree at creation time. `supervisor_id` travels too (spec
-            // 0097, D-9, user directive 2026-09-02) — as the Offerta's
-            // commission recipient, NOT as an ownership column — but only
-            // when the form actually submitted it: with the key absent the
-            // pair stays (null, false) and applySnapshotDefaults() resolves
-            // the value exactly as before, so a creation that never mentions
-            // the field produces what it has always produced. The operator
-            // lands on the Offerta's own GA2 slot instead, via
-            // `managerSlots`, promoted onto the Opportunity's first free
-            // slot when it is not already one of its Gestori Account (D-6).
+            // Step 3: the Offerte (spec 0086, D-5), always through
+            // QuoteService::create() — see createRootQuote().
             $this->assertOfferLinesFitManagementMode($opportunity, $data);
 
-            // Spec 0114, D-4/D-5: a `simplified_offer_line` classification
-            // freezes quantity/unit-price/VAT-rate on every submitted row —
-            // in creation every row is new, so nothing is grandfathered. The
-            // Opportunity's just-synced product lines (Step 2) are what the
-            // normalizer checks, never a walk to the root at runtime.
-            $offerLines = $data->offerLines === null
-                ? null
-                : $this->simplifiedOfferLineNormalizer->normalizeForCreation($opportunity, $data->offerLines);
+            // Spec 0411, D-2: ONE Offerta per root category ("categoria
+            // madre") of the product lines, in order of first appearance,
+            // each bound to its root and carrying only that root's offer
+            // rows. Step 4/5: callback on each, rewards on the first alone.
+            $roots = array_keys($this->rootScope->groupByRoot(array_map(
+                static fn (array $line): int => (int) $line['product_category_id'],
+                $data->productLines,
+            ))) ?: [null];
+            $offerLinesByRoot = $this->offerLinesByRoot($data->offerLines, $roots);
+            $quotes = [];
 
-            $quote = $this->quoteService->create(new CreateQuoteData(
-                code: null,
-                // Spec 0171 rev.2: born with the automatic `<code> - <products>` title.
-                title: null,
-                opportunityId: $opportunity->id,
-                workflowStatusId: $data->workflowStatusId,
-                note: null,
-                commercialId: $data->commercialId,
-                commercialIdSubmitted: true,
-                reporterId: $data->reporterId,
-                reporterIdSubmitted: true,
-                supervisorId: $data->supervisorId,
-                supervisorIdSubmitted: $data->supervisorIdSubmitted,
-                internalNotes: null,
-                operationalSiteId: $operationalSiteId,
-                operationalSiteIdSubmitted: true,
-                offerLines: $offerLines,
-                managerSlots: $managerSlots,
-                promoteManagersToOpportunity: true,
-                sourceId: $data->sourceId,
-            ), $actor);
+            foreach ($roots as $index => $rootId) {
+                $quote = $this->createRootQuote($actor, $data, $opportunity, $rootId, $rootId === null ? $data->offerLines : ($offerLinesByRoot[$rootId] ?? null), $managerSlots, $operationalSiteId, $index === 0);
+                $this->applyOperativeFields($quote, $data);
 
-            // Step 4: the planned callback, submitted at creation too (user
-            // directive 2026-07-31) — on the OFFERTA since the user directive
-            // 2026-09-04, and NOT mass-assignable (D-4 guard), so written
-            // AFTER its insert like every other operative field of this
-            // panel.
-            $this->applyOperativeFields($quote, $data);
+                if ($index === 0 && $data->rewards !== null) {
+                    $this->rewardAssignmentWriter->sync($quote, $data->rewards);
+                }
 
-            // Step 5: reward assignments (D-4/D-12, AC-023) — the Offerta's
-            // own Segnalatore is the beneficiary, so the sync runs only once
-            // the Offerta exists.
-            if ($data->rewards !== null) {
-                $this->rewardAssignmentWriter->sync($quote, $data->rewards);
+                $quotes[] = $quote;
             }
 
             // Step 6: "Informazioni aggiuntive" (user directive 2026-08-07) —
-            // written on the Offerta, validated against the applicable set the
-            // just-inserted product lines resolve (RequestAttributeResolver,
-            // D-1). It runs LAST because that set does not exist before the
-            // insert: a code the categories do not carry is a 422 keyed
-            // `attribute_values.<code>`, rolling the whole creation back.
-            $this->applyAttributeValues($quote, $data);
+            // each Offerta takes the codes its own root resolves (D-2). It
+            // runs LAST because that set does not exist before the insert.
+            $this->applyAttributeValues($quotes, $data);
 
-            return $this->panel->loadWorkPanel($quote);
+            return [
+                ...$this->panel->loadWorkPanel($quotes[0]),
+                'created_quote_ids' => array_map(static fn (Quote $created): int => $created->id, $quotes),
+            ];
         });
     }
 
@@ -238,36 +208,168 @@ final class RequestCreationService
     }
 
     /**
-     * The dynamic "Informazioni aggiuntive" of the freshly created Offerta
-     * (user directive 2026-08-07), through the SAME writer the Offerte module
-     * uses — fed THIS module's applicable set (D-1: the Opportunity's product
-     * lines, since a request's Offerta is born with no offer lines).
+     * Spec 0411, D-2: one Offerta bound to $rootId, through the SAME
+     * QuoteService::create() the quotes module uses — the ONE entry point that
+     * generates `code`, resolves the working status and recalculates every
+     * aggregate. Attribution, team and Sede are the values just written on the
+     * Opportunity; the operator lands on the Offerta's GA2 slot and is promoted
+     * onto the Opportunity's first free slot when missing (spec 0087, D-6/D-13).
+     * The requested working status goes to the first Offerta, and to the others
+     * only where their own workflow offers it (otherwise their default stays).
      *
-     * The `$changed`/`$old` pair the writer reports into is discarded here on
-     * purpose: a creation has no before-state to log, and the record's own
-     * creation entry already carries the row.
-     *
-     * @throws ValidationException a submitted code is not applicable to the created classification
+     * @param  array<int, QuoteLineData>|null  $offerLines  this root's rows, null when the form sent none
+     * @param  array<int, int|null>  $managerSlots
      */
-    private function applyAttributeValues(Quote $quote, CreateRequestData $data): void
+    private function createRootQuote(User $actor, CreateRequestData $data, Opportunity $opportunity, ?int $rootId, ?array $offerLines, array $managerSlots, ?int $operationalSiteId, bool $first): Quote
+    {
+        // Spec 0114, D-4/D-5: a `simplified_offer_line` root freezes quantity/
+        // unit price/VAT on every submitted row — every row is new here.
+        $offerLines = $offerLines === null
+            ? null
+            : $this->simplifiedOfferLineNormalizer->normalizeForCreation($opportunity, $offerLines, $rootId);
+
+        return $this->quoteService->create(new CreateQuoteData(
+            code: null,
+            // Spec 0171 rev.2: born with the automatic `<code> - <products>` title.
+            title: null,
+            opportunityId: $opportunity->id,
+            workflowStatusId: $first || $this->statusFitsRoot($data->workflowStatusId, $opportunity, $rootId) ? $data->workflowStatusId : null,
+            note: null,
+            commercialId: $data->commercialId,
+            commercialIdSubmitted: true,
+            reporterId: $data->reporterId,
+            reporterIdSubmitted: true,
+            supervisorId: $data->supervisorId,
+            supervisorIdSubmitted: $data->supervisorIdSubmitted,
+            internalNotes: null,
+            operationalSiteId: $operationalSiteId,
+            operationalSiteIdSubmitted: true,
+            offerLines: $offerLines,
+            managerSlots: $managerSlots,
+            promoteManagersToOpportunity: true,
+            sourceId: $data->sourceId,
+            rootProductCategoryId: $rootId,
+        ), $actor);
+    }
+
+    /**
+     * Whether the working status picked in the form belongs to the workflow an
+     * Offerta bound to $rootId resolves to — probed on a transient Offerta
+     * (the same technique ValidatesQuoteWorkflowStatus uses), never written.
+     */
+    private function statusFitsRoot(?int $statusId, Opportunity $opportunity, ?int $rootId): bool
+    {
+        if ($statusId === null) {
+            return false;
+        }
+
+        $probe = new Quote;
+        $probe->root_product_category_id = $rootId;
+        $probe->setRelation('opportunity', $opportunity->load('productLines'));
+        $probe->setRelation('offerLines', new EloquentCollection);
+
+        return $this->workflowResolver->statusesFor($this->workflowResolver->resolve($probe))
+            ->pluck('id')
+            ->contains($statusId);
+    }
+
+    /**
+     * The submitted offer rows keyed by the root of their product (D-2). A
+     * product outside every root of the product lines is refused here: no
+     * Offerta could carry it, and it must not open a root of its own.
+     *
+     * @param  array<int, QuoteLineData>|null  $offerLines
+     * @param  array<int, int|null>  $roots
+     * @return array<int, array<int, QuoteLineData>>
+     *
+     * @throws ValidationException
+     */
+    private function offerLinesByRoot(?array $offerLines, array $roots): array
+    {
+        if ($offerLines === null) {
+            return [];
+        }
+
+        $grouped = array_fill_keys(array_filter($roots, static fn (?int $root): bool => $root !== null), []);
+
+        if ($grouped === []) {
+            return [];
+        }
+
+        $products = Product::query()
+            ->whereIn('id', array_map(static fn (QuoteLineData $line): int => $line->productId, $offerLines))
+            ->get(['id', 'name', 'category_id'])
+            ->keyBy('id');
+
+        foreach ($offerLines as $index => $line) {
+            $product = $products->get($line->productId);
+            $rootId = $product?->category_id === null ? null : $this->rootScope->rootIdOf((int) $product->category_id);
+
+            if ($rootId === null || ! array_key_exists($rootId, $grouped)) {
+                throw ValidationException::withMessages([
+                    "offer_lines.{$index}.product_id" => [__(self::OFFER_LINE_OUTSIDE_ROOTS_MESSAGE, ['product' => $product->name ?? (string) $line->productId])],
+                ]);
+            }
+
+            $grouped[$rootId][] = $line;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * The dynamic "Informazioni aggiuntive" of the created Offerte (user
+     * directive 2026-08-07), through the SAME writer the Offerte module uses.
+     * Spec 0411, D-2: each Offerta takes the submitted codes its own root
+     * resolves; a code no Offerta resolves is still a 422 (on the first one,
+     * which validates the leftovers too).
+     *
+     * The `$changed`/`$old` pair is discarded on purpose: a creation has no
+     * before-state to log, the record's own creation entry carries the row.
+     *
+     * @param  array<int, Quote>  $quotes
+     *
+     * @throws ValidationException a submitted code is not applicable to any created Offerta
+     */
+    private function applyAttributeValues(array $quotes, CreateRequestData $data): void
     {
         if ($data->attributeValues === null) {
             return;
         }
 
-        $changed = [];
-        $old = [];
+        $applicableByQuote = array_map(fn (Quote $quote): Collection => $this->attributeResolver->resolve($quote), $quotes);
 
-        $this->attributeValueWriter->apply(
-            $quote,
-            $data->attributeValues,
-            $changed,
-            $old,
-            $this->attributeResolver->resolve($quote),
-            $this->attributeResolver->layout($quote, FormMode::Create),
-        );
+        foreach ($quotes as $index => $quote) {
+            $codes = $applicableByQuote[$index]->pluck('code')->all();
+            $submitted = array_intersect_key($data->attributeValues, array_flip($codes));
 
-        $quote->save();
+            if ($index === 0) {
+                // Leftovers ride on the first Offerta so the writer reports them.
+                $otherCodes = array_merge([], ...array_map(
+                    static fn (Collection $applicable): array => $applicable->pluck('code')->all(),
+                    array_slice($applicableByQuote, 1),
+                ));
+                $submitted += array_diff_key($data->attributeValues, array_flip([...$codes, ...$otherCodes]));
+            }
+
+            if ($submitted === [] && $index > 0) {
+                continue;
+            }
+
+            $changed = [];
+            $old = [];
+
+            $this->attributeValueWriter->apply(
+                $quote,
+                $submitted,
+                $changed,
+                $old,
+                $applicableByQuote[$index],
+                $this->attributeResolver->layout($quote, FormMode::Create),
+            );
+
+            $quote->save();
+        }
     }
 
     /**

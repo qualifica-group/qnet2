@@ -37,6 +37,7 @@ final class QuoteLineCoverageWriter
     public function __construct(
         private readonly QuoteLineWriter $lineWriter,
         private readonly OpportunityProductLineCoverage $coverage,
+        private readonly QuoteRootScope $rootScope,
     ) {}
 
     /**
@@ -57,7 +58,7 @@ final class QuoteLineCoverageWriter
         $revenueLines = null;
 
         if ($offerLines !== null) {
-            $this->coverOpportunity($opportunity, $offerLines);
+            $this->coverOpportunity($quote, $opportunity, $offerLines);
             $revenueLines = $this->lineWriter->sync($quote, QuoteLineType::Revenue, $offerLines);
         }
 
@@ -75,7 +76,7 @@ final class QuoteLineCoverageWriter
      *
      * @param  array<int, QuoteLineData>  $lines
      */
-    private function coverOpportunity(?Opportunity $opportunity, array $lines): void
+    private function coverOpportunity(Quote $quote, ?Opportunity $opportunity, array $lines): void
     {
         if ($opportunity === null || $lines === []) {
             return;
@@ -89,6 +90,8 @@ final class QuoteLineCoverageWriter
         /** @var Collection<int, Product> $products */
         $products = Product::query()->with('category')->whereIn('id', $productIds)->get();
 
+        // Spec 0411, D-6: a bound offer never widens past its root category.
+        $this->rootScope->assertProductsUnderRoot($quote, $products, self::COVERAGE_ERROR_FIELD);
         $this->coverage->ensure($opportunity, $products, self::COVERAGE_ERROR_FIELD);
     }
 }

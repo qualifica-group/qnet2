@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\RequestManagement;
 
+use App\Services\Quotes\QuoteRootScope;
 use App\Services\Table\FilterApplier;
 use App\Tables\Concerns\HandlesBlankSetFilter;
 use App\Tables\Shared\OfferLinesColumn;
@@ -77,11 +78,13 @@ final class RequestRelationColumns
         'quote_workflow_status' => ['relation' => 'quoteWorkflowStatus', 'table' => 'quote_workflow_statuses', 'fk' => 'quote_workflow_status_id'],
     ];
 
+    private const string PRODUCT_CATEGORIES_COLUMN = 'product_categories';
+
     /**
      * @var array<string, array{relation: string, table: string, fk: string}>
      */
     private const array AGGREGATED_RELATIONS = [
-        'product_categories' => ['relation' => 'opportunity.productLines.productCategory', 'table' => 'product_categories', 'fk' => 'product_category_id'],
+        self::PRODUCT_CATEGORIES_COLUMN => ['relation' => 'opportunity.productLines.productCategory', 'table' => 'product_categories', 'fk' => 'product_category_id'],
     ];
 
     /**
@@ -93,6 +96,7 @@ final class RequestRelationColumns
         private readonly FilterApplier $filterApplier,
         private readonly RequestManagerSlotColumn $managerSlotColumn,
         private readonly RequestPendingChangeRequestsColumn $pendingChangeRequestsColumn,
+        private readonly QuoteRootScope $rootScope,
     ) {}
 
     /**
@@ -133,8 +137,10 @@ final class RequestRelationColumns
 
         // The blank entry ("(Vuoti)") selects the rows whose relation carries
         // no row at all — what an empty cell means for a derived column.
-        $query->where(function (Builder $group) use ($config, $values, $matchesBlank): void {
-            if ($values !== []) {
+        $query->where(function (Builder $group) use ($columnId, $config, $values, $matchesBlank): void {
+            if ($values !== [] && $columnId === self::PRODUCT_CATEGORIES_COLUMN) {
+                $this->applyRootScopedCategoryNames($group, $values);
+            } elseif ($values !== []) {
                 $this->applyNameWhereHas($group, $config['relation'], $values);
             }
 
@@ -302,6 +308,21 @@ final class RequestRelationColumns
     {
         $query->whereHas($relation, static function (Builder $relatedQuery) use ($values): void {
             $relatedQuery->whereIn('name', $values);
+        });
+    }
+
+    /**
+     * Spec 0411, D-3: "Categoria prodotto" matches a bound offer only through
+     * the lines under its own root.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<int, string>  $values
+     */
+    private function applyRootScopedCategoryNames(Builder $query, array $values): void
+    {
+        $query->whereHas('opportunity.productLines', function (Builder $lines) use ($values): void {
+            $lines->whereHas('productCategory', static fn (Builder $category) => $category->whereIn('name', $values));
+            $this->rootScope->constrainJoinedLines($lines, 'opportunity_product_lines.product_category_id');
         });
     }
 

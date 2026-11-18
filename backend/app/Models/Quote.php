@@ -161,11 +161,24 @@ class Quote extends BaseModel
             'next_callback_at' => 'datetime',
             'next_callback_reminded_at' => 'datetime',
             'is_transferred' => 'boolean',
+            'root_product_category_id' => 'integer',
             'title_is_manual' => 'boolean',
             'quote_date' => 'date',
             'accepted_at' => 'date',
             'follow_up_date' => 'date',
         ];
+    }
+
+    /**
+     * Spec 0411, D-1: the root category ("categoria madre") the offer is
+     * bound to, null when unbound. Absent from #[Fillable]: written only by
+     * RequestCreationService when it creates one offer per root.
+     *
+     * @return BelongsTo<ProductCategory, $this>
+     */
+    public function rootProductCategory(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'root_product_category_id');
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Models\ProductCategory;
 use App\Models\ProductSupplier;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\Services\Quotes\QuoteRootScope;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,17 +36,20 @@ use Illuminate\Support\Collection;
  */
 final class SimplifiedOfferLineNormalizer
 {
+    public function __construct(private readonly QuoteRootScope $rootScope) {}
+
     /**
      * The created Offerta's REVENUE rows (RequestCreationService, before
      * QuoteService::create()): every row is new, so a simplified
      * classification freezes them all, unconditionally.
      *
      * @param  array<int, QuoteLineData>  $lines
+     * @param  ?int  $rootId  spec 0411: the root the created offer is bound to, null = every line
      * @return array<int, QuoteLineData>
      */
-    public function normalizeForCreation(Opportunity $opportunity, array $lines): array
+    public function normalizeForCreation(Opportunity $opportunity, array $lines, ?int $rootId = null): array
     {
-        if ($lines === [] || ! $this->isSimplified($opportunity)) {
+        if ($lines === [] || ! $this->isSimplified($opportunity, $rootId)) {
             return $lines;
         }
 
@@ -84,7 +88,7 @@ final class SimplifiedOfferLineNormalizer
     {
         // Step 1: nothing to freeze on an empty submission or a classification
         // that never opted in — skip the persisted/product lookups entirely.
-        if ($rows === [] || ! $this->isSimplified($this->resolveOpportunity($quote))) {
+        if ($rows === [] || ! $this->isSimplified($this->resolveOpportunity($quote), $quote->root_product_category_id)) {
             return $rows;
         }
 
@@ -114,9 +118,12 @@ final class SimplifiedOfferLineNormalizer
      * root-owned setting — one batched query against the column already
      * mirrored onto every category row (spec 0114).
      */
-    private function isSimplified(Opportunity $opportunity): bool
+    private function isSimplified(Opportunity $opportunity, ?int $rootId): bool
     {
-        $categoryIds = $opportunity->productLines()->pluck('product_category_id')->all();
+        // Spec 0411, D-3: a bound offer reads only its own root's lines.
+        $categoryIds = $this->rootScope->filterLines($opportunity->productLines()->get(['id', 'product_category_id']), $rootId)
+            ->pluck('product_category_id')
+            ->all();
 
         if ($categoryIds === []) {
             return false;

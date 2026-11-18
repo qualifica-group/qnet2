@@ -164,6 +164,12 @@ class RequestManagementScopedTableDefinition implements AttributeColumnsScopable
                 ->whereIn('product_category_id', $categoryIds),
         );
 
+        // Spec 0411, D-3: an offer bound to a root shows only in that root's
+        // tabs; unbound offers keep appearing under every category they carry.
+        $rootId = $this->branches->rootIdOf($categoryIds[0]);
+        $rootColumn = $query->qualifyColumn('root_product_category_id');
+        $query->where(static fn (Builder $bound) => $bound->whereNull($rootColumn)->orWhere($rootColumn, $rootId));
+
         return $query;
     }
 

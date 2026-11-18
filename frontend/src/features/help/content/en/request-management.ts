@@ -93,6 +93,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'note',
+          text: 'When the **Product lines** belong to several parent categories (for example one ISO row and one APL row), **Create request** creates one request per parent category, all on the same opportunity (before saving, a notice under the **Product lines** says how many requests will be created and for which parent categories): each shows only in its own category tab and carries only its category\'s offer rows and **Additional information**, while the **Rewards** go to the first one only. Rows of several categories under the same parent (for example ISO 9001 and ISO 14001) stay in a single request. A product of a parent category not picked in the lines cannot be added.',
+        },
+        {
           type: 'tip',
           text: 'Picking an existing registry hides the identity, contacts and address fields and links the request to that client.',
         },
@@ -148,7 +152,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again.',
+            '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again. A request created for a parent category shows only its lines and accepts only categories and products of that parent: for another parent category create a new request.',
             '**Offer rows**: products picked from the **Product catalogue**, with quantities, prices and VAT.',
             "**Sales forecast**: expected close date, estimated value and success probability. They are the opportunity's values: changing them here changes them in **Opportunities** and in the other requests of the same opportunity too.",
             '**Status**: some statuses require a **Note**. A validated status requires at least one offer row. Closing does not, with either a positive or a negative outcome: the product row becomes mandatory when the contract is validated.',

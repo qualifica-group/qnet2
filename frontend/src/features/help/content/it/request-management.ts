@@ -93,6 +93,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'note',
+          text: "Se le **Linee di prodotto** appartengono a più categorie madri (ad esempio una riga ISO e una APL), **Crea richiesta** crea una richiesta per ogni categoria madre, tutte sulla stessa opportunità (prima di salvare, un avviso sotto le **Linee di prodotto** dice quante richieste verranno create e per quali categorie madri): ciascuna compare solo nella scheda della sua categoria, ha solo le righe offerta e le **Informazioni aggiuntive** della sua categoria, mentre i **Buoni** vanno solo sulla prima. Righe di più categorie della stessa madre (ad esempio ISO 9001 e ISO 14001) restano in un'unica richiesta. Un prodotto di una categoria madre non scelta nelle linee non si può aggiungere.",
+        },
+        {
           type: 'tip',
           text: "Scegliendo un'anagrafica esistente, i campi di identità, contatti e indirizzo si nascondono e la richiesta viene collegata a quel cliente.",
         },
@@ -148,7 +152,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto.",
+            "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto. Una richiesta creata per una categoria madre mostra solo le sue linee e accetta solo categorie e prodotti di quella madre: per un'altra categoria madre crea una nuova richiesta.",
             '**Righe offerta**: prodotti scelti dal **Catalogo prodotti**, con quantità, prezzi e IVA.',
             "**Previsione commerciale**: data chiusura prevista, valore stimato e probabilità di successo. Sono i valori dell'opportunità: se cambiano qui, cambiano anche in **Opportunità** e nelle altre richieste della stessa opportunità.",
             "**Stato**: alcuni stati richiedono una **Nota**. Per uno stato validato serve almeno una riga offerta. Per chiudere non serve, né con esito positivo né con esito negativo: la riga prodotto diventa obbligatoria quando si valida il contratto.",

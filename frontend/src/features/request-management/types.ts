@@ -237,7 +237,12 @@ export interface RequestWorkPanel extends RequestForecast, ContractedQuoteFlags 
   transferred_from: RequestOperationalSiteRef | null
   /** Spec 0082: the COMPUTED status of the request's opportunity, read-only. */
   status: OpportunityStatusSummary
+  /** Spec 0411: only the lines under `root_product_category` when the request is bound to one. */
   product_lines: RequestProductLine[]
+  /** Spec 0411: the parent category the request (offer) is bound to, `null` for an unbound one. */
+  root_product_category?: { id: number; name: string } | null
+  /** Spec 0411: every offer the POST created, one per parent category (create response only). */
+  created_quote_ids?: number[]
   /**
    * The offer's own REVENUE lines (spec 0086 D-7); `[]` when the offer has
    * none yet. Replaces `products_of_interest`, which this module no longer

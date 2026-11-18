@@ -304,5 +304,9 @@
     "Offer transferred to :registry": "Offerta trasferita a :registry",
     "Quote under contract: editing is not allowed.": "Offerta a contratto: modifica non consentita",
     "The quote is under contract: this change alters a document already accepted. Confirm to proceed.": "L'offerta e' a contratto: la modifica cambia un documento gia' accettato. Conferma per procedere.",
-    ":count field copied from the offer|:count fields copied from the offer": ":count campo copiato dall'offerta|:count campi copiati dall'offerta"
+    ":count field copied from the offer|:count fields copied from the offer": ":count campo copiato dall'offerta|:count campi copiati dall'offerta",
+    "This request belongs to the product category :root: its product lines must stay under it. For another product category create a new request.": "Questa richiesta appartiene alla categoria :root: le sue linee di prodotto devono restare sotto questa categoria. Per un'altra categoria crea una nuova richiesta.",
+    "The offers of this opportunity are bound to the product categories :roots: the product lines cannot add or remove a parent product category. For another product category create a new request.": "Le offerte di questa opportunità sono legate alle categorie :roots: le linee di prodotto non possono aggiungere o togliere una categoria madre. Per un'altra categoria crea una nuova richiesta.",
+    "This offer belongs to the product category :root: the product \":product\" belongs to another one.": "Questa offerta appartiene alla categoria :root: il prodotto \":product\" è di un'altra categoria.",
+    "The product \":product\" does not belong to any parent product category of the request: add its product category to the product lines, or remove the row.": "Il prodotto \":product\" non appartiene a nessuna categoria madre della richiesta: aggiungi la sua categoria alle linee di prodotto oppure togli la riga."
 }

@@ -272,7 +272,12 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
 
     try {
       const created = await createRequest(payload)
-      toast.success(t('requestManagement.form.create.success'))
+      const createdCount = created.created_quote_ids?.length ?? 1
+      toast.success(
+        createdCount > 1
+          ? t('requestManagement.form.create.successPerRoot', { count: createdCount })
+          : t('requestManagement.form.create.success'),
+      )
       onSuccess(created.id)
     } catch (error) {
       // `attribute_values.<code>` is appended per applicable attribute at

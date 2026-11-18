@@ -27,6 +27,9 @@ const PHONE_CONTACT: ContactDraft = {
   is_primary: true,
 }
 
+const toastSuccessMock = vi.fn()
+vi.mock('sonner', () => ({ toast: { success: (message: string) => toastSuccessMock(message), error: vi.fn() } }))
+
 const createRequestMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
   // The create form resolves its "Informazioni aggiuntive" from the picked
@@ -42,9 +45,28 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRequestMock.mockReset()
+  toastSuccessMock.mockReset()
 })
 
 describe('useRequestCreateForm', () => {
+  it('announces one request per parent category when the creation produced several (spec 0411)', async () => {
+    createRequestMock.mockResolvedValueOnce({ id: 70, created_quote_ids: [70, 71] })
+    const onSuccess = vi.fn()
+    const { result } = renderCreateForm(onSuccess)
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(toastSuccessMock).toHaveBeenCalledWith('2 requests created, one per parent category.')
+    expect(onSuccess).toHaveBeenCalledWith(70)
+  })
+
   it('blocks submit and surfaces a client banner when neither a registry nor a complete identity is provided', async () => {
     const onSuccess = vi.fn()
     const { result } = renderCreateForm(onSuccess)

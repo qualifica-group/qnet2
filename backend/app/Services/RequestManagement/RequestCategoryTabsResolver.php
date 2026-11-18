@@ -11,6 +11,7 @@ use App\Models\User;
 use App\RequestManagement\RequestModule;
 use App\Services\CategoryTabs\CategoryTabLevel;
 use App\Services\CategoryTabs\RootCategoryCounts;
+use App\Services\Quotes\QuoteRootScope;
 use App\Support\Cache\AggregateCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -39,6 +40,7 @@ final class RequestCategoryTabsResolver
     public function __construct(
         private readonly AggregateCache $cache,
         private readonly RootCategoryCounts $rootCounts,
+        private readonly QuoteRootScope $rootScope,
     ) {}
 
     /**
@@ -105,6 +107,9 @@ final class RequestCategoryTabsResolver
     {
         $query = Quote::query()
             ->join('opportunity_product_lines', 'opportunity_product_lines.opportunity_id', '=', 'quotes.opportunity_id');
+
+        // Spec 0411, D-3: a bound offer counts only under its own root's lines.
+        $this->rootScope->constrainJoinedLines($query, self::CATEGORY_COLUMN);
 
         return RequestManagementScope::scopeToActor($query, $user, $module);
     }

@@ -136,6 +136,9 @@ final readonly class CreateQuoteData
         // Appended (spec 0404 part A): the system status picked from Offerte,
         // translated to a working status by QuoteWorkflowStatusAssigner.
         public ?int $systemStatusId = null,
+        // Appended (spec 0411, D-1): the root category the offer is bound to,
+        // set only by RequestCreationService (one offer per root).
+        public ?int $rootProductCategoryId = null,
     ) {}
 
     /**

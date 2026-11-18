@@ -79,7 +79,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente prende il referente principale della nuova anagrafica (resta vuoto se non ne ha; vale anche scegliendo un **Lead**, quando l'anagrafica cambia o il Referente è vuoto) e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti; i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
+          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente prende il referente principale della nuova anagrafica (resta vuoto se non ne ha; vale anche scegliendo un **Lead**, quando l'anagrafica cambia o il Referente è vuoto) e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti (se l'opportunità ha richieste create da Gestione Richieste, una per categoria madre, le righe possono cambiare solo dentro quelle categorie madri: non si aggiunge né si toglie una categoria madre); i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
         },
         {
           type: 'note',

@@ -11,6 +11,7 @@ use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Quotes\QuoteManagerLabelResolver;
+use App\Services\Quotes\QuoteRootScope;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\RequestManagement\RequestRegistryWriter;
 use App\Support\Geo\GeoNameLocalizer;
@@ -155,7 +156,11 @@ class RequestManagementResource extends JsonResource
             // category defines one. `{}` when not resolvable.
             'manager_labels' => app(QuoteManagerLabelResolver::class)->resolve($quote),
             'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
-            'product_lines' => $this->summarizeProductLines($opportunity->productLines),
+            // Spec 0411, D-3: a bound offer shows (and edits) only its root's lines.
+            'product_lines' => $this->summarizeProductLines(app(QuoteRootScope::class)->linesOf($quote)),
+            'root_product_category' => $this->summarizeByName($quote->rootProductCategory),
+            // Spec 0411, D-2: every offer a creation produced (POST only).
+            ...(array_key_exists('created_quote_ids', $this->resource) ? ['created_quote_ids' => $this->resource['created_quote_ids']] : []),
             // Spec 0086, D-7/AC-021: replaces `products_of_interest` — the
             // Offerta's own REVENUE lines. EDITABLE from this module since the
             // user directive 2026-08-07, so the projection is the Offerte

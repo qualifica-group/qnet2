@@ -23,6 +23,7 @@ import { RequestForecastSection } from '@/features/request-management/request-fo
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
+import { RequestCreateRootSplitNotice } from '@/features/request-management/request-create-root-split-notice'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 import {
@@ -226,6 +227,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                         {t('requestManagement.workPanel.productLines.hint')}
                       </p>
                       <FormMessage />
+                      <RequestCreateRootSplitNotice rows={field.value} />
                     </FormItem>
                   )}
                 />
