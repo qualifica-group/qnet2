@@ -297,6 +297,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Scegli la **Nuova anagrafica**: deve essere diversa da quella attuale.',
+            "Se serve, cambia il **Titolo** dell'offerta: è già compilato con quello attuale. Se lo svuoti torna il titolo automatico (codice e prodotti).",
             'Controlla e, se serve, aggiorna le **Informazioni aggiuntive** (i campi flessibili): sono già compilate con i valori attuali.',
             'Clicca **Trasferisci**.',
           ],

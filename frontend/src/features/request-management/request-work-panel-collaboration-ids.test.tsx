@@ -7,9 +7,11 @@ import { RequestWorkPanelScreen } from '@/features/request-management/request-wo
 import { workPanel as panel } from '@/features/request-management/request-work-panel-fixtures'
 
 /**
- * Spec 0086 D-9/D-10: the panel's own record-level id split. Notes,
- * documents and (`request-work-panel.test.tsx`'s own suite) activity history
- * stay anchored to the underlying Opportunity (`panel.opportunity_id`);
+ * Spec 0086 D-9/D-10: the panel's own record-level id split. Notes and
+ * (`request-work-panel.test.tsx`'s own suite) activity history stay anchored
+ * to the underlying Opportunity (`panel.opportunity_id`); the documents are
+ * the Offerta's own (`panel.id`, REQUIREMENT CHANGED by spec 0415 D-3), the
+ * Opportunity's shown read-only in their own tab;
  * field-change-request proposals key on the Offerta itself (`panel.id`,
  * D-10 revised, superseding the D-9 wording in the original spec draft). The
  * shared fixture deliberately sets these two ids to DIFFERENT values
@@ -116,17 +118,27 @@ describe('RequestWorkPanelScreen — collaboration ids (spec 0086 D-9)', () => {
     expect(notesSectionMock).not.toHaveBeenCalledWith(expect.objectContaining({ entityId: panel().id }))
   })
 
-  it('keys Documents on the Opportunity id, never the Offerta id', async () => {
+  it('keys Documents on the Offerta id, editable (spec 0415 D-3)', async () => {
     renderPanel()
 
     // Radix `TabsTrigger` activates on `mouseDown`, not `click`.
     fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Documents' }))
 
+    expect(await screen.findByText(`documents-section:quote:${panel().id}`)).toBeInTheDocument()
+    expect(documentsSectionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'quote', id: panel().id, canUpload: true, canDelete: true }),
+    )
+  })
+
+  it('shows the Opportunity documents read-only in their own tab (spec 0415 D-3)', async () => {
+    renderPanel()
+
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Opportunity documents' }))
+
     expect(await screen.findByText(`documents-section:opportunity:${panel().opportunity_id}`)).toBeInTheDocument()
     expect(documentsSectionMock).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: 'opportunity', id: panel().opportunity_id }),
+      expect.objectContaining({ resource: 'opportunity', id: panel().opportunity_id, canUpload: false, canDelete: false }),
     )
-    expect(documentsSectionMock).not.toHaveBeenCalledWith(expect.objectContaining({ id: panel().id }))
   })
 })
 

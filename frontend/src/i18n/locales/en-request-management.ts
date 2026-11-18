@@ -177,6 +177,18 @@ export const requestManagement = {
       /** Spec 0411: one offer per parent category of the product lines. */
       successPerRoot: '{{count}} requests created, one per parent category.',
       /** Spec 0411: shown before saving when the lines span several parent categories. */
+      /** Spec 0415: files queued in New request, uploaded onto the offers after the save. */
+      documents: {
+        title: 'Documents',
+        description: 'The files are attached to the request when it is saved.',
+        descriptionPerOffer: 'Several requests will be created: for each file pick the request (parent category) to attach it to.',
+        pick: 'Choose the files to attach',
+        offerFor: 'Request to attach {{name}} to',
+        offerOption: '{{root}} request',
+        remove: 'Remove {{name}}',
+        uploadFailed_one: 'Request created, but the file {{names}} was not uploaded: attach it from the request panel.',
+        uploadFailed_other: 'Request created, but {{count}} files were not uploaded ({{names}}): attach them from the request panel.',
+      },
       rootSplitNotice: 'Note: the product lines belong to {{count}} parent categories ({{roots}}). Saving will create {{count}} requests, one per parent category, on the same opportunity.',
       validation: {
         productLinesRequired: 'Add at least one product line.',
@@ -308,6 +320,8 @@ export const requestManagement = {
     collaboration: {
       notesTab: 'Notes',
       documentsTab: 'Documents',
+      /** Spec 0415: the files already on the opportunity, read-only. */
+      opportunityDocumentsTab: 'Opportunity documents',
       activityTab: 'History',
     },
     validation: {

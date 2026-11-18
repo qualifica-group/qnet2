@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\QuoteLineType;
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasFieldChangeRequests;
 use App\Models\Concerns\HasRewards;
 use App\Models\Concerns\LogsModelActivity;
@@ -127,7 +128,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Quote extends BaseModel
 {
     /** @use HasFactory<QuoteFactory> */
-    use HasFactory, HasFieldChangeRequests, HasRewards, LogsModelActivity;
+    use HasAttachments, HasFactory, HasFieldChangeRequests, HasRewards, LogsModelActivity;
 
     /**
      * Spec 0228 AC-001: an offer always has its date. A channel that does not

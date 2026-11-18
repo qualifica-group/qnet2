@@ -177,6 +177,18 @@ export const requestManagement = {
       /** Spec 0411: one offer per parent category of the product lines. */
       successPerRoot: 'Create {{count}} richieste, una per categoria madre.',
       /** Spec 0411: shown before saving when the lines span several parent categories. */
+      /** Spec 0415: files queued in Nuova richiesta, uploaded onto the offers after the save. */
+      documents: {
+        title: 'Documenti',
+        description: 'I file vengono allegati alla richiesta al salvataggio.',
+        descriptionPerOffer: 'Verranno create più richieste: per ogni file scegli la richiesta (categoria madre) a cui allegarlo.',
+        pick: 'Scegli i file da allegare',
+        offerFor: 'Richiesta a cui allegare {{name}}',
+        offerOption: 'Richiesta {{root}}',
+        remove: 'Rimuovi {{name}}',
+        uploadFailed_one: 'Richiesta creata, ma il file {{names}} non è stato caricato: allegalo dal pannello della richiesta.',
+        uploadFailed_other: 'Richiesta creata, ma {{count}} file non sono stati caricati ({{names}}): allegali dal pannello della richiesta.',
+      },
       rootSplitNotice: 'Attenzione: le linee di prodotto appartengono a {{count}} categorie madri ({{roots}}). Al salvataggio verranno create {{count}} richieste, una per categoria madre, sulla stessa opportunità.',
       validation: {
         productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
@@ -311,6 +323,8 @@ export const requestManagement = {
     collaboration: {
       notesTab: 'Note',
       documentsTab: 'Documenti',
+      /** Spec 0415: the files already on the opportunity, read-only. */
+      opportunityDocumentsTab: 'Documenti opportunità',
       activityTab: 'Storico',
     },
     validation: {

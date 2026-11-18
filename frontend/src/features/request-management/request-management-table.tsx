@@ -24,7 +24,7 @@ import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
+import { QUOTE_ATTACHABLE_ALIAS } from '@/features/quotes/api'
 import { assignRequestOperators, deleteRequest, fetchRequestManagementCategories } from '@/features/request-management/api'
 import { AssignManagerGa1Dialog } from '@/features/request-management/assign-manager-ga1-dialog'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
@@ -90,10 +90,9 @@ interface RequestNotesTarget {
  * `useModuleOpener`, resolved from the user's open-mode preference (spec
  * 0042): modal mounts the work panel in a Sheet, page mode navigates to
  * `/request-management/:id` (the Offerta id). The `documents` row action opens
- * the shared `DocumentsDialog` on the same polymorphic owner the opportunities
- * module uses, keyed on the row's `opportunity_id` (spec 0086 D-9: documents
- * stay anchored to the Opportunity, never the Offerta), gated server-side by
- * this module's OWN `request-management.viewDocuments` (D-2). The `notes` row
+ * the shared `DocumentsDialog` on the row's own Offerta (`quote` owner, spec
+ * 0415 D-3), gated server-side by this module's OWN
+ * `request-management.viewDocuments` (D-2). The `notes` row
  * action opens the agnostic `NotesDialog` on the same `opportunity_id` (spec
  * 0052/0086 D-9), gated server-side by the notes feature's own hybrid
  * authorization (D-6) — this module only wires the `entityType`/`entityId`
@@ -185,9 +184,8 @@ export function RequestManagementTable() {
           openView(row)
           break
         case 'documents':
-          // Spec 0086 D-9: documents stay anchored to the Opportunity, never
-          // the row's own Quote id.
-          setDocumentsRowId(row.opportunity_id as number)
+          // Spec 0415 D-3: the documents are the row's own Offerta.
+          setDocumentsRowId(Number(row.id))
           break
         case 'notes':
           // Il thread resta quello dell'Opportunita' (D-9), filtrato sulla
@@ -456,7 +454,7 @@ export function RequestManagementTable() {
       />
 
       <DocumentsDialog
-        resource={OPPORTUNITY_ATTACHABLE_ALIAS}
+        resource={QUOTE_ATTACHABLE_ALIAS}
         id={documentsRowId}
         onOpenChange={handleDocumentsOpenChange}
       />

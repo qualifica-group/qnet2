@@ -129,8 +129,15 @@ export const quotes = {
   registryTransfer: {
     button: 'Trasferisci ad altra anagrafica',
     title: 'Trasferisci offerta ad altra anagrafica',
+    subtitle: "Intesta l'offerta a un altro cliente: le note dell'offerta e il suo team la seguono.",
     description:
-      "L'offerta lascia l'anagrafica {{registry}}. Va sull'opportunità aperta della nuova anagrafica se la categoria non ne ammette più di una, altrimenti nasce una nuova opportunità con le stesse linee di prodotto. La vecchia opportunità resta com'è.",
+      "Se la categoria non ammette più di un'opportunità aperta, l'offerta va su quella aperta della nuova anagrafica; altrimenti nasce una nuova opportunità con le stesse linee di prodotto. La vecchia opportunità resta com'è.",
+    destination: 'Destinazione',
+    destinationHint: "Il cliente a cui passa l'offerta.",
+    currentRegistry: 'Anagrafica attuale',
+    offer: 'Offerta',
+    offerHint: "Il titolo con cui l'offerta compare nel nuovo cliente.",
+    attributesHint: "I campi flessibili dell'offerta, già compilati con i valori attuali.",
     registry: 'Nuova anagrafica',
     registryPlaceholder: "Seleziona l'anagrafica",
     registrySearch: 'Cerca anagrafica…',

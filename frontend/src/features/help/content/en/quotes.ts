@@ -297,6 +297,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Choose the **New registry**: it must differ from the current one.',
+            "If needed, change the offer's **Title**: it is prefilled with the current one. Clearing it brings back the automatic title (code and products).",
             'Review and, if needed, update the **Additional information** (the flexible fields): they are prefilled with the current values.',
             'Click **Transfer**.',
           ],

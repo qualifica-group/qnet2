@@ -129,8 +129,15 @@ export const quotes = {
   registryTransfer: {
     button: 'Transfer to another registry',
     title: 'Transfer offer to another registry',
+    subtitle: "Move the offer to another customer: the offer's notes and team go with it.",
     description:
-      "The offer leaves the registry {{registry}}. It joins the new registry's open opportunity when the category allows only one, otherwise a new opportunity is created with the same product lines. The old opportunity stays as it is.",
+      "When the category allows only one open opportunity, the offer joins the new registry's open one; otherwise a new opportunity is created with the same product lines. The old opportunity stays as it is.",
+    destination: 'Destination',
+    destinationHint: 'The customer the offer moves to.',
+    currentRegistry: 'Current registry',
+    offer: 'Offer',
+    offerHint: 'The title the offer carries under the new customer.',
+    attributesHint: "The offer's flexible fields, prefilled with the current values.",
     registry: 'New registry',
     registryPlaceholder: 'Select the registry',
     registrySearch: 'Search registry…',

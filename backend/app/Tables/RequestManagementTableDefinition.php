@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
-use App\Models\Attachment;
-use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
@@ -228,16 +226,9 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // `FieldChangeRequestValueResolver::record()` precedent).
             'transferredFromOperationalSite',
         ])
-            // D-9: documents stay anchored to the Opportunity — a correlated
-            // subquery through `quotes.opportunity_id`, since `withCount()`
-            // cannot span the BelongsTo `opportunity` hop.
-            ->addSelect([
-                'documents_count' => Attachment::query()
-                    ->selectRaw('count(*)')
-                    ->where('attachable_type', (new Opportunity)->getMorphClass())
-                    ->where('collection', 'documents')
-                    ->whereColumn('attachable_id', 'quotes.opportunity_id'),
-            ])
+            // Spec 0415 D-3: the documents are the OFFER's own (no longer the
+            // Opportunity's, spec 0086 D-9).
+            ->withCount(['attachments as documents_count' => fn (Builder $attachments) => $attachments->where('collection', 'documents')])
             // Badge dell'azione `notes` (direttiva utente 2026-08-07): le note
             // SCOPATE a questa Offerta (`notes.quote_id`), non l'intero thread
             // dell'Opportunita' — esattamente il thread che l'azione apre, come
@@ -313,8 +304,8 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * Map a Quote to the operative row payload (delegated to
      * RequestRowMapper, so this definition keeps a single concern: query
      * building). `actions` is attached by the generic TableService via
-     * actionsFor(); `documents_count` rides along from baseQuery's addSelect
-     * (D-9: still counted through the OFFER's opportunity) and `notes_count`
+     * actionsFor(); `documents_count` rides along from baseQuery's withCount
+     * (spec 0415: the OFFER's own documents) and `notes_count`
      * from its `scopedNotes` withCount (the OFFER's own notes).
      *
      * @return array<string, mixed>

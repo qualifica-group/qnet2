@@ -9,6 +9,7 @@ import { DocumentsSection } from '@/features/attachments/documents-section'
 import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
+import { QUOTE_ATTACHABLE_ALIAS } from '@/features/quotes/api'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
 import { QuoteDetailHeader, QuoteDetailStats } from '@/features/quotes/quote-detail-header'
@@ -39,10 +40,10 @@ interface QuoteDetailViewProps {
  * record's Notes tab, it is unconditional (not gated behind an ability): the
  * offer detail has always shown it regardless of `request-management.view`.
  *
- * The documents are the parent Opportunity's, mounted READ-ONLY exactly as the
- * Contract detail mounts them (spec 0072 AC-047, user directive 2026-08-31
- * "quelli che trovo in contratti"): an offer never owns an attachment, so it
- * must not offer to add or remove one — also unconditional. The anagrafica's
+ * The offer's own documents (spec 0415, uploaded from Gestione Richieste) and
+ * the parent Opportunity's are both mounted READ-ONLY, as the Contract detail
+ * mounts the opportunity's (spec 0072 AC-047): they are managed from the
+ * request work panel, not here — also unconditional. The anagrafica's
  * documents (spec 0173) follow, read-only too, gated on
  * `registries.viewDocuments`. Attività is gated on its own action flag and
  * absent entirely when unauthorized.
@@ -64,6 +65,13 @@ function useCollaborationTabs(quote: QuoteDetailWithPermissions): RecordCollabor
           lockedQuoteId={quote.id}
         />
       ),
+    },
+    {
+      value: 'quote-documents',
+      label: t('quotes.detail.tabs.quoteDocuments'),
+      icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: <DocumentsTabCount resource={QUOTE_ATTACHABLE_ALIAS} id={quote.id} />,
+      content: <DocumentsSection resource={QUOTE_ATTACHABLE_ALIAS} id={quote.id} canUpload={false} canDelete={false} />,
     },
     {
       value: 'opportunity-documents',

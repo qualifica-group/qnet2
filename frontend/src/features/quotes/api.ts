@@ -18,6 +18,9 @@ import type {
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const QUOTES_DOMAIN = 'quotes'
 
+/** Polymorphic attachment owner alias of an offer (spec 0415, `config('attachments.attachable_types')`). */
+export const QUOTE_ATTACHABLE_ALIAS = 'quote'
+
 /**
  * Query key of a single quote's detail (fresh-on-open pattern). Shared by the
  * detail/edit pages and by the post-mutation invalidation, so they can never

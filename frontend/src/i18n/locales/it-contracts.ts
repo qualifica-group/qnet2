@@ -86,6 +86,7 @@ export const contracts = {
     tabs: {
       contractDocuments: 'Documenti contratto',
       opportunityDocuments: 'Documenti opportunità',
+      quoteDocuments: 'Documenti offerta',
     },
     workOrders: {
       title: 'Commesse',

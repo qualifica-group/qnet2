@@ -86,6 +86,7 @@ export const contracts = {
     tabs: {
       contractDocuments: 'Contract documents',
       opportunityDocuments: 'Opportunity documents',
+      quoteDocuments: 'Offer documents',
     },
     workOrders: {
       title: 'Work orders',

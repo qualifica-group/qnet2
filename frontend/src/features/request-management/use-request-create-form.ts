@@ -31,6 +31,7 @@ import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
 import { useRequestActorAttributionDefaults } from '@/features/request-management/use-request-actor-defaults'
 import { useRequestFormContext } from '@/features/request-management/use-request-form-context'
 import { useCategoryRegistryType } from '@/features/request-management/use-category-registry-type'
+import { useRequestCreateDocuments } from '@/features/request-management/use-request-create-documents'
 
 interface UseRequestCreateFormArgs {
   /** Called after a successful create with the new request's (Offerta/Quote) id. */
@@ -179,6 +180,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const { context, isLoading: isContextLoading } = useRequestFormContext(productLines)
 
   const identityCardKey = useCategoryRegistryType(context.registry_type, identityDraft, setIdentityDraft)
+  const documents = useRequestCreateDocuments(form.control)
 
   const schema = useMemo(
     () => buildRequestCreateSchema(t, context.applicable_attributes, context.attribute_layout),
@@ -275,7 +277,19 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
 
     try {
       const created = await createRequest(payload)
-      const createdCount = created.created_quote_ids?.length ?? 1
+      const createdQuoteIds = created.created_quote_ids ?? [created.id]
+      const createdCount = createdQuoteIds.length
+      // Spec 0415 D-4: the files go on once the offers exist; a failed one
+      // leaves the request created and is named for a re-upload from the panel.
+      const failedDocuments = await documents.uploadAll(createdQuoteIds)
+      if (failedDocuments.length > 0) {
+        toast.warning(
+          t('requestManagement.form.create.documents.uploadFailed', {
+            count: failedDocuments.length,
+            names: failedDocuments.join(', '),
+          }),
+        )
+      }
       toast.success(
         createdCount > 1
           ? t('requestManagement.form.create.successPerRoot', { count: createdCount })
@@ -326,5 +340,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     isContextLoading,
     vatRatePercentFor,
     rememberVatRatePercent,
+    /** Files queued for upload after the save (spec 0415). */
+    documents,
   }
 }
