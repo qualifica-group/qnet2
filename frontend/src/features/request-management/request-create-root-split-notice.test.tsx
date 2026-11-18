@@ -11,8 +11,8 @@ import type { ProductCategoryTreeNode } from '@/features/product-categories/type
  */
 
 function node(id: number, name: string, parentId: number | null, children: ProductCategoryTreeNode[] = []): ProductCategoryTreeNode {
-  // Asserted, not annotated: the tree node type gains fields in parallel work (spec 0410).
-  return {
+  // Partial then asserted: the tree node type gains fields in parallel work (spec 0410).
+  const base: Partial<ProductCategoryTreeNode> = {
     id,
     name,
     parent_id: parentId,
@@ -32,7 +32,8 @@ function node(id: number, name: string, parentId: number | null, children: Produ
     multiple_open_opportunities: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
-  } as ProductCategoryTreeNode
+  }
+  return base as ProductCategoryTreeNode
 }
 
 const TREE: ProductCategoryTreeNode[] = [

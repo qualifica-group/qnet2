@@ -6,6 +6,7 @@ import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categ
 import { ProductCategoryFilterSelect } from '@/features/product-lines/product-category-filter-select'
 import { ProductCategoryRootSelect } from '@/features/product-lines/product-category-root-select'
 import { ProductCategoryTreeSelect } from '@/features/product-lines/product-category-tree-select'
+import { ProductLinesHints } from '@/features/product-lines/product-lines-hints'
 import { useProductLinesField } from '@/features/product-lines/use-product-lines-field'
 import type { ProductLine, ProductLineRow } from '@/features/product-lines/types'
 import type { CategoryPickArea } from '@/features/product-categories/types'
@@ -20,7 +21,12 @@ interface ProductLinesFieldProps {
   area?: CategoryPickArea
   /** Spec 0411: a request bound to one parent category offers only that root to its rows. */
   lockedRootCategoryId?: number | null
+  /** Guidance lines the hosting form adds to the field's own hint box. */
+  extraHints?: string[]
 }
+
+/** Hoisted: a fresh `[]` default per render would be a new reference each time. */
+const NO_EXTRA_HINTS: string[] = []
 
 /**
  * The CARD row editor (spec 0132, superseding the funzione+categoria
@@ -45,6 +51,7 @@ export function ProductLinesField({
   disabled = false,
   area,
   lockedRootCategoryId = null,
+  extraHints = NO_EXTRA_HINTS,
 }: ProductLinesFieldProps) {
   const { t } = useTranslation()
   const {
@@ -201,10 +208,7 @@ export function ProductLinesField({
         {t('productLines.add')}
       </Button>
 
-      <p className="text-xs text-muted-foreground">{t('productLines.hint')}</p>
-      {singleRootsBlocked ? (
-        <p className="text-xs text-muted-foreground">{t('productLines.singleRootBlocked')}</p>
-      ) : null}
+      <ProductLinesHints singleRootsBlocked={singleRootsBlocked} extraHints={extraHints} />
     </div>
   )
 }

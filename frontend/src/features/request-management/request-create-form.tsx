@@ -222,12 +222,10 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                           resetUncoveredOfferRows(rows)
                         }}
                         area="requests"
+                        extraHints={[t('requestManagement.workPanel.productLines.hint')]}
                       />
-                      <p className="text-xs text-muted-foreground">
-                        {t('requestManagement.workPanel.productLines.hint')}
-                      </p>
-                      <FormMessage />
                       <RequestCreateRootSplitNotice rows={field.value} />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

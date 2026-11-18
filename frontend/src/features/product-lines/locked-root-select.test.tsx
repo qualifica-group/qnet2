@@ -10,8 +10,8 @@ import type { ProductCategoryTreeNode } from '@/features/product-categories/type
  */
 
 function root(id: number): ProductCategoryTreeNode {
-  // Asserted, not annotated: the tree node type gains fields in parallel work (spec 0410).
-  return {
+  // Partial then asserted: the tree node type gains fields in parallel work (spec 0410).
+  const base: Partial<ProductCategoryTreeNode> = {
     id,
     name: `Root ${id}`,
     parent_id: null,
@@ -31,7 +31,8 @@ function root(id: number): ProductCategoryTreeNode {
     multiple_open_opportunities: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
-  } as ProductCategoryTreeNode
+  }
+  return base as ProductCategoryTreeNode
 }
 
 const TREE: ProductCategoryTreeNode[] = [root(1), root(2), root(3)]

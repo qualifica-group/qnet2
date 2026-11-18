@@ -39,11 +39,6 @@ export function RequestProductLinesSection({ control, rootCategory = null }: Req
         name="product_lines"
         metaKey="product_lines"
         label={t('requestManagement.workPanel.productLines.fieldLabel')}
-        hint={
-          rootCategory === null
-            ? t('requestManagement.workPanel.productLines.hint')
-            : t('requestManagement.workPanel.productLines.rootLocked', { root: rootCategory.name })
-        }
       >
         {({ field, disabled }) => (
           <ProductLinesField
@@ -55,6 +50,12 @@ export function RequestProductLinesSection({ control, rootCategory = null }: Req
             disabled={disabled}
             area="requests"
             lockedRootCategoryId={rootCategory === null ? null : rootCategory.id}
+            extraHints={[
+              t('requestManagement.workPanel.productLines.hint'),
+              ...(rootCategory === null
+                ? []
+                : [t('requestManagement.workPanel.productLines.rootLocked', { root: rootCategory.name })]),
+            ]}
           />
         )}
       </MetaField>
