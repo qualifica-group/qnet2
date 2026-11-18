@@ -65,7 +65,6 @@ if (! function_exists('registryAssignmentMail')) {
             role: AssignmentRoleEnum::Supervisor,
             recordId: $registry->id,
             recordLabel: $registry->name,
-            position: null,
             actorName: 'Rosa Falzarano',
             details: RecordDetails::for($registry->fresh()),
         ))->toMail($recipient);

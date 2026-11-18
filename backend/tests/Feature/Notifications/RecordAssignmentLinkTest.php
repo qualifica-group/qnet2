@@ -50,7 +50,6 @@ if (! function_exists('assignmentNotificationFor')) {
             role: AssignmentRoleEnum::Manager,
             recordId: 7,
             recordLabel: 'Acme deal',
-            position: 2,
             actorName: 'Actor',
         );
     }
@@ -214,7 +213,6 @@ it('never persists an absolute URL in action_url (AC-017)', function () {
         role: AssignmentRoleEnum::Supervisor,
         recordId: 7,
         recordLabel: 'Acme',
-        position: null,
         actorName: 'Actor',
     ))->toArray($recipient);
 
@@ -239,7 +237,7 @@ it('translates every string the two notifications emit (AC-026)', function () {
         'You were assigned as Supervisor',
         'You were assigned as Account Manager',
         ':actor assigned you as Supervisor on :label.',
-        ':actor assigned you as Account Manager :position on :label.',
+        ':actor assigned you as Account Manager on :label.',
         'Contact transferred',
         'Contact no longer assigned to you',
         'New contact assigned to you',

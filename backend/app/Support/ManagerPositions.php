@@ -40,8 +40,8 @@ final class ManagerPositions
     /**
      * The first G.A. slot, the target of Gestione Richieste's bulk "Assegna
      * Tutor" (spec 0104, direttiva utente 2026-09-08). Unlike OPERATOR it
-     * carries no domain role of its own: it scopes nothing, denormalizes onto
-     * no column and notifies nobody — it is just position 1 of `quote_user`,
+     * carries no domain role of its own: it scopes nothing and denormalizes
+     * onto no column — it is just position 1 of `quote_user`,
      * named by the scoped category's `manager_labels[1]`.
      */
     public const int GA1 = 1;

@@ -266,8 +266,9 @@ it('AC-007: moving the OPERATOR slot notifies the new operator and logs both key
 
 // Requirement changed 2026-11-10 (task 426900, user decision): a colleague
 // newly added to another slot is notified in that position, like the Offerta
-// card (spec 0186 D-3); the operator in place still hears nothing.
-it('AC-007: adding a colleague to an OTHER slot notifies only them, in that position, and leaves the operator in place', function () {
+// card (spec 0186 D-3); the operator in place still hears nothing. Since
+// 2026-11-18 the message carries no slot number (RecordAssignmentNotificationTest).
+it('AC-007: adding a colleague to an OTHER slot notifies only them and leaves the operator in place', function () {
     Notification::fake();
 
     $actor = teamSlotsActor();
@@ -280,9 +281,7 @@ it('AC-007: adding a colleague to an OTHER slot notifies only them, in that posi
         'manager_slots' => [$teammate->id, $operator->id],
     ])->assertOk();
 
-    Notification::assertSentTo($teammate, function (RecordAssignmentNotification $notification) use ($teammate): bool {
-        return str_contains((string) $notification->toArray($teammate)['message'], ' 1 ');
-    });
+    Notification::assertSentTo($teammate, RecordAssignmentNotification::class);
     Notification::assertNotSentTo($operator, RecordAssignmentNotification::class);
 
     expect($quote->fresh()->operator_id)->toBe($operator->id);

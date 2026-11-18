@@ -205,7 +205,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Each request's new **Operator** receives the **You were assigned as Account Manager** notification with the quote's title and details; the link opens the quote, or the request here when they cannot access Quotes. The other Account Managers receive no notification.",
+          text: "With the assignment actions, whoever joins a request's **Account managers** receives the **You were assigned as Account Manager** notification, in the bell and by email, with the quote's title and details, every Account manager included; the link opens the quote, or the request here when they cannot access Quotes. It works the same for every Account manager. It is not sent to whoever was already on the team, whoever is only moved, or whoever assigns themselves.",
         },
       ],
     },

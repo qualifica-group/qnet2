@@ -50,7 +50,6 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
         private readonly AssignmentRoleEnum $role,
         private readonly int $recordId,
         private readonly string $recordLabel,
-        private readonly ?int $position,
         private readonly string $actorName,
         private readonly array $details = [],
     ) {}
@@ -117,9 +116,8 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
                 'actor' => $this->actorName,
                 'label' => $this->recordLabel,
             ]),
-            AssignmentRoleEnum::Manager => __(':actor assigned you as Account Manager :position on :label.', [
+            AssignmentRoleEnum::Manager => __(':actor assigned you as Account Manager on :label.', [
                 'actor' => $this->actorName,
-                'position' => (string) $this->position,
                 'label' => $this->recordLabel,
             ]),
             AssignmentRoleEnum::WorkOrderSupervisor => __(':actor assigned you as Supervisor of the work order :label.', [

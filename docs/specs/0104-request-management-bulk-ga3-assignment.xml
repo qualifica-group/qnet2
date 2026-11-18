@@ -72,6 +72,12 @@
     D-5 — Nessuna notifica di assegnazione. Il GA3 non scopa visibilita' e non e' il
           destinatario operativo: e' la stessa regola che `applyGa3` e `applySlots`
           seguono gia' (spec 0097 D-6/AC-007). L'attivita' invece SI' e' registrata.
+          REV. 2026-11-18 (richiesta utente: "quando una persona viene inserita come Gestore
+          Account [...] deve arrivare anche notifica via mail"): SUPERATA. Chi viene
+          AGGIUNTO al team nello slot GA1 riceve `RecordAssignmentNotification` (ruolo
+          Manager, campanella + email per preferenza) via `AssignmentNotifier::notify()`,
+          come dal pannello Team; non chi era gia' nel team e viene solo spostato, ne'
+          l'attore.
     D-6 — Nessun `throttle` sull'endpoint (backend.md 2: solo endpoint credenziali).
   </context>
 
@@ -133,7 +139,7 @@
         Step 2: per ogni Offerta rimasta, `RequestOperatorWriter::applyGa3($quote,
         $managerGa3Id, $changed, $old)`. Step 3: quando `$changed` non e' vuoto, una voce
         di activity log ancorata all'Opportunita' (stesso pattern di `assignOne()`),
-        `log('Request management bulk GA3 assignment')`. Nessuna notifica (D-5).
+        `log('Request management bulk GA3 assignment')`. Notifica al nuovo GA1 (D-5 rev. 2026-11-18).
         Il conteggio ritornato e' il numero di Offerte RAGGIUNTE (in scope), non quelle
         effettivamente cambiate: stessa semantica di `assignOperators`.
       </behavior>
@@ -208,7 +214,9 @@
       sull'Opportunita' con `attributes.manager_ga3_id` = nuovo valore e
       `old.manager_ga3_id` = precedente. Un'Offerta che aveva gia' quel GA3 non produce
       alcuna voce (guardia di no-op di `applyGa3`).</ac>
-    <ac id="AC-009">Nessuna notifica di assegnazione viene emessa dall'endpoint (D-5).</ac>
+    <ac id="AC-009">(rev. 2026-11-18, D-5) Il nuovo GA1 aggiunto al team riceve UNA notifica
+      "Sei stato inserito come Gestore Account" (campanella + email); nessuna notifica se il
+      GA1 e' l'attore o un membro del team solo spostato sullo slot.</ac>
     <ac id="AC-010">Un GA3 che non e' Gestore Account dell'Opportunita' padre viene
       promosso sul primo slot LIBERO di quella (comportamento gia' garantito da
       `promoteToOpportunity: true`), mai sovrascrivendone uno occupato.</ac>

@@ -103,7 +103,7 @@
     "You were assigned as Supervisor": "Sei stato inserito come Supervisore",
     "You were assigned as Account Manager": "Sei stato inserito come Gestore Account",
     ":actor assigned you as Supervisor on :label.": ":actor ti ha inserito come Supervisore su :label.",
-    ":actor assigned you as Account Manager :position on :label.": ":actor ti ha inserito come Gestore Account :position su :label.",
+    ":actor assigned you as Account Manager on :label.": ":actor ti ha inserito come Gestore Account su :label.",
     "You were assigned as Work Order Supervisor": "Sei stato inserito come Responsabile della commessa",
     "You were assigned as Work Order Participant": "Sei stato inserito come Partecipante della commessa",
     ":actor assigned you as Supervisor of the work order :label.": ":actor ti ha inserito come Responsabile della commessa :label.",

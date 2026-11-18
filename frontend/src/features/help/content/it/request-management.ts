@@ -205,7 +205,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Il nuovo **Operatore** di ogni richiesta riceve la notifica **Sei stato inserito come Gestore Account** con il titolo e i dati dell'offerta; il link apre l'offerta, oppure la richiesta qui se non ha accesso alle Offerte. Gli altri Gestori Account non ricevono notifiche.",
+          text: "Con le azioni di assegnazione, chi entra tra i **Gestori account** di una richiesta riceve la notifica **Sei stato inserito come Gestore Account**, nella campanella e per email, con il titolo e i dati dell'offerta, compresi tutti i Gestori account; il link apre l'offerta, oppure la richiesta qui se non ha accesso alle Offerte. Vale allo stesso modo per ogni Gestore account. Non la ricevono chi era già nel team, chi viene solo spostato e chi assegna se stesso.",
         },
       ],
     },

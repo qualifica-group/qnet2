@@ -80,7 +80,6 @@ it('gives a recipient with neither module no link, no mail button and an explana
         role: AssignmentRoleEnum::Manager,
         recordId: 9,
         recordLabel: 'QUO-0009',
-        position: 2,
         actorName: 'Actor',
     );
 
@@ -120,7 +119,8 @@ it('notifies the GA2 assigned from request management with the Offerta title and
 // AC-005 / AC-006 — the Offerta form notifies every newly inserted manager
 // ---------------------------------------------------------------------------
 
-it('notifies every manager newly inserted from the Offerta form, at its own slot (AC-005)', function () {
+// REQUIREMENT CHANGED (2026-11-18): same message for every slot, no number.
+it('notifies every manager newly inserted from the Offerta form, whatever the slot (AC-005)', function () {
     Notification::fake();
 
     $actor = quoteNotificationUserWith(['quotes.view', 'quotes.update', 'quotes.viewAll']);
@@ -132,9 +132,11 @@ it('notifies every manager newly inserted from the Offerta form, at its own slot
 
     $this->patchJson("/api/quotes/{$quote->id}", ['manager_slots' => [$ga1->id, null, $ga3->id]])->assertOk();
 
-    foreach ([[$ga1, 1], [$ga3, 3]] as [$manager, $position]) {
-        Notification::assertSentTo($manager, function (RecordAssignmentNotification $notification) use ($manager, $position): bool {
-            return str_contains((string) $notification->toArray($manager)['message'], " {$position} ");
+    $expected = __(':actor assigned you as Account Manager on :label.', ['actor' => $actor->name, 'label' => $quote->fresh()->title]);
+
+    foreach ([$ga1, $ga3] as $manager) {
+        Notification::assertSentTo($manager, function (RecordAssignmentNotification $notification) use ($manager, $expected): bool {
+            return str_starts_with((string) $notification->toArray($manager)['message'], $expected);
         });
     }
 });
@@ -215,16 +217,20 @@ it('notifies the managers an Offerta inherits from its Opportunity (AC-006)', fu
 // ---------------------------------------------------------------------------
 
 it('builds the detail card from the Offerta, not from its Opportunity (AC-007)', function () {
-    $operator = User::factory()->create(['name' => 'Offer Operator']);
-    $opportunityOperator = User::factory()->create(['name' => 'Opportunity Operator']);
-    $quote = Quote::factory()->create(['title' => 'QUO-0007 - Offerta', 'operator_id' => $operator->id]);
-    $quote->opportunity->managers()->sync([$opportunityOperator->id => ['position' => ManagerPositions::OPERATOR]]);
+    $offerManager = User::factory()->create(['name' => 'Offer Manager']);
+    $otherOfferManager = User::factory()->create(['name' => 'Other Offer Manager']);
+    $opportunityManager = User::factory()->create(['name' => 'Opportunity Manager']);
+    $quote = Quote::factory()->create(['title' => 'QUO-0007 - Offerta']);
+    $quote->managers()->sync([$offerManager->id => ['position' => 1], $otherOfferManager->id => ['position' => 3]]);
+    $quote->opportunity->managers()->sync([$opportunityManager->id => ['position' => 1]]);
 
     $details = RecordDetails::for($quote);
 
     expect(RecordDetails::targetFor($quote))->toBe(AssignmentTargetEnum::Quote)
         ->and(RecordDetails::labelFor($quote))->toBe('QUO-0007 - Offerta')
         ->and($details['notifications.fields.title'])->toBe('QUO-0007 - Offerta')
-        ->and($details['notifications.fields.operator'])->toBe('Offer Operator')
+        // REQUIREMENT CHANGED (2026-11-18): the Offerta's whole team, no "Operatore" row.
+        ->and($details['notifications.fields.account_managers'])->toBe('Offer Manager, Other Offer Manager')
+        ->and($details)->not->toHaveKey('notifications.fields.operator')
         ->and($details['notifications.fields.status'])->toBe($quote->quoteWorkflowStatus->name);
 });

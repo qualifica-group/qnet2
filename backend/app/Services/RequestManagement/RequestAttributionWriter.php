@@ -8,7 +8,6 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\RewardAssignmentWriter;
-use App\Support\ManagerPositions;
 
 /**
  * The request's ATTRIBUTION block as the work panel writes it (user directive
@@ -94,9 +93,11 @@ final class RequestAttributionWriter
      * The WHOLE team, as the work panel now writes it (spec 0097, D-1/D-5):
      * delegated to the SAME RequestOperatorWriter — which reports
      * `manager_slots` on any genuine move and `operator_id` only when the
-     * OPERATOR slot itself changes hands — and then through the
-     * notification path below (D-6): a reshuffle of members already in the
-     * team notifies nobody.
+     * OPERATOR slot itself changes hands. Every member genuinely ATTACHED to
+     * the team is notified against the Offerta (spec 0186, D-2/D-3); one
+     * already in it and merely moved, whatever the slot, and a removal notify
+     * nobody (decisione utente 2026-11-18: every Gestore Account is the same
+     * role, the Operatore slot included).
      *
      * @param  array<int, int|null>  $slots
      * @param  array<string, mixed>  $changed
@@ -105,34 +106,7 @@ final class RequestAttributionWriter
     public function applyTeam(Quote $quote, array $slots, User $actor, array &$changed, array &$old): void
     {
         $attached = $this->operatorWriter->applySlots($quote, $slots, $changed, $old);
-        $this->notifyAssignments($quote, $actor, $attached, $changed);
-    }
-
-    /**
-     * Who is newly put in charge, in which position, like the Offerta card
-     * (spec 0186, D-3; task 426900): every manager genuinely ATTACHED to the
-     * team, plus an existing member moved onto the Operatore slot (spec 0081:
-     * the writer reports `operator_id` only on a genuine transition). A member
-     * merely renumbered, and a removal, notify nobody. Notified against the
-     * Offerta itself (spec 0186, D-2): its title, its card, its link.
-     *
-     * @param  array<int, int>  $attached  `userId => position`
-     * @param  array<string, mixed>  $changed
-     */
-    private function notifyAssignments(Quote $quote, User $actor, array $attached, array $changed): void
-    {
-        $positions = $attached;
-        $newOperatorId = $changed['operator_id'] ?? null;
-
-        if ($newOperatorId !== null) {
-            $positions[(int) $newOperatorId] = ManagerPositions::OPERATOR;
-        }
-
-        if ($positions === []) {
-            return;
-        }
-
-        $this->assignmentNotifier->notify($quote, $actor, null, $positions);
+        $this->assignmentNotifier->notify($quote, $actor, null, $attached);
     }
 
     /**
