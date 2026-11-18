@@ -10,6 +10,7 @@ use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\TaskService;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Tasks\TaskAdvancedFilterApplier;
 use App\Tables\Tasks\TaskAdvancedFilterCatalog;
 use App\Tables\Tasks\TaskAggregateColumns;
@@ -105,7 +106,7 @@ class TasksTableDefinition extends AbstractTableDefinition
         // `addSelect($this->aggregateColumns->selects())` (spec 0156, D-2)
         // resolves `actual_minutes`/`parent_title` in the SAME query too.
         $query = Task::query()
-            ->withCount(['subtasks', 'notes'])
+            ->withCount(['subtasks', ...NotesCountColumn::of('notes')])
             ->with([
                 ...TaskStatusResolver::EAGER_LOADS,
                 'taskType',

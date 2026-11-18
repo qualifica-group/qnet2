@@ -21,6 +21,7 @@ use App\Tables\Quotes\QuoteRelationColumns;
 use App\Tables\Quotes\QuoteRowActions;
 use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use App\Tables\Shared\ParentCategoryListModule;
@@ -147,7 +148,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // whole thread — the dialog this action opens shows exactly these.
             // `offer_lines_count` (spec 0102, AC-034) drives the `alert`
             // column the same way, with zero extra queries per page.
-            ->withCount(['scopedNotes as notes_count', 'offerLines as offer_lines_count'])
+            ->withCount([...NotesCountColumn::of('scopedNotes'), 'offerLines as offer_lines_count'])
             // Spec 0363: the `documents` badge counts the parent opportunity's files.
             ->addSelect(DocumentsCountColumn::ofOpportunity('quotes.opportunity_id'));
     }

@@ -17,6 +17,7 @@ use App\Tables\Opportunities\OpportunityRelationColumns;
 use App\Tables\Opportunities\OpportunityStatusColumn;
 use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\ProductLinePairsColumn;
@@ -134,7 +135,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             // Per-row count for the `notes` action badge (HasNotes): roots AND
             // replies, soft-deleted excluded — same projection Gestione
             // Richieste carries.
-            ->withCount('notes');
+            ->withCount(NotesCountColumn::of('notes'));
 
         // Spec 0105 D-10, spec 0340: whether one of the row's Offerte is in the
         // actor's Gestione Richieste scope through the site or competence tier.

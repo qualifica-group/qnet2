@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\LogsModelActivity;
+use App\Models\Concerns\TracksReads;
 use Database\Factories\NoteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -44,7 +45,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Note extends BaseModel
 {
     /** @use HasFactory<NoteFactory> */
-    use HasAttachments, HasFactory, LogsModelActivity, SoftDeletes;
+    use HasAttachments, HasFactory, LogsModelActivity, SoftDeletes, TracksReads;
 
     /**
      * @return array<string, string>
@@ -54,6 +55,11 @@ class Note extends BaseModel
         return [
             'edited_at' => 'datetime',
         ];
+    }
+
+    protected function readAuthorColumn(): string
+    {
+        return 'user_id';
     }
 
     public function notable(): MorphTo

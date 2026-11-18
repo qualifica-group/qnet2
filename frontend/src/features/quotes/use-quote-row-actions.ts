@@ -226,7 +226,13 @@ export function useQuoteRowActions({
       id: documentsOpportunityId,
       readOnly: true,
       title: t('quotes.detail.tabs.opportunityDocuments'),
-      onOpenChange: (open: boolean) => (open ? undefined : setDocumentsOpportunityId(null)),
+      // Closing refreshes the row: what was just seen no longer counts as unread in its badge.
+      onOpenChange: (open: boolean) => {
+        if (!open) {
+          setDocumentsOpportunityId(null)
+          onMutated()
+        }
+      },
     }),
     // One node for the callers to mount: the Offerta's own Sheet and the contract's.
     sheet: createElement(Fragment, null, sheet, contractSheet),

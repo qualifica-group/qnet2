@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
+use App\Models\Concerns\TracksReads;
 use Database\Factories\AttachmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,7 +33,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class Attachment extends BaseModel
 {
     /** @use HasFactory<AttachmentFactory> */
-    use HasFactory, LogsModelActivity;
+    use HasFactory, LogsModelActivity, TracksReads;
 
     /**
      * Pseudo-disk of a link-only legacy document (spec 0295 D-10): no
@@ -68,6 +69,11 @@ class Attachment extends BaseModel
         'old_source' => 'string',
         'old_id' => 'int',
     ];
+
+    protected function readAuthorColumn(): string
+    {
+        return 'uploaded_by';
+    }
 
     /**
      * A migrated legacy document whose file stays on the legacy QNet and is

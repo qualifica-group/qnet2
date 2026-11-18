@@ -15,6 +15,7 @@ use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
 use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
@@ -139,7 +140,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         ]));
 
         // Spec 0363: badges of the `documents` and `notes` row actions.
-        $query->withCount([...DocumentsCountColumn::own(), 'notes']);
+        $query->withCount([...DocumentsCountColumn::own(), ...NotesCountColumn::of('notes')]);
 
         // Spec 0407: the "€" state, only for the actors who see that column.
         if (WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())) {
