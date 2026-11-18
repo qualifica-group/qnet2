@@ -197,6 +197,7 @@ const guide: HelpGuide = {
         { type: 'list', items: ['The type: **Creation**, **Update**, **Deletion** or **Restore**.', 'The affected part, for example **Contact**, **Address**, **Note** or **Document**.', 'Who did it (**System** if it was automatic).', 'The fields changed, with the previous value struck through and the new value.'] },
         { type: 'paragraph', text: 'Filter by **All**, **Creation only** or **Update only**; **Load more** shows older operations.' },
         { type: 'paragraph', text: 'On work orders, quotes and opportunities the history also records changes to **Supervisors**, **Participants**, **Account managers** and additional fields.' },
+        { type: 'paragraph', text: 'On records with a **Documents** section (work orders, tasks, opportunities, contracts, registries, purchase requests and orders, supplier documents, treasury movements, document bundles) every uploaded document shows as a **Document** entry, with file name, type and size; on purchase requests also the documents of each line. You see them only if you can open that record\'s documents.' },
       ],
     },
     {

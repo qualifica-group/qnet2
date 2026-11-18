@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Cronologia attivita': i documenti caricati compaiono nella cronologia della scheda (bug utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+
+- Root cause: le voci `attachment` (created) erano scritte in `activity_log`, ma solo `request-management`/`enrollee-management` dichiaravano la relazione `attachments` in `config/activity-log.php`; le altre schede con "Documenti" non le aggregavano (es. commessa 16616: upload delle 16:18 assente).
+- `HasAttachments::documents()` (solo collezione `Attachment::DOCUMENTS_COLLECTION` = `documents`: niente avatar, logo, immagini rich text). Relazione `documents` aggiunta a work-orders, tasks, opportunities, contracts, registries, purchase-requests (+ `lines.documents`), purchase-orders, purchase-invoices, treasury-movements, document-bundles.
+- Nuova chiave config `documents_permissions` (-> `ActivityLogDefinition::$documentsPermissions`): se l'attore non ha TUTTI quei permessi, `ActivityLogController::hiddenDocumentSubjects()` toglie le voci `attachment`. Sempre `attachments.viewAny` + `{modulo}.viewDocuments` dove esiste (work-orders, tasks, opportunities, registries). request-management/enrollee-management lasciati invariati (`attachments`, nessun filtro): da valutare se allinearli (`request-management.viewDocuments`, `enrollee-management.viewDocuments`).
+- Split per hard limit 500 righe: la mappa `foreign_keys` e' ora `config/activity-log-foreign-keys.php` (letta da `ForeignKeyLabelResolver`).
+- Limite noto: un documento eliminato (hard delete) sparisce dalla cronologia insieme alla sua voce di caricamento; per tracciare le eliminazioni servirebbe loggare l'owner nell'activity dell'allegato.
+- Test: nuovo `tests/Feature/ActivityLog/ActivityLogDocumentsTest.php` (5, rossi sul codice vecchio). Verdi: ActivityLog, EnrolleeManagement, Attachments, WorkOrders, Contracts, PurchaseRequests/Orders/Invoices, Treasury, DocumentBundles, Registries, Tasks, Opportunities. Rossi NON legati: `RequestManagementAllColumnsSortFilterTest` ("managers is not sortable"), `QuoteDocumentPdfTest` (LibreOffice assente). Pint, vitest help (161), eslint, `tsc -b --force` puliti.
+- Guide in-app IT/EN `general` (sezione activity-history) + manuale Claude Docs (sezione Cronologia attivita') aggiornati.
+
 ## Dettaglio commessa: linguetta in fondo alle schede con il nome dell'azienda (decisione utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - `WorkOrderDetailTabs` (`work-order-detail-tabs.tsx`): la linguetta staccata a destra della riga di schede mostra `workOrder.registry?.name` (azienda cliente per esteso) al posto del titolo "COM-..."; il titolo resta solo se la commessa non ha cliente. Larghezza max portata da `max-w-xs` a `max-w-md` (resta `truncate` + `title` col nome intero).

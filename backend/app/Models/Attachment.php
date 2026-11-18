@@ -41,6 +41,9 @@ class Attachment extends BaseModel
      */
     public const string LEGACY_DISK = 'legacy';
 
+    /** Collection of the user-uploaded files a record's "Documenti" tab lists. */
+    public const string DOCUMENTS_COLLECTION = 'documents';
+
     protected $fillable = [
         'collection',
         'disk',

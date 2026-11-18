@@ -9,6 +9,7 @@ use App\DataObjects\ActivityLog\ActivityLogDefinition;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\ActivityLog\ActivityLogIndexRequest;
 use App\Http\Resources\ActivityLog\ActivityLogEntryResource;
+use App\Models\Attachment;
 use App\Models\User;
 use App\Services\ActivityLog\AggregatedActivityService;
 use Illuminate\Database\Eloquent\Model;
@@ -64,6 +65,7 @@ class ActivityLogController extends BaseApiController
                 $request->event(),
             );
             [$hiddenSubjects, $hiddenFields] = $this->activityRedactions($definition, $actor, $record);
+            $hiddenSubjects = [...$hiddenSubjects, ...$this->hiddenDocumentSubjects($definition, $actor)];
 
             return $this->ok([
                 'items' => $page->items
@@ -81,6 +83,23 @@ class ActivityLogController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['resource' => $resource, 'id' => $id]);
         }
+    }
+
+    /**
+     * Document entries follow the record's "Documenti" tab: whoever lacks
+     * one of the permissions that open it does not even learn a file name.
+     *
+     * @return array<int, string>
+     */
+    private function hiddenDocumentSubjects(ActivityLogDefinition $definition, User $actor): array
+    {
+        foreach ($definition->documentsPermissions as $permission) {
+            if (! $actor->can($permission)) {
+                return [(new Attachment)->getMorphClass()];
+            }
+        }
+
+        return [];
     }
 
     /**
