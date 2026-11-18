@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Dettaglio commessa: linguetta in fondo alle schede con il nome dell'azienda (decisione utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+
+- `WorkOrderDetailTabs` (`work-order-detail-tabs.tsx`): la linguetta staccata a destra della riga di schede mostra `workOrder.registry?.name` (azienda cliente per esteso) al posto del titolo "COM-..."; il titolo resta solo se la commessa non ha cliente. Larghezza max portata da `max-w-xs` a `max-w-md` (resta `truncate` + `title` col nome intero).
+- Test REQUIREMENT CHANGED in `work-order-detail-tabs.test.tsx` (+ caso di ripiego sul titolo). Verdi: vitest `work-order-detail*` 82, help 161; eslint e `tsc -b --force` puliti.
+- Guide in-app IT/EN `work-orders` e manuale Claude Docs (paragrafo "Commessa.") aggiornati.
+
 ## Commessa: email "Stato pagamento ok" con il nome dell'azienda (decisione utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Riferimento legacy: `q-net` `App\Notifications\StatoPagamentoOk` inviata da `Manageorder::saveStatoPagamento` per gli stati 1,2,3,6 a responsabili e partecipanti. In qnet-2 era gia' la `WorkOrderLineDeliverableNotification` (spec 0201 D-4: stati con `allows_delivery` = proprio 1,2,3,6) ma col titolo "Riga consegnabile" e senza cliente nell'oggetto.

@@ -127,11 +127,13 @@ describe('WorkOrderDetailTabs', () => {
     expect(topTabs()).toEqual(['Info'])
   })
 
-  it('shows the work order title set apart after the strip, bringing back Info', () => {
-    renderTabs({ view_costs: true })
+  // REQUIREMENT CHANGED (user directive 2026-11-18): the client company's full name, not the "COM-..." title.
+  it("shows the client company's full name set apart after the strip, bringing back Info", () => {
+    renderTabs({ view_costs: true }, { id: 7, name: 'Rossi Impianti S.r.l.' })
 
     const strip = screen.getByRole('tablist', { name: 'Work order sections' })
-    const titleTab = screen.getByRole('button', { name: 'Installazione impianto' })
+    const titleTab = screen.getByRole('button', { name: 'Rossi Impianti S.r.l.' })
+    expect(screen.queryByRole('button', { name: 'Installazione impianto' })).not.toBeInTheDocument()
     expect(strip).not.toContainElement(titleTab)
     expect(strip.parentElement).toContainElement(titleTab)
 
@@ -141,6 +143,12 @@ describe('WorkOrderDetailTabs', () => {
     fireEvent.click(titleTab)
     expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('data-state', 'active')
     expect(screen.getByText('info-sections')).toBeInTheDocument()
+  })
+
+  it('falls back to the work order title when there is no client', () => {
+    renderTabs({})
+
+    expect(screen.getByRole('button', { name: 'Installazione impianto' })).toBeInTheDocument()
   })
 
   it('portals the board actions into the strip while the Task tab is open', () => {

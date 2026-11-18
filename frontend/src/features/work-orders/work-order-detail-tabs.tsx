@@ -54,10 +54,11 @@ interface WorkOrderTitleTabProps {
 }
 
 /**
- * The legacy's last "tab": the work order title, set a little apart from the
- * strip (user directive 2026-11-16). Like the legacy button, it brings back
- * the Info tab. Not a Radix tab (it opens no panel of its own), so it borrows
- * the strip's classes to read the same.
+ * The legacy's last "tab", set a little apart from the strip (user directive
+ * 2026-11-16): the client company's full name (user directive 2026-11-18, it
+ * replaces the "COM-..." title), the title only when there is no client. Like
+ * the legacy button, it brings back the Info tab. Not a Radix tab (it opens no
+ * panel of its own), so it borrows the strip's classes to read the same.
  */
 function WorkOrderTitleTab({ title, onSelect }: WorkOrderTitleTabProps) {
   return (
@@ -67,7 +68,7 @@ function WorkOrderTitleTab({ title, onSelect }: WorkOrderTitleTabProps) {
         data-state="active"
         title={title}
         onClick={onSelect}
-        className={cn(TABS_TRIGGER_CLASS, 'max-w-xs min-w-0 shrink')}
+        className={cn(TABS_TRIGGER_CLASS, 'max-w-md min-w-0 shrink')}
       >
         <span className="truncate">{title}</span>
       </button>
@@ -87,7 +88,7 @@ interface WorkOrderDetailTabsProps {
  * The work order's tab card, below the identity band, laid out like the
  * legacy "Gestione commessa" (user directive 2026-11-16): Info | Task |
  * Documenti | Amministrazione | Note (+ Chat, Email, Attivita'), then the
- * title "tab" set apart. Info opens by default; on the work order's page the
+ * client company "tab" set apart. Info opens by default; on the work order's page the
  * open tab follows the URL like a page (`useWorkOrderActiveTab`). The active tab's header
  * actions (the Task board's) are portaled into the slot on the right of the
  * strip, so the strip stays the only header row of the card.
@@ -114,7 +115,10 @@ export function WorkOrderDetailTabs({ workOrder, info, initialTab }: WorkOrderDe
           <TabsList className="w-auto" aria-label={t('workOrders.detail.tabs.label')}>
             <TabTriggers tabs={tabs} />
           </TabsList>
-          <WorkOrderTitleTab title={workOrder.title} onSelect={() => setActiveTab(WORK_ORDER_INFO_TAB)} />
+          <WorkOrderTitleTab
+            title={workOrder.registry?.name ?? workOrder.title}
+            onSelect={() => setActiveTab(WORK_ORDER_INFO_TAB)}
+          />
           <div ref={setActionsContainer} className="ml-auto flex items-center gap-1.5" />
         </div>
         <TabContents tabs={tabs} />
