@@ -79,12 +79,16 @@ function category(
     multi_quote_work_order: false,
     usage_area: 'all',
     multiple_open_opportunities: false,
+    request_registry_type: 'individual',
+    request_offer_hidden: false,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
     multi_quote_work_order_source_category: null,
     usage_area_source_category: null,
     multiple_open_opportunities_source_category: null,
+    request_registry_type_source_category: null,
+    request_offer_hidden_source_category: null,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     simplified_offer_line_source_category: null,
@@ -230,11 +234,15 @@ describe('ProductCategoryDetailView — management rules', () => {
           multi_quote_work_order: false,
           usage_area: 'all',
           multiple_open_opportunities: false,
+          request_registry_type: 'individual',
+          request_offer_hidden: false,
           single_quote_per_opportunity_source_category: { id: 1, name: 'Electronics' },
           generates_contract_source_category: { id: 1, name: 'Electronics' },
           multi_quote_work_order_source_category: { id: 1, name: 'Electronics' },
           usage_area_source_category: { id: 1, name: 'Electronics' },
           multiple_open_opportunities_source_category: { id: 1, name: 'Electronics' },
+          request_registry_type_source_category: { id: 1, name: 'Electronics' },
+          request_offer_hidden_source_category: { id: 1, name: 'Electronics' },
         }))
 
     const field = ruleValue('One offer per opportunity')
@@ -249,7 +257,11 @@ describe('ProductCategoryDetailView — management rules', () => {
     cleanup()
     renderView(category({
       multiple_open_opportunities: true,
+      request_registry_type: 'individual',
+      request_offer_hidden: false,
       multiple_open_opportunities_source_category: { id: 1, name: 'Electronics' },
+      request_registry_type_source_category: { id: 1, name: 'Electronics' },
+      request_offer_hidden_source_category: { id: 1, name: 'Electronics' },
     }))
 
     const field = ruleValue('Several open opportunities per registry')

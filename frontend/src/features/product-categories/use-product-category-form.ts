@@ -72,6 +72,8 @@ function mapCategoryToFormValues(
     multi_quote_work_order: category.multi_quote_work_order,
     usage_area: category.usage_area,
     multiple_open_opportunities: category.multiple_open_opportunities,
+    request_registry_type: category.request_registry_type,
+    request_offer_hidden: category.request_offer_hidden,
     simplified_offer_line: category.simplified_offer_line,
     simplified_offer_line_override: category.simplified_offer_line_override,
     manager_labels: toManagerLabelsFormValue(category.manager_labels),
@@ -176,6 +178,9 @@ export function useProductCategoryForm({ mode }: UseProductCategoryFormArgs) {
       usage_area: 'all',
       // A new root keeps one open opportunity per anagrafica until the operator opts in.
       multiple_open_opportunities: false,
+      // Spec 0410: a new root starts the Gestione Richieste card on a natural person, as before.
+      request_registry_type: 'individual',
+      request_offer_hidden: false,
       // Spec 0114: a new root opens with the manual row editor — the
       // behaviour every existing category had before the rule existed.
       simplified_offer_line: false,

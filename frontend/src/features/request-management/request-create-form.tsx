@@ -115,6 +115,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     isSubmitting,
     usingExistingRegistry,
     identityDraft,
+    identityCardKey,
     revalidateSignal,
     setIdentityDraft,
     contactsDraft,
@@ -258,6 +259,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
               <RequestCreateClientSection
                 control={form.control}
                 identity={identityDraft}
+                identityCardKey={identityCardKey}
                 onIdentityChange={setIdentityDraft}
                 contacts={contactsDraft}
                 onContactsChange={setContactsDraft}

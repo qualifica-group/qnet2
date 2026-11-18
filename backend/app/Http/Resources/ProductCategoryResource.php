@@ -95,6 +95,10 @@ class ProductCategoryResource extends JsonResource
             // User request 2026-11-11: the EFFECTIVE "several open
             // opportunities" rule, mirrored from the root.
             'multiple_open_opportunities' => (bool) $this->multiple_open_opportunities,
+            // Spec 0410: the EFFECTIVE request anagrafica type, mirrored from the root.
+            'request_registry_type' => $this->request_registry_type->value,
+            // Spec 0414: the EFFECTIVE offer-visibility rule, mirrored from the root.
+            'request_offer_hidden' => (bool) $this->request_offer_hidden,
             // Spec 0114: the EFFECTIVE simplified-offer-line rule — already
             // mirrored from the root on every descendant, so no walk is
             // needed here either. `simplified_offer_line_source_category` is

@@ -4,6 +4,7 @@ namespace App\DataObjects\ProductCategories;
 
 use App\Enums\CategoryManagementMode;
 use App\Enums\CategoryUsageArea;
+use App\Enums\PersonalDataTypeEnum;
 
 /**
  * Validated payload for a partial (PATCH) product category update
@@ -68,6 +69,10 @@ final readonly class UpdateProductCategoryData
         public bool $usageAreaSubmitted = false,
         public ?bool $multipleOpenOpportunities = null,
         public bool $multipleOpenOpportunitiesSubmitted = false,
+        public ?PersonalDataTypeEnum $requestRegistryType = null,
+        public bool $requestRegistryTypeSubmitted = false,
+        public ?bool $requestOfferHidden = null,
+        public bool $requestOfferHiddenSubmitted = false,
         public ?bool $simplifiedOfferLine = null,
         public bool $simplifiedOfferLineSubmitted = false,
         /** Spec 0188: a child's OWN declaration of the rule; submitted null = back to inherit. */
@@ -131,6 +136,10 @@ final readonly class UpdateProductCategoryData
             usageAreaSubmitted: array_key_exists('usage_area', $data),
             multipleOpenOpportunities: array_key_exists('multiple_open_opportunities', $data) ? (bool) $data['multiple_open_opportunities'] : null,
             multipleOpenOpportunitiesSubmitted: array_key_exists('multiple_open_opportunities', $data),
+            requestRegistryType: array_key_exists('request_registry_type', $data) ? PersonalDataTypeEnum::from((string) $data['request_registry_type']) : null,
+            requestRegistryTypeSubmitted: array_key_exists('request_registry_type', $data),
+            requestOfferHidden: array_key_exists('request_offer_hidden', $data) ? (bool) $data['request_offer_hidden'] : null,
+            requestOfferHiddenSubmitted: array_key_exists('request_offer_hidden', $data),
             simplifiedOfferLine: array_key_exists('simplified_offer_line', $data) ? (bool) $data['simplified_offer_line'] : null,
             simplifiedOfferLineSubmitted: array_key_exists('simplified_offer_line', $data),
             simplifiedOfferLineOverride: isset($data['simplified_offer_line_override']) ? (bool) $data['simplified_offer_line_override'] : null,
@@ -272,6 +281,18 @@ final readonly class UpdateProductCategoryData
         // MultipleOpenOpportunitiesInheritance::syncSubtree.
         if ($this->multipleOpenOpportunitiesSubmitted) {
             $attributes['multiple_open_opportunities'] = $this->multipleOpenOpportunities;
+        }
+
+        // Spec 0410: identical root-only handling, realigned by
+        // RequestRegistryTypeInheritance::syncSubtree.
+        if ($this->requestRegistryTypeSubmitted) {
+            $attributes['request_registry_type'] = $this->requestRegistryType;
+        }
+
+        // Spec 0414: identical root-only handling, realigned by
+        // RequestOfferHiddenInheritance::syncSubtree.
+        if ($this->requestOfferHiddenSubmitted) {
+            $attributes['request_offer_hidden'] = $this->requestOfferHidden;
         }
 
         // Spec 0114: on a root this is the declared value; on a child it must

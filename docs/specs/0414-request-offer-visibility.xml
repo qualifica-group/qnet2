@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0414-request-offer-visibility" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Richiesta utente 2026-11-18: "Prevedere dei setting su categoria prodotto per oscurare o meno la parte dell'offerta
+    su gestione richieste o per la visualizzazione semplificata (la parte semplificata gia' c'e', ma su gestione
+    richieste voglio che chi ha la parte semplificata sia migliorata di tanto: le persone dovranno solo scegliere un
+    prodotto e fregarsene di modificare pezzi e prezzi, solo a titolo informativo quando e' semplificato)".
+    Due parti: (A) nuova regola di categoria "Nascondi offerta in Gestione Richieste"; (B) la vista semplificata
+    dell'offerta (spec 0114/0188) diventa una scelta di prodotti, con prezzi solo informativi.
+  </goal>
+
+  <context>
+    - Le regole di ramo (`multiple_open_opportunities`, `request_registry_type`, ...) sono della RADICE e copiate su
+      ogni discendente (`RootOwnedCategorySetting` + `RootOwnedSettingsWriter`); il form categoria mostra il valore
+      ereditato in sola lettura col nome della radice (albero `GET /product-categories/tree`).
+    - "Semplificazione riga offerta" (`simplified_offer_line`, spec 0114, override per nodo spec 0188) esiste: in
+      Gestione Richieste toglie quantita'/prezzo/IVA dalla card riga e il server li congela dal prodotto
+      (`SimplifiedOfferLineNormalizer`). La UI resta pero' il "catalogo + righe" completo (spec 0268): selezione
+      multipla, pulsante "Aggiungi N selezionati", card per riga con importi netto/IVA/totale.
+    - La sezione "Linee dell'offerta" di Gestione Richieste e' `RequestOfferLinesField`/`RequestOfferLinesSection`,
+      montata da pannello Lavora, form Nuova richiesta, dialog della cella `offer_lines` della griglia e dal dettaglio
+      Contratto (inline edit).
+  </context>
+
+  <decisions>
+    D-1 Nuova colonna `product_categories.request_offer_hidden` (boolean, NOT NULL, default false = comportamento
+        attuale). Regola della radice, ereditata e copiata sui discendenti come `multiple_open_opportunities`
+        (`RequestOfferHiddenInheritance`); un figlio non puo' indicarne una diversa (422).
+    D-2 Effetto solo FE, solo in Gestione Richieste (pannello Lavora, Nuova richiesta, dialog della griglia): con
+        TUTTE le categorie delle linee di prodotto nascoste la sezione Offerta non compare (nel dialog della griglia
+        un avviso al posto dell'editor); con categorie miste il catalogo e l'autocompilazione mono-prodotto usano solo
+        le categorie non nascoste. Le righe gia' salvate restano intatte (il pannello non le reinvia se non cambiano).
+        Il dettaglio Contratto e il modulo Offerte ignorano la regola.
+    D-3 Il server non applica la regola: e' visibilita' della sezione, non un permesso; le autorizzazioni di
+        `offer_lines` restano quelle attuali.
+    D-4 Vista semplificata (vale dove vale `simplified_offer_line`, invariato il congelamento server 0114 D-4..D-6),
+        rivista su direttiva utente 2026-11-18 ("semplifica a solo un select"): un solo campo "Prodotto" (select
+        multiplo; select singolo in modalita' `single`), nient'altro. La scelta crea la riga (quantita' 1, prezzo/IVA
+        del prodotto); il select occupa tutta la larghezza e sotto c'e' una riga "Valore indicativo (IVA inclusa)"
+        con l'importo in euro a destra.
+        Righe assegnate a commesse: non rimovibili (spec 0360 D-4).
+    D-4b Direttiva utente 2026-11-18: in Gestione Richieste la sezione Offerta resta chiusa (non montata) finche' le
+        linee di prodotto non hanno una categoria.
+    D-5 `QuoteLineEditor`/`QuoteLineCard` perdono la prop `simplified` (non ha piu' chiamanti).
+    D-6 Nessun seed: tutte le categorie partono con l'offerta visibile.
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST|PATCH" path="/api/product-categories[/{id}]">
+      <request>`request_offer_hidden`?: boolean (solo radice; su un figlio deve coincidere con la radice, altrimenti
+        422 "This category inherits the request offer visibility from its root category and cannot define its
+        own.").</request>
+      <response>`request_offer_hidden` (bool, effettivo) e `request_offer_hidden_source_category` ({ id, name } |
+        null) nel dettaglio.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/product-categories/tree">
+      <response>ogni nodo: `request_offer_hidden` (bool, effettivo).</response>
+    </endpoint>
+    <field_permissions>chiave `request_offer_hidden` (boolean) nel catalogo campi di `product-categories`, stesso tetto
+      degli altri flag di ramo.</field_permissions>
+  </data_contract>
+
+  <acceptance>
+    AC-001 Radice creata/aggiornata con `request_offer_hidden` true: salvato, copiato su tutto il sottoalbero, esposto
+           in dettaglio e albero.
+    AC-002 Figlio con valore diverso dalla radice: 422 su `request_offer_hidden`; figlio senza valore: eredita.
+    AC-003 Reparent sotto un'altra radice: il valore si riallinea alla nuova radice.
+    AC-004 Form categoria: tile "Nascondi offerta in Gestione Richieste" nelle Regole, in sola lettura su un figlio
+           con il nome della radice.
+    AC-005 Nuova richiesta / pannello Lavora con sole categorie nascoste: nessuna sezione Offerta; dialog griglia:
+           avviso al posto dell'editor.
+    AC-006 Categorie miste: catalogo limitato alle categorie non nascoste.
+    AC-007 Categoria semplificata: un solo select "Prodotto"; la scelta aggiunge la riga (quantita' 1, prezzo/IVA
+           del prodotto), la X la toglie; nessun input quantita'/prezzo/IVA, nessun catalogo; una riga di valore
+           indicativo.
+    AC-009 Nuova richiesta: senza categoria nelle linee di prodotto la sezione Offerta non compare.
+    AC-008 Guide in-app IT/EN `product-categories` e `request-management` aggiornate; parity test verde.
+  </acceptance>
+</spec>

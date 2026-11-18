@@ -8,6 +8,8 @@ import { ProductCategoryGeneratesContractField } from '@/features/product-catego
 import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
 import { ProductCategoryMultiQuoteWorkOrderField } from '@/features/product-categories/product-category-multi-quote-work-order-field'
 import { ProductCategoryMultipleOpenOpportunitiesField } from '@/features/product-categories/product-category-multiple-open-opportunities-field'
+import { ProductCategoryRequestOfferHiddenField } from '@/features/product-categories/product-category-request-offer-hidden-field'
+import { ProductCategoryRequestRegistryTypeField } from '@/features/product-categories/product-category-request-registry-type-field'
 import { ProductCategoryReportColumnsField } from '@/features/product-categories/product-category-report-columns-field'
 import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
@@ -100,6 +102,16 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
           editor={<ProductCategoryUsageAreaField {...editorProps} />}
         />
         <RuleRow
+          field="request_registry_type"
+          label={t('productCategories.form.requestRegistryType')}
+          inline={inline}
+          canEdit={canEdit && values.request_registry_type_source_category === null}
+          value={t(`enums.personal_data_type.${values.request_registry_type}`)}
+          inheritedFrom={values.request_registry_type_source_category?.name}
+          inheritedLabel={inheritedLabel('requestRegistryTypeInherited', values.request_registry_type_source_category)}
+          editor={<ProductCategoryRequestRegistryTypeField {...editorProps} />}
+        />
+        <RuleRow
           field="single_quote_per_opportunity"
           label={t('productCategories.form.singleQuotePerOpportunity')}
           inline={inline}
@@ -163,6 +175,16 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
           inheritedFrom={values.simplified_offer_line_source_category?.name}
           inheritedLabel={inheritedLabel('simplifiedOfferLineInherited', values.simplified_offer_line_source_category)}
           editor={<ProductCategorySimplifiedOfferLineField {...editorProps} />}
+        />
+        <RuleRow
+          field="request_offer_hidden"
+          label={t('productCategories.form.requestOfferHidden')}
+          inline={inline}
+          canEdit={canEdit && values.request_offer_hidden_source_category === null}
+          value={yesNo(values.request_offer_hidden)}
+          inheritedFrom={values.request_offer_hidden_source_category?.name}
+          inheritedLabel={inheritedLabel('requestOfferHiddenInherited', values.request_offer_hidden_source_category)}
+          editor={<ProductCategoryRequestOfferHiddenField {...editorProps} />}
         />
         <RuleRow
           field="is_selectable"

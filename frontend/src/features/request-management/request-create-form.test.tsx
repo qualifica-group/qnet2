@@ -165,9 +165,10 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
 
     // Direttiva utente 2026-09-10. "Informazioni aggiuntive" chiude la colonna
     // ma non compare qui: senza una categoria scelta non e' montata.
+    // REQUIREMENT CHANGED (spec 0414, direttiva utente 2026-11-18): nemmeno
+    // "Offerta", che resta chiusa finche' non si sceglie una linea di prodotto.
     expect(order).toEqual([
       'Linee di prodotto',
-      'Offerta',
       'Anagrafica cliente',
       'Attribuzione',
     ])

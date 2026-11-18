@@ -168,6 +168,7 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
                     errors={offerLineErrors}
                     vatRatePercentFor={editor.vatRatePercentFor}
                     rememberVatRatePercent={editor.rememberVatRatePercent}
+                    ignoreHiddenRule
                   />
                 }
               >

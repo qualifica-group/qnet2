@@ -88,6 +88,9 @@ export function buildCreatePayload(
     ...(values.parent_id === null ? { usage_area: values.usage_area } : {}),
     // And for several open opportunities per anagrafica: root-owned, inherited.
     ...(values.parent_id === null ? { multiple_open_opportunities: values.multiple_open_opportunities } : {}),
+    // And for the type the Gestione Richieste card starts on (spec 0410): root-owned, inherited.
+    ...(values.parent_id === null ? { request_registry_type: values.request_registry_type } : {}),
+    ...(values.parent_id === null ? { request_offer_hidden: values.request_offer_hidden } : {}),
     // And once more for the simplified-offer-line rule (spec 0114): root-owned, inherited.
     // A child sends its override instead (spec 0188), a root its own value.
     ...(values.parent_id === null
@@ -210,6 +213,14 @@ export function buildUpdatePayload(
   // Same root-only guard for several open opportunities per anagrafica.
   if (values.parent_id === null && values.multiple_open_opportunities !== original.multiple_open_opportunities) {
     payload.multiple_open_opportunities = values.multiple_open_opportunities
+  }
+
+  // Same root-only guard for the type the Gestione Richieste card starts on (spec 0410).
+  if (values.parent_id === null && values.request_registry_type !== original.request_registry_type) {
+    payload.request_registry_type = values.request_registry_type
+  }
+  if (values.parent_id === null && values.request_offer_hidden !== original.request_offer_hidden) {
+    payload.request_offer_hidden = values.request_offer_hidden
   }
 
   // Simplified-offer-line (spec 0114, 0188): a ROOT declares the value itself,

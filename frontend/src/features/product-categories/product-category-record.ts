@@ -10,6 +10,8 @@ import { resolveInheritedReportable } from '@/features/product-categories/report
 import { resolveInheritedSimplifiedOfferLine } from '@/features/product-categories/simplified-offer-line-inheritance'
 import { resolveInheritedSingleQuoteFlag } from '@/features/product-categories/single-quote-inheritance'
 import { resolveInheritedUsageArea } from '@/features/product-categories/usage-area-inheritance'
+import { resolveInheritedRequestRegistryType } from '@/features/product-categories/request-registry-type-inheritance'
+import { resolveInheritedRequestOfferHiddenFlag } from '@/features/product-categories/request-offer-hidden-inheritance'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
 
 /**
@@ -40,6 +42,10 @@ export type ProductCategoryRecordValues = Pick<
   | 'usage_area_source_category'
   | 'multiple_open_opportunities'
   | 'multiple_open_opportunities_source_category'
+  | 'request_registry_type'
+  | 'request_registry_type_source_category'
+  | 'request_offer_hidden'
+  | 'request_offer_hidden_source_category'
   | 'simplified_offer_line'
   | 'simplified_offer_line_source_category'
   | 'is_reportable'
@@ -74,6 +80,8 @@ export type ProductCategoryDraft = Partial<
     | 'multi_quote_work_order'
     | 'usage_area'
     | 'multiple_open_opportunities'
+    | 'request_registry_type'
+    | 'request_offer_hidden'
     | 'simplified_offer_line'
     | 'simplified_offer_line_override'
     | 'is_selectable'
@@ -112,6 +120,8 @@ export function buildDraftRecordValues(
   const multiQuote = resolveInheritedMultiQuoteWorkOrderFlag(nodesById, parentId)
   const usageArea = resolveInheritedUsageArea(nodesById, parentId)
   const multipleOpen = resolveInheritedMultipleOpenOpportunitiesFlag(nodesById, parentId)
+  const registryType = resolveInheritedRequestRegistryType(nodesById, parentId)
+  const offerHidden = resolveInheritedRequestOfferHiddenFlag(nodesById, parentId)
   const offerLine = resolveInheritedSimplifiedOfferLine(nodesById, parentId)
   const reportable = resolveInheritedReportable(nodesById, parentId)
   // A child shows its own override, else what it inherits; a root declares the value itself (spec 0188).
@@ -168,6 +178,10 @@ export function buildDraftRecordValues(
       ? multipleOpen.multipleOpenOpportunities
       : (draft.multiple_open_opportunities ?? false),
     multiple_open_opportunities_source_category: multipleOpen?.sourceCategory ?? null,
+    request_registry_type: registryType ? registryType.registryType : (draft.request_registry_type ?? 'individual'),
+    request_registry_type_source_category: registryType?.sourceCategory ?? null,
+    request_offer_hidden: offerHidden ? offerHidden.requestOfferHidden : (draft.request_offer_hidden ?? false),
+    request_offer_hidden_source_category: offerHidden?.sourceCategory ?? null,
     simplified_offer_line: simplifiedOfferLine,
     simplified_offer_line_source_category: simplifiedOfferLineSource,
     is_reportable: isReportable,

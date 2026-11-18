@@ -3,6 +3,7 @@ import {
   cardCategoryTree,
   filterCategoriesUnderRoot,
   pickableCategoryIdsFor,
+  resolveOfferVisibleCategoryIds,
   resolveSimplifiedOfferLine,
   rootCategoryIdFor,
   selectableIdsUnderRoot,
@@ -28,6 +29,8 @@ function node(overrides: Partial<ProductCategoryTreeNode> & { id: number }): Pro
     multi_quote_work_order: false,
     usage_area: 'all',
     multiple_open_opportunities: false,
+    request_registry_type: 'individual',
+    request_offer_hidden: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     ...overrides,
@@ -38,6 +41,15 @@ const TREE: ProductCategoryTreeNode[] = [
   node({ id: 1, name: 'Training', simplified_offer_line: true }),
   node({ id: 2, name: 'Consulting', simplified_offer_line: false }),
 ]
+
+describe('resolveOfferVisibleCategoryIds (spec 0414)', () => {
+  const tree = [node({ id: 1, request_offer_hidden: true }), node({ id: 2 })]
+
+  it('leaves out the categories hiding the offer, keeps the others and the unknown ones', () => {
+    expect(resolveOfferVisibleCategoryIds(tree, [1, 2, 99])).toEqual([2, 99])
+    expect(resolveOfferVisibleCategoryIds(tree, [1])).toEqual([])
+  })
+})
 
 describe('resolveSimplifiedOfferLine', () => {
   it('is false when no covered category is simplified', () => {

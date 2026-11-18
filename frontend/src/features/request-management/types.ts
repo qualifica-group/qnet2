@@ -317,4 +317,6 @@ export interface RequestWorkPanelWithPermissions extends RequestWorkPanel {
 export interface RequestFormContext {
   applicable_attributes: ApplicableAttributeSummary[]
   attribute_layout: LayoutBlob | null
+  /** Spec 0410 (create-only): the type the new-client card starts on, from the first product line's category; null without lines. */
+  registry_type: PersonalDataType | null
 }

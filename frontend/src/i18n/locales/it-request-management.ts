@@ -199,8 +199,15 @@ export const requestManagement = {
    */
   offerLines: {
     hintNoCategory: 'Scegli prima una categoria prodotto: limita i prodotti selezionabili.',
-    hintSimplified:
-      "Categoria semplificata: scegli il prodotto, quantità, prezzo unitario e aliquota IVA sono compilati automaticamente dal sistema.",
+    hintSimplified: 'Scegli il prodotto: quantità, prezzo e IVA li imposta il sistema.',
+    hiddenByCategory: "La categoria prodotto di questa richiesta nasconde l'offerta in Gestione Richieste.",
+    simplified: {
+      label: 'Prodotto',
+      placeholder: 'Scegli il prodotto…',
+      placeholderMany: 'Scegli i prodotti…',
+      remove: 'Togli',
+      indicativeValue: 'Valore indicativo (IVA inclusa)',
+    },
     editAction: 'Modifica le righe dell\'offerta',
     dialogTitle: 'Linee dell\'offerta',
     dialogDescription: 'Modifica prodotto, quantità, prezzo unitario e IVA delle righe di questa offerta.',

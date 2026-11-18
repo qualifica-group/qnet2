@@ -2,10 +2,12 @@
  * Product Categories + Products domains (spec 0017). Extracted to a sibling
  * file to keep `en.ts` within the engineering size limits (see
  * `.claude/rules/engineering.md` §6); its public shape is unchanged. The
- * Attributes domain lives in `en-attributes.ts`.
+ * Attributes domain lives in `en-attributes.ts`, the Products one in
+ * `en-product-items.ts`.
  */
 
 export { attributes } from './en-attributes'
+export { products } from './en-product-items'
 
 export const productCategories = {
   title: 'Product Categories',
@@ -35,6 +37,7 @@ export const productCategories = {
     multi_quote_work_order: "Multi-offer work order",
     usage_area: 'Used in',
     multiple_open_opportunities: 'Several open opportunities per registry',
+    request_registry_type: 'Registry in Gestione Richieste',
     simplified_offer_line: 'Simplified offer line',
     created_at: 'Created at',
     tooltipEmpty: 'Nothing to show.',
@@ -54,7 +57,9 @@ export const productCategories = {
     generatesContractInherited: 'Inherited from {{category}}',
     multiQuoteWorkOrderInherited: "Inherited from {{category}}",
     usageAreaInherited: 'Inherited from {{category}}',
+    requestRegistryTypeInherited: 'Inherited from {{category}}',
     simplifiedOfferLineInherited: 'Inherited from {{category}}',
+    requestOfferHiddenInherited: 'Inherited from {{category}}',
     managerLabelInherited: 'Inherited',
     inheritedCount: '+{{count}} inherited',
   },
@@ -180,6 +185,10 @@ export const productCategories = {
     singleQuotePerOpportunityInfo:
       'Bounds how many OFFER DOCUMENTS an opportunity may hold, which is a different rule from the management mode (that one bounds the product lines of a card). When on, creating a second offer on an opportunity of this branch is refused. Opportunities that already carry several offers keep them and stay editable. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).',
     singleQuotePerOpportunityInfoLabel: 'More info about One offer per opportunity',
+    requestRegistryType: 'Registry in Gestione Richieste',
+    requestRegistryTypeHint:
+      'Which type the new-client card starts on when a request of this category is created in Gestione Richieste.',
+    requestRegistryTypeInheritedHint: 'Inherited from the root category "{{category}}". To change it, edit that category.',
     multipleOpenOpportunities: 'Several open opportunities per registry',
     multipleOpenOpportunitiesHint:
       'When on, a registry may keep several open opportunities on this category.',
@@ -213,7 +222,7 @@ export const productCategories = {
     multiQuoteWorkOrderInfoLabel: "More info about Multi-offer work order",
     simplifiedOfferLine: 'Simplified offer line',
     simplifiedOfferLineHint:
-      'When on, in Gestione Richieste the operator picks only the product: quantity, unit price and VAT rate of the row are filled in automatically by the system.',
+      'When on, in Gestione Richieste the offer becomes a plain product choice: quantity, unit price and VAT rate are set by the system and prices are shown for information only.',
     simplifiedOfferLineInheritedHint:
       'Inherited from "{{category}}". Change it to force the rule only on this category and its subcategories.',
     simplifiedOfferLineForcedHint:
@@ -223,6 +232,12 @@ export const productCategories = {
       "Removes the manual compilation of the offer row in Gestione Richieste: on requests of this branch the operator picks ONLY the product and the system fills in quantity (always 1), unit price and VAT rate from the product. The Offerte module is untouched: whoever works the commercial offer keeps governing quantity and prices even on a simplified category. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).",
     simplifiedOfferLineInfoLabel: 'More info about Simplified offer line',
     simplifiedOfferLineNeedsRequests: 'No effect: the branch is not used in Gestione Richieste (Used in).',
+    requestOfferHidden: 'Hide the offer in Gestione Richieste',
+    requestOfferHiddenHint: 'When on, the Offer section does not appear on the requests of this branch: the operator picks no products or prices.',
+    requestOfferHiddenInheritedHint: 'Inherited from the root category "{{category}}". To change it, edit that category.',
+    requestOfferHiddenInfo:
+      'Hides the Offer section in Gestione Richieste (New request, Work panel and the edit from the table) when every product line of the request belongs to a branch with this rule; with mixed branches the catalogue shows only the products of the visible branches. The offer is still created and existing rows stay as they are; the Offerte module and Contracts are untouched. The ROOT category sets the rule and the whole subtree follows it.',
+    requestOfferHiddenInfoLabel: 'More info about Hide the offer in Gestione Richieste',
     isSelectableInfo:
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
     isSelectableInfoLabel: 'More info about Selectable',
@@ -305,195 +320,6 @@ export const productCategories = {
       managerLabels: {
         title: 'Account managers',
       },
-    },
-  },
-}
-
-export const products = {
-  title: 'Products',
-  subtitle: 'Browse, filter and manage your products.',
-  forbidden: "You don't have permission to view products.",
-  /**
-   * "Products of interest" (user directive 2026-07-22): the picker shared by
-   * the opportunity form and the request-management work panel.
-   */
-  ofInterest: {
-    sectionTitle: 'Products of interest',
-    sectionDescription: 'The products the client is interested in for this request.',
-    fieldLabel: 'Products of interest',
-    placeholder: 'Select one or more products',
-    searchPlaceholder: 'Search products…',
-    empty: 'No products found.',
-    remove: 'Remove product',
-    // Spec 0075, D-4/D-5, extended to both modules by the user directive
-    // 2026-08-05: a product outside the record's own product categories is
-    // refused, so the picker never leaves that scope.
-    hintScoped: 'Only products of the product categories selected above.',
-    prunedNotice:
-      'Removed from the selection, their product category is no longer on the record: {{names}}.',
-    hintNoCategories: 'Add a business function with its product category first.',
-  },
-  empty: 'No product selected.',
-  // Price minus cost, shown in the KPI strip of the record and of the create form.
-  margin: 'Margin',
-  marginPercent: '{{percent}}% of the price',
-  columns: {
-    name: 'Name',
-    is_active: 'Active',
-    description: 'Description',
-    cost: 'Cost',
-    price: 'Price',
-    category: 'Category',
-    unit_of_measure: 'Unit of measure',
-    product_typology: 'Typology',
-    cost_type: 'Cost sub-account',
-    revenue_type: 'Revenue sub-account',
-    product_type: 'Type',
-    usages: 'Offer usage',
-    business_function: 'Business function',
-    stock_quantity: 'Stock',
-    created_at: 'Created at',
-  },
-  // Supplier commission on the product (spec 0320 rev.3): note next to the supplier.
-  supplierCommission: {
-    PERCENTAGE: 'Commission {{value}} {{direction}}',
-    FIXED_AMOUNT: 'Fixed commission {{value}} {{direction}}',
-    direction: { PAID: 'paid', RECEIVED: 'received' },
-    hint: "This supplier's cost is the Supplier commission: the cost stays at 0.",
-  },
-  bulkActivation: {
-    activate: 'Activate',
-    deactivate: 'Deactivate',
-    activated: '{{count}} product(s) activated.',
-    deactivated: '{{count}} product(s) deactivated.',
-    error: 'Unable to change the active state. No product was changed.',
-  },
-  bulkCostType: {
-    bulkAction: 'Set cost sub-account',
-    title: 'Set cost sub-account',
-    description: 'The chosen cost sub-account will be set on all {{count}} selected products.',
-    selected: 'Selected products',
-    field: 'Cost sub-account',
-    placeholder: 'Select a cost sub-account…',
-    none: 'None (remove the cost sub-account)',
-    confirm: 'Apply to {{count}} products',
-    done: 'Cost sub-account updated on {{count}} product(s).',
-    error: 'Unable to set the cost sub-account. No product was changed.',
-  },
-  detail: {
-    title: 'Product details',
-    subtitle: 'Details of the selected product, editable in place.',
-    loadError: 'Unable to load the product. Please try again.',
-    details: 'Details',
-    created_at: 'Created at',
-    newAttributes: 'Attributes of the new category',
-  },
-  form: {
-    newProduct: 'New product',
-    createTitle: 'Create product',
-    createSubtitle: 'Add a new product.',
-    code: 'Code',
-    isActive: 'Active',
-    codePlaceholder: 'Suggested code, editable',
-    codeMax: 'Code must be at most 32 characters.',
-    codeRequired: 'Code is required.',
-    name: 'Name',
-    nameRequired: 'Name is required.',
-    nameMax: 'Name must be at most 191 characters.',
-    description: 'Description',
-    cost: 'Standard cost',
-    costInvalid: 'Cost must be zero or a positive number.',
-    costRequired: 'Cost is required.',
-    price: 'Standard price',
-    priceInvalid: 'Price must be zero or a positive number.',
-    priceRequired: 'Price is required.',
-    productType: 'Type',
-    usages: 'Offer usage',
-    usagesRequired: 'Select at least one usage.',
-    usagesInternalNeedsPhysical: 'Internal use is only allowed for a physical good.',
-    category: 'Category',
-    categoryPlaceholder: 'Select a category…',
-    categorySearch: 'Search categories…',
-    categoryEmpty: 'No categories found.',
-    categoryNoMatch: 'No matches found.',
-    categoryError: 'Unable to load categories.',
-    categoryRequired: 'Category is required.',
-    vatRate: 'VAT',
-    vatRatePlaceholder: 'Select a VAT rate…',
-    vatRateSearch: 'Search VAT rates…',
-    vatRateEmpty: 'No VAT rates found.',
-    vatRateError: 'Unable to load VAT rates.',
-    suppliers: {
-      title: 'Suppliers',
-      supplier: 'Supplier',
-      margin: 'Margin',
-      emptyTitle: 'No suppliers',
-      emptyHint: 'Without suppliers the Standard price and Standard cost apply.',
-      add: 'Add supplier',
-      supplierN: 'Supplier {{n}}',
-      price: 'Price',
-      cost: 'Cost',
-      priceN: 'Price of supplier {{n}}',
-      costN: 'Cost of supplier {{n}}',
-      defaultN: 'Supplier {{n}} is the default',
-      removeN: 'Remove supplier {{n}}',
-      default: 'Default',
-      placeholder: 'Select a supplier…',
-      search: 'Search suppliers…',
-      empty: 'No suppliers found.',
-      loadError: 'Unable to load suppliers.',
-      supplierRequired: 'Select the supplier.',
-      priceRequired: 'Price is required.',
-      costRequired: 'Cost is required.',
-      duplicate: 'This supplier is already listed.',
-      defaultRequired: 'Mark exactly one supplier as the default.',
-    },
-    unitOfMeasure: 'Unit of measure',
-    unitOfMeasurePlaceholder: 'Select a unit of measure…',
-    unitOfMeasureSearch: 'Search units of measure…',
-    unitOfMeasureEmpty: 'No units of measure found.',
-    unitOfMeasureError: 'Unable to load units of measure.',
-    productTypology: 'Typology',
-    productTypologyPlaceholder: 'Select a typology…',
-    productTypologySearch: 'Search typologies…',
-    productTypologyEmpty: 'No typologies found.',
-    productTypologyError: 'Unable to load typologies.',
-    costType: 'Cost sub-account',
-    costTypePlaceholder: 'Select a cost sub-account…',
-    costTypeSearch: 'Search cost sub-accounts…',
-    costTypeEmpty: 'No cost sub-accounts found.',
-    costTypeError: 'Unable to load cost sub-accounts.',
-    save: 'Save',
-    saving: 'Saving…',
-    cancel: 'Cancel',
-    created: 'Product created successfully.',
-    updated: 'Product updated successfully.',
-    deleted: 'Product deleted successfully.',
-    genericError: 'Something went wrong. Please try again.',
-    deleteError: 'Unable to delete the product. Please try again.',
-    leaveConfirm: {
-      title: 'Leave without saving?',
-      description: 'The product has not been created yet: what you entered will be lost.',
-      confirm: 'Leave without saving',
-      cancel: 'Keep editing',
-    },
-    sections: {
-      identity: {
-        title: 'Identity',
-      },
-      classification: {
-        title: 'Classification',
-      },
-      pricing: {
-        title: 'Pricing and supply',
-      },
-    },
-    hints: {
-      isActive: 'An inactive product no longer appears in the product pickers and cannot be linked to new records; records already linked keep it.',
-      code: 'Prefilled with the next sequential code; edit it if you need a custom one.',
-    },
-    dynamicFields: {
-      title: 'Attributes',
     },
   },
 }

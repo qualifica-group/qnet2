@@ -6,6 +6,7 @@ use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\Enums\AttributeContext;
 use App\Enums\CategoryManagementMode;
 use App\Enums\CategoryUsageArea;
+use App\Enums\PersonalDataTypeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use App\Http\Requests\Concerns\ValidatesManagerLabelPositions;
@@ -87,6 +88,8 @@ class UpdateProductCategoryRequest extends FormRequest
             // Spec 0389: same root-only semantics, resynced on the subtree.
             'usage_area' => ['sometimes', Rule::enum(CategoryUsageArea::class)],
             'multiple_open_opportunities' => ['sometimes', 'boolean'],
+            'request_registry_type' => ['sometimes', Rule::enum(PersonalDataTypeEnum::class)],
+            'request_offer_hidden' => ['sometimes', 'boolean'],
             // Spec 0114: same root-only semantics — a reparent or an edit of
             // the flag itself triggers ProductCategoryService's subtree resync.
             'simplified_offer_line' => ['sometimes', 'boolean'],

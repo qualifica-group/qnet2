@@ -4,6 +4,7 @@ namespace App\DataObjects\ProductCategories;
 
 use App\Enums\CategoryManagementMode;
 use App\Enums\CategoryUsageArea;
+use App\Enums\PersonalDataTypeEnum;
 
 /**
  * Validated payload for creating a product category
@@ -52,6 +53,10 @@ final readonly class CreateProductCategoryData
         public ?CategoryUsageArea $usageArea = null,
         /** User request 2026-11-11: same root-only semantics, null = not submitted (root's value, or false at a fresh root). */
         public ?bool $multipleOpenOpportunities = null,
+        /** Spec 0410: same root-only semantics, null = not submitted (root's value, or `individual` at a fresh root). */
+        public ?PersonalDataTypeEnum $requestRegistryType = null,
+        /** Spec 0414: same root-only semantics, null = not submitted (root's value, or false at a fresh root). */
+        public ?bool $requestOfferHidden = null,
         /** Spec 0114: same root-only semantics, null = not submitted (root's value, or FALSE at a fresh root — the pre-existing fully-manual offer line). */
         public ?bool $simplifiedOfferLine = null,
         /** Spec 0188: a child's OWN declaration of the rule; null = inherit. Always null on a root. */
@@ -92,6 +97,8 @@ final readonly class CreateProductCategoryData
             multiQuoteWorkOrder: array_key_exists('multi_quote_work_order', $data) ? (bool) $data['multi_quote_work_order'] : null,
             usageArea: array_key_exists('usage_area', $data) ? CategoryUsageArea::from((string) $data['usage_area']) : null,
             multipleOpenOpportunities: array_key_exists('multiple_open_opportunities', $data) ? (bool) $data['multiple_open_opportunities'] : null,
+            requestRegistryType: array_key_exists('request_registry_type', $data) ? PersonalDataTypeEnum::from((string) $data['request_registry_type']) : null,
+            requestOfferHidden: array_key_exists('request_offer_hidden', $data) ? (bool) $data['request_offer_hidden'] : null,
             simplifiedOfferLine: array_key_exists('simplified_offer_line', $data) ? (bool) $data['simplified_offer_line'] : null,
             simplifiedOfferLineOverride: isset($data['simplified_offer_line_override']) ? (bool) $data['simplified_offer_line_override'] : null,
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,

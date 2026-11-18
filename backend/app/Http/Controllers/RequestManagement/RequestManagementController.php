@@ -22,6 +22,7 @@ use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestAttributeResolver;
 use App\RequestManagement\RequestModule;
+use App\RequestManagement\RequestRegistryTypeResolver;
 use App\Services\QuoteService;
 use App\Services\RequestManagement\RequestAssignmentService;
 use App\Services\RequestManagement\RequestCreationService;
@@ -82,15 +83,17 @@ class RequestManagementController extends BaseApiController
      * (the criteria are a collection of objects), gated by the SAME
      * `request-management.create` that gates the form itself.
      */
-    public function formContext(RequestFormContextRequest $request): JsonResponse
+    public function formContext(RequestFormContextRequest $request, RequestRegistryTypeResolver $registryTypes): JsonResponse
     {
         try {
             $module = RequestModule::fromRequest($request);
             Gate::forUser($request->user())->authorize($module->permission('create'));
+            $categoryIds = $request->productCategoryIds();
 
-            return $this->ok(new RequestFormContextResource(
-                $this->attributeResolver->forCategories($request->productCategoryIds(), FormMode::Create),
-            ));
+            return $this->ok(new RequestFormContextResource([
+                ...$this->attributeResolver->forCategories($categoryIds, FormMode::Create),
+                'registry_type' => $registryTypes->forCategories($categoryIds),
+            ]));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

@@ -30,6 +30,7 @@ import { DEFAULT_MANAGER_SLOTS } from '@/features/quotes/quote-schema'
 import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
 import { useRequestActorAttributionDefaults } from '@/features/request-management/use-request-actor-defaults'
 import { useRequestFormContext } from '@/features/request-management/use-request-form-context'
+import { useCategoryRegistryType } from '@/features/request-management/use-category-registry-type'
 
 interface UseRequestCreateFormArgs {
   /** Called after a successful create with the new request's (Offerta/Quote) id. */
@@ -177,6 +178,8 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const productLines = useWatch({ control: form.control, name: 'product_lines' })
   const { context, isLoading: isContextLoading } = useRequestFormContext(productLines)
 
+  const identityCardKey = useCategoryRegistryType(context.registry_type, identityDraft, setIdentityDraft)
+
   const schema = useMemo(
     () => buildRequestCreateSchema(t, context.applicable_attributes, context.attribute_layout),
     [t, context.applicable_attributes, context.attribute_layout],
@@ -307,6 +310,8 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     usingExistingRegistry,
     identityDraft,
     setIdentityDraft,
+    /** Remounts the new-client card when the category changes its type (spec 0410). */
+    identityCardKey,
     revalidateSignal,
     contactsDraft,
     setContactsDraft,

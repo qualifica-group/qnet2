@@ -85,6 +85,8 @@ final class CategoryTreeBuilder
                 'multi_quote_work_order' => (bool) $category->multi_quote_work_order,
                 'usage_area' => $category->usage_area->value,
                 'multiple_open_opportunities' => (bool) $category->multiple_open_opportunities,
+                'request_registry_type' => $category->request_registry_type->value,
+                'request_offer_hidden' => (bool) $category->request_offer_hidden,
                 'simplified_offer_line' => (bool) $category->simplified_offer_line,
                 // Spec 0188: the node's OWN declaration (null = inherits).
                 'simplified_offer_line_override' => $category->simplified_offer_line_override,

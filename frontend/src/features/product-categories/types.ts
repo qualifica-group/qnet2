@@ -9,6 +9,7 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { EffectiveRevenueType, RevenueTypeRef } from '@/features/revenue-types/types'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import type { PersonalDataType } from '@/features/personal-data/types'
 import type {
   CustomFieldConfig,
   CustomFieldRelationTarget,
@@ -46,6 +47,10 @@ export interface ProductCategoryTreeNode {
   usage_area: CategoryUsageArea
   /** The EFFECTIVE "several open opportunities per anagrafica" rule: authored by the branch root, mirrored on every descendant server-side. */
   multiple_open_opportunities: boolean
+  /** The EFFECTIVE type the Gestione Richieste new-client card starts on: authored by the branch root, mirrored on every descendant server-side (spec 0410). */
+  request_registry_type: PersonalDataType
+  /** The EFFECTIVE "hide the offer in Gestione Richieste" rule: authored by the branch root, mirrored on every descendant server-side (spec 0414). */
+  request_offer_hidden: boolean
   /** The EFFECTIVE simplified-offer-line rule: the nearest declaring ancestor's value, denormalized on every node (spec 0114, 0188). */
   simplified_offer_line: boolean
   /** The node's OWN simplified-offer-line override (spec 0188): null inherits; always null on a root. */
@@ -222,6 +227,14 @@ export interface ProductCategoryDetail {
   multiple_open_opportunities: boolean
   /** The root `multiple_open_opportunities` is inherited from; null when this category IS the root and owns the flag. */
   multiple_open_opportunities_source_category: { id: number; name: string } | null
+  /** The type the Gestione Richieste new-client card starts on (spec 0410) — authored by the branch ROOT, mirrored here on every descendant. */
+  request_registry_type: PersonalDataType
+  /** The root `request_registry_type` is inherited from; null when this category IS the root and owns the value. */
+  request_registry_type_source_category: { id: number; name: string } | null
+  /** Whether Gestione Richieste hides the offer section (spec 0414) — authored by the branch ROOT, mirrored here on every descendant. */
+  request_offer_hidden: boolean
+  /** The root `request_offer_hidden` is inherited from; null when this category IS the root and owns the flag. */
+  request_offer_hidden_source_category: { id: number; name: string } | null
   /** The EFFECTIVE simplified-offer-line rule (spec 0114): the root's own value, or the nearest override (spec 0188). */
   simplified_offer_line: boolean
   /** The category's OWN override (spec 0188): null inherits; always null on a root. */
@@ -347,6 +360,10 @@ export interface CreateProductCategoryPayload {
   usage_area?: CategoryUsageArea
   /** Same root-only rule for several open opportunities per anagrafica. */
   multiple_open_opportunities?: boolean
+  /** Same root-only rule for the type the Gestione Richieste new-client card starts on (spec 0410). */
+  request_registry_type?: PersonalDataType
+  /** Same root-only rule for hiding the offer in Gestione Richieste (spec 0414). */
+  request_offer_hidden?: boolean
   /** Same root-only rule again for the simplified-offer-line rule (spec 0114): a child sends the override instead. */
   simplified_offer_line?: boolean
   /** Child-only (spec 0188): true/false forces the rule, null inherits. Never sent for a root. */

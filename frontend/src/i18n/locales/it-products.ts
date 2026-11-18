@@ -2,10 +2,11 @@
  * Domini Categorie Prodotto + Prodotti (spec 0017). Estratto in un
  * file affiancato per mantenere `it.ts` entro i limiti dimensionali (vedi
  * `.claude/rules/engineering.md` §6); la forma pubblica di `it.ts` è invariata.
- * Gli Attributi stanno in `it-attributes.ts`.
+ * Gli Attributi stanno in `it-attributes.ts`, i Prodotti in `it-product-items.ts`.
  */
 
 export { attributes } from './it-attributes'
+export { products } from './it-product-items'
 
 export const productCategories = {
   title: 'Categorie Prodotto',
@@ -35,6 +36,7 @@ export const productCategories = {
     multi_quote_work_order: "Commessa multi-offerta",
     usage_area: 'Visibile in',
     multiple_open_opportunities: 'Più opportunità aperte per anagrafica',
+    request_registry_type: 'Anagrafica in Gestione Richieste',
     simplified_offer_line: 'Semplificazione riga offerta',
     created_at: 'Creato il',
     tooltipEmpty: 'Nessun elemento da mostrare.',
@@ -54,7 +56,9 @@ export const productCategories = {
     generatesContractInherited: 'Ereditata da {{category}}',
     multiQuoteWorkOrderInherited: "Ereditata da {{category}}",
     usageAreaInherited: 'Ereditato da {{category}}',
+    requestRegistryTypeInherited: 'Ereditato da {{category}}',
     simplifiedOfferLineInherited: 'Ereditata da {{category}}',
+    requestOfferHiddenInherited: 'Ereditata da {{category}}',
     managerLabelInherited: 'Ereditata',
     inheritedCount: '+{{count}} ereditati',
   },
@@ -182,6 +186,10 @@ export const productCategories = {
     singleQuotePerOpportunityInfo:
       "Limita quanti DOCUMENTI OFFERTA può contenere un'opportunità: è una regola diversa dalla modalità di gestione, che limita invece le righe prodotto di una scheda. Se attivo, la creazione di una seconda offerta su un'opportunità di questo ramo viene rifiutata. Le opportunità che ne hanno già più di una le mantengono e restano modificabili. La regola è decisa dalla categoria RADICE e tutto il sottoalbero la segue, a meno che una sottocategoria non forzi un proprio valore (che vale poi per il suo sottoalbero).",
     singleQuotePerOpportunityInfoLabel: 'Maggiori informazioni su Offerta unica per opportunità',
+    requestRegistryType: 'Anagrafica in Gestione Richieste',
+    requestRegistryTypeHint:
+      'Con quale tipo parte la scheda del nuovo cliente quando in Gestione Richieste si crea una richiesta di questa categoria.',
+    requestRegistryTypeInheritedHint: 'Ereditato dalla categoria radice "{{category}}". Per modificarlo, agisci su quella categoria.',
     multipleOpenOpportunities: 'Più opportunità aperte per anagrafica',
     multipleOpenOpportunitiesHint:
       "Se attivo, un'anagrafica può avere più opportunità aperte su questa categoria.",
@@ -215,7 +223,7 @@ export const productCategories = {
     multiQuoteWorkOrderInfoLabel: "Maggiori informazioni su Commessa multi-offerta",
     simplifiedOfferLine: 'Semplificazione riga offerta',
     simplifiedOfferLineHint:
-      "Se attivo, in Gestione Richieste l'operatore sceglie solo il prodotto: quantità, prezzo unitario e aliquota IVA della riga vengono compilati automaticamente dal sistema.",
+      "Se attivo, in Gestione Richieste l'offerta diventa una semplice scelta di prodotti: quantità, prezzo unitario e aliquota IVA li imposta il sistema e i prezzi sono mostrati solo a titolo informativo.",
     simplifiedOfferLineInheritedHint:
       'Valore ereditato da "{{category}}". Cambialo per forzare la regola solo su questa categoria e sulle sue sottocategorie.',
     simplifiedOfferLineForcedHint:
@@ -225,6 +233,12 @@ export const productCategories = {
       "Elimina la compilazione manuale della riga offerta in Gestione Richieste: sulle richieste di questo ramo l'operatore sceglie SOLO il prodotto e il sistema valorizza quantità (sempre 1), prezzo unitario e aliquota IVA con quelli del prodotto. Il modulo Offerte non è toccato: chi lavora l'offerta commerciale continua a governare quantità e prezzi anche su una categoria semplificata. La regola è decisa dalla categoria RADICE e tutto il sottoalbero la segue, a meno che una sottocategoria non forzi un proprio valore (che vale poi per il suo sottoalbero).",
     simplifiedOfferLineInfoLabel: 'Maggiori informazioni su Semplificazione riga offerta',
     simplifiedOfferLineNeedsRequests: 'Non ha effetto: il ramo non si usa in Gestione Richieste (Visibile in).',
+    requestOfferHidden: 'Nascondi offerta in Gestione Richieste',
+    requestOfferHiddenHint: "Se attivo, nelle richieste di questo ramo la sezione Offerta non compare: l'operatore non sceglie prodotti né prezzi.",
+    requestOfferHiddenInheritedHint: 'Ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
+    requestOfferHiddenInfo:
+      "Nasconde la sezione Offerta in Gestione Richieste (Nuova richiesta, pannello Lavora e modifica dalla tabella) quando tutte le linee di prodotto della richiesta appartengono a rami con questa regola; con rami misti il catalogo mostra solo i prodotti dei rami visibili. L'offerta viene comunque creata e le righe già presenti restano invariate; il modulo Offerte e i Contratti non sono toccati. La regola è decisa dalla categoria RADICE e tutto il sottoalbero la segue.",
+    requestOfferHiddenInfoLabel: 'Maggiori informazioni su Nascondi offerta in Gestione Richieste',
     isSelectableInfo:
       "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
     isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',
@@ -307,195 +321,6 @@ export const productCategories = {
       managerLabels: {
         title: 'Gestori Account',
       },
-    },
-  },
-}
-
-export const products = {
-  title: 'Prodotti',
-  subtitle: 'Sfoglia, filtra e gestisci i tuoi prodotti.',
-  forbidden: 'Non hai i permessi per visualizzare i prodotti.',
-  /**
-   * "Prodotti di interesse" (direttiva utente 2026-07-22): il picker condiviso
-   * tra il form Opportunità e il pannello di Gestione Richieste.
-   */
-  ofInterest: {
-    sectionTitle: 'Prodotti di interesse',
-    sectionDescription: 'I prodotti che interessano al cliente per questa richiesta.',
-    fieldLabel: 'Prodotti di interesse',
-    placeholder: 'Seleziona uno o più prodotti',
-    searchPlaceholder: 'Cerca prodotti…',
-    empty: 'Nessun prodotto trovato.',
-    remove: 'Rimuovi prodotto',
-    // Spec 0075, D-4/D-5, estesa a entrambi i moduli dalla direttiva utente
-    // 2026-08-05: un prodotto fuori dalle categorie prodotto del record viene
-    // rifiutato, quindi il picker non esce mai da quell'ambito.
-    hintScoped: 'Solo i prodotti delle categorie prodotto selezionate sopra.',
-    prunedNotice:
-      'Rimossi dalla selezione, la loro categoria prodotto non è più sul record: {{names}}.',
-    hintNoCategories: 'Aggiungi prima una funzione aziendale con la sua categoria prodotto.',
-  },
-  empty: 'Nessun prodotto selezionato.',
-  // Differenza prezzo/costo, mostrata nella striscia KPI della scheda e della creazione.
-  margin: 'Margine',
-  marginPercent: '{{percent}}% sul prezzo',
-  columns: {
-    name: 'Nome',
-    is_active: 'Attivo',
-    description: 'Descrizione',
-    cost: 'Costo',
-    price: 'Prezzo',
-    category: 'Categoria',
-    unit_of_measure: 'Unita di misura',
-    product_typology: 'Tipologia',
-    cost_type: 'Sottoconto costo',
-    revenue_type: 'Sottoconto ricavo',
-    product_type: 'Tipo',
-    usages: 'Utilizzo in offerta',
-    business_function: 'Funzione aziendale',
-    stock_quantity: 'Giacenza',
-    created_at: 'Creato il',
-  },
-  // Commissione Fornitore del prodotto (spec 0320 rev.3): avviso accanto al fornitore.
-  supplierCommission: {
-    PERCENTAGE: 'Commissione {{value}} {{direction}}',
-    FIXED_AMOUNT: 'Commissione fissa {{value}} {{direction}}',
-    direction: { PAID: 'pagata', RECEIVED: 'ricevuta' },
-    hint: 'Il costo di questo fornitore è la commissione Fornitore: il costo resta a 0.',
-  },
-  bulkActivation: {
-    activate: 'Attiva',
-    deactivate: 'Disattiva',
-    activated: '{{count}} prodotto/i attivato/i.',
-    deactivated: '{{count}} prodotto/i disattivato/i.',
-    error: 'Impossibile cambiare lo stato attivo. Nessun prodotto è stato modificato.',
-  },
-  bulkCostType: {
-    bulkAction: 'Imposta sottoconto costo',
-    title: 'Imposta sottoconto costo',
-    description: 'Il sottoconto costo scelto verrà impostato su tutti i {{count}} prodotti selezionati.',
-    selected: 'Prodotti selezionati',
-    field: 'Sottoconto costo',
-    placeholder: 'Seleziona un sottoconto costo…',
-    none: 'Nessuno (rimuovi il sottoconto costo)',
-    confirm: 'Applica a {{count}} prodotti',
-    done: 'Sottoconto costo aggiornato su {{count}} prodotti.',
-    error: 'Impossibile impostare il sottoconto costo. Nessun prodotto è stato modificato.',
-  },
-  detail: {
-    title: 'Dettagli prodotto',
-    subtitle: 'Dettaglio del prodotto selezionato, modificabile sul posto.',
-    loadError: 'Impossibile caricare il prodotto. Riprova.',
-    details: 'Dettagli',
-    created_at: 'Creato il',
-    newAttributes: 'Attributi della nuova categoria',
-  },
-  form: {
-    newProduct: 'Nuovo prodotto',
-    createTitle: 'Crea prodotto',
-    createSubtitle: 'Aggiungi un nuovo prodotto.',
-    code: 'Codice',
-    isActive: 'Attivo',
-    codePlaceholder: 'Codice suggerito, modificabile',
-    codeMax: 'Il codice deve avere al massimo 32 caratteri.',
-    codeRequired: 'Il codice è obbligatorio.',
-    name: 'Nome',
-    nameRequired: 'Il nome è obbligatorio.',
-    nameMax: 'Il nome deve avere al massimo 191 caratteri.',
-    description: 'Descrizione',
-    cost: 'Costo standard',
-    costInvalid: 'Il costo deve essere zero o un numero positivo.',
-    costRequired: 'Il costo è obbligatorio.',
-    price: 'Prezzo standard',
-    priceInvalid: 'Il prezzo deve essere zero o un numero positivo.',
-    priceRequired: 'Il prezzo è obbligatorio.',
-    productType: 'Tipo',
-    usages: 'Utilizzo in offerta',
-    usagesRequired: 'Seleziona almeno un utilizzo.',
-    usagesInternalNeedsPhysical: 'L’uso interno è ammesso solo per un bene fisico.',
-    category: 'Categoria',
-    categoryPlaceholder: 'Seleziona una categoria…',
-    categorySearch: 'Cerca categorie…',
-    categoryEmpty: 'Nessuna categoria trovata.',
-    categoryNoMatch: 'Nessun risultato.',
-    categoryError: 'Impossibile caricare le categorie.',
-    categoryRequired: 'La categoria è obbligatoria.',
-    vatRate: 'IVA',
-    vatRatePlaceholder: "Seleziona un'aliquota IVA…",
-    vatRateSearch: 'Cerca aliquote IVA…',
-    vatRateEmpty: 'Nessuna aliquota IVA trovata.',
-    vatRateError: 'Impossibile caricare le aliquote IVA.',
-    suppliers: {
-      title: 'Fornitori',
-      supplier: 'Fornitore',
-      margin: 'Margine',
-      emptyTitle: 'Nessun fornitore',
-      emptyHint: 'Senza fornitori valgono il Prezzo standard e il Costo standard.',
-      add: 'Aggiungi fornitore',
-      supplierN: 'Fornitore {{n}}',
-      price: 'Prezzo',
-      cost: 'Costo',
-      priceN: 'Prezzo del fornitore {{n}}',
-      costN: 'Costo del fornitore {{n}}',
-      defaultN: 'Fornitore {{n}} predefinito',
-      removeN: 'Rimuovi fornitore {{n}}',
-      default: 'Predefinito',
-      placeholder: 'Seleziona un fornitore…',
-      search: 'Cerca fornitori…',
-      empty: 'Nessun fornitore trovato.',
-      loadError: 'Impossibile caricare i fornitori.',
-      supplierRequired: 'Seleziona il fornitore.',
-      priceRequired: 'Il prezzo è obbligatorio.',
-      costRequired: 'Il costo è obbligatorio.',
-      duplicate: 'Questo fornitore è già presente.',
-      defaultRequired: 'Indica un solo fornitore predefinito.',
-    },
-    unitOfMeasure: 'Unita di misura',
-    unitOfMeasurePlaceholder: "Seleziona un'unita di misura…",
-    unitOfMeasureSearch: 'Cerca unita di misura…',
-    unitOfMeasureEmpty: 'Nessuna unita di misura trovata.',
-    unitOfMeasureError: 'Impossibile caricare le unita di misura.',
-    productTypology: 'Tipologia',
-    productTypologyPlaceholder: 'Seleziona una tipologia…',
-    productTypologySearch: 'Cerca tipologie…',
-    productTypologyEmpty: 'Nessuna tipologia trovata.',
-    productTypologyError: 'Impossibile caricare le tipologie.',
-    costType: 'Sottoconto costo',
-    costTypePlaceholder: 'Seleziona un sottoconto costo…',
-    costTypeSearch: 'Cerca sottoconti costo…',
-    costTypeEmpty: 'Nessun sottoconto costo trovato.',
-    costTypeError: 'Impossibile caricare i sottoconti costo.',
-    save: 'Salva',
-    saving: 'Salvataggio…',
-    cancel: 'Annulla',
-    created: 'Prodotto creato con successo.',
-    updated: 'Prodotto aggiornato con successo.',
-    deleted: 'Prodotto eliminato con successo.',
-    genericError: 'Qualcosa è andato storto. Riprova.',
-    deleteError: 'Impossibile eliminare il prodotto. Riprova.',
-    leaveConfirm: {
-      title: 'Uscire senza salvare?',
-      description: 'Il prodotto non è ancora stato creato: i dati inseriti andranno persi.',
-      confirm: 'Esci senza salvare',
-      cancel: 'Continua a compilare',
-    },
-    sections: {
-      identity: {
-        title: 'Anagrafica',
-      },
-      classification: {
-        title: 'Classificazione',
-      },
-      pricing: {
-        title: 'Prezzi e fornitura',
-      },
-    },
-    hints: {
-      isActive: 'Un prodotto non attivo non compare più nelle scelte prodotto e non si collega a nuovi record; quelli già collegati lo mantengono.',
-      code: 'Precompilato con il prossimo codice sequenziale; modificalo se ne vuoi uno personalizzato.',
-    },
-    dynamicFields: {
-      title: 'Attributi',
     },
   },
 }

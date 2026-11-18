@@ -199,8 +199,15 @@ export const requestManagement = {
    */
   offerLines: {
     hintNoCategory: 'Pick a product category first: it scopes the selectable products.',
-    hintSimplified:
-      'Simplified category: pick the product, quantity, unit price and VAT rate are filled in automatically by the system.',
+    hintSimplified: 'Pick the product: quantity, price and VAT are set by the system.',
+    hiddenByCategory: 'The product category of this request hides the offer in Gestione Richieste.',
+    simplified: {
+      label: 'Product',
+      placeholder: 'Pick the product…',
+      placeholderMany: 'Pick the products…',
+      remove: 'Remove',
+      indicativeValue: 'Indicative value (VAT included)',
+    },
     editAction: 'Edit the offer rows',
     dialogTitle: 'Offer rows',
     dialogDescription: 'Edit product, quantity, unit price and VAT of this offer\'s rows.',

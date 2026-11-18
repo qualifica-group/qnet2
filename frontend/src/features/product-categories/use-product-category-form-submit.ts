@@ -44,6 +44,8 @@ const SERVER_ERROR_FIELDS = [
   'multi_quote_work_order',
   'usage_area',
   'multiple_open_opportunities',
+  'request_registry_type',
+  'request_offer_hidden',
   'simplified_offer_line',
   'simplified_offer_line_override',
   'manager_labels',
