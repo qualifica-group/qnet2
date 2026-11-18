@@ -355,7 +355,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Payment statuses are configured in **Work order payment statuses**. When a line moves to a status flagged **Can be delivered**, the work order supervisors and participants are notified. Payment data can also be edited on a completed or closed work order.',
+          text: 'Payment statuses are configured in **Work order payment statuses**. When a line moves to a status flagged **Can be delivered**, the work order supervisors and participants (except whoever made the change) receive a bell notification and a **Payment status OK** email with the client company name. Payment data can also be edited on a completed or closed work order.',
         },
       ],
     },

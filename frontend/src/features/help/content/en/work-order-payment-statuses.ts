@@ -21,7 +21,7 @@ const guide: HelpGuide = {
             ['Description', 'Optional.'],
             ['Color', 'Required: it is the dot shown next to the name.'],
             ['Active', 'When off, the status disappears from the line dropdown; lines that already have it keep it.'],
-            ['Can be delivered', 'When on, moving a line to this status notifies the work order supervisors and participants.'],
+            ['Can be delivered', 'When on, moving a line to this status notifies the work order supervisors and participants, with a "Payment status OK" email carrying the company name.'],
           ],
         },
       ],

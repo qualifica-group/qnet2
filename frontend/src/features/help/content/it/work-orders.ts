@@ -355,7 +355,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Gli stati di pagamento si configurano in **Stati pagamento commessa**. Quando una riga passa a uno stato con **Si può consegnare**, supervisori e partecipanti della commessa ricevono una notifica. I dati di pagamento si modificano anche su una commessa completata o chiusa.',
+          text: 'Gli stati di pagamento si configurano in **Stati pagamento commessa**. Quando una riga passa a uno stato con **Si può consegnare**, supervisori e partecipanti della commessa (tranne chi ha fatto la modifica) ricevono una notifica nella campanella e una email **Stato pagamento ok** con il nome dell\'azienda cliente. I dati di pagamento si modificano anche su una commessa completata o chiusa.',
         },
       ],
     },

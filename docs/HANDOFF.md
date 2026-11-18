@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commessa: email "Stato pagamento ok" con il nome dell'azienda (decisione utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+
+- Riferimento legacy: `q-net` `App\Notifications\StatoPagamentoOk` inviata da `Manageorder::saveStatoPagamento` per gli stati 1,2,3,6 a responsabili e partecipanti. In qnet-2 era gia' la `WorkOrderLineDeliverableNotification` (spec 0201 D-4: stati con `allows_delivery` = proprio 1,2,3,6) ma col titolo "Riga consegnabile" e senza cliente nell'oggetto.
+- BE: la notifica ha `?string $clientName` (ultimo argomento, default null); titolo/oggetto `Payment status OK: :client` -> "Stato pagamento ok: ACME S.r.l." (senza cliente: "Stato pagamento ok"). `WorkOrderLinePaymentWriter` passa `quote.opportunity.registry.name` (relazione gia' caricata da `RecordDetails`). Chiave `Line ready for delivery` tolta da `lang/it.json`. Destinatari invariati (responsabili + partecipanti, mai chi modifica; email solo con la preferenza email attiva, 431/432 utenti).
+- Test nuovi in `WorkOrderLinePaymentTest` (oggetto con cliente, titolo senza cliente). Verdi: WorkOrderLinePayment + Bulk + Notifications 224; vitest help 161; tsc -b, eslint, pint puliti.
+- Guide IT/EN `work-orders` e `work-order-payment-statuses` + manuale Claude Docs (paragrafo "Commessa.", dopo "Imposta pagamento su tutte le righe") aggiornati.
+
 ## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
 
 - Riferimento legacy: `q-net/src/app/features/notifications/notifications-panel.tsx` (avatar + nome `assigned_by` accanto alla data).
