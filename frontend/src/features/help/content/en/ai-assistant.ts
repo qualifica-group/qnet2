@@ -98,7 +98,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'The assistant uses the artificial intelligence model chosen by the administrator: a service external to QNet (OpenAI, Anthropic) or a model installed on the company servers. With an external service, every message sends outside the company: the text you write, the page guide, the latest messages of the conversation, the attached files and the data of the mentioned records (including personal data of users and referents, if you mention them). If you do not know which model is in use, do not mention or attach anything that must not leave the company.',
+          text: 'The assistant uses the artificial intelligence model chosen by the administrator: a service external to QNet (OpenAI, Anthropic, OpenRouter) or a model installed on the company servers. With an external service, every message sends outside the company: the text you write, the page guide, the latest messages of the conversation, the attached files and the data of the mentioned records (including personal data of users and referents, if you mention them). If you do not know which model is in use, do not mention or attach anything that must not leave the company.',
         },
       ],
     },

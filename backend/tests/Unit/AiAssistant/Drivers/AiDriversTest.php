@@ -6,6 +6,7 @@ use App\Services\AiAssistant\Drivers\AiProviderException;
 use App\Services\AiAssistant\Drivers\AiStreamEvent;
 use App\Services\AiAssistant\Drivers\AnthropicDriver;
 use App\Services\AiAssistant\Drivers\OpenAiCompatibleDriver;
+use App\Services\AiAssistant\Drivers\OpenRouterDriver;
 use App\Services\AiAssistant\Drivers\SseLineReader;
 use App\Services\AiAssistant\Prompt\AiChatPrompt;
 use App\Services\AiAssistant\Prompt\AiPromptFile;
@@ -57,6 +58,10 @@ function ai_anthropic_body(): string
 beforeEach(function () {
     config()->set('ai-assistant.openai', ['base_url' => 'https://llm.test/v1', 'api_key' => 'sk-secret', 'model' => 'gpt-x']);
     config()->set('ai-assistant.anthropic', ['base_url' => 'https://claude.test/v1', 'api_key' => 'ak-secret', 'model' => 'claude-x', 'version' => '2023-06-01']);
+    config()->set('ai-assistant.openrouter', [
+        'base_url' => 'https://router.test/api/v1', 'api_key' => 'or-secret', 'model' => 'vendor/model-x',
+        'site_url' => 'https://qnet.test', 'app_name' => 'QNet', 'data_collection' => 'deny',
+    ]);
     config()->set('ai-assistant.max_output_tokens', 512);
     config()->set('ai-assistant.temperature', null);
     config()->set('ai-assistant.timeout_seconds', 30);
@@ -122,6 +127,73 @@ it('sends files to OpenAI as image_url data URI and file parts', function () {
         ['type' => 'text', 'text' => 'see'],
     ]);
 });
+
+it('AC-030 (D-17): streams from OpenRouter, ignoring its keep-alive comments', function () {
+    $body = ": OPENROUTER PROCESSING\n\n".str_replace('gpt-x', 'vendor/model-x', ai_openai_body());
+    Http::fake(['router.test/*' => Http::response($body, 200, ['Content-Type' => 'text/event-stream'])]);
+
+    $events = ai_collect((new OpenRouterDriver)->stream(ai_prompt()));
+
+    expect(array_map(fn ($e) => $e->type, $events))->toBe(['delta', 'delta', 'delta', 'completed'])
+        ->and($events[3]->model)->toBe('vendor/model-x')
+        ->and($events[3]->inputTokens)->toBe(11)
+        ->and($events[3]->outputTokens)->toBe(3);
+});
+
+it('AC-030 (D-17): builds the OpenRouter request: own config, attribution headers, max_tokens, provider routing', function () {
+    Http::fake(['router.test/*' => Http::response(ai_openai_body())]);
+
+    ai_collect((new OpenRouterDriver)->stream(ai_prompt()));
+
+    Http::assertSent(function (Request $r) {
+        $b = $r->data();
+
+        return $r->url() === 'https://router.test/api/v1/chat/completions'
+            && $r->hasHeader('Authorization', 'Bearer or-secret')
+            && $r->hasHeader('HTTP-Referer', 'https://qnet.test')
+            && $r->hasHeader('X-Title', 'QNet')
+            && $b['model'] === 'vendor/model-x'
+            && $b['max_tokens'] === 512
+            && ! array_key_exists('max_completion_tokens', $b)
+            && $b['provider'] === ['data_collection' => 'deny']
+            && $b['messages'][0] === ['role' => 'system', 'content' => "INSTRUCTIONS\n\nGUIDE"];
+    });
+});
+
+it('AC-030 (D-17): omits empty OpenRouter attribution headers', function () {
+    config()->set('ai-assistant.openrouter.site_url', null);
+    config()->set('ai-assistant.openrouter.app_name', '');
+    Http::fake(['router.test/*' => Http::response(ai_openai_body())]);
+
+    ai_collect((new OpenRouterDriver)->stream(ai_prompt()));
+
+    Http::assertSent(fn (Request $r) => ! $r->hasHeader('HTTP-Referer') && ! $r->hasHeader('X-Title'));
+});
+
+it('AC-030 (D-17): raises a generic provider exception on an OpenRouter mid-stream error', function () {
+    $body = 'data: '.json_encode(['model' => 'vendor/model-x', 'choices' => [['delta' => ['content' => 'Ci']]]])."\n\n"
+        .'data: '.json_encode(['error' => ['code' => 502, 'message' => 'upstream secret'], 'choices' => [['delta' => ['content' => ''], 'finish_reason' => 'error']]])."\n\n";
+    Http::fake(['router.test/*' => Http::response($body)]);
+
+    expect(fn () => ai_collect((new OpenRouterDriver)->stream(ai_prompt())))
+        ->toThrow(AiProviderException::class, AiProviderException::GENERIC_MESSAGE);
+});
+
+it('AC-030 (D-17): data_collection is deny unless the env says allow', function (?string $env, string $expected) {
+    $previous = getenv('AI_ASSISTANT_OPENROUTER_DATA_COLLECTION');
+    $env === null ? putenv('AI_ASSISTANT_OPENROUTER_DATA_COLLECTION') : putenv("AI_ASSISTANT_OPENROUTER_DATA_COLLECTION={$env}");
+
+    try {
+        expect((require config_path('ai-assistant.php'))['openrouter']['data_collection'])->toBe($expected);
+    } finally {
+        $previous === false ? putenv('AI_ASSISTANT_OPENROUTER_DATA_COLLECTION') : putenv("AI_ASSISTANT_OPENROUTER_DATA_COLLECTION={$previous}");
+    }
+})->with([
+    'unset' => [null, 'deny'],
+    'allow' => ['allow', 'allow'],
+    'deny' => ['deny', 'deny'],
+    'anything else' => ['maybe', 'deny'],
+]);
 
 it('streams deltas then completed from Anthropic', function () {
     Http::fake(['claude.test/*' => Http::response(ai_anthropic_body(), 200, ['Content-Type' => 'text/event-stream'])]);
@@ -271,6 +343,14 @@ it('builds the driver from config and reports configuration state', function () 
         ->and($manager->driver())->toBeInstanceOf(AnthropicDriver::class);
 
     config()->set('ai-assistant.anthropic.api_key', '');
+    expect($manager->isConfigured())->toBeFalse()
+        ->and(fn () => $manager->driver())->toThrow(AiAssistantNotConfiguredException::class);
+
+    config()->set('ai-assistant.driver', 'openrouter');
+    expect($manager->isConfigured())->toBeTrue()->and($manager->model())->toBe('vendor/model-x')
+        ->and($manager->driver())->toBeInstanceOf(OpenRouterDriver::class);
+
+    config()->set('ai-assistant.openrouter.api_key', '');
     expect($manager->isConfigured())->toBeFalse()
         ->and(fn () => $manager->driver())->toThrow(AiAssistantNotConfiguredException::class);
 

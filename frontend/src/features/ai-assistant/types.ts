@@ -24,7 +24,7 @@ export type AiMentionModule = (typeof AI_MENTION_MODULE_KEYS)[number]
 
 export type AiMessageRole = 'user' | 'assistant'
 
-export type AiDriverName = 'openai' | 'anthropic'
+export type AiDriverName = 'openai' | 'anthropic' | 'openrouter'
 
 export interface AiConversation {
   id: number
