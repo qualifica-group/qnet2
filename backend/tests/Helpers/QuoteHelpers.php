@@ -43,7 +43,7 @@ if (! function_exists('quoteScopedUserWith')) {
      */
     function quoteScopedUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewSite', 'viewAll', 'updateContracted'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewSite', 'viewAll', 'updateContracted', 'viewCosts'] as $ability) {
             Permission::findOrCreate("quotes.{$ability}");
         }
 
@@ -60,14 +60,15 @@ if (! function_exists('quoteScopedUserWith')) {
 if (! function_exists('quoteTableUserWith')) {
     /**
      * An actor holding $abilities plus `viewAll` (spec 0316, REQUIREMENT
-     * CHANGED D-1): the tests using it are not about record visibility, so
-     * they must keep seeing every quote.
+     * CHANGED D-1) and `viewCosts` (spec 0412, REQUIREMENT CHANGED): the
+     * tests using it are not about record visibility nor cost permission, so
+     * they must keep seeing every quote and its costs.
      *
      * @param  array<int, string>  $abilities
      */
     function quoteTableUserWith(array $abilities): User
     {
-        return quoteScopedUserWith([...$abilities, 'viewAll']);
+        return quoteScopedUserWith([...$abilities, 'viewAll', 'viewCosts']);
     }
 }
 

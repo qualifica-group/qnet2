@@ -44,11 +44,14 @@ class QualificaDepartmentRoleSeeder extends Seeder
         DB::transaction(function (): void {
             // Step 2: the two roles of every department.
             foreach (Department::DEPARTMENTS as $role => $department) {
-                $this->syncDepartmentRole($role, $department['description'], $department['grants']);
+                $requestSightFromQuotes = $department['request_sight_from_quotes'] ?? true;
+
+                $this->syncDepartmentRole($role, $department['description'], $department['grants'], requestSightFromQuotes: $requestSightFromQuotes);
                 $this->syncDepartmentRole(
                     Department::senior($role),
                     $department['description'].Department::SENIOR_DESCRIPTION_SUFFIX,
-                    [...$department['grants'], ...$department['senior_grants']],
+                    Department::seniorGrants($department),
+                    requestSightFromQuotes: $requestSightFromQuotes,
                 );
             }
 
@@ -70,10 +73,15 @@ class QualificaDepartmentRoleSeeder extends Seeder
      * @param  array<int, string>  $grants
      * @param  array<int, string>  $baseline
      */
-    private function syncDepartmentRole(string $name, string $description, array $grants, array $baseline = Grants::BASELINE): void
-    {
+    private function syncDepartmentRole(
+        string $name,
+        string $description,
+        array $grants,
+        array $baseline = Grants::BASELINE,
+        bool $requestSightFromQuotes = true,
+    ): void {
         $permissions = $this->withUserFormStack($this->resolvePermissions([...$baseline, ...$this->grantPermissions($grants)]), $this->catalogue);
-        $role = $this->syncRole($name, $description, $permissions);
+        $role = $this->syncRole($name, $description, $permissions, $requestSightFromQuotes);
 
         // The HR department reads the user's contractual data like the HR
         // office (D-7); every other department has it hidden like a mansione.

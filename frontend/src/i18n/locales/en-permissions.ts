@@ -105,6 +105,10 @@ export const permissions = {
     calendarAll: 'Calendar: everyone',
     // Spec 0360 D-8: change (not remove) the offer rows assigned to a work order.
     updateLockedLines: 'Edit rows assigned to a work order',
+    // Spec 0412: the offer's costs and margins (cost rows, summary, columns, statistics).
+    viewCosts: 'View costs and margins',
+    // Spec 0413: notifications of the team's activity on offers, contracts and work orders.
+    notifyTeam: 'Receive team notifications',
   },
   resources: {
     users: 'Users',

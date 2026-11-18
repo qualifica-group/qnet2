@@ -26,6 +26,10 @@ it('creates a base and a senior role per department, the senior one widened only
     $this->seed(Seeder::class);
 
     foreach (Department::DEPARTMENTS as $name => $department) {
+        if ($department['standalone_senior'] ?? false) {
+            continue;
+        }
+
         $base = Role::findByName($name)->permissions->pluck('name')->sort()->values();
         $senior = Role::findByName(Department::senior($name))->permissions->pluck('name')->sort()->values();
 
@@ -89,7 +93,8 @@ it('leaves the listed people only the roles of the questionnaires, idempotently,
         ->and(departmentRoleNames($head))->toBe(['admin', Department::senior(Department::ISO)])
         ->and($head->getDirectPermissions())->toBeEmpty()
         ->and($head->hasPermissionTo('contracts.validate'))->toBeTrue()
-        ->and(departmentRoleNames($safetyHead))->toBe([Department::SAFETY_HEAD, Department::senior(Department::SAFETY)])
+        // REQUIREMENT CHANGED (D-14): Annunziata is in the Commerciale questionnaire too.
+        ->and(departmentRoleNames($safetyHead))->toBe([Department::COMMERCIAL, Department::SAFETY_HEAD, Department::senior(Department::SAFETY)])
         ->and($safetyHead->getDirectPermissions())->toBeEmpty()
         ->and($safetyHead->hasPermissionTo('commission-settlements.viewAny'))->toBeTrue()
         ->and(departmentRoleNames($severalDepartments))->toBe([Department::ACCREDITATION, Department::SUBSIDISED_FINANCE, Department::PROJECT_DESIGN])
@@ -137,4 +142,87 @@ it('maps the APL and accounting answers onto the visibility tiers', function () 
         ->and($accounting->hasPermissionTo('commission-settlements.approve'))->toBeFalse()
         ->and($accounting->hasPermissionTo('time-entries.viewAll'))->toBeFalse()
         ->and($coordinator->hasPermissionTo('time-entries.viewAll'))->toBeTrue();
+});
+
+// REQUIREMENT CHANGED (spec 0408 D-14): the Back Office answered its questionnaire, no more admin's matrix.
+it('maps the back office questionnaire onto operators and supervisor', function () {
+    $supervisor = User::factory()->create(['email' => 'martina.mosca@qualificagroup.com']);
+    $supervisor->assignRole(['operatore-base', 'commerciale']);
+    $head = User::factory()->create(['email' => 'michela.fabozzi@qualificagroup.com']);
+    $head->assignRole(['commerciale']);
+
+    $this->seed(Seeder::class);
+
+    $operator = Role::findByName(Department::BACK_OFFICE);
+    $iban = Role::findByName(Department::BACK_OFFICE)->fieldPermissions()
+        ->where('resource', 'users')->where('field', 'employment.iban')->value('visible');
+
+    expect($operator->hasPermissionTo('contracts.validate'))->toBeTrue()
+        ->and($operator->hasPermissionTo('work-orders.viewAll'))->toBeTrue()
+        ->and($operator->hasPermissionTo('commission-settlements.viewAny'))->toBeTrue()
+        ->and($operator->hasPermissionTo('invoices.create'))->toBeFalse()
+        ->and($operator->hasPermissionTo('commission-configurations.create'))->toBeTrue()
+        ->and($operator->hasPermissionTo('commission-configurations.import'))->toBeFalse()
+        ->and($operator->hasPermissionTo('quotes.viewCosts'))->toBeTrue()
+        ->and($operator->hasPermissionTo('quotes.notifyTeam'))->toBeFalse()
+        ->and($operator->hasPermissionTo('leads.viewAny'))->toBeFalse()
+        ->and($operator->hasPermissionTo('tasks.viewAll'))->toBeFalse()
+        // Every quote, yet only the requests they are involved in: their answer, not the 2026-10-27 rule (D-14).
+        ->and($operator->hasPermissionTo('request-management.viewAny'))->toBeTrue()
+        ->and($operator->hasPermissionTo('request-management.viewAll'))->toBeFalse()
+        ->and($operator->hasPermissionTo('request-management.viewCompetence'))->toBeFalse()
+        ->and($operator->hasPermissionTo('enrollee-management.viewAny'))->toBeFalse()
+        ->and($operator->hasPermissionTo('request-management.import'))->toBeFalse()
+        ->and($operator->hasPermissionTo('users.impersonate'))->toBeFalse()
+        ->and($iban)->toBeFalse()
+        ->and(departmentRoleNames($supervisor))->toBe([Department::BACK_OFFICE_TEAM_NOTIFICATIONS, Department::senior(Department::BACK_OFFICE)])
+        ->and($supervisor->hasPermissionTo('tasks.manageAll'))->toBeTrue()
+        ->and($supervisor->hasPermissionTo('request-management.import'))->toBeTrue()
+        ->and($supervisor->hasPermissionTo('request-management.viewAll'))->toBeTrue()
+        ->and($supervisor->hasPermissionTo('enrollee-management.viewAll'))->toBeTrue()
+        ->and($supervisor->hasPermissionTo('products.update'))->toBeTrue()
+        ->and($supervisor->hasPermissionTo('treasury-movements.viewAny'))->toBeFalse()
+        ->and($supervisor->hasPermissionTo('work-orders.notifyTeam'))->toBeTrue()
+        ->and($supervisor->hasPermissionTo('contracts.notifyTeam'))->toBeTrue()
+        ->and(departmentRoleNames($head))->toBe(['admin', Department::senior(Department::BACK_OFFICE), Department::senior(Department::COMMERCIAL)])
+        // The team notifications are Mosca's note, not the level's (spec 0413 D-5).
+        ->and(Role::findByName(Department::senior(Department::BACK_OFFICE))->hasPermissionTo('quotes.notifyTeam'))->toBeFalse();
+});
+
+it('gives the commerciale supervisors their own answers, not a widening of the commerciali', function () {
+    foreach (['notifiche-richieste-modifica', 'notifiche-trasferimenti-contatti', 'supervisore-commerciale'] as $role) {
+        Role::create(['name' => $role]);
+    }
+    $agent = User::factory()->create(['email' => 'antonio.alvoni@qualificagroup.com']);
+    $agent->assignRole(['commerciale']);
+    $supervisor = User::factory()->create(['email' => 'rosa.falzarano@qualificagroup.com']);
+    $supervisor->assignRole(['supervisore-commerciale', 'notifiche-richieste-modifica', 'notifiche-trasferimenti-contatti']);
+    $apl = User::factory()->create(['email' => 'desire.romito@qualificagroup.com']);
+
+    $this->seed(Seeder::class);
+
+    $commercial = Role::findByName(Department::COMMERCIAL);
+    $supervisorRole = Role::findByName(Department::senior(Department::COMMERCIAL));
+
+    expect($commercial->hasPermissionTo('opportunities.viewAny'))->toBeTrue()
+        ->and($commercial->hasPermissionTo('opportunities.viewAll'))->toBeFalse()
+        ->and($commercial->hasPermissionTo('opportunities.create'))->toBeFalse()
+        ->and($commercial->hasPermissionTo('quotes.update'))->toBeFalse()
+        ->and($commercial->hasPermissionTo('work-orders.viewCosts'))->toBeTrue()
+        ->and($commercial->hasPermissionTo('request-management.update'))->toBeTrue()
+        ->and($commercial->hasPermissionTo('field-change-requests.create'))->toBeTrue()
+        ->and($commercial->hasPermissionTo('field-change-requests.manage'))->toBeFalse()
+        ->and($supervisorRole->hasPermissionTo('field-change-requests.manage'))->toBeTrue()
+        ->and($commercial->hasPermissionTo('commission-accruals.export'))->toBeTrue()
+        ->and($commercial->hasPermissionTo('commission-settlements.export'))->toBeFalse()
+        ->and($supervisorRole->hasPermissionTo('quotes.viewAny'))->toBeFalse()
+        ->and($commercial->hasPermissionTo('quotes.viewCosts'))->toBeTrue()
+        ->and(Role::findByName(Department::SAFETY)->hasPermissionTo('quotes.viewCosts'))->toBeFalse()
+        ->and($supervisorRole->hasPermissionTo('work-orders.viewCosts'))->toBeFalse()
+        ->and($supervisorRole->hasPermissionTo('leads.update'))->toBeTrue()
+        ->and($supervisorRole->hasPermissionTo('absence-requests.calendarAll'))->toBeTrue()
+        ->and(departmentRoleNames($agent))->toBe([Department::COMMERCIAL, Department::COMMERCIAL_FISCAL_PROFILES])
+        ->and($agent->hasPermissionTo('agent-fiscal-profiles.viewAny'))->toBeTrue()
+        ->and(departmentRoleNames($supervisor))->toBe(['notifiche-richieste-modifica', 'notifiche-trasferimenti-contatti', Department::senior(Department::COMMERCIAL)])
+        ->and(departmentRoleNames($apl))->toBe([Department::APL, Department::COMMERCIAL]);
 });

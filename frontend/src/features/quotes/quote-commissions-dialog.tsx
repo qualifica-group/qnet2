@@ -7,6 +7,7 @@ import type { CommissionRole, SupplierCommissionDirection } from '@/features/com
 import { formatQuoteAmount } from './quote-summary'
 import { QuoteCommissionRoleRow, QuoteCommissionRowsHeader } from './quote-commission-role-row'
 import { useQuoteCommissionsDraft } from './use-quote-commissions-draft'
+import { useQuoteCostsVisible } from './use-quote-costs-visible'
 import type { QuoteCommissionContext, QuoteLineCommissionInput } from './types'
 
 const ROLES: CommissionRole[] = ['COMMERCIAL', 'REPORTER', 'SUPERVISOR', 'SUPPLIER']
@@ -61,10 +62,13 @@ function BaseFigure({ label, value, emphasis = false }: BaseFigureProps) {
  * built (line net, imputed costs, base) and what the line pays out, then one
  * row per role. The body is the only scrolling part: the dialog is a flex
  * column, since an `auto` grid row would grow past `max-h` and spill out.
+ * Without `view_costs` (spec 0412) the imputed costs and the base they leave
+ * are not shown.
  */
 export function QuoteCommissionsDialog(props: Props) {
   const { t } = useTranslation()
   const commissions = useQuoteCommissionsDraft(props)
+  const costsVisible = useQuoteCostsVisible()
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -81,10 +85,14 @@ export function QuoteCommissionsDialog(props: Props) {
               <DialogDescription className="text-xs">{t('quotes.form.commissions.description')}</DialogDescription>
             </div>
           </div>
-          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <dl className={cn('grid grid-cols-2 gap-2', costsVisible && 'sm:grid-cols-4')}>
             <BaseFigure label={t('quotes.form.commissions.base.lineNet')} value={commissions.lineNet} />
-            <BaseFigure label={t('quotes.form.commissions.base.allocatedCost')} value={commissions.allocatedCostNet} />
-            <BaseFigure label={t('quotes.form.commissions.base.base')} value={commissions.commissionBase} />
+            {costsVisible ? (
+              <>
+                <BaseFigure label={t('quotes.form.commissions.base.allocatedCost')} value={commissions.allocatedCostNet} />
+                <BaseFigure label={t('quotes.form.commissions.base.base')} value={commissions.commissionBase} />
+              </>
+            ) : null}
             <BaseFigure label={t('quotes.form.commissions.base.total')} value={commissions.totalAmount} emphasis />
           </dl>
         </DialogHeader>

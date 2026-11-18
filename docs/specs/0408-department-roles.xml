@@ -64,13 +64,55 @@
         dell'elenco restano SOLO i ruoli dei questionari (`roles`, piu' `other_roles` per quanto il file nomina oltre al
         reparto: `admin` di Russo Del Prete ed Esposito). Ogni altro ruolo viene tolto a loro (i ruoli restano nel
         sistema per gli altri utenti); `super-admin` non e' mai toccato dal seeder. Chi non e' nell'elenco non cambia.
+    D-13 Decisione utente 2026-11-18: reparto Back Office (le 6 persone del back office commerciale, spec 0299).
+        `reparto-backoffice-senior` = Martina Mosca; `reparto-backoffice` = Lidia Russo, Deborah Farina, Caterina
+        Maduni, Alessia Luongo, Lia Palladino. Tutti hanno i permessi di `admin` (reparto `full_access` del catalogo):
+        tutto il catalogo tranne `request-management.import` (ruolo a parte, spec 0348) e i dati contrattuali
+        dell'utente in modifica; base e senior oggi identici. Per D-12 perdono `back-office-commerciale`,
+        `operatore-base`, `Oda`, `accesso rda` e (Mosca) `coordinatore-commerciale`, quindi Mosca non importa piu' le
+        richieste. Lidia Russo e' "Supervisor Back Office Commerciale" in organigramma ma resta base per scelta utente.
+    D-14 Decisione utente 2026-11-18, supera D-13: questionari Back Office e Commerciale (Download, 2026-11-18), ogni
+        file con tre livelli: ADMIN, SUPERVISOR e operativo. Michela Fabozzi (ADMIN in entrambi, tutto Si') = `admin`
+        (other_roles) + `reparto-commerciale-senior` + `reparto-backoffice-senior` (D-8); perde `coordinatore-commerciale`.
+        Back Office: `reparto-backoffice` (Russo, Luongo, Palladino, Maduni, Farina) = tutte le opportunita', offerte,
+        commesse e contratti (offerte e contratti seguono le commesse, D-10), attivita' del team (organigramma, D-4),
+        fatturazione e provvigioni in lettura, richieste in cui e' coinvolto, listino; `reparto-backoffice-senior`
+        (Mosca) = in piu' tutte le attivita' con `tasks.manageAll`, statistiche, tutte le richieste con import,
+        iscritti, referenti premiati, prodotti completi, utenti. Non piu' la matrice di `admin`: dati contrattuali
+        nascosti come gli altri reparti. La notifica "creazione e avanzamento stato Offerta, Contratto, Commessa del
+        team Back Office" di Mosca non ha un meccanismo oggi: fuori dai permessi, da implementare a parte.
+        Commerciale: `reparto-commerciale` (53 nomi nel file, 50 account) = in sola lettura opportunita', offerte e
+        commesse in cui e' coinvolto (commessa con costi, fatture, documenti e chat), attivita' proprie, provvigioni
+        maturate con export, richieste in cui e' coinvolto da "Editor" (crea/modifica, tendina fonti, richiesta di
+        modifica fonte). `reparto-commerciale-senior` (Aliberti, Falzarano, SUPERVISOR) NON e' un allargamento della
+        base: hanno risposto No alle offerte e ai dettagli della commessa, quindi la senior ha solo le proprie
+        risposte (`standalone_senior`): lead, tutte le opportunita', attivita' e richieste con import, calendario
+        assenze di tutte le sedi; ricevono le notifiche di richiesta modifica fonte (restano `notifiche-richieste-modifica`
+        e `notifiche-trasferimenti-contatti`) e quindi le approvano (`field-change-requests.manage`, `updateSource`).
+        Ruolo aggiuntivo `reparto-commerciale-profili-fiscali` (D-9) ad Antonio Alvoni ("si solo per Antonio Alvoni").
+        Chi e' gia' in un altro reparto aggiunge `reparto-commerciale` (D-8): Annunziata, Castagna, Romito, Lo Bartolo,
+        Gaspari. Senza account: Miriam Cantatore, Maddalena Vitale, Imma Pascale. "Simone Chiacchio" del file e' Simona
+        Chiacchio (conferma utente 2026-11-18): `reparto-commerciale`, perde `coordinatore-commerciale`. Export provvigioni
+        senza liquidazioni = solo `commission-accruals.export`. Domanda 23 (costi e margini offerta): nuovo permesso
+        `quotes.viewCosts` (spec 0412), chiave `quotes_costs` ai reparti che hanno risposto Si' (Pianificazione e
+        responsabile ISO, Travel, Finanza Agevolata e Progettazione senior, HR, APL, Contabilita', Back Office,
+        Commerciale); Sicurezza ha risposto No e non vede piu' costi e margini delle offerte. La notifica di Mosca e'
+        la spec 0413, ruolo aggiuntivo `reparto-backoffice-notifiche-team` solo suo (D-9: Fabozzi, senior Back Office
+        come ADMIN, non la riceve). Decisione utente 2026-11-18:
+        il Back Office (operatori e Mosca) gestisce le regole del Configuratore Commissioni, cioe' la "% Segnalatori"
+        del referente (`commission_configurations_manage`: vedere, creare, modificare, eliminare, storico). Decisione utente 2026-11-18: il Back Office e' slegato dalla regola dei
+        ruoli 2026-10-27 (chi vede le offerte vede Gestione Richieste/Iscritti come le offerte): i suoi due ruoli
+        hanno solo i permessi richieste del questionario (`request_sight_from_quotes => false` nel catalogo,
+        parametro di `SyncsRoleMatrix::syncRole`). Operatori: richieste in cui sono coinvolti, niente iscritti;
+        Mosca: tutte le richieste e gli iscritti. Gli altri ruoli restano con la regola.
   </context>
 
   <acceptance_criteria>
-    <criterion id="AC-001">Dopo il seeder esistono i 27 ruoli `reparto-*` (26 di reparto + `reparto-sicurezza-responsabile`), base e senior con gli stessi permessi tranne ISO, Finanza Agevolata, Progettazione, APL e Contabilita'.</criterion>
+    <criterion id="AC-001">Dopo il seeder esistono i 33 ruoli `reparto-*` (30 di reparto + i ruoli aggiuntivi `reparto-sicurezza-responsabile`, `reparto-commerciale-profili-fiscali`, `reparto-backoffice-notifiche-team`), base e senior con gli stessi permessi tranne ISO, Finanza Agevolata, Progettazione, APL, Contabilita' e Back Office (senior = base + aggiunte) e Commerciale (senior con le sole risposte del SUPERVISOR, D-14).</criterion>
     <criterion id="AC-002">Una persona elencata ha solo i ruoli del questionario (reparto, aggiuntivi, `other_roles`), piu' `super-admin` se lo aveva.</criterion>
     <criterion id="AC-003">Chi e' in piu' reparti o uffici ha un ruolo per ciascuno; cio' che e' di una sola persona e' un ruolo aggiuntivo; nessuna persona elencata ha permessi diretti.</criterion>
     <criterion id="AC-004">Chi non e' nell'elenco resta invariato; ri-eseguito, il seeder converge senza duplicati.</criterion>
-    <criterion id="AC-005">Il ruolo HR vede i dati contrattuali dell'utente; gli altri ruoli di reparto no.</criterion>
+    <criterion id="AC-005">Il ruolo HR vede i dati contrattuali dell'utente; gli altri ruoli di reparto no (D-14 supera l'eccezione Back Office di D-13).</criterion>
+    <criterion id="AC-006">Back Office e Commerciale seguono i rispettivi questionari per livello; Fabozzi ha `admin`, i supervisori commerciali tengono i ruoli di notifica e approvano le richieste di modifica fonte (D-14).</criterion>
   </acceptance_criteria>
 </spec>

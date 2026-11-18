@@ -57,13 +57,16 @@ trait SyncsRoleMatrix
 
     /**
      * @param  Collection<int, string>  $permissions
+     * @param  bool  $requestSightFromQuotes  false for a role whose questionnaire answered the request
+     *                                        modules itself (spec 0408 D-14): its grants are kept as given
      */
-    private function syncRole(string $name, string $description, Collection $permissions): Role
+    private function syncRole(string $name, string $description, Collection $permissions, bool $requestSightFromQuotes = true): Role
     {
         $role = Role::findOrCreate($name, Guard::getDefaultName(User::class));
         $role->description = $description;
         $role->save();
-        $role->syncPermissions($this->withRequestModulesSight($this->withCompetenceSight($permissions))->all());
+        $permissions = $this->withCompetenceSight($permissions);
+        $role->syncPermissions(($requestSightFromQuotes ? $this->withRequestModulesSight($permissions) : $permissions)->all());
 
         return $role;
     }

@@ -19,14 +19,15 @@ uses(RefreshDatabase::class);
 | by_status (distribution) and trend. Counts over the visible quotes (spec 0316: the actor holds viewAll).
 */
 
-function quotesStatsActor(): User
+// REQUIREMENT CHANGED (spec 0412): the margin widget needs `quotes.viewCosts`.
+function quotesStatsActor(bool $mayViewCosts = true): User
 {
-    foreach (['quotes.viewAny', 'quotes.viewAll'] as $permission) {
+    foreach (['quotes.viewAny', 'quotes.viewAll', 'quotes.viewCosts'] as $permission) {
         Permission::findOrCreate($permission);
     }
 
     $user = User::factory()->create();
-    $user->givePermissionTo(['quotes.viewAny', 'quotes.viewAll']);
+    $user->givePermissionTo(['quotes.viewAny', 'quotes.viewAll', ...($mayViewCosts ? ['quotes.viewCosts'] : [])]);
 
     return $user;
 }

@@ -22,6 +22,7 @@ use App\Models\Registry;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Policies\QuotePolicy;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
@@ -109,7 +110,8 @@ final class AiMentionRegistry
             new AiMentionDefinition('quotes', Quote::class, static fn (Model $m): string => self::codeAndTitle($m->code, $m->title),
                 ['code', 'title', 'quote_date', 'internal_notes', 'next_callback_at', 'revenue_net', 'revenue_vat', 'cost_net', 'cost_vat', 'margin_net'],
                 ['opportunity' => 'name', 'quoteWorkflowStatus' => 'name', 'commercial' => 'name', 'reporter' => 'name', 'supervisor' => 'name',
-                    'operator' => 'name', 'company' => 'denomination', 'companySite' => 'name', 'operationalSite' => 'alias', 'source' => 'name', 'paymentMethod' => 'name']),
+                    'operator' => 'name', 'company' => 'denomination', 'companySite' => 'name', 'operationalSite' => 'alias', 'source' => 'name', 'paymentMethod' => 'name'],
+                [QuotePolicy::VIEW_COSTS_ABILITY => ['cost_net', 'cost_vat', 'margin_net']]),
             new AiMentionDefinition('work-orders', WorkOrder::class, static fn (Model $m): string => self::codeAndTitle($m->code, $m->title),
                 ['code', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason'],
                 ['quote' => ['code', 'title'], 'workOrderWorkflowStatus' => 'name', 'supervisors' => 'name']),

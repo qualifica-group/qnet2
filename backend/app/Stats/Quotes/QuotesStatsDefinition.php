@@ -8,6 +8,7 @@ use App\Enums\CategoryUsageArea;
 use App\Enums\WorkflowStatusGroup;
 use App\Models\Quote;
 use App\Models\User;
+use App\Policies\QuotePolicy;
 use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Stats\AbstractStatsDefinition;
@@ -24,7 +25,8 @@ use Illuminate\Support\Facades\Auth;
  * revenue, net margin and how many closed won, the breakdown by workflow
  * status (colour of the status row) and the monthly creation trend. Narrowed
  * to the quotes the actor may see (QuoteVisibilityScope, spec 0316), so each
- * actor has their own numbers and cache entry.
+ * actor has their own numbers and cache entry. The margin widget needs
+ * `quotes.viewCosts` (spec 0412, D-2).
  */
 class QuotesStatsDefinition extends AbstractStatsDefinition
 {
@@ -63,12 +65,7 @@ class QuotesStatsDefinition extends AbstractStatsDefinition
                 format: StatFormat::Currency,
                 icon: 'wallet',
             ),
-            $this->stat(
-                key: 'margin_net',
-                value: round((float) $this->visible()->sum('quotes.margin_net'), 2),
-                format: StatFormat::Currency,
-                icon: 'trending-up',
-            ),
+            ...$this->marginWidgets(),
             $this->stat('won', $this->wonCount(), icon: 'check-circle'),
             $this->distribution(
                 key: 'by_status',
@@ -95,6 +92,23 @@ class QuotesStatsDefinition extends AbstractStatsDefinition
                 tone: 4,
             ),
         ];
+    }
+
+    /**
+     * @return array<int, Widget>
+     */
+    private function marginWidgets(): array
+    {
+        if (! Auth::user()?->can(QuotePolicy::VIEW_COSTS_PERMISSION)) {
+            return [];
+        }
+
+        return [$this->stat(
+            key: 'margin_net',
+            value: round((float) $this->visible()->sum('quotes.margin_net'), 2),
+            format: StatFormat::Currency,
+            icon: 'trending-up',
+        )];
     }
 
     /**

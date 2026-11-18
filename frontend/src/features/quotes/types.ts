@@ -122,8 +122,9 @@ export interface QuoteAmountBreakdown {
  */
 export interface QuoteSummary {
   revenue: QuoteAmountBreakdown
-  cost: QuoteAmountBreakdown
-  margin: { net: string }
+  /** Spec 0412: absent without `permissions.actions.view_costs`, like `margin`. */
+  cost?: QuoteAmountBreakdown
+  margin?: { net: string }
   commissions?: Record<'commercial' | 'reporter' | 'supervisor' | 'supplier', string>
   /**
    * Spec 0099 (D-6/D-7): the REVENUE lines' imponibile grouped by the
@@ -273,7 +274,8 @@ export interface QuoteDetail extends ContractedQuoteFlags {
    */
   attribute_view_layout?: LayoutBlob | null
   offer_lines: QuoteLine[]
-  cost_lines: QuoteLine[]
+  /** Spec 0412: absent without `permissions.actions.view_costs`. */
+  cost_lines?: QuoteLine[]
   summary: QuoteSummary
   created_at: string
   updated_at: string

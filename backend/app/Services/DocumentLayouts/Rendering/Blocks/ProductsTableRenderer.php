@@ -34,7 +34,7 @@ final class ProductsTableRenderer
      */
     public function render(AbstractContainer $container, array $block, RenderContext $context): void
     {
-        $rows = $context->subject->productRows((string) $block['source']);
+        $rows = $context->subject->productRows((string) $block['source'], $context->actor);
         $columns = $block['columns'];
         $columnWidthsTwips = array_map(
             static fn (array $column): int => $context->percentToTwips((int) $column['width_pct']),

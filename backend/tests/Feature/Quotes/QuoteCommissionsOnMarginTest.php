@@ -42,7 +42,8 @@ function marginTestActor(array $abilities): User
     }
 
     // Spec 0316: not a visibility test, so the actor sees every quote.
-    $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+    // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the actor sees the costs.
+    $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'), Permission::findOrCreate('quotes.viewCosts', 'web'));
 
     return $user;
 }
@@ -326,7 +327,8 @@ it('AC-006: a user without commission visibility still sees the net-of-commissio
         Permission::findOrCreate("quotes.{$ability}");
     }
     $role = Role::create(['name' => fake()->unique()->slug()]);
-    $role->givePermissionTo(['quotes.view', 'quotes.update', 'quotes.viewActivity', Permission::findOrCreate('quotes.viewAll', 'web')]);
+    // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the actor sees the costs.
+    $role->givePermissionTo(['quotes.view', 'quotes.update', 'quotes.viewActivity', Permission::findOrCreate('quotes.viewAll', 'web'), Permission::findOrCreate('quotes.viewCosts', 'web')]);
     $role->fieldPermissions()->create([
         'resource' => 'quotes',
         'field' => 'commission_value',

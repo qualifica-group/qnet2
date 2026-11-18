@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\TeamActivityRecordEnum;
 use App\Models\Contract;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
@@ -46,6 +47,7 @@ class ContractPolicy extends BasePolicy
         return [
             'viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate',
             QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY, QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY,
+            TeamActivityRecordEnum::ABILITY,
         ];
     }
 

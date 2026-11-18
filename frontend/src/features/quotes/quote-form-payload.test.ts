@@ -219,6 +219,12 @@ describe('buildCreatePayload', () => {
 })
 
 describe('buildUpdatePayload', () => {
+  it('never sends cost_lines when the quote came without them (spec 0412, no view_costs)', () => {
+    const withoutCostLines = { ...detail(), cost_lines: undefined }
+
+    expect(buildUpdatePayload(formValues({ title: 'Nuovo titolo' }), withoutCostLines)).not.toHaveProperty('cost_lines')
+  })
+
   it('sends source_id only when the Fonte changed, and null when it is cleared (spec 0332 D-4)', () => {
     expect(buildUpdatePayload(formValues(), detail())).not.toHaveProperty('source_id')
     expect(buildUpdatePayload(formValues({ source_id: 40 }), detail())).toMatchObject({ source_id: 40 })

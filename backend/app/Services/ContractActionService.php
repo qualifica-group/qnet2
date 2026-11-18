@@ -13,6 +13,7 @@ use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\User;
 use App\Services\Contracts\ContractStatusResolver;
+use App\Services\Notifications\TeamActivityNotifier;
 use App\Services\WorkOrders\ContractWorkOrderClosure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +34,7 @@ class ContractActionService
         private readonly ContractService $contractService,
         private readonly ContractStatusResolver $statusResolver,
         private readonly ContractWorkOrderClosure $workOrderClosure,
+        private readonly TeamActivityNotifier $teamActivity,
     ) {}
 
     /**
@@ -60,11 +62,13 @@ class ContractActionService
 
             $this->assertClosedWon($statusId);
 
+            $previousStatusId = $contract->contract_status_id;
             $contract->validated_at = $validatedAt;
             $contract->validated_by = $actor->id;
             $contract->contract_status_id = $statusId;
 
             $contract->save();
+            $this->teamActivity->statusChanged($contract, $previousStatusId, $actor);
 
             activity($contract->getTable())
                 ->performedOn($contract)
@@ -93,8 +97,10 @@ class ContractActionService
         DB::transaction(function () use ($contract, $data): void {
             $this->assertWorking($contract);
 
+            $previousStatusId = $contract->contract_status_id;
             $contract->contract_status_id = $data->contractStatusId;
             $contract->save();
+            $this->teamActivity->statusChanged($contract, $previousStatusId);
 
             activity($contract->getTable())
                 ->performedOn($contract)
@@ -124,11 +130,13 @@ class ContractActionService
 
             $this->assertClosedLost($statusId);
 
+            $previousStatusId = $contract->contract_status_id;
             $contract->terminated_at = $data->terminatedAt;
             $contract->termination_reason = $data->terminationReason;
             $contract->terminated_by = $actor->id;
             $contract->contract_status_id = $statusId;
             $contract->save();
+            $this->teamActivity->statusChanged($contract, $previousStatusId, $actor);
 
             $this->workOrderClosure->close($contract, ContractStatus::query()->findOrFail($statusId));
 

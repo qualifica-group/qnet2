@@ -46,6 +46,9 @@ use App\Tables\Shared\RootCategoriesColumn;
  */
 final class QuoteColumnCatalog
 {
+    /** Spec 0412, D-2: the columns shown only to the holders of `quotes.viewCosts`. */
+    public const array COST_COLUMN_IDS = ['cost_net', 'margin_net'];
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -245,16 +248,17 @@ final class QuoteColumnCatalog
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $columns  the columns the actor sees
      * @return array<int, array<string, mixed>>
      */
-    public static function filters(): array
+    public static function filters(array $columns): array
     {
         return array_map(
             static fn (array $column): array => [
                 'columnId' => $column['id'],
                 'type' => $column['filterType'],
             ],
-            self::columns(),
+            $columns,
         );
     }
 

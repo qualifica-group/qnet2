@@ -15,6 +15,9 @@ use Illuminate\Database\Eloquent\Model;
  * `$relations` maps a relation name to the column(s) to project: a string gives a
  * scalar (or a list for a to-many relation), an array gives an object per related
  * row. The relations are eager-loaded, so the projection never lazy-loads.
+ *
+ * `$gatedFields` maps a policy ability to the fields of `$fields` projected
+ * only when the user holds it on the record (spec 0412: the quote's costs).
  */
 final readonly class AiMentionDefinition
 {
@@ -23,6 +26,7 @@ final readonly class AiMentionDefinition
      * @param  Closure(Model): string  $label
      * @param  array<int, string>  $fields
      * @param  array<string, string|array<int, string>>  $relations
+     * @param  array<string, array<int, string>>  $gatedFields
      */
     public function __construct(
         public string $module,
@@ -30,6 +34,7 @@ final readonly class AiMentionDefinition
         public Closure $label,
         public array $fields,
         public array $relations = [],
+        public array $gatedFields = [],
     ) {}
 
     /** The module key is the policy resource prefix, so the permission is "{module}.view". */

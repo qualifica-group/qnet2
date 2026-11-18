@@ -26,6 +26,7 @@ use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Source;
 use App\Models\User;
+use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Quotes\QuoteManagerInheritance;
 use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Services\Quotes\QuoteManagerWriter;
@@ -188,6 +189,15 @@ class QuotesSource extends AbstractMigrationSource
      * @param  array<string, mixed>  $record
      */
     private function importRecord(MigrationImportContext $context, int|string $externalId, array $record): MigrationRowOutcome
+    {
+        // Spec 0413: a migrated offer, its status and its contract notify nobody.
+        return AssignmentNotifier::muted(fn (): MigrationRowOutcome => $this->importQuietly($context, $externalId, $record));
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     */
+    private function importQuietly(MigrationImportContext $context, int|string $externalId, array $record): MigrationRowOutcome
     {
         $warnings = [];
 

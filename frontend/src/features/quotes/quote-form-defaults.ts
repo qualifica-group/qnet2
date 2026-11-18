@@ -42,7 +42,8 @@ export function editDefaults(quote: QuoteDetail): QuoteFormValues {
     internal_notes: quote.internal_notes,
     rewards: (quote.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
     offer_lines: linesToFormValues(quote.offer_lines),
-    cost_lines: linesToFormValues(quote.cost_lines),
+    // Spec 0412: absent without `view_costs`; the payload then never sends them.
+    cost_lines: linesToFormValues(quote.cost_lines ?? []),
   }
 }
 

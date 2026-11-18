@@ -9,6 +9,7 @@ use App\Enums\WorkflowStatusGroup;
 use App\Models\Contract;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
+use App\Services\Notifications\TeamActivityNotifier;
 
 /**
  * The Quote -> Contract lifecycle automation (spec 0072, BR-1; re-targeted
@@ -37,6 +38,7 @@ class ContractLifecycleManager
     public function __construct(
         private readonly ContractStatusResolver $statusResolver,
         private readonly ContractEligibility $eligibility,
+        private readonly TeamActivityNotifier $teamActivity,
     ) {}
 
     /**
@@ -46,6 +48,14 @@ class ContractLifecycleManager
      */
     public function syncOnStatusChange(Quote $quote, ?int $previousStatusId): void
     {
+        // Spec 0413: every writer of the offer's status passes here, so the
+        // actor's managers hear of a new offer or a status move from here too.
+        if ($previousStatusId === null && $quote->wasRecentlyCreated) {
+            $this->teamActivity->created($quote);
+        } else {
+            $this->teamActivity->statusChanged($quote, $previousStatusId);
+        }
+
         $before = $this->groupOf($previousStatusId);
         $after = $this->groupOf($quote->quote_workflow_status_id);
 
@@ -87,6 +97,7 @@ class ContractLifecycleManager
         $contract->save();
 
         activity($contract->getTable())->performedOn($contract)->event('contract.created')->log('Contract created');
+        $this->teamActivity->created($contract);
     }
 
     private function suspendContract(Quote $quote): void
@@ -97,6 +108,8 @@ class ContractLifecycleManager
             return;
         }
 
+        $previousStatusId = $contract->contract_status_id;
+
         $contract->forceFill([
             'status_before_suspension_id' => $contract->contract_status_id,
             'contract_status_id' => $this->statusResolver->systemId(StatusSystemKey::Suspended),
@@ -104,5 +117,6 @@ class ContractLifecycleManager
         ])->save();
 
         activity($contract->getTable())->performedOn($contract)->event('contract.suspended')->log('Contract suspended');
+        $this->teamActivity->statusChanged($contract, $previousStatusId);
     }
 }

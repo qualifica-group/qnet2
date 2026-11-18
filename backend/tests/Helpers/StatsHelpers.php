@@ -88,6 +88,12 @@ if (! function_exists('statsUserWith')) {
             $user->givePermissionTo(statsPermissionForDomain($domain));
         }
 
+        // REQUIREMENT CHANGED (spec 0412): the quote margin widget needs `quotes.viewCosts`;
+        // these tests describe the full panel.
+        if (in_array('quotes', $domains, true)) {
+            $user->givePermissionTo(Permission::findOrCreate('quotes.viewCosts'));
+        }
+
         return $user;
     }
 }

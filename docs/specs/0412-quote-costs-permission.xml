@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0412-quote-costs-permission" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Domanda 23 dei questionari "permessi per reparti" ("Deve vedere costi e margini dell'offerta?"): oggi non ha
+    un permesso, chi vede un'offerta ne vede anche costi e margini. Nuovo permesso `quotes.viewCosts`
+    ("Vedere costi e margini"), come `work-orders.viewCosts` per la commessa.
+  </goal>
+
+  <context>
+    D-1 Decisione utente 2026-11-18: permesso dedicato `quotes.viewCosts` (ability `viewCosts` di QuotePolicy,
+        con il perimetro di visibilita' del record come `WorkOrderPolicy::viewCosts`).
+    D-2 Senza il permesso l'utente non vede, ovunque l'offerta compare: righe di costo (`cost_lines`, scheda Costi,
+        campo nascosto quindi anche non scrivibile via `EnforcesFieldPermissions`), costo e margine del riepilogo
+        (`summary.cost`, `summary.margin`, margini per prodotto, costo allocato alle righe d'offerta), colonne
+        `cost_net`/`margin_net` della tabella Offerte (anche filtro, ordinamento, valori distinti ed export), widget
+        statistiche sul margine, costo/margine dell'offerta nel dettaglio Contratto (`ContractResource`), campi costo
+        e margine passati all'Assistente AI dalle menzioni, variabili e sorgente righe costo dei Layout documento
+        (vuote per chi non ha il permesso). `permissions.actions.view_costs` sul record per il frontend.
+    D-3 Le provvigioni restano governate dalla loro matrice campi (`commissions`), invariate.
+    D-4 Comportamento attuale preservato: chi oggi vede le offerte riceve `quotes.viewCosts` nei seeder (admin per
+        intero catalogo; ruoli legacy e mansioni con elenchi espliciti di permessi offerte), salvo dove il
+        questionario risponde No: ruoli di reparto secondo la domanda 23 (spec 0408), Sicurezza senza.
+    D-5 Il frontend nasconde scheda Costi, card costo/margine, KPI, margini per prodotto e colonne quando
+        `view_costs` e' falso; il payload di modifica non invia `cost_lines` se non li ha ricevuti.
+  </context>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">`permissions:sync` crea `quotes.viewCosts`; `admin` lo ha.</criterion>
+    <criterion id="AC-002">Utente con `quotes.view` senza `quotes.viewCosts`: GET offerta senza `cost_lines`, `summary.cost`, `summary.margin`; `permissions.actions.view_costs` false.</criterion>
+    <criterion id="AC-003">Lo stesso utente non puo' scrivere `cost_lines` (422/403 come i campi non modificabili) e la modifica dell'offerta senza `cost_lines` non tocca i costi esistenti.</criterion>
+    <criterion id="AC-004">Tabella Offerte: colonne `cost_net`/`margin_net` assenti da colonne, righe, filtri, ordinamento ed export per chi non ha il permesso.</criterion>
+    <criterion id="AC-005">Dettaglio contratto senza costo/margine dell'offerta per chi non ha il permesso.</criterion>
+    <criterion id="AC-006">Con il permesso tutto resta come oggi.</criterion>
+  </acceptance_criteria>
+</spec>

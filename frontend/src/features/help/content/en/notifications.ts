@@ -69,6 +69,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'team-activity',
+      title: 'Your team notifications',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Whoever holds **Receive team notifications** on Quotes, Contracts or Work orders is notified (bell and email, per preference) when a person of their team creates a quote or a work order, opens a contract, or changes its status. The team is the **org chart** one: the people below you, at any level. The message says who did it, the record and the status before and after.',
+        },
+        {
+          type: 'note',
+          text: 'Automatic operations (imports, the migration from the old QNet) and your own changes send nothing. The permission is granted on the role, one checkbox per module.',
+        },
+      ],
+    },
+    {
       id: 'the-bell',
       title: 'The menu link and the bell',
       blocks: [

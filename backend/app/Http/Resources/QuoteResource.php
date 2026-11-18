@@ -11,6 +11,7 @@ use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Company;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
+use App\Policies\QuotePolicy;
 use App\Quotes\QuoteAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
@@ -114,6 +115,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * fallback) `opportunity.productLines.productCategory`, so none of this
  * N+1s.
  *
+ * Spec 0412, D-2: without `viewCosts` on the offer, `cost_lines`,
+ * `summary.cost` and `summary.margin` are left out.
+ *
  * #[PreserveKeys]: `manager_labels` is a sparse position("1".."n")->label
  * map — JsonResource's default filter() reindexes any NESTED array whose
  * keys are ALL numeric, which would silently turn `{"2":"Operatore"}` into
@@ -134,6 +138,7 @@ class QuoteResource extends JsonResource
     {
         $commissionPermissions = app(QuoteCommissionPayloadRedactor::class)
             ->permissions($request->user(), $this->resource);
+        $mayViewCosts = (bool) $request->user()?->can(QuotePolicy::VIEW_COSTS_ABILITY, $this->resource);
 
         return [
             'id' => $this->id,
@@ -190,7 +195,7 @@ class QuoteResource extends JsonResource
             // Spec 0404 part E: the offer under contract is frozen.
             ...ContractedQuoteFlags::of($this->resource, $request->user()),
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
-            'cost_lines' => QuoteLineResource::collection($this->costLines),
+            'cost_lines' => $this->when($mayViewCosts, fn () => QuoteLineResource::collection($this->costLines)),
             // Cast to object, non array: un array PHP vuoto serializza come `[]`,
             // e il form legge la chiave come una MAPPA (Zod `z.object`) — con `[]`
             // la validazione fallisce su un campo che nessun input rende e il
@@ -205,6 +210,7 @@ class QuoteResource extends JsonResource
             'summary' => $this->summarizeTotals(
                 $commissionPermissions['commissions']->visible
                     && $commissionPermissions['commission_value']->visible,
+                $mayViewCosts,
             ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
@@ -314,19 +320,23 @@ class QuoteResource extends JsonResource
      * negative, AC-043, never clamped). `margin.net` is UNCONDITIONAL (spec
      * 0145, D-7): unlike `commissions` below, no permission gates it, so a
      * user without commission visibility still sees the net-of-commission
-     * figure, just not the breakdown.
+     * figure, just not the breakdown. Cost and margin need `viewCosts`
+     * (spec 0412, D-2).
      *
      * @return array<string, array<string, string>>
      */
-    private function summarizeTotals(bool $mayViewCommissions): array
+    private function summarizeTotals(bool $mayViewCommissions, bool $mayViewCosts): array
     {
         $summary = [
             'revenue' => $this->amountTriplet($this->revenue_net, $this->revenue_vat),
-            'cost' => $this->amountTriplet($this->cost_net, $this->cost_vat),
-            'margin' => ['net' => $this->margin_net],
             // Spec 0099: sums to `revenue.net` above, by construction (D-6).
             'product_typologies' => app(QuoteTypologySummaryCalculator::class)->totals($this->resource),
         ];
+
+        if ($mayViewCosts) {
+            $summary['cost'] = $this->amountTriplet($this->cost_net, $this->cost_vat);
+            $summary['margin'] = ['net' => $this->margin_net];
+        }
 
         if ($mayViewCommissions) {
             $summary['commissions'] = app(QuoteCommissionSummaryCalculator::class)->totals($this->resource);

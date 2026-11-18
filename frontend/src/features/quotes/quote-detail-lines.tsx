@@ -21,8 +21,9 @@ import {
   typologyBucketsFromPersistedSummary,
 } from '@/features/quotes/quote-summary'
 import { round2 } from '@/features/quotes/quote-totals'
+import { useQuoteCostsVisible } from '@/features/quotes/use-quote-costs-visible'
 import type { QuoteDetailEditor } from '@/features/quotes/use-quote-inline-edit'
-import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
+import type { QuoteDetailWithPermissions, QuoteLine } from '@/features/quotes/types'
 
 const OFFER_TAB = 'offer'
 const COSTS_TAB = 'costs'
@@ -30,9 +31,14 @@ const COSTS_TAB = 'costs'
 /** The two line rows of the band: while either is open, the summary follows the rows being typed. */
 const LINE_FIELDS = new Set(['offer_lines', 'cost_lines'])
 
+/** Spec 0412: what an offer read without `view_costs` (no `cost_lines` key) carries as cost rows. */
+const NO_COST_LINES: QuoteLine[] = []
+
 /** The persisted summary (D-9) and margins block: no client recomputation for a saved quote. */
 function PersistedLinesSummary({ quote }: { quote: QuoteDetailWithPermissions }) {
   const showCommissions = quote.permissions.fields.commissions?.visible ?? true
+  const costsVisible = useQuoteCostsVisible()
+  const costLines = quote.cost_lines ?? NO_COST_LINES
 
   // Spec 0144 AC-015: the detail's own "Margine per prodotto" block reads the
   // CONGEALED `net_amount`s (D-9), never recomputed client-side. Spec 0145
@@ -43,9 +49,9 @@ function PersistedLinesSummary({ quote }: { quote: QuoteDetailWithPermissions })
     () =>
       computeProductMargins(
         productLinesFromPersistedOfferLines(quote.offer_lines),
-        costLinesFromPersistedCostLines(quote.cost_lines),
+        costLinesFromPersistedCostLines(costLines),
       ),
-    [quote.offer_lines, quote.cost_lines],
+    [quote.offer_lines, costLines],
   )
 
   return (
@@ -60,7 +66,8 @@ function PersistedLinesSummary({ quote }: { quote: QuoteDetailWithPermissions })
       typologyBuckets={typologyBucketsFromPersistedSummary(quote.summary)}
       productMargins={productMargins}
       showProductMargins={showCommissions}
-      commissionDetails={{ offerLines: quote.offer_lines, costLines: quote.cost_lines }}
+      showCosts={costsVisible}
+      commissionDetails={{ offerLines: quote.offer_lines, costLines }}
     />
   )
 }
@@ -87,6 +94,8 @@ export function QuoteDetailLines({ quote, editor }: QuoteDetailLinesProps) {
   const [activeTab, setActiveTab] = useState(OFFER_TAB)
   const { inline } = editor
   const showCommissions = quote.permissions.fields.commissions?.visible ?? true
+  const costsVisible = useQuoteCostsVisible()
+  const costLines = quote.cost_lines ?? NO_COST_LINES
   const editingLines = inline.editingField !== null && LINE_FIELDS.has(inline.editingField)
   const persistedAttributeCodes = useMemo(
     () => new Set(quote.applicable_attributes.map((attribute) => attribute.code)),
@@ -107,13 +116,13 @@ export function QuoteDetailLines({ quote, editor }: QuoteDetailLinesProps) {
   // net`, feeding each row's own commissions dialog base (D-1/D-2).
   const allocatedCostNetByOfferId = useMemo(() => {
     const totals: Record<number, number> = {}
-    for (const cost of quote.cost_lines) {
+    for (const cost of costLines) {
       if (cost.offer_line_id != null) {
         totals[cost.offer_line_id] = round2((totals[cost.offer_line_id] ?? 0) + Number(cost.net_amount))
       }
     }
     return totals
-  }, [quote.cost_lines])
+  }, [costLines])
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-0">
@@ -123,10 +132,12 @@ export function QuoteDetailLines({ quote, editor }: QuoteDetailLinesProps) {
             <TrendingUp aria-hidden="true" />
             {t('quotes.form.tabs.offer')}
           </TabsTrigger>
-          <TabsTrigger value={COSTS_TAB}>
-            <TrendingDown aria-hidden="true" />
-            {t('quotes.form.tabs.costs')}
-          </TabsTrigger>
+          {costsVisible ? (
+            <TabsTrigger value={COSTS_TAB}>
+              <TrendingDown aria-hidden="true" />
+              {t('quotes.form.tabs.costs')}
+            </TabsTrigger>
+          ) : null}
         </FormTabStrip>
         <TabsContent value={OFFER_TAB}>
           <RecordInlineField
@@ -153,24 +164,26 @@ export function QuoteDetailLines({ quote, editor }: QuoteDetailLinesProps) {
             )}
           </RecordInlineField>
         </TabsContent>
-        <TabsContent value={COSTS_TAB}>
-          <RecordInlineField
-            field="cost_lines"
-            label={t('quotes.form.costsTab.fieldLabel')}
-            layout="block"
-            inline={inline}
-            editor={<QuoteCostLinesEditor quoteForm={editor} knownLines={quote.cost_lines} />}
-          >
-            {(editAction) => (
-              <QuoteLinesReadOnlyList
-                lines={quote.cost_lines}
-                variant="cost"
-                offerLineLabelsById={offerLineLabelsById}
-                headerAction={editAction}
-              />
-            )}
-          </RecordInlineField>
-        </TabsContent>
+        {costsVisible ? (
+          <TabsContent value={COSTS_TAB}>
+            <RecordInlineField
+              field="cost_lines"
+              label={t('quotes.form.costsTab.fieldLabel')}
+              layout="block"
+              inline={inline}
+              editor={<QuoteCostLinesEditor quoteForm={editor} knownLines={costLines} />}
+            >
+              {(editAction) => (
+                <QuoteLinesReadOnlyList
+                  lines={costLines}
+                  variant="cost"
+                  offerLineLabelsById={offerLineLabelsById}
+                  headerAction={editAction}
+                />
+              )}
+            </RecordInlineField>
+          </TabsContent>
+        ) : null}
         {editingLines ? <QuoteLinesLiveSummary quoteForm={editor} /> : <PersistedLinesSummary quote={quote} />}
       </div>
     </Tabs>

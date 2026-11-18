@@ -6,6 +6,7 @@ namespace App\Services\DocumentLayouts\Rendering;
 
 use App\Models\Quote;
 use App\Models\User;
+use App\Policies\QuotePolicy;
 use Illuminate\Support\Carbon;
 
 /**
@@ -28,6 +29,9 @@ final class QuoteFieldResolver
         'cost_gross' => 'cost',
     ];
 
+    /** Spec 0412, D-2: empty without `quotes.viewCosts`. */
+    private const array COST_TOTALS_KEYS = ['cost_net', 'cost_vat', 'cost_gross', 'margin_net'];
+
     public function quote(string $key, Quote $quote): ?string
     {
         return match ($key) {
@@ -41,8 +45,12 @@ final class QuoteFieldResolver
         };
     }
 
-    public function totals(string $key, Quote $quote): ?string
+    public function totals(string $key, Quote $quote, User $actor): ?string
     {
+        if (in_array($key, self::COST_TOTALS_KEYS, true) && ! $actor->can(QuotePolicy::VIEW_COSTS_PERMISSION)) {
+            return null;
+        }
+
         if (isset(self::TOTALS_NET_VAT_PAIRS[$key])) {
             $prefix = self::TOTALS_NET_VAT_PAIRS[$key];
             $net = (float) $quote->{"{$prefix}_net"};

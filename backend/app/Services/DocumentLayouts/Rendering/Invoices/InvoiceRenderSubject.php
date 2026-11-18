@@ -77,7 +77,7 @@ final class InvoiceRenderSubject implements DocumentRenderSubject
         return $this->fieldResolver->resolve($category, $key, $this->invoice, $actor);
     }
 
-    public function productRows(string $source): array
+    public function productRows(string $source, User $actor): array
     {
         if ($source === self::SOURCE_INSTALLMENTS) {
             return $this->invoice->installments

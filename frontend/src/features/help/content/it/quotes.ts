@@ -116,6 +116,10 @@ const guide: HelpGuide = {
           text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Linee prodotto e Note generali vengono dall'opportunità e restano in sola lettura; la **Fonte** è un campo dell'offerta e si modifica qui.",
         },
         {
+          type: 'note',
+          text: "Costi e margini dell'offerta richiedono il permesso **Vedere costi e margini**: senza, non vedi la scheda **Costi**, il costo e il margine nel riepilogo e nei riquadri in alto, il margine per prodotto, le colonne Costo e Margine netto dell'elenco (né in filtri, ordinamento ed esportazione), il margine nelle statistiche e nel dettaglio del contratto. Le modifiche che fai all'offerta non toccano i costi già inseriti.",
+        },
+        {
           type: 'list',
           items: [
             "Le righe **Offerta** e **Costi** hanno una matita ciascuna: si apre l'editor con il catalogo e le righe, e il riepilogo sotto mostra i totali di ciò che stai scrivendo. Se i nuovi prodotti portano altre Informazioni aggiuntive, compaiono sotto la griglia: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).",

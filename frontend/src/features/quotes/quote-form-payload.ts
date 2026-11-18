@@ -71,6 +71,8 @@ export function buildCreatePayload(values: QuoteFormValues, suggestedCode?: stri
  * `offer_lines`/`cost_lines` are included only when the row SET actually
  * changed (D-8: an included key is a full-replace, so an unchanged tab must
  * stay omitted to leave the persisted set untouched, AC-036/037).
+ * `cost_lines` never travels when the original came without them (spec 0412:
+ * no `view_costs`), so an edit never touches costs the user cannot see.
  */
 export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetail): UpdateQuotePayload {
   const payload: UpdateQuotePayload = {}
@@ -176,7 +178,7 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   // can tell a generic cost from one newly attributed to a brand-new offer
   // row via `offer_line_index`.
   const costLines = toLineInputs(values.cost_lines, offerLineReferenceResolver(values.offer_lines))
-  if (!sameLines(costLines, originalLineInputs(original.cost_lines))) {
+  if (original.cost_lines !== undefined && !sameLines(costLines, originalLineInputs(original.cost_lines))) {
     payload.cost_lines = costLines
   }
 

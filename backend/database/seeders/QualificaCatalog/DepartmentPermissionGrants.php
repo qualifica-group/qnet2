@@ -64,6 +64,8 @@ final class DepartmentPermissionGrants
         'quotes_view_competence' => ['quotes.viewCompetence'],
         'quotes_view_site' => ['quotes.viewSite'],
         'quotes_view_all' => ['quotes.viewAll'],
+        // Question 23, costs and margins of the offer (spec 0412).
+        'quotes_costs' => ['quotes.viewCosts'],
         'quotes_edit' => ['quotes.create', 'quotes.update'],
         'quotes_delete' => ['quotes.delete'],
         'quotes_transfer' => ['quotes.export', 'quotes.import'],
@@ -106,6 +108,9 @@ final class DepartmentPermissionGrants
         'tasks_delete' => ['tasks.delete'],
         'tasks_transfer' => ['tasks.export', 'tasks.import'],
 
+        // Notes "notifiche creazione ed avanzamento stato Offerta, Contratto, Commessa del team" (spec 0413).
+        'team_activity_notifications' => ['quotes.notifyTeam', 'contracts.notifyTeam', 'work-orders.notifyTeam'],
+
         // Fatturazione attiva (56-63).
         'proforma_view' => ['proforma-requests.viewAny', 'proforma-requests.view'],
         'proforma_request' => ['proforma-requests.create'],
@@ -133,6 +138,14 @@ final class DepartmentPermissionGrants
         'agent_fiscal_profiles_view' => ['agent-fiscal-profiles.viewAny', 'agent-fiscal-profiles.view'],
         'commission_settlements_view' => ['commission-settlements.viewAny', 'commission-settlements.view'],
         'commissions_export' => ['commission-accruals.export', 'commission-settlements.export'],
+        // Not a question: the referent's "% Segnalatori" (Commissioni configurate on the
+        // referent and anagrafica pages), user directive 2026-11-18 for the Back Office.
+        'commission_configurations_manage' => [
+            'commission-configurations.viewAny', 'commission-configurations.view', 'commission-configurations.create',
+            'commission-configurations.update', 'commission-configurations.delete', 'commission-configurations.viewActivity',
+        ],
+        // Export without the settlements, for whoever sees only the accruals.
+        'commission_accruals_export' => ['commission-accruals.export'],
 
         // Tesoreria e prima nota (79-84).
         'treasury_view' => ['financial-accounts.viewAny', 'financial-accounts.view', 'treasury-movements.viewAny', 'treasury-movements.view'],
@@ -151,6 +164,14 @@ final class DepartmentPermissionGrants
         'requests_view' => ['request-management.viewAny', 'request-management.view'],
         'requests_view_all' => ['request-management.viewAll', 'enrollee-management.viewAll'],
         'requests_import' => ['request-management.import'],
+        // Commerciale "Editor": creates and edits the requests it is involved in,
+        // with the sources lookup and the request to change a protected source.
+        'requests_edit' => ['request-management.create', 'request-management.update', 'sources.viewAny', 'field-change-requests.create'],
+        // Whoever is notified of the source change requests reviews them.
+        'field_change_reviews' => [
+            'field-change-requests.viewAny', 'field-change-requests.view', 'field-change-requests.manage',
+            'field-change-requests.viewActivity', 'request-management.updateSource', 'enrollee-management.updateSource',
+        ],
         'enrollees_view' => ['enrollee-management.viewAny', 'enrollee-management.view'],
         'rewarded_referents' => ['rewarded-referents.viewAny', 'rewarded-referents.view', 'rewarded-referents.create', 'rewarded-referents.update', 'rewarded-referents.viewActivity'],
 
@@ -164,6 +185,7 @@ final class DepartmentPermissionGrants
         // Personale (98-107).
         'trainings_own' => ['staff-trainings.viewAny', 'user-skills.viewAny'],
         'users_view' => ['users.viewAny', 'users.view', 'org-chart.view'],
+        'absences_calendar_all' => ['absence-requests.calendarAll'],
         'staff_view_all' => ['staff-trainings.viewAll', 'user-skills.viewAll', 'absence-requests.calendarAll', 'time-entries.viewAll'],
         'hr_office' => [
             'users.viewAny', 'users.view', 'users.create', 'users.update', 'users.delete', 'users.export', 'users.import',

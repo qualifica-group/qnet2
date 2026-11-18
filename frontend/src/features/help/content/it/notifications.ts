@@ -69,6 +69,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'team-activity',
+      title: 'Notifiche del tuo team',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Chi ha il permesso **Ricevere le notifiche del team** su Offerte, Contratti o Commesse riceve una notifica (campanella ed email, secondo la preferenza) quando una persona del suo team crea un'offerta, una commessa o apre un contratto, oppure ne cambia lo stato. Il team è quello dell'**organigramma**: le persone sotto di te, a qualunque livello. Il messaggio dice chi l'ha fatto, il record e lo stato prima e dopo.",
+        },
+        {
+          type: 'note',
+          text: "Non arrivano notifiche per le operazioni automatiche (importazioni, migrazione dal vecchio QNet) né per quello che fai tu. Il permesso si assegna dal ruolo, una casella per modulo.",
+        },
+      ],
+    },
+    {
       id: 'the-bell',
       title: 'Il link nel menu e nella campanella',
       blocks: [

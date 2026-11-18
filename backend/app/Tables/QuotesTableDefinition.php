@@ -6,6 +6,7 @@ use App\Enums\CategoryUsageArea;
 use App\Models\Company;
 use App\Models\Quote;
 use App\Models\User;
+use App\Policies\QuotePolicy;
 use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\Quotes\QuoteSystemStatusMap;
 use App\Services\Quotes\QuoteVisibilityScope;
@@ -51,6 +52,10 @@ use Illuminate\Support\Facades\Auth;
  * AC-034) and `set`-filterable via `whereDoesntHave('offerLines')` — a
  * static one-value enumeration, never raw SQL (backend.md §8). Deliberately
  * not sortable (a two-state badge has no ordering worth a subquery).
+ *
+ * Spec 0412, D-2: `cost_net`/`margin_net` exist only for the holders of
+ * `quotes.viewCosts` — columns, rows, filters, sort and export alike, as
+ * AgentFiscalProfilesTableDefinition hides its columns.
  */
 class QuotesTableDefinition extends AbstractTableDefinition
 {
@@ -145,11 +150,20 @@ class QuotesTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * Minus the cost columns the auth user (request or export job) may not
+     * see: the sort/filter allow-lists read this, so they cannot be probed.
+     *
      * @return array<int, array<string, mixed>>
      */
     public function columns(): array
     {
-        return QuoteColumnCatalog::columns();
+        $actor = Auth::user();
+        $hidden = $actor instanceof User ? $this->hiddenColumnIds($actor) : [];
+
+        return array_values(array_filter(
+            QuoteColumnCatalog::columns(),
+            static fn (array $column): bool => ! in_array($column['id'], $hidden, true),
+        ));
     }
 
     /**
@@ -157,7 +171,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function filters(): array
     {
-        return QuoteColumnCatalog::filters();
+        return QuoteColumnCatalog::filters($this->columns());
     }
 
     /**
@@ -203,7 +217,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
     public function mapRow(User $actor, Model $row): array
     {
         /** @var Quote $row */
-        return [
+        $payload = [
             'id' => $row->id,
             'code' => $row->code,
             'title' => $row->title,
@@ -239,6 +253,18 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // Spec 0315: the Contract born from this Offerta, opened by the `contract` action.
             'contract_id' => $row->contract?->id,
         ];
+
+        return array_diff_key($payload, array_flip($this->hiddenColumnIds($actor)));
+    }
+
+    /**
+     * Spec 0412, D-2: the cost columns, without `quotes.viewCosts`.
+     *
+     * @return array<int, string>
+     */
+    private function hiddenColumnIds(User $actor): array
+    {
+        return $actor->can(QuotePolicy::VIEW_COSTS_PERMISSION) ? [] : QuoteColumnCatalog::COST_COLUMN_IDS;
     }
 
     /**
@@ -424,6 +450,10 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
+        if (in_array($columnId, $this->hiddenColumnIds($actor), true)) {
+            return [];
+        }
+
         if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
             return $this->operationalSiteColumn->distinctValues($query, self::OPERATIONAL_SITE_FK, self::OPERATIONAL_SITE_RELATION, $search, $limit);
         }

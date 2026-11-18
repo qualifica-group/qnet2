@@ -108,6 +108,10 @@ export const permissions = {
     calendarAll: 'Calendario: di tutti',
     // Spec 0360 D-8: modificare (non rimuovere) le righe offerta assegnate a una commessa.
     updateLockedLines: 'Modificare righe assegnate a commessa',
+    // Spec 0412: costi e margini dell'offerta (righe costo, riepilogo, colonne, statistiche).
+    viewCosts: 'Vedere costi e margini',
+    // Spec 0413: notifiche delle attivita' del team su offerte, contratti e commesse.
+    notifyTeam: 'Ricevere le notifiche del team',
   },
   resources: {
     users: 'Utenti',

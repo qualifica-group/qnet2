@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\TeamActivityRecordEnum;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Policies\Abstracts\BasePolicy;
@@ -175,7 +176,7 @@ class WorkOrderPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'viewEmails', 'sendEmail', 'requestUpdate', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'viewEmails', 'sendEmail', 'requestUpdate', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments', TeamActivityRecordEnum::ABILITY];
     }
 
     private function isInScope(User $user, Model $model): bool

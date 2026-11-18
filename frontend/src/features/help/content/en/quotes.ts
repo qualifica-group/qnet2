@@ -116,6 +116,10 @@ const guide: HelpGuide = {
           text: "A field without a pencil is not editable by you: your role's permissions make it read-only, or it is chosen at creation only (Code, Opportunity). Registry, Referent, Product lines and General notes come from the opportunity and stay read-only; the **Source** is a field of the quote and is edited here.",
         },
         {
+          type: 'note',
+          text: "The quote's costs and margins need the **View costs and margins** permission: without it you do not see the **Costs** tab, the cost and margin in the summary and in the tiles at the top, the margin per product, the Net cost and Net margin columns of the list (nor in filters, sorting and export), the margin in the statistics and in the contract detail. Your edits to the quote leave the costs already entered untouched.",
+        },
+        {
           type: 'list',
           items: [
             'The **Offer** and **Costs** rows have a pencil each: the editor opens with the catalogue and the rows, and the summary below shows the totals of what you are typing. If the new products bring more Additional information, it appears under the grid: fill it in the same save (required ones are needed to save).',
