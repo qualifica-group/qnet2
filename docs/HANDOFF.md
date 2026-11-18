@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Colonna Azioni: il numero su Note/Documenti conta solo i NON LETTI (richiesta utente 2026-11-18) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Colonna Azioni: il numero su Note/Documenti conta solo i NON LETTI (richiesta utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Schema: `note_reads` / `attachment_reads` (PK `<item>_id`+`user_id`, `read_at`), migrazioni `2026_12_14_10000{0,1}` (gia' applicate su qnet2 dev con `migrate`).
 - Regola (trait `App\Models\Concerns\TracksReads`, usato da `Note` e `Attachment`): scope `unreadBy($userId)` = `old_id` NULL (il migrato dal legacy conta come letto: 112k note x 432 utenti non si marcano) + autore diverso dall'utente (`notes.user_id` / `attachments.uploaded_by`) + nessuna riga di lettura. `markReadBy($userId, Builder)` = un INSERT IGNORE ... SELECT dei soli non letti.
@@ -23,11 +23,12 @@
 - Test: nuovo `tests/Feature/ActivityLog/ActivityLogDocumentsTest.php` (5, rossi sul codice vecchio). Verdi: ActivityLog, EnrolleeManagement, Attachments, WorkOrders, Contracts, PurchaseRequests/Orders/Invoices, Treasury, DocumentBundles, Registries, Tasks, Opportunities. Rossi NON legati: `RequestManagementAllColumnsSortFilterTest` ("managers is not sortable"), `QuoteDocumentPdfTest` (LibreOffice assente). Pint, vitest help (161), eslint, `tsc -b --force` puliti.
 - Guide in-app IT/EN `general` (sezione activity-history) + manuale Claude Docs (sezione Cronologia attivita') aggiornati.
 
-## Dettaglio commessa: linguetta in fondo alle schede con il nome dell'azienda (decisione utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+## Dettaglio commessa: azienda cliente sotto il titolo, linguetta in fondo alle schede di nuovo col titolo (decisione utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
-- `WorkOrderDetailTabs` (`work-order-detail-tabs.tsx`): la linguetta staccata a destra della riga di schede mostra `workOrder.registry?.name` (azienda cliente per esteso) al posto del titolo "COM-..."; il titolo resta solo se la commessa non ha cliente. Larghezza max portata da `max-w-xs` a `max-w-md` (resta `truncate` + `title` col nome intero).
-- Test REQUIREMENT CHANGED in `work-order-detail-tabs.test.tsx` (+ caso di ripiego sul titolo). Verdi: vitest `work-order-detail*` 82, help 161; eslint e `tsc -b --force` puliti.
-- Guide in-app IT/EN `work-orders` e manuale Claude Docs (paragrafo "Commessa.") aggiornati.
+- Annullata la modifica di `6ad48646e`: la linguetta staccata a destra delle schede (`WorkOrderTitleTab` in `work-order-detail-tabs.tsx`) mostra di nuovo `workOrder.title`, `max-w-xs`; test e guide tornati come prima.
+- `WorkOrderDetailHeader` (`work-order-detail-header.tsx`): il sottotitolo sotto il titolo e' `workOrder.registry?.name ?? workOrder.code` (azienda cliente al posto del codice "COM-..."; il codice solo se manca il cliente). Il codice resta in "Descrizione commessa" (Commessa n.).
+- Test REQUIREMENT CHANGED in `work-order-detail-layout.test.tsx` (azienda + ripiego sul codice). Verdi: vitest `work-orders` + `help` 528; eslint e `tsc -b --force` puliti.
+- Guide in-app IT/EN `work-orders` e manuale Claude Docs (paragrafo "Commessa.") aggiornati (intestazione: titolo con sotto l'azienda cliente; in fondo alle schede di nuovo il titolo).
 
 ## Commessa: email "Stato pagamento ok" con il nome dell'azienda (decisione utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
@@ -36,7 +37,7 @@
 - Test nuovi in `WorkOrderLinePaymentTest` (oggetto con cliente, titolo senza cliente). Verdi: WorkOrderLinePayment + Bulk + Notifications 224; vitest help 161; tsc -b, eslint, pint puliti.
 - Guide IT/EN `work-orders` e `work-order-payment-statuses` + manuale Claude Docs (paragrafo "Commessa.", dopo "Imposta pagamento su tutte le righe") aggiornati.
 
-## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Riferimento legacy: `q-net/src/app/features/notifications/notifications-panel.tsx` (avatar + nome `assigned_by` accanto alla data).
 - BE: `NotificationData` ha la chiave `actor` `{id, name}|null` (sempre presente nel payload; malformata/assente -> null). `NoteMentionNotification::toArray()` la valorizza con l'autore della nota. Le notifiche gia' salvate restano senza actor (nessun backfill: il nome e' gia' nel messaggio).
@@ -60,7 +61,7 @@
 - Colonna griglia Commesse "Stato pagamento" (id `line_payment_statuses`, decisioni utente 2026-11-17, v2 "piu' user friendly e filtrabile"): `App\Tables\WorkOrders\WorkOrderLinePaymentStatusColumn` (project/badges/filtro/distinct), registrata in `WorkOrderColumnCatalog` (ultima del catalogo base, `type: badge`, `filterType: set`, non ordinabile), `WorkOrderDerivedColumns`, `WorkOrdersTableDefinition` (eager `EAGER_LOADS`, `badgesFor`). Valore riga = gruppi per tipologia `{name (export: "Consulenza: Saldato, Nessuno stato"), typology {name,color}|null, statuses [{name,color}|null] distinti in ordine riga (null = senza stato), products [{code,name,status}] per il tooltip}`. Valori filtro = coppie per id `"{typologyId}-{statusId}"` / `"{typologyId}-none"` (stabili a rinomina e lingua), etichette "Consulenza: Saldato" nei `badges` (tutte le coppie: tipologie per nome, stati per `sort_order`, "Nessuno stato" ultimo, `lang/*/work_orders.php` `line_payment_statuses.no_status`); distinct = coppie presenti nelle commesse filtrate, ricerca sull'etichetta; filtro = commessa con almeno una riga nella coppia (whereHas quoteLines + exists/notExists su `work_order_line_payments`). FE: `LinePaymentStatusesCell` (`features/work-orders/line-payment-statuses-cell.tsx`): badge tipologia + stati con pallino, "Nessuno stato" attenuato, tooltip `light` con ogni prodotto; i18n `workOrders.columns.line_payment_statuses`. Test: `WorkOrderLinePaymentStatusColumnTest`, `column-renderers.test.tsx`; `WorkOrderTableTest` (elenco colonne) REQUIREMENT CHANGED. Guide IT/EN + manuale Claude Docs (paragrafo "Colonna Stato pagamento.") aggiornati.
 - Nota: `ContractFilterDrivenAttributeColumnsTest` AC-010 e' instabile (ordine righe senza sort), non legato a questo lavoro.
 
-## Commesse: tutti i tipi + ricerca rapida per ID esatto, senza ID legacy, su Commesse/Opportunita'/Offerte/Contratti (decisioni utente 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Commesse: tutti i tipi + ricerca rapida per ID esatto, senza ID legacy, su Commesse/Opportunita'/Offerte/Contratti (decisioni utente 2026-11-17) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Tipi: la pagina "Commesse" (`WorkOrdersTable`) non invia piu' il row scope `workOrderType: 'processing'`: mostra lavorazione E progetto (colonna "Tipo commessa" per distinguerle/filtrare). Tolta la prop `rowScope` di `WorkOrdersGrid` (nessun chiamante). "Commesse di Progetto" invariata. Spec 0359 D-2 annotata come SUPERATA; il row scope `work_order_type` resta nel motore backend (nessun chiamante FE). `project-work-orders.test.tsx` REQUIREMENT CHANGED (region `table-work-orders-unscoped`).
 - Ricerca: cercando "16341" in Commesse non usciva la commessa con id 16341 (`COM-20084`), solo `COM-16341` (old_id 16341). Decisione: cercare per codice e per id, MAI per id legacy, su commesse, opportunita', offerte e contratti.
@@ -77,7 +78,7 @@
 - Test: `WorkOrderProformaStatusColumnTest` (nuovo), `WorkOrderRowActionsLegacyTest` (REQUIREMENT CHANGED: l'ultimo caso ora verifica solo l'assenza dell'azione), `work-order-proforma-cell.test.tsx`, `use-work-order-row-actions.test.tsx`. Eseguiti: WorkOrders/ProformaRequests/Tables/CategoryTabs/ProjectWorkOrders/Spec0358 verdi; vitest mirati verdi; tsc -b, eslint, pint puliti.
 - Da verificare nel browser: tooltip e larghezza colonna, colori in dark mode.
 
-## Filtro personalizzato salvato che "torna alla data di creazione" (bug /request-management, 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Filtro personalizzato salvato che "torna alla data di creazione" (bug /request-management, 2026-11-17) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Segnalazione: filtro personalizzato con data di richiamo aggiornata ogni giorno; cambiando scheda/pagina tornava alla data del 10/11 (creazione). Dato reale qnet2: vista 21 "Richiami Giornalieri" (user 20) mai aggiornata, `next_callback_at lte 2026-11-10`.
 - Root cause (due): (1) dalla matita il pulsante principale era "Applica", che attiva le regole SENZA salvarle e le marcava col `viewId` della vista; (2) il filtro attivo e' copiato in localStorage per scheda (`table-filters:<user>:<domain>:<categoria>...`), quindi ogni scheda ripristinava la propria copia vecchia anche dopo un salvataggio.
@@ -101,7 +102,7 @@
 - ATTENZIONE git: il commit `93ca5ff8d` (proforma, sessione parallela) ha incluso per errore 4 file di questo lavoro (`TableFieldConfigValidator`, `TableFieldSchema`, `AttributeColumnBuilder`, `AttributeSummaryDateColumn`); il resto e' non committato.
 - Test: `WorkOrderSummaryDateAttributeColumnTest` (5), `TableAttributeDefinitionTest` (+4), `InspectionDateGridColumnSeederTest`; Pest mirati 982/982; Vitest attributes/custom-fields/help/i18n/data-table 890/890 (1 unhandled error preesistente: mock `sonner` senza `toast.error` in `custom-field-definition-table-editor.test.tsx`), ESLint e `tsc -b --force` puliti. Preesistente rosso: `RequestManagementAllColumnsSortFilterTest` "managers is not sortable". Guide IT/EN `attributes` e `work-orders` aggiornate; manuale Claude Docs rev 827 (paragrafo "Colonna data in griglia" dopo l'attributo Tabella, frase in "Campi Tabella").
 
-## Commessa, Dati contrattuali: il Documento del prodotto apre la proforma (2026-11-16) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Commessa, Dati contrattuali: il Documento del prodotto apre la proforma (2026-11-16) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente 2026-11-16: "metti un link alla proforma su documenti". Nel blocco di ogni prodotto il numero del Documento e' un link (`DocumentNumber` di `work-order-invoices/invoice-table-parts.tsx`, lo stesso della scheda Proforma attiva) che apre `InvoiceDetailSheet`; `onChanged` invalida `workOrderContractDataKeys.detail` (un incasso cambia lo stato del documento). Solo con `invoices.view`: calcolato in `work-order-detail-contract-data-panel.tsx` e passato come prop `canOpenDocuments` (`WorkOrderContractDataSection` -> `ContractDataLines` -> `ContractDataLineFields`), senza hook di auth nei componenti contract-data. Nessun cambio backend.
 - Test: `work-order-contract-data-section.test.tsx` (+2: link con permesso, testo senza). Vitest work-order-contract-data+work-orders 399/399, help 161/161, ESLint e `tsc -b --force` puliti. Guide IT/EN `work-orders` (riga Documento) e manuale Claude Docs rev 824 aggiornati.
@@ -113,7 +114,7 @@
 - **Legacy `../qnet` (NON committato)**: `AttributeMigrationController::RETIRED_CODES` (anche `stato_pagamento`): le voci restano nel dizionario per gli id POSIZIONALI ma `index()` non le invia (id preso prima del filtro). Ripristinato lo slot di `stato_pagamento` tolto da ae497e66 che aveva spostato di uno 232 id (verificato: ora 361/361 old_id di qnet2 coincidono, i soli 5 diversi sono i ritirati). Tolti `workOrderCommonAttributes()`, la sezione layout "Dati contrattuali" (`contractual()`), PAYMENT_CODES/ORDER_CODES dei valori; `CardAttributes::accounting()` resta solo per le posizioni. Verificato con tinker + `php -l`.
 - Test: Pest WorkOrders+Products+Migration+Attributes+Database 1953/1953 (nuovo `RemoveRetiredWorkOrderAttributesSeederTest`), Pint ok; Vitest help 161/161. Guide IT/EN `migrations` aggiornate; manuale Claude Docs rev 823 (paragrafo Commessa).
 
-## Tabella Commesse: azioni di riga come nel legacy OrdersTable (spec 0405, 2026-11-16) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Tabella Commesse: azioni di riga come nel legacy OrdersTable (spec 0405, 2026-11-16) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richieste utente 2026-11-16: "azioni della tabella commesse come quelle di qnet vecchio", scelta "Solo le azioni del legacy"; poi "metti l'icona info oltre alle due icone come primo piano" e "al posto di modifica, ci vuole l'occhio". Riga: occhio (`view`), `team` (Responsabili e Partecipanti), `info` sulla riga; nel menu "..." `notes` (Storico Note), `tasks` (Task, gate `tasks.viewAny`), `documents` (gate `viewDocuments`). Info e menu aprono la commessa SULLA scheda. Uguale in Commesse, Commesse di Progetto, tab Commesse di Contratto e Anagrafica.
 - Tolte dalla riga: proforma "€", progress, request_update, force_close/reopen, activity, delete (restano nell'intestazione del dettaglio / scheda Attivita'; avanzamento anche dalla cella). `delete` resta nel CATALOGO solo perche' abilita "Elimina selezionati" (bulk, autorizzato per riga dal server), mai in `actionsFor`. Riga senza `proforma_status`; tolti `WorkOrder::scopeWithAccountingDocumentFlags` (hasAccountingDocuments ora sempre via query).

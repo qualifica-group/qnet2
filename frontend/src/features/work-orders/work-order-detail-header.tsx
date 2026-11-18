@@ -70,8 +70,9 @@ interface WorkOrderDetailHeaderProps {
 }
 
 /**
- * Identity band: monogram, title, code subtitle, status/type pills and the
- * closure action (the fields edit in place below).
+ * Identity band: monogram, title, the client company as subtitle (user
+ * directive 2026-11-18, it replaces the code; the code only when there is no
+ * client), status/type pills and the closure action (the fields edit in place below).
  */
 export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailHeaderProps) {
   return (
@@ -81,7 +82,7 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
       }
       title={workOrder.title}
       legacyId={workOrder.old_id}
-      subtitle={workOrder.code}
+      subtitle={workOrder.registry?.name ?? workOrder.code}
       badges={
         <>
           <WorkOrderStatusBadge status={workOrder.status.value} />
