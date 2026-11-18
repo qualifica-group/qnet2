@@ -182,11 +182,11 @@ export function TaskActionsBar({ task }: TaskActionsBarProps) {
         </Button>
       ) : null}
 
-      {/* Spec 0123 D-6/AC-023: `complete`/`complete_to_validation`/`approve` are already
-          false whenever this is `> 0` — the reason the buttons above are missing. */}
-      {task.open_subtasks_count > 0 ? (
+      {/* Spec 0123 D-6/AC-023, narrowed by spec 0418 D-5: open sub-tasks only veto `approve`
+          now (the Completa closes them too), so the reason shows in the validation phase alone. */}
+      {availability.approve && task.open_subtasks_count > 0 ? (
         <p className="text-xs text-muted-foreground">
-          {t('tasks.actions.openSubtasksBlocking', { count: task.open_subtasks_count })}
+          {t('tasks.actions.openSubtasksBlockingApproval', { count: task.open_subtasks_count })}
         </p>
       ) : null}
 

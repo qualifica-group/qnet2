@@ -341,28 +341,41 @@ describe('TaskDetailView — actions bar gating (AC-041)', () => {
   })
 })
 
-/** Spec 0123 D-6/AC-023: the reason `complete`/`approve` are missing when the task has open sub-tasks. */
+/**
+ * Spec 0123 D-6/AC-023, REQUIREMENT CHANGED by spec 0418 D-5: open sub-tasks
+ * only veto `approve` now, so the reason shows in the validation phase alone;
+ * in the open phase "Completa" stays available (it closes them too).
+ */
 describe('TaskDetailView — open sub-tasks reason (AC-023)', () => {
-  it('shows the pluralized reason next to the actions when open_subtasks_count > 0', () => {
-    renderDetail(taskDetailWithPermissions({ open_subtasks_count: 2, permissions: actionPermissions({}) }))
+  const inValidation = { task_status: taskStatus({ group: 'in_validation' }) }
+
+  it('shows the pluralized approval reason in the validation phase when open_subtasks_count > 0', () => {
+    renderDetail(taskDetailWithPermissions({ ...inValidation, open_subtasks_count: 2, permissions: actionPermissions({}) }))
 
     expect(
-      screen.getByText(label('tasks.actions.openSubtasksBlocking', { count: 2 })),
+      screen.getByText(label('tasks.actions.openSubtasksBlockingApproval', { count: 2 })),
     ).toBeInTheDocument()
   })
 
   it('uses the singular form for exactly one open sub-task', () => {
-    renderDetail(taskDetailWithPermissions({ open_subtasks_count: 1, permissions: actionPermissions({}) }))
+    renderDetail(taskDetailWithPermissions({ ...inValidation, open_subtasks_count: 1, permissions: actionPermissions({}) }))
 
     expect(
-      screen.getByText(label('tasks.actions.openSubtasksBlocking', { count: 1 })),
+      screen.getByText(label('tasks.actions.openSubtasksBlockingApproval', { count: 1 })),
     ).toBeInTheDocument()
   })
 
   it('shows no reason when there are no open sub-tasks', () => {
-    renderDetail(taskDetailWithPermissions({ open_subtasks_count: 0, permissions: actionPermissions({}) }))
+    renderDetail(taskDetailWithPermissions({ ...inValidation, open_subtasks_count: 0, permissions: actionPermissions({}) }))
 
-    expect(screen.queryByText(label('tasks.actions.openSubtasksBlocking', { count: 1 }))).not.toBeInTheDocument()
+    expect(screen.queryByText(label('tasks.actions.openSubtasksBlockingApproval', { count: 1 }))).not.toBeInTheDocument()
+  })
+
+  it('keeps "Completa" and shows no reason in the open phase (spec 0418)', () => {
+    renderDetail(taskDetailWithPermissions({ open_subtasks_count: 2, permissions: actionPermissions({ complete: true }) }))
+
+    expect(screen.getByRole('button', { name: label('tasks.actions.complete.label') })).toBeInTheDocument()
+    expect(screen.queryByText(label('tasks.actions.openSubtasksBlockingApproval', { count: 2 }))).not.toBeInTheDocument()
   })
 })
 

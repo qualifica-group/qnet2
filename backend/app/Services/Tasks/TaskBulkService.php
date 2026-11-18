@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Throwable;
 
 /**
  * `POST /api/tasks/bulk` (spec 0156, D-6): unlike the task board's own bulk
@@ -64,7 +63,7 @@ final class TaskBulkService
                 try {
                     DB::transaction(fn () => $this->applyAction($data, $task, $timeEntries[$task->id] ?? null, $actor));
                 } catch (AuthorizationException|ValidationException|HttpExceptionInterface $exception) {
-                    $incompatible[] = ['id' => $id, 'reason' => $this->messageFor($exception)];
+                    $incompatible[] = ['id' => $id, 'reason' => TaskBulkIncompatibleException::reasonFor($exception)];
                 }
             }
 
@@ -145,20 +144,5 @@ final class TaskBulkService
             ->whereIn('id', $taskIds)
             ->get()
             ->keyBy('id');
-    }
-
-    /**
-     * Mirrors App\Services\WorkOrders\TaskBulkActionService::messageFor().
-     */
-    private function messageFor(Throwable $exception): string
-    {
-        if ($exception instanceof ValidationException) {
-            /** @var string $message */
-            $message = collect($exception->errors())->flatten()->first() ?? $exception->getMessage();
-
-            return __($message);
-        }
-
-        return __($exception->getMessage());
     }
 }

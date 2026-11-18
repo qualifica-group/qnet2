@@ -76,6 +76,17 @@ final class TaskCompletionService
      */
     public function complete(Task $task, CompleteTaskData $data, User $actor): Task
     {
+        $this->apply($task, $data, $actor);
+
+        return $this->taskService->loadDetail($task->fresh());
+    }
+
+    /**
+     * complete() without the detail read, for callers that close several
+     * Tasks in one go (spec 0418: a parent with its open sub-tasks).
+     */
+    public function apply(Task $task, CompleteTaskData $data, User $actor): void
+    {
         DB::transaction(function () use ($task, $data, $actor): void {
             TaskWriteLock::assertNotBlocked($task);
             $this->assertCompletable($task);
@@ -119,8 +130,6 @@ final class TaskCompletionService
                 $this->advanceWorkOrder($task, $actor);
             }
         });
-
-        return $this->taskService->loadDetail($task->fresh());
     }
 
     /**

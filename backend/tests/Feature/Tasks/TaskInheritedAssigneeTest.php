@@ -56,7 +56,9 @@ it('AC-002: the parent assignee completes the unassigned sub-task, then the pare
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/tasks/{$child->id}")->assertJsonPath('permissions.actions.complete', true);
-    $this->getJson("/api/tasks/{$parent->id}")->assertJsonPath('permissions.actions.complete', false);
+    // REQUIREMENT CHANGED (spec 0418 D-5): the open child no longer hides
+    // the parent's Completa, which would close the child with it.
+    $this->getJson("/api/tasks/{$parent->id}")->assertJsonPath('permissions.actions.complete', true);
 
     $this->postJson("/api/tasks/{$child->id}/complete", ['time_entry' => validTimeEntryPayload()])->assertOk();
 

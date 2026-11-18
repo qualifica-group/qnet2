@@ -66,12 +66,7 @@ class TaskBulkController extends BaseApiController
 
             return $this->ok(['affected' => $affected], 'Bulk action completed');
         } catch (TaskBulkIncompatibleException $exception) {
-            return response()->json([
-                'success' => false,
-                'message' => __($exception->getMessage()),
-                'errors' => ['task_ids' => [__($exception->getMessage())]],
-                'incompatible_tasks' => $exception->incompatibleTasks,
-            ], 422);
+            return $exception->toResponse();
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

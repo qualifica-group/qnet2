@@ -8,6 +8,7 @@ import type {
   RequestTaskUpdatePayload,
   TaskDetail,
   TaskDetailWithPermissions,
+  TaskOpenSubtask,
   TaskSubtask,
   UpdateTaskPayload,
 } from '@/features/tasks/types'
@@ -87,6 +88,17 @@ export async function completeTask(
     payload,
   )
   return withPermissions(data)
+}
+
+/** Query key of the open sub-tasks a task's Completa closes with it (spec 0418). */
+export function taskOpenSubtasksQueryKey(id: number) {
+  return ['tasks', 'open-subtasks', id] as const
+}
+
+/** The open sub-tasks, visible to the actor, a task's Completa closes with it (spec 0418), in tree order. */
+export async function fetchTaskOpenSubtasks(id: number): Promise<TaskOpenSubtask[]> {
+  const { data } = await apiClient.get<ApiResponse<TaskOpenSubtask[]>>(`/tasks/${id}/open-subtasks`)
+  return data.data
 }
 
 /** "Riapri" (D-8): moves the task back to the designated `in_progress` row, clearing feedback/completion date. */

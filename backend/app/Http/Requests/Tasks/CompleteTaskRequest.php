@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Tasks;
 
-use App\DataObjects\Tasks\CompleteTaskData;
 use App\Enums\TaskStatusGroup;
+use App\Http\Requests\TimeEntries\BulkTimeEntrySharesRules;
 use App\Http\Requests\TimeEntries\TimeEntryValidationRules;
 use App\Models\Task;
+use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskTimeEntryRequirement;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,6 +45,13 @@ use Illuminate\Validation\Rule;
  * submitted `time_entry` for every assignee (the actor themselves when there
  * are none). `false` logs it for the acting user alone. The value is the
  * actor's own choice (the Completa dialog's checkbox, checked by default).
+ *
+ * `time_entry_shares` (spec 0418 D-2): on a Task with open sub-tasks the
+ * submitted `time_entry` is a TOTAL split between the Task and those
+ * sub-tasks, with the same per-share rules as the bulk Completa (spec 0338,
+ * BulkTimeEntrySharesRules). Required there whenever `time_entry` is sent,
+ * prohibited everywhere else. Which task ids the shares must cover needs the
+ * sub-tree, so TaskCascadeCompletionService checks that part.
  */
 class CompleteTaskRequest extends FormRequest
 {
@@ -71,6 +80,7 @@ class CompleteTaskRequest extends FormRequest
             ],
             'time_entry' => $required ? ['required', 'array'] : ['sometimes', 'array'],
             'for_all_assignees' => ['sometimes', 'boolean'],
+            ...$this->sharesRules($task),
         ];
 
         if (! $required && ! $this->has('time_entry')) {
@@ -80,16 +90,38 @@ class CompleteTaskRequest extends FormRequest
         return array_merge($rules, TimeEntryValidationRules::rules('time_entry'));
     }
 
-    /**
-     * $taskId is injected from the route (never from the payload): it feeds
-     * `TimeEntryData::forTask()`, the same derivation the task-scoped
-     * segnatempo POST uses.
-     */
-    public function toData(int $taskId): CompleteTaskData
+    public function withValidator(Validator $validator): void
     {
-        /** @var array<string, mixed> $validated */
-        $validated = $this->validated();
+        $validator->after(function (Validator $validator): void {
+            $input = $validator->getData();
+            $shares = $input[BulkTimeEntrySharesRules::FIELD] ?? null;
+            $timeEntry = $input['time_entry'] ?? null;
+            $errors = $validator->errors();
 
-        return CompleteTaskData::fromValidated($validated, $taskId);
+            if (is_array($shares) && is_array($timeEntry) && ! $errors->has('time_entry.minutes')
+                && ! $errors->has(BulkTimeEntrySharesRules::FIELD) && ! $errors->has(BulkTimeEntrySharesRules::FIELD.'.*')) {
+                BulkTimeEntrySharesRules::validateTotal($validator, $shares, $timeEntry);
+            }
+        });
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function sharesRules(mixed $task): array
+    {
+        $field = BulkTimeEntrySharesRules::FIELD;
+        $splits = $task instanceof Task && $this->has('time_entry')
+            && app(TaskActionAvailability::class)->hasOpenSubtasks($task);
+
+        if (! $splits) {
+            return [$field => ['prohibited']];
+        }
+
+        return [
+            $field => ['required', 'array', 'min:1'],
+            $field.'.*.task_id' => ['required', 'integer', 'distinct'],
+            $field.'.*.minutes' => ['required', 'integer', 'min:1'],
+        ];
     }
 }

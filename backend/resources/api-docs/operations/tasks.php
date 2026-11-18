@@ -35,7 +35,11 @@ return [
     ],
     'POST /tasks/{task}/complete' => [
         'summary' => 'Complete a task',
-        'description' => 'Completes the task. If it requires validation and the actor is not its creator, requester or manager, validation_status_id (an active in-validation status) is required and the task goes to validation; otherwise it must be omitted and the task closes positively. time_entry (date, task_type_id, minutes, optional times and notes) is required unless the task type opts out; for_all_assignees logs it for every assignee. 409 when blocked; 422 with open subtasks or when already closed or awaiting validation. Notifications are sent. Requires tasks.complete.',
+        'description' => 'Completes the task. If it requires validation and the actor is not its creator, requester or manager, validation_status_id (an active in-validation status) is required and the task goes to validation; otherwise it must be omitted and the task closes positively. time_entry (date, task_type_id, minutes, optional times and notes) is required unless the task type opts out; for_all_assignees logs it for every assignee. With open subtasks they are closed too, deepest first, all or nothing: time_entry is then the total, split by time_entry_shares (one {task_id, minutes} for the task and each open subtask, summing to minutes); a subtask that cannot be closed makes a 422 listing it in incompatible_tasks. 409 when blocked; 422 when already closed or awaiting validation. Notifications are sent. Requires tasks.complete.',
+    ],
+    'GET /tasks/{task}/open-subtasks' => [
+        'summary' => 'List the open subtasks closed with a task',
+        'description' => 'Lists the open subtasks that completing the task would close with it, visible to the actor, in tree order: id, title, depth (1 = direct child), requires_time_entry and requires_closure_feedback. Requires tasks.complete on the task.',
     ],
     'POST /tasks/{task}/reject' => [
         'summary' => 'Reject a task awaiting validation',

@@ -272,12 +272,12 @@ class TasksAuthorization extends AbstractResourceAuthorization
     {
         $task = $model instanceof Task ? $model : null;
 
-        // D-6 (spec 0123): a Task with an open DIRECT sub-task admits none
-        // of the three flags below, regardless of what the ability/matrix/
-        // phase would otherwise allow.
+        // D-6 (spec 0123): a Task with an open DIRECT sub-task cannot be
+        // approved. Spec 0418 D-5 (REQUIREMENT CHANGED): it CAN be completed,
+        // the Completa closes the open sub-tasks with it.
         $hasOpenSubtasks = $task !== null && $this->actionAvailability->hasOpenSubtasks($task);
 
-        $canComplete = $task !== null && ! $task->is_blocked && ! $hasOpenSubtasks
+        $canComplete = $task !== null && ! $task->is_blocked
             && $this->actionAvailability->isCompletable($task)
             && $actor->can('tasks.complete') && TaskAbilityResolver::canComplete($actor, $task);
 

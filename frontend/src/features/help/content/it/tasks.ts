@@ -285,7 +285,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Con **Validazione** attiva, il completamento di un assegnatario non chiude il task: passa in validazione e il richiedente deve approvarlo o rifiutarlo. Non puoi completare un task con sotto-task aperti, né agire su un task bloccato.',
+          text: 'Con **Validazione** attiva, il completamento di un assegnatario non chiude il task: passa in validazione e il richiedente deve approvarlo o rifiutarlo. Non puoi approvare un task in validazione con sotto-task aperti, né agire su un task bloccato.',
         },
         {
           type: 'note',
@@ -302,6 +302,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Completando **più task insieme** (azione massiva), il feedback viene applicato identico a ogni task, mentre il tempo inserito nel segnatempo è un **totale** che viene ripartito tra i task. Sotto il segnatempo la sezione **Ripartizione del tempo** mostra un\'anteprima modificabile: i minuti sono divisi in parti uguali (il resto, un minuto ciascuno, va ai primi task della selezione) e puoi correggere le singole quote, che devono sommare al totale e valere almeno 1 minuto ciascuna; **Ripartisci in parti uguali** ripristina la divisione. Cambiando il totale o l\'ora di inizio le quote si ricalcolano. Se indichi l\'ora di inizio, ogni task riceve una fascia oraria consecutiva (es. 09:00-09:30, 09:30-10:00). L\'interruttore **Registra il tempo** compare solo se nessuno dei task selezionati richiede il segnatempo; se è spento non c\'è ripartizione. Se anche uno solo dei task non è ammesso, l\'azione è tutto o niente: si ferma con un errore e nessun task viene completato. Lo stesso vale per **Completa** nella board task della commessa.',
+        },
+        {
+          type: 'note',
+          text: "Completando un task che ha ancora **sotto-task aperti**, la finestra Completa avvisa che verranno completati insieme al task: padre e sotto-task aperti (anche quelli annidati, ma non quelli sotto un sotto-task già chiuso) si chiudono in un'unica operazione. Il tempo inserito nel segnatempo è un **totale**: la sezione **Ripartizione del tempo** lo divide tra il task e ogni sotto-task aperto, con le stesse regole del completamento di più task insieme (prima riga il task, poi i sotto-task nell'ordine dell'albero). Feedback e \"per tutti gli assegnatari\" valgono per ogni task; lo stato di validazione scelto vale solo per il task. Se anche un solo sotto-task non si può chiudere da qui (per esempio non è tuo, è bloccato, è in validazione o richiederebbe la validazione), nulla viene completato e un messaggio elenca quali sotto-task e perché: completalo prima da solo.",
         },
         {
           type: 'paragraph',
