@@ -112,6 +112,7 @@ export const quotes = {
     },
     tabs: {
       opportunityDocuments: 'Opportunity documents',
+      quoteDocuments: 'Offer documents',
     },
     stats: {
       commissions: 'Commissions',

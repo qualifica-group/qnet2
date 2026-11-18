@@ -108,6 +108,10 @@ const guide: HelpGuide = {
           type: 'warning',
           text: 'I **Buoni assegnati** si aggiungono solo dopo aver scelto un **Segnalatore**.',
         },
+        {
+          type: 'paragraph',
+          text: "In fondo al form, nella sezione **Documenti**, allega i file della richiesta: vengono caricati al salvataggio. Se le **Linee di prodotto** creano più richieste (una per categoria madre), accanto a ogni file scegli la richiesta in cui metterlo (ad esempio **Richiesta ISO** o **Richiesta APL**); se togli dalle linee la categoria madre scelta, il file va sulla prima. Se un file non si carica, la richiesta viene creata comunque e un avviso indica quale file allegare dal pannello **Lavora**. La sezione compare solo a chi può vedere e caricare documenti.",
+        },
       ],
     },
     {
@@ -164,7 +168,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'In fondo trovi le schede **Note**, **Documenti** e **Storico**. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**). Lo stesso vale per **Trasferisci contatto**, accanto a **Salva**: a trasferimento concluso torni alla tabella, perché il contatto passa alla nuova sede e al nuovo operatore. Con **Trasferisci ad altra anagrafica** (permesso omonimo) sposti invece l\'offerta su un altro cliente: scegli la nuova anagrafica, puoi cambiare il **Titolo** dell\'offerta e controlli le **Informazioni aggiuntive**; l\'offerta va sull\'opportunità aperta del cliente o su una nuova, come spiegato nella guida **Offerte**. Se una categoria ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), la richiesta non passa a uno stato **Vinto** finché non hai usato **Trasferisci contatto**.',
+          text: 'In fondo trovi le schede **Note**, **Documenti**, **Documenti opportunità** e **Storico**. **Documenti** sono i file di questa richiesta (li carichi ed elimini qui); **Documenti opportunità** sono quelli già presenti sull\'opportunità, in sola lettura. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**). Lo stesso vale per **Trasferisci contatto**, accanto a **Salva**: a trasferimento concluso torni alla tabella, perché il contatto passa alla nuova sede e al nuovo operatore. Con **Trasferisci ad altra anagrafica** (permesso omonimo) sposti invece l\'offerta su un altro cliente: scegli la nuova anagrafica, puoi cambiare il **Titolo** dell\'offerta e controlli le **Informazioni aggiuntive**; l\'offerta va sull\'opportunità aperta del cliente o su una nuova, come spiegato nella guida **Offerte**. Se una categoria ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), la richiesta non passa a uno stato **Vinto** finché non hai usato **Trasferisci contatto**.',
         },
         {
           type: 'warning',
@@ -186,7 +190,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal menu della singola riga: **Documenti**, **Note** (in alto nella finestra c\'è la **Data richiamo** della riga, così la vedi mentre scrivi), **Trasferisci contatto**, **Elimina**, **Attività**. Selezionando più righe, il menu **Azioni** offre:',
+          text: 'Dal menu della singola riga: **Documenti** (i file di quella richiesta), **Note** (in alto nella finestra c\'è la **Data richiamo** della riga, così la vedi mentre scrivi), **Trasferisci contatto**, **Elimina**, **Attività**. Selezionando più righe, il menu **Azioni** offre:',
         },
         {
           type: 'table',

@@ -92,7 +92,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Quote data** and **Context**, then **Registry and contacts** and **Rewards**, then **Team** and **Company and sites**, then **Document and payment**. The Rewards section stays visible even when empty (\"No rewards\").",
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Quote data** and **Context**, then **Registry and contacts** and **Rewards**, then **Team** and **Company and sites**, then **Document and payment**. The Rewards section stays visible even when empty (\"No rewards\"). Among the tabs on the right, **Offer documents** shows the files uploaded on the request in Request management or Enrollee management and **Opportunity documents** the opportunity's ones: both are read-only.",
         },
         {
           type: 'paragraph',

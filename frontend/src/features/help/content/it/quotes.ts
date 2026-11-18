@@ -92,7 +92,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati offerta** e **Contesto**, poi **Anagrafica e contatti** e **Buoni**, poi **Team** e **Società e sedi**, infine **Documento e pagamento**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\").",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati offerta** e **Contesto**, poi **Anagrafica e contatti** e **Buoni**, poi **Team** e **Società e sedi**, infine **Documento e pagamento**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\"). Tra le schede a destra, **Documenti offerta** mostra i file caricati sulla richiesta in Gestione Richieste o Gestione Iscritti e **Documenti opportunità** quelli dell'opportunità: entrambe sono in sola lettura.",
         },
         {
           type: 'paragraph',

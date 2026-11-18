@@ -108,6 +108,10 @@ const guide: HelpGuide = {
           type: 'warning',
           text: 'The **Assigned rewards** can only be added after picking a **Reporter**.',
         },
+        {
+          type: 'paragraph',
+          text: "At the bottom of the form, in the **Documents** section, attach the request's files: they are uploaded when you save. When the **Product lines** create several requests (one per parent category), next to each file choose the request to put it in (for example **ISO request** or **APL request**); if you remove the chosen parent category from the lines, the file goes to the first one. If a file fails to upload the request is still created and a notice names the file to attach from the **Work** panel. The section shows only to users who can view and upload documents.",
+        },
       ],
     },
     {
@@ -164,7 +168,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'At the bottom you find the **Notes**, **Documents** and **History** tabs. Press **Save**: you go back to the table, on the category tab you started from (for example **GOL Abruzzo**). The same goes for **Transfer contact**, next to **Save**: once the transfer is done you go back to the table, because the contact moves to the new site and operator. **Transfer to another registry** (same-name permission) moves the offer to another customer instead: choose the new registry, optionally change the offer\'s **Title** and review the **Additional information**; the offer lands on the customer\'s open opportunity or on a new one, as explained in the **Quotes** guide. When a category has **Contact transfer before the contract** (for example **Orientamento specialistico**), the request cannot move to a **Won** status until you have used **Transfer contact**.',
+          text: 'At the bottom you find the **Notes**, **Documents**, **Opportunity documents** and **History** tabs. **Documents** are the files of this request (you upload and delete them here); **Opportunity documents** are the ones already on the opportunity, read-only. Press **Save**: you go back to the table, on the category tab you started from (for example **GOL Abruzzo**). The same goes for **Transfer contact**, next to **Save**: once the transfer is done you go back to the table, because the contact moves to the new site and operator. **Transfer to another registry** (same-name permission) moves the offer to another customer instead: choose the new registry, optionally change the offer\'s **Title** and review the **Additional information**; the offer lands on the customer\'s open opportunity or on a new one, as explained in the **Quotes** guide. When a category has **Contact transfer before the contract** (for example **Orientamento specialistico**), the request cannot move to a **Won** status until you have used **Transfer contact**.',
         },
         {
           type: 'warning',
@@ -186,7 +190,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From a single row's menu: **Documents**, **Notes** (the top of the window shows the row's **Callback date**, so you see it while writing), **Transfer contact**, **Delete**, **History**. Selecting several rows, the **Actions** menu offers:",
+          text: "From a single row's menu: **Documents** (that request's files), **Notes** (the top of the window shows the row's **Callback date**, so you see it while writing), **Transfer contact**, **Delete**, **History**. Selecting several rows, the **Actions** menu offers:",
         },
         {
           type: 'table',

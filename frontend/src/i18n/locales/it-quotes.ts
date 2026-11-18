@@ -112,6 +112,7 @@ export const quotes = {
     },
     tabs: {
       opportunityDocuments: 'Documenti opportunità',
+      quoteDocuments: 'Documenti offerta',
     },
     stats: {
       commissions: 'Provvigioni',
