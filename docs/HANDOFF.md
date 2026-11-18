@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Opportunita' aperta per anagrafica: "No categoria" conta come legacy (2026-11-18) — VERDE MIRATO, COMMITTATO (guard finito in 463978fed, test+guide nel commit successivo)
+
+- Segnalazione: Qualifica Group (registry 134) bloccata dalla opp 2020 (migrata, old_id 2502, QUO-2334 senza esito) con linee [OLD] ISO (legacy) + "No categoria" (`is_legacy=false`), che la teneva "attuale".
+- Direttiva utente: "No categoria" (`ProductsSource::UNCATEGORIZED_CATEGORY`, identificata per nome come in `UncategorizedProductCategory`) vale come legacy in `RegistryOpenOpportunityGuard`: escluso dal `whereHas` delle categorie attuali e da `allowMultipleOpen()` via `countsAsLegacy()`. Nessun cambio a `is_legacy` sul DB.
+- DB locale: anagrafiche bloccate 707 -> 436; la 134 non e' piu' bloccata.
+- Test: 2 nuovi in `OpportunityOpenPerRegistryTest` (No categoria + legacy non blocca; attuale + No categoria blocca). Opportunities/Leads/MultipleOpen/SingleQuote verdi, Pint ok. Guida in-app opportunities IT/EN aggiornata (help vitest verde). Manuale Claude Docs aggiornato (paragrafo "Attenzione: una sola opportunita' aperta" + cella "Piu' opportunita' aperte" nella tabella categorie); PDF derivato da rigenerare.
+
 ## Layout preventivi "Layout servizi" (id 2) e "Preventivo ISO" (id 4) sostituiti con le revisioni di novembre (task 427544, 2026-11-18) — VERDE MIRATO, NON COMMITTATO, NON APPLICATO AL DB LOCALE
 
 - Fonte: `LAYOUT_PREVENTIVO_GENERICO_SERVIZI rev.12.11.2026.docx` e `Template preventivo_ISO Rev. 10.11.2026.docx`. Novita': "Allegato A" informativa privacy (3 tabelle statiche `table`, elenco puntato reso con prefisso "• ", dichiarazione di consenso); ISO anche clausole "PRIVACY E PROTEZIONE DEI DATI PERSONALI" 10.1-10.4; servizi perde la clausola "Ai sensi degli art. 1341-1342".
