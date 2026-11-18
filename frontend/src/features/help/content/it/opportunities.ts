@@ -155,7 +155,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie con la regola **Più opportunità aperte per anagrafica**: le loro opportunità non bloccano le altre e si creano anche se l'anagrafica ne ha già una aperta, e con la modalità Multipla l'offerta può avere più righe. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD]), né quelle migrate dal vecchio gestionale senza alcuna categoria.",
+          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie con la regola **Più opportunità aperte per anagrafica**: le loro opportunità non bloccano le altre e si creano anche se l'anagrafica ne ha già una aperta, e con la modalità Multipla l'offerta può avere più righe. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD], e la categoria **No categoria**, che raccoglie i prodotti migrati senza categoria), né quelle migrate dal vecchio gestionale senza alcuna categoria.",
         },
       ],
     },

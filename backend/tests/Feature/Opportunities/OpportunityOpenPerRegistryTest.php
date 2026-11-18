@@ -2,6 +2,7 @@
 
 use App\Enums\CategoryManagementMode;
 use App\Exceptions\Leads\BulkConversionBlockedException;
+use App\Migrations\Sources\ProductsSource;
 use App\Models\BusinessFunction;
 use App\Models\Lead;
 use App\Models\Opportunity;
@@ -241,6 +242,38 @@ it('lets the anagrafica open another opportunity beside a migrated one without a
     Opportunity::factory()->create(['registry_id' => $registry->id, 'old_id' => 98479]);
 
     $this->postJson('/api/opportunities', openPerRegistryPayload($registry))->assertCreated();
+});
+
+it('lets the anagrafica open another opportunity beside one on "No categoria" and legacy categories only', function () {
+    Sanctum::actingAs(openPerRegistryActor());
+    $registry = Registry::factory()->create();
+    $migrated = opportunityOnCategory($registry, CategoryManagementMode::Multiple);
+    $migrated->productLines()->first()->productCategory->update(['name' => ProductsSource::UNCATEGORIZED_CATEGORY]);
+    $legacyCategory = ProductCategory::factory()->create();
+    $legacyCategory->forceFill(['is_legacy' => true])->save();
+    OpportunityProductLine::create([
+        'opportunity_id' => $migrated->id,
+        'business_function_id' => $legacyCategory->business_function_id ?? BusinessFunction::factory()->create()->id,
+        'product_category_id' => $legacyCategory->id,
+    ]);
+
+    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))->assertCreated();
+});
+
+it('keeps blocking when the open opportunity has a current category beside "No categoria"', function () {
+    Sanctum::actingAs(openPerRegistryActor());
+    $registry = Registry::factory()->create();
+    $mixed = opportunityOnCategory($registry, CategoryManagementMode::Multiple);
+    $uncategorized = ProductCategory::factory()->create(['name' => ProductsSource::UNCATEGORIZED_CATEGORY]);
+    OpportunityProductLine::create([
+        'opportunity_id' => $mixed->id,
+        'business_function_id' => $uncategorized->business_function_id ?? BusinessFunction::factory()->create()->id,
+        'product_category_id' => $uncategorized->id,
+    ]);
+
+    $this->postJson('/api/opportunities', openPerRegistryPayload($registry))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['registry_id']);
 });
 
 it('keeps blocking when the open opportunity has a current category beside a legacy one', function () {
