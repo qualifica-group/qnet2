@@ -62,6 +62,14 @@ trait HasAttachments
     }
 
     /**
+     * Only the user-uploaded documents: no avatar, logo or rich text image.
+     */
+    public function documents(): MorphMany
+    {
+        return $this->attachments()->where('collection', Attachment::DOCUMENTS_COLLECTION);
+    }
+
+    /**
      * Store an uploaded file and link it to this model in a single call.
      */
     public function attach(UploadedFile $file, ?string $collection = null): Attachment

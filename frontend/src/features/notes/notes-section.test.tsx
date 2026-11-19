@@ -23,12 +23,14 @@ const createNoteMock = vi.fn()
 const updateNoteMock = vi.fn()
 const deleteNoteMock = vi.fn()
 const fetchMentionableUsersMock = vi.fn()
+const markNotesReadMock = vi.fn()
 vi.mock('@/features/notes/api', () => ({
   fetchNotes: (...args: unknown[]) => fetchNotesMock(...args),
   createNote: (...args: unknown[]) => createNoteMock(...args),
   updateNote: (...args: unknown[]) => updateNoteMock(...args),
   deleteNote: (...args: unknown[]) => deleteNoteMock(...args),
   fetchMentionableUsers: (...args: unknown[]) => fetchMentionableUsersMock(...args),
+  markNotesRead: (...args: unknown[]) => markNotesReadMock(...args),
   NOTES_DEFAULT_PAGE_SIZE: 20,
   NOTES_MENTIONABLE_PAGE_SIZE: 25,
 }))
@@ -43,6 +45,8 @@ beforeEach(() => {
   updateNoteMock.mockReset()
   deleteNoteMock.mockReset()
   fetchMentionableUsersMock.mockReset()
+  markNotesReadMock.mockReset()
+  markNotesReadMock.mockResolvedValue(0)
   fetchMentionableUsersMock.mockResolvedValue({ items: [], pagination: { offset: 0, limit: 25, total: 0 } })
 })
 
@@ -334,5 +338,20 @@ describe('NotesSection — onThreadChanged (host notes_count)', () => {
 
     await waitFor(() => expect(updateNoteMock).toHaveBeenCalled())
     expect(onThreadChanged).not.toHaveBeenCalled()
+  })
+
+  it('fires when opening the thread marks unread notes read: the row badge counts only unread notes', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [makeNote({ id: 11, body: 'Unread root' })],
+      meta: { next_cursor: null, has_more: false },
+    })
+    markNotesReadMock.mockResolvedValue(1)
+    const onThreadChanged = vi.fn()
+
+    renderSection(7, { onThreadChanged })
+    await screen.findByText('Unread root')
+
+    await waitFor(() => expect(onThreadChanged).toHaveBeenCalledTimes(1))
+    expect(markNotesReadMock).toHaveBeenCalledWith('request-management', 7, 'all')
   })
 })

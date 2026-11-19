@@ -25,6 +25,7 @@ const deleteAttachmentMock = vi.fn()
 const fetchAttachmentBinaryMock = vi.fn()
 const downloadAttachmentArchiveMock = vi.fn()
 const saveBlobMock = vi.fn()
+const markAttachmentsReadMock = vi.fn()
 
 vi.mock('@/features/attachments/api', () => ({
   attachmentsQueryKey: (resource: string, id: number, collection: string) =>
@@ -35,6 +36,7 @@ vi.mock('@/features/attachments/api', () => ({
   deleteAttachment: (...args: unknown[]) => deleteAttachmentMock(...args),
   fetchAttachmentBinary: (...args: unknown[]) => fetchAttachmentBinaryMock(...args),
   downloadAttachmentArchive: (...args: unknown[]) => downloadAttachmentArchiveMock(...args),
+  markAttachmentsRead: (...args: unknown[]) => markAttachmentsReadMock(...args),
 }))
 
 vi.mock('@/lib/download', () => ({
@@ -85,6 +87,8 @@ beforeEach(() => {
   uploadAttachmentMock.mockReset()
   deleteAttachmentMock.mockReset()
   saveBlobMock.mockReset()
+  markAttachmentsReadMock.mockReset()
+  markAttachmentsReadMock.mockResolvedValue(0)
   fetchAttachmentBinaryMock.mockReset()
   fetchAttachmentBinaryMock.mockResolvedValue(new Blob(['binary']))
 })
@@ -116,6 +120,15 @@ describe('DocumentsSection', () => {
     expect(fetchAttachmentBinaryMock).toHaveBeenCalledWith(1, 'view')
     expect(fetchAttachmentBinaryMock).not.toHaveBeenCalledWith(2, 'view')
     expect(listAttachmentsMock).toHaveBeenCalledWith('opportunity', 42, 'documents')
+  })
+
+  it('marks the shown documents read: the row badge counts only unread files', async () => {
+    listAttachmentsMock.mockResolvedValue(documentList([attachment({ id: 1, original_name: 'seen.pdf' })]))
+
+    renderSection(<DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />)
+
+    await screen.findByText('seen.pdf')
+    await waitFor(() => expect(markAttachmentsReadMock).toHaveBeenCalledWith('opportunity', 42, 'documents'))
   })
 
   it('shows the empty state when there are no documents', async () => {

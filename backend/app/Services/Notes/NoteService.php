@@ -66,11 +66,7 @@ final class NoteService
         $record = $this->authorizedRecord($user, $entityType, $entityId);
         $limit ??= self::DEFAULT_LIMIT;
 
-        $roots = Note::query()
-            ->where('notable_type', $record->getMorphClass())
-            ->where('notable_id', $record->getKey())
-            ->whereNull('parent_id');
-        $this->applyQuoteScope($roots, $scope);
+        $roots = $this->scopedRoots($record, $scope);
 
         $query = (clone $roots)
             ->with([
@@ -98,6 +94,24 @@ final class NoteService
             $this->registry->mentionOutsideFor($user, $entityType, $record),
             $this->threadTotal($roots),
         );
+    }
+
+    /**
+     * POST /api/notes/read — the user is looking at the scoped thread: every
+     * note it shows (roots plus their replies) becomes read for them, so the
+     * grids' `notes_count` badge stops counting it. Same read authorization
+     * as listing. Returns how many notes became read.
+     */
+    public function markThreadRead(User $user, string $entityType, int $entityId, NoteQuoteScope $scope): int
+    {
+        $roots = $this->scopedRoots($this->authorizedRecord($user, $entityType, $entityId), $scope);
+        $rootIds = (clone $roots)->select('id');
+
+        $thread = Note::query()->where(fn (Builder $notes) => $notes
+            ->whereIn('id', $rootIds)
+            ->orWhereIn('parent_id', clone $rootIds));
+
+        return Note::markReadBy((int) $user->getKey(), $thread);
     }
 
     /**
@@ -290,6 +304,22 @@ final class NoteService
         $inherited = Note::query()->whereKey($parentId)->value('quote_id');
 
         return $inherited;
+    }
+
+    /**
+     * The ROOT notes of $record's thread narrowed by $scope (D-2).
+     *
+     * @return Builder<Note>
+     */
+    private function scopedRoots(Model $record, NoteQuoteScope $scope): Builder
+    {
+        $roots = Note::query()
+            ->where('notable_type', $record->getMorphClass())
+            ->where('notable_id', $record->getKey())
+            ->whereNull('parent_id');
+        $this->applyQuoteScope($roots, $scope);
+
+        return $roots;
     }
 
     /**

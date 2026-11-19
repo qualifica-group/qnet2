@@ -13,6 +13,7 @@ use App\Services\Attachments\AttachmentArchiveBuilder;
 use App\Services\Attachments\LegacyAttachmentFetcher;
 use App\Services\Attachments\LegacyRecordLink;
 use App\Services\AttachmentService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -69,6 +70,26 @@ class AttachmentController extends BaseApiController
                     (int) $request->validated('attachable_id'),
                 ),
             ]]);
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
+     * POST /api/attachments/read — the user is looking at the owner's list:
+     * every file in it becomes read for them, so the grids' `documents_count`
+     * badge stops counting it. Same filters and authorization as index();
+     * `data.marked` is how many files became read.
+     */
+    public function markRead(IndexAttachmentRequest $request): JsonResponse
+    {
+        try {
+            $this->authorize('viewAny', [Attachment::class, $request->validated('collection')]);
+            $this->authorize('accessOwner', [Attachment::class, $request->validated('attachable_type'), $request->validated('attachable_id')]);
+
+            $marked = Attachment::markReadBy((int) $request->user()->getKey(), $this->ownerAttachmentsQuery($request));
+
+            return $this->ok(['marked' => $marked]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -200,12 +221,22 @@ class AttachmentController extends BaseApiController
     }
 
     /**
-     * The owner's files, newest first. Without an explicit collection the
-     * closed ones (`rich_text`, `email_attachments`) are left out.
+     * The owner's files, newest first.
      *
      * @return Collection<int, Attachment>
      */
     private function ownerAttachments(IndexAttachmentRequest $request): Collection
+    {
+        return $this->ownerAttachmentsQuery($request)->latest()->get();
+    }
+
+    /**
+     * The owner's files as listed by index(). Without an explicit collection
+     * the closed ones (`rich_text`, `email_attachments`) are left out.
+     *
+     * @return Builder<Attachment>
+     */
+    private function ownerAttachmentsQuery(IndexAttachmentRequest $request): Builder
     {
         return Attachment::query()
             ->where('attachable_type', $request->validated('attachable_type'))
@@ -219,9 +250,7 @@ class AttachmentController extends BaseApiController
                         RichText::ATTACHMENT_COLLECTION,
                         OutboundEmail::ATTACHMENT_COLLECTION,
                     ])),
-            )
-            ->latest()
-            ->get();
+            );
     }
 
     /**

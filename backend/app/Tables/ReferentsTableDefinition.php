@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Tables\Concerns\UnwrapsMultiFilter;
 use App\Tables\Referents\ReferentColumnCatalog;
 use App\Tables\Referents\ReferentUserColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -72,7 +73,7 @@ class ReferentsTableDefinition extends AbstractTableDefinition
         // queries regardless of row count.
         // `notes_count` feeds the `notes` action badge (spec 0312).
         return Referent::query()->with(['referentType', 'personalData.contacts', 'user'])
-            ->withCount('noteThread as notes_count');
+            ->withCount(NotesCountColumn::of('noteThread'));
     }
 
     /**

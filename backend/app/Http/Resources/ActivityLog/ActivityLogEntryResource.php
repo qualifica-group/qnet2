@@ -148,7 +148,7 @@ class ActivityLogEntryResource extends JsonResource
     }
 
     /**
-     * A list of ids (`activity-log.foreign_keys`, e.g. `manager_slots`) joins
+     * A list of ids (`config/activity-log-foreign-keys.php`, e.g. `manager_slots`) joins
      * each element's label, keeping the raw id of an unresolved one and the
      * placeholder for an empty slot/list, so the row never shows raw JSON.
      *

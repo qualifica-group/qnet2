@@ -13,7 +13,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. Sotto l'intestazione (titolo, stato, indicatori) c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Chat**, **Email** e **Attività** dove previste. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. Le schede si comportano come pagine: entrando nella commessa è attiva **Info**; ricaricando la pagina resti sulla scheda in cui eri, e un salvataggio dentro una scheda non riporta su Info. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
+          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. Sotto l'intestazione (titolo con sotto il nome dell'azienda cliente, stato, indicatori) c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Chat**, **Email** e **Attività** dove previste. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. Le schede si comportano come pagine: entrando nella commessa è attiva **Info**; ricaricando la pagina resti sulla scheda in cui eri, e un salvataggio dentro una scheda non riporta su Info. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
         },
         {
           type: 'paragraph',
@@ -355,7 +355,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Gli stati di pagamento si configurano in **Stati pagamento commessa**. Quando una riga passa a uno stato con **Si può consegnare**, supervisori e partecipanti della commessa ricevono una notifica. I dati di pagamento si modificano anche su una commessa completata o chiusa.',
+          text: 'Gli stati di pagamento si configurano in **Stati pagamento commessa**. Quando una riga passa a uno stato con **Si può consegnare**, supervisori e partecipanti della commessa (tranne chi ha fatto la modifica) ricevono una notifica nella campanella e una email **Stato pagamento ok** con il nome dell\'azienda cliente. I dati di pagamento si modificano anche su una commessa completata o chiusa.',
         },
       ],
     },

@@ -32,6 +32,20 @@ export async function listAttachments(
   return { documents: data.data, legacyUrl: data.meta?.legacy_url ?? null }
 }
 
+/**
+ * Marks the owner's collection read for the current user, so the grids'
+ * `documents_count` badge stops counting it. Resolves to how many files
+ * became read.
+ */
+export async function markAttachmentsRead(resource: string, id: number, collection: string): Promise<number> {
+  const { data } = await apiClient.post<ApiResponse<{ marked: number }>>('/attachments/read', {
+    attachable_type: resource,
+    attachable_id: id,
+    collection,
+  })
+  return data.data.marked
+}
+
 export interface UploadAttachmentPayload {
   resource: string
   id: number

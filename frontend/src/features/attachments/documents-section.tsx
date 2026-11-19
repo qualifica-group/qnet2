@@ -9,6 +9,8 @@ import { AttachmentTile } from '@/features/attachments/attachment-tile'
 import { LegacyRecordNote } from '@/components/detail/legacy-record-note'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { useAttachments } from '@/features/attachments/use-attachments'
+import { markAttachmentsRead } from '@/features/attachments/api'
+import { useMarkReadOnLoad } from '@/hooks/use-mark-read-on-load'
 import { useAttachmentArchiveDownload } from '@/features/attachments/use-attachment-binary'
 import type { Attachment } from '@/features/attachments/types'
 
@@ -46,11 +48,11 @@ export function DocumentsSection({
 }: DocumentsSectionProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
-  const { documents, legacyUrl, isLoading, isError, refetch, upload, isUploading, remove } = useAttachments(
-    resource,
-    id,
-    collection,
-  )
+  const { documents, legacyUrl, isLoading, loadedAt, isError, refetch, upload, isUploading, remove } =
+    useAttachments(resource, id, collection)
+  // Seen = read: the grids' `documents` badge counts only unread files, and
+  // the hosts refresh it when the dialog closes.
+  useMarkReadOnLoad(loadedAt, () => markAttachmentsRead(resource, id, collection))
   const { downloadAll, isDownloadingAll } = useAttachmentArchiveDownload(resource, id, collection)
   const [isDragging, setIsDragging] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)

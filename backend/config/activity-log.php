@@ -97,7 +97,11 @@ return [
     | `personal_data`-aggregating resources (users, company-sites, referents,
     | registries — every HasPersonalData owner) share the same three
     | relations, mirroring `users`. `custom-fields` aggregates its own
-    | `options` (CustomFieldOption, its only LogsModelActivity child). Every
+    | `options` (CustomFieldOption, its only LogsModelActivity child). A record
+    | with a "Documenti" tab aggregates its `documents` (HasAttachments, only
+    | the `documents` collection) so an upload shows in its timeline;
+    | `documents_permissions` lists every permission that opens that tab, and
+    | an actor missing one sees no document entry at all. Every
     | other resource below has no aggregated child and declares no root model
     | with no own activity-logged relation, so `relations` is omitted
     | (ActivityLogRegistry defaults it to `[]`). `import-runs` is deliberately
@@ -176,6 +180,8 @@ return [
         ],
         'contracts' => [
             'model' => Contract::class,
+            'relations' => ['documents'],
+            'documents_permissions' => ['attachments.viewAny'],
         ],
         'contract-statuses' => [
             'model' => ContractStatus::class,
@@ -198,6 +204,8 @@ return [
         ],
         'opportunities' => [
             'model' => Opportunity::class,
+            'relations' => ['documents'],
+            'documents_permissions' => ['attachments.viewAny', 'opportunities.viewDocuments'],
         ],
         'payment-methods' => [
             'model' => PaymentMethod::class,
@@ -284,7 +292,8 @@ return [
         ],
         'registries' => [
             'model' => Registry::class,
-            'relations' => ['personalData', 'personalData.contacts', 'personalData.addresses'],
+            'relations' => ['personalData', 'personalData.contacts', 'personalData.addresses', 'documents'],
+            'documents_permissions' => ['attachments.viewAny', 'registries.viewDocuments'],
         ],
         'reward-types' => [
             'model' => RewardType::class,
@@ -336,10 +345,15 @@ return [
         // spec 0208: richieste di acquisto (RDA).
         'purchase-requests' => [
             'model' => PurchaseRequest::class,
+            // The request's own documents and those of each of its lines.
+            'relations' => ['documents', 'lines.documents'],
+            'documents_permissions' => ['attachments.viewAny'],
         ],
         // spec 0210: ordini di acquisto (ODA) e tipi di costo.
         'purchase-orders' => [
             'model' => PurchaseOrder::class,
+            'relations' => ['documents'],
+            'documents_permissions' => ['attachments.viewAny'],
         ],
         // spec 0248: presentation catalogues of the ODA and RDA line statuses.
         'purchase-order-statuses' => [
@@ -363,6 +377,8 @@ return [
         ],
         'treasury-movements' => [
             'model' => TreasuryMovement::class,
+            'relations' => ['documents'],
+            'documents_permissions' => ['attachments.viewAny'],
         ],
         'treasury-types' => [
             'model' => TreasuryType::class,
@@ -373,6 +389,8 @@ return [
         // spec 0250: fatture passive.
         'purchase-invoices' => [
             'model' => PurchaseInvoice::class,
+            'relations' => ['documents'],
+            'documents_permissions' => ['attachments.viewAny'],
         ],
         // spec 0194: fatture attive.
         'invoices' => [
@@ -386,6 +404,8 @@ return [
         ],
         'work-orders' => [
             'model' => WorkOrder::class,
+            'relations' => ['documents'],
+            'documents_permissions' => ['attachments.viewAny', 'work-orders.viewDocuments'],
         ],
         'work-order-payment-statuses' => [
             'model' => WorkOrderPaymentStatus::class,
@@ -404,10 +424,14 @@ return [
         ],
         'document-bundles' => [
             'model' => DocumentBundle::class,
+            'relations' => ['documents'],
+            'documents_permissions' => ['attachments.viewAny'],
         ],
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => [
             'model' => Task::class,
+            'relations' => ['documents'],
+            'documents_permissions' => ['attachments.viewAny', 'tasks.viewDocuments'],
         ],
         'task-statuses' => [
             'model' => TaskStatus::class,
@@ -436,43 +460,6 @@ return [
         'task-templates' => [
             'model' => TaskTemplate::class,
             'relations' => ['items'],
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Foreign keys with no relation on the subject model
-    |--------------------------------------------------------------------------
-    |
-    | [subject alias][field] => related model class, for fields whose label
-    | ForeignKeyLabelResolver cannot infer from a BelongsTo relation of the
-    | subject. Request management writes EXPLICIT Opportunity entries carrying
-    | Quote-level fields (D-9); `product_lines`, `rewards` and `manager_slots`
-    | carry a LIST of ids (a null manager slot is an empty position).
-    |
-    */
-    'foreign_keys' => [
-        'opportunity' => [
-            'quote_workflow_status_id' => QuoteWorkflowStatus::class,
-            'operator_id' => User::class,
-            'manager_slots' => User::class,
-            'product_lines' => ProductCategory::class,
-            'rewards' => RewardType::class,
-        ],
-        // Spec 0372, D-7: people lists logged by PeopleChangeLog (user ids, null = empty slot).
-        'quote' => [
-            'manager_slots' => User::class,
-        ],
-        'work_order' => [
-            'supervisors' => User::class,
-            'participants' => User::class,
-        ],
-        'quote_line_commission' => [
-            'commission_configuration_id' => CommissionConfiguration::class,
-        ],
-        // Logged by ContractReactivator when a reopening clears the validation stamp.
-        'contract' => [
-            'validated_by' => User::class,
         ],
     ],
 
