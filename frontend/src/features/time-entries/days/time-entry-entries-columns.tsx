@@ -3,7 +3,7 @@
  * Fixed `ColDef<TimeEntry>[]` of the day entries table (spec 0122 D-14): one
  * factory, no backend-driven schema (unlike the generic `DataTable`) — the
  * column set is frozen by the spec, so a plain array is the minimal
- * solution; only the widths are user-adjustable. The title/actions cell renderers live in
+ * solution; only widths and order are user-adjustable. The title/actions cell renderers live in
  * `time-entry-entry-cells.tsx` (engineering.md §6, 300-line soft limit).
  */
 
@@ -52,17 +52,16 @@ interface BuildTimeEntryColumnsOptions {
 }
 
 /**
- * Columns resize like every other grid (D-14, user request 2026-11-19) but are
- * not sortable, filterable or movable: the set and order stay frozen. Sizes are
- * `initialWidth`/`initialFlex`, not `width`/`flex`: the plain props are re-pushed
- * on every `columnDefs` rebuild and would undo the width the user just dragged
- * (same reason as the shared `DataTable` defaults).
+ * Columns resize and move like every other grid (D-14, user requests
+ * 2026-11-19) but are not sortable or filterable, and the layout is not
+ * persisted. Sizes are `initialWidth`/`initialFlex`, not `width`/`flex`: the
+ * plain props are re-pushed on every `columnDefs` rebuild and would undo the
+ * width the user just dragged (same reason as the shared `DataTable` defaults).
  */
 const COLUMN_DEFAULTS: Partial<ColDef<TimeEntry>> = {
   sortable: false,
   filter: false,
   resizable: true,
-  suppressMovable: true,
   suppressHeaderMenuButton: true,
   suppressHeaderFilterButton: true,
 }
@@ -81,7 +80,10 @@ export function buildTimeEntryColumns({
       colId: 'actions',
       headerName: t('timeEntries.table.actions'),
       // Leading column pinned left, like the shared `DataTable` actions column.
+      // Fixed and first: the other columns can be neither dropped before it nor dragged over it.
       pinned: 'left',
+      lockPosition: 'left',
+      suppressMovable: true,
       resizable: false,
       width: 72,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) =>

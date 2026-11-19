@@ -167,7 +167,7 @@ describe('TimeEntryDayEntriesTable row gating (AC-036)', () => {
 })
 
 describe('TimeEntryDayEntriesTable columns and title (user request 2026-11-19)', () => {
-  it('lets every data column be resized, keeping the actions column fixed and no column movable', () => {
+  it('lets every data column be resized and moved, keeping the actions column fixed and first', () => {
     const columns = buildTimeEntryColumns({
       canWrite: true,
       taskTypeOptions: [],
@@ -188,7 +188,9 @@ describe('TimeEntryDayEntriesTable columns and title (user request 2026-11-19)',
       opportunity: true,
       registry: true,
     })
-    expect(columns.every((column) => column.suppressMovable === true)).toBe(true)
+    const movable = columns.filter((column) => column.suppressMovable !== true).map((column) => column.colId)
+    expect(movable).toEqual(['title', 'duration', 'schedule', 'task', 'workOrder', 'opportunity', 'registry'])
+    expect(columns[0]).toMatchObject({ colId: 'actions', lockPosition: 'left', pinned: 'left' })
     // `flex`/`width` would be re-pushed on a columnDefs rebuild and undo a drag.
     expect(columns.some((column) => column.flex !== undefined)).toBe(false)
   })

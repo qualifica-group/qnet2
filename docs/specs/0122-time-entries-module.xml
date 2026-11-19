@@ -169,8 +169,9 @@
       e note, Durata, Orario, Task, Commessa, Opportunita', Cliente); cambio tipo inline dal
       pulsante icona. Nessuna personalizzazione/persistenza colonne.
       AGGIORNAMENTO 2026-11-19 (richiesta utente): le colonne dati sono ridimensionabili come nelle
-      altre griglie (Azioni resta fissa; niente ordinamento, filtro, spostamento ne' persistenza
-      delle larghezze); il Titolo mostra un tooltip con il testo intero al passaggio del mouse.
+      altre griglie e, su richiesta successiva dello stesso giorno, anche spostabili (Azioni resta
+      fissa e prima; niente ordinamento, filtro ne' persistenza di larghezze e ordine); il Titolo
+      mostra un tooltip con il testo intero al passaggio del mouse.
     </decision>
     <decision id="D-15">
       COLLISIONE 0121: il montaggio della sezione Segnatempo in `features/tasks/task-detail.tsx`
