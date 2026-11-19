@@ -152,6 +152,15 @@ export const workOrders = {
   },
   /** The grid row actions (spec 0405) and the detail actions, "Chiusura forzata" and its inverse included (user directive 2026-10-06). */
   actions: {
+    delete: {
+      label: 'Elimina',
+      confirmTitle: 'Eliminare la commessa?',
+      confirmDescription: 'La commessa {{code}} verrà eliminata definitivamente, con i suoi responsabili e partecipanti.',
+      confirm: 'Elimina',
+      cancel: 'Annulla',
+      success: 'Commessa eliminata.',
+      error: 'Impossibile eliminare la commessa.',
+    },
     team: {
       label: 'Responsabili e Partecipanti',
       description: 'Commessa {{code}}: aggiungi o togli Responsabili e Partecipanti.',

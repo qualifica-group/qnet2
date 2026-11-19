@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse: Elimina sulla riga e nel dettaglio, in base ai permessi (richiesta utente 2026-11-19) — VERDE MIRATO, NON PROVATO NEL BROWSER
+
+- REQUIREMENT CHANGED spec 0405 D-5 (aggiornata). Backend: `WorkOrdersTableDefinition::actionsFor` aggiunge `delete` se `Gate::allows('delete', $row)` (permesso `work-orders.delete` + stesso perimetro di `view`); catalogo `delete` con `menu: true` (ultimo nel menu "..."); vale anche per `project-work-orders` (sottoclasse). L'endpoint `DELETE /work-orders/{id}` e il 409 sui documenti contabili (spec 0243) esistevano gia'.
+- Frontend: `deleteWorkOrder` in `api.ts`; hook `use-delete-work-order.ts` (`remove`: toast, 409 col motivo del server via `refusedActionMessage`, `removeQueries` del dettaglio); riga -> `remove` (la conferma la chiede gia' `row-actions.tsx`); dettaglio -> `work-order-delete-action.tsx` (gate `permissions.actions.delete`, che esclude le commesse con documenti contabili; conferma col codice), passato da `WorkOrderDetailScreen` come `onDeleted` -> `onSaved` (Sheet si chiude) o `navigate('/work-orders')` (pagina).
+- Verifiche: Pest WorkOrders+ProjectWorkOrders 587; vitest work-orders/table/help 930 + contracts/registries/tasks/projects 1024; eslint, `tsc -b --force`, Pint puliti. Guide IT/EN `work-orders` (azioni + "Eliminare una commessa") e manuale Claude Docs (paragrafo "Stesso ordine nei moduli commerciali").
+- Da provare nel browser: Elimina nel menu riga (Commesse, Commesse di Progetto, tab Contratto/Anagrafica) e nel dettaglio in Sheet e in pagina.
+
 ## Colonna Azioni: il numero su Note/Documenti conta solo i NON LETTI (richiesta utente 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Schema: `note_reads` / `attachment_reads` (PK `<item>_id`+`user_id`, `read_at`), migrazioni `2026_12_14_10000{0,1}`. Verifica 2026-11-19: su qnet2 dev risultavano Pending (DB ripristinato dopo il 18?) e TUTTE le 9 griglie col badge andavano in errore SQL (`note_reads` doesn't exist); applicate con `migrate`, ora le 9 griglie rispondono 200. Al deploy serve `migrate` prima del codice. Prova end-to-end su dati reali (transazione annullata): commessa, documenti opportunita', note di un'offerta -> badge N, apertura, badge 0; l'autore non vede le proprie note.

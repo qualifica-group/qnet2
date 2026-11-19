@@ -64,7 +64,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Nella colonna **Azioni** dell'elenco Commesse (anche nelle sezioni Commesse del Contratto e dell'Anagrafica) trovi le azioni del vecchio QNet: l'**occhio** apre la commessa, **Responsabili e Partecipanti** apre un popup con le persone della commessa, **Info** apre la commessa sulla scheda Info. Il menu con i tre puntini apre la commessa direttamente sulla scheda **Storico Note**, **Task** o **Documenti**.",
+          text: "Nella colonna **Azioni** dell'elenco Commesse (anche nelle sezioni Commesse del Contratto e dell'Anagrafica) trovi le azioni del vecchio QNet: l'**occhio** apre la commessa, **Responsabili e Partecipanti** apre un popup con le persone della commessa, **Info** apre la commessa sulla scheda Info. Il menu con i tre puntini apre la commessa direttamente sulla scheda **Storico Note**, **Task** o **Documenti**; in fondo al menu c'è **Elimina** (vedi **Eliminare una commessa**).",
         },
         {
           type: 'paragraph',
@@ -72,7 +72,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Task e Documenti compaiono nel menu solo se puoi vedere quelle schede. Chiusura forzata, Avanzamento, Richiedi aggiornamento, Richiedi proforma e Attività non sono più azioni di riga: le trovi nel dettaglio della commessa. L'avanzamento si apre anche dalla cella **Avanzamento** della tabella.",
+          text: "Task e Documenti compaiono nel menu solo se puoi vedere quelle schede, Elimina solo se hai il permesso di eliminare le commesse. Chiusura forzata, Avanzamento, Richiedi aggiornamento, Richiedi proforma e Attività non sono più azioni di riga: le trovi nel dettaglio della commessa. L'avanzamento si apre anche dalla cella **Avanzamento** della tabella.",
         },
         {
           type: 'paragraph',
@@ -444,7 +444,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Una commessa si elimina selezionandola nell\'elenco e usando **Elimina selezionati** (serve il permesso di eliminare). **Non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: in questo caso resta e il messaggio la conta tra quelle non eliminate. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
+          text: 'Una commessa si elimina in tre modi, tutti con il permesso di eliminare le commesse: dal menu con i tre puntini della sua riga (**Elimina**), dal pulsante **Elimina** in alto nel suo dettaglio, oppure selezionandone una o più nell\'elenco e usando **Elimina selezionati**. Prima di eliminare ti viene chiesta una conferma; eliminata dal dettaglio, si torna all\'elenco. **Non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: nel dettaglio il pulsante Elimina non compare, dalla riga compare un messaggio che spiega il motivo, con Elimina selezionati il messaggio la conta tra quelle non eliminate. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
         },
       ],
     },

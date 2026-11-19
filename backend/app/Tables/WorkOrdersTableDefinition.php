@@ -368,9 +368,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     /**
      * Allowed action keys for a single row (spec 0405, the legacy "Azioni"):
      * everything opens the commessa, so `view` gates them all; each tab of
-     * the menu keeps its own detail-tab gate. `delete` is never offered per
-     * row: the catalog keeps it only for the bulk delete, which the
-     * TableBulkDeleteService authorizes per row.
+     * the menu keeps its own detail-tab gate. `delete` follows the policy
+     * (permission + perimeter, user request 2026-11-19); a commessa with
+     * accounting documents still answers 409 on the delete itself.
      *
      * @return array<int, string>
      */
@@ -389,6 +389,10 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         if (Gate::forUser($actor)->allows('viewDocuments', $row)) {
             $allowed[] = 'documents';
+        }
+
+        if (Gate::forUser($actor)->allows('delete', $row)) {
+            $allowed[] = 'delete';
         }
 
         return $allowed;
