@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWatch, type Control, type UseFormSetValue } from 'react-hook-form'
+import { useFormContext, useWatch, type Control, type UseFormSetValue } from 'react-hook-form'
 import { ManagerSlotsField } from '@/components/form/manager-slots-field'
 import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
@@ -8,7 +8,7 @@ import { FormControl } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
-import { nextPrimaryReferentId } from '@/features/registries/primary-referent'
+import { nextPrimaryReferentId, nextSecondaryReferentId } from '@/features/registries/primary-referent'
 import { managerSlotLabels } from '@/features/shared/manager-position-label'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { SECTORS_FOR_SELECT_RESOURCE } from '@/features/sectors/for-select-api'
@@ -82,11 +82,20 @@ interface ReferentsFieldProps extends SelectedListFieldProps {
   getPrimaryReferentId: () => number | null
 }
 
-/** "Referenti": the anagrafica's contact people. Keeps the main referent in step (spec 0330 D-9). */
+/**
+ * "Referenti": the anagrafica's contact people. Keeps the main referent (spec
+ * 0330 D-9) and the secondary one (spec 0408 D-4) in step.
+ */
 export function RegistryReferentsField({ control, selected, setValue, getPrimaryReferentId }: ReferentsFieldProps) {
   const { t } = useTranslation()
-  const syncPrimaryReferent = (referentIds: number[]) =>
-    setValue('primary_referent_id', nextPrimaryReferentId(getPrimaryReferentId(), referentIds), { shouldDirty: true })
+  const { getValues } = useFormContext<RegistryFormValues>()
+  const syncReferentRoles = (referentIds: number[]) => {
+    const primaryId = nextPrimaryReferentId(getPrimaryReferentId(), referentIds)
+    setValue('primary_referent_id', primaryId, { shouldDirty: true })
+    setValue('secondary_referent_id', nextSecondaryReferentId(getValues('secondary_referent_id'), primaryId, referentIds), {
+      shouldDirty: true,
+    })
+  }
 
   return (
     <RelationMultiSelectField
@@ -102,19 +111,18 @@ export function RegistryReferentsField({ control, selected, setValue, getPrimary
       errorLabel={t('registries.form.referentsError')}
       removeLabel={t('registries.form.referentsRemove')}
       retryLabel={t('common.retry')}
-      onValueChange={syncPrimaryReferent}
+      onValueChange={syncReferentRoles}
     />
   )
 }
 
 const NO_REFERENT_IDS: number[] = []
 
-/** "Referente principale": one of the referents currently in the Referenti field (spec 0330 D-9). */
-export function RegistryPrimaryReferentField({ control, selected }: SelectedListFieldProps) {
-  const { t } = useTranslation()
+/** The referents currently in the Referenti field, labelled, in list order. */
+function useListedReferentOptions(control: Control<RegistryFormValues>, selected: RelationFieldRef[]) {
   const referentIds = useWatch({ control, name: 'referent_ids' }) ?? NO_REFERENT_IDS
   const labels = useForSelectLabels({ resource: REFERENTS_FOR_SELECT_RESOURCE, ids: referentIds })
-  const options = useMemo(
+  return useMemo(
     () =>
       referentIds.map((id) => ({
         id,
@@ -122,6 +130,20 @@ export function RegistryPrimaryReferentField({ control, selected }: SelectedList
       })),
     [referentIds, labels, selected],
   )
+}
+
+/** "Referente principale": one of the referents currently in the Referenti field (spec 0330 D-9). */
+export function RegistryPrimaryReferentField({ control, selected }: SelectedListFieldProps) {
+  const { t } = useTranslation()
+  const { getValues, setValue } = useFormContext<RegistryFormValues>()
+  const options = useListedReferentOptions(control, selected)
+  // Spec 0408 D-4: the secondary referent cannot also be the main one.
+  const choose = (next: number) => {
+    if (getValues('secondary_referent_id') === next) {
+      setValue('secondary_referent_id', null, { shouldDirty: true })
+    }
+    return next
+  }
 
   return (
     <MetaField
@@ -133,7 +155,7 @@ export function RegistryPrimaryReferentField({ control, selected }: SelectedList
       {({ field, disabled }) => (
         <Select
           value={field.value === null ? '' : String(field.value)}
-          onValueChange={(next) => field.onChange(Number(next))}
+          onValueChange={(next) => field.onChange(choose(Number(next)))}
           disabled={disabled || options.length === 0}
         >
           <FormControl>
@@ -142,6 +164,51 @@ export function RegistryPrimaryReferentField({ control, selected }: SelectedList
             </SelectTrigger>
           </FormControl>
           <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.id} value={String(option.id)}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </MetaField>
+  )
+}
+
+/** The "none" entry of the secondary referent select: Radix items need a non-empty value. */
+const NO_SECONDARY_REFERENT = 'none'
+
+/**
+ * "Referente secondario" (Referente 2, spec 0408 D-4): one of the referents in
+ * the Referenti field other than the main one, or none.
+ */
+export function RegistrySecondaryReferentField({ control, selected }: SelectedListFieldProps) {
+  const { t } = useTranslation()
+  const primaryId = useWatch({ control, name: 'primary_referent_id' })
+  const listed = useListedReferentOptions(control, selected)
+  const options = useMemo(() => listed.filter((option) => option.id !== primaryId), [listed, primaryId])
+
+  return (
+    <MetaField
+      control={control}
+      name="secondary_referent_id"
+      metaKey="secondary_referent_id"
+      label={t('registries.form.secondaryReferent')}
+    >
+      {({ field, disabled }) => (
+        <Select
+          value={field.value === null ? NO_SECONDARY_REFERENT : String(field.value)}
+          onValueChange={(next) => field.onChange(next === NO_SECONDARY_REFERENT ? null : Number(next))}
+          disabled={disabled || options.length === 0}
+        >
+          <FormControl>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={t('registries.form.secondaryReferentPlaceholder')} />
+            </SelectTrigger>
+          </FormControl>
+          <SelectContent>
+            <SelectItem value={NO_SECONDARY_REFERENT}>{t('registries.form.secondaryReferentNone')}</SelectItem>
             {options.map((option) => (
               <SelectItem key={option.id} value={String(option.id)}>
                 {option.label}

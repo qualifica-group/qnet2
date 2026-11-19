@@ -9,3 +9,16 @@ export function nextPrimaryReferentId(current: number | null, referentIds: numbe
   }
   return referentIds[0] ?? null
 }
+
+/**
+ * The secondary referent after the Referenti set or the main referent changed
+ * (spec 0408 D-4): mirrors the server (INV-2), never elected. Kept while still
+ * listed and not the main referent; otherwise none.
+ */
+export function nextSecondaryReferentId(
+  current: number | null,
+  primaryId: number | null,
+  referentIds: number[],
+): number | null {
+  return current !== null && current !== primaryId && referentIds.includes(current) ? current : null
+}

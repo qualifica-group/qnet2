@@ -63,6 +63,7 @@ final class RegistryMergeDefinition extends MergeDefinition
             new MergeField('commercial_id', MergeField::TYPE_RELATION, relationModel: Referent::class),
             new MergeField('reporter_id', MergeField::TYPE_RELATION, relationModel: Referent::class),
             new MergeField('primary_referent_id', MergeField::TYPE_RELATION, relationModel: Referent::class),
+            new MergeField('secondary_referent_id', MergeField::TYPE_RELATION, relationModel: Referent::class),
         ];
     }
 

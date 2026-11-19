@@ -57,17 +57,25 @@ export function PersonField({ person }: { person: ReferenceRef | null }) {
   )
 }
 
+/** The referent's role on the anagrafica, shown as a badge on its card. */
+type ReferentRole = 'primary' | 'secondary' | null
+
+const ROLE_BADGE_KEYS = {
+  primary: 'registries.detail.primaryReferentBadge',
+  secondary: 'registries.detail.secondaryReferentBadge',
+} as const
+
 /** Compact referente card: the linked name, their Tipo referente and their primary contacts. */
-function PersonCard({ referent, isPrimary }: { referent: RegistryReferentRef; isPrimary: boolean }) {
+function PersonCard({ referent, role }: { referent: RegistryReferentRef; role: ReferentRole }) {
   const { t } = useTranslation()
   return (
-    <div className={cn('relative flex min-w-0 flex-col rounded-lg border p-2.5', isPrimary && 'pr-16')}>
+    <div className={cn('relative flex min-w-0 flex-col rounded-lg border p-2.5', role !== null && 'pr-20')}>
       <RecordLink domain="referents" id={referent.id} className="text-sm font-medium">
         {referent.name}
       </RecordLink>
-      {isPrimary ? (
+      {role !== null ? (
         <Badge variant="secondary" className="absolute right-2 top-2.5">
-          {t('registries.detail.primaryReferentBadge')}
+          {t(ROLE_BADGE_KEYS[role])}
         </Badge>
       ) : null}
       <ReferentTypeLine type={referent.referent_type} />
@@ -80,12 +88,14 @@ interface RegistryReferentsProps {
   referents: RegistryReferentRef[]
   /** Spec 0330: the card of this referent carries the "Principale" badge. */
   primaryReferentId: number | null
+  /** Spec 0408: the card of this referent carries the "Secondario" badge. */
+  secondaryReferentId: number | null
 }
 
 /** Responsive card grid: one column on a narrow record, two from `@md`, three from `@3xl`. */
 const REFERENTS_GRID_CLASS = 'grid grid-cols-1 gap-2 @md:grid-cols-2 @3xl:grid-cols-3'
 
-export function RegistryReferents({ referents, primaryReferentId }: RegistryReferentsProps) {
+export function RegistryReferents({ referents, primaryReferentId, secondaryReferentId }: RegistryReferentsProps) {
   if (referents.length === 0) {
     return <DetailEmpty />
   }
@@ -93,8 +103,15 @@ export function RegistryReferents({ referents, primaryReferentId }: RegistryRefe
   return (
     <div className={REFERENTS_GRID_CLASS}>
       {referents.map((referent) => (
-        <PersonCard key={referent.id} referent={referent} isPrimary={referent.id === primaryReferentId} />
+        <PersonCard key={referent.id} referent={referent} role={roleOf(referent.id, primaryReferentId, secondaryReferentId)} />
       ))}
     </div>
   )
+}
+
+function roleOf(id: number, primaryId: number | null, secondaryId: number | null): ReferentRole {
+  if (id === primaryId) {
+    return 'primary'
+  }
+  return id === secondaryId ? 'secondary' : null
 }

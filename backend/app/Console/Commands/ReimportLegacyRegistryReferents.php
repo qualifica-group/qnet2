@@ -12,7 +12,8 @@ use Illuminate\Console\Command;
 
 /**
  * One-off: links to the anagrafiche already migrated "Referente 1" and "Referente 2" of
- * the legacy QNet and moves the principale off the Commerciale (spec 0398). Without
+ * the legacy QNet, moves the principale off the Commerciale (spec 0398) and makes
+ * Referente 2 the secondario (spec 0408). Without
  * `--apply` nothing is written and the Excel lists every change. The file holds
  * personal data: it stays on the server and is never logged.
  */
@@ -26,13 +27,15 @@ class ReimportLegacyRegistryReferents extends Command
 
     private const array PRIMARY_HEADER = ['legacy_id', 'qnet2_id', 'registry', 'old_primary', 'new_primary', 'reason'];
 
+    private const array SECONDARY_HEADER = ['legacy_id', 'qnet2_id', 'registry', 'old_secondary', 'new_secondary'];
+
     private const array SKIPPED_HEADER = ['legacy_id', 'qnet2_id', 'registry', 'reason'];
 
     protected $signature = 'migrations:reimport-registry-referents
         {--apply : Write the referents; without it the run is a simulation}
         {--output= : Path of the Excel report}';
 
-    protected $description = 'Link Referente 1/2 of the legacy QNet to the migrated anagrafiche and fix their principale';
+    protected $description = 'Link Referente 1/2 of the legacy QNet to the migrated anagrafiche as principale and secondario';
 
     public function handle(): int
     {
@@ -63,13 +66,14 @@ class ReimportLegacyRegistryReferents extends Command
         ReportSheetsWriter::write($path, [
             'Referenti collegati' => [self::LINKED_HEADER, ...$result['linked']],
             'Principali cambiati' => [self::PRIMARY_HEADER, ...$result['primaries']],
+            'Secondari impostati' => [self::SECONDARY_HEADER, ...$result['secondaries']],
             'Anagrafiche saltate' => [self::SKIPPED_HEADER, ...$result['skipped']],
         ]);
 
         $created = count(array_filter($result['linked'], static fn (array $row): bool => $row[6] === true));
         $this->table(
-            ['anagrafiche read', 'referents created', 'referents matched', 'principali changed', 'principali kept (changed by hand)'],
-            [[$result['read'], $created, count($result['linked']) - $created, count($result['primaries']), $result['kept_manual']]],
+            ['anagrafiche read', 'referents created', 'referents matched', 'principali changed', 'secondari set', 'kept (changed by hand)'],
+            [[$result['read'], $created, count($result['linked']) - $created, count($result['primaries']), count($result['secondaries']), $result['kept_manual']]],
         );
         $this->info($apply ? 'Referents written.' : 'Simulation: nothing was written.');
         $this->info("Report: {$path}");

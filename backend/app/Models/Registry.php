@@ -45,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'commercial_id',
     'reporter_id',
     'primary_referent_id',
+    'secondary_referent_id',
     'employee_count',
 ])]
 class Registry extends BaseModel
@@ -101,6 +102,15 @@ class Registry extends BaseModel
     public function primaryReferent(): BelongsTo
     {
         return $this->belongsTo(Referent::class, 'primary_referent_id');
+    }
+
+    /**
+     * Referente 2 (spec 0408, INV-2): one of `referents()` other than the
+     * principale, or null.
+     */
+    public function secondaryReferent(): BelongsTo
+    {
+        return $this->belongsTo(Referent::class, 'secondary_referent_id');
     }
 
     /**

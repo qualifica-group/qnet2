@@ -196,3 +196,52 @@ it('changes nothing when the legacy does not send the Referente 1/2 fields (AC-0
 
     expect($registry->fresh()->primary_referent_id)->toBe($commercial->id);
 });
+
+// ---------------------------------------------------------------------------
+// Spec 0408: Referente 2 becomes the anagrafica's secondario
+// ---------------------------------------------------------------------------
+
+it('makes Referente 2 the secondario, even behind a linked commercial, once (spec 0408 AC-006)', function () {
+    $commercial = referentsBackfillReferent('Marco', 'Baldi', 6169);
+    $orazio = referentsBackfillReferent('Claudio', 'Orazio', 16106);
+    $registry = referentsBackfillRegistry(13036, [$commercial, $orazio], $commercial, $commercial);
+    $record = referentsBackfillRecord(13036, [
+        ['slot' => 1, 'contact_id' => 16106, 'first_name' => 'Claudio', 'last_name' => 'Orazi', 'email' => 'info@oraziclaudio.it'],
+        ['slot' => 2, 'contact_id' => null, 'first_name' => 'PASQUALINA', 'last_name' => 'PAGANO', 'phone' => '3519073758'],
+    ], [6169]);
+
+    $path = runReferentsBackfill(true, [$record]);
+    $pagano = Referent::query()->where('name', 'PASQUALINA PAGANO')->firstOrFail();
+    $registry->refresh();
+
+    expect($registry->primary_referent_id)->toBe($orazio->id)
+        ->and($registry->secondary_referent_id)->toBe($pagano->id)
+        ->and(readLegacyRealignReport($path)['Secondari impostati'])->toBe([
+            ['legacy_id', 'qnet2_id', 'registry', 'old_secondary', 'new_secondary'],
+            [13036, $registry->id, 'Registry 13036', '', 'PASQUALINA PAGANO'],
+        ]);
+
+    $again = runReferentsBackfill(true, [$record]);
+
+    expect($registry->fresh()->secondary_referent_id)->toBe($pagano->id)
+        ->and(readLegacyRealignReport($again)['Secondari impostati'])->toHaveCount(1)
+        ->and(Referent::query()->count())->toBe(3);
+});
+
+it('keeps a secondario changed by hand (spec 0408 AC-006)', function () {
+    $mine = referentsBackfillReferent('Anna', 'Verdi', 17051);
+    $first = referentsBackfillReferent('Mario', 'Rossi', 17052);
+    $registry = referentsBackfillRegistry(68, [$first, $mine], $first);
+    DB::table('registries')->where('id', $registry->id)->update(['secondary_referent_id' => $mine->id]);
+    activity()->performedOn($registry)->event('updated')
+        ->withProperties(['old' => ['secondary_referent_id' => null], 'attributes' => ['secondary_referent_id' => $mine->id]])
+        ->log('updated');
+
+    runReferentsBackfill(true, [referentsBackfillRecord(68, [
+        ['slot' => 1, 'contact_id' => 17052, 'first_name' => 'Mario', 'last_name' => 'Rossi'],
+        ['slot' => 2, 'contact_id' => null, 'first_name' => 'Tiziana', 'last_name' => null],
+    ])]);
+
+    expect($registry->fresh()->secondary_referent_id)->toBe($mine->id)
+        ->and($registry->referents()->count())->toBe(3);
+});

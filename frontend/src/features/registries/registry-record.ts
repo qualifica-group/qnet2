@@ -18,6 +18,8 @@ export interface RegistryRecordValues {
   referents: RegistryReferentRef[]
   /** Spec 0330: the main referent, one of `referents`. */
   primary_referent: ReferenceRef | null
+  /** Spec 0408: Referente 2, one of `referents` other than the principale. */
+  secondary_referent: ReferenceRef | null
   commercial: ReferenceRef | null
   reporter: ReferenceRef | null
   supervisor: ReferenceRef | null
@@ -48,6 +50,7 @@ export function persistedRegistryValues(registry: RegistryDetail): RegistryRecor
     sectors: registry.sectors,
     referents: registry.referents,
     primary_referent: registry.primary_referent,
+    secondary_referent: registry.secondary_referent,
     commercial: registry.commercial,
     reporter: registry.reporter,
     supervisor: registry.supervisor,

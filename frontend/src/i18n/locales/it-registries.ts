@@ -38,6 +38,7 @@ export const registries = {
     details: 'Dettagli',
     // Badge sulla card del referente principale (spec 0330).
     primaryReferentBadge: 'Principale',
+    secondaryReferentBadge: 'Secondario',
     // Scheda in sola lettura dei documenti dell'anagrafica nei dettagli di
     // Opportunita', Offerte e Commesse (spec 0173).
     registryDocumentsTab: 'Documenti anagrafica',
@@ -81,6 +82,9 @@ export const registries = {
     referentsRemove: 'Rimuovi referente',
     primaryReferent: 'Referente principale',
     primaryReferentPlaceholder: 'Seleziona il referente principale…',
+    secondaryReferent: 'Referente secondario',
+    secondaryReferentPlaceholder: 'Seleziona il referente secondario…',
+    secondaryReferentNone: 'Nessuno',
     managers: 'Gestori account',
     managersPlaceholder: 'Seleziona gestori account…',
     managersSearch: 'Cerca gestori account…',
