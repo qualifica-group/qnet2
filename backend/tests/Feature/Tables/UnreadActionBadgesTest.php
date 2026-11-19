@@ -155,3 +155,36 @@ it('POST /api/attachments/read is authorized like the list', function () {
 
     expect(Attachment::query()->unreadBy($actor->id)->count())->toBe(1);
 });
+
+it('GET /api/notes meta.unread is the Note tab count: own and legacy notes never count, opening the thread clears it', function () {
+    $actor = unreadBadgeActor();
+    $registry = Registry::factory()->create();
+    $root = Note::factory()->create(['notable_type' => 'registry', 'notable_id' => $registry->id]);
+    Note::factory()->create(['notable_type' => 'registry', 'notable_id' => $registry->id, 'parent_id' => $root->id]);
+    Note::factory()->create(['notable_type' => 'registry', 'notable_id' => $registry->id, 'user_id' => $actor->id]);
+    Note::factory()->create(['notable_type' => 'registry', 'notable_id' => $registry->id, 'old_id' => 992]);
+    Sanctum::actingAs($actor);
+    $url = "/api/notes?entity_type=registries&entity_id={$registry->id}";
+
+    expect($this->getJson($url)->assertOk()->json('meta.unread'))->toBe(2);
+
+    $this->postJson('/api/notes/read', ['entity_type' => 'registries', 'entity_id' => $registry->id])->assertOk();
+
+    expect($this->getJson($url)->assertOk()->json('meta.unread'))->toBe(0);
+});
+
+it('GET /api/attachments meta.unread is the Documenti tab count, cleared by POST /api/attachments/read', function () {
+    $actor = unreadBadgeActor();
+    $registry = Registry::factory()->create();
+    unreadBadgeDocument($registry);
+    unreadBadgeDocument($registry, ['uploaded_by' => $actor->id]);
+    unreadBadgeDocument($registry, ['old_id' => 78]);
+    Sanctum::actingAs($actor);
+    $list = ['attachable_type' => 'registry', 'attachable_id' => $registry->id, 'collection' => 'documents'];
+
+    expect($this->getJson('/api/attachments?'.http_build_query($list))->assertOk()->json('meta.unread'))->toBe(1);
+
+    $this->postJson('/api/attachments/read', $list)->assertOk();
+
+    expect($this->getJson('/api/attachments?'.http_build_query($list))->assertOk()->json('meta.unread'))->toBe(0);
+});

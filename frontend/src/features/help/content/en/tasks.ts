@@ -371,7 +371,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The row carries the same actions as the detail (Complete, Reopen, Approve, Reject, Block, Unblock, Request update), plus **Duplicate** (opens the create form pre-filled with the same data — except attachments, sub-tasks, status, completion date and time entries, and with no parent task) and **Notes** (opens the task’s notes panel, with the count of the notes you have not read yet on the icon’s badge).',
+          text: 'The row carries the same actions as the detail (Complete, Reopen, Approve, Reject, Block, Unblock, Request update), plus **Duplicate** (opens the create form pre-filled with the same data — except attachments, sub-tasks, status, completion date and time entries, and with no parent task) and **Notes** (opens the task’s notes panel, found under **More actions**: the count of the notes you have not read yet shows on the **More actions** button and next to the entry).',
         },
         {
           type: 'paragraph',

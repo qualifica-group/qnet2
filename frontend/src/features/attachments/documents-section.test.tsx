@@ -61,9 +61,10 @@ function attachment(overrides: Partial<Attachment> = {}): Attachment {
   }
 }
 
-// REQUIREMENT CHANGED (spec 0343): the list carries the legacy link beside the documents.
+// REQUIREMENT CHANGED (spec 0343): the list carries the legacy link beside the documents;
+// (2026-11-19) and the unread count of the Documenti tab.
 function documentList(documents: Attachment[], legacyUrl: string | null = null): AttachmentList {
-  return { documents, legacyUrl }
+  return { documents, legacyUrl, unread: 0 }
 }
 
 function renderSection(ui: ReactElement) {
@@ -129,6 +130,17 @@ describe('DocumentsSection', () => {
 
     await screen.findByText('seen.pdf')
     await waitFor(() => expect(markAttachmentsReadMock).toHaveBeenCalledWith('opportunity', 42, 'documents'))
+  })
+
+  it('re-reads the list once something became read: the Documenti tab count travels with it', async () => {
+    listAttachmentsMock.mockResolvedValue(documentList([attachment({ id: 1, original_name: 'new.pdf' })]))
+    markAttachmentsReadMock.mockResolvedValueOnce(1)
+
+    renderSection(<DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />)
+
+    await screen.findByText('new.pdf')
+    await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(markAttachmentsReadMock).toHaveBeenCalledTimes(2))
   })
 
   it('shows the empty state when there are no documents', async () => {

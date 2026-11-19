@@ -186,6 +186,22 @@ describe('RowActions count badge', () => {
     expect(screen.getByRole('button', { name: 'documents' })).toBeInTheDocument()
     expect(screen.queryByText('0')).not.toBeInTheDocument()
   })
+
+  it('shows on the three-dots trigger the counts of the actions folded into the menu', () => {
+    const catalog = [...catalogOf(3), action('notes', 'action', 'notes_count'), action('documents', 'action', 'documents_count')]
+    renderActions(catalog, vi.fn(), { notes_count: 2, documents_count: 1 })
+
+    const trigger = screen.getByRole('button', { name: 'More actions (3)' })
+    expect(within(trigger).getByText('3')).toBeInTheDocument()
+  })
+
+  it('leaves the three-dots trigger plain when nothing in the menu has a count', () => {
+    const catalog = [...catalogOf(3), action('notes', 'action', 'notes_count')]
+    renderActions(catalog, vi.fn(), { notes_count: 0 })
+
+    const trigger = screen.getByRole('button', { name: 'More actions' })
+    expect(within(trigger).queryByText('0')).not.toBeInTheDocument()
+  })
 })
 
 describe('RowActions labeledActions (spec 0150 D-8)', () => {

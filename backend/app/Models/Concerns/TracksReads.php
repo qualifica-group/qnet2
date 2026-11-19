@@ -18,6 +18,8 @@ use Illuminate\Support\Str;
  */
 trait TracksReads
 {
+    private const int MARK_READ_ATTEMPTS = 3;
+
     /** The column holding the id of the user who wrote/uploaded the item. */
     abstract protected function readAuthorColumn(): string;
 
@@ -49,7 +51,12 @@ trait TracksReads
         $selection = (clone $items)->unreadBy($userId)
             ->selectRaw($model->qualifyColumn($model->getKeyName()).', ?', [$userId]);
 
-        return DB::table($model->readsTable())->insertOrIgnoreUsing([$model->getForeignKey(), 'user_id'], $selection->toBase());
+        // Two opens of the same list at once (two tabs, React StrictMode in
+        // dev) can deadlock on the gap locks of INSERT ... SELECT: retry.
+        return DB::transaction(
+            fn (): int => DB::table($model->readsTable())->insertOrIgnoreUsing([$model->getForeignKey(), 'user_id'], $selection->toBase()),
+            self::MARK_READ_ATTEMPTS,
+        );
     }
 
     private function readsTable(): string

@@ -92,7 +92,7 @@ final class NoteService
             $hasMore,
             $this->registry->quoteScopes($entityType, $record),
             $this->registry->mentionOutsideFor($user, $entityType, $record),
-            $this->threadTotal($roots),
+            $this->thread($roots)->unreadBy((int) $user->getKey())->count(),
         );
     }
 
@@ -105,13 +105,8 @@ final class NoteService
     public function markThreadRead(User $user, string $entityType, int $entityId, NoteQuoteScope $scope): int
     {
         $roots = $this->scopedRoots($this->authorizedRecord($user, $entityType, $entityId), $scope);
-        $rootIds = (clone $roots)->select('id');
 
-        $thread = Note::query()->where(fn (Builder $notes) => $notes
-            ->whereIn('id', $rootIds)
-            ->orWhereIn('parent_id', clone $rootIds));
-
-        return Note::markReadBy((int) $user->getKey(), $thread);
+        return Note::markReadBy((int) $user->getKey(), $this->thread($roots));
     }
 
     /**
@@ -337,18 +332,18 @@ final class NoteService
     }
 
     /**
-     * Every note the scoped thread shows — its roots plus their replies, the
-     * same set the grids' `notes_count` badge counts — independent of the
-     * page, so the collaboration tab can badge it without walking the cursor.
+     * $roots plus their replies: what the thread shows, marks read and counts.
      *
      * @param  Builder<Note>  $roots
+     * @return Builder<Note>
      */
-    private function threadTotal(Builder $roots): int
+    private function thread(Builder $roots): Builder
     {
-        $rootCount = (clone $roots)->count();
-        $replyCount = Note::query()->whereIn('parent_id', (clone $roots)->select('id'))->count();
+        $rootIds = (clone $roots)->select('id');
 
-        return $rootCount + $replyCount;
+        return Note::query()->where(fn (Builder $notes) => $notes
+            ->whereIn('id', $rootIds)
+            ->orWhereIn('parent_id', clone $rootIds));
     }
 
     private function applyCursor(Builder $query, ?NoteCursor $cursor): void

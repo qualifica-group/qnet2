@@ -374,7 +374,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Sulla riga trovi le stesse azioni del dettaglio (Completa, Riapri, Approva, Rifiuta, Blocca, Sblocca, Richiedi aggiornamento), più **Duplica** (apre il modulo di creazione precompilato con gli stessi dati — tranne allegati, sotto-task, stato, data di completamento e segnatempo, e senza il task padre) e **Note** (apre il pannello note del task, con il numero di note che non hai ancora letto nel badge sull\'icona).',
+          text: 'Sulla riga trovi le stesse azioni del dettaglio (Completa, Riapri, Approva, Rifiuta, Blocca, Sblocca, Richiedi aggiornamento), più **Duplica** (apre il modulo di creazione precompilato con gli stessi dati — tranne allegati, sotto-task, stato, data di completamento e segnatempo, e senza il task padre) e **Note** (apre il pannello note del task, si trova in **Altre azioni**: il numero di note che non hai ancora letto compare sul pulsante **Altre azioni** e accanto alla voce).',
         },
         {
           type: 'paragraph',

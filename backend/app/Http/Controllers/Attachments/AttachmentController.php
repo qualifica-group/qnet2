@@ -63,12 +63,14 @@ class AttachmentController extends BaseApiController
 
             $response = $this->ok(AttachmentResource::collection($this->ownerAttachments($request)));
 
-            // Spec 0343: where the owner's legacy documents can still be looked up.
             return $response->setData([...$response->getData(true), 'meta' => [
+                // Spec 0343: where the owner's legacy documents can still be looked up.
                 'legacy_url' => $this->legacyRecordLink->forOwner(
                     (string) $request->validated('attachable_type'),
                     (int) $request->validated('attachable_id'),
                 ),
+                // The Documenti tab's count badge: same rule as the grids' documents_count.
+                'unread' => $this->ownerAttachmentsQuery($request)->unreadBy((int) $request->user()->getKey())->count(),
             ]]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type DragEvent } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, Download, FolderOpen, Loader2, Upload, UploadCloud } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -9,7 +10,7 @@ import { AttachmentTile } from '@/features/attachments/attachment-tile'
 import { LegacyRecordNote } from '@/components/detail/legacy-record-note'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { useAttachments } from '@/features/attachments/use-attachments'
-import { markAttachmentsRead } from '@/features/attachments/api'
+import { attachmentsQueryKey, markAttachmentsRead } from '@/features/attachments/api'
 import { useMarkReadOnLoad } from '@/hooks/use-mark-read-on-load'
 import { useAttachmentArchiveDownload } from '@/features/attachments/use-attachment-binary'
 import type { Attachment } from '@/features/attachments/types'
@@ -50,9 +51,15 @@ export function DocumentsSection({
   const confirm = useConfirm()
   const { documents, legacyUrl, isLoading, loadedAt, isError, refetch, upload, isUploading, remove } =
     useAttachments(resource, id, collection)
-  // Seen = read: the grids' `documents` badge counts only unread files, and
-  // the hosts refresh it when the dialog closes.
-  useMarkReadOnLoad(loadedAt, () => markAttachmentsRead(resource, id, collection))
+  const queryClient = useQueryClient()
+  // Seen = read: the grids' `documents` badge counts only unread files (the
+  // hosts refresh it when the dialog closes) and so does the Documenti tab,
+  // whose count travels with the list: re-read it.
+  useMarkReadOnLoad(
+    loadedAt,
+    () => markAttachmentsRead(resource, id, collection),
+    () => void queryClient.invalidateQueries({ queryKey: attachmentsQueryKey(resource, id, collection) }),
+  )
   const { downloadAll, isDownloadingAll } = useAttachmentArchiveDownload(resource, id, collection)
   const [isDragging, setIsDragging] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)

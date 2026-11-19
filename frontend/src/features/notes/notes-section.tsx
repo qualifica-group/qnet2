@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,7 @@ import type { NoteQuoteRef, NoteQuoteScope } from '@/features/notes/types'
 import { NoteList } from '@/features/notes/note-list'
 import { useNotes } from '@/features/notes/use-notes'
 import { markNotesRead } from '@/features/notes/api'
+import { notesKeys } from '@/features/notes/query-keys'
 import { useMarkReadOnLoad } from '@/hooks/use-mark-read-on-load'
 
 /** Hoistato: un `[]` inline creerebbe un riferimento nuovo a ogni render. */
@@ -81,13 +83,18 @@ export function NotesSection({
     dataUpdatedAt,
     isPlaceholderData,
   } = useNotes(entityType, entityId, true, quoteScope)
+  const queryClient = useQueryClient()
   // Seen = read: the thread on screen stops counting in the grids' `notes`
-  // badge. The previous scope's placeholder page is not what the user asked
-  // to see, so it marks nothing.
+  // badge and in the Note tab's count, which every list of the record
+  // carries (`meta.unread`), so they are re-read. The previous scope's
+  // placeholder page is not what the user asked to see, so it marks nothing.
   useMarkReadOnLoad(
     isPlaceholderData ? 0 : dataUpdatedAt,
     () => markNotesRead(entityType, entityId, quoteScope),
-    onThreadChanged,
+    () => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists(entityType, entityId) })
+      onThreadChanged?.()
+    },
   )
 
   const roots = data?.pages.flatMap((page) => page.data) ?? []

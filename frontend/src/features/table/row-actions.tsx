@@ -192,6 +192,10 @@ function RowActions({
     return null
   }
 
+  // A count folded into the menu would be invisible on the row: the trigger carries their sum.
+  const overflowCount = overflow.reduce((sum, action) => sum + (resolveActionCount(action, effectiveRow) ?? 0), 0)
+  const moreActionsLabel = t('table.moreActions')
+
   const handleSelect = async (action: TableActionDefinition) => {
     if (action.confirm) {
       const confirmed = await confirm({
@@ -264,10 +268,12 @@ function RowActions({
             <Button
               variant="ghost"
               size="icon-xs"
-              aria-label={t('table.moreActions')}
+              aria-label={overflowCount > 0 ? `${moreActionsLabel} (${overflowCount})` : moreActionsLabel}
               disabled={busy}
+              className="relative"
             >
               <MoreHorizontal aria-hidden="true" />
+              {overflowCount > 0 ? <IconCountBadge count={overflowCount} aria-hidden="true" /> : null}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

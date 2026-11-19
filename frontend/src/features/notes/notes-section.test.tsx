@@ -345,7 +345,8 @@ describe('NotesSection — onThreadChanged (host notes_count)', () => {
       data: [makeNote({ id: 11, body: 'Unread root' })],
       meta: { next_cursor: null, has_more: false },
     })
-    markNotesReadMock.mockResolvedValue(1)
+    // The second mark (after the re-read) finds nothing new: the default 0.
+    markNotesReadMock.mockResolvedValueOnce(1)
     const onThreadChanged = vi.fn()
 
     renderSection(7, { onThreadChanged })
@@ -353,5 +354,9 @@ describe('NotesSection — onThreadChanged (host notes_count)', () => {
 
     await waitFor(() => expect(onThreadChanged).toHaveBeenCalledTimes(1))
     expect(markNotesReadMock).toHaveBeenCalledWith('request-management', 7, 'all')
+    // The Note tab's count (`meta.unread`) travels with the list: it is re-read once.
+    await waitFor(() => expect(fetchNotesMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(markNotesReadMock).toHaveBeenCalledTimes(2))
+    expect(onThreadChanged).toHaveBeenCalledTimes(1)
   })
 })
