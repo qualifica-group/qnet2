@@ -6,6 +6,7 @@ import type { ColDef, ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { TimeEntryDayEntriesTable } from '@/features/time-entries/days/time-entry-day-entries-table'
+import { buildTimeEntryColumns } from '@/features/time-entries/days/time-entry-entries-columns'
 import type { TimeEntry } from '@/features/time-entries/types'
 
 // Enterprise bootstrap is a module-load side effect irrelevant to this suite.
@@ -162,5 +163,46 @@ describe('TimeEntryDayEntriesTable row gating (AC-036)', () => {
     const menu = screen.getByRole('menu')
     expect(within(menu).getByText('Chiamata')).toBeInTheDocument()
     expect(within(menu).getByText('Ticket')).toBeInTheDocument()
+  })
+})
+
+describe('TimeEntryDayEntriesTable columns and title (user request 2026-11-19)', () => {
+  it('lets every data column be resized, keeping the actions column fixed and no column movable', () => {
+    const columns = buildTimeEntryColumns({
+      canWrite: true,
+      taskTypeOptions: [],
+      onEditEntry: vi.fn(),
+      onChangeType: vi.fn(),
+      onRequestDelete: vi.fn(),
+      t: (key) => key,
+    })
+
+    const resizable = Object.fromEntries(columns.map((column) => [column.colId, column.resizable]))
+    expect(resizable).toEqual({
+      actions: false,
+      title: true,
+      duration: true,
+      schedule: true,
+      task: true,
+      workOrder: true,
+      opportunity: true,
+      registry: true,
+    })
+    expect(columns.every((column) => column.suppressMovable === true)).toBe(true)
+    // `flex`/`width` would be re-pushed on a columnDefs rebuild and undo a drag.
+    expect(columns.some((column) => column.flex !== undefined)).toBe(false)
+  })
+
+  it('shows the full title in a tooltip, also when the entry cannot be opened', async () => {
+    const longTitle = 'Chiamata cliente per la revisione completa del preventivo trimestrale'
+    const Wrapper = wrapper()
+    render(
+      <TimeEntryDayEntriesTable canWrite={false} entries={[entry({ title: longTitle })]} onEditEntry={vi.fn()} />,
+      { wrapper: Wrapper },
+    )
+
+    fireEvent.focus(screen.getByRole('button', { name: longTitle }).parentElement!)
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(longTitle)
   })
 })

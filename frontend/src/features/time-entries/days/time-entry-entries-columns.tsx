@@ -2,8 +2,8 @@
 /**
  * Fixed `ColDef<TimeEntry>[]` of the day entries table (spec 0122 D-14): one
  * factory, no backend-driven schema (unlike the generic `DataTable`) — the
- * seven columns are frozen by the spec, so a plain array is the minimal
- * solution. The title/actions cell renderers live in
+ * column set is frozen by the spec, so a plain array is the minimal
+ * solution; only the widths are user-adjustable. The title/actions cell renderers live in
  * `time-entry-entry-cells.tsx` (engineering.md §6, 300-line soft limit).
  */
 
@@ -16,6 +16,9 @@ import type { TaskTypeForSelectItem } from '@/features/task-types/for-select-api
 import type { TimeEntry } from '@/features/time-entries/types'
 
 const EMPTY_VALUE = '—'
+
+/** Drag floor of the narrow Durata/Orario columns: below it their value no longer reads. */
+const MIN_COMPACT_COLUMN_WIDTH = 80
 
 function EmptyCell() {
   return <span className="text-muted-foreground">{EMPTY_VALUE}</span>
@@ -48,11 +51,17 @@ interface BuildTimeEntryColumnsOptions {
   t: (key: string) => string
 }
 
-/** No column is sortable/filterable/resizable/movable (D-14): the schema is frozen. */
-const FROZEN_COLUMN_DEFAULTS: Partial<ColDef<TimeEntry>> = {
+/**
+ * Columns resize like every other grid (D-14, user request 2026-11-19) but are
+ * not sortable, filterable or movable: the set and order stay frozen. Sizes are
+ * `initialWidth`/`initialFlex`, not `width`/`flex`: the plain props are re-pushed
+ * on every `columnDefs` rebuild and would undo the width the user just dragged
+ * (same reason as the shared `DataTable` defaults).
+ */
+const COLUMN_DEFAULTS: Partial<ColDef<TimeEntry>> = {
   sortable: false,
   filter: false,
-  resizable: false,
+  resizable: true,
   suppressMovable: true,
   suppressHeaderMenuButton: true,
   suppressHeaderFilterButton: true,
@@ -68,11 +77,12 @@ export function buildTimeEntryColumns({
 }: BuildTimeEntryColumnsOptions): ColDef<TimeEntry>[] {
   return [
     {
-      ...FROZEN_COLUMN_DEFAULTS,
+      ...COLUMN_DEFAULTS,
       colId: 'actions',
       headerName: t('timeEntries.table.actions'),
       // Leading column pinned left, like the shared `DataTable` actions column.
       pinned: 'left',
+      resizable: false,
       width: 72,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) =>
         params.data ? (
@@ -88,10 +98,10 @@ export function buildTimeEntryColumns({
         ) : null,
     },
     {
-      ...FROZEN_COLUMN_DEFAULTS,
+      ...COLUMN_DEFAULTS,
       colId: 'title',
       headerName: t('timeEntries.table.title'),
-      flex: 2,
+      initialFlex: 2,
       minWidth: 220,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) =>
         params.data ? (
@@ -105,10 +115,11 @@ export function buildTimeEntryColumns({
         ) : null,
     },
     {
-      ...FROZEN_COLUMN_DEFAULTS,
+      ...COLUMN_DEFAULTS,
       colId: 'duration',
       headerName: t('timeEntries.table.duration'),
-      width: 100,
+      initialWidth: 100,
+      minWidth: MIN_COMPACT_COLUMN_WIDTH,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) =>
         params.data ? (
           <div className="flex h-full items-center tabular-nums">
@@ -117,10 +128,11 @@ export function buildTimeEntryColumns({
         ) : null,
     },
     {
-      ...FROZEN_COLUMN_DEFAULTS,
+      ...COLUMN_DEFAULTS,
       colId: 'schedule',
       headerName: t('timeEntries.table.schedule'),
-      width: 130,
+      initialWidth: 130,
+      minWidth: MIN_COMPACT_COLUMN_WIDTH,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) =>
         params.data ? (
           <div className="flex h-full items-center tabular-nums text-muted-foreground">
@@ -129,10 +141,10 @@ export function buildTimeEntryColumns({
         ) : null,
     },
     {
-      ...FROZEN_COLUMN_DEFAULTS,
+      ...COLUMN_DEFAULTS,
       colId: 'task',
       headerName: t('timeEntries.table.task'),
-      flex: 1,
+      initialFlex: 1,
       minWidth: 140,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) => {
         const task = params.data?.task
@@ -160,10 +172,10 @@ export function buildTimeEntryColumns({
       },
     },
     {
-      ...FROZEN_COLUMN_DEFAULTS,
+      ...COLUMN_DEFAULTS,
       colId: 'workOrder',
       headerName: t('timeEntries.table.workOrder'),
-      flex: 1,
+      initialFlex: 1,
       minWidth: 140,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) => {
         const workOrder = params.data?.work_order
@@ -175,10 +187,10 @@ export function buildTimeEntryColumns({
       },
     },
     {
-      ...FROZEN_COLUMN_DEFAULTS,
+      ...COLUMN_DEFAULTS,
       colId: 'opportunity',
       headerName: t('timeEntries.table.opportunity'),
-      flex: 1,
+      initialFlex: 1,
       minWidth: 140,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) => {
         const opportunity = params.data?.opportunity
@@ -190,10 +202,10 @@ export function buildTimeEntryColumns({
       },
     },
     {
-      ...FROZEN_COLUMN_DEFAULTS,
+      ...COLUMN_DEFAULTS,
       colId: 'registry',
       headerName: t('timeEntries.table.registry'),
-      flex: 1,
+      initialFlex: 1,
       minWidth: 140,
       cellRenderer: (params: ICellRendererParams<TimeEntry>) => {
         const registry = params.data?.registry

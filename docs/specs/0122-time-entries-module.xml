@@ -168,6 +168,9 @@
       TABELLA VOCI DEL GIORNO: AG Grid client-side a colonne fisse (Azioni, Titolo con icona tipo
       e note, Durata, Orario, Task, Commessa, Opportunita', Cliente); cambio tipo inline dal
       pulsante icona. Nessuna personalizzazione/persistenza colonne.
+      AGGIORNAMENTO 2026-11-19 (richiesta utente): le colonne dati sono ridimensionabili come nelle
+      altre griglie (Azioni resta fissa; niente ordinamento, filtro, spostamento ne' persistenza
+      delle larghezze); il Titolo mostra un tooltip con il testo intero al passaggio del mouse.
     </decision>
     <decision id="D-15">
       COLLISIONE 0121: il montaggio della sezione Segnatempo in `features/tasks/task-detail.tsx`

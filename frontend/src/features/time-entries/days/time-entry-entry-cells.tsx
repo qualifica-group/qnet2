@@ -1,6 +1,6 @@
 /**
  * The two richer cell renderers of the entries table (spec 0122 D-14): the
- * title cell (type-change dropdown + title + notes) and the actions cell
+ * title cell (type-change dropdown + title with full-text tooltip + notes) and the actions cell
  * (Apri/Elimina menu: the detail edits in place, spec 0226). Split out of
  * `time-entry-entries-columns.tsx` to keep both files under the 300-line soft
  * limit (`engineering.md` §6).
@@ -83,14 +83,24 @@ export function EntryTitleCell({ entry, canWrite, taskTypeOptions, onChangeType,
       </DropdownMenu>
       {/* Single line to fit the shared compact row height: the notes trail the title, muted. */}
       <div className="flex min-w-0 items-baseline gap-1.5">
-        <button
-          className="min-w-0 shrink truncate text-left font-medium enabled:hover:underline disabled:cursor-not-allowed"
-          disabled={!canOpenEntry}
-          onClick={() => onEditEntry(entry.id)}
-          type="button"
-        >
-          {entry.title}
-        </button>
+        {/* The tooltip hangs on a wrapper: a disabled button fires no pointer events (Radix guidance). */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex min-w-0 shrink has-[button:disabled]:cursor-not-allowed">
+              <button
+                className="min-w-0 truncate text-left font-medium enabled:hover:underline disabled:pointer-events-none"
+                disabled={!canOpenEntry}
+                onClick={() => onEditEntry(entry.id)}
+                type="button"
+              >
+                {entry.title}
+              </button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm" side="top">
+            {entry.title}
+          </TooltipContent>
+        </Tooltip>
         {entry.notes ? <span className="min-w-0 flex-1 truncate text-muted-foreground">{entry.notes}</span> : null}
       </div>
     </div>

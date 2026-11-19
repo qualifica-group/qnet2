@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Segnatempo: colonne ridimensionabili e tooltip sul titolo (spec 0122 D-14 aggiornata, 2026-11-19) — VERDE, NON PROVATO NEL BROWSER
+
+- Richiesta utente: colonne della tabella voci del giorno allungabili "come le altre"; tooltip con il titolo intero al passaggio del mouse.
+- `features/time-entries/days/time-entry-entries-columns.tsx`: `COLUMN_DEFAULTS` (ex `FROZEN_COLUMN_DEFAULTS`) con `resizable: true`; Azioni resta `resizable: false`; dimensioni in `initialWidth`/`initialFlex` (con `width`/`flex` un rebuild dei `columnDefs` annullava il trascinamento, stessa ragione di `DataTable`); `MIN_COMPACT_COLUMN_WIDTH = 80` su Durata/Orario. Ancora niente ordinamento/filtro/spostamento ne' persistenza larghezze.
+- `time-entry-entry-cells.tsx`: tooltip sul titolo agganciato a uno `span` (il bottone disabilitato non riceve eventi puntatore), bottone `disabled:pointer-events-none`.
+- Test in `time-entry-day-entries-table.test.tsx`; guide IT/EN `time-entries` e manuale Claude Docs (sezione Segnatempo) aggiornati; PDF del manuale da rigenerare.
+
 ## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
 
 - Riferimento legacy: `q-net/src/app/features/notifications/notifications-panel.tsx` (avatar + nome `assigned_by` accanto alla data).
