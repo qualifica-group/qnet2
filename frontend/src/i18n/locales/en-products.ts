@@ -139,7 +139,7 @@ export const productCategories = {
     isSelectable: 'Selectable',
     requiresContactTransfer: 'Contact transfer before the contract',
     requiresContactTransferHint:
-      'When on, the contract of an offer of this category cannot be validated until its contact has been transferred with Transfer contact. The offer moves to Won and its contract is born as usual.',
+      'When on, the contract of an offer of this category cannot be validated until the offer has been transferred with Transfer contact or Transfer to another registry. The offer moves to Won and its contract is born as usual.',
     requiresContactTransferInfo:
       'It applies to this category only, not to its subcategories. The check runs only on Validate contract, nowhere else. Until the contract is validated, Transfer contact stays available even if the contract has already been worked on.',
     requiresContactTransferInfoLabel: 'More info about Contact transfer before the contract',

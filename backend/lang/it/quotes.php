@@ -9,7 +9,7 @@ return [
     'offer_line_required_for_status' => "Non puoi portare l'offerta a questo stato senza almeno una riga prodotto.",
     'offer_line_required_to_validate_contract' => "Non puoi validare il contratto senza almeno una riga prodotto nell'offerta.",
     // Spec 0404, C-D2.
-    'contact_transfer_required_for_contract' => 'Questa categoria richiede il trasferimento del contatto prima di validare il contratto: usa Trasferisci contatto, poi valida.',
+    'contact_transfer_required_for_contract' => 'Questa categoria richiede un trasferimento prima di validare il contratto: usa Trasferisci contatto o Trasferisci ad altra anagrafica, poi valida.',
     // Spec 0404, B-D6.
     'registry_transfer' => [
         'same_registry' => "L'offerta è già di questa anagrafica.",

@@ -281,7 +281,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Se una categoria dell'opportunità ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), l'offerta passa a **Vinto** e il contratto nasce come sempre, ma il contratto non si può validare finché il contatto non è stato trasferito con **Trasferisci contatto** in Gestione Richieste: **Valida contratto** viene rifiutato con \"Questa categoria richiede il trasferimento del contatto prima di validare il contratto\".",
+          text: "Se una categoria dell'opportunità ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), l'offerta passa a **Vinto** e il contratto nasce come sempre, ma il contratto non si può validare finché l'offerta non è stata trasferita con **Trasferisci contatto** (in Gestione Richieste) o con **Trasferisci ad altra anagrafica**: **Valida contratto** viene rifiutato con \"Questa categoria richiede un trasferimento prima di validare il contratto\".",
         },
       ],
     },

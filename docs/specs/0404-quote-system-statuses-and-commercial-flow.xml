@@ -160,6 +160,9 @@
          disponibile con contratto non lavorato oppure, se l'obbligo e' ancora dovuto, finche' il contratto non e'
          validato (evita lo stallo contratto lavorato-non trasferibile-non validabile); altrimenti flag
          `transfer_contact` false e POST /request-management/transfer 409 `transfer_blocked_by_contract`.
+         REV. 2026-11-20 bis (decisione utente, offerta 30802): soddisfa l'obbligo anche "Trasferisci ad altra
+         anagrafica" (evento `registry_transferred` sull'offerta, `QuoteRegistryTransferNotice::exists`), oltre a
+         `is_transferred`. Messaggio: "Questa categoria richiede un trasferimento prima di validare il contratto".
     C-D3 Esempio d'uso: categoria "Orientamento specialistico" (configurata dall'utente, non dal seed).
     C-D4 [ESECUZIONE 2026-11-16] Il flag e' PER CATEGORIA (come `is_selectable`), non della radice: "Orientamento
          specialistico" (id 26) e' figlia di APL insieme a Tirocinio/Apprendistato/... che non hanno l'obbligo. Vale solo

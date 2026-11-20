@@ -13,6 +13,7 @@ use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\Quotes\QuoteRegistryTransferService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -116,6 +117,17 @@ it('AC-016 rev.: validating the contract is refused with 409 until the contact i
     $quote->forceFill(['is_transferred' => true])->saveQuietly();
 
     $this->postJson("/api/contracts/{$contract->id}/validate")->assertOk();
+    expect($contract->fresh()->validated_at)->not->toBeNull();
+});
+
+it('AC-016 rev.: a transfer to another anagrafica also satisfies the obligation (user decision 2026-11-20)', function () {
+    $quote = contactTransferQuote(['requires_contact_transfer_before_contract' => true]);
+    $contract = contactTransferWonContract($quote);
+    activity($quote->getTable())->performedOn($quote)->event(QuoteRegistryTransferService::EVENT)->log('Quote transferred to another registry');
+    Sanctum::actingAs(contactTransferValidator());
+
+    $this->postJson("/api/contracts/{$contract->id}/validate")->assertOk();
+
     expect($contract->fresh()->validated_at)->not->toBeNull();
 });
 

@@ -140,7 +140,7 @@ export const productCategories = {
     isSelectable: 'Selezionabile',
     requiresContactTransfer: 'Trasferimento contatto prima del contratto',
     requiresContactTransferHint:
-      "Se attivo, il contratto di un'offerta di questa categoria non si può validare finché il contatto non è stato trasferito con Trasferisci contatto. L'offerta passa a Vinto e il contratto nasce come sempre.",
+      "Se attivo, il contratto di un'offerta di questa categoria non si può validare finché l'offerta non è stata trasferita con Trasferisci contatto o Trasferisci ad altra anagrafica. L'offerta passa a Vinto e il contratto nasce come sempre.",
     requiresContactTransferInfo:
       "Vale solo per questa categoria, non per le sue sottocategorie. Il controllo scatta soltanto su Valida contratto, in nessun altro punto. Finché il contratto non è validato, Trasferisci contatto resta disponibile anche se il contratto è già stato lavorato.",
     requiresContactTransferInfoLabel: 'Maggiori informazioni su Trasferimento contatto prima del contratto',

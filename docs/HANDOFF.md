@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Back Office: permesso "Trasferisci ad altra anagrafica" sulle offerte (decisione utente 2026-11-20) — VERDE MIRATO, NON COMMITTATO
+## Back Office: permesso "Trasferisci ad altra anagrafica" sulle offerte (decisione utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING
 
 - Nuova grant `quotes_registry_transfer` => `quotes.transferRegistry` in `DepartmentPermissionGrants`, aggiunta a `DepartmentGrantSets::BACK_OFFICE` (il senior la eredita). Commerciale invariato.
 - Test: `tests/Feature/Seeding/QualificaDepartmentRoleSeederTest.php` (asserzioni operatore/senior Back Office true, Commerciale false). Pint ok.
@@ -11,6 +11,7 @@
 
 ## Obbligo trasferimento contatto solo su "Valida contratto" + trasferimenti con contratto non lavorato (spec 0404 C rev., decisioni utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING
 
+- Rev. bis (offerta 30802, committata su staging): l'obbligo e' soddisfatto anche da "Trasferisci ad altra anagrafica" (`ContactTransferBeforeContractRule::owesTransfer` legge `QuoteRegistryTransferNotice::exists`, evento `registry_transferred`).
 - Obbligo categoria `requires_contact_transfer_before_contract`: tolto da `QuoteWorkflowStatusWriter`; ora solo in `ContractActionService::validate` -> `ContactTransferBeforeContractRule::assertValidatable` (409, messaggio `quotes.contact_transfer_required_for_contract` riscritto). Vinto sempre libero.
 - Regola unica dei trasferimenti: `App\Services\Quotes\QuoteTransferAvailability` (`allowsRegistryTransfer`: nessun contratto o non lavorato; `allowsContactTransfer`: idem, piu' contratto non validato con obbligo ancora dovuto). Usata da: flag `transfer_registry` (QuotesAuthorization, RequestManagementAuthorization), flag `transfer_contact` (RequestManagementAuthorization), `QuoteRegistryTransferService`, `RequestTransferService` (409 `request-management.transfer_blocked_by_contract`, tutto o niente).
 - FE: dialog Valida e hook trasferimento (singolo e massivo) usano `refusedActionMessage` (mostrano il motivo del 409). Testi flag categoria e guide in-app IT/EN aggiornati (categorie, offerte, contratti, Gestione Richieste).

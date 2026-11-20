@@ -281,7 +281,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'When a category of the opportunity has **Contact transfer before the contract** (for example **Orientamento specialistico**), the quote moves to **Won** and its contract is born as usual, but the contract cannot be validated until its contact has been transferred with **Transfer contact** in Gestione Richieste: **Validate contract** is refused with "This category requires the contact transfer before the contract is validated".',
+          text: 'When a category of the opportunity has **Contact transfer before the contract** (for example **Orientamento specialistico**), the quote moves to **Won** and its contract is born as usual, but the contract cannot be validated until the quote has been transferred with **Transfer contact** (in Gestione Richieste) or with **Transfer to another registry**: **Validate contract** is refused with "This category requires a transfer before the contract is validated".',
         },
       ],
     },
