@@ -121,13 +121,16 @@ export function buildUpdatePayload(
   if (!sameIdSet(values.sector_ids, original.sector_ids)) {
     payload.sector_ids = values.sector_ids
   }
-  if (!sameIdSet(values.referent_ids, original.referent_ids)) {
+  const referentsChanged = !sameIdSet(values.referent_ids, original.referent_ids)
+  if (referentsChanged) {
     payload.referent_ids = values.referent_ids
   }
   if (values.primary_referent_id !== original.primary_referent_id) {
     payload.primary_referent_id = values.primary_referent_id
   }
-  if (values.secondary_referent_id !== original.secondary_referent_id) {
+  // With the referents changed the form already decided the secondary (spec
+  // 0408 D-9), even an empty one: sent so the server does not fill it again.
+  if (referentsChanged || values.secondary_referent_id !== original.secondary_referent_id) {
     payload.secondary_referent_id = values.secondary_referent_id
   }
   // Manager slots are ORDER- and GAP-sensitive (a slot's G.A. position is

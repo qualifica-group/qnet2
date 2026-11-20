@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Anagrafica: il secondo referente aggiunto diventa da solo "Referente secondario" (spec 0408 D-9, richiesta utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU MAIN
+
+- Regola: secondario vuoto + referente APPENA AGGIUNTO diverso dal principale -> diventa il secondario (primo in ordine di invio).
+  I gia' collegati non vengono promossi (legacy senza Referente 2 resta vuoto). Un `secondary_referent_id` inviato (anche null) vince.
+- Backend: `PrimaryReferentElector::elect($registry, $preferredId, array $addedReferentIds = [])` + `firstAddedOtherThan()`;
+  `RegistryService::syncReferents()` (estratto da `syncPivots`, restituisce gli attached in ordine di invio); create usa
+  `CreateRegistryData::autoFillSecondaryReferent` (true solo da `fromValidated` senza la chiave: import/lead/richieste no),
+  update usa `! secondaryReferentIdSubmitted`. Merge e cancellazione referente invariati.
+- Frontend: `nextSecondaryReferentId(current, primaryId, referentIds, previousReferentIds)` (4° parametro obbligatorio);
+  `RegistryReferentsField` passa la lista renderizzata (prima del cambio). `buildUpdatePayload` invia `secondary_referent_id`
+  anche quando cambiano i referenti (REQUIREMENT CHANGED in `registry-form-payload.test.ts`), cosi' il server non lo riempie
+  dopo che l'utente l'ha rimesso a Nessuno.
+- Test: Pest Registries+Referents+Migration+Merge+WorkOrderClientInfo 1264 verdi (+2 in `RegistrySecondaryReferentTest`,
+  +1 in `RegistriesSourceImportTest`); Vitest registries 157 + help 162; ESLint, Pint, `tsc -b --force` puliti.
+- Guide in-app `registries` IT/EN aggiornate. Manuale Claude Docs: sezione Anagrafiche > Referenti (vedi riepilogo sessione).
+- Da verificare nel browser: aggiungere il 2° referente nel form e nella riga in place del dettaglio.
+
 ## Commesse, Opportunita', Offerte: la Categoria madre di default non nasconde piu' i record dove si e' nel team (task 431114, spec 0374 rev.6, 2026-11-20) — VERDE MIRATO, COMMITTATO SU MAIN E MERGIATO IN STAGING
 
 - Segnalazione (task 431114, aperto da Francesco Di Maio id 118): COM-20281 (id 16535, HACCP) assegnata da Deborah Farina come

@@ -76,6 +76,8 @@ export function RegistrySectorsField({ control, selected }: SelectedListFieldPro
   )
 }
 
+const NO_REFERENT_IDS: number[] = []
+
 interface ReferentsFieldProps extends SelectedListFieldProps {
   setValue: UseFormSetValue<RegistryFormValues>
   /** The current main referent, read at change time so the editor never goes stale. */
@@ -89,12 +91,16 @@ interface ReferentsFieldProps extends SelectedListFieldProps {
 export function RegistryReferentsField({ control, selected, setValue, getPrimaryReferentId }: ReferentsFieldProps) {
   const { t } = useTranslation()
   const { getValues } = useFormContext<RegistryFormValues>()
+  // The list as rendered, i.e. before this change: tells which referent was just added (spec 0408 D-9).
+  const previousReferentIds = useWatch({ control, name: 'referent_ids' }) ?? NO_REFERENT_IDS
   const syncReferentRoles = (referentIds: number[]) => {
     const primaryId = nextPrimaryReferentId(getPrimaryReferentId(), referentIds)
     setValue('primary_referent_id', primaryId, { shouldDirty: true })
-    setValue('secondary_referent_id', nextSecondaryReferentId(getValues('secondary_referent_id'), primaryId, referentIds), {
-      shouldDirty: true,
-    })
+    setValue(
+      'secondary_referent_id',
+      nextSecondaryReferentId(getValues('secondary_referent_id'), primaryId, referentIds, previousReferentIds),
+      { shouldDirty: true },
+    )
   }
 
   return (
@@ -115,8 +121,6 @@ export function RegistryReferentsField({ control, selected, setValue, getPrimary
     />
   )
 }
-
-const NO_REFERENT_IDS: number[] = []
 
 /** The referents currently in the Referenti field, labelled, in list order. */
 function useListedReferentOptions(control: Control<RegistryFormValues>, selected: RelationFieldRef[]) {

@@ -12,13 +12,18 @@ export function nextPrimaryReferentId(current: number | null, referentIds: numbe
 
 /**
  * The secondary referent after the Referenti set or the main referent changed
- * (spec 0408 D-4): mirrors the server (INV-2), never elected. Kept while still
- * listed and not the main referent; otherwise none.
+ * (spec 0408 D-4, D-9): mirrors the server (INV-2). Kept while still listed and
+ * not the main referent; when empty, the first referent just added to the list
+ * that is not the main one; otherwise none.
  */
 export function nextSecondaryReferentId(
   current: number | null,
   primaryId: number | null,
   referentIds: number[],
+  previousReferentIds: number[],
 ): number | null {
-  return current !== null && current !== primaryId && referentIds.includes(current) ? current : null
+  if (current !== null && current !== primaryId && referentIds.includes(current)) {
+    return current
+  }
+  return referentIds.find((id) => id !== primaryId && !previousReferentIds.includes(id)) ?? null
 }

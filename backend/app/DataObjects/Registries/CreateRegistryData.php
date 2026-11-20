@@ -47,6 +47,9 @@ final readonly class CreateRegistryData
         // Appended (spec 0417): partner commerciale, a Referent like the commercial.
         public ?int $commercialPartnerId = null,
         public ?int $secondaryReferentId = null,
+        // Spec 0408 D-9: fill an empty secondario from the referents. Only the
+        // HTTP payload that omits the key opts in; imports set their roles.
+        public bool $autoFillSecondaryReferent = false,
     ) {}
 
     /**
@@ -77,6 +80,7 @@ final readonly class CreateRegistryData
             generalNotes: $data['general_notes'] ?? null,
             primaryReferentId: isset($data['primary_referent_id']) ? (int) $data['primary_referent_id'] : null,
             secondaryReferentId: isset($data['secondary_referent_id']) ? (int) $data['secondary_referent_id'] : null,
+            autoFillSecondaryReferent: ! array_key_exists('secondary_referent_id', $data),
         );
     }
 

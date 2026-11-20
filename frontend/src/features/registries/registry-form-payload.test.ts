@@ -184,10 +184,10 @@ describe('buildUpdatePayload', () => {
         original(),
         individualDraft(),
       ),
-    ).toEqual({ referent_ids: [20, 21], primary_referent_id: 21 })
+    ).toEqual({ referent_ids: [20, 21], primary_referent_id: 21, secondary_referent_id: null })
     expect(
       buildUpdatePayload({ ...formValues, referent_ids: [20, 21] }, original(), individualDraft()),
-    ).toEqual({ referent_ids: [20, 21] })
+    ).toEqual({ referent_ids: [20, 21], secondary_referent_id: null })
   })
 
   it('sends only general_notes when they alone changed, null once emptied (spec 0207)', () => {

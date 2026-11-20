@@ -160,3 +160,45 @@ it('AC-004: a non-editable secondary_referent_id is refused', function () {
 
     expect($registry->fresh()->secondary_referent_id)->toBeNull();
 });
+
+it('D-9: create without a secondario takes the second referent; an explicit null is kept', function () {
+    [$a, $b, $c] = Referent::factory()->count(3)->create();
+    Sanctum::actingAs(secondaryReferentActor());
+    // Each registry needs its own phone number (unique across records).
+    $payload = fn (string $phone, array $extra = []): array => [
+        'is_supplier' => false,
+        'referent_ids' => [$a->id, $b->id, $c->id],
+        'personal_data' => minimalRegistryProfilePayload(['contacts' => [['type' => 'phone', 'value' => $phone, 'is_primary' => true]]]),
+        ...$extra,
+    ];
+
+    $this->postJson('/api/registries', $payload('+39 02 1110001'))->assertCreated()
+        ->assertJsonPath('data.primary_referent_id', $a->id)
+        ->assertJsonPath('data.secondary_referent_id', $b->id);
+    $this->postJson('/api/registries', $payload('+39 02 1110002', ['primary_referent_id' => $b->id]))->assertCreated()
+        ->assertJsonPath('data.primary_referent_id', $b->id)
+        ->assertJsonPath('data.secondary_referent_id', $a->id);
+    $this->postJson('/api/registries', $payload('+39 02 1110003', ['secondary_referent_id' => null]))->assertCreated()
+        ->assertJsonPath('data.secondary_referent_id', null);
+    $this->postJson('/api/registries', $payload('+39 02 1110004', ['referent_ids' => [$a->id]]))->assertCreated()
+        ->assertJsonPath('data.primary_referent_id', $a->id)
+        ->assertJsonPath('data.secondary_referent_id', null);
+});
+
+it('D-9: adding a referent fills an empty secondario, unless the request sets it', function () {
+    [$a, $b, $c] = Referent::factory()->count(3)->create();
+    $filled = registryWithReferentRoles([$a->id], $a->id, null);
+    $explicit = registryWithReferentRoles([$a->id], $a->id, null);
+    $legacy = registryWithReferentRoles([$a->id, $b->id], $a->id, null);
+    Sanctum::actingAs(secondaryReferentActor());
+
+    $this->patchJson("/api/registries/{$filled->id}", ['referent_ids' => [$a->id, $b->id]])
+        ->assertOk()->assertJsonPath('data.secondary_referent_id', $b->id);
+    $this->patchJson("/api/registries/{$explicit->id}", ['referent_ids' => [$a->id, $b->id], 'secondary_referent_id' => null])
+        ->assertOk()->assertJsonPath('data.secondary_referent_id', null);
+    // Only a referent added by this write is a candidate: B, already linked, is not promoted.
+    $this->patchJson("/api/registries/{$legacy->id}", ['general_notes' => 'x'])
+        ->assertOk()->assertJsonPath('data.secondary_referent_id', null);
+    $this->patchJson("/api/registries/{$legacy->id}", ['referent_ids' => [$a->id, $b->id, $c->id]])
+        ->assertOk()->assertJsonPath('data.secondary_referent_id', $c->id);
+});

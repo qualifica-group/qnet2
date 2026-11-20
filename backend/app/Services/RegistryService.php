@@ -109,8 +109,13 @@ class RegistryService
             $registry = Registry::create($attributes);
 
             $this->profileWriter->write($registry, $profile);
+            $addedReferentIds = $this->syncReferents($registry, $data);
             $attachedManagers = $this->syncPivots($registry, $data);
-            $this->primaryReferentElector->elect($registry, $data->primaryReferentId);
+            $this->primaryReferentElector->elect(
+                $registry,
+                $data->primaryReferentId,
+                $data->autoFillSecondaryReferent ? $addedReferentIds : [],
+            );
             $this->normalizeQualifiedSupplier($registry);
 
             // spec 0081: notified after the name is derived from the card, so
@@ -157,12 +162,16 @@ class RegistryService
             $newSupervisorId = $registry->wasChanged('supervisor_id') ? $registry->supervisor_id : null;
 
             $this->profileWriter->write($registry, $profile);
+            $addedReferentIds = $this->syncReferents($registry, $data);
             $attachedManagers = $this->syncPivots($registry, $data);
             // A submitted null re-elects the first referent (spec 0330 D-3);
             // an omitted key keeps the current one while it is still linked.
+            // A submitted secondario (even null) is the user's choice: only an
+            // omitted one is filled from the referents just added (spec 0408 D-9).
             $this->primaryReferentElector->elect(
                 $registry,
                 $data->primaryReferentIdSubmitted ? $data->primaryReferentId : $registry->primary_referent_id,
+                $data->secondaryReferentIdSubmitted ? [] : $addedReferentIds,
             );
             $this->normalizeQualifiedSupplier($registry);
 
@@ -291,7 +300,26 @@ class RegistryService
     }
 
     /**
-     * Sync the 3 to-many relations from the DTO's submitted id arrays, each
+     * Sync the referents only when submitted (an omitted key leaves them
+     * untouched, an empty array detaches all).
+     *
+     * @return array<int, int> the referents this sync ATTACHED, in submitted
+     *                         order: the candidates for an empty secondario
+     *                         (spec 0408 D-9)
+     */
+    private function syncReferents(Registry $registry, CreateRegistryData|UpdateRegistryData $data): array
+    {
+        if (! $data->hasReferentIds()) {
+            return [];
+        }
+
+        $attached = array_map('intval', $registry->referents()->sync($data->referentIds)['attached']);
+
+        return array_values(array_intersect($data->referentIds, $attached));
+    }
+
+    /**
+     * Sync sectors and managers from the DTO's submitted id arrays, each
      * independently guarded by its own hasXxxIds() (mirrors
      * SectorService::create/update's `if ($data->hasTagIds())` guard): an
      * omitted key leaves that relation untouched, a submitted array
@@ -305,10 +333,6 @@ class RegistryService
     {
         if ($data->hasSectorIds()) {
             $registry->sectors()->sync($data->sectorIds);
-        }
-
-        if ($data->hasReferentIds()) {
-            $registry->referents()->sync($data->referentIds);
         }
 
         if (! $data->hasManagerSlots()) {
