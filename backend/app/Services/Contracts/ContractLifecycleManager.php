@@ -119,8 +119,12 @@ class ContractLifecycleManager
             : $this->suspendContract($contract);
     }
 
-    /** Logged on the offer: the contract's own log goes with it. */
-    private function deleteContract(Quote $quote, Contract $contract): void
+    /**
+     * Logged on the offer: the contract's own log goes with it. Public for
+     * the one-off cleanup of the contracts suspended before D-3 rev.
+     * (RemoveUntouchedSuspendedContracts).
+     */
+    public function deleteContract(Quote $quote, Contract $contract): void
     {
         $contract->delete();
 

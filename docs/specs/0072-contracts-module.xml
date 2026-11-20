@@ -131,6 +131,10 @@
       nessun documento, nessuna commessa sulle righe dell'offerta. Un contratto lavorato viene
       sospeso come prima. Vale anche verso `validated` (Vinto provvisorio). La migrazione legacy
       chiama il lifecycle solo verso `closed_won` e quindi non elimina mai.
+      Pulizia una tantum dei contratti sospesi prima della revisione: comando
+      `contracts:remove-untouched-suspended` (`--dry-run`), stessi criteri e stessa eliminazione
+      (`ContractLifecycleManager::deleteContract`) sui contratti sospesi non lavorati di offerte
+      non piu' in `closed_won`; i lavorati restano sospesi. Idempotente.
     </decision>
     <decision id="D-4">
       Indicatori "in scadenza" / "da rinnovare": calcolati server-side confrontando

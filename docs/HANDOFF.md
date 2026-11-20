@@ -25,6 +25,13 @@
   (REQUIREMENT CHANGED). Effetto su qnet2 dev: ~5.000 opportunita' (31 utenti) e ~5.500 offerte (37 utenti), tutti gli stati, tornano
   in elenco col default. Guide IT/EN `opportunities`/`quotes` e manuale Claude Docs (paragrafi Opportunita'/Offerte) aggiornati.
 
+## Pulizia contratti sospesi non lavorati su offerte non vinte (spec 0072 D-3 rev., decisione utente 2026-11-20) — VERDE MIRATO, NON COMMITTATO
+
+- Comando `contracts:remove-untouched-suspended {--dry-run}` (`app/Console/Commands/RemoveUntouchedSuspendedContracts.php`): contratti con `suspended_at` la cui offerta non e' `closed_won`; se `ContractUntouchedCheck::isUntouched` -> `ContractLifecycleManager::deleteContract` (reso pubblico; activity `contract.removed` sull'offerta), altrimenti restano sospesi.
+- Test: `tests/Feature/Contracts/RemoveUntouchedSuspendedContractsTest.php`; cartella Contracts 243 verdi. Pint ok.
+- Dry-run DB locale: 1 da rimuovere (contratto 11688, QUO-96213), 2 lavorati tenuti (11579, 11682). NON eseguito per davvero: serve l'ok utente. Da lanciare anche su staging/prod dopo il deploy (prima `--dry-run`).
+- Noto, non toccato: contratto 11698 (QUO-106553) sospeso su offerta tornata VINTO; il rientro in Vinto non riattiva un contratto sospeso (va riattivato a mano). Manuale: nessun impatto (comando di manutenzione).
+
 ## Back Office: permesso "Trasferisci ad altra anagrafica" sulle offerte (decisione utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING
 
 - Nuova grant `quotes_registry_transfer` => `quotes.transferRegistry` in `DepartmentPermissionGrants`, aggiunta a `DepartmentGrantSets::BACK_OFFICE` (il senior la eredita). Commerciale invariato.
