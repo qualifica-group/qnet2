@@ -45,6 +45,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'There is no separate edit page: a site is edited **directly from its record**, one row at a time, custom fields included. Press the **pencil** (or click the value), change the value and press **Save**: only that row is saved; **Cancel** or Esc leave it as it was. The **Company details** are edited together (they are always a company) and the **Banks** are saved as a single list. **Contacts**, **Address** and **Logo** are managed right there and saved at once.',
         },
+        {
+          type: 'note',
+          text: 'The **Responsabile emissione proforma** field (proforma issuing manager) names who issues the proformas of the site: on every proforma request for a quote of this site they receive a task (category **Contabile**, accounting) and its notification. When it is empty the request is still sent, but nobody receives the task.',
+        },
       ],
     },
     {

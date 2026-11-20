@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Richiesta Proforma -> Task al Responsabile emissione proforma (spec 0421) (2026-11-20) — COMMITTATO, NON PUBBLICATO
+
+- `POST /api/work-orders/{workOrder}/proforma-requests` (contratto invariato) ora apre, nella stessa transazione, un Task per ogni responsabile coinvolto: `ProformaRequestService::createForWorkOrder` Step 4 -> `App\Services\ProformaRequests\ProformaRequestTaskDispatcher`.
+- Responsabile = custom field company-sites `responsible_proforma` (costante `ProformaRequestTaskDispatcher::RESPONSIBLE_FIELD`, relation users, in `QualificaTemplateSeeder`), letto dalla sede dell'offerta della richiesta (`quotes.company_site_id`). Vuoto / sede assente / utente inattivo = nessun Task, richiesta comunque 201.
+- Task: requester = creator = chi invia, assegnatario = responsabile (notifica `TaskAssigned`), `work_order_id` = commessa, categoria per nome `config('proforma-requests.task.category_name')` = 'Contabile' (eccezione documentata D-3; non trovata = null), tipologia/priorita'/importanza = default `is_default`, scadenza `task.due_days` = 2. Chiusura manuale. Testi in `lang/{it,en}/proforma_requests.php` chiavi `task.*` (lingua della richiesta).
+- Test: `tests/Feature/ProformaRequests/ProformaRequestTaskTest.php` (AC-001..008, incluso rollback su errore inatteso del Task); `QualificaTemplateSeederTest` e `QualificaProductionDataSeederTest` aggiornati 36 -> 37 definizioni company-sites (cambio requisito).
+- Verifica (verifier): suite backend 15149/15172, 12 rossi tutti estranei/preesistenti (PermissionCatalogue AC-004, ManagementControl access, AgentSalesReportCategoryColumns helper in parallelo, ApiDocsDescriptions, ecc.) dopo il fix del conteggio seeder; vitest 10585 passati (11 unhandled `toast.error` in contract-type-form/vat-rate-form-metadata, estranei); `tsc -b --force` pulito. `composer test` con memory_limit 256M va in exit 255: serve `-d memory_limit=1G`. Guide in-app `company-sites` (editing) e `proforma-requests` (how-created) IT/EN.
+- Manuale Claude Docs NON aggiornato (doc non raggiungibile dalla sessione): sezioni Societa'/Sedi (campo Responsabile emissione proforma) e Richieste Proforma (Task generato).
+- **Deploy (obbligatorio):** `php artisan db:seed --class=QualificaTemplateSeeder --force` per creare la definizione `responsible_proforma`, poi compilare il campo sulle sedi (in locale impostato a utente 192 su tutte le 47 sedi; SQL massivo `INSERT ... SELECT FROM company_sites ... ON DUPLICATE KEY UPDATE values = JSON_SET(...)` fornito all'utente, id da verificare in produzione).
+- Nota ambiente: pest via Git Bash e' andato in segfault (exit 139); via PowerShell `php vendor/bin/pest` ok.
+
 ## Scheda "Appunti" nella commessa di progetto (spec 0420, ex 0380) (2026-11-20) — COMMITTATO, MERGIATO CON IL REMOTO, NON PUBBLICATO
 
 - Pagina a blocchi stile Teams/Loop dopo la Chat (una per commessa di progetto). Accesso = `WorkOrderChatAccess` (azioni `view_page`/`edit_page`), commessa chiusa = sola lettura e 409.

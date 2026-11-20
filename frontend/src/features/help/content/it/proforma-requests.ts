@@ -40,6 +40,10 @@ const guide: HelpGuide = {
             ['**Assegnata a / Richiesta da**', 'L\'utente che ha inviato la richiesta.'],
           ],
         },
+        {
+          type: 'paragraph',
+          text: 'Insieme alle richieste il sistema apre un\'**attività** (categoria **Contabile**, tipologia predefinita) per il **Responsabile emissione proforma** della società sede dell\'offerta, che riceve la notifica di assegnazione. Chi invia la richiesta è creatore e richiedente dell\'attività, che ha scadenza a **2 giorni**, è collegata alla commessa e si chiude a mano. Le richieste con lo stesso responsabile finiscono in **una sola attività**; offerte di sedi con responsabili diversi aprono un\'attività per ciascuno. Se la sede non ha un responsabile, la richiesta parte comunque senza attività.',
+        },
       ],
     },
     {

@@ -31,7 +31,7 @@ beforeEach(function (): void {
     Storage::fake(config('attachments.disk'));
 });
 
-it('provisions the 9 de-verticalized ERP fields for company-sites, idempotently', function (): void {
+it('provisions the 10 de-verticalized ERP fields for company-sites, idempotently', function (): void {
     test()->seed(QualificaTemplateSeeder::class);
     test()->seed(QualificaTemplateSeeder::class); // re-run: updateOrCreate, no duplicates.
 
@@ -40,10 +40,10 @@ it('provisions the 9 de-verticalized ERP fields for company-sites, idempotently'
         ->get()
         ->keyBy('key');
 
-    expect($definitions)->toHaveCount(36);
+    expect($definitions)->toHaveCount(37);
 
     $relations = [
-        'responsible_rda', 'responsible_tickets',
+        'responsible_rda', 'responsible_tickets', 'responsible_proforma',
         'responsible_validation_contracts', 'responsible_validation_contracts_two',
     ];
 

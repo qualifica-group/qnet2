@@ -9,6 +9,7 @@ use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\ProformaRequests\ProformaRequestTaskDispatcher;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -34,6 +35,8 @@ class ProformaRequestService
         'assigner:id,name',
         'invoice:id,proforma_request_id,number,year',
     ];
+
+    public function __construct(private readonly ProformaRequestTaskDispatcher $taskDispatcher) {}
 
     /**
      * Generate every request the work order lines call for, in one transaction.
@@ -71,7 +74,10 @@ class ProformaRequestService
                 'assigned_by' => $actor->getKey(),
             ]));
 
-            // Step 4: hand back the fully loaded set for the Resource
+            // Step 4: open the Accounting Task for each proforma manager involved (spec 0421)
+            $this->taskDispatcher->dispatch($workOrder, $created, $actor, $note);
+
+            // Step 5: hand back the fully loaded set for the Resource
             return $created->each(fn (ProformaRequest $request) => $request->load(self::RESOURCE_RELATIONS));
         });
     }

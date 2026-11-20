@@ -61,7 +61,7 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
     test()->seed(QualificaProductionDataSeeder::class);
 
     // was: 'composes structure, catalogue and operators in one run'
-    expect(CustomFieldDefinition::query()->where('entity_type', 'company-sites')->count())->toBe(36)
+    expect(CustomFieldDefinition::query()->where('entity_type', 'company-sites')->count())->toBe(37) // REQUIREMENT CHANGED: +responsible_proforma (spec 0421)
         ->and(CustomFieldDefinition::query()->where('entity_type', 'products')->count())->toBe(2)
         ->and(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->count())->toBe(1)

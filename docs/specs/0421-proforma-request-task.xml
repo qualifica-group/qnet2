@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0421-proforma-request-task" status="implemented" owner="ciro" date="2026-11-20">
+
+  <goal>
+    Quando un utente fa "Richiesta Proforma" su una commessa, il Responsabile emissione proforma
+    della Societa'/Sede dell'offerta riceve un Task (categoria Contabile, tipologia Attivita') e la
+    relativa notifica, cosi' la richiesta entra nella sua coda di lavoro.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-20 (D-1..D-8):
+    - D-1 Un Task per responsabile coinvolto. Le richieste create da un singolo click
+      (ProformaRequestService::createForWorkOrder, una per offerta/kind) si raggruppano per
+      responsabile: la sede e' quella dell'offerta della richiesta (proforma_requests.quote_id ->
+      quotes.company_site_id), il responsabile e' il custom field della sede. Stesso responsabile
+      su piu' richieste = un solo Task e una sola notifica.
+    - D-2 Nuovo custom field universale della Societa'/Sede: key `responsible_proforma`, label
+      "Responsabile emissione proforma", type `relation`, relation_target MANAGER_RELATION_TARGET
+      (utente singolo), in QualificaTemplateSeeder accanto a `responsible_rda`/`responsible_tickets`.
+      Letto con `$site->custom_fields['responsible_proforma']` (HasCustomFields). Campo vuoto,
+      definizione assente, sede assente sull'offerta o utente non attivo = nessun Task e nessuna
+      notifica per quella richiesta; la richiesta proforma va comunque a buon fine.
+    - D-3 Categoria "Contabile" cercata per nome sulla tabella task_categories: ECCEZIONE
+      documentata alla regola "nessuna condizione sul nome" della tassonomia Task
+      (QualificaTaskTaxonomySeeder, spec 0154). Nome in config, non nel codice. Categoria
+      rinominata/cancellata/disattiva = Task creato senza categoria, nessun errore.
+    - D-4 Tipologia: NON passata; TaskService ricade sulla tipologia `is_default` (oggi "Attivita'",
+      TaskTaxonomyCatalogue::DEFAULT_TYPE). Lo stesso per priorita' e importanza.
+    - D-5 Chiusura manuale: nessun aggancio tra stato del Task e stato della proforma.
+    - D-6 Chi fa la richiesta = creator_id (impostato da TaskService dall'actor) e requester_id;
+      il responsabile = unico assegnatario; notifica via `notifyAssignedUsers: true`
+      (stesso canale di SupportRequestService, spec 0334).
+    - D-7 Scadenza (end_date) = data della richiesta + 2 giorni di calendario, valore in config.
+    - D-8 Il Task e' collegato alla commessa (work_order_id): compare nella scheda Task della
+      commessa. L'assegnatario lo vede in quanto assegnatario (tier membership di
+      TaskVisibilityScope) anche senza visibilita' sulla commessa.
+
+    Precedente da replicare: App\Services\SupportRequests\SupportRequestService (CreateTaskData +
+    TaskService::create nella stessa transazione). Punto di innesto unico:
+    ProformaRequestController::store -> ProformaRequestService::createForWorkOrder (le proforma
+    importate dal legacy non passano da qui e non generano Task).
+  </context>
+
+  <scope>
+    <in>
+      <item>Custom field `responsible_proforma` in QualificaTemplateSeeder (idempotente).</item>
+      <item>Nuova classe App\Services\ProformaRequests\ProformaRequestTaskDispatcher: risolve i responsabili e crea i Task.</item>
+      <item>Chiamata del dispatcher dentro la transazione di createForWorkOrder (Step 4), prima del return.</item>
+      <item>Config `config/proforma-requests.php`: `task.category_name` = 'Contabile', `task.due_days` = 2.</item>
+      <item>Titolo/descrizione del Task in lang IT/EN (`lang/{it,en}/proforma_requests.php`).</item>
+      <item>Guide in-app IT+EN: `company-sites` (sezione editing: nuovo campo) e `proforma-requests` (sezione how-created: Task al responsabile).</item>
+      <item>Test Pest feature sul POST esistente.</item>
+    </in>
+    <out>
+      <item>Nessuna modifica al contratto API (request/response del POST invariati) e nessun lavoro frontend applicativo.</item>
+      <item>Nessuna chiusura/aggiornamento automatico del Task al cambio di stato della proforma (D-5).</item>
+      <item>Nessuna configurazione UI di categoria/tipologia/scadenza (D-3, D-7: config).</item>
+      <item>Nessun Task per le proforma migrate dal legacy ne' retroattivo per quelle esistenti.</item>
+      <item>Nessun uso dei campi responsible_rda/responsible_tickets/responsible_validation_*.</item>
+      <item>Nessuna colonna nativa su company_sites (resta custom field, de-verticalizzazione spec 0021).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Endpoint esistente, shape INVARIATA. Il Task e' un effetto collaterale lato server. -->
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/proforma-requests">
+      <request>{ note: string } (ProformaRequestNoteRequest, invariato)</request>
+      <response status="201">{ success, message, data: ProformaRequestResource[] } (invariato)</response>
+      <errors>403 / 404 / 409 richiesta pendente / 422 nessuna riga fatturabile (invariati). Nessun nuovo errore: un responsabile mancante non produce mai 4xx/5xx.</errors>
+    </endpoint>
+
+    <side_effect name="task">
+      Per ogni responsabile distinto R risolto dalle richieste create:
+      - title: __('proforma_requests.task.title', ['code' => workOrder.code]) -> IT "Richiesta proforma - {code}", EN "Proforma request - {code}" (troncato a 191)
+      - description (HTML escaped): nota della richiesta + elenco delle richieste di R (kind + codice offerta)
+      - requester_id = creator_id = actor; assignee_ids = [R]; watcher_ids = []
+      - task_category_id = id della categoria attiva con name = config('proforma-requests.task.category_name'), altrimenti null
+      - task_type_id / task_priority_id / task_importance_id = null (default is_default di TaskService)
+      - end_date = oggi + config('proforma-requests.task.due_days') (2)
+      - work_order_id = commessa della richiesta
+      - notifyAssignedUsers = true
+    </side_effect>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Commessa con un'offerta la cui sede ha `responsible_proforma` = utente R attivo: il POST crea 1 Task con assegnatario solo R, requester_id e creator_id = actor, work_order_id = commessa, categoria "Contabile", tipologia = tipologia is_default, end_date = oggi + 2 giorni, titolo con il codice commessa.</criterion>
+    <criterion id="AC-002">Stesso scenario di AC-001: R riceve la notifica di assegnazione del Task (una sola).</criterion>
+    <criterion id="AC-003">Click che genera piu' richieste (consulenza + ente, o piu' offerte) tutte con lo stesso responsabile R: 1 solo Task e 1 sola notifica per R, la descrizione cita tutte le richieste.</criterion>
+    <criterion id="AC-004">Commessa multi-offerta con sedi diverse e responsabili R1 e R2: 2 Task, uno assegnato a R1 e uno a R2, ciascuno con le sole richieste della propria sede.</criterion>
+    <criterion id="AC-005">Sede senza `responsible_proforma` (o offerta senza sede, o utente inattivo): il POST risponde 201 con le richieste create e nessun Task ne' notifica viene creato. In un mix (R1 valorizzato, altra sede vuota) si crea solo il Task di R1.</criterion>
+    <criterion id="AC-006">Categoria "Contabile" rinominata o assente: il Task si crea con task_category_id null, il POST risponde 201.</criterion>
+    <criterion id="AC-007">Errore 409 (richiesta gia' pendente) o 422 (nessuna riga fatturabile): nessun Task creato (rollback della transazione).</criterion>
+    <criterion id="AC-008">L'assegnatario R senza visibilita' sulla commessa vede il Task (GET /api/tasks/{task} = 200).</criterion>
+    <criterion id="AC-009">QualificaTemplateSeeder crea la definizione `responsible_proforma` sulle company sites (type relation verso users) e un secondo run non la duplica.</criterion>
+    <criterion id="AC-010">Guide in-app company-sites e proforma-requests aggiornate in IT ed EN; help-content-parity.test.ts verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Task creato SOLO tramite TaskService::create (nessun insert diretto).</item>
+    <item>Tutto nella transazione di createForWorkOrder: se la creazione del Task fallisce per un errore inatteso, fallisce anche la richiesta (nessuno stato parziale).</item>
+    <item>Nessun magic value: nome categoria, giorni e chiave del custom field in config/costante.</item>
+    <item>Lookup senza N+1: quote e sedi caricate in blocco con i custom_field_values (eager load).</item>
+    <item>Authz invariata: resta quella di ProformaRequestController::store.</item>
+    <item>Manuale completo (Claude Docs): aggiornare le sezioni Societa'/Sedi e Richieste Proforma.</item>
+  </constraints>
+
+</spec>

@@ -40,6 +40,10 @@ const guide: HelpGuide = {
             ['**Assigned to / Requested by**', 'The user who sent the request.'],
           ],
         },
+        {
+          type: 'paragraph',
+          text: 'Together with the requests the system opens a **task** (category **Contabile**, accounting, default type) for the **Responsabile emissione proforma** (proforma issuing manager) of the quote\'s company site, who receives the assignment notification. Whoever sends the request is the creator and requester of the task, which is due in **2 days**, is linked to the work order and is closed by hand. Requests with the same manager end up in **a single task**; quotes of sites with different managers open one task each. When the site has no manager, the request is still sent without a task.',
+        },
       ],
     },
     {
