@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse, Opportunita', Offerte: la Categoria madre di default non nasconde piu' i record dove si e' nel team (task 431114, spec 0374 rev.6, 2026-11-20) — VERDE MIRATO, COMMITTATO SU MAIN E MERGIATO IN STAGING
+
+- Segnalazione (task 431114, aperto da Francesco Di Maio id 118): COM-20281 (id 16535, HACCP) assegnata da Deborah Farina come
+  Responsabile e Partecipante, notifiche ricevute, ma non in elenco Commesse. NB: l'assegnatario e' Di Maio, non Francesco Ienco (140).
+- Root cause: la pagina manda `parent_category: []` = "tutte le radici dell'attore" (`ActorParentCategories`, competenza
+  di assegnazione). Di Maio ha competenza solo Sicurezza (+[OLD] SICUREZZA 81/08); la commessa ha righe di ricavo in
+  `[OLD] HACCP` (radice 171, legacy, `current_category_id` null) -> fuori ramo -> tagliata, anche se scope/policy la concedono.
+  Sistemico su qnet2 dev: 414 commesse in lavorazione nascoste a 27 utenti limitati.
+- Fix (D-14): `WorkOrderAdvancedFilterApplier::applyParentCategory` -> se `PresetListFilters::isActorDefault()` (attore limitato,
+  nessuna scelta tra le sue radici: [], [0], solo radici estranee) filtra "ramo delle sue radici OR membro"; una scelta tra le sue
+  radici resta stretta. Nuovo `WorkOrderVisibilityScope::whereMember()` (predicato estratto, riusato da `scopeToActor`);
+  `PresetListFilters::pickedAllowedRootIds()` privato condiviso con `effectiveRootIds`.
+- Test: `WorkOrderListFiltersTest` AC-029 riscritto (REQUIREMENT CHANGED) 19 verdi; WorkOrders 575, CategoryTabs 91, Tables 74
+  verdi; Vitest help 162, ESLint, `tsc -b --force`, Pint puliti. Verificato su qnet2 dev: Di Maio ora ha 16535 tra le sue commesse.
+- Manuale: guide IT/EN `work-orders` (paragrafo filtri predefiniti) + manuale Claude Docs (paragrafo Commesse) aggiornati; PDF da rigenerare.
+- Esteso (direttiva utente stesso giorno: "se e' uno del team la deve vedere, sia in commesse, sia in offerte, sia in opportunita'"):
+  `CommercialListFilterApplier::apply(..., ?Closure $applyTeam)`; Opportunita' e Offerte passano `OpportunityVisibilityScope::whereMember(...)`
+  / `QuoteVisibilityScope::whereMember(...)` (supervisor_id o managers, predicato estratto da `scopeToActor`). Contratti NON estesi
+  (non nominati). `CommercialListFiltersTest`: nuovo test AC-033 su opportunities+quotes, il vecchio resta solo su contracts
+  (REQUIREMENT CHANGED). Effetto su qnet2 dev: ~5.000 opportunita' (31 utenti) e ~5.500 offerte (37 utenti), tutti gli stati, tornano
+  in elenco col default. Guide IT/EN `opportunities`/`quotes` e manuale Claude Docs (paragrafi Opportunita'/Offerte) aggiornati.
+
 ## Avvisi di assegnazione decisi dal ruolo su Opportunita' e Offerte/Gestione Richieste (spec 0420, task 5 riunione 12-16 novembre, 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING, MIGRAZIONE NON LANCIATA SU qnet2, NON PROVATO NEL BROWSER
 
 - Richiesta utente: "punto 5, inserire questo permesso sulla notifica per ruolo e per opportunita' offerta / gestione richieste".

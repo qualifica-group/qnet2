@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="5">
+<spec id="0374-filter-driven-attribute-columns" status="approved" owner="utente" date="2026-11-09" revision="6">
+
+  <!-- rev.6 (2026-11-20, task 431114): sulla pagina Commesse la Categoria madre di default di un attore limitato ([], [0] o
+       solo radici estranee) tiene anche le commesse dove e' Responsabile o Partecipante, di qualunque categoria (una commessa
+       HACCP assegnata a un consulente Sicurezza non compariva in elenco). Una scelta tra le sue radici restringe solo a quelle.
+       Cambia AC-029 (REQUIREMENT CHANGED), nuova D-14. Stesso giorno, direttiva utente "se e' stato messo ... la deve vedere se
+       e' uno del team, sia in commesse, sia in offerte, sia in opportunita'": esteso a Opportunita' e Offerte (team = Supervisore
+       o Gestore account), nuovo AC-033. Contratti invariati (non nominati). -->
 
   <!-- rev.5 (2026-11-12): direttiva utente "categoria madre vuota, di default prende tutte le categorie di competenza, poi
        nella lista selezioni quello che puoi". Cambiano D-13(b), AC-026, AC-029..AC-031; nuovo AC-032. -->
@@ -124,6 +131,12 @@
       lo 0 e le radici salvate fuori limite (se non ne resta nessuna torna il default vuoto). Il validatore generico accetta un valore
       uguale al `defaultValue` del descrittore (qui la lista vuota, altrove ancora 422). Una richiesta senza `parent_category` (griglie dentro
       una scheda, client API) resta non limitata, come prima. Categoria prodotto non cambia.</decision>
+    <decision id="D-14">(rev.6, task 431114, 2026-11-20) Pagina Commesse: quando la Categoria madre di un attore limitato vale il default
+      (`PresetListFilters::isActorDefault`: nessuna scelta tra le sue radici), `WorkOrderAdvancedFilterApplier` filtra "ramo delle sue radici
+      OPPURE commesse dove e' Responsabile/Partecipante" (`WorkOrderVisibilityScope::whereMember`, lo stesso predicato della visibilita').
+      Una scelta tra le sue radici resta un filtro stretto. Le altre fasce di visibilita' (sede, competenza) non bypassano la categoria.
+      Opportunita' e Offerte: stessa regola in `CommercialListFilterApplier::apply` (argomento `$applyTeam`), con
+      `OpportunityVisibilityScope::whereMember` / `QuoteVisibilityScope::whereMember` (supervisor_id o managers). Contratti senza `$applyTeam`.</decision>
   </decisions>
 
   <scope>
@@ -219,10 +232,11 @@
     <criterion id="AC-022">(rev.2) Frontend: nel dettaglio e nel form di una radice vecchia compare il campo "Categoria attuale" con la selezione delle sole radici attuali; non compare su categorie attuali o sottocategorie; il salvataggio invia `current_category_id`.</criterion>
     <criterion id="AC-023">(rev.2) Eseguendo la migrazione: "[OLD] ISO" -> "ISO", "[OLD] GARE-" e "[OLD] GARE" -> "Gare"; una vecchia senza corrispondente, una sottocategoria vecchia e una vecchia con due attuali omonime restano senza collegamento; un collegamento gia' presente non cambia; `down` rimuove la colonna.</criterion>
     <criterion id="AC-028">(rev.4) `GET /tables/{work-orders|opportunities|quotes|contracts}/columns` non contiene il filtro `assignment`; `POST /rows` con `advancedFilters.assignment` risponde 422; un attore con viewAll vede tutti i record, uno senza solo quelli dove ha un ruolo.</criterion>
-    <criterion id="AC-029">(rev.5) Attore con competenza su un figlio di R: con Categoria madre [], [R], [0] o [X] (radice estranea) le righe sono solo quelle del ramo di R; con competenza su tutte le categorie [] e [0] non limitano. Il default del descrittore e' [] per entrambi.</criterion>
+    <criterion id="AC-029">(rev.6) Attore con competenza su un figlio di R, Responsabile di una commessa del ramo di R e di una della radice estranea X, Partecipante di un'altra di X: con Categoria madre [], [0] o [X] le righe sono le tre commesse; con [R] o [R, X] solo quella del ramo di R. Con competenza su tutte le categorie [] e [0] non limitano. Il default del descrittore e' [] per entrambi.</criterion>
     <criterion id="AC-030">(rev.5) `GET /product-category-roots/for-select?actor_roots=1` per l'attore limitato elenca solo [R]; per un attore con tutte le categorie elenca tutte le radici; "Tutte" (id 0) non compare per nessuno.</criterion>
     <criterion id="AC-031">(rev.4) Filtri salvati [R, X] per l'attore limitato: `appliedAdvancedFilters` = {parent_category: [R]}; salvati [X]: `appliedAdvancedFilters` null. (rev.5) Salvati [0]: null; [0, R]: [R].</criterion>
     <criterion id="AC-032">(rev.5) `advancedFilters.product_category` = [] risponde 422 (il suo default non e' vuoto). Frontend: un preset `sendDefault` con default [] e' inviato come [] anche dopo averlo svuotato e non conta come filtro attivo.</criterion>
+    <criterion id="AC-033">(rev.6) Opportunita' e Offerte, attore senza viewAll con competenza su un figlio di R: Supervisore di un record del ramo di R e di uno della radice estranea X, Gestore account di un altro di X: con Categoria madre [], [0] o [X] le righe sono i tre record; con [R] o [R, X] solo quello del ramo di R. Contratti: sempre solo il ramo di R.</criterion>
   </acceptance_criteria>
 
   <constraints>

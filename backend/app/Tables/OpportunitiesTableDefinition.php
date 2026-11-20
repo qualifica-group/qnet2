@@ -384,7 +384,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
                 ->whereIn('product_category_id', $categoryIds));
         };
 
-        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Opportunities, $applyCategories)) {
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Opportunities, $applyCategories, OpportunityVisibilityScope::whereMember(...))) {
             return true;
         }
 

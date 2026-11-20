@@ -389,7 +389,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             $quotes->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($categoryIds));
         };
 
-        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Quotes, $applyCategories)) {
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Quotes, $applyCategories, QuoteVisibilityScope::whereMember(...))) {
             return true;
         }
 
