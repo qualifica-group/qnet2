@@ -119,6 +119,17 @@ describe('buildUpdatePayload', () => {
     })
   })
 
+  it('spec 0419: a status email configured on a row is sent with the statuses sync', () => {
+    const notify = { subject: 'Waiting', message: 'Prepare the quote.', record_team: true, user_ids: [], role_ids: [3], emails: [] }
+    const rows = [SAVED_ROWS[0], { ...SAVED_ROWS[1], notify }, SAVED_ROWS[2]]
+    const payload = buildUpdatePayload({ ...values, statuses: rows }, ORIGINAL)
+
+    expect(payload.statuses?.[1]).toEqual({
+      id: 2, name: 'In progress', description: null, color: 'blue', quote_system_status_id: 2, requires_note: false, notify,
+    })
+    expect(buildCreatePayload({ ...values, statuses: [{ ...CREATE_STATUS_ROWS[1], notify }] }).statuses?.[0].notify).toEqual(notify)
+  })
+
   it('sends the statuses when only their order changed', () => {
     const reordered = [SAVED_ROWS[1], SAVED_ROWS[0], SAVED_ROWS[2]]
     expect(Object.keys(buildUpdatePayload({ ...values, statuses: reordered }, ORIGINAL))).toEqual(['statuses'])

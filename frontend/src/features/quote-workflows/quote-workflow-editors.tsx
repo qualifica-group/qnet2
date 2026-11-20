@@ -31,6 +31,7 @@ export function QuoteWorkflowStatusesField() {
       rows={field.value}
       systemStatuses={options}
       showRequiresNote
+      showNotify
       onReorder={(orderedIds) => field.onChange(inOrder(field.value, orderedIds))}
       onAddCustom={addCustom}
       onRemoveCustom={(id) => field.onChange(withoutRow(field.value, id))}

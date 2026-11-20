@@ -9,6 +9,7 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   WorkflowStatusFormRow as SharedWorkflowStatusFormRow,
+  WorkflowStatusNotify,
   WorkflowStatusRowPatch as SharedWorkflowStatusRowPatch,
 } from '@/features/workflow-statuses/types'
 
@@ -98,6 +99,8 @@ export interface QuoteWorkflowStatusItem {
   quote_system_status: QuoteWorkflowSystemStatusRef
   /** Marks the status as one requiring an explanatory note. Configuration only: nothing enforces the note yet. */
   requires_note: boolean
+  /** Spec 0419: the email sent when a user moves an offer into this status, null = none (always sent by the API; optional for older fixtures). */
+  notify?: WorkflowStatusNotify | null
 }
 
 /** Full workflow detail, as returned by GET/POST/PUT/PATCH /quote-workflows(/{id}). */
@@ -136,6 +139,7 @@ export interface CreateQuoteWorkflowStatusPayload {
   quote_system_status_id?: number | null
   group?: WorkflowStatusGroupValue
   requires_note?: boolean
+  notify?: WorkflowStatusNotify | null
   system_key?: WorkflowStatusSystemKey
 }
 
@@ -154,6 +158,7 @@ export interface UpdateQuoteWorkflowStatusPayload {
   quote_system_status_id?: number | null
   group?: WorkflowStatusGroupValue
   requires_note?: boolean
+  notify?: WorkflowStatusNotify | null
 }
 
 /** Payload for POST /quote-workflows. */

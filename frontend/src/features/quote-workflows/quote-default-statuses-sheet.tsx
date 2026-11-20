@@ -29,6 +29,7 @@ export function QuoteDefaultStatusesSheet({ open, onOpenChange }: QuoteDefaultSt
       state={state}
       systemStatuses={options}
       showRequiresNote
+      showNotify
       storageKey="sheet-width:quote-workflows-default-statuses"
       labels={{
         title: t('quoteWorkflows.defaultStatuses.title'),

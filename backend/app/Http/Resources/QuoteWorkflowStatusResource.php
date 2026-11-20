@@ -28,6 +28,8 @@ class QuoteWorkflowStatusResource extends JsonResource
             'quote_system_status_id' => $this->quote_system_status_id,
             'quote_system_status' => QuoteSystemStatusSummary::of($this->systemStatus),
             'requires_note' => $this->requires_note,
+            // Spec 0419: the email sent when a user moves an offer into this status.
+            'notify' => $this->notify,
         ];
     }
 }

@@ -54,6 +54,7 @@ class QuoteWorkflowResource extends JsonResource
                 'quote_system_status_id' => $status->quote_system_status_id,
                 'quote_system_status' => QuoteSystemStatusSummary::of($status->systemStatus),
                 'requires_note' => $status->requires_note,
+                'notify' => $status->notify,
             ])->all(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

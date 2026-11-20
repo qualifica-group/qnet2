@@ -3,7 +3,7 @@
 return [
     'POST /quote-workflows' => [
         'summary' => 'Create a quote workflow',
-        'description' => 'Creates a set of statuses that quotes follow when they match its criteria. criteria (at least one) are pairs of field (from the criterion-fields endpoint) and value_id (an id of that field selectable entity); each field once, and the combination must not already belong to another workflow (422). statuses lists the intermediate custom statuses (name, description, color, group: open, pending, validated, closed_won, closed_lost, requires_note); the system statuses open, closed_won and closed_lost are always created and can be named by sending them with system_key. Answers 201. Requires quote-workflows.create.',
+        'description' => 'Creates a set of statuses that quotes follow when they match its criteria. criteria (at least one) are pairs of field (from the criterion-fields endpoint) and value_id (an id of that field selectable entity); each field once, and the combination must not already belong to another workflow (422). statuses lists the intermediate custom statuses (name, description, color, group: open, pending, validated, closed_won, closed_lost, requires_note, notify); notify, optional, is the email sent when a user moves a quote into that status (subject, message, record_team, user_ids, role_ids, emails, at least one recipient), null for none; the system statuses open, closed_won and closed_lost are always created and can be named by sending them with system_key. Answers 201. Requires quote-workflows.create.',
     ],
     'GET /quote-workflows/criterion-fields' => [
         'summary' => 'List the fields usable as workflow criteria',
@@ -11,7 +11,7 @@ return [
     ],
     'GET /quote-workflows/default-statuses' => [
         'summary' => 'List the default quote statuses',
-        'description' => 'Returns the global default status set, used by quotes that match no workflow, in order: each status with name, description, color, sort order, system_key (open, closed_won, closed_lost, or null for a custom status), group and requires_note. Requires quote-workflows.view.',
+        'description' => 'Returns the global default status set, used by quotes that match no workflow, in order: each status with name, description, color, sort order, system_key (open, closed_won, closed_lost, or null for a custom status), group, requires_note and notify (the email sent when a user moves a quote into it, or null). Requires quote-workflows.view.',
     ],
     'PUT /quote-workflows/default-statuses' => [
         'summary' => 'Update the default quote statuses',

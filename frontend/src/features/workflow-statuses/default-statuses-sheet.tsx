@@ -70,6 +70,7 @@ export function DefaultStatusesSheet<R extends WorkflowStatusFormRow>({
   systemStatuses,
   storageKey,
   showRequiresNote,
+  showNotify,
   showProgressPercentage,
 }: DefaultStatusesSheetProps<R>) {
   const { t } = useTranslation()
@@ -112,6 +113,7 @@ export function DefaultStatusesSheet<R extends WorkflowStatusFormRow>({
               groups={groups}
               systemStatuses={systemStatuses}
               showRequiresNote={showRequiresNote}
+              showNotify={showNotify}
               showProgressPercentage={showProgressPercentage}
               onReorder={reorder}
               onAddCustom={addCustom}

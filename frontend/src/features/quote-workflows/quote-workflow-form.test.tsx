@@ -249,11 +249,12 @@ describe('QuoteWorkflowForm — create submit (AC-004, AC-025)', () => {
 
     await waitFor(() => expect(createQuoteWorkflowMock).toHaveBeenCalledTimes(1))
     const [payload] = createQuoteWorkflowMock.mock.calls[0]
+    // REQUIREMENT CHANGED (spec 0419): every row carries its status email, null = none.
     expect(payload.statuses).toEqual([
-      { name: 'Open', color: null, group: 'open', system_key: 'open', description: null, requires_note: false },
-      { name: 'In review', color: null, quote_system_status_id: 2, system_key: null, description: null, requires_note: false },
-      { name: 'Closed (won)', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false },
-      { name: 'Closed (lost)', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false },
+      { name: 'Open', color: null, group: 'open', system_key: 'open', description: null, requires_note: false, notify: null },
+      { name: 'In review', color: null, quote_system_status_id: 2, system_key: null, description: null, requires_note: false, notify: null },
+      { name: 'Closed (won)', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false, notify: null },
+      { name: 'Closed (lost)', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false, notify: null },
     ])
     expect(payload.criteria).toEqual([{ field: 'source_id', value_id: 101 }])
     expect(payload.name).toBe('EMEA workflow')

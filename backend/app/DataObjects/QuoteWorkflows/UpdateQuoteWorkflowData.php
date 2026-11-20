@@ -19,7 +19,7 @@ final readonly class UpdateQuoteWorkflowData
 {
     /**
      * @param  ?array<int, array{field: string, value_id: int}>  $criteria
-     * @param  ?array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool}>  $statuses
+     * @param  ?array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool, notify: ?array<string, mixed>}>  $statuses
      */
     public function __construct(
         public ?string $name = null,
@@ -88,7 +88,7 @@ final readonly class UpdateQuoteWorkflowData
      * directive 2026-08-07).
      *
      * @param  array<int, array{id?: mixed, name: mixed, description?: mixed, color?: mixed, group: mixed, requires_note?: mixed}>  $statuses
-     * @return array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool}>
+     * @return array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool, notify: ?array<string, mixed>}>
      */
     private static function normalizeStatuses(array $statuses): array
     {
@@ -100,6 +100,7 @@ final readonly class UpdateQuoteWorkflowData
                 'color' => array_key_exists('color', $status) ? $status['color'] : null,
                 ...WorkflowStatusLink::fromPayload($status),
                 'requires_note' => (bool) ($status['requires_note'] ?? false),
+                'notify' => WorkflowStatusNotify::fromPayload($status),
             ],
             $statuses,
         );

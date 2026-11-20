@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\QuoteWorkflows;
 
 use App\DataObjects\QuoteWorkflows\WorkflowStatusLink;
+use App\DataObjects\QuoteWorkflows\WorkflowStatusNotify;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -42,11 +43,12 @@ class UpdateDefaultStatusesRequest extends FormRequest
             'statuses.*.color' => ['nullable', 'string', 'max:32'],
             ...WorkflowStatusLink::rules(),
             'statuses.*.requires_note' => ['sometimes', 'boolean'],
+            ...WorkflowStatusNotify::rules(),
         ];
     }
 
     /**
-     * @return array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool}>
+     * @return array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool, notify: ?array<string, mixed>}>
      */
     public function statuses(): array
     {
@@ -61,6 +63,7 @@ class UpdateDefaultStatusesRequest extends FormRequest
                 'color' => array_key_exists('color', $status) ? $status['color'] : null,
                 ...WorkflowStatusLink::fromPayload($status),
                 'requires_note' => (bool) ($status['requires_note'] ?? false),
+                'notify' => WorkflowStatusNotify::fromPayload($status),
             ],
             $statuses,
         );

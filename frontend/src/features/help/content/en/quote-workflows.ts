@@ -63,6 +63,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'status-email',
+      title: 'Automatic email on a status',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Below **Requires an explanatory note** every status has **Send an email notification**. Turning it on opens **Status email notification**: write the **Subject** and the **Message** and choose the **Recipients**. When a user moves a quote to that status, QNet sends the email. **Edit** reopens the configuration; turning the switch off removes the notification. It also applies to the **Default statuses** and to the statuses chosen from Quotes through the system status.',
+        },
+        {
+          type: 'list',
+          items: [
+            "**People on the offer**: the quote's Supervisor, Operator and Account Managers;",
+            '**Users** and **Roles**: the chosen people and whoever holds the chosen roles (active users only);',
+            '**Other email addresses**: external ones too; they receive the email only, without the quote card.',
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'At least one recipient is required. Users get the notification in the bell and the email, if enabled in their profile. Whoever changes the status does not receive it. Below the message the email shows who changed the status, the quote card and the button to open it. It is not sent when the quote is already in that status, when the status changes by itself because the workflow is recalculated, or during imports and migrations.',
+        },
+      ],
+    },
+    {
       id: 'typical-path',
       title: 'Typical path',
       blocks: [
@@ -85,6 +107,7 @@ const guide: HelpGuide = {
             'a quote can only move to the statuses of the workflow that currently matches it;',
             'the statuses linked to Provisionally won require at least one product row ("You cannot move the quote to this status without at least one product row."); Closed (won) and Closed (lost) do not;',
             'if the status requires a note, it must be written; it is saved among the notes of the opportunity;',
+            'if the status has **Send an email notification**, the configured email is sent when the quote enters it;',
             'entering Closed (won) generates the contract, unless the category has **Generates a contract** turned off;',
             'if the quote leaves Closed (won), the contract moves to **Suspended** (it is not deleted);',
             "if the quote's data changes, QNet recalculates the workflow: the status stays if it also exists in the new one, otherwise it becomes the equivalent fixed status or **Open**;",

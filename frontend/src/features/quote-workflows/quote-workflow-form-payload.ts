@@ -51,6 +51,7 @@ function buildStatusesCreatePayload(rows: WorkflowStatusFormRow[]): CreateQuoteW
     color: row.color,
     ...systemStatusLink(row),
     requires_note: row.requires_note,
+    notify: row.notify,
     system_key: row.system_key,
   }))
 }
@@ -74,6 +75,7 @@ function buildStatusesUpdatePayload(rows: WorkflowStatusFormRow[]): UpdateQuoteW
       color: row.color,
       ...systemStatusLink(row),
       requires_note: row.requires_note,
+      notify: row.notify,
     }))
 }
 

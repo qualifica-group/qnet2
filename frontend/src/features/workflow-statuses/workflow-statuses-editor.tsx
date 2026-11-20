@@ -17,6 +17,7 @@ import { SortableList } from '@/components/ui/sortable-list'
 import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
 import { RequiresNoteBadge } from '@/features/workflow-statuses/requires-note-badge'
 import { SystemStatusSelect } from '@/features/workflow-statuses/system-status-select'
+import { WorkflowStatusNotifyControl } from '@/features/workflow-statuses/workflow-status-notify-control'
 import type {
   WorkflowStatusFormRow,
   WorkflowStatusGroupOption,
@@ -25,9 +26,10 @@ import type {
 } from '@/features/workflow-statuses/types'
 import { cn } from '@/lib/utils'
 
-/** Per-domain optional row fields: quotes turn on `requires_note`, work orders `progress_percentage`. */
+/** Per-domain optional row fields: quotes turn on `requires_note` and `notify`, work orders `progress_percentage`. */
 export interface WorkflowStatusesEditorFeatures {
   showRequiresNote?: boolean
+  showNotify?: boolean
   showProgressPercentage?: boolean
 }
 
@@ -75,6 +77,7 @@ export function WorkflowStatusesEditor<R extends WorkflowStatusFormRow>({
   groups = NO_GROUPS,
   systemStatuses,
   showRequiresNote = false,
+  showNotify = false,
   showProgressPercentage = false,
   onReorder,
   onAddCustom,
@@ -99,6 +102,7 @@ export function WorkflowStatusesEditor<R extends WorkflowStatusFormRow>({
             groups={groups}
             systemStatuses={systemStatuses}
             showRequiresNote={showRequiresNote}
+            showNotify={showNotify}
             showProgressPercentage={showProgressPercentage}
             onUpdateRow={onUpdateRow}
             onRemoveCustom={onRemoveCustom}
@@ -154,6 +158,7 @@ function WorkflowStatusRowContent<R extends WorkflowStatusFormRow>({
   groups,
   systemStatuses,
   showRequiresNote,
+  showNotify,
   showProgressPercentage,
   onUpdateRow,
   onRemoveCustom,
@@ -268,6 +273,15 @@ function WorkflowStatusRowContent<R extends WorkflowStatusFormRow>({
           </Label>
           {row.requires_note ? <RequiresNoteBadge className="ml-auto" /> : null}
         </div>
+      ) : null}
+      {showNotify ? (
+        <WorkflowStatusNotifyControl
+          rowId={row.id}
+          statusName={row.name}
+          value={row.notify ?? null}
+          disabled={disabled}
+          onChange={(notify) => onUpdateRow(row.id, { notify } as WorkflowStatusRowPatch<R>)}
+        />
       ) : null}
     </div>
   )

@@ -31,8 +31,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Offerte shows; `group` is its denormalized copy (A-D5). The saving hook
  * keeps the two in step for every write path (configurator, import, seeders,
  * factories), see linkSystemStatus().
+ *
+ * `notify` (spec 0419) is the email the status sends when a user moves an
+ * offer into it, see App\DataObjects\QuoteWorkflows\WorkflowStatusNotify.
  */
-#[Fillable(['name', 'description', 'color', 'sort_order', 'group', 'requires_note', 'quote_system_status_id'])]
+#[Fillable(['name', 'description', 'color', 'sort_order', 'group', 'requires_note', 'quote_system_status_id', 'notify'])]
 class QuoteWorkflowStatus extends BaseModel
 {
     /** @use HasFactory<QuoteWorkflowStatusFactory> */
@@ -47,6 +50,7 @@ class QuoteWorkflowStatus extends BaseModel
             'sort_order' => 'int',
             'group' => WorkflowStatusGroup::class,
             'requires_note' => 'bool',
+            'notify' => 'array',
         ];
     }
 

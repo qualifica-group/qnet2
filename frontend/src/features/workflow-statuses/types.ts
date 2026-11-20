@@ -17,12 +17,25 @@ export interface WorkflowStatusFormRow {
   /** Quote workflows only (spec 0404): the system status this working status links; `group` then derives from it server-side. */
   quote_system_status_id?: number | null
   requires_note?: boolean
+  /** Quote workflows only (spec 0419): the email sent when a user moves an offer into this status, null = none. */
+  notify?: WorkflowStatusNotify | null
   progress_percentage?: number | null
+}
+
+/** The email a working status sends (spec 0419, backend `WorkflowStatusNotify`). */
+export interface WorkflowStatusNotify {
+  subject: string
+  message: string
+  /** The offer's Supervisore, Operatore and Gestori Account. */
+  record_team: boolean
+  user_ids: number[]
+  role_ids: number[]
+  emails: string[]
 }
 
 /** The row fields the editor may patch (everything but the row identity and its pinned `system_key`). */
 export type WorkflowStatusRowPatch<R extends WorkflowStatusFormRow = WorkflowStatusFormRow> = Partial<
-  Pick<R, 'name' | 'description' | 'color' | 'group' | 'quote_system_status_id' | 'requires_note' | 'progress_percentage'>
+  Pick<R, 'name' | 'description' | 'color' | 'group' | 'quote_system_status_id' | 'requires_note' | 'notify' | 'progress_percentage'>
 >
 
 /** One entry of the group select; `label` is already translated by the domain that owns the vocabulary. */
