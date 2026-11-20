@@ -113,12 +113,24 @@ final class PresetListFilters
         $allowedRootIds = $this->actorRoots->rootIdsFor($actor, $module);
 
         if ($allowedRootIds !== null) {
-            $picked = array_values(array_intersect($this->groups->currentRootIds($rootIds), $allowedRootIds));
+            $picked = $this->pickedAllowedRootIds($rootIds, $allowedRootIds);
 
             return $picked === [] ? $allowedRootIds : $picked;
         }
 
         return $rootIds === [] || in_array(ProductCategoryForSelectResolver::ALL_ROOTS_ID, $rootIds, true) ? null : $rootIds;
+    }
+
+    /**
+     * Whether a limited actor's value falls back to every root of theirs (no
+     * pick, "Tutte" or picks all outside them) rather than narrowing to roots
+     * they picked. False for an actor with no limit: nothing narrows them.
+     */
+    public function isActorDefault(mixed $value, ?User $actor, ParentCategoryListModule $module): bool
+    {
+        $allowedRootIds = $this->actorRoots->rootIdsFor($actor, $module);
+
+        return $allowedRootIds !== null && $this->pickedAllowedRootIds(self::ids($value), $allowedRootIds) === [];
     }
 
     /**
@@ -155,6 +167,16 @@ final class PresetListFilters
         }
 
         return array_slice(array_map(intval(...), array_values(array_filter($value, is_numeric(...)))), 0, self::MAX_IDS);
+    }
+
+    /**
+     * @param  array<int, int>  $rootIds
+     * @param  array<int, int>  $allowedRootIds
+     * @return array<int, int>
+     */
+    private function pickedAllowedRootIds(array $rootIds, array $allowedRootIds): array
+    {
+        return array_values(array_intersect($this->groups->currentRootIds($rootIds), $allowedRootIds));
     }
 
     /**

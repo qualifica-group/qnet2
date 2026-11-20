@@ -74,9 +74,7 @@ final class WorkOrderVisibilityScope
         $reach = self::competenceReach($user);
 
         return $query->where(function (Builder $scoped) use ($user, $siteIds, $reach): void {
-            $scoped
-                ->whereHas('supervisors', fn (Builder $supervisors) => $supervisors->whereKey($user->id))
-                ->orWhereHas('participants', fn (Builder $participants) => $participants->whereKey($user->id));
+            self::whereMember($scoped, $user);
 
             if ($siteIds !== []) {
                 $scoped->orWhere(fn (Builder $bySite) => $bySite->withSourceQuoteInSites($siteIds));
@@ -88,6 +86,23 @@ final class WorkOrderVisibilityScope
                     : $scoped->orWhereIn('work_orders.id', WorkOrderSourceQuotes::withRevenueCategory($reach->categoryIds));
             }
         });
+    }
+
+    /**
+     * The commesse where the actor is Responsabile or Partecipante: the membership
+     * tier of scopeToActor(), also kept by the Commesse page's default parent
+     * category (WorkOrderAdvancedFilterApplier).
+     *
+     * @template TModel of WorkOrder
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function whereMember(Builder $query, User $user): Builder
+    {
+        return $query
+            ->whereHas('supervisors', fn (Builder $supervisors) => $supervisors->whereKey($user->id))
+            ->orWhereHas('participants', fn (Builder $participants) => $participants->whereKey($user->id));
     }
 
     /**

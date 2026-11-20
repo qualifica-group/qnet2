@@ -41,6 +41,23 @@ final class OpportunityVisibilityScope
     public const VIEW_COMPETENCE_PERMISSION = 'opportunities.viewCompetence';
 
     /**
+     * The opportunities where the actor is in the team (Supervisore or Gestore
+     * account): the membership tier of scopeToActor(), also kept by the
+     * page's default parent category (CommercialListFilterApplier).
+     *
+     * @template TModel of Opportunity
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function whereMember(Builder $query, User $user): Builder
+    {
+        return $query
+            ->where('opportunities.supervisor_id', $user->id)
+            ->orWhereHas('managers', fn (Builder $managers) => $managers->whereKey($user->id));
+    }
+
+    /**
      * @template TModel of Opportunity
      *
      * @param  Builder<TModel>  $query
@@ -64,9 +81,7 @@ final class OpportunityVisibilityScope
         }
 
         return $query->where(function (Builder $scoped) use ($user, $reach): void {
-            $scoped
-                ->where('opportunities.supervisor_id', $user->id)
-                ->orWhereHas('managers', fn (Builder $managers) => $managers->whereKey($user->id));
+            self::whereMember($scoped, $user);
 
             if (! $reach->isEmpty()) {
                 $scoped->orWhereIn('opportunities.id', self::competenceOpportunityIds($reach));
