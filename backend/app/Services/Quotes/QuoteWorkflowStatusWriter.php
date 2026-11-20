@@ -55,7 +55,6 @@ final class QuoteWorkflowStatusWriter
     public function __construct(
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly NoteService $noteService,
-        private readonly ContactTransferBeforeContractRule $contactTransferRule,
         private readonly QuoteStatusNotifier $statusNotifier,
     ) {}
 
@@ -70,7 +69,7 @@ final class QuoteWorkflowStatusWriter
      * destination demands a note, and creating it (inside the CALLER's
      * transaction) requires `notes.create`.
      *
-     * @throws ValidationException the target status is outside the resolved workflow (AC-021), or its `group` demands a REVENUE line and none exists (spec 0102 AC-010/012), or it would open a contract the category forbids before the contact transfer (spec 0404 C-D2), or it `requires_note` and none was given (AC-023)
+     * @throws ValidationException the target status is outside the resolved workflow (AC-021), or its `group` demands a REVENUE line and none exists (spec 0102 AC-010/012), or it `requires_note` and none was given (AC-023)
      * @throws AuthorizationException the actor cannot create the note (AC-024)
      */
     public function apply(Quote $quote, int $newStatusId, User $actor, ?string $note): void
@@ -92,8 +91,6 @@ final class QuoteWorkflowStatusWriter
         $targetStatus = QuoteWorkflowStatus::query()->findOrFail($newStatusId);
 
         $this->assertOfferLineForStatus($quote, $targetStatus);
-        // Spec 0404 C-D2: before the note too, so a refusal leaves none behind.
-        $this->contactTransferRule->assertAllowed($quote, $targetStatus);
 
         if ($targetStatus->requires_note) {
             $this->createStatusChangeNote($quote, $actor, $note);

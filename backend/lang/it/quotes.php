@@ -9,11 +9,11 @@ return [
     'offer_line_required_for_status' => "Non puoi portare l'offerta a questo stato senza almeno una riga prodotto.",
     'offer_line_required_to_validate_contract' => "Non puoi validare il contratto senza almeno una riga prodotto nell'offerta.",
     // Spec 0404, C-D2.
-    'contact_transfer_required_for_contract' => "Questa categoria richiede il trasferimento del contatto prima del contratto: usa Trasferisci contatto, poi porta l'offerta a Vinto.",
+    'contact_transfer_required_for_contract' => 'Questa categoria richiede il trasferimento del contatto prima di validare il contratto: usa Trasferisci contatto, poi valida.',
     // Spec 0404, B-D6.
     'registry_transfer' => [
         'same_registry' => "L'offerta è già di questa anagrafica.",
-        'contracted' => "L'offerta è a contratto: il contratto, le commesse e le fatture sono intestati al cliente, quindi non si può trasferire.",
+        'contracted' => "Il contratto dell'offerta è già stato lavorato (stato cambiato, validato, dati compilati, documenti, rinnovi o commesse): l'anagrafica non si può più cambiare.",
     ],
     // Spec 0360, D-4: a REVENUE row assigned to a work order is frozen.
     'line_removal_blocked_by_work_order' => 'La riga :product è assegnata alla commessa :code: elimina prima la commessa.',

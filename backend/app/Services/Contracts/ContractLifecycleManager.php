@@ -25,19 +25,25 @@ use App\Services\Notifications\TeamActivityNotifier;
  *    activity `contract.created`. Spec 0091: nothing is created at all when
  *    the opportunity's product categories say the branch is not sold under a
  *    contract (ContractEligibility).
- *  - closed_won -> non-closed_won: if the contract exists and is not
- *    ALREADY suspended, saves the current status as
- *    `status_before_suspension_id`, moves to the system 'suspended' row,
- *    stamps `suspended_at`, activity `contract.suspended`. Never deletes
- *    anything (D-3).
+ *  - closed_won -> non-closed_won (D-3 rev., user decision 2026-11-20): a
+ *    contract nobody has worked on yet (ContractUntouchedCheck) is deleted,
+ *    since an offer that is no longer won has no contract; the offer keeps an
+ *    activity `contract.removed`. A worked-on contract that is not ALREADY
+ *    suspended saves the current status as `status_before_suspension_id`,
+ *    moves to the system 'suspended' row, stamps `suspended_at`, activity
+ *    `contract.suspended`.
  *  - any other transition (closed_won -> closed_won, or no group change at
  *    all): no effect.
  */
 class ContractLifecycleManager
 {
+    /** Activity on the offer when its untouched contract is deleted. */
+    public const string CONTRACT_REMOVED_EVENT = 'contract.removed';
+
     public function __construct(
         private readonly ContractStatusResolver $statusResolver,
         private readonly ContractEligibility $eligibility,
+        private readonly ContractUntouchedCheck $untouchedCheck,
         private readonly TeamActivityNotifier $teamActivity,
     ) {}
 
@@ -66,7 +72,7 @@ class ContractLifecycleManager
         }
 
         if ($before === WorkflowStatusGroup::ClosedWon && $after !== WorkflowStatusGroup::ClosedWon) {
-            $this->suspendContract($quote);
+            $this->withdrawContract($quote);
         }
     }
 
@@ -100,11 +106,34 @@ class ContractLifecycleManager
         $this->teamActivity->created($contract);
     }
 
-    private function suspendContract(Quote $quote): void
+    private function withdrawContract(Quote $quote): void
     {
         $contract = Contract::where('quote_id', $quote->id)->first();
 
-        if ($contract === null || $contract->isSuspended()) {
+        if ($contract === null) {
+            return;
+        }
+
+        $this->untouchedCheck->isUntouched($contract)
+            ? $this->deleteContract($quote, $contract)
+            : $this->suspendContract($contract);
+    }
+
+    /** Logged on the offer: the contract's own log goes with it. */
+    private function deleteContract(Quote $quote, Contract $contract): void
+    {
+        $contract->delete();
+
+        activity($quote->getTable())
+            ->performedOn($quote)
+            ->event(self::CONTRACT_REMOVED_EVENT)
+            ->withProperties(['contract_id' => $contract->id, 'accepted_at' => $contract->accepted_at?->toDateString()])
+            ->log('Contract removed: the offer is no longer won');
+    }
+
+    private function suspendContract(Contract $contract): void
+    {
+        if ($contract->isSuspended()) {
             return;
         }
 

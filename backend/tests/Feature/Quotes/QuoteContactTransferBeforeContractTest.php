@@ -18,9 +18,9 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 /**
- * Spec 0404, part C (AC-016/AC-017): a category flagged
- * `requires_contact_transfer_before_contract` refuses the positive close that
- * would open a contract until the offer's contact has been transferred.
+ * Spec 0404, part C (AC-016/AC-017, rev. 2026-11-20): a category flagged
+ * `requires_contact_transfer_before_contract` refuses the contract's
+ * validation until the offer's contact has been transferred.
  */
 uses(RefreshDatabase::class);
 
@@ -68,56 +68,63 @@ if (! function_exists('contactTransferStatus')) {
     }
 }
 
-it('AC-016: refuses the positive close of an offer not yet transferred', function () {
+// REQUIREMENT CHANGED (spec 0404 C rev., user decision 2026-11-20): the obligation is
+// checked on "Valida contratto" only; the offer moves to Won and its contract is born freely.
+
+if (! function_exists('contactTransferValidator')) {
+    function contactTransferValidator(): User
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo([Permission::findOrCreate('contracts.validate', 'web'), Permission::findOrCreate('contracts.viewAll', 'web')]);
+
+        return $user;
+    }
+}
+
+if (! function_exists('contactTransferWonContract')) {
+    /** The offer moved to Won through the API, and the contract that it opened. */
+    function contactTransferWonContract(Quote $quote): Contract
+    {
+        QuoteLine::factory()->create(['quote_id' => $quote->id, 'line_type' => QuoteLineType::Revenue]);
+        Sanctum::actingAs(contactTransferActor());
+
+        test()->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => contactTransferStatus('closed_won')->id])->assertOk();
+
+        return Contract::where('quote_id', $quote->id)->sole();
+    }
+}
+
+it('AC-016 rev.: an offer not yet transferred moves to Won and its contract is born', function () {
     $quote = contactTransferQuote(['requires_contact_transfer_before_contract' => true]);
-    $before = $quote->quote_workflow_status_id;
-    Sanctum::actingAs(contactTransferActor());
 
-    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => contactTransferStatus('closed_won')->id])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['quote_workflow_status_id' => __('quotes.contact_transfer_required_for_contract')]);
+    contactTransferWonContract($quote);
 
-    expect($quote->fresh()->quote_workflow_status_id)->toBe($before)
-        ->and(Contract::where('quote_id', $quote->id)->exists())->toBeFalse();
+    expect($quote->fresh()->quote_workflow_status_id)->toBe(contactTransferStatus('closed_won')->id);
 });
 
-it('AC-016: lets a transferred offer close positively and opens the contract', function () {
-    $quote = contactTransferQuote(['requires_contact_transfer_before_contract' => true], transferred: true);
-    Sanctum::actingAs(contactTransferActor());
+it('AC-016 rev.: validating the contract is refused with 409 until the contact is transferred', function () {
+    $quote = contactTransferQuote(['requires_contact_transfer_before_contract' => true]);
+    $contract = contactTransferWonContract($quote);
+    Sanctum::actingAs(contactTransferValidator());
 
-    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => contactTransferStatus('closed_won')->id])->assertOk();
+    $this->postJson("/api/contracts/{$contract->id}/validate")
+        ->assertConflict()
+        ->assertJsonPath('message', __('quotes.contact_transfer_required_for_contract'));
 
-    expect(Contract::where('quote_id', $quote->id)->exists())->toBeTrue();
+    expect($contract->fresh()->validated_at)->toBeNull();
+
+    $quote->forceFill(['is_transferred' => true])->saveQuietly();
+
+    $this->postJson("/api/contracts/{$contract->id}/validate")->assertOk();
+    expect($contract->fresh()->validated_at)->not->toBeNull();
 });
 
-it('AC-016: does not block a branch that generates no contract', function () {
-    $quote = contactTransferQuote(['requires_contact_transfer_before_contract' => true, 'generates_contract' => false]);
-    $closedWon = contactTransferStatus('closed_won');
-    Sanctum::actingAs(contactTransferActor());
-
-    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $closedWon->id])->assertOk();
-
-    expect($quote->fresh()->quote_workflow_status_id)->toBe($closedWon->id);
-});
-
-it('AC-016: a category without the flag closes as before', function () {
+it('AC-016 rev.: a category without the flag validates as before', function () {
     $quote = contactTransferQuote(['requires_contact_transfer_before_contract' => false]);
-    Sanctum::actingAs(contactTransferActor());
+    $contract = contactTransferWonContract($quote);
+    Sanctum::actingAs(contactTransferValidator());
 
-    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => contactTransferStatus('closed_won')->id])->assertOk();
-
-    expect(Contract::where('quote_id', $quote->id)->exists())->toBeTrue();
-});
-
-it('AC-017: the provisional win stays free without the transfer', function () {
-    $quote = contactTransferQuote(['requires_contact_transfer_before_contract' => true]);
-    QuoteLine::factory()->create(['quote_id' => $quote->id, 'line_type' => QuoteLineType::Revenue]);
-    $validated = QuoteWorkflowStatus::factory()->global()->create(['group' => WorkflowStatusGroup::Validated]);
-    Sanctum::actingAs(contactTransferActor());
-
-    $this->patchJson("/api/quotes/{$quote->id}", ['quote_workflow_status_id' => $validated->id])->assertOk();
-
-    expect($quote->fresh()->quote_workflow_status_id)->toBe($validated->id);
+    $this->postJson("/api/contracts/{$contract->id}/validate")->assertOk();
 });
 
 it('AC-017: the flag is saved and read back on the product category', function () {

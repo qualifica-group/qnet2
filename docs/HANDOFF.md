@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Obbligo trasferimento contatto solo su "Valida contratto" + trasferimenti con contratto non lavorato (spec 0404 C rev., decisioni utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING
+
+- Obbligo categoria `requires_contact_transfer_before_contract`: tolto da `QuoteWorkflowStatusWriter`; ora solo in `ContractActionService::validate` -> `ContactTransferBeforeContractRule::assertValidatable` (409, messaggio `quotes.contact_transfer_required_for_contract` riscritto). Vinto sempre libero.
+- Regola unica dei trasferimenti: `App\Services\Quotes\QuoteTransferAvailability` (`allowsRegistryTransfer`: nessun contratto o non lavorato; `allowsContactTransfer`: idem, piu' contratto non validato con obbligo ancora dovuto). Usata da: flag `transfer_registry` (QuotesAuthorization, RequestManagementAuthorization), flag `transfer_contact` (RequestManagementAuthorization), `QuoteRegistryTransferService`, `RequestTransferService` (409 `request-management.transfer_blocked_by_contract`, tutto o niente).
+- FE: dialog Valida e hook trasferimento (singolo e massivo) usano `refusedActionMessage` (mostrano il motivo del 409). Testi flag categoria e guide in-app IT/EN aggiornati (categorie, offerte, contratti, Gestione Richieste).
+- Test: `tests/Feature/Quotes/QuoteTransferAvailabilityTest.php` (nuovo), `QuoteContactTransferBeforeContractTest` riscritto (REQUIREMENT CHANGED).
+- Aperto: in Offerte non esiste il pulsante "Trasferisci contatto" (c'e' solo nel pannello Lavora di Gestione Richieste/Iscritti); chiesto all'utente se aggiungerlo (offerta 30802). Chiave lang morta `request-management.registry_locked_by_contract` (pre-esistente).
+
+## Contratto sincronizzato con l'offerta vinta (spec 0072 D-3 rev., 0404 B-D6 rev., decisione utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING
+
+- Regola: offerta non piu' vinta -> il contratto NON LAVORATO viene eliminato (activity `contract.removed` sull'offerta, props `contract_id`/`accepted_at`); se lavorato resta la sospensione di prima. Rientro in vinto = contratto nuovo. Vale anche verso Vinto provvisorio.
+- "Non lavorato" = `App\Services\Contracts\ContractUntouchedCheck::isUntouched()`, letto sui dati: non validato/disdetto, stato (o `status_before_suspension_id`) = predefinito attivo o sistema `new`, `renewal_date`/`expiry_date`/`payment_notes`/`comments` vuoti, nessun rinnovo, documento, commessa sulle righe dell'offerta. NON usare l'activity log (un contratto nato in qnet-2 ha sempre le voci automatiche).
+- Trasferimento anagrafica (`QuoteRegistryTransferService::assertTransferable`): consentito con contratto non lavorato; il contratto non ha anagrafica propria e segue l'offerta. Messaggio `quotes.registry_transfer.contracted` riscritto IT/EN.
+- FE: evento `contract.removed` nella cronologia (types, badge, `it/en-activity-log`). Guide in-app aggiornate IT/EN (`contracts` sez. nascita, `quotes` vinto + trasferimento).
+- Test: nuovo `tests/Feature/Contracts/ContractUntouchedCheckTest.php`; REQUIREMENT CHANGED in `ContractLifecycleTest` (AC-005), `ContractCategoryGateTest` (AC-011, INV-3), `RequestManagementWorkflowStatusTest` (suspend), `QuoteRegistryTransferTest` (AC-014): le fixture marcano il contratto come lavorato.
+- Seeder: `DemoContractSeeder` e `QualificaSampleContractSeeder`, forma "suspended" = compila i dati del contratto PRIMA di riportare l'offerta in Aperto (altrimenti verrebbe eliminato).
+- Suite completa 2026-11-20: 15354 test, rossi solo file estranei al contratto (AI assistant 422, catalogo permessi 741/721, `agentSalesReportRows` non definita in parallelo, LibreOffice assente, controllo di gestione, settlement `overdue`, ecc.), non verificati contro baseline.
+- Non fatto: i 4 contratti gia' sospesi in DB locale non sono stati ripuliti (nessuna retroattivita'). Pre-esistenti segnalati: `PATCH /api/contracts/{id}` accetta ancora `contract_status_id` qualsiasi (anche Validato su sospeso); "Modifica stato" non azzera `suspended_at`; gli eventi `contract.*`/`contracted_edit` non hanno etichetta in cronologia; HANDOFF ~1,4 MB da archiviare.
+- Manuale Claude Docs: sezioni Contratti (nascita/sospensione) e Offerte (Vinto, trasferimento anagrafica) da allineare.
+
 ## Ruoli di reparto: Gestione Richieste/Iscritti di nuovo operativa (spec 0408 D-15, segnalazione utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING, SEEDER NON RIESEGUITO
 
 - Segnalazione: con i ruoli `reparto-*` Martina Mosca (e gli altri) perdeva creazione/modifica/eliminazione richieste, documenti e permessi di contorno.

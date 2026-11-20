@@ -261,6 +261,8 @@ it('PATCH back OUT of closed_won suspends the Contratto instead of deleting it',
     ])->assertOk();
 
     $statusBefore = Contract::where('quote_id', $quote->id)->value('contract_status_id');
+    // REQUIREMENT CHANGED (spec 0072 D-3 rev. 2026-11-20): only a worked-on contract survives the offer leaving closed_won.
+    Contract::where('quote_id', $quote->id)->sole()->forceFill(['payment_notes' => 'Bonifico'])->save();
 
     $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $open->id,

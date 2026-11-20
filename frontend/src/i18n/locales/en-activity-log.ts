@@ -32,6 +32,9 @@ export const activityLog = {
     restored: 'Restored',
     moved: 'Moved (org chart)',
     registry_transferred: 'Transferred to another registry',
+    contract: {
+      removed: 'Contract removed (offer no longer won)',
+    },
     impersonation: {
       started: 'Impersonation started',
       stopped: 'Impersonation stopped',

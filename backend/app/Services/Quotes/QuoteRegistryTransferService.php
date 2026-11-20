@@ -35,7 +35,12 @@ use Illuminate\Validation\ValidationException;
  * only the notes scoped to THIS offer (`notes.quote_id`) travel with it. One
  * explicit `registry_transferred` activity entry is written on the offer and
  * on both opportunities (B-D5); the automatic model log is suspended so the
- * move is not recorded twice. The dialog may also rename the offer (B-D8),
+ * move is not recorded twice.
+ *
+ * An offer under contract moves only while nobody has worked on its contract
+ * (B-D6 rev., user decision 2026-11-20, QuoteTransferAvailability): the contract
+ * has no anagrafica of its own, it reads the offer's, so it follows with no
+ * write of its own. The dialog may also rename the offer (B-D8),
  * with the offer update's title rules; that change keeps its automatic log.
  */
 final class QuoteRegistryTransferService
@@ -55,13 +60,14 @@ final class QuoteRegistryTransferService
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly OpportunityNameWriter $nameWriter,
         private readonly QuoteTitleWriter $titleWriter,
+        private readonly QuoteTransferAvailability $transferAvailability,
     ) {}
 
     /**
      * @param  array<string, mixed>|null  $attributeValues  the "Informazioni aggiuntive" edited in the dialog, validated like the offer update
      * @param  bool  $titleSubmitted  false leaves the title untouched; true applies `$title` (null = back to the automatic title)
      *
-     * @throws ValidationException same anagrafica, offer under contract, or the destination opportunity accepts no further offer
+     * @throws ValidationException same anagrafica, offer under a worked-on contract, or the destination opportunity accepts no further offer
      */
     public function transfer(Quote $quote, int $registryId, ?array $attributeValues, bool $titleSubmitted, ?string $title, User $actor): Quote
     {
@@ -104,7 +110,7 @@ final class QuoteRegistryTransferService
             throw ValidationException::withMessages(['registry_id' => [__('quotes.registry_transfer.same_registry')]]);
         }
 
-        if ($quote->contract()->exists()) {
+        if (! $this->transferAvailability->allowsRegistryTransfer($quote)) {
             throw ValidationException::withMessages(['registry_id' => [__('quotes.registry_transfer.contracted')]]);
         }
     }

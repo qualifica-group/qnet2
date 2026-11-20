@@ -181,9 +181,18 @@ class QualificaSampleContractSeeder extends Seeder
             self::SHAPE_VALIDATED => $this->validate($contract, $faker, $actor),
             self::SHAPE_WORKING => $this->moveToWorkingStatus($contract, $faker),
             self::SHAPE_TERMINATED => $this->terminate($contract, $faker, $actor),
-            // BR-2/D-3: leaving closed_won is what suspends the contract.
-            self::SHAPE_SUSPENDED => $this->moveQuoteTo($quote, WorkflowStatusSystemKey::Open, $actor),
+            self::SHAPE_SUSPENDED => $this->suspend($contract, $quote, $faker, $actor),
         };
+    }
+
+    /**
+     * BR-2/D-3 rev.: leaving closed_won suspends only a contract already worked
+     * on; an untouched one would be deleted.
+     */
+    private function suspend(Contract $contract, Quote $quote, Generator $faker, User $actor): void
+    {
+        $this->fillDetails($contract, $faker, $faker->numberBetween(90, 365));
+        $this->moveQuoteTo($quote, WorkflowStatusSystemKey::Open, $actor);
     }
 
     private function validate(Contract $contract, Generator $faker, User $actor): void

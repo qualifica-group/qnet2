@@ -13,6 +13,7 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Registry;
 use App\Models\User;
+use App\Services\Contracts\ContractStatusResolver;
 use App\Services\Quotes\QuoteRegistryTransferService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -156,9 +157,14 @@ it('AC-014: 422 on the same anagrafica, without writes', function () {
     expect($quote->fresh()->opportunity_id)->toBe($origin->id);
 });
 
-it('AC-014: 422 on an offer under contract, without writes', function () {
+it('AC-014: 422 on an offer whose contract was worked on, without writes', function () {
     ['quote' => $quote, 'opportunity' => $origin] = registryTransferQuote();
-    Contract::factory()->create(['quote_id' => $quote->id]);
+    // REQUIREMENT CHANGED (B-D6 rev., user decision 2026-11-20): only a worked-on contract blocks the move.
+    Contract::factory()->create([
+        'quote_id' => $quote->id,
+        'contract_status_id' => app(ContractStatusResolver::class)->defaultActiveId(),
+        'payment_notes' => 'Bonifico',
+    ]);
     $before = Opportunity::count();
     Sanctum::actingAs(registryTransferActor());
 
@@ -168,6 +174,24 @@ it('AC-014: 422 on an offer under contract, without writes', function () {
 
     expect($quote->fresh()->opportunity_id)->toBe($origin->id)
         ->and(Opportunity::count())->toBe($before);
+});
+
+it('B-D6 rev.: an offer whose contract nobody worked on moves, and the contract follows it', function () {
+    ['quote' => $quote, 'opportunity' => $origin] = registryTransferQuote();
+    $contract = Contract::factory()->create([
+        'quote_id' => $quote->id,
+        'contract_status_id' => app(ContractStatusResolver::class)->defaultActiveId(),
+    ]);
+    $destination = Registry::factory()->create();
+    Sanctum::actingAs(registryTransferActor());
+
+    $this->postJson("/api/quotes/{$quote->id}/transfer-registry", ['registry_id' => $destination->id])->assertOk();
+
+    $quote->refresh();
+
+    expect($quote->opportunity_id)->not->toBe($origin->id)
+        ->and($quote->opportunity->registry_id)->toBe($destination->id)
+        ->and($contract->fresh()->quote->opportunity->registry_id)->toBe($destination->id);
 });
 
 it('AC-014: 422 when the destination opportunity already holds its single offer', function () {

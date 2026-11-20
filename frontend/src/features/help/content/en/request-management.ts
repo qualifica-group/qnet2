@@ -204,7 +204,7 @@ const guide: HelpGuide = {
               'Assign Tutor',
               'Assigns the same user to every selected request (the role name may change per category).',
             ],
-            ['Transfer contact', 'Moves the requests to another site and another operator.'],
+            ['Transfer contact', 'Moves the requests to another site and another operator. On a request with a contract it is available only while the contract has not been worked on (or, when the category requires the transfer, until it is validated); the contract follows the request.'],
             ['Delete selected', 'Deletes the selected rows.'],
           ],
         },

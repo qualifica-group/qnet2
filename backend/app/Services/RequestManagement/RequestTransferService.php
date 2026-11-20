@@ -11,12 +11,14 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
 use App\RequestManagement\RequestModule;
+use App\Services\Quotes\QuoteTransferAvailability;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Business logic for POST /api/request-management/transfer (spec 0079;
@@ -56,6 +58,7 @@ final class RequestTransferService
 
     public function __construct(
         private readonly RequestOperatorWriter $operatorWriter,
+        private readonly QuoteTransferAvailability $transferAvailability,
     ) {}
 
     /**
@@ -84,7 +87,10 @@ final class RequestTransferService
                 return 0;
             }
 
-            // Step 2: per offer, inside the SAME transaction.
+            // Step 2: all or nothing, as the table's selection expects.
+            $this->assertTransferable($quotes);
+
+            // Step 3: per offer, inside the SAME transaction.
             $originLabels = $this->originSiteLabels($quotes);
 
             foreach ($quotes as $quote) {
@@ -94,11 +100,28 @@ final class RequestTransferService
             return $quotes->count();
         });
 
-        // Step 3: dispatch AFTER the commit — a notification sent from inside
+        // Step 4: dispatch AFTER the commit — a notification sent from inside
         // a transaction that later rolls back would be irrecoverable.
         $this->dispatchNotifications($notices, $actor, $destinationSite, $newOperator, $module);
 
         return $transferred;
+    }
+
+    /**
+     * An offer whose contract was already worked on keeps its Sede (user
+     * decision 2026-11-20, QuoteTransferAvailability): 409 naming them.
+     *
+     * @param  Collection<int, Quote>  $quotes
+     */
+    private function assertTransferable(Collection $quotes): void
+    {
+        $blocked = $quotes->reject(fn (Quote $quote): bool => $this->transferAvailability->allowsContactTransfer($quote));
+
+        abort_if(
+            $blocked->isNotEmpty(),
+            Response::HTTP_CONFLICT,
+            __('request-management.transfer_blocked_by_contract', ['codes' => $blocked->pluck('code')->implode(', ')]),
+        );
     }
 
     /**

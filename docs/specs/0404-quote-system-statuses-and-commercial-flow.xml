@@ -140,6 +140,9 @@
          trasferimento), letto dall'activity log.
     B-D6 Offerta con contratto: trasferimento rifiutato (422 "offerta a contratto"): il contratto, le commesse e le fatture
          sono intestate al cliente; spostarle e' fuori scope.
+         REV. 2026-11-20 (decisione utente): il trasferimento e' consentito se il contratto NON e' stato
+         lavorato (`ContractUntouchedCheck`, spec 0072 D-3 rev.): il contratto non ha anagrafica propria,
+         la legge dall'offerta, quindi segue senza scritture. Contratto lavorato -> 422 come prima.
 
     <!-- C — Obbligo trasferimento contatto -->
     C-D1 Nuova impostazione categoria `requires_contact_transfer_before_contract` (bool, default false), nel form
@@ -149,6 +152,14 @@
          con 422 su `quote_workflow_status_id` (o `quote_system_status_id` da Offerte): "Questa categoria richiede il
          trasferimento del contatto prima del contratto". Vale su tutti i canali; "Vinto provvisorio" resta libero.
          Non tocca offerte gia' vinte ne' le migrazioni legacy.
+         REV. 2026-11-20 (decisione utente: "l'obbligo del trasferimento dovra' essere effettuato quando vogliamo
+         validare il contratto e in nessun altra parte"): SUPERA C-D2 e la parte di C-D4 sul writer. Il passaggio a
+         closed_won e' libero e il contratto nasce come sempre; l'obbligo e' verificato SOLO da
+         `ContractActionService::validate` (`ContactTransferBeforeContractRule::assertValidatable`): 409 con
+         `quotes.contact_transfer_required_for_contract`. "Trasferisci contatto" (`QuoteTransferAvailability`) resta
+         disponibile con contratto non lavorato oppure, se l'obbligo e' ancora dovuto, finche' il contratto non e'
+         validato (evita lo stallo contratto lavorato-non trasferibile-non validabile); altrimenti flag
+         `transfer_contact` false e POST /request-management/transfer 409 `transfer_blocked_by_contract`.
     C-D3 Esempio d'uso: categoria "Orientamento specialistico" (configurata dall'utente, non dal seed).
     C-D4 [ESECUZIONE 2026-11-16] Il flag e' PER CATEGORIA (come `is_selectable`), non della radice: "Orientamento
          specialistico" (id 26) e' figlia di APL insieme a Tirocinio/Apprendistato/... che non hanno l'obbligo. Vale solo

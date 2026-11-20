@@ -6,8 +6,10 @@ use App\Models\ContractStatus;
 use App\Models\Opportunity;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\Contracts\ContractLifecycleManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
 /**
@@ -185,10 +187,50 @@ it('AC-005: a suspended contract stays suspended when its quote re-enters closed
         ],
     ])->assertCreated()->json('data.id');
 
+    // REQUIREMENT CHANGED (D-3 rev. 2026-11-20): only a worked-on contract is suspended.
+    Contract::where('quote_id', $quoteId)->sole()->forceFill(['payment_notes' => 'Bonifico'])->save();
+
     $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $openStatus->id])->assertOk();
     $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
 
     $contract = Contract::where('quote_id', $quoteId)->sole();
 
     expect($contract->isSuspended())->toBeTrue();
+});
+
+// ---------------------------------------------------------------------------
+// D-3 rev. (user decision 2026-11-20) — an untouched contract is deleted
+// ---------------------------------------------------------------------------
+
+it('D-3 rev.: leaving closed_won deletes a contract nobody worked on, and winning again opens a new one', function () {
+    $closedWonStatus = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
+    $openStatus = QuoteWorkflowStatus::factory()->global()->create(['group' => WorkflowStatusGroup::Open]);
+    $opportunity = Opportunity::factory()->create();
+    $product = contractLifecycleRevenueProduct();
+    Sanctum::actingAs(contractLifecycleUserWith(['create', 'update']));
+
+    $quoteId = $this->postJson('/api/quotes', [
+        'title' => 'Offerta',
+        'opportunity_id' => $opportunity->id,
+        'quote_workflow_status_id' => $closedWonStatus->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
+    ])->assertCreated()->json('data.id');
+    $firstContractId = Contract::where('quote_id', $quoteId)->sole()->id;
+
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $openStatus->id])->assertOk();
+
+    expect(Contract::where('quote_id', $quoteId)->exists())->toBeFalse()
+        ->and(Activity::where('subject_type', 'quote')->where('subject_id', $quoteId)
+            ->where('event', ContractLifecycleManager::CONTRACT_REMOVED_EVENT)
+            ->where('properties->contract_id', $firstContractId)->exists())->toBeTrue();
+
+    // No contract any more: the status moves back without the contracted-edit confirmation.
+    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $closedWonStatus->id])->assertOk();
+
+    $contract = Contract::where('quote_id', $quoteId)->sole();
+
+    expect($contract->id)->not->toBe($firstContractId)
+        ->and($contract->isSuspended())->toBeFalse();
 });

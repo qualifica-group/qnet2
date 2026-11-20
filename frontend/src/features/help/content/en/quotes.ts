@@ -277,11 +277,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Moving the quote to a **Won** status generates the contract; **Provisionally won** does not. From then on the **Open contract** button at the top of the quote detail, and the **Open contract** entry in the more-actions menu (the three dots) of the row in the table, open the contract in a window over the quote. You see them only if your role may view Contracts.',
+          text: 'Moving the quote to a **Won** status generates the contract; **Provisionally won** does not. If the quote then leaves **Won** (also towards **Provisionally won**) and the contract has not been worked on yet, the contract is deleted; otherwise it is suspended. From then on the **Open contract** button at the top of the quote detail, and the **Open contract** entry in the more-actions menu (the three dots) of the row in the table, open the contract in a window over the quote. You see them only if your role may view Contracts.',
         },
         {
           type: 'note',
-          text: 'When a category of the opportunity has **Contact transfer before the contract** (for example **Orientamento specialistico**), the quote cannot move to **Won** until its contact has been transferred with **Transfer contact** in Gestione Richieste: the save is refused with "This category requires the contact transfer before the contract". **Provisionally won** is always allowed.',
+          text: 'When a category of the opportunity has **Contact transfer before the contract** (for example **Orientamento specialistico**), the quote moves to **Won** and its contract is born as usual, but the contract cannot be validated until its contact has been transferred with **Transfer contact** in Gestione Richieste: **Validate contract** is refused with "This category requires the contact transfer before the contract is validated".',
         },
       ],
     },
@@ -316,7 +316,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A quote under contract cannot be transferred (contract, work orders and invoices already belong to the customer), nor moved onto an opportunity that allows a single quote and already has one: the message appears under **New registry** and nothing is saved.',
+          text: 'A quote under contract can be transferred only while nothing has been done on its contract (initial status, not validated, no data, document, renewal or work order): the contract follows the quote to the new registry. If the contract has already been worked on, the transfer is refused. Nor can the quote be moved onto an opportunity that allows a single quote and already has one: the message appears under **New registry** and nothing is saved.',
         },
       ],
     },

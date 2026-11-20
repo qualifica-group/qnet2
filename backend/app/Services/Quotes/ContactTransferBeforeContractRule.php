@@ -4,59 +4,41 @@ declare(strict_types=1);
 
 namespace App\Services\Quotes;
 
-use App\Enums\WorkflowStatusGroup;
+use App\Models\Contract;
 use App\Models\OpportunityProductLine;
 use App\Models\Quote;
-use App\Models\QuoteWorkflowStatus;
-use App\Services\Contracts\ContractEligibility;
 use Illuminate\Contracts\Database\Eloquent\Builder;
-use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Spec 0404, part C: an offer of a category flagged
- * `requires_contact_transfer_before_contract` (e.g. "Orientamento
- * specialistico") cannot be won into a contract until its contact has been
- * transferred to another Sede ("Trasferisci contatto", which raises
- * `quotes.is_transferred`, RequestTransferService).
+ * Spec 0404, part C (rev. user decision 2026-11-20): an offer of a category
+ * flagged `requires_contact_transfer_before_contract` (e.g. "Orientamento
+ * specialistico") cannot have its contract VALIDATED until its contact has
+ * been transferred to another Sede ("Trasferisci contatto", which raises
+ * `quotes.is_transferred`, RequestTransferService). The obligation is checked
+ * there and nowhere else: the offer moves to Won freely and its contract is
+ * born as usual.
  *
  * Read like ContractEligibility (C-D1): ONE category the opportunity covers
  * carrying the flag is enough. The flag is per-node, so the lookup is a single
  * existence query on the line categories themselves.
- *
- * Applies only when a contract would actually be born (C-D2): a `closed_won`
- * destination, a branch that generates contracts, no contract yet (an offer
- * that already had one only reactivates it). `validated` ("Vinto provvisorio")
- * stays free.
  */
 final class ContactTransferBeforeContractRule
 {
-    public function __construct(private readonly ContractEligibility $contractEligibility) {}
-
-    /**
-     * @throws ValidationException the move would open a contract on an offer that still needs its contact transfer
-     */
-    public function assertAllowed(Quote $quote, QuoteWorkflowStatus $targetStatus): void
+    /** Whether the offer still has to be transferred before its contract is validated. */
+    public function owesTransfer(Quote $quote): bool
     {
-        if (! $this->requiresTransfer($quote, $targetStatus)) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'quote_workflow_status_id' => [__('quotes.contact_transfer_required_for_contract')],
-        ]);
+        return ! $quote->is_transferred && $this->coversFlaggedCategory($quote);
     }
 
-    private function requiresTransfer(Quote $quote, QuoteWorkflowStatus $targetStatus): bool
+    /**
+     * 409 with the reason, read by the validate dialog like any refused action.
+     */
+    public function assertValidatable(Contract $contract): void
     {
-        if ($targetStatus->group !== WorkflowStatusGroup::ClosedWon || (bool) $quote->is_transferred) {
-            return false;
-        }
+        $quote = $contract->quote()->firstOrFail();
 
-        if ($quote->exists && $quote->contract()->exists()) {
-            return false;
-        }
-
-        return $this->coversFlaggedCategory($quote) && $this->contractEligibility->allowsContract($quote);
+        abort_if($this->owesTransfer($quote), Response::HTTP_CONFLICT, __('quotes.contact_transfer_required_for_contract'));
     }
 
     private function coversFlaggedCategory(Quote $quote): bool

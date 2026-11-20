@@ -139,9 +139,9 @@ export const productCategories = {
     isSelectable: 'Selectable',
     requiresContactTransfer: 'Contact transfer before the contract',
     requiresContactTransferHint:
-      'When on, an offer of this category cannot move to Won (and open its contract) until its contact has been transferred with Transfer contact. Provisional win is always allowed.',
+      'When on, the contract of an offer of this category cannot be validated until its contact has been transferred with Transfer contact. The offer moves to Won and its contract is born as usual.',
     requiresContactTransferInfo:
-      'It applies to this category only, not to its subcategories. The check runs when the offer would move to Won opening a contract, from any module (Offers, Gestione Richieste, Gestione Iscritti, grid). Offers already won and categories without a contract are not affected.',
+      'It applies to this category only, not to its subcategories. The check runs only on Validate contract, nowhere else. Until the contract is validated, Transfer contact stays available even if the contract has already been worked on.',
     requiresContactTransferInfoLabel: 'More info about Contact transfer before the contract',
     isSelectableHint:
       'When off, the category can only group subcategories: it disappears from the pickers and can no longer be assigned to a product, a product line, a project, a campaign or a commission rule. Existing associations are kept.',

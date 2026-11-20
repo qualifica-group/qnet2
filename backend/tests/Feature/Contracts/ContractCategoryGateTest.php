@@ -211,6 +211,8 @@ it('AC-011: a contract already opened survives the flag being turned off, and st
     ])->assertCreated()->json('data.id');
 
     expect(Contract::where('quote_id', $quoteId)->exists())->toBeTrue();
+    // REQUIREMENT CHANGED (spec 0072 D-3 rev. 2026-11-20): only a worked-on contract survives the offer leaving closed_won.
+    Contract::where('quote_id', $quoteId)->sole()->forceFill(['payment_notes' => 'Bonifico'])->save();
 
     // The catalogue is reconfigured AFTER the deal was closed.
     ProductCategory::query()->update(['generates_contract' => false]);
@@ -237,6 +239,8 @@ it('INV-3: the idempotence guard still wins — a re-entry into closed_won on a 
     ])->assertCreated()->json('data.id');
 
     $contractId = Contract::where('quote_id', $quoteId)->sole()->id;
+    // REQUIREMENT CHANGED (spec 0072 D-3 rev. 2026-11-20): only a worked-on contract survives the offer leaving closed_won.
+    Contract::where('quote_id', $quoteId)->sole()->forceFill(['payment_notes' => 'Bonifico'])->save();
 
     ProductCategory::query()->update(['generates_contract' => false]);
 

@@ -7,7 +7,8 @@
 
 /**
  * Spatie activitylog event names: the model events of `LogsModelActivity`,
- * the org chart move (spec 0273) and the impersonation audit (spec 0050 D-6).
+ * the org chart move (spec 0273), the removal of an offer's untouched contract
+ * (spec 0072 D-3 rev.) and the impersonation audit (spec 0050 D-6).
  */
 export type ActivityLogEvent =
   | 'created'
@@ -16,6 +17,7 @@ export type ActivityLogEvent =
   | 'restored'
   | 'moved'
   | 'registry_transferred'
+  | 'contract.removed'
   | 'impersonation.started'
   | 'impersonation.stopped'
 

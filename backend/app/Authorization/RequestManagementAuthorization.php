@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Models\Quote;
 use App\Models\User;
 use App\Services\Quotes\QuoteRegistryTransferService;
+use App\Services\Quotes\QuoteTransferAvailability;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -55,8 +57,10 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RequestManagementAuthorization extends AbstractResourceAuthorization
 {
-    public function __construct(FieldPermissionRepository $fieldPermissionRepository)
-    {
+    public function __construct(
+        FieldPermissionRepository $fieldPermissionRepository,
+        private readonly QuoteTransferAvailability $transferAvailability,
+    ) {
         parent::__construct($fieldPermissionRepository);
     }
 
@@ -243,14 +247,17 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // would tell the UI an action is allowed that the endpoint then
             // rejects with 403. `export`/`view_activity` above are read-only
             // and don't need `update`.
-            'transfer_contact' => $model !== null
+            // User decision 2026-11-20: closed to an offer whose contract was worked on (QuoteTransferAvailability).
+            'transfer_contact' => $model instanceof Quote
                 && $actor->can($this->permission('update'))
-                && $actor->can($this->permission('transferContact')),
+                && $actor->can($this->permission('transferContact'))
+                && $this->transferAvailability->allowsContactTransfer($model),
             // Spec 0404 B-D1: the "transfer to another anagrafica" action,
             // same double gate as its endpoint (QuoteRegistryTransferController).
-            'transfer_registry' => $model !== null
+            'transfer_registry' => $model instanceof Quote
                 && $actor->can($this->permission('update'))
-                && $actor->can($this->permission(QuoteRegistryTransferService::ABILITY)),
+                && $actor->can($this->permission(QuoteRegistryTransferService::ABILITY))
+                && $this->transferAvailability->allowsRegistryTransfer($model),
             // Direttiva utente 2026-09-08: the RAW grant behind the team
             // block's third state — squadra visible, members already there
             // frozen, only additions allowed. Per-record like the two above:

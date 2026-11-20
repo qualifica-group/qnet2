@@ -140,9 +140,9 @@ export const productCategories = {
     isSelectable: 'Selezionabile',
     requiresContactTransfer: 'Trasferimento contatto prima del contratto',
     requiresContactTransferHint:
-      "Se attivo, un'offerta di questa categoria non può passare a Vinto (e generare il contratto) finché il contatto non è stato trasferito con Trasferisci contatto. Vinto provvisorio resta sempre possibile.",
+      "Se attivo, il contratto di un'offerta di questa categoria non si può validare finché il contatto non è stato trasferito con Trasferisci contatto. L'offerta passa a Vinto e il contratto nasce come sempre.",
     requiresContactTransferInfo:
-      "Vale solo per questa categoria, non per le sue sottocategorie. Il controllo scatta quando l'offerta passerebbe a Vinto generando un contratto, da qualsiasi modulo (Offerte, Gestione Richieste, Gestione Iscritti, griglia). Le offerte già vinte e le categorie senza contratto non sono toccate.",
+      "Vale solo per questa categoria, non per le sue sottocategorie. Il controllo scatta soltanto su Valida contratto, in nessun altro punto. Finché il contratto non è validato, Trasferisci contatto resta disponibile anche se il contratto è già stato lavorato.",
     requiresContactTransferInfoLabel: 'Maggiori informazioni su Trasferimento contatto prima del contratto',
     isSelectableHint:
       'Se disattivo, la categoria serve solo a raggruppare sottocategorie: sparisce dalle liste di scelta e non è più associabile a un prodotto, a una linea di prodotto, a un progetto, a una campagna o a una regola provvigionale. Le associazioni già esistenti restano.',

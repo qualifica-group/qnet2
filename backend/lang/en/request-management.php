@@ -10,4 +10,6 @@ return [
     // 2026-09-09): the panel refuses to save a request that SITS in
     // closed_won while the identifier is missing, whatever else it changes.
     'fiscal_identity_required_on_closed_won' => 'The request is closed with a positive outcome: enter the client tax code or VAT number to save it.',
+    // User decision 2026-11-20: the contact moves only with a contract not worked on.
+    'transfer_blocked_by_contract' => 'The contact cannot be transferred: the contract of :codes has already been worked on.',
 ];

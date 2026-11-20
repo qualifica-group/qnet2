@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "A contract is never created by hand: it is born when a quote moves to a **Closed (positive)** status, with an **Accepted at** date of that day and the **Default** status of **Contract Statuses**. It is not born if the product category is set to not generate contracts. If the quote leaves the positive status, the contract becomes **\"Sospeso\"** and QNet remembers the previous status.",
+          text: "A contract is never created by hand: it is born when a quote moves to a **Closed (positive)** status, with an **Accepted at** date of that day and the **Default** status of **Contract Statuses**. It is not born if the product category is set to not generate contracts. If the quote leaves the positive status and nothing has been done on the contract yet (still its initial status, not validated, no renewal or expiry date, payment notes or comments, no document, renewal or work order), the contract is **deleted** and the quote's **History** records **Contract removed (offer no longer won)**; if the quote is won again a new contract is born. If the contract has already been worked on, it becomes **\"Sospeso\"** and QNet remembers the previous status.",
         },
         {
           type: 'paragraph',
@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Validate contract**: set the **Validation date** (not in the future). At least one product line is required: if the contract has none, add it from the card before validating. It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza"): those contracts show **Program** instead, unless suspended.',
+            '**Validate contract**: set the **Validation date** (not in the future). At least one product line is required: if the contract has none, add it from the card before validating. When a category of the quote has **Contact transfer before the contract**, the contact must first be transferred with **Transfer contact**, otherwise the validation is refused. It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza"): those contracts show **Program** instead, unless suspended.',
             '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**. With the **Cancelled** status every work order of the contract is closed, completed ones too, and stays closed if you reopen the contract. With any other status only the work orders still open are closed, and **Reopen contract** puts them back on the status they had. The work orders\' tasks do not change.',
             'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open, Pending or Closed (positive) (Validated): press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
             '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status. Reopening a Closed (positive) or Closed (negative) contract also clears the validation date and author, so the contract can be validated again; the previous values stay in **Activity history**.',

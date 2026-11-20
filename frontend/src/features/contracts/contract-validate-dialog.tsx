@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -70,7 +70,7 @@ export function ContractValidateDialog({
       await validateMutation.mutateAsync(buildValidatePayload(values))
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])) {
-        toast.error(apiErrorMessage(error, t('contracts.actions.validateDialog.genericError'), i18n))
+        toast.error(refusedActionMessage(error, t('contracts.actions.validateDialog.genericError'), i18n))
       }
     }
   }

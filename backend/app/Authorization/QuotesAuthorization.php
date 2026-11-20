@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Policies\QuotePolicy;
 use App\Services\Commissions\CommissionRecalculationImpact;
 use App\Services\Quotes\QuoteRegistryTransferService;
+use App\Services\Quotes\QuoteTransferAvailability;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -47,6 +48,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
     public function __construct(
         FieldPermissionRepository $fieldPermissionRepository,
         private readonly CommissionRecalculationImpact $recalculationImpact,
+        private readonly QuoteTransferAvailability $transferAvailability,
     ) {
         parent::__construct($fieldPermissionRepository);
     }
@@ -174,12 +176,12 @@ class QuotesAuthorization extends AbstractResourceAuthorization
                 && $this->actorMayWrite($actor, $model)
                 && $this->fieldPermissions($actor, $model)['commissions']->editable
                 && ! $this->recalculationImpact->isClosed($model),
-            // Spec 0404 B-D1/B-D6: same gate as QuoteRegistryTransferController;
-            // an offer under contract cannot move.
+            // Spec 0404 B-D1/B-D6 rev.: same gate as QuoteRegistryTransferController;
+            // an offer moves while its contract, if any, has not been worked on.
             'transfer_registry' => $model instanceof Quote
                 && $this->actorMayWrite($actor, $model)
                 && $actor->can('quotes.'.QuoteRegistryTransferService::ABILITY)
-                && ! $model->contract()->exists(),
+                && $this->transferAvailability->allowsRegistryTransfer($model),
             // Spec 0412, D-2/D-5: on create (no record yet) the permission alone.
             'view_costs' => $model instanceof Quote
                 ? $actor->can(QuotePolicy::VIEW_COSTS_ABILITY, $model)

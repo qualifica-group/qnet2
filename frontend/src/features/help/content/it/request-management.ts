@@ -204,7 +204,7 @@ const guide: HelpGuide = {
               'Assegna Tutor',
               'Assegna lo stesso utente a tutte le richieste scelte (il nome del ruolo può cambiare per categoria).',
             ],
-            ['Trasferisci contatto', "Sposta le richieste su un'altra sede e un altro operatore."],
+            ['Trasferisci contatto', "Sposta le richieste su un'altra sede e un altro operatore. Su una richiesta con contratto è disponibile solo finché il contratto non è stato lavorato (o, se la categoria richiede il trasferimento, finché non è validato); il contratto segue la richiesta."],
             ['Elimina selezionati', 'Elimina le righe selezionate.'],
           ],
         },

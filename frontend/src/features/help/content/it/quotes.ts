@@ -277,11 +277,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Portando l'offerta in uno stato **Vinto** nasce il contratto; **Vinto provvisorio** non lo genera. Da quel momento il pulsante **Apri contratto** in cima al dettaglio dell'offerta, e la voce **Apri contratto** nel menu delle altre azioni (i tre puntini) della riga in tabella, aprono il contratto in una finestra sopra l'offerta. Li vedi solo se il tuo ruolo può consultare i Contratti.",
+          text: "Portando l'offerta in uno stato **Vinto** nasce il contratto; **Vinto provvisorio** non lo genera. Se poi l'offerta esce da **Vinto** (anche verso **Vinto provvisorio**) e il contratto non è ancora stato lavorato, il contratto viene eliminato; altrimenti viene sospeso. Da quel momento il pulsante **Apri contratto** in cima al dettaglio dell'offerta, e la voce **Apri contratto** nel menu delle altre azioni (i tre puntini) della riga in tabella, aprono il contratto in una finestra sopra l'offerta. Li vedi solo se il tuo ruolo può consultare i Contratti.",
         },
         {
           type: 'note',
-          text: "Se una categoria dell'opportunità ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), l'offerta non passa a **Vinto** finché il contatto non è stato trasferito con **Trasferisci contatto** in Gestione Richieste: il salvataggio viene rifiutato con \"Questa categoria richiede il trasferimento del contatto prima del contratto\". **Vinto provvisorio** resta sempre possibile.",
+          text: "Se una categoria dell'opportunità ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), l'offerta passa a **Vinto** e il contratto nasce come sempre, ma il contratto non si può validare finché il contatto non è stato trasferito con **Trasferisci contatto** in Gestione Richieste: **Valida contratto** viene rifiutato con \"Questa categoria richiede il trasferimento del contatto prima di validare il contratto\".",
         },
       ],
     },
@@ -316,7 +316,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Non si può trasferire un'offerta a contratto (contratto, commesse e fatture sono già intestati al cliente) né spostarla su un'opportunità che ammette una sola offerta e ne ha già una: il messaggio compare sotto il campo **Nuova anagrafica** e non viene salvato nulla.",
+          text: "Un'offerta a contratto si può trasferire solo se sul contratto non è stato fatto ancora nulla (stato iniziale, nessuna validazione, nessun dato, documento, rinnovo o commessa): il contratto segue l'offerta sulla nuova anagrafica. Se il contratto è già stato lavorato il trasferimento è rifiutato. Non si può nemmeno spostare l'offerta su un'opportunità che ammette una sola offerta e ne ha già una: il messaggio compare sotto il campo **Nuova anagrafica** e non viene salvato nulla.",
         },
       ],
     },
