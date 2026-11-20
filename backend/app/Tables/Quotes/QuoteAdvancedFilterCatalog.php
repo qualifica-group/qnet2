@@ -4,7 +4,6 @@ namespace App\Tables\Quotes;
 
 use App\Enums\AdvancedFilterType;
 use App\Enums\CategoryUsageArea;
-use App\Models\QuoteWorkflowStatus;
 use App\Tables\Shared\PresetListFilters;
 
 /**
@@ -16,14 +15,10 @@ use App\Tables\Shared\PresetListFilters;
  * real DB column. `reporter` is deliberately NOT an advanced filter (spec
  * 0065 data_contract): it stays a plain `set` column filter only.
  *
- * `quote_workflow_status` (spec 0083, D-1/D-6) is deliberately NOT a
- * `relation` filter: no `quote-workflow-statuses/for-select` route exists
- * (mirroring RequestAdvancedFilterCatalog's own `workflow_status`
- * precedent) to feed an id-based AsyncPaginatedSelect. Instead it is a
- * `multiselect` SET filter over the distinct workflow-status NAMES (queried
- * at catalog-build time); the server-side apply is overridden in
- * QuotesTableDefinition::applyAdvancedFilter() to
- * `whereHas('quoteWorkflowStatus', whereIn('name', ...))`, never id-based.
+ * `quote_system_status` (spec 0404 A-D7) is a `multiselect` SET filter over
+ * the system status NAMES; the server-side apply is overridden in
+ * QuotesTableDefinition::applyAdvancedFilter() (QuoteSystemStatusColumn),
+ * never id-based.
  */
 final class QuoteAdvancedFilterCatalog
 {
@@ -46,16 +41,16 @@ final class QuoteAdvancedFilterCatalog
                 'target' => 'opportunity',
             ],
             [
-                'name' => 'quote_workflow_status',
-                'label' => 'quotes.advancedFilters.quoteWorkflowStatus',
+                'name' => QuoteSystemStatusColumn::COLUMN_ID,
+                'label' => 'quotes.advancedFilters.quoteSystemStatus',
                 'type' => AdvancedFilterType::Multiselect,
                 'order' => 2,
                 'required' => false,
                 'visible' => true,
                 'width' => 'md',
                 'multiple' => true,
-                'options' => self::workflowStatusOptions(),
-                'target' => 'quote_workflow_status',
+                'options' => QuoteSystemStatusColumn::nameOptions(),
+                'target' => QuoteSystemStatusColumn::COLUMN_ID,
             ],
             [
                 'name' => 'commercial',
@@ -70,10 +65,22 @@ final class QuoteAdvancedFilterCatalog
                 'target' => 'commercial',
             ],
             [
+                'name' => 'commercial_partner',
+                'label' => 'quotes.advancedFilters.commercial_partner',
+                'type' => AdvancedFilterType::Relation,
+                'order' => 4,
+                'required' => false,
+                'visible' => true,
+                'width' => 'md',
+                'multiple' => true,
+                'source' => ['resource' => 'referents'],
+                'target' => 'commercialPartner',
+            ],
+            [
                 'name' => 'supervisor',
                 'label' => 'quotes.advancedFilters.supervisor',
                 'type' => AdvancedFilterType::Relation,
-                'order' => 4,
+                'order' => 5,
                 'required' => false,
                 'visible' => true,
                 'width' => 'md',
@@ -85,7 +92,7 @@ final class QuoteAdvancedFilterCatalog
                 'name' => 'managers',
                 'label' => 'quotes.advancedFilters.managers',
                 'type' => AdvancedFilterType::Relation,
-                'order' => 5,
+                'order' => 6,
                 'required' => false,
                 'visible' => true,
                 'width' => 'md',
@@ -97,7 +104,7 @@ final class QuoteAdvancedFilterCatalog
                 'name' => 'created_range',
                 'label' => 'quotes.advancedFilters.createdRange',
                 'type' => AdvancedFilterType::DateRange,
-                'order' => 6,
+                'order' => 7,
                 'required' => false,
                 'visible' => true,
                 'width' => 'md',
@@ -108,7 +115,7 @@ final class QuoteAdvancedFilterCatalog
                 'name' => 'registry',
                 'label' => 'quotes.advancedFilters.registry',
                 'type' => AdvancedFilterType::Relation,
-                'order' => 7,
+                'order' => 8,
                 'required' => false,
                 'visible' => true,
                 'width' => 'md',
@@ -118,24 +125,5 @@ final class QuoteAdvancedFilterCatalog
             ],
             PresetListFilters::productCategoryFilter('quotes', 8, CategoryUsageArea::Opportunities),
         ];
-    }
-
-    /**
-     * Distinct workflow-status names, across every workflow (global set +
-     * per-workflow overrides) — the same `{value, label}` shape a static
-     * enum-backed `multiselect` uses elsewhere in the codebase, but sourced
-     * from the DB since these are configured lookup rows, not a PHP enum.
-     *
-     * @return array<int, array{value: string, label: string}>
-     */
-    private static function workflowStatusOptions(): array
-    {
-        return QuoteWorkflowStatus::query()
-            ->select('name')
-            ->distinct()
-            ->orderBy('name')
-            ->pluck('name')
-            ->map(static fn (string $name): array => ['value' => $name, 'label' => $name])
-            ->all();
     }
 }

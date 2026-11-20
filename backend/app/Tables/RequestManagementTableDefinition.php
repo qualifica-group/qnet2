@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
-use App\Models\Attachment;
-use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
@@ -14,13 +12,14 @@ use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\RequestManagement\Concerns\WritesInlineEditableCells;
 use App\Tables\RequestManagement\RequestActionCatalog;
 use App\Tables\RequestManagement\RequestAdvancedFilterCatalog;
-use App\Tables\RequestManagement\RequestAssignmentScope;
 use App\Tables\RequestManagement\RequestClientColumns;
 use App\Tables\RequestManagement\RequestClientSearch;
 use App\Tables\RequestManagement\RequestColumnCatalog;
 use App\Tables\RequestManagement\RequestRelationColumns;
 use App\Tables\RequestManagement\RequestRowMapper;
 use App\Tables\RequestManagement\RequestTeamCellWriter;
+use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -63,10 +62,7 @@ use Illuminate\Support\Facades\Auth;
  *
  * `source`/`product_categories`/`general_notes` are
  * delegated to RequestRelationColumns (file-size split, engineering.md §6);
- * the four client anagraphic columns to RequestClientColumns. `operator_ga2`
- * is NOT sortable/filterable (AC-011 corrected in execution: this migration
- * moves only the underlying model, never filter/sort behaviour — see
- * RequestRelationColumns' class docblock). Spec 0056: `operational_site`
+ * the four client anagraphic columns to RequestClientColumns. Spec 0056: `operational_site`
  * (the Sede operativa) —
  * spec 0086, D-6: a real FK on `quotes` itself now, unchanged in shape — has
  * no relation-by-name equivalent (the site has no own name), delegated
@@ -98,7 +94,6 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
         private readonly RequestClientSearch $clientSearch,
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly RequestRelationColumns $relationColumns,
-        private readonly RequestAssignmentScope $assignmentScope,
         private readonly RequestTeamCellWriter $teamCellWriter,
     ) {}
 
@@ -169,7 +164,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * already keeps an out-of-scope row a 404 before this is ever reached.
      * The editable columns here today (spec 0054: `next_callback_at`, on the
      * Offerta itself since the user directive 2026-09-04; spec
-     * 0055: `operator_ga2` plus the four client anagraphic fields; user
+     * 0055: the four client anagraphic fields; spec 0373: `managers`; user
      * directives 2026-07-23/2026-07-31: `operational_site` and `source`; user
      * directive 2026-09-07: `offer_lines`, which REVOKES spec 0086
      * AC-021/AC-022) are each gated per FIELD on top of this by the
@@ -209,12 +204,8 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // shot, not just the leaf relation.
             'opportunity.productLines.productCategory', 'opportunity.productLines.businessFunction',
             'opportunity.registry.personalData.contacts',
-            // `operator.avatar` (spec 0087, D-9): the "Operatore" (GA2)
-            // column's inline avatar for the shared UserCell, no per-row
-            // query.
-            'operator.avatar',
-            // `manager_ga1` (direttiva utente 2026-09-07): the GA1 slot has no
-            // denormalized FK, so the pivot itself is loaded — one query.
+            // "Gestori account" (spec 0373/0406): the whole team with its
+            // avatars, one query.
             'managers.avatar',
             // Spec 0056/0086, D-6: operationalSite's address+city for the
             // composed label (site has no own name) — now the OFFER's own FK.
@@ -237,30 +228,19 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // `FieldChangeRequestValueResolver::record()` precedent).
             'transferredFromOperationalSite',
         ])
-            // D-9: documents stay anchored to the Opportunity — a correlated
-            // subquery through `quotes.opportunity_id`, since `withCount()`
-            // cannot span the BelongsTo `opportunity` hop.
-            ->addSelect([
-                'documents_count' => Attachment::query()
-                    ->selectRaw('count(*)')
-                    ->where('attachable_type', (new Opportunity)->getMorphClass())
-                    ->where('collection', 'documents')
-                    ->whereColumn('attachable_id', 'quotes.opportunity_id'),
-            ])
+            // Spec 0415 D-3: the documents are the OFFER's own (no longer the
+            // Opportunity's, spec 0086 D-9); only the unread ones count.
+            ->withCount(DocumentsCountColumn::own())
             // Badge dell'azione `notes` (direttiva utente 2026-08-07): le note
             // SCOPATE a questa Offerta (`notes.quote_id`), non l'intero thread
             // dell'Opportunita' — esattamente il thread che l'azione apre, come
             // gia' fa QuotesTableDefinition. Roots e reply insieme;
             // soft-deleted escluse dal global scope di Note.
-            ->withCount(['scopedNotes as notes_count'])
+            ->withCount(NotesCountColumn::of('scopedNotes'))
             // Spec 0078, AC-037; spec 0086, D-10 (corrected in execution):
             // the OFFER's OWN still-open requests — two sibling offers carry
             // independent badges.
-            ->withCount('pendingFieldChangeRequests')
-            // Operatore (GA2) picker scope, resolved once per hydrated page
-            // (mapRow sees one row at a time; RequestAssignmentScope is
-            // batch).
-            ->afterQuery($this->assignmentScope->warm(...));
+            ->withCount('pendingFieldChangeRequests');
 
         // D-3 scoping: THE single implementation of "solo le mie righe"
         // (RequestManagementScope), fail-closed by construction. The module
@@ -326,8 +306,8 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * Map a Quote to the operative row payload (delegated to
      * RequestRowMapper, so this definition keeps a single concern: query
      * building). `actions` is attached by the generic TableService via
-     * actionsFor(); `documents_count` rides along from baseQuery's addSelect
-     * (D-9: still counted through the OFFER's opportunity) and `notes_count`
+     * actionsFor(); `documents_count` rides along from baseQuery's withCount
+     * (spec 0415: the OFFER's own documents) and `notes_count`
      * from its `scopedNotes` withCount (the OFFER's own notes).
      *
      * @return array<string, mixed>
@@ -339,10 +319,6 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             ...$this->rowMapper->map($row),
             'documents_count' => (int) ($row->documents_count ?? 0),
             'notes_count' => (int) ($row->notes_count ?? 0),
-            // Non-visible key read by the Operatore (GA2) cell editor's
-            // `relation.scope` (RequestManagerColumns), alongside the visible
-            // `operational_site` the same scope reads.
-            ...$this->assignmentScope->project($row),
         ];
     }
 
@@ -447,8 +423,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * `operational_site` (spec 0056/0086 D-6) is delegated to the shared
      * OperationalSiteColumn, correlated against `quotes` itself (the FK
      * moved there); the four client anagraphic columns to RequestClientColumns'
-     * own correlated subquery; `source`/`general_notes`/`operator_ga2`/
-     * `manager_ga1` fall through to
+     * own correlated subquery; `source`/`general_notes` fall through to
      * RequestRelationColumns. `next_callback_at` is a real `quotes` column
      * (user directive 2026-09-04) and never reaches this method at all.
      * `product_categories`/`offer_lines` are NOT sortable (no single related

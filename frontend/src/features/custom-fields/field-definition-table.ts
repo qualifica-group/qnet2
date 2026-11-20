@@ -39,6 +39,12 @@ export const TABLE_COLUMN_TYPES: readonly TableColumnType[] = [
   'color',
 ]
 
+/** Summary column types a grid label may name (backend `TableFieldSchema::GRID_LABEL_COLUMN_TYPES`). */
+export const TABLE_GRID_LABEL_COLUMN_TYPES: readonly TableColumnType[] = ['date', 'datetime']
+
+/** Backend `TableFieldConfigValidator::MAX_LENGTH`. */
+export const TABLE_GRID_LABEL_MAX_LENGTH = 191
+
 /** Column types the grid summary can be computed from. */
 export const TABLE_SUMMARY_COLUMN_TYPES: readonly TableColumnType[] = [
   'date',
@@ -77,6 +83,8 @@ export interface TableDefinitionBag {
   /** `''` = no summary. */
   summary_column: string
   summary_strategy: '' | TableSummaryStrategy
+  /** `''` = the grid column keeps the table cell; otherwise it shows the summary date alone under this label. */
+  summary_grid_label: string
   min_rows: number | null
   max_rows: number | null
   /** Row event (spec 0390); the `notify_*` fields below are meaningful only when enabled. */
@@ -111,6 +119,7 @@ export function emptyTableDefinition(): TableDefinitionBag {
     selectable_label: '',
     summary_column: '',
     summary_strategy: '',
+    summary_grid_label: '',
     min_rows: null,
     max_rows: null,
     ...hydrateTableNotify(null),
@@ -191,6 +200,7 @@ export function hydrateTableDefinition(config: CustomFieldConfig | null): TableD
     selectable_label: config.selectable?.label ?? '',
     summary_column: config.summary?.column ?? '',
     summary_strategy: config.summary?.strategy ?? '',
+    summary_grid_label: config.summary?.grid_label ?? '',
     min_rows: config.min_rows ?? null,
     max_rows: config.max_rows ?? null,
     ...hydrateTableNotify(config.notify),
@@ -217,6 +227,12 @@ function toWireColumn(column: TableColumnRow): TableFieldColumn {
   return wire
 }
 
+/** Whether `key` is a date column, the only summary a grid label may name. */
+export function isGridLabelColumn(bag: Pick<TableDefinitionBag, 'columns'>, key: string): boolean {
+  const type = bag.columns.find((column) => column.key === key)?.type
+  return type !== undefined && TABLE_GRID_LABEL_COLUMN_TYPES.includes(type)
+}
+
 /** Projects the bag onto `TableFieldConfig`; `strategy: selected` without a selectable is dropped (the schema blocks it before submit). */
 export function buildTableConfig(bag: TableDefinitionBag): TableFieldConfig {
   const config: TableFieldConfig = { columns: bag.columns.map(toWireColumn) }
@@ -225,6 +241,10 @@ export function buildTableConfig(bag: TableDefinitionBag): TableFieldConfig {
   }
   if (bag.summary_column && bag.summary_strategy) {
     config.summary = { column: bag.summary_column, strategy: bag.summary_strategy }
+    const gridLabel = bag.summary_grid_label.trim()
+    if (gridLabel && isGridLabelColumn(bag, bag.summary_column)) {
+      config.summary.grid_label = gridLabel
+    }
   }
   if (bag.min_rows !== null) {
     config.min_rows = bag.min_rows

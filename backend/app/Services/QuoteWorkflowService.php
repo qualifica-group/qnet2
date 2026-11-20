@@ -30,7 +30,7 @@ class QuoteWorkflowService
     {
         return $workflow->load([
             'criteria',
-            'statuses' => fn ($query) => $query->orderBy('sort_order'),
+            'statuses' => fn ($query) => $query->orderBy('sort_order')->with('systemStatus'),
         ]);
     }
 
@@ -112,7 +112,7 @@ class QuoteWorkflowService
      * null, AC-005/AC-010): same custom-rows-sync/system-rows-guard rules as
      * a workflow's own set, via the same scoped writer.
      *
-     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statuses
+     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool, notify: ?array<string, mixed>}>  $statuses
      * @return EloquentCollection<int, QuoteWorkflowStatus>
      */
     public function syncDefaultStatuses(array $statuses): EloquentCollection
@@ -129,6 +129,7 @@ class QuoteWorkflowService
     {
         return QuoteWorkflowStatus::query()
             ->whereNull('quote_workflow_id')
+            ->with('systemStatus')
             ->orderBy('sort_order')
             ->get();
     }

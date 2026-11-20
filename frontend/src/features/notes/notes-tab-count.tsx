@@ -10,12 +10,12 @@ interface NotesTabCountProps {
 }
 
 /**
- * Count of a Note tab (`meta.total`: roots plus replies). Reads the first page
- * of the same feed `NotesSection` shows, so a note written or deleted there
- * updates it.
+ * Count of a Note tab: the notes the user has not read yet (`meta.unread`,
+ * same rule as the grids' badge). Reads the first page of the same feed
+ * `NotesSection` shows, which refetches it once the thread is marked read.
  */
 export function NotesTabCount({ entityType, entityId, quoteScope = 'all' }: NotesTabCountProps) {
   const { data } = useNotes(entityType, entityId, true, quoteScope)
 
-  return <RecordTabCount count={data?.pages[0]?.meta.total} />
+  return <RecordTabCount count={data?.pages[0]?.meta.unread} />
 }

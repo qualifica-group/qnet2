@@ -58,6 +58,7 @@ const WorkOrderWorkflowsPage = lazyRoute(() => import('@/pages/work-order-workfl
 const QuotesPage = lazyRoute(() => import('@/pages/quotes-page'))
 const AgentSalesReportPage = lazyRoute(() => import('@/pages/agent-sales-report-page'))
 const ContractStatusesPage = lazyRoute(() => import('@/pages/contract-statuses-page'))
+const QuoteSystemStatusesPage = lazyRoute(() => import('@/pages/quote-system-statuses-page'))
 const ContractsPage = lazyRoute(() => import('@/pages/contracts-page'))
 const WorkOrdersPage = lazyRoute(() => import('@/pages/work-orders-page'))
 const ProjectWorkOrdersPage = lazyRoute(() => import('@/pages/project-work-orders-page'))
@@ -292,6 +293,10 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
   {
     path: 'contract-statuses',
     element: <ContractStatusesPage />,
+  },
+  {
+    path: 'quote-system-statuses',
+    element: <QuoteSystemStatusesPage />,
   },
   {
     path: 'contracts',

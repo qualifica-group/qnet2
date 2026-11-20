@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\QuoteOfferLines\QuoteOfferLineForSelectController;
 use App\Http\Controllers\WorkOrders\WorkOrderController;
+use App\Http\Controllers\WorkOrders\WorkOrderCopyQuoteAttributesController;
 use App\Http\Controllers\WorkOrders\WorkOrderForSelectController;
 use App\Http\Controllers\WorkOrders\WorkOrderRequestUpdateController;
 use App\Http\Controllers\WorkOrders\WorkOrderTaskTemplateReloadController;
@@ -55,6 +56,9 @@ Route::delete('work-orders/{workOrder}', [WorkOrderController::class, 'destroy']
 
 // Spec 0352: "Richiedi aggiornamento", notifications only (the record is never written).
 Route::post('work-orders/{workOrder}/request-update', WorkOrderRequestUpdateController::class);
+
+// Spec 0404 D-D2: "Copia dati dall'offerta", fills only the empty flexible fields.
+Route::post('work-orders/{workOrder}/copy-quote-attributes', WorkOrderCopyQuoteAttributesController::class);
 
 // Spec 0399: load or reload the Modello di Task, replacing the previous one's tasks.
 Route::post('work-orders/{workOrder}/task-template/reload', WorkOrderTaskTemplateReloadController::class);

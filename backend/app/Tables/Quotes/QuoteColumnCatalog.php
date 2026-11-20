@@ -46,6 +46,9 @@ use App\Tables\Shared\RootCategoriesColumn;
  */
 final class QuoteColumnCatalog
 {
+    /** Spec 0412, D-2: the columns shown only to the holders of `quotes.viewCosts`. */
+    public const array COST_COLUMN_IDS = ['cost_net', 'margin_net'];
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -83,15 +86,17 @@ final class QuoteColumnCatalog
             OfferLinesColumn::readOnlyDeclaration('quotes.columns.offerLines'),
             RootCategoriesColumn::declaration('quotes.columns.rootCategories'),
             [
-                ...self::derivedColumn('quote_workflow_status', 'quotes.columns.quoteWorkflowStatus'),
-                // Spec 0206, D-6: same select + transition note as Gestione Richieste.
+                // Spec 0404 A-D7: Offerte shows the system status (select +
+                // transition note when the destination working status asks one).
+                ...self::derivedColumn('quote_system_status', 'quotes.columns.quoteSystemStatus'),
                 'editable' => true,
                 'editor' => 'select',
-                'editableField' => 'quote_workflow_status_id',
+                'editableField' => 'quote_system_status_id',
                 'nullable' => false,
                 'notable' => true,
             ],
             [...self::derivedColumn('commercial', 'quotes.columns.commercial'), ...self::editableRelation('referents', 'commercial_id')],
+            [...self::derivedColumn('commercial_partner', 'quotes.columns.commercial_partner'), ...self::editableRelation('referents', 'commercial_partner_id')],
             [...self::derivedColumn('reporter', 'quotes.columns.reporter'), ...self::editableRelation('referents', 'reporter_id')],
             [...self::derivedColumn('supervisor', 'quotes.columns.supervisor'), ...self::editableRelation('users', 'supervisor_id')],
             // "Gestori Account" (spec 0087, D-1/T-10) — mirrors
@@ -244,16 +249,17 @@ final class QuoteColumnCatalog
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $columns  the columns the actor sees
      * @return array<int, array<string, mixed>>
      */
-    public static function filters(): array
+    public static function filters(array $columns): array
     {
         return array_map(
             static fn (array $column): array => [
                 'columnId' => $column['id'],
                 'type' => $column['filterType'],
             ],
-            self::columns(),
+            $columns,
         );
     }
 

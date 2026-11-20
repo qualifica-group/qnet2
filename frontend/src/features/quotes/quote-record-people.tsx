@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Briefcase, Contact, UserRound, Users } from 'lucide-react'
+import { Briefcase, Contact, Handshake, UserRound, Users } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
@@ -10,7 +10,7 @@ import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { UserProfileSummary } from '@/components/user-profile-hover-card'
 import { managerPositionLabel } from '@/features/shared/manager-position-label'
 import { quoteRelationLabels } from '@/features/quotes/quote-field-strings'
-import { QuoteCommercialField, QuoteManagersField, QuoteSupervisorField } from '@/features/quotes/quote-relation-fields'
+import { QuoteCommercialField, QuoteCommercialPartnerField, QuoteManagersField, QuoteSupervisorField } from '@/features/quotes/quote-relation-fields'
 import { QuoteReporterField } from '@/features/quotes/quote-reporter-field'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteManagerRef } from '@/features/quotes/types'
@@ -39,6 +39,7 @@ interface QuoteContactsSectionProps {
   /** Absent on create: they are a projection of the persisted record's Opportunita'. */
   derived?: DerivedContacts
   commercial: RelationFieldRef | null
+  commercialPartner: RelationFieldRef | null
   reporter: RelationFieldRef | null
   /** The persisted buoni (detail), seeding the reporter editor's chips; `[]` on create. */
   rewards: RewardAssignmentRef[]
@@ -59,6 +60,7 @@ interface QuoteContactsSectionProps {
 export function QuoteContactsSection({
   derived,
   commercial,
+  commercialPartner,
   reporter,
   rewards,
   rewardCount = 0,
@@ -95,6 +97,15 @@ export function QuoteContactsSection({
           editor={<QuoteCommercialField control={control} selected={commercial} />}
         >
           <ReferentLink referent={commercial} />
+        </RecordInlineField>
+        <RecordInlineField
+          field="commercial_partner_id"
+          label={t('quotes.detail.commercialPartner')}
+          icon={<Handshake />}
+          inline={inline}
+          editor={<QuoteCommercialPartnerField control={control} selected={commercialPartner} />}
+        >
+          <ReferentLink referent={commercialPartner} />
         </RecordInlineField>
         <RecordInlineField
           field="reporter_id"

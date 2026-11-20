@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'La campanella in testata mostra le ultime notifiche e il contatore delle non lette; questa pagina è l\'elenco completo, filtrabile. Si apre dal link **Notifiche** in fondo al menu laterale, appena sopra **Impostazioni**.',
+          text: 'La campanella in testata mostra le ultime notifiche e il contatore delle non lette; questa pagina è l\'elenco completo, filtrabile. Si apre dal link **Notifiche** in fondo al menu laterale, appena sopra **Impostazioni**. Nella campanella, sotto ogni menzione, accanto alla data compaiono le iniziali e il nome di chi ti ha menzionato.',
         },
       ],
     },
@@ -65,6 +65,43 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Non tutte le notifiche hanno un collegamento: in quel caso la colonna resta vuota. Con Ctrl/Cmd+clic su **Apri** il collegamento si apre in una nuova scheda del browser.',
+        },
+      ],
+    },
+    {
+      id: 'team-activity',
+      title: 'Notifiche del tuo team',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Chi ha il permesso **Ricevere le notifiche del team** su Offerte, Contratti o Commesse riceve una notifica (campanella ed email, secondo la preferenza) quando una persona del suo team crea un'offerta, una commessa o apre un contratto, oppure ne cambia lo stato. Il team è quello dell'**organigramma**: le persone sotto di te, a qualunque livello. Il messaggio dice chi l'ha fatto, il record e lo stato prima e dopo.",
+        },
+        {
+          type: 'note',
+          text: "Non arrivano notifiche per le operazioni automatiche (importazioni, migrazione dal vecchio QNet) né per quello che fai tu. Il permesso si assegna dal ruolo, una casella per modulo.",
+        },
+      ],
+    },
+    {
+      id: 'assignment-notices',
+      title: 'Avvisi di assegnazione',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Quando qualcuno ti inserisce come **Gestore Account** o **Supervisore** di un'opportunità o di un'offerta (anche da Gestione Richieste o Gestione Iscritti) ricevi un avviso. Se lo ricevi, e come, lo decide il tuo **ruolo**: per ogni modulo ci sono le caselle **Ricevere la notifica di assegnazione** (campanella) e **Ricevere l'email di assegnazione** (email).",
+        },
+        {
+          type: 'list',
+          items: [
+            "Opportunità: valgono le caselle del modulo **Opportunità**.",
+            "Offerta: basta la casella su uno tra **Offerte**, **Gestione Richieste** e **Gestione Iscritti**.",
+            "L'email parte solo se hai anche l'interruttore delle email acceso in **Impostazioni**.",
+            "Anagrafiche e commesse non dipendono da queste caselle: campanella sempre, email secondo la tua preferenza.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "I ruoli esistenti hanno già tutte le caselle, così nessuno smette di ricevere gli avvisi: l'amministratore le toglie dove non servono. Un ruolo nuovo nasce senza: l'amministratore le spunta quando lo crea.",
         },
       ],
     },

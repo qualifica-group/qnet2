@@ -17,7 +17,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità). Se puoi creare anche le opportunità, prima si apre una finestra: scegli **Da un'opportunità esistente** (i passi seguenti) oppure **Nuova opportunità + offerta** (vedi la sezione dedicata).",
-            "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli); la **Fonte** si precompila se l'opportunità è nata da un lead.",
+            "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Partner commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli); la **Fonte** si precompila se l'opportunità è nata da un lead.",
             'Compila le altre righe che ti servono (vedi tabella).',
             'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti scegliendoli dal **Catalogo prodotti** e nella scheda **Costi** le righe di costo: gli editor sono già aperti e il riepilogo si aggiorna mentre scrivi.',
             'Clicca **Salva** (in alto o in fondo): QNet controlla tutti i campi e crea l\'offerta; gli errori compaiono sotto le righe da correggere.',
@@ -33,7 +33,7 @@ const guide: HelpGuide = {
               "La data offerta è proposta con la data di oggi. La data ricontatto è facoltativa. L'opportunità non si cambia dopo la creazione.",
             ],
             ['Contesto', '**Fonte**', "Campo dell'offerta: precompilata con la Fonte del lead se l'opportunità ne ha uno, altrimenti vuota; puoi sceglierla o cambiarla."],
-            ['Anagrafica e contatti', '**Commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità."],
+            ['Anagrafica e contatti', '**Commerciale**, **Partner commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità; il Partner commerciale viene copiato alla creazione e poi è indipendente."],
             ['Team', '**Supervisore**, **Gestori account**', "Sincronizzati con l'opportunità."],
             ['Società e sedi', '**Società**, **Società sede**, **Sede operativa**', 'Scegli prima la società.'],
             ['Documento e pagamento', '**Layout**, **Metodo di pagamento**', 'Il layout predefinito è già proposto.'],
@@ -76,13 +76,13 @@ const guide: HelpGuide = {
             'In **Offerte** clicca **Nuova offerta** e scegli **Nuova opportunità + offerta**.',
             "Nel **passo 1 - Opportunità** compili gli stessi campi della **Nuova opportunità** (senza il lead: la conversione da lead resta nei moduli Lead e Opportunità). Clicca **Avanti**.",
             "Se i campi obbligatori non sono compilati, compaiono gli errori e non si avanza. Se l'anagrafica ha già un'**opportunità aperta** che blocca la nuova, compare un avviso con **Crea l'offerta su questa opportunità** (apre il modulo dell'offerta già collegato) e **Vai all'opportunità**: la procedura non prosegue.",
-            "Nel **passo 2 - Offerta** compili gli stessi campi della **Nuova offerta**. Commerciale, Segnalatore, Supervisore, Sede operativa e Gestori account sono già precompilati dal passo 1 e puoi cambiarli. L'**Opportunità** risulta **nuova**: viene creata al salvataggio. Le **Informazioni aggiuntive** seguono le linee prodotto del passo 1.",
+            "Nel **passo 2 - Offerta** compili gli stessi campi della **Nuova offerta**. Commerciale, Partner commerciale, Segnalatore, Supervisore, Sede operativa e Gestori account sono già precompilati dal passo 1 e puoi cambiarli. L'**Opportunità** risulta **nuova**: viene creata al salvataggio. Le **Informazioni aggiuntive** seguono le linee prodotto del passo 1.",
             "Clicca **Salva**: opportunità e offerta vengono create insieme e si apre l'offerta. Se qualcosa non va, non viene creato nulla; gli errori ti riportano al passo e al campo da correggere.",
           ],
         },
         {
           type: 'note',
-          text: "**Indietro** conserva tutto quello che hai scritto. Se dal passo 1 cambi Commerciale, Segnalatore, Supervisore, Sede operativa o Gestori account, il passo 2 si riallinea solo sui campi che non hai modificato a mano. Prima del salvataggio non viene creato nulla: uscendo dalla pagina perdi quanto inserito (ti viene chiesta conferma). I Gestori account dell'offerta entrano anche nel team della nuova opportunità.",
+          text: "**Indietro** conserva tutto quello che hai scritto. Se dal passo 1 cambi Commerciale, Partner commerciale, Segnalatore, Supervisore, Sede operativa o Gestori account, il passo 2 si riallinea solo sui campi che non hai modificato a mano. Prima del salvataggio non viene creato nulla: uscendo dalla pagina perdi quanto inserito (ti viene chiesta conferma). I Gestori account dell'offerta entrano anche nel team della nuova opportunità.",
         },
       ],
     },
@@ -92,7 +92,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati offerta** e **Contesto**, poi **Anagrafica e contatti** e **Buoni**, poi **Team** e **Società e sedi**, infine **Documento e pagamento**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\").",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati offerta** e **Contesto**, poi **Anagrafica e contatti** e **Buoni**, poi **Team** e **Società e sedi**, infine **Documento e pagamento**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\"). Tra le schede a destra, **Documenti offerta** mostra i file caricati sulla richiesta in Gestione Richieste o Gestione Iscritti e **Documenti opportunità** quelli dell'opportunità: entrambe sono in sola lettura.",
         },
         {
           type: 'paragraph',
@@ -116,16 +116,30 @@ const guide: HelpGuide = {
           text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Linee prodotto e Note generali vengono dall'opportunità e restano in sola lettura; la **Fonte** è un campo dell'offerta e si modifica qui.",
         },
         {
+          type: 'note',
+          text: "Costi e margini dell'offerta richiedono il permesso **Vedere costi e margini**: senza, non vedi la scheda **Costi**, il costo e il margine nel riepilogo e nei riquadri in alto, il margine per prodotto, le colonne Costo e Margine netto dell'elenco (né in filtri, ordinamento ed esportazione), il margine nelle statistiche e nel dettaglio del contratto. Le modifiche che fai all'offerta non toccano i costi già inseriti.",
+        },
+        {
           type: 'list',
           items: [
             "Le righe **Offerta** e **Costi** hanno una matita ciascuna: si apre l'editor con il catalogo e le righe, e il riepilogo sotto mostra i totali di ciò che stai scrivendo. Se i nuovi prodotti portano altre Informazioni aggiuntive, compaiono sotto la griglia: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).",
-            "I **Buoni** si modificano dalla riga **Segnalatore**. Cambiando Commerciale, Segnalatore o Supervisore QNet aggiorna da sé le commissioni delle righe.",
+            "I **Buoni** si modificano dalla riga **Segnalatore**. Cambiando Commerciale, Partner commerciale, Segnalatore o Supervisore QNet aggiorna da sé le commissioni delle righe.",
             "Cambiando la **Società** la **Società sede** viene svuotata nello stesso salvataggio.",
           ],
         },
         {
           type: 'paragraph',
           text: "Il pulsante **Ricalcola commissioni**, in alto a destra accanto al PDF, riallinea le commissioni dell'offerta alle regole attuali del Configuratore Commissioni (per esempio dopo aver cambiato il verso di una regola Fornitore). Il riepilogo indica quante righe, commissioni e commissioni cambiate a mano sono coinvolte; devi scegliere una risposta, nessuna è preselezionata: **Aggiorna solo le commissioni da regola** (quelle cambiate a mano restano, con l'importo ricalcolato) oppure **Rigenera tutte dalle regole** (anche quelle cambiate a mano vengono sostituite). Si rilegge anche l'interruttore **Calcolo commissione Fornitore** della tipologia del prodotto; margine e riepilogo si aggiornano subito. Il pulsante compare solo se puoi modificare le commissioni e l'offerta non è chiusa.",
+        },
+      ],
+    },
+    {
+      id: 'system-status-tabs',
+      title: "Tab degli stati di sistema",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In alto a destra nella pagina **Offerte** trovi i tab degli stati di sistema: **Tutti** e poi uno per ogni stato, nell'ordine della pagina **Stati di sistema offerta** (per esempio **Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso**). Un tab mostra solo le offerte in quello stato, cioè filtra la colonna **Stato**; **Tutti** toglie il filtro. Accanto a ogni tab, tranne **Tutti**, c'è il numero di offerte (solo se diverso da zero): tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Se rinomini, aggiungi o elimini uno stato di sistema, i tab si aggiornano di conseguenza. Gli stessi tab ci sono nella pagina **Opportunità**.",
         },
       ],
     },
@@ -145,7 +159,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Offerte** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le offerte dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le offerte di ogni categoria, altrimenti solo le offerte delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova le offerte anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
+          text: "All'apertura la pagina **Offerte** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le offerte dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le offerte di ogni categoria, altrimenti le offerte delle tue categorie (con tutte le loro sottocategorie) più quelle, di qualunque categoria, dove sei **Supervisore** o **Gestore account**: un record su cui ti mettono fuori dalla tua competenza resta in elenco. Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: vedi solo le offerte di quelle categorie (anche quelle di altre categorie dove sei Supervisore o Gestore account escono dall'elenco) e la scelta resta salvata. Il campo **Cerca** trova le offerte anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\". Digitando solo numeri trova anche l'offerta con quell'**ID** esatto (la colonna nascosta **ID**), oltre ai risultati che hanno il numero nel codice; l'id del vecchio gestionale non viene cercato.",
         },
         {
           type: 'paragraph',
@@ -175,11 +189,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte, Data ricontatto) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Partner commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte, Data ricontatto) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
-          text: "Lo **Stato** offre solo gli stati del workflow dell'offerta e chiede la **nota** quando lo stato scelto la richiede. Cambiando la **Società** la Società sede si svuota; la Società sede si sceglie tra le sedi della società della riga. Cambiando un ruolo le commissioni delle righe si ricalcolano come dal dettaglio; un Titolo vuoto torna al titolo automatico.",
+          text: "Lo **Stato** offre gli stati di sistema che l'offerta può assumere e chiede la **nota** quando lo stato di lavorazione di destinazione la richiede. Cambiando la **Società** la Società sede si svuota; la Società sede si sceglie tra le sedi della società della riga. Cambiando un ruolo le commissioni delle righe si ricalcolano come dal dettaglio; un Titolo vuoto torna al titolo automatico.",
         },
         {
           type: 'paragraph',
@@ -221,7 +235,7 @@ const guide: HelpGuide = {
             'La scheda **Costi** mostra tutto il catalogo dei prodotti di costo, senza filtro per categoria, e lo stesso prodotto si può aggiungere più volte.',
             '**Descrizione aggiuntiva** aggiunge un testo alla riga, sia nella scheda **Offerta** sia nella scheda **Costi**; il testo è stampabile nel preventivo.',
             "Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga. Il popup mostra in alto imponibile della riga, costi imputati, base di calcolo e totale commissioni; per ogni ruolo un'etichetta indica l'origine della commissione (**Regola: Prodotto**, **Regola: Categoria** o **Regola personale** se viene da una regola del Configuratore, **Modifica manuale** se è stata cambiata a mano; passando sopra l'etichetta compare la spiegazione). In modifica, ogni ruolo mostra anche il **Calcolo di sistema** (quanto prevede il Configuratore Commissioni): se hai cambiato il valore a mano puoi tenerlo oppure tornare al calcolo con **Applica calcolo di sistema**. La riga **Fornitore** mostra anche il **Verso**: se la commissione viene da una regola è quello della regola; se la modifichi a mano scegli tu **Ricevuta** (è il ricavo della riga) o **Pagata** (costo verso il fornitore), e il margine si aggiorna di conseguenza.",
-            "Nel riepilogo, sotto le card, **Mostra dettaglio provvigioni** apre (e **Nascondi dettaglio provvigioni** richiude) il blocco **Dettaglio provvigioni per prodotto** dell'offerta salvata, che elenca ogni riga con commissioni: per **Commerciale**, **Segnalatore**, **Supervisore** e **Fornitore** il destinatario, la percentuale (o l'importo fisso) e l'importo; per il Fornitore anche il verso (**Ricevuta** o **Pagata**), con un (?) che spiega cosa significa. Il nome del destinatario porta alla sua scheda: passando sopra un utente compare la sua scheda profilo, passando sopra un referente o un'anagrafica compare il collegamento alla scheda, che si apre anche cliccando il nome (se hai il permesso di vederla). Passando sopra un importo compare il calcolo: per una percentuale la base (imponibile meno costi imputati alla riga) e la percentuale applicata, per i totali il saldo. Ogni importo ha il segno **+** se la commissione entra (Fornitore ricevuta) e **−** se esce (Commerciale, Segnalatore, Supervisore e Fornitore pagata). L'ultima riga e l'ultima colonna danno i totali come saldo: quello che entra meno quello che esce. È visibile solo a chi può vedere le commissioni.",
+            "Nel riepilogo, sotto le card, **Mostra dettaglio provvigioni** apre (e **Nascondi dettaglio provvigioni** richiude) il blocco **Dettaglio provvigioni per prodotto** dell'offerta salvata, che elenca ogni riga con commissioni: per **Commerciale**, **Partner commerciale**, **Segnalatore**, **Supervisore** e **Fornitore** il destinatario, la percentuale (o l'importo fisso) e l'importo; per il Fornitore anche il verso (**Ricevuta** o **Pagata**), con un (?) che spiega cosa significa. Il nome del destinatario porta alla sua scheda: passando sopra un utente compare la sua scheda profilo, passando sopra un referente o un'anagrafica compare il collegamento alla scheda, che si apre anche cliccando il nome (se hai il permesso di vederla). Passando sopra un importo compare il calcolo: per una percentuale la base (imponibile meno costi imputati alla riga) e la percentuale applicata, per i totali il saldo. Ogni importo ha il segno **+** se la commissione entra (Fornitore ricevuta) e **−** se esce (Commerciale, Partner commerciale, Segnalatore, Supervisore e Fornitore pagata). L'ultima riga e l'ultima colonna danno i totali come saldo: quello che entra meno quello che esce. È visibile solo a chi può vedere le commissioni.",
             'Ogni riga di costo ha un **Prodotto associato**: scegli "Nessuno (costo generico)" oppure una riga del tab Prodotti, per imputare quel costo a quella vendita. Eliminando la riga prodotto associata, il costo torna automaticamente "Nessuno".',
             'Al massimo 200 righe per scheda.',
           ],
@@ -232,7 +246,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** (ogni importo ha il segno **+** se la commissione entra e **−** se esce: Commerciale, Segnalatore e Supervisore sono sempre pagate; il Fornitore è **+** se ricevuto e **−** se pagato, e un\'offerta con entrambi i versi mostra le due righe **Fornitore (ricevute)** e **Fornitore (pagate)**) e il **Margine atteso** (somma dei margini delle righe meno i costi generici: una riga con commissione Fornitore **ricevuta** ha come ricavo la sola commissione, le altre sono imponibile meno costi e commissioni pagate; i **Ricavi attesi** non cambiano), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto, così che ricavo meno costo meno commissioni dia il margine (sulle righe con commissione Fornitore ricevuta compare "ricavo = commissione ricevuta": il ricavo è la commissione ricevuta e le commissioni sono solo quelle pagate), più una riga "Costi generici" per i costi non associati. Passando sopra il nome del prodotto compare il nome intero; ogni importo è sottolineato a tratti e, passandoci sopra o toccandolo, mostra il calcolo (per esempio 3.200,00 − 0,00 − 3.200,00 = 0,00). Il blocco si apre con **Mostra dati avanzati**, sotto le card del riepilogo, ed è visibile solo a chi può vedere le commissioni.',
+          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** (ogni importo ha il segno **+** se la commissione entra e **−** se esce: Commerciale, Partner commerciale, Segnalatore e Supervisore sono sempre pagate; il Fornitore è **+** se ricevuto e **−** se pagato, e un\'offerta con entrambi i versi mostra le due righe **Fornitore (ricevute)** e **Fornitore (pagate)**) e il **Margine atteso** (somma dei margini delle righe meno i costi generici: una riga con commissione Fornitore **ricevuta** ha come ricavo la sola commissione, le altre sono imponibile meno costi e commissioni pagate; i **Ricavi attesi** non cambiano), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto, così che ricavo meno costo meno commissioni dia il margine (sulle righe con commissione Fornitore ricevuta compare "ricavo = commissione ricevuta": il ricavo è la commissione ricevuta e le commissioni sono solo quelle pagate), più una riga "Costi generici" per i costi non associati. Passando sopra il nome del prodotto compare il nome intero; ogni importo è sottolineato a tratti e, passandoci sopra o toccandolo, mostra il calcolo (per esempio 3.200,00 − 0,00 − 3.200,00 = 0,00). Il blocco si apre con **Mostra dati avanzati**, sotto le card del riepilogo, ed è visibile solo a chi può vedere le commissioni.',
         },
         {
           type: 'warning',
@@ -246,7 +260,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Gli stati disponibili dipendono dal workflow configurato nel **Configuratore Stati Offerta**.',
+          text: "In Offerte si vedono e si scelgono gli **stati di sistema** (**Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso** e quelli che aggiungi in **Stati di sistema offerta**), non gli stati di lavorazione di Gestione Richieste. Sono disponibili quelli collegati ad almeno uno stato di lavorazione del workflow configurato nel **Configuratore Stati Offerta**.",
         },
         {
           type: 'steps',
@@ -259,7 +273,68 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Portando l'offerta in uno stato **Chiuso con esito positivo** nasce il contratto. Da quel momento il pulsante **Apri contratto** in cima al dettaglio dell'offerta, e la voce **Apri contratto** nel menu delle altre azioni (i tre puntini) della riga in tabella, aprono il contratto in una finestra sopra l'offerta. Li vedi solo se il tuo ruolo può consultare i Contratti.",
+          text: "Offerte e **Gestione Richieste** restano allineate: scegliendo uno stato di sistema, l'offerta passa al **primo** stato di lavorazione (nell'ordine configurato) collegato a quello stato di sistema nel workflow dell'offerta; se è già in uno stato collegato, non cambia nulla. E se cambi lo stato di lavorazione in Gestione Richieste, in Offerte compare lo stato di sistema collegato. Se nessuno stato di lavorazione del workflow è collegato allo stato scelto, il salvataggio viene rifiutato.",
+        },
+        {
+          type: 'paragraph',
+          text: "Portando l'offerta in uno stato **Vinto** nasce il contratto; **Vinto provvisorio** non lo genera. Se poi l'offerta esce da **Vinto** (anche verso **Vinto provvisorio**) e il contratto non è ancora stato lavorato, il contratto viene eliminato; altrimenti viene sospeso. Da quel momento il pulsante **Apri contratto** in cima al dettaglio dell'offerta, e la voce **Apri contratto** nel menu delle altre azioni (i tre puntini) della riga in tabella, aprono il contratto in una finestra sopra l'offerta. Li vedi solo se il tuo ruolo può consultare i Contratti.",
+        },
+        {
+          type: 'note',
+          text: "Se una categoria dell'opportunità ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), l'offerta passa a **Vinto** e il contratto nasce come sempre, ma il contratto non si può validare finché l'offerta non è stata trasferita con **Trasferisci contatto** (in Gestione Richieste) o con **Trasferisci ad altra anagrafica**: **Valida contratto** viene rifiutato con \"Questa categoria richiede un trasferimento prima di validare il contratto\".",
+        },
+      ],
+    },
+    {
+      id: 'transfer-to-another-registry',
+      title: "Trasferire un'offerta a un'altra anagrafica",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Se l'offerta va intestata a un altro cliente, nel dettaglio premi **Trasferisci ad altra anagrafica** (serve il permesso **Trasferisci ad altra anagrafica** oltre a **Modifica**; lo stesso pulsante c'è nel pannello **Lavora** di Gestione Richieste e Gestione Iscritti, con i permessi di quel modulo).",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Scegli la **Nuova anagrafica**: deve essere diversa da quella attuale.',
+            "Se serve, cambia il **Titolo** dell'offerta: è già compilato con quello attuale. Se lo svuoti torna il titolo automatico (codice e prodotti).",
+            'Controlla e, se serve, aggiorna le **Informazioni aggiuntive** (i campi flessibili): sono già compilate con i valori attuali.',
+            'Clicca **Trasferisci**.',
+          ],
+        },
+        {
+          type: 'table',
+          headers: ['Situazione della nuova anagrafica', "Dove va l'offerta"],
+          rows: [
+            ["Ha già un'opportunità aperta e la categoria non ammette più opportunità aperte per anagrafica", "Sull'opportunità aperta, che riceve le categorie dei prodotti dell'offerta se non le ha."],
+            ["Non ha opportunità aperte, oppure la categoria ammette più opportunità aperte", "Su una nuova opportunità con le stesse linee di prodotto, commerciale, partner commerciale, segnalatore, supervisore, sede operativa e gestori della vecchia; senza referente."],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: "La vecchia opportunità resta com'è, con le sue note e i suoi documenti; le note scritte su questa offerta la seguono. Il trasferimento resta registrato nello **Storico** dell'offerta e delle due opportunità (**Trasferimento ad altra anagrafica**, da quale a quale anagrafica, chi e quando), e in cima al dettaglio dell'offerta compare la riga **Trasferita da A a B il gg/mm/aaaa da Nome**.",
+        },
+        {
+          type: 'warning',
+          text: "Un'offerta a contratto si può trasferire solo se sul contratto non è stato fatto ancora nulla (stato iniziale, nessuna validazione, nessun dato, documento, rinnovo o commessa): il contratto segue l'offerta sulla nuova anagrafica. Se il contratto è già stato lavorato il trasferimento è rifiutato. Non si può nemmeno spostare l'offerta su un'opportunità che ammette una sola offerta e ne ha già una: il messaggio compare sotto il campo **Nuova anagrafica** e non viene salvato nulla.",
+        },
+      ],
+    },
+    {
+      id: 'quote-under-contract',
+      title: "Offerta a contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Un'offerta che ha un contratto (in qualunque stato) è **congelata**: è un documento già accettato. Per modificarla serve il permesso **Modifica offerte a contratto**; senza, nel dettaglio compare l'avviso **Offerta a contratto: modificabile solo da chi ha il permesso** e i campi sono in sola lettura (anche dalle celle della lista, dal pannello **Lavora** di Gestione Richieste e Gestione Iscritti e dalle righe nel dettaglio del contratto).",
+        },
+        {
+          type: 'paragraph',
+          text: "Con il permesso, ogni modifica apre un popup **Offerta a contratto** che chiede conferma: se confermi la modifica viene salvata e registrata nello **Storico**, se annulli non cambia nulla.",
+        },
+        {
+          type: 'note',
+          text: "Restano sempre modificabili i campi operativi: **Gestori account** (team), **Data prossimo richiamo**, **Sede operativa** e **Note generali**. Note, documenti, task e attività non sono congelati.",
         },
       ],
     },

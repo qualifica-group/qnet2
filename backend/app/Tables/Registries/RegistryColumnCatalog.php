@@ -131,6 +131,7 @@ final class RegistryColumnCatalog
                 'filterable' => false,
             ],
             [...self::relationColumn('commercial'), ...self::editableRelation('referents', 'commercial_id')],
+            [...self::relationColumn('commercial_partner'), ...self::editableRelation('referents', 'commercial_partner_id')],
             [...self::relationColumn('supervisor'), ...self::editableRelation('users', 'supervisor_id')],
             [...self::relationColumn('reporter'), ...self::editableRelation('referents', 'reporter_id')],
             [
@@ -174,6 +175,7 @@ final class RegistryColumnCatalog
             ['columnId' => 'agreement_status', 'type' => 'set'],
             ['columnId' => 'size_class', 'type' => 'set'],
             ['columnId' => 'commercial', 'type' => 'set'],
+            ['columnId' => 'commercial_partner', 'type' => 'set'],
             ['columnId' => 'supervisor', 'type' => 'set'],
             ['columnId' => 'reporter', 'type' => 'set'],
             ['columnId' => 'managers', 'type' => 'set'],

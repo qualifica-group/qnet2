@@ -10,6 +10,15 @@ export const common = {
   confirm: 'Conferma',
   cancel: 'Annulla',
   confirmTitle: 'Sei sicuro?',
+  /** Spec 0404 E: offerta a contratto, popup di conferma (409) e avviso nelle schermate. */
+  contractedQuote: {
+    confirmTitle: 'Offerta a contratto',
+    confirmDescription:
+      "L'offerta è a contratto: la modifica cambia un documento già accettato. Vuoi procedere?",
+    confirmAction: 'Procedi',
+    frozenNotice: 'Offerta a contratto: modificabile solo da chi ha il permesso.',
+    confirmNotice: 'Offerta a contratto: prima di salvare una modifica ti verrà chiesta conferma.',
+  },
   yes: 'Sì',
   no: 'No',
   back: 'Indietro',

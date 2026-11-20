@@ -242,6 +242,25 @@ final class TableFieldConfigValidator
         } elseif ($strategy === 'selected' && $selectableKey === null) {
             $this->errors['config.summary.strategy'] = 'The selected strategy requires a selectable.';
         }
+
+        $this->validateGridLabel($summary['grid_label'] ?? null, is_string($column) ? ($types[$column] ?? null) : null);
+    }
+
+    /**
+     * Optional label of a grid column that shows the summary date alone
+     * (TableFieldSchema::GRID_LABEL_COLUMN_TYPES).
+     */
+    private function validateGridLabel(mixed $gridLabel, mixed $columnType): void
+    {
+        if ($gridLabel === null) {
+            return;
+        }
+
+        if (! is_string($gridLabel) || trim($gridLabel) === '' || mb_strlen($gridLabel) > self::MAX_LENGTH) {
+            $this->errors['config.summary.grid_label'] = 'The grid label must be a non-empty string (max 191 characters).';
+        } elseif (! in_array($columnType, TableFieldSchema::GRID_LABEL_COLUMN_TYPES, true)) {
+            $this->errors['config.summary.grid_label'] = 'The grid label requires a date summary column.';
+        }
     }
 
     private function validateRows(mixed $minRows, mixed $maxRows): void

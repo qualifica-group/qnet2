@@ -8,6 +8,7 @@ use App\Enums\CategoryUsageArea;
 use App\Models\Opportunity;
 use App\Services\ProductLines\ProductLineSetValidator;
 use App\Services\ProductLines\ProductLineWriter;
+use App\Services\Quotes\QuoteRootScope;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -46,27 +47,32 @@ final class RequestProductLineWriter
     public function __construct(
         private readonly ProductLineWriter $productLineWriter,
         private readonly ProductLineSetValidator $setValidator,
+        private readonly QuoteRootScope $rootScope,
     ) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $submitted  the validated `product_lines` rows
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
+     * @param  ?int  $rootId  spec 0411, D-4: the root the edited offer is bound to — the
+     *                        submitted rows replace only that root's lines and must stay under it
      * @return bool whether the collection actually changed — a workflow
      *              resolution criterion the caller re-runs on (spec 0047)
      *
      * @throws ValidationException the new set breaks a product-line rule
      */
-    public function apply(Opportunity $opportunity, array $submitted, array &$changed, array &$old): bool
+    public function apply(Opportunity $opportunity, array $submitted, array &$changed, array &$old, ?int $rootId = null): bool
     {
         // Step 1: both sides in the same shape, compared as an unordered SET
         // of categories (spec 0132: a row is identified by its category
-        // ALONE — a line's position carries no meaning either).
+        // ALONE — a line's position carries no meaning either). A bound
+        // offer compares against its own root's lines only.
         $current = $this->currentCategoryIds($opportunity);
+        $own = $rootId === null ? $current : $this->underRoot($current, $rootId);
         $next = $this->normalize($submitted);
         $nextCategoryIds = array_column($next, 'product_category_id');
 
-        if ($this->sortedIds($current) === $this->sortedIds($nextCategoryIds)) {
+        if ($this->sortedIds($own) === $this->sortedIds($nextCategoryIds)) {
             return false;
         }
 
@@ -85,6 +91,17 @@ final class RequestProductLineWriter
             CategoryUsageArea::Requests,
         );
 
+        // Step 1-ter (spec 0411, D-4): a bound offer never leaves its root,
+        // and the sibling offers' roots keep their own lines.
+        if ($rootId !== null) {
+            $this->rootScope->assertUnderRoot($nextCategoryIds, $rootId, self::ERROR_FIELD);
+            $next = [...$this->normalize(array_map(
+                static fn (int $id): array => ['product_category_id' => $id],
+                array_values(array_diff($current, $own)),
+            )), ...$next];
+            $nextCategoryIds = array_column($next, 'product_category_id');
+        }
+
         // Step 2: replace, and report the change for the caller's audit entry
         // (the collection is a relation, so it never reaches the automatic
         // fillable-diff log).
@@ -94,6 +111,18 @@ final class RequestProductLineWriter
         $changed['product_lines'] = $nextCategoryIds;
 
         return true;
+    }
+
+    /**
+     * @param  array<int, int>  $categoryIds
+     * @return array<int, int>
+     */
+    private function underRoot(array $categoryIds, int $rootId): array
+    {
+        return array_values(array_filter(
+            $categoryIds,
+            fn (int $id): bool => $this->rootScope->rootIdOf($id) === $rootId,
+        ));
     }
 
     /**

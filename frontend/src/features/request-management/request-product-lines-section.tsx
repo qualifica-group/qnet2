@@ -9,6 +9,8 @@ import { useOfferLinesCoherence } from '@/features/request-management/use-offer-
 
 interface RequestProductLinesSectionProps {
   control: Control<RequestWorkFormValues>
+  /** Spec 0411: the parent category the request is bound to; its rows may only pick under it. */
+  rootCategory?: { id: number; name: string } | null
 }
 
 /**
@@ -22,7 +24,7 @@ interface RequestProductLinesSectionProps {
  * Re-pointing or removing a row empties the offer rows whose product that
  * classification no longer covers (`useOfferLinesCoherence`).
  */
-export function RequestProductLinesSection({ control }: RequestProductLinesSectionProps) {
+export function RequestProductLinesSection({ control, rootCategory = null }: RequestProductLinesSectionProps) {
   const { t } = useTranslation()
   const resetUncoveredOfferRows = useOfferLinesCoherence(control)
 
@@ -37,7 +39,6 @@ export function RequestProductLinesSection({ control }: RequestProductLinesSecti
         name="product_lines"
         metaKey="product_lines"
         label={t('requestManagement.workPanel.productLines.fieldLabel')}
-        hint={t('requestManagement.workPanel.productLines.hint')}
       >
         {({ field, disabled }) => (
           <ProductLinesField
@@ -48,6 +49,13 @@ export function RequestProductLinesSection({ control }: RequestProductLinesSecti
             }}
             disabled={disabled}
             area="requests"
+            lockedRootCategoryId={rootCategory === null ? null : rootCategory.id}
+            extraHints={[
+              t('requestManagement.workPanel.productLines.hint'),
+              ...(rootCategory === null
+                ? []
+                : [t('requestManagement.workPanel.productLines.rootLocked', { root: rootCategory.name })]),
+            ]}
           />
         )}
       </MetaField>

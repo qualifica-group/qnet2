@@ -77,9 +77,7 @@ class WorkOrderResource extends JsonResource
             'work_order_workflow_status_id' => $this->work_order_workflow_status_id,
             'work_order_workflow_status' => $this->summarizeWorkflowStatus(),
             'work_order_workflow_statuses' => $this->resolvedWorkflowStatuses(),
-            // Spec 0402: the commessa's own payment status and the net amount of its lines.
-            'work_order_payment_status_id' => $this->work_order_payment_status_id,
-            'payment_status' => $this->summarizePaymentStatus(),
+            // Spec 0402: the net amount of the commessa's lines.
             'amount' => $this->summarizeAmount($request),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,
@@ -111,6 +109,7 @@ class WorkOrderResource extends JsonResource
             // commessa has no `quote`, so these are null / [].
             'referent' => $this->summarizeReferent($request),
             'commercial' => $this->summarizeByName($this->quote?->commercial),
+            'commercial_partner' => $this->summarizeByName($this->quote?->commercialPartner),
             'reporter' => $this->summarizeByName($this->quote?->reporter),
             'source' => $this->summarizeByName($this->quote?->source),
             'product_lines' => $this->summarizeProductLines($this->quote?->opportunity?->productLines ?? []),
@@ -338,24 +337,31 @@ class WorkOrderResource extends JsonResource
     /**
      * `registry` is the client of the line's own offer (spec 0267): on a
      * multi-offer commessa it tells the lines apart, in place of the single
-     * `registry` of the resource.
+     * `registry` of the resource. `typology` is the product's (Consulenza,
+     * Ente...), the badge beside the line's payment status.
      *
-     * @return array<int, array{id: int, sort_order: int, product: array{id: int, code: string, name: string}|null, registry: array{id: int, name: string}|null}>
+     * @return array<int, array{id: int, sort_order: int, product: array{id: int, code: string, name: string}|null, typology: array{id: int, code: string, name: string, color: string}|null, registry: array{id: int, name: string}|null, payment_status: array{id: int, name: string, color: string, allows_delivery: bool}|null}>
      */
     private function summarizeQuoteLines(): array
     {
         /** @var Collection<int, QuoteLine> $lines */
         $lines = $this->quoteLines;
+        $payments = $this->linePayments->keyBy('quote_line_id');
 
-        return $lines->map(static function ($line): array {
+        return $lines->map(static function ($line) use ($payments): array {
             $product = $line->product;
+            $typology = $product?->productTypology;
             $registry = $line->quote?->opportunity?->registry;
+            $status = $payments->get($line->id)?->status;
 
             return [
                 'id' => $line->id,
                 'sort_order' => $line->sort_order,
                 'product' => $product === null ? null : ['id' => $product->id, 'code' => $product->code, 'name' => $product->name],
+                'typology' => $typology === null ? null : ['id' => $typology->id, 'code' => $typology->code, 'name' => $typology->name, 'color' => $typology->color],
                 'registry' => $registry === null ? null : ['id' => $registry->id, 'name' => $registry->name],
+                // Spec 0403: the payment status of the line in THIS commessa.
+                'payment_status' => $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color, 'allows_delivery' => $status->allows_delivery],
             ];
         })->all();
     }

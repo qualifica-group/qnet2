@@ -8,6 +8,7 @@ use App\Enums\DocumentLayoutModule;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
+use App\Policies\QuotePolicy;
 use App\Services\DocumentLayouts\DocumentLayoutProductSources;
 use App\Services\DocumentLayouts\Rendering\Blocks\ProductLineColumnResolver;
 
@@ -39,6 +40,7 @@ final class QuoteRenderSubject implements DocumentRenderSubject
         'opportunity.referent.personalData.contacts',
         'opportunity.referent.referentType',
         'commercial.personalData.contacts',
+        'commercialPartner.personalData.contacts',
         'reporter.personalData.contacts',
         'supervisor',
         'company.addresses.city',
@@ -84,8 +86,14 @@ final class QuoteRenderSubject implements DocumentRenderSubject
         return $this->variableResolver->resolve($category, $key, $this->quote, $actor);
     }
 
-    public function productRows(string $source): array
+    public function productRows(string $source, User $actor): array
     {
+        // Spec 0412, D-2: the permission, not the offer's record scope (a
+        // commessa email attaches this document too).
+        if ($source === self::SOURCE_COST_LINES && ! $actor->can(QuotePolicy::VIEW_COSTS_PERMISSION)) {
+            return [];
+        }
+
         // Already sort_order-ordered relations on Quote: never re-sorted here.
         $lines = $source === self::SOURCE_COST_LINES ? $this->quote->costLines : $this->quote->offerLines;
 

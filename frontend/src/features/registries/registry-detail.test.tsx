@@ -114,6 +114,8 @@ function registry(overrides: Partial<RegistryDetailWithPermissions> = {}): Regis
     referents: [],
     primary_referent_id: null,
     primary_referent: null,
+    secondary_referent_id: null,
+    secondary_referent: null,
     manager_ids: [],
     managers: [],
     manager_slots: [],
@@ -127,6 +129,8 @@ function registry(overrides: Partial<RegistryDetailWithPermissions> = {}): Regis
     },
     commercial_id: null,
     commercial: null,
+    commercial_partner_id: null,
+    commercial_partner: null,
     reporter_id: null,
     reporter: null,
     vat_group: null,
@@ -245,6 +249,24 @@ describe('RegistryDetailView — record card (user directive 2026-09-11)', () =>
     expect(within(team).getByText('Giulia Bianchi')).toBeInTheDocument()
   })
 
+  it('shows the Commercial partner right after the Commercial, as a referent (spec 0417 AC-020)', () => {
+    render(
+      <RegistryDetailView
+        registry={registry({
+          commercial_id: 5,
+          commercial: { id: 5, name: 'Carla Rossi' },
+          commercial_partner_id: 6,
+          commercial_partner: { id: 6, name: 'Paolo Verdi' },
+        })}
+      />,
+    )
+
+    const commercial = screen.getByText('Commercial')
+    const partner = screen.getByText('Commercial partner')
+    expect(commercial.compareDocumentPosition(partner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('Paolo Verdi')).toBeInTheDocument()
+  })
+
   it('keeps an empty G.A. slot visible as a placeholder row, never drops it', () => {
     render(
       <RegistryDetailView
@@ -347,6 +369,8 @@ describe('RegistryDetailView — main referent (spec 0330 AC-012)', () => {
           ],
           primary_referent_id: 2,
           primary_referent: { id: 2, name: 'Grace Hopper' },
+          secondary_referent_id: null,
+          secondary_referent: null,
         })}
       />,
     )

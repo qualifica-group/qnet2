@@ -8,12 +8,14 @@ import { ProductCategoryGeneratesContractField } from '@/features/product-catego
 import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
 import { ProductCategoryMultiQuoteWorkOrderField } from '@/features/product-categories/product-category-multi-quote-work-order-field'
 import { ProductCategoryMultipleOpenOpportunitiesField } from '@/features/product-categories/product-category-multiple-open-opportunities-field'
+import { ProductCategoryRequestOfferHiddenField } from '@/features/product-categories/product-category-request-offer-hidden-field'
+import { ProductCategoryRequestRegistryTypeField } from '@/features/product-categories/product-category-request-registry-type-field'
 import { ProductCategoryReportColumnsField } from '@/features/product-categories/product-category-report-columns-field'
 import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
 import { ProductCategorySingleQuoteField } from '@/features/product-categories/product-category-single-quote-field'
 import { ProductCategoryUsageAreaField } from '@/features/product-categories/product-category-usage-area-field'
-import { ActiveRule, ReportableRule, SelectableRule } from '@/features/product-categories/product-category-flag-rules'
+import { ActiveRule, ContactTransferRule, ReportableRule, SelectableRule } from '@/features/product-categories/product-category-flag-rules'
 import type { ProductCategoryRecordSectionProps } from '@/features/product-categories/product-category-record-props'
 import { ReportColumnsValue, RuleValue } from '@/features/product-categories/product-category-rule-values'
 import { useReportColumnsCatalog } from '@/features/product-categories/use-report-columns-catalog'
@@ -44,7 +46,8 @@ function RuleRow({ field, label, inline, canEdit, value, inheritedFrom, inherite
 /**
  * The behavioural rules a category imposes downstream (spec 0229 D-3), one row
  * per rule in the order of the form's old "Regole di gestione" section. Every
- * rule but `is_selectable`/`is_active`/`is_reportable`/the report columns is
+ * rule but `is_selectable`/`is_active`/`is_reportable`/the report columns/the
+ * contact-transfer obligation is
  * owned by the branch ROOT: under a parent it only displays, naming the root,
  * so it offers no pencil. The report columns row appears while the category is
  * effectively reportable (spec 0141).
@@ -99,6 +102,16 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
           editor={<ProductCategoryUsageAreaField {...editorProps} />}
         />
         <RuleRow
+          field="request_registry_type"
+          label={t('productCategories.form.requestRegistryType')}
+          inline={inline}
+          canEdit={canEdit && values.request_registry_type_source_category === null}
+          value={t(`enums.personal_data_type.${values.request_registry_type}`)}
+          inheritedFrom={values.request_registry_type_source_category?.name}
+          inheritedLabel={inheritedLabel('requestRegistryTypeInherited', values.request_registry_type_source_category)}
+          editor={<ProductCategoryRequestRegistryTypeField {...editorProps} />}
+        />
+        <RuleRow
           field="single_quote_per_opportunity"
           label={t('productCategories.form.singleQuotePerOpportunity')}
           inline={inline}
@@ -135,6 +148,14 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
           editor={<ProductCategoryGeneratesContractField {...editorProps} />}
         />
         <RuleRow
+          field="requires_contact_transfer_before_contract"
+          label={t('productCategories.form.requiresContactTransfer')}
+          inline={inline}
+          canEdit={canEdit}
+          value={yesNo(values.requires_contact_transfer_before_contract)}
+          editor={<ContactTransferRule control={control} />}
+        />
+        <RuleRow
           field="multi_quote_work_order"
           label={t('productCategories.form.multiQuoteWorkOrder')}
           inline={inline}
@@ -154,6 +175,16 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
           inheritedFrom={values.simplified_offer_line_source_category?.name}
           inheritedLabel={inheritedLabel('simplifiedOfferLineInherited', values.simplified_offer_line_source_category)}
           editor={<ProductCategorySimplifiedOfferLineField {...editorProps} />}
+        />
+        <RuleRow
+          field="request_offer_hidden"
+          label={t('productCategories.form.requestOfferHidden')}
+          inline={inline}
+          canEdit={canEdit && values.request_offer_hidden_source_category === null}
+          value={yesNo(values.request_offer_hidden)}
+          inheritedFrom={values.request_offer_hidden_source_category?.name}
+          inheritedLabel={inheritedLabel('requestOfferHiddenInherited', values.request_offer_hidden_source_category)}
+          editor={<ProductCategoryRequestOfferHiddenField {...editorProps} />}
         />
         <RuleRow
           field="is_selectable"

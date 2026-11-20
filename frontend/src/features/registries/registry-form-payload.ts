@@ -37,9 +37,11 @@ export function buildCreatePayload(
     sector_ids: values.sector_ids,
     referent_ids: values.referent_ids,
     primary_referent_id: values.primary_referent_id,
+    secondary_referent_id: values.secondary_referent_id,
     manager_slots: values.manager_slots,
     supervisor_id: values.supervisor_id,
     commercial_id: values.commercial_id,
+    commercial_partner_id: values.commercial_partner_id,
     reporter_id: values.reporter_id,
     vat_group: values.vat_group || null,
     is_supplier: values.is_supplier,
@@ -81,6 +83,9 @@ export function buildUpdatePayload(
   if (values.commercial_id !== original.commercial_id) {
     payload.commercial_id = values.commercial_id
   }
+  if (values.commercial_partner_id !== original.commercial_partner_id) {
+    payload.commercial_partner_id = values.commercial_partner_id
+  }
   if (values.reporter_id !== original.reporter_id) {
     payload.reporter_id = values.reporter_id
   }
@@ -116,11 +121,17 @@ export function buildUpdatePayload(
   if (!sameIdSet(values.sector_ids, original.sector_ids)) {
     payload.sector_ids = values.sector_ids
   }
-  if (!sameIdSet(values.referent_ids, original.referent_ids)) {
+  const referentsChanged = !sameIdSet(values.referent_ids, original.referent_ids)
+  if (referentsChanged) {
     payload.referent_ids = values.referent_ids
   }
   if (values.primary_referent_id !== original.primary_referent_id) {
     payload.primary_referent_id = values.primary_referent_id
+  }
+  // With the referents changed the form already decided the secondary (spec
+  // 0408 D-9), even an empty one: sent so the server does not fill it again.
+  if (referentsChanged || values.secondary_referent_id !== original.secondary_referent_id) {
+    payload.secondary_referent_id = values.secondary_referent_id
   }
   // Manager slots are ORDER- and GAP-sensitive (a slot's G.A. position is
   // meaningful), so compare positionally, not as an unordered set.

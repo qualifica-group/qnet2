@@ -64,14 +64,15 @@ final class TaskRecordRoles
 
     /**
      * Spec 0387: a Responsabile or Partecipante of the commessa of a Task
-     * with no assignee may take it over by completing it. Kept apart from
-     * isAssignee() like isInheritedAssignee(): it only grants the
-     * completion, and TaskCompletionService::complete() turns the actor
-     * into a real assignee as the first step of that completion.
+     * may take it over by completing it, in their own name. Rev.2 (user
+     * decision 2026-11-17): also when the Task already has assignees.
+     * Kept apart from isAssignee() like isInheritedAssignee(): it only
+     * grants the completion, and TaskCompletionService::complete() turns
+     * the actor into a real assignee as the first step of that completion.
      */
     public static function isWorkOrderMemberClaimant(User $actor, Task $task): bool
     {
-        if ($task->work_order_id === null || self::hasAssignees($task)) {
+        if ($task->work_order_id === null) {
             return false;
         }
 

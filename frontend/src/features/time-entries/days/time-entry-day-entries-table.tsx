@@ -95,6 +95,9 @@ export function TimeEntryDayEntriesTable({ entries, canWrite, onEditEntry }: Tim
           columnDefs={columnDefs}
           getRowId={(params) => String(params.data.id)}
           localeText={localeText}
+          // Keep a dragged column order across a `columnDefs` rebuild (task type options load, language change):
+          // the AG Grid default re-reads the order from the array and would undo the move.
+          maintainColumnOrder
           rowData={entries}
           suppressCellFocus
           suppressContextMenu

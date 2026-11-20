@@ -54,11 +54,33 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every workflow starts with three fixed statuses: **Open** at the top, **Closed (won)** and **Closed (lost)** at the bottom. In between, add statuses with **Add status** and reorder them by dragging. For each you set **Status name**, **Group** (Open, Pending, Validated, Closed (won), Closed (lost)), **Status description** and **Requires an explanatory note**.',
+          text: 'Every workflow starts with three fixed statuses: **Open** at the top, **Closed (won)** and **Closed (lost)** at the bottom. In between, add statuses with **Add status** and reorder them by dragging. For each you set **Status name**, **System status** (one of **Quote system statuses**: Open, Pending, Provisionally won, Won, Lost and the ones you add), **Status description** and **Requires an explanatory note**. The system status is required and links the working status to what Quotes show: changing one changes the other. On the fixed statuses the link cannot be changed. **Provisionally won** replaces the former **Validated**.',
         },
         {
           type: 'paragraph',
           text: 'Quotes with no active workflow use the **Global default statuses**, editable with **Default statuses**.',
+        },
+      ],
+    },
+    {
+      id: 'status-email',
+      title: 'Automatic email on a status',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Below **Requires an explanatory note** every status has **Send an email notification**. Turning it on opens **Status email notification**: write the **Subject** and the **Message** and choose the **Recipients**. When a user moves a quote to that status, QNet sends the email. **Edit** reopens the configuration; turning the switch off removes the notification. It also applies to the **Default statuses** and to the statuses chosen from Quotes through the system status.',
+        },
+        {
+          type: 'list',
+          items: [
+            "**People on the offer**: the quote's Supervisor, Operator and Account Managers;",
+            '**Users** and **Roles**: the chosen people and whoever holds the chosen roles (active users only);',
+            '**Other email addresses**: external ones too; they receive the email only, without the quote card.',
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'At least one recipient is required. Users get the notification in the bell and the email, if enabled in their profile. Whoever changes the status does not receive it. Below the message the email shows who changed the status, the quote card and the button to open it. It is not sent when the quote is already in that status, when the status changes by itself because the workflow is recalculated, or during imports and migrations.',
         },
       ],
     },
@@ -70,8 +92,8 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Open is the starting status of every quote.',
-            'From Open you move to Pending statuses, or directly to a Validated status.',
-            'From Pending or Validated statuses you reach Closed (won) or Closed (lost).',
+            'From Open you move to Pending statuses, or directly to a status linked to Provisionally won.',
+            'From Pending or Provisionally won statuses you reach Closed (won) or Closed (lost).',
             'Closed (won) generates the contract; if the quote leaves this status, the contract is suspended.',
           ],
         },
@@ -83,8 +105,9 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'a quote can only move to the statuses of the workflow that currently matches it;',
-            'the Validated statuses require at least one product row ("You cannot move the quote to this status without at least one product row."); Closed (won) and Closed (lost) do not;',
+            'the statuses linked to Provisionally won require at least one product row ("You cannot move the quote to this status without at least one product row."); Closed (won) and Closed (lost) do not;',
             'if the status requires a note, it must be written; it is saved among the notes of the opportunity;',
+            'if the status has **Send an email notification**, the configured email is sent when the quote enters it;',
             'entering Closed (won) generates the contract, unless the category has **Generates a contract** turned off;',
             'if the quote leaves Closed (won), the contract moves to **Suspended** (it is not deleted);',
             "if the quote's data changes, QNet recalculates the workflow: the status stays if it also exists in the new one, otherwise it becomes the equivalent fixed status or **Open**;",

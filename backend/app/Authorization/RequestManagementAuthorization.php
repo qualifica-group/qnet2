@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Models\Quote;
 use App\Models\User;
+use App\Services\Quotes\QuoteRegistryTransferService;
+use App\Services\Quotes\QuoteTransferAvailability;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -32,11 +35,11 @@ use Illuminate\Database\Eloquent\Model;
  * Spec 0097, D-3: `operator_id` is GONE from this catalogue, replaced by
  * `manager_slots` — the panel stopped editing the lone GA2 "Operatore" and
  * started editing the Offerta's whole team, of which that operator is slot
- * `ManagerPositions::OPERATOR`. Nothing became ungated: the grid column
- * `operator_ga2`, which still writes that one slot, now hangs off the new
- * key (see the field's own note below), and a migration renames the already
- * configured `role_field_permissions` rows so no administrator restriction
- * is lost in the move.
+ * `ManagerPositions::OPERATOR`. Nothing became ungated: the grid's
+ * "Gestori account" column hangs off the same key (see the field's own note
+ * below), and a migration renamed the already configured
+ * `role_field_permissions` rows so no administrator restriction was lost in
+ * the move.
  *
  * Spec 0097, D-9 (user directive 2026-09-02): `supervisor_id` is BACK in this
  * catalogue, and that deliberately REVERSES spec 0087 D-13/D-14/INV-5, which
@@ -54,8 +57,10 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RequestManagementAuthorization extends AbstractResourceAuthorization
 {
-    public function __construct(FieldPermissionRepository $fieldPermissionRepository)
-    {
+    public function __construct(
+        FieldPermissionRepository $fieldPermissionRepository,
+        private readonly QuoteTransferAvailability $transferAvailability,
+    ) {
         parent::__construct($fieldPermissionRepository);
     }
 
@@ -101,6 +106,8 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // "Commerciale" (spec 0357): the Offerta's commercial Referent,
             // next to the Segnalatore and gated on the same terms.
             new FieldDefinition('commercial_id', 'select'),
+            // "Partner commerciale" (spec 0417): same terms as the Commerciale.
+            new FieldDefinition('commercial_partner_id', 'select'),
             // "Supervisore" (spec 0097, D-9): the Offerta's commission
             // recipient, editable from this panel again — see the class
             // docblock for why that reverses spec 0087 and how narrowly.
@@ -117,19 +124,12 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             //
             // The old key's semantics did NOT disappear, they widened: the
             // GA2 "Operatore" is slot `ManagerPositions::OPERATOR` of this
-            // very collection, and the grid column `operator_ga2` — which
-            // still WRITES that single slot — is now gated by THIS key
-            // (`editableField` => `manager_slots`, RequestColumnCatalog), as
-            // is every other position column (`permissionField`, spec 0382
-            // D-6, which removed the GA1/GA5 rows of their own).
-            // The spec 0086 mt06 lesson that made `operator_id` the ONE key
-            // of both channels still holds and is unchanged: `editableField`
-            // is the LOGICAL permission key, never the DB column, and
-            // `updateWork()` keeps recognizing exactly one WRITE key per
-            // channel (`operator_id` for the cell/bulk/transfer, the new
-            // `manager_slots` for the panel) — WritesInlineEditableCells
-            // translates the cell's key back before calling it, so the two
-            // can never silently decouple into a 200 no-op again.
+            // very collection. The grid's only team column, "Gestori
+            // account" (spec 0373/0406), is gated by THIS key too
+            // (`editableField` => `manager_slots`, RequestManagerColumns) and
+            // writes the whole team through the panel's own rules
+            // (RequestTeamCellWriter); `operator_id` stays the single-slot
+            // WRITE key of the bulk assign and the transfer.
             new FieldDefinition('manager_slots', 'multiselect'),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block (see OpportunitiesAuthorization's docblock for
@@ -184,7 +184,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['export', 'view_activity', 'transfer_contact', 'append_team_member'];
+        return ['export', 'view_activity', 'transfer_contact', 'transfer_registry', 'append_team_member'];
     }
 
     /**
@@ -201,6 +201,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'source_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commercial_partner_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0097, D-9: same ceiling QuotesAuthorization gives its own
             // `supervisor_id` — the two forms gate the identical field on
             // identical terms, no extra ability on top.
@@ -246,9 +247,17 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // would tell the UI an action is allowed that the endpoint then
             // rejects with 403. `export`/`view_activity` above are read-only
             // and don't need `update`.
-            'transfer_contact' => $model !== null
+            // User decision 2026-11-20: closed to an offer whose contract was worked on (QuoteTransferAvailability).
+            'transfer_contact' => $model instanceof Quote
                 && $actor->can($this->permission('update'))
-                && $actor->can($this->permission('transferContact')),
+                && $actor->can($this->permission('transferContact'))
+                && $this->transferAvailability->allowsContactTransfer($model),
+            // Spec 0404 B-D1: the "transfer to another anagrafica" action,
+            // same double gate as its endpoint (QuoteRegistryTransferController).
+            'transfer_registry' => $model instanceof Quote
+                && $actor->can($this->permission('update'))
+                && $actor->can($this->permission(QuoteRegistryTransferService::ABILITY))
+                && $this->transferAvailability->allowsRegistryTransfer($model),
             // Direttiva utente 2026-09-08: the RAW grant behind the team
             // block's third state — squadra visible, members already there
             // frozen, only additions allowed. Per-record like the two above:

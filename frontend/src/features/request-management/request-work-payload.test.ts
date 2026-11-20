@@ -15,6 +15,9 @@ function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
     referent: { id: 20, name: 'Mario Rossi' },
     commercial_id: null,
     commercial: null,
+    // REQUIREMENT CHANGED (spec 0417): the panel carries the commercial partner too.
+    commercial_partner_id: null,
+    commercial_partner: null,
     source_id: null,
     source: null,
     reporter_id: null,
@@ -65,6 +68,7 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     source_id: null,
     reporter_id: null,
     commercial_id: null,
+    commercial_partner_id: null,
     supervisor_id: null,
     manager_slots: [],
     operational_site_id: null,
@@ -95,6 +99,19 @@ describe('buildRequestWorkPayload — attribution (user directive 2026-07-22)', 
   })
 
   /** Spec 0357: the Offerta's Commerciale, diffed like the Segnalatore. */
+  /** Spec 0417 (AC-026): the Partner commerciale is diffed like the Commerciale. */
+  it('sends commercial_partner_id only when it changed, null when cleared', () => {
+    expect(
+      buildRequestWorkPayload(formValues({ commercial_partner_id: 12 }), panel({ commercial_partner_id: null })),
+    ).toEqual({ commercial_partner_id: 12 })
+    expect(buildRequestWorkPayload(formValues(), panel({ commercial_partner_id: 12 }))).toEqual({
+      commercial_partner_id: null,
+    })
+    expect(
+      buildRequestWorkPayload(formValues({ commercial_partner_id: 12 }), panel({ commercial_partner_id: 12 })),
+    ).toEqual({})
+  })
+
   it('sends commercial_id only when it changed, null when cleared', () => {
     expect(buildRequestWorkPayload(formValues({ commercial_id: 12 }), panel({ commercial_id: null }))).toEqual({
       commercial_id: 12,

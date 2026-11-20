@@ -48,6 +48,7 @@ final class WorkOrderContractDataBuilder
         private readonly QuoteLineCommissionBaseResolver $baseResolver,
         private readonly CommissionCalculator $calculator,
         private readonly LineEffectiveRevenue $effectiveRevenue,
+        private readonly WorkOrderLineDocuments $documents,
     ) {}
 
     /**
@@ -61,7 +62,7 @@ final class WorkOrderContractDataBuilder
         $lines = $workOrder->quoteLines()->with(self::LINE_RELATIONS)->orderBy('quote_lines.id')->get();
 
         // Step 2: figures per line
-        $rows = $this->rows($lines, $visibleByQuote, $this->paymentsByLine($workOrder));
+        $rows = $this->rows($lines, $visibleByQuote, $this->paymentsByLine($workOrder), $this->documents->forLines($workOrder, $lines->pluck('id')->all()));
 
         return [
             'lines' => array_column($rows, 'payload'),
@@ -79,7 +80,7 @@ final class WorkOrderContractDataBuilder
     {
         $line = QuoteLine::query()->with(self::LINE_RELATIONS)->findOrFail($line->id);
 
-        return $this->rows(collect([$line]), $this->visibilityByQuote($workOrder, $actor), $this->paymentsByLine($workOrder))[0]['payload'];
+        return $this->rows(collect([$line]), $this->visibilityByQuote($workOrder, $actor), $this->paymentsByLine($workOrder), $this->documents->forLines($workOrder, [$line->id]))[0]['payload'];
     }
 
     /**
@@ -119,19 +120,21 @@ final class WorkOrderContractDataBuilder
      * @param  Collection<int, QuoteLine>  $lines
      * @param  array<int, bool>  $visibleByQuote
      * @param  Collection<int, WorkOrderLinePayment>  $payments
+     * @param  array<int, array<string, mixed>>  $documents  by quote line id
      * @return array<int, array{payload: array<string, mixed>, net: int, revenue: int, typology_id: int|null, commissions: int}>
      */
-    private function rows(Collection $lines, array $visibleByQuote, Collection $payments): array
+    private function rows(Collection $lines, array $visibleByQuote, Collection $payments, array $documents): array
     {
         $bases = $this->baseResolver->resolveForLines($lines);
 
-        return $lines->map(fn (QuoteLine $line): array => $this->row($line, $bases[$line->id], $visibleByQuote[$line->quote_id] ?? false, $payments->get($line->id)))->values()->all();
+        return $lines->map(fn (QuoteLine $line): array => $this->row($line, $bases[$line->id], $visibleByQuote[$line->quote_id] ?? false, $payments->get($line->id), $documents[$line->id] ?? null))->values()->all();
     }
 
     /**
+     * @param  array<string, mixed>|null  $document
      * @return array{payload: array<string, mixed>, net: int, revenue: int, typology_id: int|null, commissions: int}
      */
-    private function row(QuoteLine $line, string $base, bool $visible, ?WorkOrderLinePayment $payment): array
+    private function row(QuoteLine $line, string $base, bool $visible, ?WorkOrderLinePayment $payment, ?array $document): array
     {
         $typology = $line->product?->productTypology;
         $direction = $line->supplier_commission_direction;
@@ -162,6 +165,7 @@ final class WorkOrderContractDataBuilder
                 'effective_revenue' => $this->format($revenue),
                 'warnings' => $this->warnings($received, $supplier->isEmpty(), $visible && $stale),
                 'payment' => $this->paymentPayload($payment),
+                'document' => $document,
             ],
             'net' => $net,
             'revenue' => $revenue,

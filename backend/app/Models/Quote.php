@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\QuoteLineType;
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasFieldChangeRequests;
 use App\Models\Concerns\HasRewards;
 use App\Models\Concerns\LogsModelActivity;
@@ -29,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * by the quote service, recalculated from `quote_lines` on every write —
  * never client input.
  *
- * `commercial_id`/`reporter_id`/`supervisor_id` are a deliberate SNAPSHOT
+ * `commercial_id`/`commercial_partner_id`/`reporter_id`/`supervisor_id` are a deliberate SNAPSHOT
  * (D-3): copied from the Opportunity at creation time by the service, then
  * independently editable — no live read-through, no re-sync when the
  * Opportunity's own values change later.
@@ -114,6 +115,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'follow_up_date',
     'opportunity_id',
     'commercial_id',
+    'commercial_partner_id',
     'reporter_id',
     'supervisor_id',
     'company_id',
@@ -127,7 +129,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Quote extends BaseModel
 {
     /** @use HasFactory<QuoteFactory> */
-    use HasFactory, HasFieldChangeRequests, HasRewards, LogsModelActivity;
+    use HasAttachments, HasFactory, HasFieldChangeRequests, HasRewards, LogsModelActivity;
 
     /**
      * Spec 0228 AC-001: an offer always has its date. A channel that does not
@@ -161,11 +163,24 @@ class Quote extends BaseModel
             'next_callback_at' => 'datetime',
             'next_callback_reminded_at' => 'datetime',
             'is_transferred' => 'boolean',
+            'root_product_category_id' => 'integer',
             'title_is_manual' => 'boolean',
             'quote_date' => 'date',
             'accepted_at' => 'date',
             'follow_up_date' => 'date',
         ];
+    }
+
+    /**
+     * Spec 0411, D-1: the root category ("categoria madre") the offer is
+     * bound to, null when unbound. Absent from #[Fillable]: written only by
+     * RequestCreationService when it creates one offer per root.
+     *
+     * @return BelongsTo<ProductCategory, $this>
+     */
+    public function rootProductCategory(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'root_product_category_id');
     }
 
     /**
@@ -194,6 +209,14 @@ class Quote extends BaseModel
     public function commercial(): BelongsTo
     {
         return $this->belongsTo(Referent::class, 'commercial_id');
+    }
+
+    /**
+     * The snapshot Referent "Partner commerciale" (spec 0417, D-3), via its own FK.
+     */
+    public function commercialPartner(): BelongsTo
+    {
+        return $this->belongsTo(Referent::class, 'commercial_partner_id');
     }
 
     /**

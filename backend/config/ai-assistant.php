@@ -28,8 +28,9 @@ return [
     |
     | "openai" (any OpenAI-compatible /v1/chat/completions server: OpenAI, or a
     | local LLM such as LM Studio / Ollama via AI_ASSISTANT_OPENAI_BASE_URL, where
-    | the api key may stay empty) or "anthropic" (Messages API). null = assistant
-    | not configured. Provider keys live only in .env, never in responses or logs.
+    | the api key may stay empty), "anthropic" (Messages API) or "openrouter"
+    | (OpenRouter gateway, D-17). null = assistant not configured. Provider keys
+    | live only in .env, never in responses or logs.
     |
     */
 
@@ -46,6 +47,19 @@ return [
         'api_key' => env('AI_ASSISTANT_ANTHROPIC_API_KEY'),
         'model' => env('AI_ASSISTANT_ANTHROPIC_MODEL', 'claude-sonnet-5-5'),
         'version' => env('AI_ASSISTANT_ANTHROPIC_VERSION', '2023-06-01'),
+    ],
+
+    // OpenRouter (D-17): model id is "<vendor>/<model>". site_url / app_name are
+    // the optional attribution headers (HTTP-Referer / X-Title). data_collection
+    // "deny" (default) routes only to upstream providers that do not store or
+    // train on prompts; any value other than "allow" counts as "deny".
+    'openrouter' => [
+        'base_url' => env('AI_ASSISTANT_OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        'api_key' => env('AI_ASSISTANT_OPENROUTER_API_KEY'),
+        'model' => env('AI_ASSISTANT_OPENROUTER_MODEL', 'openai/gpt-4.1-mini'),
+        'site_url' => env('AI_ASSISTANT_OPENROUTER_SITE_URL') ?: env('FRONTEND_URL'),
+        'app_name' => env('AI_ASSISTANT_OPENROUTER_APP_NAME') ?: env('APP_NAME'),
+        'data_collection' => env('AI_ASSISTANT_OPENROUTER_DATA_COLLECTION') === 'allow' ? 'allow' : 'deny',
     ],
 
     /*

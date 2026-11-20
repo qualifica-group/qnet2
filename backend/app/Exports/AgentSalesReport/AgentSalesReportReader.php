@@ -105,6 +105,7 @@ final class AgentSalesReportReader
         $amount = (float) $line->net_amount;
         $supervisor = $this->commission($line, CommissionRecipientRole::Supervisor);
         $commercial = $this->commission($line, CommissionRecipientRole::Commercial);
+        $commercialPartner = $this->commission($line, CommissionRecipientRole::CommercialPartner);
         $reporter = $this->commission($line, CommissionRecipientRole::Reporter);
         $categoryId = $line->product?->category_id;
 
@@ -118,8 +119,9 @@ final class AgentSalesReportReader
             'typology' => (string) $line->product?->productTypology?->name,
             'supervisor_commission' => $supervisor,
             'commercial_commission' => $commercial,
+            'commercial_partner_commission' => $commercialPartner,
             'reporter_commission' => $reporter,
-            'net' => round($amount - $supervisor - $commercial - $reporter, self::DECIMALS),
+            'net' => round($amount - $supervisor - $commercial - $commercialPartner - $reporter, self::DECIMALS),
         ];
     }
 

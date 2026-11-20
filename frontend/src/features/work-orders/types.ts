@@ -115,8 +115,12 @@ export interface WorkOrderQuoteLine {
   id: number
   sort_order: number
   product: WorkOrderQuoteLineProduct | null
+  /** The product's typology (Consulenza, Ente...), badged on the line's payment status. Optional so older fixtures stay valid. */
+  typology?: { id: number; code: string; name: string; color: string } | null
   /** Spec 0267: the client of the line's own offer, shown on the line of a multi-offer work order. */
   registry: { id: number; name: string } | null
+  /** Spec 0403: the line's payment status in THIS commessa. Optional so older fixtures stay valid. */
+  payment_status?: ContractPaymentStatusRef | null
 }
 
 /** A single labeled choice of an enum-type Attribute (spec 0049), local per module (mirrors `quotes.AttributeOptionRef`). */
@@ -188,12 +192,9 @@ export interface WorkOrderDetail {
   /** The set resolved for THIS work order: the picker never offers anything outside it (422 otherwise). */
   work_order_workflow_statuses: WorkOrderWorkflowStatusRef[]
   /**
-   * Spec 0402: the commessa's own "Stato pagamento" (a configured payment
-   * status) and the net amount of its lines, `null` without
+   * Spec 0402: the net amount of the commessa's lines, `null` without
    * `view_contract_data`. Optional so older fixtures stay valid.
    */
-  work_order_payment_status_id?: number | null
-  payment_status?: ContractPaymentStatusRef | null
   amount?: string | null
   /**
    * Spec 0146 D-8/AC-023: task of this commessa NOT closed, counted WITHOUT
@@ -270,9 +271,10 @@ export interface WorkOrderClientInfo {
   /** Email then PEC, the primary first. */
   emails: PrimaryContact[]
   phones: PrimaryContact[]
-  /** Referente 1 (the anagrafica's principale) and Referente 2, at most two. */
-  referents: ReferentRef[]
+  /** Spec 0408: [Referente 1 = the anagrafica's principale, Referente 2 = its secondario], null when missing. */
+  referents: (ReferentRef | null)[]
   commercial: ReferentRef | null
+  commercial_partner: ReferentRef | null
   sectors: string[]
   /** The anagrafica's general notes (legacy "Commenti"). */
   comments: string | null
@@ -324,8 +326,6 @@ export type UpdateWorkOrderPayload = Partial<
 > & {
   /** Spec 0322: update-only, the create resolves the `open` row server-side. */
   work_order_workflow_status_id?: number
-  /** Spec 0402: update-only, `null` clears it. */
-  work_order_payment_status_id?: number | null
 }
 
 /**

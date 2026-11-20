@@ -25,7 +25,7 @@ const guide: HelpGuide = {
             '**Incassato**: la parte dell’imponibile fatturato che il cliente ha già pagato, in proporzione agli incassi registrati sulle scadenze.',
             '**Costi**: da quattro fonti, sommate. I **costi manuali** inseriti sulla commessa, gli **ordini a fornitore (ODA)** ancora da fatturare (impegnato), il **fatturato passivo** collegato alla commessa e il **costo del lavoro**.',
             '**Costo del lavoro**: le ore del segnatempo registrate sulla commessa, ciascuna moltiplicata per il **costo orario** di chi le ha lavorate, calcolato dalla retribuzione della condizione contrattuale in vigore alla data dell’ora (scheda Utente, Storico contrattuale: oraria così com’è, mensile diviso 173, annua diviso 2.076). Un aumento quindi non cambia i costi dei mesi precedenti. Le ore senza commessa non entrano nel conto economico. Le ore di chi in quella data non ha una condizione con retribuzione sono **contate nelle ore ma non valorizzate**: sotto le ore compare la nota “di cui … non valorizzate”, e il costo è sottostimato finché non completi lo storico contrattuale.',
-            '**Provvigioni**: quelle di commerciale, segnalatore, supervisore e le provvigioni fornitore pagate. Riducono il margine.',
+            '**Provvigioni**: quelle di commerciale, partner commerciale, segnalatore, supervisore e le provvigioni fornitore pagate. Riducono il margine.',
             '**Margine atteso**: ricavo contrattuale meno costi preventivati meno provvigioni preventivate. **Margine consuntivo**: ricavo consuntivo meno costi reali meno provvigioni maturate.',
           ],
         },
@@ -41,7 +41,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Puoi restringere per **società**, **sede società**, **sede operativa**, **funzione aziendale**, **tipo commessa** e **commerciale**. Società, sedi e commerciale sono quelli dell’offerta di riferimento della commessa (per una commessa con più offerte, la prima).',
+          text: 'Puoi restringere per **società**, **sede società**, **sede operativa**, **funzione aziendale**, **tipo commessa**, **commerciale** e **partner commerciale**. Società, sedi, commerciale e partner commerciale sono quelli dell’offerta di riferimento della commessa (per una commessa con più offerte, la prima).',
         },
         {
           type: 'table',
@@ -78,7 +78,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Con **Segmentazione** scegli se dividere il prospetto per **società**, **sede società**, **sede operativa**, **tipo commessa** o **commerciale**. Per ogni valore compare un riquadro con il subtotale e **lo stesso prospetto per funzione aziendale** calcolato sulle sole commesse di quel valore. Con **Nessuna** (predefinito) vedi solo il prospetto principale.',
+          text: 'Con **Segmentazione** scegli se dividere il prospetto per **società**, **sede società**, **sede operativa**, **tipo commessa**, **commerciale** o **partner commerciale**. Per ogni valore compare un riquadro con il subtotale e **lo stesso prospetto per funzione aziendale** calcolato sulle sole commesse di quel valore. Con **Nessuna** (predefinito) vedi solo il prospetto principale.',
         },
         {
           type: 'paragraph',

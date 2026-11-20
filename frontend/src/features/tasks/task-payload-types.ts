@@ -8,6 +8,7 @@
 
 import type { CreateTaskSubtaskPayload } from '@/features/tasks/task-subtask-types'
 import type { TaskRecurrencePayload } from '@/features/tasks/task-recurrence-types'
+import type { TimeEntryShare } from '@/features/tasks/time-entry-shares'
 
 /**
  * `time_entry` payload nested in `CompleteTaskPayload` (spec 0123 D-1/D-3):
@@ -44,11 +45,16 @@ export interface CompleteTaskTimeEntryPayload {
  * server default when omitted) logs an identical time entry for every
  * assignee (the actor alone when there is none); `false` logs it for the
  * acting user alone. The dialog always sends the actor's own checkbox choice.
+ *
+ * `time_entry_shares` (spec 0418): only on a task with open sub-tasks, which
+ * the Completa closes too; `time_entry` is then the TOTAL and the shares
+ * split it between the task and each open sub-task.
  */
 export interface CompleteTaskPayload {
   closure_feedback?: string | null
   validation_status_id?: number | null
   time_entry?: CompleteTaskTimeEntryPayload
+  time_entry_shares?: TimeEntryShare[]
   for_all_assignees?: boolean
 }
 

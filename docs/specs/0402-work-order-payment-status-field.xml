@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0402-work-order-payment-status-field" status="approved" owner="nicola" date="2026-11-16">
+<spec id="0402-work-order-payment-status-field" status="superseded" superseded-by="0403" owner="nicola" date="2026-11-16">
 
   <goal>
     Lo "Stato pagamento" della commessa non e' piu' un campo flessibile di alcune categorie: e' un campo della commessa, selezionabile su tutte le commesse, mostrato in "Dati contrattuali commessa" dopo il Titolo insieme all'Importo (totale dei prodotti): Titolo, Importo, Stato pagamento.

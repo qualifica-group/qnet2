@@ -100,10 +100,20 @@ it('AC-010: totals add up the commesse, no per-commessa lists, applied echoes th
         ->and($data['totals']['cost_manual'])->toEqual(60)
         ->and($data['totals']['margin_actual'])->toEqual(-60)
         ->and($data['segments'])->toBe([])
+        // REQUIREMENT CHANGED (spec 0417): partner commerciale
         ->and($data['applied'])->toBe([
             'date_from' => null, 'date_to' => null,
             'company_id' => [], 'company_site_id' => [], 'operational_site_id' => [],
-            'business_function_id' => [], 'work_order_type' => [], 'commercial_id' => [],
+            'business_function_id' => [], 'work_order_type' => [], 'commercial_id' => [], 'commercial_partner_id' => [],
             'revenue_basis' => 'contract', 'segment_by' => 'none',
         ]);
+});
+
+it('spec 0417 AC-010: the commercial partner commission is a budget cost of the commessa like the commercial one', function () {
+    $workOrder = mcWorkOrder();
+    $line = mcRevenueLine($workOrder, '1000.00', BusinessFunction::factory()->create());
+    mcCommission($line, CommissionRecipientRole::Commercial, '50.00');
+    mcCommission($line, CommissionRecipientRole::CommercialPartner, '30.00');
+
+    expect(mcGet('income-statement')->assertOk()->json('data.totals.commission_budget'))->toEqual(80);
 });

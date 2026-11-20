@@ -10,6 +10,7 @@ export const SEGMENT_BYS = [
   'operational_site',
   'work_order_type',
   'commercial',
+  'commercial_partner',
 ] as const
 export type SegmentBy = (typeof SEGMENT_BYS)[number]
 
@@ -75,6 +76,7 @@ export interface IncomeStatementApplied {
   business_function_id: number[]
   work_order_type: string[]
   commercial_id: number[]
+  commercial_partner_id: number[]
   revenue_basis: string
   segment_by: string
 }
@@ -133,6 +135,7 @@ export interface IncomeStatementFilters extends ScopeFilters {
   businessFunctionIds: number[]
   workOrderTypes: WorkOrderTypeValue[]
   commercialIds: number[]
+  commercialPartnerIds: number[]
   revenueBasis: RevenueBasis
   segmentBy: SegmentBy
 }
@@ -147,6 +150,7 @@ export interface IncomeStatementParams {
   business_function_id?: number[]
   work_order_type?: WorkOrderTypeValue[]
   commercial_id?: number[]
+  commercial_partner_id?: number[]
   revenue_basis: RevenueBasis
   segment_by: SegmentBy
 }

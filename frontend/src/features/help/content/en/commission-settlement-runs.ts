@@ -24,7 +24,7 @@ const guide: HelpGuide = {
           items: [
             'Press **New run**: a side sheet opens with its rows closed. Open a row with the pencil, change it and confirm with **Done** (or **Revert**).',
             'Set the period. **Period to** is the date that matters: **every** open movement accrued up to that day enters, including those of earlier periods left pending. **Period from** is informative only. The previous month is proposed by default.',
-            'Optionally narrow with **Company**, **Agents** and **Roles** (Commercial, Reporter, Supervisor). Leaving them empty considers everything.',
+            'Optionally narrow with **Company**, **Agents** and **Roles** (Commercial, Commercial partner, Reporter, Supervisor). Leaving them empty considers everything.',
             'Optionally set a **minimum threshold**: statements below that amount are not created. If left empty the system default applies.',
             'Press **Run**: the run is immediate and the sheet then shows the run just created, with the statements created and the agents skipped. Leaving before running, after changing something, asks for confirmation.',
           ],

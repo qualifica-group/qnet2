@@ -8,6 +8,13 @@ return [
     'offer_line_required' => 'The offer must contain at least one product line.',
     'offer_line_required_for_status' => 'You cannot move the offer to this status without at least one product line.',
     'offer_line_required_to_validate_contract' => 'You cannot validate the contract without at least one product line on the offer.',
+    // Spec 0404, C-D2.
+    'contact_transfer_required_for_contract' => 'This category requires a transfer before the contract is validated: use Transfer contact or Transfer to another registry, then validate.',
+    // Spec 0404, B-D6.
+    'registry_transfer' => [
+        'same_registry' => 'The offer already belongs to this registry.',
+        'contracted' => "The offer's contract has already been worked on (status changed, validated, data filled in, documents, renewals or work orders): its registry can no longer change.",
+    ],
     // Spec 0360, D-4: a REVENUE row assigned to a work order is frozen.
     'line_removal_blocked_by_work_order' => 'The line :product is assigned to work order :code: delete the work order first.',
     'line_locked_by_work_order' => 'The line is assigned to work order :code and cannot be changed.',

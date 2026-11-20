@@ -47,6 +47,9 @@ dataset('invalid table configs', function () {
         'summary on boolean' => [inspectionTableConfig(['summary' => ['column' => 'alert_sent', 'strategy' => 'max']]), 'config.summary.column'],
         'selected without selectable' => [inspectionTableConfig(['selectable' => null]), 'config.summary.strategy'],
         'unknown strategy' => [inspectionTableConfig(['summary' => ['column' => 'inspection_date', 'strategy' => 'avg']]), 'config.summary.strategy'],
+        'grid label on a non-date summary' => [inspectionTableConfig(['summary' => ['column' => 'inspector', 'strategy' => 'max', 'grid_label' => 'Inspector']]), 'config.summary.grid_label'],
+        'non-string grid label' => [inspectionTableConfig(['summary' => ['column' => 'inspection_date', 'strategy' => 'selected', 'grid_label' => 12]]), 'config.summary.grid_label'],
+        'grid label too long' => [inspectionTableConfig(['summary' => ['column' => 'inspection_date', 'strategy' => 'selected', 'grid_label' => str_repeat('a', 192)]]), 'config.summary.grid_label'],
         'min_rows above max_rows' => [inspectionTableConfig(['min_rows' => 5, 'max_rows' => 3]), 'config.min_rows'],
         'max_rows above 200' => [inspectionTableConfig(['max_rows' => 201]), 'config.max_rows'],
         'max_rows zero' => [inspectionTableConfig(['max_rows' => 0]), 'config.max_rows'],
@@ -61,6 +64,15 @@ it('AC-002: creates a table attribute and persists the config identically', func
         ->assertJsonPath('data.type', 'table');
 
     expect(Attribute::where('code', 'inspections')->first()->config)->toBe(inspectionTableConfig());
+});
+
+it('persists the grid label of a date summary', function () {
+    Sanctum::actingAs(tableAttributeAdmin());
+    $config = inspectionTableConfig(['summary' => ['column' => 'inspection_date', 'strategy' => 'selected', 'grid_label' => 'Data verifica ispettiva']]);
+
+    $this->postJson('/api/attributes', tableAttributePayload(['config' => $config]))->assertCreated();
+
+    expect(Attribute::where('code', 'inspections')->first()->config['summary']['grid_label'])->toBe('Data verifica ispettiva');
 });
 
 it('AC-003: rejects an invalid table config', function (array $config, string $errorKey) {

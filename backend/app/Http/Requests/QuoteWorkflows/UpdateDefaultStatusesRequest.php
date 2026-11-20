@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\QuoteWorkflows;
 
-use App\Enums\WorkflowStatusGroup;
+use App\DataObjects\QuoteWorkflows\WorkflowStatusLink;
+use App\DataObjects\QuoteWorkflows\WorkflowStatusNotify;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for PUT /api/quote-workflows/default-statuses (spec
@@ -41,13 +41,14 @@ class UpdateDefaultStatusesRequest extends FormRequest
             'statuses.*.name' => ['required', 'string', 'max:191'],
             'statuses.*.description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'statuses.*.color' => ['nullable', 'string', 'max:32'],
-            'statuses.*.group' => ['required', Rule::enum(WorkflowStatusGroup::class)],
+            ...WorkflowStatusLink::rules(),
             'statuses.*.requires_note' => ['sometimes', 'boolean'],
+            ...WorkflowStatusNotify::rules(),
         ];
     }
 
     /**
-     * @return array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>
+     * @return array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: ?string, quote_system_status_id: ?int, requires_note: bool, notify: ?array<string, mixed>}>
      */
     public function statuses(): array
     {
@@ -60,8 +61,9 @@ class UpdateDefaultStatusesRequest extends FormRequest
                 'name' => (string) $status['name'],
                 'description' => array_key_exists('description', $status) ? $status['description'] : null,
                 'color' => array_key_exists('color', $status) ? $status['color'] : null,
-                'group' => (string) $status['group'],
+                ...WorkflowStatusLink::fromPayload($status),
                 'requires_note' => (bool) ($status['requires_note'] ?? false),
+                'notify' => WorkflowStatusNotify::fromPayload($status),
             ],
             $statuses,
         );

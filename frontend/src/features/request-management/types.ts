@@ -18,6 +18,7 @@ import type {
 } from '@/features/quotes/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { RequestForecast } from '@/features/request-management/request-forecast'
+import type { ContractedQuoteFlags } from '@/features/quotes/contracted-quote'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const REQUEST_MANAGEMENT_DOMAIN = 'request-management'
@@ -165,7 +166,7 @@ export interface ApplicableAttribute {
  * `data`). Matches `RequestManagementResource`. The forecast trio ("Previsione
  * commerciale", spec 0313) is the Opportunity's own, editable from the panel.
  */
-export interface RequestWorkPanel extends RequestForecast {
+export interface RequestWorkPanel extends RequestForecast, ContractedQuoteFlags {
   /** The Offerta (Quote) id — this module's own record id since spec 0086. */
   id: number
   /**
@@ -184,6 +185,11 @@ export interface RequestWorkPanel extends RequestForecast {
    */
   opportunity_id: number
   name: string
+  /**
+   * Spec 0404 B-D8: the Offerta's own title, prefilled by "Trasferisci ad
+   * altra anagrafica". Optional for fixture compatibility, like `general_notes`.
+   */
+  title?: string
   registry: RequestRelationRef | null
   /** Why the client select is read-only (a contract exists, or the client comes from the lead); `null` when it can change. */
   registry_lock_reason: RequestRegistryLockReason | null
@@ -197,6 +203,9 @@ export interface RequestWorkPanel extends RequestForecast {
   /** "Commerciale" (spec 0357): the Offerta's own commercial Referent, edited next to the Segnalatore. */
   commercial_id: number | null
   commercial: RequestRelationRef | null
+  /** "Partner commerciale" (spec 0417): a second commercial Referent, same shape as `commercial`. */
+  commercial_partner_id: number | null
+  commercial_partner: RequestRelationRef | null
   /**
    * Spec 0097 rev-2 D-9: the Offerta's Supervisore, editable from the panel's
    * team section again (user directive 2026-09-02, which reverses spec 0087
@@ -236,7 +245,12 @@ export interface RequestWorkPanel extends RequestForecast {
   transferred_from: RequestOperationalSiteRef | null
   /** Spec 0082: the COMPUTED status of the request's opportunity, read-only. */
   status: OpportunityStatusSummary
+  /** Spec 0411: only the lines under `root_product_category` when the request is bound to one. */
   product_lines: RequestProductLine[]
+  /** Spec 0411: the parent category the request (offer) is bound to, `null` for an unbound one. */
+  root_product_category?: { id: number; name: string } | null
+  /** Spec 0411: every offer the POST created, one per parent category (create response only). */
+  created_quote_ids?: number[]
   /**
    * The offer's own REVENUE lines (spec 0086 D-7); `[]` when the offer has
    * none yet. Replaces `products_of_interest`, which this module no longer
@@ -311,4 +325,6 @@ export interface RequestWorkPanelWithPermissions extends RequestWorkPanel {
 export interface RequestFormContext {
   applicable_attributes: ApplicableAttributeSummary[]
   attribute_layout: LayoutBlob | null
+  /** Spec 0410 (create-only): the type the new-client card starts on, from the first product line's category; null without lines. */
+  registry_type: PersonalDataType | null
 }

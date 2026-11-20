@@ -107,6 +107,11 @@ final class PartyFieldResolver
         return $this->referentRoleField($key, $quote->commercial);
     }
 
+    public function commercialPartner(string $key, Quote $quote): ?string
+    {
+        return $this->referentRoleField($key, $quote->commercialPartner);
+    }
+
     public function reporter(string $key, Quote $quote): ?string
     {
         return $this->referentRoleField($key, $quote->reporter);

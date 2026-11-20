@@ -93,11 +93,8 @@ it('shows exactly the requested columns, in the requested order, and hides the r
         'tax_code',
         'general_notes',
         'source',
-        // REQUIREMENT CHANGED (spec 0382 D-2/D-4): one column per position in
-        // use (here none, so up to the Operatore), grouped after "Fonte".
-        'manager_ga1',
-        'operator_ga2',
-        // REQUIREMENT CHANGED (spec 0373 D-7): the whole team, as in Offerte.
+        // REQUIREMENT CHANGED (spec 0406): the whole team in one column, the
+        // per-position columns of spec 0382 are gone.
         'managers',
     ])->and($columns->where('visible', false)->pluck('id')->all())->toBe([
         // The engine's own hidden row-id column (AbstractTableDefinition).
@@ -133,14 +130,12 @@ it('gives every visible column its requested default width, and none to the hidd
         'tax_code' => 171,
         'general_notes' => 239,
         'source' => 127,
-        // REQUIREMENT CHANGED (spec 0382 D-4): positions grouped after "Fonte".
-        'manager_ga1' => 177,
-        'operator_ga2' => 201,
+        // REQUIREMENT CHANGED (spec 0406): the single Gestori account column.
         'managers' => 140,
     ])->and($columns->where('visible', false)->pluck('width')->unique()->all())->toBe([null]);
 });
 
-it('keeps the hidden operational_site on the row, so the Operatore picker scope still resolves', function () {
+it('keeps the hidden operational_site on the row', function () {
     Sanctum::actingAs(defaultColumnsActor(['viewAny', 'viewAll']));
     defaultColumnsRequest('mario@example.test');
 

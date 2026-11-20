@@ -16,12 +16,14 @@ export const filterViewKeys = {
 
 /**
  * Loads the actor's saved filter views for a domain (own + others' shared),
- * as listed by the backend (spec 0007).
+ * as listed by the backend (spec 0007). `enabled: false` skips the request
+ * until a caller actually needs the list.
  */
-export function useFilterViews(domain: string) {
+export function useFilterViews(domain: string, enabled = true) {
   return useQuery({
     queryKey: filterViewKeys.list(domain),
     queryFn: () => listFilterViews(domain),
+    enabled,
   })
 }
 

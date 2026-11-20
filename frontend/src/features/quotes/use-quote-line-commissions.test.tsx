@@ -45,6 +45,7 @@ const existingRow: QuoteLineFormValues = {
 
 const RECIPIENTS: QuoteCommissionRecipientMap = {
   COMMERCIAL: { type: 'referent', id: 4, name: 'Anna' },
+  COMMERCIAL_PARTNER: null,
   REPORTER: null,
   SUPERVISOR: null,
   SUPPLIER: null,
@@ -88,6 +89,7 @@ function product(id: number, price: string | null): QuoteCatalogProduct {
 const context = (commercialId: number | null): QuoteCommissionContext => ({
   quoteId: 9,
   commercialId,
+  commercialPartnerId: null,
   reporterId: null,
   supervisorId: null,
 })
@@ -120,6 +122,22 @@ describe('useQuoteLineCommissions — cambio ruoli', () => {
         commissions: [expect.objectContaining({ recipient_role: 'COMMERCIAL', recipient_id: 77, recipient: { id: 77, name: 'Sara' } })],
       }),
     ]))
+  })
+
+  // Spec 0417 AC-023
+  it('resyncs the Commercial partner role when the quote partner changes', async () => {
+    vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue({
+      ...RECIPIENTS,
+      COMMERCIAL_PARTNER: { type: 'referent', id: 15, name: 'Lia' },
+    })
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({ commissions: [], supplier_commission_direction: null })
+    const { rerender } = renderCommissions()
+
+    await act(async () => rerender({ ctx: { ...context(4), commercialPartnerId: 15 } }))
+
+    await waitFor(() =>
+      expect(fetchQuoteCommissionDefaults).toHaveBeenCalledWith(expect.objectContaining({ commercial_partner_id: 15 })),
+    )
   })
 
   it('drops a commission whose role lost its holder on the quote', async () => {

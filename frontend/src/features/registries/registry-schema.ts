@@ -39,12 +39,15 @@ function baseFields(t: TFunction) {
     source_id: z.number().nullable(),
     supervisor_id: z.number().nullable(),
     commercial_id: z.number().nullable(),
+    commercial_partner_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
     // Multiselect relations (for-select standard): ids, full-replace.
     sector_ids: z.array(z.number()),
     referent_ids: z.array(z.number()),
     // Spec 0330: one of `referent_ids`, kept in step by the form (`primary-referent.ts`).
     primary_referent_id: z.number().nullable(),
+    // Spec 0408: one of `referent_ids` other than the principale, or null.
+    secondary_referent_id: z.number().nullable(),
     // Ordered, gap-aware "G.A. n" manager slots: index+1 = G.A. number, `null`
     // = an intentionally empty slot. At most MAX_MANAGERS filled.
     manager_slots: z

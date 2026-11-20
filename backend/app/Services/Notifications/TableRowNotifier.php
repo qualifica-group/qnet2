@@ -15,10 +15,9 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\Notifications\TableRowNotification;
 use App\RequestManagement\ApplicableAttribute;
+use App\Support\Notifications\NotifyRecipients;
 use App\Support\Notifications\RecordDetails;
-use App\Support\Notifications\RecordTeam;
 use App\Support\Notifications\TableRowDetails;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -110,8 +109,8 @@ final class TableRowNotifier
     private function dispatch(Model $record, User $actor, array $field, array $row): void
     {
         $notify = $field['config']['notify'];
-        $users = $this->recipientUsers($record, $notify, $actor);
-        $emails = $this->freeAddresses($notify, $users, $actor);
+        $users = NotifyRecipients::users($record, $notify, $actor);
+        $emails = NotifyRecipients::freeAddresses($notify, $users, $actor);
 
         if ($users->isEmpty() && $emails === []) {
             return;
@@ -138,51 +137,6 @@ final class TableRowNotifier
         foreach ($emails as $email) {
             Notification::route('mail', $email)->notify($notification);
         }
-    }
-
-    /**
-     * Active users among the record's team, the chosen users and the holders
-     * of the chosen roles, the author excluded.
-     *
-     * @param  array<string, mixed>  $notify
-     * @return EloquentCollection<int, User>
-     */
-    private function recipientUsers(Model $record, array $notify, User $actor): EloquentCollection
-    {
-        $ids = [
-            ...(($notify['record_team'] ?? false) === true ? RecordTeam::userIds($record) : []),
-            ...($notify['user_ids'] ?? []),
-        ];
-        $roleIds = $notify['role_ids'] ?? [];
-
-        return User::query()
-            ->where('is_active', true)
-            ->whereKeyNot($actor->getKey())
-            ->where(function ($query) use ($ids, $roleIds): void {
-                $query->whereKey($ids);
-
-                if ($roleIds !== []) {
-                    $query->orWhereHas('roles', fn ($roles) => $roles->whereKey($roleIds));
-                }
-            })
-            ->get();
-    }
-
-    /**
-     * The free addresses, minus those of a user already notified (or of the author).
-     *
-     * @param  array<string, mixed>  $notify
-     * @param  EloquentCollection<int, User>  $users
-     * @return array<int, string>
-     */
-    private function freeAddresses(array $notify, EloquentCollection $users, User $actor): array
-    {
-        $known = $users->pluck('email')->push($actor->email)->map(fn (mixed $email): string => mb_strtolower((string) $email))->all();
-
-        return array_values(array_filter(
-            $notify['emails'] ?? [],
-            fn (mixed $email): bool => is_string($email) && ! in_array(mb_strtolower($email), $known, true),
-        ));
     }
 
     private function target(Model $record): ?AssignmentTargetEnum

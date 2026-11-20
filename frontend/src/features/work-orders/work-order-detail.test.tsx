@@ -124,7 +124,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},
-      // Spec 0380: the contract data section (plain product list included) needs view_costs.
+      // Spec 0403: the full contract data needs view_costs and view_contract_data.
       actions: { view_activity: false, view_costs: true },
     },
     ...overrides,
@@ -352,14 +352,49 @@ describe('WorkOrderDetailView — related records', () => {
     expect(screen.getByRole('link', { name: 'Consulenza' })).toHaveAttribute('href', '/products/1')
   })
 
-  // REQUIREMENT CHANGED (user directive 2026-11-16): the section also hosts the Linee prodotto, shown without view_costs.
-  it('has no contract data, not even the products, without view_costs (spec 0380)', () => {
+  // REQUIREMENT CHANGED (spec 0403, user directive 2026-11-16): without view_costs each product still shows
+  // its Title and Payment status, without any amount (spec 0380 showed nothing).
+  it('shows only title and payment status of each product, no amounts, without view_costs', () => {
     const base = workOrder()
-    render(<WorkOrderDetailView workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_contract_data: true } } })} />)
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          amount: null,
+          quote_lines: [
+            {
+              ...base.quote_lines[0],
+              typology: { id: 2, code: 'institution', name: 'Ente', color: 'violet' },
+              payment_status: { id: 3, name: 'Saldato', color: 'green', allows_delivery: true },
+            },
+            { ...base.quote_lines[1], payment_status: null },
+          ],
+          permissions: { ...base.permissions, actions: { view_contract_data: true } },
+        })}
+      />,
+    )
 
-    expect(screen.getByRole('heading', { name: 'Work order contract data' })).toBeInTheDocument()
+    const section = screen.getByRole('heading', { name: 'Work order contract data' }).closest('section') as HTMLElement
     expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Consulenza' })).not.toBeInTheDocument()
+    expect(within(section).getByRole('link', { name: 'Consulenza' })).toHaveAttribute('href', '/products/1')
+    expect(within(section).getByText('Saldato')).toBeInTheDocument()
+    expect(within(section).getByText('No status')).toBeInTheDocument()
+    expect(within(section).getAllByRole('term').map((term) => term.textContent)).not.toContain('Amount')
+    const paymentTerms = within(section).getAllByText('Payment status')
+    expect(paymentTerms).toHaveLength(2)
+    // The typology badge sits on each payment status label; a line without one reads as consultancy.
+    expect(paymentTerms.map((term) => term.textContent)).toEqual(['Payment statusConsulting', 'Payment statusEnte'])
+  })
+
+  it('has neither the work order title nor a work order payment status in the contract data (spec 0403)', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ amount: '1250.50' })} />)
+
+    const section = screen.getByRole('heading', { name: 'Work order contract data' }).closest('section') as HTMLElement
+    const terms = within(section).getAllByRole('term').map((term) => term.textContent)
+    expect(terms[0]).toBe('Amount')
+    expect(within(section).queryByText('Installazione impianto')).not.toBeInTheDocument()
+    // The only payment statuses are the two products' own (each label carries the product typology badge).
+    expect(terms.filter((term) => term?.startsWith('Payment status'))).toHaveLength(2)
+    expect(within(section).getByText('1,250.50')).toBeInTheDocument()
   })
 
   it("links the client registry reached through the commessa's offer", () => {
@@ -376,6 +411,7 @@ describe('WorkOrderDetailView — related records', () => {
             phones: [],
             referents: [],
             commercial: null,
+            commercial_partner: null,
             sectors: [],
             comments: null,
           },
@@ -622,9 +658,9 @@ describe('WorkOrderDetailView — multi-offer work order (spec 0267 AC-016)', ()
       />,
     )
 
-    const items = screen.getAllByRole('listitem').filter((item) => /PRD-000/.test(item.textContent ?? ''))
-    expect(within(items[0]).getByRole('link', { name: 'Rossi S.r.l.' })).toBeInTheDocument()
-    expect(within(items[1]).getByRole('link', { name: 'Bianchi S.p.A.' })).toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0403): each product is a group of fields, no longer a list item.
+    expect(within(screen.getByRole('group', { name: /PRD-0001/ })).getByRole('link', { name: 'Rossi S.r.l.' })).toBeInTheDocument()
+    expect(within(screen.getByRole('group', { name: /PRD-0002/ })).getByRole('link', { name: 'Bianchi S.p.A.' })).toBeInTheDocument()
     expect(screen.getByText('Multi-offer')).toBeInTheDocument()
     // REQUIREMENT CHANGED spec 0331: label renamed with the shared section.
     expect(screen.queryByText('Registry')).not.toBeInTheDocument()

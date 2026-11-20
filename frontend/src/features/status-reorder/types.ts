@@ -20,6 +20,9 @@ export type SystemStatusKey =
   | 'suspended'
   | 'cancelled'
   | 'terminated'
+  | 'open'
+  | 'closed_won'
+  | 'closed_lost'
   | null
 
 /** Fixed enum of status groups, replacing the former "status groups" lookup module. */

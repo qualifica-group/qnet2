@@ -153,3 +153,23 @@ it('AC-008: a category without its own function weighs on the function inherited
         ->and($functions[(string) $sales->id]['cost_manual'])->toEqual(75)
         ->and($functions['unattributed']['cost_manual'])->toEqual(25);
 });
+
+it('spec 0417 AC-012: segment_by=commercial_partner has one entry per partner, independent from the commercial join', function () {
+    $commercial = Referent::factory()->create(['name' => 'Rossi']);
+    $partner = Referent::factory()->create(['name' => 'Verdi']);
+
+    foreach ([
+        ['commercial_id' => $commercial->id, 'commercial_partner_id' => $partner->id],
+        ['commercial_id' => $commercial->id, 'commercial_partner_id' => $partner->id],
+        ['commercial_id' => $commercial->id],
+    ] as $quote) {
+        mcManualCost(mcWorkOrder([], $quote), '10.00');
+    }
+
+    $byPartner = mcGet('income-statement', ['segment_by' => 'commercial_partner'])->assertOk()->json('data.segments');
+    $byCommercial = mcGet('income-statement', ['segment_by' => 'commercial'])->assertOk()->json('data.segments');
+
+    expect(array_map(fn (array $segment): array => [$segment['label'], $segment['work_orders_count']], $byPartner))->toBe([['Verdi', 2], [null, 1]])
+        ->and(array_column($byPartner, 'key')[1])->toBe('unattributed')
+        ->and(array_map(fn (array $segment): array => [$segment['label'], $segment['work_orders_count']], $byCommercial))->toBe([['Rossi', 3]]);
+});

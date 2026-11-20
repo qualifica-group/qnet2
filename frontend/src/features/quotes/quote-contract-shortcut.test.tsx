@@ -4,7 +4,7 @@ import { fireEvent, render, renderHook, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import i18n from '@/i18n'
 import { QuoteDetailHeader } from '@/features/quotes/quote-detail-header'
-import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
+import { SYSTEM_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import { useQuoteRowActions } from '@/features/quotes/use-quote-row-actions'
 import type { UseModuleOpenerOptions } from '@/features/modules/use-module-opener'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
@@ -52,7 +52,7 @@ function quoteWith(contractId: number | null): QuoteDetailWithPermissions {
     code: 'QUO-0009',
     title: 'Sample quote',
     old_id: null,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
+    quote_system_status: SYSTEM_STATUS_OPEN,
     contract_id: contractId,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },

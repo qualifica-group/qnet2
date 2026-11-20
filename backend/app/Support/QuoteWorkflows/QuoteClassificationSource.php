@@ -7,6 +7,7 @@ namespace App\Support\QuoteWorkflows;
 use App\Models\OpportunityProductLine;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\Services\Quotes\QuoteRootScope;
 use Illuminate\Support\Collection;
 
 /**
@@ -48,6 +49,8 @@ use Illuminate\Support\Collection;
  */
 final class QuoteClassificationSource
 {
+    public function __construct(private readonly QuoteRootScope $rootScope) {}
+
     /**
      * The distinct product categories $quote is classified by.
      *
@@ -95,7 +98,8 @@ final class QuoteClassificationSource
     {
         // A transient Quote (never persisted, e.g. ValidatesQuoteWorkflowStatus'
         // resolution probe) has no parent to fall back to.
-        return $quote->opportunity?->productLines ?? new Collection;
+        // Spec 0411, D-3: a bound offer is classified by its own root's lines only.
+        return $this->rootScope->filterLines($quote->opportunity?->productLines ?? new Collection, $quote->root_product_category_id);
     }
 
     /**

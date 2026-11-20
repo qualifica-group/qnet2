@@ -75,7 +75,7 @@ export function QuoteWorkflowCriteriaRow({ inline, canEdit, quoteWorkflow }: Det
   )
 }
 
-/** The detail's statuses: the persisted set with its groups until the pencil opens the same editor as creation. */
+/** The detail's statuses: the persisted set with its system statuses until the pencil opens the same editor as creation. */
 export function QuoteWorkflowStatusesRow({ inline, canEdit, quoteWorkflow }: DetailRowProps) {
   const { t } = useTranslation()
 
@@ -100,7 +100,7 @@ export function QuoteWorkflowStatusesRow({ inline, canEdit, quoteWorkflow }: Det
               />
               <span className="flex-1 truncate">{status.name}</span>
               <Badge variant="secondary" className="shrink-0">
-                {t(`quoteWorkflows.form.statuses.group.${status.group}`)}
+                {status.quote_system_status.name}
               </Badge>
             </li>
           ))}

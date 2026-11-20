@@ -14,6 +14,7 @@ import type { OpportunityRecordSectionProps } from '@/features/opportunities/opp
 import { ReferentValue } from '@/features/referents/referent-value'
 import {
   OpportunityCommercialField,
+  OpportunityCommercialPartnerField,
   OpportunityReferentField,
 } from '@/features/opportunities/opportunity-relation-fields'
 import type { BlockingOpportunity } from '@/features/opportunities/use-opportunity-form'
@@ -23,7 +24,7 @@ import type { BlockingOpportunity } from '@/features/opportunities/use-opportuni
  * (BR-4) and the four roles it hands down (spec 0040 A-5, directive
  * 2026-07-29), all in the same save.
  */
-const REGISTRY_CASCADE_FIELDS = ['referent_id', 'commercial_id', 'reporter_id', 'supervisor_id', 'manager_slots']
+const REGISTRY_CASCADE_FIELDS = ['referent_id', 'commercial_id', 'commercial_partner_id', 'reporter_id', 'supervisor_id', 'manager_slots']
 
 /** A referent-like relation row's persisted value: a link to the record, or the kit's empty placeholder. */
 function ReferentLink({ value }: { value: RelationFieldRef | null }) {
@@ -113,6 +114,14 @@ export function OpportunityClientRecordSection({
           editor={<OpportunityCommercialField control={control} selected={values.commercial} />}
         >
           <ReferentLink value={values.commercial} />
+        </RecordInlineField>
+        <RecordInlineField
+          field="commercial_partner_id"
+          label={t('opportunities.form.commercialPartner')}
+          inline={inline}
+          editor={<OpportunityCommercialPartnerField control={control} selected={values.commercial_partner} />}
+        >
+          <ReferentLink value={values.commercial_partner} />
         </RecordInlineField>
         <RecordInlineField
           field="reporter_id"

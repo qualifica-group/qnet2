@@ -255,6 +255,7 @@ final class QuoteLineCommissionWriter
             // own anteprima contract), it just carries a different value here.
             lineNetAmount: $base,
             commercialId: null,
+            commercialPartnerId: null,
             reporterId: null,
             supervisorId: null,
             referenceDate: new DateTimeImmutable,

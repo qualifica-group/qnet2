@@ -62,6 +62,25 @@ export function emptyPersonalDataDraft(
   }
 }
 
+/** Identity fields an operator types into a card: the draft is blank while all of them are. */
+const IDENTITY_FIELDS = [
+  'first_name',
+  'last_name',
+  'company_name',
+  'tax_code',
+  'vat_number',
+  'sdi_code',
+  'birth_date',
+  'birth_city_id',
+  'residence_city_id',
+  'gender',
+] as const satisfies readonly (keyof PersonalDataDraft)[]
+
+/** Whether nothing has been typed into the card yet, so its type can still change without losing data. */
+export function isBlankPersonalDataDraft(draft: PersonalDataDraft): boolean {
+  return IDENTITY_FIELDS.every((field) => draft[field] === null || draft[field] === '')
+}
+
 /** A process-stable, collision-free key for a brand new draft row. */
 export function nextDraftKey(): string {
   keyCounter += 1

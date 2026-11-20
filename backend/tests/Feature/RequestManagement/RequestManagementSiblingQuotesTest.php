@@ -126,8 +126,8 @@ it('AC-006: two sibling offers share the opportunity-level fields and diverge on
         ->and($firstRow['last_name'])->toBe($secondRow['last_name']);
 
     // Independent: each Quote's own columns, never mirrored across siblings.
-    expect($firstRow['operator_ga2']['id'])->not->toBe($secondRow['operator_ga2']['id'])
-        ->and($firstRow['source']['id'])->not->toBe($secondRow['source']['id'])
+    // REQUIREMENT CHANGED (spec 0406): no Operatore column on the row any more.
+    expect($firstRow['source']['id'])->not->toBe($secondRow['source']['id'])
         ->and($firstRow['operational_site']['id'])->not->toBe($secondRow['operational_site']['id'])
         ->and($firstRow['next_callback_at'])->not->toBe($secondRow['next_callback_at'])
         ->and($firstRow['is_transferred'])->toBeFalse()

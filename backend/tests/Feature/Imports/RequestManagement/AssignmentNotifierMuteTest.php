@@ -13,6 +13,7 @@ it('muted() silences notify() only inside the callback and restores the state ev
     Notification::fake();
     $opportunity = Opportunity::factory()->create();
     $supervisor = User::factory()->create();
+    grantAssignmentNotifications($supervisor);
     $notify = fn () => app(AssignmentNotifier::class)->notify($opportunity, null, $supervisor->id, []);
 
     AssignmentNotifier::muted($notify);

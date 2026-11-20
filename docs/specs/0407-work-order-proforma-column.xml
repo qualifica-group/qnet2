@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0407-work-order-proforma-column" status="approved" owner="nicola" date="2026-11-17">
+
+  <goal>
+    La tabella Commesse ha di nuovo il "€" come nel vecchio QNet, ma come colonna: icona euro colorata per stato della richiesta proforma, stato al passaggio del mouse, filtrabile e ordinabile.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-17: "aggiungere € sulla colonna in commesse, come in qnet vecchio e come l'azione che prima stava sulle commesse con i colori, dove passando col mouse ti dice lo stato (la colonna dovra' essere filtrabile e sortabile)". Supera la D-7 della spec 0405 (la riga torna a portare `proforma_status`); l'azione di riga `proforma` resta tolta.
+    D-2 Legacy: `OrdersTable.php` campo `€`, visibile ad Admin o con "commessa importi": icona cliccabile (apre `commesse.richiesta-pro-forma`) senza richieste, gialla con richiesta gia' inviata, verde con proforma emessa.
+    D-3 Stati e colori come l'ex azione qnet-2 (spec 0193 D-5): `none` grigio, `pending` blu (almeno una richiesta in attesa), `issued` giallo (richieste presenti, nessuna in attesa). Tooltip: `proformaRequests.cell.{none,pending,issued}`. `none` e `pending` aprono il dialog Richiesta emissione Proforma (con `pending` mostra l'ultima richiesta e non reinvia), `issued` inerte.
+    D-4 Colonna presente solo per chi ha `proforma-requests.create` (come l'ex azione e il legacy): senza il permesso non e' nel catalogo, quindi non e' ne' ordinabile ne' filtrabile (422) e la riga non porta il valore.
+    D-5 Ordinamento crescente: none, pending, issued (subquery di rango, NULL = none per primo). Filtro set sui tre valori, etichette i18n `enums.work_order_proforma_status.*` (Non richiesta / Richiesta / Emessa) via `enumKey`.
+    D-6 Vale per ogni griglia che usa il catalogo Commesse (Commesse, Commesse di Progetto, sezioni Commesse di Contratto e Anagrafica); colonna accodata in fondo, larghezza 72.
+  </context>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/tables/work-orders/columns">
+      <response status="200">Con `proforma-requests.create`: colonna `{ id: "proforma_status", label: "workOrders.columns.proforma_status", type: "badge", sortable: true, filterable: true, filterType: "set", enumKey: "work_order_proforma_status", width: 72 }` e filtro `{ columnId: "proforma_status", type: "set" }`. Senza: assenti.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/work-orders/rows">
+      <response status="200">Con il permesso `rows[].proforma_status` in none | pending | issued; filtro `filterModel.proforma_status = { filterType: "set", values: [...] }`; ordinamento `sortModel colId proforma_status`.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/work-orders/values">
+      <response status="200">`columnId: proforma_status` -> `["none", "pending", "issued"]`.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Con il permesso la riga porta none/pending/issued e la colonna e' dichiarata badge ordinabile con filtro set ed enumKey. Test: `WorkOrderProformaStatusColumnTest`.</criterion>
+    <criterion id="AC-002">Il filtro set tiene le commesse negli stati scelti e offre i tre valori. Test: `WorkOrderProformaStatusColumnTest`.</criterion>
+    <criterion id="AC-003">L'ordinamento e' none, pending, issued (e inverso). Test: `WorkOrderProformaStatusColumnTest`.</criterion>
+    <criterion id="AC-004">Senza permesso colonna, valore, filtro e ordinamento assenti (422). Test: `WorkOrderProformaStatusColumnTest`.</criterion>
+    <criterion id="AC-005">La cella mostra l'euro grigio/blu cliccabile e giallo inerte, con lo stato come etichetta e tooltip; il click apre il dialog proforma della riga e l'invio aggiorna la griglia. Test: `work-order-proforma-cell.test.tsx`, `use-work-order-row-actions.test.tsx`.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza, nessuna migrazione.</item>
+  </constraints>
+
+</spec>

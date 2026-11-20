@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le richieste non si creano da questo elenco: si inviano dal pulsante **€** dell\'elenco **Commesse** (vedi la guida Commesse). Una commessa genera le richieste **una sola volta**: se ne ha già una (da evadere o evasa) non se ne possono inviare altre. Per ogni commessa il sistema genera **una richiesta** per le righe di tipo **Consulenza** e **una richiesta per ciascun fornitore** delle righe di tipo **Ente**. La richiesta Ente non fattura all\'ente il prezzo di vendita ma la **provvigione** che ci spetta (vedi **Richieste Ente e provvigioni**).',
+          text: 'Le richieste non si creano da questo elenco: si inviano con **Richiedi proforma**, dal dettaglio della commessa o dal popup **Responsabili e Partecipanti** dell\'elenco **Commesse** (vedi la guida Commesse). Una commessa genera le richieste **una sola volta**: se ne ha già una (da evadere o evasa) non se ne possono inviare altre. Per ogni commessa il sistema genera **una richiesta** per le righe di tipo **Consulenza** e **una richiesta per ciascun fornitore** delle righe di tipo **Ente**. La richiesta Ente non fattura all\'ente il prezzo di vendita ma la **provvigione** che ci spetta (vedi **Richieste Ente e provvigioni**).',
         },
         {
           type: 'table',

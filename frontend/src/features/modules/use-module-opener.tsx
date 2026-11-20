@@ -35,7 +35,7 @@ function buildCreateQueryString(params?: ModuleCreateParams): string {
 type SheetState =
   | { kind: 'none' }
   | { kind: 'create'; params?: ModuleCreateParams }
-  | { kind: 'view'; row: TableRow }
+  | { kind: 'view'; row: TableRow; tab?: string }
   | { kind: 'edit'; row: TableRow }
   | { kind: 'duplicate'; row: TableRow }
 
@@ -83,6 +83,11 @@ export interface UseModuleOpenerResult {
   /** Opens the create form seeding the target module's form with `params` (spec 0045). */
   openCreateWith: (params: ModuleCreateParams) => void
   openView: (row: TableRow) => void
+  /**
+   * Opens the record on one of its detail tabs (spec 0405): the page with
+   * `?tab=`, or the Sheet handing `initialTab` to the `DetailScreen`.
+   */
+  openViewTab: (row: TableRow, tab: string) => void
   /** Opens the create form pre-filled from `row` (row action "duplicate"): the source is still fetched fresh, submit still goes through the create path. */
   openDuplicate: (row: TableRow) => void
   /** The modal Sheet when the effective mode (resolved, or `forceMode` when set) is `'modal'`, `null` in `'page'` mode. Render it once, anywhere in the table adapter's tree. */
@@ -148,6 +153,17 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
         setSheetState({ kind: 'view', row })
       } else {
         void navigate(`${basePath}/${row.id}`)
+      }
+    },
+    [mode, navigate, basePath],
+  )
+
+  const openViewTab = useCallback(
+    (row: TableRow, tab: string) => {
+      if (mode === OPEN_MODE_MODAL) {
+        setSheetState({ kind: 'view', row, tab })
+      } else {
+        void navigate(`${basePath}/${row.id}?${new URLSearchParams({ tab }).toString()}`)
       }
     },
     [mode, navigate, basePath],
@@ -266,6 +282,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
                   }
                   onSaved={handleDetailSaved}
                   onChanged={onSaved}
+                  initialTab={sheetState.tab}
                 />
               </>
             )}
@@ -316,5 +333,5 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
       </Sheet>
     ) : null
 
-  return { openCreate, openCreateWith, openView, openDuplicate, sheet }
+  return { openCreate, openCreateWith, openView, openViewTab, openDuplicate, sheet }
 }

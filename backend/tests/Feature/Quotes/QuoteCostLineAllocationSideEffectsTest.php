@@ -39,7 +39,8 @@ if (! function_exists('costAllocUserWith')) {
         }
 
         // Spec 0316: not a visibility test, so the actor sees every quote.
-        $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+        // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the actor sees the costs.
+        $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'), Permission::findOrCreate('quotes.viewCosts', 'web'));
 
         return $user;
     }

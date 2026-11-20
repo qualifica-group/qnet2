@@ -18,18 +18,18 @@ const values: CreateQuoteWorkflowFormValues = {
 }
 
 const CREATE_STATUS_ROWS: WorkflowStatusFormRow[] = [
-  { id: 'system-open', name: 'Aperto', color: null, group: 'open', system_key: 'open', description: null, requires_note: false },
-  { id: 'c1', name: 'In progress', color: 'blue', group: 'pending', system_key: null, description: null, requires_note: false },
-  { id: 'system-closed-won', name: 'Chiuso positivo', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false },
-  { id: 'system-closed-lost', name: 'Chiuso negativo', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false },
+  { id: 'system-open', name: 'Aperto', color: null, group: 'open', quote_system_status_id: null, system_key: 'open', description: null, requires_note: false },
+  { id: 'c1', name: 'In progress', color: 'blue', group: 'pending', quote_system_status_id: 2, system_key: null, description: null, requires_note: false },
+  { id: 'system-closed-won', name: 'Chiuso positivo', color: null, group: 'closed_won', quote_system_status_id: null, system_key: 'closed_won', description: null, requires_note: false },
+  { id: 'system-closed-lost', name: 'Chiuso negativo', color: null, group: 'closed_lost', quote_system_status_id: null, system_key: 'closed_lost', description: null, requires_note: false },
 ]
 
 const PERSISTED_STATUS_ROWS: WorkflowStatusFormRow[] = [
-  { id: '1', statusId: 1, name: 'Open', color: null, group: 'open', system_key: 'open', description: null, requires_note: false },
-  { id: '2', statusId: 2, name: 'In progress', color: 'blue', group: 'pending', system_key: null, description: null, requires_note: false },
-  { id: '3', name: 'New custom', color: 'green', group: 'pending', system_key: null, description: null, requires_note: false },
-  { id: '4', statusId: 4, name: 'Closed won', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false },
-  { id: '5', statusId: 5, name: 'Closed lost', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false },
+  { id: '1', statusId: 1, name: 'Open', color: null, group: 'open', quote_system_status_id: null, system_key: 'open', description: null, requires_note: false },
+  { id: '2', statusId: 2, name: 'In progress', color: 'blue', group: 'pending', quote_system_status_id: 2, system_key: null, description: null, requires_note: false },
+  { id: '3', name: 'New custom', color: 'green', group: 'pending', quote_system_status_id: 2, system_key: null, description: null, requires_note: false },
+  { id: '4', statusId: 4, name: 'Closed won', color: null, group: 'closed_won', quote_system_status_id: null, system_key: 'closed_won', description: null, requires_note: false },
+  { id: '5', statusId: 5, name: 'Closed lost', color: null, group: 'closed_lost', quote_system_status_id: null, system_key: 'closed_lost', description: null, requires_note: false },
 ]
 
 describe('buildCreatePayload', () => {
@@ -43,7 +43,7 @@ describe('buildCreatePayload', () => {
       ],
       statuses: [
         { name: 'Aperto', color: null, group: 'open', system_key: 'open', description: null, requires_note: false },
-        { name: 'In progress', color: 'blue', group: 'pending', system_key: null, description: null, requires_note: false },
+        { name: 'In progress', color: 'blue', quote_system_status_id: 2, system_key: null, description: null, requires_note: false },
         { name: 'Chiuso positivo', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false },
         { name: 'Chiuso negativo', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false },
       ],
@@ -75,18 +75,18 @@ const ORIGINAL: QuoteWorkflowDetail = {
     { id: 2, field: 'source_id', value_id: 2, value_label: 'B', field_label: 'y', field_source: 'native' },
   ],
   statuses: [
-    { id: 1, name: 'Open', color: null, sort_order: 0, system_key: 'open', group: 'open', description: null, requires_note: false },
-    { id: 2, name: 'In progress', color: 'blue', sort_order: 10, system_key: null, group: 'pending', description: null, requires_note: false },
-    { id: 4, name: 'Closed won', color: null, sort_order: 20, system_key: 'closed_won', group: 'closed_won', description: null, requires_note: false },
+    { id: 1, name: 'Open', color: null, sort_order: 0, system_key: 'open', group: 'open', quote_system_status_id: 1, quote_system_status: { id: 1, name: 'open', color: null, behavior: 'open' }, description: null, requires_note: false },
+    { id: 2, name: 'In progress', color: 'blue', sort_order: 10, system_key: null, group: 'pending', quote_system_status_id: 2, quote_system_status: { id: 2, name: 'pending', color: null, behavior: 'pending' }, description: null, requires_note: false },
+    { id: 4, name: 'Closed won', color: null, sort_order: 20, system_key: 'closed_won', group: 'closed_won', quote_system_status_id: 4, quote_system_status: { id: 4, name: 'closed_won', color: null, behavior: 'closed_won' }, description: null, requires_note: false },
   ],
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }
 
 const SAVED_ROWS: WorkflowStatusFormRow[] = [
-  { id: '1', statusId: 1, name: 'Open', color: null, group: 'open', system_key: 'open', description: null, requires_note: false },
-  { id: '2', statusId: 2, name: 'In progress', color: 'blue', group: 'pending', system_key: null, description: null, requires_note: false },
-  { id: '4', statusId: 4, name: 'Closed won', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false },
+  { id: '1', statusId: 1, name: 'Open', color: null, group: 'open', quote_system_status_id: null, system_key: 'open', description: null, requires_note: false },
+  { id: '2', statusId: 2, name: 'In progress', color: 'blue', group: 'pending', quote_system_status_id: 2, system_key: null, description: null, requires_note: false },
+  { id: '4', statusId: 4, name: 'Closed won', color: null, group: 'closed_won', quote_system_status_id: null, system_key: 'closed_won', description: null, requires_note: false },
 ]
 
 describe('buildUpdatePayload', () => {
@@ -112,11 +112,22 @@ describe('buildUpdatePayload', () => {
     expect(buildUpdatePayload({ ...values, statuses: rows }, ORIGINAL)).toEqual({
       statuses: [
         { id: 1, name: 'Open', description: null, color: null, group: 'open', requires_note: false },
-        { id: 2, name: 'In progress', description: null, color: 'blue', group: 'pending', requires_note: false },
-        { id: undefined, name: 'New custom', description: null, color: 'green', group: 'pending', requires_note: false },
+        { id: 2, name: 'In progress', description: null, color: 'blue', quote_system_status_id: 2, requires_note: false },
+        { id: undefined, name: 'New custom', description: null, color: 'green', quote_system_status_id: 2, requires_note: false },
         { id: 4, name: 'Closed won', description: null, color: null, group: 'closed_won', requires_note: false },
       ],
     })
+  })
+
+  it('spec 0419: a status email configured on a row is sent with the statuses sync', () => {
+    const notify = { subject: 'Waiting', message: 'Prepare the quote.', record_team: true, user_ids: [], role_ids: [3], emails: [] }
+    const rows = [SAVED_ROWS[0], { ...SAVED_ROWS[1], notify }, SAVED_ROWS[2]]
+    const payload = buildUpdatePayload({ ...values, statuses: rows }, ORIGINAL)
+
+    expect(payload.statuses?.[1]).toEqual({
+      id: 2, name: 'In progress', description: null, color: 'blue', quote_system_status_id: 2, requires_note: false, notify,
+    })
+    expect(buildCreatePayload({ ...values, statuses: [{ ...CREATE_STATUS_ROWS[1], notify }] }).statuses?.[0].notify).toEqual(notify)
   })
 
   it('sends the statuses when only their order changed', () => {

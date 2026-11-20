@@ -14,6 +14,10 @@ enum CommissionRecipientRole: string
     #[Color('blue')]
     case Commercial = 'COMMERCIAL';
 
+    #[Label('commission_configurations.roles.commercial_partner')]
+    #[Color('indigo')]
+    case CommercialPartner = 'COMMERCIAL_PARTNER';
+
     #[Label('commission_configurations.roles.reporter')]
     #[Color('violet')]
     case Reporter = 'REPORTER';
@@ -39,7 +43,7 @@ enum CommissionRecipientRole: string
     public function allowedRecipientTypes(): array
     {
         return match ($this) {
-            self::Commercial, self::Reporter => ['referent', 'user'],
+            self::Commercial, self::CommercialPartner, self::Reporter => ['referent', 'user'],
             self::Supervisor => ['user', 'referent'],
             self::Supplier => ['registry'],
         };

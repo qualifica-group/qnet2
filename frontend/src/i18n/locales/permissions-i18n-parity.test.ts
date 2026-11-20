@@ -123,6 +123,10 @@ const CATALOGUE_ABILITIES = [
   'deleteAny',
   // Spec 0158 D-3: `table-filter-views.publish` (publish a shared filter view).
   'publish',
+  // Spec 0412: `quotes.viewCosts` (and `work-orders.viewCosts`).
+  'viewCosts',
+  // Spec 0413: `quotes.notifyTeam`, `contracts.notifyTeam`, `work-orders.notifyTeam`.
+  'notifyTeam',
 ]
 
 describe('permissions i18n parity (spec 0076 AC-020, AC-021)', () => {

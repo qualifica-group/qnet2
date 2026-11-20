@@ -291,6 +291,7 @@ it('creates Referente 1, links the matched Referente 2 and makes Referente 1 the
     expect($run->created_rows)->toBe(1)
         ->and($registry->referents()->pluck('referents.id')->all())->toBe([$commercial->id, $palladino->id, $created->id])
         ->and($registry->primary_referent_id)->toBe($created->id)
+        ->and($registry->secondary_referent_id)->toBe($palladino->id)
         ->and($registry->commercial_id)->toBe($commercial->id)
         ->and($created->referent_type_id)->toBe($type->id)
         ->and($created->contact_scope->value)->toBe('external')
@@ -331,4 +332,22 @@ it('keeps the first linked referent as principale when the legacy sends no Refer
 
     expect($registry->primary_referent_id)->toBe($commercial->id)
         ->and(Referent::query()->count())->toBe(1);
+});
+
+it('leaves the secondario empty when the legacy sends no Referente 2, even with more referents (spec 0408 D-9)', function () {
+    [$first, $second] = Referent::factory()->count(2)->create();
+    $first->forceFill(['old_id' => 701])->save();
+    $second->forceFill(['old_id' => 702])->save();
+
+    fakeLegacyRegistries([[
+        'id' => 53, 'is_private' => false, 'company_name' => 'Two Referents Srl',
+        'referent_ids' => [701, 702],
+    ]]);
+
+    runRegistriesMigration();
+
+    $registry = Registry::query()->where('old_id', 53)->firstOrFail();
+
+    expect($registry->primary_referent_id)->toBe($first->id)
+        ->and($registry->secondary_referent_id)->toBeNull();
 });

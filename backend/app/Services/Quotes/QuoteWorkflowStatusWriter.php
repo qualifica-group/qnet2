@@ -55,6 +55,7 @@ final class QuoteWorkflowStatusWriter
     public function __construct(
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly NoteService $noteService,
+        private readonly QuoteStatusNotifier $statusNotifier,
     ) {}
 
     /**
@@ -96,6 +97,8 @@ final class QuoteWorkflowStatusWriter
         }
 
         $quote->quote_workflow_status_id = $newStatusId;
+        // Spec 0419: the status' own email, sent once the caller's transaction commits.
+        $this->statusNotifier->entered($quote, $targetStatus, $actor);
     }
 
     /**

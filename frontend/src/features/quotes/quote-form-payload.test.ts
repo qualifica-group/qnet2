@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
+import { SYSTEM_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { ApplicableAttributeSummary, QuoteDetail } from '@/features/quotes/types'
@@ -13,11 +13,12 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     quote_date: '2026-03-15',
     follow_up_date: null,
     opportunity_id: 10,
-    // Matches `detail()`'s default below (quote_workflow_status_id is a required FK,
+    // Matches `detail()`'s default below (the system status id is a required FK,
     // never null) so the "unchanged" fixtures below are genuinely unchanged.
-    quote_workflow_status_id: 1,
+    quote_system_status_id: 1,
     note: null,
     commercial_id: null,
+    commercial_partner_id: null,
     reporter_id: null,
     supervisor_id: null,
     manager_slots: [],
@@ -45,13 +46,16 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     follow_up_date: null,
     opportunity_id: 10,
     opportunity: { id: 10, name: 'Deal Acme' },
-    quote_workflow_status_id: 1,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
-    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
+    registry_transfer: null,
+    quote_system_status_id: 1,
+    quote_system_status: SYSTEM_STATUS_OPEN,
+    quote_system_statuses: [SYSTEM_STATUS_OPEN],
     applicable_attributes: [],
     attribute_layout: null,
     commercial_id: null,
+    commercial_partner_id: null,
     commercial: null,
+    commercial_partner: null,
     reporter_id: null,
     reporter: null,
     supervisor_id: null,
@@ -218,6 +222,12 @@ describe('buildCreatePayload', () => {
 })
 
 describe('buildUpdatePayload', () => {
+  it('never sends cost_lines when the quote came without them (spec 0412, no view_costs)', () => {
+    const withoutCostLines = { ...detail(), cost_lines: undefined }
+
+    expect(buildUpdatePayload(formValues({ title: 'Nuovo titolo' }), withoutCostLines)).not.toHaveProperty('cost_lines')
+  })
+
   it('sends source_id only when the Fonte changed, and null when it is cleared (spec 0332 D-4)', () => {
     expect(buildUpdatePayload(formValues(), detail())).not.toHaveProperty('source_id')
     expect(buildUpdatePayload(formValues({ source_id: 40 }), detail())).toMatchObject({ source_id: 40 })
@@ -258,6 +268,12 @@ describe('buildUpdatePayload', () => {
 
   it('sends null for a cleared title, back to the automatic one (spec 0171 rev.2)', () => {
     expect(buildUpdatePayload(formValues({ title: '' }), detail())).toEqual({ title: null })
+  })
+
+  // Spec 0417 AC-022
+  it('includes commercial_partner_id only when it changed from the original', () => {
+    expect(buildUpdatePayload(formValues(), detail())).not.toHaveProperty('commercial_partner_id')
+    expect(buildUpdatePayload(formValues({ commercial_partner_id: 9 }), detail()).commercial_partner_id).toBe(9)
   })
 
   it('includes commercial_id only when it changed from the original', () => {

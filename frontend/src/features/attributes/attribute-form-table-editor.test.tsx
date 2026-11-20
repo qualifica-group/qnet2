@@ -115,6 +115,27 @@ describe('AttributeForm — table columns editor (spec 0180 AC-021)', () => {
     })
   })
 
+  it('names the grid date column of a date summary, and offers it on date summaries only', async () => {
+    createAttributeMock.mockResolvedValue({})
+    await renderTableForm()
+    addColumn('Inspector')
+    addColumn('Inspection date')
+    pick(screen.getAllByRole('combobox', { name: 'Column type' })[1], 'Date')
+    pick(screen.getByRole('combobox', { name: 'Summary column' }), 'Inspector')
+    expect(screen.queryByLabelText('Grid date column')).not.toBeInTheDocument()
+
+    pick(screen.getByRole('combobox', { name: 'Summary column' }), 'Inspection date')
+    fireEvent.change(screen.getByLabelText('Grid date column'), { target: { value: ' Data verifica ispettiva ' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+    await waitFor(() => expect(createAttributeMock).toHaveBeenCalledTimes(1))
+    expect(createAttributeMock.mock.calls[0][0].config.summary).toEqual({
+      column: 'inspection_date',
+      strategy: 'max',
+      grid_label: 'Data verifica ispettiva',
+    })
+  })
+
   it('downgrades the "Selected row" strategy when row selection is turned off', async () => {
     await renderTableForm()
     addColumn('Inspector')

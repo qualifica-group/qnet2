@@ -19,6 +19,7 @@ export const agentSalesReport = {
     quoteWorkflowStatus: 'Fase',
     revenueNet: 'Imponibile',
     commercial: 'Commerciale',
+    commercial_partner: 'Partner commerciale',
     reporter: 'Segnalatore',
     revenueNetAfterReporter: 'Imponibile al netto segnalatore',
   },

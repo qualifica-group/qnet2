@@ -83,6 +83,7 @@ final readonly class CreateRequestData
         public ?int $sourceId = null,
         public ?int $reporterId = null,
         public ?int $commercialId = null,
+        public ?int $commercialPartnerId = null,
         public ?int $supervisorId = null,
         public bool $supervisorIdSubmitted = false,
         public ?array $rewards = null,

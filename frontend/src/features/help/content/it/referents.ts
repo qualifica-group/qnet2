@@ -123,7 +123,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Opportunità, offerte, attività, premi, liquidazioni, profili fiscali, progetti, campagne, provvigioni e i ruoli (commerciale, segnalatore, referente principale) sulle anagrafiche passano sempre sul referente mantenuto: li vedi elencati in **Collegamenti che passano al record mantenuto**.',
+          text: 'Opportunità, offerte, attività, premi, liquidazioni, profili fiscali, progetti, campagne, provvigioni e i ruoli (commerciale, partner commerciale, segnalatore, referente principale) sulle anagrafiche passano sempre sul referente mantenuto: li vedi elencati in **Collegamenti che passano al record mantenuto**.',
         },
         {
           type: 'warning',

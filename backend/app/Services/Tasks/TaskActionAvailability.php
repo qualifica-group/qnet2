@@ -89,12 +89,7 @@ class TaskActionAvailability
             return (int) $task->getAttribute(self::OPEN_SUBTASKS_COUNT);
         }
 
-        return $task->subtasks()
-            ->whereHas('taskStatus', fn ($query) => $query->whereNotIn('group', [
-                TaskStatusGroup::ClosedPositive->value,
-                TaskStatusGroup::ClosedNegative->value,
-            ]))
-            ->count();
+        return self::whereOpen($task->subtasks()->getQuery())->count();
     }
 
     /**
@@ -108,13 +103,25 @@ class TaskActionAvailability
      */
     public static function withOpenSubtasksCount(Builder $query): Builder
     {
-        return $query->withCount(['subtasks as '.self::OPEN_SUBTASKS_COUNT => fn (Builder $subtasks) => $subtasks->whereHas(
-            'taskStatus',
-            fn (Builder $status) => $status->whereNotIn('group', [
-                TaskStatusGroup::ClosedPositive->value,
-                TaskStatusGroup::ClosedNegative->value,
-            ]),
-        )]);
+        return $query->withCount(['subtasks as '.self::OPEN_SUBTASKS_COUNT => fn (Builder $subtasks) => self::whereOpen($subtasks)]);
+    }
+
+    /**
+     * Narrows $tasks to the ones outside a closing phase (`in_validation`
+     * counts as open): the ONE predicate behind openSubtasksCount(),
+     * withOpenSubtasksCount() and TaskOpenSubtree (spec 0418).
+     *
+     * @template TModel of Task
+     *
+     * @param  Builder<TModel>  $tasks
+     * @return Builder<TModel>
+     */
+    public static function whereOpen(Builder $tasks): Builder
+    {
+        return $tasks->whereHas('taskStatus', fn (Builder $status) => $status->whereNotIn('group', [
+            TaskStatusGroup::ClosedPositive->value,
+            TaskStatusGroup::ClosedNegative->value,
+        ]));
     }
 
     private function isClosedOrInValidation(Task $task): bool

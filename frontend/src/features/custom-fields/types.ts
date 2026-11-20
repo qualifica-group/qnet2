@@ -97,6 +97,8 @@ export type TableSummaryStrategy = 'selected' | 'max' | 'min'
 export interface TableFieldSummary {
   column: string
   strategy: TableSummaryStrategy
+  /** Date summary column only: the attribute's grid column shows that date alone, under this label. */
+  grid_label?: string | null
 }
 
 /**

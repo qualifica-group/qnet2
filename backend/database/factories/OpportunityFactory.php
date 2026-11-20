@@ -26,6 +26,7 @@ class OpportunityFactory extends Factory
             'registry_id' => Registry::factory(),
             'referent_id' => null,
             'commercial_id' => null,
+            'commercial_partner_id' => null,
             'reporter_id' => null,
             'supervisor_id' => null,
             'operational_site_id' => null,

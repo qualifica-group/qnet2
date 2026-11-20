@@ -66,6 +66,14 @@ export function IncomeStatementFiltersBar({ filters, onChange }: IncomeStatement
           labels={multiLabels(t('managementControl.filters.commercial'))}
         />
       </Field>
+      <Field label={t('managementControl.filters.commercialPartner')}>
+        <AsyncPaginatedMultiSelect
+          resource="referents"
+          value={filters.commercialPartnerIds}
+          onChange={(commercialPartnerIds) => onChange({ ...filters, commercialPartnerIds })}
+          labels={multiLabels(t('managementControl.filters.commercialPartner'))}
+        />
+      </Field>
       <fieldset className="flex min-w-0 flex-col gap-1">
         <legend className="text-xs font-medium text-muted-foreground">{t('managementControl.filters.workOrderType')}</legend>
         <div className="flex flex-wrap gap-3 pt-1.5">

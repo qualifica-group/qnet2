@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { LayoutBlob, LayoutSection } from '@/features/attributes/attribute-layout-types'
-import { WORKFLOW_STATUS_OPEN, WORKFLOW_STATUS_REQUIRES_NOTE } from '@/features/quotes/quote-fixtures'
+import { SYSTEM_STATUS_OPEN, SYSTEM_STATUS_REQUIRES_NOTE } from '@/features/quotes/quote-fixtures'
 import i18n from '@/i18n'
 import { buildCreateQuoteSchema, buildUpdateQuoteSchema, MAX_MANAGERS } from '@/features/quotes/quote-schema'
 
@@ -28,9 +28,10 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     quote_date: '2026-03-15',
     follow_up_date: null,
     opportunity_id: 1,
-    quote_workflow_status_id: null,
+    quote_system_status_id: null,
     note: null,
     commercial_id: null,
+    commercial_partner_id: null,
     reporter_id: null,
     supervisor_id: null,
     manager_slots: [],
@@ -267,21 +268,21 @@ describe('buildCreateQuoteSchema', () => {
 })
 
 describe('buildUpdateQuoteSchema', () => {
-  const STATUSES = [WORKFLOW_STATUS_OPEN, WORKFLOW_STATUS_REQUIRES_NOTE]
+  const STATUSES = [SYSTEM_STATUS_OPEN, SYSTEM_STATUS_REQUIRES_NOTE]
 
   it('has the same shape as the create schema', () => {
-    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id, false)
+    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, SYSTEM_STATUS_OPEN.id, false)
     const result = schema.safeParse(baseValues({ offer_lines: [validLine()] }))
     expect(result.success).toBe(true)
   })
 
   // AC-051 / AC-023: the note is demanded by the TRANSITION, not by the row.
   it('rejects a move onto a requires_note status with no note', () => {
-    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id, false)
+    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, SYSTEM_STATUS_OPEN.id, false)
     const result = schema.safeParse(
       baseValues({
         offer_lines: [validLine()],
-        quote_workflow_status_id: WORKFLOW_STATUS_REQUIRES_NOTE.id,
+        quote_system_status_id: SYSTEM_STATUS_REQUIRES_NOTE.id,
         note: '   ',
       }),
     )
@@ -291,11 +292,11 @@ describe('buildUpdateQuoteSchema', () => {
   })
 
   it('accepts the same move once a note is supplied', () => {
-    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id, false)
+    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, SYSTEM_STATUS_OPEN.id, false)
     const result = schema.safeParse(
       baseValues({
         offer_lines: [validLine()],
-        quote_workflow_status_id: WORKFLOW_STATUS_REQUIRES_NOTE.id,
+        quote_system_status_id: SYSTEM_STATUS_REQUIRES_NOTE.id,
         note: 'Offerta accettata dal cliente',
       }),
     )
@@ -305,11 +306,11 @@ describe('buildUpdateQuoteSchema', () => {
 
   // AC-026: re-saving a quote ALREADY parked on that row demands nothing.
   it('does not demand a note when the status is unchanged', () => {
-    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_REQUIRES_NOTE.id, false)
+    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, SYSTEM_STATUS_REQUIRES_NOTE.id, false)
     const result = schema.safeParse(
       baseValues({
         offer_lines: [validLine()],
-        quote_workflow_status_id: WORKFLOW_STATUS_REQUIRES_NOTE.id,
+        quote_system_status_id: SYSTEM_STATUS_REQUIRES_NOTE.id,
         note: null,
       }),
     )
@@ -323,7 +324,7 @@ describe('buildUpdateQuoteSchema', () => {
   // on the wire at all (quote-form-payload.ts `sameLines`).
   describe('offer_lines requirement (spec 0102)', () => {
     it('rejects clearing every line of an offer that originally had at least one (AC-042)', () => {
-      const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id, true)
+      const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, SYSTEM_STATUS_OPEN.id, true)
       const result = schema.safeParse(baseValues({ offer_lines: [] }))
       expect(result.success).toBe(false)
       if (!result.success) {
@@ -332,20 +333,20 @@ describe('buildUpdateQuoteSchema', () => {
     })
 
     it('rejects reducing to only a pristine row on an offer that originally had at least one (AC-042)', () => {
-      const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id, true)
+      const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, SYSTEM_STATUS_OPEN.id, true)
       const seededRow = { product_id: null, quantity: null, unit_price: null, vat_rate_id: null, commissions: [] }
       const result = schema.safeParse(baseValues({ offer_lines: [seededRow] }))
       expect(result.success).toBe(false)
     })
 
     it('accepts a title-only edit on a historically zero-line offer, grandfathered (AC-043)', () => {
-      const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id, false)
+      const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, SYSTEM_STATUS_OPEN.id, false)
       const result = schema.safeParse(baseValues({ offer_lines: [], title: 'Nuovo titolo' }))
       expect(result.success).toBe(true)
     })
 
     it('accepts adding a first line to a historically zero-line offer (AC-006 mirror)', () => {
-      const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id, false)
+      const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, SYSTEM_STATUS_OPEN.id, false)
       const result = schema.safeParse(baseValues({ offer_lines: [validLine()] }))
       expect(result.success).toBe(true)
     })
@@ -412,8 +413,8 @@ describe('quote schemas - conditional sections (spec 0288 AC-011)', () => {
   it('update: a hidden section skips the required attribute, a visible one enforces it', () => {
     const schema = buildUpdateQuoteSchema(
       i18n.t,
-      [WORKFLOW_STATUS_OPEN],
-      WORKFLOW_STATUS_OPEN.id,
+      [SYSTEM_STATUS_OPEN],
+      SYSTEM_STATUS_OPEN.id,
       false,
       CONDITIONAL_ATTRIBUTES,
       CONDITIONAL_LAYOUT,

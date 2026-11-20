@@ -12,6 +12,7 @@ const CONFIG_ERROR_RULES: readonly [RegExp, (match: RegExpMatchArray) => string]
   [/^selectable\.label$/, () => 'selectable_label'],
   [/^summary(\.column)?$/, () => 'summary_column'],
   [/^summary\.strategy$/, () => 'summary_strategy'],
+  [/^summary\.grid_label$/, () => 'summary_grid_label'],
   [/^(min_rows|max_rows)$/, (m) => m[1]],
   // Spec 0390: "no recipient" sits on the record team checkbox, the first recipient control.
   [/^notify(\.record_team)?$/, () => 'notify_record_team'],

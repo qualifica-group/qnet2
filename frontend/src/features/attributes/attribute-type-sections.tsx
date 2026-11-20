@@ -80,7 +80,7 @@ export function AttributeTypeSections({ form, inline, creating, canEdit }: TypeS
           icon={<Table2 />}
           field={TABLE_ROW}
           metaKey="config"
-          editor={<DefinitionTableColumnsEditor control={control} type={type} />}
+          editor={<DefinitionTableColumnsEditor control={control} type={type} gridLabel />}
           summary={<TableSummary values={summaryValues} />}
         />
       ) : null}

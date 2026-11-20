@@ -65,6 +65,8 @@ final readonly class UpdateOpportunityData
         public bool $referentIdSubmitted = false,
         public ?int $commercialId = null,
         public bool $commercialIdSubmitted = false,
+        public ?int $commercialPartnerId = null,
+        public bool $commercialPartnerIdSubmitted = false,
         public ?int $reporterId = null,
         public bool $reporterIdSubmitted = false,
         public ?int $supervisorId = null,
@@ -103,6 +105,8 @@ final readonly class UpdateOpportunityData
             referentIdSubmitted: array_key_exists('referent_id', $data),
             commercialId: self::nullableInt($data, 'commercial_id'),
             commercialIdSubmitted: array_key_exists('commercial_id', $data),
+            commercialPartnerId: self::nullableInt($data, 'commercial_partner_id'),
+            commercialPartnerIdSubmitted: array_key_exists('commercial_partner_id', $data),
             reporterId: self::nullableInt($data, 'reporter_id'),
             reporterIdSubmitted: array_key_exists('reporter_id', $data),
             supervisorId: self::nullableInt($data, 'supervisor_id'),
@@ -207,6 +211,10 @@ final readonly class UpdateOpportunityData
 
         if ($this->commercialIdSubmitted) {
             $attributes['commercial_id'] = $this->commercialId;
+        }
+
+        if ($this->commercialPartnerIdSubmitted) {
+            $attributes['commercial_partner_id'] = $this->commercialPartnerId;
         }
 
         if ($this->reporterIdSubmitted) {

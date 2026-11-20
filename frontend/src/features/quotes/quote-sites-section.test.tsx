@@ -56,6 +56,7 @@ const OPPORTUNITY_WITH_SITE: OpportunityForSelectItem = {
   label: 'OPP_55',
   meta: {
     commercial: null,
+    commercial_partner: null,
     reporter: null,
     supervisor: null,
     operational_site: { id: 91, label: 'Via Ereditata 1 - Milano' },
@@ -67,7 +68,7 @@ const OPPORTUNITY_WITH_SITE: OpportunityForSelectItem = {
 const OPPORTUNITY_WITHOUT_SITE: OpportunityForSelectItem = {
   id: 56,
   label: 'OPP_56',
-  meta: { commercial: null, reporter: null, supervisor: null, operational_site: null, lead_source: null, managers: [] },
+  meta: { commercial: null, commercial_partner: null, reporter: null, supervisor: null, operational_site: null, lead_source: null, managers: [] },
 }
 
 /** Two pickable options per stubbed select: ids 55/56 double as the company/site ids too. */

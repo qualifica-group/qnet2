@@ -9,6 +9,7 @@ import { PersonContactLines, PersonField, RegistryReferents } from '@/features/r
 import {
   RegistryManagersField,
   RegistryPrimaryReferentField,
+  RegistrySecondaryReferentField,
   RegistryReferentRoleField,
   RegistryReferentsField,
   RegistrySectorsField,
@@ -65,6 +66,22 @@ export function RegistryRelationsRecordSection({ values, form, inline }: Registr
           }
         >
           <PersonField person={values.commercial} />
+        </RecordInlineField>
+        <RecordInlineField
+          field="commercial_partner_id"
+          label={t('registries.form.commercialPartner')}
+          inline={inline}
+          editor={
+            <RegistryReferentRoleField
+              control={control}
+              name="commercial_partner_id"
+              label={t('registries.form.commercialPartner')}
+              placeholder={t('registries.form.commercialPartnerPlaceholder')}
+              selected={values.commercial_partner}
+            />
+          }
+        >
+          <PersonField person={values.commercial_partner} />
         </RecordInlineField>
         <RecordInlineField
           field="reporter_id"
@@ -191,7 +208,11 @@ export function RegistryReferentsRecordSection({ values, form, inline }: Registr
           />
         }
       >
-        <RegistryReferents referents={values.referents} primaryReferentId={values.primary_referent?.id ?? null} />
+        <RegistryReferents
+          referents={values.referents}
+          primaryReferentId={values.primary_referent?.id ?? null}
+          secondaryReferentId={values.secondary_referent?.id ?? null}
+        />
       </RecordInlineField>
       <RecordFieldList>
         <RecordInlineField
@@ -201,6 +222,14 @@ export function RegistryReferentsRecordSection({ values, form, inline }: Registr
           editor={<RegistryPrimaryReferentField control={control} selected={values.referents} />}
         >
           {values.primary_referent?.name ?? <DetailEmpty />}
+        </RecordInlineField>
+        <RecordInlineField
+          field="secondary_referent_id"
+          label={t('registries.form.secondaryReferent')}
+          inline={inline}
+          editor={<RegistrySecondaryReferentField control={control} selected={values.referents} />}
+        >
+          {values.secondary_referent?.name ?? <DetailEmpty />}
         </RecordInlineField>
       </RecordFieldList>
     </RecordSection>

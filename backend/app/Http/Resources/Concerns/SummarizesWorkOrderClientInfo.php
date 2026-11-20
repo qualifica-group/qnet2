@@ -25,8 +25,8 @@ use Illuminate\Support\Collection;
  * and comments (the anagrafica's general notes).
  *
  * Referente 1 is the anagrafica's primary referent (spec 0398 makes the legacy
- * "Referente 1" the principale); Referente 2 the next linked referent. The
- * legacy slot 2 is not stored, so it is the next one in link order.
+ * "Referente 1" the principale); Referente 2 its secondario (spec 0408, the
+ * legacy "Referente 2" at import).
  *
  * Address, fiscal ids and contact values are personal data: they travel only
  * when the actor may view that registry / referent (the same boundary as
@@ -36,9 +36,6 @@ use Illuminate\Support\Collection;
  */
 trait SummarizesWorkOrderClientInfo
 {
-    /** How many of the anagrafica's referents the block shows (legacy "Referente 1" and "Referente 2"). */
-    private const int CLIENT_INFO_REFERENT_SLOTS = 2;
-
     /**
      * @return array<string, mixed>|null
      */
@@ -66,6 +63,7 @@ trait SummarizesWorkOrderClientInfo
             'phones' => $this->clientContacts($contacts, [ContactTypeEnum::Phone]),
             'referents' => $this->clientReferents($request, $registry),
             'commercial' => ReferentRef::summarize($registry->commercial),
+            'commercial_partner' => ReferentRef::summarize($registry->commercialPartner),
             'sectors' => $registry->sectors->map(static fn (Sector $sector): string => $sector->selectLabel())->values()->all(),
             'comments' => filled($registry->general_notes) ? $registry->general_notes : null,
         ];
@@ -124,26 +122,21 @@ trait SummarizesWorkOrderClientInfo
     }
 
     /**
-     * Referente 1 (the principale) and Referente 2 (the next linked one), each
-     * with its primary contacts when the actor may view it.
+     * Referente 1 (the principale) and Referente 2 (the secondario, spec 0408), by
+     * position: a missing one is null, never replaced by another linked referent.
+     * Each carries its primary contacts when the actor may view it.
      *
-     * @return list<array<string, mixed>>
+     * @return list<array<string, mixed>|null>
      */
     private function clientReferents(Request $request, Registry $registry): array
     {
-        $primary = $registry->primaryReferent;
-        $others = $registry->referents->reject(static fn (Referent $referent): bool => $referent->id === $primary?->id);
-
-        return collect([$primary])
-            ->merge($others)
-            ->filter()
-            ->take(self::CLIENT_INFO_REFERENT_SLOTS)
-            ->map(fn (Referent $referent): array => ReferentRef::summarize($referent) + [
+        return array_map(
+            fn (?Referent $referent): ?array => $referent === null ? null : ReferentRef::summarize($referent) + [
                 'primary_contacts' => $request->user()?->can('view', $referent) === true
                     ? (new PrimaryContactColumn)->formatFor($referent)
                     : [],
-            ])
-            ->values()
-            ->all();
+            ],
+            [$registry->primaryReferent, $registry->secondaryReferent],
+        );
     }
 }

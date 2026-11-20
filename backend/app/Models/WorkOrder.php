@@ -80,7 +80,6 @@ use Illuminate\Support\Facades\DB;
     'is_force_closed',
     'force_close_reason',
     'task_template_id',
-    'work_order_payment_status_id',
 ])]
 class WorkOrder extends BaseModel
 {
@@ -160,17 +159,6 @@ class WorkOrder extends BaseModel
     public function workOrderWorkflowStatus(): BelongsTo
     {
         return $this->belongsTo(WorkOrderWorkflowStatus::class);
-    }
-
-    /**
-     * The commessa's own "Stato pagamento" (spec 0402), one of the configured
-     * payment statuses; the per-line ones live in `WorkOrderLinePayment`.
-     *
-     * @return BelongsTo<WorkOrderPaymentStatus, $this>
-     */
-    public function paymentStatus(): BelongsTo
-    {
-        return $this->belongsTo(WorkOrderPaymentStatus::class, 'work_order_payment_status_id');
     }
 
     /**
@@ -349,43 +337,18 @@ class WorkOrder extends BaseModel
     }
 
     /**
-     * Adds one EXISTS flag per accounting relation (no query per row). Read
-     * back through hasAccountingDocuments(); spec 0243, D-1.
-     *
-     * @param  Builder<WorkOrder>  $query
-     */
-    public function scopeWithAccountingDocumentFlags(Builder $query): void
-    {
-        $query->withExists(array_map(
-            static fn (string $relation): string => "{$relation} as ".self::accountingFlag($relation),
-            self::ACCOUNTING_RELATIONS,
-        ));
-    }
-
-    /**
      * True when any proforma request, active invoice, purchase order (header
-     * or line) or purchase invoice references this commessa. Uses the flags
-     * loaded by scopeWithAccountingDocumentFlags() when present, else queries.
+     * or line) or purchase invoice references this commessa (spec 0243, D-1).
      */
     public function hasAccountingDocuments(): bool
     {
         foreach (self::ACCOUNTING_RELATIONS as $relation) {
-            $flag = self::accountingFlag($relation);
-            $present = array_key_exists($flag, $this->attributes)
-                ? (bool) $this->attributes[$flag]
-                : $this->{$relation}()->exists();
-
-            if ($present) {
+            if ($this->{$relation}()->exists()) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    private static function accountingFlag(string $relation): string
-    {
-        return 'has_accounting_'.$relation;
     }
 
     /**

@@ -23,4 +23,8 @@ return [
         'cancelled' => 'Contract cancelled',
         'terminated' => 'Contract terminated',
     ],
+    // The "Stato pagamento" grid column (WorkOrderLinePaymentStatusColumn).
+    'line_payment_statuses' => [
+        'no_status' => 'No status',
+    ],
 ];

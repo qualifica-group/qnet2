@@ -1,20 +1,19 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWatch, type Control, type Path } from 'react-hook-form'
-import { TrendingUp } from 'lucide-react'
+import type { Control, Path } from 'react-hook-form'
+import { EyeOff, TrendingUp } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
 import { MetaFieldRowContext } from '@/features/authorization/meta-field-row-context'
-import { resolveManagementMode, resolveSimplifiedOfferLine } from '@/features/product-lines/category-tree-scope'
 import type { ProductLineRow } from '@/features/product-lines/types'
-import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { MAX_LINES_PER_TAB, type QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLine } from '@/features/quotes/types'
 import { QuoteLineEditor } from '@/features/quotes/line-editor/quote-line-editor'
 import type { QuoteCatalogScope } from '@/features/quotes/line-editor/types'
+import { RequestSimplifiedOfferPicker } from '@/features/request-management/request-simplified-offer-picker'
 import { useOfferLinesAutofill } from '@/features/request-management/use-offer-lines-autofill'
+import { useRequestOfferScope } from '@/features/request-management/use-request-offer-scope'
 
 /**
  * The two controls this section drives. Any form carrying them mounts it
@@ -36,10 +35,9 @@ interface RequestOfferLinesFieldProps<TFieldValues extends RequestOfferLinesForm
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
   /** Height cap of the catalogue list (spec 0268): the grid dialog grants it more room than a page section. */
   catalogListClassName?: string
+  /** Outside Gestione Richieste (the contract detail): the spec 0414 "hide the offer" rule does not apply. */
+  ignoreHiddenRule?: boolean
 }
-
-/** Stable empty tree while the shared query is still loading: no fresh reference per render. */
-const EMPTY_TREE: ProductCategoryTreeNode[] = []
 
 /**
  * The row editor itself, without the card around it (user directive
@@ -62,9 +60,11 @@ const EMPTY_TREE: ProductCategoryTreeNode[] = []
  *    them (OpportunityProductLineCoverage, D-7);
  *  - the single-row cap of a `single`-managed category (spec 0077) turns the
  *    catalogue into a single pick; the server enforces the cap either way;
- *  - `simplified` (spec 0114, D-3) drops quantity/unit price/VAT rate from
- *    the rows and congeals them from the picked product, client-side preview
- *    of what the server writes regardless.
+ *  - `simplified` (spec 0114, D-3) swaps the editor for a single product
+ *    select (spec 0414 D-4, `RequestSimplifiedOfferPicker`): the server
+ *    congeals quantity/unit price/VAT rate from the picked product regardless;
+ *  - a branch hiding the offer (spec 0414) leaves the catalogue; with every
+ *    covered branch hidden the field shows a notice instead of the editor.
  */
 export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFormShape>({
   control,
@@ -73,38 +73,22 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
   vatRatePercentFor,
   rememberVatRatePercent,
   catalogListClassName,
+  ignoreHiddenRule = false,
 }: RequestOfferLinesFieldProps<TFieldValues>) {
   const { t } = useTranslation()
   // The shape guarantees both keys on every accepted form, but TS cannot
   // narrow a literal to `Path<TFieldValues>` through the generic (same idiom
   // as `QuoteWorkflowStatusField`).
   const linesField = 'offer_lines' as Path<TFieldValues>
-  const productLines = useWatch({ control, name: 'product_lines' as Path<TFieldValues> }) as ProductLineRow[]
 
-  const categoryIds = useMemo(
-    () => [
-      ...new Set(
-        (productLines ?? [])
-          .map((line) => line.product_category_id)
-          .filter((id): id is number => id !== null),
-      ),
-    ],
-    [productLines],
+  // Spec 0077 (one row under a `single` category, the strictest covered one
+  // governs), spec 0114 (simplified as soon as ONE covered category grants
+  // it) and spec 0414 (hidden branches leave the offer), all off the cached
+  // tree the product-line pickers read.
+  const { categoryTree, categoryIds, offerHidden, singleCategoryMode, simplified } = useRequestOfferScope(
+    control,
+    ignoreHiddenRule,
   )
-
-  // Spec 0077: an opportunity managed on a `single` product category carries
-  // one offer row. Resolved over ALL the covered categories — rev.2 revoked
-  // INV-1, so they no longer necessarily share a root and the strictest one
-  // governs — against the same cached tree the product-line pickers read,
-  // which is where the mode lives.
-  const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
-  const singleCategoryMode = resolveManagementMode(categoryTree, categoryIds) === 'single'
-
-  // Spec 0114: as soon as ONE covered category carries the simplified-offer-
-  // line rule, the row editor drops quantity/unit price/VAT rate and the
-  // server congeals them from the picked product — the same tree the
-  // management mode reads, no extra request.
-  const simplified = resolveSimplifiedOfferLine(categoryTree, categoryIds)
 
   // A category exposing exactly ONE product fills its row by itself (user
   // directive 2026-09-09): picking the classification is the whole gesture,
@@ -121,6 +105,17 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
 
   const catalogScope = useMemo<QuoteCatalogScope>(() => ({ kind: 'categories', categoryIds }), [categoryIds])
 
+  if (offerHidden) {
+    return (
+      <p className="flex items-center gap-2 rounded-lg border border-dashed bg-card px-3 py-4 text-xs text-muted-foreground">
+        <EyeOff aria-hidden="true" className="size-3.5 shrink-0" />
+        {t('requestManagement.offerLines.hiddenByCategory')}
+      </p>
+    )
+  }
+
+  const maxRows = singleCategoryMode ? 1 : MAX_LINES_PER_TAB
+
   return (
     // The editor's rows pane already titles the collection ("Righe
     // dell'offerta"): the field label stays for assistive tech only.
@@ -136,32 +131,39 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
           // the shape's key but not its value type.
           const rows = field.value as QuoteLineFormValues[]
 
-          return (
-            <div className="flex flex-col gap-2">
-              <QuoteLineEditor
-                value={rows}
-                onChange={field.onChange}
-                variant="revenue"
-                disabled={disabled}
-                catalogScope={catalogScope}
-                lockedHint={t('requestManagement.offerLines.hintNoCategory')}
-                categoryTree={categoryTree}
-                maxRows={singleCategoryMode ? 1 : MAX_LINES_PER_TAB}
-                singleCategoryMode={singleCategoryMode}
-                simplified={simplified}
-                knownLines={knownLines}
-                errors={errors}
-                vatRatePercentFor={vatRatePercentFor}
-                rememberVatRatePercent={rememberVatRatePercent}
-                catalogListClassName={catalogListClassName}
-              />
+          const lockedHint = t('requestManagement.offerLines.hintNoCategory')
 
-              {/* The catalogue carries the scope/single-row hints itself (spec
-                  0268); only the simplified rule explains the rows' missing inputs. */}
-              {simplified ? (
-                <p className="text-xs text-muted-foreground">{t('requestManagement.offerLines.hintSimplified')}</p>
-              ) : null}
-            </div>
+          return simplified ? (
+            <RequestSimplifiedOfferPicker
+              value={rows}
+              onChange={field.onChange}
+              disabled={disabled}
+              categoryIds={categoryIds}
+              lockedHint={lockedHint}
+              maxRows={maxRows}
+              singleCategoryMode={singleCategoryMode}
+              knownLines={knownLines}
+              errors={errors}
+              vatRatePercentFor={vatRatePercentFor}
+              rememberVatRatePercent={rememberVatRatePercent}
+            />
+          ) : (
+            <QuoteLineEditor
+              value={rows}
+              onChange={field.onChange}
+              variant="revenue"
+              disabled={disabled}
+              catalogScope={catalogScope}
+              lockedHint={lockedHint}
+              categoryTree={categoryTree}
+              maxRows={maxRows}
+              singleCategoryMode={singleCategoryMode}
+              knownLines={knownLines}
+              errors={errors}
+              vatRatePercentFor={vatRatePercentFor}
+              rememberVatRatePercent={rememberVatRatePercent}
+              catalogListClassName={catalogListClassName}
+            />
           )
         }}
       </MetaField>
@@ -174,6 +176,14 @@ export function RequestOfferLinesSection<TFieldValues extends RequestOfferLinesF
   props: RequestOfferLinesFieldProps<TFieldValues>,
 ) {
   const { t } = useTranslation()
+  // Spec 0414: the card stays closed until a product line is picked (user
+  // directive 2026-11-18), and a classification whose every branch hides the
+  // offer drops it altogether.
+  const { noCategory, offerHidden } = useRequestOfferScope(props.control, props.ignoreHiddenRule)
+
+  if (noCategory || offerHidden) {
+    return null
+  }
 
   return (
     <FormSection

@@ -11,6 +11,10 @@ export const table = {
     id: 'ID',
     old_id: 'ID legacy',
   },
+  // Status tabs above a grid (specs 0397, 0409).
+  statusTabs: {
+    all: 'Tutti',
+  },
   actionsHeader: 'Azioni',
   rowActions: 'Azioni riga',
   moreActions: 'Altre azioni',
@@ -206,6 +210,7 @@ export const table = {
     editRules: 'Modifica regole',
     rulesViewIndicator: 'Filtro personalizzato',
     unnamed: 'Filtro personalizzato',
+    applyWithoutSaving: 'Applica senza salvare',
     favoriteError: 'Impossibile aggiornare i preferiti.',
     activeFiltersLabel: 'Filtri attivi',
     removeChip: 'Rimuovi {{label}}',

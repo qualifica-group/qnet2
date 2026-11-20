@@ -113,6 +113,8 @@ function panel(): RequestWorkPanelWithPermissions {
     referent: null,
     commercial_id: null,
     commercial: null,
+    commercial_partner_id: null,
+    commercial_partner: null,
     source_id: null,
     source: null,
     reporter_id: null,

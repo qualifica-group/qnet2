@@ -70,6 +70,7 @@ function Harness({ identity, usingExistingRegistry }: HarnessProps) {
       <RequestCreateClientSection
       control={form.control}
       identity={identity}
+      identityCardKey={0}
       onIdentityChange={NO_OP}
       contacts={PHONE_CONTACT}
       onContactsChange={NO_OP}

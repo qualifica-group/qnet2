@@ -92,7 +92,27 @@ trait InjectsDefaultIdColumn
             'sortable' => true,
             'filterable' => false,
             'filterType' => null,
+            'searchable' => $this->quickSearchesById(),
         ];
+    }
+
+    /**
+     * Whether the default `id` column joins the quick search (an exact match,
+     * TableQueryBuilder::applySearch()). Off by default; SearchesByIdNotLegacyId
+     * turns it on.
+     */
+    protected function quickSearchesById(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Whether the default `old_id` column joins the quick search. On by
+     * default; SearchesByIdNotLegacyId turns it off.
+     */
+    protected function quickSearchesByLegacyId(): bool
+    {
+        return true;
     }
 
     /**
@@ -118,7 +138,7 @@ trait InjectsDefaultIdColumn
             'filterable' => true,
             'filterType' => 'number',
             'hasFilterValues' => false,
-            'searchable' => true,
+            'searchable' => $this->quickSearchesByLegacyId(),
         ];
     }
 

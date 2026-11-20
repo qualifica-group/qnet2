@@ -7,6 +7,7 @@ namespace App\Tables\Shared;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Services\ProductCategories\CategoryRootResolver;
+use Illuminate\Support\Collection;
 
 /**
  * The value of a `product_lines`-edited column (spec 0075, shared by spec
@@ -28,7 +29,19 @@ final class ProductLinePairsColumn
      */
     public function project(?Opportunity $opportunity): array
     {
-        $lines = ($opportunity?->productLines ?? collect())
+        return $this->projectLines($opportunity?->productLines ?? collect());
+    }
+
+    /**
+     * The same projection over an already narrowed set of lines (spec 0411:
+     * a bound offer's own root lines).
+     *
+     * @param  Collection<int, OpportunityProductLine>  $lines
+     * @return array<int, array{name: string, business_function_id: int, business_function_name: string, product_category_id: int, product_category_name: string, root_category_id: int|null, root_category_name: string|null}>
+     */
+    public function projectLines(Collection $lines): array
+    {
+        $lines = $lines
             ->filter(static fn (OpportunityProductLine $line): bool => $line->businessFunction !== null && $line->productCategory !== null);
 
         $rootCategories = $this->rootResolver->rootSummariesFor($lines->pluck('product_category_id')->all());

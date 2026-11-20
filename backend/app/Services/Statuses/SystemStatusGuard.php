@@ -5,6 +5,7 @@ namespace App\Services\Statuses;
 use App\Enums\StatusSystemKey;
 use App\Models\ContractStatus;
 use App\Models\PipelineStatus;
+use App\Models\QuoteSystemStatus;
 use App\Models\RewardStatus;
 use App\Models\TaskStatus;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -40,7 +41,7 @@ class SystemStatusGuard
     /**
      * @throws HttpException 422
      */
-    public function assertDeletable(PipelineStatus|RewardStatus|ContractStatus|TaskStatus $status): void
+    public function assertDeletable(PipelineStatus|RewardStatus|ContractStatus|TaskStatus|QuoteSystemStatus $status): void
     {
         if (! $status->isSystem()) {
             return;
@@ -59,7 +60,7 @@ class SystemStatusGuard
      *
      * @throws HttpException 422
      */
-    public function assertUpdatable(PipelineStatus|RewardStatus|ContractStatus|TaskStatus $status, array $submittedAttributes): void
+    public function assertUpdatable(PipelineStatus|RewardStatus|ContractStatus|TaskStatus|QuoteSystemStatus $status, array $submittedAttributes): void
     {
         if (! $status->isSystem()) {
             return;

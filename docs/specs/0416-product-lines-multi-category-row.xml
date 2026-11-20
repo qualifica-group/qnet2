@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0416-product-lines-multi-category-row" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Richiesta utente 2026-11-18 (Gestione Richieste): "quando seleziono la Categoria devo avere la possibilita' di
+    selezionare tutte le sottocategorie in un solo click o selezionare quelle che voglio [...] che non si generino piu'
+    linee di prodotto della stessa categoria madre (es. iso > iso - 9001, iso > iso - 14001) ma tutto insieme".
+  </goal>
+
+  <context>
+    - `ProductLinesField` (form Nuova richiesta, pannello Lavora, opportunita', progetti, campagne) aveva una riga per
+      categoria: categoria genitore (radice) poi UNA categoria; tre norme ISO = tre righe "ISO".
+    - Il contratto `product_lines` resta una riga per categoria (`opportunity_product_lines`); la spec 0411 crea gia'
+      un'offerta per categoria madre, quindi le linee della stessa radice finiscono gia' nella stessa richiesta.
+  </context>
+
+  <decisions>
+    D-1 Solo frontend, contratto API invariato: l'editor mostra UNA riga per categoria genitore (gruppo) e al salvataggio
+        la appiattisce in una linea per categoria (`product-line-groups.ts`). Le linee caricate della stessa radice si
+        raggruppano nella stessa riga, radici in ordine di prima comparsa (come la spec 0411).
+    D-2 Radice `multiple`: la seconda scelta e' una scelta multipla (`ProductCategoryTreeMultiSelect` su
+        `SearchableMultiSelect`) con "Seleziona tutte", conteggio, "Deseleziona tutte"; un nodo non selezionabile
+        dell'albero e' un'intestazione di gruppo: un clic prende (o toglie) tutte le sue sottocategorie selezionabili.
+    D-3 Radice `single` (es. Formazione) o modalita' non nota: resta la scelta singola di prima.
+    D-4 Una radice gia' usata da un'altra riga compare disabilitata nella scelta della categoria genitore: le sue
+        categorie si aggiungono a quella riga.
+    D-5 Riga senza categorie = una linea incompleta (categoria nulla): la validazione "categoria obbligatoria" resta.
+    D-6 Filtro intermedio: su una radice `multiple` restringe l'elenco ma non cancella le categorie gia' scelte fuori
+        dal filtro (restano elencate); su una radice `single` cancella la categoria fuori filtro, come prima.
+    D-7 `SearchableMultiSelect` (componente condiviso) accetta opzioni `selectable: false` (intestazioni di gruppo) e
+        `aria-label`; il trigger mostra il nome di una scelta unica invece di "Tutte".
+    D-8 Fuori scope (segnalato): cella "Categoria prodotto" della griglia (`ProductLinesCellEditor`) e resa in sola
+        lettura delle linee restano una linea per categoria.
+  </decisions>
+
+  <acceptance>
+    <criterion id="AC-001">Linee caricate ISO 9001 + APL + ISO 14001: due righe (ISO con 9001 e 14001, APL).</criterion>
+    <criterion id="AC-002">Riga ISO, scelte 9001 e 14001: il valore inviato ha due linee ISO, nessuna seconda riga.</criterion>
+    <criterion id="AC-003">"Seleziona tutte" e il clic su un gruppo scelgono tutte le sottocategorie, mai il gruppo.</criterion>
+    <criterion id="AC-004">Rimuovere una riga toglie tutte le linee della sua radice.</criterion>
+    <criterion id="AC-005">Radice gia' in un'altra riga: disabilitata nella scelta della categoria genitore.</criterion>
+    <criterion id="AC-006">Radice `single`: scelta singola, limite di una riga invariato (spec 0077).</criterion>
+  </acceptance>
+</spec>

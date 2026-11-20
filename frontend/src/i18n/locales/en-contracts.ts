@@ -10,7 +10,6 @@ export const contracts = {
   forbidden: "You don't have permission to view contracts.",
   statusTabs: {
     label: 'Contract statuses',
-    all: 'All',
   },
   columns: {
     offerLines: 'Product lines',
@@ -20,6 +19,7 @@ export const contracts = {
     registry: 'Client',
     opportunity: 'Opportunity',
     commercial: 'Commercial',
+    commercial_partner: 'Commercial partner',
     reporter: 'Reporter',
     supervisor: 'Supervisor',
     managers: 'Account managers',
@@ -49,6 +49,7 @@ export const contracts = {
     registry: 'Client',
     opportunity: 'Opportunity',
     commercial: 'Commercial',
+    commercial_partner: 'Commercial partner',
     supervisor: 'Supervisor',
     contractStatus: 'Contract status',
   },
@@ -87,6 +88,7 @@ export const contracts = {
     tabs: {
       contractDocuments: 'Contract documents',
       opportunityDocuments: 'Opportunity documents',
+      quoteDocuments: 'Offer documents',
     },
     workOrders: {
       title: 'Work orders',

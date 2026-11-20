@@ -49,6 +49,7 @@ import { workflowStatuses } from './it-workflow-statuses'
 import { quotes } from './it-quotes'
 import { quotesWithOpportunity } from './it-quotes-with-opportunity'
 import { contractStatuses } from './it-contract-statuses'
+import { quoteSystemStatuses } from './it-quote-system-statuses'
 import { contracts } from './it-contracts'
 import { workOrders } from './it-work-orders'
 import { outboundEmails } from './it-outbound-emails'
@@ -440,6 +441,7 @@ export const it: TranslationResources = {
   workflowStatuses,
   quotes: { ...quotes, withOpportunity: quotesWithOpportunity, stats: moduleStats.quotes },
   contractStatuses,
+  quoteSystemStatuses,
   contracts,
   workOrders,
   outboundEmails,

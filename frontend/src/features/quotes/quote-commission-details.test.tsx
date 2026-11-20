@@ -99,7 +99,8 @@ describe('QuoteCommissionDetails', () => {
     expect(within(rows[2]).getAllByText(`${MINUS}150.00`)).toHaveLength(2)
 
     const totals = within(rows[3]).getAllByRole('cell').map((cell) => cell.textContent)
-    expect(totals).toEqual(['Total', `${MINUS}1,960.00`, `${MINUS}150.00`, '0.00', '+1,960.00', `${MINUS}150.00`])
+    // REQUIREMENT CHANGED (spec 0417): a Commercial partner column follows the Commercial one.
+    expect(totals).toEqual(['Total', `${MINUS}1,960.00`, '0.00', `${MINUS}150.00`, '0.00', '+1,960.00', `${MINUS}150.00`])
   })
 
   it('explains what Received means behind the (?) of the Supplier direction', async () => {

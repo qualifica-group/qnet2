@@ -41,7 +41,6 @@ export interface QuoteLineEditorProps {
   categoryTree: ProductCategoryTreeNode[]
   maxRows: number
   singleCategoryMode: boolean
-  simplified?: boolean
   /** Spec 0269 D-3: cost rows may repeat a product. */
   allowDuplicates?: boolean
   knownLines: QuoteLine[]
@@ -78,7 +77,6 @@ export function QuoteLineEditor({
   categoryTree,
   maxRows,
   singleCategoryMode,
-  simplified = false,
   allowDuplicates = false,
   knownLines,
   errors,
@@ -96,7 +94,7 @@ export function QuoteLineEditor({
     variant,
     knownLines,
     maxRows,
-    simplified,
+    simplified: false,
     allowDuplicates,
     commissions,
     onProductsPicked,
@@ -149,7 +147,6 @@ export function QuoteLineEditor({
             disabled={disabled}
             lockedWorkOrderCodes={editor.lockedCodesOf(row)}
             assignedRowEditable={editor.assignedRowsEditable}
-            simplified={simplified}
             error={errors?.[index]}
             vatRatePercentFor={vatRatePercentFor}
             rememberVatRatePercent={rememberVatRatePercent}

@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Requests are not created from this list: they are sent with the **€** button of the **Work orders** list (see the Work orders guide). A work order generates its requests **only once**: if it already has one (pending or issued) no more can be sent. For each work order the system generates **one request** for the **Consultancy** lines and **one request per supplier** of the **Institution** lines. The Institution request does not bill the institution the sale price but the **commission** we are owed (see **Institution requests and commissions**).',
+          text: 'Requests are not created from this list: they are sent with **Request proforma**, from the work order detail or from the **Supervisors and Participants** popup of the **Work orders** list (see the Work orders guide). A work order generates its requests **only once**: if it already has one (pending or issued) no more can be sent. For each work order the system generates **one request** for the **Consultancy** lines and **one request per supplier** of the **Institution** lines. The Institution request does not bill the institution the sale price but the **commission** we are owed (see **Institution requests and commissions**).',
         },
         {
           type: 'table',

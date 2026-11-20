@@ -32,7 +32,7 @@ vi.mock('@/features/for-select/api', async () => {
 
 async function openDialog(product: string) {
   renderSection(true)
-  await screen.findByRole('table')
+  await screen.findByRole('group', { name: /CON-001/ })
   fireEvent.click(screen.getByRole('button', { name: `Edit the payment of ${product}` }))
   return screen.findByRole('dialog', { name: /Line payment/ })
 }
@@ -54,12 +54,11 @@ beforeEach(() => {
 })
 
 describe('ContractPaymentDialog (AC-017)', () => {
-  it('gives each line one actions button, and none without manage_payments', async () => {
+  it('gives each line one pencil on its payment status, and none without manage_payments', async () => {
     renderSection(true)
-    await screen.findByRole('table')
+    await screen.findByRole('group', { name: /CON-001/ })
 
     expect(screen.getAllByRole('button', { name: /^Edit the payment of / })).toHaveLength(2)
-    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument()
   })
 
   it('opens with the product in the title and the three payment controls', async () => {

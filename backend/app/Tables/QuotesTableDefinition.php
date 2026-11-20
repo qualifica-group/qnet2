@@ -5,21 +5,25 @@ namespace App\Tables;
 use App\Enums\CategoryUsageArea;
 use App\Models\Company;
 use App\Models\Quote;
-use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Policies\QuotePolicy;
 use App\Services\ProductCategories\UsageAreaRowFilter;
+use App\Services\Quotes\QuoteSystemStatusMap;
 use App\Services\Quotes\QuoteVisibilityScope;
-use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
 use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
+use App\Tables\Quotes\Concerns\HasQuoteSystemStatusTabs;
 use App\Tables\Quotes\Concerns\WritesQuoteCells;
 use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
 use App\Tables\Quotes\QuoteCellWriter;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
 use App\Tables\Quotes\QuoteRowActions;
+use App\Tables\Quotes\QuoteSystemStatusColumn;
 use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use App\Tables\Shared\ParentCategoryListModule;
@@ -32,7 +36,7 @@ use Illuminate\Support\Facades\Auth;
  *
  * `code`/`title`/`created_at` and the 3 persisted header aggregates
  * (`revenue_net`/`cost_net`/`margin_net`, D-9) are real DB columns handled
- * entirely by the generic engine. `opportunity`/`quote_workflow_status`/
+ * entirely by the generic engine. `opportunity`/`quote_system_status`/
  * `commercial`/`reporter`/`supervisor` are relation-derived columns delegated to
  * QuoteRelationColumns (file-size split, engineering.md §6): own-FK simple
  * relations, mirroring OpportunitiesTableDefinition.
@@ -49,9 +53,15 @@ use Illuminate\Support\Facades\Auth;
  * AC-034) and `set`-filterable via `whereDoesntHave('offerLines')` — a
  * static one-value enumeration, never raw SQL (backend.md §8). Deliberately
  * not sortable (a two-state badge has no ordering worth a subquery).
+ *
+ * Spec 0412, D-2: `cost_net`/`margin_net` exist only for the holders of
+ * `quotes.viewCosts` — columns, rows, filters, sort and export alike, as
+ * AgentFiscalProfilesTableDefinition hides its columns.
  */
 class QuotesTableDefinition extends AbstractTableDefinition
 {
+    use HasQuoteSystemStatusTabs;
+    use SearchesByIdNotLegacyId;
     use WritesQuoteCells;
 
     /** The specially-derived site column (no label column of its own). */
@@ -69,23 +79,13 @@ class QuotesTableDefinition extends AbstractTableDefinition
     /** Mirrors QuoteColumnCatalog's own single `alert` option (AC-030/AC-033). */
     private const string ALERT_MISSING_OFFER_LINES = 'missing_offer_lines';
 
-    /**
-     * The `quote_workflow_status` advanced filter's name
-     * (QuoteAdvancedFilterCatalog): a SET filter matched by the related
-     * row's `name`, not by id — no `quote-workflow-statuses/for-select`
-     * route exists to back an id-based Relation/AsyncSearch picker.
-     */
-    private const string WORKFLOW_STATUS_ADVANCED_FILTER = 'quote_workflow_status';
-
-    /** Maximum number of names honoured in the advanced filter (caps the WHERE IN cardinality, defence in depth). */
-    private const int MAX_FILTER_VALUES = 200;
-
     public function __construct(
         private readonly QuoteRelationColumns $relationColumns,
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly QuoteService $service,
         private readonly QuoteCellWriter $cellWriter,
-        private readonly QuoteWorkflowResolver $workflowResolver,
+        private readonly QuoteSystemStatusMap $systemStatusMap,
+        private readonly QuoteSystemStatusColumn $systemStatusColumn,
         private readonly QuoteRowActions $rowActions,
         private readonly CommercialListFilterApplier $listFilters,
     ) {}
@@ -127,7 +127,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
 
         return QuoteVisibilityScope::scopeToActor($query, Auth::user())->with([
             // `opportunity.managers`: the `documents` gate (Opportunity view) stays query-free.
-            'opportunity.managers', 'opportunity.registry', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
+            'opportunity.managers', 'opportunity.registry', QuoteSystemStatusColumn::RELATION, 'commercial', 'commercialPartner', 'reporter', 'supervisor.avatar',
             // "Gestori Account" (spec 0087, D-1/T-10): the Offerta's own team,
             // rendered as an avatar stack by the `managers` column.
             'managers.avatar',
@@ -145,17 +145,26 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // whole thread — the dialog this action opens shows exactly these.
             // `offer_lines_count` (spec 0102, AC-034) drives the `alert`
             // column the same way, with zero extra queries per page.
-            ->withCount(['scopedNotes as notes_count', 'offerLines as offer_lines_count'])
+            ->withCount([...NotesCountColumn::of('scopedNotes'), 'offerLines as offer_lines_count'])
             // Spec 0363: the `documents` badge counts the parent opportunity's files.
             ->addSelect(DocumentsCountColumn::ofOpportunity('quotes.opportunity_id'));
     }
 
     /**
+     * Minus the cost columns the auth user (request or export job) may not
+     * see: the sort/filter allow-lists read this, so they cannot be probed.
+     *
      * @return array<int, array<string, mixed>>
      */
     public function columns(): array
     {
-        return QuoteColumnCatalog::columns();
+        $actor = Auth::user();
+        $hidden = $actor instanceof User ? $this->hiddenColumnIds($actor) : [];
+
+        return array_values(array_filter(
+            QuoteColumnCatalog::columns(),
+            static fn (array $column): bool => ! in_array($column['id'], $hidden, true),
+        ));
     }
 
     /**
@@ -163,7 +172,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function filters(): array
     {
-        return QuoteColumnCatalog::filters();
+        return QuoteColumnCatalog::filters($this->columns());
     }
 
     /**
@@ -209,7 +218,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
     public function mapRow(User $actor, Model $row): array
     {
         /** @var Quote $row */
-        return [
+        $payload = [
             'id' => $row->id,
             'code' => $row->code,
             'title' => $row->title,
@@ -217,9 +226,12 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'registry' => $this->summarize($row->opportunity?->registry),
             ...OfferLinesColumn::project($row),
             ...$this->relationColumns->projectRootCategories($row),
-            'quote_workflow_status' => $this->summarizeWorkflowStatus($row->quoteWorkflowStatus),
-            'quote_workflow_status_options' => $this->allowedWorkflowStatusIds($row),
+            // Spec 0404 A-D7: Offerte shows the system status; the editor
+            // offers the ones linked in the offer's set (`_options`) and asks
+            // for a note where the destination demands one (`_notes`).
+            ...$this->systemStatusCell($row),
             'commercial' => $this->summarize($row->commercial),
+            'commercial_partner' => $this->summarize($row->commercialPartner),
             'reporter' => $this->summarize($row->reporter),
             'supervisor' => $this->userSummary($row->supervisor),
             'revenue_net' => $row->revenue_net,
@@ -243,6 +255,18 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // Spec 0315: the Contract born from this Offerta, opened by the `contract` action.
             'contract_id' => $row->contract?->id,
         ];
+
+        return array_diff_key($payload, array_flip($this->hiddenColumnIds($actor)));
+    }
+
+    /**
+     * Spec 0412, D-2: the cost columns, without `quotes.viewCosts`.
+     *
+     * @return array<int, string>
+     */
+    private function hiddenColumnIds(User $actor): array
+    {
+        return $actor->can(QuotePolicy::VIEW_COSTS_PERMISSION) ? [] : QuoteColumnCatalog::COST_COLUMN_IDS;
     }
 
     /**
@@ -273,18 +297,6 @@ class QuotesTableDefinition extends AbstractTableDefinition
     private function summarizeCompany(?Company $company): ?array
     {
         return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
-    }
-
-    /**
-     * The workflow status projected WITH its `color` token, so the grid
-     * renders the colored status badge; the generic summarize() would drop
-     * it.
-     *
-     * @return array{id: int, name: string, color: string|null}|null
-     */
-    private function summarizeWorkflowStatus(?QuoteWorkflowStatus $status): ?array
-    {
-        return $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color];
     }
 
     /**
@@ -364,9 +376,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * `quote_workflow_status`'s advanced filter (QuoteAdvancedFilterCatalog)
-     * is a SET filter matched by the related row's `name` (see the
-     * constant's docblock) — the generic default (a plain `whereHas`-by-id
+     * `quote_system_status`'s advanced filter (QuoteAdvancedFilterCatalog)
+     * is a SET filter matched by the system status `name` — the generic default (a plain `whereHas`-by-id
      * for `type: relation`/`async_search`) cannot express it.
      *
      * @param  Builder<Quote>  $query
@@ -378,19 +389,17 @@ class QuotesTableDefinition extends AbstractTableDefinition
             $quotes->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($categoryIds));
         };
 
-        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Quotes, $applyCategories)) {
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Quotes, $applyCategories, QuoteVisibilityScope::whereMember(...))) {
             return true;
         }
 
-        if ($name === self::WORKFLOW_STATUS_ADVANCED_FILTER) {
-            $values = array_slice(array_values(array_filter(
+        if ($name === QuoteSystemStatusColumn::COLUMN_ID) {
+            $values = array_values(array_filter(
                 is_array($value) ? $value : [$value],
                 static fn (mixed $item): bool => is_string($item) && $item !== '',
-            )), 0, self::MAX_FILTER_VALUES);
+            ));
 
-            if ($values !== []) {
-                $this->relationColumns->applyNameWhereHas($query, 'quoteWorkflowStatus', $values);
-            }
+            $this->systemStatusColumn->applyNames($query, $values);
 
             return true;
         }
@@ -443,6 +452,10 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
+        if (in_array($columnId, $this->hiddenColumnIds($actor), true)) {
+            return [];
+        }
+
         if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
             return $this->operationalSiteColumn->distinctValues($query, self::OPERATIONAL_SITE_FK, self::OPERATIONAL_SITE_RELATION, $search, $limit);
         }

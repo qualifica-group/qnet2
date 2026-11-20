@@ -66,9 +66,9 @@ final class OpportunityForSelectService
         // Spec 0316: narrowed to the actor's visible opportunities; the ids[]
         // hydration reuses this base, so a hidden id never leaks through it.
         return OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user())
-            ->select(['opportunities.id', 'opportunities.name', 'commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id', 'lead_id'])
+            ->select(['opportunities.id', 'opportunities.name', 'commercial_id', 'commercial_partner_id', 'reporter_id', 'supervisor_id', 'operational_site_id', 'lead_id'])
             ->with([
-                'commercial:id,name', 'reporter:id,name', 'supervisor:id,name',
+                'commercial:id,name', 'commercialPartner:id,name', 'reporter:id,name', 'supervisor:id,name',
                 'managers:id,name',
                 // Spec 0332: the originating lead's Fonte seeds the Offerta's.
                 'lead:id,source_id', 'lead.source:id,name',

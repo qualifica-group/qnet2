@@ -8,6 +8,7 @@ use App\Enums\WorkflowStatusSystemKey;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Owns `quotes.quote_workflow_status_id` on the write side (spec 0083,
@@ -26,9 +27,14 @@ use App\Models\User;
  */
 final class QuoteWorkflowStatusAssigner
 {
+    private const string WORKFLOW_STATUS_FIELD = 'quote_workflow_status_id';
+
+    private const string SYSTEM_STATUS_FIELD = 'quote_system_status_id';
+
     public function __construct(
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
+        private readonly QuoteSystemStatusMap $systemStatusMap,
     ) {}
 
     /**
@@ -40,15 +46,47 @@ final class QuoteWorkflowStatusAssigner
      * advances onto it through QuoteWorkflowStatusWriter, the ONE choke
      * point that enforces set-membership (AC-021) and the mandatory-note
      * rule (AC-023/024/025).
+     *
+     * Spec 0404 A-D6: a system status picked from Offerte becomes the first
+     * working status of the resolved set linked to it, or no advance when the
+     * current one already links it; the same writer then applies every rule.
      */
-    public function assign(Quote $quote, ?int $submittedStatusId, ?string $note, User $actor): void
+    public function assign(Quote $quote, ?int $submittedStatusId, ?string $note, User $actor, ?int $submittedSystemStatusId = null): void
     {
         $workflow = $this->workflowResolver->resolve($quote);
         $quote->quote_workflow_status_id = $this->workflowResolver->targetStatus($quote, $workflow)->id;
 
-        if ($submittedStatusId !== null && $submittedStatusId !== $quote->quote_workflow_status_id) {
-            $this->workflowStatusWriter->apply($quote, $submittedStatusId, $actor, $note);
+        if ($submittedSystemStatusId !== null) {
+            $submittedStatusId = $this->systemStatusMap->workflowStatusIdFor($quote, $submittedSystemStatusId);
         }
+
+        if ($submittedStatusId === null || $submittedStatusId === $quote->quote_workflow_status_id) {
+            return;
+        }
+
+        try {
+            $this->workflowStatusWriter->apply($quote, $submittedStatusId, $actor, $note);
+        } catch (ValidationException $exception) {
+            throw $submittedSystemStatusId === null ? $exception : $this->onSystemStatusField($exception);
+        }
+    }
+
+    /**
+     * Offerte edits `quote_system_status_id`: a writer error on the working
+     * status field is reported on the field the user actually changed.
+     */
+    private function onSystemStatusField(ValidationException $exception): ValidationException
+    {
+        $errors = $exception->errors();
+
+        if (! array_key_exists(self::WORKFLOW_STATUS_FIELD, $errors)) {
+            return $exception;
+        }
+
+        $errors[self::SYSTEM_STATUS_FIELD] = $errors[self::WORKFLOW_STATUS_FIELD];
+        unset($errors[self::WORKFLOW_STATUS_FIELD]);
+
+        return ValidationException::withMessages($errors);
     }
 
     /**

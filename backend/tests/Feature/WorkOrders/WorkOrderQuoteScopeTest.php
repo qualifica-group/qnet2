@@ -104,8 +104,9 @@ it('AC-052: per-row actions in a scoped grid still come from WorkOrderPolicy, ne
     // grants the per-row "Chiusura forzata" action, still from the Policy.
     // REQUIREMENT CHANGED (spec 0321): `view` also offers `progress`.
     // REQUIREMENT CHANGED (spec 0363): `view` also offers `notes`.
+    // REQUIREMENT CHANGED (spec 0405): the legacy actions, all gated on `view`.
     $row = $response->json('items.0');
-    expect($row['actions'])->toBe(['view', 'notes', 'progress', 'force_close'])
+    expect($row['actions'])->toBe(['view', 'team', 'info', 'notes'])
         ->and($row['actions'])->not->toContain('delete');
 });
 

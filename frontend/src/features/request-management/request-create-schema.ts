@@ -86,6 +86,7 @@ export function buildRequestCreateSchema(
       .refine((value): boolean => value !== null, t('requestManagement.form.create.validation.sourceRequired')),
     reporter_id: z.number().nullable(),
     commercial_id: z.number().nullable(),
+    commercial_partner_id: z.number().nullable(),
     // Spec 0097 rev-2 D-9: the created Offerta's Supervisore, available at
     // creation like the other attribution ids and independent of the team's
     // operator slot (AC-014).

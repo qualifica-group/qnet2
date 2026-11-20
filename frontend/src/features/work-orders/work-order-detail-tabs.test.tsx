@@ -273,6 +273,26 @@ describe('WorkOrderDetailTabs — tabs behave like pages', () => {
     expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('data-state', 'active')
   })
 
+  it('opens the initial tab in the modal Sheet (spec 0405, the grid menu)', () => {
+    render(<WorkOrderDetailTabs workOrder={workOrder({})} info={<div>info-sections</div>} initialTab="notes" />)
+
+    expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('data-state', 'active')
+    expect(screen.getByText('notes-section')).toBeInTheDocument()
+  })
+
+  it('opens the group holding the requested sub-tab (spec 0405, Documenti)', () => {
+    render(
+      <WorkOrderDetailTabs
+        workOrder={workOrder({ view_documents: true }, { id: 1, name: 'Acme' })}
+        info={<div>info-sections</div>}
+      />,
+      `${PAGE_URL}?tab=documents`,
+    )
+
+    expect(screen.getByRole('tab', { name: 'Documents' })).toHaveAttribute('data-state', 'active')
+    expect(screen.getByText('documents-section work_order')).toBeInTheDocument()
+  })
+
   it('keeps the tab off the URL outside the work order page (modal Sheet over the list)', () => {
     renderTabs({})
 

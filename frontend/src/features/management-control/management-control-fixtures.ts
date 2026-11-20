@@ -65,6 +65,7 @@ export function makeIncomeStatement(overrides: Partial<IncomeStatement> = {}): I
       business_function_id: [],
       work_order_type: [],
       commercial_id: [],
+      commercial_partner_id: [],
       revenue_basis: 'contract',
       segment_by: 'none',
     },

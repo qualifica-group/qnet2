@@ -150,6 +150,7 @@ export function ContractDetailSections({ contract, editor, canEdit }: ContractDe
             registry={contract.registry}
             referent={contract.referent}
             commercial={contract.commercial}
+            commercialPartner={contract.commercial_partner}
             reporter={contract.reporter}
           />
         }

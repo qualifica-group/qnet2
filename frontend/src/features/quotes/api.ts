@@ -18,6 +18,9 @@ import type {
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const QUOTES_DOMAIN = 'quotes'
 
+/** Polymorphic attachment owner alias of an offer (spec 0415, `config('attachments.attachable_types')`). */
+export const QUOTE_ATTACHABLE_ALIAS = 'quote'
+
 /**
  * Query key of a single quote's detail (fresh-on-open pattern). Shared by the
  * detail/edit pages and by the post-mutation invalidation, so they can never
@@ -102,6 +105,7 @@ export interface QuoteCommissionDefaultsPayload {
   supplier_id?: number | null
   line_net_amount: number
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   reporter_id?: number | null
   supervisor_id?: number | null
   reference_date?: string
@@ -131,6 +135,7 @@ export function quoteCommissionDefaultsQueryKey(payload: QuoteCommissionDefaults
     payload.supplier_id ?? null,
     payload.line_net_amount,
     payload.commercial_id ?? null,
+    payload.commercial_partner_id ?? null,
     payload.reporter_id ?? null,
     payload.supervisor_id ?? null,
   ] as const
@@ -162,6 +167,7 @@ export function quoteCommissionRecipientsQueryKey(payload: QuoteCommissionRecipi
     payload.product_id,
     payload.supplier_id ?? null,
     payload.commercial_id ?? null,
+    payload.commercial_partner_id ?? null,
     payload.reporter_id ?? null,
     payload.supervisor_id ?? null,
   ] as const

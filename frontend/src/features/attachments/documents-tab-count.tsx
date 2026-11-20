@@ -8,9 +8,9 @@ interface DocumentsTabCountProps {
   collection?: string
 }
 
-/** Count of a Documenti tab: the same list `DocumentsSection` shows, so an upload or delete updates it. */
+/** Count of a Documenti tab: the files the user has not read yet, from the same list `DocumentsSection` shows. */
 export function DocumentsTabCount({ resource, id, collection = DOCUMENTS_COLLECTION }: DocumentsTabCountProps) {
   const { data } = useAttachmentList(resource, id, collection)
 
-  return <RecordTabCount count={data?.documents.length} />
+  return <RecordTabCount count={data?.unread} />
 }

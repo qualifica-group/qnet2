@@ -12,6 +12,7 @@ use App\Models\Quote;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeLayoutMerger;
 use App\RequestManagement\AttributeSetResolver;
+use App\Services\Quotes\QuoteRootScope;
 use Illuminate\Support\Collection;
 
 /**
@@ -43,6 +44,7 @@ final class QuoteAttributeResolver
     public function __construct(
         private readonly AttributeSetResolver $setResolver,
         private readonly AttributeLayoutMerger $layoutMerger,
+        private readonly QuoteRootScope $rootScope,
     ) {}
 
     /**
@@ -91,8 +93,9 @@ final class QuoteAttributeResolver
     {
         $quote->loadMissing(['opportunity.productLines', 'offerLines.product.category']);
 
+        // Spec 0411, D-3: a bound offer reads only its own root's lines.
         return $this->unionOf(
-            $quote->opportunity->productLines->pluck('product_category_id')->all(),
+            $this->rootScope->linesOf($quote)->pluck('product_category_id')->all(),
             $quote->offerLines->pluck('product.category.id')->all(),
         );
     }

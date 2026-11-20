@@ -277,6 +277,8 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
         multi_quote_work_order: false,
         usage_area: 'all',
         multiple_open_opportunities: false,
+        request_registry_type: 'individual',
+        request_offer_hidden: false,
         simplified_offer_line: true,
         simplified_offer_line_override: null,
       },
@@ -284,16 +286,15 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
 
     renderPanel()
 
-    await screen.findByText(
-      'Categoria semplificata: scegli il prodotto, quantità, prezzo unitario e aliquota IVA sono compilati automaticamente dal sistema.',
-    )
+    // REQUIREMENT CHANGED (spec 0414 D-4): the simplified offer is one product select.
+    expect(await screen.findByRole('button', { name: 'Prodotto' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
     // REQUIREMENT CHANGED (spec 0268): the row reads its product, the
     // catalogue beside it replaces the per-row picker.
-    expect(screen.getByText('Fibra 1000')).toBeInTheDocument()
-    expect(screen.getByRole('listbox', { name: 'Prodotti del catalogo' })).toBeInTheDocument()
+    expect(await screen.findByText('Fibra 1000')).toBeInTheDocument()
+    expect(screen.queryByRole('listbox', { name: 'Prodotti del catalogo' })).not.toBeInTheDocument()
   })
 
   it('a non-simplified classification keeps the three controls (no regression)', async () => {
@@ -317,6 +318,8 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
         multi_quote_work_order: false,
         usage_area: 'all',
         multiple_open_opportunities: false,
+        request_registry_type: 'individual',
+        request_offer_hidden: false,
         simplified_offer_line: false,
         simplified_offer_line_override: null,
       },
@@ -346,6 +349,8 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
       multi_quote_work_order: false,
       usage_area: 'all' as const,
       multiple_open_opportunities: false,
+      request_registry_type: 'individual' as const,
+      request_offer_hidden: false,
     }
     categoryTreeMock.mockReturnValue([
       {
@@ -374,5 +379,46 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
     expect(await screen.findByLabelText('Quantità riga 1')).toBeInTheDocument()
     expect(screen.getByLabelText('Prezzo unitario riga 1')).toBeInTheDocument()
     expect(screen.getByLabelText('Aliquota IVA riga 1')).toBeInTheDocument()
+  })
+})
+
+/** The panel's category (500) as a root hiding the offer in Gestione Richieste (spec 0414). */
+const HIDDEN_OFFER_NODE: ProductCategoryTreeNode = {
+  id: 500,
+  name: 'Consulting',
+  parent_id: null,
+  children: [],
+  attributes_count: 0,
+  products_count: 0,
+  business_function_id: null,
+  requires_quote: false,
+  is_selectable: true,
+  is_active: true,
+  is_reportable: false,
+  management_mode: 'multiple',
+  single_quote_per_opportunity: false,
+  generates_contract: true,
+  multi_quote_work_order: false,
+  usage_area: 'all',
+  multiple_open_opportunities: false,
+  request_registry_type: 'individual',
+  request_offer_hidden: true,
+  simplified_offer_line: false,
+  simplified_offer_line_override: null,
+}
+
+// Spec 0414 AC-005: a classification whose every category hides the offer drops the section.
+describe("work panel — Linee dell'offerta (offerta nascosta)", () => {
+  it('does not render the offer section', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    categoryTreeMock.mockReturnValue([HIDDEN_OFFER_NODE])
+
+    renderPanel()
+
+    // The panel is loaded once its classification shows; the offer section never does.
+    // Spec 0416: a `multiple` root picks its categories with the multi-select (a button, not a combobox).
+    expect(await screen.findByRole('button', { name: 'Categoria prodotto 1' })).toBeInTheDocument()
+    expect(screen.queryByText("Righe di ricavo previste dall'offerta.")).not.toBeInTheDocument()
+    expect(screen.queryByRole('listbox', { name: 'Prodotti del catalogo' })).not.toBeInTheDocument()
   })
 })

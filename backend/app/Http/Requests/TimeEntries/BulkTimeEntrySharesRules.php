@@ -61,12 +61,30 @@ final class BulkTimeEntrySharesRules
             return;
         }
 
-        $total = (int) ($timeEntry['minutes'] ?? 0);
         $taskIds = is_array($input['task_ids'] ?? null) ? $input['task_ids'] : [];
 
         if (count($shares) !== count($taskIds)) {
             $errors->add(self::FIELD, 'There must be exactly one share for each selected task.');
-        } elseif (array_sum(array_column($shares, 'minutes')) !== $total) {
+        }
+
+        self::validateTotal($validator, $shares, $timeEntry);
+    }
+
+    /**
+     * The checks that need no list of tasks, shared with the parent's Completa
+     * (spec 0418, CompleteTaskRequest): shares summing to the total and the
+     * consecutive time slots staying inside the day. A share-count error
+     * already on the field keeps the sum one from piling on.
+     *
+     * @param  array<int, mixed>  $shares
+     * @param  array<string, mixed>  $timeEntry
+     */
+    public static function validateTotal(Validator $validator, array $shares, array $timeEntry): void
+    {
+        $errors = $validator->errors();
+        $total = (int) ($timeEntry['minutes'] ?? 0);
+
+        if (! $errors->has(self::FIELD) && array_sum(array_column($shares, 'minutes')) !== $total) {
             $errors->add(self::FIELD, 'The shares must add up to the total minutes of the time entry.');
         }
 

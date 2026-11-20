@@ -17,7 +17,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Open **Quotes** and click **New quote** (or start from the opportunity record). If you may also create opportunities, a window opens first: choose **From an existing opportunity** (the steps below) or **New opportunity + quote** (see the dedicated section).',
-            'In **Quote data**, pick the **Opportunity**: Commercial, Reporter, Supervisor, Account managers and Operational site are prefilled from it (you can change them); the **Source** is prefilled when the opportunity was born from a lead.',
+            'In **Quote data**, pick the **Opportunity**: Commercial, Commercial partner, Reporter, Supervisor, Account managers and Operational site are prefilled from it (you can change them); the **Source** is prefilled when the opportunity was born from a lead.',
             'Fill in the other rows you need (see table).',
             'At the bottom, add the sold product rows on the **Offer** tab, picking them from the **Product catalogue**, and the cost rows on the **Costs** tab: the editors are already open and the summary updates as you type.',
             'Click **Save** (top or bottom): QNet checks every field and creates the quote; errors show under the rows to fix.',
@@ -33,7 +33,7 @@ const guide: HelpGuide = {
               "The quote date is proposed as today's date. The follow-up date is optional. The opportunity cannot change after creation.",
             ],
             ['Context', '**Source**', "A field of the quote: prefilled with the lead's Source when the opportunity has one, otherwise empty; you can pick or change it."],
-            ['Registry and contacts', '**Commercial**, **Reporter** (with their **Rewards**)', 'Prefilled from the opportunity.'],
+            ['Registry and contacts', '**Commercial**, **Commercial partner**, **Reporter** (with their **Rewards**)', 'Prefilled from the opportunity; the Commercial partner is copied at creation and then independent.'],
             ['Team', '**Supervisor**, **Account managers**', 'Synced with the opportunity.'],
             ['Company and sites', '**Company**, **Company site**, **Operational site**', 'Pick the company first.'],
             ['Document and payment', '**Layout**, **Payment method**', 'The default layout is already suggested.'],
@@ -76,13 +76,13 @@ const guide: HelpGuide = {
             'In **Quotes** click **New quote** and choose **New opportunity + quote**.',
             "In **step 1 - Opportunity** you fill in the same fields as **New opportunity** (without the lead: converting a lead stays in the Leads and Opportunities modules). Click **Next**.",
             'If required fields are empty, the errors show and you do not move on. If the registry already has an **open opportunity** that blocks the new one, a warning appears with **Create the quote on this opportunity** (opens the quote form already linked) and **Go to the opportunity**: the procedure does not continue.',
-            'In **step 2 - Quote** you fill in the same fields as **New quote**. Commercial, Reporter, Supervisor, Operational site and Account managers are already filled in from step 1 and you can change them. The **Opportunity** reads **new**: it is created on save. The **Additional information** follows the product lines of step 1.',
+            'In **step 2 - Quote** you fill in the same fields as **New quote**. Commercial, Commercial partner, Reporter, Supervisor, Operational site and Account managers are already filled in from step 1 and you can change them. The **Opportunity** reads **new**: it is created on save. The **Additional information** follows the product lines of step 1.',
             'Click **Save**: the opportunity and the quote are created together and the quote opens. If something fails, nothing is created; the errors take you back to the step and field to fix.',
           ],
         },
         {
           type: 'note',
-          text: "**Back** keeps everything you typed. If from step 1 you change Commercial, Reporter, Supervisor, Operational site or Account managers, step 2 realigns only on the fields you did not edit by hand. Nothing is created before saving: leaving the page loses what you entered (you are asked to confirm). The quote's Account managers also join the new opportunity's team.",
+          text: "**Back** keeps everything you typed. If from step 1 you change Commercial, Commercial partner, Reporter, Supervisor, Operational site or Account managers, step 2 realigns only on the fields you did not edit by hand. Nothing is created before saving: leaving the page loses what you entered (you are asked to confirm). The quote's Account managers also join the new opportunity's team.",
         },
       ],
     },
@@ -92,7 +92,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Quote data** and **Context**, then **Registry and contacts** and **Rewards**, then **Team** and **Company and sites**, then **Document and payment**. The Rewards section stays visible even when empty (\"No rewards\").",
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Quote data** and **Context**, then **Registry and contacts** and **Rewards**, then **Team** and **Company and sites**, then **Document and payment**. The Rewards section stays visible even when empty (\"No rewards\"). Among the tabs on the right, **Offer documents** shows the files uploaded on the request in Request management or Enrollee management and **Opportunity documents** the opportunity's ones: both are read-only.",
         },
         {
           type: 'paragraph',
@@ -116,16 +116,30 @@ const guide: HelpGuide = {
           text: "A field without a pencil is not editable by you: your role's permissions make it read-only, or it is chosen at creation only (Code, Opportunity). Registry, Referent, Product lines and General notes come from the opportunity and stay read-only; the **Source** is a field of the quote and is edited here.",
         },
         {
+          type: 'note',
+          text: "The quote's costs and margins need the **View costs and margins** permission: without it you do not see the **Costs** tab, the cost and margin in the summary and in the tiles at the top, the margin per product, the Net cost and Net margin columns of the list (nor in filters, sorting and export), the margin in the statistics and in the contract detail. Your edits to the quote leave the costs already entered untouched.",
+        },
+        {
           type: 'list',
           items: [
             'The **Offer** and **Costs** rows have a pencil each: the editor opens with the catalogue and the rows, and the summary below shows the totals of what you are typing. If the new products bring more Additional information, it appears under the grid: fill it in the same save (required ones are needed to save).',
-            '**Rewards** are edited from the **Reporter** row. Changing the Commercial, Reporter or Supervisor makes QNet update the rows\' commissions by itself.',
+            '**Rewards** are edited from the **Reporter** row. Changing the Commercial, Commercial partner, Reporter or Supervisor makes QNet update the rows\' commissions by itself.',
             'Changing the **Company** clears the **Company site** in the same save.',
           ],
         },
         {
           type: 'paragraph',
           text: "The **Recalculate commissions** button, top right next to the PDF, realigns the quote's commissions to the current rules of the Commission Configurator (for example after changing the direction of a Supplier rule). The summary shows how many rows, commissions and commissions changed by hand are involved; you must pick an answer, none is preselected: **Update only the rule-based commissions** (those changed by hand are kept, with their amount recalculated) or **Regenerate all from the rules** (those changed by hand are replaced too). The **Supplier commission calculation** switch of the product typology is read again too; margin and summary update at once. The button appears only if you may edit commissions and the quote is not closed.",
+        },
+      ],
+    },
+    {
+      id: 'system-status-tabs',
+      title: "System status tabs",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top right of the **Quotes** page you find the system status tabs: **All**, then one for each status, in the order of the **Quote system statuses** page (for example **Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso**). A tab shows only the quotes in that status, i.e. it filters the **Status** column; **All** removes the filter. Next to each tab, except **All**, is the number of quotes (only when not zero): it follows the search and the active filters, so it matches what you see when you open the tab. When you rename, add or delete a system status, the tabs follow. The same tabs are on the **Opportunities** page.",
         },
       ],
     },
@@ -145,7 +159,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Quotes** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the quotes where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the quotes of every category, otherwise only the quotes of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds quotes by client (registry) name: part of the name is enough, for example \"napoli\".",
+          text: "When it opens, the **Quotes** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the quotes where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the quotes of every category, otherwise the quotes of your categories (with all their subcategories) plus those of any category where you are **Supervisor** or **Account manager**: a record you are put on outside your competence stays in the list. Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: you see only the quotes of those categories (those of other categories where you are Supervisor or Account manager leave the list too) and your choice is saved. The **Search** field also finds quotes by client (registry) name: part of the name is enough, for example \"napoli\". Typing digits only also finds the quote with that exact **ID** (the hidden **ID** column), on top of the results whose code contains the number; the id from the old system is not searched.",
         },
         {
           type: 'paragraph',
@@ -175,11 +189,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Title, Status, Commercial, Reporter, Supervisor, Account managers, Company, Company site, Operational site, Source, Follow-up date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Title, Status, Commercial, Commercial partner, Reporter, Supervisor, Account managers, Company, Company site, Operational site, Source, Follow-up date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',
-          text: "**Status** only offers the statuses of the quote's workflow and asks for the **note** when the chosen status requires it. Changing the **Company** clears the Company site; the Company site is picked among the row's company sites. Changing a role recalculates the line commissions as from the detail; an empty Title goes back to the automatic title.",
+          text: "**Status** offers the system statuses the quote can take and asks for the **note** when the destination working status requires it. Changing the **Company** clears the Company site; the Company site is picked among the row's company sites. Changing a role recalculates the line commissions as from the detail; an empty Title goes back to the automatic title.",
         },
         {
           type: 'paragraph',
@@ -221,7 +235,7 @@ const guide: HelpGuide = {
             'The **Costs** tab shows the whole catalogue of cost products, with no category filter, and the same product can be added more than once.',
             '**Additional description** adds text to the row, on both the **Offer** and the **Costs** tab; the text is printable on the quote document.',
             "Each row's **Commissions** can only be opened and changed for that row. The popup shows the line net, imputed costs, calculation base and total commissions at the top; each role carries a label with the commission's origin (**Rule: Product**, **Rule: Category** or **Personal rule** when it comes from a Configurator rule, **Manual override** when it was changed by hand; hovering the label explains it). While editing, every role also shows the **System calculation** (what the Commission Configurator grants): if you changed the value by hand you can keep it or go back to the calculation with **Apply system calculation**. The **Supplier** row also shows the **Direction**: when the commission comes from a rule it is the rule's; when you change it by hand you choose **Received** (it is the line revenue) or **Paid** (a cost towards the supplier), and the margin updates accordingly.",
-            'In the summary, under the cards, **Show commission details** opens (and **Hide commission details** closes) the **Commission details per product** block of the saved quote, which lists every row with commissions: for **Commercial**, **Reporter**, **Supervisor** and **Supplier** the recipient, the percentage (or fixed amount) and the amount; for the Supplier also the direction (**Received** or **Paid**), with a (?) explaining what it means. The name of the recipient leads to their record: hovering a user shows their profile card, hovering a referent or a registry shows the link to its record, which also opens by clicking the name (if you may view it). Hovering an amount shows its calculation: for a percentage the base (net amount minus the costs imputed to the row) and the rate applied, for the totals the balance. Each amount carries **+** when the commission comes in (received Supplier) and **−** when it goes out (Commercial, Reporter, Supervisor and paid Supplier). The last row and column give the totals as a balance: what comes in minus what goes out. It is visible only to users who can see commissions.',
+            'In the summary, under the cards, **Show commission details** opens (and **Hide commission details** closes) the **Commission details per product** block of the saved quote, which lists every row with commissions: for **Commercial**, **Commercial partner**, **Reporter**, **Supervisor** and **Supplier** the recipient, the percentage (or fixed amount) and the amount; for the Supplier also the direction (**Received** or **Paid**), with a (?) explaining what it means. The name of the recipient leads to their record: hovering a user shows their profile card, hovering a referent or a registry shows the link to its record, which also opens by clicking the name (if you may view it). Hovering an amount shows its calculation: for a percentage the base (net amount minus the costs imputed to the row) and the rate applied, for the totals the balance. Each amount carries **+** when the commission comes in (received Supplier) and **−** when it goes out (Commercial, Reporter, Supervisor and paid Supplier). The last row and column give the totals as a balance: what comes in minus what goes out. It is visible only to users who can see commissions.',
             'Every cost row has an **Associated product**: pick "None (generic cost)" or a row from the Products tab to attribute that cost to that sale. Deleting the associated product row sends the cost back to "None" automatically.',
             'At most 200 rows per tab.',
           ],
@@ -232,7 +246,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The summary shows, in this order, **Expected revenue**, **Expected cost**, the **Commission Summary** (each amount carries **+** when the commission comes in and **−** when it goes out: Commercial, Reporter and Supervisor are always paid; the Supplier is **+** when received and **−** when paid, and a quote with both directions shows the two rows **Supplier (received)** and **Supplier (paid)**) and the **Expected margin** (sum of the line margins minus generic costs: a line with a **received** Supplier commission has the commission alone as revenue, the others are net amount minus costs and paid commissions; **Expected revenue** does not change), plus the **Product Typology Summary**. Percentage commissions are calculated on the product row\'s own margin (its net revenue minus the costs imputed to it, never below zero): the **Margin per product** block shows revenue, imputed cost, commissions and margin for each product row, so that revenue minus cost minus commissions gives the margin (lines with a received Supplier commission carry the note "revenue = received commission": the revenue is the received commission and the commissions are only the paid ones), plus a "Generic costs" row for unattributed costs. Hovering the product name shows it in full; every amount is underlined with dashes and, hovered or tapped, shows its calculation (for example 3,200.00 − 0.00 − 3,200.00 = 0.00). The block opens with **Show advanced data**, under the summary cards, and is visible only to users who can see commissions.',
+          text: 'The summary shows, in this order, **Expected revenue**, **Expected cost**, the **Commission Summary** (each amount carries **+** when the commission comes in and **−** when it goes out: Commercial, Commercial partner, Reporter and Supervisor are always paid; the Supplier is **+** when received and **−** when paid, and a quote with both directions shows the two rows **Supplier (received)** and **Supplier (paid)**) and the **Expected margin** (sum of the line margins minus generic costs: a line with a **received** Supplier commission has the commission alone as revenue, the others are net amount minus costs and paid commissions; **Expected revenue** does not change), plus the **Product Typology Summary**. Percentage commissions are calculated on the product row\'s own margin (its net revenue minus the costs imputed to it, never below zero): the **Margin per product** block shows revenue, imputed cost, commissions and margin for each product row, so that revenue minus cost minus commissions gives the margin (lines with a received Supplier commission carry the note "revenue = received commission": the revenue is the received commission and the commissions are only the paid ones), plus a "Generic costs" row for unattributed costs. Hovering the product name shows it in full; every amount is underlined with dashes and, hovered or tapped, shows its calculation (for example 3,200.00 − 0.00 − 3,200.00 = 0.00). The block opens with **Show advanced data**, under the summary cards, and is visible only to users who can see commissions.',
         },
         {
           type: 'warning',
@@ -246,7 +260,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The available statuses depend on the workflow configured in the **Offer status configurator**.',
+          text: 'Quotes show and let you pick the **system statuses** (**Open**, **Pending**, **Provisionally won**, **Won**, **Lost** and the ones you add in **Quote system statuses**), not the working statuses of Request Management. The available ones are those linked to at least one working status of the workflow set in the **Offer status configurator**.',
         },
         {
           type: 'steps',
@@ -259,7 +273,68 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Moving the quote to a **Closed (won)** status generates the contract. From then on the **Open contract** button at the top of the quote detail, and the **Open contract** entry in the more-actions menu (the three dots) of the row in the table, open the contract in a window over the quote. You see them only if your role may view Contracts.',
+          text: "Quotes and **Request Management** stay in sync: picking a system status moves the quote to the **first** working status (in the configured order) linked to that system status in the quote's workflow; if it is already in a linked status, nothing changes. And if you change the working status in Request Management, Quotes show the linked system status. If no working status of the workflow is linked to the chosen status, the save is refused.",
+        },
+        {
+          type: 'paragraph',
+          text: 'Moving the quote to a **Won** status generates the contract; **Provisionally won** does not. If the quote then leaves **Won** (also towards **Provisionally won**) and the contract has not been worked on yet, the contract is deleted; otherwise it is suspended. From then on the **Open contract** button at the top of the quote detail, and the **Open contract** entry in the more-actions menu (the three dots) of the row in the table, open the contract in a window over the quote. You see them only if your role may view Contracts.',
+        },
+        {
+          type: 'note',
+          text: 'When a category of the opportunity has **Contact transfer before the contract** (for example **Orientamento specialistico**), the quote moves to **Won** and its contract is born as usual, but the contract cannot be validated until the quote has been transferred with **Transfer contact** (in Gestione Richieste) or with **Transfer to another registry**: **Validate contract** is refused with "This category requires a transfer before the contract is validated".',
+        },
+      ],
+    },
+    {
+      id: 'transfer-to-another-registry',
+      title: 'Transferring a quote to another registry',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'When the quote must belong to another customer, press **Transfer to another registry** in the detail (it needs the **Transfer to another registry** permission on top of **Update**; the same button is in the **Work** panel of Gestione Richieste and Gestione Iscritti, with that module\'s permissions).',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Choose the **New registry**: it must differ from the current one.',
+            "If needed, change the offer's **Title**: it is prefilled with the current one. Clearing it brings back the automatic title (code and products).",
+            'Review and, if needed, update the **Additional information** (the flexible fields): they are prefilled with the current values.',
+            'Click **Transfer**.',
+          ],
+        },
+        {
+          type: 'table',
+          headers: ["The new registry's situation", 'Where the quote goes'],
+          rows: [
+            ['It already has an open opportunity and the category allows only one open opportunity per registry', "On that open opportunity, which receives the categories of the quote's products if it lacks them."],
+            ['It has no open opportunity, or the category allows several open opportunities', "On a new opportunity with the old one's product lines, commercial, commercial partner, reporter, supervisor, operational site and account managers; without a referent."],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'The old opportunity stays as it is, with its notes and documents; the notes written on this quote follow it. The transfer is recorded in the **History** of the quote and of both opportunities (**Transferred to another registry**, from which registry to which, who and when), and the top of the quote detail shows **Transferred from A to B on dd/mm/yyyy by Name**.',
+        },
+        {
+          type: 'warning',
+          text: 'A quote under contract can be transferred only while nothing has been done on its contract (initial status, not validated, no data, document, renewal or work order): the contract follows the quote to the new registry. If the contract has already been worked on, the transfer is refused. Nor can the quote be moved onto an opportunity that allows a single quote and already has one: the message appears under **New registry** and nothing is saved.',
+        },
+      ],
+    },
+    {
+      id: 'quote-under-contract',
+      title: 'Offer under contract',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "An offer that has a contract (in any status) is **frozen**: it is an already accepted document. Editing it requires the **Edit quotes under contract** permission; without it the detail shows **Offer under contract: it can only be edited by those who have the permission** and the fields are read-only (also from the list cells, the **Work** panel of Request Management and Enrollee Management and the rows in the contract detail).",
+        },
+        {
+          type: 'paragraph',
+          text: "With the permission, every change opens an **Offer under contract** popup asking for confirmation: if you confirm the change is saved and recorded in the **History**, if you cancel nothing changes.",
+        },
+        {
+          type: 'note',
+          text: "The operational fields stay always editable: **Account managers** (team), **Next callback date**, **Operational site** and **General notes**. Notes, documents, tasks and activities are not frozen.",
         },
       ],
     },

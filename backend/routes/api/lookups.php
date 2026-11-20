@@ -6,6 +6,8 @@ use App\Http\Controllers\PaymentMethods\PaymentMethodController;
 use App\Http\Controllers\PaymentMethods\PaymentMethodForSelectController;
 use App\Http\Controllers\ProductTypologies\ProductTypologyController;
 use App\Http\Controllers\ProductTypologies\ProductTypologyForSelectController;
+use App\Http\Controllers\QuoteSystemStatuses\QuoteSystemStatusController;
+use App\Http\Controllers\QuoteSystemStatuses\QuoteSystemStatusForSelectController;
 use App\Http\Controllers\QuoteWorkflows\QuoteWorkflowController;
 use App\Http\Controllers\RewardStatuses\RewardStatusController;
 use App\Http\Controllers\RewardStatuses\RewardStatusForSelectController;
@@ -259,6 +261,16 @@ Route::get('contract-statuses/{contractStatus}', [ContractStatusController::clas
 Route::post('contract-statuses', [ContractStatusController::class, 'store']);
 Route::match(['put', 'patch'], 'contract-statuses/{contractStatus}', [ContractStatusController::class, 'update']);
 Route::delete('contract-statuses/{contractStatus}', [ContractStatusController::class, 'destroy']);
+
+// Spec 0404 part A: the quote system statuses configurator. Literal segments
+// (for-select, reorder) before {quoteSystemStatus}; authorization in
+// QuoteSystemStatusController via QuoteSystemStatusPolicy.
+Route::get('quote-system-statuses/for-select', QuoteSystemStatusForSelectController::class);
+Route::post('quote-system-statuses/reorder', [QuoteSystemStatusController::class, 'reorder']);
+Route::get('quote-system-statuses/{quoteSystemStatus}', [QuoteSystemStatusController::class, 'show']);
+Route::post('quote-system-statuses', [QuoteSystemStatusController::class, 'store']);
+Route::match(['put', 'patch'], 'quote-system-statuses/{quoteSystemStatus}', [QuoteSystemStatusController::class, 'update']);
+Route::delete('quote-system-statuses/{quoteSystemStatus}', [QuoteSystemStatusController::class, 'destroy']);
 
 // Task statuses CRUD (spec 0101). the Task working-state pick-list (spec 0101, D-5): six mandatory system
 // rows protected by the shared SystemStatusGuard, plus the completion

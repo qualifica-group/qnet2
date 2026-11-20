@@ -7,6 +7,7 @@ namespace App\Tables\Quotes;
 use App\Http\Requests\Quotes\UpdateQuoteRequest;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Quotes\ContractedQuoteGuard;
 use App\Services\QuoteService;
 use App\Services\Table\FormRequestCellValidator;
 use App\Support\ManagerPositions;
@@ -14,7 +15,7 @@ use App\Support\ManagerPositions;
 /**
  * The write behind the quotes grid's inline cell edit (spec 0206, D-2): the
  * cell's field goes through UpdateQuoteRequest — rules, company-site and
- * reward cross-checks, workflow-status set, field permissions — and then
+ * reward cross-checks, system status (spec 0404 A-D6), field permissions — and then
  * QuoteService::update(), so a role change resyncs the line commissions and
  * retargets the rewards exactly as from the detail.
  */
@@ -28,11 +29,12 @@ final class QuoteCellWriter
 
     private const string COMPANY_SITE_FIELD = 'company_site_id';
 
-    private const string WORKFLOW_STATUS_FIELD = 'quote_workflow_status_id';
+    private const string SYSTEM_STATUS_FIELD = 'quote_system_status_id';
 
     public function __construct(
         private readonly FormRequestCellValidator $formRequest,
         private readonly QuoteService $service,
+        private readonly ContractedQuoteGuard $contractedGuard,
     ) {}
 
     public function write(Quote $quote, string $fieldKey, mixed $value, User $actor, ?string $note): Quote
@@ -43,7 +45,8 @@ final class QuoteCellWriter
         // Step 2: the form's own rules, then its own service.
         $request = $this->formRequest->validate(UpdateQuoteRequest::class, self::ROUTE_PARAMETER, $quote, $actor, $payload);
 
-        return $this->service->update($quote, $request->toData(), $actor);
+        // Step 3 (spec 0404 part E): an offer under contract needs the permission and a confirmation.
+        return $this->contractedGuard->run($quote, $actor, $request->validated(), fn (): Quote => $this->service->update($quote, $request->toData(), $actor));
     }
 
     /**
@@ -57,7 +60,7 @@ final class QuoteCellWriter
             // D-5: like the form, a different company clears the site.
             self::COMPANY_FIELD => $this->companyPayload($quote, $value),
             // D-6: the transition note travels with the status, as in the form.
-            self::WORKFLOW_STATUS_FIELD => [$fieldKey => $value, 'note' => $note],
+            self::SYSTEM_STATUS_FIELD => [$fieldKey => $value, 'note' => $note],
             default => [$fieldKey => $value],
         };
     }

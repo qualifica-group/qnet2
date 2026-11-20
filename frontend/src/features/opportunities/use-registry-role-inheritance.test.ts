@@ -9,6 +9,7 @@ import {
 
 const REGISTRY_ROLES: InheritedRoles = {
   commercial_id: 71,
+  commercial_partner_id: 72,
   reporter_id: 81,
   supervisor_id: 61,
   manager_slots: [91, null, 93],
@@ -19,6 +20,7 @@ describe('rolesFromRegistryMeta', () => {
     expect(
       rolesFromRegistryMeta({
         commercial: { id: 71, name: 'Sara' },
+        commercial_partner: { id: 72, name: 'Paolo' },
         reporter: { id: 81, name: 'Elio' },
         supervisor: { id: 61, name: 'Ivo' },
         managers: [
@@ -52,6 +54,12 @@ describe('conflictingUserRoles', () => {
     ])
   })
 
+  it('reports a commercial partner the user entered that the anagrafica would change (spec 0417 AC-021)', () => {
+    const current = { ...NO_INHERITED_ROLES, commercial_partner_id: 9, manager_slots: [null, null, null, null] }
+
+    expect(conflictingUserRoles(current, NO_INHERITED_ROLES, REGISTRY_ROLES)).toEqual(['commercial_partner_id'])
+  })
+
   it('ignores a user value equal to the anagrafica one, trailing empty slots included', () => {
     const current = { ...NO_INHERITED_ROLES, supervisor_id: 61, manager_slots: [91, null, 93, null] }
 
@@ -69,6 +77,7 @@ describe('mergeInheritedRoles', () => {
   it('keeps the user values and inherits the rest when keeping', () => {
     expect(mergeInheritedRoles(current, NO_INHERITED_ROLES, REGISTRY_ROLES, true)).toEqual({
       commercial_id: 71,
+      commercial_partner_id: 72,
       reporter_id: 81,
       supervisor_id: 5,
       manager_slots: [null, 6, null, null],
@@ -80,6 +89,13 @@ describe('mergeInheritedRoles', () => {
       ...REGISTRY_ROLES,
       manager_slots: [91, null, 93, null],
     })
+  })
+
+  it('keeps the user commercial partner when keeping (spec 0417 AC-021)', () => {
+    const entered = { ...NO_INHERITED_ROLES, commercial_partner_id: 9 }
+
+    expect(mergeInheritedRoles(entered, NO_INHERITED_ROLES, REGISTRY_ROLES, true).commercial_partner_id).toBe(9)
+    expect(mergeInheritedRoles(entered, NO_INHERITED_ROLES, REGISTRY_ROLES, false).commercial_partner_id).toBe(72)
   })
 
   it('leaves four empty G.A. slots for an anagrafica without managers', () => {

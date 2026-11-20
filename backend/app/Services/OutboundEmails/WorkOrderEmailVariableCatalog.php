@@ -34,7 +34,7 @@ final class WorkOrderEmailVariableCatalog
      * @var array<int, string>
      */
     private const array DELEGATED_QUOTE_CATEGORIES = [
-        'quote', 'client', 'opportunity', 'referent', 'commercial', 'reporter', 'supervisor', 'company', 'company_site',
+        'quote', 'client', 'opportunity', 'referent', 'commercial', 'commercial_partner', 'reporter', 'supervisor', 'company', 'company_site',
     ];
 
     public function __construct(private readonly DocumentLayoutVariableCatalog $quoteCatalog) {}

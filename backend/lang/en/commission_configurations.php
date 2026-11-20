@@ -3,6 +3,7 @@
 return [
     'roles' => [
         'commercial' => 'Commercial',
+        'commercial_partner' => 'Commercial partner',
         'reporter' => 'Reporter',
         'supervisor' => 'Supervisor',
         'supplier' => 'Supplier',

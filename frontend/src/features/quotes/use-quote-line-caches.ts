@@ -35,7 +35,7 @@ function useLookup<TValue>(seed: () => Record<number, TValue>) {
  */
 export function useQuoteLineCaches(quote: QuoteDetail | null) {
   const [vatRatePercentFor, rememberVatRatePercent] = useLookup<number>(() =>
-    quote ? vatRatePercentsFromLines([...quote.offer_lines, ...quote.cost_lines]) : {},
+    quote ? vatRatePercentsFromLines([...quote.offer_lines, ...(quote.cost_lines ?? [])]) : {},
   )
   const [productTypologyIdFor, rememberProductTypology] = useLookup<number>(() =>
     quote ? productTypologyIdsFromLines(quote.offer_lines) : {},

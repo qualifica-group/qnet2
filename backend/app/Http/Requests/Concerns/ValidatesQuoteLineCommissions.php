@@ -175,6 +175,7 @@ trait ValidatesQuoteLineCommissions
 
         $resolver = app(CommissionRecipientResolver::class);
         $commercialId = $this->effectiveRoleId('commercial_id', $quote?->commercial_id);
+        $commercialPartnerId = $this->effectiveRoleId('commercial_partner_id', $quote?->commercial_partner_id);
         $reporterId = $this->effectiveRoleId('reporter_id', $quote?->reporter_id);
         $supervisorId = $this->effectiveRoleId('supervisor_id', $quote?->supervisor_id);
         $persistedSuppliers = $this->persistedLineSuppliers($quote);
@@ -184,7 +185,7 @@ trait ValidatesQuoteLineCommissions
                 continue;
             }
 
-            $allowed = $resolver->resolve($this->effectiveLineSupplierId($line, $persistedSuppliers), $commercialId, $reporterId, $supervisorId);
+            $allowed = $resolver->resolve($this->effectiveLineSupplierId($line, $persistedSuppliers), $commercialId, $commercialPartnerId, $reporterId, $supervisorId);
 
             foreach ($line['commissions'] as $commissionIndex => $commission) {
                 $role = is_array($commission) ? (string) ($commission['recipient_role'] ?? '') : '';

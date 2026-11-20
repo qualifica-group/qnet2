@@ -19,7 +19,7 @@ export function editDefaults(quote: QuoteDetail): QuoteFormValues {
     quote_date: quote.quote_date,
     follow_up_date: quote.follow_up_date ?? null,
     opportunity_id: quote.opportunity_id,
-    quote_workflow_status_id: quote.quote_workflow_status_id,
+    quote_system_status_id: quote.quote_system_status_id,
     note: null,
     // An empty PHP map serializes as a JSON ARRAY (`toAttributeValuesMap`),
     // and every applicable code needs its key for the Zod object: seeded
@@ -30,6 +30,7 @@ export function editDefaults(quote: QuoteDetail): QuoteFormValues {
       toAttributeValuesMap(quote.attribute_values),
     ),
     commercial_id: quote.commercial_id,
+    commercial_partner_id: quote.commercial_partner_id,
     reporter_id: quote.reporter_id,
     supervisor_id: quote.supervisor_id,
     manager_slots: managerSlotsFromRefs(quote.managers ?? []),
@@ -42,7 +43,8 @@ export function editDefaults(quote: QuoteDetail): QuoteFormValues {
     internal_notes: quote.internal_notes,
     rewards: (quote.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
     offer_lines: linesToFormValues(quote.offer_lines),
-    cost_lines: linesToFormValues(quote.cost_lines),
+    // Spec 0412: absent without `view_costs`; the payload then never sends them.
+    cost_lines: linesToFormValues(quote.cost_lines ?? []),
   }
 }
 
@@ -77,10 +79,11 @@ export function createDefaults(mode: QuoteCreateFormMode, initialCode: string | 
     quote_date: todayDate(),
     follow_up_date: null,
     opportunity_id: forcedOpportunityId,
-    quote_workflow_status_id: null,
+    quote_system_status_id: null,
     note: null,
     attribute_values: {},
     commercial_id: null,
+    commercial_partner_id: null,
     reporter_id: null,
     supervisor_id: null,
     // Spec 0087 (D-5): left on the UX default (empty cards); the actual

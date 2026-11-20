@@ -6,6 +6,7 @@ import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
 import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
+import { RequestRegistryTransfer } from '@/features/request-management/request-registry-transfer'
 
 interface RequestWorkHeaderProps {
   panel: RequestWorkPanel
@@ -27,6 +28,8 @@ interface RequestWorkHeaderProps {
    */
   canTransfer: boolean
   onTransfer: () => void
+  /** Spec 0404 B: after a move to another anagrafica the record is left, like a contact transfer. */
+  onRegistryTransferred?: () => void
 }
 
 /**
@@ -51,6 +54,7 @@ export function RequestWorkHeader({
   submitError,
   canTransfer,
   onTransfer,
+  onRegistryTransferred,
 }: RequestWorkHeaderProps) {
   const { t } = useTranslation()
   // The callback hour is optional (user directive 2026-07-31): one planned
@@ -105,6 +109,7 @@ export function RequestWorkHeader({
             {t('requestManagement.workPanel.header.unsavedChanges', { defaultValue: 'Unsaved changes' })}
           </span>
         )}
+        <RequestRegistryTransfer panel={panel} onTransferred={onRegistryTransferred} />
         {canTransfer && (
           <Button type="button" variant="outline" onClick={onTransfer}>
             <ArrowRightLeft className="size-4" aria-hidden="true" />

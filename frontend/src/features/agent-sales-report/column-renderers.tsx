@@ -31,6 +31,7 @@ export const agentSalesReportRenderers: TableRendererMap = {
   quote_workflow_status: quoteColumnRenderers.quote_workflow_status,
   company_site: quoteColumnRenderers.company_site,
   commercial: quoteColumnRenderers.commercial,
+  commercial_partner: quoteColumnRenderers.commercial_partner,
   reporter: quoteColumnRenderers.reporter,
   managers: quoteColumnRenderers.managers,
   revenue_net: quoteColumnRenderers.revenue_net,

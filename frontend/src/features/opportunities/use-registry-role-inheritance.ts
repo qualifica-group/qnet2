@@ -8,9 +8,10 @@ import { fetchRegistryForSelectMeta, type RegistryForSelectMeta } from '@/featur
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import { managerSlotsFromRefs, padManagerSlots, sameManagerSlots } from '@/lib/utils'
 
-/** The four form fields an anagrafica hands down to its opportunity (spec 0040 A-5, directive 2026-07-29). */
+/** The five form fields an anagrafica hands down to its opportunity (spec 0040 A-5, directive 2026-07-29). */
 export interface InheritedRoles {
   commercial_id: number | null
+  commercial_partner_id: number | null
   reporter_id: number | null
   supervisor_id: number | null
   manager_slots: (number | null)[]
@@ -18,10 +19,17 @@ export interface InheritedRoles {
 
 type RoleKey = keyof InheritedRoles
 
-const ROLE_KEYS: readonly RoleKey[] = ['commercial_id', 'reporter_id', 'supervisor_id', 'manager_slots']
+const ROLE_KEYS: readonly RoleKey[] = [
+  'commercial_id',
+  'commercial_partner_id',
+  'reporter_id',
+  'supervisor_id',
+  'manager_slots',
+]
 
 export const NO_INHERITED_ROLES: InheritedRoles = {
   commercial_id: null,
+  commercial_partner_id: null,
   reporter_id: null,
   supervisor_id: null,
   manager_slots: [],
@@ -40,6 +48,7 @@ const inheritedByForm = new WeakMap<object, InheritedRoles>()
 export function rolesFromRegistryMeta(meta: RegistryForSelectMeta | null): InheritedRoles {
   return {
     commercial_id: meta?.commercial?.id ?? null,
+    commercial_partner_id: meta?.commercial_partner?.id ?? null,
     reporter_id: meta?.reporter?.id ?? null,
     supervisor_id: meta?.supervisor?.id ?? null,
     manager_slots: managerSlotsFromRefs(meta?.managers ?? []),
@@ -82,6 +91,7 @@ export function mergeInheritedRoles(
 
   return {
     commercial_id: keep('commercial_id') ? current.commercial_id : next.commercial_id,
+    commercial_partner_id: keep('commercial_partner_id') ? current.commercial_partner_id : next.commercial_partner_id,
     reporter_id: keep('reporter_id') ? current.reporter_id : next.reporter_id,
     supervisor_id: keep('supervisor_id') ? current.supervisor_id : next.supervisor_id,
     // The four G.A. cards stay visible even for an anagrafica without
@@ -95,7 +105,7 @@ export function mergeInheritedRoles(
 /**
  * Picking an anagrafica replaces the (anagrafica-scoped) referent with its
  * main referent (empty when it has none) and hands down Commerciale,
- * Segnalatore, Supervisore and the G.A. slots. The team section sits ABOVE
+ * Partner commerciale, Segnalatore, Supervisore and the G.A. slots. The team section sits ABOVE
  * the client section, so those fields are often filled before the
  * anagrafica is chosen: a value the user entered is never
  * overwritten silently — a confirmation asks first. Values handed down by the
@@ -128,6 +138,7 @@ export function useRegistryRoleInheritance(
     // Step 3: ask before overwriting anything the user entered.
     const current: InheritedRoles = {
       commercial_id: getValues('commercial_id'),
+      commercial_partner_id: getValues('commercial_partner_id'),
       reporter_id: getValues('reporter_id'),
       supervisor_id: getValues('supervisor_id'),
       manager_slots: getValues('manager_slots'),

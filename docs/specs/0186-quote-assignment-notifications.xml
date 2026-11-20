@@ -44,6 +44,14 @@
          nelle categorie sincronizzate notifica l'Offerta; AssignmentNotifier esclude dalla notifica dell'Opportunita'
          i GA delle sue Offerte (letti al commit). La notifica di trasferimento segue il link dell'Offerta
          (Offerte -> modulo richieste dell'attore -> null), mai piu' /opportunities.
+    D-8  REV. 2026-11-18 (utente: "non esiste piu' tutor o altro, ora sono solo gestori account e devono avere
+         tutti lo stesso comportamento"). Nessuno slot e' speciale: (a) si notifica SOLO chi entra nel team
+         (attached), in qualsiasi slot e da qualsiasi canale; un membro gia' nel team spostato sullo slot
+         Operatore (GA2) non e' piu' notificato (pannello Team, Assegna operatori, lead convertito); (b) il messaggio
+         non riporta piu' il numero di slot (":actor ti ha inserito come Gestore Account su :label."); (c) la scheda
+         dettagli di Offerta e Opportunita' mostra "Gestori Account" (tutto il team, senza numeri) al posto di
+         "Operatore"; anche l'Anagrafica elenca i Gestori Account senza numeri. Supera AC-005 ("con il suo slot") e
+         AC-007 ("operatore").
   </decisions>
 
   <contract>

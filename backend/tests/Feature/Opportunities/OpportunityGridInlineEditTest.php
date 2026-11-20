@@ -44,7 +44,8 @@ it('declares every column the form edits as a single field', function () {
 
     // REQUIREMENT CHANGED: spec 0332 — `source` is no longer editable here.
     expect($editable)->toBe([
-        'commercial', 'estimated_value', 'expected_close_date', 'managers', 'name', 'product_category',
+        // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+        'commercial', 'commercial_partner', 'estimated_value', 'expected_close_date', 'managers', 'name', 'product_category',
         'products_of_interest', 'referent', 'registry', 'start_date', 'success_probability', 'supervisor',
     ]);
 });

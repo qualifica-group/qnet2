@@ -30,6 +30,8 @@ import { DEFAULT_MANAGER_SLOTS } from '@/features/quotes/quote-schema'
 import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
 import { useRequestActorAttributionDefaults } from '@/features/request-management/use-request-actor-defaults'
 import { useRequestFormContext } from '@/features/request-management/use-request-form-context'
+import { useCategoryRegistryType } from '@/features/request-management/use-category-registry-type'
+import { useRequestCreateDocuments } from '@/features/request-management/use-request-create-documents'
 
 interface UseRequestCreateFormArgs {
   /** Called after a successful create with the new request's (Offerta/Quote) id. */
@@ -42,6 +44,7 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   'source_id',
   'reporter_id',
   'commercial_id',
+  'commercial_partner_id',
   'supervisor_id',
   // A per-slot 422 (`manager_slots.<n>`) has no control of its own — the team
   // editor binds the array as a whole — so the block root carries it.
@@ -131,6 +134,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       source_id: null,
       reporter_id: null,
       commercial_id: null,
+      commercial_partner_id: null,
       supervisor_id: null,
       // The team opens on `DEFAULT_MANAGER_SLOTS` empty cards, like the
       // Offerte form's own (spec 0097 D-1): untouched, an all-null array never
@@ -176,6 +180,9 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   // once — because the categories are being edited in this very form.
   const productLines = useWatch({ control: form.control, name: 'product_lines' })
   const { context, isLoading: isContextLoading } = useRequestFormContext(productLines)
+
+  const identityCardKey = useCategoryRegistryType(context.registry_type, identityDraft, setIdentityDraft)
+  const documents = useRequestCreateDocuments(form.control)
 
   const schema = useMemo(
     () => buildRequestCreateSchema(t, context.applicable_attributes, context.attribute_layout),
@@ -258,6 +265,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       sourceId: values.source_id,
       reporterId: values.reporter_id,
       commercialId: values.commercial_id,
+      commercialPartnerId: values.commercial_partner_id,
       supervisorId: values.supervisor_id,
       managerSlots: values.manager_slots,
       operationalSiteId: values.operational_site_id,
@@ -272,7 +280,24 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
 
     try {
       const created = await createRequest(payload)
-      toast.success(t('requestManagement.form.create.success'))
+      const createdQuoteIds = created.created_quote_ids ?? [created.id]
+      const createdCount = createdQuoteIds.length
+      // Spec 0415 D-4: the files go on once the offers exist; a failed one
+      // leaves the request created and is named for a re-upload from the panel.
+      const failedDocuments = await documents.uploadAll(createdQuoteIds)
+      if (failedDocuments.length > 0) {
+        toast.warning(
+          t('requestManagement.form.create.documents.uploadFailed', {
+            count: failedDocuments.length,
+            names: failedDocuments.join(', '),
+          }),
+        )
+      }
+      toast.success(
+        createdCount > 1
+          ? t('requestManagement.form.create.successPerRoot', { count: createdCount })
+          : t('requestManagement.form.create.success'),
+      )
       onSuccess(created.id)
     } catch (error) {
       // `attribute_values.<code>` is appended per applicable attribute at
@@ -302,6 +327,8 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     usingExistingRegistry,
     identityDraft,
     setIdentityDraft,
+    /** Remounts the new-client card when the category changes its type (spec 0410). */
+    identityCardKey,
     revalidateSignal,
     contactsDraft,
     setContactsDraft,
@@ -316,5 +343,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     isContextLoading,
     vatRatePercentFor,
     rememberVatRatePercent,
+    /** Files queued for upload after the save (spec 0415). */
+    documents,
   }
 }

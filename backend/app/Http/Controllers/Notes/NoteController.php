@@ -6,6 +6,7 @@ use App\DataObjects\Notes\NoteSaveResult;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Notes\IndexNoteRequest;
+use App\Http\Requests\Notes\MarkNotesReadRequest;
 use App\Http\Requests\Notes\StoreNoteRequest;
 use App\Http\Requests\Notes\UpdateNoteRequest;
 use App\Http\Resources\NoteResource;
@@ -63,11 +64,32 @@ class NoteController extends BaseApiController
                     // Spec 0353: whether the composer may unlock mentions of
                     // people outside the record, and the role they would get.
                     'mention_outside' => $page->mentionOutside,
-                    // Roots in scope plus their replies: the count badge on
-                    // the record's Note tab (same set as the grids' notes_count).
-                    'total' => $page->total,
+                    // Unread notes of the scoped thread (roots plus replies):
+                    // the count badge on the record's Note tab, same rule as
+                    // the grids' notes_count.
+                    'unread' => $page->unread,
                 ],
             ]);
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
+     * POST /api/notes/read — marks the scoped thread read for the caller;
+     * `data.marked` is how many notes became read.
+     */
+    public function markRead(MarkNotesReadRequest $request): JsonResponse
+    {
+        try {
+            $marked = $this->service->markThreadRead(
+                $request->user(),
+                $request->entityType(),
+                $request->entityId(),
+                $request->quoteScope(),
+            );
+
+            return $this->ok(['marked' => $marked]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

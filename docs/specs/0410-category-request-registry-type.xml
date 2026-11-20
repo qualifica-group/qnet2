@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0410-category-request-registry-type" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Richiesta utente 2026-11-18: "Setting su categoria prodotto che decide se in gestione richieste l'anagrafica deve
+    partire la compilazione di Persona Fisica o Azienda". Nuova regola di categoria "Anagrafica in Gestione Richieste"
+    (Persona fisica / Azienda): nel form "Nuova richiesta" la scheda del nuovo cliente parte gia' sul tipo indicato
+    dalla categoria scelta nelle linee di prodotto.
+  </goal>
+
+  <context>
+    - Le regole di ramo della categoria (`usage_area`, `multiple_open_opportunities`, ...) sono della RADICE e copiate
+      su ogni discendente (`RootOwnedCategorySetting`, `RootOwnedSettingsWriter`); il form categoria mostra il valore
+      ereditato in sola lettura col nome della radice (albero `GET /product-categories/tree`).
+    - Il tipo di scheda anagrafica e' `PersonalDataTypeEnum` (`individual` | `company`, default `individual`).
+    - Il form "Nuova richiesta" mette le linee di prodotto PRIMA del blocco cliente e chiede gia'
+      `POST /request-management/form-context` con le categorie scelte; la scheda del nuovo cliente parte oggi sempre
+      `individual` (`emptyPersonalDataDraft()`).
+  </context>
+
+  <decisions>
+    D-1 Nuova colonna `product_categories.request_registry_type` (valori di `PersonalDataTypeEnum`, default
+        `individual` = comportamento attuale). Regola della radice, ereditata e copiata sui discendenti come
+        `usage_area` (`RequestRegistryTypeInheritance`); un figlio non puo' indicarne una diversa (422).
+    D-2 `form-context` restituisce `registry_type`: la regola della categoria della PRIMA linea di prodotto completa
+        (ordine del form); `null` senza linee complete.
+    D-3 FE: quando `registry_type` cambia, la scheda del nuovo cliente passa a quel tipo SOLO se e' ancora vuota
+        (nessun dato anagrafico scritto). Dati gia' scritti non vengono toccati; l'operatore puo' sempre cambiare tipo
+        a mano. Nessun effetto se si sceglie un'anagrafica esistente.
+    D-4 Solo il form "Nuova richiesta" di Gestione Richieste; Anagrafiche, Opportunita' e gli altri moduli invariati.
+    D-5 Dati iniziali (richiesta utente 2026-11-18): seeder one-shot `QualificaRequestRegistryTypeSeeder`, rami Formazione
+        e APL = individual, tutti gli altri = company; le radici storiche [OLD] seguono la radice attuale a cui puntano
+        (`current_category_id`), quindi [OLD] FORMAZIONE e [OLD] APL = individual.
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST|PATCH" path="/api/product-categories[/{id}]">
+      <request>`request_registry_type`?: "individual" | "company" (solo radice; su un figlio deve coincidere con quello
+        della radice, altrimenti 422).</request>
+      <response>`request_registry_type`, `request_registry_type_source_category` ({ id, name } | null) nel dettaglio;
+        `request_registry_type` in ogni nodo di `GET /api/product-categories/tree`.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/request-management/form-context">
+      <response>+ `registry_type`: "individual" | "company" | null.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Una radice nuova senza valore ha `request_registry_type` = individual; una radice puo' salvare company.</criterion>
+    <criterion id="AC-002">Un figlio eredita la regola della radice alla creazione, dopo una modifica della radice e dopo uno spostamento; un valore diverso su un figlio da' 422.</criterion>
+    <criterion id="AC-003">`form-context` restituisce il `registry_type` della categoria della prima linea, null senza linee.</criterion>
+    <criterion id="AC-004">FE: scelta una categoria "Azienda" la scheda vuota del nuovo cliente passa ad Azienda; con dati gia' scritti resta com'e'.</criterion>
+    <criterion id="AC-005">FE form categoria: selettore "Anagrafica in Gestione Richieste" modificabile sulla radice, in sola lettura con "ereditato da" sui figli.</criterion>
+  </acceptance>
+</spec>

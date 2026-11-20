@@ -9,7 +9,9 @@ import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
+import { StatusFilterTabs } from '@/features/table/status-filter-tabs'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import { useQuoteSystemStatusTabs } from '@/features/quote-system-statuses/use-quote-system-status-tabs'
 import { OPPORTUNITIES_ACTION_ICONS } from '@/features/opportunities/action-icons'
 import { opportunityColumnRenderers } from '@/features/opportunities/column-renderers'
 import { OpportunityQuotesDetailRenderer } from '@/features/opportunities/opportunity-quotes-detail-renderer'
@@ -43,6 +45,7 @@ export function OpportunitiesTable() {
   const invalidateStats = useInvalidateModuleStats(OPPORTUNITIES_DOMAIN)
 
   const tableRef = useRef<TableViewHandle>(null)
+  const statusTabs = useQuoteSystemStatusTabs(tableRef)
 
   // Every mutation (modal save, delete, documents/notes change) refreshes the
   // grid and the stats panel; page mode never calls
@@ -59,6 +62,13 @@ export function OpportunitiesTable() {
       <PageHeader
         actions={
           <>
+            <StatusFilterTabs
+              statuses={statusTabs.statuses}
+              active={statusTabs.active}
+              counts={statusTabs.counts}
+              onSelect={statusTabs.select}
+              label={t('quoteSystemStatuses.tabsLabel')}
+            />
             <StatsToggleButton
               domain={OPPORTUNITIES_DOMAIN}
               isOpen={stats.isOpen}
@@ -86,6 +96,8 @@ export function OpportunitiesTable() {
         masterDetail={canViewQuotes}
         detailCellRenderer={OpportunityQuotesDetailRenderer}
         detailRowAutoHeight
+        onFilterModelChange={statusTabs.onFilterModelChange}
+        onAggregatesChange={statusTabs.onAggregatesChange}
       />
 
       {sheet}

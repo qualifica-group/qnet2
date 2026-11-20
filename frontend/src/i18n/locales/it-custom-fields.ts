@@ -133,6 +133,8 @@ export const customFields = {
     summaryColumn: 'Colonna di riepilogo',
     summaryStrategy: 'Strategia',
     summaryNone: 'Nessun riepilogo',
+    summaryGridLabel: 'Colonna data in griglia',
+    summaryGridLabelHint: 'Se compilata, la colonna della griglia prende questo nome e mostra solo la data di riepilogo (vuota se manca).',
     strategies: {
       selected: 'Riga selezionata',
       max: 'Massimo',

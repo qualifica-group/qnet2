@@ -29,8 +29,8 @@ const guide: HelpGuide = {
             ['Lead di origine', '**Lead** (facoltativo, precompila e blocca i campi derivati; visibile solo ai ruoli abilitati, di norma il super-admin)'],
             ['Note generali', 'Testo libero'],
             ['Dettagli', '**Titolo** (facoltativo), **Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
-            ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Segnalatore** con i **Buoni assegnati**'],
-            ['Classificazione', '**Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto; non compaiono le categorie con **Visibile in** su **Gestione Richieste / Iscritti**), **Prodotti di interesse**'],
+            ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Partner commerciale**, **Segnalatore** con i **Buoni assegnati**'],
+            ['Classificazione', '**Linee prodotto** (almeno una riga, una per categoria genitore: categoria genitore, **Filtro** intermedio facoltativo, una o più categorie prodotto con **Seleziona tutte**; non compaiono le categorie con **Visibile in** su **Gestione Richieste / Iscritti**), **Prodotti di interesse**'],
             ['Team', '**Supervisore**, **Gestori account**'],
           ],
         },
@@ -40,7 +40,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: "Scegliendo l'**Anagrafica**, **Commerciale**, **Segnalatore**, **Supervisore** e **Gestori account** vengono compilati con quelli dell'anagrafica. Se li hai già inseriti tu e sono diversi, QNet chiede se **Sostituire** i tuoi valori o **Mantenere i tuoi**: nulla di ciò che hai scelto viene cancellato senza conferma.",
+          text: "Scegliendo l'**Anagrafica**, **Commerciale**, **Partner commerciale**, **Segnalatore**, **Supervisore** e **Gestori account** vengono compilati con quelli dell'anagrafica. Se li hai già inseriti tu e sono diversi, QNet chiede se **Sostituire** i tuoi valori o **Mantenere i tuoi**: nulla di ciò che hai scelto viene cancellato senza conferma.",
         },
         {
           type: 'paragraph',
@@ -79,11 +79,25 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente prende il referente principale della nuova anagrafica (resta vuoto se non ne ha; vale anche scegliendo un **Lead**, quando l'anagrafica cambia o il Referente è vuoto) e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti; i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
+          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente prende il referente principale della nuova anagrafica (resta vuoto se non ne ha; vale anche scegliendo un **Lead**, quando l'anagrafica cambia o il Referente è vuoto) e Commerciale, Partner commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti (se l'opportunità ha richieste create da Gestione Richieste, una per categoria madre, le righe possono cambiare solo dentro quelle categorie madri: non si aggiunge né si toglie una categoria madre); i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
         },
         {
           type: 'note',
           text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure è ereditato e bloccato dal lead di origine (Anagrafica), oppure cambiarlo modificherebbe un campo che non puoi toccare. Il **Lead di origine** non si cambia e, se il tuo ruolo non lo vede, non compare né in creazione né nel dettaglio; lo **Stato** è calcolato dalle offerte.",
+        },
+      ],
+    },
+    {
+      id: 'system-status-tabs',
+      title: "Tab degli stati di sistema",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In alto a destra nella pagina **Opportunità** trovi i tab degli stati di sistema delle offerte, gli stessi della pagina **Offerte**: **Tutti** e poi uno per ogni stato, nell'ordine della pagina **Stati di sistema offerta** (per esempio **Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso**). Un tab mostra le opportunità che hanno almeno un'offerta in quello stato; le opportunità senza offerte stanno nel tab dello stato di apertura (**Aperto**). **Tutti** toglie il filtro. Accanto a ogni tab, tranne **Tutti**, c'è il numero di opportunità (solo se diverso da zero): tiene conto di ricerca e filtri attivi. Un'opportunità con offerte in stati diversi compare, ed è contata, in ciascuno di quei tab.",
+        },
+        {
+          type: 'paragraph',
+          text: "Il tab filtra la colonna **Stato di sistema**, nascosta di default: puoi mostrarla dalle opzioni della tabella per vedere gli stati di sistema delle offerte di ogni opportunità. La colonna **Stato** resta quella degli stati di lavorazione.",
         },
       ],
     },
@@ -103,7 +117,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Opportunità** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le opportunità dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le opportunità di ogni categoria, altrimenti solo le opportunità delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova le opportunità anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
+          text: "All'apertura la pagina **Opportunità** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le opportunità dove sei **Supervisore** o **Gestore account** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le opportunità di ogni categoria, altrimenti le opportunità delle tue categorie (con tutte le loro sottocategorie) più quelle, di qualunque categoria, dove sei **Supervisore** o **Gestore account**: un record su cui ti mettono fuori dalla tua competenza resta in elenco. Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: vedi solo le opportunità di quelle categorie (anche quelle di altre categorie dove sei Supervisore o Gestore account escono dall'elenco) e la scelta resta salvata. Il campo **Cerca** trova le opportunità anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\". Digitando solo numeri trova anche l'opportunità con quell'**ID** esatto (la colonna nascosta **ID**), oltre ai risultati che hanno il numero nel nome; l'id del vecchio gestionale non viene cercato.",
         },
         {
           type: 'paragraph',
@@ -133,11 +147,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Supervisore, Gestori account, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Partner commerciale, Supervisore, Gestori account, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
-          text: "Cambiando l'**Anagrafica** dall'elenco il Referente prende il referente principale della nuova anagrafica (vuoto se non ne ha; se non puoi modificare il Referente e la riga ne ha già uno, il cambio di anagrafica non è ammesso) e i ruoli **vuoti** (Commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
+          text: "Cambiando l'**Anagrafica** dall'elenco il Referente prende il referente principale della nuova anagrafica (vuoto se non ne ha; se non puoi modificare il Referente e la riga ne ha già uno, il cambio di anagrafica non è ammesso) e i ruoli **vuoti** (Commerciale, Partner commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
         },
         {
           type: 'paragraph',
@@ -155,7 +169,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie con la regola **Più opportunità aperte per anagrafica**: le loro opportunità non bloccano le altre e si creano anche se l'anagrafica ne ha già una aperta, e con la modalità Multipla l'offerta può avere più righe. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD]), né quelle migrate dal vecchio gestionale senza alcuna categoria.",
+          text: "Un'anagrafica può avere una sola opportunità aperta alla volta. Se ne esiste già una, QNet propone **Aggiungi l'offerta a questa opportunità**. Fanno eccezione le categorie con la regola **Più opportunità aperte per anagrafica**: le loro opportunità non bloccano le altre e si creano anche se l'anagrafica ne ha già una aperta, e con la modalità Multipla l'offerta può avere più righe. Non bloccano nemmeno le opportunità aperte con tutte le linee su categorie storiche (il catalogo migrato dal vecchio gestionale, oggi con il prefisso [OLD], e la categoria **No categoria**, che raccoglie i prodotti migrati senza categoria), né quelle migrate dal vecchio gestionale senza alcuna categoria.",
         },
       ],
     },

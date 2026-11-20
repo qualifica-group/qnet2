@@ -6,6 +6,7 @@ use App\Http\Controllers\Tasks\TaskBulkController;
 use App\Http\Controllers\Tasks\TaskCompleteController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Tasks\TaskForSelectController;
+use App\Http\Controllers\Tasks\TaskOpenSubtasksController;
 use App\Http\Controllers\Tasks\TaskRejectController;
 use App\Http\Controllers\Tasks\TaskRequestUpdateController;
 use App\Http\Controllers\Tasks\TaskSubtaskReorderController;
@@ -63,6 +64,9 @@ Route::delete('tasks/{task}', [TaskController::class, 'destroy']);
 // on request-update either: rate limiting stays reserved to credential
 // endpoints (backend.md §2, user decision 2026-07-15).
 Route::post('tasks/{task}/complete', TaskCompleteController::class);
+// Spec 0418: the open sub-tasks a parent's Completa closes with it, same
+// `complete` ability on the parent.
+Route::get('tasks/{task}/open-subtasks', TaskOpenSubtasksController::class);
 Route::post('tasks/{task}/uncomplete', TaskUncompleteController::class);
 Route::post('tasks/{task}/approve', TaskApproveController::class);
 Route::post('tasks/{task}/reject', TaskRejectController::class);

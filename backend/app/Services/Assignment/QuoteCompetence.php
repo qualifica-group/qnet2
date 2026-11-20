@@ -3,6 +3,7 @@
 namespace App\Services\Assignment;
 
 use App\Models\Quote;
+use App\Services\Quotes\QuoteRootScope;
 
 /**
  * The competence requirement of a Gestione richieste offer (spec 0110,
@@ -15,6 +16,8 @@ use App\Models\Quote;
  */
 final class QuoteCompetence
 {
+    public function __construct(private readonly QuoteRootScope $rootScope) {}
+
     /**
      * quote id => required category ids, in one query.
      *
@@ -30,18 +33,19 @@ final class QuoteCompetence
         $quotes = Quote::query()
             ->with('opportunity.productLines:id,opportunity_id,product_category_id')
             ->whereIn('id', $quoteIds)
-            ->get(['id', 'opportunity_id']);
+            ->get(['id', 'opportunity_id', 'root_product_category_id']);
 
         $required = [];
 
         foreach ($quotes as $quote) {
-            $required[(int) $quote->id] = $quote->opportunity?->productLines
+            // Spec 0411, D-3: a bound offer requires only its root's categories.
+            $required[(int) $quote->id] = $this->rootScope->linesOf($quote)
                 ->pluck('product_category_id')
                 ->filter()
                 ->map(intval(...))
                 ->unique()
                 ->values()
-                ->all() ?? [];
+                ->all();
         }
 
         return $required;

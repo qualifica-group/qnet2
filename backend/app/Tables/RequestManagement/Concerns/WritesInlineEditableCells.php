@@ -50,19 +50,6 @@ trait WritesInlineEditableCells
     private const string WORKFLOW_STATUS_COLUMN = 'quote_workflow_status';
 
     /**
-     * The Operatore position column's field-permission key since spec 0097
-     * (D-3a): the TEAM, because the lone `operator_id` key no longer exists
-     * in RequestManagementAuthorization.
-     */
-    private const string MANAGER_SLOTS_FIELD = 'manager_slots';
-
-    /**
-     * ...and the key its WRITE still travels under (D-3b): the cell edits ONE
-     * user, the OPERATOR slot, not the whole team.
-     */
-    private const string OPERATOR_FIELD = 'operator_id';
-
-    /**
      * Every editable column of this domain writes through
      * RequestManagementService::updateWork() rather than a plain
      * `$row->update([...])`: `product_lines`/`general_notes`-
@@ -100,41 +87,19 @@ trait WritesInlineEditableCells
     }
 
     /**
-     * The `updateWork()` payload of one cell. Spec 0373 D-8: under the team
-     * key a list is the `managers` column, a single id the Operatore cell;
-     * spec 0382 D-7: a position key writes that one slot.
+     * The `updateWork()` payload of one cell: the `managers` column's list of
+     * people becomes the work panel's `manager_slots` (spec 0373 D-8), every
+     * other field key is written as is.
      *
      * @return array<string, mixed>
      */
     private function writePayload(Quote $row, User $actor, string $columnId, mixed $value): array
     {
-        if ($columnId === self::MANAGER_SLOTS_FIELD && is_array($value)) {
-            return $this->teamCellWriter->payload($row, $actor, $this->module(), $value);
+        if ($columnId === RequestManagerColumns::TEAM_FIELD) {
+            return $this->teamCellWriter->payload($row, $actor, $this->module(), (array) $value);
         }
 
-        $position = RequestManagerColumns::positionOfField($columnId);
-
-        if ($position !== null) {
-            return ['manager_positions' => [$position => $value]];
-        }
-
-        return [$this->writeKeyFor($columnId) => $value];
-    }
-
-    /**
-     * The `updateWork()` key a cell's field key writes under — the identity
-     * for every column but the GA2 "Operatore" (spec 0097, D-3b).
-     *
-     * That one arrives as `manager_slots` because its PERMISSION is the
-     * team's (the catalogue has no `operator_id` field any more, D-3), while
-     * its WRITE is still the single OPERATOR slot: `updateWork()` expects an
-     * ordered slot LIST under `manager_slots` and the cell carries one user
-     * id, so the two keys are translated here rather than teaching either
-     * side a second shape.
-     */
-    private function writeKeyFor(string $fieldKey): string
-    {
-        return $fieldKey === self::MANAGER_SLOTS_FIELD ? self::OPERATOR_FIELD : $fieldKey;
+        return [$columnId => $value];
     }
 
     /**

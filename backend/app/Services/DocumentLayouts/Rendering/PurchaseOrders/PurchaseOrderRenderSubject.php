@@ -74,7 +74,7 @@ final class PurchaseOrderRenderSubject implements DocumentRenderSubject
         return $this->fieldResolver->resolve($category, $key, $this->order, $actor);
     }
 
-    public function productRows(string $source): array
+    public function productRows(string $source, User $actor): array
     {
         return $this->order->lines
             ->map(fn (PurchaseOrderLine $line): array => $this->lineRow($line))

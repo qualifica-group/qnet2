@@ -21,7 +21,7 @@ const guide: HelpGuide = {
             ['Descrizione', 'Facoltativa.'],
             ['Colore', 'Obbligatorio: è il pallino mostrato accanto al nome.'],
             ['Attivo', 'Se lo spegni, lo stato sparisce dal menu a tendina delle righe; chi lo ha già assegnato lo mantiene.'],
-            ['Si può consegnare', 'Se acceso, quando una riga passa a questo stato supervisori e partecipanti della commessa ricevono una notifica.'],
+            ['Si può consegnare', 'Se acceso, quando una riga passa a questo stato supervisori e partecipanti della commessa ricevono una notifica e una email "Stato pagamento ok" con il nome dell\'azienda.'],
           ],
         },
       ],

@@ -45,11 +45,69 @@ use Illuminate\Support\Carbon;
  */
 final class AttributeDateFilterApplier
 {
+    private const int MAX_SET_FILTER_VALUES = 500;
+
     /**
+     * The grid's multi envelope ANDs its sub-filters; a Set payload (the grid's
+     * checklist, or the `blank` rule of a custom filter: `values: [null]`)
+     * matches exact stored values; anything else is a date condition.
+     *
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
     public function apply(Builder $query, string $jsonColumn, bool $hasTime, array $filter): void
+    {
+        if (($filter['filterType'] ?? null) === 'multi') {
+            foreach (is_array($filter['filterModels'] ?? null) ? $filter['filterModels'] : [] as $subFilter) {
+                if (is_array($subFilter) && $subFilter !== []) {
+                    $this->apply($query, $jsonColumn, $hasTime, $subFilter);
+                }
+            }
+
+            return;
+        }
+
+        if (($filter['filterType'] ?? null) === 'set' || array_key_exists('values', $filter)) {
+            $this->applySet($query, $jsonColumn, $filter);
+
+            return;
+        }
+
+        $this->applyCondition($query, $jsonColumn, $hasTime, $filter);
+    }
+
+    /**
+     * Exact stored values; the blank entry (null) matches absent, null or empty.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applySet(Builder $query, string $jsonColumn, array $filter): void
+    {
+        $values = is_array($filter['values'] ?? null) ? $filter['values'] : [];
+        $dates = array_slice(array_values(array_filter($values, static fn (mixed $value): bool => is_string($value) && $value !== '')), 0, self::MAX_SET_FILTER_VALUES);
+        $matchesBlank = in_array(null, $values, true);
+
+        if ($dates === [] && ! $matchesBlank) {
+            return;
+        }
+
+        $query->where(function (Builder $group) use ($jsonColumn, $dates, $matchesBlank): void {
+            if ($dates !== []) {
+                $group->whereIn($jsonColumn, $dates);
+            }
+
+            if ($matchesBlank) {
+                $group->orWhereNull($jsonColumn)->orWhere($jsonColumn, '=', '');
+            }
+        });
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyCondition(Builder $query, string $jsonColumn, bool $hasTime, array $filter): void
     {
         $type = is_string($filter['type'] ?? null) ? $filter['type'] : 'equals';
         $from = $this->dateOnly($filter['dateFrom'] ?? null);

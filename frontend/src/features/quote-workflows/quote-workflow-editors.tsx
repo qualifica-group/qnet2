@@ -3,7 +3,7 @@ import { useController, useFormContext } from 'react-hook-form'
 import { QuoteWorkflowCriteriaEditor } from '@/features/quote-workflows/quote-workflow-criteria-editor'
 import { useCriterionFields } from '@/features/quote-workflows/use-criterion-fields'
 import { newCustomRow } from '@/features/quote-workflows/quote-status-rows'
-import { useQuoteStatusGroups } from '@/features/quote-workflows/use-quote-status-groups'
+import { useQuoteSystemStatusOptions } from '@/features/quote-system-statuses/use-quote-system-status-options'
 import { WorkflowStatusesEditor } from '@/features/workflow-statuses/workflow-statuses-editor'
 import { inOrder, withCustomRow, withoutRow, withPatchedRow } from '@/features/workflow-statuses/workflow-status-rows'
 import type { QuoteWorkflowFormValues } from '@/features/quote-workflows/use-quote-workflow-form'
@@ -18,7 +18,7 @@ export function QuoteWorkflowCriteriaField() {
 export function QuoteWorkflowStatusesField() {
   const { control } = useFormContext<QuoteWorkflowFormValues>()
   const { field, fieldState } = useController({ control, name: 'statuses' })
-  const groups = useQuoteStatusGroups()
+  const { options } = useQuoteSystemStatusOptions()
   const nextCustomRowId = useRef(0)
 
   const addCustom = () => {
@@ -29,8 +29,9 @@ export function QuoteWorkflowStatusesField() {
   return (
     <WorkflowStatusesEditor
       rows={field.value}
-      groups={groups}
+      systemStatuses={options}
       showRequiresNote
+      showNotify
       onReorder={(orderedIds) => field.onChange(inOrder(field.value, orderedIds))}
       onAddCustom={addCustom}
       onRemoveCustom={(id) => field.onChange(withoutRow(field.value, id))}

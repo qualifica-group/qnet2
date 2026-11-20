@@ -30,6 +30,7 @@ class QuoteCommissionRecipientsRequest extends FormRequest
             'quote_id' => ['nullable', 'integer', Rule::exists('quotes', 'id')],
             'product_id' => ['required', 'integer', Rule::exists('products', 'id')],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             // Spec 0320, D-7: the line's supplier is the Supplier role's recipient.

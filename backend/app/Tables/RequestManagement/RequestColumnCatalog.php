@@ -103,9 +103,9 @@ final class RequestColumnCatalog
      * visible columns, in this order: Categoria prodotto, Stato di
      * lavorazione, Prossimo richiamo, Linee di prodotto, Nome, Cognome,
      * Ragione sociale, Telefono, Email, Partita IVA, Codice fiscale, Note
-     * generali, Fonte, the Gestore Account positions and Gestori account
-     * (spec 0382: RequestManagerPositionLayout trims the positions per tab,
-     * superseding the Operatore second and Tutor/APL after Fonte). Every other column is
+     * generali, Fonte and Gestori account (spec 0406: the only Gestore
+     * Account column, superseding the per-position columns of spec 0382).
+     * Every other column is
      * declared after them with `visible: false` — still in the column chooser,
      * never removed — and the category tab's `attr.*` columns follow the whole
      * catalogue (RequestManagementScopedTableDefinition), as before.
@@ -157,7 +157,7 @@ final class RequestColumnCatalog
                 // (`quote_workflow_status_id`, the only key present in
                 // RequestManagementAuthorization and the one
                 // RequestManagementService::updateWork() recognizes), hence
-                // `editableField` — the same convention `operator_ga2` uses.
+                // `editableField` — the same convention `managers` uses.
                 // The write goes through WritesInlineEditableCells into
                 // updateWork(), the single choke point that enforces
                 // set-membership against the workflow resolved for THIS offer

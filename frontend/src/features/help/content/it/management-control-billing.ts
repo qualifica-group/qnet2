@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'management-control-billing',
   title: 'Fatturazione',
-  summary: 'Quanto resta da fatturare sulle commesse aperte, per funzione aziendale, società o commerciale e per età, e il ciclo delle proforma: emesse, convertite in fattura, ancora aperte e tempi medi.',
+  summary: 'Quanto resta da fatturare sulle commesse aperte, per funzione aziendale, società, commerciale o partner commerciale e per età, e il ciclo delle proforma: emesse, convertite in fattura, ancora aperte e tempi medi.',
   sections: [
     {
       id: 'overview',
@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Puoi restringere per **società**, **sede società** e **sede operativa**, e scegliere come raggruppare il da fatturare: per **funzione aziendale**, **società** o **commerciale**. Il **periodo** (di default dal 1 gennaio a oggi) vale **solo per il ciclo delle proforma**: il da fatturare è sempre la situazione a oggi.',
+          text: 'Puoi restringere per **società**, **sede società** e **sede operativa**, e scegliere come raggruppare il da fatturare: per **funzione aziendale**, **società**, **commerciale** o **partner commerciale**. Il **periodo** (di default dal 1 gennaio a oggi) vale **solo per il ciclo delle proforma**: il da fatturare è sempre la situazione a oggi.',
         },
         {
           type: 'note',

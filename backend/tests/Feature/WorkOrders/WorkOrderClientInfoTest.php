@@ -68,6 +68,7 @@ function clientInfoWorkOrder(): WorkOrder
     $registry->referents()->attach([$second->id, $first->id, $third->id]);
     $registry->forceFill([
         'primary_referent_id' => $first->id,
+        'secondary_referent_id' => $third->id,
         'commercial_id' => Referent::factory()->create(['name' => 'Agente Rossi'])->id,
     ])->save();
     $registry->sectors()->attach(Sector::factory()->create(['code' => 'EA 28', 'name' => 'Costruzioni'])->id);
@@ -108,7 +109,8 @@ it('projects the client info of the commessa client', function () {
         ->assertJsonPath('data.client_info.comments', 'Cliente storico');
 });
 
-it('puts the principale as Referente 1 and the next linked referent as Referente 2, with their phones', function () {
+// REQUIREMENT CHANGED (spec 0408 D-5): Referente 2 is the anagrafica's secondario, not the next linked referent.
+it('puts the principale as Referente 1 and the secondario as Referente 2, with their phones', function () {
     $workOrder = clientInfoWorkOrder();
     Sanctum::actingAs(clientInfoActor(mayViewPersonalData: true));
 
@@ -117,8 +119,19 @@ it('puts the principale as Referente 1 and the next linked referent as Referente
         ->assertJsonCount(2, 'data.client_info.referents')
         ->assertJsonPath('data.client_info.referents.0.name', 'First Referent')
         ->assertJsonPath('data.client_info.referents.0.primary_contacts.0.value', '333 1')
-        ->assertJsonPath('data.client_info.referents.1.name', 'Second Referent')
-        ->assertJsonPath('data.client_info.referents.1.primary_contacts.0.value', '333 2');
+        ->assertJsonPath('data.client_info.referents.1.name', 'Third Referent')
+        ->assertJsonPath('data.client_info.referents.1.primary_contacts.0.value', '333 3');
+});
+
+it('leaves Referente 2 empty without a secondario, even with other linked referents (spec 0408 D-5)', function () {
+    $workOrder = clientInfoWorkOrder();
+    $workOrder->quote->opportunity->registry->forceFill(['secondary_referent_id' => null])->save();
+    Sanctum::actingAs(clientInfoActor(mayViewPersonalData: true));
+
+    $this->getJson("/api/work-orders/{$workOrder->id}")
+        ->assertOk()
+        ->assertJsonPath('data.client_info.referents.0.name', 'First Referent')
+        ->assertJsonPath('data.client_info.referents.1', null);
 });
 
 it('hides address, fiscal ids and contact values from an actor who may not view registries and referents', function () {
@@ -154,6 +167,7 @@ it('keeps empty lists when the client has no tags, contacts or referents', funct
     $this->getJson("/api/work-orders/{$workOrder->id}")
         ->assertOk()
         ->assertJsonPath('data.client_info.tags', [])
-        ->assertJsonPath('data.client_info.referents', [])
+        // REQUIREMENT CHANGED (spec 0408 D-5): the two slots are positional, both empty.
+        ->assertJsonPath('data.client_info.referents', [null, null])
         ->assertJsonPath('data.client_info.comments', null);
 });

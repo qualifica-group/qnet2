@@ -14,7 +14,8 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Spec 0380 (user directives 2026-11-10): the listed technicians must not see
  * the costs nor the active/passive proforma of a commessa (without the costs
- * they lose the contract data too, WorkOrderPolicy::viewContractData). Their
+ * they lose the contract data too, WorkOrderPolicy::viewContractData), nor,
+ * since spec 0412, the costs and margins of an offer (`quotes.viewCosts`). Their
  * permissions come from the `tecnico-consulenza` role, shared with technicians
  * who keep them, and spatie has no per-user deny: so this seeder clones that
  * role AS IT IS NOW (its permissions and field matrix) into
@@ -32,7 +33,7 @@ class QualificaTechnicianWithoutCostsSeeder extends Seeder
     public const string DESCRIPTION = 'Tecnico consulenza (senza costi commessa)';
 
     /** @var array<int, string> */
-    public const array WITHHELD_PERMISSIONS = ['work-orders.viewCosts', 'work-orders.viewInvoices'];
+    public const array WITHHELD_PERMISSIONS = ['work-orders.viewCosts', 'work-orders.viewInvoices', 'quotes.viewCosts'];
 
     /** @var array<int, string> */
     public const array USERS = [

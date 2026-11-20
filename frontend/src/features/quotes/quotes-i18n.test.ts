@@ -11,7 +11,7 @@ const COLUMN_KEYS = [
   'code',
   'title',
   'opportunity',
-  'quoteWorkflowStatus',
+  'quoteSystemStatus',
   'commercial',
   'reporter',
   'supervisor',
@@ -26,7 +26,7 @@ const COLUMN_KEYS = [
 
 const ADVANCED_FILTER_KEYS = [
   'opportunity',
-  'quoteWorkflowStatus',
+  'quoteSystemStatus',
   'commercial',
   'supervisor',
   'managers',

@@ -17,6 +17,7 @@ final readonly class QuoteCommissionDefaultsData
         // QuoteLineCommissionWriter builds this DTO for a persisted line.
         public string $lineNetAmount,
         public ?int $commercialId,
+        public ?int $commercialPartnerId,
         public ?int $reporterId,
         public ?int $supervisorId,
         public DateTimeImmutable $referenceDate,
@@ -35,6 +36,7 @@ final readonly class QuoteCommissionDefaultsData
             // persisted line (spec 0145, D-1).
             lineNetAmount: (float) $data['line_net_amount'] < 0 ? '0.00' : (string) $data['line_net_amount'],
             commercialId: isset($data['commercial_id']) ? (int) $data['commercial_id'] : null,
+            commercialPartnerId: isset($data['commercial_partner_id']) ? (int) $data['commercial_partner_id'] : null,
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
             referenceDate: new DateTimeImmutable($data['reference_date'] ?? 'now'),

@@ -255,3 +255,14 @@ it('selects every invoice sharing the quote line in ascending id order before re
     expect($locking)->not->toBeNull()
         ->and($locking->bindings)->toBe([$first->id, $second->id, $third->id]);
 });
+
+it('spec 0417 AC-010: the commercial partner commission accrues like the commercial one', function () {
+    $line = accrualQuoteLine();
+    accrualCommission($line, '100.00', Role::CommercialPartner);
+    $invoice = accrualInvoice([[$line, '1000.00']], ['500.00']);
+
+    accrualCollect(accrualInstallment($invoice), '500.00');
+
+    expect(CommissionAccrual::query()->sole()->recipient_role)->toBe(Role::CommercialPartner)
+        ->and(accrualSum($invoice))->toBe('100.00');
+});

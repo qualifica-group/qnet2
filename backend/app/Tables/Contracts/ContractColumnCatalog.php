@@ -81,6 +81,7 @@ final class ContractColumnCatalog
             OfferLinesColumn::readOnlyDeclaration('contracts.columns.offerLines'),
             RootCategoriesColumn::declaration('contracts.columns.rootCategories'),
             self::relationColumn('commercial', 'contracts.columns.commercial', visible: false),
+            self::relationColumn('commercial_partner', 'contracts.columns.commercial_partner', visible: false),
             self::relationColumn('reporter', 'contracts.columns.reporter'),
             self::relationColumn('supervisor', 'contracts.columns.supervisor', visible: false),
             // "Gestori Account" (user directive 2026-08-31) — the same
@@ -236,6 +237,7 @@ final class ContractColumnCatalog
             ['columnId' => 'opportunity', 'type' => 'set'],
             ['columnId' => 'offer_lines', 'type' => 'set'],
             ['columnId' => 'commercial', 'type' => 'set'],
+            ['columnId' => 'commercial_partner', 'type' => 'set'],
             ['columnId' => 'reporter', 'type' => 'set'],
             ['columnId' => 'supervisor', 'type' => 'set'],
             ['columnId' => 'managers', 'type' => 'set'],

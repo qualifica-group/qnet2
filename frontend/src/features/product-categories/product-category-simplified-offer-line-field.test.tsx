@@ -197,7 +197,8 @@ describe('simplified_offer_line row (spec 0229)', () => {
     expect(simplifiedSwitch).not.toBeChecked()
     expect(
       screen.getByText(
-        'When on, in Gestione Richieste the operator picks only the product: quantity, unit price and VAT rate of the row are filled in automatically by the system.',
+        // REQUIREMENT CHANGED (spec 0414 D-4): the simplified offer is a plain product choice.
+        'When on, in Gestione Richieste the offer becomes a plain product choice: quantity, unit price and VAT rate are set by the system and prices are shown for information only.',
       ),
     ).toBeInTheDocument()
 

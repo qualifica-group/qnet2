@@ -17,7 +17,9 @@ export function initialSystemStatusRows(t: TFunction): WorkflowStatusFormRow[] {
       color: null,
       group: 'open',
       system_key: 'open',
+      quote_system_status_id: null,
       requires_note: false,
+      notify: null,
     },
     {
       id: 'system-closed-won',
@@ -26,7 +28,9 @@ export function initialSystemStatusRows(t: TFunction): WorkflowStatusFormRow[] {
       color: null,
       group: 'closed_won',
       system_key: 'closed_won',
+      quote_system_status_id: null,
       requires_note: false,
+      notify: null,
     },
     {
       id: 'system-closed-lost',
@@ -35,7 +39,9 @@ export function initialSystemStatusRows(t: TFunction): WorkflowStatusFormRow[] {
       color: null,
       group: 'closed_lost',
       system_key: 'closed_lost',
+      quote_system_status_id: null,
       requires_note: false,
+      notify: null,
     },
   ]
 }
@@ -50,7 +56,9 @@ export function statusRowsFromItems(statuses: QuoteWorkflowStatusItem[]): Workfl
     color: status.color,
     group: status.group,
     system_key: status.system_key,
+    quote_system_status_id: status.quote_system_status_id,
     requires_note: status.requires_note,
+    notify: status.notify,
   }))
 }
 
@@ -80,6 +88,8 @@ export function newCustomRow(sequence: number): WorkflowStatusFormRow {
     color: null,
     group: 'pending',
     system_key: null,
+    quote_system_status_id: null,
     requires_note: false,
+    notify: null,
   }
 }

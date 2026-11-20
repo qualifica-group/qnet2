@@ -11,6 +11,7 @@ import type { QuoteFormValues } from '@/features/quotes/quote-schema'
  */
 export interface InheritedFields {
   commercial_id: number | null
+  commercial_partner_id: number | null
   reporter_id: number | null
   supervisor_id: number | null
   operational_site_id: number | null
@@ -19,11 +20,12 @@ export interface InheritedFields {
 
 type ScalarKey = Exclude<keyof InheritedFields, 'manager_slots'>
 
-const SCALAR_KEYS: readonly ScalarKey[] = ['commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id']
+const SCALAR_KEYS: readonly ScalarKey[] = ['commercial_id', 'commercial_partner_id', 'reporter_id', 'supervisor_id', 'operational_site_id']
 
 export function inheritedFromOpportunity(values: OpportunityFormValues): InheritedFields {
   return {
     commercial_id: values.commercial_id,
+    commercial_partner_id: values.commercial_partner_id,
     reporter_id: values.reporter_id,
     supervisor_id: values.supervisor_id,
     operational_site_id: values.operational_site_id,
@@ -69,6 +71,9 @@ export function applyInheritedPatch(setValue: UseFormSetValue<QuoteFormValues>, 
   const options = { shouldDirty: true }
   if (patch.commercial_id !== undefined) {
     setValue('commercial_id', patch.commercial_id, options)
+  }
+  if (patch.commercial_partner_id !== undefined) {
+    setValue('commercial_partner_id', patch.commercial_partner_id, options)
   }
   if (patch.reporter_id !== undefined) {
     setValue('reporter_id', patch.reporter_id, options)

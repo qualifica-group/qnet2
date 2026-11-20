@@ -22,6 +22,17 @@ export interface NotificationData {
    * other notification type.
    */
   is_cc?: boolean
+  /**
+   * Who produced the notification (e.g. who wrote the @mention), shown next
+   * to the timestamp as in q-net. Null/absent when there is no human author.
+   */
+  actor?: NotificationActor | null
+}
+
+/** The person behind a notification: a snapshot taken when it was sent. */
+export interface NotificationActor {
+  id: number
+  name: string
 }
 
 /** A single notification as returned by the backend. */

@@ -46,6 +46,10 @@ export const permissions = {
     // Direttiva utente 2026-09-08: terzo stato del blocco Team del pannello
     // "Lavora" — squadra visibile, membri già assegnati congelati, sola aggiunta.
     appendTeamMember: 'Aggiungi al team',
+    // Spec 0404 B-D1: spostare l'offerta su un'altra anagrafica.
+    transferRegistry: 'Trasferisci ad altra anagrafica',
+    // Spec 0404 E-D2: scrivere su un'offerta a contratto (congelata).
+    updateContracted: 'Modifica offerte a contratto',
     impersonate: 'Impersona',
     // Ability non canoniche introdotte dalla spec 0078: `manage` governa
     // l'approvazione/rifiuto di una richiesta di modifica campo
@@ -104,6 +108,13 @@ export const permissions = {
     calendarAll: 'Calendario: di tutti',
     // Spec 0360 D-8: modificare (non rimuovere) le righe offerta assegnate a una commessa.
     updateLockedLines: 'Modificare righe assegnate a commessa',
+    // Spec 0412: costi e margini dell'offerta (righe costo, riepilogo, colonne, statistiche).
+    viewCosts: 'Vedere costi e margini',
+    // Spec 0413: notifiche delle attivita' del team su offerte, contratti e commesse.
+    notifyTeam: 'Ricevere le notifiche del team',
+    // Spec 0420: avviso quando si viene inseriti come Gestore Account o Supervisore.
+    notifyAssignment: 'Ricevere la notifica di assegnazione',
+    notifyAssignmentEmail: "Ricevere l'email di assegnazione",
   },
   resources: {
     users: 'Utenti',
@@ -123,6 +134,7 @@ export const permissions = {
     companies: 'Società aziendali',
     'company-sites': 'Società sedi',
     'contract-statuses': 'Stati Contratto',
+    'quote-system-statuses': 'Stati di sistema offerta',
     contracts: 'Contratti',
     'custom-fields': 'Campi personalizzati',
     'document-layouts': 'Layout',

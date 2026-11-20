@@ -32,6 +32,8 @@ export interface Attachment {
 export interface AttachmentList {
   documents: Attachment[]
   legacyUrl: string | null
+  /** Files of the list the user has not read yet: the Documenti tab's count. */
+  unread: number
 }
 
 /** Default collection used by `<DocumentsSection>` when the caller omits one. */

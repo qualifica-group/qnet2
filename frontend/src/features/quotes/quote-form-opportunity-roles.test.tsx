@@ -69,6 +69,7 @@ const OPPORTUNITY_WITH_MANAGERS: OpportunityForSelectItem = {
   label: 'OPP_57',
   meta: {
     commercial: null,
+    commercial_partner: null,
     reporter: null,
     supervisor: null,
     operational_site: null,
@@ -86,6 +87,7 @@ const OPPORTUNITY_WITH_ROLES: OpportunityForSelectItem = {
   label: 'OPP_55',
   meta: {
     commercial: { id: 71, name: 'Sara Conti' },
+    commercial_partner: { id: 72, name: 'Lia Verdi' },
     reporter: { id: 81, name: 'Elio Fabbri' },
     supervisor: { id: 61, name: 'Ivo Bianchi' },
     operational_site: { id: 91, label: 'Via Ereditata 1 - Milano' },
@@ -100,6 +102,7 @@ const OPPORTUNITY_WITH_LEAD_SOURCE: OpportunityForSelectItem = {
   label: 'OPP_58',
   meta: {
     commercial: null,
+    commercial_partner: null,
     reporter: null,
     supervisor: null,
     operational_site: null,
@@ -111,7 +114,7 @@ const OPPORTUNITY_WITH_LEAD_SOURCE: OpportunityForSelectItem = {
 const OPPORTUNITY_WITHOUT_ROLES: OpportunityForSelectItem = {
   id: 56,
   label: 'OPP_56',
-  meta: { commercial: null, reporter: null, supervisor: null, operational_site: null, lead_source: null, managers: [] },
+  meta: { commercial: null, commercial_partner: null, reporter: null, supervisor: null, operational_site: null, lead_source: null, managers: [] },
 }
 
 /**
@@ -214,6 +217,28 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
 
     openRow('Commercial')
     expect(screen.getByTestId('value-Commercial')).toHaveTextContent('71')
+  })
+
+  // Spec 0417 AC-022
+  it('prefills the Commercial partner from the opportunity meta and clears it on a pick without one', async () => {
+    renderCreateForm()
+
+    pickOpportunity(OPPORTUNITY_WITH_ROLES.id)
+    await waitFor(() => expect(rowValue('Commercial partner')).toContain('Lia Verdi'))
+
+    pickOpportunity(OPPORTUNITY_WITHOUT_ROLES.id)
+    await waitFor(() => expect(rowValue('Commercial partner')).not.toContain('Lia Verdi'))
+  })
+
+  // Spec 0417 AC-022
+  it('lists the Commercial partner row right after the Commercial in the create form', () => {
+    renderCreateForm()
+
+    const labels = screen.getAllByText(/^Commercial( partner)?$/).filter((node) => node.tagName === 'DT')
+    const rowLabels = labels.map((node) => node.textContent)
+    const commercial = labels[rowLabels.indexOf('Commercial')]
+    const partner = labels[rowLabels.indexOf('Commercial partner')]
+    expect(commercial.parentElement?.nextElementSibling?.querySelector('dt')).toBe(partner)
   })
 
   it('leaves the three empty for an opportunity with no roles, and re-derives them on every pick', async () => {

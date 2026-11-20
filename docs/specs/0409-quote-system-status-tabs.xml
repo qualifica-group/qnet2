@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0409-quote-system-status-tabs" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Richiesta utente 2026-11-18: "voglio inserire i filtri (come in contratti o commesse) per gli stati del sistema in
+    opportunita' (che vanno a pescare gli stati delle offerte), e su offerte (che prendera' sempre gli stessi stati per
+    le offerte)". Tab in alto a destra nelle pagine Opportunita' e Offerte, uno per stato di sistema delle offerte
+    (`quote_system_statuses`, spec 0404 parte A), con conteggio, come i tab di Contratti (spec 0397).
+    Riprende la parte G della spec 0404, eliminata il 2026-11-16 e ora richiesta di nuovo, sugli stati di sistema.
+  </goal>
+
+  <context>
+    - Contratti: `HasContractStatusTabs` (conteggi in `meta.aggregates` per nome stato, filtro dei tab ignorato) +
+      `useContractStatusTabs`/`ContractStatusTabs` (il tab scrive il filtro set della colonna).
+    - Offerte: colonna `quote_system_status` (`QuoteSystemStatusColumn`), filtro set per nome stato di sistema.
+    - Opportunita': colonna calcolata `status` sugli stati di LAVORAZIONE delle offerte (spec 0082); nessuna colonna
+      sugli stati di sistema. Un'opportunita' senza offerte mostra la riga `open` del set risolto, che e' sempre
+      collegata allo stato di sistema con `system_key` open (spec 0404 A-D4).
+    - Il filtro di griglia accetta solo colonne filtrabili (`TableRowsRequest`).
+  </context>
+
+  <decisions>
+    D-1 Un tab per ogni stato di sistema, nell'ordine `sort_order` (for-select `quote-system-statuses`), etichetta = nome;
+        "Tutti" primo senza conteggio; "(N)" solo se N &gt; 0. Stesse regole in Opportunita' e Offerte.
+    D-2 Offerte: il tab scrive il filtro set della colonna esistente `quote_system_status`; conteggio = offerte del set
+        filtrato per stato di sistema.
+    D-3 Opportunita': nuova colonna `quote_system_status` "Stato di sistema" (nascosta di default, filtro set, non
+        ordinabile) = stati di sistema distinti delle sue offerte, con il numero di offerte; senza offerte = lo stato
+        di sistema `open` (coerente con la colonna `status`). Il tab scrive il suo filtro: un'opportunita' rientra in
+        uno stato se ha almeno un'offerta in quello stato (o, senza offerte, se lo stato e' `open`).
+    D-4 Conteggio Opportunita' = opportunita' distinte del set filtrato per stato di sistema; un'opportunita' con offerte
+        in piu' stati conta in ciascuno (come il filtro). Le opportunita' senza offerte contano nello stato `open`.
+    D-5 I conteggi ignorano solo il filtro `quote_system_status` (come Contratti), cosi' restano visibili su ogni tab.
+    D-6 Frontend: la logica dei tab di Contratti diventa un hook/componente condiviso della griglia
+        (`useStatusFilterTabs`, `StatusFilterTabs`) usato da Contratti, Opportunita' e Offerte.
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/tables/quotes/rows">
+      <response>`meta.aggregates` = { "&lt;nome stato di sistema&gt;": N } (offerte). Filtro dei tab:
+        `filterModel.quote_system_status` = { filterType: "set", values: ["&lt;nome&gt;"] }.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/opportunities/rows">
+      <response>`meta.aggregates` = { "&lt;nome stato di sistema&gt;": N } (opportunita' distinte). Riga:
+        `quote_system_status` = { source: "quotes"|"default", distinct_count, entries: [{ id, name, color, group, count }] }
+        (stessa forma della colonna `status`, `group` = behavior). Filtro dei tab: `filterModel.quote_system_status`.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/quote-system-statuses/for-select?limit=100">
+      <response>Invariato: stati di sistema in ordine `sort_order`; `label` = nome.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Offerte: i conteggi per stato di sistema coincidono con le righe di ogni tab e non cambiano col tab attivo.</criterion>
+    <criterion id="AC-002">Opportunita': il filtro `quote_system_status` trova le opportunita' con almeno un'offerta nello stato e, per lo stato open, quelle senza offerte.</criterion>
+    <criterion id="AC-003">Opportunita': conteggi = opportunita' distinte per stato, quelle senza offerte nello stato open, tab ignorato.</criterion>
+    <criterion id="AC-004">I conteggi includono solo le righe visibili all'attore.</criterion>
+    <criterion id="AC-005">FE: "Tutti" primo e senza conteggio, poi gli stati di sistema nell'ordine configurato; il tab scrive/rimuove il filtro `quote_system_status`; filtro con piu' stati -> nessun tab attivo.</criterion>
+  </acceptance>
+</spec>

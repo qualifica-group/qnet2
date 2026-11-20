@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\TeamActivityRecordEnum;
 use App\Models\Role;
 use App\RequestManagement\RequestModule;
 use Database\Seeders\Concerns\SyncsRoleMatrix;
@@ -44,7 +45,8 @@ class QualificaRoleSeeder extends Seeder
         // Step 1: guarantee the permission catalogue the matrices filter.
         Artisan::call('permissions:sync');
 
-        $catalogue = Permission::query()->pluck('name');
+        // The team notifications (spec 0413) are granted one by one, never with a module.
+        $catalogue = Permission::query()->pluck('name')->diff(TeamActivityRecordEnum::permissions())->values();
 
         // Step 2: one role per mansione, with its permission matrix.
         foreach (Catalogue::ROLES as $name => $role) {

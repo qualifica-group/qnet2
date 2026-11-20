@@ -26,6 +26,8 @@ use Spatie\Permission\Models\Permission;
  * move an offer into a positively-closed working status (spec 0072 BR-1):
  * the quotes endpoints and the Gestione Richieste work panel.
  */
+// REQUIREMENT CHANGED (spec 0404 part E): the offers here are under contract, so the
+// actor holds `quotes.updateContracted` and the writes carry the confirmation.
 uses(RefreshDatabase::class);
 
 if (! function_exists('contractGateActor')) {
@@ -46,6 +48,7 @@ if (! function_exists('contractGateActor')) {
 
         // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1).
         $user->givePermissionTo('quotes.viewAll');
+        $user->givePermissionTo(Permission::findOrCreate('quotes.updateContracted'));
 
         return $user;
     }
@@ -116,7 +119,7 @@ it('AC-008: a branch that generates contracts still opens one on the positive cl
         'offer_lines' => [contractGateOfferLine($products[0])],
     ])->assertCreated()->json('data.id');
 
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => contractGateClosedWonStatus()->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => contractGateClosedWonStatus()->id])->assertOk();
 
     $contract = Contract::where('quote_id', $quoteId)->first();
 
@@ -138,7 +141,7 @@ it('AC-009: a branch that does NOT generate contracts opens none — the offer s
     ])->assertCreated()->json('data.id');
 
     // D-6: no 422 — closing positively stays legitimate, it just yields no contract.
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $closedWon->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $closedWon->id])->assertOk();
 
     expect(Quote::find($quoteId)->quote_workflow_status_id)->toBe($closedWon->id)
         ->and(Contract::where('quote_id', $quoteId)->exists())->toBeFalse();
@@ -208,11 +211,13 @@ it('AC-011: a contract already opened survives the flag being turned off, and st
     ])->assertCreated()->json('data.id');
 
     expect(Contract::where('quote_id', $quoteId)->exists())->toBeTrue();
+    // REQUIREMENT CHANGED (spec 0072 D-3 rev. 2026-11-20): only a worked-on contract survives the offer leaving closed_won.
+    Contract::where('quote_id', $quoteId)->sole()->forceFill(['payment_notes' => 'Bonifico'])->save();
 
     // The catalogue is reconfigured AFTER the deal was closed.
     ProductCategory::query()->update(['generates_contract' => false]);
 
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $openStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $openStatus->id])->assertOk();
 
     $contract = Contract::where('quote_id', $quoteId)->first();
 
@@ -234,11 +239,13 @@ it('INV-3: the idempotence guard still wins — a re-entry into closed_won on a 
     ])->assertCreated()->json('data.id');
 
     $contractId = Contract::where('quote_id', $quoteId)->sole()->id;
+    // REQUIREMENT CHANGED (spec 0072 D-3 rev. 2026-11-20): only a worked-on contract survives the offer leaving closed_won.
+    Contract::where('quote_id', $quoteId)->sole()->forceFill(['payment_notes' => 'Bonifico'])->save();
 
     ProductCategory::query()->update(['generates_contract' => false]);
 
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $openStatus->id])->assertOk();
-    $this->patchJson("/api/quotes/{$quoteId}", ['quote_workflow_status_id' => $closedWon->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $openStatus->id])->assertOk();
+    $this->patchJson("/api/quotes/{$quoteId}", [...contractedEditConfirmed(), 'quote_workflow_status_id' => $closedWon->id])->assertOk();
 
     expect(Contract::where('quote_id', $quoteId)->pluck('id')->all())->toBe([$contractId]);
 });
@@ -276,7 +283,7 @@ it('AC-012: the gate holds on the request-management work panel too', function (
 
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => contractGateClosedWonStatus()->id,
     ])->assertOk();
 

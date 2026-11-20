@@ -11,8 +11,8 @@ import {
 import {
   STATUS_ITEMS,
   forceFocusVisible,
-  hintButtons,
-  lineRow,
+  lineFields,
+  lineGroup,
   renderSection,
 } from '@/features/work-order-contract-data/contract-data-test-helpers'
 import type { WorkOrderContractData } from '@/features/work-order-contract-data/types'
@@ -21,6 +21,11 @@ vi.mock('@/components/detail/record-link', () => ({
   RecordLink: ({ domain, id, children }: { domain: string; id: number; children: ReactNode }) => (
     <a href={`/${domain}/${id}`}>{children}</a>
   ),
+}))
+
+vi.mock('@/features/invoices/invoice-detail-sheet', () => ({
+  InvoiceDetailSheet: ({ invoiceId }: { invoiceId: number | null }) =>
+    invoiceId === null ? null : <div role="dialog" aria-label={`invoice-${invoiceId}`} />,
 }))
 
 const fetchMock = vi.fn<(id: number) => Promise<WorkOrderContractData>>()
@@ -37,6 +42,12 @@ vi.mock('@/features/for-select/api', async () => {
 
 const hover = (element: HTMLElement) => fireEvent.pointerEnter(element, { pointerType: 'mouse' })
 
+/** The calculation hint of the line "Amount". */
+const amountHint = (code: string) => within(lineGroup(code)).getByRole('button', { name: /1,000\.00|2,000\.00/ })
+
+/** Waits for the lines (spec 0403: one group of fields per product). */
+const findLines = () => screen.findAllByRole('group')
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -52,12 +63,14 @@ beforeEach(() => {
   fetchMock.mockResolvedValue(CONTRACT_DATA)
 })
 
+// REQUIREMENT CHANGED (spec 0403, user directive 2026-11-16): each product is a block of fields
+// (Title, Amount, Payment status, Document, Payment agreement, Unpaid), no more the wide table.
 describe('WorkOrderContractDataSection - states', () => {
-  it('shows a loading status, then the table', async () => {
+  it('shows a loading status, then the lines', async () => {
     renderSection(false)
 
     expect(screen.getByRole('status', { name: 'Loading contract data' })).toBeInTheDocument()
-    expect(await screen.findByRole('table')).toBeInTheDocument()
+    expect(await findLines()).toHaveLength(2)
   })
 
   it('shows an error with retry', async () => {
@@ -67,182 +80,135 @@ describe('WorkOrderContractDataSection - states', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load the work order contract data.')
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
 
-    expect(await screen.findByRole('table')).toBeInTheDocument()
+    expect(await findLines()).toHaveLength(2)
   })
 
-  it('shows the empty state without a table', async () => {
+  it('shows the empty state without lines', async () => {
     fetchMock.mockResolvedValue({ ...CONTRACT_DATA, lines: [] })
     renderSection(false)
 
     expect(await screen.findByText('The work order has no product lines.')).toBeInTheDocument()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group')).not.toBeInTheDocument()
   })
 })
 
-describe('WorkOrderContractDataSection - layout', () => {
+describe('WorkOrderContractDataSection - line fields (spec 0403 AC-004)', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-17): the typology badge left the title for the payment status label.
+  it('shows the legacy fields of each product, in order', async () => {
+    renderSection(false)
+    await findLines()
+
+    expect(lineFields(lineGroup('ENT-001'))).toEqual({
+      Title: 'ENT-001Certificazione ente',
+      Amount: '2,000.00',
+      'Payment statusEnte': 'Pagato',
+      Document: 'Proforma12/2026Seriously overdue',
+      'Payment agreement': 'Saldo a 30 giorni',
+      Unpaid: 'Yes',
+    })
+    expect(lineFields(lineGroup('CON-001'))).toMatchObject({
+      'Payment statusConsulenza': 'No status',
+      Document: 'No proforma issued',
+      Unpaid: 'No',
+    })
+  })
+
+  it('links the document number to the proforma with invoices.view (user request 2026-11-16)', async () => {
+    renderSection(false, false, true)
+    await findLines()
+
+    fireEvent.click(within(lineGroup('ENT-001')).getByRole('button', { name: '12/2026' }))
+
+    expect(screen.getByRole('dialog', { name: /^invoice-\d+$/ })).toBeInTheDocument()
+  })
+
+  it('keeps the document number as plain text without invoices.view', async () => {
+    renderSection(false)
+    await findLines()
+
+    expect(within(lineGroup('ENT-001')).queryByRole('button', { name: '12/2026' })).not.toBeInTheDocument()
+    expect(within(lineGroup('ENT-001')).getByText('12/2026')).toBeInTheDocument()
+  })
+
+  it('puts each product in its own tinted box', async () => {
+    renderSection(false)
+    await findLines()
+
+    expect(lineGroup('CON-001')).toHaveClass('rounded-lg', 'bg-muted/40')
+    expect(lineGroup('ENT-001')).toHaveClass('rounded-lg', 'bg-muted/40')
+  })
+
+  it('keeps code and name in the title', async () => {
+    renderSection(false)
+    await findLines()
+
+    const line = lineGroup('CON-001')
+    expect(within(line).getByText('Consulenza qualita')).toHaveAttribute('title', 'Consulenza qualita')
+    expect(within(line).getByRole('link', { name: 'Consulenza qualita' })).toHaveAttribute('href', '/products/1')
+  })
+
+  // REQUIREMENT CHANGED (user directive 2026-11-17): the typology badge moved from the title to the
+  // "Stato pagamento" label, so each payment status reads as Consulenza or Ente.
+  it('badges the typology on the payment status label', async () => {
+    renderSection(false)
+    await findLines()
+
+    const consultancyTerm = within(lineGroup('CON-001')).getByText('Payment status')
+    expect(within(consultancyTerm).getByText('Consulenza')).toHaveClass('bg-blue-100')
+    const institutionTerm = within(lineGroup('ENT-001')).getByText('Payment status')
+    expect(within(institutionTerm).getByText('Ente')).toHaveClass('bg-violet-100')
+  })
+
   it('names the client of each line on a multi-offer work order (spec 0267)', async () => {
     renderSection(false, true)
-    await screen.findByRole('table')
+    await findLines()
 
-    expect(within(lineRow('CON-001')).getByRole('link', { name: 'Rossi S.r.l.' })).toHaveAttribute('href', '/registries/21')
-    expect(within(lineRow('ENT-001')).getByRole('link', { name: 'Bianchi S.p.A.' })).toHaveAttribute('href', '/registries/22')
+    expect(within(lineGroup('CON-001')).getByRole('link', { name: 'Rossi S.r.l.' })).toHaveAttribute('href', '/registries/21')
+    expect(within(lineGroup('ENT-001')).getByRole('link', { name: 'Bianchi S.p.A.' })).toHaveAttribute('href', '/registries/22')
   })
 
   it('omits the line client on a single-offer work order', async () => {
     renderSection(false)
-    await screen.findByRole('table')
+    await findLines()
 
     expect(screen.queryByText('Rossi S.r.l.')).not.toBeInTheDocument()
   })
 
-  it('has the full column names and no formula text under the rows', async () => {
+  it('colours the payment status and offers no pencil without manage_payments', async () => {
     renderSection(false)
-    await screen.findByRole('table')
+    await findLines()
 
-    for (const name of ['Product', 'Net amount', 'Supplier commission', 'Net of commissions', 'Effective revenue', 'Payment']) {
-      expect(screen.getByRole('columnheader', { name })).toBeInTheDocument()
-    }
-    expect(screen.queryByText(/→ revenue \d/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Net of commissions: /)).not.toBeInTheDocument()
-  })
-
-  it('keeps code, name and typology badge in the same cell of the line', async () => {
-    renderSection(false)
-    await screen.findByRole('table')
-
-    const cell = screen.getByRole('rowheader', { name: /CON-001/ })
-    expect(within(cell).getByText('CON-001')).toBeInTheDocument()
-    expect(within(cell).getByText('Consulenza qualita')).toHaveAttribute('title', 'Consulenza qualita')
-    expect(within(cell).getByRole('link', { name: 'Consulenza qualita' })).toHaveAttribute('href', '/products/1')
-    expect(within(cell).getByText('Consulenza')).toBeInTheDocument()
-    expect(within(cell).getByText('Consulenza')).toHaveClass('bg-blue-100')
-    expect(within(screen.getByRole('rowheader', { name: /ENT-001/ })).getByText('Ente')).toHaveClass('bg-violet-100')
-  })
-
-  it('keeps the table inside its own horizontal scroll container', async () => {
-    renderSection(false)
-
-    expect((await screen.findByRole('table')).parentElement).toHaveClass('overflow-x-auto')
-  })
-
-  it('drops the commission columns and totals when commissions are not visible', async () => {
-    fetchMock.mockResolvedValue(CONTRACT_DATA_HIDDEN_COMMISSIONS)
-    renderSection(false)
-    await screen.findByRole('table')
-
-    expect(screen.queryByRole('columnheader', { name: 'Supplier commission' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: 'Net of commissions' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('term').map((term) => term.textContent)).toEqual([
-      'Total Consulenza',
-      'Total Ente',
-      'Total Formazione',
-      'Total revenue',
-    ])
-
-    hover(hintButtons(lineRow('ENT-001'))[1])
-    expect(await screen.findByText('Revenue 200.00')).toBeInTheDocument()
+    expect(screen.getByText('Pagato').closest('[data-slot="badge"]')).toHaveClass('bg-green-100', 'text-green-700')
+    expect(screen.getByText('No status')).toHaveClass('bg-muted')
+    expect(screen.queryByRole('button', { name: /Edit the payment/ })).not.toBeInTheDocument()
   })
 })
 
-describe('WorkOrderContractDataSection - calculation hints', () => {
-  it('explains the net amount on hover', async () => {
+describe('WorkOrderContractDataSection - amount hint', () => {
+  it('explains the amount on hover', async () => {
     renderSection(false)
-    await screen.findByRole('table')
+    await findLines()
 
-    hover(hintButtons(lineRow('CON-001'))[0])
+    hover(amountHint('CON-001'))
 
     expect(await screen.findByText('Quantity × unit price.')).toBeInTheDocument()
     expect(screen.getByText('2 × 500.00 = 1,000.00')).toBeInTheDocument()
   })
 
-  it('explains a paid percentage commission with its base', async () => {
-    renderSection(false)
-    await screen.findByRole('table')
-
-    hover(hintButtons(lineRow('CON-001'))[1])
-
-    expect(await screen.findByText('Supplier commission paid')).toBeInTheDocument()
-    expect(screen.getByText('15% of 1,000.00 = 150.00')).toBeInTheDocument()
-    expect(screen.getByText('The base is the line margin.')).toBeInTheDocument()
-  })
-
-  it('explains a fixed received commission and a stale base', async () => {
-    fetchMock.mockResolvedValue({
-      ...CONTRACT_DATA,
-      lines: [
-        {
-          ...RECEIVED_LINE,
-          supplier_commission: { commission_type: 'FIXED_AMOUNT', value: '300.0000', base_amount: null, amount: '300.00', is_stale: true },
-        },
-      ],
-    })
-    renderSection(false)
-    await screen.findByRole('table')
-
-    hover(hintButtons(lineRow('ENT-001'))[1])
-
-    expect(await screen.findByText('Supplier commission received')).toBeInTheDocument()
-    expect(screen.getByText('Fixed amount: 300.00')).toBeInTheDocument()
-    expect(screen.getAllByText('Amount calculated on a previous base: save the quote again to update it.').length).toBeGreaterThan(0)
-    expect(screen.queryByText('The base is the line margin.')).not.toBeInTheDocument()
-  })
-
-  it('explains the net of commissions as net amount minus commissions', async () => {
-    renderSection(false)
-    await screen.findByRole('table')
-
-    hover(hintButtons(lineRow('CON-001'))[2])
-
-    expect(await screen.findByText('1,000.00 − 250.00 = 750.00')).toBeInTheDocument()
-  })
-
-  it('explains why the revenue of a paid line is the net amount', async () => {
-    renderSection(false)
-    await screen.findByRole('table')
-
-    hover(hintButtons(lineRow('CON-001'))[3])
-
-    expect(await screen.findByText('Supplier commission paid: the revenue is the net amount, the commission is a cost.')).toBeInTheDocument()
-    expect(screen.getByText('2 × 500.00 = 1,000.00 → revenue 1,000.00')).toBeInTheDocument()
-  })
-
-  it('explains why the revenue of a received line is the commission', async () => {
-    renderSection(false)
-    await screen.findByRole('table')
-
-    hover(hintButtons(lineRow('ENT-001'))[3])
-
-    expect(await screen.findByText('Supplier commission received: the revenue is the commission, not the net amount.')).toBeInTheDocument()
-    expect(screen.getByText('10% of 2,000.00 = 200.00 → revenue 200.00')).toBeInTheDocument()
-  })
-
-  it('explains a line without a Supplier commission calculation', async () => {
-    fetchMock.mockResolvedValue({
-      ...CONTRACT_DATA,
-      lines: [{ ...PAID_LINE, supplier_commission_direction: null, supplier_commission: null }],
-    })
-    renderSection(false)
-    await screen.findByRole('table')
-
-    hover(hintButtons(lineRow('CON-001'))[2])
-
-    expect(await screen.findByText('Supplier commission not calculated: the revenue is the net amount.')).toBeInTheDocument()
-  })
-
   it('opens on keyboard focus', async () => {
     renderSection(false)
-    await screen.findByRole('table')
+    await findLines()
 
     forceFocusVisible()
-    act(() => hintButtons(lineRow('CON-001'))[0].focus())
+    act(() => amountHint('CON-001').focus())
 
     expect(await screen.findByText('Quantity × unit price.')).toBeInTheDocument()
   })
 
   it('opens on a touch tap and closes on the next tap', async () => {
     renderSection(false)
-    await screen.findByRole('table')
-    const trigger = hintButtons(lineRow('CON-001'))[0]
+    await findLines()
+    const trigger = amountHint('CON-001')
 
     fireEvent.pointerDown(trigger, { pointerType: 'touch' })
     fireEvent.click(trigger)
@@ -255,8 +221,8 @@ describe('WorkOrderContractDataSection - calculation hints', () => {
 
   it('does not close a hover-opened hint on the click that follows', async () => {
     renderSection(false)
-    await screen.findByRole('table')
-    const trigger = hintButtons(lineRow('CON-001'))[0]
+    await findLines()
+    const trigger = amountHint('CON-001')
 
     hover(trigger)
     fireEvent.pointerDown(trigger, { pointerType: 'mouse' })
@@ -266,15 +232,14 @@ describe('WorkOrderContractDataSection - calculation hints', () => {
   })
 })
 
-describe('WorkOrderContractDataSection - KPIs and typologies', () => {
-  // REQUIREMENT CHANGED (user directive 2026-11-16): the totals follow the lines as legacy-like rows
-  // ("Totale Consulenza", "Totale Ente", "Totale ricavi"), no KPI strip and no net amount total.
+describe('WorkOrderContractDataSection - totals', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-16): the totals follow the lines as legacy-like rows.
   it('lists the totals after the lines: one per typology, the commissions, the total revenue last', async () => {
     renderSection(false)
-    const table = await screen.findByRole('table')
+    const lines = await findLines()
 
-    const terms = screen.getAllByRole('term')
-    expect(terms.map((term) => term.textContent)).toEqual([
+    const totals = screen.getAllByText(/^Total |^Commissions$|^Net of commissions$/, { selector: 'dt' })
+    expect(totals.map((term) => term.textContent)).toEqual([
       'Total Consulenza',
       'Total Ente',
       'Total Formazione',
@@ -282,8 +247,8 @@ describe('WorkOrderContractDataSection - KPIs and typologies', () => {
       'Net of commissions',
       'Total revenue',
     ])
-    expect(table.compareDocumentPosition(terms[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.getAllByRole('definition').map((node) => node.textContent)).toEqual([
+    expect(lines[1].compareDocumentPosition(totals[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(totals.map((term) => term.nextElementSibling?.textContent)).toEqual([
       '1,000.00',
       '2,000.00revenue 200.00',
       '0.00',
@@ -295,6 +260,19 @@ describe('WorkOrderContractDataSection - KPIs and typologies', () => {
 
     hover(within(screen.getByText('Net of commissions', { selector: 'dt' }).parentElement as HTMLElement).getByRole('button'))
     expect(await screen.findByText('3,000.00 − 450.00 = 2,550.00')).toBeInTheDocument()
+  })
+
+  it('drops the commission totals when commissions are not visible', async () => {
+    fetchMock.mockResolvedValue(CONTRACT_DATA_HIDDEN_COMMISSIONS)
+    renderSection(false)
+    await findLines()
+
+    expect(screen.getAllByText(/^Total |^Commissions$|^Net of commissions$/, { selector: 'dt' }).map((term) => term.textContent)).toEqual([
+      'Total Consulenza',
+      'Total Ente',
+      'Total Formazione',
+      'Total revenue',
+    ])
   })
 })
 
@@ -308,7 +286,7 @@ describe('WorkOrderContractDataSection - warnings (AC-018)', () => {
       ],
     })
     renderSection(false)
-    await screen.findByRole('table')
+    await findLines()
 
     const missing = screen.getByText('Supplier commission received missing: the revenue is 0.00.')
     expect(missing).toHaveClass('sr-only')
@@ -316,25 +294,5 @@ describe('WorkOrderContractDataSection - warnings (AC-018)', () => {
 
     hover(missing.closest('button') as HTMLElement)
     expect(await screen.findByText('Warning')).toBeInTheDocument()
-  })
-})
-
-describe('WorkOrderContractDataSection - payment display', () => {
-  it('shows status and unpaid as badges, the agreement only in the cell hint, and no actions without manage_payments', async () => {
-    renderSection(false)
-    await screen.findByRole('table')
-
-    expect(screen.getByText('Pagato')).toBeInTheDocument()
-    expect(screen.getAllByText('Unpaid')).toHaveLength(1)
-    expect(screen.getAllByText('No status')).toHaveLength(1)
-    expect(screen.getByText('Pagato').closest('[data-slot="badge"]')).toHaveClass('bg-green-100', 'text-green-700')
-    expect(screen.getByText('No status')).toHaveClass('bg-muted')
-    expect(screen.getByText('Unpaid')).toHaveClass('bg-destructive')
-    expect(screen.queryByText('Saldo a 30 giorni')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Edit the payment/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: 'Actions' })).not.toBeInTheDocument()
-
-    hover(within(lineRow('ENT-001')).getByText('Pagato').closest('button') as HTMLElement)
-    expect(await screen.findByText('Saldo a 30 giorni')).toBeInTheDocument()
   })
 })

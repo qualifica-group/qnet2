@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\AssignmentRoleEnum;
+use App\Enums\AssignmentTargetEnum;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\AbsenceRequestNotification;
@@ -42,9 +44,18 @@ const GATED_NOTIFICATIONS = [
     WorkOrderUpdateRequested::class,
 ];
 
-/** via() reads only the recipient, so the payload is irrelevant here. */
+/**
+ * via() reads only the recipient, so the payload is irrelevant here.
+ * REQUIREMENT CHANGED (spec 0420): RecordAssignmentNotification also reads
+ * its target; an anagrafica keeps the switch-only rule (D-5), the role
+ * permissions of opportunities and offers are in AssignmentNotificationPermissionsTest.
+ */
 function channelsFor(string $class, User $user): array
 {
+    if ($class === RecordAssignmentNotification::class) {
+        return (new RecordAssignmentNotification(AssignmentTargetEnum::Registry, AssignmentRoleEnum::Manager, 1, 'Label', 'Actor'))->via($user);
+    }
+
     return (new ReflectionClass($class))->newInstanceWithoutConstructor()->via($user);
 }
 

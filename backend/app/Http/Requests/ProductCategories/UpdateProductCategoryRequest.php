@@ -6,6 +6,7 @@ use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\Enums\AttributeContext;
 use App\Enums\CategoryManagementMode;
 use App\Enums\CategoryUsageArea;
+use App\Enums\PersonalDataTypeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use App\Http\Requests\Concerns\ValidatesManagerLabelPositions;
@@ -62,6 +63,8 @@ class UpdateProductCategoryRequest extends FormRequest
             // classification target. Never inherited, so no guard here.
             'is_selectable' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
+            // Spec 0404 C-D1: per-node, never inherited, so no guard here.
+            'requires_contact_transfer_before_contract' => ['sometimes', 'boolean'],
             // Spec 0131 (user directive 2026-09-18): the node's own override of
             // the inherited report flag — null = inherit from the parent.
             'is_reportable' => ['sometimes', 'nullable', 'boolean'],
@@ -85,6 +88,8 @@ class UpdateProductCategoryRequest extends FormRequest
             // Spec 0389: same root-only semantics, resynced on the subtree.
             'usage_area' => ['sometimes', Rule::enum(CategoryUsageArea::class)],
             'multiple_open_opportunities' => ['sometimes', 'boolean'],
+            'request_registry_type' => ['sometimes', Rule::enum(PersonalDataTypeEnum::class)],
+            'request_offer_hidden' => ['sometimes', 'boolean'],
             // Spec 0114: same root-only semantics — a reparent or an edit of
             // the flag itself triggers ProductCategoryService's subtree resync.
             'simplified_offer_line' => ['sometimes', 'boolean'],

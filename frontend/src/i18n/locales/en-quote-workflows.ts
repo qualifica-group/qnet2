@@ -95,13 +95,7 @@ export const quoteWorkflows = {
       defaultOpenName: 'Open',
       defaultClosedWonName: 'Closed (won)',
       defaultClosedLostName: 'Closed (lost)',
-      group: {
-        open: 'Open',
-        pending: 'Pending',
-        validated: 'Validated',
-        closed_won: 'Closed (won)',
-        closed_lost: 'Closed (lost)',
-      },
+      systemStatusRequired: 'Every working status needs a system status.',
     },
   },
   defaultStatuses: {

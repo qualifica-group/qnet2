@@ -14,13 +14,9 @@ import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-at
 import { WorkOrderClientInfoSection } from '@/features/work-orders/work-order-client-info-section'
 import { WorkOrderContractDataPanel } from '@/features/work-orders/work-order-detail-contract-data-panel'
 import { WorkOrderDescriptionSections } from '@/features/work-orders/work-order-record-description'
-import { WorkOrderAmountRow, WorkOrderPaymentStatusRow } from '@/features/work-orders/work-order-payment-status-field'
+import { WorkOrderAmountRow } from '@/features/work-orders/work-order-amount-row'
 import { WorkOrderInternalNotesRow, WorkOrderWorkflowStatusSection } from '@/features/work-orders/work-order-record-identity'
-import {
-  WorkOrderForceCloseReasonRow,
-  WorkOrderStartDateRow,
-  WorkOrderTitleRow,
-} from '@/features/work-orders/work-order-record-rows'
+import { WorkOrderForceCloseReasonRow, WorkOrderStartDateRow } from '@/features/work-orders/work-order-record-rows'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
@@ -94,9 +90,9 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
  * directives 2026-11-16), every user-written field editable in place (spec
  * 0195 applied to Commesse): the internal notes callout first, then two
  * columns. Left: "Info cliente" (spec 0400), "Dati contrattuali commessa"
- * (Titolo, Importo, Stato pagamento (spec 0402), Data inizio, the link to the
- * Contratto, the Linee prodotto, then
- * lines and totals: the former "Dati commessa" merged in), "Stato
+ * (Importo, Data inizio, the link to the Contratto, the Linee prodotto, then
+ * each product with its payment fields (spec 0403) and the totals; no title
+ * and no commessa-wide payment status, user directive 2026-11-16), "Stato
  * lavorazione", "Team". Right: "Riferimenti società",
  * "Data richiamo", "Descrizione commessa" (Commessa n., Tipo commessa,
  * Descrizione), then the flexible fields ("Informazioni aggiuntive"). Not on
@@ -127,9 +123,7 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
           <WorkOrderClientInfoSection registry={workOrder.registry} info={workOrder.client_info} />
         ) : null}
         <WorkOrderContractDataPanel workOrder={workOrder}>
-          <WorkOrderTitleRow form={editor} inline={inline} title={workOrder.title} />
           <WorkOrderAmountRow amount={workOrder.amount} />
-          <WorkOrderPaymentStatusRow form={editor} inline={inline} status={workOrder.payment_status} />
           <WorkOrderStartDateRow form={editor} inline={inline} startDate={workOrder.start_date} />
           {hasSingleQuote ? (
             <LinkedField

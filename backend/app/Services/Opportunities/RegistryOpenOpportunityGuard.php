@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Opportunities;
 
+use App\Migrations\Sources\ProductsSource;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
@@ -27,6 +28,10 @@ use Illuminate\Validation\ValidationException;
  * User directive 2026-11-07: an open opportunity whose product lines all sit on
  * legacy categories (`product_categories.is_legacy`) does not block; user
  * report 2026-11-13: nor does a migrated one (`old_id`) without any line.
+ * User directive 2026-11-18: "No categoria" (ProductsSource::UNCATEGORIZED_CATEGORY,
+ * the holding category of the migrated products without a category) counts
+ * as legacy too — it is not flagged `is_legacy`, but it only ever holds
+ * migrated history.
  *
  * User decision 2026-11-11: the exemption is the root-owned category flag
  * `multiple_open_opportunities`, in both directions — an open opportunity of
@@ -90,7 +95,7 @@ final class RegistryOpenOpportunityGuard
      */
     public function blockingOpportunityFor(int $registryId, array $newCategoryIds = []): ?Opportunity
     {
-        if ($this->allowMultipleOpen(ProductCategory::query()->whereKey($newCategoryIds)->get(['id', 'is_legacy', 'multiple_open_opportunities']))) {
+        if ($this->allowMultipleOpen(ProductCategory::query()->whereKey($newCategoryIds)->get(['id', 'name', 'is_legacy', 'multiple_open_opportunities']))) {
             return null;
         }
 
@@ -153,7 +158,9 @@ final class RegistryOpenOpportunityGuard
             ->whereIn('registry_id', $registryIds)
             ->where(static fn ($query) => $query
                 ->where(static fn ($lineless) => $lineless->whereNull('old_id')->whereDoesntHave('productLines'))
-                ->orWhereHas('productLines.productCategory', static fn ($category) => $category->where('is_legacy', false)));
+                ->orWhereHas('productLines.productCategory', static fn ($category) => $category
+                    ->where('is_legacy', false)
+                    ->where('name', '!=', ProductsSource::UNCATEGORIZED_CATEGORY)));
 
         // The quote-less branch resolves a workflow per row (it is the row's
         // own product category that decides it), so it is handed the SAME
@@ -166,7 +173,7 @@ final class RegistryOpenOpportunityGuard
         );
 
         return $opportunities
-            ->with('productLines.productCategory:id,is_legacy,multiple_open_opportunities')
+            ->with('productLines.productCategory:id,name,is_legacy,multiple_open_opportunities')
             ->orderBy('id')
             ->get()
             ->reject(fn (Opportunity $opportunity): bool => $this->allowMultipleOpen($opportunity->productLines->map(
@@ -176,17 +183,26 @@ final class RegistryOpenOpportunityGuard
     }
 
     /**
-     * Whether the current (non-legacy) categories among $categories all allow
-     * several open opportunities per anagrafica. False when there is none:
+     * Whether the current categories (not countsAsLegacy()) among $categories
+     * all allow several open opportunities per anagrafica. False when there is none:
      * an opportunity without a current category is judged by the other rules.
      *
      * @param  Collection<int, ProductCategory>  $categories
      */
     private function allowMultipleOpen(Collection $categories): bool
     {
-        $current = $categories->reject(static fn (ProductCategory $category): bool => (bool) $category->is_legacy);
+        $current = $categories->reject($this->countsAsLegacy(...));
 
         return $current->isNotEmpty()
             && $current->every(static fn (ProductCategory $category): bool => (bool) $category->multiple_open_opportunities);
+    }
+
+    /**
+     * Legacy for this rule: the migrated catalogue (`is_legacy`) and the
+     * "No categoria" holding category (user directive 2026-11-18).
+     */
+    private function countsAsLegacy(ProductCategory $category): bool
+    {
+        return (bool) $category->is_legacy || $category->name === ProductsSource::UNCATEGORIZED_CATEGORY;
     }
 }

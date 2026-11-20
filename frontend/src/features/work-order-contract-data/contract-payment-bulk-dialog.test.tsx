@@ -29,9 +29,6 @@ vi.mock('@/features/for-select/api', async () => {
   return { ...actual, fetchForSelect: (resource: string, params: unknown) => fetchForSelectMock(resource, params) }
 })
 
-/** The header and the narrow-layout "select all" share the name; jsdom renders both. */
-const selectAll = () => screen.getAllByRole('checkbox', { name: 'Select all lines' })[0]
-
 async function chooseOption(combobox: string, option: string) {
   fireEvent.keyDown(screen.getByRole('combobox', { name: combobox }), { key: 'Enter' })
   fireEvent.click(await screen.findByRole('option', { name: option }))
@@ -39,9 +36,8 @@ async function chooseOption(combobox: string, option: string) {
 
 async function openBulkDialog() {
   renderSection(true)
-  await screen.findByRole('table')
-  fireEvent.click(selectAll())
-  fireEvent.click(screen.getByRole('button', { name: 'Set payment' }))
+  await screen.findByRole('group', { name: /CON-001/ })
+  fireEvent.click(screen.getByRole('button', { name: 'Set payment on every line' }))
   return screen.findByRole('dialog', { name: 'Payment of 2 lines' })
 }
 
@@ -63,32 +59,22 @@ beforeEach(() => {
 })
 
 describe('Contract data bulk payment (spec 0333)', () => {
-  it('AC-005: no selection checkboxes nor toolbar without manage_payments', async () => {
+  it('AC-005: no "every line" button without manage_payments', async () => {
     renderSection(false)
-    await screen.findByRole('table')
+    await screen.findByRole('group', { name: /CON-001/ })
 
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Set payment on every line' })).not.toBeInTheDocument()
   })
 
-  it('AC-004: selecting lines shows the toolbar with the count; select all toggles every line', async () => {
+  it('spec 0403: no "every line" button with a single line', async () => {
+    fetchMock.mockResolvedValue({ ...CONTRACT_DATA, lines: [PAID_LINE] })
     renderSection(true)
-    await screen.findByRole('table')
-    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
+    await screen.findByRole('group', { name: /CON-001/ })
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Consulenza qualita' }))
-    expect(within(screen.getByRole('toolbar')).getByText('1 line selected')).toBeInTheDocument()
-    expect(selectAll()).toHaveAttribute('data-state', 'indeterminate')
-
-    fireEvent.click(selectAll())
-    expect(screen.getByText('2 lines selected')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Select Certificazione ente' })).toBeChecked()
-
-    fireEvent.click(selectAll())
-    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Set payment on every line' })).not.toBeInTheDocument()
   })
 
-  it('AC-004: sends only the chosen values for the selected lines, caches the answer and clears the selection', async () => {
+  it('AC-004: sends only the chosen values for every line and caches the answer', async () => {
     const paidStatus = { id: 3, name: 'Pagato', color: 'green', allows_delivery: true }
     bulkMock.mockResolvedValue({
       ...CONTRACT_DATA,
@@ -102,7 +88,6 @@ describe('Contract data bulk payment (spec 0333)', () => {
     await waitFor(() => expect(bulkMock).toHaveBeenCalledWith(4, { quote_line_ids: [11, 12], work_order_payment_status_id: 3 }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(toast.success).toHaveBeenCalledWith('Payment updated on 2 lines.')
-    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
     expect(await screen.findAllByText('Pagato')).toHaveLength(2)
   })
 
@@ -129,7 +114,7 @@ describe('Contract data bulk payment (spec 0333)', () => {
     expect(bulkMock).not.toHaveBeenCalled()
   })
 
-  it('AC-004: a refused save keeps the dialog open with the server message and the selection', async () => {
+  it('AC-004: a refused save keeps the dialog open with the server message', async () => {
     bulkMock.mockRejectedValue(unprocessable({ 'quote_line_ids.1': ['The selected line is not part of the work order.'] }))
     const dialog = await openBulkDialog()
 
@@ -137,6 +122,5 @@ describe('Contract data bulk payment (spec 0333)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Apply' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('The selected line is not part of the work order.')
-    expect(screen.getByText('2 lines selected')).toBeInTheDocument()
   })
 })

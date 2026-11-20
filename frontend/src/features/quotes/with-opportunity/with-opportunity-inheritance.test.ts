@@ -3,6 +3,7 @@ import { alignInheritedFields, type InheritedFields } from '@/features/quotes/wi
 
 const STEP_ONE: InheritedFields = {
   commercial_id: 3,
+  commercial_partner_id: 5,
   reporter_id: 4,
   supervisor_id: 9,
   operational_site_id: 6,
@@ -11,6 +12,7 @@ const STEP_ONE: InheritedFields = {
 
 const BLANK = {
   commercial_id: null,
+  commercial_partner_id: null,
   reporter_id: null,
   supervisor_id: null,
   operational_site_id: null,
@@ -28,6 +30,14 @@ describe('alignInheritedFields', () => {
     const next = { ...STEP_ONE, commercial_id: 30, reporter_id: 40 }
 
     expect(alignInheritedFields(current, STEP_ONE, next)).toEqual({ reporter_id: 40 })
+  })
+
+  // Spec 0417 AC-022
+  it('follows step 1 on the Commercial partner unless it was typed by hand', () => {
+    const next = { ...STEP_ONE, commercial_partner_id: 8 }
+
+    expect(alignInheritedFields(STEP_ONE, STEP_ONE, next)).toEqual({ commercial_partner_id: 8 })
+    expect(alignInheritedFields({ ...STEP_ONE, commercial_partner_id: 99 }, STEP_ONE, next)).toEqual({})
   })
 
   it('treats a slot team edited by hand as touched', () => {

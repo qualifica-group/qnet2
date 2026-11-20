@@ -9,13 +9,17 @@ use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\OpportunityVisibilityScope;
 use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\RequestManagement\RequestManagementScope;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
+use App\Tables\Opportunities\Concerns\HasOpportunitySystemStatusTabs;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
 use App\Tables\Opportunities\OpportunityCellWriter;
 use App\Tables\Opportunities\OpportunityColumnCatalog;
 use App\Tables\Opportunities\OpportunityRelationColumns;
 use App\Tables\Opportunities\OpportunityStatusColumn;
+use App\Tables\Opportunities\OpportunitySystemStatusColumn;
 use App\Tables\Shared\CommercialListFilterApplier;
 use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\ProductLinePairsColumn;
@@ -51,6 +55,9 @@ use Illuminate\Support\Facades\Gate;
  */
 class OpportunitiesTableDefinition extends AbstractTableDefinition
 {
+    use HasOpportunitySystemStatusTabs;
+    use SearchesByIdNotLegacyId;
+
     private const string OPERATIONAL_SITE_COLUMN = 'operational_site';
 
     private const string OPERATIONAL_SITE_RELATION = 'operationalSite';
@@ -66,6 +73,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         private readonly ProductLinePairsColumn $productLinePairs,
         private readonly OpportunityStatusResolver $statusResolver,
         private readonly CommercialListFilterApplier $listFilters,
+        private readonly OpportunitySystemStatusColumn $systemStatusColumn,
     ) {}
 
     /**
@@ -113,11 +121,11 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // Spec 0389 rev.2: opportunities whose categories are all reserved to Gestione Richieste are not listed.
         $query = UsageAreaRowFilter::apply(OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user()), 'opportunities.id', CategoryUsageArea::Opportunities)
             ->with([
-                'registry', 'referent', 'commercial', 'supervisor.avatar',
+                'registry', 'referent', 'commercial', 'commercialPartner', 'supervisor.avatar',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
                 // Spec 0082: the computed `status` cell — eager-loaded so the
                 // resolver stays query-free across the page (AC-007).
-                ...OpportunityStatusResolver::EAGER_LOADS,
+                ...OpportunityStatusResolver::EAGER_LOADS, OpportunitySystemStatusColumn::RELATION,
                 // User directive 2026-07-23: the "Prodotti di interesse"
                 // column projects its own `{id, name}` refs (the cell AND the
                 // multiselect editor's current selection).
@@ -131,7 +139,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             // Per-row count for the `notes` action badge (HasNotes): roots AND
             // replies, soft-deleted excluded — same projection Gestione
             // Richieste carries.
-            ->withCount('notes');
+            ->withCount(NotesCountColumn::of('notes'));
 
         // Spec 0105 D-10, spec 0340: whether one of the row's Offerte is in the
         // actor's Gestione Richieste scope through the site or competence tier.
@@ -225,10 +233,12 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             'registry' => $this->summarize($row->registry),
             'referent' => $this->summarize($row->referent),
             'commercial' => $this->summarize($row->commercial),
+            'commercial_partner' => $this->summarize($row->commercialPartner),
             'supervisor' => $this->userSummary($row->supervisor),
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
             OpportunityStatusColumn::COLUMN_ID => $this->statusResolver->resolve($row),
+            OpportunitySystemStatusColumn::COLUMN_ID => $this->systemStatusColumn->summarize($row),
             // Spec 0206, D-9: the pairs the `product_lines` editor edits.
             'product_category' => $this->productLinePairs->project($row),
             'business_function' => $this->summarizeNames($row->productLines->pluck('businessFunction')),
@@ -374,7 +384,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
                 ->whereIn('product_category_id', $categoryIds));
         };
 
-        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Opportunities, $applyCategories)) {
+        if ($this->listFilters->apply($query, $name, $value, Auth::user(), ParentCategoryListModule::Opportunities, $applyCategories, OpportunityVisibilityScope::whereMember(...))) {
             return true;
         }
 
@@ -414,12 +424,6 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
 
         if ($columnId === ProductsOfInterestColumn::COLUMN_ID) {
             ProductsOfInterestColumn::applyFilter($query, $this->filterValues($filter), $this->matchesBlankEntry($filter));
-
-            return true;
-        }
-
-        if ($columnId === OpportunityStatusColumn::COLUMN_ID) {
-            OpportunityStatusColumn::applyFilter($query, $this->filterValues($filter));
 
             return true;
         }
@@ -484,10 +488,6 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
 
         if ($columnId === ProductsOfInterestColumn::COLUMN_ID) {
             return ProductsOfInterestColumn::distinctValues($query, $search, $limit);
-        }
-
-        if ($columnId === OpportunityStatusColumn::COLUMN_ID) {
-            return OpportunityStatusColumn::distinctValues($query, $search, $limit);
         }
 
         return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);

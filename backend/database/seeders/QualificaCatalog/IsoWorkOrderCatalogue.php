@@ -61,7 +61,7 @@ final class IsoWorkOrderCatalogue
             ['key' => 'alert', 'label' => 'Avviso', 'type' => 'boolean'],
         ],
         'selectable' => ['key' => 'active', 'label' => 'Attivo'],
-        'summary' => ['column' => 'date', 'strategy' => 'selected'],
+        'summary' => ['column' => 'date', 'strategy' => 'selected', 'grid_label' => 'Data verifica ispettiva'],
     ];
 
     /**

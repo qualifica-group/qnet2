@@ -9,6 +9,7 @@ import {
   QuoteLinesLiveSummary,
   QuoteOfferLinesEditor,
 } from '@/features/quotes/quote-lines-editors'
+import { useQuoteCostsVisible } from '@/features/quotes/use-quote-costs-visible'
 import type { QuoteFormState } from '@/features/quotes/use-quote-form'
 import type { QuoteLine } from '@/features/quotes/types'
 
@@ -23,13 +24,15 @@ const NO_LINES: QuoteLine[] = []
  * D-6): the Offerta/Costi strip, then the two grids OPEN — they are tabular
  * editors, not single fields, and the Offerta one already opens on an empty
  * row (directive 2026-09-01) — and the live summary below, visible on both
- * tabs (AC-070/071). A tab whose rows hold an error carries a dot.
+ * tabs (AC-070/071). A tab whose rows hold an error carries a dot. Without
+ * `view_costs` (spec 0412) there is no Costi tab.
  */
 export function QuoteCreateLines({ quoteForm }: { quoteForm: QuoteFormState }) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState(OFFER_TAB)
   const { errors } = useFormState({ control: quoteForm.form.control, name: ['offer_lines', 'cost_lines'] })
   const tabHasErrorsLabel = t('quotes.form.tabs.tabHasErrors')
+  const costsVisible = useQuoteCostsVisible()
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-0">
@@ -40,18 +43,22 @@ export function QuoteCreateLines({ quoteForm }: { quoteForm: QuoteFormState }) {
             {t('quotes.form.tabs.offer')}
             {errors.offer_lines ? <TabErrorDot label={tabHasErrorsLabel} /> : null}
           </TabsTrigger>
-          <TabsTrigger value={COSTS_TAB}>
-            <TrendingDown aria-hidden="true" />
-            {t('quotes.form.tabs.costs')}
-            {errors.cost_lines ? <TabErrorDot label={tabHasErrorsLabel} /> : null}
-          </TabsTrigger>
+          {costsVisible ? (
+            <TabsTrigger value={COSTS_TAB}>
+              <TrendingDown aria-hidden="true" />
+              {t('quotes.form.tabs.costs')}
+              {errors.cost_lines ? <TabErrorDot label={tabHasErrorsLabel} /> : null}
+            </TabsTrigger>
+          ) : null}
         </FormTabStrip>
         <TabsContent value={OFFER_TAB}>
           <QuoteOfferLinesEditor quoteForm={quoteForm} knownLines={NO_LINES} />
         </TabsContent>
-        <TabsContent value={COSTS_TAB}>
-          <QuoteCostLinesEditor quoteForm={quoteForm} knownLines={NO_LINES} />
-        </TabsContent>
+        {costsVisible ? (
+          <TabsContent value={COSTS_TAB}>
+            <QuoteCostLinesEditor quoteForm={quoteForm} knownLines={NO_LINES} />
+          </TabsContent>
+        ) : null}
         <QuoteLinesLiveSummary quoteForm={quoteForm} />
       </div>
     </Tabs>

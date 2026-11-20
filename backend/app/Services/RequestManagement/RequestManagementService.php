@@ -14,6 +14,7 @@ use App\Models\User;
 use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\ProductCategoryCoherence;
+use App\Services\Quotes\ContractedQuoteGuard;
 use App\Services\Quotes\QuoteAttributeValueWriter;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -98,9 +99,13 @@ final class RequestManagementService
         'opportunity.quotes.quoteWorkflowStatus',
         'opportunity.productLines.businessFunction',
         'opportunity.productLines.productCategory',
+        // Spec 0411: the root a bound offer belongs to, shown in the panel.
+        'rootProductCategory',
         'reporter',
         // Spec 0357: the Offerta's "Commerciale", next to the Segnalatore.
         'commercial',
+        // Spec 0417: the Offerta's "Partner commerciale", next to the Commerciale.
+        'commercialPartner',
         // Spec 0097, D-9: the "Supervisore" — the Offerta's commission
         // recipient, projected as `supervisor` by RequestManagementResource,
         // so it is loaded here like every other picker's hydration ref
@@ -159,6 +164,7 @@ final class RequestManagementService
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
         private readonly ContractLifecycleManager $contractLifecycleManager,
+        private readonly ContractedQuoteGuard $contractedGuard,
     ) {}
 
     /**
@@ -176,10 +182,20 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, manager_positions?: array<int, int|null>, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, general_notes?: string|null, estimated_value?: float|int|string|null, expected_close_date?: string|null, success_probability?: int|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, commercial_id?: int|null, commercial_partner_id?: int|null, supervisor_id?: int|null, manager_slots?: array<int, int|null>, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
+    {
+        // Spec 0404 part E: an offer under contract needs the permission and a confirmation (E-D3: operational fields stay free).
+        return $this->contractedGuard->run($quote, $actor, $data, fn (): array => $this->writeWork($quote, $actor, $data));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{quote: Quote}
+     */
+    private function writeWork(Quote $quote, User $actor, array $data): array
     {
         return DB::transaction(function () use ($quote, $actor, $data): array {
             $changed = [];
@@ -218,7 +234,7 @@ final class RequestManagementService
 
             if (array_key_exists('product_lines', $data)) {
                 $classificationChanged = $this->productLineWriter
-                    ->apply($opportunity, (array) $data['product_lines'], $changed, $old);
+                    ->apply($opportunity, (array) $data['product_lines'], $changed, $old, $quote->root_product_category_id);
             }
 
             // Step 1-bis: the coherence rule (user directive 2026-07-31) —
@@ -296,22 +312,10 @@ final class RequestManagementService
 
             // Step 3: the Offerta's Gestori Account (spec 0087, D-9; spec
             // 0097, D-5) — pivot rows plus a Quote column, written after both
-            // models are saved. TWO keys, never both at once (they address
-            // the same pivot from two vocabularies, and UpdateRequestRequest
-            // makes them mutually exclusive): `manager_slots` is the work
-            // panel's whole-team editor, `operator_id` the single-slot key of
-            // the grid cell, the bulk assign and the transfer.
+            // models are saved: `manager_slots`, the whole team, from the
+            // work panel and the grid's "Gestori account" cell (spec 0373).
             if (array_key_exists('manager_slots', $data)) {
                 $this->attributionWriter->applyTeam($quote, (array) $data['manager_slots'], $actor, $changed, $old);
-            } elseif (array_key_exists('operator_id', $data)) {
-                $this->attributionWriter->applyOperator($quote, $data['operator_id'], $actor, $changed, $old);
-            }
-
-            // Step 3-bis: single positions other than the Operatore (spec 0382
-            // D-7, the grid's position columns) — they address other slots of
-            // the same pivot, so they compose with the two keys above.
-            foreach ((array) ($data['manager_positions'] ?? []) as $position => $userId) {
-                $this->attributionWriter->applyManagerPosition($quote, (int) $position, $userId, $actor, $changed, $old);
             }
 
             // Step 4: reward assignments (spec 0059, AC-023; D-4/D-12) —

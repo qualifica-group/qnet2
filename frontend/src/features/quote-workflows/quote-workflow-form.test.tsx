@@ -25,6 +25,14 @@ vi.mock('@/features/quote-workflows/api', async (importOriginal) => ({
   fetchCriterionFields: (...args: unknown[]) => fetchCriterionFieldsMock(...args),
 }))
 
+vi.mock('@/features/quote-system-statuses/use-quote-system-status-options', async () => {
+  const { SYSTEM_STATUS_OPTIONS } = await import('@/features/quote-workflows/quote-system-status-options.fixtures')
+  return {
+    QUOTE_SYSTEM_STATUSES_FOR_SELECT_RESOURCE: 'quote-system-statuses',
+    useQuoteSystemStatusOptions: () => ({ options: SYSTEM_STATUS_OPTIONS, isLoading: false }),
+  }
+})
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 /** Every field resolves as visible+editable (the `MetaField` fallback, since `fields` is empty). */
@@ -201,6 +209,19 @@ describe('QuoteWorkflowForm — create submit (AC-004, AC-025)', () => {
     expect(createQuoteWorkflowMock).not.toHaveBeenCalled()
   })
 
+  it('blocks the save while a custom status has no system status', async () => {
+    renderForm()
+
+    nameTheWorkflow()
+    await fillCriterion()
+    fireEvent.click(screen.getByRole('button', { name: 'Add status' }))
+    fireEvent.change(screen.getAllByRole('textbox', { name: 'Status name' })[1], { target: { value: 'In review' } })
+    save()
+
+    expect(await screen.findByText('Every working status needs a system status.')).toBeInTheDocument()
+    expect(createQuoteWorkflowMock).not.toHaveBeenCalled()
+  })
+
   // Requirement changed (user directive 2026-08-07): there is no 'validated'
   // system row at all — a new set starts with the 3 mandatory rows.
   it('seeds editable open/closed_won/closed_lost rows and sends them with the added custom row in the create payload', async () => {
@@ -217,6 +238,10 @@ describe('QuoteWorkflowForm — create submit (AC-004, AC-025)', () => {
     // tail), closed_won (2), closed_lost (3).
     const nameInputs = screen.getAllByRole('textbox', { name: 'Status name' })
     fireEvent.change(nameInputs[1], { target: { value: 'In review' } })
+    // The pinned rows show their own system status read-only; the custom one picks it.
+    expect(screen.getAllByRole('combobox', { name: 'System status' })[0]).toBeDisabled()
+    fireEvent.click(screen.getAllByRole('combobox', { name: 'System status' })[1])
+    fireEvent.click(await screen.findByRole('option', { name: 'In attesa' }))
 
     await fillCriterion()
     nameTheWorkflow()
@@ -224,11 +249,12 @@ describe('QuoteWorkflowForm — create submit (AC-004, AC-025)', () => {
 
     await waitFor(() => expect(createQuoteWorkflowMock).toHaveBeenCalledTimes(1))
     const [payload] = createQuoteWorkflowMock.mock.calls[0]
+    // REQUIREMENT CHANGED (spec 0419): every row carries its status email, null = none.
     expect(payload.statuses).toEqual([
-      { name: 'Open', color: null, group: 'open', system_key: 'open', description: null, requires_note: false },
-      { name: 'In review', color: null, group: 'pending', system_key: null, description: null, requires_note: false },
-      { name: 'Closed (won)', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false },
-      { name: 'Closed (lost)', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false },
+      { name: 'Open', color: null, group: 'open', system_key: 'open', description: null, requires_note: false, notify: null },
+      { name: 'In review', color: null, quote_system_status_id: 2, system_key: null, description: null, requires_note: false, notify: null },
+      { name: 'Closed (won)', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false, notify: null },
+      { name: 'Closed (lost)', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false, notify: null },
     ])
     expect(payload.criteria).toEqual([{ field: 'source_id', value_id: 101 }])
     expect(payload.name).toBe('EMEA workflow')

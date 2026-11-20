@@ -10,7 +10,7 @@ export const billing = {
     title: 'Billing filters',
     dateFrom: 'Proforma from',
     groupBy: 'Group the amount to invoice by',
-    groupBys: { business_function: 'Business function', company: 'Company', commercial: 'Sales representative' },
+    groupBys: { business_function: 'Business function', company: 'Company', commercial: 'Sales representative', commercial_partner: 'Commercial partner' },
   },
   totals: {
     title: 'Amount to invoice totals',

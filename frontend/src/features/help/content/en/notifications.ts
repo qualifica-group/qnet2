@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The bell in the header shows the latest notifications and the unread count; this page is the full, filterable list. It opens from the **Notifications** link at the bottom of the side menu, right above **Settings**.',
+          text: 'The bell in the header shows the latest notifications and the unread count; this page is the full, filterable list. It opens from the **Notifications** link at the bottom of the side menu, right above **Settings**. In the bell, each mention shows the initials and name of who mentioned you next to its date.',
         },
       ],
     },
@@ -65,6 +65,43 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Not every notification has a link: in that case the column stays empty. Ctrl/Cmd+click on **Open** opens the link in a new browser tab.',
+        },
+      ],
+    },
+    {
+      id: 'team-activity',
+      title: 'Your team notifications',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Whoever holds **Receive team notifications** on Quotes, Contracts or Work orders is notified (bell and email, per preference) when a person of their team creates a quote or a work order, opens a contract, or changes its status. The team is the **org chart** one: the people below you, at any level. The message says who did it, the record and the status before and after.',
+        },
+        {
+          type: 'note',
+          text: 'Automatic operations (imports, the migration from the old QNet) and your own changes send nothing. The permission is granted on the role, one checkbox per module.',
+        },
+      ],
+    },
+    {
+      id: 'assignment-notices',
+      title: 'Assignment notices',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'When someone puts you in charge as **Account Manager** or **Supervisor** of an opportunity or a quote (also from Request management or Enrollee management) you get a notice. Whether you get it, and how, is decided by your **role**: each module has the checkboxes **Receive the assignment notification** (bell) and **Receive the assignment email** (email).',
+        },
+        {
+          type: 'list',
+          items: [
+            'Opportunity: the **Opportunities** checkboxes apply.',
+            'Quote: the checkbox on any of **Quotes**, **Request management** and **Enrollee management** is enough.',
+            'The email goes out only if your email switch in **Settings** is on too.',
+            'Registries and work orders do not depend on these checkboxes: bell always, email per your preference.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Existing roles already hold every checkbox, so nobody stops receiving the notices: the administrator clears them where they are not needed. A new role starts without them: the administrator ticks them when creating it.',
         },
       ],
     },

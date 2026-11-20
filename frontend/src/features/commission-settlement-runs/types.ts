@@ -6,7 +6,7 @@
 /** Table domain key (SSRM domain and ability prefix of the table endpoint). */
 export const COMMISSION_SETTLEMENT_RUNS_DOMAIN = 'commission-settlement-runs'
 
-export const COMMISSION_RECIPIENT_ROLES = ['COMMERCIAL', 'REPORTER', 'SUPERVISOR'] as const
+export const COMMISSION_RECIPIENT_ROLES = ['COMMERCIAL', 'COMMERCIAL_PARTNER', 'REPORTER', 'SUPERVISOR'] as const
 export type CommissionRecipientRole = (typeof COMMISSION_RECIPIENT_ROLES)[number]
 
 export const SETTLEMENT_SKIP_REASONS = [

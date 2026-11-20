@@ -3,6 +3,7 @@
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
+use App\Notifications\RecordAssignmentNotification;
 use App\Support\ManagerPositions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -17,9 +18,9 @@ use Spatie\Permission\Models\Permission;
  * nomenclatura del committente), sorella SENZA SEDE dell'assegnazione
  * operatori.
  *
- * Le tre differenze portanti rispetto ad assign-operators, tutte sotto test
+ * Le due differenze portanti rispetto ad assign-operators, sotto test
  * qui: nessuna Sede e nessuna modalita' (D-1), lo slot e' svuotabile in massa
- * (D-2), nessuna notifica di assegnazione (D-5).
+ * (D-2). Il nuovo GA1 riceve la notifica come dal pannello Team (D-5 rev. 2026-11-18).
  */
 uses(RefreshDatabase::class);
 
@@ -267,11 +268,12 @@ it('writes nothing at all when the offer already carries that GA1 (AC-008)', fun
         ->and(bulkGa1ManagerOf($quote))->toBe($tutor->id);
 });
 
-it('sends no assignment notification: the GA1 scopes nothing and assigns nobody (AC-009)', function () {
+it('notifies the new GA1 as Account Manager, by bell and email (AC-009 rev. 2026-11-18)', function () {
     Notification::fake();
 
     $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $tutor = User::factory()->create();
+    grantAssignmentNotifications($tutor);
     $quote = bulkGa1Quote();
     Sanctum::actingAs($actor);
 
@@ -280,6 +282,36 @@ it('sends no assignment notification: the GA1 scopes nothing and assigns nobody 
         'manager_ga1_id' => $tutor->id,
     ])->assertOk();
 
+    Notification::assertSentTo($tutor, function (RecordAssignmentNotification $notification) use ($tutor, $quote): bool {
+        $payload = $notification->toArray($tutor);
+
+        return $notification->via($tutor) === ['database', 'mail']
+            && $payload['title'] === __('You were assigned as Account Manager')
+            && str_contains((string) $payload['message'], (string) $quote->fresh()->title);
+    });
+    Notification::assertSentTimes(RecordAssignmentNotification::class, 1);
+});
+
+it('notifies nobody when the GA1 is the actor or a team member merely moved onto GA1 (AC-009 rev. 2026-11-18)', function () {
+    Notification::fake();
+
+    $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
+    $operator = User::factory()->create();
+    $movedQuote = bulkGa1Quote([ManagerPositions::OPERATOR => $operator->id]);
+    $selfQuote = bulkGa1Quote();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management/assign-manager-ga1', [
+        'request_ids' => [$movedQuote->id],
+        'manager_ga1_id' => $operator->id,
+    ])->assertOk();
+    $this->postJson('/api/request-management/assign-manager-ga1', [
+        'request_ids' => [$selfQuote->id],
+        'manager_ga1_id' => $actor->id,
+    ])->assertOk();
+
+    expect(bulkGa1ManagerOf($movedQuote))->toBe($operator->id)
+        ->and(bulkGa1ManagerOf($selfQuote))->toBe($actor->id);
     Notification::assertNothingSent();
 });
 

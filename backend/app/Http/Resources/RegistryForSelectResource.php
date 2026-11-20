@@ -37,6 +37,9 @@ class RegistryForSelectResource extends ForSelectResource
                 'commercial' => $this->commercial !== null
                     ? ['id' => $this->commercial->id, 'name' => $this->commercial->name]
                     : null,
+                'commercial_partner' => $this->commercialPartner !== null
+                    ? ['id' => $this->commercialPartner->id, 'name' => $this->commercialPartner->name]
+                    : null,
                 'reporter' => $this->reporter !== null
                     ? ['id' => $this->reporter->id, 'name' => $this->reporter->name]
                     : null,

@@ -48,6 +48,18 @@
       spente di default; con entrambe spente tutti gli endpoint tranne /config rispondono 404 envelope
       (middleware EnsureAiAssistantEnabled, dopo il controllo del permesso); con la pagina spenta la voce
       di menu e' nascosta (chiave di navigazione opzionale `feature`) ma il permesso resta nel catalogo.</item>
+    <item>D-17 (richiesta utente 2026-11-18, OpenRouter): terzo driver `openrouter` (`OpenRouterDriver`,
+      sottoclasse di `OpenAiCompatibleDriver`: stesso formato Chat Completions, sezione di config propria
+      `ai-assistant.openrouter`). Differenze: tetto di output come `max_tokens` (parametro documentato da
+      OpenRouter, mappato su ogni provider a valle); header opzionali di attribuzione `HTTP-Referer`
+      (site_url, default FRONTEND_URL) e `X-Title` (app_name, default APP_NAME), omessi se vuoti;
+      `provider: { data_collection }` nel payload, default `deny` (solo provider a valle che non salvano
+      ne' usano per training i prompt, perche' i messaggi possono contenere dati personali), `allow` solo
+      se esplicito da env. Api key obbligatoria (senza: non configurato, 503). I commenti SSE
+      `: OPENROUTER PROCESSING` sono gia' ignorati da SseLineReader; un errore a meta' stream
+      (`error` + finish_reason `error`) diventa l'errore generico di D-13. Fuori scope: prompt caching
+      esplicito (`cache_control`) per i modelli Anthropic via OpenRouter, fallback tra modelli
+      (`models: []`), scelta del modello dall'interfaccia.</item>
     <item>Envelope `{ success, message, data }` via BaseApiController::ok()/created(); liste paginate
       via paginatedResponse() (`{ items, pagination }`, ADR 0011 shape). Policy su BasePolicy, permessi
       `{resource}.{ability}` (es. `companies.view`). Permessi raccolti da `permissions:sync` dal config
@@ -113,12 +125,18 @@
     <config_keys file="backend/config/ai-assistant.php">
       floating_enabled (AI_ASSISTANT_FLOATING_ENABLED, default false), page_enabled
       (AI_ASSISTANT_PAGE_ENABLED, default false) (D-16),
-      driver (AI_ASSISTANT_DRIVER: openai|anthropic|null; null = non configurato),
+      driver (AI_ASSISTANT_DRIVER: openai|anthropic|openrouter|null; null = non configurato),
       openai.base_url (AI_ASSISTANT_OPENAI_BASE_URL, default https://api.openai.com/v1),
       openai.api_key (AI_ASSISTANT_OPENAI_API_KEY, puo' essere vuota per LM Studio),
       openai.model (AI_ASSISTANT_OPENAI_MODEL, default gpt-4.1-mini),
       anthropic.base_url (default https://api.anthropic.com/v1), anthropic.api_key, anthropic.model
       (default claude-sonnet-5-5), anthropic.version (default 2023-06-01),
+      openrouter.base_url (AI_ASSISTANT_OPENROUTER_BASE_URL, default https://openrouter.ai/api/v1),
+      openrouter.api_key (AI_ASSISTANT_OPENROUTER_API_KEY, obbligatoria), openrouter.model
+      (AI_ASSISTANT_OPENROUTER_MODEL, default openai/gpt-4.1-mini), openrouter.site_url
+      (AI_ASSISTANT_OPENROUTER_SITE_URL, vuota = FRONTEND_URL), openrouter.app_name
+      (AI_ASSISTANT_OPENROUTER_APP_NAME, vuota = APP_NAME), openrouter.data_collection
+      (AI_ASSISTANT_OPENROUTER_DATA_COLLECTION: allow|deny, default deny) (D-17),
       max_output_tokens (2048), temperature (null), timeout_seconds (120), connect_timeout_seconds (10),
       history_window (20), max_message_chars (8000), guide_max_chars (40000), max_mentions (5),
       mention_max_chars (8000), max_files (4), max_file_size_kb (10240),
@@ -130,7 +148,7 @@
       <request>nessun parametro</request>
       <response status="200">
         data: { "floating_enabled": bool, "page_enabled": bool,
-          "configured": bool, "driver": "openai"|"anthropic"|null, "model": string|null,
+          "configured": bool, "driver": "openai"|"anthropic"|"openrouter"|null, "model": string|null,
           "limits": { "max_message_chars": int, "guide_max_chars": int, "max_mentions": int,
             "max_files": int, "max_file_size_kb": int, "accepted_mimes": string[] },
           "mention_modules": AiMentionModule[] }
@@ -182,7 +200,7 @@
         Prima dell'apertura dello stream, JSON envelope: 401; 403 senza ai-assistant.use, conversazione
         altrui, o record menzionato non visibile (policy view); 404 conversazione; 422 validazione o
         record menzionato inesistente (chiave `mentions.N.id`); 503 assistente non configurato
-        (driver null o api key mancante per anthropic). I messaggi d'errore non espongono nomi di
+        (driver null o api key mancante per anthropic/openrouter). I messaggi d'errore non espongono nomi di
         classi, URL del provider o chiavi.
       </errors>
     </endpoint>
@@ -230,6 +248,7 @@
     <criterion id="AC-027">(FE) Pagina e widget usabili a 375 / 768 / 1024 px senza scroll orizzontale; widget aperto a tutta larghezza sotto sm.</criterion>
     <criterion id="AC-028">Guida in-app `ai-assistant` IT/EN con stessi id di sezione (help-content-parity verde), chiave in HELP_GUIDE_KEYS; parita' i18n del namespace `ai-assistant` verde.</criterion>
     <criterion id="AC-029">LLM locale (D-15): AI_ASSISTANT_ACCEPTED_MIMES restringe i tipi ma non aggiunge tipi non supportati; un tipo escluso o un file con lista vuota danno 422 senza chiamare il provider; GET config espone la lista ristretta; senza api_key il driver openai e' configurato e non manda Authorization; con max_files=0 o accepted_mimes vuoto il composer non mostra il pulsante allegati.</criterion>
+    <criterion id="AC-030">OpenRouter (D-17): con driver openrouter e api key la richiesta va a {base_url}/chat/completions con Bearer, HTTP-Referer e X-Title (omessi se vuoti), `max_tokens` (mai `max_completion_tokens`) e `provider.data_collection` = deny salvo env `allow`; lo stream (con commenti di keep-alive) produce delta e completed con modello e token; un errore a meta' stream da' l'errore generico; senza api key il driver non e' configurato.</criterion>
     <criterion id="AC-030">Modelli che ragionano (D-15): `reasoning_content` non viene mai emesso come delta ne' salvato; uno stream completato senza testo emette `error` e rimuove messaggio utente e file (come AC-014).</criterion>
     <criterion id="AC-031">Superfici (D-16): floating_enabled e page_enabled valgono false senza env; GET config li espone cosi' come sono configurati.</criterion>
     <criterion id="AC-032">Con entrambe le superfici spente ogni endpoint /api/ai-assistant/* tranne /config risponde 404 `{ success: false }` e non scrive nulla; con una sola accesa l'API funziona; senza permesso resta 403.</criterion>
@@ -263,7 +282,7 @@
     <item>Chiavi del provider solo in .env/config; mai in risposte, log, eventi SSE o bundle (nessuna VITE_AI_*).</item>
     <item>Ogni endpoint: FormRequest + autorizzazione server-side (middleware `can:ai-assistant.use` + `AiConversationPolicy` sul proprietario); route annidate con scopeBindings; risorse via JsonResource.</item>
     <item>Test senza chiamate reali a pagamento: Http::fake con body SSE registrati; nessun test contro OpenAI/Anthropic reali.</item>
-    <item>Logica dietro un'Action con handle() e // Step N (SendAiMessage); driver dietro interfaccia AiChatDriver (2 implementazioni reali: DIP giustificato).</item>
+    <item>Logica dietro un'Action con handle() e // Step N (SendAiMessage); driver dietro interfaccia AiChatDriver (implementazioni reali: OpenAI-compatibile, Anthropic, OpenRouter come sottoclasse della prima: DIP giustificato).</item>
     <item>File sotto 300 righe (500 hard): il pannello di Q-TASK va spezzato in componenti e hook.</item>
     <item>Niente throttle (backend.md §2). Niente fetch nudo (frontend.md §4).</item>
     <item>Dati personali: le menzioni di utenti e referenti mandano dati al provider esterno per scelta esplicita dell'utente (D-4); la proiezione esclude password, token, campi hidden del model.</item>

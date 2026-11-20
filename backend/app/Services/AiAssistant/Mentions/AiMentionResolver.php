@@ -41,22 +41,37 @@ final class AiMentionResolver
         // Step 3: per-record authorization, as the module itself would
         Gate::forUser($user)->authorize('view', $record);
 
-        // Step 4: project the allow-listed data and cap it
+        // Step 4: project the allow-listed data the user may read and cap it
         return new ResolvedAiMention(
             module: $module,
             id: $id,
             label: ($definition->label)($record),
-            context: $this->truncate($this->encode($this->project($definition, $record))),
+            context: $this->truncate($this->encode($this->project($definition, $record, $this->deniedFields($user, $definition, $record)))),
         );
     }
 
     /**
+     * The gated fields whose ability the user does not hold on the record.
+     *
+     * @return array<int, string>
+     */
+    private function deniedFields(User $user, AiMentionDefinition $definition, Model $record): array
+    {
+        return collect($definition->gatedFields)
+            ->reject(fn (array $fields, string $ability): bool => Gate::forUser($user)->allows($ability, $record))
+            ->flatten()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $deniedFields
      * @return array<string, mixed>
      */
-    private function project(AiMentionDefinition $definition, Model $record): array
+    private function project(AiMentionDefinition $definition, Model $record, array $deniedFields): array
     {
         // attributesToArray() applies casts and honours $hidden; the allow-list narrows further.
-        $projection = ['id' => $record->getKey(), ...Arr::only($record->attributesToArray(), $definition->fields)];
+        $fields = array_diff($definition->fields, $deniedFields);
+        $projection = ['id' => $record->getKey(), ...Arr::only($record->attributesToArray(), $fields)];
 
         foreach ($definition->relations as $relation => $columns) {
             $related = $record->getRelation($relation);

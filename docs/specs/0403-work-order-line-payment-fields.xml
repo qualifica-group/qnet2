@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0403-work-order-line-payment-fields" status="approved" owner="nicola" date="2026-11-16">
+
+  <goal>
+    In "Dati contrattuali commessa" ogni prodotto della commessa si presenta come nel QNet legacy (Manageorder, crm_type 3): Titolo (prodotto + badge tipologia), Importo, Stato Pagamento (modificabile), Documento, Accordo sui Pagamenti, Insoluti. Spariscono dalla sezione il Titolo della commessa e lo Stato pagamento generale, che non serve piu': lo stato pagamento vive solo sulle righe. Supera la spec 0402 (campo della commessa) e, per la sola vista, la tabella righe della spec 0201/0333.
+  </goal>
+
+  <context>
+    D-1 Richieste utente 2026-11-16: "elimina titolo della commessa, stato pagamento generale che non serve e al posto del riquadro grigio dei prodotti voglio i campi descritti nello screen per ogni prodotto della commessa"; "per chi non puo' vedere i costi vedra' il titolo e stato di pagamento, senza importi"; "il campo stato pagamento inserito da poco potrebbe non valere piu'".
+    D-2 Legacy: `resources/views/livewire/orders/manageorder.blade.php` (blocco per servizio) e `Manageorder::controlPayment()`: "Nessuna proforma emessa" oppure lo stato di pagamento della proforma (non pagata/scaduta, pagata...).
+    D-3 Documento della riga = il documento attivo (proforma o fattura, tabella `invoices`) di QUESTA commessa (`invoices.work_order_id`) che fattura la riga (`invoice_lines.quote_line_id`); con piu' documenti vale il piu' recente (`document_date` desc, `id` desc). Lo stato e' `InvoicePaymentStatusResolver::resolve()` sulle sue rate (lo stesso della griglia Fatture). Nessun documento -> null ("Nessuna proforma emessa").
+    D-4 Lo stato pagamento generale (`work_orders.work_order_payment_status_id`, spec 0402) si toglie: una migrazione copia il suo valore sulle righe di quella commessa che non hanno uno stato (riga di `work_order_line_payments` con stato vuoto aggiornata; riga mancante creata per ogni linea di `quote_line_work_order`), poi elimina la colonna. Uno stato gia' presente sulla riga vince. Query builder: niente activity log ne' notifiche. down(): rimette la colonna vuota. La migrazione 0402 (`WorkOrderPaymentStatusAttributeMover`) resta: su un DB nuovo gira prima, la colonna esiste ancora.
+    D-5 Rimossi: chiavi `work_order_payment_status_id` e `payment_status` del dettaglio commessa, regola PATCH, permesso di campo, relazione `WorkOrder::paymentStatus`, voce UsageMap, scrittura dello stato sulla commessa all'import legacy (`LegacyWorkOrderLinePaymentWriter` passo 3). Resta `amount` (Importo totale), non richiesto di toglierlo.
+    D-6 Visibilita': con `view_costs` e `view_contract_data` i blocchi completi; altrimenti, per ogni prodotto, solo Titolo e Stato pagamento in sola lettura (nessun importo, nessun documento, accordo o insoluti). Prima (spec 0380) senza `view_costs` non si vedeva nulla: superato da D-1.
+    D-7 Modifica: come oggi (spec 0201) la matita sullo Stato pagamento apre il dialog del pagamento della riga (stato, accordo, insoluti), solo con `manage_payments`. La modifica in blocco (spec 0333) resta come pulsante "Imposta pagamento su tutte" con `manage_payments` e piu' di una riga. Le cifre per riga di provvigioni/ricavo effettivo non sono nel blocco legacy: restano i totali sotto i prodotti.
+  </context>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/work-orders/{id}/contract-data">
+      <response status="200">Ogni `lines[]` AGGIUNGE `document`: null | { id: int, type: "proforma"|"invoice", number_label: "12/2026", payment_status: "paid"|"not_due"|"overdue"|"seriously_overdue" }. Resto invariato.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/work-orders/{id}">
+      <response status="200">Ogni `quote_lines[]` AGGIUNGE `payment_status`: null | { id, name, color, allows_delivery } (pagamento della riga in QUESTA commessa). RIMOSSE le chiavi `work_order_payment_status_id` e `payment_status` di primo livello e `permissions.fields.work_order_payment_status_id`. `amount` invariato.</response>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/work-orders/{id}">
+      <request>`work_order_payment_status_id` non e' piu' accettato (chiave ignorata).</request>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato una riga fatturata da una proforma della commessa con rata scaduta da 30 giorni, il contract-data espone `document` con type proforma e payment_status seriously_overdue; una riga non fatturata ha `document` null. Test: `WorkOrderContractDataDocumentTest`.</criterion>
+    <criterion id="AC-002">Data una commessa con stato generale X e due righe, una con stato Y e una senza, dopo la migrazione la prima resta Y, la seconda ha X, e la colonna non esiste piu'. Test: `WorkOrderPaymentStatusFoldTest`.</criterion>
+    <criterion id="AC-003">Il dettaglio commessa non espone piu' `payment_status`/`work_order_payment_status_id`; `quote_lines[].payment_status` riporta lo stato della riga.</criterion>
+    <criterion id="AC-004">Nel dettaglio, "Dati contrattuali commessa" non ha Titolo ne' Stato pagamento generale; con view_contract_data ogni prodotto mostra Titolo, Importo, Stato pagamento, Documento, Accordo sui pagamenti, Insoluti; senza, Titolo e Stato pagamento senza importi. Test: `contract-data-line-fields.test.tsx`, `work-order-detail.test.tsx`.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Mai lanciare la migrazione sul DB dev `qnet2` senza ok esplicito dell'utente.</item>
+    <item>Nessuna nuova dipendenza. Griglia Commesse fuori scope.</item>
+  </constraints>
+
+</spec>

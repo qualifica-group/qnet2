@@ -100,6 +100,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'work-order-workflows': 'navigation.workOrderWorkflows',
   quotes: 'navigation.quotes',
   'contract-statuses': 'navigation.contractStatuses',
+  'quote-system-statuses': 'navigation.quoteSystemStatuses',
   contracts: 'navigation.contracts',
   'work-orders': 'navigation.workOrders',
   'project-work-orders': 'navigation.projectWorkOrders',

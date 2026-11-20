@@ -36,6 +36,7 @@ export {
   type TaskWorkOrderRef,
   type TaskWorkOrderStageRef,
   type TaskSubtask,
+  type TaskOpenSubtask,
   type TaskDetail,
   type TaskDetailWithPermissions,
   type TaskActionKey,

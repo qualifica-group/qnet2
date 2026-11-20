@@ -56,11 +56,12 @@ interface ProjectedContactsSectionProps {
   registry: ProjectedRegistryRef | null | undefined
   referent: ReferentRef | null | undefined
   commercial: RelationFieldRef | null | undefined
+  commercialPartner: RelationFieldRef | null | undefined
   reporter: RelationFieldRef | null | undefined
 }
 
-/** Anagrafica e contatti: Anagrafica, Referente (with its Tipo), Commerciale and Segnalatore; contacts when the payload carries them. */
-export function ProjectedContactsSection({ registry, referent, commercial, reporter }: ProjectedContactsSectionProps) {
+/** Anagrafica e contatti: Anagrafica, Referente (with its Tipo), Commerciale, Partner commerciale and Segnalatore; contacts when the payload carries them. */
+export function ProjectedContactsSection({ registry, referent, commercial, commercialPartner, reporter }: ProjectedContactsSectionProps) {
   const { t } = useTranslation()
 
   return (
@@ -77,6 +78,9 @@ export function ProjectedContactsSection({ registry, referent, commercial, repor
         </RecordField>
         <RecordField label={t('quotes.detail.commercial')} icon={<Briefcase />}>
           <LinkedValue domain="referents" record={commercial ?? null} />
+        </RecordField>
+        <RecordField label={t('quotes.detail.commercialPartner')} icon={<Handshake />}>
+          <LinkedValue domain="referents" record={commercialPartner ?? null} />
         </RecordField>
         <RecordField label={t('quotes.detail.reporter')} icon={<UserRound />}>
           <LinkedValue domain="referents" record={reporter ?? null} />

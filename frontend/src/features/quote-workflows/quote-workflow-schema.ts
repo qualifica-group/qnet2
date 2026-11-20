@@ -76,6 +76,10 @@ function baseFields(t: TFunction) {
       .array(z.custom<WorkflowStatusFormRow>())
       .refine((rows) => rows.every((row) => row.name.trim() !== ''), {
         message: t('quoteWorkflows.form.statuses.nameRequired'),
+      })
+      // Spec 0404: every custom row links a system status (a pinned row's link is fixed by its key).
+      .refine((rows) => rows.every((row) => row.system_key !== null || row.quote_system_status_id !== null), {
+        message: t('quoteWorkflows.form.statuses.systemStatusRequired'),
       }),
   }
 }

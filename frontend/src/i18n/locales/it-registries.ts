@@ -19,6 +19,7 @@ export const registries = {
     size_class: 'Classe dimensionale',
     primary_contact: 'Contatto principale',
     commercial: 'Commerciale',
+    commercial_partner: 'Partner commerciale',
     supervisor: 'Supervisore',
     reporter: 'Segnalatore',
     managers: 'Operatori',
@@ -38,6 +39,7 @@ export const registries = {
     details: 'Dettagli',
     // Badge sulla card del referente principale (spec 0330).
     primaryReferentBadge: 'Principale',
+    secondaryReferentBadge: 'Secondario',
     // Scheda in sola lettura dei documenti dell'anagrafica nei dettagli di
     // Opportunita', Offerte e Commesse (spec 0173).
     registryDocumentsTab: 'Documenti anagrafica',
@@ -81,6 +83,9 @@ export const registries = {
     referentsRemove: 'Rimuovi referente',
     primaryReferent: 'Referente principale',
     primaryReferentPlaceholder: 'Seleziona il referente principale…',
+    secondaryReferent: 'Referente secondario',
+    secondaryReferentPlaceholder: 'Seleziona il referente secondario…',
+    secondaryReferentNone: 'Nessuno',
     managers: 'Gestori account',
     managersPlaceholder: 'Seleziona gestori account…',
     managersSearch: 'Cerca gestori account…',
@@ -99,6 +104,8 @@ export const registries = {
     supervisorPlaceholder: 'Seleziona un supervisore…',
     commercial: 'Commerciale',
     commercialPlaceholder: 'Seleziona un referente commerciale…',
+    commercialPartner: 'Partner commerciale',
+    commercialPartnerPlaceholder: 'Seleziona un partner commerciale…',
     reporter: 'Segnalatore',
     reporterPlaceholder: 'Seleziona un segnalatore…',
     vatGroup: 'Gruppo IVA',

@@ -20,6 +20,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     // Spec 0043 D-3: opportunity_status_id is mandatory, mirrors registry_id.
     referent_id: null,
     commercial_id: null,
+    commercial_partner_id: null,
     reporter_id: null,
     supervisor_id: 9,
     source_id: null,

@@ -38,6 +38,7 @@ export function useDefinitionTableColumns(control: Control<FieldDefinitionFormVa
   const clearSummary = () => {
     setValue('table.summary_column', '', { shouldDirty: true })
     setValue('table.summary_strategy', '', { shouldDirty: true })
+    setValue('table.summary_grid_label', '', { shouldDirty: true })
   }
 
   const clearSummaryIfDropped = (key: string, stillEligible: boolean) => {

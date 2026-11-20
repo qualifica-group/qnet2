@@ -31,6 +31,10 @@ export const activityLog = {
     deleted: 'Deleted',
     restored: 'Restored',
     moved: 'Moved (org chart)',
+    registry_transferred: 'Transferred to another registry',
+    contract: {
+      removed: 'Contract removed (offer no longer won)',
+    },
     impersonation: {
       started: 'Impersonation started',
       stopped: 'Impersonation stopped',
@@ -143,6 +147,7 @@ export const activityLog = {
     size_class: 'Size class',
     supervisor_id: 'Supervisor',
     commercial_id: 'Commercial',
+    commercial_partner_id: 'Commercial partner',
     reporter_id: 'Reporter',
     employee_count: 'Employee count',
     guard_name: 'Guard',

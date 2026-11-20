@@ -66,6 +66,7 @@ const BACKEND_COLUMN_LABEL_KEYS = [
   'contracts.columns.registry',
   'contracts.columns.opportunity',
   'contracts.columns.commercial',
+  'contracts.columns.commercial_partner',
   'contracts.columns.reporter',
   'contracts.columns.supervisor',
   'contracts.columns.managers',
@@ -86,6 +87,7 @@ const BACKEND_ADVANCED_FILTER_LABEL_KEYS = [
   'contracts.advancedFilters.registry',
   'contracts.advancedFilters.opportunity',
   'contracts.advancedFilters.commercial',
+  'contracts.advancedFilters.commercial_partner',
   'contracts.advancedFilters.supervisor',
   'contracts.advancedFilters.contractStatus',
 ] as const

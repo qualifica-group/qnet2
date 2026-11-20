@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'agent-sales-report',
   title: 'Report Vendite Agenti',
   summary:
-    'Il Report Vendite Agenti elenca le offerte con cliente, commerciale, segnalatore, fase e imponibile, e permette di filtrarle e di scaricarle in tre file Excel.',
+    'Il Report Vendite Agenti elenca le offerte con cliente, commerciale, partner commerciale, segnalatore, fase e imponibile, e permette di filtrarle e di scaricarle in tre file Excel.',
   sections: [
     {
       id: 'overview',
@@ -43,8 +43,8 @@ const guide: HelpGuide = {
             ['Responsabili', 'I gestori account dell’offerta.'],
             ['Fase', 'Lo stato di lavorazione dell’offerta.'],
             ['Imponibile', 'L’importo dell’offerta al netto dell’IVA.'],
-            ['Commerciale, Segnalatore', 'Le persone che hanno venduto e segnalato l’offerta.'],
-            ['Imponibile al netto segnalatore', 'L’imponibile meno le provvigioni del segnalatore sulle righe dell’offerta (la percentuale del segnalatore applicata a ogni prodotto). Le provvigioni di commerciale, supervisore e fornitore non vengono tolte.'],
+            ['Commerciale, Partner commerciale, Segnalatore', 'Le persone che hanno venduto e segnalato l’offerta.'],
+            ['Imponibile al netto segnalatore', 'L’imponibile meno le provvigioni del segnalatore sulle righe dell’offerta (la percentuale del segnalatore applicata a ogni prodotto). Le provvigioni di commerciale, partner commerciale, supervisore e fornitore non vengono tolte.'],
           ],
         },
         {
@@ -59,7 +59,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Usa la ricerca in alto per cercare nel titolo e nel numero offerta, i filtri delle colonne (per esempio **Azienda**, **Linea prodotto**, **Categoria prodotto**, **Commerciale**, **Fase**, **Data accettazione**) e i **filtri salvati** per ritrovare le tue combinazioni abituali. Il numero di offerte trovate compare nella barra sopra la tabella.',
+          text: 'Usa la ricerca in alto per cercare nel titolo e nel numero offerta, i filtri delle colonne (per esempio **Azienda**, **Linea prodotto**, **Categoria prodotto**, **Commerciale**, **Partner commerciale**, **Fase**, **Data accettazione**) e i **filtri salvati** per ritrovare le tue combinazioni abituali. Il numero di offerte trovate compare nella barra sopra la tabella.',
         },
         {
           type: 'tip',
@@ -85,12 +85,12 @@ const guide: HelpGuide = {
           rows: [
             ['Sommario', 'Le colonne visibili della tabella, una riga per offerta, nello stesso ordine.'],
             ['Dettagli', 'Per ogni offerta un blocco: i dati dell’offerta (con gli importi Consulenza ed Ente), le righe di vendita con categoria, prodotto, quantità, prezzo e provvigioni, e il totale delle provvigioni con il netto.'],
-            ['Righe dettaglio', 'Un elenco piatto: una riga per ogni riga di vendita delle offerte filtrate, con le provvigioni di supervisore, commerciale e segnalatore e il netto.'],
+            ['Righe dettaglio', 'Un elenco piatto: una riga per ogni riga di vendita delle offerte filtrate, con le provvigioni di supervisore, commerciale, partner commerciale e segnalatore e il netto.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'In Dettagli e Righe dettaglio contano solo le righe di vendita (non i costi) e il netto è l’importo meno le provvigioni di supervisore, commerciale e segnalatore.',
+          text: 'In Dettagli e Righe dettaglio contano solo le righe di vendita (non i costi) e il netto è l’importo meno le provvigioni di supervisore, commerciale, partner commerciale e segnalatore.',
         },
         {
           type: 'warning',

@@ -11,6 +11,7 @@ use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Quotes\QuoteManagerLabelResolver;
+use App\Services\Quotes\QuoteRootScope;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\RequestManagement\RequestRegistryWriter;
 use App\Support\Geo\GeoNameLocalizer;
@@ -94,6 +95,8 @@ class RequestManagementResource extends JsonResource
             // documents/notes/activity row actions key off this, never `id`.
             'opportunity_id' => $opportunity->id,
             'name' => $opportunity->name,
+            // Spec 0404 B-D8: the offer's own title, prefilled by "Trasferisci ad altra anagrafica".
+            'title' => $quote->title,
             'registry' => $this->summarizeByName($opportunity->registry),
             'registry_lock_reason' => app(RequestRegistryWriter::class)->lockReason($opportunity),
             'referent' => $this->summarizeByName($opportunity->referent),
@@ -110,6 +113,9 @@ class RequestManagementResource extends JsonResource
             // Segnalatore (it replaced the read-only Opportunity one).
             'commercial_id' => $quote->commercial_id,
             'commercial' => $this->summarizeByName($quote->commercial),
+            // Spec 0417: "Partner commerciale", right after the Commerciale.
+            'commercial_partner_id' => $quote->commercial_partner_id,
+            'commercial_partner' => $this->summarizeByName($quote->commercialPartner),
             // Spec 0086, D-4: the "abbinamento buono" chips, whose origin is
             // the Quote and whose beneficiary is the Segnalatore above — the
             // same SummarizesRewards projection QuoteResource emits, so the
@@ -155,7 +161,11 @@ class RequestManagementResource extends JsonResource
             // category defines one. `{}` when not resolvable.
             'manager_labels' => app(QuoteManagerLabelResolver::class)->resolve($quote),
             'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
-            'product_lines' => $this->summarizeProductLines($opportunity->productLines),
+            // Spec 0411, D-3: a bound offer shows (and edits) only its root's lines.
+            'product_lines' => $this->summarizeProductLines(app(QuoteRootScope::class)->linesOf($quote)),
+            'root_product_category' => $this->summarizeByName($quote->rootProductCategory),
+            // Spec 0411, D-2: every offer a creation produced (POST only).
+            ...(array_key_exists('created_quote_ids', $this->resource) ? ['created_quote_ids' => $this->resource['created_quote_ids']] : []),
             // Spec 0086, D-7/AC-021: replaces `products_of_interest` — the
             // Offerta's own REVENUE lines. EDITABLE from this module since the
             // user directive 2026-08-07, so the projection is the Offerte
@@ -182,6 +192,8 @@ class RequestManagementResource extends JsonResource
             // the full set QuoteWorkflowResolver resolves right now, which is
             // what limits the select (AC-021/050).
             'quote_workflow_status_id' => $quote->quote_workflow_status_id,
+            // Spec 0404 part E: the offer under contract is frozen (E-D3: operational fields stay free).
+            ...ContractedQuoteFlags::of($quote, $request->user()),
             'quote_workflow_status' => $this->summarizeWorkflowStatus($quote->quoteWorkflowStatus),
             'quote_workflow_statuses' => $this->resolveWorkflowStatuses($quote),
             // "Note generali" (user directive 2026-07-27): the Opportunity's

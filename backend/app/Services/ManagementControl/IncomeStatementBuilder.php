@@ -70,12 +70,15 @@ final class IncomeStatementBuilder
             ->leftJoin('company_sites', 'company_sites.id', '=', 'quotes.company_site_id')
             ->leftJoin('operational_sites', 'operational_sites.id', '=', 'quotes.operational_site_id')
             ->leftJoin('referents', 'referents.id', '=', 'quotes.commercial_id')
+            // Spec 0417, D-6: second join on the same table, hence the alias.
+            ->leftJoin('referents as commercial_partners', 'commercial_partners.id', '=', 'quotes.commercial_partner_id')
             ->select([
                 'work_orders.id', 'work_orders.type',
                 'quotes.company_id', 'companies.denomination as company_name',
                 'quotes.company_site_id', 'company_sites.name as company_site_name',
                 'quotes.operational_site_id', 'operational_sites.alias as operational_site_alias',
                 'quotes.commercial_id', 'referents.name as commercial_name',
+                'quotes.commercial_partner_id', 'commercial_partners.name as commercial_partner_name',
             ]);
 
         return $this->filtered($query, $filters)->get();
@@ -91,6 +94,7 @@ final class IncomeStatementBuilder
             ->when($filters->companySiteIds !== [], fn (Builder $q) => $q->whereIn('quotes.company_site_id', $filters->companySiteIds))
             ->when($filters->operationalSiteIds !== [], fn (Builder $q) => $q->whereIn('quotes.operational_site_id', $filters->operationalSiteIds))
             ->when($filters->commercialIds !== [], fn (Builder $q) => $q->whereIn('quotes.commercial_id', $filters->commercialIds))
+            ->when($filters->commercialPartnerIds !== [], fn (Builder $q) => $q->whereIn('quotes.commercial_partner_id', $filters->commercialPartnerIds))
             ->when($filters->businessFunctionIds !== [], fn (Builder $q) => $q->whereExists(
                 DB::table('quote_line_work_order')
                     ->join('quote_lines', 'quote_lines.id', '=', 'quote_line_work_order.quote_line_id')

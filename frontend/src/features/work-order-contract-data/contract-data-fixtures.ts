@@ -18,6 +18,7 @@ export const PAID_LINE: ContractDataLine = {
   effective_revenue: '1000.00',
   warnings: [],
   payment: NO_PAYMENT,
+  document: null,
 }
 
 /** RECEIVED line with a percentage Supplier commission: 10% of 2000.00 = 200.00 is its revenue. */
@@ -40,6 +41,7 @@ export const RECEIVED_LINE: ContractDataLine = {
     payment_agreement: 'Saldo a 30 giorni',
     has_unpaid: true,
   },
+  document: { id: 31, type: 'proforma', number_label: '12/2026', payment_status: 'seriously_overdue' },
 }
 
 export const CONTRACT_DATA: WorkOrderContractData = {

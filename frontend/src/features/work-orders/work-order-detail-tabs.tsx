@@ -79,6 +79,8 @@ interface WorkOrderDetailTabsProps {
   workOrder: WorkOrderDetailWithPermissions
   /** The Info tab's body (the record sections). */
   info: ReactNode
+  /** The tab to open first outside the work order's page (spec 0405); Info when absent. */
+  initialTab?: string
 }
 
 /**
@@ -90,7 +92,7 @@ interface WorkOrderDetailTabsProps {
  * actions (the Task board's) are portaled into the slot on the right of the
  * strip, so the strip stays the only header row of the card.
  */
-export function WorkOrderDetailTabs({ workOrder, info }: WorkOrderDetailTabsProps) {
+export function WorkOrderDetailTabs({ workOrder, info, initialTab }: WorkOrderDetailTabsProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [actionsContainer, setActionsContainer] = useState<HTMLDivElement | null>(null)
@@ -103,10 +105,7 @@ export function WorkOrderDetailTabs({ workOrder, info }: WorkOrderDetailTabsProp
       void queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(workOrder.id) })
     },
   })
-  const { activeTab, setActiveTab } = useWorkOrderActiveTab(
-    workOrder.id,
-    tabs.map((tab) => tab.value),
-  )
+  const { activeTab, setActiveTab } = useWorkOrderActiveTab(workOrder.id, tabs, initialTab)
 
   return (
     <RecordCard>

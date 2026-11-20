@@ -61,6 +61,8 @@ final readonly class UpdateQuoteData
         public ?string $note = null,
         public ?int $commercialId = null,
         public bool $commercialIdSubmitted = false,
+        public ?int $commercialPartnerId = null,
+        public bool $commercialPartnerIdSubmitted = false,
         public ?int $reporterId = null,
         public bool $reporterIdSubmitted = false,
         public ?int $supervisorId = null,
@@ -113,6 +115,9 @@ final readonly class UpdateQuoteData
         // ricontatto", null clears it.
         public ?string $followUpDate = null,
         public bool $followUpDateSubmitted = false,
+        // Appended (spec 0404 part A): the system status picked from Offerte,
+        // translated to a working status by QuoteWorkflowStatusAssigner.
+        public ?int $systemStatusId = null,
     ) {}
 
     /**
@@ -130,6 +135,8 @@ final readonly class UpdateQuoteData
             note: array_key_exists('note', $data) ? $data['note'] : null,
             commercialId: self::nullableInt($data, 'commercial_id'),
             commercialIdSubmitted: array_key_exists('commercial_id', $data),
+            commercialPartnerId: self::nullableInt($data, 'commercial_partner_id'),
+            commercialPartnerIdSubmitted: array_key_exists('commercial_partner_id', $data),
             reporterId: self::nullableInt($data, 'reporter_id'),
             reporterIdSubmitted: array_key_exists('reporter_id', $data),
             supervisorId: self::nullableInt($data, 'supervisor_id'),
@@ -160,6 +167,7 @@ final readonly class UpdateQuoteData
             sourceIdSubmitted: array_key_exists('source_id', $data),
             followUpDate: $data['follow_up_date'] ?? null,
             followUpDateSubmitted: array_key_exists('follow_up_date', $data),
+            systemStatusId: self::nullableInt($data, 'quote_system_status_id'),
         );
     }
 
@@ -237,6 +245,10 @@ final readonly class UpdateQuoteData
 
         if ($this->commercialIdSubmitted) {
             $attributes['commercial_id'] = $this->commercialId;
+        }
+
+        if ($this->commercialPartnerIdSubmitted) {
+            $attributes['commercial_partner_id'] = $this->commercialPartnerId;
         }
 
         if ($this->reporterIdSubmitted) {

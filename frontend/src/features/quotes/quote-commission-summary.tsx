@@ -5,7 +5,7 @@ import { round2 } from '@/features/quotes/quote-totals'
 import { formatSignedQuoteAmount } from '@/features/quotes/quote-summary'
 import type { CommissionTotals } from './commission-calculator'
 
-const PAID_ROLES = ['commercial', 'reporter', 'supervisor'] as const
+const PAID_ROLES = ['commercial', 'commercial_partner', 'reporter', 'supervisor'] as const
 
 type Flow = 'in' | 'out'
 

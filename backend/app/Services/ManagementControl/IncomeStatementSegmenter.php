@@ -21,6 +21,7 @@ final class IncomeStatementSegmenter
         IncomeStatementFilters::SEGMENT_COMPANY_SITE => ['company_site_id', 'company_site_name'],
         IncomeStatementFilters::SEGMENT_OPERATIONAL_SITE => ['operational_site_id', 'operational_site_alias'],
         IncomeStatementFilters::SEGMENT_COMMERCIAL => ['commercial_id', 'commercial_name'],
+        IncomeStatementFilters::SEGMENT_COMMERCIAL_PARTNER => ['commercial_partner_id', 'commercial_partner_name'],
     ];
 
     public function __construct(private readonly IncomeStatementGrouper $grouper) {}

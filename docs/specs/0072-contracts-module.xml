@@ -119,6 +119,22 @@
       preventivo in `closed_won` NON riattiva da solo: serve l'azione esplicita
       "Riattiva contratto", gated su `contracts.reactivate`, che ripristina lo stato
       precedente. Nessun dato contrattuale viene mai cancellato automaticamente.
+
+      REV. 2026-11-20 (decisione utente: "se l'offerta non e' piu' vinta il contratto non deve
+      esserci"): all'uscita da `closed_won` un contratto NON LAVORATO viene ELIMINATO
+      (`ContractLifecycleManager::withdrawContract`), con activity `contract.removed` sull'offerta
+      (properties `contract_id`, `accepted_at`); il rientro in `closed_won` crea un contratto nuovo
+      (`accepted_at` = oggi). "Non lavorato" (`ContractUntouchedCheck`, letto sui dati, non
+      sull'activity log): `validated_at` e `terminated_at` nulli; stato (o
+      `status_before_suspension_id` se sospeso) uguale al predefinito attivo o alla riga di sistema
+      `new`; `renewal_date`, `expiry_date`, `payment_notes`, `comments` vuoti; nessun rinnovo,
+      nessun documento, nessuna commessa sulle righe dell'offerta. Un contratto lavorato viene
+      sospeso come prima. Vale anche verso `validated` (Vinto provvisorio). La migrazione legacy
+      chiama il lifecycle solo verso `closed_won` e quindi non elimina mai.
+      Pulizia una tantum dei contratti sospesi prima della revisione: comando
+      `contracts:remove-untouched-suspended` (`--dry-run`), stessi criteri e stessa eliminazione
+      (`ContractLifecycleManager::deleteContract`) sui contratti sospesi non lavorati di offerte
+      non piu' in `closed_won`; i lavorati restano sospesi. Idempotente.
     </decision>
     <decision id="D-4">
       Indicatori "in scadenza" / "da rinnovare": calcolati server-side confrontando

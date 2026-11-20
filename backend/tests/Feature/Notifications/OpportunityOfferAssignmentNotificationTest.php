@@ -38,10 +38,14 @@ if (! function_exists('offerAssignmentUserWith')) {
 }
 
 if (! function_exists('offerAssignmentRecipient')) {
-    // Sees both modules, so the link tells the two notifications apart.
+    // Sees both modules, so the link tells the two notifications apart; holds
+    // the assignment-notification permissions a seeded role carries (spec 0420).
     function offerAssignmentRecipient(): User
     {
-        return offerAssignmentUserWith(['opportunities.view', 'quotes.view']);
+        $user = offerAssignmentUserWith(['opportunities.view', 'quotes.view']);
+        grantAssignmentNotifications($user);
+
+        return $user;
     }
 }
 

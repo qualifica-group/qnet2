@@ -155,6 +155,16 @@ export function resolveSimplifiedOfferLine(
 }
 
 /**
+ * The covered categories whose offer Gestione Richieste shows (spec 0414):
+ * every id but those under the "hide the offer" rule, mirrored on every node
+ * server-side like `simplified_offer_line`. A category the cached tree does
+ * not know (yet) is kept: hiding on incomplete information is worse.
+ */
+export function resolveOfferVisibleCategoryIds(nodes: ProductCategoryTreeNode[], categoryIds: number[]): number[] {
+  return categoryIds.filter((categoryId) => findNode(nodes, categoryId)?.request_offer_hidden !== true)
+}
+
+/**
  * The ids a card row scoped to `rootCategoryId` may pick (spec 0132 D-1/D-2):
  * every `is_selectable` node in that root's own subtree, root included,
  * WITHOUT any business-function constraint — the function is derived

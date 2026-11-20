@@ -11,11 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "A contract is never created by hand: it is born when a quote moves to a **Closed (positive)** status, with an **Accepted at** date of that day and the **Default** status of **Contract Statuses**. It is not born if the product category is set to not generate contracts. If the quote leaves the positive status, the contract becomes **\"Sospeso\"** and QNet remembers the previous status.",
+          text: "A contract is never created by hand: it is born when a quote moves to a **Closed (positive)** status, with an **Accepted at** date of that day and the **Default** status of **Contract Statuses**. It is not born if the product category is set to not generate contracts. If the quote leaves the positive status and nothing has been done on the contract yet (still its initial status, not validated, no renewal or expiry date, payment notes or comments, no document, renewal or work order), the contract is **deleted** and the quote's **History** records **Contract removed (offer no longer won)**; if the quote is won again a new contract is born. If the contract has already been worked on, it becomes **\"Sospeso\"** and QNet remembers the previous status.",
         },
         {
           type: 'paragraph',
-          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Contract data** (Offer, Opportunity, Offer date) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the quote's Supervisor and Account managers) and **Company and sites**, then **Document and payment** and **Lifecycle**. The quote's data are read only and changed from the quote; Title, service lines, Payment notes, Renewal, Expiry and Comments are edited here.",
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Contract data** (Offer, Opportunity, Offer date) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Commercial partner, Reporter) and **Rewards**, then **Team** (the quote's Supervisor and Account managers) and **Company and sites**, then **Document and payment** and **Lifecycle**. The quote's data are read only and changed from the quote; Title, service lines, Payment notes, Renewal, Expiry and Comments are edited here. Among the tabs on the right, **Contract documents** is managed here; **Offer documents** (the files uploaded on the request in Request management or Enrollee management) and **Opportunity documents** are read-only.",
         },
       ],
     },
@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Validate contract**: set the **Validation date** (not in the future). At least one product line is required: if the contract has none, add it from the card before validating. It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza"): those contracts show **Program** instead, unless suspended.',
+            '**Validate contract**: set the **Validation date** (not in the future). At least one product line is required: if the contract has none, add it from the card before validating. When a category of the quote has **Contact transfer before the contract**, the quote must first be transferred with **Transfer contact** or **Transfer to another registry**, otherwise the validation is refused. It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza"): those contracts show **Program** instead, unless suspended.',
             '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**. With the **Cancelled** status every work order of the contract is closed, completed ones too, and stays closed if you reopen the contract. With any other status only the work orders still open are closed, and **Reopen contract** puts them back on the status they had. The work orders\' tasks do not change.',
             'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open, Pending or Closed (positive) (Validated): press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
             '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status. Reopening a Closed (positive) or Closed (negative) contract also clears the validation date and author, so the contract can be validated again; the previous values stay in **Activity history**.',
@@ -74,6 +74,16 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'If the save is refused (for example because of a locked line) the message appears on the line and your changes stay in the edit box, so you can fix them.',
+        },
+      ],
+    },
+    {
+      id: 'edit-quote-under-contract',
+      title: 'Title and rows of an offer under contract',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Editing the title or the rows of the offer from the contract detail changes an already accepted document: it requires the **Edit quotes under contract** permission and saving asks for confirmation in an **Offer under contract** popup. Without the permission the change is refused.",
         },
       ],
     },
@@ -200,7 +210,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Contracts** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the contracts where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the contracts of every category, otherwise only the contracts of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds contracts by client (registry) name: part of the name is enough, for example \"napoli\".",
+          text: "When it opens, the **Contracts** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the contracts where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the contracts of every category, otherwise only the contracts of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds contracts by client (registry) name: part of the name is enough, for example \"napoli\". Typing digits only also finds the contract with that exact **ID** (the hidden **ID** column), on top of the results whose code contains the number; the id from the old system is not searched.",
         },
         {
           type: 'paragraph',

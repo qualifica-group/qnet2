@@ -6,6 +6,8 @@
  * §6).
  */
 
+import { requestManagementDashboard } from './it-request-management-dashboard'
+
 export const requestManagement = {
   title: 'Gestione Richieste',
   subtitle: "Lavora le opportunità: verifica i contatti e completa i campi dinamici.",
@@ -21,7 +23,6 @@ export const requestManagement = {
     expectedCloseDate: 'Data chiusura prevista',
     managerGa1: 'Tutor',
     managers: 'Gestori account',
-    otherManagers: 'Altri gestori account',
     operationalSite: 'Sede operativa',
     firstName: 'Nome',
     lastName: 'Cognome',
@@ -144,6 +145,8 @@ export const requestManagement = {
         reporterSearch: 'Cerca un segnalatore',
         commercial: 'Commerciale',
         commercialSearch: 'Cerca un commerciale',
+        commercialPartner: 'Partner commerciale',
+        commercialPartnerSearch: 'Cerca un partner commerciale',
         operationalSite: 'Sede operativa',
         operationalSiteSearch: 'Cerca una sede',
         selectPlaceholder: 'Seleziona',
@@ -175,6 +178,22 @@ export const requestManagement = {
       save: 'Crea richiesta',
       saving: 'Creazione…',
       success: 'Richiesta creata.',
+      /** Spec 0411: one offer per parent category of the product lines. */
+      successPerRoot: 'Create {{count}} richieste, una per categoria madre.',
+      /** Spec 0411: shown before saving when the lines span several parent categories. */
+      /** Spec 0415: files queued in Nuova richiesta, uploaded onto the offers after the save. */
+      documents: {
+        title: 'Documenti',
+        description: 'I file vengono allegati alla richiesta al salvataggio.',
+        descriptionPerOffer: 'Verranno create più richieste: per ogni file scegli la richiesta (categoria madre) a cui allegarlo.',
+        pick: 'Scegli i file da allegare',
+        offerFor: 'Richiesta a cui allegare {{name}}',
+        offerOption: 'Richiesta {{root}}',
+        remove: 'Rimuovi {{name}}',
+        uploadFailed_one: 'Richiesta creata, ma il file {{names}} non è stato caricato: allegalo dal pannello della richiesta.',
+        uploadFailed_other: 'Richiesta creata, ma {{count}} file non sono stati caricati ({{names}}): allegali dal pannello della richiesta.',
+      },
+      rootSplitNotice: 'Attenzione: le linee di prodotto appartengono a {{count}} categorie madri ({{roots}}). Al salvataggio verranno create {{count}} richieste, una per categoria madre, sulla stessa opportunità.',
       validation: {
         productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
         productLineIncomplete: 'Seleziona una categoria genitore e una categoria prodotto per ogni riga.',
@@ -196,8 +215,15 @@ export const requestManagement = {
    */
   offerLines: {
     hintNoCategory: 'Scegli prima una categoria prodotto: limita i prodotti selezionabili.',
-    hintSimplified:
-      "Categoria semplificata: scegli il prodotto, quantità, prezzo unitario e aliquota IVA sono compilati automaticamente dal sistema.",
+    hintSimplified: 'Scegli il prodotto: quantità, prezzo e IVA li imposta il sistema.',
+    hiddenByCategory: "La categoria prodotto di questa richiesta nasconde l'offerta in Gestione Richieste.",
+    simplified: {
+      label: 'Prodotto',
+      placeholder: 'Scegli il prodotto…',
+      placeholderMany: 'Scegli i prodotti…',
+      remove: 'Togli',
+      indicativeValue: 'Valore indicativo (IVA inclusa)',
+    },
     editAction: 'Modifica le righe dell\'offerta',
     dialogTitle: 'Linee dell\'offerta',
     dialogDescription: 'Modifica prodotto, quantità, prezzo unitario e IVA delle righe di questa offerta.',
@@ -234,6 +260,8 @@ export const requestManagement = {
       reporterSearch: 'Cerca un segnalatore',
       commercial: 'Commerciale',
       commercialSearch: 'Cerca un commerciale',
+      commercialPartner: 'Partner commerciale',
+      commercialPartnerSearch: 'Cerca un partner commerciale',
       operationalSite: 'Sede operativa',
       operationalSiteSearch: 'Cerca una sede',
       selectPlaceholder: 'Seleziona',
@@ -295,10 +323,14 @@ export const requestManagement = {
       description: 'Linee prodotto della richiesta.',
       fieldLabel: 'Linee di prodotto',
       hint: 'Le categorie scelte qui filtrano i prodotti di interesse e determinano i campi specifici della richiesta al salvataggio.',
+      /** Spec 0411: the request is bound to one parent category. */
+      rootLocked: 'La richiesta appartiene alla categoria madre {{root}}: puoi scegliere solo sue categorie. Per un\'altra categoria crea una nuova richiesta.',
     },
     collaboration: {
       notesTab: 'Note',
       documentsTab: 'Documenti',
+      /** Spec 0415: the files already on the opportunity, read-only. */
+      opportunityDocumentsTab: 'Documenti opportunità',
       activityTab: 'Storico',
     },
     validation: {
@@ -396,81 +428,5 @@ export const requestManagement = {
       jobFailed: 'La generazione del report non è riuscita. Riprova.',
     },
   },
-  // Dashboard grafici (spec 0107): mostrato dalla pagina Statistiche Gestione Richieste
-  // (spec 0185), i nomi di categoria/operatore restano valori di dominio.
-  dashboard: {
-    regionLabel: 'Dashboard di Gestione Richieste',
-    pageForbidden: 'Non hai il permesso di visualizzare le Statistiche Gestione Richieste.',
-    editFilters: 'Filtri',
-    // Spec 0192: periodi con un clic nella toolbar.
-    periods: {
-      label: 'Periodo',
-      today: 'Oggi',
-      yesterday: 'Ieri',
-      last7Days: 'Ultimi 7 giorni',
-      thisMonth: 'Questo mese',
-      lastMonth: 'Mese scorso',
-      all: 'Tutto',
-      custom: 'Personalizzato',
-    },
-    tabsLabel: 'Sezioni delle statistiche',
-    overviewTab: 'Panoramica',
-    // Chip dei filtri applicati sopra i grafici (direttiva utente 2026-09-18).
-    applied: {
-      title: 'Filtri applicati',
-      period: 'Periodo',
-      periodValue: '{{from}} – {{to}}',
-      // Spec 0169 D-5: estremi aperti.
-      periodFrom: 'dal {{from}}',
-      periodTo: 'fino al {{to}}',
-      periodAll: 'Tutto il periodo',
-      categories: 'Categorie',
-      sites: 'Sedi',
-      operators: 'Operatori',
-      rowMode: 'Righe',
-      more: '+{{count}}',
-      allOperatorsOfSites: 'Tutti quelli delle sedi scelte',
-    },
-    noCategories:
-      'Nessun dato da mostrare: non ci sono ancora richieste nelle categorie incluse nel report. La dashboard si popolerà non appena ne verrà registrata una.',
-    errors: {
-      network: 'Impossibile contattare il server: verifica la connessione e riprova.',
-      invalidFilters:
-        'I filtri applicati non sono più validi (ad esempio una categoria non è più disponibile). Aggiornali dal pulsante Filtri.',
-      generic: 'Impossibile caricare la dashboard per un errore del server. Riprova tra qualche istante.',
-    },
-    empty: 'Nessun grafico da mostrare per questa selezione.',
-    // Spec 0141: una categoria reportable puo' non avere colonne configurate.
-    tilesEmpty: 'Nessuna colonna configurata per questa categoria.',
-    overall: 'Totale complessivo',
-    indicatorsChartTitle: 'Profilo indicatori',
-    // Spec 0192 D-4: confronto col periodo precedente di pari durata.
-    trend: {
-      new: 'Nuovo',
-      vsPrevious: 'Periodo precedente: {{value}}',
-    },
-    shares: {
-      title: 'Ripartizione per categoria',
-      others: 'Altre categorie',
-      item: '{{label}}: {{value}} ({{percent}}%)',
-      lead: '{{label}} {{percent}}%',
-      more: '+{{count}} altre',
-    },
-    breakdown: {
-      title: 'Dettaglio per stato attuale',
-      trigger: 'Dettaglio per stato di {{label}}',
-      item: '{{label}}: {{value}}',
-    },
-    heatmap: {
-      title: 'Mappa categorie × indicatori',
-      description: "Colore più intenso = valore più alto per quell'indicatore. Clicca una categoria per aprirla.",
-      category: 'Categoria',
-      notConfigured: 'Non configurato',
-    },
-    leaderboard: {
-      title: 'Classifica operatori',
-      rank: 'Pos.',
-      operator: 'Operatore',
-    },
-  },
+  dashboard: requestManagementDashboard,
 }

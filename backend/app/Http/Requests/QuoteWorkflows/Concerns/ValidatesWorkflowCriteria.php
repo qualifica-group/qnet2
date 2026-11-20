@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\QuoteWorkflows\Concerns;
 
 use App\DataObjects\QuoteWorkflows\CreateQuoteWorkflowData;
-use App\Enums\WorkflowStatusGroup;
+use App\DataObjects\QuoteWorkflows\WorkflowStatusLink;
+use App\DataObjects\QuoteWorkflows\WorkflowStatusNotify;
 use App\Enums\WorkflowStatusSystemKey;
 use App\Models\QuoteWorkflow;
 use App\Support\QuoteWorkflows\QuoteCriterionFieldRegistry;
@@ -59,8 +60,9 @@ trait ValidatesWorkflowCriteria
             'statuses.*.name' => ['required', 'string', 'max:191'],
             'statuses.*.description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'statuses.*.color' => ['nullable', 'string', 'max:32'],
-            'statuses.*.group' => ['required', Rule::enum(WorkflowStatusGroup::class)],
+            ...WorkflowStatusLink::rules(),
             'statuses.*.requires_note' => ['sometimes', 'boolean'],
+            ...WorkflowStatusNotify::rules(),
             // Create carries the pinned rows tagged open/closed_won/
             // closed_lost so the user can name them up front (AC-004); a custom
             // row is null/absent.

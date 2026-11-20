@@ -28,6 +28,7 @@ function persistedValues(opportunity: OpportunityDetailWithPermissions): Opportu
     registry: opportunity.registry,
     referent: opportunity.referent,
     commercial: opportunity.commercial,
+    commercial_partner: opportunity.commercial_partner,
     reporter: opportunity.reporter,
     lead: opportunity.lead,
     supervisor: opportunity.supervisor,

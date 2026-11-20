@@ -10,7 +10,7 @@ use App\Models\Quote;
 
 final class QuoteCommissionSummaryCalculator
 {
-    /** @return array{commercial: string, reporter: string, supervisor: string, supplier: string} */
+    /** @return array{commercial: string, commercial_partner: string, reporter: string, supervisor: string, supplier: string} */
     public function totals(Quote $quote): array
     {
         $totals = $quote->lines()
@@ -27,6 +27,7 @@ final class QuoteCommissionSummaryCalculator
 
         return [
             'commercial' => $this->format($totals[CommissionRecipientRole::Commercial->value] ?? 0),
+            'commercial_partner' => $this->format($totals[CommissionRecipientRole::CommercialPartner->value] ?? 0),
             'reporter' => $this->format($totals[CommissionRecipientRole::Reporter->value] ?? 0),
             'supervisor' => $this->format($totals[CommissionRecipientRole::Supervisor->value] ?? 0),
             'supplier' => $this->format($totals[CommissionRecipientRole::Supplier->value] ?? 0),

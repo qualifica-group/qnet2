@@ -53,6 +53,7 @@ export function QuoteOfferTab({ control, quoteId, ...props }: QuoteOfferTabProps
 
   const opportunityId = useWatch({ control, name: 'opportunity_id' })
   const commercialId = useWatch({ control, name: 'commercial_id' })
+  const commercialPartnerId = useWatch({ control, name: 'commercial_partner_id' })
   const reporterId = useWatch({ control, name: 'reporter_id' })
   const supervisorId = useWatch({ control, name: 'supervisor_id' })
   // Spec 0145 (D-1): the sibling Cost tab's live rows, resolved to a
@@ -60,8 +61,8 @@ export function QuoteOfferTab({ control, quoteId, ...props }: QuoteOfferTabProps
   const costLines = useWatch({ control, name: 'cost_lines' })
   const allocatedCostNetMap = useMemo(() => allocatedCostNetByOfferLineKey(costLines), [costLines])
   const commissionContext = useMemo<QuoteCommissionContext>(
-    () => ({ quoteId, commercialId, reporterId, supervisorId }),
-    [quoteId, commercialId, reporterId, supervisorId],
+    () => ({ quoteId, commercialId, commercialPartnerId, reporterId, supervisorId }),
+    [quoteId, commercialId, commercialPartnerId, reporterId, supervisorId],
   )
 
   const opportunityQuery = useQuery({

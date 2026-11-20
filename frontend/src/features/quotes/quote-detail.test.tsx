@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { quoteLineFixture, WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
+import { quoteLineFixture, SYSTEM_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
@@ -63,13 +63,16 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
     follow_up_date: null,
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
-    quote_workflow_status_id: 1,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
-    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
+    registry_transfer: null,
+    quote_system_status_id: 1,
+    quote_system_status: SYSTEM_STATUS_OPEN,
+    quote_system_statuses: [SYSTEM_STATUS_OPEN],
     applicable_attributes: [],
     attribute_layout: null,
     commercial_id: null,
+    commercial_partner_id: null,
     commercial: null,
+    commercial_partner: null,
     reporter_id: null,
     reporter: null,
     supervisor_id: null,
@@ -320,6 +323,27 @@ describe('QuoteDetailView — Gestori Account', () => {
 
 
 describe('QuoteDetailView — related records', () => {
+  // Spec 0417 AC-022
+  it('shows the Commercial partner right after the Commercial', () => {
+    renderDetail(
+      <QuoteDetailView
+        quote={quoteFixture({
+          commercial_id: 3,
+          commercial: { id: 3, name: 'Bruno Bianchi' },
+          commercial_partner_id: 7,
+          commercial_partner: { id: 7, name: 'Lia Verdi' },
+        })}
+      />,
+    )
+
+    const labels = screen.getAllByText(/^Commercial( partner)?$/).filter((node) => node.tagName === 'DT')
+    const rowLabels = labels.map((node) => node.textContent)
+    const commercial = labels[rowLabels.indexOf('Commercial')]
+    const partner = labels[rowLabels.indexOf('Commercial partner')]
+    expect(commercial.parentElement?.nextElementSibling?.querySelector('dt')).toBe(partner)
+    expect(partner.nextElementSibling).toHaveTextContent('Lia Verdi')
+  })
+
   it('links the anagrafica, the referents, the company and both sites to their records', () => {
     renderDetail(
       <QuoteDetailView
@@ -432,6 +456,38 @@ describe('QuoteDetailView — Margine per prodotto', () => {
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
     expect(within(screen.getByRole('tabpanel', { name: 'Costs' })).getByText('Generic cost')).toBeInTheDocument()
+  })
+})
+
+describe('QuoteDetailView — costs and margins (spec 0412)', () => {
+  it('shows the Costs tab, the cost and margin tiles and cards with view_costs', () => {
+    const quote = quoteFixture({ permissions: { ...BASE_PERMISSIONS, actions: { ...BASE_PERMISSIONS.actions, view_costs: true } } })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    expect(screen.getByRole('tab', { name: 'Costs' })).toBeInTheDocument()
+    expect(screen.getByText('Net cost')).toBeInTheDocument()
+    expect(screen.getByText('Net margin')).toBeInTheDocument()
+    expect(screen.getByText('Expected cost')).toBeInTheDocument()
+    expect(screen.getByText('Expected margin')).toBeInTheDocument()
+  })
+
+  it('hides every cost and margin without view_costs, when the server omits them', () => {
+    const quote: QuoteDetailWithPermissions = {
+      ...quoteFixture(),
+      cost_lines: undefined,
+      offer_lines: [quoteLineFixture({ id: 1, product_id: 7, net_amount: '100.00' })],
+      summary: { revenue: { net: '100.00', vat: '22.00', gross: '122.00' }, product_typologies: [] },
+      permissions: { ...BASE_PERMISSIONS, actions: { ...BASE_PERMISSIONS.actions, view_costs: false } },
+    }
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    expect(screen.getByRole('tab', { name: 'Offer' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Costs' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Net cost')).not.toBeInTheDocument()
+    expect(screen.queryByText('Net margin')).not.toBeInTheDocument()
+    expect(screen.queryByText('Expected cost')).not.toBeInTheDocument()
+    expect(screen.queryByText('Expected margin')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Show advanced data' })).not.toBeInTheDocument()
   })
 })
 

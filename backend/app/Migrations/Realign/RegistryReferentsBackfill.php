@@ -12,10 +12,12 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * One-off re-import of "Referente 1/2" on the anagrafiche already migrated (spec 0398).
+ * One-off re-import of "Referente 1/2" on the anagrafiche already migrated (spec 0398),
+ * Referente 2 as the secondario (spec 0408).
  * Every anagrafica runs in its own transaction, committed only with `--apply`: the
  * simulation does the same work and rolls it back, so its report is exact. Nothing is
- * logged in the activity log, so a principale changed by hand stays recognisable.
+ * logged in the activity log, so a principale or secondario changed by hand stays
+ * recognisable.
  */
 final class RegistryReferentsBackfill
 {
@@ -28,13 +30,13 @@ final class RegistryReferentsBackfill
 
     /**
      * @param  callable(int): void  $onPage  called with the number of anagrafiche read
-     * @return array{linked: list<list<string|int|bool|null>>, primaries: list<list<string|int|null>>, skipped: list<list<string|int|null>>, read: int, kept_manual: int}
+     * @return array{linked: list<list<string|int|bool|null>>, primaries: list<list<string|int|null>>, secondaries: list<list<string|int|null>>, skipped: list<list<string|int|null>>, read: int, kept_manual: int}
      *
      * @throws ExternalApiException the legacy did not answer: the run stops
      */
     public function run(bool $apply, User $actor, callable $onPage): array
     {
-        $result = ['linked' => [], 'primaries' => [], 'skipped' => [], 'read' => 0, 'kept_manual' => 0];
+        $result = ['linked' => [], 'primaries' => [], 'secondaries' => [], 'skipped' => [], 'read' => 0, 'kept_manual' => 0];
 
         Registry::query()->whereNotNull('old_id')
             ->chunkById(LegacyRealignClient::MAX_IDS_PER_REQUEST, function ($registries) use ($apply, $actor, $onPage, &$result): void {
@@ -59,7 +61,7 @@ final class RegistryReferentsBackfill
 
     /**
      * @param  array<string, mixed>  $legacy
-     * @param  array{linked: list<list<string|int|bool|null>>, primaries: list<list<string|int|null>>, skipped: list<list<string|int|null>>, read: int, kept_manual: int}  $result
+     * @param  array{linked: list<list<string|int|bool|null>>, primaries: list<list<string|int|null>>, secondaries: list<list<string|int|null>>, skipped: list<list<string|int|null>>, read: int, kept_manual: int}  $result
      */
     private function backfill(Registry $registry, array $legacy, bool $apply, User $actor, array &$result): void
     {
@@ -88,6 +90,10 @@ final class RegistryReferentsBackfill
         if ($outcome['primary'] !== null) {
             $primary = $outcome['primary'];
             $result['primaries'][] = [...$row, $primary['old']?->name, $primary['new']?->name, $primary['reason']];
+        }
+
+        if ($outcome['secondary'] !== null) {
+            $result['secondaries'][] = [...$row, $outcome['secondary']['old']?->name, $outcome['secondary']['new']->name];
         }
 
         $result['kept_manual'] += $outcome['kept_manual'] ? 1 : 0;

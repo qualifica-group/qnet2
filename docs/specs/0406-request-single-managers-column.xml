@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0406-request-single-managers-column" status="approved" owner="nicola" date="2026-11-16">
+
+  <goal>
+    In Gestione Richieste e Gestione Iscritti i gestori account stanno in un'unica colonna "Gestori account": niente
+    piu' colonne Operatore, Tutor, Operatore APL o una per posizione.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-16: "Unificare gestori account in un unica colonna in gestione richieste e gestione
+        iscritti, non ci saranno piu' colonne operatore, operatore APL ecc ecc". Supera la spec 0382 per intero (colonne per
+        posizione, nomi per linguetta, "Altri gestori account" della D-11).
+    D-2 L'unica colonna e' `managers` ("Gestori account"), uguale in ogni linguetta ("Tutte", categoria, radice): tutto il
+        team di `quote_user`, visibile, dopo "Fonte", filtro set per nome su qualunque posizione con "(Vuoti)", non
+        ordinabile, modificabile dalla cella come elenco di persone (`manager_slots`, RequestTeamCellWriter: chi resta
+        tiene la posizione, i nuovi prendono la prima libera). Comportamento della spec 0373 invariato.
+    D-3 Spariscono dal catalogo `operator_ga2` e `manager_ga{n}` (n = 1..MAX), dalle righe i loro valori e
+        `assignment_category_ids` (serviva solo al selettore Operatore filtrato per sede e competenza, che non esiste
+        piu'), dal motore celle la chiave `permissionField` e da `updateWork` la chiave `manager_positions` (le usavano
+        solo quelle colonne). `ManagerPositions::slotsFor/slotsFromIds` tornano senza posizioni riservate.
+    D-4 Restano invariati: visibilita' per team (spec 0373), pannello di lavoro, azione massiva "Assegna Tutor"
+        (spec 0104, posizione 1), assegnazione e trasferimento, la posizione 2 che proietta `quotes.operator_id`, le
+        notifiche di assegnazione dei nuovi gestori, le voci di cronologia gia' scritte (`manager_ga{n}_id`).
+    D-5 La PATCH di cella continua ad accettare `product_category_id`/`product_category_branch_id` (la riga restituita
+        porta le colonne flessibili della linguetta); non cambia piu' la scrittura dei gestori.
+    D-6 Viste, filtri e preferenze salvati sulle colonne tolte: le chiavi sconosciute sono gia' ignorate dalle allow-list
+        (TablePreferenceService, TableFilterStateService, TableFilterViewService). Nessuna pulizia del DB.
+  </context>
+
+  <data_contract>
+    `GET /tables/{request-management|enrollee-management}/columns`: nessuna colonna `operator_ga2`/`manager_ga{n}`; una
+    sola `managers` con label `requestManagement.columns.managers` in ogni linguetta. Le righe non portano piu'
+    `operator_ga2`, `manager_ga{n}`, `assignment_category_ids`; `managers` resta [{id, name, avatar_url, position}].
+    `PATCH .../rows/{row}` con `column: managers`, valore = lista di id utente. Nessuna migrazione.
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">In "Tutte", in una categoria con etichette e in una linguetta di radice la config porta la sola colonna gestori `managers` "Gestori account", visibile; nessuna `operator_ga2`/`manager_ga{n}`.</criterion>
+    <criterion id="AC-002">In una categoria con etichette la riga `managers` porta tutto il team, filtro e valori distinti leggono ogni posizione.</criterion>
+    <criterion id="AC-003">Dalla cella `managers` in una linguetta con etichette si scrive tutto il team; la posizione 2 continua ad aggiornare `operator_id`.</criterion>
+    <criterion id="AC-004">Una PATCH su `operator_ga2` o `manager_ga1` e' rifiutata (colonna sconosciuta).</criterion>
+    <criterion id="AC-005">Vale anche per Gestione Iscritti.</criterion>
+  </acceptance>
+</spec>

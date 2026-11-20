@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
-use App\Enums\ProformaRequestStatus;
 use App\Enums\WorkOrderType;
 use App\Enums\WorkOrderWorkPhase;
 use App\Models\Registry;
@@ -14,12 +13,16 @@ use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
+use App\Tables\WorkOrders\WorkOrderLinePaymentStatusColumn;
+use App\Tables\WorkOrders\WorkOrderProformaStatusColumn;
 use App\Tables\WorkOrders\WorkOrderRenewalColumn;
 use App\Tables\WorkOrders\WorkOrderWorkflowStatusColumn;
 use App\Tables\WorkOrders\WorkOrderWorkPhaseColumn;
@@ -51,13 +54,10 @@ use Illuminate\Support\Facades\Gate;
  */
 class WorkOrdersTableDefinition extends AbstractTableDefinition
 {
+    use SearchesByIdNotLegacyId;
+
     /** Computed from the manual progress entries (spec 0321), sorted by WorkOrderStatusResolver. */
     private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
-
-    /** Spec 0193: the proforma request state, gated by its create permission. */
-    private const string PROFORMA_STATUS_COLUMN = 'proforma_status';
-
-    private const string PROFORMA_CREATE_PERMISSION = 'proforma-requests.create';
 
     /** Joins the distinct offers / clients of a multi-offer commessa in one cell (spec 0267, D-8). */
     private const string MULTI_SEPARATOR = ' · ';
@@ -72,6 +72,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderRenewalColumn $renewalColumn,
         private readonly WorkOrderAdvancedFilterApplier $advancedFilterApplier,
         private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
+        private readonly WorkOrderProformaStatusColumn $proformaStatusColumn,
+        private readonly WorkOrderLinePaymentStatusColumn $linePaymentStatusColumn,
     ) {}
 
     /**
@@ -133,41 +135,19 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'quoteLines.product',
             // Spec 0267, D-8: only multi-offer rows read their lines' offers.
             'quoteLines.quote.opportunity.registry',
+            // The "Stato pagamento" cell: each line's status and product typology.
+            ...WorkOrderLinePaymentStatusColumn::EAGER_LOADS,
         ]));
 
-        // Spec 0193, D-11: the proforma state is two EXISTS subqueries, never
-        // a query per row, and only computed for actors who may raise requests.
-        if ($this->mayRequestProforma(Auth::user())) {
-            $query->withExists([
-                'proformaRequests as has_proforma_request',
-                'proformaRequests as has_pending_proforma_request' => fn (Builder $requests) => $requests->where('status', ProformaRequestStatus::Pending),
-            ]);
+        // Spec 0363: badges of the `documents` and `notes` row actions.
+        $query->withCount([...DocumentsCountColumn::own(), ...NotesCountColumn::of('notes')]);
+
+        // Spec 0407: the "€" state, only for the actors who see that column.
+        if (WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())) {
+            $this->proformaStatusColumn->withFlags($query);
         }
 
-        // Spec 0243, D-1: same rule as the delete guard, as EXISTS flags.
-        $query->withAccountingDocumentFlags();
-
-        // Spec 0363: badges of the `documents` and `notes` row actions.
-        $query->withCount([...DocumentsCountColumn::own(), 'notes']);
-
         return WorkOrderVisibilityScope::scopeToActor($query, Auth::user());
-    }
-
-    private function mayRequestProforma(?User $actor): bool
-    {
-        return $actor?->can(self::PROFORMA_CREATE_PERMISSION) === true;
-    }
-
-    /**
-     * none | pending (at least one pending) | issued (requests exist, none pending).
-     */
-    private function proformaStatus(WorkOrder $row): string
-    {
-        return match (true) {
-            (bool) $row->has_pending_proforma_request => ProformaRequestStatus::Pending->value,
-            (bool) $row->has_proforma_request => ProformaRequestStatus::Issued->value,
-            default => 'none',
-        };
     }
 
     /**
@@ -175,7 +155,10 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function columns(): array
     {
-        return WorkOrderColumnCatalog::columns();
+        // Spec 0407: without the "€" column the actor can neither sort nor filter by it.
+        return WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())
+            ? [...WorkOrderColumnCatalog::columns(), WorkOrderColumnCatalog::proformaStatusColumn()]
+            : WorkOrderColumnCatalog::columns();
     }
 
     /**
@@ -183,7 +166,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function filters(): array
     {
-        return WorkOrderColumnCatalog::filters();
+        return WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())
+            ? [...WorkOrderColumnCatalog::filters(), ['columnId' => WorkOrderProformaStatusColumn::COLUMN, 'type' => 'set']]
+            : WorkOrderColumnCatalog::filters();
     }
 
     /**
@@ -253,7 +238,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     /**
      * Badge metadata for the `type`/`status` columns, driven by
      * WorkOrderType/WorkOrderWorkPhase (mirrors ProductsTableDefinition's own
-     * `product_type`).
+     * `product_type`); for `line_payment_statuses` the labels of its
+     * typology + status filter values.
      *
      * @return array<int, array<string, mixed>>|null
      */
@@ -262,6 +248,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'type' => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderType::options()),
             WorkOrderWorkPhaseColumn::COLUMN => array_map(static fn ($meta): array => $meta->toArray(), WorkOrderWorkPhase::options()),
+            WorkOrderLinePaymentStatusColumn::COLUMN => $this->linePaymentStatusColumn->badges(),
             default => null,
         };
     }
@@ -282,13 +269,15 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      * exposed to the frontend config under the `work_order_type`/
      * `work_order_work_phase` enum keys (config/config.php form_enums), so the
      * client localizes the badge label from its own i18n resources instead
-     * of the backend-supplied one.
+     * of the backend-supplied one. `proforma_status` (spec 0407) has no enum
+     * class: its key only names the i18n labels of the filter values.
      */
     protected function enumKeyFor(string $columnId, User $actor): ?string
     {
         return match ($columnId) {
             'type' => 'work_order_type',
             WorkOrderWorkPhaseColumn::COLUMN => 'work_order_work_phase',
+            WorkOrderProformaStatusColumn::COLUMN => WorkOrderProformaStatusColumn::ENUM_KEY,
             default => null,
         };
     }
@@ -304,10 +293,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         /** @var WorkOrder $row */
         $progress = $this->statusResolver->progress($row);
 
-        $proforma = $this->mayRequestProforma($actor) ? [self::PROFORMA_STATUS_COLUMN => $this->proformaStatus($row)] : [];
-
         $multi = $row->isMultiQuote();
         $sourceQuotes = $multi ? $this->sourceQuotes->fromLoadedLines($row) : null;
+        $proforma = WorkOrderProformaStatusColumn::isVisibleTo($actor)
+            ? [WorkOrderProformaStatusColumn::COLUMN => $this->proformaStatusColumn->project($row)]
+            : [];
 
         return [
             ...$proforma,
@@ -329,6 +319,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'is_force_closed' => $row->is_force_closed,
             WorkOrderWorkPhaseColumn::COLUMN => $this->workPhaseColumn->project($row),
             ...$this->workflowStatusColumn->project($row),
+            WorkOrderLinePaymentStatusColumn::COLUMN => $this->linePaymentStatusColumn->project($row),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,
             'created_at' => $row->created_at,
@@ -375,58 +366,33 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Allowed action keys for a single row, via WorkOrderPolicy.
+     * Allowed action keys for a single row (spec 0405, the legacy "Azioni"):
+     * everything opens the commessa, so `view` gates them all; each tab of
+     * the menu keeps its own detail-tab gate. `delete` follows the policy
+     * (permission + perimeter, user request 2026-11-19); a commessa with
+     * accounting documents still answers 409 on the delete itself.
      *
      * @return array<int, string>
      */
     public function actionsFor(User $actor, Model $row): array
     {
         /** @var WorkOrder $row */
-        $allowed = [];
-
-        $visible = Gate::forUser($actor)->allows('view', $row);
-
-        if ($visible) {
-            $allowed[] = 'view';
+        if (! Gate::forUser($actor)->allows('view', $row)) {
+            return [];
         }
 
-        // Spec 0363: the detail tabs' rules. Reading the notes is exactly
-        // `view` (WorkOrderNotable::authorizeRead = permission + visibility).
-        if ($visible && Gate::forUser($actor)->allows('viewDocuments', $row)) {
+        $allowed = ['view', 'team', 'info', 'notes'];
+
+        if ($actor->can('tasks.viewAny')) {
+            $allowed[] = 'tasks';
+        }
+
+        if (Gate::forUser($actor)->allows('viewDocuments', $row)) {
             $allowed[] = 'documents';
         }
 
-        if ($visible) {
-            $allowed[] = 'notes';
-        }
-
-        // Spec 0193: offered even once issued, so the row shows the yellow,
-        // non-clickable state; `proforma_status` drives that on the client.
-        if ($visible && $this->mayRequestProforma($actor)) {
-            $allowed[] = 'proforma';
-        }
-
-        // Spec 0321: the progress dialog, writable only with `update`.
-        if ($visible) {
-            $allowed[] = 'progress';
-        }
-
-        // Spec 0352: only while the work is ongoing (spec 0395 phase).
-        if (Gate::forUser($actor)->allows('requestUpdate', $row) && $row->work_phase->isOngoing()) {
-            $allowed[] = 'request_update';
-        }
-
-        if (! $row->hasAccountingDocuments() && Gate::forUser($actor)->allows('delete', $row)) {
+        if (Gate::forUser($actor)->allows('delete', $row)) {
             $allowed[] = 'delete';
-        }
-
-        if (Gate::forUser($actor)->allows('viewActivity', $row)) {
-            $allowed[] = 'activity';
-        }
-
-        // Exactly one of the two, by the row's own closure state.
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = $row->is_force_closed ? 'reopen' : 'force_close';
         }
 
         return $allowed;

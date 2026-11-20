@@ -42,6 +42,8 @@ if (! function_exists('contractShowUserWith')) {
 
         // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1): see every contract.
         $user->givePermissionTo(Permission::findOrCreate('contracts.viewAll'));
+        // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the offer's costs stay visible.
+        $user->givePermissionTo(Permission::findOrCreate('quotes.viewCosts'));
 
         return $user;
     }

@@ -4,6 +4,7 @@ namespace App\Services\Statuses;
 
 use App\Models\ContractStatus;
 use App\Models\PipelineStatus;
+use App\Models\QuoteSystemStatus;
 use App\Models\RewardStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +47,7 @@ class StatusOrderManager
      * in the same transaction so they always stay last, in their declared
      * order.
      *
-     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>|class-string<QuoteSystemStatus>  $modelClass
      */
     public function placeNew(string $modelClass): int
     {
@@ -68,9 +69,9 @@ class StatusOrderManager
      * missing) — validated here so the guard holds regardless of caller
      * (defense in depth beyond the FormRequest's own `distinct` rule).
      *
-     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>|class-string<QuoteSystemStatus>  $modelClass
      * @param  array<int, int>  $orderedIds
-     * @return Collection<int, PipelineStatus|RewardStatus|ContractStatus
+     * @return Collection<int, PipelineStatus|RewardStatus|ContractStatus|QuoteSystemStatus>
      *
      * @throws HttpException 422
      */
@@ -98,7 +99,7 @@ class StatusOrderManager
      * STEP apart from 0, and returns the last one's sort_order — i.e. the
      * slot the first custom row sits STEP after.
      *
-     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>|class-string<QuoteSystemStatus>  $modelClass
      */
     private function placeHead(string $modelClass): int
     {
@@ -118,7 +119,7 @@ class StatusOrderManager
      * length alone (placeHead() guarantees the rows sit exactly there) — read
      * by placeNew() when the table carries no custom row yet.
      *
-     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>|class-string<QuoteSystemStatus>  $modelClass
      */
     private function headSequenceEnd(string $modelClass): int
     {
@@ -130,7 +131,7 @@ class StatusOrderManager
      * STEP apart, starting right after $lastCustomOrder (the last custom
      * row's sort_order, or the head sequence's end when there is none).
      *
-     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>|class-string<QuoteSystemStatus>  $modelClass
      */
     private function bumpTail(string $modelClass, int $lastCustomOrder): void
     {
@@ -147,7 +148,7 @@ class StatusOrderManager
      * $orderedIds must be exactly the custom (non-system) id set: no
      * duplicates, no system-row id, none missing.
      *
-     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>|class-string<QuoteSystemStatus>  $modelClass
      * @param  array<int, int>  $orderedIds
      *
      * @throws HttpException 422

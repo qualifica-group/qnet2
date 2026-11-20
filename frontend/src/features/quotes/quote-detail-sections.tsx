@@ -61,12 +61,12 @@ export function QuoteDetailSections({ quote, editor }: QuoteDetailSectionsProps)
               title: quote.title,
               quoteDate: quote.quote_date,
               followUpDate: quote.follow_up_date ?? null,
-              status: quote.quote_workflow_status,
+              status: quote.quote_system_status,
               opportunity: { id: quote.opportunity.id, name: quote.opportunity.name },
             }}
             control={control}
             inline={inline}
-            status={{ statuses: quote.quote_workflow_statuses, originalStatusId: quote.quote_workflow_status_id }}
+            status={{ statuses: quote.quote_system_statuses, originalStatusId: quote.quote_system_status_id }}
           />
         }
         context={
@@ -81,6 +81,7 @@ export function QuoteDetailSections({ quote, editor }: QuoteDetailSectionsProps)
           <QuoteContactsSection
             derived={{ registry: quote.registry ?? null, referent: quote.referent ?? null }}
             commercial={quote.commercial}
+            commercialPartner={quote.commercial_partner}
             reporter={quote.reporter}
             rewards={quote.rewards ?? []}
             form={form}

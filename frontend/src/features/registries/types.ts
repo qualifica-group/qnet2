@@ -73,6 +73,9 @@ export interface RegistryDetail {
   /** Spec 0330: one of `referent_ids` (the first inserted by default); null only without referents. */
   primary_referent_id: number | null
   primary_referent: ReferenceRef | null
+  /** Spec 0408: Referente 2, one of `referent_ids` other than the principale, or null. */
+  secondary_referent_id: number | null
+  secondary_referent: ReferenceRef | null
   /** Filled manager ids, ordered by G.A. position. */
   manager_ids: number[]
   /** Managers as ordered "G.A. n" cards (name + position + primary contacts). */
@@ -87,6 +90,8 @@ export interface RegistryDetail {
   supervisor: ReferenceRef | null
   commercial_id: number | null
   commercial: ReferenceRef | null
+  commercial_partner_id: number | null
+  commercial_partner: ReferenceRef | null
   reporter_id: number | null
   reporter: ReferenceRef | null
   vat_group: string | null
@@ -129,10 +134,13 @@ export interface CreateRegistryPayload {
   referent_ids?: number[]
   /** Spec 0330: must be one of `referent_ids`; omitted/null = the first referent. */
   primary_referent_id?: number | null
+  /** Spec 0408: one of `referent_ids`, not the principale; null = none. */
+  secondary_referent_id?: number | null
   /** Ordered, gap-aware G.A. slots: index+1 = G.A. n, `null` = empty slot. */
   manager_slots?: (number | null)[]
   supervisor_id?: number | null
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   reporter_id?: number | null
   vat_group?: string | null
   is_supplier: boolean
@@ -159,10 +167,13 @@ export interface UpdateRegistryPayload {
   referent_ids?: number[]
   /** Spec 0330: must be one of `referent_ids`; omitted/null = the first referent. */
   primary_referent_id?: number | null
+  /** Spec 0408: one of `referent_ids`, not the principale; null = none. */
+  secondary_referent_id?: number | null
   /** Ordered, gap-aware G.A. slots: index+1 = G.A. n, `null` = empty slot. */
   manager_slots?: (number | null)[]
   supervisor_id?: number | null
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   reporter_id?: number | null
   vat_group?: string | null
   is_supplier?: boolean

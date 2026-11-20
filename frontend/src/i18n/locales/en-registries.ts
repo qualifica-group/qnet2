@@ -19,6 +19,7 @@ export const registries = {
     size_class: 'Size class',
     primary_contact: 'Primary contact',
     commercial: 'Commercial',
+    commercial_partner: 'Commercial partner',
     supervisor: 'Supervisor',
     reporter: 'Reporter',
     managers: 'Operators',
@@ -38,6 +39,7 @@ export const registries = {
     details: 'Details',
     // Badge on the main referent's card (spec 0330).
     primaryReferentBadge: 'Main',
+    secondaryReferentBadge: 'Secondary',
     // Read-only tab of the registry's documents on the Opportunity, Quote and
     // Work order details (spec 0173).
     registryDocumentsTab: 'Registry documents',
@@ -79,6 +81,9 @@ export const registries = {
     referentsRemove: 'Remove referent',
     primaryReferent: 'Main referent',
     primaryReferentPlaceholder: 'Select the main referent…',
+    secondaryReferent: 'Secondary referent',
+    secondaryReferentPlaceholder: 'Select the secondary referent…',
+    secondaryReferentNone: 'None',
     managers: 'Account managers',
     managersPlaceholder: 'Select account managers…',
     managersSearch: 'Search account managers…',
@@ -97,6 +102,8 @@ export const registries = {
     supervisorPlaceholder: 'Select a supervisor…',
     commercial: 'Commercial',
     commercialPlaceholder: 'Select a commercial referent…',
+    commercialPartner: 'Commercial partner',
+    commercialPartnerPlaceholder: 'Select a commercial partner…',
     reporter: 'Reporter',
     reporterPlaceholder: 'Select a reporter…',
     vatGroup: 'VAT group',

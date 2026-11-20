@@ -37,6 +37,7 @@ final class AgentSalesReportColumnCatalog
             self::column('quote_workflow_status', 'text', filter: 'set'),
             self::column('revenue_net', 'number', filter: 'number'),
             self::column('commercial', 'text', filter: 'set'),
+            self::column('commercial_partner', 'text', filter: 'set'),
             self::column('reporter', 'text', filter: 'set'),
             self::column('revenue_net_after_reporter', 'number', sortable: false),
         ];

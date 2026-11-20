@@ -32,8 +32,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `open_subtasks_count` (spec 0123, D-6) is the OPPOSITE on purpose: it
  * counts every DIRECT child outside a closing phase, ignoring visibility
  * entirely (`TaskActionAvailability::openSubtasksCount()`), so the UI can
- * explain why `complete`/`approve` came back false even for an actor who
- * cannot see the child that is blocking them.
+ * explain why `approve` came back false even for an actor who cannot see the
+ * child that is blocking it, and so the Completa pop-up knows it closes the
+ * open sub-tasks too (spec 0418).
  *
  * Nothing here keys off a status LABEL (AC-024): the status ref exposes the
  * raw enum values of BOTH `system_key` (protection) and `group` (the PHASE)

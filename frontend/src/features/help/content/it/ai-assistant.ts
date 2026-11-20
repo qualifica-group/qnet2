@@ -98,7 +98,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'L\'assistente usa il modello di intelligenza artificiale scelto dall\'amministratore: un servizio esterno a QNet (OpenAI, Anthropic) oppure un modello installato sui server dell\'azienda. Con un servizio esterno, a ogni messaggio vengono inviati fuori dall\'azienda: il testo che scrivi, la guida della pagina, gli ultimi messaggi della conversazione, i file allegati e i dati dei record menzionati (inclusi dati personali di utenti e referenti, se li menzioni). Se non sai quale modello è in uso, non menzionare né allegare ciò che non può uscire dall\'azienda.',
+          text: 'L\'assistente usa il modello di intelligenza artificiale scelto dall\'amministratore: un servizio esterno a QNet (OpenAI, Anthropic, OpenRouter) oppure un modello installato sui server dell\'azienda. Con un servizio esterno, a ogni messaggio vengono inviati fuori dall\'azienda: il testo che scrivi, la guida della pagina, gli ultimi messaggi della conversazione, i file allegati e i dati dei record menzionati (inclusi dati personali di utenti e referenti, se li menzioni). Se non sai quale modello è in uso, non menzionare né allegare ciò che non può uscire dall\'azienda.',
         },
       ],
     },

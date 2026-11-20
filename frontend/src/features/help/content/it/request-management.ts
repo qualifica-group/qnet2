@@ -59,8 +59,7 @@ const guide: HelpGuide = {
             ['Fonte', "Canale da cui arriva la richiesta (è un campo dell'offerta)."],
             ['Richieste di modifica', 'Proposte di modifica ancora in attesa.'],
             ['Linee di prodotto', "Prodotti presenti nell'offerta; la cella apre l'editor con il catalogo prodotti."],
-            ['Gestore account 1, 2, 3...', "Una colonna per ogni posizione del team. In **Tutte** si chiamano **Gestore account** con il numero e arrivano fino alla posizione più alta occupata. In una scheda categoria ci sono solo le posizioni a cui la categoria dà un nome (ad esempio in Formazione **Tutor**, **Operatore**, **Partner commerciale**, **Segnalatore**, **Operatore APL**): se la categoria aggiunge un nome, compare la colonna. La posizione 2 è l'**Operatore**, la persona che lavora la richiesta. Si ordinano, si filtrano per nome e si modificano dalla cella."],
-            ['Gestori account / Altri gestori account', "In **Tutte**, **Gestori account** mostra tutte le persone del team, operatore compreso. In una scheda categoria si chiama **Altri gestori account** e mostra solo chi occupa una posizione senza nome nella categoria; modificandola dalla cella cambi solo queste persone, quelle nelle colonne con un nome restano. Si filtra per nome."],
+            ['Gestori account', "L'unica colonna dei gestori: mostra tutte le persone del team della richiesta (operatore, tutor e ogni altro gestore), uguale in **Tutte** e in ogni scheda categoria. Si filtra per nome, anche con **(Vuoti)** per le richieste senza gestori, e non si ordina. Dalla cella aggiungi o togli persone: chi resta mantiene il suo ruolo, chi aggiungi prende il primo posto libero e riceve la notifica. Per scegliere il ruolo preciso di ciascuno (ad esempio **Operatore** o **Tutor**) apri la richiesta con **Visualizza** (sezione **Team**)."],
             ['Sede operativa', 'Sede a cui è assegnata la richiesta.'],
             ['Prossimo richiamo', 'Data della prossima chiamata al cliente.'],
             ['Trasferito', "Se il contatto è stato trasferito da un'altra sede."],
@@ -85,13 +84,17 @@ const guide: HelpGuide = {
             'Scrivi nelle **Note generali** cosa ha chiesto il cliente, con le sue parole.',
             'Se le conosci, compila la **Previsione commerciale**: **Data chiusura prevista**, **Valore stimato** e **Probabilità di successo** (lo slider a 0 vale "non indicata").',
             "Se serve, indica il **Prossimo richiamo** (l'ora è facoltativa).",
-            'In **Linee di prodotto** aggiungi almeno una riga: categoria genitore, poi categoria prodotto. Se la categoria genitore ha dei gruppi (ad esempio Consulenza › ISO), con **Filtro** scegli il gruppo e la categoria prodotto elenca solo le sue sottocategorie; il filtro non viene salvato, solo la categoria prodotto.',
-            "Nel **Catalogo prodotti** spunta i prodotti e premi **Aggiungi N selezionati**, poi controlla quantità, prezzo unitario e IVA delle righe (vedi **Righe dell'offerta e catalogo prodotti**).",
-            "In **Anagrafica cliente** scegli un'**Anagrafica esistente** oppure inserisci un nuovo cliente.",
-            'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore**, **Commerciale** e **Sede operativa**. Il Commerciale scelto qui vale sia per la richiesta sia per la sua opportunità. Se stai inserendo un nuovo cliente, Fonte, Segnalatore e Commerciale vengono salvati anche sulla sua anagrafica.',
+            "In **Linee di prodotto** aggiungi una riga per ogni categoria genitore: scegli la categoria genitore, poi una o più sue categorie prodotto. Nell'elenco **Seleziona tutte** le prende tutte in un clic e un clic su un gruppo prende tutte le sue sottocategorie: le categorie scelte restano nella stessa riga (ad esempio ISO › ISO 9001, ISO 14001), non una riga ciascuna. Una categoria genitore gestita a riga singola (ad esempio Formazione) ammette una sola categoria; una categoria genitore già usata in un'altra riga non si può scegliere di nuovo. Se la categoria genitore ha dei gruppi (ad esempio Consulenza › ISO), con **Filtro** restringi l'elenco a un gruppo; il filtro non viene salvato, solo le categorie.",
+            "La sezione **Offerta** si apre dopo la scelta della prima linea di prodotto. Nel **Catalogo prodotti** spunta i prodotti e premi **Aggiungi N selezionati**, poi controlla quantità, prezzo unitario e IVA delle righe; nelle categorie semplificate c'è solo il campo **Prodotto** da scegliere (vedi **Righe dell'offerta e catalogo prodotti**).",
+            "In **Anagrafica cliente** scegli un'**Anagrafica esistente** oppure inserisci un nuovo cliente. La scheda del nuovo cliente parte come **Persona fisica** o **Azienda** secondo la regola **Anagrafica in Gestione Richieste** della categoria scelta nella prima riga di **Linee di prodotto**; finché non hai scritto nulla segue la categoria, poi puoi sempre cambiare il tipo a mano.",
+            'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore**, **Commerciale**, **Partner commerciale** e **Sede operativa**. Commerciale e Partner commerciale scelti qui valgono sia per la richiesta sia per la sua opportunità. Se stai inserendo un nuovo cliente, Fonte, Segnalatore, Commerciale e Partner commerciale vengono salvati anche sulla sua anagrafica.',
             'Compila le **Informazioni aggiuntive**, se presenti.',
             'Premi **Crea richiesta**: torni alla tabella, sulla scheda categoria che avevi aperto.',
           ],
+        },
+        {
+          type: 'note',
+          text: "Se le **Linee di prodotto** appartengono a più categorie madri (ad esempio una riga ISO e una APL), **Crea richiesta** crea una richiesta per ogni categoria madre, tutte sulla stessa opportunità (prima di salvare, un avviso sotto le **Linee di prodotto** dice quante richieste verranno create e per quali categorie madri): ciascuna compare solo nella scheda della sua categoria, ha solo le righe offerta e le **Informazioni aggiuntive** della sua categoria, mentre i **Buoni** vanno solo sulla prima. Righe di più categorie della stessa madre (ad esempio ISO 9001 e ISO 14001) restano in un'unica richiesta. Un prodotto di una categoria madre non scelta nelle linee non si può aggiungere.",
         },
         {
           type: 'tip',
@@ -104,6 +107,10 @@ const guide: HelpGuide = {
         {
           type: 'warning',
           text: 'I **Buoni assegnati** si aggiungono solo dopo aver scelto un **Segnalatore**.',
+        },
+        {
+          type: 'paragraph',
+          text: "In fondo al form, nella sezione **Documenti**, allega i file della richiesta: vengono caricati al salvataggio. Se le **Linee di prodotto** creano più richieste (una per categoria madre), accanto a ogni file scegli la richiesta in cui metterlo (ad esempio **Richiesta ISO** o **Richiesta APL**); se togli dalle linee la categoria madre scelta, il file va sulla prima. Se un file non si carica, la richiesta viene creata comunque e un avviso indica quale file allegare dal pannello **Lavora**. La sezione compare solo a chi può vedere e caricare documenti.",
         },
       ],
     },
@@ -131,7 +138,8 @@ const guide: HelpGuide = {
             'Un prodotto già nelle righe mostra **Già aggiunto** e non è selezionabile: cambia la quantità sulla riga.',
             'Nelle categorie a riga singola (ad esempio Formazione) non ci sono caselle: il clic su un prodotto sostituisce quello della riga unica.',
             'Senza categorie prodotto scelte il catalogo è disattivato: scegli prima la categoria.',
-            'Nelle categorie semplificate la riga mostra solo gli importi: quantità, prezzo e IVA li compila il sistema.',
+            "Nelle categorie semplificate l'offerta è un solo campo **Prodotto**: scegli il prodotto dall'elenco (più prodotti, se la categoria lo consente; nelle categorie a riga singola uno solo) e toglilo con la X. Quantità, prezzo e IVA li imposta il sistema (quantità 1, prezzo e IVA del prodotto); sotto il campo compare il **Valore indicativo (IVA inclusa)** dei prodotti scelti.",
+            "Se tutte le categorie delle **Linee di prodotto** hanno la regola **Nascondi offerta in Gestione Richieste**, la sezione **Offerta** non compare (in Nuova richiesta e nel pannello Lavora; dalla tabella, la modifica delle righe mostra un avviso). Con categorie miste il catalogo propone solo i prodotti delle categorie non nascoste. Le righe già salvate restano come sono.",
             'Se la categoria ha un solo prodotto, la riga si crea da sola.',
             'Una riga **assegnata a una commessa** mostra "Assegnata a COM-..." ed è bloccata: non si modifica né si rimuove finché la commessa non viene eliminata. Se cambi la categoria di una richiesta che ha una riga bloccata, il salvataggio viene rifiutato.',
           ],
@@ -149,18 +157,18 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto.",
+            "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto. Una richiesta creata per una categoria madre mostra solo le sue linee e accetta solo categorie e prodotti di quella madre: per un'altra categoria madre crea una nuova richiesta.",
             '**Righe offerta**: prodotti scelti dal **Catalogo prodotti**, con quantità, prezzi e IVA.',
             "**Previsione commerciale**: data chiusura prevista, valore stimato e probabilità di successo. Sono i valori dell'opportunità: se cambiano qui, cambiano anche in **Opportunità** e nelle altre richieste della stessa opportunità.",
             "**Stato**: alcuni stati richiedono una **Nota**. Per uno stato validato serve almeno una riga offerta. Per chiudere non serve, né con esito positivo né con esito negativo: la riga prodotto diventa obbligatoria quando si valida il contratto.",
             "**Anagrafica**: il campo in alto mostra il cliente della richiesta e permette di sceglierne un altro. Il cambio vale per tutte le offerte dell'opportunità. Scelto un altro cliente, i suoi dati compaiono dopo il salvataggio e le modifiche fatte ai dati del cliente precedente non vengono salvate. Se c'è già un contratto, o il cliente arriva dal lead, il campo non è modificabile.",
-            '**Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**) e **Team** (**Supervisore** e **Gestori account**). Il **Commerciale** modificato qui vale solo per questa richiesta (l\'offerta): quello dell\'opportunità non cambia. Chi aggiungi tra i **Gestori account**, in qualsiasi posizione (anche dalle colonne **Gestore account** della tabella), riceve la notifica **Sei stato inserito come Gestore Account** nella campanella e per email; non la ricevono chi viene solo spostato di posizione e chi inserisce se stesso.',
+            '**Attribuzione** (**Fonte**, **Segnalatore**, **Commerciale**, **Partner commerciale**) e **Team** (**Supervisore** e **Gestori account**). **Commerciale** e **Partner commerciale** modificati qui valgono solo per questa richiesta (l\'offerta): quelli dell\'opportunità non cambiano. Chi aggiungi tra i **Gestori account**, in qualsiasi posizione (anche dalle colonne **Gestore account** della tabella), riceve la notifica **Sei stato inserito come Gestore Account** nella campanella e per email; non la ricevono chi viene solo spostato di posizione e chi inserisce se stesso.',
             'Le **Informazioni aggiuntive**, che dipendono dalle categorie scelte.',
           ],
         },
         {
           type: 'paragraph',
-          text: 'In fondo trovi le schede **Note**, **Documenti** e **Storico**. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**). Lo stesso vale per **Trasferisci contatto**, accanto a **Salva**: a trasferimento concluso torni alla tabella, perché il contatto passa alla nuova sede e al nuovo operatore.',
+          text: 'In fondo trovi le schede **Note**, **Documenti**, **Documenti opportunità** e **Storico**. **Documenti** sono i file di questa richiesta (li carichi ed elimini qui); **Documenti opportunità** sono quelli già presenti sull\'opportunità, in sola lettura. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**). Lo stesso vale per **Trasferisci contatto**, accanto a **Salva**: a trasferimento concluso torni alla tabella, perché il contatto passa alla nuova sede e al nuovo operatore. Con **Trasferisci ad altra anagrafica** (permesso omonimo) sposti invece l\'offerta su un altro cliente: scegli la nuova anagrafica, puoi cambiare il **Titolo** dell\'offerta e controlli le **Informazioni aggiuntive**; l\'offerta va sull\'opportunità aperta del cliente o su una nuova, come spiegato nella guida **Offerte**. Se una categoria ha **Trasferimento contatto prima del contratto** (ad esempio **Orientamento specialistico**), la richiesta non passa a uno stato **Vinto** finché non hai usato **Trasferisci contatto**.',
         },
         {
           type: 'warning',
@@ -182,7 +190,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal menu della singola riga: **Documenti**, **Note** (in alto nella finestra c\'è la **Data richiamo** della riga, così la vedi mentre scrivi), **Trasferisci contatto**, **Elimina**, **Attività**. Selezionando più righe, il menu **Azioni** offre:',
+          text: 'Dal menu della singola riga: **Documenti** (i file di quella richiesta), **Note** (in alto nella finestra c\'è la **Data richiamo** della riga, così la vedi mentre scrivi), **Trasferisci contatto**, **Elimina**, **Attività**. Selezionando più righe, il menu **Azioni** offre:',
         },
         {
           type: 'table',
@@ -196,7 +204,7 @@ const guide: HelpGuide = {
               'Assegna Tutor',
               'Assegna lo stesso utente a tutte le richieste scelte (il nome del ruolo può cambiare per categoria).',
             ],
-            ['Trasferisci contatto', "Sposta le richieste su un'altra sede e un altro operatore."],
+            ['Trasferisci contatto', "Sposta le richieste su un'altra sede e un altro operatore. Su una richiesta con contratto è disponibile solo finché il contratto non è stato lavorato (o, se la categoria richiede il trasferimento, finché non è validato); il contratto segue la richiesta."],
             ['Elimina selezionati', 'Elimina le righe selezionate.'],
           ],
         },
@@ -206,7 +214,21 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Il nuovo **Operatore** di ogni richiesta riceve la notifica **Sei stato inserito come Gestore Account** con il titolo e i dati dell'offerta; il link apre l'offerta, oppure la richiesta qui se non ha accesso alle Offerte. Gli altri Gestori Account non ricevono notifiche.",
+          text: "Con le azioni di assegnazione, chi entra tra i **Gestori account** di una richiesta riceve la notifica **Sei stato inserito come Gestore Account**, nella campanella e per email, con il titolo e i dati dell'offerta, compresi tutti i Gestori account; il link apre l'offerta, oppure la richiesta qui se non ha accesso alle Offerte. Vale allo stesso modo per ogni Gestore account. Non la ricevono chi era già nel team, chi viene solo spostato e chi assegna se stesso.",
+        },
+      ],
+    },
+    {
+      id: 'quote-under-contract',
+      title: "Offerta a contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Se l'offerta ha un contratto è **congelata**: nel pannello **Lavora** compare l'avviso **Offerta a contratto** e, senza il permesso **Modifica offerte a contratto**, i campi sono in sola lettura (anche le celle della lista). Con il permesso, il salvataggio chiede prima conferma in un popup.",
+        },
+        {
+          type: 'note',
+          text: "Restano sempre modificabili i campi operativi: **Gestori account** (team), **Data prossimo richiamo**, **Sede operativa** e **Note generali**.",
         },
       ],
     },

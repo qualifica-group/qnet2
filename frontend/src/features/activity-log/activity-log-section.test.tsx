@@ -150,6 +150,14 @@ describe('ActivityLogSection', () => {
     expect(screen.getByText('Impersonation stopped')).toBeInTheDocument()
   })
 
+  it('spec 0072 D-3 rev.: labels the removal of an offer contract nobody worked on', async () => {
+    fetchActivityLogMock.mockResolvedValue(page({ items: [entry({ event: 'contract.removed', changes: [] })] }))
+
+    renderSection()
+
+    await waitFor(() => expect(screen.getByText('Contract removed (offer no longer won)')).toBeInTheDocument())
+  })
+
   it('shows the extracted text of a rich text field, never the markup (D-13/AC-025)', async () => {
     fetchActivityLogMock.mockResolvedValue(
       page({

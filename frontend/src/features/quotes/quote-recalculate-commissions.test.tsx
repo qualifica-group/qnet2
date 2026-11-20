@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
 import { QuoteDetailHeader } from '@/features/quotes/quote-detail-header'
-import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
+import { SYSTEM_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import { quoteDetailQueryKey } from '@/features/quotes/api'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 
@@ -28,7 +28,7 @@ function quoteWith(recalculate: boolean): QuoteDetailWithPermissions {
     code: 'QUO-0009',
     title: 'Sample quote',
     old_id: null,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
+    quote_system_status: SYSTEM_STATUS_OPEN,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},

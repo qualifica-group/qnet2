@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'agent-sales-report',
   title: 'Agent Sales Report',
   summary:
-    'The Agent Sales Report lists quotes with customer, sales agent, reporter, stage and net revenue, lets you filter them and download them as three Excel files.',
+    'The Agent Sales Report lists quotes with customer, sales agent, commercial partner, reporter, stage and net revenue, lets you filter them and download them as three Excel files.',
   sections: [
     {
       id: 'overview',
@@ -43,8 +43,8 @@ const guide: HelpGuide = {
             ['Managers', 'The quote\'s account managers.'],
             ['Stage', 'The quote\'s working status.'],
             ['Net revenue', 'The quote amount before VAT.'],
-            ['Sales agent, Reporter', 'The people who sold and reported the quote.'],
-            ['Net revenue after reporter', 'The net revenue minus the reporter commissions on the quote lines (the reporter percentage applied to each product). Sales agent, supervisor and supplier commissions are not taken out.'],
+            ['Sales agent, Commercial partner, Reporter', 'The people who sold and reported the quote.'],
+            ['Net revenue after reporter', 'The net revenue minus the reporter commissions on the quote lines (the reporter percentage applied to each product). Sales agent, commercial partner, supervisor and supplier commissions are not taken out.'],
           ],
         },
         {
@@ -85,12 +85,12 @@ const guide: HelpGuide = {
           rows: [
             ['Summary', 'The visible columns of the table, one row per quote, in the same order.'],
             ['Details', 'A block for each quote: the quote data (with the Consulting and Institution amounts), the sale lines with category, product, quantity, price and commissions, and the commission total with the net amount.'],
-            ['Detail lines', 'A flat list: one row for each sale line of the filtered quotes, with the supervisor, sales agent and reporter commissions and the net amount.'],
+            ['Detail lines', 'A flat list: one row for each sale line of the filtered quotes, with the supervisor, sales agent, commercial partner and reporter commissions and the net amount.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'In Details and Detail lines only sale lines count (not costs), and the net amount is the amount minus the supervisor, sales agent and reporter commissions.',
+          text: 'In Details and Detail lines only sale lines count (not costs), and the net amount is the amount minus the supervisor, sales agent, commercial partner and reporter commissions.',
         },
         {
           type: 'warning',

@@ -120,3 +120,18 @@ it('AC-007: the function filter also matches a line whose category inherits that
 
     expect($count)->toBe(1);
 });
+
+it('spec 0417 AC-012: commercial_partner_id filters on the reference offer partner and is echoed in applied', function () {
+    $partnerA = Referent::factory()->create();
+    $partnerB = Referent::factory()->create();
+    mcManualCost(mcWorkOrder([], ['commercial_partner_id' => $partnerA->id]), '1.00');
+    mcManualCost(mcWorkOrder([], ['commercial_partner_id' => $partnerB->id]), '10.00');
+    mcManualCost(mcWorkOrder(), '100.00');
+
+    expect(mcSelectedCost(['commercial_partner_id' => [$partnerB->id]]))->toEqual(10)
+        ->and(mcSelectedCost(['commercial_partner_id' => [$partnerA->id, $partnerB->id]]))->toEqual(11);
+
+    mcGet('income-statement', ['commercial_partner_id' => [$partnerA->id]])->assertOk()
+        ->assertJsonPath('data.applied.commercial_partner_id', [$partnerA->id]);
+    mcGet('income-statement', ['commercial_partner_id' => [999999]])->assertUnprocessable();
+});

@@ -341,6 +341,8 @@ describe('Gestione Richieste — linee di prodotto in griglia', () => {
         multi_quote_work_order: false,
         usage_area: 'all',
         multiple_open_opportunities: false,
+        request_registry_type: 'individual',
+        request_offer_hidden: false,
         simplified_offer_line: true,
         simplified_offer_line_override: null,
       },
@@ -348,16 +350,15 @@ describe('Gestione Richieste — linee di prodotto in griglia', () => {
 
     renderEditor()
 
-    await screen.findByText(
-      'Categoria semplificata: scegli il prodotto, quantità, prezzo unitario e aliquota IVA sono compilati automaticamente dal sistema.',
-    )
+    // REQUIREMENT CHANGED (spec 0414 D-4): the simplified offer is one product select.
+    expect(await screen.findByRole('button', { name: 'Prodotto' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
     // REQUIREMENT CHANGED (spec 0268): no per-row picker any more — the row
     // reads its product, and new products come from the catalogue beside it.
-    expect(screen.getByText('Fibra 1000')).toBeInTheDocument()
-    expect(screen.getByRole('listbox', { name: 'Prodotti del catalogo' })).toBeInTheDocument()
+    expect(await screen.findByText('Fibra 1000')).toBeInTheDocument()
+    expect(screen.queryByRole('listbox', { name: 'Prodotti del catalogo' })).not.toBeInTheDocument()
   })
 })
 
@@ -422,5 +423,45 @@ describe('Gestione Richieste — linee di prodotto, permessi', () => {
 
     await screen.findByRole('button', { name: 'Salva' })
     expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
+  })
+})
+
+// Spec 0414 AC-005: the grid dialog keeps opening, but a classification whose
+// every category hides the offer shows a notice instead of the editor.
+describe('Gestione Richieste — linee di prodotto in griglia, offerta nascosta', () => {
+  it('shows the hidden-offer notice instead of the editor', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    categoryTreeMock.mockReturnValue([
+      {
+        id: 500,
+        name: 'Consulting',
+        parent_id: null,
+        children: [],
+        attributes_count: 0,
+        products_count: 0,
+        business_function_id: null,
+        requires_quote: false,
+        is_selectable: true,
+        is_active: true,
+        is_reportable: false,
+        management_mode: 'multiple',
+        single_quote_per_opportunity: false,
+        generates_contract: true,
+        multi_quote_work_order: false,
+        usage_area: 'all',
+        multiple_open_opportunities: false,
+        request_registry_type: 'individual',
+        request_offer_hidden: true,
+        simplified_offer_line: false,
+        simplified_offer_line_override: null,
+      },
+    ])
+
+    renderEditor()
+
+    expect(
+      await screen.findByText("La categoria prodotto di questa richiesta nasconde l'offerta in Gestione Richieste."),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('listbox', { name: 'Prodotti del catalogo' })).not.toBeInTheDocument()
   })
 })

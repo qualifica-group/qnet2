@@ -1,15 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Lock, LockOpen } from 'lucide-react'
 import { updateWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { taskBoardKeys } from '@/features/work-orders/task-board/query-keys'
-import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { UpdateWorkOrderPayload, WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
-
-/** Icons of the Commesse grid's closure row actions (`WorkOrderColumnCatalog::actions()`). */
-export const WORK_ORDER_ACTION_ICONS: ActionIconMap = {
-  lock: Lock,
-  'lock-open': LockOpen,
-}
 
 /** TanStack prefix of every task list/detail: a forced closure closes the open ones (spec 0146 D-8). */
 const TASKS_QUERY_PREFIX = ['tasks'] as const

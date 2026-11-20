@@ -28,6 +28,10 @@ const LEAF_C1 = 302
 const GROUP_C2 = 303
 const LEAF_C2 = 304
 const DIRECT_LEAF_C = 305
+const ROOT_D = 400
+const GROUP_D1 = 401
+const LEAF_D1 = 402
+const LEAF_D2 = 404
 
 /**
  * `vi.hoisted` because the `vi.mock` factory below is hoisted above this
@@ -101,6 +105,31 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
           node({ id: 305, name: 'Direct leaf C', parent_id: 300 }),
         ],
       }),
+      // A `single` root (spec 0416): its row keeps the one-category select.
+      node({
+        id: 400,
+        name: 'Root D',
+        is_selectable: false,
+        management_mode: 'single',
+        children: [
+          node({
+            id: 401,
+            name: 'Group D1',
+            parent_id: 400,
+            is_selectable: false,
+            management_mode: 'single',
+            children: [node({ id: 402, name: 'Leaf D1', parent_id: 401, management_mode: 'single' })],
+          }),
+          node({
+            id: 403,
+            name: 'Group D2',
+            parent_id: 400,
+            is_selectable: false,
+            management_mode: 'single',
+            children: [node({ id: 404, name: 'Leaf D2', parent_id: 403, management_mode: 'single' })],
+          }),
+        ],
+      }),
     ],
   }
 })
@@ -140,7 +169,7 @@ vi.mock('@/components/ui/searchable-select', () => ({
     labels: { triggerLabel?: string }
     action?: ReactNode
   }) => (
-    <div data-testid={`select-${labels.triggerLabel}`}>
+    <div data-testid={`select-${labels.triggerLabel}`} data-kind="single">
       {action}
       <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
       <span data-testid={`disabled-${labels.triggerLabel}`}>{String(Boolean(disabled))}</span>
@@ -157,6 +186,10 @@ vi.mock('@/components/ui/searchable-select', () => ({
     </div>
   ),
 }))
+
+/** Spec 0416: a `multiple` root picks with the multi-select, probed like the single select. */
+vi.mock('@/components/ui/searchable-multi-select', async () =>
+  await import('@/features/product-lines/searchable-multi-select-probe'))
 
 interface HarnessProps {
   defaultValue?: ProductLineRow[]
@@ -229,7 +262,8 @@ describe('ProductLinesField (spec 0132)', () => {
       ],
     })
 
-    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${ROOT_B}` }))
+    // Spec 0416 (REQUIREMENT CHANGED): Root B is held by row 2, so row 1 moves to Root C instead.
+    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${ROOT_C}` }))
 
     await waitFor(() => expect(screen.getByTestId('value-Product category 1')).toBeEmptyDOMElement())
     expect(screen.getByTestId('value-Product category 2')).toHaveTextContent(String(LEAF_B))
@@ -316,14 +350,27 @@ describe('ProductLinesField — intermediate filter (user directive 2026-10-08)'
     expect(screen.getByTestId('options-Product category 1')).not.toHaveTextContent(String(DIRECT_LEAF_C))
   })
 
-  it('resets a category outside the picked filter, keeping the root derived on load', async () => {
+  it('on a single root, resets a category outside the picked filter, keeping the root derived on load', async () => {
+    renderHarness({ defaultValue: [{ root_category_id: null, product_category_id: LEAF_D2 }] })
+
+    fireEvent.click(addFilter(1)!)
+    fireEvent.click(screen.getByRole('button', { name: `select Intermediate filter 1 ${GROUP_D1}` }))
+
+    await waitFor(() => expect(screen.getByTestId('value-Product category 1')).toBeEmptyDOMElement())
+    expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(ROOT_D))
+    expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(String(LEAF_D1))
+  })
+
+  it('on a multiple root (spec 0416), keeps the picks outside the picked filter, still listed', async () => {
     renderHarness({ defaultValue: [{ root_category_id: null, product_category_id: LEAF_C2 }] })
 
     fireEvent.click(addFilter(1)!)
     fireEvent.click(screen.getByRole('button', { name: `select Intermediate filter 1 ${GROUP_C1}` }))
 
-    await waitFor(() => expect(screen.getByTestId('value-Product category 1')).toBeEmptyDOMElement())
-    expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(ROOT_C))
+    await waitFor(() => expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(String(LEAF_C1)))
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(LEAF_C2))
+    expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(String(LEAF_C2))
+    expect(screen.getByTestId('options-Product category 1')).not.toHaveTextContent(String(DIRECT_LEAF_C))
   })
 
   it('keeps a category inside the picked filter, and removing the filter keeps it too', async () => {

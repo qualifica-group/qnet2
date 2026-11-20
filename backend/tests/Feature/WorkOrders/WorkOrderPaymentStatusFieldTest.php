@@ -4,23 +4,24 @@ use App\Enums\AttributeContext;
 use App\Models\Attribute;
 use App\Models\ProductCategory;
 use App\Models\Quote;
-use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderLinePayment;
 use App\Models\WorkOrderPaymentStatus;
-use App\Services\Deletion\InUseGuard;
 use App\Services\WorkOrders\WorkOrderPaymentStatusAttributeMover;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 /**
- * Spec 0402: "Stato pagamento" is the commessa's own field, no longer a
- * flexible field of some categories; the detail shows it with the net amount
- * of the commessa's lines.
+ * Spec 0402: the mover that turned the "Stato pagamento" flexible field into
+ * a column of the commessa. The column was dropped by spec 0403 (the status
+ * lives on the lines), so the arrange re-adds it the way the fold migration's
+ * down() does; the field/PATCH/permission tests are gone (REQUIREMENT CHANGED).
  */
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    (include database_path('migrations/2026_12_13_100000_fold_work_order_payment_status_into_lines.php'))->down();
+});
 
 /** A legacy-keyed payment status (`old_id` = the flexible field's value). */
 function legacyPaymentStatus(int $oldId, string $name): WorkOrderPaymentStatus
@@ -38,28 +39,6 @@ function workOrderWithFlexibleValues(?array $values): WorkOrder
     DB::table('work_orders')->where('id', $workOrder->id)->update(['attribute_values' => $values === null ? null : json_encode($values)]);
 
     return $workOrder;
-}
-
-/** An actor who may update work orders, optionally manage their payments and view the contract data. */
-function paymentFieldActor(bool $managePayments, bool $viewContractData = true): User
-{
-    $user = workOrderUserWith(['view', 'update']);
-
-    foreach (['viewCosts', 'viewContractData', 'managePayments'] as $ability) {
-        Permission::findOrCreate("work-orders.{$ability}");
-    }
-
-    $user->givePermissionTo('work-orders.viewCosts');
-
-    if ($viewContractData) {
-        $user->givePermissionTo('work-orders.viewContractData');
-    }
-
-    if ($managePayments) {
-        $user->givePermissionTo('work-orders.managePayments');
-    }
-
-    return $user;
 }
 
 describe('moving the flexible field to the column', function () {
@@ -177,74 +156,5 @@ describe('moving the flexible field to the column', function () {
 
         expect(app(WorkOrderPaymentStatusAttributeMover::class)->handle())->toMatchArray(['moved' => 0, 'cleared' => 0])
             ->and($workOrder->fresh()->work_order_payment_status_id)->toBe($paid->id);
-    });
-});
-
-describe('the field on the commessa', function () {
-    it('shows the payment status and the net amount of the lines to an actor who may view the contract data', function () {
-        $status = legacyPaymentStatus(3, 'Saldato');
-        $workOrder = WorkOrder::factory()->create(['quote_id' => Quote::factory()->create()->id]);
-        $workOrder->forceFill(['work_order_payment_status_id' => $status->id])->saveQuietly();
-        contractDataLine($workOrder, 'consultancy', 1000.50);
-        contractDataLine($workOrder, 'institution', 250);
-        Sanctum::actingAs(paymentFieldActor(managePayments: false));
-
-        $this->getJson("/api/work-orders/{$workOrder->id}")
-            ->assertOk()
-            ->assertJsonPath('data.work_order_payment_status_id', $status->id)
-            ->assertJsonPath('data.payment_status.name', 'Saldato')
-            ->assertJsonPath('data.amount', '1250.50')
-            ->assertJsonPath('permissions.fields.work_order_payment_status_id.editable', false);
-    });
-
-    it('hides the amount from an actor who may not view the contract data', function () {
-        $workOrder = WorkOrder::factory()->create(['quote_id' => Quote::factory()->create()->id]);
-        contractDataLine($workOrder, 'consultancy', 1000);
-        Sanctum::actingAs(paymentFieldActor(managePayments: false, viewContractData: false));
-
-        $this->getJson("/api/work-orders/{$workOrder->id}")
-            ->assertOk()
-            ->assertJsonPath('data.amount', null)
-            ->assertJsonPath('data.payment_status', null);
-    });
-
-    it('lets an actor who manages payments set and clear the status', function () {
-        $status = legacyPaymentStatus(3, 'Saldato');
-        $workOrder = WorkOrder::factory()->create(['quote_id' => Quote::factory()->create()->id]);
-        Sanctum::actingAs(paymentFieldActor(managePayments: true));
-
-        $this->patchJson("/api/work-orders/{$workOrder->id}", ['work_order_payment_status_id' => $status->id])
-            ->assertOk()
-            ->assertJsonPath('data.payment_status.id', $status->id);
-
-        $this->patchJson("/api/work-orders/{$workOrder->id}", ['work_order_payment_status_id' => null])
-            ->assertOk()
-            ->assertJsonPath('data.payment_status', null);
-    });
-
-    it('refuses the status to an actor who does not manage payments, and an inactive status', function () {
-        $status = legacyPaymentStatus(3, 'Saldato');
-        $inactive = WorkOrderPaymentStatus::factory()->create(['is_active' => false]);
-        $workOrder = WorkOrder::factory()->create(['quote_id' => Quote::factory()->create()->id]);
-
-        Sanctum::actingAs(paymentFieldActor(managePayments: false));
-        $this->patchJson("/api/work-orders/{$workOrder->id}", ['work_order_payment_status_id' => $status->id])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('work_order_payment_status_id');
-
-        Sanctum::actingAs(paymentFieldActor(managePayments: true));
-        $this->patchJson("/api/work-orders/{$workOrder->id}", ['work_order_payment_status_id' => $inactive->id])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('work_order_payment_status_id');
-
-        expect($workOrder->fresh()->work_order_payment_status_id)->toBeNull();
-    });
-
-    it('refuses to delete a status still set on a commessa', function () {
-        $status = legacyPaymentStatus(3, 'Saldato');
-        $workOrder = WorkOrder::factory()->create(['quote_id' => Quote::factory()->create()->id]);
-        $workOrder->forceFill(['work_order_payment_status_id' => $status->id])->saveQuietly();
-
-        expect(app(InUseGuard::class)->usageCounts($status))->toMatchArray(['work_orders' => 1]);
     });
 });

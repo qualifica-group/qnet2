@@ -50,6 +50,7 @@ function contract(overrides: Partial<ContractDetail> = {}): ContractDetail {
     company_site: null,
     operational_site: null,
     commercial: null,
+    commercial_partner: null,
     reporter: null,
     supervisor: null,
     payment_method: null,

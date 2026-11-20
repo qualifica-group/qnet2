@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
-use App\Enums\AttributeContext;
 use App\Models\Attribute;
 use App\Models\WorkOrderPaymentStatus;
-use App\Services\ProductCategories\AttributeLayoutPruner;
+use App\Services\AttributeRemover;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -31,6 +30,8 @@ final class WorkOrderPaymentStatusAttributeMover
 
     private const int CHUNK_SIZE = 500;
 
+    public function __construct(private readonly AttributeRemover $remover) {}
+
     /**
      * @return array{moved: int, cleared: int, unmapped: int, from_lines: int, detached: int, layouts: int, deleted: int}
      */
@@ -51,18 +52,10 @@ final class WorkOrderPaymentStatusAttributeMover
             return $result;
         }
 
-        // Step 3: the field out of every category and every Commessa layout.
-        $result['detached'] = DB::table('attribute_category')
-            ->where('attribute_id', $attribute->id)
-            ->where('context', AttributeContext::WorkOrder->value)
-            ->delete();
-        $result['layouts'] = $this->pruneLayouts();
+        // Step 3: the field out of every category and layout, then deleted with its options.
+        $removed = $this->remover->remove([self::ATTRIBUTE_CODE]);
 
-        // Step 4: the flexible field itself, with its options.
-        DB::table('attribute_options')->where('attribute_id', $attribute->id)->delete();
-        $result['deleted'] = DB::table('attributes')->where('id', $attribute->id)->delete();
-
-        return $result;
+        return [...$result, 'detached' => $removed['detached'], 'layouts' => $removed['layouts'], 'deleted' => $removed['deleted']];
     }
 
     /**
@@ -152,24 +145,5 @@ final class WorkOrderPaymentStatusAttributeMover
         unset($values[self::ATTRIBUTE_CODE]);
 
         return $values === [] ? null : json_encode($values, JSON_UNESCAPED_UNICODE);
-    }
-
-    private function pruneLayouts(): int
-    {
-        $pruned = 0;
-        $layouts = DB::table('attribute_layouts')
-            ->where('context', AttributeContext::WorkOrder->value)
-            ->where('layout', 'like', '%"'.self::ATTRIBUTE_CODE.'"%')
-            ->get(['id', 'layout']);
-
-        foreach ($layouts as $row) {
-            $layout = json_decode((string) $row->layout, true);
-            $kept = AttributeLayoutPruner::prune(is_array($layout) ? $layout : [], static fn (?string $code): bool => $code !== self::ATTRIBUTE_CODE);
-
-            DB::table('attribute_layouts')->where('id', $row->id)->update(['layout' => json_encode($kept, JSON_UNESCAPED_UNICODE)]);
-            $pruned++;
-        }
-
-        return $pruned;
     }
 }

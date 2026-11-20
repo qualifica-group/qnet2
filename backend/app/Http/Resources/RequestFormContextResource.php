@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\PersonalDataTypeEnum;
 use App\RequestManagement\ApplicableAttribute;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,11 +20,13 @@ use Illuminate\Support\Collection;
  * the work panel render the identical section from the identical types, which
  * is the whole point of this endpoint. Identical, in turn, to
  * QuoteFormContextResource: same section, same components, two modules.
+ * `registry_type` (spec 0410) is the one create-only key: the work panel has
+ * an anagrafica already.
  */
 class RequestFormContextResource extends JsonResource
 {
     /**
-     * @param  array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}  $resource
+     * @param  array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null, registry_type: PersonalDataTypeEnum|null}  $resource
      */
     public function __construct(array $resource)
     {
@@ -41,6 +44,8 @@ class RequestFormContextResource extends JsonResource
                 ->values()
                 ->all(),
             'attribute_layout' => $this->resource['attribute_layout'],
+            // Spec 0410 (create-only): the type the new-client card starts on.
+            'registry_type' => $this->resource['registry_type']?->value,
         ];
     }
 }

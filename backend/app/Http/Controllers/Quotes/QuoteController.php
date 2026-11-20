@@ -15,6 +15,7 @@ use App\Http\Resources\QuoteResource;
 use App\Models\Quote;
 use App\Models\User;
 use App\Quotes\QuoteAttributeResolver;
+use App\Services\Quotes\ContractedQuoteGuard;
 use App\Services\QuoteService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -42,6 +43,7 @@ class QuoteController extends BaseApiController
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
         private readonly QuoteAttributeResolver $attributeResolver,
+        private readonly ContractedQuoteGuard $contractedGuard,
     ) {}
 
     /**
@@ -126,7 +128,13 @@ class QuoteController extends BaseApiController
         try {
             $this->authorize('update', $quote);
 
-            $quote = $this->service->update($quote, $request->toData(), $request->user());
+            // Spec 0404 part E: an offer under contract needs the permission and a confirmation.
+            $quote = $this->contractedGuard->run(
+                $quote,
+                $request->user(),
+                $request->validated(),
+                fn (): Quote => $this->service->update($quote, $request->toData(), $request->user()),
+            );
 
             return $this->okWithPermissions(
                 new QuoteResource($quote),

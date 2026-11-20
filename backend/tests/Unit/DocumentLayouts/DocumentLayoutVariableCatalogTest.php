@@ -52,7 +52,8 @@ it('contains every frozen category, in order, for the quotes module (AC-040)', f
     $categories = dlCatalog()->categoriesFor(DocumentLayoutModule::Quotes, User::factory()->create());
 
     expect(collect($categories)->pluck('key')->all())->toBe([
-        'quote', 'totals', 'client', 'opportunity', 'referent', 'commercial', 'reporter',
+        // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+        'quote', 'totals', 'client', 'opportunity', 'referent', 'commercial', 'commercial_partner', 'reporter',
         'supervisor', 'company', 'company_site', 'operational_site', 'custom_fields',
         'quote_attributes', 'document',
     ]);

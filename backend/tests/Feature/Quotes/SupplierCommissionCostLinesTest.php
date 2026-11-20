@@ -62,12 +62,13 @@ function costZeroProduct(): array
 
 function costZeroQuoteActor(): User
 {
-    foreach (['view', 'create', 'update', 'viewAll'] as $ability) {
+    // REQUIREMENT CHANGED (spec 0412): the cost lines need `viewCosts`.
+    foreach (['view', 'create', 'update', 'viewAll', 'viewCosts'] as $ability) {
         Permission::findOrCreate("quotes.{$ability}", 'web');
     }
 
     $user = User::factory()->create();
-    $user->givePermissionTo(['quotes.view', 'quotes.create', 'quotes.update', 'quotes.viewAll']);
+    $user->givePermissionTo(['quotes.view', 'quotes.create', 'quotes.update', 'quotes.viewAll', 'quotes.viewCosts']);
 
     return $user;
 }

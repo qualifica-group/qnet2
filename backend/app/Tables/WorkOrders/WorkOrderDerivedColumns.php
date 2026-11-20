@@ -71,6 +71,8 @@ final class WorkOrderDerivedColumns
         private readonly WorkOrderRenewalColumn $renewalColumn,
         private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
         private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
+        private readonly WorkOrderProformaStatusColumn $proformaStatusColumn,
+        private readonly WorkOrderLinePaymentStatusColumn $linePaymentStatusColumn,
     ) {}
 
     /**
@@ -82,6 +84,18 @@ final class WorkOrderDerivedColumns
     {
         if ($columnId === WorkOrderWorkPhaseColumn::COLUMN) {
             $this->workPhaseColumn->applyFilter($query, $this->setFilterValues($filter));
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderProformaStatusColumn::COLUMN) {
+            $this->proformaStatusColumn->applyFilter($query, $this->setFilterValues($filter));
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderLinePaymentStatusColumn::COLUMN) {
+            $this->linePaymentStatusColumn->applyFilter($query, $filter);
 
             return true;
         }
@@ -185,6 +199,12 @@ final class WorkOrderDerivedColumns
      */
     public function applySort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === WorkOrderProformaStatusColumn::COLUMN) {
+            $this->proformaStatusColumn->applySort($query, $direction);
+
+            return true;
+        }
+
         if ($columnId === WorkOrderRegistryColumn::COLUMN) {
             $this->registryColumn->applySort($query, $direction);
 
@@ -243,6 +263,7 @@ final class WorkOrderDerivedColumns
             self::TYPE_COLUMN => $this->filterOptions($search, WorkOrderType::values()),
             self::IS_FORCE_CLOSED_COLUMN => $this->filterOptions($search, ['true', 'false']),
             WorkOrderWorkPhaseColumn::COLUMN => $this->filterOptions($search, WorkOrderWorkPhase::values()),
+            WorkOrderProformaStatusColumn::COLUMN => $this->filterOptions($search, WorkOrderProformaStatusColumn::values()),
             self::SUPERVISORS_COLUMN, self::PARTICIPANTS_COLUMN => $this->withBlankEntry(
                 $this->distinctTeamNames(self::TEAM_PIVOTS[$columnId], $search, $query, $limit),
                 $search,
@@ -250,6 +271,7 @@ final class WorkOrderDerivedColumns
             ),
             WorkOrderRegistryColumn::COLUMN => $this->registryColumn->distinctValues($search, $query, $limit),
             WorkOrderWorkflowStatusColumn::COLUMN => $this->workflowStatusColumn->distinctValues($search, $query, $limit),
+            WorkOrderLinePaymentStatusColumn::COLUMN => $this->linePaymentStatusColumn->distinctValues($search, $query, $limit),
             default => null,
         };
     }

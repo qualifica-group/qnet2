@@ -25,6 +25,7 @@ const deleteAttachmentMock = vi.fn()
 const fetchAttachmentBinaryMock = vi.fn()
 const downloadAttachmentArchiveMock = vi.fn()
 const saveBlobMock = vi.fn()
+const markAttachmentsReadMock = vi.fn()
 
 vi.mock('@/features/attachments/api', () => ({
   attachmentsQueryKey: (resource: string, id: number, collection: string) =>
@@ -35,6 +36,7 @@ vi.mock('@/features/attachments/api', () => ({
   deleteAttachment: (...args: unknown[]) => deleteAttachmentMock(...args),
   fetchAttachmentBinary: (...args: unknown[]) => fetchAttachmentBinaryMock(...args),
   downloadAttachmentArchive: (...args: unknown[]) => downloadAttachmentArchiveMock(...args),
+  markAttachmentsRead: (...args: unknown[]) => markAttachmentsReadMock(...args),
 }))
 
 vi.mock('@/lib/download', () => ({
@@ -59,9 +61,10 @@ function attachment(overrides: Partial<Attachment> = {}): Attachment {
   }
 }
 
-// REQUIREMENT CHANGED (spec 0343): the list carries the legacy link beside the documents.
+// REQUIREMENT CHANGED (spec 0343): the list carries the legacy link beside the documents;
+// (2026-11-19) and the unread count of the Documenti tab.
 function documentList(documents: Attachment[], legacyUrl: string | null = null): AttachmentList {
-  return { documents, legacyUrl }
+  return { documents, legacyUrl, unread: 0 }
 }
 
 function renderSection(ui: ReactElement) {
@@ -85,6 +88,8 @@ beforeEach(() => {
   uploadAttachmentMock.mockReset()
   deleteAttachmentMock.mockReset()
   saveBlobMock.mockReset()
+  markAttachmentsReadMock.mockReset()
+  markAttachmentsReadMock.mockResolvedValue(0)
   fetchAttachmentBinaryMock.mockReset()
   fetchAttachmentBinaryMock.mockResolvedValue(new Blob(['binary']))
 })
@@ -116,6 +121,26 @@ describe('DocumentsSection', () => {
     expect(fetchAttachmentBinaryMock).toHaveBeenCalledWith(1, 'view')
     expect(fetchAttachmentBinaryMock).not.toHaveBeenCalledWith(2, 'view')
     expect(listAttachmentsMock).toHaveBeenCalledWith('opportunity', 42, 'documents')
+  })
+
+  it('marks the shown documents read: the row badge counts only unread files', async () => {
+    listAttachmentsMock.mockResolvedValue(documentList([attachment({ id: 1, original_name: 'seen.pdf' })]))
+
+    renderSection(<DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />)
+
+    await screen.findByText('seen.pdf')
+    await waitFor(() => expect(markAttachmentsReadMock).toHaveBeenCalledWith('opportunity', 42, 'documents'))
+  })
+
+  it('re-reads the list once something became read: the Documenti tab count travels with it', async () => {
+    listAttachmentsMock.mockResolvedValue(documentList([attachment({ id: 1, original_name: 'new.pdf' })]))
+    markAttachmentsReadMock.mockResolvedValueOnce(1)
+
+    renderSection(<DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />)
+
+    await screen.findByText('new.pdf')
+    await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(markAttachmentsReadMock).toHaveBeenCalledTimes(2))
   })
 
   it('shows the empty state when there are no documents', async () => {

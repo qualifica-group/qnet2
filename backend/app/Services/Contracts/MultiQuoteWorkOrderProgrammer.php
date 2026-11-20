@@ -8,6 +8,7 @@ use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\Enums\WorkOrderType;
 use App\Models\Contract;
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\WorkOrderQuoteAttributeCopier;
 use App\Services\WorkOrderService;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +22,10 @@ final class MultiQuoteWorkOrderProgrammer
 {
     public const int MAX_CONTRACTS = 50;
 
-    public function __construct(private readonly WorkOrderService $workOrders) {}
+    public function __construct(
+        private readonly WorkOrderService $workOrders,
+        private readonly WorkOrderQuoteAttributeCopier $attributeCopier,
+    ) {}
 
     /**
      * @param  iterable<Contract>  $contracts  already authorized by MultiQuoteContractGate
@@ -44,7 +48,13 @@ final class MultiQuoteWorkOrderProgrammer
             taskTemplateId: isset($validated['task_template_id']) ? (int) $validated['task_template_id'] : null,
         );
 
-        // Step 3: create inside a transaction; any 422 leaves nothing behind
-        return DB::transaction(fn (): WorkOrder => $this->workOrders->create($data));
+        // Step 3: create inside a transaction; any 422 leaves nothing behind.
+        // Spec 0404 D-D1: then the offers' flexible fields, first non-empty in contract order.
+        return DB::transaction(function () use ($data, $quoteIds): WorkOrder {
+            $workOrder = $this->workOrders->create($data);
+            $this->attributeCopier->fill($workOrder, $quoteIds, array_keys($data->attributeValues ?? []));
+
+            return $workOrder;
+        });
     }
 }

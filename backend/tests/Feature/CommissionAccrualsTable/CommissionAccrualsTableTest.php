@@ -78,7 +78,8 @@ it('AC-017: exposes the contract columns, the badge enum keys and the row groupi
         ->and($columns['status']['sortable'])->toBeFalse()
         ->and($columns['status']['options'])->toBe(['open', 'draft', 'issued', 'settled_externally'])
         ->and($columns['type']['options'])->toBe(['ACCRUAL', 'REVERSAL', 'ADJUSTMENT'])
-        ->and($columns['recipient_role']['options'])->toBe(['COMMERCIAL', 'REPORTER', 'SUPERVISOR'])
+        // REQUIREMENT CHANGED (spec 0417): partner commerciale
+        ->and($columns['recipient_role']['options'])->toBe(['COMMERCIAL', 'COMMERCIAL_PARTNER', 'REPORTER', 'SUPERVISOR'])
         ->and($columns['recipient_kind']['enumKey'])->toBe('commission_recipient_kind')
         ->and($columns['recipient_role']['enumKey'])->toBe('commission_recipient_role')
         ->and($columns['type']['enumKey'])->toBe('commission_accrual_type')

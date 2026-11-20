@@ -2,11 +2,15 @@
 
 namespace App\Policies;
 
+use App\Enums\TeamActivityRecordEnum;
 use App\Models\Quote;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
+use App\Services\Quotes\ContractedQuoteGuard;
 use App\Services\Quotes\QuoteLineWorkOrderLock;
+use App\Services\Quotes\QuoteRegistryTransferService;
 use App\Services\Quotes\QuoteVisibilityScope;
+use App\Support\Notifications\AssignmentNotificationChannels;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,6 +22,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class QuotePolicy extends BasePolicy
 {
+    /** Spec 0412, D-1: costs and margins of the offer. */
+    public const string VIEW_COSTS_ABILITY = 'viewCosts';
+
+    /** The permission behind VIEW_COSTS_ABILITY, for the checks with no record (grid, statistics, documents). */
+    public const string VIEW_COSTS_PERMISSION = 'quotes.'.self::VIEW_COSTS_ABILITY;
+
     protected function resource(): string
     {
         return 'quotes';
@@ -57,11 +67,20 @@ class QuotePolicy extends BasePolicy
     }
 
     /**
+     * Spec 0412, D-1: cost lines, cost and margin of the offer; permission
+     * plus the same record scope as view, like WorkOrderPolicy::viewCosts.
+     */
+    public function viewCosts(User $user, Quote $quote): Response
+    {
+        return $this->withinPerimeter($user->can(self::VIEW_COSTS_PERMISSION), fn (): bool => $this->isInScope($user, $quote), 'quote_out_of_scope');
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY, QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY, QuoteLineWorkOrderLock::OVERRIDE_ABILITY];
+        return [...parent::abilities(), QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY, QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY, QuoteLineWorkOrderLock::OVERRIDE_ABILITY, QuoteRegistryTransferService::ABILITY, ContractedQuoteGuard::ABILITY, TeamActivityRecordEnum::ABILITY, self::VIEW_COSTS_ABILITY, AssignmentNotificationChannels::BELL_ABILITY, AssignmentNotificationChannels::MAIL_ABILITY];
     }
 
     private function isInScope(User $user, Model $model): bool

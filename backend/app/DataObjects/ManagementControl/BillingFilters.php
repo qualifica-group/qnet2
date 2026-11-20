@@ -20,7 +20,9 @@ final readonly class BillingFilters
 
     public const string GROUP_COMMERCIAL = 'commercial';
 
-    public const array GROUP_BY_OPTIONS = [self::GROUP_BUSINESS_FUNCTION, self::GROUP_COMPANY, self::GROUP_COMMERCIAL];
+    public const string GROUP_COMMERCIAL_PARTNER = 'commercial_partner';
+
+    public const array GROUP_BY_OPTIONS = [self::GROUP_BUSINESS_FUNCTION, self::GROUP_COMPANY, self::GROUP_COMMERCIAL, self::GROUP_COMMERCIAL_PARTNER];
 
     /**
      * @param  array<int, int>  $companyIds

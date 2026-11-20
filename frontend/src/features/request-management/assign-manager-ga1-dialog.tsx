@@ -130,7 +130,7 @@ function AssignManagerGa1DialogBody({
               {label}
             </Label>
             {/* No `params`: the GA1 is bound to no Sede, so the picker lists
-                every user — exactly what the grid's own `manager_ga1` cell does. */}
+                every user. */}
             <AsyncPaginatedSelect
               id="assign-manager-ga1-user"
               resource={USERS_FOR_SELECT_RESOURCE}
