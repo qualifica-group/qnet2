@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ISO: sottocategorie consolidate in "ISO - Ente" / "ISO - Consulenza" (one-shot, richiesta utente 2026-11-20) — NON COMMITTATO, NON ESEGUITO
+
+- `php artisan db:seed --class=IsoSubcategoriesConsolidationSeeder --force` (`backend/database/seeders/IsoSubcategoriesConsolidationSeeder.php`). Solo la radice corrente `ISO` (`parent_id` null, `is_legacy` false): `[OLD] ISO` intoccato.
+- Crea (o riusa) `ISO - Ente` e `ISO - Consulenza` via `ProductCategoryService::create` (impostazioni root-owned ereditate); prodotti con tipologia `institution` -> Ente, tutti gli altri -> Consulenza; elimina tutte le altre sottocategorie (anche annidate, anche `ISO - Generico`).
+- Riferimenti: righe `opportunity/project/campaign/employment_product_lines` e preferiti tab (`user_category_tab_preferences`) -> Ente se la vecchia sottocategoria aveva solo prodotti Ente, altrimenti Consulenza; riga duplicata (stesso owner + funzione + destinazione) cancellata. Regole provvigionali di categoria sulle sottocategorie (in dev: 182 dei Segnalatori su SA8000 e UNI PDR 125) -> una regola PRODUCT per prodotto coperto (stessa percentuale), salvo regola prodotto gia' esistente per lo stesso destinatario; la regola di categoria e' cancellata, o sospesa e spostata sulla destinazione se gia' applicata.
+- Dry-run in transazione annullata sul DB dev: 91 sottocategorie eliminate, 329 prodotti (25 Ente, 304 Consulenza), 180 righe ricollegate, 182 regole -> 1456 regole prodotto, 2 preferiti.
+- Test: `tests/Feature/ProductCategories/IsoSubcategoriesConsolidationSeederTest.php` (5). Guida in-app `agent-sales-report` IT/EN: esempio categoria aggiornato a "ISO - Consulenza".
+- Da allineare (fuori scope, segnalato): i dati di seed `QualificaCatalog/IsoSubcategories`, `IsoProductCatalogue` (+ Named/MultiStandard) e la colonna `pdr` di `ReporterCommissionCatalogue` descrivono ancora le vecchie sottocategorie: dopo il one-shot `QualificaCatalogSeeder` le ricreerebbe, e `QualificaReporterCommissionSeeder` (categorie SA8000/UNI PDR 125 mancanti = warning) cancellerebbe le regole prodotto convertite, che hanno il prefisso "Segnalatore" e quindi risultano "seminate".
+
 ## Richiesta Proforma -> Task al Responsabile emissione proforma (spec 0421) (2026-11-20) — COMMITTATO, NON PUBBLICATO
 
 - `POST /api/work-orders/{workOrder}/proforma-requests` (contratto invariato) ora apre, nella stessa transazione, un Task per ogni responsabile coinvolto: `ProformaRequestService::createForWorkOrder` Step 4 -> `App\Services\ProformaRequests\ProformaRequestTaskDispatcher`.
