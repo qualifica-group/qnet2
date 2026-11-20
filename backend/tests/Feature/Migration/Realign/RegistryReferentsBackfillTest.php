@@ -245,3 +245,36 @@ it('keeps a secondario changed by hand (spec 0408 AC-006)', function () {
     expect($registry->fresh()->secondary_referent_id)->toBe($mine->id)
         ->and($registry->referents()->count())->toBe(3);
 });
+
+it('never makes the principale a secondario changed by hand (spec 0408 INV-2)', function () {
+    $current = referentsBackfillReferent('Mario', 'Rossi', 17061);
+    $mine = referentsBackfillReferent('Anna', 'Verdi', 17062);
+    $registry = referentsBackfillRegistry(8582, [$current, $mine], $current);
+    DB::table('registries')->where('id', $registry->id)->update(['secondary_referent_id' => $mine->id]);
+    activity()->performedOn($registry)->event('updated')
+        ->withProperties(['old' => ['secondary_referent_id' => null], 'attributes' => ['secondary_referent_id' => $mine->id]])
+        ->log('updated');
+
+    runReferentsBackfill(true, [referentsBackfillRecord(8582, [
+        ['slot' => 1, 'contact_id' => 17062, 'first_name' => 'Anna', 'last_name' => 'Verdi'],
+    ])]);
+    $registry->refresh();
+
+    expect($registry->primary_referent_id)->toBe($current->id)
+        ->and($registry->secondary_referent_id)->toBe($mine->id);
+});
+
+it('clears a secondario set by the import when Referente 1 moves onto it (spec 0408 INV-2)', function () {
+    $current = referentsBackfillReferent('Mario', 'Rossi', 17071);
+    $swapped = referentsBackfillReferent('Anna', 'Verdi', 17072);
+    $registry = referentsBackfillRegistry(8583, [$current, $swapped], $current);
+    DB::table('registries')->where('id', $registry->id)->update(['secondary_referent_id' => $swapped->id]);
+
+    runReferentsBackfill(true, [referentsBackfillRecord(8583, [
+        ['slot' => 1, 'contact_id' => 17072, 'first_name' => 'Anna', 'last_name' => 'Verdi'],
+    ])]);
+    $registry->refresh();
+
+    expect($registry->primary_referent_id)->toBe($swapped->id)
+        ->and($registry->secondary_referent_id)->toBeNull();
+});

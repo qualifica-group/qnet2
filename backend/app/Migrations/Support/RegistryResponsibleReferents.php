@@ -186,13 +186,22 @@ final class RegistryResponsibleReferents
             return [null, false];
         }
 
-        if ($this->changedByHand($registry, 'primary_referent_id')) {
+        [$newId, $reason] = $target;
+        // Spec 0408 INV-2: the principale never equals the secondario. Landing on
+        // a secondario chosen by hand is a manual choice to keep; one set by the
+        // import gives way, as when a user promotes it.
+        $landsOnSecondary = $newId !== null && $newId === (int) $registry->secondary_referent_id;
+
+        if ($this->changedByHand($registry, 'primary_referent_id')
+            || ($landsOnSecondary && $this->changedByHand($registry, 'secondary_referent_id'))) {
             return [null, true];
         }
 
-        [$newId, $reason] = $target;
         $old = $currentId !== null ? Referent::query()->find($currentId) : null;
-        $registry->forceFill(['primary_referent_id' => $newId])->save();
+        $registry->forceFill(array_merge(
+            ['primary_referent_id' => $newId],
+            $landsOnSecondary ? ['secondary_referent_id' => null] : [],
+        ))->save();
 
         return [['old' => $old, 'new' => $newId !== null ? Referent::query()->find($newId) : null, 'reason' => $reason], false];
     }
