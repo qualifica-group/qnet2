@@ -10,7 +10,7 @@ use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
 use App\Notifications\Concerns\QueuesMailSeparately;
-use App\Notifications\Concerns\RespectsEmailPreference;
+use App\Support\Notifications\AssignmentNotificationChannels;
 use App\Support\Notifications\RecordLinkResolver;
 use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
@@ -26,7 +26,9 @@ use Illuminate\Notifications\Notification;
  * class for every combination rather than near-identical ones: target and
  * role are data, not structure — they only pick a sentence and a link.
  *
- * Modelled on RequestTransferredNotification: `via()`: bell always, mail per recipient preference,
+ * Modelled on RequestTransferredNotification: `via()`: the channels come from
+ * AssignmentNotificationChannels (spec 0420: role permissions on Opportunita'
+ * and Offerte, bell always elsewhere), mail always behind the personal switch,
  * `ShouldQueue`, payload through NotificationData (title/message/level/
  * action_url), `action_url` a PATH INTERNO never absolute.
  *
@@ -38,7 +40,7 @@ use Illuminate\Notifications\Notification;
  */
 class RecordAssignmentNotification extends Notification implements ShouldQueue
 {
-    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
+    use Queueable, QueuesMailSeparately;
 
     /**
      * @param  array<string, string>  $details  the record's detail card,
@@ -59,7 +61,8 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return $this->databaseAndPreferredMail($notifiable);
+        /** @var User $notifiable */
+        return AssignmentNotificationChannels::for($notifiable, $this->target);
     }
 
     /**

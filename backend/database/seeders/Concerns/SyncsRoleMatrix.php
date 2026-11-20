@@ -5,6 +5,7 @@ namespace Database\Seeders\Concerns;
 use App\Models\Role;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
+use App\Support\Notifications\AssignmentNotificationChannels;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -59,14 +60,16 @@ trait SyncsRoleMatrix
      * @param  Collection<int, string>  $permissions
      * @param  bool  $requestSightFromQuotes  false for a role whose questionnaire answered the request
      *                                        modules itself (spec 0408 D-14): its grants are kept as given
+     * @param  bool  $assignmentNotifications  false for a single-person add-on role (spec 0420 D-4)
      */
-    private function syncRole(string $name, string $description, Collection $permissions, bool $requestSightFromQuotes = true): Role
+    private function syncRole(string $name, string $description, Collection $permissions, bool $requestSightFromQuotes = true, bool $assignmentNotifications = true): Role
     {
         $role = Role::findOrCreate($name, Guard::getDefaultName(User::class));
         $role->description = $description;
         $role->save();
         $permissions = $this->withCompetenceSight($permissions);
-        $role->syncPermissions(($requestSightFromQuotes ? $this->withRequestModulesSight($permissions) : $permissions)->all());
+        $permissions = $requestSightFromQuotes ? $this->withRequestModulesSight($permissions) : $permissions;
+        $role->syncPermissions(($assignmentNotifications ? $this->withAssignmentNotifications($permissions) : $permissions)->all());
 
         return $role;
     }
@@ -87,6 +90,24 @@ trait SyncsRoleMatrix
                 ->map(fn (string $resource): string => "{$resource}.viewCompetence"))
             ->unique()
             ->values();
+    }
+
+    /**
+     * Every operational seeded role (one that sees at least one module)
+     * receives the assignment notifications, bell and email, of every module
+     * (spec 0420 D-4): the pre-0420 behaviour, which the administrator then
+     * narrows role by role. A role that sees nothing (e.g. import only) stays as declared.
+     *
+     * @param  Collection<int, string>  $permissions
+     * @return Collection<int, string>
+     */
+    private function withAssignmentNotifications(Collection $permissions): Collection
+    {
+        if (! $permissions->contains(fn (string $permission): bool => str_ends_with($permission, '.view'))) {
+            return $permissions;
+        }
+
+        return $permissions->merge(AssignmentNotificationChannels::permissions())->unique()->values();
     }
 
     /**

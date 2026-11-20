@@ -100,6 +100,7 @@ it('notifies the GA2 assigned from request management with the Offerta title and
     Opportunity::factory()->count(2)->create();
     $actor = quoteNotificationUserWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $recipient = quoteNotificationUserWith(['quotes.view', 'opportunities.view', 'request-management.view']);
+    grantAssignmentNotifications($recipient);
     $quote = Quote::factory()->create(['title' => 'QUO-0042 - Corso sicurezza']);
     Sanctum::actingAs($actor);
 
@@ -126,6 +127,7 @@ it('notifies every manager newly inserted from the Offerta form, whatever the sl
     $actor = quoteNotificationUserWith(['quotes.view', 'quotes.update', 'quotes.viewAll']);
     $ga1 = User::factory()->create();
     $ga3 = User::factory()->create();
+    grantAssignmentNotifications($ga1, $ga3);
     $quote = Quote::factory()->create();
     $quote->opportunity->managers()->sync([$ga1->id => ['position' => 1], $ga3->id => ['position' => 3]]);
     Sanctum::actingAs($actor);
@@ -174,6 +176,7 @@ it('notifies the managers submitted when the Offerta is created (AC-006)', funct
 
     $actor = quoteNotificationUserWith(['quotes.view', 'quotes.create']);
     $manager = quoteNotificationUserWith(['quotes.view']);
+    grantAssignmentNotifications($manager);
     $opportunity = Opportunity::factory()->create();
     $opportunity->managers()->sync([$manager->id => ['position' => 1]]);
     Sanctum::actingAs($actor);
@@ -197,6 +200,7 @@ it('notifies the managers an Offerta inherits from its Opportunity (AC-006)', fu
 
     $actor = quoteNotificationUserWith(['quotes.view', 'quotes.create']);
     $manager = quoteNotificationUserWith(['quotes.view']);
+    grantAssignmentNotifications($manager);
     $opportunity = Opportunity::factory()->create();
     $opportunity->managers()->sync([$manager->id => ['position' => 1]]);
     Sanctum::actingAs($actor);

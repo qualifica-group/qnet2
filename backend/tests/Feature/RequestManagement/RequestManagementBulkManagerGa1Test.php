@@ -273,6 +273,7 @@ it('notifies the new GA1 as Account Manager, by bell and email (AC-009 rev. 2026
 
     $actor = bulkGa1Actor(['viewAny', 'viewAll', 'update', 'assignManagerGa1']);
     $tutor = User::factory()->create();
+    grantAssignmentNotifications($tutor);
     $quote = bulkGa1Quote();
     Sanctum::actingAs($actor);
 

@@ -57,7 +57,7 @@ class QualificaDepartmentRoleSeeder extends Seeder
 
             // Step 3: the add-on roles of single people, without the baseline.
             foreach (Department::ADD_ON_ROLES as $role => $addOn) {
-                $this->syncDepartmentRole($role, $addOn['description'], $addOn['grants'], baseline: []);
+                $this->syncDepartmentRole($role, $addOn['description'], $addOn['grants'], baseline: [], assignmentNotifications: false);
             }
 
             // Step 4: the listed people onto their roles.
@@ -79,9 +79,10 @@ class QualificaDepartmentRoleSeeder extends Seeder
         array $grants,
         array $baseline = Grants::BASELINE,
         bool $requestSightFromQuotes = true,
+        bool $assignmentNotifications = true,
     ): void {
         $permissions = $this->withUserFormStack($this->resolvePermissions([...$baseline, ...$this->grantPermissions($grants)]), $this->catalogue);
-        $role = $this->syncRole($name, $description, $permissions, $requestSightFromQuotes);
+        $role = $this->syncRole($name, $description, $permissions, $requestSightFromQuotes, $assignmentNotifications);
 
         // The HR department reads the user's contractual data like the HR
         // office (D-7); every other department has it hidden like a mansione.

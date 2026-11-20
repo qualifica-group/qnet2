@@ -239,6 +239,7 @@ it('AC-007: moving the OPERATOR slot notifies the new operator and logs both key
     $operator = User::factory()->create();
     $quote = teamSlotsQuote([ManagerPositions::OPERATOR => $operator->id]);
     $newOperator = User::factory()->create();
+    grantAssignmentNotifications($newOperator);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [
@@ -275,6 +276,7 @@ it('AC-007: adding a colleague to an OTHER slot notifies only them and leaves th
     $operator = User::factory()->create();
     $quote = teamSlotsQuote([ManagerPositions::OPERATOR => $operator->id]);
     $teammate = User::factory()->create();
+    grantAssignmentNotifications($teammate);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [

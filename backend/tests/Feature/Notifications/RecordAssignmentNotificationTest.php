@@ -189,6 +189,7 @@ it('applies the same supervisor and manager rules to an opportunity (AC-008)', f
     $actor = assignmentActorWith(['opportunities.update', 'opportunities.viewAll']);
     $supervisor = User::factory()->create();
     $manager = User::factory()->create();
+    grantAssignmentNotifications($supervisor, $manager);
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -217,6 +218,7 @@ it('notifies the manager assigned from the work panel to the GA2 slot (AC-009)',
     Opportunity::factory()->create();
     $actor = assignmentActorWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $operator = User::factory()->create();
+    grantAssignmentNotifications($operator);
     $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -266,6 +268,7 @@ it('a bulk assignment of N requests produces N notifications for the operator (A
     // test is unaffected: it still takes one write per offer.
     $site = OperationalSite::factory()->withAddress()->create();
     $operator = User::factory()->create();
+    grantAssignmentNotifications($operator);
     EmploymentProfile::factory()->for($operator)->physicalSite($site)->create();
     $requests = Quote::factory()->count(3)->create(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);

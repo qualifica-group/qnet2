@@ -6,6 +6,7 @@ use App\Models\Opportunity;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\Opportunities\OpportunityVisibilityScope;
+use App\Support\Notifications\AssignmentNotificationChannels;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
@@ -81,6 +82,6 @@ class OpportunityPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewCompetence', 'viewDocuments'];
+        return [...parent::abilities(), 'viewAll', 'viewCompetence', 'viewDocuments', AssignmentNotificationChannels::BELL_ABILITY, AssignmentNotificationChannels::MAIL_ABILITY];
     }
 }

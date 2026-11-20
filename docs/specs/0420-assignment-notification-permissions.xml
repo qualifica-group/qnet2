@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0420-assignment-notification-permissions" status="approved" owner="utente" date="2026-11-20">
+
+  <goal>
+    Chi riceve l'avviso quando viene inserito come Gestore Account (o Supervisore) di un'opportunita' o di
+    un'offerta / richiesta si decide sul RUOLO, con due spunte per modulo: notifica in campanella e email.
+    Task 5 della riunione 12-16 novembre ("a monte si decide come opzione se ... deve o meno avere l'avviso via
+    e-mail e/o via Notifiche ... meglio sul Ruolo").
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-20: "punto 5, inserire questo permesso sulla notifica per ruolo e per opportunita'
+    offerta / gestione richieste". Oggi `RecordAssignmentNotification` (spec 0081/0186) parte sempre in
+    campanella e per email secondo l'interruttore personale `users.email_notifications_enabled`.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Due permessi per modulo, assegnabili dalla matrice del ruolo: `notifyAssignment`
+      (campanella) e `notifyAssignmentEmail` (email), indipendenti tra loro. Moduli: `opportunities`, `quotes`,
+      `request-management`, `enrollee-management`.</decision>
+    <decision id="D-2">Assegnazione su opportunita' = permessi `opportunities.*`. Assegnazione su offerta = basta
+      il permesso su UNO tra `quotes`, `request-management`, `enrollee-management` (le righe di Gestione
+      Richieste/Iscritti sono offerte, spec 0086): ognuno spunta il modulo in cui lavora.</decision>
+    <decision id="D-3">L'email parte solo con il permesso email E l'interruttore personale acceso (resta come
+      oggi, l'utente puo' sempre spegnere le proprie email). Nessun permesso = nessun avviso.
+      Il super-admin riceve sempre (bypass dei permessi).</decision>
+    <decision id="D-4">Comportamento invariato al rilascio: la migrazione da' tutti gli 8 permessi a ogni ruolo
+      operativo (con almeno un permesso `*.view`), anche a quelli che non vedono il modulo (sul DB locale 4 consulenti `reparto-iso` ricevevano
+      avvisi di assegnazione su offerte senza vedere nessuno dei quattro moduli); i seeder dei ruoli
+      (`SyncsRoleMatrix::syncRole`) fanno lo stesso. I ruoli senza nessun `*.view` (solo import, solo notifiche del team)
+      e i ruoli aggiuntivi di reparto (`ADD_ON_ROLES`) restano come dichiarati dal seeder. L'admin poi toglie la spunta dove non serve. Un ruolo nuovo
+      nasce senza: l'admin spunta "a monte".</decision>
+    <decision id="D-5">Fuori dai permessi (invariati): anagrafiche e commesse (l'utente ha chiesto
+      opportunita' e offerte / Gestione Richieste), notifiche del team (0413), di stato (0419), di
+      trasferimento e menzioni. Nessuna entita' "Team".</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Abilities nelle policy Opportunity, Quote, RequestManagement (Iscritti le eredita via
+        `RequestModule::abilities`).</item>
+      <item>`AssignmentNotificationChannels` (canali per destinatario) usato da `RecordAssignmentNotification::via`.</item>
+      <item>Migrazione dati dei permessi (D-4) e `SyncsRoleMatrix::withAssignmentNotifications`.</item>
+      <item>Etichette FE dei due permessi IT/EN; guide in-app `notifications` e `roles` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Preferenze per singola persona oltre l'interruttore email esistente; anagrafiche e commesse.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <ac id="AC-001">Gestore Account aggiunto a un'opportunita', ruolo con `opportunities.notifyAssignment` e
+      `opportunities.notifyAssignmentEmail`, interruttore email acceso: campanella + email.</ac>
+    <ac id="AC-002">Ruolo con solo `notifyAssignment`: solo campanella. Con solo `notifyAssignmentEmail`: solo email.</ac>
+    <ac id="AC-003">Nessuno dei due permessi: nessuna notifica.</ac>
+    <ac id="AC-004">Permesso email ma interruttore personale spento: solo campanella (se ha il permesso campanella).</ac>
+    <ac id="AC-005">Offerta: il permesso su `request-management` (senza `quotes`) basta.</ac>
+    <ac id="AC-006">Anagrafica e commessa: comportamento invariato senza i nuovi permessi.</ac>
+    <ac id="AC-007">Migrazione: ogni ruolo con almeno un `*.view` riceve tutti gli 8 permessi, anche senza vedere
+      il modulo; un ruolo senza `*.view` resta com'e';
+      su un'installazione nuova (nessun ruolo) non crea nulla.</ac>
+  </acceptance>
+</spec>

@@ -109,6 +109,9 @@ export const permissions = {
     viewCosts: 'View costs and margins',
     // Spec 0413: notifications of the team's activity on offers, contracts and work orders.
     notifyTeam: 'Receive team notifications',
+    // Spec 0420: notice when put in charge as Account Manager or Supervisor.
+    notifyAssignment: 'Receive the assignment notification',
+    notifyAssignmentEmail: 'Receive the assignment email',
   },
   resources: {
     users: 'Users',

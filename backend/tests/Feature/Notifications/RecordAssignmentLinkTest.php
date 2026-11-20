@@ -108,6 +108,7 @@ it('an opportunity assignment never points a request-management-only recipient t
 
     $actor = linkUserWith(['opportunities.update', 'opportunities.viewAll']);
     $recipient = linkUserWith(['request-management.view']);
+    grantAssignmentNotifications($recipient);
     $opportunity = Opportunity::factory()->create();
     Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
@@ -270,6 +271,7 @@ it('a GA2 assignment notification opens the Offerta, not the Opportunity, for a 
 
     $actor = linkUserWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $recipient = linkUserWith(['request-management.view']);
+    grantAssignmentNotifications($recipient);
     $opportunity = Opportunity::factory()->create();
     $quote = Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);

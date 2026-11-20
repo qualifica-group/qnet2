@@ -83,6 +83,29 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'assignment-notices',
+      title: 'Assignment notices',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'When someone puts you in charge as **Account Manager** or **Supervisor** of an opportunity or a quote (also from Request management or Enrollee management) you get a notice. Whether you get it, and how, is decided by your **role**: each module has the checkboxes **Receive the assignment notification** (bell) and **Receive the assignment email** (email).',
+        },
+        {
+          type: 'list',
+          items: [
+            'Opportunity: the **Opportunities** checkboxes apply.',
+            'Quote: the checkbox on any of **Quotes**, **Request management** and **Enrollee management** is enough.',
+            'The email goes out only if your email switch in **Settings** is on too.',
+            'Registries and work orders do not depend on these checkboxes: bell always, email per your preference.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Existing roles already hold every checkbox, so nobody stops receiving the notices: the administrator clears them where they are not needed. A new role starts without them: the administrator ticks them when creating it.',
+        },
+      ],
+    },
+    {
       id: 'the-bell',
       title: 'The menu link and the bell',
       blocks: [

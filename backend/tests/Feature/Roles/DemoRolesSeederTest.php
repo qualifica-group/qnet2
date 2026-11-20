@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Role;
+use App\Support\Notifications\AssignmentNotificationChannels;
 use Database\Seeders\DemoRolesSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,7 +27,9 @@ it('creates the non-privileged application roles with coherent permission sets',
         ->and($user->permissions->pluck('name'))->toContain('personal_data.view')
         ->and($user->permissions->pluck('name'))->not->toContain('users.update', 'roles.view')
         ->and($viewer->permissions->pluck('name'))->toContain('users.viewAny', 'users.view', 'roles.viewAny', 'roles.view')
-        ->and($viewer->permissions->pluck('name')->every(
+        // REQUIREMENT CHANGED (spec 0420 D-4): every role that sees a module
+        // also receives the assignment notifications, which grant no access.
+        ->and($viewer->permissions->pluck('name')->diff(AssignmentNotificationChannels::permissions())->every(
             fn (string $permission): bool => str_ends_with($permission, '.viewAny') || str_ends_with($permission, '.view')
         ))->toBeTrue();
 });

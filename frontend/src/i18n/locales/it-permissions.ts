@@ -112,6 +112,9 @@ export const permissions = {
     viewCosts: 'Vedere costi e margini',
     // Spec 0413: notifiche delle attivita' del team su offerte, contratti e commesse.
     notifyTeam: 'Ricevere le notifiche del team',
+    // Spec 0420: avviso quando si viene inseriti come Gestore Account o Supervisore.
+    notifyAssignment: 'Ricevere la notifica di assegnazione',
+    notifyAssignmentEmail: "Ricevere l'email di assegnazione",
   },
   resources: {
     users: 'Utenti',

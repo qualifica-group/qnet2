@@ -83,6 +83,29 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'assignment-notices',
+      title: 'Avvisi di assegnazione',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Quando qualcuno ti inserisce come **Gestore Account** o **Supervisore** di un'opportunità o di un'offerta (anche da Gestione Richieste o Gestione Iscritti) ricevi un avviso. Se lo ricevi, e come, lo decide il tuo **ruolo**: per ogni modulo ci sono le caselle **Ricevere la notifica di assegnazione** (campanella) e **Ricevere l'email di assegnazione** (email).",
+        },
+        {
+          type: 'list',
+          items: [
+            "Opportunità: valgono le caselle del modulo **Opportunità**.",
+            "Offerta: basta la casella su uno tra **Offerte**, **Gestione Richieste** e **Gestione Iscritti**.",
+            "L'email parte solo se hai anche l'interruttore delle email acceso in **Impostazioni**.",
+            "Anagrafiche e commesse non dipendono da queste caselle: campanella sempre, email secondo la tua preferenza.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "I ruoli esistenti hanno già tutte le caselle, così nessuno smette di ricevere gli avvisi: l'amministratore le toglie dove non servono. Un ruolo nuovo nasce senza: l'amministratore le spunta quando lo crea.",
+        },
+      ],
+    },
+    {
       id: 'the-bell',
       title: 'Il link nel menu e nella campanella',
       blocks: [
