@@ -118,6 +118,7 @@ use App\Models\WorkOrder;
 use App\Models\WorkOrderChatMessage;
 use App\Models\WorkOrderCost;
 use App\Models\WorkOrderLinePayment;
+use App\Models\WorkOrderPage;
 use App\Models\WorkOrderPaymentStatus;
 use App\Models\WorkOrderProgressEntry;
 use App\Models\WorkOrderStage;
@@ -360,6 +361,7 @@ class AppServiceProvider extends ServiceProvider
             // same reasoning as document_layout above.
             'work_order' => WorkOrder::class,
             'work_order_chat_message' => WorkOrderChatMessage::class,
+            'work_order_page' => WorkOrderPage::class,
             // Spec 0322: both audited (LogsModelActivity), so strict morph map needs them.
             'work_order_workflow' => WorkOrderWorkflow::class,
             'work_order_workflow_status' => WorkOrderWorkflowStatus::class,

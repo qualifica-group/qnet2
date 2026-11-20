@@ -71,6 +71,7 @@ import { workOrderPaymentStatuses } from './it-work-order-payment-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
 import { dashboard } from './it-dashboard'
+import { workOrderPage } from './it-work-order-page'
 import { agentSalesReport } from './it-agent-sales-report'
 import { requestManagement } from './it-request-management'
 import { categoryTabs } from './it-category-tabs'
@@ -476,6 +477,7 @@ export const it: TranslationResources = {
   impersonation,
   documentLayouts,
   dashboard,
+  workOrderPage,
   help,
   apiIntegrations,
   apiClients,

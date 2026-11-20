@@ -54,6 +54,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Work order page limits (spec 0380)
+    |--------------------------------------------------------------------------
+    |
+    | `page_text_max`: visible characters of the page (RichTextPlainText);
+    | `page_html_max_bytes`: size of the sanitized HTML, after inline images
+    | became attachment references.
+    |
+    */
+
+    'page_text_max' => (int) env('RICH_TEXT_PAGE_TEXT_MAX', 100000),
+
+    'page_html_max_bytes' => (int) env('RICH_TEXT_PAGE_HTML_MAX_BYTES', 1048576),
+
+    /*
+    |--------------------------------------------------------------------------
     | Allowed MIME types for embedded images
     |--------------------------------------------------------------------------
     |

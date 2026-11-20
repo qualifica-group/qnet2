@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Scheda "Appunti" nella commessa di progetto (spec 0380) (2026-11-11) — VERDE, NON COMMITTATO
+
+- Pagina a blocchi stile Teams/Loop dopo la Chat (una per commessa di progetto). Accesso = `WorkOrderChatAccess` (azioni `view_page`/`edit_page`), commessa chiusa = sola lettura e 409.
+- Backend: `GET|PUT /api/work-orders/{workOrder}/page`, `POST .../page/polls`, `PUT|DELETE .../page/polls/{pagePoll}/vote`; tabelle `work_order_pages` (version ottimistica, 409 `code: page_version_conflict`), `work_order_page_polls`, `work_order_page_poll_votes`; sanitizer a profili (`RichTextProfile::Standard|Page`, allow-list in `RichTextPageProfile`); allegati owner `work_order_page`. Al salvataggio: sondaggi non citati eliminati, `data-task-id` estranei rimossi.
+- Frontend: `features/work-order-page/` (`editor/` estensioni in casa, `blocks/` task e sondaggio, `menus/` barra selezione, "/", barra in fondo, maniglia drag). Nessuna nuova libreria: dichiarati solo `@tiptap/extension-list` e `@tiptap/extension-bubble-menu` 3.31.3 gia' installati. Inserimento sondaggio: flush autosave -> POST -> nodo -> salvataggio immediato (race con la cancellazione dei non citati).
+- Verifica: test mirati backend 574/574; suite completa backend 14589/14604, i 14 rossi sono in aree non toccate (PermissionCatalogueEndpointTest AC-004 712 contro 695 rosso anche col file originale); Vitest 10299/10300 (flake `comparison-bar-chart` sotto carico, isolato verde); `tsc -b --force` pulito; Pint ed ESLint puliti. Guida in-app `project-work-orders` IT/EN aggiornata.
+- Da fare: `php artisan migrate`; verifica manuale nel browser del drag (AC-019) e di 375 px (AC-023); manuale Claude Docs (sezione Commesse di progetto -> "Appunti"), non raggiungibile da questa sessione; indagare i 14 rossi preesistenti della suite backend. Vitest in questo ambiente: lanciare da `C:/...` maiuscolo.
+
 ## Chi vede la commessa vede i suoi task (spec 0379) (2026-11-10) — VERDE MIRATO, COMMITTATO, DA PUBBLICARE
 
 - Segnalazione: Noemi Nigliato, Responsabile di COM-20053, vedeva 0 task su 18 nel task board. I task migrati hanno solo creatore/richiedente (in produzione 341.345 task di commessa su 375.342 senza assegnatari), e nessun tier li raggiungeva.

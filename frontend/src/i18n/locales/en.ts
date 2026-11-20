@@ -77,6 +77,7 @@ import { rewardedReferents } from './en-rewarded-referents'
 import { fieldChangeRequests } from './en-field-change-requests'
 import { documentLayouts } from './en-document-layouts'
 import { dashboard } from './en-dashboard'
+import { workOrderPage } from './en-work-order-page'
 import { navigation } from './en-navigation'
 import { settings } from './en-settings'
 import { agentSalesReport } from './en-agent-sales-report'
@@ -490,6 +491,7 @@ export const en = {
   impersonation,
   documentLayouts,
   dashboard,
+  workOrderPage,
   help,
   apiIntegrations,
   apiClients,

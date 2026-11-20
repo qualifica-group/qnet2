@@ -18,6 +18,7 @@ use App\Models\TaskTemplateItem;
 use App\Models\TreasuryMovement;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderPage;
 
 return [
 
@@ -178,6 +179,8 @@ return [
         'purchase_invoice' => PurchaseInvoice::class,
         // Treasury movement documents (spec 0360): alias in the global morph map.
         'treasury_movement' => TreasuryMovement::class,
+        // Work order page images (spec 0380): rich_text owner, alias in the global morph map.
+        'work_order_page' => WorkOrderPage::class,
     ],
     /*
     |--------------------------------------------------------------------------

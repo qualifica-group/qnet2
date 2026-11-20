@@ -9,7 +9,9 @@ use App\Models\Task;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
 use App\Models\User;
+use App\Models\WorkOrderPage;
 use App\Notes\NoteEntityRegistry;
+use App\Services\WorkOrders\Chat\WorkOrderChatAccess;
 use Illuminate\Database\Eloquent\Model;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -30,7 +32,10 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 final class RichTextOwnerAccess
 {
-    public function __construct(private readonly NoteEntityRegistry $notes) {}
+    public function __construct(
+        private readonly NoteEntityRegistry $notes,
+        private readonly WorkOrderChatAccess $workOrderAccess,
+    ) {}
 
     public function canRead(User $user, ?Model $owner): bool
     {
@@ -39,6 +44,7 @@ final class RichTextOwnerAccess
             $owner instanceof Note => $this->canReadNote($user, $owner),
             $owner instanceof Task, $owner instanceof TaskTemplate => $user->can('view', $owner),
             $owner instanceof TaskTemplateItem => $user->can('view', $owner->template),
+            $owner instanceof WorkOrderPage => $this->workOrderAccess->canRead($user, $owner->workOrder),
             default => false,
         };
     }

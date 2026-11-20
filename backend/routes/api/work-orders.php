@@ -81,3 +81,6 @@ require __DIR__.'/work-order-progress.php';
 
 // Project work order chat (spec 0359).
 require __DIR__.'/work-order-chat.php';
+
+// Project work order notes page (spec 0380).
+require __DIR__.'/work-order-page.php';

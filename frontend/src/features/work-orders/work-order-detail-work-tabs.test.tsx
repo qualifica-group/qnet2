@@ -36,6 +36,10 @@ vi.mock('@/features/work-order-chat/work-order-chat-panel', () => ({
   WorkOrderChatPanel: ({ canWriteAction }: { canWriteAction: boolean }) => <div>chat-panel write:{String(canWriteAction)}</div>,
 }))
 
+vi.mock('@/features/work-order-page/work-order-page-panel', () => ({
+  WorkOrderPagePanel: ({ canEditAction }: { canEditAction: boolean }) => <div>page-panel edit:{String(canEditAction)}</div>,
+}))
+
 function workOrder(actions: Record<string, boolean>): WorkOrderDetailWithPermissions {
   return {
     id: 4,
@@ -155,5 +159,21 @@ describe('WorkOrderDetailWorkTabs', () => {
     render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_costs: true, write_chat: true })} />)
 
     expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument()
+  })
+
+  it('adds the Workspace notes tab right after the Chat with view_page and passes edit_page (spec 0380 AC-001)', () => {
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_chat: true, view_page: true, edit_page: true })} />)
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Tasks', 'Chat', 'Workspace notes'])
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Workspace notes' }))
+
+    expect(screen.getByText('page-panel edit:true')).toBeInTheDocument()
+  })
+
+  it('has no Workspace notes tab without view_page (spec 0380 AC-001)', () => {
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_chat: true, edit_page: true })} />)
+
+    expect(screen.queryByRole('tab', { name: 'Workspace notes' })).not.toBeInTheDocument()
   })
 })

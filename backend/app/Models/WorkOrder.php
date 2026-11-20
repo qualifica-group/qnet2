@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +106,27 @@ class WorkOrder extends BaseModel
     public function quote(): BelongsTo
     {
         return $this->belongsTo(Quote::class);
+    }
+
+    /**
+     * The shared notes page (spec 0380), created lazily.
+     *
+     * @return HasOne<WorkOrderPage, $this>
+     */
+    public function page(): HasOne
+    {
+        return $this->hasOne(WorkOrderPage::class);
+    }
+
+    /**
+     * Polls of the page, so `{pagePoll}` route bindings resolve only inside
+     * this commessa (scopeBindings, spec 0380).
+     *
+     * @return HasManyThrough<WorkOrderPagePoll, WorkOrderPage, $this>
+     */
+    public function pagePolls(): HasManyThrough
+    {
+        return $this->hasManyThrough(WorkOrderPagePoll::class, WorkOrderPage::class);
     }
 
     /**

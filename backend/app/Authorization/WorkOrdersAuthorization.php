@@ -73,7 +73,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat', 'view_page', 'edit_page'];
     }
 
     /**
@@ -154,6 +154,9 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // Spec 0359: the single chat rule, never a Gate ability.
             'view_chat' => $model instanceof WorkOrder && $chat->canRead($actor, $model),
             'write_chat' => $model instanceof WorkOrder && $chat->canWrite($actor, $model),
+            // Spec 0380, D-2: the notes page follows the very same rule as the chat.
+            'view_page' => $model instanceof WorkOrder && $chat->canRead($actor, $model),
+            'edit_page' => $model instanceof WorkOrder && $chat->canWrite($actor, $model),
         ];
     }
 

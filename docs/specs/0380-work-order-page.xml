@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0380-work-order-page" status="approved" owner="utente" date="2026-11-11">
+
+  <goal>
+    Il team di una commessa di progetto ha una pagina di appunti condivisa, a blocchi, accanto alla chat:
+    testo formattato, titoli, elenchi, checklist, tabelle, callout, blocchi comprimibili, date, immagini,
+    task reali della commessa e sondaggi, con blocchi riordinabili e salvataggio automatico. Ispirata alle
+    "Note" di Teams/Loop, senza modifica simultanea in tempo reale.
+  </goal>
+
+  <context>
+    <fact>Chat di commessa (spec 0359): solo `WorkOrderType::Project`; regola unica in
+      `App\Services\WorkOrders\Chat\WorkOrderChatAccess` (canRead = policy view + tipo progetto + team o
+      super-admin; canWrite = canRead + commessa non completata/chiusa). Esposta come
+      `permissions.actions.view_chat` / `write_chat` da `App\Authorization\WorkOrdersAuthorization`.</fact>
+    <fact>Schede di lavoro della commessa: `frontend/src/features/work-orders/work-order-detail-work-tabs.tsx`
+      (Task, Costi, Proforma, Chat). La nuova scheda va subito dopo la Chat.</fact>
+    <fact>Editor condiviso TipTap v3: `frontend/src/components/rich-text/` (`rich-text-editor.tsx`,
+      `rich-text-extensions.ts`, `rich-text-toolbar.tsx`, `rich-text-content.tsx`). Pacchetti presenti in
+      node_modules: starter-kit, react, pm, core, extension-list (TaskList/TaskItem), extension-bubble-menu,
+      extension-floating-menu, extension-link, extension-underline, extension-image, extension-mention,
+      extensions (Placeholder), suggestion.</fact>
+    <fact>Pipeline HTML lato server: `App\RichText\RichTextSanitizer` (allow-list symfony/html-sanitizer +
+      passata DOM `RichTextDom`), `RichTextImageProcessor::process()/deleteUnreferenced()` (immagini inline
+      `data:` -> allegato `rich_text` con `data-attachment-id`), `RichTextOwnerAccess` (lettura allegato
+      tramite il proprietario), `RichTextPlainText` (vuoto/lunghezza visibile), config `config/rich_text.php`.</fact>
+    <fact>Task: `POST /api/tasks` (con `work_order_id`), `GET /api/tasks/{task}`, visibilita'
+      `App\Services\Tasks\TaskVisibilityScope`; `TaskResource` espone title, task_status, assignees, end_date,
+      completion_date, is_private.</fact>
+    <fact>"Note" e' gia' un nome usato in UI (note collaborative sui record, `features/notes`, model `Note`):
+      la nuova entita' NON si chiama Note.</fact>
+    <decision id="D-1">Una sola pagina per commessa di progetto (risposta utente). Entita' `WorkOrderPage`,
+      creata pigramente al primo salvataggio; la lettura di una commessa senza pagina restituisce contenuto null.</decision>
+    <decision id="D-2">Accesso identico alla chat: lettura = `WorkOrderChatAccess::canRead`, scrittura (testo,
+      sondaggi, voti) = `canWrite`. Commessa completata/chiusa = sola lettura (409 sulle scritture). Nessun nuovo
+      permesso spatie. Esposto come `permissions.actions.view_page` / `edit_page`.</decision>
+    <decision id="D-3">Concorrenza ottimistica (risposta utente): ogni salvataggio invia la `version` letta; se
+      diversa da quella in DB -> 409 con la pagina corrente, nessuna sovrascrittura. Il frontend sospende il
+      salvataggio automatico e mostra "Modificata da X: ricarica" (le modifiche locali restano copiabili).</decision>
+    <decision id="D-4">Formato di persistenza: HTML sanitizzato (come le note), con un profilo di allow-list
+      dedicato alla pagina (`RichTextSanitizer` con profilo `page`), che aggiunge solo gli elementi/attributi
+      elencati in `data_contract/html_profile`. I profili esistenti (note, task, template, email) restano invariati.</decision>
+    <decision id="D-5">Nessuna nuova dipendenza (preferenza utente). Tabella, blocco comprimibile, callout, data,
+      evidenziatore, colore testo, maniglia drag, menu "/", intestazioni comprimibili: estensioni scritte in casa
+      sopra `@tiptap/core`/`@tiptap/pm`. Checklist da `@tiptap/extension-list` e barra sulla selezione da
+      `@tiptap/extension-bubble-menu`, gia' presenti: vanno solo dichiarati in package.json alla versione
+      installata (stessa versione di `@tiptap/react`), non sono nuove librerie.</decision>
+    <decision id="D-6">Elenco attivita' = task reali (risposta utente). Il blocco crea il task con il flusso
+      esistente (`POST /api/tasks`, `work_order_id` della commessa) e nel contenuto salva solo
+      `data-task-id`. Il riepilogo dei task citati arriva dal GET della pagina, filtrato con `TaskVisibilityScope`:
+      un task non visibile o eliminato appare come "Task non disponibile", senza titolo. Completamento e modifica
+      si fanno aprendo il dettaglio task esistente (le regole di chiusura - feedback, ore, validazione - restano li').</decision>
+    <decision id="D-7">Sondaggio (tabella di votazione): domanda + 2..10 opzioni, un voto per utente, modificabile
+      o ritirabile; i voti sono nominativi e visibili a chi legge la pagina. Il sondaggio vive in tabella propria;
+      il contenuto salva solo `data-poll-id`. Al salvataggio della pagina i sondaggi non piu' citati vengono
+      eliminati (come `deleteUnreferenced` delle immagini).</decision>
+    <decision id="D-8">Stato aperto/chiuso di intestazioni e blocchi comprimibili: solo locale al browser, non
+      salvato e non condiviso (chiudere una sezione non deve generare un salvataggio ne' un conflitto altrui).</decision>
+    <decision id="D-9">Scorciatoie: Ctrl+Alt+0 paragrafo, Ctrl+Alt+1..4 H1..H4, Ctrl+Shift+8 puntato,
+      Ctrl+Shift+7 numerato, Ctrl+Shift+9 checklist (Ctrl+1 e' riservato dal browser), Ctrl+K link,
+      Alt+Shift+Freccia su/giu' sposta il blocco, "/" apre il menu blocchi.</decision>
+    <decision id="D-10">Etichetta UI della scheda: "Appunti" (EN "Workspace notes"), confermata dall'utente 2026-11-11. "Note" e'
+      gia' occupato dalle note collaborative della commessa. Consegna in un unico rilascio (utente 2026-11-11).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: tabella `work_order_pages`, `work_order_page_polls`, `work_order_page_poll_votes`; model,
+        service, FormRequest, Resource, controller; profilo sanitizer `page`; owner `WorkOrderPage` per gli allegati
+        `rich_text` (RichTextOwnerAccess + attachable_types); azioni `view_page`/`edit_page`.</item>
+      <item>Frontend: scheda nella card di lavoro della commessa di progetto; editor a pagina intera.</item>
+      <item>Formattazione in linea: grassetto, corsivo, sottolineato, barrato, codice in linea, link, evidenziatore
+        (palette fissa di 5 colori), colore testo (palette fissa di 6 colori).</item>
+      <item>Blocchi: paragrafo, H1-H4, intestazioni comprimibili 1-4, paragrafo comprimibile (titolo + corpo),
+        elenco puntato/numerato/checklist con rientri, citazione, callout (info/successo/attenzione/errore),
+        divisore, tabella (aggiungi/elimina riga e colonna, riga intestazione), badge data, immagine,
+        task della commessa, sondaggio.</item>
+      <item>Barra di formattazione sulla selezione con sottomenu stili (spunta sullo stile attivo e scorciatoia);
+        menu "/" per inserire blocchi; barra in fondo con i blocchi principali (Tabella, Elenco puntato,
+        Checklist, Task, Sondaggio, ...).</item>
+      <item>Maniglia drag a sinistra del blocco: trascina per riordinare; clic apre il menu blocco
+        (Trasforma in, Duplica, Sposta su, Sposta giu', Elimina). Alt+Shift+frecce da tastiera.</item>
+      <item>Salvataggio automatico con debounce, stato "Salvataggio... / Salvato / Errore", gestione 409 (D-3).</item>
+      <item>Guida in-app `work-orders` IT/EN (sezione nuova) e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Modifica simultanea in tempo reale, cursori altrui, presenza (Yjs/Reverb): fase 2.</item>
+      <item>Piu' pagine per commessa, cronologia versioni, ripristino versione precedente.</item>
+      <item>Pagina su commesse non di progetto o su altre entita' (offerte, anagrafiche).</item>
+      <item>Commenti in linea sul testo, @menzioni con notifica, notifiche di modifica pagina.</item>
+      <item>Completamento/modifica del task dentro la pagina (si apre il dettaglio task esistente, D-6).</item>
+      <item>Componenti incorporabili altrove (stile "componente Loop"), esportazione PDF/Word della pagina.</item>
+      <item>Voce di activity log per ogni salvataggio automatico (rumore): si aggiorna solo updated_by/updated_at.</item>
+      <item>Migrazione dal legacy (il legacy non ha questa funzione).</item>
+      <item>Nuove dipendenze npm/composer.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <types>
+      <type name="WorkOrderPagePayload">
+        { content: string|null, version: int (0 se la pagina non esiste ancora),
+          updated_at: ISO8601|null, updated_by: { id: int, name: string }|null,
+          can_edit: bool,
+          tasks: { [task_id: string]: TaskRef },
+          polls: { [poll_id: string]: Poll } }
+      </type>
+      <type name="TaskRef">
+        { id: int, available: bool, title: string|null, status: { id, name, color }|null,
+          end_date: "YYYY-MM-DD"|null, completed: bool, assignees: [{ id, name }] }
+        -- available=false (non visibile/eliminato/altra commessa): tutti gli altri campi null/false/[]
+      </type>
+      <type name="Poll">
+        { id: int, question: string, options: [{ key: string, label: string, votes: int,
+          voters: [{ id, name }] }], my_vote: string|null, total_votes: int }
+      </type>
+    </types>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/page">
+      <response status="200">{ success: true, data: WorkOrderPagePayload }</response>
+      <errors>403 policy view negata o fuori dal team; 404 commessa non di progetto (stesso ordine di
+        WorkOrderChatAccess::assertCanRead).</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/work-orders/{workOrder}/page">
+      <request>{ content: string|null (HTML, max `rich_text.page_html_max_bytes` = 1 MB; testo visibile max
+        `rich_text.page_text_max` = 100000 caratteri), version: int &gt;= 0 }</request>
+      <response status="200">{ success: true, message, data: WorkOrderPagePayload } (version incrementata)</response>
+      <errors>403/404 come GET; 409 commessa chiusa { success:false, message }; 409 conflitto
+        { success:false, message, data: WorkOrderPagePayload corrente, code: "page_version_conflict" };
+        422 validazione.</errors>
+      <side_effects>Sanitizza col profilo `page`, processa immagini inline, elimina allegati e sondaggi non
+        piu' citati, scarta `data-task-id` di task non della commessa (il nodo resta, rende "non disponibile").</side_effects>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/page/polls">
+      <request>{ question: string 1..255, options: string[2..10] ciascuna 1..120, distinte }</request>
+      <response status="201">{ success: true, message, data: Poll }</response>
+      <errors>403/404 come GET; 409 commessa chiusa; 422.</errors>
+      <note>Crea la pagina se non esiste (version 0 -> resta 0 finche' il contenuto non viene salvato).</note>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/work-orders/{workOrder}/page/polls/{poll}/vote">
+      <request>{ option_key: string (una delle opzioni) }</request>
+      <response status="200">{ success: true, data: Poll }</response>
+      <errors>403/404 come GET; 404 sondaggio di altra commessa (scopeBindings); 409 chiusa; 422 opzione inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/work-orders/{workOrder}/page/polls/{poll}/vote">
+      <response status="200">{ success: true, data: Poll }</response>
+      <errors>come PUT vote.</errors>
+    </endpoint>
+
+    <html_profile name="page">
+      Oltre all'allow-list base (p, br, strong, em, u, s, h2, h3, ul, ol, li, blockquote, pre, code, a[href], img):
+      h1, h4; hr;
+      ul[data-type="taskList"], li[data-type="taskItem"][data-checked="true|false"];
+      mark[data-color in palette highlight]; span[data-color in palette text];
+      table, thead, tbody, tr, th[colspan,rowspan], td[colspan,rowspan];
+      div[data-type="callout"][data-variant in info|success|warning|error];
+      div[data-type="collapsible"] > div[data-type="collapsible-summary"] + div[data-type="collapsible-content"];
+      h1..h4[data-collapsible="true"];
+      time[data-type="date"][datetime=YYYY-MM-DD];
+      div[data-type="task-ref"][data-task-id=intero positivo];
+      div[data-type="poll"][data-poll-id=intero positivo].
+      Nessun attributo `style`/`class`; valori fuori dalle palette o dagli enum -> attributo rimosso.
+    </html_profile>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un membro del team di una commessa di progetto, quando apre il dettaglio, allora
+      vede la scheda "Appunti" dopo la Chat; chi non ha `view_page` non la vede. [Vitest work-tabs]</criterion>
+    <criterion id="AC-002">Dato una commessa senza pagina, GET restituisce content null, version 0, tasks {} e polls {}.
+      [Pest]</criterion>
+    <criterion id="AC-003">Dato un utente fuori dal team (non super-admin), GET/PUT/poll -> 403; su commessa non di
+      progetto -> 404; senza policy view -> 403. [Pest]</criterion>
+    <criterion id="AC-004">Dato version corrente N, PUT con version N salva, risponde version N+1 e updated_by =
+      utente. [Pest]</criterion>
+    <criterion id="AC-005">Dato version in DB N+1, PUT con version N -> 409 code page_version_conflict con la pagina
+      corrente; il contenuto in DB non cambia. [Pest] Il frontend sospende l'autosave e mostra l'avviso con
+      "Ricarica". [Vitest]</criterion>
+    <criterion id="AC-006">Dato commessa completata/chiusa, PUT, POST poll e vote -> 409; il frontend mostra l'editor
+      in sola lettura senza barre. [Pest + Vitest]</criterion>
+    <criterion id="AC-007">Dato un contenuto con script, attributi `on*`, `style`, `class`, link `javascript:`,
+      callout con variante fuori enum, colore fuori palette, il contenuto salvato non contiene nessuno di questi;
+      gli elementi del profilo `page` sopravvivono identici. [Pest unit RichTextSanitizer]</criterion>
+    <criterion id="AC-008">I profili esistenti (note, task, email) non accettano gli elementi aggiunti dal profilo
+      `page` (es. table, callout). [Pest unit, regressione]</criterion>
+    <criterion id="AC-009">Dato un'immagine inline `data:` nel contenuto, dopo PUT il contenuto salvato ha
+      `data-attachment-id` e nessun `src`; rimuovendola e salvando, l'allegato viene eliminato; l'allegato e'
+      leggibile solo da chi puo' leggere la pagina. [Pest]</criterion>
+    <criterion id="AC-010">Dato un nodo task-ref di un task della commessa visibile, GET lo restituisce in tasks con
+      available=true e titolo/stato/assegnatari/scadenza; per un task privato non visibile, eliminato o di altra
+      commessa available=false e title null. [Pest]</criterion>
+    <criterion id="AC-011">Dal blocco Task si crea un task della commessa (dialog esistente o campo titolo); il nodo
+      inserito mostra il task e il clic apre il dettaglio task. [Vitest]</criterion>
+    <criterion id="AC-012">POST poll con 1 opzione, 11 opzioni o opzioni duplicate -> 422; con 2..10 -> 201. [Pest]</criterion>
+    <criterion id="AC-013">Un utente vota, cambia voto, ritira il voto: total_votes e voters riflettono un solo voto
+      per utente; option_key inesistente -> 422; sondaggio di altra commessa -> 404. [Pest]</criterion>
+    <criterion id="AC-014">Salvando un contenuto che non cita piu' un sondaggio, il sondaggio e i suoi voti vengono
+      eliminati. [Pest]</criterion>
+    <criterion id="AC-015">PUT oltre 1 MB di HTML o oltre 100000 caratteri visibili -> 422. [Pest]</criterion>
+    <criterion id="AC-016">Selezionando testo compare la barra con G/C/S/barrato, evidenziatore, colore, sottomenu
+      stili con spunta sullo stile attivo; ogni comando applica il mark/blocco atteso. [Vitest]</criterion>
+    <criterion id="AC-017">Digitando "/" all'inizio di un blocco si apre il menu blocchi filtrabile da tastiera;
+      Invio inserisce il blocco scelto. [Vitest]</criterion>
+    <criterion id="AC-018">Le scorciatoie D-9 applicano lo stile atteso; Alt+Shift+Su/Giu' scambia il blocco con il
+      precedente/successivo. [Vitest su comandi editor]</criterion>
+    <criterion id="AC-019">Il menu della maniglia offre Trasforma in, Duplica, Sposta su/giu', Elimina con effetto
+      osservabile sul documento; il trascinamento sposta il blocco nella posizione di rilascio. [Vitest comandi +
+      verifica manuale nel browser per il drag]</criterion>
+    <criterion id="AC-020">Tabella: inserimento 3x3 con riga intestazione, aggiunta/eliminazione riga e colonna,
+      Tab passa alla cella successiva. [Vitest]</criterion>
+    <criterion id="AC-021">Intestazione comprimibile chiusa nasconde i blocchi fino alla prossima intestazione di
+      livello uguale o superiore; paragrafo comprimibile chiuso nasconde il corpo; chiudere non genera salvataggi
+      (D-8). [Vitest]</criterion>
+    <criterion id="AC-022">Dopo una modifica, l'autosave parte una sola volta dopo il debounce (1500 ms) e lo stato
+      passa Salvataggio -> Salvato; errore di rete -> "Errore, riprova" senza perdere il testo. [Vitest]</criterion>
+    <criterion id="AC-023">A 375 px la pagina non ha scroll orizzontale (le tabelle scorrono nel loro contenitore),
+      la maniglia drag e' sostituita dal menu blocco. [verifica manuale]</criterion>
+    <criterion id="AC-024">Guida `work-orders` IT/EN aggiornata con la sezione "Appunti"; parity test verde.
+      [Vitest help-content-parity]</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (D-5). Estensioni custom in `frontend/src/features/work-order-page/editor/`,
+      una per file, sotto 300 righe ciascuna.</item>
+    <item>Authz server-side tramite `WorkOrderChatAccess` (nessun Gate::before che bypassi il veto chiusura).
+      Route con `scopeBindings()`.</item>
+    <item>Sanitizzazione server-side obbligatoria; il frontend non usa mai dangerouslySetInnerHTML; link via safeUrl.</item>
+    <item>Envelope `{ success, message, data }`; nessun throttle (backend.md §2).</item>
+    <item>Server state con TanStack Query (query key centralizzata); niente useEffect+fetch.</item>
+    <item>UI compatta (ui-design.md §2), superfici da token, dark mode, a11y: maniglia e menu raggiungibili da
+      tastiera, aria-label su ogni pulsante icona.</item>
+    <item>Migrazioni reversibili, FK indicizzate, unique(work_order_id) su pagine, unique(poll_id,user_id) sui voti.</item>
+  </constraints>
+
+</spec>

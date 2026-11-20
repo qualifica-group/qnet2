@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Euro, ListChecks, MessageSquare, Receipt, ReceiptText } from 'lucide-react'
+import { Euro, ListChecks, MessageSquare, NotebookPen, Receipt, ReceiptText } from 'lucide-react'
 import { RecordCard } from '@/components/detail/record-panel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { WorkOrderChatPanel } from '@/features/work-order-chat/work-order-chat-panel'
 import { WorkOrderChatTabLabel } from '@/features/work-order-chat/work-order-chat-tab-label'
 import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-costs-section'
+import { WorkOrderPagePanel } from '@/features/work-order-page/work-order-page-panel'
 import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-order-invoices-section'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
@@ -23,9 +24,9 @@ interface WorkTab {
 /**
  * Full-width card below the work order record hosting the Task board (spec
  * 0146), the Costi section (spec 0190) and the read-only active/passive
- * proforma tabs (spec 0282) and the project chat (spec 0359) as switchable tabs: the first tab present is the
+ * proforma tabs (spec 0282) the project chat (spec 0359) and the workspace page (spec 0380) as switchable tabs: the first tab present is the
  * one open by default (Task). Each tab keeps its own gate
- * (`tasks.viewAny`, `view_costs`, `view_invoices`, `view_chat`) and is absent when unauthorized; no tab left
+ * (`tasks.viewAny`, `view_costs`, `view_invoices`, `view_chat`, `view_page`) and is absent when unauthorized; no tab left
  * = no card. The contract data (spec 0201) live in the record card itself. The
  * active tab's header actions are portaled by the tab itself into the slot on
  * the right of the strip, so the strip stays the only header row of the card.
@@ -80,6 +81,16 @@ export function WorkOrderDetailWorkTabs({ workOrder }: { workOrder: WorkOrderDet
       label: <WorkOrderChatTabLabel workOrderId={workOrder.id} />,
       icon: <MessageSquare className="size-3.5" aria-hidden="true" />,
       content: <WorkOrderChatPanel workOrderId={workOrder.id} canWriteAction={workOrder.permissions.actions.write_chat === true} />,
+    })
+  }
+
+  // Workspace notes page (spec 0380): right after the chat, same access rule.
+  if (workOrder.permissions.actions.view_page) {
+    tabs.push({
+      value: 'page',
+      label: t('workOrderPage.tabTitle'),
+      icon: <NotebookPen className="size-3.5" aria-hidden="true" />,
+      content: <WorkOrderPagePanel workOrderId={workOrder.id} canEditAction={workOrder.permissions.actions.edit_page === true} />,
     })
   }
 

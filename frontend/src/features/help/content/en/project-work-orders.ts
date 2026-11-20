@@ -98,6 +98,53 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'workspace-notes',
+      title: 'The Workspace notes tab',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Every project work order also has a **Workspace notes** tab, right after the Chat: a **page shared by the team**, made of blocks, to keep text, lists, tasks and polls together. It is seen and edited by the same people who use the chat (Managers, Participants and administrators). It is not the work order **Notes** tab, which stays as it was.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Text blocks**: paragraphs, headings H1 to H4, bulleted, numbered and **checklist** lists, quotes, dividers, images and **dates** (badge).',
+            '**Tables**, **callouts** (info, success, warning, error) and **collapsible blocks**: headings can be collapsible too, and closing one hides everything up to the next heading of the same or higher level. Opening and closing is only for you and is not saved.',
+            '**Tasks**: create a task of the work order straight from the page (title and due date; you are requester and assignee). The block shows status, assignees and due date; clicking it opens the task detail, where you complete or edit it. If a task is no longer visible to you or was deleted you see **Task unavailable**.',
+            '**Polls**: a question with 2 to 10 options. Everyone has **one vote**, which can be changed or withdrawn by clicking the chosen option again; votes are **named** and visible to whoever reads the page.',
+            "**Inserting and formatting**: selecting text shows a **toolbar** with bold, italic, underline, strikethrough, highlighter, colour, link and the **Styles** menu (paragraph, headings, lists, quote, callout); typing **/** opens the list of every block; the **bottom bar** inserts table, lists, tasks and polls.",
+            "**Moving blocks**: hovering a block shows the **handle** on its left. Drag it to move the block, or click it for **Turn into**, **Duplicate**, **Move up/down** and **Delete**. On phones and tablets the handle only opens the menu.",
+          ],
+        },
+        {
+          type: 'table',
+          headers: ['Shortcut', 'Effect'],
+          rows: [
+            ['Ctrl+Alt+0', 'Paragraph'],
+            ['Ctrl+Alt+1 … Ctrl+Alt+4', 'Heading H1 … H4'],
+            ['Ctrl+Shift+8', 'Bulleted list'],
+            ['Ctrl+Shift+7', 'Numbered list'],
+            ['Ctrl+Shift+9', 'Checklist'],
+            ['Ctrl+K', 'Link'],
+            ['Alt+Shift+Up / Down arrow', 'Move the block'],
+            ['/', 'Block menu (at the start of a line)'],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: '**Saving is automatic**: shortly after you stop typing you see **Saving...** and then **Saved**. If saving fails you see **Error, retry** and your text is not lost.',
+        },
+        {
+          type: 'warning',
+          text: 'There is no simultaneous editing: if a colleague saves before you, **Modified by ...: reload** appears. Saving stops; with **Reload** you see their version and your unsaved changes are lost, so copy them first if you need them.',
+        },
+        {
+          type: 'note',
+          text: 'When the work order is **Completed** or **Closed** (or you lack the edit permission) the page is **read-only**: no toolbars, no voting.',
+        },
+      ],
+    },
+    {
       id: 'no-notifications',
       title: 'No notifications',
       blocks: [
