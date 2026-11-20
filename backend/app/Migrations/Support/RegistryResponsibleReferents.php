@@ -18,8 +18,9 @@ use Spatie\Activitylog\Models\Activity;
  * "Referente 1" and "Referente 2" of a legacy company on its anagrafica (spec 0398),
  * shared by the import and the one-off command: each is matched to the referent the
  * legacy names (`contact_id` -> `old_id`) or to a linked referent with the same name,
- * created otherwise, and linked. Then the principale follows D-9, unless it was changed
- * by hand. The caller runs it with the activity log off.
+ * created otherwise, and linked. Then the principale follows D-9 and Referente 2 becomes
+ * the secondario (spec 0408 D-6), each unless changed by hand. The caller runs it with
+ * the activity log off.
  */
 final class RegistryResponsibleReferents
 {
@@ -30,6 +31,8 @@ final class RegistryResponsibleReferents
     private const string FIELD = 'responsible_referents';
 
     private const int PRINCIPAL_SLOT = 1;
+
+    private const int SECONDARY_SLOT = 2;
 
     private const array SLOTS = [1, 2];
 
@@ -43,13 +46,13 @@ final class RegistryResponsibleReferents
     /**
      * @param  array<string, mixed>  $legacy
      * @param  array<int, string>  $warnings
-     * @return array{links: list<array{slot: int, referent: Referent, created: bool, contacts_added: int}>, primary: ?array{old: ?Referent, new: ?Referent, reason: string}, kept_manual: bool}
+     * @return array{links: list<array{slot: int, referent: Referent, created: bool, contacts_added: int}>, primary: ?array{old: ?Referent, new: ?Referent, reason: string}, secondary: ?array{old: ?Referent, new: Referent}, kept_manual: bool}
      */
     public function align(Registry $registry, array $legacy, User $actor, array &$warnings): array
     {
         // Step 1: a legacy without the spec 0398 fields changes nothing (AC-014).
         if (! array_key_exists(self::FIELD, $legacy)) {
-            return ['links' => [], 'primary' => null, 'kept_manual' => false];
+            return ['links' => [], 'primary' => null, 'secondary' => null, 'kept_manual' => false];
         }
 
         // Step 2: Referente 1 and 2, matched or created, and linked.
@@ -63,11 +66,13 @@ final class RegistryResponsibleReferents
             }
         }
 
-        // Step 3: the principale, unless changed by hand.
+        // Step 3: the principale, then the secondario, each unless changed by hand.
         $responsibleOne = collect($links)->firstWhere('slot', self::PRINCIPAL_SLOT)['referent'] ?? null;
-        [$primary, $keptManual] = $this->alignPrimary($registry, $legacy, $responsibleOne);
+        [$primary, $primaryKept] = $this->alignPrimary($registry, $legacy, $responsibleOne);
+        $responsibleTwo = collect($links)->firstWhere('slot', self::SECONDARY_SLOT)['referent'] ?? null;
+        [$secondary, $secondaryKept] = $this->alignSecondary($registry, $responsibleTwo);
 
-        return ['links' => $links, 'primary' => $primary, 'kept_manual' => $keptManual];
+        return ['links' => $links, 'primary' => $primary, 'secondary' => $secondary, 'kept_manual' => $primaryKept || $secondaryKept];
     }
 
     /**
@@ -181,7 +186,7 @@ final class RegistryResponsibleReferents
             return [null, false];
         }
 
-        if ($this->primaryChangedByHand($registry)) {
+        if ($this->changedByHand($registry, 'primary_referent_id')) {
             return [null, true];
         }
 
@@ -190,6 +195,32 @@ final class RegistryResponsibleReferents
         $registry->forceFill(['primary_referent_id' => $newId])->save();
 
         return [['old' => $old, 'new' => $newId !== null ? Referent::query()->find($newId) : null, 'reason' => $reason], false];
+    }
+
+    /**
+     * Spec 0408 D-6: Referente 2 becomes the secondario, unless it is already the
+     * principale; a missing Referente 2 leaves the secondario as it is.
+     *
+     * @return array{0: ?array{old: ?Referent, new: Referent}, 1: bool}
+     */
+    private function alignSecondary(Registry $registry, ?Referent $responsibleTwo): array
+    {
+        $currentId = $registry->secondary_referent_id !== null ? (int) $registry->secondary_referent_id : null;
+        $primaryId = $registry->primary_referent_id !== null ? (int) $registry->primary_referent_id : null;
+        $targetId = $responsibleTwo !== null ? (int) $responsibleTwo->id : null;
+
+        if ($targetId === null || $targetId === $currentId || $targetId === $primaryId) {
+            return [null, false];
+        }
+
+        if ($this->changedByHand($registry, 'secondary_referent_id')) {
+            return [null, true];
+        }
+
+        $old = $currentId !== null ? Referent::query()->find($currentId) : null;
+        $registry->forceFill(['secondary_referent_id' => $targetId])->save();
+
+        return [['old' => $old, 'new' => $responsibleTwo], false];
     }
 
     /**
@@ -235,16 +266,16 @@ final class RegistryResponsibleReferents
     }
 
     /**
-     * The import runs without activity log, so any logged change of the principale was
-     * made by a person (spec 0398 D-9).
+     * The import runs without activity log, so any logged change of the principale or
+     * of the secondario was made by a person (spec 0398 D-9, spec 0408 D-6).
      */
-    private function primaryChangedByHand(Registry $registry): bool
+    private function changedByHand(Registry $registry, string $column): bool
     {
         return Activity::query()
             ->where('subject_type', $registry->getMorphClass())
             ->where('subject_id', $registry->id)
             ->where(static fn ($query) => $query->whereNull('event')->orWhere('event', '<>', self::IMPORT_EVENT))
-            ->whereJsonContainsKey('properties->attributes->primary_referent_id')
+            ->whereJsonContainsKey("properties->attributes->{$column}")
             ->exists();
     }
 

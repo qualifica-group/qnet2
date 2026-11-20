@@ -12,7 +12,8 @@ namespace App\DataObjects\Registries;
  * `name` is intentionally absent: it is derived server-side from the
  * required nested personal-data card (mirrors CreateReferentData).
  * `primaryReferentId` is only the REQUESTED principale (PrimaryReferentElector
- * decides the stored one), so it stays out of attributes().
+ * decides the stored one), so it stays out of attributes(). `secondaryReferentId`
+ * (spec 0408) is a plain attribute the elector then keeps consistent.
  * `sectorIds`/`referentIds`/`managerSlots` are to-many references, synced by
  * RegistryService post-create via `->sync()` — they are NOT mass-assignable
  * columns, so they stay out of attributes() (mirrors CreateSectorData's
@@ -45,6 +46,7 @@ final readonly class CreateRegistryData
         public ?int $primaryReferentId = null,
         // Appended (spec 0417): partner commerciale, a Referent like the commercial.
         public ?int $commercialPartnerId = null,
+        public ?int $secondaryReferentId = null,
     ) {}
 
     /**
@@ -74,6 +76,7 @@ final readonly class CreateRegistryData
             employeeCount: isset($data['employee_count']) ? (int) $data['employee_count'] : null,
             generalNotes: $data['general_notes'] ?? null,
             primaryReferentId: isset($data['primary_referent_id']) ? (int) $data['primary_referent_id'] : null,
+            secondaryReferentId: isset($data['secondary_referent_id']) ? (int) $data['secondary_referent_id'] : null,
         );
     }
 
@@ -114,6 +117,7 @@ final readonly class CreateRegistryData
             'commercial_id' => $this->commercialId,
             'commercial_partner_id' => $this->commercialPartnerId,
             'reporter_id' => $this->reporterId,
+            'secondary_referent_id' => $this->secondaryReferentId,
             'employee_count' => $this->employeeCount,
             'general_notes' => $this->generalNotes,
         ];

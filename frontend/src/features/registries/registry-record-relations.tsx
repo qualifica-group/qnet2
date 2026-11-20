@@ -9,6 +9,7 @@ import { PersonContactLines, PersonField, RegistryReferents } from '@/features/r
 import {
   RegistryManagersField,
   RegistryPrimaryReferentField,
+  RegistrySecondaryReferentField,
   RegistryReferentRoleField,
   RegistryReferentsField,
   RegistrySectorsField,
@@ -207,7 +208,11 @@ export function RegistryReferentsRecordSection({ values, form, inline }: Registr
           />
         }
       >
-        <RegistryReferents referents={values.referents} primaryReferentId={values.primary_referent?.id ?? null} />
+        <RegistryReferents
+          referents={values.referents}
+          primaryReferentId={values.primary_referent?.id ?? null}
+          secondaryReferentId={values.secondary_referent?.id ?? null}
+        />
       </RecordInlineField>
       <RecordFieldList>
         <RecordInlineField
@@ -217,6 +222,14 @@ export function RegistryReferentsRecordSection({ values, form, inline }: Registr
           editor={<RegistryPrimaryReferentField control={control} selected={values.referents} />}
         >
           {values.primary_referent?.name ?? <DetailEmpty />}
+        </RecordInlineField>
+        <RecordInlineField
+          field="secondary_referent_id"
+          label={t('registries.form.secondaryReferent')}
+          inline={inline}
+          editor={<RegistrySecondaryReferentField control={control} selected={values.referents} />}
+        >
+          {values.secondary_referent?.name ?? <DetailEmpty />}
         </RecordInlineField>
       </RecordFieldList>
     </RecordSection>

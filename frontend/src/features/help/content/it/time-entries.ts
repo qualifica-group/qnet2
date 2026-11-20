@@ -77,7 +77,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Espandi un giorno per vedere le voci e aggiungere una nota della giornata. Su ogni voce usa **Apri** (o clic sul titolo), **Elimina** o **Cambia tipo**. Filtri e **Ordinamento** restringono e ordinano i giorni; **Esporta** scarica il report filtrato o il report mensile di un utente.',
+          text: 'Espandi un giorno per vedere le voci e aggiungere una nota della giornata. Su ogni voce usa **Apri** (o clic sul titolo), **Elimina** o **Cambia tipo**. Passa il mouse sul titolo per leggerlo per intero; trascina il bordo dell’intestazione di una colonna per allargarla o stringerla, oppure trascina l’intestazione per spostare la colonna (Azioni resta sempre prima). Filtri e **Ordinamento** restringono e ordinano i giorni; **Esporta** scarica il report filtrato o il report mensile di un utente.',
         },
         {
           type: 'paragraph',

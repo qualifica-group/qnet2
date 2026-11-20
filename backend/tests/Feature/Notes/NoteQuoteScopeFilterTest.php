@@ -113,7 +113,7 @@ it('quote_scope=<id offerta A> returns only the notes of A (AC-012)', function (
     expect(collect($response->json('data'))->pluck('id')->all())->toBe([$onA->id]);
 });
 
-it('meta.total follows the scope: only the scoped roots and their replies', function () {
+it('meta.unread follows the scope: only the scoped roots and their replies', function () {
     $actor = noteActor(['request-management.view']);
     $opportunity = noteManagedOpportunity($actor);
     $quoteA = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
@@ -125,9 +125,9 @@ it('meta.total follows the scope: only the scoped roots and their replies', func
 
     $base = "/api/notes?entity_type=request-management&entity_id={$opportunity->id}";
 
-    expect($this->getJson($base)->assertOk()->json('meta.total'))->toBe(3);
-    expect($this->getJson("{$base}&quote_scope={$quoteA->id}")->assertOk()->json('meta.total'))->toBe(2);
-    expect($this->getJson("{$base}&quote_scope=general")->assertOk()->json('meta.total'))->toBe(1);
+    expect($this->getJson($base)->assertOk()->json('meta.unread'))->toBe(3);
+    expect($this->getJson("{$base}&quote_scope={$quoteA->id}")->assertOk()->json('meta.unread'))->toBe(2);
+    expect($this->getJson("{$base}&quote_scope=general")->assertOk()->json('meta.unread'))->toBe(1);
 });
 
 it('quote_scope numeric referring to an offer of ANOTHER opportunity -> 422 (AC-013)', function () {

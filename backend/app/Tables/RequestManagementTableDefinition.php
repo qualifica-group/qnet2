@@ -18,6 +18,8 @@ use App\Tables\RequestManagement\RequestColumnCatalog;
 use App\Tables\RequestManagement\RequestRelationColumns;
 use App\Tables\RequestManagement\RequestRowMapper;
 use App\Tables\RequestManagement\RequestTeamCellWriter;
+use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -227,14 +229,14 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             'transferredFromOperationalSite',
         ])
             // Spec 0415 D-3: the documents are the OFFER's own (no longer the
-            // Opportunity's, spec 0086 D-9).
-            ->withCount(['attachments as documents_count' => fn (Builder $attachments) => $attachments->where('collection', 'documents')])
+            // Opportunity's, spec 0086 D-9); only the unread ones count.
+            ->withCount(DocumentsCountColumn::own())
             // Badge dell'azione `notes` (direttiva utente 2026-08-07): le note
             // SCOPATE a questa Offerta (`notes.quote_id`), non l'intero thread
             // dell'Opportunita' — esattamente il thread che l'azione apre, come
             // gia' fa QuotesTableDefinition. Roots e reply insieme;
             // soft-deleted escluse dal global scope di Note.
-            ->withCount(['scopedNotes as notes_count'])
+            ->withCount(NotesCountColumn::of('scopedNotes'))
             // Spec 0078, AC-037; spec 0086, D-10 (corrected in execution):
             // the OFFER's OWN still-open requests — two sibling offers carry
             // independent badges.

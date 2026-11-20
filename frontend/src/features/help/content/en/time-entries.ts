@@ -77,7 +77,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Expand a day to see its entries and add a note for the day. On every entry use **Open** (or click the title), **Delete** or Change type. Filters and Sorting narrow and sort the days; Export downloads the filtered report or a user's monthly report.",
+          text: "Expand a day to see its entries and add a note for the day. On every entry use **Open** (or click the title), **Delete** or Change type. Hover the title to read it in full; drag the edge of a column header to widen or narrow the column, or drag the header to move the column (Actions always stays first). Filters and Sorting narrow and sort the days; Export downloads the filtered report or a user's monthly report.",
         },
         {
           type: 'paragraph',

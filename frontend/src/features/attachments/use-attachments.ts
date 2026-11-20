@@ -78,6 +78,8 @@ export function useAttachments(resource: string, id: number, collection: string)
     documents: listQuery.data?.documents ?? EMPTY_DOCUMENTS,
     legacyUrl: listQuery.data?.legacyUrl ?? null,
     isLoading: listQuery.isLoading,
+    /** When the list last arrived from the server (0 = not yet): drives `useMarkReadOnLoad`. */
+    loadedAt: listQuery.dataUpdatedAt,
     isError: listQuery.isError,
     refetch: listQuery.refetch,
     upload: uploadMutation.mutateAsync,

@@ -12,6 +12,7 @@ use App\Services\PurchaseRequests\PurchaseRequestVisibilityScope;
 use App\Tables\PurchaseRequests\PurchaseRequestCellWriter;
 use App\Tables\PurchaseRequests\PurchaseRequestColumnCatalog as Catalog;
 use App\Tables\PurchaseRequests\PurchaseRequestDerivedQuery as Derived;
+use App\Tables\Shared\NotesCountColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -87,7 +88,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             'createdBy:id,name',
             'lines:id,purchase_request_id,status,supplier_id',
             'lines.supplier:id,name',
-        ])->withCount('noteThread as notes_count');
+        ])->withCount(NotesCountColumn::of('noteThread'));
 
         return PurchaseRequestVisibilityScope::scopeToActor($query, Auth::user());
     }

@@ -31,6 +31,8 @@ final readonly class UpdateRegistryData
         public ?array $managerSlots = null,
         public ?int $primaryReferentId = null,
         public bool $primaryReferentIdSubmitted = false,
+        public ?int $secondaryReferentId = null,
+        public bool $secondaryReferentIdSubmitted = false,
         public ?int $supervisorId = null,
         public bool $supervisorIdSubmitted = false,
         public ?int $commercialId = null,
@@ -74,6 +76,8 @@ final readonly class UpdateRegistryData
                 : null,
             primaryReferentId: array_key_exists('primary_referent_id', $data) && $data['primary_referent_id'] !== null ? (int) $data['primary_referent_id'] : null,
             primaryReferentIdSubmitted: array_key_exists('primary_referent_id', $data),
+            secondaryReferentId: array_key_exists('secondary_referent_id', $data) && $data['secondary_referent_id'] !== null ? (int) $data['secondary_referent_id'] : null,
+            secondaryReferentIdSubmitted: array_key_exists('secondary_referent_id', $data),
             supervisorId: array_key_exists('supervisor_id', $data) && $data['supervisor_id'] !== null ? (int) $data['supervisor_id'] : null,
             supervisorIdSubmitted: array_key_exists('supervisor_id', $data),
             commercialId: array_key_exists('commercial_id', $data) && $data['commercial_id'] !== null ? (int) $data['commercial_id'] : null,
@@ -146,6 +150,10 @@ final readonly class UpdateRegistryData
 
         if ($this->reporterIdSubmitted) {
             $attributes['reporter_id'] = $this->reporterId;
+        }
+
+        if ($this->secondaryReferentIdSubmitted) {
+            $attributes['secondary_referent_id'] = $this->secondaryReferentId;
         }
 
         if ($this->vatGroupSubmitted) {

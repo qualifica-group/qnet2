@@ -153,6 +153,15 @@ export const workOrders = {
   },
   /** The grid row actions (spec 0405) and the detail actions, "Chiusura forzata" and its inverse included (user directive 2026-10-06). */
   actions: {
+    delete: {
+      label: 'Delete',
+      confirmTitle: 'Delete the work order?',
+      confirmDescription: 'Work order {{code}} will be permanently deleted, together with its supervisors and participants.',
+      confirm: 'Delete',
+      cancel: 'Cancel',
+      success: 'Work order deleted.',
+      error: 'Could not delete the work order.',
+    },
     team: {
       label: 'Supervisors and Participants',
       description: 'Work order {{code}}: add or remove Supervisors and Participants.',

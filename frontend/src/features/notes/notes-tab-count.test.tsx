@@ -11,8 +11,8 @@ vi.mock('@/features/notes/api', () => ({
   fetchNotes: (params: unknown) => fetchNotesMock(params),
 }))
 
-function page(total: number): NotesPage {
-  return { data: [], meta: { next_cursor: null, has_more: false, total } }
+function page(unread: number): NotesPage {
+  return { data: [], meta: { next_cursor: null, has_more: false, unread } }
 }
 
 function renderCount(quoteScope?: number) {
@@ -29,7 +29,7 @@ afterEach(() => {
 })
 
 describe('NotesTabCount', () => {
-  it('shows the thread total of the record (roots plus replies, from meta.total)', async () => {
+  it('shows the unread notes of the record (roots plus replies, from meta.unread)', async () => {
     fetchNotesMock.mockResolvedValue(page(5))
     renderCount()
 

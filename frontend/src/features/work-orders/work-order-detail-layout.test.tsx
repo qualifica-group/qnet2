@@ -194,6 +194,20 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     expect(sectionTitles()).not.toContain('work order data')
   })
 
+  // REQUIREMENT CHANGED (user directive 2026-11-18): the client company under the title, not the "COM-..." code.
+  it('shows the client company under the title, the code only when there is no client', () => {
+    const subtitleOf = () =>
+      screen.getByRole('heading', { level: 2, name: 'Installazione impianto' }).parentElement?.nextElementSibling
+        ?.textContent
+
+    const { unmount } = render(<WorkOrderDetailView workOrder={workOrder()} />)
+    expect(subtitleOf()).toBe('Acme S.p.A.')
+    unmount()
+
+    render(<WorkOrderDetailView workOrder={workOrder({ registry: null })} />)
+    expect(subtitleOf()).toBe('COM-0001')
+  })
+
   it('links the Contratto from the data section, not from a section of its own', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 

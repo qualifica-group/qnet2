@@ -10,6 +10,7 @@ import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-d
 import type { ProformaTarget } from '@/features/work-orders/work-order-proforma-cell'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderTeamDialog } from '@/features/work-orders/work-order-team-dialog'
+import { useDeleteWorkOrder } from '@/features/work-orders/use-delete-work-order'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { ActionHrefResolver, RowActionHandler } from '@/features/table/row-actions'
@@ -17,6 +18,9 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 /** Row-action key of the "Responsabili e Partecipanti" dialog (spec 0405). */
 const TEAM_ACTION_KEY = 'team'
+
+/** Row-action key of Elimina, offered only where the policy allows it (user request 2026-11-19). */
+const DELETE_ACTION_KEY = 'delete'
 
 /** The row actions that open the commessa on one of its detail tabs (spec 0405): action key = tab value. */
 const TAB_ACTION_KEYS: ReadonlySet<string> = new Set(['info', 'notes', 'tasks', 'documents'])
@@ -43,7 +47,7 @@ const resolveActionHref: ActionHrefResolver = (action, row) => {
 }
 
 export interface UseWorkOrderRowActionsOptions {
-  /** Called after anything that changes the displayed rows: a save in the opened record or in a dialog. */
+  /** Called after anything that changes the displayed rows: a save in the opened record or in a dialog, a delete. */
   onMutated: () => void
   /**
    * Forces the open mode of the record instead of honoring the user's
@@ -77,7 +81,7 @@ export interface UseWorkOrderRowActionsResult {
  * Contract and Anagrafica tabs): the eye (in place of the legacy "Modifica")
  * opens the record, "Responsabili e Partecipanti" its team dialog, Info and
  * the menu entries (Storico Note / Task / Documenti) open the record on that
- * tab. The progress cell keeps its own
+ * tab, Elimina (last in the menu, already confirmed by the row) deletes it. The progress cell keeps its own
  * dialog (spec 0321), the "€" cell the proforma request one (spec 0407).
  */
 export function useWorkOrderRowActions({
@@ -93,6 +97,7 @@ export function useWorkOrderRowActions({
     onSaved: onMutated,
     forceMode,
   })
+  const { remove } = useDeleteWorkOrder(onMutated)
 
   const handleAction: RowActionHandler = useCallback(
     (action: TableActionDefinition, row: TableRow) => {
@@ -102,9 +107,11 @@ export function useWorkOrderRowActions({
         setTeamId(Number(row.id))
       } else if (TAB_ACTION_KEYS.has(action.key)) {
         openViewTab(row, action.key)
+      } else if (action.key === DELETE_ACTION_KEY) {
+        void remove(Number(row.id))
       }
     },
-    [openView, openViewTab],
+    [openView, openViewTab, remove],
   )
 
   const closeOnFalse = (close: () => void) => (open: boolean) => {

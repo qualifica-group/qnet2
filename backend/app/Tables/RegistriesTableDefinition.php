@@ -8,6 +8,8 @@ use App\Tables\Registries\RegistryCellWriter;
 use App\Tables\Registries\RegistryColumnCatalog;
 use App\Tables\Registries\RegistryRelationColumns;
 use App\Tables\Registries\RegistrySearch;
+use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\PersonalDataTypeColumn;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -117,9 +119,9 @@ class RegistriesTableDefinition extends AbstractTableDefinition
             ->with(['source', 'commercial', 'commercialPartner', 'supervisor.avatar', 'reporter', 'managers.avatar', 'personalData.contacts'])
             // Per-row count for the `documents` action badge (spec 0173),
             // scoped to the 'documents' collection only, as Opportunita'.
-            ->withCount(['attachments as documents_count' => fn (Builder $q) => $q->where('collection', 'documents')])
+            ->withCount(DocumentsCountColumn::own())
             // Per-row count for the `notes` action badge (spec 0312), roots AND replies.
-            ->withCount('notes');
+            ->withCount(NotesCountColumn::of('notes'));
     }
 
     /**

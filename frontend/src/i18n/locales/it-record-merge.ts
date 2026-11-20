@@ -37,6 +37,7 @@ export const recordMerge = {
       commercial_partner_id: 'Partner commerciale',
       reporter_id: 'Segnalatore',
       primary_referent_id: 'Referente principale',
+      secondary_referent_id: 'Referente secondario',
       referent_type_id: 'Tipo referente',
       contact_scope: 'Ambito contatto',
       notes: 'Note',

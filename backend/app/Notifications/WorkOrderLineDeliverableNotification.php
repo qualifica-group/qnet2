@@ -20,7 +20,8 @@ use Illuminate\Notifications\Notification;
 /**
  * Sent to the supervisors and participants of a commessa when the payment
  * status of one of its lines turns into one that "si puo' consegnare" (spec
- * 0201, D-4/D-13). Same shape as RecordAssignmentNotification: `database` +
+ * 0201, D-4/D-13), titled "Stato pagamento ok" with the client's name as the
+ * legacy StatoPagamentoOk mail was (decisione utente 2026-11-18). Same shape as RecordAssignmentNotification: `database` +
  * `mail`, queued, payload through NotificationData, `action_url` a path the
  * recipient's own permissions decide (null when they cannot open the commessa).
  * Every fact is precomputed by the caller (WorkOrderLinePaymentWriter).
@@ -33,6 +34,7 @@ class WorkOrderLineDeliverableNotification extends Notification implements Shoul
      * @param  array<string, string>  $workOrderDetails  the commessa's card
      *                                                   (RecordDetails), built
      *                                                   by the caller
+     * @param  string|null  $clientName  the registry of the commessa's offer
      */
     public function __construct(
         private readonly int $workOrderId,
@@ -41,6 +43,7 @@ class WorkOrderLineDeliverableNotification extends Notification implements Shoul
         private readonly string $statusName,
         private readonly string $actorName,
         private readonly array $workOrderDetails = [],
+        private readonly ?string $clientName = null,
     ) {}
 
     /**
@@ -89,7 +92,9 @@ class WorkOrderLineDeliverableNotification extends Notification implements Shoul
 
     private function title(): string
     {
-        return __('Line ready for delivery');
+        return $this->clientName === null
+            ? __('Payment status OK')
+            : __('Payment status OK: :client', ['client' => $this->clientName]);
     }
 
     private function message(): string

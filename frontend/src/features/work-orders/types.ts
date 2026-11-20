@@ -271,8 +271,8 @@ export interface WorkOrderClientInfo {
   /** Email then PEC, the primary first. */
   emails: PrimaryContact[]
   phones: PrimaryContact[]
-  /** Referente 1 (the anagrafica's principale) and Referente 2, at most two. */
-  referents: ReferentRef[]
+  /** Spec 0408: [Referente 1 = the anagrafica's principale, Referente 2 = its secondario], null when missing. */
+  referents: (ReferentRef | null)[]
   commercial: ReferentRef | null
   commercial_partner: ReferentRef | null
   sectors: string[]

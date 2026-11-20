@@ -17,6 +17,7 @@ final readonly class ActivityLogDefinition
      * @param  array<int, string>  $relations
      * @param  class-string<ActivityLogAuthorizer>  $authorizer
      * @param  array<string, array<string, string>>  $fieldPermissions
+     * @param  array<int, string>  $documentsPermissions  every permission the actor needs to see the record's document entries
      */
     public function __construct(
         public string $model,
@@ -24,5 +25,6 @@ final readonly class ActivityLogDefinition
         public string $authorizer,
         public ?string $fieldPermissionResource = null,
         public array $fieldPermissions = [],
+        public array $documentsPermissions = [],
     ) {}
 }

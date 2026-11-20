@@ -108,6 +108,7 @@ final class WorkOrderLinePaymentWriter
             statusName: (string) $payment->status()->value('name'),
             actorName: $actor->name,
             workOrderDetails: RecordDetails::for($workOrder),
+            clientName: $workOrder->quote?->opportunity?->registry?->name,
         );
 
         // Only once the write is durable: a rolled-back save must not notify.

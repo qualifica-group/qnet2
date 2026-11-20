@@ -319,9 +319,10 @@ final class WorkOrderColumnCatalog
      * The legacy `OrdersTable` "Azioni" column (spec 0405): the eye (in place
      * of the legacy "Modifica"), "Responsabili e Partecipanti" and Info on the
      * row (user directives 2026-11-16), then a menu opening the commessa on its Storico
-     * Note / Task / Documenti tab (`menu`: always in the "..." menu). `delete` is never offered per row
-     * (WorkOrdersTableDefinition::actionsFor): it stays here only because the
-     * grid's bulk "Elimina selezionati" is enabled by it.
+     * Note / Task / Documenti tab (`menu`: always in the "..." menu), and
+     * Elimina last in that menu (user request 2026-11-19, offered per row by
+     * WorkOrdersTableDefinition::actionsFor; it also enables the bulk
+     * "Elimina selezionati").
      *
      * @return array<int, array<string, mixed>>
      */
@@ -387,6 +388,7 @@ final class WorkOrderColumnCatalog
                 'icon' => 'trash',
                 'type' => 'danger',
                 'confirm' => true,
+                'menu' => true,
                 'permission' => 'work-orders.delete',
             ],
         ];

@@ -8,13 +8,23 @@ import type { ICellRendererParams } from 'ag-grid-community'
  * Spec 0405: the legacy `OrdersTable` actions. The eye opens the record,
  * "Responsabili e Partecipanti" its team dialog, Info and the menu entries
  * open the record on that tab. REQUIREMENT CHANGED: replaces the closure/proforma/
- * documents/notes row actions this hook used to run.
+ * documents/notes row actions this hook used to run. Elimina came back on the row
+ * (user request 2026-11-19).
  */
 
 const openView = vi.fn()
 const openViewTab = vi.fn()
 vi.mock('@/features/modules/use-module-opener', () => ({
   useModuleOpener: () => ({ openView, openViewTab, openCreateWith: vi.fn(), sheet: null }),
+}))
+
+const remove = vi.fn()
+const useDeleteWorkOrder = vi.fn((onDeleted: () => void) => {
+  void onDeleted
+  return { remove, isPending: false }
+})
+vi.mock('@/features/work-orders/use-delete-work-order', () => ({
+  useDeleteWorkOrder: (onDeleted: () => void) => useDeleteWorkOrder(onDeleted),
 }))
 
 vi.mock('@/features/work-orders/work-order-team-dialog', () => ({
@@ -43,6 +53,7 @@ function action(key: string): TableActionDefinition {
 beforeEach(() => {
   openView.mockReset()
   openViewTab.mockReset()
+  remove.mockReset()
 })
 
 describe('useWorkOrderRowActions (spec 0405)', () => {
@@ -61,6 +72,17 @@ describe('useWorkOrderRowActions (spec 0405)', () => {
     act(() => result.current.handleAction(action(key), ROW))
 
     expect(openViewTab).toHaveBeenCalledWith(ROW, key)
+  })
+
+  it('Elimina deletes the row (already confirmed by the row menu) and a delete refreshes the grid', () => {
+    const onMutated = vi.fn()
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated }))
+
+    act(() => result.current.handleAction(action('delete'), ROW))
+
+    expect(remove).toHaveBeenCalledWith(7)
+    expect(useDeleteWorkOrder).toHaveBeenLastCalledWith(onMutated)
+    expect(openView).not.toHaveBeenCalled()
   })
 
   it('"Responsabili e Partecipanti" opens the team dialog of the row', () => {

@@ -19,7 +19,7 @@ final readonly class NotePage
      *                                                                                selector must keep offering the scopes the current one excludes.
      * @param  array{allowed: bool, role: string|null}  $mentionOutside  Spec 0353: whether the actor
      *                                                                   may mention people outside the record, and the role they would get.
-     * @param  int  $total  Roots in scope plus their replies, independent of the page (the tab's count badge).
+     * @param  int  $unread  Notes of the scoped thread (roots plus replies) the actor has not read, independent of the page (the tab's count badge).
      */
     public function __construct(
         public Collection $items,
@@ -27,6 +27,6 @@ final readonly class NotePage
         public bool $hasMore,
         public array $quoteScopes = [],
         public array $mentionOutside = ['allowed' => false, 'role' => null],
-        public int $total = 0,
+        public int $unread = 0,
     ) {}
 }
