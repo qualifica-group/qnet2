@@ -291,6 +291,7 @@ it('creates Referente 1, links the matched Referente 2 and makes Referente 1 the
     expect($run->created_rows)->toBe(1)
         ->and($registry->referents()->pluck('referents.id')->all())->toBe([$commercial->id, $palladino->id, $created->id])
         ->and($registry->primary_referent_id)->toBe($created->id)
+        ->and($registry->secondary_referent_id)->toBe($palladino->id)
         ->and($registry->commercial_id)->toBe($commercial->id)
         ->and($created->referent_type_id)->toBe($type->id)
         ->and($created->contact_scope->value)->toBe('external')

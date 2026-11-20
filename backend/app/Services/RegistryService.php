@@ -43,6 +43,7 @@ class RegistryService
         'sectors',
         'referents',
         'primaryReferent',
+        'secondaryReferent',
         'managers',
         'personalData.contacts',
         'personalData.addresses',

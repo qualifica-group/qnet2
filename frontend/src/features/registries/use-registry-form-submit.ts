@@ -37,6 +37,7 @@ const SERVER_ERROR_FIELDS = [
   'sector_ids',
   'referent_ids',
   'primary_referent_id',
+  'secondary_referent_id',
   'manager_slots',
   'supervisor_id',
   'commercial_id',

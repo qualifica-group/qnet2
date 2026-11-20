@@ -37,6 +37,7 @@ export function buildCreatePayload(
     sector_ids: values.sector_ids,
     referent_ids: values.referent_ids,
     primary_referent_id: values.primary_referent_id,
+    secondary_referent_id: values.secondary_referent_id,
     manager_slots: values.manager_slots,
     supervisor_id: values.supervisor_id,
     commercial_id: values.commercial_id,
@@ -125,6 +126,9 @@ export function buildUpdatePayload(
   }
   if (values.primary_referent_id !== original.primary_referent_id) {
     payload.primary_referent_id = values.primary_referent_id
+  }
+  if (values.secondary_referent_id !== original.secondary_referent_id) {
+    payload.secondary_referent_id = values.secondary_referent_id
   }
   // Manager slots are ORDER- and GAP-sensitive (a slot's G.A. position is
   // meaningful), so compare positionally, not as an unordered set.

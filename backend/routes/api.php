@@ -453,6 +453,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // authorized endpoints only.
     Route::get('attachments', [AttachmentController::class, 'index']);
     Route::post('attachments', [AttachmentController::class, 'store']);
+    Route::post('attachments/read', [AttachmentController::class, 'markRead']);
     Route::get('attachments/archive', [AttachmentController::class, 'archive']);
     Route::get('attachments/{attachment}', [AttachmentController::class, 'show']);
     Route::get('attachments/{attachment}/download', [AttachmentController::class, 'download']);

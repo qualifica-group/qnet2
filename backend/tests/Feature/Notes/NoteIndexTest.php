@@ -88,7 +88,7 @@ it('index: only roots (created_at desc/id desc), each with its full asc replies;
     expect($page2->json('meta.next_cursor'))->toBeNull();
 });
 
-it('meta.total counts roots plus replies, independent of the page; a deleted root and its replies drop out', function () {
+it('meta.unread counts unread roots plus replies, independent of the page; a deleted root and its replies drop out', function () {
     $actor = noteActor(['request-management.view']);
     $opportunity = noteManagedOpportunity($actor);
     Sanctum::actingAs($actor);
@@ -107,8 +107,8 @@ it('meta.total counts roots plus replies, independent of the page; a deleted roo
     $page1 = $this->getJson($url)->assertOk();
     $page2 = $this->getJson($url.'&cursor='.$page1->json('meta.next_cursor'))->assertOk();
 
-    expect($page1->json('meta.total'))->toBe(4);
-    expect($page2->json('meta.total'))->toBe(4);
+    expect($page1->json('meta.unread'))->toBe(4);
+    expect($page2->json('meta.unread'))->toBe(4);
 });
 
 it('keyset pagination ties correctly on IDENTICAL created_at (tie-break by id desc), including a page boundary exactly at the tie group\'s edge (AC-040)', function () {

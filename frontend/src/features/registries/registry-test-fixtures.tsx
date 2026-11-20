@@ -90,6 +90,8 @@ export function registryFixture(overrides: Partial<RegistryDetailWithPermissions
     referents: [],
     primary_referent_id: null,
     primary_referent: null,
+    secondary_referent_id: null,
+    secondary_referent: null,
     manager_ids: [],
     managers: [],
     manager_slots: [],

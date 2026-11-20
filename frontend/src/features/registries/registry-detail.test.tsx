@@ -114,6 +114,8 @@ function registry(overrides: Partial<RegistryDetailWithPermissions> = {}): Regis
     referents: [],
     primary_referent_id: null,
     primary_referent: null,
+    secondary_referent_id: null,
+    secondary_referent: null,
     manager_ids: [],
     managers: [],
     manager_slots: [],
@@ -367,6 +369,8 @@ describe('RegistryDetailView — main referent (spec 0330 AC-012)', () => {
           ],
           primary_referent_id: 2,
           primary_referent: { id: 2, name: 'Grace Hopper' },
+          secondary_referent_id: null,
+          secondary_referent: null,
         })}
       />,
     )

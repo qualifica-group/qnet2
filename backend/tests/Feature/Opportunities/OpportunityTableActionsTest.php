@@ -139,12 +139,14 @@ it('row.actions offers notes only on the rows whose thread the actor can actuall
 
 it('rows: notes_count counts roots AND replies, per opportunity', function () {
     $actor = opportunityActionsUserWith(['viewAny'], ['view']);
+    // REQUIREMENT CHANGED (2026-11-18): the badge counts only unread notes, never the actor's own.
+    $author = User::factory()->create();
     $withNotes = Opportunity::factory()->create();
     $otherOpportunity = Opportunity::factory()->create();
 
-    $root = createOpportunityTableNote($withNotes, $actor);
-    createOpportunityTableNote($withNotes, $actor, $root->id);
-    createOpportunityTableNote($otherOpportunity, $actor);
+    $root = createOpportunityTableNote($withNotes, $author);
+    createOpportunityTableNote($withNotes, $author, $root->id);
+    createOpportunityTableNote($otherOpportunity, $author);
 
     Sanctum::actingAs($actor);
 
@@ -170,11 +172,13 @@ it('rows: notes_count is 0 when the opportunity has no notes', function () {
 // thread, general AND quote-scoped alike — no separate per-Offerta counter.
 it('rows: notes_count counts general and quote-scoped notes together', function () {
     $actor = opportunityActionsUserWith(['viewAny'], ['view']);
+    // REQUIREMENT CHANGED (2026-11-18): the badge counts only unread notes, never the actor's own.
+    $author = User::factory()->create();
     $opportunity = Opportunity::factory()->create();
     $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
 
-    createOpportunityTableNote($opportunity, $actor);
-    $quoteNote = createOpportunityTableNote($opportunity, $actor);
+    createOpportunityTableNote($opportunity, $author);
+    $quoteNote = createOpportunityTableNote($opportunity, $author);
     $quoteNote->forceFill(['quote_id' => $quote->id])->save();
 
     Sanctum::actingAs($actor);

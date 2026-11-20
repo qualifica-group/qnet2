@@ -15,6 +15,7 @@ use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
 use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Shared\DocumentsCountColumn;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
@@ -139,7 +140,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         ]));
 
         // Spec 0363: badges of the `documents` and `notes` row actions.
-        $query->withCount([...DocumentsCountColumn::own(), 'notes']);
+        $query->withCount([...DocumentsCountColumn::own(), ...NotesCountColumn::of('notes')]);
 
         // Spec 0407: the "€" state, only for the actors who see that column.
         if (WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())) {
@@ -367,9 +368,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     /**
      * Allowed action keys for a single row (spec 0405, the legacy "Azioni"):
      * everything opens the commessa, so `view` gates them all; each tab of
-     * the menu keeps its own detail-tab gate. `delete` is never offered per
-     * row: the catalog keeps it only for the bulk delete, which the
-     * TableBulkDeleteService authorizes per row.
+     * the menu keeps its own detail-tab gate. `delete` follows the policy
+     * (permission + perimeter, user request 2026-11-19); a commessa with
+     * accounting documents still answers 409 on the delete itself.
      *
      * @return array<int, string>
      */
@@ -388,6 +389,10 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         if (Gate::forUser($actor)->allows('viewDocuments', $row)) {
             $allowed[] = 'documents';
+        }
+
+        if (Gate::forUser($actor)->allows('delete', $row)) {
+            $allowed[] = 'delete';
         }
 
         return $allowed;

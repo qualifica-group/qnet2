@@ -85,7 +85,14 @@ export async function updateWorkOrder(
   return { ...data.data, permissions: data.permissions }
 }
 
-/** Deletes a work order. Backend responds 204 with no body; its pivot rows cascade (D-11). */
+/**
+ * Deletes a work order. Backend responds 204 with no body; its pivot rows
+ * cascade (D-11). A 409 carries the reason (accounting documents, spec 0243).
+ */
+export async function deleteWorkOrder(id: number): Promise<void> {
+  await apiClient.delete(`/work-orders/${id}`)
+}
+
 /**
  * "Richiedi aggiornamento" (spec 0352): notifies a fixed recipient group by
  * mail and in-app notification. Writes nothing on the work order, so the

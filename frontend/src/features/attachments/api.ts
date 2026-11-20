@@ -13,7 +13,7 @@ export function attachmentsQueryKey(resource: string, id: number, collection: st
 
 /** The list envelope carries `meta.legacy_url` beside the documents (spec 0343). */
 interface AttachmentListResponse extends ApiResponse<Attachment[]> {
-  meta?: { legacy_url: string | null }
+  meta?: { legacy_url: string | null; unread?: number }
 }
 
 /**
@@ -29,7 +29,21 @@ export async function listAttachments(
   const { data } = await apiClient.get<AttachmentListResponse>('/attachments', {
     params: { attachable_type: resource, attachable_id: id, collection },
   })
-  return { documents: data.data, legacyUrl: data.meta?.legacy_url ?? null }
+  return { documents: data.data, legacyUrl: data.meta?.legacy_url ?? null, unread: data.meta?.unread ?? 0 }
+}
+
+/**
+ * Marks the owner's collection read for the current user, so the grids'
+ * `documents_count` badge stops counting it. Resolves to how many files
+ * became read.
+ */
+export async function markAttachmentsRead(resource: string, id: number, collection: string): Promise<number> {
+  const { data } = await apiClient.post<ApiResponse<{ marked: number }>>('/attachments/read', {
+    attachable_type: resource,
+    attachable_id: id,
+    collection,
+  })
+  return data.data.marked
 }
 
 export interface UploadAttachmentPayload {

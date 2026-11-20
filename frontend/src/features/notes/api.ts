@@ -55,6 +55,20 @@ export async function fetchNotes({
   return { data: data.data, meta: data.meta }
 }
 
+/**
+ * Marks the scoped thread read for the current user (roots and replies), so
+ * the grids' `notes_count` badge stops counting it. Resolves to how many
+ * notes became read.
+ */
+export async function markNotesRead(entityType: string, entityId: number, quoteScope: NoteQuoteScope = 'all'): Promise<number> {
+  const { data } = await apiClient.post<ApiResponse<{ marked: number }>>('/notes/read', {
+    entity_type: entityType,
+    entity_id: entityId,
+    quote_scope: quoteScope === 'all' ? undefined : String(quoteScope),
+  })
+  return data.data.marked
+}
+
 /** Envelope di create/update (spec 0353): la nota e, in `meta`, gli id aggiunti al record dalle menzioni. */
 type NoteMutationEnvelope = ApiResponse<Note> & { meta?: { enlisted_user_ids?: number[] } }
 

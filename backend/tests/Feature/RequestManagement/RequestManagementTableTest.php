@@ -352,10 +352,12 @@ it('rows: operational_site is the composed "{line1} - {city}" label (AC-015), no
 
 it('rows: notes_count counts roots AND replies together', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
+    // REQUIREMENT CHANGED (2026-11-18): the badge counts only unread notes, never the actor's own.
+    $author = User::factory()->create();
     $quote = Quote::factory()->create();
-    $root = createNoteOn($quote->opportunity, $actor, null, $quote->id);
-    createNoteOn($quote->opportunity, $actor, $root->id, $quote->id);
-    createNoteOn($quote->opportunity, $actor, null, $quote->id);
+    $root = createNoteOn($quote->opportunity, $author, null, $quote->id);
+    createNoteOn($quote->opportunity, $author, $root->id, $quote->id);
+    createNoteOn($quote->opportunity, $author, null, $quote->id);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
@@ -366,16 +368,18 @@ it('rows: notes_count counts roots AND replies together', function () {
 
 it('rows: notes_count counts only the notes scoped to that Offerta, not the parent thread', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
+    // REQUIREMENT CHANGED (2026-11-18): the badge counts only unread notes, never the actor's own.
+    $author = User::factory()->create();
     $opportunity = Opportunity::factory()->create();
     $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
     $sibling = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
 
-    createNoteOn($opportunity, $actor, null, $quote->id);
-    createNoteOn($opportunity, $actor, null, $quote->id);
+    createNoteOn($opportunity, $author, null, $quote->id);
+    createNoteOn($opportunity, $author, null, $quote->id);
     // Una nota generale dell'Opportunita' e una dell'altra Offerta: nessuna
     // delle due appartiene al thread che l'azione di questa riga apre.
-    createNoteOn($opportunity, $actor);
-    createNoteOn($opportunity, $actor, null, $sibling->id);
+    createNoteOn($opportunity, $author);
+    createNoteOn($opportunity, $author, null, $sibling->id);
     Sanctum::actingAs($actor);
 
     $items = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
@@ -387,9 +391,11 @@ it('rows: notes_count counts only the notes scoped to that Offerta, not the pare
 
 it('rows: a soft-deleted note is NOT counted in notes_count', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
+    // REQUIREMENT CHANGED (2026-11-18): the badge counts only unread notes, never the actor's own.
+    $author = User::factory()->create();
     $quote = Quote::factory()->create();
-    createNoteOn($quote->opportunity, $actor, null, $quote->id);
-    createNoteOn($quote->opportunity, $actor, null, $quote->id)->delete();
+    createNoteOn($quote->opportunity, $author, null, $quote->id);
+    createNoteOn($quote->opportunity, $author, null, $quote->id)->delete();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();

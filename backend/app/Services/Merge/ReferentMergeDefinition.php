@@ -70,7 +70,7 @@ final class ReferentMergeDefinition extends MergeDefinition
         return [
             new LinkedSource('opportunities', 'opportunities', ['opportunities.referent_id', 'opportunities.commercial_id', 'opportunities.commercial_partner_id', 'opportunities.reporter_id']),
             new LinkedSource('quotes', 'quotes', ['quotes.commercial_id', 'quotes.commercial_partner_id', 'quotes.reporter_id']),
-            new LinkedSource('registries_roles', 'registries', ['registries.commercial_id', 'registries.commercial_partner_id', 'registries.reporter_id', 'registries.primary_referent_id']),
+            new LinkedSource('registries_roles', 'registries', ['registries.commercial_id', 'registries.commercial_partner_id', 'registries.reporter_id', 'registries.primary_referent_id', 'registries.secondary_referent_id']),
             new LinkedSource('tasks', 'tasks', ['tasks.referent_id']),
             new LinkedSource('rewards', 'rewards', ['rewards.referent_id']),
             new LinkedSource('commission_settlements', 'commission_settlements', ['commission_settlements.referent_id']),
@@ -96,6 +96,7 @@ final class ReferentMergeDefinition extends MergeDefinition
                 ['registries', 'commercial_partner_id'],
                 ['registries', 'reporter_id'],
                 ['registries', 'primary_referent_id'],
+                ['registries', 'secondary_referent_id'],
                 ['tasks', 'referent_id'],
                 ['commission_settlements', 'referent_id'],
                 ['agent_fiscal_profiles', 'referent_id'],
@@ -113,15 +114,16 @@ final class ReferentMergeDefinition extends MergeDefinition
     }
 
     /**
-     * Registries whose principale was a merged referent now point at the
-     * survivor: confirm it is still linked there, else re-elect (spec 0330).
+     * Registries whose principale or secondario was a merged referent now point
+     * at the survivor: confirm it is still linked there, else re-elect (spec
+     * 0330); a secondario that became the principale too is cleared (spec 0408).
      */
     public function settle(Model $survivor): void
     {
         Registry::query()
-            ->where('primary_referent_id', $survivor->getKey())
+            ->where(static fn ($query) => $query->where('primary_referent_id', $survivor->getKey())->orWhere('secondary_referent_id', $survivor->getKey()))
             ->get()
-            ->each(fn (Registry $registry) => $this->primaryReferentElector->elect($registry, $survivor->getKey()));
+            ->each(fn (Registry $registry) => $this->primaryReferentElector->elect($registry, $registry->primary_referent_id));
     }
 
     public function loadTree(Model $survivor): Model

@@ -100,9 +100,16 @@ describe('WorkOrderClientInfoSection', () => {
     expect(within(row('Comments')).getByText('Cliente storico')).toBeInTheDocument()
   })
 
+  it('keeps each referent in its slot: Referent 2 without Referent 1 (spec 0408 D-5)', () => {
+    renderSection(info({ referents: [null, { id: 16, name: 'Pasqualina Pagano', referent_type: null, primary_contacts: [] }] }))
+
+    expect(within(row('Referent 1')).queryByRole('link')).not.toBeInTheDocument()
+    expect(within(row('Referent 2')).getByRole('link', { name: 'Pasqualina Pagano' })).toBeInTheDocument()
+  })
+
   it('keeps the rows with the empty marker when the client has nothing to show', () => {
     renderSection(
-      info({ legal_address: null, vat_number: null, tax_code: null, tags: [], emails: [], phones: [], referents: [], commercial: null, sectors: [], comments: null }),
+      info({ legal_address: null, vat_number: null, tax_code: null, tags: [], emails: [], phones: [], referents: [null, null], commercial: null, sectors: [], comments: null }),
     )
 
     for (const label of ['Registered office', 'Tags', 'Email/PEC', 'Phone', 'Referent 1', 'Commercial', 'Sector', 'Comments']) {

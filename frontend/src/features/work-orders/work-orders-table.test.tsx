@@ -40,6 +40,7 @@ vi.mock('@/components/page-header', () => ({
 vi.mock('@/features/work-orders/api', () => ({
   WORK_ORDERS_DOMAIN: 'work-orders',
   fetchWorkOrder: () => new Promise(() => {}),
+  deleteWorkOrder: vi.fn(),
   workOrderDetailQueryKey: (id: number) => ['work-orders', 'detail', id],
 }))
 

@@ -34,7 +34,8 @@ it('403 without registries.viewAny', function () {
     $this->getJson('/api/meta/registries')->assertForbidden();
 });
 
-it('200: field catalogue matches the frozen contract (14 registry + 13 personal_data), in order', function () {
+// REQUIREMENT CHANGED (spec 0408): secondary_referent_id added after primary_referent_id; (spec 0417) commercial_partner_id.
+it('200: field catalogue matches the frozen contract (16 registry + 13 personal_data), in order', function () {
     $actor = registryMetaUserWith(['viewAny', 'create']);
     Sanctum::actingAs($actor);
 
@@ -44,7 +45,7 @@ it('200: field catalogue matches the frozen contract (14 registry + 13 personal_
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
     expect($keys)->toBe([
-        'source_id', 'sector_ids', 'referent_ids', 'primary_referent_id', 'manager_slots',
+        'source_id', 'sector_ids', 'referent_ids', 'primary_referent_id', 'secondary_referent_id', 'manager_slots',
         // REQUIREMENT CHANGED (spec 0417): partner commerciale
         'supervisor_id', 'commercial_id', 'commercial_partner_id', 'reporter_id',
         'vat_group', 'is_supplier', 'is_qualified_supplier',

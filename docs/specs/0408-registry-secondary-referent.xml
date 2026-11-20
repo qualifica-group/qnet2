@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0408-registry-secondary-referent" status="approved" owner="nicola" date="2026-11-19">
+
+  <goal>
+    L'anagrafica ha due ruoli tra i suoi referenti: Referente 1 = "Referente principale" (esistente, spec 0330) e Referente 2 = "Referente secondario" (nuovo). L'utente sceglie quale referente collegato e' l'uno e quale l'altro; la migrazione dal legacy li valorizza con "Referente 1" e "Referente 2" della vecchia anagrafica; la commessa mostra quei due.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-19: "referente e referente 2 della vecchia anagrafica devono essere referenti, se esiste gia' a db prendi quelli altrimenti li crei, se mancano dei campi obbligatori li importi lo stesso. Se ci sono gia' dei referenti come contatti, bypassalo. Voglio un collegamento dove si sceglie quale e' referente 1 e quale referente 2: il referente 1 sara' il referente principale, poi il referente secondario che sara' referente 2."
+    D-2 Analisi 2026-11-19 (DB dev + simulazione spec 0398): delle 688 anagrafiche con un Referente 2 nel legacy, in 640 la commessa (spec 0400 "Referente 2 = primo altro collegato") mostrerebbe un altro referente, in 447 il commerciale. Il Referente 2 va salvato come ruolo, non dedotto dall'ordine.
+    D-3 Esempio FOREDIL SRL (legacy 13036): Referente 1 "Claudio Orazi" e contatto collegato "Claudio Orazio" con la stessa email: l'abbinamento solo per nome (spec 0398) creerebbe un doppione. Con la stessa email/telefono di un contatto collegato, 108 Referenti 1 verrebbero duplicati.
+  </context>
+
+  <decisions>
+    D-1 Colonna `registries.secondary_referent_id` (FK `referents`, `nullOnDelete`, nullable), gemella di `primary_referent_id`. Etichetta UI "Referente secondario" (Referente 2); "Referente principale" resta il Referente 1.
+    D-2 INV-2: il secondario e' uno dei referenti collegati e diverso dal principale, oppure null. Nessuna elezione automatica (a differenza del principale, D-4 spec 0330): se esce dai collegati o diventa principale, torna null. Lo garantisce `PrimaryReferentElector` dopo ogni create/update/merge; la cancellazione del referente lo azzera con la FK.
+    D-3 Validazione (store/update): `secondary_referent_id` deve essere tra i referenti risultanti (422 `secondary_referent_not_linked`) e diverso dal principale inviato o attuale (422 `secondary_referent_is_primary`). Permesso di campo uguale a `referent_ids`.
+    D-4 Form e dettaglio anagrafica: select "Referente secondario" sotto "Referente principale", con i referenti del campo Referenti tranne il principale, svuotabile. Togliendo il referente dai Referenti o scegliendolo come principale il form lo svuota (anticipa D-2). Card del referente con badge "Secondario".
+    D-5 Commessa, Info cliente: `client_info.referents` diventa posizionale, sempre 2 voci: [principale | null, secondario | null]. Niente piu' "primo altro collegato" (supera spec 0400 per il Referente 2).
+    D-6 Migrazione (spec 0398, `RegistryResponsibleReferents::align`): lo slot 2 diventa il secondario, se diverso dal principale e salvo cambio a mano (voce `activity_log` non `created` con `properties.attributes.secondary_referent_id`). Uno slot 2 assente non svuota il secondario. Report del comando: nuovo foglio `Secondari impostati` (legacy_id, qnet2_id, registry, old_secondary, new_secondary).
+    D-7 Legacy (`LegacyResponsibleReferents`): oltre al nome, un Referente 1/2 si abbina al contatto collegato (non Commerciale) che ha la stessa email/PEC o lo stesso telefono, se e' uno solo. Il nome resta il primo criterio. Nessun dato mancante blocca: un nome di una parola resta referente col solo nome (spec 0398 D-6).
+    D-8 I Commerciali collegati restano tra i referenti (spec 0398 D-8 invariata): con D-5 non compaiono piu' come Referente 2.
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST|PATCH" path="/api/registries[/{registry}]">
+      <request>Campo aggiunto `secondary_referent_id`: ?int (sometimes, nullable, exists referents). Errori 422 D-3.</request>
+      <response status="200">`RegistryResource` aggiunge `secondary_referent_id`: ?int e `secondary_referent`: ref come `primary_referent`.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}">
+      <response status="200">`client_info.referents`: [ReferentRef|null, ReferentRef|null] (Referente 1, Referente 2).</response>
+    </endpoint>
+    <endpoint method="GET" path="legacy /api/v2/migration/registries">
+      <response status="200">Shape invariata; `responsible_referents[].contact_id` valorizzato anche per abbinamento su email/telefono (D-7).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Salvo un'anagrafica con referenti A, B e secondario B: risposta con `secondary_referent_id` = B.</criterion>
+    <criterion id="AC-002">Secondario non collegato, o uguale al principale: 422 sul campo `secondary_referent_id`.</criterion>
+    <criterion id="AC-003">Tolgo B dai referenti, o lo rendo principale: il secondario torna null. Cancello il referente B: il secondario torna null.</criterion>
+    <criterion id="AC-004">Senza permesso di scrittura su `referent_ids` il campo e' in sola lettura (403/422 come gli altri campi).</criterion>
+    <criterion id="AC-005">Commessa: `client_info.referents` = [principale, secondario]; senza secondario la seconda voce e' null anche se ci sono altri collegati.</criterion>
+    <criterion id="AC-006">Import/comando: lo slot 2 diventa il secondario; un secondario cambiato a mano non cambia; un secondo lancio non cambia nulla.</criterion>
+    <criterion id="AC-007">Legacy: "Claudio Orazi" con la stessa email del contatto "Claudio Orazio" abbinato al contatto (tinker FOREDIL 13036).</criterion>
+    <criterion id="AC-008">Form/dettaglio: select "Referente secondario" con i referenti tranne il principale; badge "Secondario" sulla card.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Migrazione di schema reversibile; su DB `qnet2` dev si lancia solo con ok esplicito dell'utente. Poi `migrations:reimport-registry-referents` (simulazione, poi `--apply` con ok).</item>
+    <item>backend.md §9: l'abbinamento per email/telefono sta nel legacy; qnet2 usa `contact_id`.</item>
+    <item>Manuale: guide in-app `registries` e `work-orders` IT/EN, manuale Claude Docs (Anagrafiche, Commessa).</item>
+  </constraints>
+
+</spec>

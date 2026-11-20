@@ -22,7 +22,7 @@ final class ActivityLogRegistry
      */
     public function resolve(string $resource): ActivityLogDefinition
     {
-        /** @var array<string, array{model: class-string, relations?: array<int, string>, authorizer?: class-string, field_permission_resource?: string, field_permissions?: array<string, array<string, string>>}> $definitions */
+        /** @var array<string, array{model: class-string, relations?: array<int, string>, authorizer?: class-string, field_permission_resource?: string, field_permissions?: array<string, array<string, string>>, documents_permissions?: array<int, string>}> $definitions */
         $definitions = config('activity-log.resources', []);
 
         $config = $definitions[$resource] ?? null;
@@ -37,6 +37,7 @@ final class ActivityLogRegistry
             $config['authorizer'] ?? PolicyActivityLogAuthorizer::class,
             $config['field_permission_resource'] ?? null,
             $config['field_permissions'] ?? [],
+            $config['documents_permissions'] ?? [],
         );
     }
 }
