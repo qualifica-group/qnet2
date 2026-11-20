@@ -25,7 +25,7 @@
   (REQUIREMENT CHANGED). Effetto su qnet2 dev: ~5.000 opportunita' (31 utenti) e ~5.500 offerte (37 utenti), tutti gli stati, tornano
   in elenco col default. Guide IT/EN `opportunities`/`quotes` e manuale Claude Docs (paragrafi Opportunita'/Offerte) aggiornati.
 
-## Pulizia contratti sospesi non lavorati su offerte non vinte (spec 0072 D-3 rev., decisione utente 2026-11-20) — VERDE MIRATO, NON COMMITTATO
+## Pulizia contratti sospesi non lavorati su offerte non vinte (spec 0072 D-3 rev., decisione utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING (eaabb6d40)
 
 - Comando `contracts:remove-untouched-suspended {--dry-run}` (`app/Console/Commands/RemoveUntouchedSuspendedContracts.php`): contratti con `suspended_at` la cui offerta non e' `closed_won`; se `ContractUntouchedCheck::isUntouched` -> `ContractLifecycleManager::deleteContract` (reso pubblico; activity `contract.removed` sull'offerta), altrimenti restano sospesi.
 - Test: `tests/Feature/Contracts/RemoveUntouchedSuspendedContractsTest.php`; cartella Contracts 243 verdi. Pint ok.
