@@ -114,20 +114,27 @@ it('rejects the removed assignment filter', function () {
         ->assertJsonValidationErrors(['advancedFilters.assignment']);
 });
 
-it('limits an actor enabled on some parent categories to the whole branch of those, whatever is picked', function () {
+// REQUIREMENT CHANGED (2026-11-20, task 431114): the default parent category (empty, "Tutte" or a pick
+// outside the actor's roots) no longer hides a commessa where the actor is Responsabile or Partecipante
+// outside their competence (a HACCP commessa assigned to a Sicurezza consultant was unreachable from the
+// list); a pick among the actor's roots still narrows to those alone.
+it('limits an actor enabled on some parent categories to the branch of those, plus by default the commesse where they hold a role', function () {
     [$actor, $root] = commesseLimitedActor();
     $inBranch = categoryTabWorkOrder([ProductCategory::factory()->create(['parent_id' => $root->id])]);
     $foreignRoot = ProductCategory::factory()->create();
-    $foreign = categoryTabWorkOrder([$foreignRoot]);
-    // Without viewAll the actor sees only the commesse where they hold a role: both, so only the category limit narrows.
+    $supervised = categoryTabWorkOrder([$foreignRoot]);
+    $participated = categoryTabWorkOrder([$foreignRoot]);
+    categoryTabWorkOrder([$foreignRoot]);
     $inBranch->supervisors()->attach($actor->id);
-    $foreign->supervisors()->attach($actor->id);
+    $supervised->supervisors()->attach($actor->id);
+    $participated->participants()->attach($actor->id, ['position' => 1]);
     Sanctum::actingAs($actor);
+    $byDefault = [$inBranch->id, $supervised->id, $participated->id];
 
-    expect(commessePageIds(['parent_category' => []]))->toBe([$inBranch->id])
+    expect(commessePageIds(['parent_category' => []]))->toBe($byDefault)
+        ->and(commessePageIds(['parent_category' => [0]]))->toBe($byDefault)
+        ->and(commessePageIds(['parent_category' => [$foreignRoot->id]]))->toBe($byDefault)
         ->and(commessePageIds(['parent_category' => [$root->id]]))->toBe([$inBranch->id])
-        ->and(commessePageIds(['parent_category' => [0]]))->toBe([$inBranch->id])
-        ->and(commessePageIds(['parent_category' => [$foreignRoot->id]]))->toBe([$inBranch->id])
         ->and(commessePageIds(['parent_category' => [$root->id, $foreignRoot->id]]))->toBe([$inBranch->id]);
 });
 
