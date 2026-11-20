@@ -198,6 +198,7 @@ final class DepartmentGrantSets
         'opportunities_view', 'opportunities_view_all', 'opportunities_edit', 'opportunities_delete',
         'opportunities_export', 'opportunities_import', 'opportunities_documents', 'opportunities_history',
         'quotes_view', 'quotes_costs', 'quotes_view_all', 'quotes_edit', 'quotes_delete', 'quotes_transfer', 'quotes_history',
+        'quotes_registry_transfer',
         'work_orders_view', 'work_orders_view_all', 'work_orders_edit', 'work_orders_economics',
         'work_orders_manage_costs', 'work_orders_invoices', 'work_orders_payments', 'work_orders_documents',
         'work_orders_emails', 'work_orders_delete', 'work_orders_transfer', 'work_orders_history',

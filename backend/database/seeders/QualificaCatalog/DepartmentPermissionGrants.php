@@ -69,6 +69,8 @@ final class DepartmentPermissionGrants
         'quotes_edit' => ['quotes.create', 'quotes.update'],
         'quotes_delete' => ['quotes.delete'],
         'quotes_transfer' => ['quotes.export', 'quotes.import'],
+        // "Trasferisci ad altra anagrafica" on the offer (spec 0404 B-D1).
+        'quotes_registry_transfer' => ['quotes.transferRegistry'],
         'quotes_history' => ['quotes.viewActivity'],
 
         // Commesse (29-41): chat rides on view, force close on update.

@@ -165,6 +165,9 @@ it('maps the back office questionnaire onto operators and supervisor', function 
         ->and($operator->hasPermissionTo('commission-configurations.import'))->toBeFalse()
         ->and($operator->hasPermissionTo('quotes.viewCosts'))->toBeTrue()
         ->and($operator->hasPermissionTo('quotes.notifyTeam'))->toBeFalse()
+        ->and($operator->hasPermissionTo('quotes.transferRegistry'))->toBeTrue()
+        ->and(Role::findByName(Department::senior(Department::BACK_OFFICE))->hasPermissionTo('quotes.transferRegistry'))->toBeTrue()
+        ->and(Role::findByName(Department::COMMERCIAL)->hasPermissionTo('quotes.transferRegistry'))->toBeFalse()
         ->and($operator->hasPermissionTo('leads.viewAny'))->toBeFalse()
         ->and($operator->hasPermissionTo('tasks.viewAll'))->toBeFalse()
         // Every quote, yet only the requests they are involved in: their answer, not the 2026-10-27 rule (D-14).

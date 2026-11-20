@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Back Office: permesso "Trasferisci ad altra anagrafica" sulle offerte (decisione utente 2026-11-20) — VERDE MIRATO, NON COMMITTATO
+
+- Nuova grant `quotes_registry_transfer` => `quotes.transferRegistry` in `DepartmentPermissionGrants`, aggiunta a `DepartmentGrantSets::BACK_OFFICE` (il senior la eredita). Commerciale invariato.
+- Test: `tests/Feature/Seeding/QualificaDepartmentRoleSeederTest.php` (asserzioni operatore/senior Back Office true, Commerciale false). Pint ok.
+- Da eseguire sull'ambiente: `php artisan db:seed --class=QualificaDepartmentRoleSeeder`. Manuale: nessun impatto (la guida descrive gia' il permesso).
+
 ## Obbligo trasferimento contatto solo su "Valida contratto" + trasferimenti con contratto non lavorato (spec 0404 C rev., decisioni utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING
 
 - Obbligo categoria `requires_contact_transfer_before_contract`: tolto da `QuoteWorkflowStatusWriter`; ora solo in `ContractActionService::validate` -> `ContactTransferBeforeContractRule::assertValidatable` (409, messaggio `quotes.contact_transfer_required_for_contract` riscritto). Vinto sempre libero.
