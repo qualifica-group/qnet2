@@ -1,5 +1,5 @@
 /**
- * Appunti di commessa (spec 0380): pagina a blocchi condivisa nella scheda
+ * Appunti di commessa (spec 0420): pagina a blocchi condivisa nella scheda
  * "Appunti". Mirrors `en-work-order-page.ts`.
  */
 

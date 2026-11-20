@@ -15,9 +15,12 @@ use Spatie\Permission\Models\Permission;
  */
 uses(RefreshDatabase::class);
 
+// Tasks 427625/427940, REQUIREMENT CHANGED: product line and category after the title, the
+// taxable amount net of the reporter's commission after the reporter, and a `view` row action.
 const AGENT_SALES_REPORT_COLUMNS = [
-    'code', 'quote_date', 'accepted_at', 'registry', 'title', 'address', 'postal_code', 'city', 'phone', 'email',
-    'company_site', 'managers', 'quote_workflow_status', 'revenue_net', 'commercial', 'reporter',
+    'code', 'quote_date', 'accepted_at', 'registry', 'title', 'root_category', 'category', 'address', 'postal_code',
+    'city', 'phone', 'email', 'company_site', 'managers', 'quote_workflow_status', 'revenue_net', 'commercial',
+    'reporter', 'revenue_net_after_reporter',
 ];
 
 /**
@@ -41,8 +44,8 @@ it('AC-003: an unauthenticated call is 401', function () {
     $this->getJson('/api/tables/agent-sales-report/columns')->assertUnauthorized();
 });
 
-it('AC-004: declares the 16 contract columns in order, read-only, without actions', function () {
-    Sanctum::actingAs(agentSalesReportActor());
+it('AC-004: declares the contract columns in order, read-only, with the view action only', function () {
+    Sanctum::actingAs(agentSalesReportActor()->givePermissionTo(Permission::findOrCreate('quotes.view', 'web')));
 
     $data = $this->getJson('/api/tables/agent-sales-report/columns')->assertOk()->json('data');
     $columns = collect($data['columns'])->reject(fn (array $column): bool => in_array($column['id'], ['id', 'old_id'], true))->values();
@@ -50,7 +53,7 @@ it('AC-004: declares the 16 contract columns in order, read-only, without action
     expect($columns->pluck('id')->all())->toBe(AGENT_SALES_REPORT_COLUMNS)
         ->and($columns->pluck('editable')->filter()->all())->toBe([])
         ->and($columns->every(fn (array $column): bool => $column['visible'] === true))->toBeTrue()
-        ->and($data['actions'])->toBe([])
+        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view'])
         ->and($data['defaultSort'])->toBe([
             ['columnId' => 'quote_date', 'direction' => 'desc'],
             ['columnId' => 'id', 'direction' => 'desc'],

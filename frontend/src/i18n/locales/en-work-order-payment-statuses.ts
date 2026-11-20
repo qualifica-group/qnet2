@@ -61,7 +61,6 @@ export const workOrderPaymentStatuses = {
     colorMax: 'Color must be at most 32 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the payment status. Please try again.',
-    deleteInUseFallback: 'This payment status is used by a work order line and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The record has not been created yet: what you entered will be lost.',

@@ -42,3 +42,8 @@ Schedule::command('ai-assistant:prune')->dailyAt('03:30')->withoutOverlapping()-
 // Spec 0362, D-9: sends the occurrences due of the recurring work order emails
 // (from outbound_emails.recurrence.send_at on). Idempotent per series and day.
 Schedule::command('outbound-emails:send-recurrences')->hourly()->withoutOverlapping()->onOneServer();
+
+// User decision 2026-11-13: the API documentation is never generated on page
+// visit; it is regenerated every night (plus the deploy step and the Refresh
+// button of the Documentation page).
+Schedule::command('api-docs:warm')->dailyAt('00:00')->withoutOverlapping()->onOneServer();

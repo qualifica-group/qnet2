@@ -241,7 +241,6 @@ export const invoiceTags = {
     colorInvalid: 'Scegli un colore dalla palette.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il tag fattura. Riprova.',
-    deleteInUse: 'Questo tag fattura è usato da una fattura e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il tag fattura non è ancora stato creato: i dati inseriti andranno persi.',

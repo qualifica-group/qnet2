@@ -5,6 +5,7 @@ namespace App\Migrations;
 use App\Migrations\Concerns\HasMigrationCustomFields;
 use App\Migrations\Support\ExternalApiClient;
 use App\Models\MigrationRun;
+use App\Services\Merge\MergedRecordResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -354,7 +355,8 @@ abstract class AbstractMigrationSource implements MigrationSource
      */
     protected function existsByOldId(string $targetClass, int|string $externalId): bool
     {
-        return $targetClass::query()->where('old_id', $externalId)->exists();
+        return $targetClass::query()->where('old_id', $externalId)->exists()
+            || MergedRecordResolver::survivorId($targetClass, $externalId) !== null;
     }
 
     /**
@@ -370,7 +372,8 @@ abstract class AbstractMigrationSource implements MigrationSource
         /** @var int|null $id */
         $id = $parentClass::query()->where('old_id', $externalRef)->value('id');
 
-        return $id;
+        // Spec 0394 D-12: a registry/referent merged away still resolves to its survivor.
+        return $id ?? MergedRecordResolver::survivorId($parentClass, $externalRef);
     }
 
     /**

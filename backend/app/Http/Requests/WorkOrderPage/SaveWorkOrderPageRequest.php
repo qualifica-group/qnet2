@@ -7,7 +7,7 @@ namespace App\Http\Requests\WorkOrderPage;
 use App\Http\Requests\WorkOrderChat\WorkOrderChatRequest;
 
 /**
- * PUT of the notes page (spec 0380). Shares the chat requests' deferred
+ * PUT of the notes page (spec 0420). Shares the chat requests' deferred
  * validation (WorkOrderChatRequest): authorization first, then the payload.
  * The size limits apply to the sanitized HTML, so they live in the service.
  */

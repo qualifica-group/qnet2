@@ -28,6 +28,7 @@ const guide: HelpGuide = {
             'You need the **Request Management Statistics › View** permission, assigned in **Configuration › System › Roles**: without it the menu entry does not appear and the page shows an access denied message.',
             'Everyone sees only the requests they already see in the list: with **View all**, all of them; otherwise the ones where they are GA2, plus the ones of their own sites with **View by site**.',
             'The filters can only narrow this visibility, never widen it.',
+            'Choosing which statuses the columns count also needs **Request Management Statistics › Edit** (see "Choosing the column statuses").',
           ],
         },
       ],
@@ -57,7 +58,7 @@ const guide: HelpGuide = {
               'Applied filters',
               'A box for Period, Categories, Sites, Operators, Rows: colored if it narrows the data, neutral if it means "everything".',
             ],
-            ['Tabs', '**Overview**, then the selected categories that fit on the row; the others are in the **More (N)** menu, with a search. The open category always stays visible on the row.'],
+            ['Tabs', '**Overview**, then the selected categories that fit on the row, favorites first; the others are in the **More (N)** menu (the star when they all fit on the row), with the search, the favorites and the **Parent categories** filter. The open category always stays visible on the row.'],
           ],
         },
         {
@@ -87,6 +88,10 @@ const guide: HelpGuide = {
           text: "**Change against the previous period.** When both From and To are filled in, every box shows the percentage change against the previous period of the same length (for Last 7 days, the 7 days before), with every other filter unchanged. Green = improvement, red = worsening; **New** = the value was 0 in the previous period. Hover the change to read the previous period's value.",
         },
         {
+          type: 'paragraph',
+          text: '**Split by status.** In the boxes the number has a dotted underline: hover it (or reach it with Tab) to see how it splits across the requests\' current working statuses, largest first (for Calls Made: the calls by request status). The same split is in the **Operator ranking**, on each operator\'s number. Companies Added (it counts companies, not requests) and the classroom columns, always 0, have none.',
+        },
+        {
           type: 'note',
           text: 'The "unhandled" columns (unhandled callbacks and new contacts) carry the amber icon: they are numbers to bring down, so for them a rise is red and a drop is green.',
         },
@@ -107,18 +112,42 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'statistics-favorites',
+      title: 'Favorite categories and parent categories',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'As in Request Management, you can mark the categories you check most often as **favorites**, to find them at once on the tab row. Open the menu to the right of the tabs (**More (N)**, or the star when every tab fits on the row).',
+        },
+        {
+          type: 'table',
+          headers: ['Control', 'What it does'],
+          rows: [
+            ['Star next to a category', 'Adds the category to or removes it from your favorites. Favorites come first on the row and in a **Favorites** group at the top of the menu.'],
+            ['**Select all** / **Deselect all**', 'Adds or removes every category listed in the menu; favorites of categories not currently selected in the filters are kept.'],
+            ['**Show favorites only**', 'The row shows only your favorites (plus the open category). Available once at least one favorite is chosen.'],
+            ['**Parent categories**', 'The row and the menu show only the main categories, without subcategories; off (the initial value) shows every category, subcategories included. An open subcategory stays visible.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Favorites and **Show favorites only** are saved on your account and kept apart from the Request Management ones; **Parent categories** is remembered by the browser. These controls change only the visible tabs: the Overview, the figures and the Filters panel stay the same.',
+        },
+      ],
+    },
+    {
       id: 'statistics-filters',
       title: 'The statistics filters',
       blocks: [
         {
           type: 'paragraph',
-          text: 'The quick period choices change the dates only. For everything else click **Filters** (or **Custom**) to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (today, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
+          text: 'The quick period choices change the dates only. For everything else click **Filters** (or **Custom**) to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (From empty and To today, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
         },
         {
           type: 'table',
           headers: ['Filter', 'What it does', 'Default value'],
           rows: [
-            ['From / To', 'The period considered, full days included. Either field, or both, can be left empty: only To = everything up to that date; only From = everything from that date on; both empty = no date limit.', 'Today (From and To)'],
+            ['From / To', 'The period considered, full days included. Either field, or both, can be left empty: only To = everything up to that date; only From = everything from that date on; both empty = no date limit.', 'From empty (from the start of the history), To today'],
             ['Categories', 'Which categories to include.', 'All'],
             ['Sites', 'Limits to the operators of those sites.', 'All'],
             ['Operators', 'Limits to certain GA2 operators.', 'All'],
@@ -191,7 +220,7 @@ const guide: HelpGuide = {
             [
               'Calls Made',
               "The notes linked to the request and written by its GA2: every note counts as one call.",
-              'Note creation date. Excludes requests still Open, deleted notes, general notes and notes written by others; always 0 for Unassigned.',
+              'Note creation date. Excludes requests still in the initial status of their workflow (Nuovo Contatto), deleted notes, general notes and notes written by others; always 0 for Unassigned.',
             ],
             [
               'Unhandled Callbacks',
@@ -205,31 +234,31 @@ const guide: HelpGuide = {
             ],
             [
               'Unhandled New Contacts',
-              'Requests still in the Open status.',
+              'Requests currently in one of the statuses chosen for the column (usually "Nuovo Contatto").',
               'Ignores the period: requests created earlier count too.',
             ],
             [
               'Unhandled New Contacts (selected period)',
-              'Requests created in the period and still in the Open status.',
+              'The same statuses as the previous column, only for the requests created in the period.',
               'Request creation date.',
             ],
             [
               'Potential Leads',
-              'Requests currently in a status of the Pending or Validated group.',
+              'Requests currently in one of the statuses chosen for the column (for example "In trattativa").',
               'Ignores the period: it looks at the current status.',
             ],
             [
               'Potential Leads (selected period)',
-              'Requests moved in the period to a status of the Pending or Validated group.',
-              'Status change date; each request counts once.',
+              'The same statuses as the previous column, only for the requests created in the period.',
+              'Request creation date. It looks at the current status: a request moved to a status not chosen (for example "Rimandata") does not count.',
             ],
             [
               'Enrolled',
-              'Requests that are currently in a status of the Closed (positive outcome) group.',
-              'Request creation date. It looks at the current status: a request closed positively and then moved to another status does not count.',
+              'Requests currently in one of the statuses chosen for the column (usually the positive closed ones).',
+              'Request creation date. It looks at the current status: a request later moved to a status not chosen does not count.',
             ],
-            ['Deals Closed', 'Same calculation as Enrolled.', 'Only the name changes, depending on which categories use it.'],
-            ['Handover Sent', 'Same calculation as Enrolled.', 'Only the name changes, depending on which categories use it.'],
+            ['Deals Closed', 'Like Enrolled, with the statuses chosen for this column.', 'Request creation date.'],
+            ['Handover Sent', 'Like Enrolled, with the statuses chosen for this column (for Orientamento specialistico: "Da convocare").', 'Request creation date.'],
             [
               'Companies Added',
               'Company-type registries created in the period and linked as the client of a request.',
@@ -250,7 +279,30 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Status changes are counted whether made from Request Management or from the Quotes module.',
+          text: 'For Appointments Booked, status changes are counted whether made from Request Management or from the Quotes module.',
+        },
+      ],
+    },
+    {
+      id: 'statistics-column-statuses',
+      title: 'Choosing the column statuses',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The Unhandled New Contacts, Potential Leads, Enrolled, Deals Closed and Handover Sent columns count only the requests currently in one of the working statuses chosen for that column. The "(selected period)" version of a column uses the same choice and also counts only the requests created in the period.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Click **Columns and statuses** (the columns icon at the top right of the page). It needs the **Request Management Statistics › Edit** permission.',
+            'Pick the column from the tabs at the top: the number in brackets is how many statuses are already chosen.',
+            'Tick the statuses the column must count. Statuses are grouped by workflow (with the categories it applies to); **Default statuses** are the ones of requests without a workflow. **All** and **None** act on a single workflow; the search filters by workflow, category or status.',
+            'Repeat for the other columns and press **Save**: the choice of every column is saved together and the page numbers refresh. **Reset** drops the unsaved changes.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'A status not chosen counts in no column. To count something new, create the status in the workflow\'s **Offer status configurator** and then choose it here. A column with no status chosen is 0; which columns a category shows is still decided in Report columns of Product Categories.',
         },
       ],
     },
@@ -284,14 +336,14 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "**Why do I see 0?** The column is among those not yet computed; nothing happened in the period (check From and To); the notes belong to a user other than the GA2; the request is still Open; the site and operator picked have nothing in common.",
+            "**Why do I see 0?** The column is among those not yet computed; nothing happened in the period (check From and To); the notes belong to a user other than the GA2; the request is still in Nuovo Contatto; the site and operator picked have nothing in common; no status of the category's workflow is chosen for that column (see **Columns and statuses**).",
             '**Why is a cell empty instead of 0?** The column is not configured for that category: check Report columns in Product Categories.',
             "**Why doesn't an operator appear?** It has no values different from zero in the period, you picked Total only, it is excluded by the Operators or Sites filters, or you cannot see its requests with your permissions.",
             '**Why is "Unassigned" missing?** There are no requests without an operator contributing to the counts, or you filtered by site.',
             "**Why don't the parent's totals include a subcategory?** The subcategory has Visible in reports set to no, directly or by inheritance.",
             "**Why did an operator's numbers change after a transfer?** The counts look at the current operator: the previous operator's notes no longer count as calls.",
             "**Why don't some columns change with the period?** Unhandled Callbacks, Unhandled New Contacts and Potential Leads always look at the situation today. For the period figure use their \"(selected period)\" version, which you switch on in the category's Report columns.",
-            '**Why is Enrolled 0 even though I have requests closed with a positive outcome?** Enrolled, Deals Closed and Handover Sent count the requests created in the chosen period: with today as the period, the ones created on earlier days are left out. Widen the From/To period.',
+            '**Why is Enrolled 0 even though I have requests closed with a positive outcome?** Enrolled, Deals Closed and Handover Sent count the requests created in the chosen period: with today as the period, the ones created on earlier days are left out. Widen the From/To period, and check in **Columns and statuses** that the status is chosen for the column.',
             '**Why is the Overall total lower than the sum of the categories?** A request present in several selected categories counts once in the overall total.',
             '**Why do I not see the percentage change?** It needs a period with both From and To (All time or a single bound have no previous period); when the value is 0 both now and in the previous period no change is shown.',
           ],

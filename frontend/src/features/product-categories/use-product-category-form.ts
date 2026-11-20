@@ -69,6 +69,8 @@ function mapCategoryToFormValues(
     single_quote_per_opportunity: category.single_quote_per_opportunity,
     generates_contract: category.generates_contract,
     multi_quote_work_order: category.multi_quote_work_order,
+    usage_area: category.usage_area,
+    multiple_open_opportunities: category.multiple_open_opportunities,
     simplified_offer_line: category.simplified_offer_line,
     simplified_offer_line_override: category.simplified_offer_line_override,
     manager_labels: toManagerLabelsFormValue(category.manager_labels),
@@ -168,6 +170,10 @@ export function useProductCategoryForm({ mode }: UseProductCategoryFormArgs) {
       generates_contract: true,
       // Spec 0267: a new root keeps one work order per offer until the operator opts in.
       multi_quote_work_order: false,
+      // Spec 0389: a new root is used in every module until the operator restricts it.
+      usage_area: 'all',
+      // A new root keeps one open opportunity per anagrafica until the operator opts in.
+      multiple_open_opportunities: false,
       // Spec 0114: a new root opens with the manual row editor — the
       // behaviour every existing category had before the rule existed.
       simplified_offer_line: false,

@@ -21,6 +21,8 @@ export const referents = {
     subtitle: 'Details of the selected referent, editable in place.',
     loadError: 'Unable to load the referent. Please try again.',
     details: 'Details',
+    // Task 428287: the referent shown on a commessa whose offer names none of its own.
+    registryPrimary: 'Primary referent of the registry',
     // The Configuratore commissioni rules whose recipient is the referent (spec 0336).
     related: {
       title: 'Related records',

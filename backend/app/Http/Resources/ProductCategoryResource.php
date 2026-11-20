@@ -88,6 +88,11 @@ class ProductCategoryResource extends JsonResource
             // Spec 0267: the EFFECTIVE multi-quote work-order rule, mirrored
             // from the root like the flags above.
             'multi_quote_work_order' => (bool) $this->multi_quote_work_order,
+            // Spec 0389: the EFFECTIVE usage area, mirrored from the root.
+            'usage_area' => $this->usage_area->value,
+            // User request 2026-11-11: the EFFECTIVE "several open
+            // opportunities" rule, mirrored from the root.
+            'multiple_open_opportunities' => (bool) $this->multiple_open_opportunities,
             // Spec 0114: the EFFECTIVE simplified-offer-line rule — already
             // mirrored from the root on every descendant, so no walk is
             // needed here either. `simplified_offer_line_source_category` is

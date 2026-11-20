@@ -8,7 +8,11 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Services\Tasks\TaskNotable;
+use App\Support\Notifications\RecordMail;
+use App\Support\Notifications\TaskDetails;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -35,7 +39,7 @@ use Illuminate\Support\Str;
  */
 class TaskUpdateRequested extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     private const int MESSAGE_LIMIT = 2000;
 
@@ -51,7 +55,7 @@ class TaskUpdateRequested extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**
@@ -76,18 +80,15 @@ class TaskUpdateRequested extends Notification implements ShouldQueue
     {
         $path = $this->pathFor($notifiable);
 
-        $mail = (new MailMessage)
-            ->subject(__('Update requested'))
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->body($path));
-
-        // No reachable screen, no button: a CTA that lands on a 403 is worse
-        // than none, and the body already says what to ask for (AC-057).
-        if ($path !== null) {
-            $mail->action(__('Open'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+        // No reachable screen, no button (AC-057); spec 0381: the Task's card.
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject(__('Update requested'))
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->body($path),
+            TaskDetails::for($this->task),
+            $path,
+        );
     }
 
     /**

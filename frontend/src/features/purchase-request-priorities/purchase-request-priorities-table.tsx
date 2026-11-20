@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -12,7 +11,6 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { ApiErrorResponse } from '@/api/types'
 import { purchaseRequestPriorityColumnRenderers } from '@/features/purchase-request-priorities/column-renderers'
 import { deletePurchaseRequestPriority } from '@/features/purchase-request-priorities/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
@@ -55,21 +53,7 @@ export function PurchaseRequestPrioritiesTable() {
         toast.success(t('purchaseRequestPriorities.form.deleted'))
         refreshGrid()
       } catch (error) {
-        if (!axios.isAxiosError<ApiErrorResponse>(error)) {
-          toast.error(t('purchaseRequestPriorities.form.deleteError'))
-          return
-        }
-        const status = error.response?.status
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden) {
-          toast.error(forbidden)
-        } else if (status === 409) {
-          // The row is still referenced by an RDA. Surface the
-          // backend's own message rather than a generic one.
-          toast.error(error.response?.data?.message ?? t('purchaseRequestPriorities.form.deleteInUse'))
-        } else {
-          toast.error(t('purchaseRequestPriorities.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('purchaseRequestPriorities.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

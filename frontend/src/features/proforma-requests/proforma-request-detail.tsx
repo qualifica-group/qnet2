@@ -16,6 +16,7 @@ import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
+import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { PROFORMA_REQUESTS_DOMAIN } from '@/features/proforma-requests/api'
 import type { ProformaRequestWithPermissions } from '@/features/proforma-requests/types'
@@ -41,6 +42,7 @@ export function ProformaRequestDetailView({ proformaRequest: request, onEdit }: 
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      badge: <NotesTabCount entityType={PROFORMA_REQUESTS_DOMAIN} entityId={request.id} />,
       content: <NotesSection entityType={PROFORMA_REQUESTS_DOMAIN} entityId={request.id} showHeader={false} />,
     })
   }
@@ -72,7 +74,7 @@ export function ProformaRequestDetailView({ proformaRequest: request, onEdit }: 
                 {request.company ? request.company.name : <DetailEmpty />}
               </RecordField>
               <RecordField label={t('proformaRequests.columns.customer')}>
-                {request.customer ? request.customer.name : <DetailEmpty />}
+                {request.customer ? request.customer.label : <DetailEmpty />}
               </RecordField>
               <RecordField label={t('proformaRequests.columns.status')}>
                 {t(`proformaRequests.statuses.${request.status}`)}
@@ -81,7 +83,7 @@ export function ProformaRequestDetailView({ proformaRequest: request, onEdit }: 
                 <RecordField label={t('proformaRequests.detail.issuedAt')}>{issuedAt}</RecordField>
               ) : null}
               <RecordField label={t('proformaRequests.columns.supplier')}>
-                {request.supplier ? request.supplier.name : <DetailEmpty />}
+                {request.supplier ? request.supplier.label : <DetailEmpty />}
               </RecordField>
               <RecordField label={t('proformaRequests.columns.payment_method')}>
                 {request.payment_method ? request.payment_method.name : <DetailEmpty />}

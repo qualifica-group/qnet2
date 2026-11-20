@@ -99,6 +99,8 @@ export interface NoteMutationResult {
 export interface NotesPageMeta {
   next_cursor: string | null
   has_more: boolean
+  /** Roots in the requested scope plus their replies, independent of the page: the Note tab's count. */
+  total: number
   /**
    * Spec 0085 amendment: le Offerte del record ospite, indipendenti dal
    * filtro applicato — sono le scelte, non il risultato. Opzionale per

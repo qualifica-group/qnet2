@@ -34,6 +34,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: ['Open **Configuration › Sales › Referent Types** and press the button to create a new referent type.', 'The record opens with its rows closed: press the pencil (or the value) on **Name**, type it and press **Done** (**Revert** puts the row back as it was).', 'Press **Save**.'] },
         { type: 'paragraph', text: 'On the list rows you find **View** and **Delete**, if your role allows it. There is no separate edit form: open the record with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.' },
+        { type: 'note', text: 'A referent type assigned to at least one referent cannot be deleted: the message says how many referents use it.' },
       ],
     },
     {

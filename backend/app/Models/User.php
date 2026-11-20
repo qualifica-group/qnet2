@@ -29,7 +29,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Activitylog\Traits\CausesActivity;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'locale', 'is_active', 'ui_scale', 'date_format', 'time_format', 'color_preset'])]
+#[Fillable(['name', 'email', 'password', 'locale', 'is_active', 'ui_scale', 'date_format', 'time_format', 'color_preset', 'email_notifications_enabled'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasLocalePreference
 {
@@ -41,6 +41,16 @@ class User extends Authenticatable implements HasLocalePreference
      * one avatar: uploading a new one replaces the previous (see AvatarService).
      */
     public const string AVATAR_COLLECTION = 'avatar';
+
+    /**
+     * Mirrors the column default, so a user built in memory (not re-read
+     * from the database) already reports the emails as on.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'email_notifications_enabled' => true,
+    ];
 
     /**
      * The user's current avatar (latest file in the avatar collection), if any.
@@ -209,6 +219,16 @@ class User extends Authenticatable implements HasLocalePreference
     }
 
     /**
+     * Whether the email copy of an in-app notification may be sent to this
+     * user: their own switch is on and there is an address to send it to.
+     * Credential emails (welcome, password reset) do not ask this.
+     */
+    public function wantsEmailNotifications(): bool
+    {
+        return $this->email_notifications_enabled && filled($this->email);
+    }
+
+    /**
      * Send the password reset link using the custom localized notification.
      */
     public function sendPasswordResetNotification($token): void
@@ -252,6 +272,9 @@ class User extends Authenticatable implements HasLocalePreference
             // `locale`: fillable, validated 0..100 by UpdateProfileRequest, no
             // escalation risk.
             'ui_scale' => 'integer',
+            // Per-user switch for the email copy of notifications. A plain
+            // preference like `ui_scale`: fillable, no escalation risk.
+            'email_notifications_enabled' => 'boolean',
             // Spec 0368 — welcome tour. Guarded (not in $fillable): written only
             // via forceFill() by OnboardingService.
             'onboarding_seen_version' => 'integer',

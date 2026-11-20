@@ -19,7 +19,7 @@ const guide: HelpGuide = {
           items: [
             'You need the **Agent Sales Report › View** permission, assigned in **Configuration › System › Roles**: without it the menu entry does not appear and the page shows an access denied message.',
             'Everyone sees only the quotes they have access to in the **Quotes** module: the report never widens your visibility, and this applies to the downloaded files too.',
-            'Click the **Quote no.** of a row to open the quote.',
+            'The **View** button (the eye) in the **Actions** column opens the quote in a window over the report: closing it brings you back to the list with your filters. You need the permission to see Quotes. Ctrl/Cmd+click, or a click on the **Quote no.**, opens the quote page instead.',
           ],
         },
       ],
@@ -37,11 +37,14 @@ const guide: HelpGuide = {
             ['Accepted on', 'The date the quote entered a won state (closed won). It stays empty while the quote is not won; it is cleared if the quote goes back to a non-won state, and unchanged when it moves between two won states.'],
             ['Company, Address, Postal code, City, Phone, Email', 'The customer record: main address and contacts.'],
             ['Title', 'The quote title.'],
+            ['Product line', 'The parent category of the products sold (ISO, SOA, GDPR, Safety, Tenders, APL, Training…). When the quote has no products yet, the one of the categories set on the opportunity. Several values are separated by commas.'],
+            ['Product category', 'The category of the products sold (for example ISO - 14001), with the same rule as Product line.'],
             ['Company site', 'The quote\'s company site.'],
             ['Managers', 'The quote\'s account managers.'],
             ['Stage', 'The quote\'s working status.'],
             ['Net revenue', 'The quote amount before VAT.'],
             ['Sales agent, Reporter', 'The people who sold and reported the quote.'],
+            ['Net revenue after reporter', 'The net revenue minus the reporter commissions on the quote lines (the reporter percentage applied to each product). Sales agent, supervisor and supplier commissions are not taken out.'],
           ],
         },
         {
@@ -56,7 +59,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Use the search at the top to look into the title and the quote number, the column filters (for example **Company**, **Sales agent**, **Stage**, **Accepted on**) and **saved filters** to find your usual combinations again. The number of quotes found appears in the bar above the table.',
+          text: 'Use the search at the top to look into the title and the quote number, the column filters (for example **Company**, **Product line**, **Product category**, **Sales agent**, **Stage**, **Accepted on**) and **saved filters** to find your usual combinations again. The number of quotes found appears in the bar above the table.',
         },
         {
           type: 'tip',

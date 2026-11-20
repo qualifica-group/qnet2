@@ -56,7 +56,8 @@ function computeActiveValues(
   const active: AdvancedFilterValues = {}
   for (const descriptor of descriptors) {
     const value = values[descriptor.name]
-    const hasDefault = descriptor.defaultValue !== undefined && descriptor.defaultValue !== null
+    // An empty default (e.g. the parent category's `[]`) is the same as no default: a cleared field is not active.
+    const hasDefault = !isEmptyValue(descriptor.defaultValue)
     const isActive = hasDefault ? !sameValue(value, descriptor.defaultValue) : !isEmptyValue(value)
     if (isActive) {
       active[descriptor.name] = value ?? null
@@ -65,7 +66,11 @@ function computeActiveValues(
   return active
 }
 
-/** What a grid or export request carries: the active values plus the presets the server does not fall back to. */
+/**
+ * What a grid or export request carries: the active values plus the presets the server does not fall back to. A
+ * cleared preset is sent as its default (e.g. the empty parent category, read by the server as "every root of the
+ * actor"), never as a bare null the server would reject.
+ */
 function computeRequestValues(
   descriptors: AdvancedFilterDescriptor[],
   values: AdvancedFilterValues,
@@ -73,7 +78,7 @@ function computeRequestValues(
   const request = computeActiveValues(descriptors, values)
   for (const descriptor of descriptors) {
     if (descriptor.sendDefault && request[descriptor.name] === undefined) {
-      request[descriptor.name] = values[descriptor.name] ?? null
+      request[descriptor.name] = values[descriptor.name] ?? descriptor.defaultValue ?? null
     }
   }
   return request

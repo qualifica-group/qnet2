@@ -22,7 +22,9 @@ export function WorkflowStatusBadge({ name, color, className }: WorkflowStatusBa
   return (
     <Badge variant="secondary" className={cn(BADGE_BASE, 'gap-1.5', badgeColorClass(color), className)}>
       {dotClass ? <span className={cn('size-1.5 shrink-0 rounded-full', dotClass)} aria-hidden="true" /> : null}
-      <span className="truncate">{name}</span>
+      <span className="truncate" title={name}>
+        {name}
+      </span>
     </Badge>
   )
 }

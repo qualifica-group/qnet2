@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0392-api-client-allowed-methods" status="approved" owner="nicola" date="2026-11-13">
+
+  <goal>
+    Su ogni client API si sceglie quali metodi HTTP puo' usare (GET, POST, PUT/PATCH, DELETE). Una richiesta fatta con un token del client (la sua chiave o un token di client-login) con un metodo spento riceve 403. Estende la spec 0210.
+  </goal>
+
+  <context>
+    D-1 Direttiva utente 2026-11-13: "nel client api la possibilita' di abilitargli o disabilitargli get, post, delete ecc".
+    D-2 Quattro permessi, colonna `api_clients.allowed_methods` (JSON, lista di `GET`, `POST`, `PUT`, `DELETE`, enum `ApiClientMethod`): `PUT` copre anche `PATCH` (entrambi modificano), `HEAD`/`OPTIONS` contano come `GET`. Default: tutti accesi, sia per i client nuovi senza il campo sia per quelli esistenti (backfill della migrazione): nessun client gia' in uso cambia comportamento.
+    D-3 Un POST di sola lettura conta come GET, altrimenti un client "solo lettura" non potrebbe elencare nulla: elenco esplicito delle route in `external-api.method_gate.read_only_post_routes` (tables rows/values, rows degli import, anteprime, render-template, form-context, selection-scope, duplicate-check). Un test verifica che ogni voce sia una route POST esistente.
+    D-4 Sempre consentiti, qualunque scelta: `auth/client-login` e `auth/logout` (`external-api.method_gate.always_allowed_routes`): senza, un client senza POST non potrebbe far accedere utenti ne' revocare i token.
+    D-5 Controllo nel middleware `EnsureApiClientMethodAllowed`, nel gruppo `api` subito dopo il rate limit del client: solo per le richieste con un token legato a un client (come il limiter `api-client`); le chiamate dell'app non cambiano. Risposta: 403 `{success:false, message}` con il metodo nel messaggio.
+    D-6 Validazione: `allowed_methods` facoltativo in creazione (default tutti), in modifica sostituisce la lista intera; array di almeno un valore, valori distinti tra quelli dell'enum, altrimenti 422.
+    D-7 Interfaccia: nella finestra del client una riga "Metodi consentiti" con quattro interruttori compatti (GET, POST, PUT/PATCH, DELETE) e una nota che i POST di sola lettura contano come GET; almeno uno acceso. Nella tabella dei client una colonna "Metodi". Guida in-app `api-integrations` IT/EN e documentazione OpenAPI (guida generale, descrizioni del modulo e degli endpoint api-clients) aggiornate.
+  </context>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/api-clients">
+      <request>{ ..., allowed_methods?: ("GET"|"POST"|"PUT"|"DELETE")[] (min 1, distinti; default tutti) }</request>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/api-clients/{apiClient}">
+      <request>{ ..., allowed_methods?: come sopra, sostituisce la lista }</request>
+    </endpoint>
+    <resource name="ApiClientResource">allowed_methods: string[] nell'ordine GET, POST, PUT, DELETE</resource>
+    <error status="403">{ success: false, message: "This API client is not allowed to use the :method method." }</error>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Client con solo GET: GET 200, POST/PUT/PATCH/DELETE 403, POST tables/{domain}/rows 200.</criterion>
+    <criterion id="AC-002">Il token di client-login eredita i metodi del client; client-login e logout funzionano anche senza POST.</criterion>
+    <criterion id="AC-003">Le richieste dell'app (token senza client) non sono toccate.</criterion>
+    <criterion id="AC-004">Creazione senza il campo = tutti i metodi; lista vuota, duplicati o valori sconosciuti = 422; la risorsa espone la lista.</criterion>
+    <criterion id="AC-005">Migrazione: i client esistenti hanno tutti i metodi.</criterion>
+  </acceptance>
+</spec>

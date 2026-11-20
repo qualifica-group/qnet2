@@ -23,6 +23,7 @@ import { registryColumnRenderers } from '@/features/registries/column-renderers'
 import { deleteRegistry, REGISTRY_ATTACHABLE_ALIAS } from '@/features/registries/api'
 import { REGISTRY_TYPE_TABS } from '@/features/registries/types'
 import { useRegistryTypeTab } from '@/features/registries/use-registry-type-tab'
+import { useRecordMergeBulkAction } from '@/features/record-merge/use-record-merge-bulk-action'
 
 /** Domain key used to mount the generic table for registries. */
 const REGISTRIES_DOMAIN = 'registries'
@@ -61,6 +62,7 @@ export function RegistriesTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const typeTab = useRegistryTypeTab(tableRef)
+  const recordMerge = useRecordMergeBulkAction('registries', tableRef)
   const typeTabOptions = useMemo(
     () => REGISTRY_TYPE_TABS.map((value) => ({ value, label: t(`registries.typeTabs.${value}`) })),
     [t],
@@ -174,7 +176,10 @@ export function RegistriesTable() {
         onAction={handleAction}
         isBusy={isBusy}
         iconMap={REGISTRIES_ACTION_ICONS}
+        getBulkActions={recordMerge.getBulkActions}
       />
+
+      {recordMerge.dialog}
 
       {sheet}
 

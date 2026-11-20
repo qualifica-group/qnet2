@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Notifications\AssignmentNotifier;
+use App\Services\WorkOrders\WorkOrderAssignmentDateStamper;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
 use App\Services\WorkOrders\WorkOrderProgressEntryService;
@@ -22,6 +23,7 @@ use App\Services\WorkOrders\WorkOrderTaskGenerator;
 use App\Services\WorkOrders\WorkOrderTitleWriter;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrders\WorkOrderWorkflowStatusAssigner;
+use App\Services\WorkOrders\WorkOrderWorkPhaseTracker;
 use App\Support\ManagerPositions;
 use App\Support\PeopleChangeLog;
 use App\Support\PositionalPivotSync;
@@ -89,6 +91,24 @@ class WorkOrderService
         'quote.operationalSite.addresses.city',
         // Spec 0331: the offer data WorkOrderResource projects read-only.
         'quote.opportunity.referent.referentType',
+        // Task 428287: the client and its Referente (the offer's own, else the
+        // anagrafica's primary one) carry their primary contacts on the detail.
+        'quote.opportunity.referent.personalData.contacts',
+        'quote.opportunity.registry.personalData.contacts',
+        'quote.opportunity.registry.primaryReferent.referentType',
+        'quote.opportunity.registry.primaryReferent.personalData.contacts',
+        // Spec 0400: the "Info cliente" block (legal seat, contacts, tags, referents, sectors).
+        'quote.opportunity.registry.personalData.addresses.city',
+        'quote.opportunity.registry.personalData.addresses.province',
+        'quote.opportunity.registry.personalData.addresses.state',
+        'quote.opportunity.registry.personalData.addresses.country',
+        'quote.opportunity.registry.referents.referentType',
+        'quote.opportunity.registry.referents.personalData.contacts',
+        'quote.opportunity.registry.commercial.referentType',
+        'quote.opportunity.registry.sectors',
+        'quote.opportunity.registry.customFieldValueRow',
+        // Spec 0402: the commessa's own "Stato pagamento".
+        'paymentStatus',
         'quote.source',
         'quote.opportunity.productLines.productCategory',
         'quote.opportunity.productLines.businessFunction',
@@ -109,6 +129,8 @@ class WorkOrderService
         private readonly WorkOrderWorkflowStatusAssigner $statusAssigner,
         private readonly WorkOrderProgressEntryService $progressEntries,
         private readonly AssignmentNotifier $assignmentNotifier,
+        private readonly WorkOrderAssignmentDateStamper $assignmentDateStamper,
+        private readonly WorkOrderWorkPhaseTracker $workPhaseTracker,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -249,10 +271,8 @@ class WorkOrderService
             // No actor outside a request (the demo seeder): the entry is then authorless.
             $this->progressEntries->completeOnPositiveClosure($workOrder, wasForceClosed: false, actor: Auth::user());
 
-            // Step 2b (spec 0098, D-6): "Informazioni aggiuntive" — written
-            // AFTER the quote lines, so the applicable set validated against
-            // is the one THOSE lines' categories produce, exactly the set the
-            // create form rendered its fields from.
+            // Step 2b (spec 0098, D-6): "Informazioni aggiuntive", AFTER the quote lines: their
+            // categories produce the applicable set, the one the create form rendered.
             if ($data->attributeValues !== null) {
                 $changed = [];
                 $old = [];
@@ -270,6 +290,9 @@ class WorkOrderService
             // same transaction: a 422 from Step 2 rolls both back (AC-027).
             $supervisorSync = $workOrder->supervisors()->sync($data->supervisorIds);
             $participantSync = PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots));
+            // Task 428419: the "Data di assegnazione" follows the Responsabili just added.
+            $this->assignmentDateStamper->stamp($workOrder, $supervisorSync['attached'], [], FormMode::Create);
+            $this->workPhaseTracker->follow($workOrder, wasForceClosed: false, addedSupervisorIds: $supervisorSync['attached']);
 
             // Step 4 (spec 0124, D-7): generate the Modello di Task's tasks,
             // AFTER the supervisors are synced (D-2: they are the generated
@@ -313,6 +336,7 @@ class WorkOrderService
         DB::transaction(function () use ($workOrder, $data): void {
             $wasForceClosed = $workOrder->is_force_closed;
             $previousStatusId = $workOrder->work_order_workflow_status_id;
+            $attributeValuesBefore = $workOrder->attribute_values ?? [];
             // Spec 0372, D-7: people and flexible fields are invisible to the model log.
             $peopleBefore = $data->hasSupervisorIds() || $data->hasParticipantSlots() || $data->attributeValues !== null
                 ? PeopleChangeLog::capture($workOrder)
@@ -353,11 +377,8 @@ class WorkOrderService
             // auth:sanctum guarantees a resolved actor on the update route.
             $this->progressEntries->completeOnPositiveClosure($workOrder, $wasForceClosed, Auth::user());
 
-            // "Informazioni aggiuntive" (spec 0098, D-6): validated against
-            // the applicable set as it is AFTER any submitted
-            // `quote_line_ids` replace it above — i.e. the set the form
-            // rendered its fields from — then merged sparsely (a code the
-            // map leaves out keeps its persisted value).
+            // "Informazioni aggiuntive" (spec 0098, D-6): validated against the set AFTER any submitted
+            // `quote_line_ids`, then merged sparsely (an omitted code keeps its persisted value).
             if ($data->attributeValues !== null) {
                 $changed = [];
                 $old = [];
@@ -379,6 +400,7 @@ class WorkOrderService
             if ($data->hasSupervisorIds()) {
                 $addedSupervisorIds = $workOrder->supervisors()->sync($data->supervisorIds ?? [])['attached'];
                 $workOrder->unsetRelation('supervisors');
+                $this->assignmentDateStamper->stamp($workOrder, $addedSupervisorIds, $attributeValuesBefore, FormMode::View);
             }
 
             if ($data->hasParticipantSlots()) {
@@ -387,6 +409,8 @@ class WorkOrderService
             }
 
             PeopleChangeLog::log($peopleBefore);
+            // Spec 0395: the legacy working phase follows the closure and the new Responsabili.
+            $this->workPhaseTracker->follow($workOrder, $wasForceClosed, $addedSupervisorIds);
 
             // Spec 0351, D-2: only who just ENTERED the team; a slot move is not an assignment.
             $this->notifyAddedMembers($workOrder, $addedSupervisorIds, $addedParticipantIds);

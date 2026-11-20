@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
 import { CATEGORY_POPUP_WIDTH_CLASS } from '@/features/product-lines/category-popup-width'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import { cardCategoryTree, isSingleRootBlocked } from '@/features/product-lines/category-tree-scope'
+import { cardCategoryTree, isRootUsableIn, isSingleRootBlocked } from '@/features/product-lines/category-tree-scope'
+import type { CategoryPickArea } from '@/features/product-categories/types'
 
 export interface ProductCategoryRootSelectProps {
   value: number | null
@@ -19,6 +20,8 @@ export interface ProductCategoryRootSelectProps {
   otherRowsFilled?: boolean
   /** Accessible name of the trigger — a repeated row editor has no visible label of its own. */
   triggerLabel: string
+  /** The module the card belongs to (spec 0389): roots reserved to the other one are not listed, the saved one stays. */
+  area?: CategoryPickArea
 }
 
 /**
@@ -36,6 +39,7 @@ export function ProductCategoryRootSelect({
   disabled = false,
   otherRowsFilled = false,
   triggerLabel,
+  area,
 }: ProductCategoryRootSelectProps) {
   const { t } = useTranslation()
   const treeQuery = useProductCategoryTree()
@@ -46,13 +50,15 @@ export function ProductCategoryRootSelect({
       return []
     }
     const keepIds = [value, categoryId].filter((id): id is number => id !== null)
-    return cardCategoryTree(tree, keepIds).map((root) => ({
-      id: root.id,
-      name: root.name,
-      depth: 0,
-      disabled: isSingleRootBlocked(root, otherRowsFilled),
-    }))
-  }, [tree, otherRowsFilled, value, categoryId])
+    return cardCategoryTree(tree, keepIds)
+      .filter((root) => root.id === value || isRootUsableIn(root, area))
+      .map((root) => ({
+        id: root.id,
+        name: root.name,
+        depth: 0,
+        disabled: isSingleRootBlocked(root, otherRowsFilled),
+      }))
+  }, [tree, otherRowsFilled, value, categoryId, area])
 
   return (
     <SearchableSelect

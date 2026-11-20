@@ -16,5 +16,7 @@ final class DashboardSummaryItem
         public readonly string $key,
         public readonly string $label,
         public readonly int $value,
+        /** @var array<int, array{label: string, value: int}> per current status, largest first (task 427193); [] = none */
+        public readonly array $breakdown = [],
     ) {}
 }

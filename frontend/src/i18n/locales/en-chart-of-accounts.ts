@@ -17,7 +17,6 @@ export const chartOfAccounts = {
   collapseAll: 'Collapse all',
   rowActions: 'Actions for {{label}}',
   deleted: 'Entry deleted successfully.',
-  deleteConflict: 'Cannot delete: the entry has linked entries. Deactivate it or delete them first.',
   deleteError: 'Unable to delete the entry. Try again.',
   deleteConfirm: {
     title: 'Delete the entry?',

@@ -19,6 +19,7 @@ export type RootFlagName =
   | 'single_quote_per_opportunity'
   | 'generates_contract'
   | 'multi_quote_work_order'
+  | 'multiple_open_opportunities'
   | 'simplified_offer_line'
 
 interface ProductCategoryRootFlagFieldProps {
@@ -39,6 +40,8 @@ interface ProductCategoryRootFlagFieldProps {
   inheritedBadge: string
   /** While set (and the flag is owned), the switch is locked and this explains why, next to the description. */
   lockedReason?: string | null
+  /** While set (and the flag is owned), a consequence the operator should know, shown without locking the switch. */
+  warning?: string | null
 }
 
 /**
@@ -63,11 +66,13 @@ export function ProductCategoryRootFlagField({
   inheritedDescription,
   inheritedBadge,
   lockedReason = null,
+  warning = null,
 }: ProductCategoryRootFlagFieldProps) {
   const { field } = useController({ control, name })
   const inherited = inheritance !== null
   const value = inheritance ? inheritance.value : field.value
   const reason = inherited ? null : lockedReason
+  const notice = inherited ? null : warning
 
   // Keep the RHF value on what will actually be persisted once a parent makes
   // the flag inherited: the payload builders drop it for a non-root category,
@@ -97,6 +102,11 @@ export function ProductCategoryRootFlagField({
           <FormDescription>
             {inherited ? inheritedDescription : description}
             {reason ? <span className="mt-0.5 block font-medium">{reason}</span> : null}
+            {notice ? (
+              <span role="note" className="mt-0.5 block font-medium text-destructive">
+                {notice}
+              </span>
+            ) : null}
           </FormDescription>
         }
       >

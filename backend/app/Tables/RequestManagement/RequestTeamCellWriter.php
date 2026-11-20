@@ -25,17 +25,21 @@ final class RequestTeamCellWriter
     public function __construct(private readonly FormRequestCellValidator $formRequest) {}
 
     /**
+     * `$reservedPositions`: positions the cell does not show (spec 0382
+     * D-11, the named positions of a category tab), left as they are.
+     *
      * @param  array<int, int|string>  $userIds
+     * @param  array<int, int>  $reservedPositions
      * @return array<string, array<int, int|null>>
      */
-    public function payload(Quote $quote, User $actor, RequestModule $module, array $userIds): array
+    public function payload(Quote $quote, User $actor, RequestModule $module, array $userIds, array $reservedPositions = []): array
     {
         $request = $this->formRequest->validate(
             UpdateRequestRequest::class,
             self::ROUTE_PARAMETER,
             $quote,
             $actor,
-            [self::MANAGER_SLOTS_FIELD => ManagerPositions::slotsFor($quote, $userIds)],
+            [self::MANAGER_SLOTS_FIELD => ManagerPositions::slotsFor($quote, $userIds, $reservedPositions)],
             [RequestModule::ROUTE_DEFAULT => $module->value],
         );
 

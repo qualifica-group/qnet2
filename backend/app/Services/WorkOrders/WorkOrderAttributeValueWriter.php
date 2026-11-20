@@ -9,6 +9,7 @@ use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeSectionVisibility;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
+use App\Services\Notifications\TableRowNotifier;
 use App\WorkOrders\WorkOrderAttributeResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -37,6 +38,7 @@ final class WorkOrderAttributeValueWriter
         private readonly AttributeValueValidator $validator,
         private readonly AttributeValueNormalizer $normalizer,
         private readonly AttributeSectionVisibility $visibility,
+        private readonly TableRowNotifier $tableRowNotifier,
     ) {}
 
     /**
@@ -75,5 +77,8 @@ final class WorkOrderAttributeValueWriter
         // guard): forceFill is the deliberate, single write path.
         $workOrder->forceFill(['attribute_values' => $merged]);
         $changed['attribute_values'] = $merged;
+
+        // Step 4: a table row that fired its event tells who the field names (spec 0390)
+        $this->tableRowNotifier->notifyAttributes($workOrder, $applicable, $current, $merged);
     }
 }

@@ -53,7 +53,6 @@ export const costTypes = {
     colorInvalid: 'Scegli uno dei colori disponibili.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il tipo di costo. Riprova.',
-    deleteInUse: 'Impossibile eliminare: il tipo di costo è usato da righe di ordini di acquisto.',
     hints: {
       nature:
         'Diretto: imputabile a una commessa. Indiretto: costo di produzione, ripartito. Generale: struttura e spese generali.',

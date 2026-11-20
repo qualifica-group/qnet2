@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0380-work-order-contract-data-without-costs" status="implemented" owner="nicola" date="2026-11-10">
+
+  <goal>
+    Nel dettaglio Commessa chi non ha il permesso di vedere i costi (`work-orders.viewCosts`) non vede
+    la sezione Dati contrattuali: niente tabella, niente numeri, nemmeno l'elenco dei prodotti.
+  </goal>
+
+  <context>
+    D-1 Decisione utente 2026-11-10 (finale, supera la prima versione "tabella senza numeri" del
+        commit 0948609d): senza `viewCosts` la sezione Dati contrattuali non c'e' proprio, neanche il
+        prodotto.
+    D-2 Server-side: `WorkOrderPolicy::viewContractData` e `managePayments` richiedono anche
+        `viewCosts` (`withCosts`). GET contract-data e i PATCH dei pagamenti rispondono 403; i flag
+        `view_contract_data` / `manage_payments` del dettaglio passano dalla policy.
+    D-3 Conseguenza accettata: senza `viewCosts` non si modifica lo stato pagamento (l'editor vive solo
+        nei Dati contrattuali). Nel DB locale riguarda anche il ruolo `risorse-umane`, che ha
+        `viewContractData` + `managePayments` senza `viewCosts`.
+    D-4 FE: `WorkOrderContractDataPanel` non renderizza nulla senza `view_costs`; con `view_costs` resta
+        come prima (tabella con `view_contract_data`, altrimenti elenco prodotti).
+    D-5 Decisioni utente 2026-11-10: otto tecnici (elenco in `QualificaTechnicianWithoutCostsSeeder::USERS`)
+        non vedono costi ne' Proforma attiva/passiva. I permessi arrivano dal ruolo `tecnico-consulenza`,
+        condiviso con tecnici che li mantengono, e spatie non ha un "nega" per utente: il seeder clona il
+        ruolo com'e' oggi (permessi + matrice campi) in `tecnico-consulenza-senza-costi` senza
+        `work-orders.viewCosts` e `work-orders.viewInvoices` e sposta solo quelle persone. Gli altri
+        ruoli delle persone restano. Ri-eseguibile.
+  </context>
+
+  <contract>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/contract-data">
+      Shape invariata (spec 0201). 403 anche senza `work-orders.viewCosts`.
+    </endpoint>
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}/contract-data/lines[/{quoteLine}]">
+      Shape invariata. 403 anche senza `work-orders.viewCosts`.
+    </endpoint>
+  </contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">GET contract-data senza `viewCosts` (con `viewContractData`): 403; flag `view_contract_data` e `manage_payments` false.</criterion>
+    <criterion id="AC-002">PATCH pagamento, singolo e massivo, senza `viewCosts` (con `managePayments`): 403, nessun record scritto.</criterion>
+    <criterion id="AC-003">FE: senza `view_costs` nessuna sezione Dati contrattuali, nemmeno i prodotti; con `view_costs` comportamento della spec 0201.</criterion>
+    <criterion id="AC-004">Seeder: le persone elencate passano al ruolo gemello senza `viewCosts` e `viewInvoices`; gli altri tecnici restano invariati; ri-eseguito non duplica.</criterion>
+  </acceptance_criteria>
+</spec>

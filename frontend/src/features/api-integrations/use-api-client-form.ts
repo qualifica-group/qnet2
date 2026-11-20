@@ -25,6 +25,7 @@ const SERVER_ERROR_FIELDS: Path<ApiClientFormValues>[] = [
   'description',
   'rate_limit_per_minute',
   'expires_at',
+  'allowed_methods',
   'is_active',
 ]
 

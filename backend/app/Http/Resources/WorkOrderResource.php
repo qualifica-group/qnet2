@@ -6,6 +6,9 @@ use App\Authorization\LegacyIdVisibility;
 use App\Enums\FormMode;
 use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
+use App\Http\Resources\Concerns\SummarizesWorkOrderClientInfo;
+use App\Http\Resources\Concerns\SummarizesWorkOrderContacts;
+use App\Http\Resources\Concerns\SummarizesWorkOrderPayment;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -16,7 +19,6 @@ use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\Services\WorkOrders\WorkOrderWorkflowResolver;
 use App\Support\OperationalSiteLabel;
-use App\Support\ReferentRef;
 use App\WorkOrders\WorkOrderAttributeResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -25,9 +27,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * WorkOrderDetail shape (spec 0093 data_contract). `status` and
- * `completion_percentage` (+ `completion_recorded_on`) are ALWAYS computed via
- * WorkOrderStatusResolver (spec 0321, manual progress entries), never read off a column.
+ * WorkOrderDetail shape (spec 0093 data_contract). `status.value` is the
+ * persisted working phase (spec 0395); `completion_percentage` (+
+ * `completion_recorded_on`) is ALWAYS computed via WorkOrderStatusResolver
+ * (spec 0321, manual progress entries), never read off a column.
  * `contract_number` is `quote.code`, derived and read-only (D-2) — never a
  * column of its own. `quote_lines` composes its label live from
  * `product.code`/`product.name` (D-8, spec 0065 D-7's own precedent).
@@ -48,6 +51,9 @@ class WorkOrderResource extends JsonResource
 {
     use SummarizesProductLines;
     use SummarizesRewards;
+    use SummarizesWorkOrderClientInfo;
+    use SummarizesWorkOrderContacts;
+    use SummarizesWorkOrderPayment;
 
     /**
      * @return array<string, mixed>
@@ -64,12 +70,17 @@ class WorkOrderResource extends JsonResource
             'title_is_manual' => $this->title_is_manual,
             'type' => $this->type?->value,
             'status' => [
-                'value' => $progress->status->value,
+                // Spec 0395: the persisted working phase, as in the legacy.
+                'value' => $this->work_phase?->value,
                 'is_force_closed' => $this->is_force_closed,
             ],
             'work_order_workflow_status_id' => $this->work_order_workflow_status_id,
             'work_order_workflow_status' => $this->summarizeWorkflowStatus(),
             'work_order_workflow_statuses' => $this->resolvedWorkflowStatuses(),
+            // Spec 0402: the commessa's own payment status and the net amount of its lines.
+            'work_order_payment_status_id' => $this->work_order_payment_status_id,
+            'payment_status' => $this->summarizePaymentStatus(),
+            'amount' => $this->summarizeAmount($request),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,
             'is_force_closed' => $this->is_force_closed,
@@ -90,13 +101,15 @@ class WorkOrderResource extends JsonResource
             'source_quotes' => $this->summarizeSourceQuotes(),
             'quote' => $this->summarizeQuote(),
             'contract' => $this->summarizeContract(),
-            'registry' => $this->summarizeRegistry(),
+            'registry' => $this->summarizeRegistry($request),
+            // Spec 0400: the legacy "Info cliente" block, null without a single-offer client.
+            'client_info' => $this->summarizeClientInfo($request),
             'company' => $this->summarizeCompany(),
             'company_site' => $this->summarizeCompanySite(),
             'operational_site' => OperationalSiteLabel::summarize($this->quote?->operationalSite),
             // Spec 0331: read-only projection of the single offer; a multi-offer
             // commessa has no `quote`, so these are null / [].
-            'referent' => ReferentRef::summarize($this->quote?->opportunity?->referent),
+            'referent' => $this->summarizeReferent($request),
             'commercial' => $this->summarizeByName($this->quote?->commercial),
             'reporter' => $this->summarizeByName($this->quote?->reporter),
             'source' => $this->summarizeByName($this->quote?->source),
@@ -118,7 +131,7 @@ class WorkOrderResource extends JsonResource
     }
 
     /**
-     * The "Stato lavorazione" (spec 0322, D-1), distinct from the computed `status`.
+     * The "Stato lavorazione" (spec 0322, D-1), distinct from `status` (the working phase).
      *
      * @return array{id: int, name: string, color: string|null, group: string, system_key: string|null, progress_percentage: int|null, description: string|null}|null
      */
@@ -288,24 +301,6 @@ class WorkOrderResource extends JsonResource
             'title' => $this->quote->title,
             'expiry_date' => $this->formatDate($contract->expiry_date),
         ];
-    }
-
-    /**
-     * The client of the commessa, reached through `quote.opportunity` (a work
-     * order has no `registry_id` of its own). Spec 0173: the detail mounts its
-     * documents read-only.
-     *
-     * @return array{id: int, name: string}|null
-     */
-    private function summarizeRegistry(): ?array
-    {
-        $registry = $this->quote?->opportunity?->registry;
-
-        if ($registry === null) {
-            return null;
-        }
-
-        return ['id' => $registry->id, 'name' => $registry->name];
     }
 
     /**

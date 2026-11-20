@@ -9,26 +9,27 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RECORD_COLUMN_CLASS } from '@/components/detail/record-layout'
-import { RecordSkeletonSections } from '@/components/detail/record-skeleton-sections'
-import {
-  ProjectedContactsSection,
-  ProjectedContextSection,
-  ProjectedDocumentSection,
-} from '@/features/quotes/quote-projection-sections'
-import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
+import type { ProductLine } from '@/features/product-lines/types'
 import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-attributes-section'
+import { WorkOrderClientInfoSection } from '@/features/work-orders/work-order-client-info-section'
 import { WorkOrderContractDataPanel } from '@/features/work-orders/work-order-detail-contract-data-panel'
-import { WorkOrderIdentitySection, WorkOrderInternalNotesRow } from '@/features/work-orders/work-order-record-identity'
+import { WorkOrderDescriptionSections } from '@/features/work-orders/work-order-record-description'
+import { WorkOrderAmountRow, WorkOrderPaymentStatusRow } from '@/features/work-orders/work-order-payment-status-field'
+import { WorkOrderInternalNotesRow, WorkOrderWorkflowStatusSection } from '@/features/work-orders/work-order-record-identity'
+import {
+  WorkOrderForceCloseReasonRow,
+  WorkOrderStartDateRow,
+  WorkOrderTitleRow,
+} from '@/features/work-orders/work-order-record-rows'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
-import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
 const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
 
-/** Stable empty default: a missing `rewards` key reads the same as `[]`. */
-const EMPTY_REWARDS: RewardAssignmentRef[] = []
+/** Stable empty default: a missing `product_lines` key reads the same as `[]`. */
+const EMPTY_PRODUCT_LINES: ProductLine[] = []
 
 type LinkedRecord = { id: number; name: string } | null | undefined
 
@@ -53,12 +54,18 @@ interface DetailSectionProps {
 }
 
 /**
- * Societa' e sedi of the linked offer: the same three relations, labels and
- * links the Contract detail shows, projected live through `quote`.
+ * "Riferimenti Società e Funzioni Aziendali" (top of the Info tab's right
+ * column): the linked offer's company and sites, the same three relations,
+ * labels and links the Contract detail shows, projected live through `quote`,
+ * then the business functions of the opportunity's product lines.
  */
 function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
   const { t } = useTranslation()
   const operationalSite = workOrder.operational_site
+  // The legacy "Funzione Aziendale": in qnet-2 each opportunity product line pairs a business function with a category.
+  const businessFunctions = [
+    ...new Set((workOrder.product_lines ?? EMPTY_PRODUCT_LINES).map((line) => line.business_function.name)),
+  ]
 
   return (
     <RecordSection title={t('workOrders.detail.sections.company')} icon={<Building2 />}>
@@ -74,55 +81,56 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
           domain="operational-sites"
           record={operationalSite ? { id: operationalSite.id, name: operationalSite.label } : null}
         />
+        <RecordField label={t('workOrders.detail.businessFunction')}>
+          {businessFunctions.length > 0 ? businessFunctions.join(', ') : <DetailEmpty />}
+        </RecordField>
       </RecordFieldList>
     </RecordSection>
   )
 }
 
 /**
- * The work order record's `RecordSectionsGrid` body, every user-written field
- * editable in place (spec 0195 applied to Commesse, user directive
- * 2026-10-06): the internal notes callout first, then the shared record
- * skeleton (spec 0331): Dati commessa (with the link to the Contratto),
- * Contesto, Anagrafica e contatti, Buoni, its own Team, Societa' e sedi,
- * Documento e pagamento. With Attribute values to collect, the skeleton
- * stacks in the left column and "Informazioni aggiuntive" fills the right
- * one (user directive 2026-11-05); without, the skeleton keeps both columns.
- * The contract data close the card at full width, under both columns.
- * Everything the offer owns is a read-only projection. Status and completion are computed
- * (spec 0149): they stay the header pill and the KPI strip. The forced
- * closure is an action of the header (user directive 2026-10-06), its reason
- * a read-only row of the data.
+ * The work order's Info tab, laid out as the legacy "Info" tab (user
+ * directives 2026-11-16), every user-written field editable in place (spec
+ * 0195 applied to Commesse): the internal notes callout first, then two
+ * columns. Left: "Info cliente" (spec 0400), "Dati contrattuali commessa"
+ * (Titolo, Importo, Stato pagamento (spec 0402), Data inizio, the link to the
+ * Contratto, the Linee prodotto, then
+ * lines and totals: the former "Dati commessa" merged in), "Stato
+ * lavorazione", "Team". Right: "Riferimenti società",
+ * "Data richiamo", "Descrizione commessa" (Commessa n., Tipo commessa,
+ * Descrizione), then the flexible fields ("Informazioni aggiuntive"). Not on
+ * the commessa: Contesto (Fonte), Buoni, Documento e pagamento, Modello di
+ * Task. Everything the offer owns is a read-only projection. Status and
+ * completion are computed (spec 0149): they stay the header pill and the KPI
+ * strip. The forced closure is an action of the header (user directive
+ * 2026-10-06), its reason a read-only row of the data.
  */
 export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProps) {
   const { t } = useTranslation()
   const { inline } = editor
   // Spec 0267: a multi-offer work order has no single client/contract/company; each product line names its own client.
   const hasSingleQuote = !workOrder.is_multi_quote
-  const hasAttributes = workOrder.applicable_attributes.length > 0
 
-  const skeleton = (
-    <RecordSkeletonSections
-      details={
-        <WorkOrderIdentitySection
-          title={t('workOrders.detail.sections.data')}
-          values={{
-            title: workOrder.title,
-            code: workOrder.code,
-            type: workOrder.type,
-            start_date: workOrder.start_date,
-            callback_date: workOrder.callback_date,
-            description: workOrder.description,
-            task_template: workOrder.task_template,
-            force_close_reason: workOrder.is_force_closed ? workOrder.force_close_reason : null,
-          }}
-          workflowStatus={{
-            current: workOrder.work_order_workflow_status,
-            statuses: workOrder.work_order_workflow_statuses,
-          }}
-          form={editor}
-          inline={inline}
-        >
+  return (
+    <RecordSectionsGrid>
+      <WorkOrderInternalNotesRow
+        notes={workOrder.internal_notes}
+        form={editor}
+        inline={inline}
+        className={FULL_WIDTH_SECTION_CLASS}
+      />
+
+      {/* Own @container per column: the grids inside break on the column's width, not the card's. */}
+      <div className={RECORD_COLUMN_CLASS}>
+        {hasSingleQuote && workOrder.registry && workOrder.client_info ? (
+          <WorkOrderClientInfoSection registry={workOrder.registry} info={workOrder.client_info} />
+        ) : null}
+        <WorkOrderContractDataPanel workOrder={workOrder}>
+          <WorkOrderTitleRow form={editor} inline={inline} title={workOrder.title} />
+          <WorkOrderAmountRow amount={workOrder.amount} />
+          <WorkOrderPaymentStatusRow form={editor} inline={inline} status={workOrder.payment_status} />
+          <WorkOrderStartDateRow form={editor} inline={inline} startDate={workOrder.start_date} />
           {hasSingleQuote ? (
             <LinkedField
               label={t('workOrders.detail.contract')}
@@ -134,33 +142,13 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
               }
             />
           ) : null}
-        </WorkOrderIdentitySection>
-      }
-      context={
-        hasSingleQuote ? (
-          <ProjectedContextSection source={workOrder.source} productLines={workOrder.product_lines} />
-        ) : null
-      }
-      contacts={
-        hasSingleQuote ? (
-          <ProjectedContactsSection
-            registry={workOrder.registry}
-            referent={workOrder.referent}
-            commercial={workOrder.commercial}
-            reporter={workOrder.reporter}
-          />
-        ) : null
-      }
-      rewards={
-        hasSingleQuote ? (
-          <RewardChipsSection
-            title={t('workOrders.detail.sections.rewards')}
-            rewards={workOrder.rewards ?? EMPTY_REWARDS}
-            emptyLabel={t('common.noRewards')}
-          />
-        ) : null
-      }
-      team={
+          <WorkOrderForceCloseReasonRow reason={workOrder.is_force_closed ? workOrder.force_close_reason : null} />
+        </WorkOrderContractDataPanel>
+        <WorkOrderWorkflowStatusSection
+          workflowStatus={{ current: workOrder.work_order_workflow_status, statuses: workOrder.work_order_workflow_statuses }}
+          form={editor}
+          inline={inline}
+        />
         <WorkOrderTeamSection
           title={t('workOrders.detail.sections.detailTeam')}
           supervisors={workOrder.supervisors}
@@ -168,45 +156,30 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
           form={editor}
           inline={inline}
         />
-      }
-      company={hasSingleQuote ? <WorkOrderCompanySection workOrder={workOrder} /> : null}
-      document={
-        hasSingleQuote ? (
-          <ProjectedDocumentSection layout={workOrder.layout} paymentMethod={workOrder.payment_method} />
-        ) : null
-      }
-    />
-  )
-
-  return (
-    <RecordSectionsGrid>
-      <WorkOrderInternalNotesRow
-        notes={workOrder.internal_notes}
-        form={editor}
-        inline={inline}
-        className={FULL_WIDTH_SECTION_CLASS}
-      />
-
-      {hasAttributes ? (
-        <>
-          {/* Own @container per column: the grids inside break on the column's width, not the card's. */}
-          <div className={RECORD_COLUMN_CLASS}>{skeleton}</div>
-          <div className={RECORD_COLUMN_CLASS}>
-            <WorkOrderAttributesSection
-              attributes={workOrder.applicable_attributes}
-              layout={workOrder.attribute_layout}
-              values={workOrder.attribute_values}
-              inline={inline}
-              control={editor.form.control}
-              collapsible={false}
-            />
-          </div>
-        </>
-      ) : (
-        skeleton
-      )}
-
-      <WorkOrderContractDataPanel workOrder={workOrder} />
+      </div>
+      <div className={RECORD_COLUMN_CLASS}>
+        {hasSingleQuote ? <WorkOrderCompanySection workOrder={workOrder} /> : null}
+        <WorkOrderDescriptionSections
+          values={{
+            code: workOrder.code,
+            type: workOrder.type,
+            callback_date: workOrder.callback_date,
+            description: workOrder.description,
+          }}
+          form={editor}
+          inline={inline}
+        />
+        {workOrder.applicable_attributes.length > 0 ? (
+          <WorkOrderAttributesSection
+            attributes={workOrder.applicable_attributes}
+            layout={workOrder.attribute_layout}
+            values={workOrder.attribute_values}
+            inline={inline}
+            control={editor.form.control}
+            collapsible={false}
+          />
+        ) : null}
+      </div>
     </RecordSectionsGrid>
   )
 }

@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -12,7 +11,6 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import type { ApiErrorResponse } from '@/api/types'
 import { rewardStatusColumnRenderers } from '@/features/reward-statuses/column-renderers'
 import { deleteRewardStatus } from '@/features/reward-statuses/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
@@ -55,23 +53,7 @@ export function RewardStatusesTable() {
         toast.success(t('rewardStatuses.form.deleted'))
         refreshGrid()
       } catch (error) {
-        if (!axios.isAxiosError<ApiErrorResponse>(error)) {
-          toast.error(t('rewardStatuses.form.deleteError'))
-          return
-        }
-        const status = error.response?.status
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden) {
-          toast.error(forbidden)
-        } else if (status === 409) {
-          // BR-4: the status is still referenced by a reward. Surface the
-          // backend's own message rather than a generic one.
-          toast.error(
-            error.response?.data?.message ?? t('rewardStatuses.form.deleteInUseFallback'),
-          )
-        } else {
-          toast.error(t('rewardStatuses.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('rewardStatuses.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

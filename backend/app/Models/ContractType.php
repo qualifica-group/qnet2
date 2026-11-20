@@ -7,7 +7,6 @@ use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\ContractTypeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Contract type catalogue entry (spec 0290 D-1). A type used by a contractual
@@ -28,13 +27,5 @@ class ContractType extends BaseModel
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];
-    }
-
-    /**
-     * @return HasMany<EmploymentContract, $this>
-     */
-    public function employmentContracts(): HasMany
-    {
-        return $this->hasMany(EmploymentContract::class);
     }
 }

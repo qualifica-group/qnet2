@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare } from 'lucide-react'
 import {
@@ -29,6 +30,8 @@ export interface NotesDialogProps {
    * eliminata, senza aspettare la chiusura del dialog.
    */
   onThreadChanged?: () => void
+  /** Host facts worth seeing while writing a note (e.g. the request's callback date), above the thread. */
+  context?: ReactNode
 }
 
 /**
@@ -49,6 +52,7 @@ export function NotesDialog({
   title,
   lockedQuoteId = null,
   onThreadChanged,
+  context,
 }: NotesDialogProps) {
   const { t } = useTranslation()
 
@@ -70,6 +74,7 @@ export function NotesDialog({
             </DialogDescription>
           </div>
         </DialogHeader>
+        {context ? <div className="border-b bg-surface px-5 py-2 text-xs">{context}</div> : null}
         {entityId !== null ? (
           <div className="max-h-[70vh] overflow-y-auto rounded-b-lg px-5 py-4">
             <NotesSection

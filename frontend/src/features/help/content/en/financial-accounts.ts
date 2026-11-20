@@ -61,7 +61,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: ['Open **Accounting › Finance › Financial accounts** and press **New account**.', 'Pick the **Type** and fill in the fields.', 'Press **Save**.'] },
         { type: 'paragraph', text: 'List rows offer **View** and **Delete**, if your role allows it. To edit, open the record with **View** and press **Edit**.' },
-        { type: 'warning', text: 'A bank account with linked cards cannot be deleted: delete or unlink the cards first.' },
+        { type: 'warning', text: 'An account used by invoices, purchase invoices and their installments, treasury movements or bank reconciliations cannot be deleted, nor can a bank account with linked cards (delete or unlink the cards first). The message says what uses it.' },
       ],
     },
   ],

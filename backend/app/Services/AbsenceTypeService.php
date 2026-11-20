@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AbsenceType;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 
 /**
@@ -10,6 +11,8 @@ use Illuminate\Support\Collection;
  */
 class AbsenceTypeService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     /**
      * @param  array<string, mixed>  $attributes
      */
@@ -34,9 +37,7 @@ class AbsenceTypeService
      */
     public function delete(AbsenceType $absenceType): void
     {
-        if ($absenceType->absenceRequests()->exists()) {
-            abort(409, __('absence_types.in_use'));
-        }
+        $this->inUseGuard->assertUnused($absenceType);
 
         $absenceType->delete();
     }

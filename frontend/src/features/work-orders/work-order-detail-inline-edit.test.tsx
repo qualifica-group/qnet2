@@ -73,7 +73,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     title: 'Installazione impianto',
     title_is_manual: true,
     type: 'processing',
-    status: { value: 'open', is_force_closed: false },
+    status: { value: 'to_plan', is_force_closed: false },
     completion_percentage: 0,
     is_force_closed: false,
     ...WORKFLOW_STATUS_FIELDS,
@@ -198,7 +198,7 @@ describe('WorkOrderDetailView — in-place editing', () => {
         ...record.permissions,
         fields: Object.fromEntries(
           ['code', 'task_template_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'supervisor_ids',
-            'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id'].map((key) => [key, READ_ONLY_FIELD]),
+            'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id', 'work_order_payment_status_id'].map((key) => [key, READ_ONLY_FIELD]),
         ),
       },
     })
@@ -295,7 +295,7 @@ describe('WorkOrderDetailView — forced closure as an action (user directive 20
     const record = workOrder({
       is_force_closed: true,
       force_close_reason: 'Cliente insolvente',
-      status: { value: 'closed', is_force_closed: true },
+      status: { value: 'cancelled', is_force_closed: true },
     })
     record.permissions.actions = { force_close: false, reopen: true }
     vi.mocked(updateWorkOrder).mockResolvedValueOnce({ ...record, is_force_closed: false, force_close_reason: null })

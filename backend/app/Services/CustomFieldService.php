@@ -10,20 +10,24 @@ use App\DataObjects\CustomFields\UpdateCustomFieldData;
 use App\Jobs\PromoteCustomFieldIndexJob;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldValue;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Business logic for the `custom-fields` admin resource (spec 0021 — ADMIN
  * CRUD DEFINIZIONI): create/update (options full-replace, entity_type/type/
- * key immutability once the field has recorded values) and delete (values
- * cleanup). Every mutation busts CustomFieldProvider's per-entity_type cache
+ * key immutability once the field has recorded values) and delete (refused while a
+ * record holds a value). Every mutation busts CustomFieldProvider's per-entity_type cache
  * so the read-side decorators and the write pipeline never see a stale
  * definition. The controller stays thin; this Service is the single
  * authority.
  */
 class CustomFieldService
 {
-    public function __construct(private readonly CustomFieldProvider $provider) {}
+    public function __construct(
+        private readonly CustomFieldProvider $provider,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(CreateCustomFieldData $data): CustomFieldDefinition
     {
@@ -117,16 +121,14 @@ class CustomFieldService
     }
 
     /**
-     * Delete a definition; its recorded values (a single JSON key on every
-     * `custom_field_values` row for that entity_type) are purged first, then
-     * the definition itself.
+     * Delete a definition that no record holds a value for (spec 0384 D-6,
+     * supersedes the purge of spec 0021).
      */
     public function delete(CustomFieldDefinition $definition): void
     {
-        DB::transaction(function () use ($definition): void {
-            $this->purgeRecordedValues($definition);
-            $definition->delete();
-        });
+        $this->inUseGuard->assertNoUsage(['records' => $this->recordedValuesCount($definition)]);
+
+        $definition->delete();
 
         $this->provider->forget($definition->entity_type);
     }
@@ -168,40 +170,23 @@ class CustomFieldService
             return;
         }
 
-        if ($this->hasRecordedValues($definition)) {
+        if ($this->recordedValuesCount($definition) > 0) {
             abort(422, 'entity_type, type and key are immutable once the field has recorded values.');
         }
     }
 
     /**
-     * Whether ANY `custom_field_values` row for this definition's entity_type
-     * carries a value under its key — a bound JSON-path existence check
+     * How many `custom_field_values` rows for this definition's entity_type
+     * carry a value under its key — a bound JSON-path existence check
      * (never whereRaw on input; the key comes from the persisted definition,
      * already constrained to /^[a-z0-9_]+$/ on write).
      */
-    private function hasRecordedValues(CustomFieldDefinition $definition): bool
+    private function recordedValuesCount(CustomFieldDefinition $definition): int
     {
         return CustomFieldValue::query()
             ->where('entity_type', $definition->entity_type)
             ->whereJsonContainsKey('values->'.$definition->key)
-            ->exists();
-    }
-
-    /**
-     * Remove this definition's key from every `custom_field_values` row of
-     * its entity_type, leaving the rest of each row's JSON untouched.
-     */
-    private function purgeRecordedValues(CustomFieldDefinition $definition): void
-    {
-        CustomFieldValue::query()
-            ->where('entity_type', $definition->entity_type)
-            ->whereJsonContainsKey('values->'.$definition->key)
-            ->get()
-            ->each(function (CustomFieldValue $row) use ($definition): void {
-                $values = $row->values;
-                unset($values[$definition->key]);
-                $row->update(['values' => $values]);
-            });
+            ->count();
     }
 
     /**

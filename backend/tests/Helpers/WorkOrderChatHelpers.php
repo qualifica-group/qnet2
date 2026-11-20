@@ -69,24 +69,20 @@ if (! function_exists('chatSuperAdmin')) {
 }
 
 if (! function_exists('chatClose')) {
-    /** Force closes the work order (computed status `closed`). */
+    /** Force closes the work order with a negative outcome (phase `cancelled`, spec 0395). */
     function chatClose(WorkOrder $workOrder): WorkOrder
     {
-        $workOrder->forceFill(['is_force_closed' => true])->save();
+        $workOrder->forceFill(['is_force_closed' => true, 'work_phase' => 'cancelled'])->save();
 
         return $workOrder;
     }
 }
 
 if (! function_exists('chatComplete')) {
-    /** Brings the work order to 100% progress (computed status `completed`). */
+    /** Completes the work order (phase `completed`, spec 0395: REQUIREMENT CHANGED, no longer 100% progress). */
     function chatComplete(WorkOrder $workOrder): WorkOrder
     {
-        $workOrder->progressEntries()->create([
-            'percentage' => 100,
-            'recorded_on' => now()->subDay()->toDateString(),
-            'created_by' => User::factory()->create()->id,
-        ]);
+        $workOrder->forceFill(['work_phase' => 'completed'])->save();
 
         return $workOrder;
     }

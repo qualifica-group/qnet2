@@ -8,8 +8,10 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\NotificationLevelEnum;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Services\Tasks\TaskNotable;
-use App\Support\Notifications\DetailsTable;
+use App\Support\Notifications\RecordMail;
 use App\Support\Notifications\TaskDetails;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,7 +41,7 @@ use Illuminate\Notifications\Notification;
  */
 abstract class TaskNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  ?User  $actor  who performed the write; null for a
@@ -57,7 +59,7 @@ abstract class TaskNotification extends Notification implements ShouldQueue
      */
     final public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**
@@ -79,27 +81,15 @@ abstract class TaskNotification extends Notification implements ShouldQueue
     {
         $path = $this->pathFor($notifiable);
 
-        $mail = (new MailMessage)
-            ->subject($this->title())
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message($path));
-
-        // D-8: the detail card, rendered as a markdown table. Null when the
-        // Task carries nothing worth tabulating, in which case the block is
-        // omitted rather than printed empty.
-        $details = DetailsTable::markdown(TaskDetails::for($this->task));
-
-        if ($details !== null) {
-            $mail->line($details);
-        }
-
-        // No reachable screen, no button: a CTA that lands on a 403 is worse
-        // than none (D-7).
-        if ($path !== null) {
-            $mail->action(__('Open'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+        // D-8: the detail card; D-7: no reachable screen, no button.
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject($this->title())
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message($path),
+            TaskDetails::for($this->task),
+            $path,
+        );
     }
 
     /** The subject line and the bell's title. */

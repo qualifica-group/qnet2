@@ -106,7 +106,7 @@ const guide: HelpGuide = {
             'Correggi i valori direttamente nella griglia: ogni modifica si salva subito.',
             'Per ogni riga puoi cambiare campagna, operatore, sede, prodotti e localizzazione.',
             'Per i duplicati scegli la **Risoluzione**: **Salta**, **Crea nuovo** o **Aggiorna esistente**.',
-            'Su più righe selezionate usa **Assegna operatori** (con **Smistamento equo** compare la lista degli operatori per Sede, tutti selezionati: deseleziona chi non deve ricevere righe) o **Assegna prodotti**.',
+            'Su più righe selezionate usa **Assegna operatori** (con **Smistamento equo** compare la lista degli operatori per Sede, tutti selezionati: deseleziona chi non deve ricevere righe; spegni **Tieni conto del carico attuale** per dividere le righe in parti uguali senza contare i lead già in carico) o **Assegna prodotti**.',
           ],
         },
         {

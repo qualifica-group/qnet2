@@ -83,6 +83,10 @@ export function buildCreatePayload(
     ...(values.parent_id === null ? { generates_contract: values.generates_contract } : {}),
     // And for the multi-offer work order rule (spec 0267): root-owned, inherited.
     ...(values.parent_id === null ? { multi_quote_work_order: values.multi_quote_work_order } : {}),
+    // And for the modules the branch is used in (spec 0389): root-owned, inherited.
+    ...(values.parent_id === null ? { usage_area: values.usage_area } : {}),
+    // And for several open opportunities per anagrafica: root-owned, inherited.
+    ...(values.parent_id === null ? { multiple_open_opportunities: values.multiple_open_opportunities } : {}),
     // And once more for the simplified-offer-line rule (spec 0114): root-owned, inherited.
     // A child sends its override instead (spec 0188), a root its own value.
     ...(values.parent_id === null
@@ -191,6 +195,16 @@ export function buildUpdatePayload(
   // Same root-only guard for the multi-offer work order rule (spec 0267).
   if (values.parent_id === null && values.multi_quote_work_order !== original.multi_quote_work_order) {
     payload.multi_quote_work_order = values.multi_quote_work_order
+  }
+
+  // Same root-only guard for the modules the branch is used in (spec 0389).
+  if (values.parent_id === null && values.usage_area !== original.usage_area) {
+    payload.usage_area = values.usage_area
+  }
+
+  // Same root-only guard for several open opportunities per anagrafica.
+  if (values.parent_id === null && values.multiple_open_opportunities !== original.multiple_open_opportunities) {
+    payload.multiple_open_opportunities = values.multiple_open_opportunities
   }
 
   // Simplified-offer-line (spec 0114, 0188): a ROOT declares the value itself,

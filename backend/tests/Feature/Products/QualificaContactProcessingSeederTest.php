@@ -8,6 +8,7 @@ use App\Models\AttributeLayout;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Database\Seeders\QualificaContactProcessingSeeder;
@@ -108,15 +109,16 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
         ->and(effectiveCodes('Presa Appuntamenti', AttributeContext::Quote))->not->toContain('cpi');
 
     // was: 'keeps "DIL" on its own offer fields, cut off the Formazione set'
-    $dilExpectedCodes = array_column(
-        ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::DIL_CATEGORY],
-        'code',
-    );
+    $dilExpectedCodes = [
+        ...array_column(ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::DIL_CATEGORY], 'code'),
+        ...ClassroomAttributeCatalogue::codes(),
+    ];
     sort($dilExpectedCodes);
 
     // EXACTLY the ones the client dictated (user directives 2026-09-10 and
-    // 2026-09-16) — the barrier keeps out "Dati corso", "Dati Aula" and the
-    // rest of the training set every sibling inherits from the root.
+    // 2026-09-16) plus "Dati Aula" (requirement changed 2026-11-10, task
+    // 427536) — the barrier keeps out "Dati corso" and the rest of the
+    // training set every sibling inherits from the root.
     $dilEffectiveCodes = effectiveCodes(ContactProcessingAttributeCatalogue::DIL_CATEGORY, AttributeContext::Quote);
     sort($dilEffectiveCodes);
 
@@ -192,7 +194,7 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
     expect($placedCodes($service->resolveWithFallback($dilCategory, AttributeContext::Quote, FormMode::Create)))->toBe([
         'data_scelta_cpi', 'data_app_apl',
         'dote_activation_date', 'dote_expiry_date',
-        ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS, 'subsidy_type',
+        ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS, 'stato_assoc_cpi', 'subsidy_type',
         'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
     ]);
 

@@ -144,15 +144,20 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Badge metadata for the `management_mode` column (spec 0091 D-7): the
-     * pure data lives in the catalogue, this only wires it to the generic
-     * engine. Every other column of this domain renders from its own type.
+     * Badge metadata for the `management_mode` (spec 0091 D-7) and
+     * `usage_area` (spec 0389) columns: the pure data lives in the catalogue,
+     * this only wires it to the generic engine. Every other column of this
+     * domain renders from its own type.
      *
      * @return array<int, array<string, mixed>>|null
      */
     protected function badgesFor(string $columnId, User $actor): ?array
     {
-        return $columnId === 'management_mode' ? ProductCategoryColumnCatalog::managementModeBadges() : null;
+        return match ($columnId) {
+            'management_mode' => ProductCategoryColumnCatalog::managementModeBadges(),
+            'usage_area' => ProductCategoryColumnCatalog::usageAreaBadges(),
+            default => null,
+        };
     }
 
     /**
@@ -163,7 +168,11 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
      */
     protected function enumKeyFor(string $columnId, User $actor): ?string
     {
-        return $columnId === 'management_mode' ? ProductCategoryColumnCatalog::MANAGEMENT_MODE_ENUM_KEY : null;
+        return match ($columnId) {
+            'management_mode' => ProductCategoryColumnCatalog::MANAGEMENT_MODE_ENUM_KEY,
+            'usage_area' => ProductCategoryColumnCatalog::USAGE_AREA_ENUM_KEY,
+            default => null,
+        };
     }
 
     /**
@@ -191,6 +200,7 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             'is_reportable' => $this->effectiveReportable()[$row->id] ?? false,
             // Spec 0077: the EFFECTIVE mode, denormalised like requires_quote.
             'management_mode' => $row->management_mode->value,
+            'usage_area' => $row->usage_area->value,
             // Both denormalised from the branch root too. The single-quote
             // flag had a column in the catalogue but no key here (it defaulted
             // to hidden, so the empty cell went unnoticed) — spec 0091 fixes

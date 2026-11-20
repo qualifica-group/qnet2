@@ -2,7 +2,6 @@
 
 return [
     'in_use' => 'The entry has linked entries: deactivate it or delete them first.',
-    'revenue_type_in_use' => 'The sub-account is used by invoice lines, products or categories: deactivate it instead of deleting it.',
     'treasury_type_in_use' => 'The sub-account is used by treasury movements: deactivate it instead of deleting it.',
     'code_taken' => 'This code is already used in the chart of accounts.',
     'kind_locked' => 'The kind (cost or revenue) of a group that has accounts cannot be changed.',

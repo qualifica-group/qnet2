@@ -484,12 +484,15 @@ final class OperatorRoleCatalogue
     /**
      * ENROLLEES_READ: no write, and no `viewAll`/`viewSite` — without them
      * RequestManagementScope narrows the module to the offers the user
-     * operates (tier 2).
+     * operates (tier 2). `viewDocuments` (task 427522): an enrollee IS the
+     * request, and its documents serve the post-sale work, so they stay
+     * visible once the request moves to Gestione Iscritti.
      *
      * @var array<int, string>
      */
     public const array ENROLLEES_READ_ABILITIES = [
         'viewAny',
         'view',
+        'viewDocuments',
     ];
 }

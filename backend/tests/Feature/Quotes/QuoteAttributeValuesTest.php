@@ -6,18 +6,21 @@ use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
+use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestAttributeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 // Spec 0084: the dynamic "Informazioni aggiuntive" section, moved from the
-// Opportunity to the Offerta — resolved from THIS quote's own offer lines'
-// product categories (D-5), in the `quote` usage context.
+// Opportunity to the Offerta — resolved from the Opportunity's product lines
+// plus THIS quote's own offer lines' product categories (D-5, widened
+// 2026-11-11), in the `quote` usage context.
 
 uses(RefreshDatabase::class);
 
@@ -371,4 +374,86 @@ it('serializes an empty attribute map as a JSON object, never as an array', func
 
     expect(json_decode($shown->getContent(), false, 512, JSON_THROW_ON_ERROR)->data->attribute_values)
         ->toBeObject();
+});
+
+// ---------------------------------------------------------------------------
+// Segnalazione 2026-11-11 (richiesta 29395): Offerte e Gestione Richieste
+// mostrano lo STESSO record, quindi risolvono lo stesso insieme — righe
+// prodotto dell'Opportunita' + righe offerta.
+// ---------------------------------------------------------------------------
+
+it('resolves the attributes of the opportunity product lines on a quote with no offer lines, with their stored values', function () {
+    ['category' => $category] = quoteAttributesCategory('request_field');
+    $actor = quoteAttributesUserWith(['view', 'update']);
+    Sanctum::actingAs($actor);
+
+    $quote = Quote::factory()->create();
+    OpportunityProductLine::factory()->create([
+        'opportunity_id' => $quote->opportunity_id,
+        'business_function_id' => $category->business_function_id,
+        'product_category_id' => $category->id,
+    ]);
+    $quote->forceFill(['attribute_values' => ['request_field' => 'from the request']])->save();
+
+    $shown = $this->getJson("/api/quotes/{$quote->id}")->assertOk();
+
+    expect(collect($shown->json('data.applicable_attributes'))->pluck('code')->all())->toBe(['request_field'])
+        ->and($shown->json('data.attribute_values.request_field'))->toBe('from the request');
+
+    $this->patchJson("/api/quotes/{$quote->id}", ['attribute_values' => ['request_field' => 'edited from Offerte']])
+        ->assertOk()
+        ->assertJsonPath('data.attribute_values.request_field', 'edited from Offerte');
+});
+
+it('resolves the same set as Gestione Richieste for the same record', function () {
+    ['category' => $requestCategory] = quoteAttributesCategory('product_line_field');
+    ['product' => $offerProduct] = quoteAttributesCategory('offer_line_field');
+    $actor = quoteAttributesUserWith(['create', 'view']);
+    Sanctum::actingAs($actor);
+
+    $opportunity = Opportunity::factory()->create();
+    OpportunityProductLine::factory()->create([
+        'opportunity_id' => $opportunity->id,
+        'business_function_id' => $requestCategory->business_function_id,
+        'product_category_id' => $requestCategory->id,
+    ]);
+    $created = createQuoteWithOfferLine($actor, $offerProduct, ['opportunity_id' => $opportunity->id])->assertCreated();
+    $quote = Quote::findOrFail($created->json('data.id'));
+
+    $requestCodes = app(RequestAttributeResolver::class)->resolve($quote)->pluck('code')->all();
+
+    expect(collect($created->json('data.applicable_attributes'))->pluck('code')->all())
+        ->toBe(['offer_line_field', 'product_line_field'])
+        ->toBe($requestCodes);
+});
+
+it('form-context with opportunity_id adds the opportunity product lines to the picked products', function () {
+    ['category' => $requestCategory] = quoteAttributesCategory('product_line_field');
+    ['product' => $offerProduct] = quoteAttributesCategory('offer_line_field');
+    $actor = quoteAttributesUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $opportunity = Opportunity::factory()->create();
+    OpportunityProductLine::factory()->create([
+        'opportunity_id' => $opportunity->id,
+        'business_function_id' => $requestCategory->business_function_id,
+        'product_category_id' => $requestCategory->id,
+    ]);
+
+    $onlyOpportunity = $this->postJson('/api/quotes/form-context', ['opportunity_id' => $opportunity->id])->assertOk();
+    $both = $this->postJson('/api/quotes/form-context', [
+        'opportunity_id' => $opportunity->id,
+        'offer_lines' => [['product_id' => $offerProduct->id]],
+    ])->assertOk();
+
+    expect(collect($onlyOpportunity->json('data.applicable_attributes'))->pluck('code')->all())->toBe(['product_line_field'])
+        ->and(collect($both->json('data.applicable_attributes'))->pluck('code')->all())->toBe(['offer_line_field', 'product_line_field']);
+});
+
+it('form-context: an unknown opportunity_id -> 422', function () {
+    Sanctum::actingAs(quoteAttributesUserWith(['create']));
+
+    $this->postJson('/api/quotes/form-context', ['opportunity_id' => 999999])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('opportunity_id');
 });

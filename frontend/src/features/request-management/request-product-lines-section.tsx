@@ -47,6 +47,7 @@ export function RequestProductLinesSection({ control }: RequestProductLinesSecti
               resetUncoveredOfferRows(rows)
             }}
             disabled={disabled}
+            area="requests"
           />
         )}
       </MetaField>

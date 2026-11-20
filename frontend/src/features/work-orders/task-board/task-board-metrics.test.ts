@@ -44,7 +44,8 @@ describe('isDueToday', () => {
 })
 
 describe('computeBoardMetrics', () => {
-  it('aggregates total/completion/overdue/dueToday/estimated/actual over the given roots', () => {
+  // Spec 0401 (REQUIREMENT CHANGED, user directive 2026-11-16): the KPI strip no longer shows completion.
+  it('aggregates total/overdue/dueToday/estimated/actual over the given roots', () => {
     const roots = [
       boardTask({ id: 1, task_status: CLOSED_POSITIVE_STATUS, end_date: '2026-09-10', estimated_minutes: 30, actual_minutes: 20 }),
       boardTask({ id: 2, task_status: OPEN_STATUS, end_date: '2026-09-21', estimated_minutes: 60, actual_minutes: 0 }),
@@ -54,32 +55,16 @@ describe('computeBoardMetrics', () => {
     const metrics = computeBoardMetrics(roots, TODAY)
 
     expect(metrics.total).toBe(3)
-    expect(metrics.completionPercentage).toBe(33)
     expect(metrics.overdueCount).toBe(1)
     expect(metrics.dueTodayCount).toBe(1)
     expect(metrics.estimatedMinutes).toBe(90)
     expect(metrics.actualMinutes).toBe(35)
   })
-
-  it('returns 0% completion for an empty set, without dividing by zero', () => {
-    expect(computeBoardMetrics([], TODAY).completionPercentage).toBe(0)
-  })
-
-  it('leaves cancelled (closed_negative) roots out of the completion mean (spec 0149 AC-016)', () => {
-    const cancelled = { ...CLOSED_NEGATIVE_STATUS, completion_percentage: 0 }
-    const roots = [
-      boardTask({ id: 1, task_status: CLOSED_POSITIVE_STATUS }),
-      boardTask({ id: 2, task_status: cancelled }),
-    ]
-
-    expect(computeBoardMetrics(roots, TODAY).completionPercentage).toBe(100)
-    expect(computeStageMetrics(roots).completionPercentage).toBe(100)
-    expect(computeBoardMetrics([boardTask({ task_status: cancelled })], TODAY).completionPercentage).toBe(0)
-  })
 })
 
 describe('computeStageMetrics', () => {
-  it('aggregates count/completionPercentage/estimated/actual over a single fase group', () => {
+  // Spec 0401 D-2 (REQUIREMENT CHANGED): a fase no longer rolls up completion, it is shown on each task row.
+  it('aggregates count/estimated/actual over a single fase group', () => {
     const roots = [
       boardTask({ id: 1, task_status: CLOSED_POSITIVE_STATUS, estimated_minutes: 40, actual_minutes: 40 }),
       boardTask({ id: 2, task_status: OPEN_STATUS, estimated_minutes: 20, actual_minutes: 5 }),
@@ -88,21 +73,7 @@ describe('computeStageMetrics', () => {
     const metrics = computeStageMetrics(roots)
 
     expect(metrics.count).toBe(2)
-    expect(metrics.completionPercentage).toBe(50)
     expect(metrics.estimatedMinutes).toBe(60)
     expect(metrics.actualMinutes).toBe(45)
-  })
-
-  it('averages the completion of the tasks inside, so a half-done task counts for half', () => {
-    const halfDone = { ...OPEN_STATUS, id: 4, name: 'In corso', completion_percentage: 50 }
-    const roots = [
-      boardTask({ id: 1, task_status: CLOSED_POSITIVE_STATUS }),
-      boardTask({ id: 2, task_status: halfDone }),
-      boardTask({ id: 3, task_status: OPEN_STATUS }),
-      boardTask({ id: 4, task_status: halfDone }),
-    ]
-
-    expect(computeStageMetrics(roots).completionPercentage).toBe(50)
-    expect(computeStageMetrics([]).completionPercentage).toBe(0)
   })
 })

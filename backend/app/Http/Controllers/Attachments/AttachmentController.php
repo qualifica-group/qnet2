@@ -9,12 +9,15 @@ use App\Http\Resources\AttachmentResource;
 use App\Models\Attachment;
 use App\Models\OutboundEmail;
 use App\RichText\RichText;
+use App\Services\Attachments\AttachmentArchiveBuilder;
 use App\Services\Attachments\LegacyAttachmentFetcher;
 use App\Services\Attachments\LegacyRecordLink;
 use App\Services\AttachmentService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -37,6 +40,7 @@ class AttachmentController extends BaseApiController
         private readonly AttachmentService $service,
         private readonly LegacyAttachmentFetcher $legacyFetcher,
         private readonly LegacyRecordLink $legacyRecordLink,
+        private readonly AttachmentArchiveBuilder $archiveBuilder,
     ) {}
 
     /**
@@ -53,27 +57,10 @@ class AttachmentController extends BaseApiController
     public function index(IndexAttachmentRequest $request): JsonResponse
     {
         try {
-            $collection = $request->validated('collection');
-            $this->authorize('viewAny', [Attachment::class, $collection]);
+            $this->authorize('viewAny', [Attachment::class, $request->validated('collection')]);
             $this->authorize('accessOwner', [Attachment::class, $request->validated('attachable_type'), $request->validated('attachable_id')]);
 
-            $attachments = Attachment::query()
-                ->where('attachable_type', $request->validated('attachable_type'))
-                ->where('attachable_id', $request->validated('attachable_id'))
-                ->when(
-                    $request->filled('collection'),
-                    fn ($query) => $query->where('collection', $collection),
-                    fn ($query) => $query->where(fn ($excluded) => $excluded
-                        ->whereNull('collection')
-                        ->orWhereNotIn('collection', [
-                            RichText::ATTACHMENT_COLLECTION,
-                            OutboundEmail::ATTACHMENT_COLLECTION,
-                        ])),
-                )
-                ->latest()
-                ->get();
-
-            $response = $this->ok(AttachmentResource::collection($attachments));
+            $response = $this->ok(AttachmentResource::collection($this->ownerAttachments($request)));
 
             // Spec 0343: where the owner's legacy documents can still be looked up.
             return $response->setData([...$response->getData(true), 'meta' => [
@@ -82,6 +69,35 @@ class AttachmentController extends BaseApiController
                     (int) $request->validated('attachable_id'),
                 ),
             ]]);
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
+     * GET /api/attachments/archive — every document of the listed owner and
+     * collection in one ZIP ("Scarica tutti", spec 0393). Same filters and
+     * authorization as index(), plus `view` on each file it packs.
+     */
+    public function archive(IndexAttachmentRequest $request): BinaryFileResponse|JsonResponse
+    {
+        try {
+            $this->authorize('viewAny', [Attachment::class, $request->validated('collection')]);
+            $this->authorize('accessOwner', [Attachment::class, $request->validated('attachable_type'), $request->validated('attachable_id')]);
+
+            $attachments = $this->ownerAttachments($request);
+
+            if ($attachments->isEmpty()) {
+                abort(404, 'There are no documents to download.');
+            }
+
+            $attachments->each(fn (Attachment $attachment) => $this->authorize('view', $attachment));
+
+            $filename = __('Documents').'-'.$request->validated('attachable_id').'.zip';
+
+            return response()
+                ->download($this->archiveBuilder->build($attachments), $filename, ['Content-Type' => 'application/zip'])
+                ->deleteFileAfterSend();
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -181,6 +197,31 @@ class AttachmentController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['attachment' => $attachment->id]);
         }
+    }
+
+    /**
+     * The owner's files, newest first. Without an explicit collection the
+     * closed ones (`rich_text`, `email_attachments`) are left out.
+     *
+     * @return Collection<int, Attachment>
+     */
+    private function ownerAttachments(IndexAttachmentRequest $request): Collection
+    {
+        return Attachment::query()
+            ->where('attachable_type', $request->validated('attachable_type'))
+            ->where('attachable_id', $request->validated('attachable_id'))
+            ->when(
+                $request->filled('collection'),
+                fn ($query) => $query->where('collection', $request->validated('collection')),
+                fn ($query) => $query->where(fn ($excluded) => $excluded
+                    ->whereNull('collection')
+                    ->orWhereNotIn('collection', [
+                        RichText::ATTACHMENT_COLLECTION,
+                        OutboundEmail::ATTACHMENT_COLLECTION,
+                    ])),
+            )
+            ->latest()
+            ->get();
     }
 
     /**

@@ -212,9 +212,14 @@ describe('buildCreateQuoteSchema', () => {
       }
     })
 
-    it('rejects a negative unit_price, error path on that row', () => {
+    it('accepts a negative (discount) unit_price within the bound', () => {
       const schema = buildCreateQuoteSchema(i18n.t)
-      const result = schema.safeParse(baseValues({ cost_lines: [validLine({ unit_price: -1 })] }))
+      expect(schema.safeParse(baseValues({ offer_lines: [validLine({ unit_price: -50 })] })).success).toBe(true)
+    })
+
+    it('rejects a unit_price beyond the negative bound, error path on that row', () => {
+      const schema = buildCreateQuoteSchema(i18n.t)
+      const result = schema.safeParse(baseValues({ cost_lines: [validLine({ unit_price: -100000000 })] }))
       expect(result.success).toBe(false)
       if (!result.success) {
         expect(

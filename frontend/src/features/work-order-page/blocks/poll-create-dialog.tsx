@@ -29,7 +29,7 @@ interface PollCreateDialogProps {
 
 const FORM_ID = 'work-order-page-poll-form'
 
-/** Small dialog: question + 2..10 options (spec 0380 D-7). */
+/** Small dialog: question + 2..10 options (spec 0420 D-7). */
 export function PollCreateDialog({ open, onOpenChange, onSubmit }: PollCreateDialogProps) {
   const { t } = useTranslation()
   const form = useForm<PollFormValues>({

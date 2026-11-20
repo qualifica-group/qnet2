@@ -6,6 +6,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\StaffCourses\StaffCourseData;
 use App\Models\StaffCourse;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
  */
 class StaffCourseService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(StaffCourseData $data): StaffCourse
     {
         return DB::transaction(function () use ($data): StaffCourse {
@@ -40,9 +43,7 @@ class StaffCourseService
      */
     public function delete(StaffCourse $course): void
     {
-        if ($course->trainings()->exists()) {
-            abort(422, __('staff_courses.in_use'));
-        }
+        $this->inUseGuard->assertUnused($course);
 
         $course->delete();
     }

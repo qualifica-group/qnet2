@@ -9,8 +9,11 @@ use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Notifications\Concerns\QueuesMailSeparately;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordDetails;
 use App\Support\Notifications\RecordLinkResolver;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -27,7 +30,7 @@ use Illuminate\Support\Str;
  */
 class WorkOrderUpdateRequested extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     private const int MESSAGE_LIMIT = 2000;
 
@@ -43,7 +46,7 @@ class WorkOrderUpdateRequested extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**
@@ -68,16 +71,14 @@ class WorkOrderUpdateRequested extends Notification implements ShouldQueue
     {
         $path = $this->pathFor($notifiable);
 
-        $mail = (new MailMessage)
-            ->subject(__('Update requested'))
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->body($path));
-
-        if ($path !== null) {
-            $mail->action(__('Open'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject(__('Update requested'))
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->body($path),
+            RecordDetails::for($this->workOrder),
+            $path,
+        );
     }
 
     private function pathFor(object $notifiable): ?string

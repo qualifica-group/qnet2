@@ -1,6 +1,10 @@
 import { AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { IdentityDuplicateMatch } from '@/features/identity-duplicates/duplicate-check-api'
+import { Button } from '@/components/ui/button'
+import type {
+  IdentityDuplicateMatch,
+  IdentityDuplicateRegistry,
+} from '@/features/identity-duplicates/duplicate-check-api'
 
 /** i18n key of each `matched_on` criterion (data_contract of the check). */
 const MATCH_CRITERION_LABEL_KEYS: Record<string, string> = {
@@ -19,6 +23,8 @@ const OWNER_LABEL_KEYS: Record<string, string> = {
 
 interface IdentityDuplicateWarningProps {
   matches: IdentityDuplicateMatch[]
+  /** When given, every anagrafica a match leads to becomes a button that picks it (task 427519). */
+  onSelectRegistry?: (registry: IdentityDuplicateRegistry) => void
 }
 
 /**
@@ -29,7 +35,7 @@ interface IdentityDuplicateWarningProps {
  * The save is gated server-side, never by this component (AC-008: renders
  * nothing without matches).
  */
-export function IdentityDuplicateWarning({ matches }: IdentityDuplicateWarningProps) {
+export function IdentityDuplicateWarning({ matches, onSelectRegistry }: IdentityDuplicateWarningProps) {
   const { t } = useTranslation()
 
   if (matches.length === 0) {
@@ -55,6 +61,22 @@ export function IdentityDuplicateWarning({ matches }: IdentityDuplicateWarningPr
                 .map((criterion) => t(MATCH_CRITERION_LABEL_KEYS[criterion] ?? criterion))
                 .join(', '),
             })}
+            {onSelectRegistry && match.registries.length > 0 ? (
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {match.registries.map((registry) => (
+                  <Button
+                    key={registry.id}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-auto max-w-full bg-card px-2.5 py-1 text-xs"
+                    onClick={() => onSelectRegistry(registry)}
+                  >
+                    <span className="truncate">{t('identityDuplicates.useRegistry', { name: registry.name })}</span>
+                  </Button>
+                ))}
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

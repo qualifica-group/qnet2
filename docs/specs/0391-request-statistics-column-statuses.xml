@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0391-request-statistics-column-statuses" status="approved" owner="nicola" date="2026-11-12">
+
+  <goal>
+    In Statistiche Gestione Richieste chi configura sceglie, per ogni colonna basata sugli stati, quali stati di lavorazione la contano (task 427235, 427248, 427656). Una richiesta conta in una colonna solo se il suo stato ATTUALE e' tra quelli scelti per quella colonna. Le colonne gemelle "(nel periodo selezionato)" usano la stessa scelta: la sola differenza e' che seguono il periodo.
+  </goal>
+
+  <context>
+    D-1 Direttiva utente 2026-11-12: un configuratore per colonna, dentro Statistiche Gestione Richieste, basato sugli stati delle categorie; chi vuole un conteggio nuovo crea uno stato nel Configuratore Stati Offerta e poi lo configura qui. Sostituisce la configurazione per stato ritirata il 2026-11-11 (`quote_workflow_statuses.report_columns`, rimossa da `2026_12_03_100002`) e la sua regola di riserva: niente piu' conteggi per gruppo di stato, nessun fallback. Uno stato non scelto non conta.
+    D-2 Colonne configurabili (enum `ReportStatusColumn`, chiave = colonna senza periodo o unica): `unhandled_new_contacts` (gemella `nuovi_contatti`), `current_potentials` (gemella `potenziali`), `associati`, `trattative_concluse`, `invio_presa_in_carico`. Restano invariate le colonne non legate allo stato: Telefonate, Richiami (data di richiamo), Aziende inserite, Aule, e Presa Appuntamenti (passaggio "OK App. Fissato..." -> "Assegnato", spec 0170 D-3).
+    D-3 Regola unica (`ConfiguredStatusIndicator`): stato attuale della richiesta tra gli stati scelti per la colonna; la colonna nel periodo aggiunge `quotes.created_at` nel periodo, la stessa data che usavano gia' Nuovi contatti nel periodo e Associati/Trattative/Invio (spec 0170 D-2). Cambia quindi "Potenziali (nel periodo)": prima leggeva lo storico (passaggio verso uno stato in attesa/validato nel periodo, per questo contava anche "Rimandata"), ora sono le richieste create nel periodo che oggi sono in uno stato scelto. Associati, Trattative concluse e Invio presa in carico non hanno gemella e seguono il periodo come prima.
+    D-4 La scelta e' per stato (`report_column_statuses`: `column_key` + `quote_workflow_status_id`, unica la coppia, cancellazione a cascata con lo stato). Ogni flusso ha stati propri, quindi scegliere gli stati di un flusso equivale a configurare le sue categorie; gli "Stati predefiniti" (set globale, richieste senza flusso) si configurano come un flusso a se'. La categoria di un ramo continua a decidere QUALI colonne mostra (`report_columns` di categoria, spec 0141), la nuova scelta decide COSA contano.
+    D-5 Permesso nuovo `request-statistics.update` (ability `update` di `RequestStatisticsPolicy`, che dichiara `view` e `update`): serve per salvare; leggere la configurazione basta `request-statistics.view`. La migrazione crea il permesso e lo da' ai ruoli che hanno sia `request-statistics.view` sia `quote-workflows.update` (chi gestisce gli stati: oggi super-admin, admin, supervisore-commerciale); nel catalogo Qualifica e' nel blocco `STATUS_CONFIGURATOR`.
+    D-6 Configurazione iniziale: one-shot `ReportColumnStatusesSeeder` (non in DatabaseSeeder), che non fa nulla se la tabella ha gia' righe (mai sovrascrivere la configurazione salvata). Riproduce i conteggi di oggi tranne le regole di Rosa:
+      - Nuovi contatti: gli stati "Nuovo Contatto" di ogni flusso e, negli Stati predefiniti, lo stato iniziale ("Aperta"). Orientamento specialistico e Apprendistato non hanno "Nuovo Contatto": 0 (427656).
+      - Potenziali: gli stati in attesa e validati, tranne i flussi APL, Finanza Agevolata, Gare, GDPR, ISO, Istruzione, Sicurezza, SOA, dove conta solo "In trattativa" (427235; APL non ha "In trattativa": 0 finche' non lo si aggiunge).
+      - Associati e Trattative concluse: gli stati chiusi con esito positivo.
+      - Invio presa in carico: gli stati chiusi con esito positivo, tranne Orientamento specialistico dove conta solo "Da convocare" (427248); li' Trattative concluse resta "Fine pratica" (il suo stato chiuso positivo).
+    D-7 Interfaccia: pulsante icona "Colonne e stati" nella barra delle statistiche, visibile con `request-statistics.update`, apre un pannello laterale: schede compatte delle 5 colonne, ricerca per flusso/categoria/stato, un gruppo per flusso (nome, categorie dei suoi criteri, numero di stati scelti) con le caselle dei suoi stati, "Salva" unico per tutte le colonne. Dopo il salvataggio la dashboard si ricarica.
+    D-8 Direttiva utente 2026-11-12: ogni set di stati (flussi e Stati predefiniti) parte da "Nuovo Contatto". One-shot `QualificaNewContactStatusSeeder`, da eseguire PRIMA di `ReportColumnStatusesSeeder` (ma funziona in entrambi gli ordini): un set che ha gia' "Nuovo Contatto" non cambia; se lo stato iniziale si chiama "Aperta" (Stati predefiniti) viene solo rinominato, cosi' le sue richieste restano nuovi contatti; altrimenti (Orientamento specialistico "Da Richiamare", Apprendistato "Attesa Abilitazione CPI") lo stato iniziale diventa uno stato normale subito dopo un nuovo "Nuovo Contatto" iniziale, con le sue richieste e la loro storia invariate. Se le colonne sono gia' configurate, il nuovo stato si aggiunge a Nuovi contatti. Effetto voluto: le note sulle richieste in "Da Richiamare" (Orientamento) contano ora come telefonate, perche' non sono piu' nello stato iniziale.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazioni: tabella `report_column_statuses`; permesso `request-statistics.update`.</item>
+      <item>Backend: enum `ReportStatusColumn`, model `ReportColumnStatus`, `ReportColumnStatusMap` (lettura una volta per richiesta), `ConfiguredStatusIndicator` al posto di `CurrentStatusGroupIndicator`, `UnhandledNewContactsIndicator`, `WorkflowTransitionIndicator` (cancellati); `RequestStatisticsPolicy`; controller `RequestStatisticsColumnStatusesController` (GET/PUT) + FormRequest; `ReportColumnStatusCatalog` (flussi + stati + categorie per la lettura).</item>
+      <item>Seeder one-shot `ReportColumnStatusesSeeder`; `QualificaRoleSeeder` blocco STATUS_CONFIGURATOR.</item>
+      <item>Frontend: pannello `RequestStatisticsColumnStatusesSheet`, hook e api, pulsante nella barra; i18n IT/EN; guida `request-statistics` IT/EN.</item>
+    </in>
+    <out>
+      <item>Presa Appuntamenti, Telefonate, Richiami, Aziende inserite, Aule: invariati.</item>
+      <item>Quali colonne mostra una categoria (`report_columns` di categoria): invariato.</item>
+      <item>Configuratore Stati Offerta: invariato (nessun campo statistiche sugli stati).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/request-management/report/column-statuses">
+      <request>nessun parametro</request>
+      <response status="200">{ success, message, data: { columns: [{ key: string, twin_key: string|null, status_ids: int[] (crescenti) }] (ordine dell'enum), workflows: [{ id: int|null (null = Stati predefiniti), name: string, is_active: bool, categories: string[], statuses: [{ id: int, name: string, group: string, color: string|null }] (ordine del flusso) }] (Stati predefiniti per primi, poi per nome) } }</response>
+      <errors>401; 403 senza `request-statistics.view`</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/request-management/report/column-statuses">
+      <request>{ columns: { unhandled_new_contacts: int[], current_potentials: int[], associati: int[], trattative_concluse: int[], invio_presa_in_carico: int[] } (tutte le chiavi presenti, array anche vuoti, id distinti di `quote_workflow_statuses`) }</request>
+      <response status="200">come GET</response>
+      <errors>401; 403 senza `request-statistics.update`; 422 chiave mancante o sconosciuta, id non intero, stato inesistente, id ripetuto</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Una richiesta conta in Nuovi contatti (con e senza periodo) solo se il suo stato attuale e' tra quelli scelti per `unhandled_new_contacts`; uno stato iniziale non scelto non conta. (Pest RequestStatisticsColumnStatusesCountTest)</criterion>
+    <criterion id="AC-002">Potenziali e Potenziali nel periodo contano le stesse richieste quando il periodo copre la loro creazione; con un periodo che non la copre conta solo la colonna senza periodo; una richiesta passata da uno stato scelto a uno non scelto ("Rimandata") non conta in nessuna delle due. (Pest)</criterion>
+    <criterion id="AC-003">Associati, Trattative concluse e Invio presa in carico contano ciascuna i propri stati scelti (Orientamento: "Da convocare" in Invio, "Fine pratica" in Trattative), con la creazione nel periodo. (Pest)</criterion>
+    <criterion id="AC-004">Una colonna senza stati scelti vale 0. (Pest)</criterion>
+    <criterion id="AC-005">GET restituisce le 5 colonne con gemella e stati scelti, e i flussi con le loro categorie e stati, Stati predefiniti per primi. (Pest RequestStatisticsColumnStatusesEndpointTest)</criterion>
+    <criterion id="AC-006">PUT sostituisce la scelta di tutte le colonne; la rilettura la restituisce. (Pest)</criterion>
+    <criterion id="AC-007">GET senza `request-statistics.view` e PUT senza `request-statistics.update` rispondono 403 e nulla e' scritto; un ospite riceve 401. (Pest)</criterion>
+    <criterion id="AC-008">PUT con chiave mancante o sconosciuta, stato inesistente, id ripetuto o non intero risponde 422. (Pest)</criterion>
+    <criterion id="AC-009">Cancellare uno stato toglie la sua scelta. (Pest)</criterion>
+    <criterion id="AC-010">Il seeder applica le regole di D-6 e non tocca una configurazione gia' presente. (Pest ReportColumnStatusesSeederTest)</criterion>
+    <criterion id="AC-011">La migrazione da' `request-statistics.update` ai ruoli con `request-statistics.view` e `quote-workflows.update`, non agli altri; senza ruoli titolari non crea nulla (il permesso lo crea `permissions:sync`). (Pest)</criterion>
+    <criterion id="AC-013">Il seeder "Nuovo Contatto" aggiunge lo stato iniziale prima di uno stato iniziale con significato proprio (richieste e storia invariate, ordine Nuovo Contatto, ex iniziale, resto, chiusi), rinomina "Aperta", lascia stare i set che lo hanno, non riscrive nulla al secondo giro e aggiorna Nuovi contatti solo se le colonne sono gia' configurate. (Pest QualificaNewContactStatusSeederTest)</criterion>
+    <criterion id="AC-012">Il pulsante "Colonne e stati" appare solo con `request-statistics.update`; il pannello mostra gli stati scelti della colonna attiva, filtra per ricerca, e "Salva" invia la scelta di tutte le colonne. (Vitest request-statistics-column-statuses-sheet)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Autorizzazione server-side su entrambi i verbi; payload via `$request->safe()`; gli id stato da allow-list `exists`. Un'unica lettura della configurazione per richiesta del report (nessuna query per riga). UI compatta, componenti di `components/ui/`. Deploy: `migrate`, poi `php artisan db:seed --class=QualificaNewContactStatusSeeder --force`, poi `php artisan db:seed --class=ReportColumnStatusesSeeder --force` (finche' non gira, le 5 colonne valgono 0).
+  </constraints>
+
+</spec>

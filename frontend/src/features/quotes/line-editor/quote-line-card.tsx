@@ -39,6 +39,8 @@ interface QuoteLineCardProps {
   disabled: boolean
   /** Spec 0360 D-4: codes of the work orders the saved row is assigned to; non-null locks every control of the row. */
   lockedWorkOrderCodes?: string[] | null
+  /** Spec 0360 D-8: the actor holds `quotes.updateLockedLines`: an assigned row's fields stay editable, its removal stays locked. */
+  assignedRowEditable?: boolean
   /** Spec 0114: amounts only, the server congeals quantity/price/VAT. */
   simplified: boolean
   error?: QuoteLineRowErrors
@@ -86,6 +88,7 @@ export function QuoteLineCard({
   knownVatRate,
   disabled: editorDisabled,
   lockedWorkOrderCodes = null,
+  assignedRowEditable = false,
   simplified,
   error,
   vatRatePercentFor,
@@ -100,7 +103,7 @@ export function QuoteLineCard({
   const { t } = useTranslation()
   const rowId = useId()
   const locked = lockedWorkOrderCodes !== null
-  const disabled = editorDisabled || locked
+  const disabled = editorDisabled || (locked && !assignedRowEditable)
   const lockedNoteId = `${rowId}-locked`
   const vatPercent = row.vat_rate_id === null ? null : vatRatePercentFor(row.vat_rate_id)
   const amounts = computeLineAmounts(row.quantity ?? 0, row.unit_price ?? 0, vatPercent)
@@ -147,7 +150,7 @@ export function QuoteLineCard({
           size="icon-sm"
           aria-label={t('quotes.form.lineRemove', { n: position })}
           aria-describedby={locked ? lockedNoteId : undefined}
-          disabled={disabled}
+          disabled={disabled || locked}
           onClick={onRemove}
         >
           <Trash2 aria-hidden="true" />
@@ -181,7 +184,6 @@ export function QuoteLineCard({
               <Input
                 type="number"
                 step="0.01"
-                min={0}
                 aria-label={t('quotes.form.lineUnitPrice', { n: position })}
                 aria-invalid={!!error?.unit_price}
                 aria-describedby={error?.unit_price ? unitPriceErrorId : priceLocked ? commissionNoteId : undefined}

@@ -17,6 +17,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'A document can be created **from scratch** or **from one or more ODAs** of the same supplier and company. The linked ODAs are always visible in the document sheet. The net amounts of lines with a **work order** feed the work order\'s **actual cost** (Costs tab), in place of the linked ODA lines.',
         },
+        { type: 'paragraph', text: 'The **Supplier** column shows the name followed by the **VAT number** (e.g. *Rossi Srl - 01234567890*); when the registry has no VAT number the **tax code** is shown, and just the name when it has neither. The same format appears in the header and in the **Supplier** field of the document sheet.' },
       ],
     },
     {

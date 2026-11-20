@@ -46,7 +46,8 @@ it('AC-006: an activity linked to a job role is a 409, a free one is deleted', f
 
     $this->deleteJson("/api/job-activities/{$used->id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', __('job_activities.in_use'));
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('success', false);
     $this->deleteJson("/api/job-activities/{$free->id}")->assertNoContent();
 });
 

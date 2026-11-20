@@ -52,7 +52,7 @@ describe('useIdentityDuplicateCheck (AC-007, AC-008)', () => {
 
   it('debounces and calls the API with the normalized email criterion once one is filled', async () => {
     checkIdentityDuplicatesMock.mockResolvedValue({
-      matches: [{ owner_type: 'referent', owner_id: 1, name: 'Mario Rossi', matched_on: ['email'] }],
+      matches: [{ owner_type: 'referent', owner_id: 1, name: 'Mario Rossi', matched_on: ['email'], registries: [] }],
     })
 
     const { result, rerender } = renderHook(
@@ -89,7 +89,7 @@ describe('useIdentityDuplicateCheck (AC-007, AC-008)', () => {
 
   it('clears the matches once the fields go back to empty', async () => {
     checkIdentityDuplicatesMock.mockResolvedValue({
-      matches: [{ owner_type: 'referent', owner_id: 1, name: 'Mario Rossi', matched_on: ['email'] }],
+      matches: [{ owner_type: 'referent', owner_id: 1, name: 'Mario Rossi', matched_on: ['email'], registries: [] }],
     })
 
     const { result, rerender } = renderHook(

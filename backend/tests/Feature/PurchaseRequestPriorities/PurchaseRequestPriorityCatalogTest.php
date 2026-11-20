@@ -96,7 +96,8 @@ it('AC-002: delete answers 409 for a priority used by a request, 204 for a free 
 
     $this->deleteJson("/api/purchase-request-priorities/{$used->id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', __('purchase_request_priorities.in_use'));
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('success', false);
     $this->deleteJson("/api/purchase-request-priorities/{$free->id}")->assertNoContent();
 
     expect($used->fresh())->not->toBeNull()->and($free->fresh())->toBeNull();

@@ -13,6 +13,7 @@ import {
 } from '@/components/detail/record-collaboration-card'
 import { RecordCollaborationRail } from '@/components/detail/record-collaboration-rail'
 import { RecordCard } from '@/components/detail/record-panel'
+import { RecordTabIcon } from '@/components/detail/record-tab-icon'
 import { useRecordSideCollapsed, useRecordSideLayout } from '@/components/detail/use-record-side-layout'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
@@ -192,7 +193,7 @@ function RecordInlineTabs({ tabs, value, onValueChange, children }: RecordInline
           ) : null}
           {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.icon}
+              <RecordTabIcon icon={tab.icon} badge={tab.badge} />
               {tab.label}
             </TabsTrigger>
           ))}

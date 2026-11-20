@@ -27,13 +27,18 @@ const guide: HelpGuide = {
               'Non ha il pulsante di creazione: una richiesta entra negli iscritti solo cambiando stato.',
             ],
             ['Permessi', 'Ha permessi propri, separati da quelli di Gestione Richieste.'],
+            ['Categorie', 'Come in Gestione Richieste: le categorie con **Visibile in** su **Opportunità / Offerte** non hanno una scheda e non si possono scegliere, e gli iscritti che hanno solo categorie di questo tipo non compaiono.'],
+            [
+              'Documenti e note',
+              "L'iscritto è la stessa richiesta: documenti e note scritti in Gestione Richieste restano gli stessi, senza copie. La scheda **Documenti** compare con il permesso **Visualizza documenti** di Gestione Iscritti, che hanno anche commerciali, segreteria didattica e supervisore didattica.",
+            ],
             [
               'Chi vede cosa',
               'Senza altri permessi vedi solo le richieste del cui **Team** fai parte: come operatore, Supervisore o Gestore account. **Visualizza sede fisica** aggiunge quelle della tua sede fisica (non delle sedi remote); **Visualizza per sede** quelle di tutte le tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Resta comunque il filtro sugli stati del modulo.',
             ],
             [
               'Notifiche di trasferimento',
-              'Stesse regole di Gestione Richieste; il riepilogo di ogni trasferimento arriva a chi ha **Visualizza tutti** in Gestione Iscritti.',
+              'Stesse regole di Gestione Richieste; il riepilogo di ogni trasferimento arriva a chi ha il ruolo **notifiche-trasferimenti-contatti**.',
             ],
           ],
         },

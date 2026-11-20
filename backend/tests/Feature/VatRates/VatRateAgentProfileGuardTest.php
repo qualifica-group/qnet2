@@ -25,7 +25,8 @@ it('M-3: deleting a VAT rate used by an agent fiscal profile is a 409 and the ra
 
     $this->deleteJson("/api/vat-rates/{$rate->id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', 'This VAT rate is used by an agent fiscal profile.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 agent fiscal profile']));
 
     $this->assertDatabaseHas('vat_rates', ['id' => $rate->id]);
 });

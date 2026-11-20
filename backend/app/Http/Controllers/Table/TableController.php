@@ -285,6 +285,9 @@ class TableController extends BaseApiController
             /** @var User $actor */
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
+            // Spec 0382 D-11: the tab decides which positions a team cell
+            // holds, and the returned row is mapped as that tab shows it.
+            $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
 
             $updated = $this->cellUpdate->update(
                 $definition,

@@ -3,7 +3,7 @@ import { workOrderPage as en } from '@/i18n/locales/en-work-order-page'
 import { workOrderPage as itLocale } from '@/i18n/locales/it-work-order-page'
 
 /**
- * Spec 0380: same automated safety net as `time-entries-i18n-parity.test.ts`
+ * Spec 0420: same automated safety net as `time-entries-i18n-parity.test.ts`
  * for the work order page satellite — same key set in both locales, no blank value.
  */
 
@@ -23,7 +23,7 @@ function leafEntries(tree: I18nTree, prefix = ''): [string, string][] {
   })
 }
 
-describe('workOrderPage i18n parity (spec 0380)', () => {
+describe('workOrderPage i18n parity (spec 0420)', () => {
   it('has the exact same set of keys in en and it, recursively', () => {
     expect(leafPaths(itLocale).sort()).toEqual(leafPaths(en).sort())
   })

@@ -66,7 +66,7 @@ export function formatTaxCode(value: string): string {
   return normalizeTaxCode(value)
 }
 
-/** Eleven digits, stripped of separators and of the optional `IT` country prefix. */
+/** Uppercase alphanumerics, stripped of the optional `IT` prefix (a foreign code keeps its own). */
 export function formatVatNumber(value: string): string {
   return normalizeVatNumber(value)
 }

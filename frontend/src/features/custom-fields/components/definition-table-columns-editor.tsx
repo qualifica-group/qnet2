@@ -4,6 +4,7 @@ import { Plus, Table2 } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { Button } from '@/components/ui/button'
 import { DefinitionTableColumnRow } from '@/features/custom-fields/components/definition-table-column-row'
+import { DefinitionTableNotifySettings } from '@/features/custom-fields/components/definition-table-notify-settings'
 import { DefinitionTableSettings } from '@/features/custom-fields/components/definition-table-settings'
 import type { FieldDefinitionFormValues } from '@/features/custom-fields/field-definition-form-values'
 import { useDefinitionTableColumns } from '@/features/custom-fields/use-definition-table-columns'
@@ -18,7 +19,7 @@ interface DefinitionTableColumnsEditorProps<T extends FieldDefinitionFormValues>
  * `table` definition editor (spec 0180 AC-021), shared by the custom field
  * definition form AND the attribute form: add / reorder / remove columns, per
  * column label/key/type/required (+ inline options for `enum`), row selection,
- * grid summary and row limits. Renders nothing for other types.
+ * grid summary, row limits and the row event notification (spec 0390). Renders nothing for other types.
  *
  * Generic over `T` (see `DefinitionTypePicker` for why `Control<T>` cannot be
  * fixed to `Control<FieldDefinitionFormValues>`).
@@ -78,6 +79,7 @@ function TableColumnsSection({ control }: { control: Control<FieldDefinitionForm
         onSelectableChange={editor.setSelectable}
         onSummaryColumnChange={editor.setSummaryColumn}
       />
+      <DefinitionTableNotifySettings control={control} table={editor.table} />
     </FormSection>
   )
 }

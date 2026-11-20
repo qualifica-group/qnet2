@@ -131,6 +131,25 @@ final class OpportunityRelationColumns
     }
 
     /**
+     * Quick-search on the client's name (task 427126): `registry` is the one
+     * searchable relation column.
+     *
+     * @param  Builder<Model>  $query
+     */
+    public function applySearch(Builder $query, string $columnId, string $pattern): bool
+    {
+        if ($columnId !== 'registry') {
+            return false;
+        }
+
+        $query->orWhereHas('registry', static function (Builder $registries) use ($pattern): void {
+            $registries->where('name', 'like', $pattern);
+        });
+
+        return true;
+    }
+
+    /**
      * ORDER BY the related row's name via a correlated subquery for every one
      * of the 5 simple-relation derived columns. `managers` and the 2
      * AGGREGATED (to-many) columns are NOT sortable (returns false — no

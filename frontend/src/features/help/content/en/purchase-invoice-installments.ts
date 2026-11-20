@@ -25,6 +25,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'The installments of a document add up to its **Net payable**: if the invoice has **Withholding tax** or **ENASARCO**, the installments are computed net of the withholdings and the total of the due dates is lower than the document total. The installments of invoices created from a commission statement are paid from here.',
         },
+        { type: 'paragraph', text: 'The **Supplier** column shows the name followed by the **VAT number** (e.g. *Rossi Srl - 01234567890*); when the registry has no VAT number the **tax code** is shown, and just the name when it has neither.' },
       ],
     },
     {

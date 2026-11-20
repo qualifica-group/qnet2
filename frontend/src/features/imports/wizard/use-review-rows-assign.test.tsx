@@ -283,6 +283,20 @@ describe('buildBulkAssignPayload', () => {
     })
   })
 
+  it('D-4: mode "balanced" forwards use_current_load false, never in mode "single"', () => {
+    const operatorsBySite = [{ operational_site_id: 1, operator_ids: [11] }]
+
+    expect(
+      buildBulkAssignPayload(
+        { selectAll: true, toggledNodes: [] },
+        { mode: 'balanced', operators_by_site: operatorsBySite, use_current_load: false },
+      ),
+    ).toEqual({ mode: 'balanced', operators_by_site: operatorsBySite, use_current_load: false, select_all: true, row_ids: [] })
+    expect(
+      buildBulkAssignPayload({ selectAll: false, toggledNodes: ['3'] }, { mode: 'single', operator_id: 42, use_current_load: false }),
+    ).toEqual({ mode: 'single', operator_id: 42, select_all: false, row_ids: [3] })
+  })
+
   it('AC-014: mode "single" never forwards operators_by_site even if somehow present', () => {
     expect(
       buildBulkAssignPayload(

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   commonCapabilities,
   commonTransitions,
+  drivingOrders,
   lineToTarget,
   sharedRequest,
   toLineTarget,
@@ -61,6 +62,28 @@ describe('commonCapabilities and sharedRequest (D-17)', () => {
     expect(sharedRequest([target({ id: 1 }), target({ id: 2 })])).toEqual({ id: 5, subject: 'Laptops' })
     expect(sharedRequest([target({ id: 1 }), target({ id: 2, purchaseRequestId: 6 })])).toBeNull()
     expect(sharedRequest([target({ id: 1, purchaseRequestId: null })])).toBeNull()
+  })
+})
+
+describe('drivingOrders (spec 0245 D-8)', () => {
+  const order = { id: 31, code: 'ODA-2026-0031' }
+
+  it('lists once the orders of the ordered or received lines linked to them', () => {
+    expect(
+      drivingOrders([
+        target({ id: 1, status: 'ordered', purchaseOrder: order }),
+        target({ id: 2, status: 'received', purchaseOrder: order }),
+      ]),
+    ).toEqual([order])
+  })
+
+  it('ignores the lines without an order and the linked ones in another status', () => {
+    expect(
+      drivingOrders([
+        target({ id: 1, status: 'ordered' }),
+        target({ id: 2, status: 'on_hold', purchaseOrder: order }),
+      ]),
+    ).toEqual([])
   })
 })
 

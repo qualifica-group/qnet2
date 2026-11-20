@@ -55,14 +55,19 @@ function renderGrid(columns: TableColumn[]) {
 
   function Host() {
     const [, setTick] = useState(0)
+    const [currentColumns, setCurrentColumns] = useState(columns)
     return (
       <>
         <button type="button" onClick={() => setTick((tick) => tick + 1)}>
           rerender
         </button>
+        {/* The config echo of a layout save: same columns, fresh array identity. */}
+        <button type="button" onClick={() => setCurrentColumns((previous) => previous.map((item) => ({ ...item })))}>
+          refresh config
+        </button>
         <DataTable
           domain="users"
-          columns={columns}
+          columns={currentColumns}
           datasource={EMPTY_DATASOURCE}
           blockSize={25}
           onGridReady={(event: GridReadyEvent) => {
@@ -126,5 +131,19 @@ describe('DataTable column state', () => {
     // A persisted width opts the column out of the flex layout.
     expect(email?.flex).toBe(0)
     expect(grid.getColumnState().find((state) => state.colId === 'role')?.hide).toBe(true)
+  })
+
+  it('keeps the columns tool panel open when the saved config comes back', async () => {
+    const getGrid = renderGrid([column('name', null), column('email', null)])
+    await waitFor(() => expect(getGrid()).not.toBeNull())
+    const grid = getGrid()
+
+    grid.openToolPanel('columns')
+    grid.setColumnsVisible(['email'], false)
+    fireEvent.click(screen.getByRole('button', { name: 'refresh config' }))
+
+    // Toggling a column persists the layout and the refreshed config re-renders
+    // the grid: the panel the user is working in must not close under them.
+    expect(grid.getOpenedToolPanel()).toBe('columns')
   })
 })

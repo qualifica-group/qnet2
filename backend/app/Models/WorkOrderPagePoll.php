@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A poll embedded in a work order page (spec 0380, D-7). `options` is a list of
+ * A poll embedded in a work order page (spec 0420, D-7). `options` is a list of
  * `{key, label}` with server-generated keys; the page content only stores the id.
  */
 #[Fillable(['work_order_page_id', 'question', 'options', 'created_by_id'])]

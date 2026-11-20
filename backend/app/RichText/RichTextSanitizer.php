@@ -72,7 +72,7 @@ final class RichTextSanitizer
     }
 
     /**
-     * The `page` profile (spec 0380): standard vocabulary plus RichTextPageProfile::ELEMENTS,
+     * The `page` profile (spec 0420): standard vocabulary plus RichTextPageProfile::ELEMENTS,
      * no mentions. The input length cap is lifted: the symfony default (20000
      * characters) would silently truncate a long page; the size limit is enforced
      * on the result by the page service.

@@ -259,7 +259,7 @@ describe('report operator filter (spec 0109)', () => {
 
   it('keeps a stored preference written without operator_keys, seeding every operator (AC-047)', async () => {
     window.localStorage.setItem(
-      'request-management.report-filters',
+      'request-management.report-filters.v2',
       JSON.stringify({
         date_from: '2026-03-02',
         date_to: '2026-03-06',

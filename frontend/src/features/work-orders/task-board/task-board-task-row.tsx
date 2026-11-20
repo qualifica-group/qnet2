@@ -2,19 +2,20 @@
  * A ROOT row of the Task board's list view (D-3): the only rows that carry a
  * fase/position, so the only ones with a drag handle and a selection
  * checkbox (D-7's bulk actions select roots only). Its own sub-tasks render
- * as indented, non-draggable `TaskBoardSubtaskRow`s underneath, expandable.
+ * as non-draggable `TaskBoardSubtaskRow`s underneath, expandable, their
+ * titles indented while their other cells stay in the columns (spec 0401).
  */
 
 import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ChevronDown, ChevronRight, GripVertical } from 'lucide-react'
+import { GripVertical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { openTaskOnCardClick } from '@/features/work-orders/task-board/task-board-card-click'
 import { TaskBoardRowContent } from '@/features/work-orders/task-board/task-board-row-content'
+import { TASK_BOARD_LEADING_CLASS, TASK_BOARD_ROW_CLASS } from '@/features/work-orders/task-board/task-board-row-columns'
 import { TaskBoardSubtaskRow } from '@/features/work-orders/task-board/task-board-subtask-row'
 import type { BoardTaskNode } from '@/features/work-orders/task-board/task-board-filters'
 
@@ -52,59 +53,45 @@ export function TaskBoardTaskRow({
     <li ref={setNodeRef} style={style} className={cn('flex flex-col bg-card', isDragging && 'z-10 opacity-40')}>
       <div
         onClick={(event) => openTaskOnCardClick(event, () => onOpenTask(task.id))}
-        className={cn(
-          'flex cursor-pointer items-start gap-2 px-3 py-3 transition-colors hover:bg-muted/30',
-          isSelected && 'bg-primary/5 hover:bg-primary/10',
-        )}
+        className={cn(TASK_BOARD_ROW_CLASS, isSelected && 'bg-primary/5 hover:bg-primary/10')}
       >
-        {canDrag ? (
-          <button
-            type="button"
-            ref={setActivatorNodeRef}
-            aria-label={t('workOrders.taskBoard.task.dragHandleLabel')}
-            className="flex shrink-0 touch-none items-center justify-center rounded-sm p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="size-3.5" aria-hidden="true" />
-          </button>
-        ) : (
-          <span className="size-3.5 shrink-0" aria-hidden="true" />
-        )}
+        <div className={TASK_BOARD_LEADING_CLASS}>
+          {canDrag ? (
+            <button
+              type="button"
+              ref={setActivatorNodeRef}
+              aria-label={t('workOrders.taskBoard.task.dragHandleLabel')}
+              className="flex shrink-0 touch-none items-center justify-center rounded-sm p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="size-3.5" aria-hidden="true" />
+            </button>
+          ) : (
+            <span className="size-4.5 shrink-0" aria-hidden="true" />
+          )}
+          {!isReadOnly ? (
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onToggleSelection(task.id)}
+              aria-label={task.title}
+              className="shrink-0"
+            />
+          ) : null}
+        </div>
 
-        {!isReadOnly ? (
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => onToggleSelection(task.id)}
-            aria-label={task.title}
-            className="shrink-0"
-          />
-        ) : null}
-
-        {children.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setIsExpanded((current) => !current)}
-            aria-label={isExpanded ? t('workOrders.taskBoard.stage.collapse') : t('workOrders.taskBoard.stage.expand')}
-            className="flex shrink-0 items-center justify-center rounded-sm p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
-          >
-            {isExpanded ? <ChevronDown className="size-3.5" aria-hidden="true" /> : <ChevronRight className="size-3.5" aria-hidden="true" />}
-          </button>
-        ) : (
-          <span className="size-3.5 shrink-0" aria-hidden="true" />
-        )}
-
-        <TaskBoardRowContent task={task} today={today} onOpen={() => onOpenTask(task.id)} />
-
-        {children.length > 0 ? (
-          <Badge variant="outline" className="shrink-0">
-            {t('workOrders.taskBoard.task.subtasksCount', { count: children.length })}
-          </Badge>
-        ) : null}
+        <TaskBoardRowContent
+          task={task}
+          today={today}
+          onOpen={() => onOpenTask(task.id)}
+          subtasksCount={children.length}
+          isExpanded={isExpanded}
+          onToggleExpand={() => setIsExpanded((current) => !current)}
+        />
       </div>
 
       {isExpanded && children.length > 0 ? (
-        <ul className="mb-3 ml-12 flex flex-col border-l-2 border-border/70 pl-3">
+        <ul className="flex flex-col divide-y divide-border/40 border-t border-border/40">
           {children.map((child) => (
             <TaskBoardSubtaskRow key={child.task.id} node={child} today={today} onOpenTask={onOpenTask} depth={1} />
           ))}

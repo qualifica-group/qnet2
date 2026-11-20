@@ -52,8 +52,10 @@ it('seeds every roster account, its role and its anagrafica, and converges on a 
     test()->seed(QualificaOperatorSeeder::class);
 
     // was: 'creates every roster account with its role, standalone and without imported data'
+    // REQUIREMENT CHANGED (spec 0348, user directive 2026-11-03): EXTRA_ROLES adds "Importa richieste" on top of the roster role.
     foreach (OperatorRoster::OPERATORS as [, , $email, , $role]) {
-        expect(User::query()->where('email', $email)->firstOrFail()->getRoleNames()->all())->toBe([$role]);
+        expect(User::query()->where('email', $email)->firstOrFail()->getRoleNames()->all())
+            ->toBe([$role, ...(OperatorRoster::EXTRA_ROLES[$email] ?? [])]);
     }
 
     expect(User::query()->count())->toBe(count(OperatorRoster::OPERATORS));
@@ -165,13 +167,16 @@ it('seeds the APL supervisors like Rosa Falzarano, competent for APL, and Martin
 
     test()->seed(QualificaOperatorSeeder::class);
 
-    $reference = seededOperator('rosa.falzarano@qualificagroup.com');
+    // REQUIREMENT CHANGED (spec 0348): Rosa Falzarano's extra "Importa richieste" role is hers alone, not mirrored.
+    $referenceEmail = 'rosa.falzarano@qualificagroup.com';
+    $reference = seededOperator($referenceEmail);
+    $referenceRosterRoles = array_values(array_diff($reference->getRoleNames()->all(), OperatorRoster::EXTRA_ROLES[$referenceEmail]));
 
     foreach (['giovanna.gervasio', 'raffaele.distico', 'gessica.crispo', 'emanuele.ascione'] as $name) {
         $supervisor = seededOperator("{$name}@qualificagroup.com");
         $employment = $supervisor->employment;
 
-        expect($supervisor->getRoleNames()->all())->toBe($reference->getRoleNames()->all())
+        expect($supervisor->getRoleNames()->all())->toBe($referenceRosterRoles)
             ->and($employment->primaryOperationalSiteId)->toBe($sites['FRATTAMAGGIORE 1 (HQ)'])
             ->and($employment->remoteOperationalSiteIds)->toBeEmpty()
             ->and($employment->productLines->map(fn ($line): array => [$line->business_function_id, $line->product_category_id])->all())

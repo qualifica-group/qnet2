@@ -45,7 +45,9 @@ return [
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            // Seconds before an unresponsive SMTP server fails the send; null
+            // would fall back to PHP's default_socket_timeout and hold the worker.
+            'timeout' => (int) env('MAIL_TIMEOUT', 30),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
@@ -148,5 +150,21 @@ return [
     */
 
     'always_to' => env('MAIL_ALWAYS_TO'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notification Email Queue
+    |--------------------------------------------------------------------------
+    |
+    | Queue of the `mail` channel of every queued notification (see
+    | App\Notifications\Concerns\QueuesMailSeparately). When the mail provider
+    | is down each send hangs until the SMTP timeout and is retried: on the
+    | shared `default` queue that starved the bell entries and every other job.
+    | Served by its own worker (`queue:work --queue=mail`); stopping that worker
+    | during a provider outage parks the emails without blocking anything else.
+    |
+    */
+
+    'notifications_queue' => env('MAIL_NOTIFICATIONS_QUEUE', 'mail'),
 
 ];

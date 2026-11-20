@@ -77,7 +77,7 @@ final class QuoteColumnCatalog
             ],
             self::derivedColumn('opportunity', 'quotes.columns.opportunity'),
             // The client, through the Opportunity (QuoteRegistryColumn). Read-only.
-            self::derivedColumn(QuoteRegistryColumn::COLUMN_ID, 'quotes.columns.registry'),
+            [...self::derivedColumn(QuoteRegistryColumn::COLUMN_ID, 'quotes.columns.registry'), 'searchable' => true],
             // "Linee di prodotto" (user directive 2026-10-15): the products of
             // the REVENUE lines, read-only here (edited from Gestione Richieste).
             OfferLinesColumn::readOnlyDeclaration('quotes.columns.offerLines'),

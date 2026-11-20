@@ -1,17 +1,14 @@
 /**
- * The labelled building blocks of a task row (user directive 2026-09-22: every
- * value must say what it is). `TaskBoardMetaField` is one `dt`/`dd` pair of the
- * row's definition list; `TaskBoardPeople` shows each person as the app's
- * shared avatar + `UserProfileHoverCard` (the same affordance as the detail
- * pages: hover reveals the profile action, click opens the user Sheet);
- * `TaskBoardHours` turns worked-vs-estimated minutes into a bar plus its
- * number; completion uses the shared `CompletionBar`.
+ * The building blocks of a task row and of a phase summary.
+ * `TaskBoardPeople` shows each person as the app's shared avatar +
+ * `UserProfileHoverCard` (hover reveals the profile action, click opens the
+ * user Sheet), or as plain avatars inside an editable cell, which is itself a
+ * button; `TaskBoardHours` turns worked-vs-estimated minutes into a bar plus
+ * its number.
  */
 
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
-import { CompletionBar } from '@/components/completion-bar'
 import { Progress } from '@/components/ui/progress'
 import { UserAvatar } from '@/components/user-avatar'
 import { UserProfileHoverCard } from '@/components/user-profile-hover-card'
@@ -21,24 +18,16 @@ import type { TaskBoardStageMetrics } from '@/features/work-orders/task-board/ta
 import { cn } from '@/lib/utils'
 
 const PERCENT_MAX = 100
-const EMPTY_VALUE = '—'
 /** People beyond the first shown as bare avatars before the rest collapses into "+N". */
 const EXTRA_AVATARS_MAX = 2
 
-export function TaskBoardMetaField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <dt className="text-[10px] leading-tight font-medium tracking-wide text-muted-foreground uppercase">{label}</dt>
-      <dd className="flex min-h-5 min-w-0 items-center gap-1.5 text-xs text-foreground">{children}</dd>
-    </div>
-  )
+interface TaskBoardPeopleProps {
+  people: TaskNamedRef[]
+  /** Plain avatars with no profile hover card: the cell around them is already a button. */
+  isStatic?: boolean
 }
 
-export function TaskBoardEmptyValue() {
-  return <span className="text-muted-foreground">{EMPTY_VALUE}</span>
-}
-
-export function TaskBoardPeople({ people }: { people: TaskNamedRef[] }) {
+export function TaskBoardPeople({ people, isStatic = false }: TaskBoardPeopleProps) {
   const { t } = useTranslation()
 
   if (people.length === 0) {
@@ -49,17 +38,31 @@ export function TaskBoardPeople({ people }: { people: TaskNamedRef[] }) {
   const extraAvatars = others.slice(0, EXTRA_AVATARS_MAX)
   const hidden = others.slice(EXTRA_AVATARS_MAX)
 
+  const firstPerson = (
+    <>
+      <UserAvatar name={first.name} size="sm" className="shrink-0" />
+      <span className="truncate text-xs text-foreground">{first.name}</span>
+    </>
+  )
+
   return (
     <>
-      <UserProfileHoverCard user={first} triggerClassName="min-w-0 gap-1.5 rounded-md">
-        <UserAvatar name={first.name} size="sm" className="shrink-0" />
-        <span className="truncate text-xs text-foreground">{first.name}</span>
-      </UserProfileHoverCard>
-      {extraAvatars.map((person) => (
-        <UserProfileHoverCard key={person.id} user={person} triggerClassName="shrink-0 rounded-full">
-          <UserAvatar name={person.name} size="sm" />
+      {isStatic ? (
+        <span className="flex min-w-0 items-center gap-1.5">{firstPerson}</span>
+      ) : (
+        <UserProfileHoverCard user={first} triggerClassName="min-w-0 gap-1.5 rounded-md">
+          {firstPerson}
         </UserProfileHoverCard>
-      ))}
+      )}
+      {extraAvatars.map((person) =>
+        isStatic ? (
+          <UserAvatar key={person.id} name={person.name} size="sm" className="shrink-0" />
+        ) : (
+          <UserProfileHoverCard key={person.id} user={person} triggerClassName="shrink-0 rounded-full">
+            <UserAvatar name={person.name} size="sm" />
+          </UserProfileHoverCard>
+        ),
+      )}
       {hidden.length > 0 ? (
         <span className="shrink-0 text-muted-foreground" title={hidden.map((person) => person.name).join(', ')}>
           +{hidden.length}
@@ -125,23 +128,18 @@ interface TaskBoardStageSummaryProps {
 }
 
 /**
- * A phase's own roll-up (user directive 2026-09-22): completion as the mean
- * of its tasks' completion, and the hours worked against the hours estimated
- * summed over its tasks, plus the segnatempo total (spec 0163 D-4). Shared by
- * the list group header and the kanban column.
+ * A phase's own roll-up: the hours worked against the hours estimated summed
+ * over its tasks, plus the segnatempo total (spec 0163 D-4). Shared by the
+ * list group header and the kanban column. No completion here (user directive
+ * 2026-11-16, spec 0401 D-2): it is a column of each task row instead.
  */
 export function TaskBoardStageSummary({ metrics, loggedMinutes }: TaskBoardStageSummaryProps) {
   const { t } = useTranslation()
-  const completionLabel = t('workOrders.taskBoard.task.columns.completion')
   const hoursLabel = t('workOrders.taskBoard.task.columns.hours')
   const loggedMinutesLabel = t('workOrders.taskBoard.task.columns.loggedMinutes')
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-      <span className="flex items-center gap-1.5">
-        <span className="text-muted-foreground">{completionLabel}</span>
-        <CompletionBar value={metrics.completionPercentage} label={completionLabel} barClassName="w-14" className="gap-1.5" />
-      </span>
       <span className="flex items-center gap-1.5">
         <span className="text-muted-foreground">{hoursLabel}</span>
         <TaskBoardHours actualMinutes={metrics.actualMinutes} estimatedMinutes={metrics.estimatedMinutes} label={hoursLabel} />

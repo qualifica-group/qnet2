@@ -1,39 +1,26 @@
 /**
- * The filters the board is showing, one chip per dimension (same idiom as
- * `RequestDashboardAppliedFilters`, user directive 2026-09-22): a dimension
- * that narrows the tasks is tinted, one left at "everything" stays neutral.
- * Stato and Scadenza always show (they are the two axes every reader scans);
- * the id-based ones appear only once something is picked, so an untouched
- * board keeps a short, calm strip.
+ * The filters narrowing the board, one chip per dimension (same idiom as
+ * `RequestDashboardAppliedFilters`, user directive 2026-09-22). A dimension
+ * left at its default ("everything") has no chip (user directive 2026-11-16),
+ * and with no chip at all the strip is not rendered.
  */
 
 import { useTranslation } from 'react-i18next'
 import { Filter } from 'lucide-react'
-import type { TaskBoardFilterOptions } from '@/features/work-orders/task-board/task-board-filters'
+import { DEFAULT_TASK_BOARD_FILTERS, type TaskBoardFilterOptions } from '@/features/work-orders/task-board/task-board-filters'
 import type { TaskBoardFilters } from '@/features/work-orders/task-board/types'
-import { cn } from '@/lib/utils'
 
 /** Picked names shown in a chip before the rest collapses into "+N". */
 const NAMED_LABELS_MAX = 2
 
-const CHIP_CLASS = 'inline-flex max-w-64 shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs ring-1 ring-inset'
-const CHIP_ACTIVE_CLASS = 'bg-primary/10 text-primary ring-primary/20'
-const CHIP_IDLE_CLASS = 'bg-surface text-foreground ring-border'
+const CHIP_CLASS =
+  'inline-flex max-w-64 shrink-0 items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary ring-1 ring-primary/20 ring-inset'
 
-interface AppliedChipProps {
+interface AppliedChip {
+  key: string
   label: string
   value: string
   title?: string
-  active: boolean
-}
-
-function AppliedChip({ label, value, title, active }: AppliedChipProps) {
-  return (
-    <li className={cn(CHIP_CLASS, active ? CHIP_ACTIVE_CLASS : CHIP_IDLE_CLASS)} title={title ?? value}>
-      <span className={cn('shrink-0', active ? 'text-primary/80' : 'text-muted-foreground')}>{label}</span>
-      <span className="truncate font-medium">{value}</span>
-    </li>
-  )
 }
 
 interface NamedOption {
@@ -101,6 +88,39 @@ export function TaskBoardAppliedFilters({ filters, options }: TaskBoardAppliedFi
     },
   ]
 
+  const chips: AppliedChip[] = []
+  if (filters.status !== DEFAULT_TASK_BOARD_FILTERS.status) {
+    chips.push({
+      key: 'status',
+      label: t('workOrders.taskBoard.filters.status'),
+      value: t(`workOrders.taskBoard.filters.statusOption.${filters.status}`),
+    })
+  }
+  if (filters.due !== DEFAULT_TASK_BOARD_FILTERS.due) {
+    chips.push({
+      key: 'due',
+      label: t('workOrders.taskBoard.filters.due'),
+      value: t(`workOrders.taskBoard.filters.dueOption.${filters.due}`),
+    })
+  }
+  if (filters.assignment !== DEFAULT_TASK_BOARD_FILTERS.assignment) {
+    chips.push({
+      key: 'assignment',
+      label: t('workOrders.taskBoard.filters.assignment'),
+      value: t(`workOrders.taskBoard.filters.assignmentOption.${filters.assignment}`),
+    })
+  }
+  for (const dimension of idDimensions) {
+    const names = namesOf(dimension.ids, dimension.options)
+    if (names.length > 0) {
+      chips.push({ key: dimension.key, label: dimension.label, value: summarize(names), title: names.join(', ') })
+    }
+  }
+
+  if (chips.length === 0) {
+    return null
+  }
+
   return (
     <div className="flex min-w-0 items-center gap-2">
       <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
@@ -113,36 +133,12 @@ export function TaskBoardAppliedFilters({ filters, options }: TaskBoardAppliedFi
         aria-label={t('workOrders.taskBoard.filters.applied')}
         className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto py-0.5"
       >
-        <AppliedChip
-          label={t('workOrders.taskBoard.filters.status')}
-          value={t(`workOrders.taskBoard.filters.statusOption.${filters.status}`)}
-          active={filters.status !== 'all'}
-        />
-        <AppliedChip
-          label={t('workOrders.taskBoard.filters.due')}
-          value={t(`workOrders.taskBoard.filters.dueOption.${filters.due}`)}
-          active={filters.due !== 'all'}
-        />
-        {filters.assignment !== 'all' ? (
-          <AppliedChip
-            label={t('workOrders.taskBoard.filters.assignment')}
-            value={t(`workOrders.taskBoard.filters.assignmentOption.${filters.assignment}`)}
-            active
-          />
-        ) : null}
-        {idDimensions.map((dimension) => {
-          const names = namesOf(dimension.ids, dimension.options)
-
-          return names.length > 0 ? (
-            <AppliedChip
-              key={dimension.key}
-              label={dimension.label}
-              value={summarize(names)}
-              title={names.join(', ')}
-              active
-            />
-          ) : null
-        })}
+        {chips.map((chip) => (
+          <li key={chip.key} className={CHIP_CLASS} title={chip.title ?? chip.value}>
+            <span className="shrink-0 text-primary/80">{chip.label}</span>
+            <span className="truncate font-medium">{chip.value}</span>
+          </li>
+        ))}
       </ul>
     </div>
   )

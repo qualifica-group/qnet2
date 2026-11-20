@@ -14,7 +14,6 @@ use App\Support\Notifications\DetailsTable;
 use App\Support\Notifications\RecordDetails;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\App as AppFacade;
-use Illuminate\Support\HtmlString;
 
 // Direttiva utente 2026-08-04: la scheda dettagli del dominio nell'email, e
 // l'email nella lingua dell'utente (italiano o inglese).
@@ -91,24 +90,22 @@ it('builds the offer detail card with its own Fonte', function () {
     expect($details['notifications.fields.source'])->toBe('Fiera 2026');
 });
 
-it('renders the detail card as a markdown table that survives MailMessage line formatting', function () {
-    $table = DetailsTable::markdown(['notifications.fields.name' => 'Acme S.p.A.']);
+// REQUIREMENT CHANGED (spec 0381, D-1): the card is no longer a markdown
+// table inside a MailMessage line but rows the mail views print themselves.
+it('turns the detail card into translated rows, verbatim values included', function () {
+    AppFacade::setLocale('it');
 
-    // An Htmlable, not a string: SimpleMessage::formatLine() collapses the
-    // newlines of a plain string and would flatten the table onto one row.
-    expect($table)->toBeInstanceOf(HtmlString::class)
-        ->and($table->toHtml())->toContain("\n")
-        ->and($table->toHtml())->toContain('| :--- | :--- |');
+    expect(DetailsTable::rows([
+        'notifications.fields.name' => 'Acme | Beta',
+        'notifications.fields.type' => 'notifications.values.supplier',
+    ]))->toBe([
+        ['label' => 'Denominazione', 'value' => 'Acme | Beta'],
+        ['label' => 'Tipo', 'value' => 'Fornitore'],
+    ]);
 });
 
-it('escapes a pipe inside a value so it cannot break the table columns', function () {
-    $table = DetailsTable::markdown(['notifications.fields.name' => 'Acme | Beta']);
-
-    expect($table->toHtml())->toContain('Acme \\| Beta');
-});
-
-it('omits the card entirely when there is nothing to show', function () {
-    expect(DetailsTable::markdown([]))->toBeNull();
+it('has no rows when there is nothing to show', function () {
+    expect(DetailsTable::rows([]))->toBe([]);
 });
 
 it('puts a real HTML table in the assignment email', function () {
@@ -158,15 +155,16 @@ it('writes the same transfer email in Italian or in English, per recipient local
         ->toContain('Contatto')
         ->toContain('Sede di provenienza')
         ->toContain('Operatore precedente')
-        // Stringhe del framework, non solo le nostre.
-        ->toContain('Cordiali saluti');
+        // REQUIREMENT CHANGED (spec 0381, D-8): the shared layout's footer
+        // replaces the framework salutation.
+        ->toContain('Questo è un messaggio automatico');
 
     expect($english)->toContain('Hello Mario')
         ->toContain('no longer the operator')
         ->toContain('Contact')
         ->toContain('Origin site')
         ->toContain('Previous operator')
-        ->toContain('Regards');
+        ->toContain('This is an automated message');
 });
 
 it('translates the assignment email and its detail card per recipient locale', function () {

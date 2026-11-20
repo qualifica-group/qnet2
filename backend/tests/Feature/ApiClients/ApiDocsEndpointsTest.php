@@ -61,3 +61,20 @@ it('serves the Postman collection with variables, bearer auth and the user_token
         ->toContain("pm.collectionVariables.set('user_token'")
         ->and(json_decode($login['request']['body']['raw'], true))->toHaveKeys(['email', 'password']);
 });
+
+it('carries the descriptions into the Postman collection: guide, one described folder per module, request texts', function () {
+    seedApiDocumentCache();
+    Sanctum::actingAs(apiClientAdmin(['view']));
+
+    $collection = $this->getJson('/api/api-clients/docs/postman')->assertOk()->json();
+    $document = generatedApiDocument();
+    $leads = collect($collection['item'])->firstWhere('name', 'leads');
+    $show = collect($leads['item'])->first(fn (array $item) => $item['request']['method'] === 'GET'
+        && str_ends_with($item['request']['url']['raw'], '/leads/:lead'));
+
+    expect($collection['info']['description'])->toBe($document['info']['description'])
+        ->and(collect($collection['item'])->pluck('name')->sort()->values()->all())->toBe(collect($document['tags'])->pluck('name')->sort()->values()->all())
+        ->and($leads['description'])->toBe(collect($document['tags'])->firstWhere('name', 'leads')['description'])
+        ->and($show['name'])->toBe($document['paths']['/leads/{lead}']['get']['summary'])
+        ->and($show['request']['description'])->toContain($document['paths']['/leads/{lead}']['get']['description']);
+});

@@ -385,19 +385,17 @@ it('update: 404 for a non-existent function', function () {
 // delete — DELETE /api/business-functions/{businessFunction} (AC-012)
 // ---------------------------------------------------------------------------
 
-it('delete: 204, removes the function and cleans up the users/operational_sites pivot rows', function () {
+// REQUIREMENT CHANGED (spec 0384): any member now blocks the delete, so only the operational_sites pivot is cleaned up here.
+it('delete: 204, removes the function and cleans up the operational_sites pivot rows', function () {
     $actor = businessFunctionUserWith(['delete']);
     $target = BusinessFunction::factory()->create();
-    $member = User::factory()->inactive()->create();
     $site = OperationalSite::factory()->withAddress()->create();
-    $target->users()->sync([$member->id]);
     $target->operationalSites()->sync([$site->id]);
     Sanctum::actingAs($actor);
 
     $this->deleteJson("/api/business-functions/{$target->id}")->assertNoContent();
 
     $this->assertDatabaseMissing('business_functions', ['id' => $target->id]);
-    $this->assertDatabaseMissing('business_function_user', ['business_function_id' => $target->id]);
     $this->assertDatabaseMissing('business_function_operational_site', ['business_function_id' => $target->id]);
 });
 

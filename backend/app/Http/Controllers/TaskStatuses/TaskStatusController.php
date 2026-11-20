@@ -117,8 +117,8 @@ class TaskStatusController extends BaseApiController
     }
 
     /**
-     * POST /api/task-statuses/reorder — resequence the custom rows
-     * (AC-047). Gated on `task-statuses.update` directly: no single Model
+     * POST /api/task-statuses/reorder — resequence every row, protected
+     * ones included (AC-047, rectified 2026-11-10). Gated on `task-statuses.update` directly: no single Model
      * instance exists for a bulk reorder, so there is no Policy
      * `update($user, $model)` to delegate to — mirrors
      * ContractStatusController::reorder.

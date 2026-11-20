@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\Models\Source;
 use App\Models\User;
+use App\Services\SourceService;
 use App\Tables\Sources\SourceColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class SourcesTableDefinition extends AbstractTableDefinition
 {
+    public function __construct(private readonly SourceService $service) {}
+
     public function domain(): string
     {
         return 'sources';
@@ -123,5 +126,15 @@ class SourcesTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
+    }
+
+    /**
+     * Delegate to SourceService::delete() so the generic bulk-delete endpoint
+     * respects the SAME in-use guard as the single DELETE (spec 0384).
+     */
+    public function deleteModel(Model $model): void
+    {
+        /** @var Source $model */
+        $this->service->delete($model);
     }
 }

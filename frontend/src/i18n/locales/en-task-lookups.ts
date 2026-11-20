@@ -84,7 +84,6 @@ function lookupBundle({ singular, plural }: LookupCopy) {
       deleteError: `Unable to delete the ${singular}. Please retry.`,
       // Fallback only: on a 409 the module shows the backend message verbatim,
       // which names the resource. This shows only if the body carries none.
-      deleteInUse: `This ${singular} is used by a task and cannot be deleted.`,
       leaveConfirm: {
         title: 'Leave without saving?',
         description: `The ${singular} has not been created yet: what you entered will be lost.`,
@@ -177,7 +176,6 @@ export const taskCategories = {
     // Spec 0154 D-1: the 409 now has TWO causes (used by a task, or has
     // sub-categories) — `runDelete` always shows the backend's own message;
     // this is the generic fallback for the (rare) case it is missing.
-    deleteInUse: 'This category cannot be deleted: check that it is not used by a task and has no sub-categories.',
   },
 }
 
@@ -255,7 +253,6 @@ export const taskStatuses = {
     iconInvalid: 'Pick an icon from the catalogue.',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the task status. Please retry.',
-    deleteInUse: 'This task status is used by a task and cannot be deleted.',
     completionPercentage: 'Completion percentage',
     completionPercentageRequired: 'Completion percentage is required.',
     completionPercentageInvalid: 'Completion percentage must be a whole number.',
@@ -275,12 +272,10 @@ export const taskStatuses = {
   reorder: {
     openButton: 'Reorder',
     title: 'Reorder Task Statuses',
-    // Verified against `TaskStatus::SYSTEM_HEAD_KEYS` (open) and
-    // `SYSTEM_TAIL_KEYS` (closed_positive, closed_negative): one pinned first,
-    // two pinned last (AC-047). The former head keys in_progress/pending/
-    // in_validation are phases now, carried by `group`, not system rows.
+    // Every row moves, system ones included (AC-047 rectified 2026-11-10):
+    // the order is display only.
     subtitle:
-      'Drag the custom statuses to reorder them. The three system statuses stay pinned at the top and at the bottom.',
+      'Drag the statuses to change their order, system ones included. The order applies to the table, the dropdowns and the Kanban columns.',
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the list. Please retry.',
     saved: 'Order updated successfully.',

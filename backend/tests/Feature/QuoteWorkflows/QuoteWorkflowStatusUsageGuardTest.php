@@ -109,3 +109,23 @@ it('refuses to drop a default status in use (AC-007)', function (): void {
 
     expect($default->fresh())->not->toBeNull();
 });
+
+it('names the quotes on the status in use by code', function (): void {
+    $first = quoteOnStatus($this->used);
+    $second = quoteOnStatus($this->used);
+
+    $this->deleteJson("/api/quote-workflows/{$this->workflow->id}")
+        ->assertStatus(409)
+        ->assertJsonPath('message', fn (string $message): bool => str_contains($message, "Stato usato (2): {$first->code}, {$second->code}"));
+});
+
+it('lists at most ten quote codes per status and counts the rest', function (): void {
+    $quotes = collect(range(1, 12))->map(fn (): Quote => quoteOnStatus($this->used));
+
+    $message = $this->deleteJson("/api/quote-workflows/{$this->workflow->id}")
+        ->assertStatus(409)
+        ->json('message');
+
+    expect($message)->toContain('Stato usato (12): '.$quotes->take(10)->pluck('code')->implode(', ').' and 2 more')
+        ->and($message)->not->toContain($quotes->last()->code);
+});

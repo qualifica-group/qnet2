@@ -153,7 +153,7 @@ function buildDecorations(doc: ProseMirrorNode, closed: ReadonlySet<number>, lab
 }
 
 /**
- * Local open/closed state of collapsible headings and blocks (spec 0380 D-8).
+ * Local open/closed state of collapsible headings and blocks (spec 0420 D-8).
  * It lives in plugin state and is applied through decorations: toggling it is
  * a transaction that never changes the document, so Tiptap emits no `update`
  * and the autosave never fires.

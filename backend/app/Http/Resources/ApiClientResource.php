@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\ApiClientMethod;
 use App\Models\ApiClient;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -29,6 +30,7 @@ class ApiClientResource extends JsonResource
             'description' => $this->description,
             'rate_limit_per_minute' => $this->rate_limit_per_minute,
             'effective_rate_limit_per_minute' => $this->effectiveRateLimitPerMinute(),
+            'allowed_methods' => array_values(array_intersect(ApiClientMethod::values(), $this->allowed_methods ?? [])),
             'expires_at' => $this->expires_at?->toIso8601String(),
             'is_active' => $this->is_active,
             'is_expired' => $this->isExpired(),

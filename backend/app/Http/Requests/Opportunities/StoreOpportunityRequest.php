@@ -4,6 +4,7 @@ namespace App\Http\Requests\Opportunities;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Opportunities\LeadOpportunityDefaults;
+use App\Enums\CategoryUsageArea;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
@@ -105,7 +106,7 @@ class StoreOpportunityRequest extends FormRequest
             // so it cannot be expressed as a rule here.
             'products_of_interest' => ['sometimes', 'array'],
             'products_of_interest.*' => ['integer', new ActiveProduct],
-        ], $this->managerSlotsRules(), $this->productLinesRules(required: true), $this->rewardsRules());
+        ], $this->managerSlotsRules(), $this->productLinesRules(required: true, area: CategoryUsageArea::Opportunities), $this->rewardsRules());
     }
 
     /**

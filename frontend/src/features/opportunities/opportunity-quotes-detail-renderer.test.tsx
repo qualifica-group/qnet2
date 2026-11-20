@@ -232,7 +232,10 @@ describe('OpportunityQuotesDetailRenderer — row actions stay the Offerte ones'
 
     await waitFor(() => expect(screen.getByText('OFF-0007')).toBeInTheDocument())
 
-    fireEvent.click(screen.getByRole('button', { name: 'View' }))
+    // The eye leads to the Offerta page (Ctrl/Cmd+click opens it in a new tab), a plain click still opens the modal.
+    const view = screen.getByRole('link', { name: 'View' })
+    expect(view).toHaveAttribute('href', '/quotes/7')
+    fireEvent.click(view)
     expect(openViewMock).toHaveBeenCalledWith(QUOTE_ROW)
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))

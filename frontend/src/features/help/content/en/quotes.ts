@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Quotes** and click **New quote** (or start from the opportunity record).',
+            'Open **Quotes** and click **New quote** (or start from the opportunity record). If you may also create opportunities, a window opens first: choose **From an existing opportunity** (the steps below) or **New opportunity + quote** (see the dedicated section).',
             'In **Quote data**, pick the **Opportunity**: Commercial, Reporter, Supervisor, Account managers and Operational site are prefilled from it (you can change them); the **Source** is prefilled when the opportunity was born from a lead.',
             'Fill in the other rows you need (see table).',
             'At the bottom, add the sold product rows on the **Offer** tab, picking them from the **Product catalogue**, and the cost rows on the **Costs** tab: the editors are already open and the summary updates as you type.',
@@ -42,7 +42,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The **Additional information** appears, below the **Offer** and **Costs** rows, as soon as an offer row has a product that requires it. Some sections appear only when a yes/no field is on: with the field off the section disappears, its required fields are not needed and its values are cleared on save. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation.',
+          text: 'The **Additional information** appears, below the **Offer** and **Costs** rows, as soon as the chosen opportunity or an offer row has a category that requires it: it is the same you see in **Request Management** for the same request, with the same values. Some sections appear only when a yes/no field is on: with the field off the section disappears, its required fields are not needed and its values are cleared on save. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation.',
         },
         {
           type: 'note',
@@ -59,6 +59,30 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'The **Follow-up date** is an optional date to note when to pick the quote up again: set and change it from the detail or the list, and empty it by clearing the date. It sends no reminder and is not the **Next callback**, which is planned from **Request Management**.',
+        },
+      ],
+    },
+    {
+      id: 'create-quote-with-opportunity',
+      title: 'Creating an opportunity and its quote together',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'When the deal does not exist yet, you can create it together with the quote in a single procedure. It is available only if you may create both quotes and opportunities: otherwise **New quote** opens the quote form directly.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'In **Quotes** click **New quote** and choose **New opportunity + quote**.',
+            "In **step 1 - Opportunity** you fill in the same fields as **New opportunity** (without the lead: converting a lead stays in the Leads and Opportunities modules). Click **Next**.",
+            'If required fields are empty, the errors show and you do not move on. If the registry already has an **open opportunity** that blocks the new one, a warning appears with **Create the quote on this opportunity** (opens the quote form already linked) and **Go to the opportunity**: the procedure does not continue.',
+            'In **step 2 - Quote** you fill in the same fields as **New quote**. Commercial, Reporter, Supervisor, Operational site and Account managers are already filled in from step 1 and you can change them. The **Opportunity** reads **new**: it is created on save. The **Additional information** follows the product lines of step 1.',
+            'Click **Save**: the opportunity and the quote are created together and the quote opens. If something fails, nothing is created; the errors take you back to the step and field to fix.',
+          ],
+        },
+        {
+          type: 'note',
+          text: "**Back** keeps everything you typed. If from step 1 you change Commercial, Reporter, Supervisor, Operational site or Account managers, step 2 realigns only on the fields you did not edit by hand. Nothing is created before saving: leaving the page loses what you entered (you are asked to confirm). The quote's Account managers also join the new opportunity's team.",
         },
       ],
     },
@@ -121,11 +145,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Quotes** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Account manager** (the quotes where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together. To widen the list choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved.",
+          text: "When it opens, the **Quotes** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the quotes where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the quotes of every category, otherwise only the quotes of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds quotes by client (registry) name: part of the name is enough, for example \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing. The filters never widen what your profile can see.",
+          text: "If you may see everything (for example with the admin role) you are enabled on every parent category, whatever your competence. Otherwise the categories you are enabled on are the competence categories of your profile (the assignment scope); if you have no competence categories **Parent category** limits nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
@@ -133,11 +157,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with **All**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. The columns can be sorted, filtered and exported; if you may edit quotes they are edited in the cell, except when the field does not concern that quote (the cell stays read-only). The values can still be read in the detail too.",
+          text: "Categories whose **Used in** is **Requests / Enrollees** are not part of this page: they do not show in **Parent category** and **Product category**, and quotes that have **only** such categories are not in the list or the statistics (the detail can still be opened, for example from a contract). If a quote also has a category used here it stays visible.",
+        },
+        {
+          type: 'paragraph',
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with an empty **Parent category**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. The columns can be sorted, filtered and exported; if you may edit quotes they are edited in the cell, except when the field does not concern that quote (the cell stays read-only). The values can still be read in the detail too.",
         },
         {
           type: 'note',
-          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Quotes** page: they do not appear inside a record and in the Quotes sections of opportunities and clients. The export follows the active filters.",
+          text: "The limit to your categories with an empty **Parent category** applies only on the **Quotes** page: the field does not appear inside a record and in the Quotes sections of opportunities and clients. The export follows the active filters.",
         },
       ],
     },
@@ -174,7 +202,7 @@ const guide: HelpGuide = {
             ['**Product** / **Code**', 'The product chosen from the catalogue.'],
             ['**Quantity**', 'Greater than zero, at most 2 decimals.'],
             ['**Unit**', 'The unit of measure.'],
-            ['**Unit price**', 'Non-negative, at most 2 decimals.'],
+            ['**Unit price**', 'At most 2 decimals. It can be negative to apply a discount: add the **SCONTO** (discount) product with quantity 1 and a price of, for example, -100; the row lowers the offer net and total and earns no commissions.'],
             ['**VAT**', "The row's VAT rate."],
             ['**Net**, **VAT**, **Total**', 'Calculated automatically.'],
           ],
@@ -189,7 +217,7 @@ const guide: HelpGuide = {
             "The **Supplier** commission goes to the supplier chosen on the row. If you change supplier, the commissions of the row are recalculated (if there are any, it asks for confirmation first). A commission rule dedicated to that supplier is applied automatically.",
             "Saved rows keep their own supplier even if the product changes its supplier list.",
             'To change the product of a row, remove the row and pick the new product from the catalogue.',
-            'A row **assigned to a work order** shows "Assigned to COM-..." and is locked: no field can be edited and it cannot be removed until the work order is deleted. This also holds when you edit the rows from the contract or from Request management; the row\'s commissions can still be edited from the quote.',
+            'A row **assigned to a work order** shows "Assigned to COM-..." and is locked: no field can be edited and it cannot be removed until the work order is deleted. This also holds when you edit the rows from the contract or from Request management; the row\'s commissions can still be edited from the quote. The super-admin and whoever holds the **Edit rows assigned to a work order** permission can change its fields (the row stays linked to the work order), but cannot remove it.',
             'The **Costs** tab shows the whole catalogue of cost products, with no category filter, and the same product can be added more than once.',
             '**Additional description** adds text to the row, on both the **Offer** and the **Costs** tab; the text is printable on the quote document.',
             "Each row's **Commissions** can only be opened and changed for that row. The popup shows the line net, imputed costs, calculation base and total commissions at the top; each role carries a label with the commission's origin (**Rule: Product**, **Rule: Category** or **Personal rule** when it comes from a Configurator rule, **Manual override** when it was changed by hand; hovering the label explains it). While editing, every role also shows the **System calculation** (what the Commission Configurator grants): if you changed the value by hand you can keep it or go back to the calculation with **Apply system calculation**. The **Supplier** row also shows the **Direction**: when the commission comes from a rule it is the rule's; when you change it by hand you choose **Received** (it is the line revenue) or **Paid** (a cost towards the supplier), and the margin updates accordingly.",

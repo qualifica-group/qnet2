@@ -1,4 +1,4 @@
-import type { RequestDashboardChart } from '@/features/request-management/dashboard-api'
+import type { RequestDashboardChart, RequestDashboardChartPoint } from '@/features/request-management/dashboard-api'
 
 /**
  * Key of the "Non assegnato" entry in the operator list (backend
@@ -27,6 +27,8 @@ export interface LeaderboardColumn {
 export interface LeaderboardRow {
   label: string
   values: Record<string, number>
+  /** Per column, the operator's split by current status (task 427193); only the columns that compute it. */
+  breakdowns: Record<string, RequestDashboardChartPoint[]>
   /** The "Non assegnato" GA2 row (spec 0106 D-13): never ranked, always last (D-3). */
   unassigned: boolean
 }
@@ -56,8 +58,16 @@ export function buildLeaderboard(
   const columns = operatorCharts.map((chart) => {
     const key = chart.indicator_key as string
     for (const point of chart.points) {
-      const row = rows.get(point.label) ?? { label: point.label, values: {}, unassigned: point.label === unassignedLabel }
+      const row = rows.get(point.label) ?? {
+        label: point.label,
+        values: {},
+        breakdowns: {},
+        unassigned: point.label === unassignedLabel,
+      }
       row.values[key] = point.value
+      if (point.breakdown && point.breakdown.length > 0) {
+        row.breakdowns[key] = point.breakdown
+      }
       rows.set(point.label, row)
     }
 

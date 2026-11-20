@@ -93,6 +93,7 @@ describe('ApiClientsTab — create flow (AC-021)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New client' }))
     fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ERP' } })
     fireEvent.change(screen.getByLabelText(/Rate limit/), { target: { value: '120' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'DELETE' }))
     fireEvent.click(screen.getByRole('button', { name: 'Create client' }))
 
     expect(await screen.findByText(PLAIN_KEY)).toBeInTheDocument()
@@ -101,6 +102,7 @@ describe('ApiClientsTab — create flow (AC-021)', () => {
       description: null,
       rate_limit_per_minute: 120,
       expires_at: null,
+      allowed_methods: ['GET', 'POST', 'PUT'],
     })
     expect(screen.getByText(/will not be shown again/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument()
@@ -168,11 +170,26 @@ describe('ApiClientsTab — rotate and revoke (AC-022)', () => {
     expect(screen.getByText('With the key alone you act as this user, with super-admin permissions.')).toBeInTheDocument()
   })
 
-  it('has no scope control in the create form (AC-013)', async () => {
+  it('has no scope control in the create form, only the allowed HTTP methods (AC-013, spec 0392)', async () => {
     renderTab()
     fireEvent.click(screen.getByRole('button', { name: 'New client' }))
     await screen.findByLabelText(/^Name/)
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    const methods = within(screen.getByRole('group', { name: 'Allowed methods' })).getAllByRole('checkbox')
+    expect(methods.map((checkbox) => checkbox.getAttribute('aria-checked'))).toEqual(['true', 'true', 'true', 'true'])
+    expect(screen.getAllByRole('checkbox')).toHaveLength(4)
     expect(screen.queryByText(/scope/i)).not.toBeInTheDocument()
+  })
+
+  it('requires at least one allowed method', async () => {
+    renderTab()
+    fireEvent.click(screen.getByRole('button', { name: 'New client' }))
+    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ERP' } })
+    for (const name of ['GET', 'POST', 'PUT / PATCH', 'DELETE']) {
+      fireEvent.click(screen.getByRole('checkbox', { name }))
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Create client' }))
+
+    expect(await screen.findByText('Allow at least one method.')).toBeInTheDocument()
+    expect(api.createApiClient).not.toHaveBeenCalled()
   })
 })

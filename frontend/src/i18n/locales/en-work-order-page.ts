@@ -1,5 +1,5 @@
 /**
- * Work order workspace notes (spec 0380): shared block page in the "Workspace
+ * Work order workspace notes (spec 0420): shared block page in the "Workspace
  * notes" tab. Mirrors `it-work-order-page.ts`.
  */
 

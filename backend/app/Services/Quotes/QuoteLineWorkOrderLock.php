@@ -8,6 +8,7 @@ use App\DataObjects\Quotes\QuoteLineData;
 use App\Models\Product;
 use App\Models\QuoteLine;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,9 +18,18 @@ use Illuminate\Validation\ValidationException;
  * (the only writer of the rows) before any write, so the rule holds on every
  * channel: Offerte, Contratto, Gestione Richieste. Commissions and
  * `sort_order` are not part of the lock (D-5).
+ *
+ * D-8: the holder of `quotes.updateLockedLines` (super-admin through
+ * Gate::before) may change an assigned row, never remove it: the removal
+ * would cascade the work order's own line payments.
  */
 final class QuoteLineWorkOrderLock
 {
+    /** QuotePolicy ability lifting the change lock (D-8). */
+    public const string OVERRIDE_ABILITY = 'updateLockedLines';
+
+    private const string OVERRIDE_PERMISSION = 'quotes.'.self::OVERRIDE_ABILITY;
+
     private const float DECIMAL_TOLERANCE = 0.000001;
 
     /**
@@ -40,8 +50,9 @@ final class QuoteLineWorkOrderLock
         $lines = array_values($lines);
         $submitted = [];
         $errors = [];
+        $mayChange = Auth::user()?->can(self::OVERRIDE_PERMISSION) === true;
 
-        // Step 2: a locked row that was submitted must come back unchanged.
+        // Step 2: a locked row that was submitted must come back unchanged, unless the actor may change it (D-8).
         foreach ($lines as $index => $data) {
             if ($data->id === null || ! isset($codes[$data->id])) {
                 continue;
@@ -49,7 +60,7 @@ final class QuoteLineWorkOrderLock
 
             $submitted[$data->id] = true;
 
-            if ($this->isChanged($existing->get($data->id), $data)) {
+            if (! $mayChange && $this->isChanged($existing->get($data->id), $data)) {
                 $errors["offer_lines.{$index}"] = [__('quotes.line_locked_by_work_order', ['code' => $codes[$data->id]])];
             }
         }

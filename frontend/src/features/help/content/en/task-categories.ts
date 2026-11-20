@@ -66,7 +66,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'An entry used by a task cannot be deleted: deactivate it instead of deleting it.',
+          text: 'An entry used by a task or by a **Technical support** problem type cannot be deleted: deactivate it instead of deleting it.',
         },
         {
           type: 'warning',

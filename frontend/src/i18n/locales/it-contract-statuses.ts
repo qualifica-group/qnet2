@@ -73,7 +73,6 @@ export const contractStatuses = {
     defaultRequiresActive: 'Uno stato predefinito deve essere attivo.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare lo stato contratto. Riprova.',
-    deleteInUseFallback: 'Questo stato contratto è usato da un contratto e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',

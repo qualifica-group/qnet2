@@ -8,7 +8,10 @@ use App\DataObjects\Notifications\NotificationData;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\Support\Notifications\RecordLinkResolver;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,14 +27,20 @@ use Illuminate\Notifications\Notification;
  */
 class WorkOrderLineDeliverableNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
+    /**
+     * @param  array<string, string>  $workOrderDetails  the commessa's card
+     *                                                   (RecordDetails), built
+     *                                                   by the caller
+     */
     public function __construct(
         private readonly int $workOrderId,
         private readonly string $workOrderLabel,
         private readonly string $productName,
         private readonly string $statusName,
         private readonly string $actorName,
+        private readonly array $workOrderDetails = [],
     ) {}
 
     /**
@@ -39,7 +48,7 @@ class WorkOrderLineDeliverableNotification extends Notification implements Shoul
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**
@@ -57,18 +66,19 @@ class WorkOrderLineDeliverableNotification extends Notification implements Shoul
 
     public function toMail(object $notifiable): MailMessage
     {
-        $path = $this->pathFor($notifiable);
-
-        $mail = (new MailMessage)
-            ->subject($this->title())
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message());
-
-        if ($path !== null) {
-            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+        // Spec 0381: the line first, then the commessa it belongs to.
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject($this->title())
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->message(),
+            [
+                'notifications.fields.product' => $this->productName,
+                'notifications.fields.payment_status' => $this->statusName,
+                ...$this->workOrderDetails,
+            ],
+            $this->pathFor($notifiable),
+        );
     }
 
     private function pathFor(object $notifiable): ?string

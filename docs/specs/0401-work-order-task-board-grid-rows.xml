@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0401-work-order-task-board-grid-rows" status="approved" owner="nicola" date="2026-11-16">
+
+  <goal>
+    Nella scheda Task della commessa (vista Lista) le righe dei task somigliano alle righe della tabella Task: una riga per task, valori in colonne allineate sotto un'intestazione, celle modificabili sul posto, spunta di completamento davanti al titolo. Il trascinamento resta.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-16. Supera la direttiva 2026-09-22 (spec 0146, "ogni valore e' un campo etichettato" in griglia a piu' righe) per la sola vista Lista: le etichette diventano l'intestazione di colonna della fase; sotto `lg` la riga torna a impilarsi e ogni cella mostra la propria etichetta. La card Kanban resta invariata.
+    D-2 Colonne, nell'ordine della tabella Task: Titolo (spunta + titolo + badge "Bloccato"), Stato, Tipo, Priorita', Data inizio, Data fine, Richiedente, Assegnatari, Completamento (percentuale dello stato, sola lettura, come la colonna della tabella Task), Ore lavorate / stimate. Osservatori non e' una colonna (nascosta di default anche nella tabella Task). Direttiva utente 2026-11-16: il completamento sta sulla riga del task e NON piu' nell'intestazione della fase (TaskBoardStageSummary, lista e kanban, mostra solo ore e minuti registrati); tolto anche il riquadro KPI "Completamento" in alto (restano Task totali, Scaduti, In scadenza oggi, Stimato, Effettivo). Tolto l'estratto della descrizione sotto il titolo (resta come tooltip del titolo).
+    D-3 Spunta: stessa resa e stesse regole della cella Titolo della tabella Task (`task-complete-icon-styles.ts`). Task completabile (`permissions.actions.complete`) = clic apre il dialog "Completa" di sempre (`TaskCompleteDialog`, dati da GET /tasks/{id}). Task completato = icona verde piena; se `permissions.actions.uncomplete` il clic lo riapre (come le righe dei sotto-task nel dettaglio).
+    D-4 Modifica in linea: nessun endpoint nuovo. Ogni cella scrive con PATCH /api/tables/tasks/rows/{id} `{column, value}`, lo stesso della modifica cella della tabella Task (TaskCellWriter -> TaskService::update, tutti i controlli server). Campi: title, task_status, task_type, task_priority, start_date, end_date, requester, assignees, watchers, estimated_minutes (minuti). Una cella e' modificabile solo se `permissions.resource.update` e `permissions.fields[campo].editable` del task; altrimenti e' in sola lettura. Dopo il salvataggio si ricarica la board (e il dettaglio commessa).
+    D-5 Stato: come la tabella Task (`useTaskStatusCellIntercept`): scegliere uno stato di chiusura positiva apre il dialog "Completa"; uscire da uno stato chiuso chiama "Riapri"; ogni altro cambio scrive direttamente.
+    D-6 Interazione: clic su una cella modificabile apre un riquadro con l'editor (elenco con ricerca per i valori collegati, campo per testo/data/minuti). Enter o clic fuori salva, Esc annulla. Il titolo si apre dal titolo stesso (apre il task); la modifica del titolo e' sul pulsante matita accanto. Il clic sul resto della riga continua ad aprire il task.
+    D-7 Larghezza: da `lg` in su l'elenco della fase scorre in orizzontale dentro la propria card quando le colonne non ci stanno, come una griglia; la pagina non scorre mai in orizzontale.
+  </context>
+
+  <contract>
+    <endpoint>PATCH /api/tables/tasks/rows/{task} (esistente, spec 0053/0156 D-8)
+      body: { "column": "title"|"task_status"|"task_type"|"task_priority"|"start_date"|"end_date"|"requester"|"assignees"|"watchers"|"estimated_minutes", "value": scalar | int[] | null }
+    </endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>Frontend `features/work-orders/task-board/`: riga a colonne, intestazione per fase, editor delle celle, spunta di completamento.</item>
+      <item>i18n IT/EN; guide `work-orders` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Backend: nessuna modifica.</item>
+      <item>Card della vista Kanban.</item>
+      <item>Colonne configurabili/ordinabili come nella tabella Task.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">La fase mostra l'intestazione di colonna e ogni task su una riga, con la colonna Completamento; l'intestazione della fase e i KPI in alto non mostrano piu' il completamento.</criterion>
+    <criterion id="AC-002">Task completabile: clic sulla spunta apre il dialog Completa. Task completato con `uncomplete`: clic sulla spunta lo riapre.</criterion>
+    <criterion id="AC-003">Clic sulla cella Priorita' di un task modificabile, scelta di un valore: parte PATCH /tables/tasks/rows/{id} con `{column: "task_priority", value: id}` e la board si ricarica.</criterion>
+    <criterion id="AC-004">Campo non modificabile per il task (`fields.*.editable` false): la cella non apre nessun editor.</criterion>
+    <criterion id="AC-005">Stato: scelta di uno stato `closed_positive` apre il dialog Completa invece di scrivere lo stato.</criterion>
+    <criterion id="AC-006">Il trascinamento delle righe tra fasi continua a funzionare.</criterion>
+  </acceptance>
+</spec>

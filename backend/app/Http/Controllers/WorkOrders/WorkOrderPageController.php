@@ -21,7 +21,7 @@ use Illuminate\Http\Request;
 use Throwable;
 
 /**
- * The notes page of a project work order (spec 0380). Same ordered checks as the
+ * The notes page of a project work order (spec 0420). Same ordered checks as the
  * chat (guard()): 403 policy, 404 not project, 403 team, 422 payload, 409 closed.
  */
 class WorkOrderPageController extends BaseApiController

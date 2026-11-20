@@ -7,7 +7,7 @@ import { BLOCK_DATA_TYPE } from '@/features/work-order-page/editor/constants'
 /**
  * Node view of a poll: question, options with count and named voters. Clicking
  * an option votes or changes the vote; clicking the chosen one retracts it.
- * Disabled on a read-only page (spec 0380 D-7).
+ * Disabled on a read-only page (spec 0420 D-7).
  */
 export function PollView({ node }: NodeViewProps) {
   const { t } = useTranslation()

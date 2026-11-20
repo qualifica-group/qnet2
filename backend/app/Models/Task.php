@@ -56,6 +56,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * from #[Fillable]: a snapshot WorkOrderTaskGenerator copies from the
  * template row, read when the Task closes positively to advance its
  * commessa — never client input.
+ *
+ * `is_template_generated` (spec 0388, D-2) is DELIBERATELY absent from
+ * #[Fillable] too: set by WorkOrderTaskGenerator and the legacy import only,
+ * it drops the requester from the closing notification.
  */
 #[Fillable([
     'title',
@@ -106,6 +110,7 @@ class Task extends BaseModel
             'stage_position' => 'int',
             'subtask_position' => 'int',
             'is_private' => 'boolean',
+            'is_template_generated' => 'boolean',
         ];
     }
 

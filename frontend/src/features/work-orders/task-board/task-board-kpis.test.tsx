@@ -7,7 +7,6 @@ import type { TaskBoardMetrics } from '@/features/work-orders/task-board/task-bo
 function metrics(overrides: Partial<TaskBoardMetrics> = {}): TaskBoardMetrics {
   return {
     total: 10,
-    completionPercentage: 40,
     overdueCount: 0,
     dueTodayCount: 2,
     estimatedMinutes: 480,
@@ -21,7 +20,8 @@ describe('TaskBoardKpis', () => {
     render(<TaskBoardKpis metrics={metrics()} />)
 
     expect(screen.getByText('10')).toBeInTheDocument()
-    expect(screen.getByText('40%')).toBeInTheDocument()
+    // Spec 0401 (REQUIREMENT CHANGED, user directive 2026-11-16): no completion tile any more.
+    expect(screen.queryByText('Completamento')).not.toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getByText('8h 00m')).toBeInTheDocument()
     expect(screen.getByText('1h 30m')).toBeInTheDocument()

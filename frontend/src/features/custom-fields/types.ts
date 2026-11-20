@@ -69,6 +69,7 @@ export interface CustomFieldConfig {
   summary?: TableFieldSummary | null
   min_rows?: number
   max_rows?: number
+  notify?: TableFieldNotify | null
 }
 
 /** Column types a `table` field accepts (spec 0180 D-2: simple types only, no relation/nested table). */
@@ -98,6 +99,20 @@ export interface TableFieldSummary {
   strategy: TableSummaryStrategy
 }
 
+/**
+ * Row event of a `table` definition (spec 0390): when it fires (`trigger`: a
+ * yes/no column or the row selection switched on, `null` = every added row),
+ * which "Modello email" goes out and who receives it.
+ */
+export interface TableFieldNotify {
+  trigger: string | null
+  email_template_id: number | null
+  record_team: boolean
+  user_ids: number[]
+  role_ids: number[]
+  emails: string[]
+}
+
 /** `config` of a `type:'table'` definition (spec 0180 data_contract). */
 export interface TableFieldConfig {
   columns: TableFieldColumn[]
@@ -105,6 +120,7 @@ export interface TableFieldConfig {
   summary?: TableFieldSummary | null
   min_rows?: number
   max_rows?: number
+  notify?: TableFieldNotify | null
 }
 
 /** A cell value: a scalar of the column type, `null` when unset. */

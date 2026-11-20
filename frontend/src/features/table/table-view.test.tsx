@@ -3,7 +3,7 @@ import { AxiosError } from 'axios'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { IServerSideDatasource, IServerSideGetRowsParams } from 'ag-grid-community'
+import type { GridReadyEvent, IServerSideDatasource, IServerSideGetRowsParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -28,6 +28,7 @@ interface CapturedDataTableProps {
   opportunityId?: number
   datasource: IServerSideDatasource<TableRow>
   onRowCountChanged?: (count: number) => void
+  onGridReady?: (event: GridReadyEvent) => void
 }
 
 vi.mock('@/components/data-table/data-table', () => ({
@@ -351,6 +352,28 @@ describe('TableView — known total (spec 0178)', () => {
     await datasource.getRows(stubParams(25))
 
     expect(fetchTableRowsMock.mock.calls[2][1]).not.toHaveProperty('knownTotal')
+  })
+})
+
+describe('TableView — refresh after a write keeps the page', () => {
+  // User report 2026-11-10: closing a notes dialog on page 3 sent the list back to page 1.
+  it('refresh() reloads the rows in place instead of purging them', async () => {
+    const ref = createRef<TableViewHandle>()
+    renderTableView({ ref })
+    await screen.findByRole('grid')
+    const refreshServerSide = vi.fn()
+    const { onGridReady } = dataTablePropsSpy.mock.calls.at(-1)?.[0] as CapturedDataTableProps
+    // A stand-in api: the hooks that read the grid skip one reported as destroyed,
+    // every other call is a no-op returning an empty object.
+    const api = new Proxy(
+      { refreshServerSide, isDestroyed: () => true },
+      { get: (target, name) => (name in target ? target[name as keyof typeof target] : () => ({})) },
+    )
+    act(() => onGridReady?.({ api } as unknown as GridReadyEvent))
+
+    act(() => ref.current?.refresh())
+
+    expect(refreshServerSide).toHaveBeenCalledWith({ purge: false })
   })
 })
 

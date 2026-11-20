@@ -9,9 +9,11 @@ use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\User;
+use App\Notifications\Concerns\QueuesMailSeparately;
+use App\Notifications\Concerns\RespectsEmailPreference;
 use App\RequestManagement\RequestModule;
-use App\Support\Notifications\DetailsTable;
 use App\Support\Notifications\RecordLinkResolver;
+use App\Support\Notifications\RecordMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -27,7 +29,7 @@ use Illuminate\Support\Carbon;
  * (RequestTransferService::dispatchNotifications()); `$recipientRole` only
  * selects which of the three stories this copy tells.
  *
- * `via(): ['database', 'mail']`, `ShouldQueue`, payload through the shared
+ * `via()`: bell always, mail per recipient preference, `ShouldQueue`, payload through the shared
  * NotificationData shape (title/message/level/action_url), `action_url` a
  * PATH INTERNO, never absolute — the mail CTA is the only place
  * `config('app.frontend_url')` is prepended.
@@ -41,7 +43,7 @@ use Illuminate\Support\Carbon;
  */
 class RequestTransferredNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesMailSeparately, RespectsEmailPreference;
 
     /**
      * @param  int  $requestId  the transferred Offerta's own id (spec 0086,
@@ -72,7 +74,7 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return $this->databaseAndPreferredMail($notifiable);
     }
 
     /**
@@ -97,19 +99,14 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
         // A SHORT lead here, not the full sentence the bell shows: the detail
         // card right below carries the same facts as a table, and printing
         // them twice in one email reads as a mistake.
-        $mail = (new MailMessage)
-            ->subject($this->title())
-            ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->withAccessNote($this->lead(), $path))
-            ->line(DetailsTable::markdown($this->details()));
-
-        // No reachable module, no button: a CTA that lands on a 403 is worse
-        // than none, and the message already says what to ask for.
-        if ($path !== null) {
-            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
-        }
-
-        return $mail;
+        return RecordMail::compose(
+            (new MailMessage)
+                ->subject($this->title())
+                ->greeting(__('Hello :name,', ['name' => $notifiable->name])),
+            $this->withAccessNote($this->lead(), $path),
+            $this->details(),
+            $path,
+        );
     }
 
     /**

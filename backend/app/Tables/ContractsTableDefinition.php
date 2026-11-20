@@ -13,6 +13,7 @@ use App\Services\Contracts\ContractAlertResolver;
 use App\Services\Contracts\ContractVisibilityScope;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Tables\Contracts\Concerns\HasContractListFilters;
+use App\Tables\Contracts\Concerns\HasContractStatusTabs;
 use App\Tables\Contracts\ContractColumnCatalog;
 use App\Tables\Contracts\ContractRelationColumns;
 use App\Tables\Shared\DocumentsCountColumn;
@@ -50,7 +51,7 @@ use Illuminate\Support\Facades\Gate;
  */
 class ContractsTableDefinition extends AbstractTableDefinition
 {
-    use HasContractListFilters;
+    use HasContractListFilters, HasContractStatusTabs;
 
     private const string ALERT_COLUMN = 'alert';
 

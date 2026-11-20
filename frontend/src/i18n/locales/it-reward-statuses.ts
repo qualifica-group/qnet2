@@ -69,7 +69,6 @@ export const rewardStatuses = {
     colorMax: 'Il colore può contenere al massimo 32 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare lo stato buono. Riprova.',
-    deleteInUseFallback: 'Questo stato buono è usato da un buono collegato e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',

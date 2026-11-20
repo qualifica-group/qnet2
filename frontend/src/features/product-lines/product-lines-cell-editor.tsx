@@ -42,7 +42,7 @@ import { AlertTriangle, ChevronLeft, Loader2, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import type { CategoryPickArea, ProductCategoryTreeNode } from '@/features/product-categories/types'
 import { resolveRowSetManagementMode } from '@/features/product-lines/category-tree-scope'
 import { ProductLineCellPath } from '@/features/product-lines/product-line-cell-path'
 import { useProductLineCellPicker, type PickedCategory } from '@/features/product-lines/use-product-line-cell-picker'
@@ -114,9 +114,14 @@ function uncoveredProducts(row: TableRow | undefined, column: string, pairs: Pro
     .map((product) => product.name)
 }
 
-export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, ProductLineCellValue[] | null>) {
+/** The grid's module, from the column's `categoryUsageArea` (spec 0389). */
+type ProductLinesCellEditorProps = CustomCellEditorProps<TableRow, ProductLineCellValue[] | null> & {
+  usageArea?: CategoryPickArea
+}
+
+export function ProductLinesCellEditor(props: ProductLinesCellEditorProps) {
   const { t } = useTranslation()
-  const { value, onValueChange, data } = props
+  const { value, onValueChange, data, usageArea } = props
   const inputRef = useRef<HTMLInputElement>(null)
 
   // The single click that opened the cell is the only one the operator makes
@@ -156,7 +161,7 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
     }
   }
 
-  const picker = useProductLineCellPicker({ categoryTree, addingBesidePairs, onPick: addPair })
+  const picker = useProductLineCellPicker({ categoryTree, addingBesidePairs, area: usageArea, onPick: addPair })
   const { step, rootCategory, filterCategory, search, setSearch, options } = picker
   const pickingCategory = step === 'product_category' && rootCategory !== null
   const searchLabel =

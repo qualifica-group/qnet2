@@ -42,7 +42,7 @@ const DRAFT: InvoiceDraft = {
   defaults: {
     document_date: '2026-10-06',
     company: { id: 3, name: 'Qualifica Srl' },
-    customer: { id: 5, name: 'Acme Spa' },
+    customer: { id: 5, name: 'Acme Spa', label: 'Acme Spa - 01234567890' },
     payment_method: { id: 2, name: 'Bonifico 30 gg' },
     financial_account: null,
     layout: null,
@@ -108,7 +108,7 @@ describe('InvoiceEditorDialog create (spec 0194 AC-009)', () => {
 
     expect(await screen.findByRole('heading', { name: /Work order #WO-2026-004/ })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /Issuing company/ })).toHaveTextContent('Qualifica Srl')
-    expect(screen.getByRole('combobox', { name: /Customer/ })).toHaveTextContent('Acme Spa')
+    expect(screen.getByRole('combobox', { name: /Customer/ })).toHaveTextContent('Acme Spa - 01234567890')
     expect(screen.getByRole('combobox', { name: /Payment/ })).toHaveTextContent('Bonifico 30 gg')
 
     fireEvent.click(screen.getByRole('button', { name: 'Add line: Consulting day' }))

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { flattenCategoryTree, pruneToPickable, type FlatCategoryOption } from '@/features/product-categories/flatten-tree'
-import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import type { CategoryPickArea, ProductCategoryTreeNode } from '@/features/product-categories/types'
 import {
   cardCategoryTree,
   filterCategoriesUnderRoot,
+  isRootUsableIn,
   isSingleRootBlocked,
   selectableIdsUnderRoot,
 } from '@/features/product-lines/category-tree-scope'
@@ -27,6 +28,8 @@ interface UseProductLineCellPickerArgs {
   categoryTree: ProductCategoryTreeNode[]
   /** A pick would ADD a pair beside existing ones: `single` roots are listed disabled (spec 0077 AC-047). */
   addingBesidePairs: boolean
+  /** The grid's module (spec 0389): roots reserved to the other one are not offered. */
+  area?: CategoryPickArea
   /** Called with the completed pick; the flow then starts over for the next pair. */
   onPick: (root: PickedCategory, category: PickedCategory) => void
 }
@@ -39,6 +42,7 @@ interface UseProductLineCellPickerArgs {
 export function useProductLineCellPicker({
   categoryTree: fullTree,
   addingBesidePairs,
+  area,
   onPick,
 }: UseProductLineCellPickerArgs) {
   // Spec 0208: the editor only ADDS pairs, so there is no saved value to keep;
@@ -62,14 +66,16 @@ export function useProductLineCellPicker({
   )
 
   const baseOptions = useMemo<FlatCategoryOption[]>(() => {
-    // Step 1: every root of the card tree (spec 0132 D-1), no step-level pruning.
+    // Step 1: every root of the card tree (spec 0132 D-1) used in the grid's module (spec 0389).
     if (step === 'root_category' || rootCategory === null) {
-      return categoryTree.map((root) => ({
-        id: root.id,
-        name: root.name,
-        depth: 0,
-        disabled: isSingleRootBlocked(root, addingBesidePairs),
-      }))
+      return categoryTree
+        .filter((root) => isRootUsableIn(root, area))
+        .map((root) => ({
+          id: root.id,
+          name: root.name,
+          depth: 0,
+          disabled: isSingleRootBlocked(root, addingBesidePairs),
+        }))
     }
     // Step 2 (optional): the root's grouping children.
     if (step === 'filter_category') {
@@ -85,7 +91,7 @@ export function useProductLineCellPicker({
     }
     const pickableIds = selectableIdsUnderRoot(categoryTree, scopeId)
     return flattenCategoryTree(pruneToPickable([scopeNode], pickableIds), { pickableIds })
-  }, [step, categoryTree, rootCategory, filterCategory, filterOptions, addingBesidePairs])
+  }, [step, categoryTree, rootCategory, filterCategory, filterOptions, addingBesidePairs, area])
 
   const options = useMemo(() => {
     const term = search.trim().toLowerCase()

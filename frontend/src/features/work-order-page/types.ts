@@ -1,4 +1,4 @@
-/** Contract of the work order workspace page (spec 0380 data_contract). */
+/** Contract of the work order workspace page (spec 0420 data_contract). */
 
 export interface PageUserRef {
   id: number

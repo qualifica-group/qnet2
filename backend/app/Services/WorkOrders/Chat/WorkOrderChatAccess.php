@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders\Chat;
 
-use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderChatMessage;
 use App\Services\RoleAssignmentGuard;
-use App\Services\WorkOrders\WorkOrderStatusResolver;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 
@@ -24,8 +22,6 @@ use Illuminate\Support\Facades\Gate;
  */
 final class WorkOrderChatAccess
 {
-    public function __construct(private readonly WorkOrderStatusResolver $statusResolver) {}
-
     /** Project work order, visible to the user, and the user is in its team or is a super-admin. */
     public function canRead(User $user, WorkOrder $workOrder): bool
     {
@@ -34,7 +30,7 @@ final class WorkOrderChatAccess
             && $this->isTeamOrSuperAdmin($user, $workOrder);
     }
 
-    /** Reading allowed and the computed status is neither completed nor closed. */
+    /** Reading allowed and the work still ongoing (phase to plan or in progress, spec 0395). */
     public function canWrite(User $user, WorkOrder $workOrder): bool
     {
         return $this->canRead($user, $workOrder) && ! $this->isClosed($workOrder);
@@ -92,6 +88,6 @@ final class WorkOrderChatAccess
 
     private function isClosed(WorkOrder $workOrder): bool
     {
-        return in_array($this->statusResolver->progress($workOrder)->status, [WorkOrderStatus::Completed, WorkOrderStatus::Closed], true);
+        return ! $workOrder->work_phase->isOngoing();
     }
 }

@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render as rtlRender, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import { WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
@@ -67,7 +67,7 @@ function workOrder(): WorkOrderDetailWithPermissions {
     title: 'Installazione impianto',
     title_is_manual: true,
     type: 'processing',
-    status: { value: 'open', is_force_closed: false },
+    status: { value: 'to_plan', is_force_closed: false },
     completion_percentage: 0,
     is_force_closed: false,
     ...WORKFLOW_STATUS_FIELDS,
@@ -109,13 +109,16 @@ beforeEach(() => {
 })
 
 describe('WorkOrderDetailView — task panel (spec 0133)', () => {
-  it('AC-009: mounts the task panel below the record, with the sections always visible', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-16): the task panel is the Task tab next to Info, as in the legacy.
+  it('AC-009: mounts the task panel in its own tab, the sections open in Info by default', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    expect(screen.getByText('task-board-4')).toBeInTheDocument()
     expect(screen.getByText('Descrizione libera')).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Details' })).not.toBeInTheDocument()
-    expect(screen.getByText('notes-section')).toBeInTheDocument()
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Tasks' }))
+
+    expect(screen.getByText('task-board-4')).toBeInTheDocument()
   })
 
   it('AC-010: without tasks.viewAny there is no task panel and the record renders unchanged', () => {

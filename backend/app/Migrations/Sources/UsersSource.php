@@ -133,7 +133,6 @@ class UsersSource extends AbstractMigrationSource
             ['id' => 'business_phone', 'label' => 'Business phone', 'type' => 'string'],
             ['id' => 'personal_phone', 'label' => 'Personal phone', 'type' => 'string'],
             ['id' => 'is_active', 'label' => 'Is active', 'type' => 'boolean'],
-            ['id' => 'reports_to_id', 'label' => 'Reports to (external id)', 'type' => 'number'],
             ['id' => 'relationship_type', 'label' => 'Relationship type', 'type' => 'string'],
             ['id' => 'company_id', 'label' => 'Company (external id)', 'type' => 'number'],
             ['id' => 'operational_site_id', 'label' => 'Operational site (external id)', 'type' => 'number'],
@@ -146,9 +145,10 @@ class UsersSource extends AbstractMigrationSource
 
     /**
      * The generic template is built from the scalar `columns()`; the `roles`
-     * relation — `{id, name}` objects remapped to qnet roles via `old_id` — is
-     * not a scalar preview column, so it is injected here to keep the copyable
-     * "expected response" faithful to the real external contract.
+     * relation — `{id, name}` objects remapped to qnet roles via `old_id` — and
+     * the `reports_to_ids` managers (external user ids) are not scalar preview
+     * columns, so they are injected here to keep the copyable "expected
+     * response" faithful to the real external contract.
      *
      * @return array{items: array<int, array<string, mixed>>, pagination: array{total: int, offset: int, limit: int, total_pages: int}}
      */
@@ -156,6 +156,7 @@ class UsersSource extends AbstractMigrationSource
     {
         $sample = parent::sampleResponse();
         $sample['items'][0]['roles'] = [['id' => 1, 'name' => 'Role name']];
+        $sample['items'][0]['reports_to_ids'] = [1, 2];
 
         return $sample;
     }
@@ -355,7 +356,7 @@ class UsersSource extends AbstractMigrationSource
 
     /**
      * Second pass over every imported user: back-fill any employment relation
-     * (notably the self-referential `reports_to_id`) still unresolved because
+     * (notably the self-referential `reports_to_ids`) still unresolved because
      * the referenced user was processed later in the SAME run. Each relink is
      * isolated in its own transaction so a single failure never aborts the
      * pass; only successful relinks are appended to the run report. In

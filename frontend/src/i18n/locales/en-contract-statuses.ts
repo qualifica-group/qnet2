@@ -72,7 +72,6 @@ export const contractStatuses = {
     defaultRequiresActive: 'A default status must be active.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the contract status. Please try again.',
-    deleteInUseFallback: 'This contract status is used by a contract and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The record has not been created yet: what you entered will be lost.',

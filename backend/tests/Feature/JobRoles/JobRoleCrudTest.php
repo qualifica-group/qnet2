@@ -58,7 +58,8 @@ it('AC-006: a job role assigned to a person is a 409, a free one is deleted', fu
 
     $this->deleteJson("/api/job-roles/{$used->id}")
         ->assertStatus(409)
-        ->assertJsonPath('message', __('job_roles.in_use'));
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('success', false);
     $this->deleteJson("/api/job-roles/{$free->id}")->assertNoContent();
     $this->getJson("/api/job-roles/{$used->id}")->assertOk()->assertJsonPath('data.users_count', 1);
 });

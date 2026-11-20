@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Reads and saves the notes page of a project work order (spec 0380). The callers
+ * Reads and saves the notes page of a project work order (spec 0420). The callers
  * (controller) have already run WorkOrderChatAccess::assertCanRead/assertOpen;
  * this class owns the optimistic concurrency (D-3) and the content pipeline.
  */

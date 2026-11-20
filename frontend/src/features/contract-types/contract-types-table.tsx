@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -14,8 +13,6 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteContractType } from '@/features/contract-types/api'
 import { CONTRACT_TYPES_DOMAIN } from '@/features/contract-types/types'
-
-const CONFLICT_STATUS = 409
 
 /**
  * Thin contract-types adapter over the generic table (domain `contract-types`). Open mode of
@@ -41,15 +38,7 @@ export function ContractTypesTable() {
         toast.success(t('contractTypes.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden) {
-          toast.error(forbidden)
-        } else if (status === CONFLICT_STATUS) {
-          toast.error(t('contractTypes.form.deleteInUse'))
-        } else {
-          toast.error(t('contractTypes.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('contractTypes.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

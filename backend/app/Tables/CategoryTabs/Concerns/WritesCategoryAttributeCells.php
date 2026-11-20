@@ -65,15 +65,17 @@ trait WritesCategoryAttributeCells
             : null;
 
         if ($code === null) {
-            return $this->inner->updateCell($row, $columnId, $value);
+            $saved = $this->inner->updateCell($row, $columnId, $value);
+        } else {
+            /** @var User $actor */
+            $actor = Auth::user();
+            $saved = $this->writeAttributeValue($row, $code, $value, $actor);
         }
 
-        /** @var User $actor */
-        $actor = Auth::user();
-        $saved = $this->writeAttributeValue($row, $code, $value, $actor);
-
-        // The PATCH response remap must show the written cell: the record's
-        // OWN attributes stand in for the (absent) tab scope.
+        // The PATCH response replaces the whole grid row, and the PATCH carries
+        // no advanced-filter scope: the record's OWN attributes stand in for it,
+        // so the written cell shows and the other `attr.*` cells are not blanked
+        // (an edit of the Responsabili also sets the assignment date, task 428419).
         $this->rowAttributesOverride = $this->applicableAttributesOf($saved);
 
         return $saved;

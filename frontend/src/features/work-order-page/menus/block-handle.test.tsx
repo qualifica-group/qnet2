@@ -6,7 +6,7 @@ import { MenusHarness } from '@/features/work-order-page/menus/menus-test-harnes
 import { openMenuByName, selectText } from '@/features/work-order-page/menus/menus-test-utils'
 
 /**
- * Spec 0380 AC-019 / AC-023: the block menu of the handle changes the document
+ * Spec 0420 AC-019 / AC-023: the block menu of the handle changes the document
  * (Transform into, Duplicate, Move up/down, Delete). The physical drag and the
  * hover placement need real layout: they are checked by hand in the browser.
  */

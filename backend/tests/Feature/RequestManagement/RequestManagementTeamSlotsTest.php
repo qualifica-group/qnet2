@@ -264,7 +264,10 @@ it('AC-007: moving the OPERATOR slot notifies the new operator and logs both key
     ]);
 });
 
-it('AC-007: changing only the OTHER slots notifies nobody and leaves the operator in place', function () {
+// Requirement changed 2026-11-10 (task 426900, user decision): a colleague
+// newly added to another slot is notified in that position, like the Offerta
+// card (spec 0186 D-3); the operator in place still hears nothing.
+it('AC-007: adding a colleague to an OTHER slot notifies only them, in that position, and leaves the operator in place', function () {
     Notification::fake();
 
     $actor = teamSlotsActor();
@@ -277,7 +280,10 @@ it('AC-007: changing only the OTHER slots notifies nobody and leaves the operato
         'manager_slots' => [$teammate->id, $operator->id],
     ])->assertOk();
 
-    Notification::assertNothingSent();
+    Notification::assertSentTo($teammate, function (RecordAssignmentNotification $notification) use ($teammate): bool {
+        return str_contains((string) $notification->toArray($teammate)['message'], ' 1 ');
+    });
+    Notification::assertNotSentTo($operator, RecordAssignmentNotification::class);
 
     expect($quote->fresh()->operator_id)->toBe($operator->id);
     $this->assertDatabaseHas('quote_user', [
@@ -294,6 +300,23 @@ it('AC-007: changing only the OTHER slots notifies nobody and leaves the operato
 
     expect($properties->get('attributes'))->toHaveKey('manager_slots')
         ->and($properties->get('attributes'))->not->toHaveKey('operator_id');
+});
+
+it('AC-007: reshuffling members already in the team notifies nobody', function () {
+    Notification::fake();
+
+    $actor = teamSlotsActor();
+    $operator = User::factory()->create();
+    $teammate = User::factory()->create();
+    $quote = teamSlotsQuote([ManagerPositions::GA1 => $teammate->id, ManagerPositions::OPERATOR => $operator->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'manager_slots' => [null, $operator->id, $teammate->id],
+    ])->assertOk();
+
+    Notification::assertNothingSent();
+    $this->assertDatabaseHas('quote_user', ['quote_id' => $quote->id, 'user_id' => $teammate->id, 'position' => 3]);
 });
 
 it('AC-007: a team submission identical to the persisted one writes nothing at all, trailing empty slots included', function () {

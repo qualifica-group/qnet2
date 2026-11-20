@@ -11,7 +11,7 @@ import { BLOCK_DATA_TYPE } from '@/features/work-order-page/editor/constants'
 /**
  * Node view of a cited task. The summary comes from the page payload (the
  * server filters it by task visibility); an unavailable or id-less node only
- * shows the placeholder, never a title (spec 0380 D-6).
+ * shows the placeholder, never a title (spec 0420 D-6).
  */
 export function TaskRefView({ node }: NodeViewProps) {
   const { t } = useTranslation()

@@ -4,7 +4,7 @@ import type { Editor } from '@tiptap/react'
 import i18n from '@/i18n'
 import { MenusHarness } from '@/features/work-order-page/menus/menus-test-harness'
 
-/** Spec 0380 AC-017: "/" opens the filterable block menu; Enter inserts the block and removes "/query". */
+/** Spec 0420 AC-017: "/" opens the filterable block menu; Enter inserts the block and removes "/query". */
 
 const onInsertTask = vi.fn()
 const onInsertPoll = vi.fn()

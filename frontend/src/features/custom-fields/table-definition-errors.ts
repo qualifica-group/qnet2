@@ -13,6 +13,9 @@ const CONFIG_ERROR_RULES: readonly [RegExp, (match: RegExpMatchArray) => string]
   [/^summary(\.column)?$/, () => 'summary_column'],
   [/^summary\.strategy$/, () => 'summary_strategy'],
   [/^(min_rows|max_rows)$/, (m) => m[1]],
+  // Spec 0390: "no recipient" sits on the record team checkbox, the first recipient control.
+  [/^notify(\.record_team)?$/, () => 'notify_record_team'],
+  [/^notify\.(trigger|email_template_id|user_ids|role_ids|emails)$/, (m) => `notify_${m[1]}`],
 ]
 
 /**

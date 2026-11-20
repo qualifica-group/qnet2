@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
-use App\Enums\WorkOrderStatus;
 use App\Models\WorkOrder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -12,32 +11,26 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The SINGLE point of computation for a WorkOrder's working status and
- * completion percentage (spec 0321, which supersedes the task-based rule of
- * spec 0149). Owns the badge value, the percentage and the date (progress()),
- * the table's `status` set filter (applyFilter()) and the completion sort
- * (applyCompletionSort()) on the SAME class, so the four can never disagree.
+ * The SINGLE point of computation for a WorkOrder's completion percentage
+ * (spec 0321, which supersedes the task-based rule of spec 0149): the
+ * percentage and its date (progress()) and the completion sort
+ * (applyCompletionSort()) on the SAME class, so they can never disagree. The
+ * status it used to derive from the percentage is now the persisted working
+ * phase (spec 0395, `work_orders.work_phase`).
  *
- * The rule (D-1/D-2) reads only the manual progress entries
+ * The rule (D-1) reads only the manual progress entries
  * (`work_order_progress_entries`, each holding an INCREMENT, like the
  * legacy `avanzamento_commesse`): the percentage is the SUM of their
  * `percentage` (0 when none; migrated legacy data may exceed 100), the date is
  * the MAX of their `recorded_on` (null when none). Tasks do not count.
- *   - `is_force_closed`  -> closed (wins)
- *   - 0                  -> open
- *   - 1..99              -> in_progress
- *   - 100 or more        -> completed
  *
- * Every identifier reaching the SQL is a private constant or an enum value
- * bound as a parameter, never client input (backend.md §8).
+ * Every identifier reaching the SQL is a private constant, never client input (backend.md §8).
  */
 final class WorkOrderStatusResolver
 {
     private const string ENTRIES_TABLE = 'work_order_progress_entries';
 
     private const string WORK_ORDERS_TABLE = 'work_orders';
-
-    private const string FORCE_CLOSED_COLUMN = 'is_force_closed';
 
     private const string PERCENTAGE_COLUMN = 'percentage';
 
@@ -46,8 +39,6 @@ final class WorkOrderStatusResolver
     private const string COMPLETION_PERCENTAGE = 'progress_percentage';
 
     private const string COMPLETION_RECORDED_ON = 'progress_recorded_on';
-
-    private const int COMPLETE = 100;
 
     /**
      * Adds the current percentage and its date as correlated subqueries, so a
@@ -70,50 +61,18 @@ final class WorkOrderStatusResolver
     }
 
     /**
-     * The status, percentage and date of $workOrder: read off the attributes
+     * The percentage and date of $workOrder: read off the attributes
      * when withProgress() already loaded them, otherwise fetched with ONE query.
      */
     public function progress(WorkOrder $workOrder): WorkOrderProgress
     {
-        // Step 1: the progress attributes, preloaded or fetched once
         $source = array_key_exists(self::COMPLETION_PERCENTAGE, $workOrder->getAttributes())
             ? $workOrder
             : $this->withProgress(WorkOrder::query()->whereKey($workOrder->getKey()))->firstOrFail();
         $percentage = (int) $source->getAttribute(self::COMPLETION_PERCENTAGE);
         $recordedOn = $source->getAttribute(self::COMPLETION_RECORDED_ON);
 
-        // Step 2: the status, force-close first (D-2)
-        $status = match (true) {
-            $workOrder->is_force_closed => WorkOrderStatus::Closed,
-            $percentage === 0 => WorkOrderStatus::Open,
-            $percentage < self::COMPLETE => WorkOrderStatus::InProgress,
-            default => WorkOrderStatus::Completed,
-        };
-
-        return new WorkOrderProgress($status, $percentage, $recordedOn === null ? null : (string) $recordedOn);
-    }
-
-    /**
-     * The `status` set filter: matches EXACTLY the rows progress() badges with
-     * one of the requested values. No value, or all four, is a no-op — every
-     * row matches one of them.
-     *
-     * @param  Builder<Model>  $query
-     * @param  array<int, string>  $values
-     */
-    public function applyFilter(Builder $query, array $values): void
-    {
-        $requested = array_values(array_unique(array_intersect($values, WorkOrderStatus::values())));
-
-        if ($requested === [] || count($requested) === count(WorkOrderStatus::cases())) {
-            return;
-        }
-
-        $query->where(function (Builder $group) use ($requested): void {
-            foreach ($requested as $value) {
-                $group->orWhere(fn (Builder $branch) => $this->constrainToStatus($branch, WorkOrderStatus::from($value)));
-            }
-        });
+        return new WorkOrderProgress($percentage, $recordedOn === null ? null : (string) $recordedOn);
     }
 
     /**
@@ -126,22 +85,6 @@ final class WorkOrderStatusResolver
     public function applyCompletionSort(Builder $query, string $direction): void
     {
         $query->orderBy($this->percentageSubquery(), $direction);
-    }
-
-    /**
-     * @param  Builder<Model>  $query
-     */
-    private function constrainToStatus(Builder $query, WorkOrderStatus $status): void
-    {
-        $query->where(self::WORK_ORDERS_TABLE.'.'.self::FORCE_CLOSED_COLUMN, $status === WorkOrderStatus::Closed);
-        $total = $this->percentageSubquery();
-
-        match ($status) {
-            WorkOrderStatus::Closed => null,
-            WorkOrderStatus::Open => $query->where($total, '=', 0),
-            WorkOrderStatus::InProgress => $query->where($total, '>', 0)->where($this->percentageSubquery(), '<', self::COMPLETE),
-            WorkOrderStatus::Completed => $query->where($total, '>=', self::COMPLETE),
-        };
     }
 
     /**

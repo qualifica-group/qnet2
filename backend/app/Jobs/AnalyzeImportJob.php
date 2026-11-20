@@ -32,7 +32,10 @@ class AnalyzeImportJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(private readonly int $importRunId) {}
+    public function __construct(private readonly int $importRunId)
+    {
+        $this->onQueue(config('imports.queue'));
+    }
 
     public function handle(ImportRegistry $registry, SpreadsheetReader $reader, ColumnMapper $mapper): void
     {

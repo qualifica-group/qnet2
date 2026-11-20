@@ -24,6 +24,12 @@ use Illuminate\Contracts\Database\Eloquent\Builder;
  * carries several quotes when the flag is turned on keeps them and stays
  * editable — grandfathering, the same asymmetry the offer-line rule applies
  * (D-5): the rule gates new documents, it never invalidates history.
+ *
+ * User directive 2026-11-10 (task 427485): legacy categories
+ * (`product_categories.is_legacy`, the migrated catalogue) never cap, even
+ * when flagged — they inherited the flag as a default, and an imported
+ * opportunity must take a new offer. Same exemption as
+ * RegistryOpenOpportunityGuard; a flagged current category still caps.
  */
 final class OpportunityQuoteLimit
 {
@@ -65,7 +71,7 @@ final class OpportunityQuoteLimit
         return $opportunity->productLines()
             ->whereHas(
                 'productCategory',
-                static fn (Builder $query) => $query->where('single_quote_per_opportunity', true),
+                static fn (Builder $query) => $query->where('single_quote_per_opportunity', true)->where('is_legacy', false),
             )
             ->exists();
     }

@@ -154,6 +154,22 @@ final class QuoteRelationColumns
     }
 
     /**
+     * Quick-search: only the client's name (task 427126) is a searchable relation column.
+     *
+     * @param  Builder<Model>  $query
+     */
+    public function applySearch(Builder $query, string $columnId, string $pattern): bool
+    {
+        if ($columnId !== QuoteRegistryColumn::COLUMN_ID) {
+            return false;
+        }
+
+        $this->registryColumn->applySearch($query, $pattern);
+
+        return true;
+    }
+
+    /**
      * ORDER BY the related row's name via a correlated subquery. `managers`
      * is NOT sortable (returns false — no single related row to order by,
      * mirrors OpportunityRelationColumns).

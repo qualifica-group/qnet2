@@ -358,6 +358,31 @@ describe('QuoteDetailView — in-place editing (spec 0197)', () => {
     })
   })
 
+  // Segnalazione 2026-11-11 (richiesta 29395): un prodotto che porta un campo
+  // gia' compilato altrove (Gestione Richieste) lo mostra col valore salvato,
+  // e salvare le righe non lo riscrive.
+  it('shows the stored value of a field a new product brings, without sending it back', async () => {
+    const SITES: ApplicableAttributeSummary = { ...SITE_ACCESS, id: 2, code: 'sites', name: 'Sites', sort_order: 1 }
+    const record = quote({ attribute_values: { site_access: 'Gate 3', sites: 'Two sites' } })
+    vi.mocked(fetchQuoteFormContext).mockResolvedValue({ applicable_attributes: [SITE_ACCESS, SITES], attribute_layout: null })
+    vi.mocked(updateQuote).mockResolvedValueOnce(record)
+    renderDetail(record)
+    openRow('Offer rows')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Whole catalogue' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Show all products' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Formazione base/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected' }))
+
+    expect(await screen.findByRole('textbox', { name: 'Sites' })).toHaveValue('Two sites')
+    expect(vi.mocked(fetchQuoteFormContext)).toHaveBeenCalledWith(55, expect.arrayContaining([77]))
+
+    pressRowButton('Save')
+
+    await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(updateQuote).mock.calls[0][1]).not.toHaveProperty('attribute_values')
+  })
+
   // Spec 0087 D-6/AC-004/AC-005: a G.A. not yet on the Opportunity is refused
   // with a 422 on `manager_slots`; the save asks before widening the
   // Opportunity's team and retries with the flag only on an explicit confirm.

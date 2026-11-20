@@ -36,14 +36,11 @@ export interface OpenApiDocument {
   openapi: string
   info?: { title?: string; version?: string; description?: string }
   servers?: { url: string }[]
+  /** One tag per module (first path segment), with its description. */
+  tags?: { name: string; description?: string }[]
   paths?: Record<string, OpenApiPathItem>
   components?: {
     schemas?: Record<string, JsonObject>
     parameters?: Record<string, OpenApiParameter>
   }
 }
-
-/** Outcome of `GET /api-clients/docs/openapi`: the document, or a 202 while the server builds it. */
-export type OpenApiFetchResult =
-  | { status: 'ready'; document: OpenApiDocument }
-  | { status: 'generating'; retryAfterSeconds: number }

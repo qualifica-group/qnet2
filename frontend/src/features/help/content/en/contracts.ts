@@ -68,7 +68,7 @@ const guide: HelpGuide = {
           items: [
             'Changes are written to the source quote: totals and margins are recalculated, while the status of the contract and of the quote do not change.',
             '**Commissions** cannot be edited from here: they stay as set on the quote and their amounts are recalculated on the new lines.',
-            'A line **assigned to a work order** (it shows "Assigned to COM-...") is locked: it cannot be changed or removed until the work order is deleted. The same rule applies from the quote and from Request management.',
+            'A line **assigned to a work order** (it shows "Assigned to COM-...") is locked: it cannot be changed or removed until the work order is deleted. The same rule applies from the quote and from Request management. The super-admin and whoever holds the **Edit rows assigned to a work order** permission can change it, but not remove it.',
           ],
         },
         {
@@ -97,6 +97,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            '**Search product** and the **category** filter above the table narrow the lines shown (the search finds the product name or code, several words too). The selection does not change: hidden lines stay selected, and the header checkbox selects only the free lines shown. Long names wrap, so you always read the whole name (for example 1st Year, 2nd Year).',
             '**One work order per line**: creates a group for each selected line (with no selection, for every free line).',
             '**Group by category**: creates a group per product category, plus one for the lines **without a category**.',
             '**Common values**: Type, Start date, Supervisors and Task template that **new** groups inherit; the Start date starts at today and can be changed. Changing them later does not touch existing groups, unless you use **Apply to all groups** (it never changes titles or lines).',
@@ -184,16 +185,26 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'status-tabs',
+      title: "Contract statuses",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top right of the **Contracts** page you find the status tabs, as in the old QNet: **All**, then one for each active contract status, in the order of the **Contract statuses** page (for example **Da validare**, **Validato**, **Da programmare**, **Programmato**, **In scadenza**, **Sospeso**, **Annullato**, **Disdetto**). A tab shows only the contracts in that status, i.e. it filters the **Contract status** column; **All** removes the filter. Next to each tab, except **All**, is the number of contracts (only when not zero): it follows the search and the active filters, so it matches what you see when you open the tab. When you rename, add or deactivate a status, the tabs follow. The tab combines with the other filters, including **Parent category**: if you cannot find a contract, check those too.",
+        },
+      ],
+    },
+    {
       id: 'list-filters',
       title: "Default filters and category",
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Contracts** page shows only your own work. In the **Advanced filters** panel two fields are already filled in, like **Assignment** on Tasks: **Assignment** on **Supervisor** and **Account manager** (the contracts where you hold at least one of the two roles) and **Parent category** on the parent categories of your competence (with all their subcategories). They apply together. To widen the list choose **All visible** in **Assignment** and, in **Parent category**, other categories or **All** (you can also find it by typing \"all\" in the search), then press **Apply**: your choice is saved.",
+          text: "When it opens, the **Contracts** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the contracts where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the contracts of every category, otherwise only the contracts of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds contracts by client (registry) name: part of the name is enough, for example \"napoli\".",
         },
         {
           type: 'paragraph',
-          text: "If you have no competence categories, or you have all of them, **Parent category** starts on **All**. If your profile only shows the records where you hold a role, the **All visible** option does not appear: it would add nothing. The filters never widen what your profile can see.",
+          text: "If you may see everything (for example with the admin role) you are enabled on every parent category, whatever your competence. Otherwise the categories you are enabled on are the competence categories of your profile (the assignment scope); if you have no competence categories **Parent category** limits nothing. The filters never widen what your profile can see.",
         },
         {
           type: 'paragraph',
@@ -201,11 +212,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with **All**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. They show the fields of the contract's originating quote, read-only: they can be sorted, filtered and exported, while the values are edited from the quote.",
+          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with an empty **Parent category**. To see only the records of a legacy category or only of a new one use **Product category**. A field with the same name in several categories can appear twice. They show the fields of the contract's originating quote, read-only: they can be sorted, filtered and exported, while the values are edited from the quote.",
         },
         {
           type: 'note',
-          text: "The pre-filled **Assignment** and **Parent category** apply only on the **Contracts** page: they do not appear inside a record. The export follows the active filters.",
+          text: "The limit to your categories with an empty **Parent category** applies only on the **Contracts** page: the field does not appear inside a record. The export follows the active filters.",
         },
       ],
     },

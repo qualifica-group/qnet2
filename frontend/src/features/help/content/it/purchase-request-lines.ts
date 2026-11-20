@@ -58,7 +58,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Il cambio è **tutto o niente**: se anche una sola riga non può passare allo stato scelto, nessuna riga viene modificata. Una riga già collegata a una **ODA** non esce da Ordinato o Ricevuto da qui: il suo stato lo governa l’ODA.',
+          text: 'Il cambio è **tutto o niente**: se anche una sola riga non può passare allo stato scelto, nessuna riga viene modificata. Una riga già collegata a una **ODA** non esce da Ordinato o Ricevuto da qui: il suo stato lo governa l’ODA. Se tra le righe selezionate ce n’è una così, la finestra non propone stati e mostra il **link all’ordine**: registra lì il ricevimento e la riga passa a Ricevuto da sola.',
         },
         {
           type: 'note',

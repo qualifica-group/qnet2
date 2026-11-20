@@ -39,7 +39,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The three system statuses (one pinned first, two pinned last) only allow changing the name, color, icon and completion percentage: every other field stays fixed and its row shows no pencil.',
+          text: 'The system statuses only allow changing the name, color, icon and completion percentage: every other field stays fixed and its row shows no pencil. They can still be moved in the order like any other.',
         },
         {
           type: 'note',
@@ -61,7 +61,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The system statuses stay pinned at the top or at the bottom: only custom statuses move freely.',
+          text: 'Every status moves, system ones included. The position only changes the order of the table, the dropdowns and the Kanban columns: it does not change how the status behaves, which depends on its phase. A new status is added at the end of the list.',
         },
       ],
     },

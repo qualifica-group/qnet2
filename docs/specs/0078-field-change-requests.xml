@@ -147,6 +147,20 @@
       persistenza gia' esistenti. Conseguenza voluta: approvare richiede
       `{resource}.update` + il permesso del campo protetto, oltre a `field-change-requests.manage`.
     </decision>
+
+    <decision id="D-8" source="utente 2026-11-11">
+      DELTA su AC-024. La notifica di nuova richiesta arrivava a ogni titolare di
+      `field-change-requests.viewAny` (22 persone: tutti gli `admin`, i `super-admin` e i
+      `supervisore-commerciale`). Ora la ricevono SOLO gli utenti ATTIVI con il ruolo
+      `notifiche-richieste-modifica` (`FieldChangeRequestCreator::NOTIFIED_ROLE`), escluso il
+      richiedente. Un ruolo e non un permesso: `admin` e `super-admin` ricevono per sync l'intero
+      catalogo permessi, quindi un permesso non potrebbe restringere il pubblico. Il ruolo porta
+      `field-change-requests.viewAny` e `.view` (il link della notifica deve aprirsi) e si aggiunge
+      sopra i ruoli esistenti; chi lo riceve si gestisce dalla scheda utente. Nessun titolare =
+      nessuna notifica (la richiesta resta comunque nella lista). Assegnazione iniziale a Rosa
+      Falzarano e Fabrizio Aliberti con il seeder one-shot `QualificaFieldChangeReviewerSeeder`.
+      Approvazione/rifiuto (`manage`) e notifica di esito (AC-026) invariati.
+    </decision>
   </context>
 
   <scope>
@@ -478,7 +492,7 @@
     <criterion id="AC-023">Dato un utente senza `field-change-requests.create`, quando tenta la creazione, allora la risposta e' 403.</criterion>
 
     <!-- === Notifiche === -->
-    <criterion id="AC-024">Data la creazione di una richiesta, quando la transazione si chiude, allora ogni utente con `field-change-requests.viewAny` riceve una notifica su canale `database` E su canale `mail`; il richiedente NON la riceve; un utente senza quel permesso NON la riceve.</criterion>
+    <criterion id="AC-024">Data la creazione di una richiesta, quando la transazione si chiude, allora ogni utente ATTIVO con il ruolo `notifiche-richieste-modifica` riceve una notifica su canale `database` E su canale `mail` (D-8, sostituisce il pubblico `field-change-requests.viewAny`); il richiedente, un utente disattivato e un titolare di `viewAny` senza quel ruolo NON la ricevono; senza titolari del ruolo la richiesta viene creata e nessuno e' notificato.</criterion>
     <criterion id="AC-025">Data la notifica di creazione, allora `data.action_url` punta a `/field-change-requests/{id}` e `data.level` e' `"info"`; la shape del payload resta `{title, message, level, action_url}` (nessuna modifica a NotificationService/NotificationResource).</criterion>
     <criterion id="AC-026">Data l'approvazione o il rifiuto, allora il RICHIEDENTE riceve una notifica database + mail che riporta l'esito e l'eventuale nota del gestore (D-3); `level` e' `"success"` per l'approvazione e `"warning"` per il rifiuto.</criterion>
     <criterion id="AC-027">Data una notifica con `data.action_url` valorizzato, quando l'utente la apre dalla campanella, allora naviga alla rotta indicata e la notifica risulta letta; una notifica senza `action_url` resta non cliccabile e non produce errori (chiude il gap F-8).</criterion>

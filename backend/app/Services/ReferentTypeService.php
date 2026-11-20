@@ -7,6 +7,7 @@ use App\DataObjects\ReferentTypes\UpdateReferentTypeData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\ReferentType;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 
 /**
@@ -16,6 +17,8 @@ use Illuminate\Support\Collection;
  */
 class ReferentTypeService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(CreateReferentTypeData $data): ReferentType
     {
         return ReferentType::create($data->attributes());
@@ -39,6 +42,8 @@ class ReferentTypeService
      */
     public function delete(ReferentType $referentType): void
     {
+        $this->inUseGuard->assertUnused($referentType);
+
         $referentType->delete();
     }
 

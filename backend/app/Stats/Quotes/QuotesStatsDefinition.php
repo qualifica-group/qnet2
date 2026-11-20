@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Stats\Quotes;
 
+use App\Enums\CategoryUsageArea;
 use App\Enums\WorkflowStatusGroup;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\ProductCategories\UsageAreaRowFilter;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
@@ -113,6 +115,7 @@ class QuotesStatsDefinition extends AbstractStatsDefinition
      */
     private function visible(): Builder
     {
-        return QuoteVisibilityScope::scopeToActor(Quote::query(), Auth::user());
+        // Spec 0389 rev.2: the same rows as the grid.
+        return UsageAreaRowFilter::apply(QuoteVisibilityScope::scopeToActor(Quote::query(), Auth::user()), 'quotes.opportunity_id', CategoryUsageArea::Opportunities);
     }
 }

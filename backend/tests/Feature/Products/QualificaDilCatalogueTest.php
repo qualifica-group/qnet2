@@ -9,6 +9,7 @@ use App\Models\QuoteWorkflow;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\QuoteWorkflowService;
+use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\DilCourseCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
@@ -63,9 +64,11 @@ it('seeds the "DIL" container and its Lombardy leaf correctly, idempotently', fu
             ->toBe($layouts->resolveWithFallback($dil, $context, FormMode::Create), $context->value);
     }
 
-    // DIL's barrier still holds for its child: no Formazione-only field.
+    // DIL's barrier still holds for its child: no Formazione-only field,
+    // but the classroom data DIL owns (task 427536).
     expect($hierarchy->effectiveAttributes($lombardy, AttributeContext::Quote)->pluck('code')->all())
-        ->not->toContain('delivery_mode');
+        ->not->toContain('delivery_mode')
+        ->toContain(...ClassroomAttributeCatalogue::codes());
 
     // Re-point the workflow criterion at the leaf, the way the configurator
     // would: prep for the "left alone" check after the re-run below (was:

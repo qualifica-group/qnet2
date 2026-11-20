@@ -66,6 +66,15 @@ export const settings = {
       terracotta: 'Terracotta',
     },
   },
+  emailNotifications: {
+    title: 'Notifiche via email',
+    subtitle:
+      "Scegli se ricevere anche per email le notifiche che arrivano nella campanella dell'app.",
+    label: 'Ricevi le notifiche anche via email',
+    hint: "Se lo disattivi le notifiche restano solo nella campanella. Le email di accesso (benvenuto e reimpostazione password) arrivano comunque.",
+    savedOn: 'Notifiche via email attivate.',
+    savedOff: 'Notifiche via email disattivate: le riceverai solo nella campanella.',
+  },
   moduleOpenMode: {
     title: 'Modalità apertura moduli',
     subtitle:

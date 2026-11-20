@@ -6,7 +6,7 @@ import {
   reconcileSiteKeys,
   useRequestReportFilters,
 } from '@/features/request-management/use-request-report-filters'
-import type { RequestReportFormValues } from '@/features/request-management/request-report-schema'
+import { defaultReportRange, type RequestReportFormValues } from '@/features/request-management/request-report-schema'
 import type { RequestReportCategory, RequestReportSite } from '@/features/request-management/report-api'
 
 /**
@@ -16,7 +16,7 @@ import type { RequestReportCategory, RequestReportSite } from '@/features/reques
  * the caller's job and is covered here as a pure function.
  */
 
-const STORAGE_KEY = 'request-management.report-filters'
+const STORAGE_KEY = 'request-management.report-filters.v2'
 
 const CATEGORIES: RequestReportCategory[] = [
   { key: 'gol', label: 'GOL', depth: 0, parent_key: null },
@@ -49,11 +49,11 @@ afterEach(() => {
 })
 
 describe('useRequestReportFilters', () => {
-  it('falls back to the current-week defaults when nothing was stored yet', () => {
+  it('falls back to the default period (open From, To today) when nothing was stored yet', () => {
     const { result } = renderHook(() => useRequestReportFilters())
 
-    expect(result.current.filters.date_from).not.toBe('')
-    expect(result.current.filters.date_to >= result.current.filters.date_from).toBe(true)
+    expect(result.current.filters.date_from).toBe('')
+    expect(result.current.filters.date_to).toBe(defaultReportRange().date_to)
     expect(result.current.filters.category_keys).toEqual([])
     expect(result.current.filters.row_mode).toBe('all')
   })

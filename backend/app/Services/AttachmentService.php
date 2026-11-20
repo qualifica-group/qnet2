@@ -6,6 +6,7 @@ use App\DataObjects\Attachments\CreateAttachmentData;
 use App\Models\Attachment;
 use App\Models\User;
 use App\Services\Attachments\LegacyAttachmentFetcher;
+use App\Support\Attachments\SignedEnvelope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -198,6 +199,18 @@ class AttachmentService
     }
 
     /**
+     * An opaque type (config `attachments.opaque_types`, e.g. a signed .p7m)
+     * is stored under its fixed MIME: its content was accepted by extension,
+     * without being recognized, so the client's declared type is not trusted.
+     */
+    private function storedMimeType(UploadedFile $file, string $extension): string
+    {
+        $opaqueTypes = (array) config('attachments.opaque_types');
+
+        return (string) ($opaqueTypes[strtolower($extension)] ?? $file->getClientMimeType());
+    }
+
+    /**
      * Write the binary to disk and persist its metadata row consistently.
      *
      * The stored object name is a random UUID (the original name is never used
@@ -210,7 +223,8 @@ class AttachmentService
         $directory = trim((string) config('attachments.directory'), '/');
 
         $file = $data->file;
-        $extension = $file->getClientOriginalExtension();
+        $originalName = SignedEnvelope::originalName($file);
+        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
         $storedName = (string) Str::uuid().($extension !== '' ? '.'.$extension : '');
 
         $path = Storage::disk($disk)->putFileAs($directory, $file, $storedName);
@@ -220,13 +234,13 @@ class AttachmentService
         }
 
         try {
-            return DB::transaction(function () use ($actor, $data, $disk, $path, $file, $extension): Attachment {
+            return DB::transaction(function () use ($actor, $data, $disk, $path, $file, $originalName, $extension): Attachment {
                 $attachment = new Attachment([
                     'collection' => $data->collection,
                     'disk' => $disk,
                     'path' => $path,
-                    'original_name' => $file->getClientOriginalName(),
-                    'mime_type' => $file->getClientMimeType(),
+                    'original_name' => $originalName,
+                    'mime_type' => $this->storedMimeType($file, $extension),
                     'extension' => $extension !== '' ? $extension : null,
                     'size' => $file->getSize(),
                     'uploaded_by' => $actor?->id,

@@ -103,6 +103,17 @@ describe('personal-data schema (fiscal identifiers)', () => {
     )
   })
 
+  it('accepts foreign codes written with their country prefix', () => {
+    const company = { type: 'company' as const, company_name: 'Acme GmbH' }
+
+    expect(
+      schema.safeParse({ ...individual, birth_date: '1980-01-01', tax_code: 'DE12345678901' })
+        .success,
+    ).toBe(true)
+    expect(schema.safeParse({ ...company, tax_code: 'FR12345678901' }).success).toBe(true)
+    expect(schema.safeParse({ ...company, vat_number: 'DE 123456789' }).success).toBe(true)
+  })
+
   it('rejects an invalid VAT number and accepts a blank one', () => {
     expect(schema.safeParse({ ...individual, vat_number: '' }).success).toBe(true)
     expect(schema.safeParse({ ...individual, vat_number: '00743110157' }).success).toBe(

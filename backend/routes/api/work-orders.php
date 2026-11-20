@@ -4,6 +4,7 @@ use App\Http\Controllers\QuoteOfferLines\QuoteOfferLineForSelectController;
 use App\Http\Controllers\WorkOrders\WorkOrderController;
 use App\Http\Controllers\WorkOrders\WorkOrderForSelectController;
 use App\Http\Controllers\WorkOrders\WorkOrderRequestUpdateController;
+use App\Http\Controllers\WorkOrders\WorkOrderTaskTemplateReloadController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -55,6 +56,9 @@ Route::delete('work-orders/{workOrder}', [WorkOrderController::class, 'destroy']
 // Spec 0352: "Richiedi aggiornamento", notifications only (the record is never written).
 Route::post('work-orders/{workOrder}/request-update', WorkOrderRequestUpdateController::class);
 
+// Spec 0399: load or reload the Modello di Task, replacing the previous one's tasks.
+Route::post('work-orders/{workOrder}/task-template/reload', WorkOrderTaskTemplateReloadController::class);
+
 // Task board + "Fasi" (spec 0146): nested here rather than required directly
 // from routes/api.php (which sits at engineering.md §6's own 500-line hard
 // limit already) — required from WITHIN this file so every route in it still
@@ -82,5 +86,5 @@ require __DIR__.'/work-order-progress.php';
 // Project work order chat (spec 0359).
 require __DIR__.'/work-order-chat.php';
 
-// Project work order notes page (spec 0380).
+// Project work order notes page (spec 0420).
 require __DIR__.'/work-order-page.php';

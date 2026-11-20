@@ -42,7 +42,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'A skill already assigned to at least one person cannot be deleted: deactivate it. Deactivated skills can no longer be assigned and do not appear in Coverage; those already assigned stay as they were.',
+          text: 'A skill already assigned to at least one person or required by a job role cannot be deleted: deactivate it. Deactivated skills can no longer be assigned and do not appear in Coverage; those already assigned stay as they were.',
         },
       ],
     },

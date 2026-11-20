@@ -36,7 +36,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: ['Apri **Configurazione › Commerciale › Settori** e premi **Nuovo settore**.', 'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila **Nome** e, se serve, **Settore padre** e premi **Fatto** (**Ripristina** riporta la riga com’era).', 'Premi **Salva**.'] },
         { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.' },
-        { type: 'warning', text: 'Un settore con sotto-settori non si può eliminare.' },
+        { type: 'warning', text: 'Un settore con sotto-settori o collegato a un’anagrafica o a un ODA non si può eliminare: il messaggio dice da cosa è usato. Per non proporlo più, spegni **Attivo**.' },
       ],
     },
   ],

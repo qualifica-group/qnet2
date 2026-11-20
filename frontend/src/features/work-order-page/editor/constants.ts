@@ -1,5 +1,5 @@
 /**
- * Single source of truth of the page editor vocabulary (spec 0380 html_profile):
+ * Single source of truth of the page editor vocabulary (spec 0420 html_profile):
  * the palettes and enums below mirror the server-side `page` sanitizer profile,
  * which drops any value outside them. Menus import these lists instead of
  * redeclaring them.

@@ -35,6 +35,26 @@ function dilContactRows(AttributeContext $context): array
 }
 
 /**
+ * Every code the "DIL" layout places, across all its sections ("Dati Aula"
+ * included since task 427536).
+ *
+ * @return list<string>
+ */
+function dilPlacedCodes(AttributeContext $context): array
+{
+    $category = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
+    $blob = app(AttributeLayoutService::class)->resolveWithFallback($category, $context, FormMode::Create);
+
+    return collect($blob['sections'])
+        ->flatMap(static fn (array $section): array => array_merge(...array_map(
+            static fn (array $row): array => array_column($row['items'], 'attribute_code'),
+            $section['rows'],
+        )))
+        ->values()
+        ->all();
+}
+
+/**
  * @return list<string>
  */
 function dilEffectiveCodes(AttributeContext $context): array
@@ -55,7 +75,7 @@ function rewindDilToChosenCourse(): void
     $dil = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
     $chosenCourse = Attribute::query()->create(['code' => 'chosen_course', 'name' => 'Corso Scelto', 'type' => 'text']);
     $laterFieldIds = Attribute::query()
-        ->whereIn('code', ['id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE, ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS])
+        ->whereIn('code', ['id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE, ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS, 'stato_assoc_cpi'])
         ->pluck('id');
     $service = app(AttributeLayoutService::class);
 
@@ -124,7 +144,7 @@ it('converges an installation seeded while "DIL" still carried "Corso Scelto"', 
     // Both layouts recognised as seeded and recomposed: every resolved field
     // placed in the section, none stranded in "Altre informazioni".
     foreach (DIL_LAYOUT_CONTEXTS as $context) {
-        $placed = array_merge(...dilContactRows($context));
+        $placed = dilPlacedCodes($context);
         $effective = dilEffectiveCodes($context);
         sort($placed);
         sort($effective);
@@ -137,6 +157,7 @@ it('converges an installation seeded while "DIL" still carried "Corso Scelto"', 
         'data_scelta_cpi', 'data_app_apl',
         'dote_activation_date', 'dote_expiry_date',
         ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS,
+        'stato_assoc_cpi',
         'subsidy_type',
         'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
     ]);

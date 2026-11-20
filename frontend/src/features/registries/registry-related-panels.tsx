@@ -16,7 +16,7 @@ import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { QUOTES_DOMAIN } from '@/features/quotes/api'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
 import { QUOTE_CREATE_REGISTRY_PARAM } from '@/features/quotes/quote-create-params'
-import { useQuoteRowActions } from '@/features/quotes/use-quote-row-actions'
+import { quoteActionHref, useQuoteRowActions } from '@/features/quotes/use-quote-row-actions'
 import { RegistryRelatedGrid } from '@/features/registries/registry-related-grid'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { TASK_ACTION_ICONS } from '@/features/tasks/action-icons'
@@ -114,6 +114,7 @@ export function RegistryQuotesPanel({ registryId, onRowCountChanged }: RegistryR
         renderers={quoteColumnRenderers}
         iconMap={QUOTES_ACTION_ICONS}
         onAction={handleAction}
+        resolveActionHref={quoteActionHref}
         isBusy={isBusy}
         onRowCountChanged={onRowCountChanged}
         create={

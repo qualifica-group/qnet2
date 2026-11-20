@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * The shared notes page of a project work order (spec 0380): one row per work
+ * The shared notes page of a project work order (spec 0420): one row per work
  * order, created lazily. `content` is sanitized HTML (profile `page`); `version`
  * drives the optimistic concurrency of the save. Not audited on purpose: an
  * autosave must not flood the activity log.

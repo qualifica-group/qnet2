@@ -218,6 +218,8 @@ it('summary is LESS than the sum of the two category totals when a request is sh
 
     // One more request, GOL-only, distinct from the shared one.
     parityQuote($categories['gol']);
+    // Spec 0391: the columns count only configured statuses.
+    configureReportColumnsByGroup();
 
     $actor = parityViewAllActor();
     $result = app(RequestManagementDashboardBuilder::class)->build(

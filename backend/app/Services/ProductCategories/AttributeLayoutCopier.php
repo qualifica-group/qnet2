@@ -35,7 +35,8 @@ final class AttributeLayoutCopier
             $context = $row->context;
             $allowedCodesByContext[$context->value] ??= $this->allowedCodes($target, $context);
 
-            $layout = $this->prune($row->layout ?? [], $allowedCodesByContext[$context->value]);
+            $allowed = $allowedCodesByContext[$context->value];
+            $layout = AttributeLayoutPruner::prune($row->layout ?? [], static fn (?string $code): bool => in_array($code, $allowed, true));
 
             if ($layout['sections'] !== []) {
                 $this->layouts->upsert($target, $context, $row->form_mode, $layout);
@@ -49,64 +50,5 @@ final class AttributeLayoutCopier
     private function allowedCodes(ProductCategory $category, AttributeContext $context): array
     {
         return $this->hierarchy->effectiveAttributes($category, $context)->pluck('code')->all();
-    }
-
-    /**
-     * @param  array<string, mixed>  $layout
-     * @param  array<int, string>  $allowedCodes
-     * @return array{sections: array<int, array<string, mixed>>}
-     */
-    private function prune(array $layout, array $allowedCodes): array
-    {
-        $sections = [];
-
-        foreach ($layout['sections'] ?? [] as $section) {
-            $rows = [];
-
-            foreach ($section['rows'] ?? [] as $row) {
-                $items = array_values(array_filter(
-                    $row['items'] ?? [],
-                    static fn (array $item): bool => in_array($item['attribute_code'] ?? null, $allowedCodes, true),
-                ));
-
-                if ($items !== []) {
-                    $rows[] = [...$row, 'items' => $items];
-                }
-            }
-
-            if ($rows !== []) {
-                $sections[] = [...$section, 'rows' => $rows];
-            }
-        }
-
-        return ['sections' => $this->clearOrphanConditions($sections)];
-    }
-
-    /**
-     * A condition pointing at a pruned (or pruned-away section's) attribute
-     * would fail the validation of the copy; the section stays, unconditional.
-     *
-     * @param  array<int, array<string, mixed>>  $sections
-     * @return array<int, array<string, mixed>>
-     */
-    private function clearOrphanConditions(array $sections): array
-    {
-        $placed = [];
-
-        foreach ($sections as $section) {
-            foreach ($section['rows'] as $row) {
-                foreach ($row['items'] as $item) {
-                    $placed[$item['attribute_code']] = true;
-                }
-            }
-        }
-
-        return array_map(static function (array $section) use ($placed): array {
-            $controlCode = $section['visible_when']['attribute_code'] ?? null;
-
-            return $controlCode !== null && ! isset($placed[$controlCode])
-                ? [...$section, 'visible_when' => null]
-                : $section;
-        }, $sections);
     }
 }

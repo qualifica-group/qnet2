@@ -8,7 +8,7 @@ interface PageSaveIndicatorProps {
   onRetry: () => void
 }
 
-/** "Salvataggio... / Salvato / Errore, riprova" (spec 0380 AC-022). Conflict has its own banner. */
+/** "Salvataggio... / Salvato / Errore, riprova" (spec 0420 AC-022). Conflict has its own banner. */
 export function PageSaveIndicator({ status, onRetry }: PageSaveIndicatorProps) {
   const { t } = useTranslation()
 

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0402-work-order-payment-status-field" status="approved" owner="nicola" date="2026-11-16">
+
+  <goal>
+    Lo "Stato pagamento" della commessa non e' piu' un campo flessibile di alcune categorie: e' un campo della commessa, selezionabile su tutte le commesse, mostrato in "Dati contrattuali commessa" dopo il Titolo insieme all'Importo (totale dei prodotti): Titolo, Importo, Stato pagamento.
+  </goal>
+
+  <context>
+    D-1 Richiesta utente 2026-11-16: "stato pagamento non lo voglio piu' come campo flessibile (in tutte le categorie) ma come campo selezionabile per tutte le commesse, dopo il titolo; voglio anche importo, l'importo totale dei prodotti; fammi un seeder one shot oppure la migrazione che allinea tutti gli stati pagamento che c'erano sul campo flessibile".
+    D-2 Il campo flessibile e' l'attributo `stato_pagamento` (enum, legacy old_id 135), contesto Commessa: 170 assegnazioni a categorie, 110 layout, valori su 467 commesse del DB dev (457 con un valore 1..10, 10 null). I valori 1..10 coincidono con `work_order_payment_statuses.old_id`: il nuovo campo punta alla tabella esistente degli "Stati pagamento commessa", nessun nuovo elenco.
+    D-3 Lo stato pagamento delle righe (`work_order_line_payments`, spec 0201, da `orders.stato_pagamento` legacy) resta invariato e distinto: c'e' su 12.138 commesse; sulle 444 commesse con entrambi coincide in 411. Sono lo stesso dato legacy (`orderisos.stato_pagamento`). Decisione utente 2026-11-16: il nuovo campo si riempie dal campo flessibile e, dove resta vuoto, dallo stato delle righe quando tutte le righe della commessa hanno lo stesso stato; all'import legacy lo scrive `LegacyWorkOrderLinePaymentWriter` (anche sulla commessa), al riallineamento solo se la commessa non ne ha uno.
+    D-4 Migrazione automatica (gira al deploy), non seeder: `2026_12_12_100000` aggiunge `work_orders.work_order_payment_status_id` (FK restrict, come le righe); `2026_12_12_100100` esegue `WorkOrderPaymentStatusAttributeMover`. Lo spostamento: valore -> stato per `old_id` (un valore non riconosciuto resta vuoto, contato); uno stato gia' presente sulla colonna vince; la chiave esce da `attribute_values`; l'attributo esce da tutte le categorie (`attribute_category`, contesto work_order) e dai layout Commessa (potatura condivisa `AttributeLayoutPruner`), poi viene cancellato con le sue opzioni (richiesta utente 2026-11-16: non deve piu' esistere fra i campi flessibili; solo le commesse lo valorizzavano). Query builder: niente activity log ne' notifiche. Rieseguibile senza effetti. down(): rimette i valori in `attribute_values`; attributo, assegnazioni e layout non vengono ricostruiti.
+    D-5 `QualificaWorkOrderPaymentAttributesSeeder` non assegna piu' `stato_pagamento`. Legacy (backend.md §9): `AttributeMigrationController` non espone piu' `stato_pagamento` (tolta anche `paymentStatusOptions()`), `MigrationAttributeCards::workOrderCommonAttributes()` non lo assegna, `MigrationLayoutSections::contractual()` non lo mette nel layout; i valori erano gia' esclusi (`LegacyWorkOrderAttributeValues::PAYMENT_CODES`). Il dato legacy continua ad arrivare in `payments.stato_pagamento` di `WorkOrderMigrationController` (stato delle righe). Fixture qnet-2 `AttributesSourceImportTest` AC-005 passa a `accordo_pagamento` (REQUIREMENT CHANGED). Verificato con tinker sul legacy.
+    D-6 Modifica: chi gestisce i pagamenti della commessa (`managePayments`, come lo stato delle righe) e puo' modificarla; tutti gli altri lo vedono in sola lettura. Solo stati attivi. Importo = somma dell'imponibile delle righe della commessa (lo stesso totale dei dati contrattuali), visibile solo con `viewContractData`, altrimenti null e la riga non compare.
+    D-7 Cancellare uno stato pagamento usato da una commessa e' rifiutato (409, `UsageMap` + FK restrict).
+  </context>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/work-orders/{id}">
+      <response status="200">Chiavi AGGIUNTE: `work_order_payment_status_id`: ?int; `payment_status`: ?{ id, name, color, allows_delivery }; `amount`: ?string ("1250.50", null senza viewContractData). `permissions.fields.work_order_payment_status_id` editabile solo con managePayments.</response>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/work-orders/{id}">
+      <request>`work_order_payment_status_id`: ?int (sometimes, nullable, stato attivo esistente). Null lo svuota.</request>
+      <errors>422 senza managePayments (permessi per campo) o con uno stato inesistente/inattivo.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato il campo flessibile con valore "3", quando gira la migrazione, allora la commessa ha lo stato con old_id 3 e `attribute_values` non ha piu' `stato_pagamento`. Test: `WorkOrderPaymentStatusFieldTest`.</criterion>
+    <criterion id="AC-002">Dopo la migrazione l'attributo non e' assegnato ad alcuna categoria ne' presente in alcun layout Commessa; un secondo lancio non cambia nulla.</criterion>
+    <criterion id="AC-003">Nel dettaglio, "Dati contrattuali commessa" apre con Titolo, Importo, Stato pagamento; lo stato si modifica sul posto con l'elenco degli Stati pagamento commessa. Test: `work-order-payment-status-field.test.tsx`.</criterion>
+    <criterion id="AC-004">Senza managePayments nessuna matita e PATCH 422; senza viewContractData nessun Importo.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Mai lanciare la migrazione sul DB dev `qnet2` senza ok esplicito dell'utente (memoria di progetto). Lanciata su `qnet2` il 2026-11-16 con l'ok dell'utente: attributo cancellato, 170 assegnazioni e 110 layout puliti, 467 valori tolti, 12.151 commesse su 16.601 con uno stato.</item>
+    <item>Nessuna nuova dipendenza. Griglia Commesse e filtri: fuori scope (nessuna colonna nuova).</item>
+  </constraints>
+
+</spec>

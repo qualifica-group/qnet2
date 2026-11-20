@@ -7,6 +7,7 @@ use App\DataObjects\ProductTypologies\UpdateProductTypologyData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\ProductTypology;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Collection;
 
 /**
@@ -17,6 +18,8 @@ use Illuminate\Support\Collection;
  */
 class ProductTypologyService
 {
+    public function __construct(private readonly InUseGuard $inUseGuard) {}
+
     public function create(CreateProductTypologyData $data): ProductTypology
     {
         return ProductTypology::create($data->attributes());
@@ -45,9 +48,7 @@ class ProductTypologyService
      */
     public function delete(ProductTypology $productTypology): void
     {
-        if ($productTypology->products()->exists()) {
-            abort(409, 'This product typology is used by a product and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($productTypology);
 
         $productTypology->delete();
     }

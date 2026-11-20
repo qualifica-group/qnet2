@@ -111,6 +111,24 @@
         }
         .button:hover { background-color: #2a4670; border-color: #2a4670; }
 
+        /* Scheda dettagli delle notifiche (spec 0381): etichetta a sinistra su
+           fondo appena piu' scuro, valore a destra, filo tra le righe. */
+        .details {
+            width: 100%;
+            margin: 4px 0 20px;
+            border: 1px solid #d8dee7;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .details td { padding: 9px 14px; border-top: 1px solid #e6eaf0; vertical-align: top; }
+        .details tr:first-child td { border-top: 0; }
+        .details-label { width: 38%; background-color: #f7f9fb; color: #495465; font-weight: 600; }
+        .details-value { color: #303f55; overflow-wrap: anywhere; }
+
         .muted { color: #495465; font-size: 13px; line-height: 1.6; }
         .muted a { color: #495465; }
         .break { word-break: break-all; overflow-wrap: anywhere; }
@@ -133,6 +151,7 @@
             .body { padding: 24px 20px; font-size: 15px; }
             .body h1 { font-size: 19px; }
             .button { display: block; text-align: center; }
+            .details td { padding: 8px 10px; }
             .footer { padding: 16px 20px 20px; }
         }
 
@@ -148,6 +167,11 @@
             /* Specificita' maggiore di `.body a`, altrimenti il colore del link
                vince sull'etichetta del bottone e la rende illeggibile. */
             .body a.button, .button { background-color: #799ece !important; border-color: #799ece !important; color: #172230 !important; }
+            .details { border-color: #4f5972 !important; }
+            .details td { border-top-color: #4f5972 !important; }
+            .details tr:first-child td { border-top: 0 !important; }
+            .details-label { background-color: #262c3c !important; color: #b2b9c3 !important; }
+            .details-value { color: #e7eaee !important; }
             .muted, .muted a { color: #b2b9c3 !important; }
             .footer { background-color: #262c3c !important; border-top-color: #4f5972 !important; color: #b2b9c3 !important; }
             .footer-name { color: #e7eaee !important; }

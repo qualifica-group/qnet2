@@ -6,6 +6,7 @@ import {
   type ColumnMovedEvent,
   type ColumnResizedEvent,
   type ColumnVisibleEvent,
+  type FilterOpenedEvent,
   type GetRowIdParams,
   type GridOptions,
   type GridState,
@@ -13,6 +14,7 @@ import {
   type ModelUpdatedEvent,
   type RowSelectionOptions,
   type SelectionChangedEvent,
+  type StateUpdatedEvent,
 } from 'ag-grid-community'
 import {
   AG_GRID_LOCALE_EN,
@@ -32,7 +34,15 @@ import {
   TableEmptyOverlay,
 } from '@/components/data-table/data-table-overlays'
 import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
+import {
+  buildInitialGridState,
+  gridPositionFromState,
+  initialRowCount,
+  pageSizeOptions,
+  restorablePosition,
+} from '@/components/data-table/grid-position'
 import { createFilterTruncationNotice } from '@/components/data-table/filter-truncation-notice'
+import { hookSetFilterServerSearch } from '@/components/data-table/set-filter-server-search'
 import { buildRowGroupingGridOptions, resolveRowId } from '@/components/data-table/row-grouping-grid-options'
 import { buildTreeDataGridOptions } from '@/components/data-table/tree-data-grid-options'
 import { syncCacheBlockToPageSize } from '@/components/data-table/pagination-block-size'
@@ -88,6 +98,7 @@ export function DataTable({
   onGridReady,
   onColumnStateChanged,
   initialFilterModel,
+  positionStore,
   onFilterChanged,
   onRowCountChanged,
   enableSelection,
@@ -110,7 +121,10 @@ export function DataTable({
   // Owns the PATCH -> setData/revert cycle for inline cell edits (spec 0053),
   // including the note dialog for a `requires_note` value (spec 0054 D-5):
   // domain-agnostic, so it lives here rather than in a per-domain adapter.
-  const { handleCellValueChanged, noteDialogSlot } = useTableCellEdit(domain, columns, interceptCellCommit)
+  const { handleCellValueChanged, noteDialogSlot } = useTableCellEdit(domain, columns, interceptCellCommit, {
+    productCategoryId,
+    productCategoryBranchId,
+  })
 
   // AG Grid's own UI strings (filter menus, set filter, column panel, context
   // menu, pagination, "Loading…"/"No Rows To Show") come from the official
@@ -132,6 +146,15 @@ export function DataTable({
     createFilterTruncationNotice(() =>
       toast.info(i18n.t('table.filterValuesTruncated'), { id: FILTER_TRUNCATED_TOAST_ID }),
     ),
+  )
+
+  // The notice gate, plus the server search of a truncated Set Filter list (task 427169).
+  const handleFilterOpened = useCallback(
+    (event: FilterOpenedEvent) => {
+      filterTruncationNotice.markOpened(event)
+      hookSetFilterServerSearch(event)
+    },
+    [filterTruncationNotice],
   )
 
   const colDefs = useMemo<ColDef[]>(
@@ -250,21 +273,34 @@ export function DataTable({
     [enableSelection, isRowSelectable],
   )
 
-  // Apply the saved filters once, at grid creation, so the first SSRM request is
-  // already filtered. Omitted when empty so a clean table starts unfiltered.
+  // Where the user left this grid (sort, page, page size), read once per mount:
+  // back on the list from a record page, they land where they were.
+  const [initialPosition] = useState(() => restorablePosition(positionStore?.read() ?? null, blockSize))
+  const pageSize = initialPosition?.pageSize ?? blockSize
+
+  // Apply the saved filters and the restored position once, at grid creation,
+  // so the first SSRM request is already filtered, sorted and on that page.
   const initialState = useMemo<GridState | undefined>(
-    () =>
-      initialFilterModel && Object.keys(initialFilterModel).length > 0
-        ? { filter: { filterModel: initialFilterModel } }
-        : undefined,
-    [initialFilterModel],
+    () => buildInitialGridState(initialFilterModel, initialPosition),
+    [initialFilterModel, initialPosition],
   )
+
+  const handleStateUpdated = useCallback(
+    (event: StateUpdatedEvent<TableRow>) => positionStore?.write(gridPositionFromState(event.state, pageSize)),
+    [positionStore, pageSize],
+  )
+
+  // Kept apart from `gridOptions`: AG Grid rebuilds the side bar, and closes the
+  // open tool panel, whenever the `sideBar` identity changes. `gridOptions`
+  // follows `columns`, which the config echo of every column toggle replaces.
+  const rowGroupingEnabled = rowGrouping?.enabled === true
+  const sideBar = useMemo(() => buildSideBar(rowGroupingEnabled), [rowGroupingEnabled])
 
   const gridOptions = useMemo<GridOptions<TableRow>>(
     () => ({
       rowModelType: 'serverSide',
       serverSideDatasource: datasource,
-      sideBar: buildSideBar(rowGrouping?.enabled === true),
+      sideBar,
       // Universal custom field columns (spec 0021) use a dotted id
       // (`custom.<key>`) as a FLAT row key, not a nested path. AG Grid's default
       // dot-notation would otherwise read `field: 'custom.<key>'` as
@@ -273,7 +309,7 @@ export function DataTable({
       // Reveal the header filter and column-menu buttons only while the pointer
       // is over the column header; the v35 default keeps them always visible.
       suppressMenuHide: false,
-      cacheBlockSize: blockSize,
+      cacheBlockSize: pageSize,
       // Show a column-shaped skeleton while each SSRM block loads: opting out of
       // the full-width loading row makes AG Grid render `loadingCellRenderer`
       // per cell, so the placeholder mirrors the real column layout.
@@ -283,12 +319,12 @@ export function DataTable({
       noRowsOverlayComponent: TableEmptyOverlay,
       // Render a full page of loading rows on the initial load too: without this,
       // SSRM shows a single loading row until the first response reveals the row
-      // count. Seeding the count with the page size makes the grid paint
-      // `blockSize` skeleton rows immediately.
-      serverSideInitialRowCount: blockSize,
+      // count. Seeding the count with the page size makes the grid paint a page
+      // of skeleton rows immediately; a restored page needs the count to reach it.
+      serverSideInitialRowCount: initialRowCount(pageSize, initialPosition),
       pagination: true,
-      paginationPageSize: blockSize,
-      paginationPageSizeSelector: [blockSize, blockSize * 2, blockSize * 4],
+      paginationPageSize: pageSize,
+      paginationPageSizeSelector: pageSizeOptions(blockSize),
       // Keep the user's column order across a `columnDefs` re-apply. The AG Grid
       // default (false) re-reads the order from the definitions array on every
       // update, so a drag-and-drop reorder was undone by the next React render.
@@ -337,7 +373,10 @@ export function DataTable({
     }),
     [
       datasource,
+      sideBar,
       blockSize,
+      pageSize,
+      initialPosition,
       getRowId,
       rowSelection,
       handleCellValueChanged,
@@ -367,9 +406,10 @@ export function DataTable({
         onColumnMoved={handleColumnMoved}
         onColumnVisible={handleColumnVisible}
         onFilterChanged={onFilterChanged}
-        onFilterOpened={filterTruncationNotice.markOpened}
+        onFilterOpened={handleFilterOpened}
         onModelUpdated={handleModelUpdated}
         onPaginationChanged={syncCacheBlockToPageSize}
+        onStateUpdated={positionStore ? handleStateUpdated : undefined}
         onSelectionChanged={enableSelection ? handleSelectionChanged : undefined}
         {...gridOptions}
       />

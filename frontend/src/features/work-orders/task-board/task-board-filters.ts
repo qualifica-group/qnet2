@@ -13,12 +13,12 @@ import type {
 } from '@/features/work-orders/task-board/types'
 import type { TaskLookupRef, TaskNamedRef } from '@/features/tasks/types'
 
-/** "Aperti" is the predefined status filter (D-6): every other axis starts unrestricted. */
+/** Every axis starts unrestricted, closed tasks included (user directive 2026-11-16, overrides D-6's "Aperti" default). */
 export const DEFAULT_TASK_BOARD_FILTERS: TaskBoardFilters = {
   search: '',
   taskTypeIds: [],
   due: 'all',
-  status: 'open',
+  status: 'all',
   assignment: 'all',
   requesterIds: [],
   assigneeIds: [],

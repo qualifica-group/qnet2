@@ -39,12 +39,23 @@ export function registerPresetSetFilterValues(api: GridApi, patch: Record<string
   }
 }
 
+/** The Set Filter values of a column model, the standalone one or the one inside a Multi Filter. */
+function appliedSetValues(model: unknown): string[] {
+  const entry = model as { filterType?: unknown; filterModels?: unknown } | null
+  if (entry?.filterType === 'multi' && Array.isArray(entry.filterModels)) {
+    return entry.filterModels.flatMap((child) => setModelValues(child) ?? [])
+  }
+  return setModelValues(model) ?? []
+}
+
 /**
  * The server value list of a column plus the preset values it does not offer
- * yet: those written through the table handle and those of the model restored
- * at grid creation (saved filters + `forcedFilterModel`), which goes through
- * the same validation and would otherwise lose a value (and, cascading, the
- * other columns' values scoped by it) when the restored scope has no row.
+ * yet: those written through the table handle, those of the model restored
+ * at grid creation (saved filters + `forcedFilterModel`) and those applied
+ * right now. Each goes through the same validation and would otherwise lose a
+ * value (and, cascading, the other columns' values scoped by it) when the
+ * scoped list lacks it: a value picked through the server search of a
+ * truncated list (task 427169) is not among the first values listed on reopen.
  */
 export function withPresetSetFilterValues(
   api: GridApi,
@@ -52,7 +63,8 @@ export function withPresetSetFilterValues(
   values: (string | null)[],
 ): (string | null)[] {
   const restored = setModelValues(api.getGridOption('initialState')?.filter?.filterModel?.[columnId]) ?? []
-  const presets = [...restored, ...(presetValues.get(api)?.get(columnId) ?? [])]
+  const applied = appliedSetValues(api.getFilterModel()[columnId])
+  const presets = [...restored, ...applied, ...(presetValues.get(api)?.get(columnId) ?? [])]
   const missing = [...new Set(presets)].filter((value) => !values.includes(value))
   return missing.length > 0 ? [...values, ...missing] : values
 }

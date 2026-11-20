@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One vote of a user on a work order page poll (spec 0380, D-7): unique per
+ * One vote of a user on a work order page poll (spec 0420, D-7): unique per
  * (poll, user), nominative.
  */
 #[Fillable(['work_order_page_poll_id', 'user_id', 'option_key'])]

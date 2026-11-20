@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0398-legacy-registry-responsible-referents" status="approved" owner="nicola" date="2026-11-14">
+
+  <goal>
+    Le anagrafiche migrate hanno come referenti il "Referente 1" e il "Referente 2" del vecchio QNet, e come principale il Referente 1 invece del commerciale: le commesse mostrano lo stesso referente del legacy (task 427822).
+  </goal>
+
+  <context>
+    D-1 Task 427822 (2026-11-11): "L'importazione dei vecchi contatti non e' ancora risolta". Esempi verificati sul DB dev e sulla copia di produzione `qnet2_prod_1114`: COM-0737 SWINGUYS (legacy: Referente 1 FILIPPO, Referente 2 Tiziana; qnet-2: nessun referente), COM-8398 DEMOLTECH (legacy: Referente 1 Francesco Palladino, Referente 2 Francesca, Commerciale Biagio Fusco; qnet-2: principale Biagio Fusco, Francesca assente).
+    D-2 Causa 1: nel legacy "Referente 1/2" non sono contatti ma colonne di testo libero di `companies` (`responsible`, `responsible_phone`, `responsible_email`, `responsible2`, `responsible2_phone`, `responsible2_email`), mostrate in `info-order.blade.php`. `RegistryMigrationController::loadPageContext` invia come `referent_ids` solo `company_contacts`: le colonne non sono mai state migrate.
+    D-3 Causa 2: `company_contacts.contact_type_id` = 1 ("Commerciale", referent type qnet-2 id 10, old_id 1) arriva tra i `referent_ids` come referente qualsiasi; la tabella ponte `referent_registry` (id, referent_id, registry_id) non conserva il tipo. La migrazione `2026_11_10_100100_backfill_registries_primary_referent_id` (spec 0330 D-10) ha messo come principale il primo collegato, spesso il commerciale. DB dev: 3.356 anagrafiche migrate con `primary_referent_id = commercial_id`.
+    D-4 Dati legacy (DB locale): 9.056 Referente 1 valorizzati (2.002 senza lettere come `0`, 883 una sola parola, 4.721 due parole, 1.450 tre o piu'), 714 Referente 2 (129 una sola parola). 929 aziende hanno telefono o email del Referente 1 senza un nome valido. Valori sporchi: titoli (`Dott.`, `dr`), ruoli (`amministratore`, `uff.gare`), studio tra parentesi, email con punto finale, telefoni con spazi.
+    D-5 Per backend.md §9 il legacy prepara i dati: pulizia del nome e divisione nome/cognome, pulizia di telefono ed email (`LegacyContactFields::split`, spec 0378), deduplica contro i contatti gia' collegati all'azienda (stesso nome, anche invertito, senza maiuscole e spazi), deduplica Referente 2 = Referente 1, scarto dei valori senza un nome, individuazione dei Commerciali. qnet-2 fa solo lookup `old_id`, creazione tramite `ReferentService::create`, collegamento all'anagrafica, regola del principale.
+    D-6 Decisione utente 2026-11-14: un nome di una sola parola diventa referente con il solo nome (`last_name` null); l'utente completa il cognome alla prima modifica (`StorePersonalDataRequest` lo richiede gia' in modifica, invariata). Il vincolo nome+cognome di `ReferentsSource` resta invariato per i `contacts` del legacy.
+    D-7 Decisione utente 2026-11-14: telefono ed email di un Referente 1/2 senza nome valido diventano contatti NON principali dell'anagrafica, con etichetta `Referente 1` / `Referente 2`. Il legacy li invia nel campo gia' esistente `extra_contacts` (spec 0378): li aggiunge il comando esistente `migrations:reimport-registry-contacts`, nessun codice nuovo in qnet-2 per questo caso.
+    D-8 Decisione utente 2026-11-14: i Commerciali collegati restano tra i referenti dell'anagrafica (nessuna cancellazione); smettono solo di essere il principale. "Commerciale" = contatto in `commercial_contact_ids` del legacy oppure uguale a `registries.commercial_id`.
+    D-9 Regola del principale, applicata solo se il principale NON e' stato cambiato a mano (nessuna voce di `activity_log` su quella anagrafica, evento diverso da `created`, con `properties.attributes.primary_referent_id`): (1) se c'e' il Referente 1, diventa principale; (2) altrimenti, se il principale attuale e' un Commerciale, diventa principale il primo referente collegato non Commerciale (ordine `referent_registry.id`), e se non c'e' il principale diventa vuoto (decisione utente 2026-11-14); (3) altrimenti resta com'e'.
+    D-10 Il Referente 2 e' solo collegato, mai principale. I referenti nuovi: tipo "Referente" (legacy `contact_types.id` 2, gia' migrato come referent type), ambito `external`, `old_id` null (non esiste un record `contacts` legacy). Idempotenza dei nuovi: un referente gia' collegato all'anagrafica con lo stesso nome e cognome (ignorando maiuscole e spazi doppi o ai bordi) non viene ricreato.
+    D-11 Come la spec 0378: il comando non modifica ne' cancella referenti o contatti esistenti; ai referenti esistenti abbinati aggiunge solo i contatti mancanti (stesso tipo + `normalized_value`); scritture senza activity log; report Excel in `storage/app/private/realign/`. I nuovi campi valgono anche all'import (`RegistriesSource`) delle anagrafiche non ancora migrate, con la stessa unita' condivisa: un solo percorso di creazione.
+    D-12 La commessa mostra prima il referente dell'offerta e poi il principale dell'anagrafica: le commesse con un referente sull'offerta non cambiano.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy `RegistryMigrationController` (+ nuovo helper `App\Support\Migration\LegacyResponsibleReferents`): campi `responsible_referents` e `commercial_contact_ids`; canali dei Referenti senza nome dentro `extra_contacts` con etichetta.</item>
+      <item>qnet-2 `backend/app/Migrations/`: nuova unita' condivisa che crea/abbina i Referenti 1/2 e applica la regola del principale; uso in `RegistriesSource` (import) e nel nuovo comando.</item>
+      <item>Nuovo comando `php artisan migrations:reimport-registry-referents [--apply] [--output=]` con report Excel.</item>
+      <item>Test Pest su import, comando e regola del principale; fixture allineate al contratto legacy.</item>
+    </in>
+    <out>
+      <item>Referenti di offerte, opportunita' e commesse (`quote` referent): non toccati.</item>
+      <item>Cancellazione o scollegamento dei Commerciali dai referenti (D-8).</item>
+      <item>Tipo del collegamento referente-anagrafica (nessuna colonna nuova su `referent_registry`).</item>
+      <item>Riallineamento (spec 0375) e `ReferentsSource`: invariati.</item>
+      <item>Deduplica dei nuovi referenti tra anagrafiche diverse: uno per anagrafica.</item>
+      <item>Frontend e manuale: nessun cambio di schermate o regole visibili (manuale: nessun impatto).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="legacy /api/v2/registries (anche con only_ids)">
+      <response status="200">
+        Campi AGGIUNTI a ogni record (contratto additivo, i campi esistenti restano):
+        `responsible_referents`: list (0..2), ordinata per `slot`, di {
+          slot: 1|2,
+          contact_id: ?int (contatto legacy gia' in `company_contacts` dell'azienda con lo stesso nome; null = referente nuovo),
+          referent_type_id: int (legacy `contact_types.id`, 2 = Referente),
+          first_name: string (non vuoto),
+          last_name: ?string (null se il nome e' una sola parola),
+          email: ?string, pec: ?string, phone: ?string, phone2: ?string, fax: ?string (uscita di `LegacyContactFields::split`),
+          extra_contacts: [{ type, value, label }]
+        }.
+        `commercial_contact_ids`: list&lt;int&gt;, contatti legacy collegati all'azienda con `company_contacts.contact_type_id` = 1.
+        `extra_contacts` (esistente): in piu' telefono/email dei Referenti 1/2 senza nome valido, `label` = "Referente 1" | "Referente 2".
+        Un Referente 2 uguale al Referente 1 non e' inviato. Un nome senza lettere o vuoto non produce una voce in `responsible_referents`.
+      </response>
+    </endpoint>
+    <endpoint method="CLI" path="php artisan migrations:reimport-registry-referents [--apply] [--output=path.xlsx]">
+      <request>Senza `--apply` simula e non scrive nulla. Legge tutte le anagrafiche con `old_id` a blocchi (`LegacyRealignClient::MAX_IDS_PER_REQUEST`) dal legacy con `only_ids`.</request>
+      <response status="0">
+        Report Excel (default `storage/app/private/realign/registry-referents-{Ymd-His}-{apply|dry}.xlsx`), fogli:
+        `Referenti collegati` (legacy_id, qnet2_id, registry, slot, referent_id, referent, created: bool, contacts_added: int);
+        `Principali cambiati` (legacy_id, qnet2_id, registry, old_primary, new_primary, reason: "referente_1"|"commerciale");
+        `Anagrafiche saltate` (legacy_id, qnet2_id, registry, reason).
+        Riepilogo a video: anagrafiche lette, referenti creati, referenti abbinati, principali cambiati, principali lasciati perche' cambiati a mano.
+      </response>
+      <errors>Legacy non raggiungibile (`ExternalApiException`): exit 1, messaggio "rilancia, quanto gia' scritto non e' ripetuto".</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Legacy. Dato `responsible` = "Francesco Palladino" e un contatto collegato all'azienda "Francesco Palladino" (anche " Palladino " / ordine invertito), quando il legacy invia l'anagrafica, allora la voce slot 1 ha `contact_id` di quel contatto. Verifica: tinker su DEMOLTECH (16543).</criterion>
+    <criterion id="AC-002">Legacy. Dato `responsible` = "FILIPPO" con `responsible_phone`, quando il legacy invia, allora slot 1 ha `first_name` "FILIPPO", `last_name` null, `contact_id` null e il telefono pulito. Verifica: tinker su SWINGUYS.</criterion>
+    <criterion id="AC-003">Legacy. Dato `responsible` = "0" con un telefono, quando il legacy invia, allora nessuna voce in `responsible_referents` e il telefono e' in `extra_contacts` con `label` "Referente 1". Verifica: tinker.</criterion>
+    <criterion id="AC-004">Legacy. Dati contatti dell'azienda con `contact_type_id` 1, quando il legacy invia, allora i loro id sono in `commercial_contact_ids`. Verifica: tinker su DEMOLTECH (17050).</criterion>
+    <criterion id="AC-005">Dato un record con Referente 1 nuovo e Referente 2 abbinato a un contatto gia' migrato, quando importo l'anagrafica (`RegistriesSource`), allora il Referente 1 e' creato (tipo Referente, ambito external, con i suoi contatti), entrambi sono collegati e il Referente 1 e' il principale.</criterion>
+    <criterion id="AC-006">Dato un Referente con `last_name` null, quando lo importo, allora il referente esiste con il solo nome, senza errori ne' avvisi bloccanti.</criterion>
+    <criterion id="AC-007">Data un'anagrafica migrata con il principale = commerciale e un Referente 1 dal legacy, quando lancio il comando con `--apply`, allora il Referente 1 e' collegato e diventa principale; il commerciale resta collegato e resta in `commercial_id`.</criterion>
+    <criterion id="AC-008">Data un'anagrafica migrata con il principale Commerciale, senza Referente 1 e con un altro referente non Commerciale, quando lancio il comando con `--apply`, allora diventa principale quel referente; se non c'e', il principale diventa vuoto.</criterion>
+    <criterion id="AC-009">Data un'anagrafica il cui principale ha una voce di activity log con `primary_referent_id` (cambiato a mano), quando lancio il comando con `--apply`, allora il principale non cambia (i referenti mancanti si collegano comunque) e l'anagrafica e' contata tra le "lasciate".</criterion>
+    <criterion id="AC-010">Dato un Referente abbinato a un referente esistente, quando lancio il comando con `--apply`, allora non viene creato un doppione e al referente si aggiungono solo i contatti mancanti, senza modificare quelli presenti.</criterion>
+    <criterion id="AC-011">Dato il comando senza `--apply`, quando termina, allora nulla e' scritto (referenti, collegamenti, contatti, principali, activity log invariati) e il report elenca cosa cambierebbe.</criterion>
+    <criterion id="AC-012">Dato un secondo lancio con `--apply`, quando termina, allora non crea, collega ne' cambia nulla.</criterion>
+    <criterion id="AC-013">Dato il comando con `--apply`, quando scrive, allora non crea voci di activity log (cosi' AC-009 resta valido nei lanci successivi).</criterion>
+    <criterion id="AC-014">Dato un record legacy senza nuovi campi (legacy non aggiornato), quando importo o lancio il comando, allora nulla cambia e nessun errore.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>backend.md §9: niente parsing di nomi, telefoni o email in qnet-2; ogni dato sporco si corregge nel controller legacy.</item>
+    <item>Creazione referenti solo tramite `ReferentService::create` (un solo percorso, come `ReferentsSource`); principale scritto rispettando INV-1 della spec 0330 (sempre uno dei referenti collegati, o null).</item>
+    <item>Nessuna nuova dipendenza, nessuna migrazione di schema. Report con OpenSpout come il comando della spec 0378.</item>
+    <item>Il report contiene dati personali: resta sul server, mai nei log.</item>
+    <item>Test mirati `XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/Migration`; legacy verificato con tinker + `php -l` sui dati reali.</item>
+    <item>Ordine di rilascio: prima il legacy, poi qnet-2; in produzione prima la simulazione, poi `--apply`, poi `migrations:reimport-registry-contacts --apply` per i canali senza nome (D-7).</item>
+  </constraints>
+
+</spec>

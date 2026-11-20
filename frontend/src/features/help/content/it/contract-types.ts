@@ -40,7 +40,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Una tipologia già usata da una condizione contrattuale non si può eliminare: disattivala. Le tipologie disattivate non si scelgono nelle nuove condizioni; quelle già salvate restano com’erano.',
+          text: 'Una tipologia già usata da una condizione contrattuale o dalla scheda di una persona non si può eliminare: disattivala. Le tipologie disattivate non si scelgono nelle nuove condizioni; quelle già salvate restano com’erano.',
         },
       ],
     },

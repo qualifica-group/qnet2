@@ -7,7 +7,7 @@ import { openMenuByName, selectText } from '@/features/work-order-page/menus/men
 import { SelectionToolbar } from '@/features/work-order-page/menus/selection-toolbar'
 
 /**
- * Spec 0380 AC-016: the selection bar applies the expected mark/block with each
+ * Spec 0420 AC-016: the selection bar applies the expected mark/block with each
  * command and checks the active style. The floating positioning (BubbleMenu) is
  * floating-ui's job and is verified in the browser; here the bar content is
  * rendered directly.

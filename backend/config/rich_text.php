@@ -54,7 +54,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Work order page limits (spec 0380)
+    | Work order page limits (spec 0420)
     |--------------------------------------------------------------------------
     |
     | `page_text_max`: visible characters of the page (RichTextPlainText);

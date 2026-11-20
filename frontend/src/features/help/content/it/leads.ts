@@ -99,6 +99,7 @@ const guide: HelpGuide = {
             'Clicca **Assegna operatori**.',
             'Scegli il **Tipo di assegnazione**: **Smistamento equo** (distribuisce bilanciando il carico) o **Assegna a operatore** (tutti allo stesso operatore).',
             'Con **Smistamento equo** compare la lista degli operatori raggruppati per Sede: sono tutti selezionati, deseleziona chi non deve ricevere lead (per gruppo intero o singolo operatore).',
+            'Sotto la lista, l’interruttore **Tieni conto del carico attuale** (acceso di default) dà più lead a chi ne ha meno in carico; spento, divide i lead in parti uguali tra gli operatori selezionati senza contare quelli che hanno già.',
             'Clicca **Assegna**.',
           ],
         },
@@ -139,6 +140,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Insieme all'opportunità nasce un'offerta collegata, con una riga per ogni prodotto di interesse vendibile (quantità 1, prezzo del prodotto).",
+        },
+        {
+          type: 'paragraph',
+          text: "Se assegni o cambi l'**Operatore** del lead dopo la conversione, anche le richieste nate dal lead passano al nuovo operatore, che riceve la notifica. Restano invariate le richieste chiuse e quelle a cui hai assegnato a mano un altro operatore in Gestione Richieste; togliere l'operatore dal lead non lo toglie dalle richieste.",
         },
         {
           type: 'paragraph',

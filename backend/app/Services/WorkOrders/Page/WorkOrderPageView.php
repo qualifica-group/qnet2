@@ -10,7 +10,7 @@ use App\Models\WorkOrderPagePoll;
 use Illuminate\Support\Collection;
 
 /**
- * Everything the WorkOrderPagePayload (spec 0380 data_contract) is made of:
+ * Everything the WorkOrderPagePayload (spec 0420 data_contract) is made of:
  * the page (null while it does not exist yet), the tasks cited by its content
  * (id => visible Task, or null when not available to the reader) and the page polls.
  */

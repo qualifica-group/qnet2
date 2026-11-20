@@ -3,6 +3,7 @@
 use App\Enums\CommissionType;
 use App\Enums\MigrationStatus;
 use App\Enums\WorkOrderType;
+use App\Enums\WorkOrderWorkPhase;
 use App\Models\MigrationRun;
 use App\Models\Quote;
 use App\Models\QuoteLine;
@@ -88,6 +89,31 @@ it('force-closes a work order the legacy sends with a force-close reason', funct
 
     expect($workOrder->is_force_closed)->toBeTrue()
         ->and($workOrder->force_close_reason)->toBe('Annullata (legacy)');
+});
+
+it('spec 0395 AC-006: writes the legacy working phase, which wins over the qnet-2 rules', function () {
+    User::factory()->create(['old_id' => 61]);
+
+    runLegacyWorkOrdersImport([
+        legacyWorkOrderRecord(['supervisor_user_ids' => [61]]),
+        legacyWorkOrderRecord(['id' => 18, 'force_close_reason' => 'Disdetta (legacy)', 'work_phase' => 'terminated', 'work_phase_before_termination' => 'in_progress']),
+    ]);
+
+    $toPlan = WorkOrder::query()->where('old_id', 17)->sole();
+    $terminated = WorkOrder::query()->where('old_id', 18)->sole();
+
+    expect($toPlan->work_phase)->toBe(WorkOrderWorkPhase::ToPlan)
+        ->and($terminated->work_phase)->toBe(WorkOrderWorkPhase::Terminated)
+        ->and($terminated->work_phase_before_termination)->toBe(WorkOrderWorkPhase::InProgress);
+});
+
+it('spec 0395 AC-006: an unknown working phase is reported and left to the qnet-2 rules', function () {
+    User::factory()->create(['old_id' => 61]);
+
+    $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord(['supervisor_user_ids' => [61], 'work_phase' => 'paused'])]);
+
+    expect(WorkOrder::query()->where('old_id', 17)->sole()->work_phase)->toBe(WorkOrderWorkPhase::InProgress)
+        ->and(legacyWorkOrderWarnings($run))->toContain("Unknown work phase 'paused'; phase left unchanged.");
 });
 
 it('links a copy of a line already programmed into another work order, with its commissions and the offer totals', function () {

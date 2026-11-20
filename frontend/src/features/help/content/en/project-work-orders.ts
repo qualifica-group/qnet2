@@ -79,11 +79,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'closed-work-orders',
-      title: 'Completed or closed work order',
+      title: 'Completed, cancelled or terminated work order',
       blocks: [
         {
           type: 'paragraph',
-          text: 'When the work order is **Completed** or **Closed**, the chat becomes **read-only**: you can review the messages but not send, edit or delete them, and you see the notice **Read-only chat: you cannot send messages.** This also applies to administrators.',
+          text: 'When the work order status is **Completed**, **Cancelled** or **Terminated**, the chat becomes **read-only**: you can review the messages but not send, edit or delete them, and you see the notice **Read-only chat: you cannot send messages.** This also applies to administrators.',
         },
       ],
     },

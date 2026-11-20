@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Opportunities;
 
-use App\Enums\CategoryManagementMode;
 use App\Models\Opportunity;
+use App\Models\OpportunityProductLine;
+use App\Models\ProductCategory;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -23,20 +24,20 @@ use Illuminate\Validation\ValidationException;
  * (`closed_won`/`closed_lost`), or no quote at all (which displays the `open`
  * row of the workflow its own product category resolves to).
  *
- * User directive 2026-08-31 (refinement): an open opportunity managed on a
- * SINGLE product category does NOT block. That mode is the one-shot deal
- * (spec 0077: one product line, one offer, one product row) — it describes a
- * closed scope, not the anagrafica's whole running business — so the
- * anagrafica must stay free to open another opportunity next to it. Only an
- * open opportunity in `multiple` mode (or one whose mode is indeterminate,
- * which is never PROVEN to be single) blocks.
- *
  * User directive 2026-11-07: an open opportunity whose product lines all sit on
- * legacy categories (`product_categories.is_legacy`) does not block either.
+ * legacy categories (`product_categories.is_legacy`) does not block; user
+ * report 2026-11-13: nor does a migrated one (`old_id`) without any line.
  *
- * User directive 2026-11-07: the exemption is symmetric — a NEW opportunity
- * whose product lines resolve to `single` mode is created even beside an open
- * `multiple` one, for the same one-shot reason.
+ * User decision 2026-11-11: the exemption is the root-owned category flag
+ * `multiple_open_opportunities`, in both directions — an open opportunity of
+ * a flagged branch does not block, and a NEW one of a flagged branch is
+ * created beside any open one. It replaces the former `single`-mode exemption
+ * (directives 2026-08-31 and 2026-11-07): the migration turned the flag on
+ * for the `single` categories, then it is edited by hand, independently of
+ * the management mode (so a `multiple` branch, whose offers carry several
+ * rows, may be exempt too). An opportunity is exempt when every one of its
+ * current (non-legacy) categories carries the flag: one category without it
+ * keeps the block.
  *
  * Enforced inside OpportunityService::create(), the single write point every
  * creation path funnels through (form, lead conversion, import auto-convert),
@@ -60,8 +61,6 @@ final class RegistryOpenOpportunityGuard
      */
     public const string EXISTING_OPPORTUNITY_KEY = 'existing_opportunity_id';
 
-    public function __construct(private readonly OpportunityProductLineCoverage $coverage) {}
-
     /**
      * @param  array<int, int>  $newCategoryIds  the product categories of the opportunity being created
      *
@@ -69,11 +68,7 @@ final class RegistryOpenOpportunityGuard
      */
     public function assertNoOpenOpportunity(int $registryId, array $newCategoryIds = []): void
     {
-        if ($this->coverage->managementModeOfCategories($newCategoryIds) === CategoryManagementMode::Single) {
-            return;
-        }
-
-        $existing = $this->openOpportunityFor($registryId);
+        $existing = $this->blockingOpportunityFor($registryId, $newCategoryIds);
 
         if ($existing === null) {
             return;
@@ -83,6 +78,23 @@ final class RegistryOpenOpportunityGuard
             'registry_id' => [__(self::OPEN_OPPORTUNITY_MESSAGE, ['opportunity' => $existing->name])],
             self::EXISTING_OPPORTUNITY_KEY => [(string) $existing->id],
         ]);
+    }
+
+    /**
+     * The opportunity that blocks creating a new one for $registryId with the
+     * given categories, or null when the creation is allowed (new categories
+     * all exempt, or no blocking open opportunity). The single predicate behind
+     * both the write-time refusal and the read-only pre-check.
+     *
+     * @param  array<int, int>  $newCategoryIds  the product categories of the opportunity being created
+     */
+    public function blockingOpportunityFor(int $registryId, array $newCategoryIds = []): ?Opportunity
+    {
+        if ($this->allowMultipleOpen(ProductCategory::query()->whereKey($newCategoryIds)->get(['id', 'is_legacy', 'multiple_open_opportunities']))) {
+            return null;
+        }
+
+        return $this->openOpportunityFor($registryId);
     }
 
     /**
@@ -108,7 +120,7 @@ final class RegistryOpenOpportunityGuard
     /**
      * The oldest open opportunity of $registryId that blocks a new one, or
      * null when the anagrafica has none (no open opportunity at all, or only
-     * single-mode ones).
+     * ones whose branch allows several).
      */
     public function openOpportunityFor(int $registryId): ?Opportunity
     {
@@ -117,8 +129,7 @@ final class RegistryOpenOpportunityGuard
 
     /**
      * The open opportunities of $registryIds that actually block, in id order:
-     * the single-mode ones are dropped, being one-shot deals rather than the
-     * anagrafica's running business.
+     * those whose branch allows several open opportunities are dropped.
      *
      * @param  array<int, int>  $registryIds
      * @return Collection<int, Opportunity>
@@ -134,11 +145,14 @@ final class RegistryOpenOpportunityGuard
 
         // User directive 2026-11-07: an opportunity whose product lines all sit on
         // legacy categories (`is_legacy`, the migrated catalogue) is history, not
-        // running business, so it never blocks. One with no line still does.
+        // running business, so it never blocks. User report 2026-11-13: neither
+        // does a MIGRATED one (`old_id`) with no line at all — the legacy record
+        // had no category, so no flag can ever exempt it. A native one cannot
+        // lose its lines (`product_lines` min:1), so it still blocks if lineless.
         $opportunities = Opportunity::query()
             ->whereIn('registry_id', $registryIds)
             ->where(static fn ($query) => $query
-                ->whereDoesntHave('productLines')
+                ->where(static fn ($lineless) => $lineless->whereNull('old_id')->whereDoesntHave('productLines'))
                 ->orWhereHas('productLines.productCategory', static fn ($category) => $category->where('is_legacy', false)));
 
         // The quote-less branch resolves a workflow per row (it is the row's
@@ -152,9 +166,27 @@ final class RegistryOpenOpportunityGuard
         );
 
         return $opportunities
+            ->with('productLines.productCategory:id,is_legacy,multiple_open_opportunities')
             ->orderBy('id')
             ->get()
-            ->reject(fn (Opportunity $opportunity): bool => $this->coverage->managementModeOf($opportunity) === CategoryManagementMode::Single)
+            ->reject(fn (Opportunity $opportunity): bool => $this->allowMultipleOpen($opportunity->productLines->map(
+                static fn (OpportunityProductLine $line): ?ProductCategory => $line->productCategory,
+            )->filter()))
             ->values();
+    }
+
+    /**
+     * Whether the current (non-legacy) categories among $categories all allow
+     * several open opportunities per anagrafica. False when there is none:
+     * an opportunity without a current category is judged by the other rules.
+     *
+     * @param  Collection<int, ProductCategory>  $categories
+     */
+    private function allowMultipleOpen(Collection $categories): bool
+    {
+        $current = $categories->reject(static fn (ProductCategory $category): bool => (bool) $category->is_legacy);
+
+        return $current->isNotEmpty()
+            && $current->every(static fn (ProductCategory $category): bool => (bool) $category->multiple_open_opportunities);
     }
 }

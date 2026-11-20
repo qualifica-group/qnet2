@@ -22,6 +22,8 @@ import { formatDate } from '@/lib/formatting/date-display'
 import type { BoardStageGroup } from '@/features/work-orders/task-board/task-board-filters'
 import { computeStageMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 import type { StageAccent } from '@/features/work-orders/task-board/task-board-stage-accent'
+import { TaskBoardColumnHeader } from '@/features/work-orders/task-board/task-board-column-header'
+import { TASK_BOARD_ROWS_MIN_WIDTH_CLASS } from '@/features/work-orders/task-board/task-board-row-columns'
 import { TaskBoardSelectAllCheckbox } from '@/features/work-orders/task-board/task-board-select-all-checkbox'
 import { TaskBoardStageMenu } from '@/features/work-orders/task-board/task-board-stage-menu'
 import { TaskBoardStageSummary } from '@/features/work-orders/task-board/task-board-task-meta'
@@ -179,22 +181,28 @@ export function TaskBoardStageGroup({
 
         <CollapsibleContent>
           <div className={cn(TASK_CARD_CLASS, isDragOver && 'ring-2 ring-primary/50')}>
-            <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-1', accent.stripe)} />
-            <SortableContext items={roots.map((node) => String(node.task.id))} strategy={verticalListSortingStrategy}>
-              <ul ref={setDroppableRef} className="flex min-h-12 flex-col divide-y divide-border/60 pl-1">
-                {roots.map((node) => (
-                  <TaskBoardTaskRow
-                    key={node.task.id}
-                    node={node}
-                    today={today}
-                    isReadOnly={isReadOnly}
-                    isSelected={selectedTaskIds.has(node.task.id)}
-                    onToggleSelection={onToggleSelection}
-                    onOpenTask={onOpenTask}
-                  />
-                ))}
-              </ul>
-            </SortableContext>
+            <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 z-10 w-1', accent.stripe)} />
+            {/* Spec 0401 D-7: past the columns' width the card scrolls sideways, never the page. */}
+            <div className="overflow-x-auto pl-1">
+              <div className={TASK_BOARD_ROWS_MIN_WIDTH_CLASS}>
+                {roots.length > 0 ? <TaskBoardColumnHeader /> : null}
+                <SortableContext items={roots.map((node) => String(node.task.id))} strategy={verticalListSortingStrategy}>
+                  <ul ref={setDroppableRef} className="flex min-h-12 flex-col divide-y divide-border/60">
+                    {roots.map((node) => (
+                      <TaskBoardTaskRow
+                        key={node.task.id}
+                        node={node}
+                        today={today}
+                        isReadOnly={isReadOnly}
+                        isSelected={selectedTaskIds.has(node.task.id)}
+                        onToggleSelection={onToggleSelection}
+                        onOpenTask={onOpenTask}
+                      />
+                    ))}
+                  </ul>
+                </SortableContext>
+              </div>
+            </div>
             {roots.length === 0 ? (
               <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
                 {t('workOrders.taskBoard.stage.emptyGroup')}

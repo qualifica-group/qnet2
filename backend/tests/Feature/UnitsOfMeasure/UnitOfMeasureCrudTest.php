@@ -228,7 +228,8 @@ it('delete: 409 when used by a product, row NOT removed (AC-015)', function () {
     $this->deleteJson("/api/units-of-measure/{$target->id}")
         ->assertStatus(409)
         ->assertJsonPath('success', false)
-        ->assertJsonPath('message', 'This unit of measure is used by a product and cannot be deleted.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 product']));
 
     $this->assertDatabaseHas('units_of_measure', ['id' => $target->id]);
 });
@@ -242,7 +243,8 @@ it('delete: 409 when used only by a quote line, row NOT removed (AC-016)', funct
     $this->deleteJson("/api/units-of-measure/{$target->id}")
         ->assertStatus(409)
         ->assertJsonPath('success', false)
-        ->assertJsonPath('message', 'This unit of measure is used by a quote line and cannot be deleted.');
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard.
+        ->assertJsonPath('message', __('deletion.in_use', ['usages' => '1 quote line']));
 
     $this->assertDatabaseHas('units_of_measure', ['id' => $target->id]);
 });

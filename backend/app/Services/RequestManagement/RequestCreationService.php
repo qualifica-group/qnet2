@@ -74,7 +74,7 @@ final class RequestCreationService
             // block (D-2's XOR is already enforced by StoreRequestRequest).
             $registry = $data->registryId !== null
                 ? Registry::findOrFail($data->registryId)
-                : $this->registryService->create($actor, $this->newClientRegistryData(), $data->clientProfile);
+                : $this->registryService->create($actor, $this->newClientRegistryData($data), $data->clientProfile);
 
             // Operatore and Sede operativa DEFAULT to the creating actor and
             // the actor's own Sede (user directive 2026-08-04): a request is
@@ -343,20 +343,21 @@ final class RequestCreationService
     }
 
     /**
-     * A minimal new Registry: no source/sectors/referents/managers, not a
-     * supplier — the create-request form collects only anagrafica + product
-     * lines (D-4), nothing else to derive these from.
+     * A minimal new Registry carrying the request's own attribution (ticket
+     * #427523): Fonte, Commerciale and Segnalatore are the client's too when
+     * the request is what brings the client in. Nothing else is derived —
+     * the create-request form collects no sectors/referents/managers (D-4).
      */
-    private function newClientRegistryData(): CreateRegistryData
+    private function newClientRegistryData(CreateRequestData $data): CreateRegistryData
     {
         return new CreateRegistryData(
-            sourceId: null,
+            sourceId: $data->sourceId,
             sectorIds: null,
             referentIds: null,
             managerSlots: null,
             supervisorId: null,
-            commercialId: null,
-            reporterId: null,
+            commercialId: $data->commercialId,
+            reporterId: $data->reporterId,
             vatGroup: null,
             isSupplier: false,
             isQualifiedSupplier: false,

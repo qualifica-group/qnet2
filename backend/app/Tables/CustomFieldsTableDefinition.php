@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\CustomFields\FieldTypeRegistry;
 use App\Models\CustomFieldDefinition;
 use App\Models\User;
+use App\Services\CustomFieldService;
 use App\Tables\CustomFields\CustomFieldColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -24,7 +25,10 @@ use Illuminate\Support\Facades\Gate;
  */
 class CustomFieldsTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly FieldTypeRegistry $fieldTypeRegistry) {}
+    public function __construct(
+        private readonly FieldTypeRegistry $fieldTypeRegistry,
+        private readonly CustomFieldService $service,
+    ) {}
 
     public function domain(): string
     {
@@ -162,5 +166,15 @@ class CustomFieldsTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
+    }
+
+    /**
+     * Delegate to CustomFieldService::delete() so the generic bulk-delete endpoint
+     * respects the SAME in-use guard as the single DELETE (spec 0384).
+     */
+    public function deleteModel(Model $model): void
+    {
+        /** @var CustomFieldDefinition $model */
+        $this->service->delete($model);
     }
 }

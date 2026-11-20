@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0389-product-category-usage-area" status="approved" owner="nicola" date="2026-11-11" revision="2">
+
+  <!-- rev.2 (2026-11-11, richiesta utente "a 360 gradi, sia di select, sia di tutto"): anche righe, link, statistiche e filtri. D-6..D-9, AC-008..AC-013. Supera D-4 per righe/filtri/report. -->
+
+  <goal>
+    Ogni categoria prodotto radice dichiara in quali moduli si usa: "Tutti i moduli", "Gestione Richieste / Iscritti"
+    oppure "Opportunita' / Offerte". Una categoria riservata a un'area non compare nelle scelte e nelle tab
+    dell'altra area. Il valore vale per tutto il ramo, come gli altri setting di radice.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-11-11.
+    - Gestione Richieste/Iscritti e Opportunita' scrivono la STESSA classificazione (`opportunity_product_lines`,
+      spec 0049 D-1, 0086 D-2). La riga si sceglie in due passi: categoria RADICE (`ProductCategoryRootSelect`,
+      editor di cella `useProductLineCellPicker`), poi un discendente della radice scelta
+      (`ProductCategoryTreeSelect`, `ProductCategoryFilterSelect`). Tutti i picker leggono `cardCategoryTree`.
+    - Setting di radice esistenti (`requires_quote`, `management_mode`, `single_quote_per_opportunity`,
+      `generates_contract`, `multi_quote_work_order`): `RootOwnedCategorySetting` + `RootOwnedSettingsWriter`,
+      valore denormalizzato su ogni nodo del ramo.
+    - Tab per categoria: oggi solo Gestione Richieste/Iscritti (`RequestCategoryTabsResolver`); quelle di
+      Opportunita'/Offerte/Contratti sono state rimosse (commit 53a27f005).
+    - Validazione server: `ProductLineSetValidator` (FormRequest via `ValidatesProductLines`; canale senza
+      FormRequest via `RequestProductLineWriter::assert`). La cella Opportunita' passa da `UpdateOpportunityRequest`
+      (`OpportunityCellWriter` + `FormRequestCellValidator`).
+    D-1 Setting di RADICE, ereditato dal ramo (stessa forma di `management_mode`): colonna
+        `product_categories.usage_area` string(20) NOT NULL DEFAULT 'all', enum `App\Enums\CategoryUsageArea`
+        (`all` | `requests` | `opportunities`). Default `all`: al deploy nulla cambia.
+    D-2 Area "requests" = Gestione Richieste + Gestione Iscritti (stessi record). Area "opportunities" = form e griglia
+        Opportunita' (le offerte ereditano la classificazione della loro opportunita').
+    D-3 Effetti nell'altra area: la categoria non compare nel select della categoria radice (form e cella) e quindi
+        in nessun passo successivo; non compare nelle tab di Gestione Richieste/Iscritti; il server rifiuta un NUOVO
+        collegamento (422). Esenti i valori gia' salvati sul record (stessa regola di spec 0074 D-3b / 0208 D-2):
+        lo storico resta visibile e risalvabile.
+    D-4 Non cambia: Progetti, Campagne, competenze utente, filtri avanzati delle griglie, griglia Categorie (mostra
+        tutto), report/statistiche (governati da `is_reportable`), selezione prodotti nelle righe d'offerta.
+    D-5 Griglia Categorie: colonna `usage_area` badge, ordinabile e filtrabile (come `management_mode`).
+    D-6 rev.2 Righe: un record e' nascosto in un modulo quando TUTTE le categorie della sua opportunita' sono riservate
+        all'altro (`UsageAreaRowFilter`). Un record misto o senza classificazione resta in entrambi. Gestione Richieste e
+        Iscritti: in `RequestManagementScope::scopeToActor` (righe, conteggi tab, ricerca, valori filtro, export,
+        statistiche/dashboard, assegnazioni) e in `assertInScope` (il link al record da' 403). Opportunita' e Offerte:
+        `baseQuery` delle due griglie e statistiche dei moduli; il dettaglio resta apribile (ci si arriva da Contratti e
+        Commesse, che restano condivisi).
+    D-7 rev.2 Filtri: "Categoria madre" e "Categoria" di Opportunita' e Offerte passano `usage_area=opportunities` al
+        for-select (`product-categories`, `product-category-roots`); Contratti e Commesse invariati.
+    D-8 rev.2 Statistiche di Gestione Richieste: un ramo `opportunities` non e' mai una riga del report.
+    D-9 rev.2 Nessun filtro quando nessuna categoria e' riservata all'altro modulo (catalogo di default: zero subquery).
+  </context>
+
+  <contract>
+    <endpoint method="POST|PUT|PATCH" path="/api/product-categories[/{productCategory}]">
+      Nuovo `usage_area`: `sometimes|enum(all,requests,opportunities)`, solo su una radice (su un figlio: 422 se diverso
+      da quello della radice). Create senza il campo: ereditato, o `all` su una radice nuova.
+      Risposta: `usage_area` (valore effettivo) e, sul dettaglio, `usage_area_source_category` ({id,name}|null).
+    </endpoint>
+    <endpoint method="GET" path="/api/product-categories/tree">Ogni nodo guadagna `usage_area`. Albero sempre completo.</endpoint>
+    <endpoint method="GET" path="/api/{request-management|enrollee-management}/product-categories">
+      Shape invariata; esclude le categorie con `usage_area = opportunities` (entrambi i livelli).
+    </endpoint>
+    <validation>
+      `product_lines.*.product_category_id` su Store/Update Request (Gestione Richieste) e Store/Update Opportunity,
+      e la cella `product_lines` di entrambe le griglie: categoria con area diversa da `all` e dall'area del canale
+      -> 422 "This product category is not used in this module." (it: "Questa categoria prodotto non si usa in questo
+      modulo."). Esenti gli id gia' salvati.
+    </validation>
+    <table_grid>
+      Colonna `product_lines` di Opportunita' e Gestione Richieste: nuova chiave `categoryUsageArea`
+      (`opportunities` | `requests`), passata all'editor di cella.
+    </table_grid>
+  </contract>
+
+  <scope>
+    <in>
+      <item>Migrazione, enum, model, `CategoryUsageAreaInheritance`, `RootOwnedSettingsWriter`, request/DTO/resource/authorization, `CategoryTreeBuilder`, colonna griglia Categorie.</item>
+      <item>`RequestCategoryTabsResolver`, `ProductLineSetValidator` + regola `ProductCategoryUsableInArea`, `ValidatesProductLines`, `RequestProductLineWriter`, FormRequest Opportunita'/Gestione Richieste.</item>
+      <item>FE: tipi, schema, payload, campo "Visibile in" nella sezione Regole, `cardCategoryTree` con area, picker radice/cella, form Opportunita' e Gestione Richieste.</item>
+      <item>i18n IT/EN, `lang/it.json`, guide in-app `product-categories`, `request-management`, `opportunities`; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Progetti/Campagne/competenze, prodotti delle righe d'offerta (D-4); Contratti, Commesse, Fatture (D-6/D-7).</item>
+      <item>Tab di Contratti/Commesse (non esistono piu').</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Una radice nuova senza `usage_area` ha `all`; un figlio eredita quello della radice; cambiare la radice riallinea il ramo.</criterion>
+    <criterion id="AC-002">Un figlio che invia un `usage_area` diverso da quello della radice riceve 422.</criterion>
+    <criterion id="AC-003">Le tab di Gestione Richieste e Gestione Iscritti non elencano le categorie `opportunities`, a livello "Tutte" e "Categorie madri".</criterion>
+    <criterion id="AC-004">Creare/aggiornare una richiesta con una categoria `opportunities` -> 422; con una `requests` o `all` -> ok. Speculare per le opportunita'.</criterion>
+    <criterion id="AC-005">Un record che ha gia' una categoria dell'altra area si risalva senza errori.</criterion>
+    <criterion id="AC-006">La cella `product_lines` delle due griglie rifiuta un nuovo collegamento a una categoria dell'altra area.</criterion>
+    <criterion id="AC-007">Nel form e nella cella il select della radice nasconde le radici dell'altra area, ma mostra quella gia' salvata.</criterion>
+    <criterion id="AC-008">Gestione Richieste/Iscritti non elencano le offerte con sole categorie `opportunities`; le miste e quelle senza categoria si'.</criterion>
+    <criterion id="AC-009">Il link a una richiesta nascosta risponde 403.</criterion>
+    <criterion id="AC-010">Opportunita' e Offerte non elencano i record con sole categorie `requests`.</criterion>
+    <criterion id="AC-011">Con tutte le categorie su `all` le righe sono quelle di prima.</criterion>
+    <criterion id="AC-012">Le statistiche di Gestione Richieste non hanno righe per i rami `opportunities`.</criterion>
+    <criterion id="AC-013">I filtri categoria di Opportunita' e Offerte elencano solo le categorie del modulo; quelli di Contratti tutte.</criterion>
+  </acceptance>
+</spec>

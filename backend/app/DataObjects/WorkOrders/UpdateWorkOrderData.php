@@ -26,6 +26,9 @@ use App\Enums\WorkOrderType;
  *
  * `workOrderWorkflowStatusId` (spec 0322): the explicit "Stato lavorazione";
  * null (absent, or sent as null) leaves the resolver's baseline untouched.
+ *
+ * `workOrderPaymentStatusId` (spec 0402): the commessa's "Stato pagamento", a
+ * plain nullable column with its `*Submitted` flag (null clears it).
  */
 final readonly class UpdateWorkOrderData
 {
@@ -55,6 +58,8 @@ final readonly class UpdateWorkOrderData
         public ?array $attributeValues = null,
         public ?int $workOrderWorkflowStatusId = null,
         public ?int $forceCloseStatusId = null,
+        public ?int $workOrderPaymentStatusId = null,
+        public bool $workOrderPaymentStatusIdSubmitted = false,
     ) {}
 
     /**
@@ -88,6 +93,8 @@ final readonly class UpdateWorkOrderData
                 ? (int) $data['work_order_workflow_status_id']
                 : null,
             forceCloseStatusId: isset($data['force_close_status_id']) ? (int) $data['force_close_status_id'] : null,
+            workOrderPaymentStatusId: isset($data['work_order_payment_status_id']) ? (int) $data['work_order_payment_status_id'] : null,
+            workOrderPaymentStatusIdSubmitted: array_key_exists('work_order_payment_status_id', $data),
         );
     }
 
@@ -134,6 +141,10 @@ final readonly class UpdateWorkOrderData
 
         if ($this->forceCloseReasonSubmitted) {
             $attributes['force_close_reason'] = $this->forceCloseReason;
+        }
+
+        if ($this->workOrderPaymentStatusIdSubmitted) {
+            $attributes['work_order_payment_status_id'] = $this->workOrderPaymentStatusId;
         }
 
         return $attributes;

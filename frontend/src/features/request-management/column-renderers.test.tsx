@@ -155,13 +155,14 @@ describe('request-management G.A. slot cells (GA2 + GA1)', () => {
     return render(<>{renderer({ value } as ICellRendererParams)}</>)
   }
 
-  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5'])('renders the person behind %s', (columnId) => {
+  // Spec 0382: one column per position, 1..12 (position 2 keeps `operator_ga2`).
+  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5', 'manager_ga12'])('renders the person behind %s', (columnId) => {
     renderManagerCell(columnId, { id: 21, name: 'Mackenzie Stanton', avatar_url: null })
 
     expect(screen.getByText('Mackenzie Stanton')).toBeInTheDocument()
   })
 
-  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5'])('renders an em dash when %s is unassigned', (columnId) => {
+  it.each(['operator_ga2', 'manager_ga1', 'manager_ga5', 'manager_ga12'])('renders an em dash when %s is unassigned', (columnId) => {
     renderManagerCell(columnId, null)
 
     expect(screen.getByText('—')).toBeInTheDocument()

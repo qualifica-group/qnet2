@@ -132,7 +132,12 @@ describe('WorkOrderContractDataSection - layout', () => {
 
     expect(screen.queryByRole('columnheader', { name: 'Supplier commission' })).not.toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: 'Net of commissions' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('definition')).toHaveLength(2)
+    expect(screen.getAllByRole('term').map((term) => term.textContent)).toEqual([
+      'Total Consulenza',
+      'Total Ente',
+      'Total Formazione',
+      'Total revenue',
+    ])
 
     hover(hintButtons(lineRow('ENT-001'))[1])
     expect(await screen.findByText('Revenue 200.00')).toBeInTheDocument()
@@ -262,23 +267,31 @@ describe('WorkOrderContractDataSection - calculation hints', () => {
 })
 
 describe('WorkOrderContractDataSection - KPIs and typologies', () => {
-  it('shows one row of KPIs, each explained, and the typology strip with the empty ones dimmed', async () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-16): the totals follow the lines as legacy-like rows
+  // ("Totale Consulenza", "Totale Ente", "Totale ricavi"), no KPI strip and no net amount total.
+  it('lists the totals after the lines: one per typology, the commissions, the total revenue last', async () => {
     renderSection(false)
-    await screen.findByRole('table')
+    const table = await screen.findByRole('table')
 
-    const kpis = screen.getAllByRole('definition').map((node) => node.textContent)
-    expect(kpis).toEqual(['3,000.00', '1,200.00', '450.00', '2,550.00'])
-    expect(screen.getByText('Total revenue', { selector: 'dt' })).toBeInTheDocument()
-
-    const strip = screen.getAllByRole('listitem').map((node) => node.textContent)
-    expect(within(screen.getAllByRole('listitem')[2]).getByText('Formazione')).toHaveClass('bg-amber-100')
-    expect(strip).toEqual([
-      'Consulenza1,000.00 → 1,000.00',
-      'Ente2,000.00 → 200.00',
-      'Formazione0.00 → 0.00',
+    const terms = screen.getAllByRole('term')
+    expect(terms.map((term) => term.textContent)).toEqual([
+      'Total Consulenza',
+      'Total Ente',
+      'Total Formazione',
+      'Commissions',
+      'Net of commissions',
+      'Total revenue',
     ])
-    expect(screen.getByText('Formazione', { selector: 'li span' }).closest('li')).toHaveClass('text-muted-foreground')
-    expect(screen.getByText('Ente', { selector: 'li span' }).closest('li')).not.toHaveClass('text-muted-foreground')
+    expect(table.compareDocumentPosition(terms[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getAllByRole('definition').map((node) => node.textContent)).toEqual([
+      '1,000.00',
+      '2,000.00revenue 200.00',
+      '0.00',
+      '450.00',
+      '2,550.00',
+      '1,200.00',
+    ])
+    expect(screen.getByText('0.00', { selector: 'dd span' })).toHaveClass('text-muted-foreground')
 
     hover(within(screen.getByText('Net of commissions', { selector: 'dt' }).parentElement as HTMLElement).getByRole('button'))
     expect(await screen.findByText('3,000.00 − 450.00 = 2,550.00')).toBeInTheDocument()

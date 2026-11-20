@@ -4,6 +4,7 @@ namespace App\Services\ProductCategories;
 
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
+use App\Enums\CategoryUsageArea;
 use App\Models\ProductCategory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -76,6 +77,11 @@ class ProductCategoryForSelectResolver
 
         if ($query->rootCategoryId !== null) {
             $base->whereIn('id', $this->subtreeIds($query->rootCategoryId));
+        }
+
+        // Spec 0389 rev.2: a grid filter lists only the categories of its module.
+        if ($query->usageArea !== null) {
+            $base->whereIn('usage_area', CategoryUsageArea::valuesVisibleIn($query->usageArea));
         }
 
         $total = (clone $base)->count();
@@ -161,10 +167,22 @@ class ProductCategoryForSelectResolver
      * leads the first page and, like a hydrated id, does not count in the total.
      * `$currentOnly` (spec 0374) keeps the non-legacy roots and drops "Tutte";
      * `$hideLinkedLegacy` hides the legacy roots linked to a current one.
+     * `$onlyRootIds` (user directive 2026-11-12) keeps just those roots;
+     * `$offerAllRoots` false drops "Tutte" where an empty filter already means it.
+     *
+     * @param  array<int, int>|null  $onlyRootIds
      */
-    public function resolveRoots(ForSelectQuery $query, bool $currentOnly = false, bool $hideLinkedLegacy = false): ForSelectResult
+    public function resolveRoots(ForSelectQuery $query, bool $currentOnly = false, bool $hideLinkedLegacy = false, ?array $onlyRootIds = null, bool $offerAllRoots = true): ForSelectResult
     {
         $roots = ProductCategory::query()->select(['id', 'name'])->whereNull('parent_id');
+
+        if ($onlyRootIds !== null) {
+            $roots->whereIn('id', $onlyRootIds);
+        }
+
+        if ($query->usageArea !== null) {
+            $roots->whereIn('usage_area', CategoryUsageArea::valuesVisibleIn($query->usageArea));
+        }
 
         // Spec 0374 D-12: a linked legacy root is reached through its current one.
         if ($hideLinkedLegacy) {
@@ -178,7 +196,7 @@ class ProductCategoryForSelectResolver
 
         $result = $this->resolvePlain($roots, $query, includeInactive: true);
 
-        if (! $this->offersAllRoots($query)) {
+        if (! $offerAllRoots || ! $this->offersAllRoots($query)) {
             return $result;
         }
 

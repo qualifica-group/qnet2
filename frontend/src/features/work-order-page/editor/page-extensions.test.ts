@@ -48,7 +48,7 @@ afterEach(() => {
   editors.splice(0).forEach((editor) => editor.destroy())
 })
 
-describe('page HTML profile round-trip (spec 0380 html_profile)', () => {
+describe('page HTML profile round-trip (spec 0420 html_profile)', () => {
   it('keeps h1-h4, collapsible headings and hr', () => {
     const html = makeEditor(
       '<h1>a</h1><h2 data-collapsible="true">b</h2><h3>c</h3><h4>d</h4><hr>',

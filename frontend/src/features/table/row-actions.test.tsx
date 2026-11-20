@@ -4,7 +4,12 @@ import { I18nextProvider } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
-import { createRowActionsRenderer, inlineActionsColumnWidth, type RowActionsOptions } from '@/features/table/row-actions'
+import {
+  createRowActionsRenderer,
+  inlineActionsColumnWidth,
+  splitInlineActions,
+  type RowActionsOptions,
+} from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 // Assert against the English catalogue (the app default locale is Italian).
@@ -107,6 +112,29 @@ describe('RowActions overflow behavior', () => {
       expect.objectContaining({ key: 'a5' }),
       expect.objectContaining({ id: 1 }),
     )
+  })
+})
+
+describe('RowActions pinned action (task 427151)', () => {
+  const pinnedAt = (index: number) =>
+    catalogOf(6).map((entry, i) => (i === index ? { ...entry, pinned: true } : entry))
+
+  it('keeps a pinned action on the row on top of the first 3, never in the menu', () => {
+    renderActions(pinnedAt(3))
+
+    for (const key of ['a0', 'a1', 'a2', 'a3']) {
+      expect(screen.getByRole('button', { name: key })).toBeInTheDocument()
+    }
+    expect(screen.queryByRole('button', { name: 'a4' })).not.toBeInTheDocument()
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More actions' }), { button: 0, ctrlKey: false })
+    const items = within(screen.getByRole('menu')).getAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['a4', 'a5'])
+  })
+
+  it('splits in catalog order and needs no menu when only the pinned action is extra', () => {
+    expect(splitInlineActions(pinnedAt(5)).visible.map((entry) => entry.key)).toEqual(['a0', 'a1', 'a2', 'a5'])
+    expect(splitInlineActions(pinnedAt(3).slice(0, 4)).overflow).toEqual([])
   })
 })
 

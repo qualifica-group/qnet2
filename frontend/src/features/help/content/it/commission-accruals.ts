@@ -17,6 +17,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Le **schede** in alto restringono l’elenco: **Aperto** (predefinita: non ancora in un estratto), **In estratto** (in una bozza o in un estratto emesso), **Liquidato esternamente** e **Tutti**. La colonna **Estratto** mostra il numero (n/anno) o **Bozza**; puoi raggruppare anche per società. Sotto la tabella il **totale** riguarda tutti i movimenti del filtro corrente, non solo quelli visibili. Come in ogni elenco puoi ordinare, filtrare, esportare e **raggruppare** per destinatario, ruolo, mese di maturazione, tipo di movimento o cliente.',
         },
+        { type: 'paragraph', text: 'La colonna **Cliente** mostra il nome seguito dalla **partita IVA** (es. *Rossi Srl - 01234567890*); se l’anagrafica non ha la partita IVA compare il **codice fiscale**, se non ha nessuno dei due solo il nome.' },
       ],
     },
     {

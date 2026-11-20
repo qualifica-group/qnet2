@@ -488,7 +488,10 @@
       <response status="200">
         { success: true, message: "OK",
           data: Note[],                       /* SOLO radici, created_at DESC, ognuna con replies[] ASC completo */
-          meta: { next_cursor: string|null, has_more: boolean } }
+          meta: { next_cursor: string|null, has_more: boolean,
+                  total: number } }          /* emendamento 2026-11-11: radici nello scope + le loro risposte,
+                                                indipendente dalla pagina; e' il numero sull'icona della scheda
+                                                Note (stesso insieme del badge `notes_count` delle griglie) */
       </response>
       <errors>
         403 se l'utente non supera il gate di LETTURA dell'entita' ospite

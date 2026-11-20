@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import type { CreatePollPayload } from '@/features/work-order-page/types'
 
-/** Mirror of the server rules of `POST /work-orders/{id}/page/polls` (spec 0380). */
+/** Mirror of the server rules of `POST /work-orders/{id}/page/polls` (spec 0420). */
 export const POLL_QUESTION_MAX = 255
 export const POLL_OPTION_MAX = 120
 export const POLL_OPTIONS_MIN = 2

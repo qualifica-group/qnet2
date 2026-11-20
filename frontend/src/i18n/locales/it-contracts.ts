@@ -8,6 +8,10 @@
 
 export const contracts = {
   forbidden: 'Non hai i permessi per visualizzare i contratti.',
+  statusTabs: {
+    label: 'Stati contratto',
+    all: 'Tutti',
+  },
   columns: {
     offerLines: 'Linee di prodotto',
     rootCategories: 'Categoria madre',
@@ -40,7 +44,6 @@ export const contracts = {
     renewalDue: 'Da rinnovare',
   },
   advancedFilters: {
-    assignment: 'Assegnazione',
     parentCategory: 'Categoria madre',
     productCategory: 'Categoria prodotto',
     registry: 'Cliente',
@@ -175,6 +178,11 @@ export const contracts = {
       linesLabel: "Righe dell'offerta",
       linesLoadError: 'Impossibile caricare le righe prodotto. Riprova.',
       linesEmpty: 'Nessuna riga di ricavo disponibile in questa offerta.',
+      linesSearch: 'Cerca prodotto',
+      linesCategoryFilter: 'Filtra per categoria',
+      linesCategoryAll: 'Tutte le categorie',
+      linesCategoryNone: 'Senza categoria',
+      linesNoMatch: 'Nessuna riga corrisponde alla ricerca o alla categoria.',
       linesRequired: 'Seleziona almeno una riga.',
       lineSelectHeader: 'Seleziona',
       lineSelectLabel: 'Seleziona {{name}}',

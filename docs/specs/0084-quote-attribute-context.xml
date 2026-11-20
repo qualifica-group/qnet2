@@ -68,6 +68,15 @@
       prodotto in una riga, la catena prodotto -> categoria prodotto -> attributi applicabili viene
       risolta e la sezione appare; finche' nessuna riga ha un prodotto, la sezione non c'e'.
       La risoluzione avviene su righe NON ancora salvate, quindi passa da `POST /api/quotes/form-context`.
+      RETTIFICA 2026-11-11 (segnalazione utente, richiesta 29395): le categorie sono l'UNIONE delle
+      righe prodotto dell'Opportunita' (`opportunity_product_lines.product_category_id`, prima) e
+      delle categorie dei prodotti delle righe offerta (dopo), la stessa regola D-1 di Gestione
+      Richieste (`RequestAttributeResolver`, che ora delega a `QuoteAttributeResolver`). Offerte e
+      Gestione Richieste mostrano lo stesso record `quotes` e la stessa mappa `attribute_values`:
+      con le sole righe offerta una richiesta senza righe offerta non mostrava in Offerte i campi
+      compilati in Gestione Richieste, e aggiungendo una riga li riproponeva vuoti. Innesco quindi:
+      l'Opportunita' scelta OPPURE un prodotto su una riga offerta. Il form non perde mai un valore
+      salvato: un codice che diventa applicabile parte dal valore memorizzato.
 
     - D-4: le classi di risoluzione vengono GENERALIZZATE, non clonate. `ApplicableAttributesResolver`
       e `OpportunityAttributeLayoutResolver` diventano `AttributeSetResolver` /
@@ -126,7 +135,8 @@
 
     <endpoint method="POST" path="/api/quotes/form-context">
       <request>
-        { offer_lines: [ { product_id: int } ] }   // le righe in composizione, anche non salvate
+        { opportunity_id?: int|null,             // rettifica 2026-11-11: aggiunge le righe prodotto dell'Opportunita'
+          offer_lines: [ { product_id: int } ] }   // le righe in composizione, anche non salvate
         Gate: `quotes.create`.
       </request>
       <response status="200">
@@ -136,7 +146,7 @@
             attribute_layout: { sections: [...] } | null
         } }
       </response>
-      <errors>403 senza `quotes.create`; 422 `product_id` inesistente</errors>
+      <errors>403 senza `quotes.create`; 422 `product_id` o `opportunity_id` inesistente</errors>
     </endpoint>
 
     <endpoint method="GET" path="/api/quotes/{quote}">
@@ -244,7 +254,9 @@
     <!-- Frontend Offerta -->
     <criterion id="AC-030">Il form Offerta mostra la sezione "Informazioni aggiuntive" resa da `AttributeLayoutRenderer`, con lo stesso comportamento di loading/empty della sezione oggi presente sull'Opportunita'.</criterion>
     <criterion id="AC-031">Cambiando i prodotti delle righe offerta, la sezione si aggiorna con il nuovo set applicabile senza ricaricare la pagina.</criterion>
-    <criterion id="AC-034">Dato un form Offerta in cui nessuna riga ha ancora un prodotto, quando lo apro, allora la sezione "Informazioni aggiuntive" NON e' visibile (D-5).</criterion>
+    <criterion id="AC-034">Dato un form Offerta senza Opportunita' e in cui nessuna riga ha ancora un prodotto, quando lo apro, allora la sezione "Informazioni aggiuntive" NON e' visibile (D-5, rettifica 2026-11-11).</criterion>
+    <criterion id="AC-037">Data un'offerta senza righe offerta la cui Opportunita' ha una riga prodotto con categoria che prevede attributi, il dettaglio Offerte mostra quegli attributi con i valori salvati (anche da Gestione Richieste) e li salva; il set coincide con quello di Gestione Richieste (rettifica 2026-11-11).</criterion>
+    <criterion id="AC-038">Sul dettaglio, un prodotto aggiunto che rende applicabile un codice gia' valorizzato mostra il valore salvato e, se invariato, il salvataggio delle righe non rispedisce `attribute_values` (rettifica 2026-11-11).</criterion>
     <criterion id="AC-035">Dato un form Offerta, quando l'operatore seleziona un prodotto in una riga offerta, allora la sezione compare risolvendo prodotto -&gt; categoria prodotto -&gt; attributi applicabili, senza salvare l'offerta (D-5).</criterion>
     <criterion id="AC-036">La sezione e' resa SOTTO il blocco dei tab righe (quindi sotto Costi) e SOPRA il riepilogo economico, non dentro il tab Costi (D-5).</criterion>
     <criterion id="AC-032">Il submit e' bloccato lato client se un attributo `is_required` applicabile e' vuoto, con messaggio sul campo.</criterion>

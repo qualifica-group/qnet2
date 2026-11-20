@@ -59,6 +59,22 @@ final class WorkOrderRegistryColumn
     }
 
     /**
+     * Quick-search on the client's name, OR-ed into the engine's search group:
+     * like the filter, a multi-offer commessa is reached through its lines' offers.
+     *
+     * @param  Builder<Model>  $query
+     */
+    public function applySearch(Builder $query, string $pattern): void
+    {
+        $constrain = static function (Builder $registryQuery) use ($pattern): void {
+            $registryQuery->where(self::LABEL_COLUMN, 'like', $pattern);
+        };
+
+        $query->orWhereHas(self::RELATION_PATH, $constrain)
+            ->orWhereHas(self::LINES_RELATION_PATH, $constrain);
+    }
+
+    /**
      * @param  Builder<Model>  $query
      */
     public function applySort(Builder $query, string $direction): void

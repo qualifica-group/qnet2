@@ -1,23 +1,22 @@
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, Lock } from 'lucide-react'
+import { Activity, ClipboardList } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
-import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
+import { RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { GENERAL_NOTES_TEXTAREA_CLASS } from '@/components/record-form/layout'
 import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import { formatDate } from '@/lib/formatting/date-display'
+import { WorkOrderTaskTemplateField, WorkOrderTextAreaField } from '@/features/work-orders/work-order-identity-fields'
 import {
-  WorkOrderCallbackDateField,
-  WorkOrderCodeField,
-  WorkOrderStartDateField,
-  WorkOrderTaskTemplateField,
-  WorkOrderTextAreaField,
-  WorkOrderTitleField,
-  WorkOrderTypeField,
-} from '@/features/work-orders/work-order-identity-fields'
+  WorkOrderCallbackDateRow,
+  WorkOrderCodeRow,
+  WorkOrderDescriptionRow,
+  WorkOrderForceCloseReasonRow,
+  WorkOrderStartDateRow,
+  WorkOrderTitleRow,
+  WorkOrderTypeRow,
+} from '@/features/work-orders/work-order-record-rows'
 import type { WorkOrderFormState } from '@/features/work-orders/use-work-order-form'
 import {
   WorkOrderWorkflowStatusField,
@@ -38,14 +37,6 @@ export interface WorkOrderIdentityValues {
   force_close_reason: string | null
 }
 
-function TextValue({ value }: { value: string | null }) {
-  return value !== null && value.trim() !== '' ? <>{value}</> : <DetailEmpty />
-}
-
-function DateValue({ value }: { value: string | null }) {
-  return <>{formatDate(value) || <DetailEmpty />}</>
-}
-
 /** The "Stato lavorazione" of a persisted work order and its resolved set: absent on create (the server assigns `open`). */
 export interface WorkOrderWorkflowStatusContext {
   current: WorkOrderWorkflowStatusRef
@@ -54,105 +45,33 @@ export interface WorkOrderWorkflowStatusContext {
 
 interface WorkOrderIdentitySectionProps {
   values: WorkOrderIdentityValues
-  workflowStatus?: WorkOrderWorkflowStatusContext
   form: WorkOrderFormState
   inline: InlineEdit
-  /** The detail card names the block "Dati commessa" (spec 0331 D-5); the create form keeps the default. */
-  title?: string
-  /** Extra read-only rows closing the list (the detail's link to the Contratto). */
-  children?: ReactNode
 }
 
 /**
- * "Dati" of the work order record: every row edits in place on its own
- * control (spec 0195 applied to Commesse). `code` and the Modello di Task are
- * written at creation only: their field permission turns them read-only on
- * the detail (D-1/D-5, spec 0124 D-5), so the row shows no pencil there.
+ * "Dati" of the create form: every row edits in place on its own control.
+ * `code` and the Modello di Task are written at creation only. The detail
+ * spreads the same rows over "Dati contrattuali commessa" and "Descrizione
+ * commessa" (user directives 2026-11-16).
  */
-export function WorkOrderIdentitySection({
-  values,
-  workflowStatus,
-  form,
-  inline,
-  title,
-  children,
-}: WorkOrderIdentitySectionProps) {
+export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIdentitySectionProps) {
   const { t } = useTranslation()
-  const { control } = form.form
 
   return (
-    <RecordSection title={title ?? t('workOrders.detail.sections.identity')} icon={<ClipboardList />}>
+    <RecordSection title={t('workOrders.detail.sections.identity')} icon={<ClipboardList />}>
       <RecordFieldList>
-        <RecordInlineField
-          field="title"
-          label={t('workOrders.form.title')}
-          inline={inline}
-          editor={<WorkOrderTitleField control={control} />}
-        >
-          <TextValue value={values.title} />
-        </RecordInlineField>
-        <RecordInlineField
-          field="code"
-          label={t('workOrders.form.code')}
-          inline={inline}
-          editor={<WorkOrderCodeField control={control} />}
-        >
-          <TextValue value={values.code} />
-        </RecordInlineField>
-        <RecordInlineField
-          field="type"
-          label={t('workOrders.form.type')}
-          inline={inline}
-          editor={<WorkOrderTypeField control={control} />}
-        >
-          {t(`workOrders.options.type.${values.type}`)}
-        </RecordInlineField>
-        {workflowStatus ? (
-          <RecordInlineField
-            field="work_order_workflow_status_id"
-            label={t('workOrders.detail.workflowStatus')}
-            inline={inline}
-            editor={<WorkOrderWorkflowStatusField control={control} statuses={workflowStatus.statuses} />}
-          >
-            <WorkOrderWorkflowStatusValue status={workflowStatus.current} />
-          </RecordInlineField>
-        ) : null}
-        <RecordInlineField
-          field="start_date"
-          label={t('workOrders.form.startDate')}
-          inline={inline}
-          editor={<WorkOrderStartDateField control={control} />}
-        >
-          <DateValue value={values.start_date} />
-        </RecordInlineField>
-        <RecordInlineField
-          field="callback_date"
-          label={t('workOrders.form.callbackDate')}
-          inline={inline}
-          editor={<WorkOrderCallbackDateField control={control} />}
-        >
-          <DateValue value={values.callback_date} />
-        </RecordInlineField>
-        <RecordInlineField
-          field="description"
-          label={t('workOrders.detail.description')}
-          inline={inline}
-          editor={
-            <WorkOrderTextAreaField control={control} name="description" label={t('workOrders.detail.description')} />
-          }
-        >
-          {values.description ? (
-            // Capped and scrollable: a long description must not push the rest of the section away.
-            <p className="max-h-40 overflow-y-auto break-words whitespace-pre-wrap">{values.description}</p>
-          ) : (
-            <DetailEmpty />
-          )}
-        </RecordInlineField>
+        <WorkOrderTitleRow form={form} inline={inline} title={values.title} />
+        <WorkOrderCodeRow form={form} inline={inline} code={values.code} />
+        <WorkOrderTypeRow form={form} inline={inline} type={values.type} />
+        <WorkOrderStartDateRow form={form} inline={inline} startDate={values.start_date} />
+        <WorkOrderCallbackDateRow form={form} inline={inline} callbackDate={values.callback_date} />
+        <WorkOrderDescriptionRow form={form} inline={inline} description={values.description} />
         <RecordInlineField
           field="task_template_id"
           label={t('workOrders.detail.taskTemplate')}
           inline={inline}
-          editor={<WorkOrderTaskTemplateField control={control} selected={values.task_template} />}
+          editor={<WorkOrderTaskTemplateField control={form.form.control} selected={values.task_template} />}
         >
           {values.task_template ? (
             <RecordLink domain="task-templates" id={values.task_template.id}>
@@ -162,12 +81,38 @@ export function WorkOrderIdentitySection({
             <DetailEmpty />
           )}
         </RecordInlineField>
-        {values.force_close_reason !== null ? (
-          <RecordField label={t('workOrders.detail.forceCloseReason')} icon={<Lock />}>
-            <span className="whitespace-pre-wrap">{values.force_close_reason}</span>
-          </RecordField>
-        ) : null}
-        {children}
+        <WorkOrderForceCloseReasonRow reason={values.force_close_reason} />
+      </RecordFieldList>
+    </RecordSection>
+  )
+}
+
+interface WorkOrderWorkflowStatusSectionProps {
+  workflowStatus: WorkOrderWorkflowStatusContext
+  form: WorkOrderFormState
+  inline: InlineEdit
+}
+
+/**
+ * "Stato lavorazione" of a persisted work order (spec 0322) as its own
+ * section, under the contract data in the detail's left column (user
+ * directive 2026-11-16), still edited in place.
+ */
+export function WorkOrderWorkflowStatusSection({ workflowStatus, form, inline }: WorkOrderWorkflowStatusSectionProps) {
+  const { t } = useTranslation()
+  const label = t('workOrders.detail.workflowStatus')
+
+  return (
+    <RecordSection title={label} icon={<Activity />}>
+      <RecordFieldList>
+        <RecordInlineField
+          field="work_order_workflow_status_id"
+          label={label}
+          inline={inline}
+          editor={<WorkOrderWorkflowStatusField control={form.form.control} statuses={workflowStatus.statuses} />}
+        >
+          <WorkOrderWorkflowStatusValue status={workflowStatus.current} />
+        </RecordInlineField>
       </RecordFieldList>
     </RecordSection>
   )

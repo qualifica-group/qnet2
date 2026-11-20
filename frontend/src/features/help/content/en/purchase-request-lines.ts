@@ -58,7 +58,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'The change is **all or nothing**: if even one line cannot move to the chosen status, no line is changed. A line already linked to an **ODA** cannot leave Ordered or Received from here: the ODA governs its status.',
+          text: 'The change is **all or nothing**: if even one line cannot move to the chosen status, no line is changed. A line already linked to an **ODA** cannot leave Ordered or Received from here: the ODA governs its status. When the selection includes such a line, the dialog offers no status and shows the **link to the order**: register the receipt there and the line becomes Received by itself.',
         },
         {
           type: 'note',

@@ -139,6 +139,7 @@ final class ReportBranchRowsBuilder
     private function row(string $label, ?int $operatorId, bool $isTotal, ReportBranch $branch, array $results): ReportRow
     {
         $values = [];
+        $breakdowns = [];
 
         foreach ((array) config('request-management-report.indicator_columns') as $column) {
             $categoryIds = $branch->categoryIdsFor($column);
@@ -156,8 +157,13 @@ final class ReportBranchRowsBuilder
             }
 
             $values[$column] = $isTotal ? $results[$column]->total : $results[$column]->valueFor($operatorId);
+
+            $breakdown = $results[$column]->statusBreakdown($operatorId, all: $isTotal);
+            if ($breakdown !== null) {
+                $breakdowns[$column] = $breakdown;
+            }
         }
 
-        return new ReportRow($label, $values);
+        return new ReportRow($label, $values, $breakdowns);
     }
 }

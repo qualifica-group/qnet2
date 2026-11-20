@@ -12,6 +12,7 @@ use App\Models\WorkOrder;
 use App\Models\WorkOrderLinePayment;
 use App\Models\WorkOrderPaymentStatus;
 use App\Notifications\WorkOrderLineDeliverableNotification;
+use App\Support\Notifications\RecordDetails;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
@@ -106,6 +107,7 @@ final class WorkOrderLinePaymentWriter
             productName: Product::query()->whereIn('id', $lines->pluck('product_id'))->orderBy('name')->pluck('name')->implode(', '),
             statusName: (string) $payment->status()->value('name'),
             actorName: $actor->name,
+            workOrderDetails: RecordDetails::for($workOrder),
         );
 
         // Only once the write is durable: a rolled-back save must not notify.

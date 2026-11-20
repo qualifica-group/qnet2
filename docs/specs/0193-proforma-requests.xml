@@ -61,6 +61,10 @@
       per riga dal campo `proforma_status` (none|pending|issued) della riga, calcolato in baseQuery con
       withExists (nessuna query per riga) ed esposto solo con il permesso; click attivo solo con
       status != issued. FE: opzione generica `resolveActionState` delle azioni di riga.
+      Rev. 2026-11-12 (task 427151): la spec 0363 D-1 aveva messo Documenti e Note prima del €, che
+      era finito quarto e quindi nel menu "...". Il catalogo marca ora l'azione `pinned: true`
+      (proprieta' generica delle azioni di riga, FE `splitInlineActions`): resta sempre sulla riga oltre
+      alle prime 3, la colonna Azioni si allarga di conseguenza.
     - D-12 Elenco Attiva: dominio SSRM `proforma-requests`, filtro iniziale lato client
       status = pending (rimovibile per vedere anche le evase). Eliminazione fisica; nessun create
       dalla griglia (si crea solo dalla commessa).

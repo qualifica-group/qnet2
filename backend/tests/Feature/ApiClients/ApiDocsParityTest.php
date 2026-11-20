@@ -2,8 +2,11 @@
 
 use App\Services\ApiDocs\OpenApiDocumentProvider;
 use Dedoc\Scramble\Generator;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route as LaravelRoute;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
@@ -101,27 +104,33 @@ it('infers the envelope of the controller helpers with the resource as data', fu
         ->and($schema['properties'])->toHaveKeys(['success', 'message', 'data', 'permissions']);
 });
 
-it('picks up a route added at runtime without any cache intervention', function () {
+it('documents a route added at runtime at the next regeneration, not before', function () {
     seedApiDocumentCache();
     $provider = app(OpenApiDocumentProvider::class);
-    $before = $provider->signature();
-
-    expect(documentedOperations($provider->cached()))->not->toContain('GET /api/docs-parity-fixture');
 
     Route::get('api/docs-parity-fixture', fn () => response()->json(['ok' => true]));
 
-    expect($provider->signature())->not->toBe($before)
-        ->and($provider->cached())->toBeNull()
-        ->and(documentedOperations($provider->generate()))->toContain('GET /api/docs-parity-fixture');
+    expect(documentedOperations($provider->cached()))->not->toContain('GET /api/docs-parity-fixture')
+        ->and(documentedOperations($provider->generate()))->toContain('GET /api/docs-parity-fixture')
+        ->and(documentedOperations($provider->cached()))->toContain('GET /api/docs-parity-fixture');
 });
 
 it('warms the document cache so the provider serves it without regenerating', function () {
+    Cache::forget(OpenApiDocumentProvider::CACHE_KEY);
+
     $this->artisan('api-docs:warm')->assertSuccessful();
 
-    $key = OpenApiDocumentProvider::CACHE_KEY_PREFIX.app(OpenApiDocumentProvider::class)->signature();
-    expect(Cache::has($key))->toBeTrue();
+    expect(Cache::get(OpenApiDocumentProvider::CACHE_KEY))->toHaveKeys(['document', 'generated_at']);
 
     app()->bind(Generator::class, fn () => throw new LogicException('document regenerated'));
 
-    expect(app(OpenApiDocumentProvider::class)->cached())->toBe(Cache::get($key));
+    expect(app(OpenApiDocumentProvider::class)->cached())->toBe(Cache::get(OpenApiDocumentProvider::CACHE_KEY)['document']);
+});
+
+it('schedules the regeneration every night at midnight', function () {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn (Event $event): bool => str_contains((string) $event->command, 'api-docs:warm'));
+
+    expect($event)->not->toBeNull()
+        ->and($event->expression)->toBe('0 0 * * *');
 });

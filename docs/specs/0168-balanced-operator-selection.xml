@@ -15,6 +15,10 @@
     - D-2 Selezione PER GRUPPO: un operatore presente in due Sedi puo' essere incluso in una ed escluso nell'altra.
     - D-3 Nessuna persistenza: ogni apertura del dialog parte con tutti gli operatori selezionati; la scelta viaggia
       solo nella richiesta di assegnazione.
+    - D-4 (richiesta utente 2026-11-11) Interruttore "Tieni conto del carico attuale" nello Smistamento equo, acceso di
+      default (comportamento invariato). Spento, il carico iniziale di ogni operatore vale 0: i record si dividono in
+      parti uguali (per numero di persone selezionate) con lo stesso greedy e lo stesso tie-break (id piu' basso).
+      Nessuna persistenza, come D-3.
 
     Nomi reali verificati (backend/):
     - `App\Enums\LeadAssignmentMode` (single|balanced), invariato: niente terza modalita' (spec 0110 decisione 2).
@@ -128,6 +132,14 @@
         operatore selezionato): cosi' un operatore diventato candidato dopo l'apertura del dialog non riceve
         record che l'utente non ha visto.
     </rules>
+
+    <rules name="use_current_load (D-4)">
+      - Campo opzionale `use_current_load: bool` sui 3 endpoint di assegnazione; validazione condivisa
+        (`HasOperatorsBySiteRules`): `prohibited` salvo mode=balanced, `boolean`.
+      - Assente o true => carico iniziale invariato (leads/import_rows: COUNT leads; quotes/enrollees: COUNT quotes).
+      - false => carico iniziale vuoto (tutti a 0): divisione per numero di persone, stesso `distributeAmong`.
+      - Il frontend lo invia SOLO come `false` (interruttore spento); acceso non lo invia (payload invariato).
+    </rules>
   </data_contract>
 
   <acceptance_criteria>
@@ -162,7 +174,12 @@
       revisione Import.</criterion>
     <criterion id="AC-015">Mentre lo scope si risolve la lista mostra uno stato di caricamento e Conferma e'
       disabilitato; riaprendo il dialog la selezione riparte da "tutti selezionati" (D-3).</criterion>
-    <criterion id="AC-016">Guide in-app IT/EN aggiornate con gli stessi id sezione; `help-content-parity.test.ts`
+    <criterion id="AC-017">D-4: due operatori della stessa Sede, uno con 3 record gia' in carico e uno con 0, due record
+      da smistare. Senza il campo (o true) vanno entrambi al libero; con `use_current_load=false` uno a testa. Vale su
+      Lead, Gestione richieste e revisione Import. `use_current_load` con mode=single o non booleano => 422.</criterion>
+    <criterion id="AC-018">D-4: nel dialog, in Smistamento equo, l'interruttore "Tieni conto del carico attuale" e' acceso
+      di default; spegnendolo la Conferma invia `use_current_load: false`; in "Assegna a operatore" non compare.</criterion>
+        <criterion id="AC-016">Guide in-app IT/EN aggiornate con gli stessi id sezione; `help-content-parity.test.ts`
       verde.</criterion>
   </acceptance_criteria>
 

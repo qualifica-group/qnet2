@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { seedLineStatusCatalog } from '@/features/purchase-request-line-statuses/line-status-catalog-fixtures'
 import { LineStatusDialog } from '@/features/purchase-requests/line-status-dialog'
@@ -45,9 +46,11 @@ function target(overrides: Partial<LineTarget> & Pick<LineTarget, 'id'>): LineTa
 function renderDialog(targets: LineTarget[], onChanged = vi.fn()) {
   const client = seedLineStatusCatalog(new QueryClient({ defaultOptions: { queries: { retry: false } } }))
   render(
-    <QueryClientProvider client={client}>
-      <LineStatusDialog targets={targets} onOpenChange={vi.fn()} onChanged={onChanged} />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <LineStatusDialog targets={targets} onOpenChange={vi.fn()} onChanged={onChanged} />
+      </QueryClientProvider>
+    </MemoryRouter>,
   )
   return onChanged
 }
@@ -129,6 +132,22 @@ describe('LineStatusDialog (AC-018, AC-022)', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'Rejected' }))
     expect(screen.getByRole('button', { name: 'Confirm' })).toBeEnabled()
+  })
+
+  it('sends the user to the order, with no option to confirm, when a line is driven by its ODA (spec 0245 D-8)', () => {
+    renderDialog([
+      target({
+        id: 1,
+        status: 'ordered',
+        transitions: ['received', 'on_hold'],
+        purchaseOrder: { id: 31, code: 'ODA-2026-0031' },
+      }),
+    ])
+
+    expect(screen.getByRole('status')).toHaveTextContent('the status follows the order')
+    expect(screen.getByRole('link', { name: 'ODA-2026-0031' })).toHaveAttribute('href', '/purchase-orders/31')
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled()
   })
 
   it('stays closed with no selected line', () => {

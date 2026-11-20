@@ -6,6 +6,7 @@ use App\CustomFields\FieldTypeRegistry;
 use App\DataObjects\Attributes\CreateAttributeData;
 use App\DataObjects\Attributes\UpdateAttributeData;
 use App\Models\Attribute;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -16,7 +17,13 @@ use Illuminate\Support\Facades\DB;
  */
 class AttributeService
 {
-    public function __construct(private readonly FieldTypeRegistry $fieldTypeRegistry) {}
+    /** Tables whose `attribute_values` JSON map is keyed by attribute code (`deletion.usages.*` labels). */
+    private const array VALUE_TABLES = ['products', 'quotes', 'work_orders'];
+
+    public function __construct(
+        private readonly FieldTypeRegistry $fieldTypeRegistry,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(CreateAttributeData $data): Attribute
     {
@@ -83,16 +90,33 @@ class AttributeService
     }
 
     /**
-     * Restrictive delete: an attribute assigned to a category cannot be
-     * removed (it would silently orphan the category's form).
+     * Restrictive delete (spec 0384): an attribute assigned to a category or
+     * holding a value on a product, quote or work order cannot be removed.
      */
     public function delete(Attribute $attribute): void
     {
-        if ($attribute->categories()->exists()) {
-            abort(409, 'This attribute is assigned to a category and cannot be deleted.');
-        }
+        $this->inUseGuard->assertNoUsage([
+            ...$this->inUseGuard->usageCounts($attribute),
+            ...$this->recordedValueCounts($attribute),
+        ]);
 
         $attribute->delete();
+    }
+
+    /**
+     * Rows per table with a value under the attribute code (bound JSON-path
+     * check; the code is constrained on write, never raw input).
+     *
+     * @return array<string, int>
+     */
+    private function recordedValueCounts(Attribute $attribute): array
+    {
+        $counts = [];
+        foreach (self::VALUE_TABLES as $table) {
+            $counts[$table] = DB::table($table)->whereJsonContainsKey('attribute_values->'.$attribute->code)->count();
+        }
+
+        return $counts;
     }
 
     /**

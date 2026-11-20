@@ -69,6 +69,68 @@ describe('useTableCustomFilters', () => {
     expect(result.current.active.state).toEqual({ rules: RULES, viewId: 3, name: 'Aperti' })
   })
 
+  // Ticket #428054 ("metto il filtro dei richiami di oggi, dopo poco si toglie da solo"):
+  // AG Grid emits filterChanged AFTER setFilterModel returns, so the echo of
+  // applyRules' own clear reached the grid handler outside activate()'s
+  // suppression and switched the custom filter off again.
+  it('keeps the custom filter active when the grid echoes its own clear asynchronously (#428054)', async () => {
+    let model: Record<string, unknown> = { next_callback_at: { filterType: 'date', type: 'equals', dateFrom: '2026-11-13' } }
+    const listeners: Array<() => void> = []
+    const gridApi = {
+      isDestroyed: () => false,
+      getFilterModel: () => model,
+      setFilterModel: (next: Record<string, unknown>) => {
+        model = next
+        setTimeout(() => listeners.forEach((listener) => listener()), 0)
+      },
+    } as unknown as GridApi<TableRow>
+
+    const { result } = renderHook(() =>
+      useSetup({
+        gridApi,
+        advancedFilters: stubAdvancedFilters(vi.fn()),
+        refreshGrid: vi.fn(),
+        onFilterModelApplied: vi.fn(),
+      }),
+    )
+    listeners.push(() => result.current.handleGridFilterChanged())
+
+    act(() => {
+      result.current.applyRules(RULES, { name: 'Richiami di oggi' })
+    })
+    await act(() => new Promise((resolve) => setTimeout(resolve, 10)))
+
+    expect(result.current.active.state).toEqual({ rules: RULES, viewId: undefined, name: 'Richiami di oggi' })
+  })
+
+  it('a column filter set while the custom filter is active switches the custom filter off (D-2)', () => {
+    let model: Record<string, unknown> = {}
+    const gridApi = {
+      isDestroyed: () => false,
+      getFilterModel: () => model,
+      setFilterModel: (next: Record<string, unknown>) => {
+        model = next
+      },
+    } as unknown as GridApi<TableRow>
+
+    const { result } = renderHook(() =>
+      useSetup({
+        gridApi,
+        advancedFilters: stubAdvancedFilters(vi.fn()),
+        refreshGrid: vi.fn(),
+        onFilterModelApplied: vi.fn(),
+      }),
+    )
+    act(() => {
+      result.current.applyRules(RULES, {})
+    })
+
+    model = { name: { filterType: 'text', type: 'contains', filter: 'rossi' } }
+    act(() => result.current.handleGridFilterChanged())
+
+    expect(result.current.active.state).toBeNull()
+  })
+
   it('openNewFilter/openEditFilter/closeBuilder manage the dialog state', () => {
     const { result } = renderHook(() =>
       useSetup({

@@ -197,7 +197,11 @@ it('AC-041: DELETE of a row a task uses is 409, naming the resource; neither the
     $this->deleteJson("/api/{$resource}/{$row->id}")
         ->assertStatus(409)
         ->assertJsonPath('success', false)
-        ->assertJsonPath('message', "This {$resourceName} is used by a task and cannot be deleted.");
+        // REQUIREMENT CHANGED (spec 0384): the 409 message now lists the uses via the shared in-use guard
+        // (task statuses keep their dedicated guard and message).
+        ->assertJsonPath('message', $resource === 'task-statuses'
+            ? "This {$resourceName} is used by a task and cannot be deleted."
+            : __('deletion.in_use', ['usages' => '1 task']));
 
     $this->assertDatabaseHas($table, ['id' => $row->id]);
     $this->assertDatabaseHas('tasks', ['id' => $task->id]);

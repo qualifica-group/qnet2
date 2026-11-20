@@ -11,7 +11,7 @@ export const purchaseRequests = {
   forbidden: 'You do not have permission to view purchase requests.',
   newRequest: 'New RDA',
   columns: {
-    id: 'ID',
+    id: 'RDA no.',
     subject: 'Subject',
     requested_at: 'Request date',
     priority: 'Priority',
@@ -186,6 +186,9 @@ export const purchaseRequests = {
     reasonBulkNote: 'The reason will be applied to all {{count}} selected lines.',
     bulkAction: 'Change status',
     noCommon: 'The selected lines have no status change in common.',
+    orderDriven:
+      'Lines linked to a purchase order (ODA) cannot change status from here: the status follows the order. Register the receipt on the ODA and the line becomes Received by itself; cancelling the ODA takes the line back to Approved.',
+    orderDrivenOpen: 'Open the order:',
     currentOption: '{{status}} (current)',
     newStatus: 'New status',
     reason: 'Reason (optional)',

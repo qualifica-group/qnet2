@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\TaskCategories\CreateTaskCategoryData;
 use App\DataObjects\TaskCategories\UpdateTaskCategoryData;
 use App\Models\TaskCategory;
+use App\Services\Deletion\InUseGuard;
 use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -56,7 +57,10 @@ class TaskCategoryService
      */
     private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active', 'parent_id', 'sort_order'];
 
-    public function __construct(private readonly LookupOrderManager $orderManager) {}
+    public function __construct(
+        private readonly LookupOrderManager $orderManager,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     /**
      * A cycle is structurally impossible on create (the row has no id yet),
@@ -98,13 +102,7 @@ class TaskCategoryService
      */
     public function delete(TaskCategory $taskCategory): void
     {
-        if ($taskCategory->children()->exists()) {
-            abort(409, 'This task category has child categories and cannot be deleted.');
-        }
-
-        if ($taskCategory->tasks()->exists()) {
-            abort(409, 'This task category is used by a task and cannot be deleted.');
-        }
+        $this->inUseGuard->assertUnused($taskCategory);
 
         $taskCategory->delete();
     }

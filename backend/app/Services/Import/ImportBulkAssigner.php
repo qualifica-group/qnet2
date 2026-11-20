@@ -61,8 +61,9 @@ final class ImportBulkAssigner
      * @param  array<int, int>  $rowIds
      * @param  array<int, int>|null  $productIds
      * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168, `balanced` only
+     * @param  bool  $useCurrentLoad  spec 0168 D-4: false splits by headcount, ignoring the existing load
      */
-    public function assign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $productIds = null, ?array $operatorsBySite = null): AssignmentOutcome
+    public function assign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?array $productIds = null, ?array $operatorsBySite = null, bool $useCurrentLoad = true): AssignmentOutcome
     {
         // Step 1: the targeted rows, read once with everything the Sede and
         // the requirement resolvers need (INV-1).
@@ -73,7 +74,7 @@ final class ImportBulkAssigner
         }
 
         return $mode === LeadAssignmentMode::Balanced
-            ? $this->assignBalanced($run, $rows, $productIds, $operatorsBySite)
+            ? $this->assignBalanced($run, $rows, $productIds, $operatorsBySite, $useCurrentLoad)
             : $this->assignSingle($run, $rows, $operatorId, $productIds);
     }
 
@@ -123,7 +124,7 @@ final class ImportBulkAssigner
      * @param  array<int, int>|null  $productIds
      * @param  array<int, array{operational_site_id: int, operator_ids: array<int, int>}>|null  $operatorsBySite  spec 0168
      */
-    private function assignBalanced(ImportRun $run, Collection $rows, ?array $productIds, ?array $operatorsBySite = null): AssignmentOutcome
+    private function assignBalanced(ImportRun $run, Collection $rows, ?array $productIds, ?array $operatorsBySite, bool $useCurrentLoad): AssignmentOutcome
     {
         $globalConfig = $run->global_config ?? [];
 
@@ -140,10 +141,11 @@ final class ImportBulkAssigner
         // for its own Sede. A no-op when $operatorsBySite is null.
         $candidatesByRow = $this->poolRestriction->restrict($candidatesByRow, $siteByRow, $operatorsBySite);
 
-        // Step 2: greedy distribution over one load map for the whole batch.
+        // Step 2: greedy distribution over one load map for the whole batch;
+        // an empty map (D-4) starts everyone at zero, a split by headcount.
         $assignments = $this->distributor->distributeAmong(
             $candidatesByRow,
-            $this->distributor->currentLoads($this->unionOfCandidates($candidatesByRow)),
+            $useCurrentLoad ? $this->distributor->currentLoads($this->unionOfCandidates($candidatesByRow)) : [],
         );
 
         // Step 3: one mass UPDATE per operator, one for the rows nobody could

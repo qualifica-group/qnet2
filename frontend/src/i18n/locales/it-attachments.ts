@@ -12,6 +12,8 @@ export const attachments = {
   emptyHint: 'Trascina uno o più file nell\'area qui sopra per aggiungere i primi.',
   preview: 'Anteprima',
   download: 'Scarica',
+  downloadAll: 'Scarica tutti',
+  downloadingAll: 'Preparazione dello ZIP…',
   deleteAction: 'Elimina documento',
   deleteConfirm: 'Eliminare "{{name}}"? L\'operazione non è reversibile.',
   legacyNote: 'Non trovi un documento?',
@@ -24,5 +26,6 @@ export const attachments = {
     preview: 'Impossibile aprire il documento. Riprova.',
     previewBlocked: 'Il browser ha bloccato la finestra di anteprima. Consenti i pop-up per questo sito.',
     download: 'Impossibile scaricare il documento. Riprova.',
+    downloadAll: 'Impossibile scaricare i documenti. Riprova.',
   },
 }

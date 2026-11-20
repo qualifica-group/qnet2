@@ -7,7 +7,7 @@ namespace App\Http\Requests\WorkOrderPage;
 use App\Http\Requests\WorkOrderChat\WorkOrderChatRequest;
 
 /**
- * POST of a page poll (spec 0380, D-7): a question and 2..10 distinct options.
+ * POST of a page poll (spec 0420, D-7): a question and 2..10 distinct options.
  */
 class StoreWorkOrderPagePollRequest extends WorkOrderChatRequest
 {

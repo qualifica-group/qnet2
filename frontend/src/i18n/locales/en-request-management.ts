@@ -18,10 +18,9 @@ export const requestManagement = {
     estimatedValue: 'Estimated value',
     successProbability: 'Success probability',
     expectedCloseDate: 'Expected close date',
-    operator: 'Operator',
     managerGa1: 'Tutor',
-    managerGa5: 'APL operator',
     managers: 'Account managers',
+    otherManagers: 'Other account managers',
     operationalSite: 'Operational site',
     firstName: 'First name',
     lastName: 'Last name',
@@ -34,6 +33,11 @@ export const requestManagement = {
     nextCallbackAt: 'Next callback',
     transferred: 'Transferred',
     quoteWorkflowStatus: 'Working status',
+  },
+  /** Ticket #427847: the row's callback date shown above its notes. */
+  notesDialog: {
+    callback: 'Callback date: {{date}}',
+    callbackNone: 'No callback date set',
   },
   pendingChangeRequests: {
     alert_one: '{{count}} pending change request',
@@ -444,6 +448,11 @@ export const requestManagement = {
       item: '{{label}}: {{value}} ({{percent}}%)',
       lead: '{{label}} {{percent}}%',
       more: '+{{count}} more',
+    },
+    breakdown: {
+      title: 'Split by current status',
+      trigger: '{{label}} split by status',
+      item: '{{label}}: {{value}}',
     },
     heatmap: {
       title: 'Categories × indicators map',

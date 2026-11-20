@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0385-request-statistics-category-favorites" status="approved" owner="nicola" date="2026-11-11">
+
+  <goal>
+    In Statistiche Gestione Richieste il supervisore commerciale puo' segnare le categorie come preferite, per trovarle e mostrarle subito nella riga delle schede, e scegliere se la riga mostra solo le categorie madri o tutte, sottocategorie comprese (task 427238), come gia' fa Gestione Richieste.
+  </goal>
+
+  <context>
+    D-1 Il modello e' quello di Gestione Richieste (spec 0184 preferite, 0337 categorie madri): stesso menu `CategoryTabsPicker` (stella, "Mostra solo preferite", Seleziona/Deseleziona tutte, interruttore "Categorie madri"), stesso hook `useCategoryTabPreferences`, stessa tabella `user_category_tab_preferences`, stesso `CategoryTabPreferenceStore` e `CategoryTabPreferencesResource`. Nessuna nuova tabella ne' migrazione.
+    D-2 Endpoint proprio sotto il permesso delle statistiche: quello di Gestione Richieste richiede `request-management.viewAny`, che un utente solo-statistiche non ha. Le preferite sono una riga a se' (`module = 'request-statistics'`), separate da quelle di Gestione Richieste. Nessun default da competenza (spec 0193): senza riga salvata la riga mostra tutte le categorie, come prima.
+    D-3 Una preferita e' un id di categoria che e' un ramo del report: validata contro `ReportBranchResolver::keys()`, la stessa allow-list di `category_keys` della dashboard. Categoria non reportable o inesistente = 422.
+    D-4 "Categorie madri" e' uno stato di interfaccia ricordato dal browser (`useCategoryTabLevel`, chiave `request-statistics.category-tab-level`), valore iniziale "tutte" (in Gestione Richieste il valore iniziale resta "madri"). Il filtro e' lato client: nasconde dalla riga e dal menu le categorie con `depth > 0` di `GET report/categories`. La categoria aperta resta visibile anche se il filtro o "solo preferite" la nasconderebbero.
+    D-5 Seleziona/Deseleziona tutte agiscono solo sulle categorie elencate dal menu: le preferite di categorie fuori dalla selezione dei filtri restano.
+    D-6 La riga identifica le schede per posizione (fit e menu lavorano su numeri); le preferite convertono posizione &lt;-&gt; id categoria (`Number(key)`).
+  </context>
+
+  <scope>
+    <in>
+      <item>GET/PUT `/api/request-management/report/category-tab-preferences` (controller `RequestStatisticsCategoryPreferencesController`, FormRequest `UpdateRequestStatisticsCategoryPreferencesRequest`), dichiarati prima di `report/{exportRun}`.</item>
+      <item>`DashboardCategoryStrip` con il menu di Gestione Richieste (`CategoryTabsPicker`) e l'hook `useDashboardCategoryStrip`; il menu resta nella riga come stella anche quando tutte le schede ci stanno.</item>
+      <item>`CategoryTabsPicker`: badge del conteggio solo se la categoria ne ha uno; `useCategoryTabLevel`: valore iniziale configurabile.</item>
+      <item>Guida in-app IT/EN `request-statistics`: nuova sezione `statistics-favorites`, riga "Schede" aggiornata.</item>
+    </in>
+    <out>
+      <item>Panoramica, mappa categorie, numeri e pannello Filtri: invariati (le preferite e il filtro madri cambiano solo le schede visibili).</item>
+      <item>Preferite di Gestione Richieste / Iscritti (spec 0184): invariate.</item>
+      <item>Gestione Iscritti: non ha statistiche, quindi nessuna rotta.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/request-management/report/category-tab-preferences">
+      <request>nessun parametro</request>
+      <response status="200">{ success, message, data: { preferences: { favorite_category_ids: int[] (crescenti), show_only_favorites: bool, is_default: bool } } }</response>
+      <errors>401 non autenticato; 403 senza `request-statistics.view`</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/request-management/report/category-tab-preferences">
+      <request>{ favorite_category_ids: int[] (present, max 1000, distinti, ognuno chiave di ramo del report), show_only_favorites: bool (required) }</request>
+      <response status="200">come GET, `is_default: false`</response>
+      <errors>401; 403 senza `request-statistics.view`; 422 campo mancante, id non intero, categoria non nel report o inesistente</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con `request-statistics.view` senza preferite salvate, quando legge le preferite, allora riceve `[]`, `show_only_favorites=false`, `is_default=true`. (Pest RequestStatisticsCategoryPreferencesTest)</criterion>
+    <criterion id="AC-002">Quando salva categorie e sottocategorie del report, allora le rilegge ordinate, la riga ha `module='request-statistics'` e le preferite di Gestione Richieste restano vuote. (Pest)</criterion>
+    <criterion id="AC-003">Una lista vuota cancella le preferite. (Pest)</criterion>
+    <criterion id="AC-004">Senza `request-statistics.view` (anche con permessi di Gestione Richieste) GET e PUT rispondono 403 e nulla e' scritto; un ospite riceve 401. (Pest)</criterion>
+    <criterion id="AC-005">Un id di categoria non nel report o inesistente, un id non intero o un campo mancante rispondono 422. (Pest)</criterion>
+    <criterion id="AC-006">La riga legge le preferite da `{module}/report` e le mostra per prime. (Vitest request-dashboard-category-strip)</criterion>
+    <criterion id="AC-007">La stella salva l'id della categoria con l'intera preferenza. (Vitest)</criterion>
+    <criterion id="AC-008">Con "Mostra solo preferite" la riga mostra solo le preferite. (Vitest)</criterion>
+    <criterion id="AC-009">"Categorie madri" (spento all'inizio) nasconde le sottocategorie, e' ricordato dal browser e non nasconde la sottocategoria aperta. (Vitest)</criterion>
+    <criterion id="AC-010">"Deseleziona tutte" conserva le preferite delle categorie non elencate. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza ne' migrazione. Autorizzazione server-side `request-statistics.view` su entrambi i verbi; payload via `$request->safe()->only()`; allow-list dei rami del report (backend.md §8). Il `module` della preferenza e' una costante del controller, mai input. UI compatta riusando i componenti di `category-tabs` (nessun componente duplicato).
+  </constraints>
+
+</spec>

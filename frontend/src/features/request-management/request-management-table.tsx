@@ -18,6 +18,7 @@ import {
 import { resolveAssignFeedback } from '@/features/leads/assign-feedback'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { NotesDialog } from '@/features/notes/notes-dialog'
+import { RequestNotesCallback } from '@/features/request-management/request-notes-callback'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
@@ -78,6 +79,7 @@ const NO_COMMON_OPERATOR_DISABLED_MODES: readonly AssignmentMode[] = ['single']
 interface RequestNotesTarget {
   opportunityId: number
   quoteId: number
+  callbackAt: string | null
 }
 
 /**
@@ -190,7 +192,11 @@ export function RequestManagementTable() {
         case 'notes':
           // Il thread resta quello dell'Opportunita' (D-9), filtrato sulla
           // riga: `row.id` E' l'Offerta (spec 0086 D-1).
-          setNotesTarget({ opportunityId: row.opportunity_id as number, quoteId: Number(row.id) })
+          setNotesTarget({
+            opportunityId: row.opportunity_id as number,
+            quoteId: Number(row.id),
+            callbackAt: typeof row.next_callback_at === 'string' ? row.next_callback_at : null,
+          })
           break
         case 'delete':
           void runDelete(row)
@@ -461,6 +467,7 @@ export function RequestManagementTable() {
         lockedQuoteId={notesTarget?.quoteId ?? null}
         onOpenChange={handleNotesOpenChange}
         onThreadChanged={invalidateDashboard}
+        context={notesTarget ? <RequestNotesCallback value={notesTarget.callbackAt} /> : null}
       />
 
       <ResourceActivityDialog

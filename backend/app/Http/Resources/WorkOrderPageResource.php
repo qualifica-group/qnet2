@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * WorkOrderPagePayload shape (spec 0380 data_contract). `tasks` and `polls` are
+ * WorkOrderPagePayload shape (spec 0420 data_contract). `tasks` and `polls` are
  * maps keyed by id and always JSON objects, even when empty.
  *
  * @mixin WorkOrderPageView

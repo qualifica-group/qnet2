@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AttributeContext;
+use App\Enums\WorkOrderWorkPhase;
 use App\Models\Attribute;
 use App\Models\MigrationRun;
 use App\Models\Quote;
@@ -98,6 +99,18 @@ it('AC-002: realigns the scalar fields, sets the legacy updated_at and logs noth
         ->and($workOrder->code)->toBe('COM-0017')
         ->and($workOrder->updated_at->toDateTimeString())->toBe('2025-01-10 10:00:00')
         ->and(DB::table('activity_log')->where('id', '>', $maxActivityId)->where('subject_type', 'like', 'work_order%')->pluck('log_name')->all())->toBe([]);
+});
+
+it('spec 0395 AC-006: realigns the legacy working phase of an untouched work order', function () {
+    runLegacyWorkOrdersImport([legacyWorkOrderRecord()]);
+
+    $run = realignLegacyWorkOrders([legacyWorkOrderRecord(['work_phase' => 'terminated', 'work_phase_before_termination' => 'to_plan'])]);
+
+    $workOrder = WorkOrder::query()->where('old_id', 17)->sole();
+
+    expect($run->updated_rows)->toBe(1)
+        ->and($workOrder->work_phase)->toBe(WorkOrderWorkPhase::Terminated)
+        ->and($workOrder->work_phase_before_termination)->toBe(WorkOrderWorkPhase::ToPlan);
 });
 
 it('AC-003: realigns supervisors and participants without notifications', function () {

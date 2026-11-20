@@ -6,6 +6,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Models\PurchaseOrder;
 use App\Support\OperationalSiteLabel;
+use App\Support\RegistryFiscalLabel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -39,7 +40,7 @@ class PurchaseInvoiceResource extends JsonResource
             'document_number' => $this->document_number,
             'document_date' => $this->document_date->toDateString(),
             'company' => ['id' => $this->company->id, 'name' => $this->company->denomination],
-            'supplier' => ['id' => $this->supplier->id, 'name' => $this->supplier->name],
+            'supplier' => ['id' => $this->supplier->id, 'name' => $this->supplier->name, 'label' => RegistryFiscalLabel::forRegistry($this->supplier)],
             'payment_method' => ['id' => $this->paymentMethod->id, 'name' => $this->paymentMethod->name],
             'financial_account' => $this->financialAccount === null ? null : [
                 'id' => $this->financialAccount->id,

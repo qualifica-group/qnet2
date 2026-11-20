@@ -76,7 +76,7 @@ it('AC-006: a closed or completed work order is read-only: 409 on PUT, POST poll
     'completed' => 'completed',
 ]);
 
-it('exposes view_page and edit_page like the chat actions (spec 0380 D-2, new requirement)', function (): void {
+it('exposes view_page and edit_page like the chat actions (spec 0420 D-2, new requirement)', function (): void {
     $workOrder = chatWorkOrder();
     $outsider = chatOutsider();
     Sanctum::actingAs(chatMember($workOrder));

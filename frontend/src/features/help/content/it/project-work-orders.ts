@@ -79,11 +79,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'closed-work-orders',
-      title: 'Commessa completata o chiusa',
+      title: 'Commessa conclusa, annullata o disdetta',
       blocks: [
         {
           type: 'paragraph',
-          text: "Quando la commessa è **Completata** o **Chiusa**, la chat diventa in **sola lettura**: rivedi i messaggi ma non puoi inviarne, modificarli o cancellarli, e vedi l'avviso **Chat in sola lettura: non puoi inviare messaggi.** Vale anche per gli amministratori.",
+          text: "Quando lo stato della commessa è **Conclusa**, **Annullata** o **Disdetta**, la chat diventa in **sola lettura**: rivedi i messaggi ma non puoi inviarne, modificarli o cancellarli, e vedi l'avviso **Chat in sola lettura: non puoi inviare messaggi.** Vale anche per gli amministratori.",
         },
       ],
     },

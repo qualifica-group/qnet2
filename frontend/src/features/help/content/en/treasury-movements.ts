@@ -11,6 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'The module is under **Accounting › Finance › Treasury movements**. It is used to record **cash and bank facts that do not go through an invoice**: interest, fees, shareholder deposits, tax payments, salaries, withdrawals. Invoice collections and payments stay on their installments and show up on their own in the **Account statements** page.' },
         { type: 'note', text: 'This is not double-entry bookkeeping: each movement affects the balance of the account you pick.' },
+        { type: 'paragraph', text: 'The **Registry** column shows the name followed by the **VAT number** (e.g. *Rossi Srl - 01234567890*); when the registry has no VAT number the **tax code** is shown, and just the name when it has neither.' },
       ],
     },
     {

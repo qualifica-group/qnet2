@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Authorization\AuthorizationRegistry;
+use App\Enums\CategoryUsageArea;
 use App\Enums\WorkflowStatusGroup;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
@@ -183,7 +184,7 @@ class UpdateRequestRequest extends FormRequest
             // Funzione aziendale + categoria prodotto (user directive
             // 2026-07-31): `required: false` = sparse, but `min:1` still bars
             // a clear-to-empty, exactly like the opportunities PATCH.
-            ...$this->productLinesRules(required: false),
+            ...$this->productLinesRules(required: false, area: CategoryUsageArea::Requests),
             // Spec 0097, D-1/D-3: the panel's attribution block writes the
             // Offerta's WHOLE team, with the same ordered, gap-aware shape
             // and the same shared trait the quotes endpoints use — the lone

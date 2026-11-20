@@ -21,5 +21,7 @@ final class ReportRow
     public function __construct(
         public readonly string $label,
         public readonly array $values,
+        /** @var array<string, array<string, int>> column key => status name => count, for the columns that compute it (task 427193) */
+        public readonly array $breakdowns = [],
     ) {}
 }

@@ -1,22 +1,12 @@
-import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { MessagesSquare, Paperclip } from 'lucide-react'
 import { Form } from '@/components/ui/form'
 import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
-import { activityLogTab } from '@/features/activity-log/activity-log-tab'
-import { DocumentsSection } from '@/features/attachments/documents-section'
-import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
-import { NotesSection } from '@/features/notes/notes-section'
-import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-emails-tab'
-import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
 import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
-import { WorkOrderDetailWorkTabs } from '@/features/work-orders/work-order-detail-work-tabs'
+import { WorkOrderDetailTabs } from '@/features/work-orders/work-order-detail-tabs'
 import { useWorkOrderInlineEdit } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
@@ -27,86 +17,12 @@ interface WorkOrderDetailViewProps {
 }
 
 /**
- * The record's collaboration tabs (Notes | Documents | Registry documents |
- * Email | Activity), each gated by its OWN authorization source and absent
- * entirely when unauthorized (spec 0134 D-3; the read-only registry one is
- * spec 0173; Email is spec 0175).
- */
-function useCollaborationTabs(
-  workOrder: WorkOrderDetailWithPermissions,
-  onMembersAdded: () => void,
-): RecordCollaborationTab[] {
-  const { t } = useTranslation()
-  const { can } = useAbilities()
-  const registryDocumentsTab = useRegistryDocumentsTab(workOrder.registry?.id)
-  const outboundEmailsTab = useOutboundEmailsTab(
-    { type: 'work-orders', id: workOrder.id },
-    workOrder.permissions.actions.view_emails,
-    workOrder.permissions.actions.send_email,
-  )
-  const tabs: RecordCollaborationTab[] = []
-
-  /*
-   * Notes are gated on the resource permission alone: the membership half of
-   * the server rule (`WorkOrderNotable::authorizeRead`) is not evaluable
-   * client-side, and `NotesSection` owns its own error state for that
-   * residual case.
-   */
-  if (can('work-orders.view')) {
-    tabs.push({
-      value: 'notes',
-      label: t('notes.section.title'),
-      icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
-      content: (
-        <NotesSection
-          entityType={WORK_ORDERS_DOMAIN}
-          entityId={workOrder.id}
-          showHeader={false}
-          onMembersAdded={onMembersAdded}
-        />
-      ),
-    })
-  }
-
-  if (workOrder.permissions.actions.view_documents) {
-    tabs.push({
-      value: 'documents',
-      label: t('attachments.title'),
-      icon: <Paperclip className="size-3.5" aria-hidden="true" />,
-      content: (
-        <DocumentsSection
-          resource={WORK_ORDER_ATTACHABLE_ALIAS}
-          id={workOrder.id}
-          canUpload={can('attachments.create')}
-          canDelete={can('attachments.delete')}
-        />
-      ),
-    })
-  }
-
-  if (registryDocumentsTab) {
-    tabs.push(registryDocumentsTab)
-  }
-
-  if (outboundEmailsTab) {
-    tabs.push(outboundEmailsTab)
-  }
-
-  if (workOrder.permissions.actions.view_activity) {
-    tabs.push(activityLogTab(WORK_ORDERS_DOMAIN, workOrder.id, t('activityLog.title')))
-  }
-
-  return tabs
-}
-
-/**
- * Detail of a single work order (AC-075), laid out exactly like the
- * Opportunita' record: on the left ONE card carrying identity header, KPI strip
- * and titled sections; the collaboration card (notes, documents, activity log,
- * spec 0134 D-3) on the right; full width below both, ONE card switching
- * between the Task board (spec 0146, only with `tasks.viewAny`, AC-024; open
- * by default) and the Costi section (spec 0190, only with `view_costs`); a
- * metadata footer last.
+ * Detail of a single work order (AC-075), laid out like the legacy "Gestione
+ * commessa" (user directive 2026-11-16): the identity band with its KPI strip
+ * on top, then ONE card of tabs (Info | Task | Documenti | Amministrazione |
+ * Note | Chat | Email | Attivita', each with its own gate) with the work order
+ * title set apart at the end of the strip; a metadata footer last. The Info
+ * tab carries the record sections.
  *
  * There is no edit page (spec 0195 applied to Commesse, user directive
  * 2026-10-06): the sections' fields edit IN PLACE, one at a time
@@ -126,32 +42,29 @@ export function WorkOrderDetailView(props: WorkOrderDetailViewProps) {
 function WorkOrderDetailContent({ workOrder, onChanged }: WorkOrderDetailViewProps) {
   const { t } = useTranslation()
   const editor = useWorkOrderInlineEdit(workOrder, onChanged)
-  const queryClient = useQueryClient()
-  const collaborationTabs = useCollaborationTabs(workOrder, () => {
-    // Spec 0353: una nota puo' aver aggiunto Partecipanti; il dettaglio li rilegge.
-    void queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(workOrder.id) })
-  })
   const createdAt = formatDateTime(workOrder.created_at)
   const updatedAt = formatDateTime(workOrder.updated_at)
 
   return (
     <RecordCanvas>
       <RecordBody
-        collaborationTabs={collaborationTabs}
         header={
           <>
             <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} />
             <WorkOrderDetailStats workOrder={workOrder} />
           </>
         }
-      >
-        {/* Provider only (no DOM): the inline editors share the edit form. */}
-        <Form {...editor.form}>
-          <WorkOrderDetailSections workOrder={workOrder} editor={editor} />
-        </Form>
-      </RecordBody>
+      />
 
-      <WorkOrderDetailWorkTabs workOrder={workOrder} />
+      <WorkOrderDetailTabs
+        workOrder={workOrder}
+        info={
+          /* Provider only (no DOM): the inline editors share the edit form. */
+          <Form {...editor.form}>
+            <WorkOrderDetailSections workOrder={workOrder} editor={editor} />
+          </Form>
+        }
+      />
 
       <RecordMeta>
         {createdAt ? (

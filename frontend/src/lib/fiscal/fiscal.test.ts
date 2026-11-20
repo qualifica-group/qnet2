@@ -9,6 +9,7 @@ import {
   taxCodeSurnameTriple,
   withoutOmocodia,
 } from '@/lib/fiscal/tax-code'
+import { isValidForeignFiscalCode } from '@/lib/fiscal/foreign-fiscal-code'
 import { isValidVatNumber } from '@/lib/fiscal/vat-number'
 
 // The same cases the backend twin asserts (tests/Unit/Fiscal), so the two
@@ -101,5 +102,28 @@ describe('VAT number', () => {
     ['empty', ''],
   ])('rejects a VAT number with %s', (_label, value) => {
     expect(isValidVatNumber(value)).toBe(false)
+  })
+})
+
+describe('foreign code', () => {
+  it.each([
+    ['German VAT', 'DE123456789'],
+    ['French VAT with spaces', 'fr 12 345678901'],
+    ['Swiss UID', 'CHE-123.456.789'],
+    ['Spanish NIF', 'ES12345678Z'],
+    ['Greek VIES prefix', 'EL123456789'],
+  ])('accepts a %s', (_label, value) => {
+    expect(isValidForeignFiscalCode(value)).toBe(true)
+  })
+
+  it.each([
+    ['no prefix', '123456789'],
+    ['Italian prefix', 'IT00743110157'],
+    ['Italian personal code shape', 'RSSMRA80A01H501'],
+    ['too short', 'DE1'],
+    ['too long', 'DE12345678901234567'],
+    ['empty', ''],
+  ])('rejects %s', (_label, value) => {
+    expect(isValidForeignFiscalCode(value)).toBe(false)
   })
 })

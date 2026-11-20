@@ -5,7 +5,7 @@ import { FileText, ListChecks, Truck } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
-import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionHrefResolver, RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import { purchaseRequestLineColumnRenderers } from '@/features/purchase-requests/column-renderers'
@@ -22,6 +22,13 @@ import { PURCHASE_REQUEST_LINES_DOMAIN, PURCHASE_REQUESTS_DOMAIN } from '@/featu
 /** Grid filter key of the status tabs on the lines grid (spec 0208 contract). */
 const STATUS_FILTER_KEY = 'status'
 const NO_TARGETS: readonly LineTarget[] = []
+
+function purchaseRequestLinePath(row: TableRow): string {
+  return `/${PURCHASE_REQUESTS_DOMAIN}/${row.purchase_request_id}`
+}
+
+/** The `view` row action leads to the line's parent request page (Ctrl/Cmd+click opens it in a new tab). */
+const purchaseRequestLineActionHref: ActionHrefResolver = (action, row) => (action.key === 'view' ? purchaseRequestLinePath(row) : undefined)
 
 /**
  * Thin "RDA line management" adapter over the generic table: status tabs, a
@@ -48,7 +55,7 @@ export function PurchaseRequestLinesTable() {
     (action: TableActionDefinition, row: TableRow) => {
       switch (action.key) {
         case 'view':
-          void navigate(`/${PURCHASE_REQUESTS_DOMAIN}/${row.purchase_request_id}`)
+          void navigate(purchaseRequestLinePath(row))
           break
         case 'history':
           setHistoryLineId(Number(row.id))
@@ -99,6 +106,7 @@ export function PurchaseRequestLinesTable() {
         domain={PURCHASE_REQUEST_LINES_DOMAIN}
         renderers={purchaseRequestLineColumnRenderers}
         onAction={handleAction}
+        resolveActionHref={purchaseRequestLineActionHref}
         onFilterModelChange={tabs.onFilterModelChange}
         getBulkActions={getBulkActions}
         disableBuiltinDelete

@@ -4,6 +4,7 @@ import type {
   TableColumnType,
   TableFieldColumn,
   TableFieldConfig,
+  TableFieldNotify,
   TableSummaryStrategy,
 } from '@/features/custom-fields/types'
 
@@ -78,7 +79,21 @@ export interface TableDefinitionBag {
   summary_strategy: '' | TableSummaryStrategy
   min_rows: number | null
   max_rows: number | null
+  /** Row event (spec 0390); the `notify_*` fields below are meaningful only when enabled. */
+  notify_enabled: boolean
+  /** `''` = every added row; otherwise a boolean column key or the selectable key. */
+  notify_trigger: string
+  notify_email_template_id: number | null
+  notify_record_team: boolean
+  notify_user_ids: number[]
+  notify_role_ids: number[]
+  notify_emails: string[]
 }
+
+/** Backend `TableRowNotifyConfigValidator::MAX_IDS`. */
+export const TABLE_NOTIFY_MAX_IDS = 50
+/** Backend `TableRowNotifyConfigValidator::MAX_EMAILS`. */
+export const TABLE_NOTIFY_MAX_EMAILS = 20
 
 export function blankTableColumn(): TableColumnRow {
   return { key: '', label: '', type: 'text', required: false, key_touched: false, config: null, options: [] }
@@ -98,6 +113,45 @@ export function emptyTableDefinition(): TableDefinitionBag {
     summary_strategy: '',
     min_rows: null,
     max_rows: null,
+    ...hydrateTableNotify(null),
+  }
+}
+
+type TableNotifyBag = Pick<
+  TableDefinitionBag,
+  | 'notify_enabled'
+  | 'notify_trigger'
+  | 'notify_email_template_id'
+  | 'notify_record_team'
+  | 'notify_user_ids'
+  | 'notify_role_ids'
+  | 'notify_emails'
+>
+
+/** A disabled notification still defaults to "the record's team", the common case once switched on. */
+function hydrateTableNotify(notify: TableFieldNotify | null | undefined): TableNotifyBag {
+  return {
+    notify_enabled: Boolean(notify),
+    notify_trigger: notify?.trigger ?? '',
+    notify_email_template_id: notify?.email_template_id ?? null,
+    notify_record_team: notify ? notify.record_team : true,
+    notify_user_ids: notify?.user_ids ?? [],
+    notify_role_ids: notify?.role_ids ?? [],
+    notify_emails: notify?.emails ?? [],
+  }
+}
+
+function buildTableNotify(bag: TableDefinitionBag): TableFieldNotify | null {
+  if (!bag.notify_enabled) {
+    return null
+  }
+  return {
+    trigger: bag.notify_trigger === '' ? null : bag.notify_trigger,
+    email_template_id: bag.notify_email_template_id,
+    record_team: bag.notify_record_team,
+    user_ids: bag.notify_user_ids,
+    role_ids: bag.notify_role_ids,
+    emails: bag.notify_emails,
   }
 }
 
@@ -139,6 +193,7 @@ export function hydrateTableDefinition(config: CustomFieldConfig | null): TableD
     summary_strategy: config.summary?.strategy ?? '',
     min_rows: config.min_rows ?? null,
     max_rows: config.max_rows ?? null,
+    ...hydrateTableNotify(config.notify),
   }
 }
 
@@ -176,6 +231,10 @@ export function buildTableConfig(bag: TableDefinitionBag): TableFieldConfig {
   }
   if (bag.max_rows !== null) {
     config.max_rows = bag.max_rows
+  }
+  const notify = buildTableNotify(bag)
+  if (notify) {
+    config.notify = notify
   }
   return config
 }

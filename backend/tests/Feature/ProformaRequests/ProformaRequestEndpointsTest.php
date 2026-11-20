@@ -106,3 +106,17 @@ it('AC-010 (spec 0320): the same product with two line suppliers raises one inst
     expect($offered($requests[$supplierA->id]))->toBe([$lineA->id])
         ->and($offered($requests[$supplierB->id]))->toBe([$lineB->id]);
 });
+
+it('ticket #427857: the work order detail offers request_proforma only with proforma-requests.create', function () {
+    $workOrder = proformaWorkOrder([['consultancy']]);
+    $requester = proformaUserWith(['create']);
+    $viewer = proformaUserWith(['view']);
+
+    Sanctum::actingAs($requester);
+    $this->getJson("/api/work-orders/{$workOrder->id}")->assertOk()
+        ->assertJsonPath('permissions.actions.request_proforma', true);
+
+    Sanctum::actingAs($viewer);
+    $this->getJson("/api/work-orders/{$workOrder->id}")->assertOk()
+        ->assertJsonPath('permissions.actions.request_proforma', false);
+});

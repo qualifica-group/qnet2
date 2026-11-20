@@ -40,6 +40,9 @@ export function ApiModulePanel({
           {t('apiIntegrations.docs.endpointsCount', { count: module.operations.length })}
         </span>
       </header>
+      {module.description ? (
+        <p className="text-xs whitespace-pre-line text-muted-foreground">{module.description}</p>
+      ) : null}
       <div className="flex min-w-0 flex-col gap-1.5">
         {module.operations.map((operation) => (
           <ApiEndpointRow

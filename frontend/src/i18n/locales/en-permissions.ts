@@ -99,6 +99,8 @@ export const permissions = {
     // Spec 0279: absence calendar, three visibility levels.
     calendarOwn: 'Calendar: own only',
     calendarAll: 'Calendar: everyone',
+    // Spec 0360 D-8: change (not remove) the offer rows assigned to a work order.
+    updateLockedLines: 'Edit rows assigned to a work order',
   },
   resources: {
     users: 'Users',

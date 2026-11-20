@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'From the list you can filter, sort and export, and **edit directly in the cells** Subject, Request date, Priority, Requester, Function manager, Customer, Work order, Company site (only among the sites of the company of the RDA), Operational site and Business function: double-click the cell, pick the value and confirm. The same rules as the record apply; closed RDAs and fields your role cannot edit stay read-only. The **Company** is changed from the record, together with its site. The **status tabs** at the top show only the RDAs that have at least one line in that status. Expand a row with the arrow to see its lines and change their status without opening the RDA. You only see the RDAs you requested, manage or created, unless you are allowed to see everything.',
+          text: 'The first column of the list is **RDA no.**, the same number shown in the detail (RDA #number): you can sort and filter it. From the list you can filter, sort and export, and **edit directly in the cells** Subject, Request date, Priority, Requester, Function manager, Customer, Work order, Company site (only among the sites of the company of the RDA), Operational site and Business function: double-click the cell, pick the value and confirm. The same rules as the record apply; closed RDAs and fields your role cannot edit stay read-only. The **Company** is changed from the record, together with its site. The **status tabs** at the top show only the RDAs that have at least one line in that status. Expand a row with the arrow to see its lines and change their status without opening the RDA. You only see the RDAs you requested, manage or created, unless you are allowed to see everything.',
         },
         {
           type: 'note',
@@ -84,7 +84,7 @@ const guide: HelpGuide = {
             ['**Status**', 'To approve, Approved, Ordered, Received, Rejected or On hold. It is not edited like a field: use the **Change line status** icon.'],
             ['**ODA**', 'Read-only: shows the code of the ODA generated from the line, as a link to the order, or a dash if the line is not linked. The link is removed if the ODA is deleted or cancelled, or if the line is removed from the ODA.'],
             ['**Line documents**', 'Attachments of the single line.'],
-            ['**Change line status**', 'Shown on a saved line only when you can change its status: the assigned function manager approves or rejects lines To approve, whoever has the fulfilment permission moves Approved lines to Ordered or On hold and Ordered lines to Received or On hold. Pick the new status and a reason, **mandatory** for **Rejected** and **On hold** (optional for the other statuses). Choosing **Ordered** adds a **Supplier** column to the dialog: lines that already have one show it, lines without one get a **Pick the supplier (required)** picker, outlined in red while empty, and the confirm button stays disabled until none is missing.'],
+            ['**Change line status**', 'Shown on a saved line only when you can change its status: the assigned function manager approves or rejects lines To approve, whoever has the fulfilment permission moves Approved lines to Ordered or On hold and Ordered lines to Received or On hold. Pick the new status and a reason, **mandatory** for **Rejected** and **On hold** (optional for the other statuses). Choosing **Ordered** adds a **Supplier** column to the dialog: lines that already have one show it, lines without one get a **Pick the supplier (required)** picker, outlined in red while empty, and the confirm button stays disabled until none is missing. When an **Ordered** or **Received** line is **linked to an ODA**, its status cannot be changed from here: the dialog explains it and shows the **link to the order**. Registering the receipt on the ODA moves the line to Received by itself; cancelling the ODA takes it back to Approved.'],
             ['**Trash**', 'Deletes the line after confirmation, if your role allows it and it is To approve or Rejected.'],
           ],
         },
@@ -126,7 +126,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Automatic closing**: the RDA closes by itself when no open lines are left, that is all of them are in a final status (Received, On hold or Rejected), even after deleting lines.',
-            '**Close RDA**: manual closing. If non-final lines remain the closing is **forced** and the **reason is mandatory**. A closed RDA is never reopened.',
+            '**Close RDA** (the lock, always visible on the list row like the **History** action): manual closing. If non-final lines remain the closing is **forced** and the **reason is mandatory**. A closed RDA is never reopened.',
             '**Send to manager**: sends the Function manager again the notification (app and email) received on creation.',
             '**Delete**: removes the RDA with its lines, history and documents after confirmation; not possible when a line is already Ordered or Received.',
           ],

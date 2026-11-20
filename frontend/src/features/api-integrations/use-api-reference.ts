@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   buildApiModules,
   groupModulesBySection,
+  moduleDescriptions,
   type ApiModule,
   type ApiModuleSection,
 } from '@/features/api-integrations/api-modules'
@@ -73,7 +74,10 @@ export function useApiReference(
   navigation: NavigationItem[] = NO_NAVIGATION,
 ): ApiReferenceState {
   const operations = useMemo(() => parseOpenApiOperations(document), [document])
-  const modules = useMemo(() => buildApiModules(operations, navigation), [operations, navigation])
+  const modules = useMemo(
+    () => buildApiModules(operations, navigation, moduleDescriptions(document.tags)),
+    [operations, navigation, document.tags],
+  )
 
   // Step 1: the hash of the opening URL selects the module and opens the endpoint
   const [initial] = useState(() => {

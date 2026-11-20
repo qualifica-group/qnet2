@@ -80,6 +80,15 @@ it('aligns assignees and watchers and leaves creator, parent and series (AC-009)
     expect(collect($report->changes)->firstWhere(4, 'assignees')[6])->toBe('Ada Rossi');
 });
 
+it('aligns the template generated flag (spec 0388, AC-005)', function () {
+    $task = realignedTask();
+
+    $report = runTasksRealign(true, legacyTaskRecord(['is_template_generated' => true]));
+
+    expect($task->fresh()->is_template_generated)->toBeTrue()
+        ->and(changedTaskFields($report))->toContain('is_template_generated');
+});
+
 it('writes nothing when simulating (AC-001)', function () {
     $task = realignedTask();
 

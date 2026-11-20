@@ -4,7 +4,7 @@ import { isPageClosedError, pageConflictPayload, isPageConflict, saveWorkOrderPa
 import { workOrderPageKeys } from '@/features/work-order-page/query-keys'
 import type { SavePagePayload, WorkOrderPagePayload } from '@/features/work-order-page/types'
 
-/** Quiet time after the last keystroke before the page is saved (spec 0380 AC-022). */
+/** Quiet time after the last keystroke before the page is saved (spec 0420 AC-022). */
 export const AUTOSAVE_DEBOUNCE_MS = 1500
 
 export type PageSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict'
@@ -18,7 +18,7 @@ interface UsePageAutosaveArgs {
 }
 
 /**
- * Debounced optimistic-concurrency saving (spec 0380 D-3). Orchestration:
+ * Debounced optimistic-concurrency saving (spec 0420 D-3). Orchestration:
  * schedule() records the latest content and (re)starts the debounce; run()
  * sends it unless a request is already in flight (one at a time, the newest
  * content wins) and chains a follow-up save when more text arrived meanwhile.

@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { forbiddenMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -16,8 +15,6 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteCostType } from '@/features/cost-types/api'
 import { costTypeColumnRenderers } from '@/features/cost-types/column-renderers'
 import { COST_TYPES_DOMAIN } from '@/features/cost-types/types'
-
-const CONFLICT_STATUS = 409
 
 /**
  * Thin cost types adapter over the generic table (domain `cost-types`).
@@ -43,15 +40,7 @@ export function CostTypesTable() {
         toast.success(t('costTypes.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden) {
-          toast.error(forbidden)
-        } else if (status === CONFLICT_STATUS) {
-          toast.error(t('costTypes.form.deleteInUse'))
-        } else {
-          toast.error(t('costTypes.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('costTypes.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

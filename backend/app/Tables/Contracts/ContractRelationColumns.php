@@ -444,13 +444,23 @@ final class ContractRelationColumns
 
     /**
      * Derived quick-search (spec 0009): `code`/`title` match the related
-     * quote's own column, bound LIKE, combined into the caller's OR-group via
-     * `orWhereHas`. Any other column id is not owned here (returns false).
+     * quote's own column, `registry` the client's name, bound LIKE, combined
+     * into the caller's OR-group via `orWhereHas`. Any other column id is not
+     * owned here (returns false).
      *
      * @param  Builder<Model>  $query
      */
     public function applySearch(Builder $query, string $columnId, string $pattern): bool
     {
+        // Task 427126: the client's name, through the Offerta's Opportunita'.
+        if ($columnId === 'registry') {
+            $query->orWhereHas('quote.opportunity.registry', static function (Builder $registries) use ($pattern): void {
+                $registries->where('name', 'like', $pattern);
+            });
+
+            return true;
+        }
+
         if (! in_array($columnId, self::SEARCHABLE_QUOTE_COLUMNS, true)) {
             return false;
         }

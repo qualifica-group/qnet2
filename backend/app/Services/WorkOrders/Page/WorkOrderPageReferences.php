@@ -11,7 +11,7 @@ use Dom\Element;
 
 /**
  * Reads and cleans the task-ref / poll nodes of a (sanitized) page content
- * (spec 0380): the content only stores their ids, never the data.
+ * (spec 0420): the content only stores their ids, never the data.
  */
 final class WorkOrderPageReferences
 {

@@ -43,6 +43,7 @@ require_once __DIR__.'/Helpers/CommissionRecalculationHelpers.php';
 require_once __DIR__.'/Helpers/ProjectHelpers.php';
 require_once __DIR__.'/Helpers/RoleAbilityHelpers.php';
 require_once __DIR__.'/Helpers/PaymentMethodHelpers.php';
+require_once __DIR__.'/Helpers/DeletionHelpers.php';
 require_once __DIR__.'/Helpers/RequestManagementHelpers.php';
 require_once __DIR__.'/Helpers/CampaignHelpers.php';
 require_once __DIR__.'/Helpers/CategoryTabHelpers.php';
@@ -98,6 +99,10 @@ require_once __DIR__.'/Helpers/CompetenceVisibilityHelpers.php';
 require_once __DIR__.'/Helpers/AiAssistantHelpers.php';
 require_once __DIR__.'/Helpers/ChartOfAccountsHelpers.php';
 require_once __DIR__.'/Helpers/RevenueClassificationHelpers.php';
+require_once __DIR__.'/Helpers/DilAssociationDateHelpers.php';
+require_once __DIR__.'/Helpers/AttachmentHelpers.php';
+require_once __DIR__.'/Helpers/ReportColumnStatusHelpers.php';
+require_once __DIR__.'/Helpers/RecordMergeHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

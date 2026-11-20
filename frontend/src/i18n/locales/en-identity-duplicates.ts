@@ -7,6 +7,7 @@
 export const identityDuplicates = {
   title: 'Possible duplicate',
   entry: '{{owner}} {{name}} might be a duplicate ({{criteria}}).',
+  useRegistry: 'Use {{name}}',
   owners: {
     user: 'User',
     registry: 'Registry',

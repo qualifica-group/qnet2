@@ -42,7 +42,7 @@ interface TableViewSlots {
 }
 
 /**
- * Assembles the toolbar's saved-views/export slots and the two dialogs they
+ * Assembles the saved-views slot (filter bar), the export slot (toolbar) and the two dialogs they
  * open (export, custom filter rule builder — spec 0014/0158), given the state
  * `TableView` already owns. A plain factory function (not a hook: it calls no
  * hooks of its own), extracted purely to keep `table-view.tsx` under the

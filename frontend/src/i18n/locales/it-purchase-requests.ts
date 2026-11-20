@@ -10,7 +10,7 @@ export const purchaseRequests = {
   forbidden: 'Non hai il permesso di visualizzare le richieste di acquisto.',
   newRequest: 'Nuova RDA',
   columns: {
-    id: 'ID',
+    id: 'N. RDA',
     subject: 'Oggetto',
     requested_at: 'Data richiesta',
     priority: 'Priorità',
@@ -185,6 +185,9 @@ export const purchaseRequests = {
     reasonBulkNote: 'La motivazione verrà applicata a tutte le {{count}} righe selezionate.',
     bulkAction: 'Cambia stato',
     noCommon: 'Le righe selezionate non hanno alcun cambio di stato in comune.',
+    orderDriven:
+      'Le righe collegate a un ordine di acquisto (ODA) non cambiano stato da qui: lo stato segue l’ordine. Registra il ricevimento sull’ODA e la riga passa a Ricevuto da sola; annullando l’ODA la riga torna Approvata.',
+    orderDrivenOpen: 'Apri l’ordine:',
     currentOption: '{{status}} (attuale)',
     newStatus: 'Nuovo stato',
     reason: 'Motivazione (facoltativa)',

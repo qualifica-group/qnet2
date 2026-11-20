@@ -6,6 +6,7 @@ import { useUiScale } from '@/features/appearance/ui-scale-context'
 import { useViewportTableHeight } from '@/features/table/use-viewport-table-height'
 import type { AdvancedFilterDescriptor } from '@/features/table/advanced-filters/types'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
+import { withModuleActionHref } from '@/features/modules/module-action-href'
 import { createRowActionsRenderer, type RowActionHandler, type RowActionsOptions } from '@/features/table/row-actions'
 import type { TableConfigScope } from '@/features/table/use-table-config'
 import { useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
@@ -17,6 +18,18 @@ import type { TableConfig } from '@/features/table/types'
 
 /** Stable empty column list (hoisted per `frontend.md §10`: never `?? []` inline). */
 const EMPTY_COLUMNS: TableConfig['columns'] = []
+
+/** The legacy-system id column the backend adds to every migrated table (`InjectsDefaultIdColumn`). */
+const LEGACY_ID_COLUMN_ID = 'old_id'
+
+/**
+ * The searchable columns named in the search placeholder. The legacy id stays
+ * searchable but is left out of the hint: it is a lookup for the few who know
+ * an old-system id, and it lengthened every table's placeholder.
+ */
+export function searchPlaceholderColumnIds(searchable: string[]): string[] {
+  return searchable.filter((id) => id !== LEGACY_ID_COLUMN_ID)
+}
 
 export interface UseTableViewFiltersStateArgs extends RowActionsOptions {
   domain: string
@@ -91,6 +104,7 @@ export function useTableViewFiltersState(
     labeledActions,
     inlineAllActions,
     resolveActionState,
+    resolveActionHref,
     t,
   } = args
 
@@ -153,12 +167,13 @@ export function useTableViewFiltersState(
   })
 
   // A column filter change "wins" over an active custom filter (spec 0158
-  // D-2); a no-op when nothing is active or the change is the custom
-  // filter's own programmatic reset (suppressed, see `use-custom-filter-state.ts`).
+  // D-2); never the grid's echo of the custom filter's own reset (#428054,
+  // see `use-table-custom-filters.ts`).
+  const { handleGridFilterChanged: handleCustomFilterGridChange } = customFilters
   const handleGridFilterChanged = useCallback(() => {
-    customFilterState.notifyExternalChange()
+    handleCustomFilterGridChange()
     handleFilterChanged()
-  }, [customFilterState, handleFilterChanged])
+  }, [handleCustomFilterGridChange, handleFilterChanged])
 
   // Placeholder built from the searchable columns' localized labels, mirroring
   // the backend allow-list (e.g. "Cerca nome/email…").
@@ -166,7 +181,7 @@ export function useTableViewFiltersState(
     if (!config || searchable.length === 0) {
       return t('table.search')
     }
-    const labels = searchable
+    const labels = searchPlaceholderColumnIds(searchable)
       .map((id) => config.columns.find((column) => column.id === id))
       .filter((column): column is NonNullable<typeof column> => Boolean(column))
       .map((column) => t(column.label))
@@ -188,8 +203,9 @@ export function useTableViewFiltersState(
       labeledActions,
       inlineAllActions,
       resolveActionState,
+      resolveActionHref: withModuleActionHref(domain, resolveActionHref),
     })
-  }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions, inlineAllActions, resolveActionState])
+  }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions, inlineAllActions, resolveActionState, domain, resolveActionHref])
 
   // Fit the grid to the screen instead of a fixed height: it takes what is
   // left of the viewport below this module's chrome, never taller than the

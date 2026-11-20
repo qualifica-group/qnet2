@@ -37,6 +37,8 @@ function treeNode(id: number, name: string, children: ProductCategoryTreeNode[] 
     single_quote_per_opportunity: false,
     generates_contract: true,
     multi_quote_work_order: false,
+    usage_area: 'all',
+    multiple_open_opportunities: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
   }
@@ -77,6 +79,9 @@ function page(items: ForSelectItem[]): PaginatedResponse<ForSelectItem> {
 }
 
 const fetchForSelectMock = vi.fn()
+// The editor reads `quotes.updateLockedLines` (spec 0360 D-8): no ability granted here.
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => false }) }))
+
 vi.mock('@/features/for-select/api', () => ({
   FOR_SELECT_PAGE_SIZE: 25,
   fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args),

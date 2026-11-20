@@ -48,6 +48,8 @@ interface OpportunityContext {
   forceDisabled: boolean
   /** Spec 0199: narrows the picker to one anagrafica's opportunities (create from its Offerte tab). */
   registryId?: number | null
+  /** Spec 0396: the Opportunita' does not exist yet (new opportunity + offer procedure); shown in place of the empty value. */
+  pendingLabel?: string
 }
 
 /** Detail: the parent record is fixed (AC-025), its row only reads. */
@@ -156,6 +158,8 @@ export function QuoteIdentitySection({
             <RecordLink domain="opportunities" id={values.opportunity.id} className="font-medium text-primary">
               {values.opportunity.name}
             </RecordLink>
+          ) : opportunity.pendingLabel ? (
+            <span className="font-medium">{opportunity.pendingLabel}</span>
           ) : (
             <DetailEmpty />
           )}

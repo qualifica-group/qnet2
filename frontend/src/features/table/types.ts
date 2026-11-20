@@ -8,6 +8,7 @@
  */
 import type { TableFieldConfig } from '@/features/custom-fields/types'
 import type { TableRowGroupingConfig } from '@/features/table/rows-types'
+import type { CategoryPickArea } from '@/features/product-categories/types'
 import type {
   AdvancedFilterDescriptor,
   AdvancedFilterValues,
@@ -169,6 +170,8 @@ export interface TableColumn {
    * without it keeps resolving its editor from `type`, unchanged.
    */
   editor?: 'relation' | 'select' | 'datetime' | 'date' | 'multiselect' | 'product_lines' | 'work_order_stage' | 'color'
+  /** `product_lines` editor only (spec 0389): the module the grid picks categories for. */
+  categoryUsageArea?: CategoryPickArea
   /**
    * The `/for-select` resource backing a `relation` editor (spec 0054 D-1),
    * plus the OPTIONAL row-scoped narrowing of its option list (user directive
@@ -267,6 +270,8 @@ export interface TableActionDefinition {
   confirm: boolean
   /** The row field whose numeric value renders as a count badge on the action. */
   count_field?: string | null
+  /** Always rendered on the row, on top of the first `INLINE_ACTION_LIMIT` actions, never in the overflow menu. */
+  pinned?: boolean
 }
 
 /** A single sort directive. */

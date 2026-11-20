@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Poll shape (spec 0380 data_contract): options with their nominative voters,
+ * Poll shape (spec 0420 data_contract): options with their nominative voters,
  * the reader's own vote and the total. Expects `votes.user` eager-loaded.
  *
  * @mixin WorkOrderPagePoll

@@ -7,7 +7,7 @@ namespace App\RichText;
 use Dom\Element;
 
 /**
- * The extra vocabulary of the `page` sanitizer profile (spec 0380, D-4,
+ * The extra vocabulary of the `page` sanitizer profile (spec 0420, D-4,
  * data_contract/html_profile): the element/attribute allow-list that
  * symfony/html-sanitizer applies, plus the DOM pass that validates what an
  * attribute allow-list cannot express (enums, palettes, integers). A value

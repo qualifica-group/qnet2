@@ -10,7 +10,7 @@ use App\Models\WorkOrderPage;
 use App\Models\WorkOrderPagePoll;
 
 /**
- * Polls embedded in the notes page (spec 0380, D-7): one vote per user, changeable
+ * Polls embedded in the notes page (spec 0420, D-7): one vote per user, changeable
  * or withdrawable. Callers have run the access checks and the validation.
  */
 final class WorkOrderPagePollService

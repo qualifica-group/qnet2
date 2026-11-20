@@ -40,7 +40,7 @@ it('passes a tax code consistent with the whole card', function () {
 
 it('rejects a tax code whose control character is wrong', function () {
     expect(taxCodeErrors(['type' => 'individual', 'tax_code' => 'RSSMRA80A01H501W']))
-        ->toContain('The tax code is not valid.');
+        ->toContain('The tax code is not valid. A foreign one needs its country prefix (e.g. DE12345678901).');
 });
 
 it('rejects a tax code that does not match the last name', function () {
@@ -89,6 +89,21 @@ it('checks only the anagraphic fields present in a sparse payload', function () 
         ->toBeEmpty();
 });
 
+it('accepts a foreign code on an individual without the consistency checks', function () {
+    expect(taxCodeErrors([
+        'type' => 'individual',
+        'first_name' => 'Hans',
+        'last_name' => 'Müller',
+        'birth_date' => '1980-01-01',
+        'tax_code' => 'DE12345678901',
+    ]))->toBeEmpty();
+});
+
+it('still rejects a mistyped Italian code that starts like a country prefix', function () {
+    expect(taxCodeErrors(['type' => 'individual', 'tax_code' => 'RSSMRA80A01H501']))
+        ->toContain('The tax code is not valid. A foreign one needs its country prefix (e.g. DE12345678901).');
+});
+
 it('accepts a blank tax code: the field stays optional', function () {
     expect(taxCodeErrors(['type' => 'individual', 'tax_code' => '']))->toBeEmpty();
 });
@@ -101,8 +116,11 @@ it('requires the 11-digit numeric code on a company card', function () {
     expect(taxCodeErrors(['type' => 'company', 'tax_code' => '00743110157']))
         ->toBeEmpty();
 
+    expect(taxCodeErrors(['type' => 'company', 'tax_code' => 'FR12345678901']))
+        ->toBeEmpty();
+
     expect(taxCodeErrors(['type' => 'company', 'tax_code' => 'RSSMRA80A01H501U']))
-        ->toContain('The tax code of a company must be 11 digits with a valid control digit.');
+        ->toContain('The tax code of a company must be 11 digits with a valid control digit, or a foreign code with its country prefix.');
 });
 
 // ---------------------------------------------------------------------------
@@ -123,7 +141,7 @@ it('accepts either shape when the payload carries no card type', function () {
     expect(taxCodeErrors(['tax_code' => 'RSSMRA80A01H501U']))->toBeEmpty();
     expect(taxCodeErrors(['tax_code' => '00743110157']))->toBeEmpty();
     expect(taxCodeErrors(['tax_code' => 'RSSMRA80A01H501W']))
-        ->toContain('The tax code is not valid.');
+        ->toContain('The tax code is not valid. A foreign one needs its country prefix (e.g. DE12345678901).');
 });
 
 // ---------------------------------------------------------------------------
@@ -138,5 +156,16 @@ it('validates a VAT number independently of the card type', function () {
 
     expect($errors('00743110157'))->toBeEmpty();
     expect($errors(''))->toBeEmpty();
-    expect($errors('00743110158'))->toContain('The VAT number is not valid.');
+    expect($errors('00743110158'))->toContain('The VAT number is not valid. A foreign one needs its country prefix (e.g. DE123456789).');
+});
+
+it('accepts a foreign VAT number written with its country prefix', function () {
+    $errors = fn (string $value) => Validator::make(
+        ['vat_number' => $value],
+        ['vat_number' => ['nullable', 'string', new VatNumber]],
+    )->errors()->get('vat_number');
+
+    expect($errors('DE 123456789'))->toBeEmpty();
+    expect($errors('CHE-123.456.789'))->toBeEmpty();
+    expect($errors('123456789'))->not->toBeEmpty();
 });

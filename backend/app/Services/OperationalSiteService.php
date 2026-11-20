@@ -9,8 +9,8 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Address;
 use App\Models\OperationalSite;
-use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\Deletion\InUseGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +39,10 @@ class OperationalSiteService
      */
     private const array HYDRATED_RELATIONS = ['addresses.country', 'addresses.state', 'addresses.province', 'addresses.city'];
 
-    public function __construct(private readonly AddressService $addresses) {}
+    public function __construct(
+        private readonly AddressService $addresses,
+        private readonly InUseGuard $inUseGuard,
+    ) {}
 
     public function create(User $actor, CreateOperationalSiteData $data): OperationalSite
     {
@@ -83,11 +86,7 @@ class OperationalSiteService
      */
     public function delete(OperationalSite $site): void
     {
-        if ($site->leads()->exists()) {
-            abort(409, 'This operational site has leads and cannot be deleted.');
-        }
-
-        abort_if(StockMovement::query()->involvingSite($site->id)->exists(), 409, __('stock.site_has_movements'));
+        $this->inUseGuard->assertUnused($site);
 
         $site->delete();
     }

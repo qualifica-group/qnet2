@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
@@ -45,6 +45,12 @@ const deleteTaskStatusMock = vi.fn()
 vi.mock('@/features/task-statuses/api', () => ({
   deleteTaskStatus: (...args: unknown[]) => deleteTaskStatusMock(...args),
   fetchTaskStatus: vi.fn(),
+}))
+
+const fetchStatusesForReorderMock = vi.fn()
+vi.mock('@/features/status-reorder/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/status-reorder/api')>()),
+  fetchStatusesForReorder: (...args: unknown[]) => fetchStatusesForReorderMock(...args),
 }))
 
 const toastSuccessMock = vi.fn()
@@ -101,6 +107,8 @@ beforeEach(() => {
   canMock.mockReset()
   canMock.mockReturnValue(true)
   deleteTaskStatusMock.mockReset()
+  fetchStatusesForReorderMock.mockReset()
+  fetchStatusesForReorderMock.mockResolvedValue([])
   toastSuccessMock.mockReset()
   toastErrorMock.mockReset()
 })
@@ -125,6 +133,18 @@ describe('TaskStatusesTable — reorder toggle (spec 0101 D-5)', () => {
       screen.queryByRole('button', { name: i18n.t('taskStatuses.reorder.openButton') }),
     ).not.toBeInTheDocument()
   })
+
+  // Spec 0101 AC-047, rectified 2026-11-10: the system statuses are no longer
+  // pinned, so the sheet loads every row as draggable (the flag the sheet
+  // itself is tested on in purchase-order-status-reorder.test.tsx).
+  it('opens the reorder sheet with every row reorderable, system statuses included', async () => {
+    canMock.mockImplementation((permission) => permission === 'task-statuses.update')
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskStatuses.reorder.openButton') }))
+
+    await waitFor(() => expect(fetchStatusesForReorderMock).toHaveBeenCalledWith('task-statuses', true))
+  })
 })
 
 describe('TaskStatusesTable — mount', () => {
@@ -137,9 +157,8 @@ describe('TaskStatusesTable — mount', () => {
 
 describe('TaskStatusesTable — delete', () => {
   it("surfaces the backend's own message on a 409 (row used by a task, D-8b)", async () => {
-    // Deliberately NOT the wording of `taskStatuses.form.deleteInUse`: that static
-    // fallback says "used by a task", so a fixture identical to it would pass
-    // whether the code surfaced the server's message or silently fell back.
+    // REQUIREMENT CHANGED (spec 0384): no static in-use sentence exists any more;
+    // the server message, which names what uses the row, is what the toast shows.
     const message = 'This task status is used by 3 tasks and cannot be deleted.'
     deleteTaskStatusMock.mockRejectedValue(
       new AxiosError('Conflict', '409', undefined, undefined, {

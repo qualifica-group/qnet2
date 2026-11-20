@@ -29,6 +29,8 @@ if (! function_exists('legacyWorkOrderRecord')) {
             'internal_notes' => 'Legacy notes',
             'force_close_reason' => null,
             'status_label' => 'Aperta',
+            'work_phase' => 'to_plan',
+            'work_phase_before_termination' => null,
             'stato_pagamento' => null,
             'accordo_pagamento' => null,
             'insoluti' => false,

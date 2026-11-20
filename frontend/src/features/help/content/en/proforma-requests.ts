@@ -31,9 +31,10 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [
-            ['**Customer**', 'The work order customer (the registry of the opportunity the quote comes from).'],
+            ['**Customer**', 'The work order customer (the registry of the opportunity the quote comes from), followed by the VAT number (e.g. Rossi Srl - 01234567890); without a VAT number the tax code is shown.'],
+            ['**Customer VAT number**', 'The VAT number on the customer\'s registry card, to check the request before issuing the proforma. Empty when the registry has none.'],
             ['**Type**', 'Consultancy or Institution.'],
-            ['**Supplier**', 'The institution supplier the request refers to (empty for Consultancy).'],
+            ['**Supplier**', 'The institution supplier the request refers to (empty for Consultancy), with VAT number or tax code like the Customer.'],
             ['**Payment method**', 'The quote\'s one at sending time: if the quote changes later, the request stays as it was.'],
             ['**Status**', '**Pending** until invoicing issues the proforma, then **Issued**.'],
             ['**Assigned to / Requested by**', 'The user who sent the request.'],

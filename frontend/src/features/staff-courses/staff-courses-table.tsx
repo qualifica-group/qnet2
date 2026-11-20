@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -13,9 +12,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteStaffCourse } from '@/features/staff-courses/api'
 import { STAFF_COURSES_DOMAIN } from '@/features/staff-courses/types'
-import { forbiddenMessage } from '@/lib/forbidden-message'
-
-const UNPROCESSABLE_STATUS = 422
+import { refusedActionMessage } from '@/lib/forbidden-message'
 
 /**
  * Thin staff-courses adapter over the generic table (domain `staff-courses`). Open mode of
@@ -41,15 +38,7 @@ export function StaffCoursesTable() {
         toast.success(t('staffCourses.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const forbidden = forbiddenMessage(error, i18n)
-        if (forbidden !== null) {
-          toast.error(forbidden)
-        } else if (status === UNPROCESSABLE_STATUS) {
-          toast.error(t('staffCourses.form.deleteInUse'))
-        } else {
-          toast.error(t('staffCourses.form.deleteError'))
-        }
+        toast.error(refusedActionMessage(error, t('staffCourses.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }

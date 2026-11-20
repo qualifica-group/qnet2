@@ -15,6 +15,7 @@ use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyRegistryProfile;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\MigrationGeoResolver;
+use App\Migrations\Support\RegistryResponsibleReferents;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Sector;
@@ -35,7 +36,8 @@ use RuntimeException;
  * notification is sent (G-2); the whole row runs with the activity log off
  * (G-3). The legacy `company_tags` land in the `tags` custom field (a relation
  * many -> tags provisioned by the client template), the only place a registry
- * keeps its tags.
+ * keeps its tags. "Referente 1/2" of the legacy become linked referents and the
+ * principale (spec 0398, RegistryResponsibleReferents).
  */
 class RegistriesSource extends AbstractMigrationSource
 {
@@ -50,6 +52,7 @@ class RegistriesSource extends AbstractMigrationSource
         private readonly MigrationGeoResolver $geoResolver,
         private readonly CustomFieldProvider $customFields,
         private readonly CustomFieldWriter $customFieldWriter,
+        private readonly RegistryResponsibleReferents $responsibleReferents,
     ) {
         parent::__construct($client);
     }
@@ -163,6 +166,9 @@ class RegistriesSource extends AbstractMigrationSource
 
         // Step 5: the legacy tags, into the tags custom field.
         $this->writeTags($registry, $record['tag_ids'] ?? [], $warnings);
+
+        // Step 6: Referente 1 and 2 of the legacy, and the principale (spec 0398).
+        $this->responsibleReferents->align($registry, $record, $context->actor, $warnings);
 
         return MigrationRowOutcome::created($warnings, $registry);
     }

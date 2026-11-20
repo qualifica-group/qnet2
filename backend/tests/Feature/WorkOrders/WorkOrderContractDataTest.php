@@ -135,11 +135,11 @@ it('AC-006: without commission visibility the commission fields and totals are n
     $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Supplier, CommissionType::Percentage, 10, 100);
 
-    foreach (['view', 'viewContractData', 'viewAll'] as $ability) {
+    foreach (['view', 'viewContractData', 'viewCosts', 'viewAll'] as $ability) {
         Permission::findOrCreate("work-orders.{$ability}");
     }
     $role = RoleModel::create(['name' => 'no-commissions']);
-    $role->givePermissionTo(['work-orders.view', 'work-orders.viewContractData', 'work-orders.viewAll']);
+    $role->givePermissionTo(['work-orders.view', 'work-orders.viewContractData', 'work-orders.viewCosts', 'work-orders.viewAll']);
     $role->fieldPermissions()->create(['resource' => 'quotes', 'field' => 'commission_value', 'visible' => false, 'editable' => false, 'required' => false]);
     $actor = User::factory()->create();
     $actor->assignRole($role);
@@ -227,4 +227,15 @@ it('spec 0202 AC-008: a PAID line keeps the net as revenue and raises no warning
         ->and($lines[$disabled->id]['effective_revenue'])->toBe('500.00')
         ->and($lines[$disabled->id]['supplier_commission_direction'])->toBeNull()
         ->and($lines[$disabled->id]['warnings'])->toBe([]);
+});
+
+it('spec 0380: without viewCosts the contract data are 403 and the detail flags are off', function () {
+    $workOrder = WorkOrder::factory()->create();
+    contractDataLine($workOrder, 'consultancy', 1000);
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData', 'managePayments', 'view'], viewCosts: false));
+
+    $this->getJson(contractDataUrl($workOrder))->assertForbidden();
+    $this->getJson("/api/work-orders/{$workOrder->id}")->assertOk()
+        ->assertJsonPath('permissions.actions.view_contract_data', false)
+        ->assertJsonPath('permissions.actions.manage_payments', false);
 });

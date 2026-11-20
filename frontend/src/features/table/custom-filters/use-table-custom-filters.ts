@@ -34,6 +34,11 @@ export interface UseTableCustomFiltersResult {
    * default, then makes `rules` the one the datasource sends.
    */
   applyRules: (rules: FilterRules, meta: { viewId?: number; name?: string }) => void
+  /**
+   * The grid's `filterChanged`: a column filter the user sets wins over the
+   * active custom filter (spec 0158 D-2, "vince l'ultimo").
+   */
+  handleGridFilterChanged: () => void
 }
 
 /**
@@ -79,5 +84,17 @@ export function useTableCustomFilters({
     [active, gridApi, onFilterModelApplied, advancedFilters, refreshGrid],
   )
 
-  return { active, builderOpen, editingView, openNewFilter, openEditFilter, closeBuilder, applyRules }
+  // AG Grid emits filterChanged only AFTER setFilterModel has returned, so the
+  // echo of applyRules' own clear lands outside activate()'s suppression
+  // (ticket #428054: the custom filter switched itself off moments after
+  // being applied). A custom filter is active only over an empty column
+  // filterModel, so a change that leaves one in place is the user's own.
+  const { notifyExternalChange } = active
+  const handleGridFilterChanged = useCallback(() => {
+    if (gridApi && !gridApi.isDestroyed() && Object.keys(gridApi.getFilterModel()).length > 0) {
+      notifyExternalChange()
+    }
+  }, [gridApi, notifyExternalChange])
+
+  return { active, builderOpen, editingView, openNewFilter, openEditFilter, closeBuilder, applyRules, handleGridFilterChanged }
 }

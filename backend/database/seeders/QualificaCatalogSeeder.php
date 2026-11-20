@@ -247,6 +247,9 @@ class QualificaCatalogSeeder extends Seeder
             ...ClassroomAttributeCatalogue::ATTRIBUTES,
         ],
         SelfFundedCourseCatalogue::CATEGORY => CourseDataAttributeCatalogue::SELF_FUNDED_ATTRIBUTES,
+        // DIL is cut off Formazione (CategoryInheritanceRules) but keeps the
+        // classroom data, assigned on its own node (task 427536, 2026-11-10).
+        ContactProcessingAttributeCatalogue::DIL_CATEGORY => ClassroomAttributeCatalogue::ATTRIBUTES,
         ClassroomAttributeCatalogue::SELF_EMPLOYMENT_CATEGORY => ClassroomAttributeCatalogue::SELF_EMPLOYMENT_ATTRIBUTES,
         // The e-Campus form and the APL practices': each its node's only offer
         // fields, behind a barrier (CategoryInheritanceRules).

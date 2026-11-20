@@ -18,10 +18,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { changeLinesStatus, purchaseRequestKeys } from '@/features/purchase-requests/api'
 import { LineStatusOptions } from '@/features/purchase-requests/line-status-options'
+import { LineStatusOrderNotice } from '@/features/purchase-requests/line-status-order-notice'
 import { LineStatusSummaryTable } from '@/features/purchase-requests/line-status-summary-table'
 import {
   commonCapabilities,
   dialogOptions,
+  drivingOrders,
   hasMissingSupplier,
   pickedAssignments,
   REASON_REQUIRED_STATUSES,
@@ -77,10 +79,11 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
   const [reasonAttempted, setReasonAttempted] = useState(false)
   const [serverReasonError, setServerReasonError] = useState<string | null>(null)
   const { options, current } = dialogOptions(targets)
+  const orders = drivingOrders(targets)
   const selected = choice !== null && options.includes(choice) ? choice : current
   const needsSupplier = selected === SUPPLIER_REQUIRED_STATUS
   const supplierMissing = needsSupplier && hasMissingSupplier(targets, picked)
-  const canConfirm = selected !== null && selected !== current && !supplierMissing
+  const canConfirm = orders.length === 0 && selected !== null && selected !== current && !supplierMissing
   const reasonRequired = selected !== null && REASON_REQUIRED_STATUSES.includes(selected)
   const reasonMissing = reasonRequired && reason.trim() === ''
   const reasonError = reasonAttempted && reasonMissing ? t('purchaseRequests.statusDialog.reasonMissing') : serverReasonError
@@ -173,7 +176,9 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
               ))}
             </div>
           ) : null}
-          {options.length === 0 ? (
+          {orders.length > 0 ? (
+            <LineStatusOrderNotice orders={orders} />
+          ) : options.length === 0 ? (
             <p role="status" className="rounded-md border bg-surface px-3 py-2 text-xs">
               {t('purchaseRequests.statusDialog.noCommon')}
             </p>

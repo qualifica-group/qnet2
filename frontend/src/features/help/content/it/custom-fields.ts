@@ -70,9 +70,26 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'Il tipo **Tabella** raccoglie più righe di dati con le stesse colonne, ad esempio data verifica, ispettore, supporto On/Off Site e fase Stage 1/Stage 2. Nel form del campo compare l’editor **Colonne**.' },
         { type: 'steps', items: ['Scegli il tipo **Tabella**.', 'Con **Aggiungi colonna** inserisci le colonne (fino a 20); con le frecce le sposti su e giù, con il cestino le rimuovi.', 'Per ogni colonna indica **Etichetta**, **Chiave** (proposta in automatico dall’etichetta: minuscole, numeri e trattini bassi; **id** è riservata), **Tipo** e se è **Obbligatoria**.', 'Facoltativo: imposta **Righe minime** e **Righe massime** (fino a 200).', 'Fai clic su **Salva**.'] },
         { type: 'list', items: ['**Tipi di colonna:** Testo, Testo lungo, Intero, Decimale, Sì/No, Scelta (con opzioni Valore ed Etichetta), Data, Data e ora, Ora, Email, URL, Colore.', '**Selezione riga:** attiva l’opzione e indica etichetta e chiave: ogni riga avrà un pulsante di selezione e in ogni scheda puoi selezionare al massimo una riga.', '**Riepilogo in griglia:** scegli la colonna da mostrare negli elenchi (data, data e ora, ora, intero, decimale, testo o scelta) e la strategia: **Riga selezionata** (richiede la selezione riga), **Massimo** o **Minimo**. Oppure nessun riepilogo.'] },
-        { type: 'paragraph', text: 'Negli elenchi, se il campo ha la selezione riga e una riga è selezionata, la cella mostra in linea i valori di quella riga (date nel formato locale, scelte con la loro etichetta, Sì/No con il nome della colonna); altrimenti mostra il riepilogo seguito dal numero di righe, ad esempio “12/10/2026 · 3”. Senza righe la cella è vuota. Passando con il mouse o spostando il focus da tastiera sulla cella compare un riquadro con la tabella completa, con la riga selezionata evidenziata. Ordinamento e filtro testo lavorano sul riepilogo. La colonna non si modifica nell’elenco: si modifica dalla scheda. Nei modelli di documento la variabile del campo mostra il riepilogo.' },
+        { type: 'paragraph', text: 'Negli elenchi, se il campo ha la selezione riga e una riga è selezionata, la cella mostra in linea i valori di quella riga (date nel formato locale, scelte con la loro etichetta, Sì/No con il nome della colonna); altrimenti mostra il riepilogo seguito dal numero di righe, ad esempio “12/10/2026 · 3”. Senza riepilogo (per esempio nessuna riga selezionata) compare un badge con il numero di righe, come “2 righe”, e l’icona **i**: passa il mouse sul badge per vedere le righe. Senza righe la cella è vuota. Passando con il mouse o spostando il focus da tastiera sulla cella compare un riquadro con la tabella completa, con la riga selezionata evidenziata. Ordinamento e filtro testo lavorano sul riepilogo. Nelle colonne delle Informazioni aggiuntive (per esempio Verifiche Ispettive nelle Commesse) il filtro, se la scheda non ha un riepilogo, cerca nella colonna di riepilogo di tutte le sue righe, e l’elenco dei valori del filtro riporta quelle date nel formato locale. La colonna non si modifica nell’elenco: si modifica dalla scheda. Nei modelli di documento la variabile del campo mostra il riepilogo.' },
         { type: 'note', text: 'Per un campo Tabella l’opzione **Indicizzato** non è disponibile. Se il campo è **Obbligatorio**, serve almeno una riga.' },
         { type: 'warning', text: 'Puoi modificare le colonne anche quando esistono già dati: una colonna rimossa non viene più mostrata, mentre cambiare il tipo di una colonna non converte i valori già salvati.' },
+      ],
+    },
+    {
+      id: 'table-notification',
+      title: 'Notifica di una tabella',
+      blocks: [
+        { type: 'paragraph', text: 'Un campo di tipo Tabella può avvisare qualcuno quando si aggiunge una riga o quando su una riga si attiva una colonna Sì/No (ad esempio la colonna Avviso delle verifiche ispettive). Nell’editor Colonne attiva **Invia una notifica quando si aggiunge o si attiva una riga**.' },
+        {
+          type: 'list',
+          items: [
+            '**Quando:** **Si aggiunge una riga**, oppure **Si attiva "…" su una riga** per una colonna Sì/No o per la selezione riga. La notifica parte quando la riga viene salvata attiva e prima non lo era (riga nuova o spunta appena messa); salvare di nuovo senza cambiare, o togliere la spunta, non invia nulla.',
+            '**Email da inviare:** scegli un **Modello email** (i segnaposto della commessa, come il codice o il cliente, vengono compilati con i dati del record) oppure lascia vuoto per l’email standard. In entrambi i casi l’email riporta i valori della riga e il pulsante per aprire il record.',
+            '**Destinatari:** **Persone assegnate al record** (commessa: Responsabili e Partecipanti; offerta: Supervisore, Gestori Account e Operatore; opportunità e anagrafica: Supervisore e Gestori Account), **Utenti**, **Ruoli** (tutti gli utenti attivi del ruolo) e **Altri indirizzi email**, anche esterni. Serve almeno un destinatario.',
+          ],
+        },
+        { type: 'paragraph', text: 'Gli utenti ricevono la notifica nella campanella e, se non hanno disattivato le email delle notifiche, anche l’email. Gli indirizzi liberi ricevono solo l’email, con i valori della riga ma senza la scheda interna del record. Chi salva la riga non riceve la propria notifica; gli utenti disattivati sono esclusi.' },
+        { type: 'note', text: 'Le importazioni e la migrazione dal QNet precedente non inviano notifiche.' },
       ],
     },
     {
@@ -102,8 +119,8 @@ const guide: HelpGuide = {
       id: 'edit-deactivate-delete',
       title: 'Modificare, disattivare ed eliminare',
       blocks: [
-        { type: 'list', items: ['**Modificare:** apri la scheda con **Visualizza** e modifica le righe sul posto (vedi la sezione precedente).', '**Disattivare:** spegni **Attivo**. Il campo sparisce ovunque, ma i valori già inseriti restano.', '**Eliminare:** scegli **Elimina** e conferma.'] },
-        { type: 'warning', text: 'Quando un campo contiene già dei valori, non puoi più cambiarne **Modulo**, **Tipo** e **Chiave**. Eliminando un campo cancelli anche tutti i suoi valori: nel dubbio, disattivalo.' },
+        { type: 'list', items: ['**Modificare:** apri la scheda con **Visualizza** e modifica le righe sul posto (vedi la sezione precedente).', '**Disattivare:** spegni **Attivo**. Il campo sparisce ovunque, ma i valori già inseriti restano.', '**Eliminare:** scegli **Elimina** e conferma. Si elimina solo un campo senza valori registrati.'] },
+        { type: 'warning', text: 'Quando un campo contiene già dei valori, non puoi più cambiarne **Modulo**, **Tipo** e **Chiave**, né eliminarlo: il messaggio dice quanti record hanno un valore. Se non ti serve più, disattivalo: i valori restano.' },
       ],
     },
   ],

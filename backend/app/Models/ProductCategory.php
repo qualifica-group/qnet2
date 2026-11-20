@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AttributeContext;
 use App\Enums\CategoryManagementMode;
+use App\Enums\CategoryUsageArea;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use App\Support\ManagerPositions;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'multi_quote_work_order', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels', 'revenue_type_id', 'current_category_id'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'multi_quote_work_order', 'usage_area', 'multiple_open_opportunities', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels', 'revenue_type_id', 'current_category_id'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -104,6 +105,15 @@ class ProductCategory extends BaseModel
             // when true, revenue lines of this branch from different quotes
             // can share one work order. Defaults to false.
             'multi_quote_work_order' => 'boolean',
+            // Spec 0389 — owned by the branch ROOT and mirrored on every
+            // descendant by CategoryUsageAreaInheritance, same shape again:
+            // the modules the branch is picked in. Defaults to `all`.
+            'usage_area' => CategoryUsageArea::class,
+            // User request 2026-11-11 — owned by the branch ROOT and mirrored
+            // on every descendant by MultipleOpenOpportunitiesInheritance:
+            // when true, an anagrafica may keep several open opportunities of
+            // this branch. Defaults to false.
+            'multiple_open_opportunities' => 'boolean',
             // Spec 0114 — owned by the branch ROOT and mirrored on every
             // descendant by SimplifiedOfferLineInheritance, same shape again:
             // when true, an offer line of this branch in Gestione Richieste

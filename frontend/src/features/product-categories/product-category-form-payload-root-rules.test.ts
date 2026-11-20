@@ -44,12 +44,16 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     single_quote_per_opportunity: false,
     generates_contract: true,
     multi_quote_work_order: false,
+    usage_area: 'all',
+    multiple_open_opportunities: false,
     simplified_offer_line: true,
     simplified_offer_line_override: null,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
     multi_quote_work_order_source_category: null,
+    usage_area_source_category: null,
+    multiple_open_opportunities_source_category: null,
     simplified_offer_line_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
@@ -78,6 +82,8 @@ describe('buildUpdatePayload — root-only rules', () => {
       single_quote_per_opportunity: true,
       generates_contract: true,
       multi_quote_work_order: false,
+      usage_area: 'all',
+      multiple_open_opportunities: false,
       simplified_offer_line: true,
       simplified_offer_line_override: null,
       report_columns: null,
@@ -114,6 +120,8 @@ describe('buildUpdatePayload — root-only rules', () => {
       single_quote_per_opportunity: false,
       generates_contract: false,
       multi_quote_work_order: false,
+      usage_area: 'all',
+      multiple_open_opportunities: false,
       simplified_offer_line: true,
       simplified_offer_line_override: null,
       report_columns: null,
@@ -147,6 +155,8 @@ describe('buildUpdatePayload — root-only rules', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       multi_quote_work_order: true,
+      usage_area: 'all',
+      multiple_open_opportunities: false,
       simplified_offer_line: true,
       simplified_offer_line_override: null,
       report_columns: null,
@@ -181,6 +191,8 @@ describe('buildUpdatePayload — root-only rules', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       multi_quote_work_order: false,
+      usage_area: 'all',
+      multiple_open_opportunities: false,
       simplified_offer_line: false,
       simplified_offer_line_override: null,
       report_columns: null,
@@ -224,6 +236,8 @@ describe('buildUpdatePayload — report_columns (spec 0141)', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       multi_quote_work_order: false,
+      usage_area: 'all',
+      multiple_open_opportunities: false,
       simplified_offer_line: true,
       simplified_offer_line_override: null,
       report_columns: ['richiami', 'telefonate'],
@@ -242,6 +256,76 @@ describe('buildUpdatePayload — report_columns (spec 0141)', () => {
     // Back to inheriting: null is a change too.
     expect(buildUpdatePayload({ ...values, report_columns: null }, withOwnColumns)).toEqual({
       report_columns: null,
+    })
+  })
+
+  // Spec 0389: identical root-only diffing for the modules the branch is used in.
+  it('never sends usage_area under a parent, sends it when a root changes it', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_quote_attributes: true,
+      inherits_work_order_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      is_active: true,
+      is_reportable: true,
+      management_mode: 'multiple',
+      single_quote_per_opportunity: false,
+      generates_contract: true,
+      multi_quote_work_order: false,
+      usage_area: 'requests',
+      multiple_open_opportunities: false,
+      simplified_offer_line: true,
+      simplified_offer_line_override: null,
+      report_columns: null,
+      manager_labels: {},
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
+      usage_area: 'requests',
+    })
+  })
+
+  // User request 2026-11-11: identical root-only diffing for several open opportunities per anagrafica.
+  it('never sends multiple_open_opportunities under a parent, sends it when a root changes it', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_quote_attributes: true,
+      inherits_work_order_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      is_active: true,
+      is_reportable: true,
+      management_mode: 'multiple',
+      single_quote_per_opportunity: false,
+      generates_contract: true,
+      multi_quote_work_order: false,
+      usage_area: 'all',
+      multiple_open_opportunities: true,
+      simplified_offer_line: true,
+      simplified_offer_line_override: null,
+      report_columns: null,
+      manager_labels: {},
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
+      multiple_open_opportunities: true,
     })
   })
 })

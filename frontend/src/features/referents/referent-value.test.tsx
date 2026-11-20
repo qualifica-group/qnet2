@@ -41,6 +41,29 @@ describe('ReferentValue', () => {
     expect(screen.queryByText('Referent type:')).not.toBeInTheDocument()
   })
 
+  it('task 428287: marks the anagrafica primary referent and makes its primary phone callable', () => {
+    renderValue(
+      <ReferentValue
+        referent={{
+          id: 4,
+          name: 'Christian Taeggi',
+          is_registry_primary: true,
+          primary_contacts: [{ type: 'phone', icon: 'phone', label: 'Phone', value: '339 1838293' }],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Primary referent of the registry')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /339 1838293/ })).toHaveAttribute('href', 'tel:3391838293')
+  })
+
+  it('shows neither the note nor contacts for an offer own referent without contacts', () => {
+    renderValue(<ReferentValue referent={{ id: 4, name: 'Ada Alberti', is_registry_primary: false, primary_contacts: [] }} />)
+
+    expect(screen.queryByText('Primary referent of the registry')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+  })
+
   it('renders the empty marker without a referent', () => {
     renderValue(<ReferentValue referent={null} />)
 

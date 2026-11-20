@@ -136,9 +136,8 @@ describe('InvoiceTagsTable — mount', () => {
 
 describe('InvoiceTagsTable — delete', () => {
   it("surfaces the backend's own message on a 409 (row used by an invoice)", async () => {
-    // Deliberately NOT the wording of `invoiceTags.form.deleteInUse`: that static
-    // fallback says "used by an invoice", so a fixture identical to it would pass
-    // whether the code surfaced the server's message or silently fell back.
+    // REQUIREMENT CHANGED (spec 0384): no static in-use sentence exists any more;
+    // the server message, which names what uses the row, is what the toast shows.
     const message = 'This invoice tag is used by 3 invoices and cannot be deleted.'
     deleteInvoiceTagMock.mockRejectedValue(
       new AxiosError('Conflict', '409', undefined, undefined, {

@@ -2,6 +2,7 @@
 
 namespace App\Tables\Opportunities;
 
+use App\Enums\CategoryUsageArea;
 use App\Tables\Shared\ProductsOfInterestColumn;
 
 /**
@@ -61,7 +62,7 @@ final class OpportunityColumnCatalog
                 'editable' => true,
                 'nullable' => true,
             ],
-            [...self::derivedColumn('registry', 'opportunities.columns.registry'), ...self::editableRelation('registries', 'registry_id', nullable: false)],
+            [...self::derivedColumn('registry', 'opportunities.columns.registry'), 'searchable' => true, ...self::editableRelation('registries', 'registry_id', nullable: false)],
             [
                 ...self::derivedColumn('referent', 'opportunities.columns.referent'),
                 ...self::editableRelation('referents', 'referent_id'),
@@ -94,6 +95,8 @@ final class OpportunityColumnCatalog
                 'editable' => true,
                 'editor' => 'product_lines',
                 'editableField' => 'product_lines',
+                // Spec 0389: the editor lists only the branches used here.
+                'categoryUsageArea' => CategoryUsageArea::Opportunities->value,
             ],
             self::aggregatedColumn('business_function', 'opportunities.columns.businessFunction'),
             ProductsOfInterestColumn::declaration('opportunities.columns.productsOfInterest'),

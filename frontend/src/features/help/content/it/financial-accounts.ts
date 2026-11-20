@@ -61,7 +61,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: ['Apri **Contabilità › Finanziario › Gestione Conti** e premi **Nuovo conto**.', 'Scegli il **Tipo** e compila i campi.', 'Premi **Salva**.'] },
         { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare apri la scheda con **Visualizza** e premi **Modifica**.' },
-        { type: 'warning', text: 'Un Conto Corrente con carte collegate non si può eliminare: elimina o scollega prima le carte.' },
+        { type: 'warning', text: 'Un conto usato da fatture, fatture passive e loro rate, movimenti di tesoreria o riconciliazioni bancarie non si può eliminare, così come un Conto Corrente con carte collegate (elimina o scollega prima le carte). Il messaggio dice da cosa è usato.' },
       ],
     },
   ],

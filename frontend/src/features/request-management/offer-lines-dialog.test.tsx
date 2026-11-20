@@ -29,6 +29,9 @@ import type { ProductCategoryTreeNode } from '@/features/product-categories/type
  */
 
 const fetchRequestWorkPanelMock = vi.fn()
+// The editor reads `quotes.updateLockedLines` (spec 0360 D-8): no ability granted here.
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => false }) }))
+
 vi.mock('@/features/request-management/api', () => ({
   fetchRequestWorkPanel: (...args: unknown[]) => fetchRequestWorkPanelMock(...args),
   updateRequestWork: vi.fn(),
@@ -336,6 +339,8 @@ describe('Gestione Richieste — linee di prodotto in griglia', () => {
         single_quote_per_opportunity: false,
         generates_contract: true,
         multi_quote_work_order: false,
+        usage_area: 'all',
+        multiple_open_opportunities: false,
         simplified_offer_line: true,
         simplified_offer_line_override: null,
       },

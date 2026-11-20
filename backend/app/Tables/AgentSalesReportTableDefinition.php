@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
+use App\Enums\CommissionRecipientRole;
 use App\Models\Address;
 use App\Models\Quote;
+use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\Quotes\QuoteVisibilityScope;
+use App\Tables\AgentSalesReport\AgentSalesReportCategoryColumns;
 use App\Tables\AgentSalesReport\AgentSalesReportColumnCatalog;
 use App\Tables\AgentSalesReport\AgentSalesReportRegistryColumns;
 use App\Tables\Quotes\QuoteRelationColumns;
@@ -25,16 +28,23 @@ use Illuminate\Support\Facades\Gate;
  * (`company_site`, `managers`, `quote_workflow_status`, `commercial`, `reporter`) reuse the
  * `quotes` domain's own filter/sort/distinct machinery; `registry` and `city` are the report's
  * own (AgentSalesReportRegistryColumns); `address`/`postal_code`/`phone`/`email` are projected
- * from the Registry card's primary address and primary contacts.
+ * from the Registry card's primary address and primary contacts; `root_category`/`category`
+ * come from AgentSalesReportCategoryColumns (tasks 427625/427940). The only row action opens
+ * the offer.
  */
 class AgentSalesReportTableDefinition extends AbstractTableDefinition
 {
     private const string VIEW_PERMISSION = 'agent-sales-report.view';
 
+    private const string QUOTE_VIEW_PERMISSION = 'quotes.view';
+
+    private const int DECIMALS = 2;
+
     public function __construct(
         private readonly QuoteRelationColumns $relationColumns,
         private readonly AgentSalesReportRegistryColumns $registryColumns,
         private readonly PrimaryContactColumn $contactColumn,
+        private readonly AgentSalesReportCategoryColumns $categoryColumns,
     ) {}
 
     public function domain(): string
@@ -64,7 +74,8 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
             'opportunity.registry.personalData.addresses' => static fn ($query) => $query->where('is_primary', true),
             'opportunity.registry.personalData.addresses.city',
             'opportunity.registry.personalData.contacts' => static fn ($query) => $query->where('is_primary', true),
-            'companySite', 'quoteWorkflowStatus', 'commercial', 'reporter', 'managers.avatar',
+            'companySite', 'quoteWorkflowStatus', 'commercial', 'reporter', 'managers.avatar', 'offerLines.commissions',
+            ...AgentSalesReportCategoryColumns::eagerLoads(),
         ]);
     }
 
@@ -89,7 +100,7 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
      */
     public function actions(): array
     {
-        return [];
+        return AgentSalesReportColumnCatalog::actions();
     }
 
     /**
@@ -129,6 +140,7 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
             'accepted_at' => $row->accepted_at?->toDateString(),
             'registry' => $registry?->name,
             'title' => $row->title,
+            ...$this->categoryColumns->project($row),
             'address' => $address === null ? null : implode(', ', array_filter([$address->line1, $address->line2])),
             'postal_code' => $address?->postal_code,
             'city' => $address?->city?->name,
@@ -142,6 +154,7 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
             'revenue_net' => $row->revenue_net,
             'commercial' => $this->summarize($row->commercial),
             'reporter' => $this->summarize($row->reporter),
+            'revenue_net_after_reporter' => $this->revenueNetAfterReporter($row),
         ];
     }
 
@@ -150,7 +163,7 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
      */
     public function actionsFor(User $actor, Model $row): array
     {
-        return [];
+        return $actor->can(self::QUOTE_VIEW_PERMISSION) ? ['view'] : [];
     }
 
     /**
@@ -161,6 +174,7 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
         return $this->registryColumns->applyFilter($query, $columnId, $columnConfig, $filter)
+            || $this->categoryColumns->applyFilter($query, $columnId, $filter)
             || $this->relationColumns->applyFilter($query, $columnId, $filter);
     }
 
@@ -181,7 +195,21 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         return $this->registryColumns->distinctValues($columnId, $search, $query, $limit)
+            ?? $this->categoryColumns->distinctValues($columnId, $search, $query, $limit)
             ?? $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
+    }
+
+    /**
+     * The taxable amount minus the reporter's commissions on the revenue lines (task 427940),
+     * the legacy "Netto" with only the reporter's share taken out.
+     */
+    private function revenueNetAfterReporter(Quote $quote): float
+    {
+        $reporterCommissions = $quote->offerLines->sum(
+            static fn (QuoteLine $line): float => (float) $line->commissions->where('recipient_role', CommissionRecipientRole::Reporter)->sum('calculated_amount'),
+        );
+
+        return round((float) $quote->revenue_net - $reporterCommissions, self::DECIMALS);
     }
 
     /**

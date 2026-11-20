@@ -31,6 +31,8 @@ interface QuoteCreateSectionsProps {
   quoteForm: QuoteFormState
   draft: InlineEdit
   defaults: ReturnType<typeof useQuoteCreateDefaults>
+  /** Spec 0396: the Opportunita' is created with this offer; its row reads this label and is not editable. */
+  pendingOpportunityLabel?: string
 }
 
 /**
@@ -43,7 +45,7 @@ interface QuoteCreateSectionsProps {
  * out; the Opportunita' itself, fixed after creation, is picked here and
  * prefills roles, sede and G.A.
  */
-export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateSectionsProps) {
+export function QuoteCreateSections({ quoteForm, draft, defaults, pendingOpportunityLabel }: QuoteCreateSectionsProps) {
   const { form } = quoteForm
   const refs = useQuoteDraftLabels(form.control, {
     inheritedMeta: defaults.inheritedMeta,
@@ -77,8 +79,9 @@ export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateS
         inline={draft}
         opportunity={{
           onItemChange: defaults.handleOpportunityItemChange,
-          forceDisabled: defaults.isOpportunityForced,
+          forceDisabled: defaults.isOpportunityForced || pendingOpportunityLabel !== undefined,
           registryId: defaults.opportunityRegistryId,
+          pendingLabel: pendingOpportunityLabel,
         }}
       />
 
@@ -122,22 +125,22 @@ interface QuoteCreateAttributesProps {
 
 /**
  * The draft's Attribute values, after the offer rows like on the detail
- * (`QuoteAttributesBand`). Spec 0084 D-5: nothing to show until a line
- * carries a product; a loading line while its Attributes resolve.
+ * (`QuoteAttributesBand`). Spec 0084 D-5: nothing to show until the
+ * Opportunita' or a line brings a category; a loading line while its
+ * Attributes resolve.
  */
 export function QuoteCreateAttributes({ quoteForm, draft }: QuoteCreateAttributesProps) {
   const { t } = useTranslation()
-  const { form, attributeContext, attributesLoading, hasPickedProduct } = quoteForm
+  const { form, attributeContext, attributesLoading } = quoteForm
   const attributeValues = useWatch({ control: form.control, name: 'attribute_values' })
-  const loading = hasPickedProduct && attributesLoading
 
-  if (!loading && attributeContext.applicable_attributes.length === 0) {
+  if (!attributesLoading && attributeContext.applicable_attributes.length === 0) {
     return null
   }
 
   return (
     <QuoteAttributesBand>
-      {loading ? (
+      {attributesLoading ? (
         <AdditionalInformationSection
           storageKey={QUOTE_ADDITIONAL_INFORMATION_STORAGE_KEY}
           title={t('quotes.detail.additionalInformation')}

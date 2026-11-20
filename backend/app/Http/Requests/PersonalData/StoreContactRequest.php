@@ -100,6 +100,9 @@ class StoreContactRequest extends FormRequest
      * (`ValidatesPhoneUniqueness`) left open. A card outside the namespace (a
      * company site) is never checked, exactly as on the forms.
      *
+     * The anagrafica and its linked referenti may share a number (user
+     * directive 2026-11-11, `IdentityUniquenessScope::phoneSharingOwners`).
+     *
      * $current is the contact under update: a number it already holds is a
      * no-op, not a new duplicate, so a legacy collision never locks the row.
      */
@@ -120,7 +123,12 @@ class StoreContactRequest extends FormRequest
             return;
         }
 
-        if (IdentityUniquenessScope::phoneTaken(IdentityUniquenessScope::cards()->whereKeyNot($owner->getKey()), $normalized)) {
+        $cards = IdentityUniquenessScope::withoutOwners(
+            IdentityUniquenessScope::cards()->whereKeyNot($owner->getKey()),
+            IdentityUniquenessScope::phoneSharingOwners($owner->personable),
+        );
+
+        if (IdentityUniquenessScope::phoneTaken($cards, $normalized)) {
             $validator->errors()->add('value', __('The phone number is already assigned to another record.'));
         }
     }

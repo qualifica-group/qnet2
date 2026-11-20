@@ -230,9 +230,10 @@ it('translates every string the two notifications emit (AC-026)', function () {
     /** @var array<string, string> $italian */
     $italian = json_decode((string) file_get_contents(lang_path('it.json')), true);
 
+    // REQUIREMENT CHANGED (spec 0381): greeting with comma, the button label
+    // comes from lang/it/notifications.php (actions.*).
     $keys = [
-        'Hello :name',
-        'View',
+        'Hello :name,',
         'The system',
         'You cannot open this record: ask an administrator to grant you access to the module.',
         'You were assigned as Supervisor',

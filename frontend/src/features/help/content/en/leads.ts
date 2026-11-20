@@ -99,6 +99,7 @@ const guide: HelpGuide = {
             'Click **Assign operators**.',
             'Choose the **Assignment type**: **Balanced split** (distributes leads balancing the workload) or **Assign to operator** (all to the same operator).',
             'With **Balanced split** the operator list appears, grouped by Site: everyone is selected, deselect whoever should not receive leads (a whole group or a single operator).',
+            'Below the list, the **Take the current load into account** switch (on by default) gives more leads to whoever holds fewer; switched off, it splits the leads equally among the selected operators regardless of what they already hold.',
             'Click **Assign**.',
           ],
         },
@@ -139,6 +140,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'A linked quote is created together with the opportunity, with one row for each sellable product of interest (quantity 1, product price).',
+        },
+        {
+          type: 'paragraph',
+          text: "If you assign or change the lead's **Operator** after the conversion, the requests born from the lead move to the new operator too, who is notified. Closed requests and those you assigned by hand to another operator in Request Management stay as they are; removing the operator from the lead does not remove it from the requests.",
         },
         {
           type: 'paragraph',

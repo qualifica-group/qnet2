@@ -4,29 +4,24 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement\Report;
 
-use App\Enums\WorkflowStatusGroup;
+use App\Enums\ReportStatusColumn;
 use App\Services\RequestManagement\Report\Indicators\AppointmentTransitionIndicator;
 use App\Services\RequestManagement\Report\Indicators\CompaniesAddedIndicator;
-use App\Services\RequestManagement\Report\Indicators\CurrentStatusGroupIndicator;
+use App\Services\RequestManagement\Report\Indicators\ConfiguredStatusIndicator;
 use App\Services\RequestManagement\Report\Indicators\PhoneCallsIndicator;
 use App\Services\RequestManagement\Report\Indicators\UnhandledCallbacksIndicator;
-use App\Services\RequestManagement\Report\Indicators\UnhandledNewContactsIndicator;
-use App\Services\RequestManagement\Report\Indicators\WorkflowTransitionIndicator;
 
 /**
  * Column key -> ReportIndicator (spec 0106 data_contract): the ONLY "real"
  * (computed) indicators. The two stub columns (aule_gestione/aule_partenza,
  * D-5) resolve to nothing here — ReportBranchRowsBuilder emits their
- * constant 0 directly (D-15, rev-2). "associati", "trattative_concluse" and
- * "invio_presa_in_carico" ("chiuso con esito positivo", user directive
- * 2026-09-18) resolve to the SAME CurrentStatusGroupIndicator instance: one
- * formula, three columns, told apart only by the category they are active
- * for. Spec 0170: that formula reads the CURRENT status, not the history;
- * only "potenziali" and "presa_appuntamenti" read the history.
+ * constant 0 directly (D-15, rev-2).
  *
- * Spec 0159: `unhandled_callbacks`, `unhandled_new_contacts` and
- * `current_potentials` are the range-free counterparts of `richiami`,
- * `nuovi_contatti` and `potenziali`.
+ * Spec 0391: every status-based column is a ConfiguredStatusIndicator over
+ * the statuses chosen for it in the statistics; a "(nel periodo
+ * selezionato)" column reads the SAME choice as its twin without a period
+ * (ReportStatusColumn::twin()) and only adds the range. Spec 0159:
+ * `unhandled_callbacks` is the range-free counterpart of `richiami`.
  */
 final class ReportIndicatorRegistry
 {
@@ -35,25 +30,27 @@ final class ReportIndicatorRegistry
      */
     private readonly array $indicators;
 
-    public function __construct(ReportBranchQuery $branchQuery, QuoteCountAggregator $aggregator)
+    public function __construct(ReportBranchQuery $branchQuery, QuoteCountAggregator $aggregator, ReportColumnStatusMap $statuses)
     {
-        $closedWon = new CurrentStatusGroupIndicator($branchQuery, $aggregator, [WorkflowStatusGroup::ClosedWon], createdWithinRange: true);
-        $potentialGroups = [WorkflowStatusGroup::Pending, WorkflowStatusGroup::Validated];
-
-        $this->indicators = [
+        $indicators = [
             'telefonate' => new PhoneCallsIndicator($branchQuery, $aggregator),
             'richiami' => new UnhandledCallbacksIndicator($branchQuery, $aggregator, withinRange: true),
-            'nuovi_contatti' => new UnhandledNewContactsIndicator($branchQuery, $aggregator, withinRange: true),
-            'potenziali' => new WorkflowTransitionIndicator($branchQuery, $aggregator, $potentialGroups),
-            'associati' => $closedWon,
-            'trattative_concluse' => $closedWon,
-            'invio_presa_in_carico' => $closedWon,
             'aziende_inserite' => new CompaniesAddedIndicator($branchQuery, $aggregator),
             'presa_appuntamenti' => new AppointmentTransitionIndicator($branchQuery, $aggregator),
             'unhandled_callbacks' => new UnhandledCallbacksIndicator($branchQuery, $aggregator, withinRange: false),
-            'unhandled_new_contacts' => new UnhandledNewContactsIndicator($branchQuery, $aggregator, withinRange: false),
-            'current_potentials' => new CurrentStatusGroupIndicator($branchQuery, $aggregator, $potentialGroups, createdWithinRange: false),
         ];
+
+        foreach (ReportStatusColumn::cases() as $column) {
+            $twin = $column->twin();
+            // A column with a twin is the range-free one; a single column follows the range.
+            $indicators[$column->value] = new ConfiguredStatusIndicator($branchQuery, $aggregator, $statuses, $column, withinRange: $twin === null);
+
+            if ($twin !== null) {
+                $indicators[$twin] = new ConfiguredStatusIndicator($branchQuery, $aggregator, $statuses, $column, withinRange: true);
+            }
+        }
+
+        $this->indicators = $indicators;
     }
 
     public function resolve(string $columnKey): ?ReportIndicator

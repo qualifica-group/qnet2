@@ -88,6 +88,29 @@ it('index: only roots (created_at desc/id desc), each with its full asc replies;
     expect($page2->json('meta.next_cursor'))->toBeNull();
 });
 
+it('meta.total counts roots plus replies, independent of the page; a deleted root and its replies drop out', function () {
+    $actor = noteActor(['request-management.view']);
+    $opportunity = noteManagedOpportunity($actor);
+    Sanctum::actingAs($actor);
+
+    $notable = ['notable_type' => 'opportunity', 'notable_id' => $opportunity->id];
+    $rootA = Note::factory()->create($notable);
+    Note::factory()->create($notable);
+    Note::factory()->count(2)->create([...$notable, 'parent_id' => $rootA->id]);
+    $deleted = Note::factory()->create($notable);
+    Note::factory()->create([...$notable, 'parent_id' => $deleted->id]);
+    $deleted->delete();
+    // Another record's thread never leaks into this count.
+    Note::factory()->create(['notable_type' => 'opportunity', 'notable_id' => Opportunity::factory()->create()->id]);
+
+    $url = "/api/notes?entity_type=request-management&entity_id={$opportunity->id}&limit=1";
+    $page1 = $this->getJson($url)->assertOk();
+    $page2 = $this->getJson($url.'&cursor='.$page1->json('meta.next_cursor'))->assertOk();
+
+    expect($page1->json('meta.total'))->toBe(4);
+    expect($page2->json('meta.total'))->toBe(4);
+});
+
 it('keyset pagination ties correctly on IDENTICAL created_at (tie-break by id desc), including a page boundary exactly at the tie group\'s edge (AC-040)', function () {
     $actor = noteActor(['request-management.view']);
     $opportunity = noteManagedOpportunity($actor);

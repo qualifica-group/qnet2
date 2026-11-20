@@ -23,7 +23,7 @@ import {
 export interface InsertTableOptions {
   rows?: number
   cols?: number
-  /** First row made of `th` cells (default true, spec 0380 AC-020). */
+  /** First row made of `th` cells (default true, spec 0420 AC-020). */
   withHeaderRow?: boolean
 }
 
@@ -66,7 +66,7 @@ function buildTable(schema: Schema, rows: number, cols: number, withHeaderRow: b
 }
 
 /**
- * Table: `table > tr > th|td` (spec 0380 html_profile). Rows are serialized
+ * Table: `table > tr > th|td` (spec 0420 html_profile). Rows are serialized
  * inside a single `tbody`; `thead`/`tbody`/`tfoot` found while parsing are
  * transparent (ProseMirror ignores unknown wrappers and finds the rows).
  * Operations come from `prosemirror-tables`, already bundled in `@tiptap/pm`.

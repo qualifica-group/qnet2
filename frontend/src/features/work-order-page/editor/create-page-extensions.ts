@@ -26,7 +26,7 @@ export interface CreatePageExtensionsOptions {
 
 /**
  * Full extension set of the workspace page: the schema matches exactly the
- * server `page` HTML profile (spec 0380), so whatever the editor emits
+ * server `page` HTML profile (spec 0420), so whatever the editor emits
  * survives the sanitizer. Used by both the editable page and its read-only view.
  */
 export function createPageExtensions({ placeholder, collapseLabels }: CreatePageExtensionsOptions = {}): Extensions {

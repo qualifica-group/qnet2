@@ -168,14 +168,15 @@ describe('CostTypesTable - delete', () => {
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('server message'))
   })
 
-  it('shows a distinct "in use" toast on a 409', async () => {
+  // REQUIREMENT CHANGED (spec 0384): the 409 toast is the server message, not a fixed sentence.
+  it('shows the server message on a 409', async () => {
     deleteCostTypeMock.mockRejectedValue(axiosError(409))
 
     renderWith(<CostTypesTable />)
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('Cannot delete: the cost type is used by purchase order lines.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('server message'),
     )
   })
 

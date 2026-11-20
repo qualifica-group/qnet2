@@ -7,7 +7,7 @@ namespace App\Exceptions;
 use RuntimeException;
 
 /**
- * The page was saved by someone else since the client read it (spec 0380, D-3).
+ * The page was saved by someone else since the client read it (spec 0420, D-3).
  * The controller answers 409 `page_version_conflict` with the current page.
  */
 final class WorkOrderPageConflictException extends RuntimeException

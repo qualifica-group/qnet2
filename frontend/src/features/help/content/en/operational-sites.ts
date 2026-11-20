@@ -54,6 +54,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'For a site you no longer use, turn off Active site (pencil on the row) instead of deleting it.',
         },
+        {
+          type: 'note',
+          text: 'A site used by some record (leads, opportunities, quotes, projects, campaigns, RDAs, ODAs, purchase invoices, stock, people, business functions or company closures) cannot be deleted: the message says what uses it.',
+        },
       ],
     },
   ],

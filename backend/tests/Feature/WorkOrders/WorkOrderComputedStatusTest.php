@@ -17,6 +17,8 @@ use Spatie\Permission\Models\Permission;
  * percentage derive from its MANUAL progress entries, tasks no longer count.
  * Revision 2026-10-28 (R-1/R-4): entries are INCREMENTS like the legacy; the
  * percentage is their SUM (may exceed 100), the date their MAX.
+ * Spec 0395 (REQUIREMENT CHANGED): the status no longer derives from the
+ * percentage; it is the persisted working phase (WorkOrderWorkPhaseTest).
  */
 
 uses(RefreshDatabase::class);
@@ -56,7 +58,7 @@ function workOrderRows(object $test, array $payload = []): array
         ->assertOk()->json('items');
 }
 
-it('without entries a commessa is open at 0% with no date, even with completed tasks (AC-001)', function () {
+it('without entries a commessa is at 0% with no date, even with completed tasks (AC-001)', function () {
     $workOrder = WorkOrder::factory()->create(['title' => 'bare']);
     $done = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->completion(100)->create();
     Task::factory()->inStatus($done)->create(['work_order_id' => $workOrder->id]);
@@ -64,10 +66,8 @@ it('without entries a commessa is open at 0% with no date, even with completed t
     $detail = workOrderDetail($this, $workOrder);
     $row = collect(workOrderRows($this))->firstWhere('id', $workOrder->id);
 
-    expect($detail['status']['value'])->toBe('open')
-        ->and($detail['completion_percentage'])->toBe(0)
+    expect($detail['completion_percentage'])->toBe(0)
         ->and($detail['completion_recorded_on'])->toBeNull()
-        ->and($row['status'])->toBe('open')
         ->and($row['completion_percentage'])->toBe(0)
         ->and($row['completion_recorded_on'])->toBeNull();
 });
@@ -78,50 +78,23 @@ it('the percentage is the SUM of the increments and the date the MAX, in detail 
     $detail = workOrderDetail($this, $workOrder);
     $row = collect(workOrderRows($this))->firstWhere('id', $workOrder->id);
 
-    expect($detail['status']['value'])->toBe('in_progress')
-        ->and($detail['completion_percentage'])->toBe(60)
+    expect($detail['completion_percentage'])->toBe(60)
         ->and($detail['completion_recorded_on'])->toBe('2026-10-10')
-        ->and($row['status'])->toBe('in_progress')
         ->and($row['completion_percentage'])->toBe(60)
         ->and($row['completion_recorded_on'])->toBe('2026-10-10');
 });
 
-it('increments summing to 100 complete the commessa, force-close wins whatever the percentage (AC-003)', function () {
+it('the percentage does not move the status: 100% leaves the phase alone (spec 0395)', function () {
     $completed = recordProgress(WorkOrder::factory()->create(), [[40, '2026-10-01'], [60, '2026-10-20']]);
-    $closed = recordProgress(WorkOrder::factory()->forceClosed()->create(), [[40, '2026-10-01']]);
 
-    $closedDetail = workOrderDetail($this, $closed);
+    $detail = workOrderDetail($this, $completed);
+    $row = collect(workOrderRows($this))->firstWhere('id', $completed->id);
 
-    expect(workOrderDetail($this, $completed)['status']['value'])->toBe('completed')
-        ->and(workOrderDetail($this, $completed)['completion_percentage'])->toBe(100)
-        ->and($closedDetail['status']['value'])->toBe('closed')
-        ->and($closedDetail['completion_percentage'])->toBe(40);
-});
-
-it('the status filter returns exactly the rows badged with the requested values (AC-004)', function () {
-    WorkOrder::factory()->create(['title' => 'empty']);
-    recordProgress(WorkOrder::factory()->create(['title' => 'in_progress']), [[1, '2026-10-01']]);
-    recordProgress(WorkOrder::factory()->create(['title' => 'almost']), [[99, '2026-10-01']]);
-    recordProgress(WorkOrder::factory()->create(['title' => 'completed']), [[50, '2026-10-01'], [50, '2026-10-02']]);
-    recordProgress(WorkOrder::factory()->forceClosed()->create(['title' => 'closed']), [[100, '2026-10-01']]);
-    WorkOrder::factory()->forceClosed()->create(['title' => 'closed_empty']);
-
-    $filtered = fn (array $values): array => collect(workOrderRows($this, [
-        'filterModel' => ['status' => ['filterType' => 'set', 'values' => $values]],
-    ]))->pluck('title')->sort()->values()->all();
-
-    expect($filtered(['open']))->toBe(['empty'])
-        ->and($filtered(['in_progress']))->toBe(['almost', 'in_progress'])
-        ->and($filtered(['completed']))->toBe(['completed'])
-        ->and($filtered(['closed']))->toBe(['closed', 'closed_empty'])
-        ->and($filtered(['open', 'completed']))->toBe(['completed', 'empty']);
-
-    foreach (workOrderRows($this) as $row) {
-        $detail = $this->getJson("/api/work-orders/{$row['id']}")->json('data');
-        expect($row['status'])->toBe($detail['status']['value'])
-            ->and($row['completion_percentage'])->toBe($detail['completion_percentage'])
-            ->and($row['completion_recorded_on'])->toBe($detail['completion_recorded_on']);
-    }
+    expect($detail['completion_percentage'])->toBe(100)
+        ->and($detail['status']['value'])->toBe('to_plan')
+        ->and($row['status'])->toBe('to_plan')
+        ->and($row['completion_percentage'])->toBe($detail['completion_percentage'])
+        ->and($row['completion_recorded_on'])->toBe($detail['completion_recorded_on']);
 });
 
 it('sorts rows by the manual percentage, a commessa without entries at 0 (AC-005)', function () {
@@ -147,22 +120,16 @@ it('deleting an entry lowers the total by its increment and the date follows the
         ->and($detail['completion_recorded_on'])->toBe('2026-10-01');
 });
 
-it('zero increments count nothing and legacy sums above 100 stay completed (R-4)', function () {
+it('zero increments count nothing and legacy sums above 100 are kept (R-4)', function () {
     $zeros = recordProgress(WorkOrder::factory()->create(['title' => 'zeros']), [[0, '2026-10-01'], [0, '2026-10-02']]);
     $over = recordProgress(WorkOrder::factory()->create(['title' => 'over']), [[80, '2026-10-01'], [50, '2026-10-02']]);
 
     $zerosDetail = workOrderDetail($this, $zeros);
     $overDetail = workOrderDetail($this, $over);
-    $completed = collect(workOrderRows($this, [
-        'filterModel' => ['status' => ['filterType' => 'set', 'values' => ['completed']]],
-    ]))->pluck('title')->all();
 
-    expect($zerosDetail['status']['value'])->toBe('open')
-        ->and($zerosDetail['completion_percentage'])->toBe(0)
+    expect($zerosDetail['completion_percentage'])->toBe(0)
         ->and($zerosDetail['completion_recorded_on'])->toBe('2026-10-02')
-        ->and($overDetail['status']['value'])->toBe('completed')
-        ->and($overDetail['completion_percentage'])->toBe(130)
-        ->and($completed)->toBe(['over']);
+        ->and($overDetail['completion_percentage'])->toBe(130);
 });
 
 it('the rows query count does not grow with the number of work orders', function () {

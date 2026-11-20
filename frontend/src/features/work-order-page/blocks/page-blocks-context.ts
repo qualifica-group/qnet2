@@ -4,7 +4,7 @@ import type { Poll, TaskRef } from '@/features/work-order-page/types'
 /**
  * Data and actions the task/poll node views need. The panel provides it from
  * the page query, so a node view never fetches on its own (one GET per page,
- * spec 0380 D-6/D-7).
+ * spec 0420 D-6/D-7).
  */
 export interface PageBlocksContextValue {
   tasks: Record<string, TaskRef>

@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
-import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionHrefResolver, RowActionHandler } from '@/features/table/row-actions'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { purchaseOrderColumnRenderers } from '@/features/purchase-orders/column-renderers'
@@ -26,6 +26,13 @@ const STATUS_FILTER_KEY = 'status'
 const PURCHASE_ORDER_ACTION_ICONS: ActionIconMap = { 'file-down': FileDown }
 
 const renderDetail = (params: ICellRendererParams<TableRow>) => <PurchaseOrderDetailPanel {...params} />
+
+function purchaseOrderPath(row: TableRow): string {
+  return `/${PURCHASE_ORDERS_DOMAIN}/${row.id}`
+}
+
+/** The `view` row action leads to the order's own page (Ctrl/Cmd+click opens it in a new tab). */
+const purchaseOrderActionHref: ActionHrefResolver = (action, row) => (action.key === 'view' ? purchaseOrderPath(row) : undefined)
 
 /**
  * Thin ODA list adapter over the generic table: status tabs write into the
@@ -61,7 +68,7 @@ export function PurchaseOrdersTable() {
     (action: TableActionDefinition, row: TableRow) => {
       switch (action.key) {
         case 'view':
-          void navigate(`/${PURCHASE_ORDERS_DOMAIN}/${row.id}`)
+          void navigate(purchaseOrderPath(row))
           break
         case 'delete':
           void runDelete(row)
@@ -100,6 +107,7 @@ export function PurchaseOrdersTable() {
         domain={PURCHASE_ORDERS_DOMAIN}
         renderers={purchaseOrderColumnRenderers}
         onAction={handleAction}
+        resolveActionHref={purchaseOrderActionHref}
         iconMap={PURCHASE_ORDER_ACTION_ICONS}
         inlineAllActions
         onFilterModelChange={tabs.onFilterModelChange}

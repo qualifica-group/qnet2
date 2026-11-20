@@ -117,7 +117,9 @@ it('imports several open opportunities on the same registry, bypassing the one-o
     expect($run->created_rows)->toBe(2)
         ->and($registry->opportunities()->count())->toBe(2)
         ->and(Opportunity::query()->where('old_id', 901)->value('name_is_manual'))->toBeFalsy()
-        ->and(fn () => app(RegistryOpenOpportunityGuard::class)->assertNoOpenOpportunity($registry->id))->toThrow(Exception::class);
+        // REQUIREMENT CHANGED (user report 2026-11-13): a migrated opportunity
+        // without any category no longer blocks a new one.
+        ->and(fn () => app(RegistryOpenOpportunityGuard::class)->assertNoOpenOpportunity($registry->id))->not->toThrow(Exception::class);
 });
 
 it('fails the row when the registry was not migrated', function () {
