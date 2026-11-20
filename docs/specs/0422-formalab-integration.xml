@@ -58,10 +58,13 @@
       `*/N`), senza sovrapposizioni, comando `formalab:sync-classes`. Upsert per edition_id in
       formalab_classes con payload_hash; le classi non piu' restituite restano (last_seen_at
       vecchio). Ogni esecuzione e' una riga di formalab_sync_runs.
-    - D-5 Collegamento commessa -> edizione: tabella formalab_work_order_links (una per commessa).
-      Lo imposta/cambia/rimuove l'utente dalla scheda "Formalab" della commessa (authz: update
-      sulla commessa). Collegando, qnet-2 rilegge subito la classe (GET /api/classi/{id}) e scrive i
-      campi. Scollegando i valori restano quelli dell'ultimo sync.
+    - D-5 [REQUIREMENT CHANGED, decisione utente 2026-11-20] Collegamento commessa -> edizione:
+      tabella formalab_work_order_links (una per commessa). L'edizione NON si sceglie a mano: la
+      scheda "Formalab" ha solo "Sincronizza", che trova l'unica classe del catalogo con label
+      uguale al gol_corso della commessa, la rilegge live (GET /api/classi/{id}), scrive i campi e
+      registra/aggiorna il link (authz: update sulla commessa). Nome vuoto, nessuna o piu' classi
+      con quel nome = 422 con il motivo. Cambiando il nome, Sincronizza passa all'edizione nuova.
+      Rimossi: scelta manuale (PUT), ricerca classi (GET classes), scollegamento (DELETE).
     - D-6 Collegamento automatico (backfill, comando `formalab:link-work-orders` e pulsante nella
       pagina di stato): commesse senza link il cui gol_corso e' identico a
       trim(codice) + " - " + trim(corso.title) di UNA sola classe del catalogo. Piu' classi con la
@@ -177,25 +180,14 @@
       <errors>403; 404 commessa o integrazione disattiva</errors>
     </endpoint>
 
-    <endpoint method="PUT" path="/api/integrations/formalab/work-orders/{workOrder}" auth="Gate update sulla commessa">
-      <request>{ edition_id: integer (required) }</request>
-      <response status="200">{ success, message, data: FormalabWorkOrderLink }  // rilettura live della classe + scrittura campi</response>
-      <errors>403; 404; 422 edition_id mancante / commessa non eligible / classe inesistente su Formalab; 502 Formalab non raggiungibile (link non salvato)</errors>
-    </endpoint>
 
     <endpoint method="POST" path="/api/integrations/formalab/work-orders/{workOrder}/sync" auth="Gate update sulla commessa">
-      <!-- D-15 (utente 2026-11-20): "Sincronizza" sulla scheda commessa collegata. -->
-      <response status="200">{ success, message, data: FormalabWorkOrderLink }  // rilettura live dell'edizione collegata + scrittura campi; il link resta (linked_at invariato)</response>
-      <errors>403; 404; 422 commessa non collegata / classe non piu' su Formalab / valore rifiutato; 502 Formalab non raggiungibile (campi invariati)</errors>
+      <!-- D-5 / D-15 (utente 2026-11-20): unica azione della scheda commessa. -->
+      <response status="200">{ success, message, data: FormalabWorkOrderLink }  // match per gol_corso sul catalogo, rilettura live, scrittura campi, link creato o aggiornato (linked_at invariato)</response>
+      <errors>403; 404; 422 (chiave work_order) commessa senza campi corso / nome corso vuoto / nessuna edizione con quel nome / piu' edizioni con quel nome / classe non piu' su Formalab / valore rifiutato; 502 Formalab non raggiungibile (niente salvato)</errors>
     </endpoint>
 
-    <endpoint method="DELETE" path="/api/integrations/formalab/work-orders/{workOrder}" auth="Gate update sulla commessa">
-      <response status="200">{ success, message, data: FormalabWorkOrderLink }  // link null, campi invariati</response>
-    </endpoint>
 
-    <endpoint method="GET" path="/api/integrations/formalab/classes?search=&amp;limit=" auth="sanctum + permesso work-orders.update">
-      <response status="200">{ success, message, data: FormalabClass[] }  // dal catalogo locale, search su code/title/site_city, limit default 20 max 50, ordine start_date desc</response>
-    </endpoint>
 
     <endpoint method="POST" path="/api/integrations/formalab/webhooks/classes" auth="header X-Formalab-Token (no sanctum)">
       <request>{ edition_ids: integer[] (1..50) }</request>
@@ -227,7 +219,7 @@
     <criterion id="AC-004">Token scaduto: risposta 401 -> nuovo login e un solo retry; il secondo 401 e' un fallimento loggato, il sync run e' failure con error_message.</criterion>
     <criterion id="AC-005">Formalab giu' (ConnectionException/500): sync run failure, log failure con error_message, nessuna eccezione non gestita, catalogo invariato.</criterion>
     <criterion id="AC-006">Commessa GOL collegata: dopo un sync con la classe cambiata i 12 campi gol_* della commessa riflettono Formalab ('' -> null), altri attributi invariati, voce di activity log; senza cambi della classe nessuna riscrittura.</criterion>
-    <criterion id="AC-007">PUT link: utente con update -> 200, rilettura live, campi scritti, link salvato; senza update -> 403; commessa non eligible -> 422; Formalab giu' -> 502 e nessun link salvato. DELETE -> link null, campi invariati.</criterion>
+    <criterion id="AC-007">[REQUIREMENT CHANGED] POST sync: utente con update -> 200, edizione trovata per nome corso, rilettura live, campi scritti, link salvato (ripetuto: un solo link, linked_at invariato; nome cambiato: edizione nuova); senza update -> 403; senza campi corso / nome vuoto / nessuna o piu' edizioni -> 422; Formalab giu' -> 502 e niente salvato.</criterion>
     <criterion id="AC-008">Backfill link-work-orders: match esatto su gol_corso collega; etichetta ambigua non collega ed e' contata; commesse gia' collegate non toccate.</criterion>
     <criterion id="AC-009">Webhook: token corretto -> 200 e classi rilette; token errato -> 401 loggato come inbound failure; token non configurato -> 404.</criterion>
     <criterion id="AC-010">Status/test-connection/sync: super-admin 200/202; altri utenti 403.</criterion>

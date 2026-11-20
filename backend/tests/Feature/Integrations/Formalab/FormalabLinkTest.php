@@ -14,47 +14,61 @@ uses(RefreshDatabase::class);
 
 const FORMALAB_LINK_URL = '/api/integrations/formalab/work-orders/';
 
-// AC-007
-it('links a work order to an edition with a live read and writes the course fields', function () {
-    formalabEnable();
-    formalabFakeApi([formalabClassPayload(5)]);
-    $workOrder = formalabGolWorkOrder();
-    Sanctum::actingAs(workOrderUserWith(['view', 'update']));
+const FORMALAB_SYNC_SUFFIX = '/sync';
 
-    $response = $this->putJson(FORMALAB_LINK_URL.$workOrder->id, ['edition_id' => 5])->assertOk();
+function formalabCatalog(array $classes): ArrayObject
+{
+    $catalog = formalabFakeApi($classes);
+    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+
+    return $catalog;
+}
+
+// AC-007 (REQUIREMENT CHANGED 2026-11-20: the edition is matched by course name, never chosen)
+it('syncs by course name: finds the edition, re-reads it live, writes the fields and records the link', function () {
+    formalabEnable();
+    $catalog = formalabCatalog([formalabClassPayload(5), formalabClassPayload(6)]);
+    $workOrder = formalabGolWorkOrder(['gol_corso' => 'COD-5 - Course 5']);
+    Sanctum::actingAs(workOrderUserWith(['view', 'update']));
+    $catalog['classes'] = [formalabClassPayload(5, ['stato_corso' => ['name' => 'Concluso'], 'data_esame' => '2026-07-10']), formalabClassPayload(6)];
+
+    $response = $this->postJson(FORMALAB_LINK_URL.$workOrder->id.FORMALAB_SYNC_SUFFIX)->assertOk();
 
     $response->assertJsonPath('data.eligible', true)->assertJsonPath('data.can_manage', true)
-        ->assertJsonPath('data.link.edition_id', 5)->assertJsonPath('data.link.class.label', 'COD-5 - Course 5')
+        ->assertJsonPath('data.link.edition_id', 5)->assertJsonPath('data.link.class.course_status', 'Concluso')
         ->assertJsonPath('data.link.sync_error', null);
-    expect($response->json('data.link.linked_by.id'))->not->toBeNull()
-        ->and($workOrder->refresh()->attribute_values['gol_corso'])->toBe('COD-5 - Course 5');
+    expect($response->json('data.link.linked_by.id'))->not->toBeNull();
+    $values = $workOrder->refresh()->attribute_values;
+    expect($values['gol_stato_corso'])->toBe('Concluso')->and($values['gol_data_esame'])->toBe('2026-07-10');
+
+    $linkedAt = FormalabWorkOrderLink::query()->value('created_at');
+    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.FORMALAB_SYNC_SUFFIX)->assertOk();
+    expect(FormalabWorkOrderLink::query()->count())->toBe(1)
+        ->and(FormalabWorkOrderLink::query()->value('created_at'))->toEqual($linkedAt);
 
     $this->getJson(FORMALAB_LINK_URL.$workOrder->id)->assertOk()->assertJsonPath('data.link.edition_id', 5);
 });
 
-it('replaces and removes a link leaving the fields as they were', function () {
+it('follows a changed course name to the edition with that name', function () {
     formalabEnable();
-    formalabFakeApi([formalabClassPayload(5), formalabClassPayload(6)]);
-    $workOrder = formalabGolWorkOrder();
+    formalabCatalog([formalabClassPayload(5), formalabClassPayload(6)]);
+    $workOrder = formalabGolWorkOrder(['gol_corso' => 'COD-5 - Course 5']);
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
+    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.FORMALAB_SYNC_SUFFIX)->assertOk();
 
-    $this->putJson(FORMALAB_LINK_URL.$workOrder->id, ['edition_id' => 5])->assertOk();
-    $this->putJson(FORMALAB_LINK_URL.$workOrder->id, ['edition_id' => 6])->assertOk()->assertJsonPath('data.link.edition_id', 6);
+    $workOrder->forceFill(['attribute_values' => [...$workOrder->refresh()->attribute_values, 'gol_corso' => 'COD-6 - Course 6']])->save();
+
+    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.FORMALAB_SYNC_SUFFIX)->assertOk()->assertJsonPath('data.link.edition_id', 6);
     expect(FormalabWorkOrderLink::query()->count())->toBe(1);
-
-    $this->deleteJson(FORMALAB_LINK_URL.$workOrder->id)->assertOk()->assertJsonPath('data.link', null);
-    expect(FormalabWorkOrderLink::query()->count())->toBe(0)
-        ->and($workOrder->refresh()->attribute_values['gol_corso'])->toBe('COD-6 - Course 6');
 });
 
-it('refuses a link without the update permission', function () {
+it('refuses the sync without the update permission', function () {
     formalabEnable();
-    formalabFakeApi([formalabClassPayload(5)]);
-    $workOrder = formalabGolWorkOrder();
+    formalabCatalog([formalabClassPayload(5)]);
+    $workOrder = formalabGolWorkOrder(['gol_corso' => 'COD-5 - Course 5']);
     Sanctum::actingAs(workOrderUserWith(['view']));
 
-    $this->putJson(FORMALAB_LINK_URL.$workOrder->id, ['edition_id' => 5])->assertForbidden();
-    $this->deleteJson(FORMALAB_LINK_URL.$workOrder->id)->assertForbidden();
+    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.FORMALAB_SYNC_SUFFIX)->assertForbidden();
     $this->getJson(FORMALAB_LINK_URL.$workOrder->id)->assertOk()->assertJsonPath('data.can_manage', false);
 
     Sanctum::actingAs(User::factory()->create());
@@ -67,18 +81,28 @@ it('answers 404 for an unknown work order', function () {
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
 
     $this->getJson(FORMALAB_LINK_URL.'999999')->assertNotFound();
+    $this->postJson(FORMALAB_LINK_URL.'999999'.FORMALAB_SYNC_SUFFIX)->assertNotFound();
 });
 
-it('rejects a missing edition, a work order without the course fields and an unknown class', function () {
+it('refuses a work order without course fields, without a course name, with an unknown or an ambiguous name', function () {
     formalabEnable();
-    formalabFakeApi([formalabClassPayload(5)]);
-    $workOrder = formalabGolWorkOrder();
+    formalabCatalog([
+        formalabClassPayload(5),
+        formalabClassPayload(7, ['codice' => 'TWIN', 'corso' => ['title' => 'Same']]),
+        formalabClassPayload(8, ['codice' => 'TWIN', 'corso' => ['title' => 'Same']]),
+    ]);
     $plain = WorkOrder::factory()->create();
+    $cases = [
+        $plain,
+        formalabGolWorkOrder(),
+        formalabGolWorkOrder(['gol_corso' => 'NOPE - Nobody']),
+        formalabGolWorkOrder(['gol_corso' => 'TWIN - Same']),
+    ];
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
 
-    $this->putJson(FORMALAB_LINK_URL.$workOrder->id, [])->assertUnprocessable()->assertJsonValidationErrors('edition_id');
-    $this->putJson(FORMALAB_LINK_URL.$plain->id, ['edition_id' => 5])->assertUnprocessable()->assertJsonValidationErrors('work_order');
-    $this->putJson(FORMALAB_LINK_URL.$workOrder->id, ['edition_id' => 404])->assertUnprocessable()->assertJsonValidationErrors('edition_id');
+    foreach ($cases as $workOrder) {
+        $this->postJson(FORMALAB_LINK_URL.$workOrder->id.FORMALAB_SYNC_SUFFIX)->assertUnprocessable()->assertJsonValidationErrors('work_order');
+    }
 
     $this->getJson(FORMALAB_LINK_URL.$plain->id)->assertOk()->assertJsonPath('data.eligible', false);
     expect(FormalabWorkOrderLink::query()->count())->toBe(0);
@@ -86,55 +110,16 @@ it('rejects a missing edition, a work order without the course fields and an unk
 
 it('answers 502 and saves nothing when Formalab is not reachable', function () {
     formalabEnable();
+    FormalabClass::query()->create(['edition_id' => 5, 'code' => 'COD-5', 'title' => 'Course 5', 'label' => 'COD-5 - Course 5', 'payload_hash' => str_repeat('a', 64)]);
     Http::preventStrayRequests();
     Http::fake(['*/api/login' => Http::response(['accessToken' => 't']), '*/api/classi/*' => Http::response('down', 503)]);
-    $workOrder = formalabGolWorkOrder();
+    $workOrder = formalabGolWorkOrder(['gol_corso' => 'COD-5 - Course 5', 'gol_stato_corso' => 'In corso']);
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
 
-    $this->putJson(FORMALAB_LINK_URL.$workOrder->id, ['edition_id' => 5])->assertStatus(502)->assertJsonPath('success', false);
+    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.FORMALAB_SYNC_SUFFIX)->assertStatus(502)->assertJsonPath('success', false);
 
-    expect(FormalabWorkOrderLink::query()->count())->toBe(0);
-});
-
-it('syncs the linked edition on demand, keeping the link, and refuses what it cannot do', function () {
-    formalabEnable();
-    $catalog = formalabFakeApi([formalabClassPayload(5)]);
-    $workOrder = formalabGolWorkOrder();
-    Sanctum::actingAs(workOrderUserWith(['view', 'update']));
-
-    // not linked yet: nothing to re-read
-    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.'/sync')->assertUnprocessable();
-
-    $this->putJson(FORMALAB_LINK_URL.$workOrder->id, ['edition_id' => 5])->assertOk();
-    $linkedAt = FormalabWorkOrderLink::query()->value('created_at');
-    $catalog['classes'] = [formalabClassPayload(5, ['stato_corso' => ['name' => 'Concluso'], 'data_esame' => '2026-07-10'])];
-
-    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.'/sync')->assertOk()
-        ->assertJsonPath('data.link.edition_id', 5)->assertJsonPath('data.link.class.course_status', 'Concluso');
-
-    $values = $workOrder->refresh()->attribute_values;
-    expect($values['gol_stato_corso'])->toBe('Concluso')->and($values['gol_data_esame'])->toBe('2026-07-10')
-        ->and(FormalabWorkOrderLink::query()->count())->toBe(1)
-        ->and(FormalabWorkOrderLink::query()->value('created_at'))->toEqual($linkedAt);
-
-    Sanctum::actingAs(workOrderUserWith(['view']));
-    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.'/sync')->assertForbidden();
-});
-
-it('answers 502 on an on-demand sync when Formalab is not reachable and leaves the fields alone', function () {
-    formalabEnable();
-    Http::preventStrayRequests();
-    Http::fake([
-        '*/api/login' => Http::response(['accessToken' => 't']),
-        '*/api/classi/*' => Http::sequence()->push(['classe' => formalabClassPayload(5)])->push('down', 503),
-    ]);
-    $workOrder = formalabGolWorkOrder();
-    Sanctum::actingAs(workOrderUserWith(['view', 'update']));
-    $this->putJson(FORMALAB_LINK_URL.$workOrder->id, ['edition_id' => 5])->assertOk();
-
-    $this->postJson(FORMALAB_LINK_URL.$workOrder->id.'/sync')->assertStatus(502);
-
-    expect($workOrder->refresh()->attribute_values['gol_corso'])->toBe('COD-5 - Course 5');
+    expect(FormalabWorkOrderLink::query()->count())->toBe(0)
+        ->and($workOrder->refresh()->attribute_values['gol_stato_corso'])->toBe('In corso');
 });
 
 // AC-008
@@ -162,23 +147,4 @@ it('links by exact course name, skips ambiguous labels and leaves linked work or
         ->and(FormalabWorkOrderLink::query()->where('work_order_id', $unmatched->id)->exists())->toBeFalse()
         ->and($manual->refresh()->edition_id)->toBe(1)
         ->and($matching->refresh()->attribute_values['gol_stato_corso'])->toBe('In corso');
-});
-
-it('searches the local catalogue for users who can update work orders', function () {
-    formalabEnable();
-    foreach ([[1, 'Alpha', 'Torino', '2026-01-01'], [2, 'Beta', 'Roma', '2026-05-01'], [3, 'Gamma', 'Roma', '2026-03-01']] as [$id, $title, $city, $start]) {
-        FormalabClass::query()->create([
-            'edition_id' => $id, 'code' => "K{$id}", 'title' => $title, 'label' => "K{$id} - {$title}",
-            'site_city' => $city, 'start_date' => $start, 'payload_hash' => str_repeat('b', 64),
-        ]);
-    }
-
-    Sanctum::actingAs(workOrderUserWith(['update']));
-    $this->getJson('/api/integrations/formalab/classes')->assertOk()->assertJsonPath('data.0.edition_id', 2);
-    $this->getJson('/api/integrations/formalab/classes?search=roma&limit=1')->assertOk()->assertJsonCount(1, 'data');
-    $this->getJson('/api/integrations/formalab/classes?search=Alp')->assertOk()->assertJsonPath('data.0.edition_id', 1);
-    $this->getJson('/api/integrations/formalab/classes?limit=51')->assertUnprocessable();
-
-    Sanctum::actingAs(workOrderUserWith(['view']));
-    $this->getJson('/api/integrations/formalab/classes')->assertForbidden();
 });

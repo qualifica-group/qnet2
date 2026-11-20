@@ -66,21 +66,28 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Sulle commesse che prevedono i campi del corso GOL, o che sono già collegate, compare la scheda **Formalab**. Se la commessa è collegata mostra i dati della classe: stato, date, ore, sede, discenti e ultimo aggiornamento.',
+          text: 'Sulle commesse che prevedono i campi del corso GOL, o che sono già sincronizzate, compare la scheda **Formalab**. L\'edizione non si sceglie a mano: il sistema la trova dal campo **Nome Corso / Ed.** della commessa, che deve essere scritto esattamente come su Formalab ("codice - titolo"). Una volta sincronizzata, la scheda mostra i dati della classe: stato, date, ore, sede, discenti e ultimo aggiornamento.',
         },
         {
           type: 'steps',
           items: [
-            'Apri la scheda **Formalab** della commessa.',
-            'Cerca l\'edizione per codice, corso o città e sceglila dall\'elenco: è il catalogo delle classi Formalab, aggiornato ogni 10 minuti.',
-            'Fai clic su **Collega**: i campi del corso della commessa vengono compilati con i dati della classe.',
-            'A commessa collegata, **Sincronizza** rilegge subito l\'edizione da Formalab e aggiorna i campi del corso, senza aspettare l\'aggiornamento automatico.',
-            'Per cambiare edizione usa **Cambia edizione**; per interrompere il collegamento usa **Scollega** (i campi restano con gli ultimi valori ricevuti).',
+            'Controlla che il **Nome Corso / Ed.** della commessa sia compilato.',
+            'Apri la scheda **Formalab** e fai clic su **Sincronizza**.',
+            'Il sistema cerca nel catalogo Formalab l\'edizione con lo stesso nome, la rilegge subito da Formalab e copia i dati nei campi del corso. Da quel momento la commessa si aggiorna anche da sola ogni 10 minuti.',
+            'Se cambi il Nome Corso / Ed., premi di nuovo **Sincronizza**: il sistema passa all\'edizione con il nuovo nome.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            '**Nome corso vuoto**: compila prima il Nome Corso / Ed.',
+            '**Nessuna edizione con questo nome**: il nome non coincide con quello su Formalab, oppure l\'edizione è nuova e il catalogo non l\'ha ancora ricevuta (si aggiorna ogni 10 minuti).',
+            '**Più edizioni con questo nome**: su Formalab il nome non è univoco e il sistema non può scegliere.',
           ],
         },
         {
           type: 'note',
-          text: 'Collegare, sincronizzare, cambiare e scollegare richiede il permesso di modificare la commessa.',
+          text: 'Sincronizzare richiede il permesso di modificare la commessa.',
         },
       ],
     },
@@ -103,7 +110,7 @@ const guide: HelpGuide = {
           items: [
             'Se Formalab non è raggiungibile la sincronizzazione risulta **fallita**, l\'errore è nel registro chiamate e il catalogo resta quello dell\'ultima sincronizzazione riuscita; al giro successivo si riprova.',
             'Se l\'aggiornamento di una singola commessa fallisce, sulla sua scheda compare l\'avviso con il motivo e le altre commesse vengono aggiornate normalmente.',
-            'Collegando un\'edizione con Formalab non raggiungibile, il collegamento **non viene salvato** e vedi il messaggio di errore.',
+            'Se premi **Sincronizza** mentre Formalab non è raggiungibile, i campi della commessa **non vengono toccati** e vedi il messaggio di errore.',
             'Se il codice di uno dei campi corso viene rinominato o eliminato, quel campo smette di aggiornarsi: la card Formalab di **Stato del sistema** passa a Degradato con il controllo **Campi corso**, e la cronologia delle sincronizzazioni lo annota.',
             'Lo stato dell\'integrazione compare anche nella pagina **Stato del sistema**.',
           ],

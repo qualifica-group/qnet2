@@ -13,7 +13,8 @@ use Integrations\Formalab\Models\FormalabWorkOrderLink;
 use Integrations\Formalab\Support\Trigger;
 
 /**
- * Set, replace and remove the Formalab edition a work order is linked to.
+ * The work order side of the integration: the link to the Formalab edition
+ * is never chosen by hand, it is found from the course name (spec 0422 D-5).
  */
 final class WorkOrderLinkService
 {
@@ -36,80 +37,64 @@ final class WorkOrderLinkService
     }
 
     /**
-     * Links the work order to the edition, re-reading the class live from
-     * Formalab and writing the course fields. Nothing is saved on failure.
+     * "Sincronizza": finds the edition whose label equals the work order's
+     * course name (gol_corso), re-reads it live from Formalab, writes the
+     * course fields and records the link. Nothing is saved on failure.
      *
-     * @throws ValidationException not eligible, unknown edition, or a value refused by the fields
+     * @throws ValidationException not eligible, no course name, no or several matching editions, edition gone, or a value refused by the fields
      * @throws FormalabException Formalab not reachable
      */
-    public function set(WorkOrder $workOrder, int $editionId, User $actor): FormalabWorkOrderLink
+    public function sync(WorkOrder $workOrder, User $actor): FormalabWorkOrderLink
     {
-        // Step 1: only work orders carrying the course fields can be linked
+        // Step 1: only work orders carrying the course fields can be synced
         if (! $this->isEligible($workOrder)) {
             throw ValidationException::withMessages(['work_order' => __('formalab::messages.not_eligible')]);
         }
 
-        // Step 2: live read of the class (also refreshes the local catalogue)
+        // Step 2: the edition is the one whose label equals the course name
+        $editionId = $this->matchEdition($workOrder);
+
+        // Step 3: live read of the class (also refreshes the local catalogue)
         $class = $this->catalog->refresh($editionId, Trigger::WorkOrder);
 
         if ($class === null) {
-            throw ValidationException::withMessages(['edition_id' => __('formalab::messages.class_not_found')]);
+            throw ValidationException::withMessages(['work_order' => __('formalab::messages.class_not_found')]);
         }
 
-        // Step 3: write the fields and replace the link in one transaction
+        // Step 4: write the fields and record the link in one transaction
         DB::transaction(function () use ($workOrder, $class, $actor): void {
             $this->courseWriter->apply($workOrder, $class);
 
-            FormalabWorkOrderLink::query()->where('work_order_id', $workOrder->id)->delete();
-            FormalabWorkOrderLink::query()->create([
-                'work_order_id' => $workOrder->id,
+            $link = FormalabWorkOrderLink::query()->firstOrNew(['work_order_id' => $workOrder->id]);
+            $link->fill([
                 'edition_id' => $class->edition_id,
-                'linked_by' => $actor->id,
+                'linked_by' => $link->linked_by ?? $actor->id,
                 'synced_hash' => $class->payload_hash,
                 'synced_at' => now(),
-            ]);
+                'sync_error' => null,
+            ])->save();
         });
 
         return $this->find($workOrder);
     }
 
     /**
-     * Re-reads the linked edition live and writes the course fields now,
-     * without waiting for the periodic sync. The link itself is kept.
-     *
-     * @throws ValidationException not linked, edition gone from Formalab, or a value refused by the fields
-     * @throws FormalabException Formalab not reachable
+     * @throws ValidationException empty course name, or no / several catalogue classes with that label
      */
-    public function refresh(WorkOrder $workOrder): FormalabWorkOrderLink
+    private function matchEdition(WorkOrder $workOrder): int
     {
-        // Step 1: only a linked work order has an edition to re-read
-        $link = $this->find($workOrder);
+        $courseName = trim((string) ($workOrder->attribute_values[CourseFieldWriter::ELIGIBILITY_CODE] ?? ''));
 
-        if ($link === null) {
-            throw ValidationException::withMessages(['work_order' => __('formalab::messages.not_linked')]);
+        if ($courseName === '') {
+            throw ValidationException::withMessages(['work_order' => __('formalab::messages.course_name_missing')]);
         }
 
-        // Step 2: live read of the class (also refreshes the local catalogue)
-        $class = $this->catalog->refresh($link->edition_id, Trigger::WorkOrder);
+        $editionIds = $this->catalog->editionIdsForLabel($courseName);
 
-        if ($class === null) {
-            throw ValidationException::withMessages(['edition_id' => __('formalab::messages.class_not_found')]);
-        }
-
-        // Step 3: write the fields and mark the link as synced
-        DB::transaction(function () use ($workOrder, $class, $link): void {
-            $this->courseWriter->apply($workOrder, $class);
-            $link->update(['synced_hash' => $class->payload_hash, 'synced_at' => now(), 'sync_error' => null]);
-        });
-
-        return $this->find($workOrder);
-    }
-
-    /**
-     * Unlinks; the fields keep the values of the last sync.
-     */
-    public function remove(WorkOrder $workOrder): void
-    {
-        FormalabWorkOrderLink::query()->where('work_order_id', $workOrder->id)->delete();
+        return match (count($editionIds)) {
+            1 => $editionIds[0],
+            0 => throw ValidationException::withMessages(['work_order' => __('formalab::messages.course_name_unmatched')]),
+            default => throw ValidationException::withMessages(['work_order' => __('formalab::messages.course_name_ambiguous')]),
+        };
     }
 }

@@ -44,6 +44,16 @@ final class ClassCatalog
     }
 
     /**
+     * Editions whose "code - title" label equals the given course name.
+     *
+     * @return list<int>
+     */
+    public function editionIdsForLabel(string $label): array
+    {
+        return FormalabClass::query()->where('label', $label)->pluck('edition_id')->map(intval(...))->all();
+    }
+
+    /**
      * Reads one edition live from Formalab and stores it.
      *
      * @return FormalabClass|null null when Formalab has no such edition

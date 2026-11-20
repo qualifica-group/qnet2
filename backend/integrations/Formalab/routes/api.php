@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Integrations\Formalab\Http\Controllers\ClassController;
 use Integrations\Formalab\Http\Controllers\FormalabAdminController;
 use Integrations\Formalab\Http\Controllers\WebhookController;
 use Integrations\Formalab\Http\Controllers\WorkOrderLinkController;
@@ -21,12 +20,8 @@ Route::prefix('api/integrations/formalab')->middleware('api')->group(function ()
             Route::post('link-work-orders', [FormalabAdminController::class, 'linkWorkOrders']);
         });
 
-        Route::get('classes', [ClassController::class, 'index']);
-
         Route::get('work-orders/{workOrder}', [WorkOrderLinkController::class, 'show']);
-        Route::put('work-orders/{workOrder}', [WorkOrderLinkController::class, 'update']);
         Route::post('work-orders/{workOrder}/sync', [WorkOrderLinkController::class, 'sync']);
-        Route::delete('work-orders/{workOrder}', [WorkOrderLinkController::class, 'destroy']);
     });
 
     // Without a configured token the endpoint does not exist.

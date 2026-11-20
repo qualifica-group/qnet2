@@ -7,9 +7,9 @@ namespace Integrations\Formalab\Http\Controllers;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Models\WorkOrder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Integrations\Formalab\Exceptions\FormalabException;
-use Integrations\Formalab\Http\Requests\LinkWorkOrderRequest;
 use Integrations\Formalab\Http\Resources\WorkOrderLinkResource;
 use Integrations\Formalab\Services\WorkOrderLinkService;
 use Throwable;
@@ -39,50 +39,19 @@ class WorkOrderLinkController extends BaseApiController
     }
 
     /**
-     * PUT /api/integrations/formalab/work-orders/{workOrder}.
+     * POST /api/integrations/formalab/work-orders/{workOrder}/sync: match the
+     * edition by course name, re-read it from Formalab and write the fields.
      */
-    public function update(LinkWorkOrderRequest $request, WorkOrder $workOrder): JsonResponse
-    {
-        try {
-            $this->service->set($workOrder, (int) $request->validated('edition_id'), $request->user());
-
-            return $this->respond($workOrder);
-        } catch (FormalabException) {
-            return $this->fail(__('formalab::messages.unreachable'), self::BAD_GATEWAY);
-        } catch (Throwable $exception) {
-            return $this->handleControllerException($exception, __FUNCTION__);
-        }
-    }
-
-    /**
-     * POST /api/integrations/formalab/work-orders/{workOrder}/sync: re-read the linked edition now.
-     */
-    public function sync(WorkOrder $workOrder): JsonResponse
+    public function sync(Request $request, WorkOrder $workOrder): JsonResponse
     {
         try {
             Gate::authorize('update', $workOrder);
 
-            $this->service->refresh($workOrder);
+            $this->service->sync($workOrder, $request->user());
 
             return $this->respond($workOrder);
         } catch (FormalabException) {
             return $this->fail(__('formalab::messages.unreachable'), self::BAD_GATEWAY);
-        } catch (Throwable $exception) {
-            return $this->handleControllerException($exception, __FUNCTION__);
-        }
-    }
-
-    /**
-     * DELETE /api/integrations/formalab/work-orders/{workOrder}.
-     */
-    public function destroy(WorkOrder $workOrder): JsonResponse
-    {
-        try {
-            Gate::authorize('update', $workOrder);
-
-            $this->service->remove($workOrder);
-
-            return $this->respond($workOrder);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

@@ -66,21 +66,28 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'On work orders that carry the GOL course fields, or that are already linked, the **Formalab** tab appears. When the work order is linked it shows the class data: status, dates, hours, site, learners and last update.',
+          text: 'On work orders that carry the GOL course fields, or that are already synced, the **Formalab** tab appears. The edition is never picked by hand: the system finds it from the work order\'s **course name** field, which must be written exactly as on Formalab ("code - title"). Once synced, the tab shows the class data: status, dates, hours, site, learners and last update.',
         },
         {
           type: 'steps',
           items: [
-            'Open the work order\'s **Formalab** tab.',
-            'Search the edition by code, course or city and pick it from the list: it is the Formalab class catalogue, updated every 10 minutes.',
-            'Click **Link**: the work order\'s course fields are filled with the class data.',
-            'Once linked, **Sync** re-reads the edition from Formalab right away and updates the course fields, without waiting for the automatic update.',
-            'To change edition use **Change edition**; to stop the link use **Unlink** (the fields keep the last values received).',
+            'Make sure the work order\'s **course name** is filled in.',
+            'Open the **Formalab** tab and click **Sync**.',
+            'The system looks up in the Formalab catalogue the edition with the same name, re-reads it from Formalab right away and copies its data into the course fields. From then on the work order also updates by itself every 10 minutes.',
+            'If you change the course name, click **Sync** again: the system moves to the edition with the new name.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            '**Empty course name**: fill in the course name first.',
+            '**No edition with this name**: the name differs from the one on Formalab, or the edition is new and the catalogue has not received it yet (it updates every 10 minutes).',
+            '**Several editions with this name**: the name is not unique on Formalab and the system cannot choose.',
           ],
         },
         {
           type: 'note',
-          text: 'Linking, syncing, changing and unlinking require the permission to edit the work order.',
+          text: 'Syncing requires the permission to edit the work order.',
         },
       ],
     },
@@ -103,7 +110,7 @@ const guide: HelpGuide = {
           items: [
             'If Formalab is unreachable the sync is marked **failed**, the error is in the call log and the catalogue stays as of the last successful sync; it retries on the next run.',
             'If updating a single work order fails, its tab shows a warning with the reason and the other work orders are updated normally.',
-            'When you link an edition while Formalab is unreachable, the link is **not saved** and you see the error message.',
+            'If you click **Sync** while Formalab is unreachable, the work order fields are **not touched** and you see the error message.',
             'If the code of one of the course fields is renamed or deleted, that field stops updating: the Formalab card of **System health** turns Degraded with the **Course fields** check, and the sync history records it.',
             'The integration status also appears on the **System health** page.',
           ],
