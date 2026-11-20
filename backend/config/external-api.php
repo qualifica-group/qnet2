@@ -85,6 +85,8 @@ return [
             'auth/reset-password',
             'config',
             'system-health',
+            // Spec 0422: optional integrations (their admin routes and webhook) are not part of the integrator API.
+            'integrations',
             // Spec 0359: Echo's private-channel auth for the in-app realtime chat.
             'broadcasting',
         ],

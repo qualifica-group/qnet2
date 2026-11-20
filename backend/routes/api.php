@@ -13,6 +13,7 @@ use App\Http\Controllers\CompanySites\CompanySiteForSelectController;
 use App\Http\Controllers\Config\ConfigController;
 use App\Http\Controllers\Contacts\ContactController;
 use App\Http\Controllers\Export\ExportController;
+use App\Http\Controllers\Integrations\IntegrationController;
 use App\Http\Controllers\Meta\MetaController;
 use App\Http\Controllers\Migration\MassMigrationController;
 use App\Http\Controllers\Migration\MigrationController;
@@ -166,6 +167,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // authenticated user (the guard refreshes last_used_at, nothing else).
     Route::post('presence/heartbeat', PresenceHeartbeatController::class);
     Route::get('system-health', SystemHealthController::class)->middleware('super-admin');
+
+    // Optional integrations switched on for this installation.
+    Route::get('integrations', IntegrationController::class);
 
     // Generic, registry-driven external-data migration engine (spec 0013),
     // mirroring tables/{domain} / imports/{domain}: one controller serves

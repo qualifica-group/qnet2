@@ -12,6 +12,14 @@ import { onboarding as onboardingEn } from '@/i18n/locales/en-onboarding'
 import { onboarding as onboardingIt } from '@/i18n/locales/it-onboarding'
 import { maintenance as maintenanceEn } from '@/i18n/locales/en-maintenance'
 import { maintenance as maintenanceIt } from '@/i18n/locales/it-maintenance'
+import type { IntegrationI18nResources } from '@/integrations/types'
+
+// Each integration ships its own namespace in `integrations/<name>/i18n/index.ts`. Registered eagerly (not by the
+// lazy page) because the backend nav label `<name>:nav.label` must resolve before that page loads. Globbed so this
+// file never names an integration.
+const integrationResources = Object.values(
+  import.meta.glob<{ default: IntegrationI18nResources }>('../integrations/*/i18n/index.ts', { eager: true }),
+).map((module) => module.default)
 
 export const defaultLocale = 'it'
 export const fallbackLocale = 'en'
@@ -47,8 +55,8 @@ void i18n.use(initReactI18next).init({
     // breadcrumb can resolve `migrations:nav.label` app-wide — before the lazy
     // migrations feature module is ever loaded. See features/migrations/i18n.ts.
     // `systemHealth`, `workspaces` and `onboarding` are separate namespaces for the same reason (en.ts/it.ts at the size limit).
-    en: { translation: en, migrations: migrationsEn, systemHealth: systemHealthEn, workspaces: workspacesEn, onboarding: onboardingEn, maintenance: maintenanceEn },
-    it: { translation: it, migrations: migrationsIt, systemHealth: systemHealthIt, workspaces: workspacesIt, onboarding: onboardingIt, maintenance: maintenanceIt },
+    en: { translation: en, migrations: migrationsEn, systemHealth: systemHealthEn, workspaces: workspacesEn, onboarding: onboardingEn, maintenance: maintenanceEn, ...Object.fromEntries(integrationResources.map((r) => [r.namespace, r.en])) },
+    it: { translation: it, migrations: migrationsIt, systemHealth: systemHealthIt, workspaces: workspacesIt, onboarding: onboardingIt, maintenance: maintenanceIt, ...Object.fromEntries(integrationResources.map((r) => [r.namespace, r.it])) },
   },
   lng: defaultLocale,
   fallbackLng: fallbackLocale,

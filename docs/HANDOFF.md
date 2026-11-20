@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Integrazione Formalab (spec 0422, 2026-11-20) — VERDE, COMMITTATO (staging), ATTIVA IN DEV
+
+- Verticalizzazione isolata: backend `backend/integrations/Formalab/` (namespace `Integrations\Formalab\`, psr-4 in composer.json), frontend `frontend/src/integrations/formalab/`. Core toccato solo con punti di estensione generici: `App\Integrations\IntegrationRegistry` + `GET /api/integrations` (`data.active`), tag container `system-health.checks` in SystemHealthService, registro frontend `src/integrations/` (schede commessa, rotte dev, namespace i18n via glob), card health con etichette di fallback per check non core, guida in-app `formalab` (HELP_GUIDE_KEYS 109 -> 110).
+- `FORMALAB_ENABLED=false` (default): il provider carica solo migrazioni e traduzioni; nessuna rotta, menu, schedulazione, check health, tabella. Cambio stato = `.env` + `config:cache` (+ `route:cache` se in cache).
+- Env: FORMALAB_URL, FORMALAB_USER_EMAIL, FORMALAB_USER_PASSWORD, FORMALAB_INBOUND_TOKEN (vuoto = webhook assente), intervallo sync (10 min), retention log (90 gg), timeout. Vedi `backend/.env.example`.
+- Funzioni: sync catalogo classi (`formalab:sync-classes`, job ogni 10 min) in `formalab_classes`; link commessa -> edizione (`formalab_work_order_links`) dalla scheda "Formalab" della commessa; i 12 campi corso `gol_*` scritti via WorkOrderAttributeValueWriter; backfill `formalab:link-work-orders` (match esatto di gol_corso = "codice - titolo"); webhook `POST /api/integrations/formalab/webhooks/classes` (header X-Formalab-Token); log di ogni chiamata in `formalab_call_logs`, esecuzioni in `formalab_sync_runs`; pagina `/dev/formalab` (super-admin); check `formalab` nello Stato del sistema.
+- Verifica: Pest `tests/Feature/Integrations tests/Feature/System tests/Feature/Navigation` 92/92; Vitest integrations+system-health+help+routes+work-orders 79 file/637 test; ESLint pulito; `tsc -b --force` exit 0; Pint pulito.
+- Preesistenti e non legati: `ApiDocsDescriptionsTest` (12 operazioni core senza descrizione) e `PermissionCatalogueEndpointTest` AC-004 (741 vs 721).
+- Stato dev (qnet2): FORMALAB_ENABLED=true in backend/.env (credenziali copiate dal legacy), 6 migrazioni formalab_* eseguite, catalogo sincronizzato (1395 classi), collegata SOLO COM-20228 -> edizione 2477 (richiesta utente: niente backfill sulle altre commesse). Con FORMALAB_ENABLED=true in .env i test "disattivo" falliscono: lanciare Pest con `FORMALAB_ENABLED=false` davanti.
+- INCIDENTE 2026-11-20: con `bootstrap/cache/config.php` presente Pest ignora phpunit.xml e usa MySQL qnet2 -> RefreshDatabase ha svuotato il DB (poi ripristinato dall'utente). Prima di ogni Pest verificare che la config cache NON esista.
+- Aggiunte dopo la prima consegna (spec D-11, D-13, D-14): menu Develop > Servizi esterni > Formalab (gruppo `external-services`, voce mai duplicata); controllo `course_fields` (codici dei campi corso non piu' presenti) in health, stato (`missing_course_fields`) e sync run (`warning_message`); nessuna voce di storico per valori vuoti invariati; colonne label/code/title a 512.
+- Scheda commessa: pulsante **Sincronizza** (POST `/api/integrations/formalab/work-orders/{id}/sync`, D-15) rilegge l'edizione collegata e riscrive i campi senza ricreare il link. In dev al momento del commit nessuna commessa e' collegata (COM-20228 scollegata durante le prove utente).
+- Verifica finale: Pest Integrations+System+Navigation 97/97; Vitest integrations+system-health+help+routes+navigation 35 file/274 test; ESLint pulito; tsc -b exit 0; Pint pulito. Due test esistenti adattati per requisito cambiato (dichiarato nel test).
+- Fuori scope: discenti/`/api/formazioni` legacy, campi corso in sola lettura se collegata, manuale Claude Docs (decisione utente).
+
 ## ISO: sottocategorie consolidate in "ISO - Ente" / "ISO - Consulenza" (one-shot, richiesta utente 2026-11-20) — NON COMMITTATO, NON ESEGUITO
 
 - `php artisan db:seed --class=IsoSubcategoriesConsolidationSeeder --force` (`backend/database/seeders/IsoSubcategoriesConsolidationSeeder.php`). Solo la radice corrente `ISO` (`parent_id` null, `is_legacy` false): `[OLD] ISO` intoccato.

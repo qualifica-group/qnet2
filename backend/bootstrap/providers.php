@@ -5,6 +5,7 @@ use App\Providers\ApiClientsServiceProvider;
 use App\Providers\ApiDocsServiceProvider;
 use App\Providers\AppServiceProvider;
 use App\Providers\PermissionServiceProvider;
+use Integrations\Formalab\FormalabServiceProvider;
 
 return [
     ActivitylogServiceProvider::class,
@@ -12,4 +13,5 @@ return [
     AppServiceProvider::class,
     ApiClientsServiceProvider::class,
     ApiDocsServiceProvider::class,
+    FormalabServiceProvider::class,
 ];
