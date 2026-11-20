@@ -173,6 +173,21 @@ it('lists the registry names as distinct values of the registry column', functio
     expect($values)->toContain('Acme Spa', 'Beta Srl');
 });
 
+// Regression: spec 0404 took `quote_workflow_status` out of the Offerte relation columns, and the
+// report fell through to the generic engine (unknown column `quotes.quote_workflow_status`).
+it('lists, filters and sorts the working status by its name', function () {
+    $first = agentSalesReportQuote(attributes: ['quote_workflow_status_id' => QuoteWorkflowStatus::factory()->create(['name' => 'Alfa'])->id]);
+    $second = agentSalesReportQuote(attributes: ['quote_workflow_status_id' => QuoteWorkflowStatus::factory()->create(['name' => 'Zeta'])->id]);
+    Sanctum::actingAs(agentSalesReportActor());
+
+    $values = $this->postJson('/api/tables/agent-sales-report/values', ['columnId' => 'quote_workflow_status'])->assertOk()->json('data.values');
+    $ids = fn (array $state): array => collect(agentSalesReportRows($this, $state))->pluck('id')->all();
+
+    expect($values)->toContain('Alfa', 'Zeta')
+        ->and($ids(['filterModel' => ['quote_workflow_status' => ['filterType' => 'set', 'values' => ['Zeta']]]]))->toBe([$second->id])
+        ->and($ids(['sortModel' => [['colId' => 'quote_workflow_status', 'sort' => 'desc']]]))->toBe([$second->id, $first->id]);
+});
+
 it('does not run a query per row (no lazy loading) across a page', function () {
     foreach (range(1, 6) as $index) {
         agentSalesReportTeam(agentSalesReportQuote(agentSalesReportRegistry("Cliente {$index}")));
