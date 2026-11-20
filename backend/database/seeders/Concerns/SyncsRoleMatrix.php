@@ -31,6 +31,9 @@ trait SyncsRoleMatrix
     /** The quote visibility widenings the two request modules mirror (spec 0340 rev.3: the competence tier too). */
     private const array QUOTE_VISIBILITY_TIERS = ['viewAll', 'viewSite', 'viewCompetence'];
 
+    /** Reading a request or an enrollee includes its documents, as the mansionario's enrollee read block (spec 0408 D-15). */
+    private const array REQUEST_READ_ABILITIES = ['viewAny', 'view', 'viewDocuments'];
+
     /** The modules whose `viewAll` also carries `viewCompetence` (spec 0340, user directive 2026-11-02). */
     private const array COMPETENCE_SIGHT_RESOURCES = ['opportunities', 'quotes', 'contracts', 'work-orders'];
 
@@ -112,8 +115,8 @@ trait SyncsRoleMatrix
 
     /**
      * Whoever sees opportunities and quotes also sees Gestione Richieste and
-     * Gestione Iscritti (user directive 2026-10-27), read-only, as wide as
-     * their quotes: every offer, their Sedi's, or only the ones they operate.
+     * Gestione Iscritti (user directive 2026-10-27), read-only with the
+     * documents, as wide as their quotes: every offer, their Sedi's, or only the ones they operate.
      *
      * @param  Collection<int, string>  $permissions
      * @return Collection<int, string>
@@ -124,7 +127,7 @@ trait SyncsRoleMatrix
             return $permissions;
         }
 
-        $abilities = collect(['viewAny', 'view'])
+        $abilities = collect(self::REQUEST_READ_ABILITIES)
             ->merge(collect(self::QUOTE_VISIBILITY_TIERS)->filter(fn (string $tier): bool => $permissions->contains("quotes.{$tier}")));
 
         return $permissions

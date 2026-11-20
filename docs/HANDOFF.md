@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ruoli di reparto: Gestione Richieste/Iscritti di nuovo operativa (spec 0408 D-15, segnalazione utente 2026-11-20) — VERDE MIRATO, COMMITTATO SU STAGING, SEEDER NON RIESEGUITO
+
+- Segnalazione: con i ruoli `reparto-*` Martina Mosca (e gli altri) perdeva creazione/modifica/eliminazione richieste, documenti e permessi di contorno.
+- Root cause: il questionario sulla Gestione Richieste chiede solo QUALI richieste vede il reparto (88-92); il silenzio era stato tradotto in No: `requests_view` = solo viewAny/view, nessuna chiave per eliminare/assegnare/fonte/iscritti in modifica, documenti assenti anche nella regola derivata 2026-10-27. Dry-run sul DB locale (transazione annullata): `request-management.viewDocuments` perso da 65 persone, `enrollee-management.viewDocuments` da 67; Mosca, Aliberti, Falzarano senza create/update/delete/assignOperator/updateSource/iscritti.
+- Fix (`DepartmentPermissionGrants`, `DepartmentGrantSets`, `SyncsRoleMatrix`): lettura = viewAny/view/viewDocuments (`requests_view`, `enrollees_view`, costante `REQUEST_READ_ABILITIES` della regola derivata); `requests_edit` = blocco "richieste proprie" del mansionario (create, update, export, viewActivity, appendTeamMember, assignManagerGa1, transferContact, transferRegistry + tendine + `referents.create` + `field-change-requests.create`) a Commerciale, Back Office operatori, APL e supervisori commerciali; nuova `requests_manage_all` (delete, assignOperator, updateSource, `business-functions.viewAny`, `enrollee-management.*`) a Back Office senior e Commerciale senior.
+- Dry-run dopo il fix: Mosca e Falzarano/Aliberti perdono solo viewSite/viewCompetence (coperti da viewAll). Restano le perdite da risposte esplicite (da confermare con i responsabili): operatori Back Office niente viewAll richieste e niente iscritti (91 = No); 36 commerciali niente import e `enrollee-management.viewPrimarySite` (89/91 = No); ex commerciale-senior, Chiacchio e 4 APL (Gervasio, Distico, Crispo, Ascione) niente viewAll/delete; ISO "Nessuna".
+- Test: `QualificaDepartmentRoleSeederTest` nuovo caso D-15 (AC-007). Pint pulito.
+- DA FARE con ok utente: rieseguire `php artisan db:seed --class=QualificaDepartmentRoleSeeder` (sul DB locale i ruoli `reparto-*` oggi non esistono: DB ripristinato). Manuale: nessun impatto (solo dati dei ruoli).
+
 ## Commesse, Opportunita', Offerte: la Categoria madre di default non nasconde piu' i record dove si e' nel team (task 431114, spec 0374 rev.6, 2026-11-20) — VERDE MIRATO, COMMITTATO SU MAIN E MERGIATO IN STAGING
 
 - Segnalazione (task 431114, aperto da Francesco Di Maio id 118): COM-20281 (id 16535, HACCP) assegnata da Deborah Farina come

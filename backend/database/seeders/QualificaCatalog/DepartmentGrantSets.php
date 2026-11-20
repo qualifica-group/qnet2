@@ -148,7 +148,7 @@ final class DepartmentGrantSets
         'tasks_view_site', 'tasks_edit', 'tasks_validate', 'tasks_delete', 'tasks_transfer',
         'proforma_view', 'proforma_request', 'invoices_view', 'invoices_edit', 'invoices_collect', 'invoices_send',
         'invoices_delete', 'invoices_export',
-        'request_statistics', 'requests_view', 'requests_import', 'enrollees_view', 'rewarded_referents',
+        'request_statistics', 'requests_view', 'requests_edit', 'requests_import', 'enrollees_view', 'rewarded_referents',
         'users_view',
     ];
 
@@ -189,8 +189,8 @@ final class DepartmentGrantSets
      * Back Office operators: every opportunity, quote, commessa and contract
      * (quotes and contracts follow the commesse, D-10), tasks of their team
      * (org chart, D-4), invoicing and commissions in read, the commission
-     * rules (the referents' "% Segnalatori"), requests they are involved in,
-     * the price list.
+     * rules (the referents' "% Segnalatori"), the requests they are involved
+     * in, worked as before the questionnaire (D-15), the price list.
      */
     public const array BACK_OFFICE = [
         'registries_view', 'registries_edit', 'registries_documents', 'registries_delete', 'registries_transfer',
@@ -208,20 +208,20 @@ final class DepartmentGrantSets
         'purchase_requests_view', 'purchase_requests_create',
         'commission_accruals_view', 'agent_fiscal_profiles_view', 'commission_settlements_view', 'commissions_export',
         'commission_configurations_manage',
-        'requests_view',
+        'requests_view', 'requests_edit',
         'products_view',
     ];
 
     /**
      * Back Office supervisor (Martina Mosca), on top of the operators: every
-     * task, the statistics, every request with import, enrollees and rewarded
-     * referents, the whole product catalogue, the user list. Her team's
+     * task, the statistics, every request managed in full with import (D-15),
+     * every enrollee, the rewarded referents, the whole product catalogue, the user list. Her team's
      * absence calendar comes from the org chart (D-4).
      */
     public const array BACK_OFFICE_SENIOR = [
         'tasks_view_all', 'tasks_manage_all', 'tasks_validate', 'tasks_delete', 'tasks_transfer',
         'agent_sales_report', 'request_statistics',
-        'requests_view_all', 'requests_import', 'enrollees_view', 'rewarded_referents',
+        'requests_view_all', 'requests_manage_all', 'requests_import', 'enrollees_view', 'rewarded_referents',
         'products_edit', 'products_delete', 'stock_view', 'products_transfer',
         'users_view',
     ];
@@ -260,8 +260,8 @@ final class DepartmentGrantSets
         'purchase_requests_view', 'purchase_requests_create',
         'commission_accruals_view', 'commission_accruals_export',
         'agent_sales_report', 'request_statistics',
-        'requests_view', 'requests_view_all', 'requests_import', 'enrollees_view', 'rewarded_referents',
-        'field_change_reviews',
+        'requests_view', 'requests_edit', 'requests_view_all', 'requests_manage_all', 'requests_import', 'enrollees_view',
+        'rewarded_referents', 'field_change_reviews',
         'users_view', 'absences_calendar_all',
     ];
 

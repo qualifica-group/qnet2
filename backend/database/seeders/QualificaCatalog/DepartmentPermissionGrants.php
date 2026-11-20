@@ -160,19 +160,34 @@ final class DepartmentPermissionGrants
         'agent_sales_report' => ['agent-sales-report.view'],
         'request_statistics' => ['request-statistics.view'],
 
-        // Gestione richieste (88-92).
-        'requests_view' => ['request-management.viewAny', 'request-management.view'],
+        // Gestione richieste (88-92). The questionnaire asks only which requests a
+        // department sees (D-15): reading includes the documents, working them
+        // is `requests_edit`, the "Tutte" level of a supervisor `requests_manage_all`.
+        'requests_view' => ['request-management.viewAny', 'request-management.view', 'request-management.viewDocuments'],
         'requests_view_all' => ['request-management.viewAll', 'enrollee-management.viewAll'],
         'requests_import' => ['request-management.import'],
-        // Commerciale "Editor": creates and edits the requests it is involved in,
-        // with the sources lookup and the request to change a protected source.
-        'requests_edit' => ['request-management.create', 'request-management.update', 'sources.viewAny', 'field-change-requests.create'],
+        // The mansionario's "own requests" (OperatorRoleCatalogue::OWN_REQUESTS):
+        // creates and works the requests it is involved in, with the work panel's
+        // lookups and the request to change a protected source.
+        'requests_edit' => [
+            'request-management.create', 'request-management.update', 'request-management.export',
+            'request-management.viewActivity', 'request-management.appendTeamMember', 'request-management.assignManagerGa1',
+            'request-management.transferContact', 'request-management.transferRegistry',
+            'registries.viewAny', 'referents.viewAny', 'referents.create', 'sources.viewAny', 'users.viewAny',
+            'field-change-requests.create',
+        ],
+        // The mansionario's "all requests" and "all enrollees": deletes, assigns
+        // the operator, writes the source, and the whole Gestione Iscritti.
+        'requests_manage_all' => [
+            'request-management.delete', 'request-management.assignOperator', 'request-management.updateSource',
+            'business-functions.viewAny', 'enrollee-management.*',
+        ],
         // Whoever is notified of the source change requests reviews them.
         'field_change_reviews' => [
             'field-change-requests.viewAny', 'field-change-requests.view', 'field-change-requests.manage',
             'field-change-requests.viewActivity', 'request-management.updateSource', 'enrollee-management.updateSource',
         ],
-        'enrollees_view' => ['enrollee-management.viewAny', 'enrollee-management.view'],
+        'enrollees_view' => ['enrollee-management.viewAny', 'enrollee-management.view', 'enrollee-management.viewDocuments'],
         'rewarded_referents' => ['rewarded-referents.viewAny', 'rewarded-referents.view', 'rewarded-referents.create', 'rewarded-referents.update', 'rewarded-referents.viewActivity'],
 
         // Prodotti e magazzino (93-97).

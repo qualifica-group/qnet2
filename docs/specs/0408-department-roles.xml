@@ -105,6 +105,20 @@
         hanno solo i permessi richieste del questionario (`request_sight_from_quotes => false` nel catalogo,
         parametro di `SyncsRoleMatrix::syncRole`). Operatori: richieste in cui sono coinvolti, niente iscritti;
         Mosca: tutte le richieste e gli iscritti. Gli altri ruoli restano con la regola.
+    D-15 Segnalazione utente 2026-11-20 (supera la lettura "solo vedere" della domanda 88 in D-14): il questionario
+        sulla Gestione Richieste chiede solo QUALI richieste vede il reparto (88), import (89), report (90), iscritti
+        (91), referenti premiati (92); non chiede creazione, modifica, eliminazione, documenti, storico, team.
+        Tradurre il silenzio come No aveva tolto a Mosca e ai supervisori commerciali creazione/modifica/eliminazione,
+        assegnazione operatore, fonte, iscritti in modifica, e a quasi tutti i documenti delle richieste. Regola:
+        leggere una richiesta o un iscritto comprende i documenti (`requests_view`, `enrollees_view` e la regola
+        derivata 2026-10-27 di `SyncsRoleMatrix`); chi lavora le richieste in cui e' coinvolto ha il blocco "richieste
+        proprie" del mansionario (`requests_edit`: crea, modifica, export, storico, team, trasferimento contatto e
+        anagrafica, tendine del pannello, richiesta di modifica fonte): Commerciale ("Editor"), Back Office operatori
+        e APL, che le creavano gia' prima dei reparti; il livello "Tutte" dei supervisori (Mosca, Aliberti, Falzarano)
+        ha il blocco "tutte le richieste" + "tutti gli iscritti" (`requests_manage_all`: elimina, assegna operatore,
+        modifica fonte, intero modulo Gestione Iscritti). Restano come da risposte esplicite: niente `viewAll`
+        per chi ha risposto "Solo quelle in cui e' coinvolto", niente import dove 89 = No, niente iscritti dove 91 = No
+        (operatori Back Office compresi), nessuna richiesta per ISO e HR ("Nessuna").
   </context>
 
   <acceptance_criteria>
@@ -114,5 +128,6 @@
     <criterion id="AC-004">Chi non e' nell'elenco resta invariato; ri-eseguito, il seeder converge senza duplicati.</criterion>
     <criterion id="AC-005">Il ruolo HR vede i dati contrattuali dell'utente; gli altri ruoli di reparto no (D-14 supera l'eccezione Back Office di D-13).</criterion>
     <criterion id="AC-006">Back Office e Commerciale seguono i rispettivi questionari per livello; Fabozzi ha `admin`, i supervisori commerciali tengono i ruoli di notifica e approvano le richieste di modifica fonte (D-14).</criterion>
+    <criterion id="AC-007">Chi vede richieste o iscritti ne vede i documenti; Back Office, Commerciale e APL creano e modificano le richieste in cui sono coinvolti senza eliminarle; i supervisori "Tutte" (Back Office senior, Commerciale senior) eliminano, assegnano l'operatore, modificano la fonte e gestiscono l'intero modulo Iscritti (D-15).</criterion>
   </acceptance_criteria>
 </spec>

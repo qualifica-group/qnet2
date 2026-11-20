@@ -226,3 +226,44 @@ it('gives the commerciale supervisors their own answers, not a widening of the c
         ->and(departmentRoleNames($supervisor))->toBe(['notifiche-richieste-modifica', 'notifiche-trasferimenti-contatti', Department::senior(Department::COMMERCIAL)])
         ->and(departmentRoleNames($apl))->toBe([Department::APL, Department::COMMERCIAL]);
 });
+
+// Spec 0408 D-15: question 88 means working the requests, not reading them only.
+it('lets whoever works the requests act on them and the "Tutte" level manage them all', function () {
+    $this->seed(Seeder::class);
+
+    $can = fn (string $role, string $permission): bool => Role::findByName($role)->hasPermissionTo($permission);
+    $backOffice = Department::BACK_OFFICE;
+    $backOfficeHead = Department::senior(Department::BACK_OFFICE);
+    $commercialHead = Department::senior(Department::COMMERCIAL);
+
+    foreach ([$backOffice, Department::COMMERCIAL, Department::APL] as $role) {
+        foreach (['create', 'update', 'export', 'viewDocuments', 'viewActivity', 'appendTeamMember', 'assignManagerGa1', 'transferContact', 'transferRegistry'] as $ability) {
+            expect($can($role, "request-management.{$ability}"))->toBeTrue("{$role} request-management.{$ability}");
+        }
+        expect($can($role, 'request-management.delete'))->toBeFalse()
+            ->and($can($role, 'request-management.assignOperator'))->toBeFalse()
+            ->and($can($role, 'request-management.updateSource'))->toBeFalse()
+            ->and($can($role, 'sources.viewAny'))->toBeTrue()
+            ->and($can($role, 'referents.create'))->toBeTrue();
+    }
+
+    foreach ([$backOfficeHead, $commercialHead] as $role) {
+        foreach (['create', 'update', 'delete', 'assignOperator', 'updateSource', 'viewDocuments', 'viewActivity', 'viewAll'] as $ability) {
+            expect($can($role, "request-management.{$ability}"))->toBeTrue("{$role} request-management.{$ability}");
+        }
+        foreach (['update', 'delete', 'export', 'viewDocuments', 'viewActivity', 'viewAll', 'assignOperator'] as $ability) {
+            expect($can($role, "enrollee-management.{$ability}"))->toBeTrue("{$role} enrollee-management.{$ability}");
+        }
+        expect($can($role, 'business-functions.viewAny'))->toBeTrue();
+    }
+
+    // Read-only levels see the documents of what they see, and act on nothing.
+    foreach ([Department::SAFETY, Department::ACCOUNTING, Department::TRAVEL] as $role) {
+        expect($can($role, 'request-management.viewDocuments'))->toBeTrue("{$role} request-management.viewDocuments")
+            ->and($can($role, 'request-management.create'))->toBeFalse()
+            ->and($can($role, 'request-management.update'))->toBeFalse();
+    }
+    expect($can(Department::ACCOUNTING, 'enrollee-management.viewDocuments'))->toBeTrue()
+        ->and($can(Department::ACCOUNTING, 'enrollee-management.update'))->toBeFalse()
+        ->and($can($backOffice, 'enrollee-management.viewAny'))->toBeFalse();
+});
