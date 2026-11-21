@@ -7,8 +7,7 @@ use App\Models\User;
 
 if (! function_exists('openLinkFor')) {
     /**
-     * Opens a link through the real route. Each test file of the module requires
-     * this file itself, so the helper exists in every parallel worker.
+     * Opens a link through the real route.
      *
      * @return array{0: string, 1: string, 2: User, 3: McpLink, 4: int} key, credential, user, link, client id
      */

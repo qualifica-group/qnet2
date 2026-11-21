@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\McpLinkReason;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,19 +14,21 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class McpLink extends Model
 {
-    public const string REVOKED_BY_CLIENT = 'revoked';
-
-    public const string REVOKED_PASSWORD_CHANGED = 'password_changed';
-
-    public const string REVOKED_USER_DEACTIVATED = 'user_deactivated';
-
-    protected $guarded = [];
+    protected $fillable = [
+        'user_id',
+        'api_client_id',
+        'mcp_client',
+        'credential_hash',
+        'password_fingerprint',
+        'expires_at',
+    ];
 
     protected function casts(): array
     {
         return [
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',
+            'revoked_reason' => McpLinkReason::class,
         ];
     }
 

@@ -2,7 +2,7 @@
 
 namespace App\Listeners\McpLinks;
 
-use App\Models\McpLink;
+use App\Enums\McpLinkReason;
 use App\Models\User;
 use App\Services\McpLinks\McpLinkService;
 
@@ -18,8 +18,8 @@ class DropMcpLinksOnCredentialChange
     public function handle(User $user): void
     {
         $reason = match (true) {
-            $user->wasChanged('password') => McpLink::REVOKED_PASSWORD_CHANGED,
-            $user->wasChanged('is_active') && ! $user->is_active => McpLink::REVOKED_USER_DEACTIVATED,
+            $user->wasChanged('password') => McpLinkReason::PasswordChanged,
+            $user->wasChanged('is_active') && ! $user->is_active => McpLinkReason::UserDeactivated,
             default => null,
         };
 

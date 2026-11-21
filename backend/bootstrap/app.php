@@ -2,6 +2,7 @@
 
 use App\Authorization\Denials\ForbiddenResponse;
 use App\Http\Middleware\CaptureCustomFields;
+use App\Http\Middleware\EnsureApiClientKey;
 use App\Http\Middleware\EnsureApiClientMethodAllowed;
 use App\Http\Middleware\EnsureFirstPasswordSet;
 use App\Http\Middleware\EnsureNotInMaintenance;
@@ -34,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware(['api', 'auth:sanctum'])
                 ->prefix('api')
                 ->group(base_path('routes/api/api-clients.php'));
+
+            // MCP link module: the key of an API client only, never a user token.
+            Route::middleware(['api', 'auth:sanctum', EnsureApiClientKey::class])
+                ->prefix('api')
+                ->group(base_path('routes/api/mcp-links.php'));
         },
     )
     // Spec 0352: POST /api/broadcasting/auth signs private channel

@@ -1,13 +1,12 @@
 <?php
 
+use App\Enums\McpLinkReason;
 use App\Models\McpLink;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Laravel\Sanctum\Sanctum;
-
-require_once __DIR__.'/../../Helpers/McpLinkHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -26,7 +25,7 @@ function linkedUserWithToken(): array
     return [$user, $link, $key, $credential];
 }
 
-function expectLinkDropped(McpLink $link, User $user, string $reason, string $key, string $credential): void
+function expectLinkDropped(McpLink $link, User $user, McpLinkReason $reason, string $key, string $credential): void
 {
     expect($link->fresh()->revoked_at)->not->toBeNull()
         ->and($link->fresh()->revoked_reason)->toBe($reason)
@@ -45,7 +44,21 @@ it('drops the links when the user changes the password', function () {
         'password_confirmation' => 'new-password-123',
     ])->assertOk();
 
-    expectLinkDropped($link, $user, McpLink::REVOKED_PASSWORD_CHANGED, $key, $credential);
+    expectLinkDropped($link, $user, McpLinkReason::PasswordChanged, $key, $credential);
+});
+
+it('drops the links when the password is changed with a token issued for the link itself', function () {
+    [$user, $link, $key, $credential] = linkedUserWithToken();
+    $linkToken = $user->tokens()->where('name', 'like', 'mcp-link-%')->firstOrFail();
+    $linkToken->forceFill(['token' => hash('sha256', 'plain')])->save();
+
+    callWithToken('PUT', '/api/auth/me/password', $linkToken->id.'|plain', [
+        'current_password' => 'password',
+        'password' => 'new-password-123',
+        'password_confirmation' => 'new-password-123',
+    ])->assertOk();
+
+    expectLinkDropped($link, $user, McpLinkReason::PasswordChanged, $key, $credential);
 });
 
 it('drops the links when an administrator sets the password', function () {
@@ -56,7 +69,7 @@ it('drops the links when an administrator sets the password', function () {
 
     $this->putJson("/api/users/{$user->id}", ['password' => 'Admin-set-pass-123', 'password_confirmation' => 'Admin-set-pass-123'])->assertOk();
 
-    expectLinkDropped($link, $user, McpLink::REVOKED_PASSWORD_CHANGED, $key, $credential);
+    expectLinkDropped($link, $user, McpLinkReason::PasswordChanged, $key, $credential);
 });
 
 it('drops the links when the password is reset', function () {
@@ -69,7 +82,7 @@ it('drops the links when the password is reset', function () {
         'password_confirmation' => 'new-password-123',
     ])->assertOk();
 
-    expectLinkDropped($link, $user, McpLink::REVOKED_PASSWORD_CHANGED, $key, $credential);
+    expectLinkDropped($link, $user, McpLinkReason::PasswordChanged, $key, $credential);
 });
 
 it('drops the links when the user is deactivated', function () {
@@ -80,7 +93,7 @@ it('drops the links when the user is deactivated', function () {
 
     $this->putJson("/api/users/{$user->id}", ['is_active' => false])->assertOk();
 
-    expectLinkDropped($link, $user, McpLink::REVOKED_USER_DEACTIVATED, $key, $credential);
+    expectLinkDropped($link, $user, McpLinkReason::UserDeactivated, $key, $credential);
 });
 
 it('leaves the links alone when something else changes, and other users links too', function () {

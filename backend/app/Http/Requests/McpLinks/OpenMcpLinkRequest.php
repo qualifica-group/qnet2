@@ -22,7 +22,7 @@ class OpenMcpLinkRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
-            'mcp_client' => ['required', 'string', 'max:120'],
+            'mcp_client' => ['required', 'string', 'max:'.config('mcp-link.mcp_client_max_length')],
         ];
     }
 }

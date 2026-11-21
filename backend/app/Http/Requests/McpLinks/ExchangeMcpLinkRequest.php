@@ -20,7 +20,8 @@ class ExchangeMcpLinkRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'credential' => ['required', 'string', 'max:128'],
+            // The credential is hex-encoded: two characters per byte.
+            'credential' => ['required', 'string', 'max:'.config('mcp-link.credential_bytes') * 2],
         ];
     }
 }
