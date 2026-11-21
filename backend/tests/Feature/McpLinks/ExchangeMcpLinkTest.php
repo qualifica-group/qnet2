@@ -10,8 +10,9 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 uses(RefreshDatabase::class);
 
+beforeEach(fn () => config(['mcp-link.release_commit' => 'abc1234']));
+
 it('exchanges the credential for a short-lived user token bound to the connector client', function () {
-    config(['mcp-link.release_commit' => 'abc1234']);
     [$key, $credential, $user, $link, $clientId] = openLinkFor();
 
     $response = callWithToken('POST', '/api/mcp/links/exchange', $key, ['credential' => $credential])
@@ -100,14 +101,36 @@ it('does not revoke the link of another client and cannot be reached with a user
     callWithToken('POST', "/api/mcp/links/{$link->id}/revoke", $userToken)->assertForbidden();
 });
 
-it('declares an unset release commit as an explicit null', function () {
-    config(['mcp-link.release_commit' => null]);
-    [$key, $credential] = openLinkFor();
+it('issues no token and fails explicitly when the release commit is not configured', function (?string $commit) {
+    config(['mcp-link.release_commit' => $commit]);
+    [$key, $credential, $user, $link] = openLinkFor();
 
-    $data = callWithToken('POST', '/api/mcp/links/exchange', $key, ['credential' => $credential])->assertOk()->json('data');
+    callWithToken('POST', '/api/mcp/links/exchange', $key, ['credential' => $credential])
+        ->assertStatus(500)
+        ->assertJsonPath('success', false)
+        ->assertJsonPath('data.reason', 'release_commit_not_configured');
 
-    expect($data)->toHaveKey('release_commit')
-        ->and($data['release_commit'])->toBeNull();
+    expect($user->tokens()->count())->toBe(0)
+        ->and($link->tokens()->count())->toBe(0);
+})->with([[null], ['']]);
+
+it('refuses to refresh a token issued for a link, which would detach it from the link', function () {
+    [$key, $credential, $user, $link] = openLinkFor();
+    $token = callWithToken('POST', '/api/mcp/links/exchange', $key, ['credential' => $credential])->json('data.token');
+
+    callWithToken('POST', '/api/auth/refresh', $token)->assertForbidden();
+
+    expect($user->tokens()->count())->toBe(1)
+        ->and($link->tokens()->count())->toBe(1);
+
+    callWithToken('POST', "/api/mcp/links/{$link->id}/revoke", $key)->assertOk();
+    callWithToken('GET', '/api/auth/me', $token)->assertUnauthorized();
+});
+
+it('still refreshes an ordinary token', function () {
+    $token = User::factory()->create()->createToken('app')->plainTextToken;
+
+    callWithToken('POST', '/api/auth/refresh', $token)->assertOk();
 });
 
 it('revokes with a client that is allowed only the POST method', function () {

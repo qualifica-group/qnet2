@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureNotInMaintenance;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\LimitStatementDuration;
 use App\Http\Middleware\RecordActorWrite;
+use App\Http\Middleware\RejectMcpLinkTokenRefresh;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\ThrottleApiClientRequests;
 use App\Support\Database\StatementTimeout;
@@ -93,6 +94,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Spec 0355: a user who must still choose the first password can only
         // reach the allow-listed endpoints.
         $middleware->api(append: [EnsureFirstPasswordSet::class]);
+
+        // MCP link module: a token issued for a link is not refreshed (the refresh would detach it from the link).
+        $middleware->api(append: [RejectMcpLinkTokenRefresh::class]);
 
         // Per-session DB statement time limit for web/API requests only.
         $middleware->api(append: [LimitStatementDuration::class]);

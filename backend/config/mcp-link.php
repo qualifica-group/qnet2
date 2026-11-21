@@ -30,8 +30,8 @@ return [
         'decay_minutes' => (int) env('MCP_LINK_OPEN_DECAY_MINUTES', 15),
     ],
 
-    // Commit of QNET2 in service, set by the release. QNET2 exposes no version
-    // elsewhere. When unset the exchange answers `release_commit: null`, which
-    // the connector must read as "unknown".
+    // Commit of QNET2 in service. Required: QNET2 exposes no version elsewhere, so
+    // the release sets it every time. Unset or empty, the exchange issues no token
+    // and answers 500 with reason `release_commit_not_configured`.
     'release_commit' => env('MCP_LINK_RELEASE_COMMIT'),
 ];

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\McpLinks\FirstAccessPendingException;
 use App\Services\McpLinks\McpLinkRejectedException;
 use App\Services\McpLinks\McpLinkService;
+use App\Services\McpLinks\ReleaseCommitNotConfiguredException;
 use App\Services\McpLinks\TooManyOpenAttemptsException;
 use App\Support\ApiClients\ApiClientRequestContext;
 use Illuminate\Http\JsonResponse;
@@ -51,14 +52,15 @@ class McpLinkController extends BaseApiController
             $exchanged = $this->service->exchange(ApiClientRequestContext::resolve($request), $request->validated('credential'));
         } catch (McpLinkRejectedException $e) {
             return $this->fail(__('The link is no longer valid.'), HttpStatusEnum::UNAUTHORIZED->value, data: ['reason' => $e->reason->value]);
+        } catch (ReleaseCommitNotConfiguredException) {
+            return $this->fail(__('The server is not configured to exchange links.'), HttpStatusEnum::INTERNAL_SERVER_ERROR->value, data: ['reason' => ReleaseCommitNotConfiguredException::REASON]);
         }
 
         return $this->ok([
             'token' => $exchanged->token,
             'token_type' => 'Bearer',
             'expires_at' => $exchanged->expiresAt->toIso8601String(),
-            // Explicit null when the release did not set MCP_LINK_RELEASE_COMMIT.
-            'release_commit' => config('mcp-link.release_commit'),
+            'release_commit' => $exchanged->releaseCommit,
             'user' => $this->userPayload($exchanged->user),
         ], 'Link exchanged.');
     }

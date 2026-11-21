@@ -75,10 +75,18 @@ class McpLinkService
      * failure midway leaves no token behind.
      *
      * @throws McpLinkRejectedException
+     * @throws ReleaseCommitNotConfiguredException
      */
     public function exchange(ApiClient $client, string $credential): ExchangedMcpLink
     {
-        return DB::transaction(function () use ($client, $credential): ExchangedMcpLink {
+        // The contract returns the commit of QNET2 in service: without it no token is issued.
+        $releaseCommit = config('mcp-link.release_commit');
+
+        if (! filled($releaseCommit)) {
+            throw new ReleaseCommitNotConfiguredException;
+        }
+
+        return DB::transaction(function () use ($client, $credential, $releaseCommit): ExchangedMcpLink {
             // Step 1: the link must be one of this client
             $link = McpLink::query()
                 ->where('credential_hash', McpLink::fingerprint($credential))
@@ -105,8 +113,13 @@ class McpLinkService
             $newToken->accessToken->forceFill(['api_client_id' => $client->id])->save();
             $link->tokens()->attach($newToken->accessToken->id);
 
-            return new ExchangedMcpLink($user, $newToken->plainTextToken, $expiresAt);
+            return new ExchangedMcpLink($user, $newToken->plainTextToken, $expiresAt, $releaseCommit);
         });
+    }
+
+    public function issuedFor(PersonalAccessToken $token): bool
+    {
+        return DB::table('mcp_link_tokens')->where('personal_access_token_id', $token->getKey())->exists();
     }
 
     /**
@@ -127,8 +140,10 @@ class McpLinkService
     }
 
     /**
-     * Takes the same row lock as the exchange, so the tokens deleted here are all
-     * the tokens the link has issued.
+     * Lock order, the same as the exchange: the link row first, then its tokens.
+     * Both reads are locking (current) reads: under REPEATABLE READ a plain SELECT
+     * would use the snapshot of an earlier read of the caller's transaction and
+     * miss a token the exchange committed meanwhile.
      */
     private function drop(McpLink $link, McpLinkReason $reason): void
     {
@@ -139,7 +154,9 @@ class McpLinkService
                 return;
             }
 
-            PersonalAccessToken::query()->whereIn('id', $locked->tokens()->pluck('personal_access_tokens.id'))->delete();
+            $tokenIds = DB::table('mcp_link_tokens')->where('mcp_link_id', $locked->id)->lockForUpdate()->pluck('personal_access_token_id');
+
+            PersonalAccessToken::query()->whereIn('id', $tokenIds)->delete();
 
             if ($locked->revoked_at === null) {
                 $locked->forceFill(['revoked_at' => now(), 'revoked_reason' => $reason])->save();
