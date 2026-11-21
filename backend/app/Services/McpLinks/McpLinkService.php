@@ -18,6 +18,9 @@ use Laravel\Sanctum\PersonalAccessToken;
 /**
  * Opening, exchange and revocation of MCP links. The credential is returned
  * once; only its SHA-256 fingerprint is stored.
+ *
+ * Lock order everywhere (open, exchange, revoke, drop): the user row, then the
+ * link row, then the link's tokens. All reads after a lock are locking reads.
  */
 class McpLinkService
 {
@@ -30,49 +33,29 @@ class McpLinkService
      */
     public function open(ApiClient $client, string $email, string $password, string $mcpClient): OpenedMcpLink
     {
-        // Step 1: own attempt limit, per account
-        $limiterKey = 'mcp-link-open:'.Str::lower($email);
+        // Step 1: attempt limits, same answer whatever the address
+        $limits = $this->openLimits($client, $email);
+        $this->assertWithinLimits($limits);
 
-        if (RateLimiter::tooManyAttempts($limiterKey, (int) config('mcp-link.open_attempts.max'))) {
-            throw new TooManyOpenAttemptsException(RateLimiter::availableIn($limiterKey));
-        }
-
-        // Step 2: same credential rules and generic failure as client-login
         try {
+            // Step 2: same credential rules and generic failure as client-login
             $user = $this->auth->authenticate($email, $password, revealInactive: false);
+            RateLimiter::clear($limits['account']['key']);
+
+            // Step 3: the link is created on the locked user row
+            return DB::transaction(fn (): OpenedMcpLink => $this->createLink($client, $user, $mcpClient));
         } catch (ValidationException $e) {
-            RateLimiter::hit($limiterKey, (int) config('mcp-link.open_attempts.decay_minutes') * 60);
+            $this->hitLimits($limits);
 
             throw $e;
         }
-
-        RateLimiter::clear($limiterKey);
-
-        // Step 3: no link before the user has chosen the first password. Stricter than
-        // isFirstAccessPending(), which still lets the user in while the choice is optional.
-        if ($user->must_set_password) {
-            throw new FirstAccessPendingException;
-        }
-
-        // Step 4: issue the credential, store its fingerprint only
-        $credential = bin2hex(random_bytes((int) config('mcp-link.credential_bytes')));
-        $link = McpLink::query()->create([
-            'user_id' => $user->id,
-            'api_client_id' => $client->id,
-            'mcp_client' => $mcpClient,
-            'credential_hash' => McpLink::fingerprint($credential),
-            'password_fingerprint' => McpLink::fingerprint($user->password),
-            'expires_at' => now()->addDays((int) config('mcp-link.link_ttl_days')),
-        ]);
-
-        return new OpenedMcpLink($link, $credential, $user);
     }
 
     /**
-     * Atomic: the link row is locked while it is checked and the token is created
-     * and attached, so a concurrent revocation or credential change either comes
-     * first (the exchange is refused) or last (it deletes the new token), and a
-     * failure midway leaves no token behind.
+     * Atomic: the user and the link rows are locked while the link is checked and
+     * the token is created and attached, so a concurrent revocation or credential
+     * change either comes first (the exchange is refused) or last (it deletes the
+     * new token), and a failure midway leaves no token behind.
      *
      * @throws McpLinkRejectedException
      * @throws ReleaseCommitNotConfiguredException
@@ -86,22 +69,24 @@ class McpLinkService
             throw new ReleaseCommitNotConfiguredException;
         }
 
-        return DB::transaction(function () use ($client, $credential, $releaseCommit): ExchangedMcpLink {
-            // Step 1: the link must be one of this client
-            $link = McpLink::query()
-                ->where('credential_hash', McpLink::fingerprint($credential))
-                ->where('api_client_id', $client->id)
-                ->lockForUpdate()
-                ->first() ?? throw new McpLinkRejectedException(McpLinkReason::LinkUnknown);
+        // Step 1: the link must be one of this client (plain read, before any lock)
+        $probe = McpLink::query()
+            ->where('credential_hash', McpLink::fingerprint($credential))
+            ->where('api_client_id', $client->id)
+            ->first() ?? throw new McpLinkRejectedException(McpLinkReason::LinkUnknown);
+
+        return DB::transaction(function () use ($client, $probe, $releaseCommit): ExchangedMcpLink {
+            // Lock order: user, then link
+            $user = User::query()->lockForUpdate()->find($probe->user_id);
+            $link = McpLink::query()->lockForUpdate()->find($probe->id);
 
             // Step 2: revoked, expired, user gone or inactive, password changed since opening
-            $user = $link->user;
-
             match (true) {
+                $link === null || $user === null => throw new McpLinkRejectedException(McpLinkReason::LinkUnknown),
                 $link->revoked_at !== null => throw new McpLinkRejectedException(McpLinkReason::LinkRevoked),
                 $link->expires_at->isPast() => throw new McpLinkRejectedException(McpLinkReason::LinkExpired),
-                $user === null || ! $user->is_active => throw new McpLinkRejectedException(McpLinkReason::UserInactive),
-                ! hash_equals($link->password_fingerprint, McpLink::fingerprint($user->password)) => throw new McpLinkRejectedException(McpLinkReason::PasswordChanged),
+                ! $user->is_active => throw new McpLinkRejectedException(McpLinkReason::UserInactive),
+                ! $link->isAliveFor($user) => throw new McpLinkRejectedException(McpLinkReason::PasswordChanged),
                 default => null,
             };
 
@@ -109,17 +94,13 @@ class McpLinkService
             $expiresAt = now()->addMinutes((int) config('mcp-link.access_token_ttl_minutes'));
             $expiresAt = $expiresAt->greaterThan($link->expires_at) ? $link->expires_at->copy() : $expiresAt;
 
-            $newToken = $user->createToken('mcp-link-'.$link->id, ['*'], $expiresAt);
+            // The name is the marker EnforceMcpLinkLife reads; a refresh keeps it.
+            $newToken = $user->createToken(McpLink::tokenName($link->id), ['*'], $expiresAt);
             $newToken->accessToken->forceFill(['api_client_id' => $client->id])->save();
             $link->tokens()->attach($newToken->accessToken->id);
 
             return new ExchangedMcpLink($user, $newToken->plainTextToken, $expiresAt, $releaseCommit);
         });
-    }
-
-    public function issuedFor(PersonalAccessToken $token): bool
-    {
-        return DB::table('mcp_link_tokens')->where('personal_access_token_id', $token->getKey())->exists();
     }
 
     /**
@@ -135,19 +116,24 @@ class McpLinkService
      */
     public function dropForUser(User $user, McpLinkReason $reason): void
     {
-        McpLink::query()->where('user_id', $user->id)->whereNull('revoked_at')->get()
-            ->each(fn (McpLink $link) => $this->drop($link, $reason));
+        DB::transaction(function () use ($user, $reason): void {
+            // Lock order: user, then links
+            User::query()->lockForUpdate()->find($user->id);
+
+            McpLink::query()->where('user_id', $user->id)->whereNull('revoked_at')->lockForUpdate()->get()
+                ->each(fn (McpLink $link) => $this->drop($link, $reason));
+        });
     }
 
     /**
-     * Lock order, the same as the exchange: the link row first, then its tokens.
-     * Both reads are locking (current) reads: under REPEATABLE READ a plain SELECT
-     * would use the snapshot of an earlier read of the caller's transaction and
-     * miss a token the exchange committed meanwhile.
+     * Locking (current) reads after the user and link locks: under REPEATABLE READ a
+     * plain SELECT would use the snapshot of an earlier read of the caller's
+     * transaction and miss a token the exchange committed meanwhile.
      */
     private function drop(McpLink $link, McpLinkReason $reason): void
     {
         DB::transaction(function () use ($link, $reason): void {
+            User::query()->lockForUpdate()->find($link->user_id);
             $locked = McpLink::query()->lockForUpdate()->find($link->id);
 
             if ($locked === null) {
@@ -162,5 +148,83 @@ class McpLinkService
                 $locked->forceFill(['revoked_at' => now(), 'revoked_reason' => $reason])->save();
             }
         });
+    }
+
+    private function createLink(ApiClient $client, User $authenticated, string $mcpClient): OpenedMcpLink
+    {
+        // Lock order: user first. Everything is re-checked on the locked row.
+        $user = User::query()->lockForUpdate()->find($authenticated->id);
+
+        if ($user === null || ! $user->is_active || $user->isServiceAccount() || $user->password !== $authenticated->password) {
+            throw ValidationException::withMessages(['email' => [__('auth.failed')]]);
+        }
+
+        // No link before the user has chosen the first password. Stricter than
+        // isFirstAccessPending(), which still lets the user in while the choice is optional.
+        if ($user->must_set_password) {
+            throw new FirstAccessPendingException;
+        }
+
+        $credential = bin2hex(random_bytes((int) config('mcp-link.credential_bytes')));
+        $link = McpLink::query()->create([
+            'user_id' => $user->id,
+            'api_client_id' => $client->id,
+            'mcp_client' => $mcpClient,
+            'credential_hash' => McpLink::fingerprint($credential),
+            'password_fingerprint' => McpLink::fingerprint($user->password),
+            'expires_at' => now()->addDays((int) config('mcp-link.link_ttl_days')),
+        ]);
+
+        return new OpenedMcpLink($link, $credential, $user);
+    }
+
+    /**
+     * Counters of the failed openings: one per account (resolved by the database,
+     * so every spelling it treats as equal shares it), or one per unknown address
+     * with the same limit, plus a cap per API client so that a spray of addresses
+     * is bounded and the difference between known and unknown addresses is no oracle.
+     *
+     * @return array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}
+     */
+    private function openLimits(ApiClient $client, string $email): array
+    {
+        $accountId = User::query()->where('email', $email)->value('id');
+
+        return [
+            'account' => [
+                'key' => $accountId !== null ? "mcp-link-open:account:{$accountId}" : 'mcp-link-open:unknown:'.sha1(Str::lower($email)),
+                'max' => (int) config('mcp-link.open_attempts.max'),
+            ],
+            'client' => [
+                'key' => "mcp-link-open:client:{$client->id}",
+                'max' => (int) config('mcp-link.open_attempts.client_max'),
+            ],
+            'decay' => (int) config('mcp-link.open_attempts.decay_minutes') * 60,
+        ];
+    }
+
+    /**
+     * @param  array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}  $limits
+     *
+     * @throws TooManyOpenAttemptsException
+     */
+    private function assertWithinLimits(array $limits): void
+    {
+        $retryAfter = collect([$limits['account'], $limits['client']])
+            ->filter(fn (array $limit): bool => RateLimiter::tooManyAttempts($limit['key'], $limit['max']))
+            ->map(fn (array $limit): int => RateLimiter::availableIn($limit['key']));
+
+        if ($retryAfter->isNotEmpty()) {
+            throw new TooManyOpenAttemptsException($retryAfter->max());
+        }
+    }
+
+    /**
+     * @param  array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}  $limits
+     */
+    private function hitLimits(array $limits): void
+    {
+        RateLimiter::hit($limits['account']['key'], $limits['decay']);
+        RateLimiter::hit($limits['client']['key'], $limits['decay']);
     }
 }

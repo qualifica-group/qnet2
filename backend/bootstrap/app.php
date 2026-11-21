@@ -2,6 +2,7 @@
 
 use App\Authorization\Denials\ForbiddenResponse;
 use App\Http\Middleware\CaptureCustomFields;
+use App\Http\Middleware\EnforceMcpLinkLife;
 use App\Http\Middleware\EnsureApiClientKey;
 use App\Http\Middleware\EnsureApiClientMethodAllowed;
 use App\Http\Middleware\EnsureFirstPasswordSet;
@@ -9,7 +10,6 @@ use App\Http\Middleware\EnsureNotInMaintenance;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\LimitStatementDuration;
 use App\Http\Middleware\RecordActorWrite;
-use App\Http\Middleware\RejectMcpLinkTokenRefresh;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\ThrottleApiClientRequests;
 use App\Support\Database\StatementTimeout;
@@ -95,8 +95,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // reach the allow-listed endpoints.
         $middleware->api(append: [EnsureFirstPasswordSet::class]);
 
-        // MCP link module: a token issued for a link is not refreshed (the refresh would detach it from the link).
-        $middleware->api(append: [RejectMcpLinkTokenRefresh::class]);
+        // MCP link module: a token issued for a link lives only while its link does.
+        // Every route that accepts a Sanctum token is in the `api` group (broadcasting/auth too).
+        $middleware->api(append: [EnforceMcpLinkLife::class]);
 
         // Per-session DB statement time limit for web/API requests only.
         $middleware->api(append: [LimitStatementDuration::class]);

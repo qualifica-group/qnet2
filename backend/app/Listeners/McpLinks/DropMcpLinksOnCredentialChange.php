@@ -26,7 +26,8 @@ class DropMcpLinksOnCredentialChange
     {
         $reason = match (true) {
             $user->wasChanged('password') => McpLinkReason::PasswordChanged,
-            $user->wasChanged('is_active') && ! $user->is_active => McpLinkReason::UserDeactivated,
+            // Deactivation, and reactivation too: a link does not survive a deactivation cycle, even if its drop failed.
+            $user->wasChanged('is_active') => McpLinkReason::UserDeactivated,
             default => null,
         };
 

@@ -24,9 +24,13 @@ return [
     // Lifetime, in minutes, of a user token issued by an exchange (never beyond the link).
     'access_token_ttl_minutes' => (int) env('MCP_LINK_ACCESS_TOKEN_TTL_MINUTES', 60),
 
-    // Failed openings per account (normalised email) before the route answers 429.
+    // Failed openings before the route answers 429, with the same answer in every case:
+    // `max` per account (resolved by the database, not by the email string; an address
+    // that resolves to no account has its own counter with the same limit) and
+    // `client_max` per API client, so that spraying addresses is bounded too.
     'open_attempts' => [
         'max' => (int) env('MCP_LINK_OPEN_MAX_ATTEMPTS', 5),
+        'client_max' => (int) env('MCP_LINK_OPEN_CLIENT_MAX_ATTEMPTS', 50),
         'decay_minutes' => (int) env('MCP_LINK_OPEN_DECAY_MINUTES', 15),
     ],
 
