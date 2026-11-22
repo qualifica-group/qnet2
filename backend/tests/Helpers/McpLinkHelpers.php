@@ -27,26 +27,22 @@ if (! function_exists('openLinkFor')) {
 
 if (! class_exists('InterleavingArrayStore')) {
     /**
-     * Array store whose increment is a read, a pause and a write, like a non-atomic backend
-     * increment: `$between` runs in the pause, once, where a concurrent request would.
+     * Array store that pauses before each write of an opening counter, after the counter was
+     * read: `$between` runs in the pause, once, where a concurrent request would.
      */
     final class InterleavingArrayStore extends ArrayStore
     {
         public static ?Closure $between = null;
 
-        public function increment($key, $value = 1)
+        public function put($key, $value, $seconds)
         {
-            $current = (int) $this->get($key);
-
             if (self::$between !== null && str_contains($key, 'mcp-link-open')) {
                 $hook = self::$between;
                 self::$between = null;
                 $hook();
             }
 
-            $this->put($key, $current + $value, 900);
-
-            return $current + $value;
+            return parent::put($key, $value, $seconds);
         }
     }
 }

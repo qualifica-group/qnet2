@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Services\AuthService;
 use App\Services\McpLinks\EmailCollationKey;
 use App\Services\McpLinks\McpLinkService;
-use Illuminate\Cache\RateLimiter;
+use App\Services\McpLinks\OpenAttemptCounter;
 use Illuminate\Database\DeadlockException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,7 +33,7 @@ function exchangedLink(?User $user = null): array
 
 function dropFails(): void
 {
-    $mock = Mockery::mock(McpLinkService::class, [app(AuthService::class), app(EmailCollationKey::class)])->makePartial();
+    $mock = Mockery::mock(McpLinkService::class, [app(AuthService::class), app(EmailCollationKey::class), app(OpenAttemptCounter::class)])->makePartial();
     $mock->shouldReceive('dropForUser')->andThrow(new RuntimeException('lock timeout'));
     app()->instance(McpLinkService::class, $mock);
 }
@@ -135,7 +135,7 @@ it('completes a password change when the mark fails, and the old token is reject
 
 it('propagates an error that invalidates the transaction, even at a password change', function () {
     [, , $user] = exchangedLink();
-    $mock = Mockery::mock(McpLinkService::class, [app(AuthService::class), app(EmailCollationKey::class)])->makePartial();
+    $mock = Mockery::mock(McpLinkService::class, [app(AuthService::class), app(EmailCollationKey::class), app(OpenAttemptCounter::class)])->makePartial();
     $mock->shouldReceive('dropForUser')->andThrow(new DeadlockException('Deadlock found'));
     app()->instance(McpLinkService::class, $mock);
 
@@ -356,14 +356,13 @@ it('counts the accented spelling of an address on the same counter, existing acc
     'missing' => ['luigi@example.test', 'lùigi@example.test'],
 ]);
 
-it('keeps the attempt counter atomic: a request that arrives between the increment and the write is refused, not verified', function () {
+it('keeps the attempt counter atomic: a request that arrives between the read and the write is refused, not verified', function () {
     config([
         'mcp-link.open_attempts.max' => 1,
         'mcp-link.open_attempts.counter_lock_wait_seconds' => 0,
     ]);
-    // The limiter keeps its registered limiters; only its counter store becomes the interleaving one.
-    $limiter = app(RateLimiter::class);
-    (new ReflectionProperty($limiter, 'cache'))->setValue($limiter, Cache::repository(new InterleavingArrayStore));
+    // Only the counter store becomes the interleaving one; the lock stays on the default store.
+    app()->instance(OpenAttemptCounter::class, new OpenAttemptCounter(Cache::repository(new InterleavingArrayStore)));
 
     [, $key] = createApiClientWithKey();
     $user = User::factory()->create();
@@ -482,6 +481,52 @@ it('gives the attempt back when the opening succeeds in the same window', functi
 
     expect($calls)->toBe(3);
 });
+
+it('never gives an attempt back to a later window, whatever the order in which earlier windows ended', function (int $max, int $clientMax) {
+    config(['mcp-link.open_attempts.max' => $max, 'mcp-link.open_attempts.client_max' => $clientMax]);
+    [, $key] = createApiClientWithKey();
+    $user = User::factory()->create();
+    $body = ['email' => $user->email, 'password' => 'password', 'mcp_client' => 'c'];
+    $open = fn () => callWithToken('POST', '/api/mcp/links', $key, $body);
+    $calls = 0;
+    $start = now()->startOfSecond();
+    $at = fn (int $seconds) => $this->travelTo($start->copy()->addSeconds($seconds));
+    $limit = min($max, $clientMax);
+    $wrongAttemptsAfterTheWindowChanged = $limit + 1;
+
+    scriptAuthenticate([
+        fn () => User::query()->findOrFail($user->id),       // t=0: a valid opening, given back
+        fn () => failedVerification(),                       // t=800
+        fn () => failedVerification(),                       // t=901
+        function () use ($at, $open, $user, $limit) {        // t=1699: a valid opening that is still verifying...
+            $at(1705);                                       // ...while wrong attempts fill the counter
+            foreach (range(1, $limit) as $ignored) {
+                $open();
+            }
+
+            return User::query()->findOrFail($user->id);
+        },
+        ...array_fill(0, $wrongAttemptsAfterTheWindowChanged, fn () => failedVerification()),
+    ], $calls);
+    $callsBeforeTheWrongAttempts = 4;
+
+    $at(0);
+    $open()->assertCreated();
+    $at(800);
+    $open()->assertUnprocessable();
+    $at(901);
+    $open()->assertUnprocessable();
+    $at(1699);
+    $open()->assertCreated();                                // its late refund must not free a slot
+    $open()->assertStatus(429);
+
+    // From t=1705 on, one window: at most `limit` wrong passwords are ever checked in it.
+    expect($calls - $callsBeforeTheWrongAttempts)->toBeLessThanOrEqual($limit);
+    $this->travelBack();
+})->with([
+    'account counter' => [5, 100],
+    'client counter' => [100, 5],
+]);
 
 it('reports a connection lost while the tokens of an explicit revocation are deleted as tokens_not_deleted', function () {
     if (DB::getDriverName() !== 'sqlite') {
