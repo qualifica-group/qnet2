@@ -35,6 +35,8 @@ return [
         // atomic): how long a held lock lives and how long a request waits for it before it is refused.
         'counter_lock_seconds' => 5,
         'counter_lock_wait_seconds' => 2,
+        // Two reads of the window end of one counter may differ by a second boundary.
+        'window_tolerance_seconds' => 2,
         'decay_minutes' => (int) env('MCP_LINK_OPEN_DECAY_MINUTES', 15),
     ],
 

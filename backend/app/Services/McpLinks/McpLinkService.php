@@ -44,7 +44,7 @@ class McpLinkService
     {
         // Step 1: reserve the attempt, atomically, before any password check
         $limits = $this->openLimits($client, $email);
-        $this->reserveAttempt($limits);
+        $reservations = $this->reserveAttempt($limits);
 
         // Step 2: same credential rules and generic failure as client-login
         $user = $this->auth->authenticate($email, $password, revealInactive: false);
@@ -53,7 +53,7 @@ class McpLinkService
         $opened = DB::transaction(fn (): OpenedMcpLink => $this->createLink($client, $user, $mcpClient));
 
         // Step 4: only a successful opening gives the attempt back
-        $this->releaseAttempt($limits);
+        $this->releaseAttempt($limits, $reservations);
 
         return $opened;
     }
@@ -167,7 +167,8 @@ class McpLinkService
                 $user?->tokens()->where('abilities', 'like', '%"'.McpLink::ABILITY_PREFIX.$link->id.'"%')->delete();
             });
         } catch (Throwable $e) {
-            if (self::invalidatesTransaction($e)) {
+            // No caller transaction in an explicit revocation: the failure is only a deletion to repeat.
+            if (self::invalidatesTransaction($e) && ! $failOnTokenDeletion) {
                 throw $e;
             }
 
@@ -247,30 +248,54 @@ class McpLinkService
      * counter therefore runs under a cache lock named after the counter; a request that
      * cannot get the lock in a short time is refused (the cautious side). Beyond the limit
      * no password is checked. Both counters are always incremented, one lock at a time.
+     * Each reservation remembers the window (generation) of the counter it counted in.
      *
      * @param  array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}  $limits
+     * @return array<string, int> window end per counter key
      *
      * @throws TooManyOpenAttemptsException
      */
-    private function reserveAttempt(array $limits): void
+    private function reserveAttempt(array $limits): array
     {
-        $retryAfter = collect([$limits['account'], $limits['client']])
-            ->filter(fn (array $limit): bool => $this->underLock($limit['key'], fn (): int => RateLimiter::hit($limit['key'], $limits['decay'])) > $limit['max'])
-            ->map(fn (array $limit): int => RateLimiter::availableIn($limit['key']));
+        $reservations = [];
+        $retryAfter = collect();
+
+        foreach ([$limits['account'], $limits['client']] as $limit) {
+            [$hits, $window] = $this->underLock($limit['key'], fn (): array => [
+                RateLimiter::hit($limit['key'], $limits['decay']),
+                $this->windowEnd($limit['key']),
+            ]);
+
+            $reservations[$limit['key']] = $window;
+
+            if ($hits > $limit['max']) {
+                $retryAfter->push(RateLimiter::availableIn($limit['key']));
+            }
+        }
 
         if ($retryAfter->isNotEmpty()) {
             throw new TooManyOpenAttemptsException($retryAfter->max());
         }
+
+        return $reservations;
     }
 
     /**
+     * Gives the attempt back only if the counter is still the window it was reserved in:
+     * a window that expired meanwhile and was started again by someone else is not ours.
+     *
      * @param  array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}  $limits
+     * @param  array<string, int>  $reservations
      */
-    private function releaseAttempt(array $limits): void
+    private function releaseAttempt(array $limits, array $reservations): void
     {
         foreach ([$limits['account'], $limits['client']] as $limit) {
             try {
-                $this->underLock($limit['key'], function () use ($limit, $limits): void {
+                $this->underLock($limit['key'], function () use ($limit, $limits, $reservations): void {
+                    if (! $this->sameWindow($limit['key'], $reservations[$limit['key']])) {
+                        return;
+                    }
+
                     // A counter that expired meanwhile would go negative and grant extra attempts.
                     if (RateLimiter::decrement($limit['key'], $limits['decay']) < 0) {
                         RateLimiter::clear($limit['key']);
@@ -280,6 +305,23 @@ class McpLinkService
                 // Not given back: the attempt stays counted, the cautious side.
             }
         }
+    }
+
+    /**
+     * The instant the window of a counter ends (the limiter keeps it as the counter's timer).
+     */
+    private function windowEnd(string $counterKey): int
+    {
+        return now()->getTimestamp() + RateLimiter::availableIn($counterKey);
+    }
+
+    /**
+     * Windows are minutes apart; the tolerance only absorbs a second boundary between two reads.
+     */
+    private function sameWindow(string $counterKey, int $reservedWindowEnd): bool
+    {
+        return RateLimiter::availableIn($counterKey) > 0
+            && abs($this->windowEnd($counterKey) - $reservedWindowEnd) <= (int) config('mcp-link.open_attempts.window_tolerance_seconds');
     }
 
     /**

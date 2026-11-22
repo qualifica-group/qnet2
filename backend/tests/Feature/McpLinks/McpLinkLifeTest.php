@@ -408,3 +408,94 @@ it('answers a failed explicit revocation with an error the connector can retry, 
     callWithToken('POST', "/api/mcp/links/{$link->id}/revoke", $key)->assertOk();
     expect($user->tokens()->count())->toBe(0);
 });
+
+/**
+ * Opens with a scripted authenticate: each call runs the next step (a failure, or a valid
+ * answer for the user) so a test can place events in the middle of a verification.
+ *
+ * @param  array<int, Closure>  $steps
+ */
+function scriptAuthenticate(array $steps, int &$calls): void
+{
+    $mock = Mockery::mock(AuthService::class)->makePartial();
+    $mock->shouldReceive('authenticate')->andReturnUsing(function () use ($steps, &$calls) {
+        return $steps[$calls++]();
+    });
+    app()->instance(AuthService::class, $mock);
+}
+
+function failedVerification(): never
+{
+    throw ValidationException::withMessages(['email' => [__('auth.failed')]]);
+}
+
+it('does not give back an attempt to a counter window that is not the one it was reserved in', function () {
+    config(['mcp-link.open_attempts.max' => 100, 'mcp-link.open_attempts.client_max' => 2]);
+    [, $key] = createApiClientWithKey();
+    $user = User::factory()->create();
+    $body = ['email' => $user->email, 'password' => 'password', 'mcp_client' => 'c'];
+    $open = fn () => callWithToken('POST', '/api/mcp/links', $key, $body);
+    $calls = 0;
+    $start = now()->startOfSecond();
+
+    scriptAuthenticate([
+        fn () => failedVerification(),                       // opens the window at the client counter: 1
+        function () use ($start, $open, $user) {             // the valid opening: reserves the 2nd attempt, then...
+            $this->travelTo($start->copy()->addMinutes(16)); // ...the window expires while it verifies
+            $open()->assertUnprocessable();                  // a wrong attempt starts the new window: counter 1
+
+            return User::query()->findOrFail($user->id);
+        },
+        fn () => failedVerification(),                       // the wrong attempt above
+        fn () => failedVerification(),                       // the 2nd in the new window: verified (counter 2)
+        fn () => failedVerification(),                       // must never run: the 3rd is over the limit
+    ], $calls);
+
+    $open()->assertUnprocessable();                          // call 0
+    $open()->assertCreated();                                // call 1 (+ nested call 2), late refund must change nothing
+    $open()->assertUnprocessable();                          // call 3: counter 2, verified
+    $open()->assertStatus(429);                              // counter 3: refused, no verification
+
+    expect($calls)->toBe(4);
+    $this->travelBack();
+});
+
+it('gives the attempt back when the opening succeeds in the same window', function () {
+    config(['mcp-link.open_attempts.max' => 100, 'mcp-link.open_attempts.client_max' => 2]);
+    [, $key] = createApiClientWithKey();
+    $user = User::factory()->create();
+    $body = ['email' => $user->email, 'password' => 'password', 'mcp_client' => 'c'];
+    $open = fn () => callWithToken('POST', '/api/mcp/links', $key, $body);
+    $calls = 0;
+
+    scriptAuthenticate([
+        fn () => failedVerification(),
+        fn () => User::query()->findOrFail($user->id),
+        fn () => failedVerification(),
+        fn () => failedVerification(),
+    ], $calls);
+
+    $open()->assertUnprocessable();   // counter 1
+    $open()->assertCreated();         // counter 2, then refunded: 1
+    $open()->assertUnprocessable();   // counter 2: verified
+    $open()->assertStatus(429);       // counter 3: refused
+
+    expect($calls)->toBe(3);
+});
+
+it('reports a connection lost while the tokens of an explicit revocation are deleted as tokens_not_deleted', function () {
+    if (DB::getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('The lost connection is simulated with a sqlite trigger.');
+    }
+
+    [$key, , , $link] = exchangedLink();
+    DB::unprepared("CREATE TRIGGER lose_connection BEFORE DELETE ON personal_access_tokens BEGIN SELECT RAISE(ABORT, 'MySQL server has gone away'); END");
+
+    callWithToken('POST', "/api/mcp/links/{$link->id}/revoke", $key)
+        ->assertStatus(500)
+        ->assertJsonPath('data.reason', McpLinkReason::TokensNotDeleted->value);
+
+    expect($link->fresh()->revoked_at)->not->toBeNull();
+
+    DB::unprepared('DROP TRIGGER lose_connection');
+});
