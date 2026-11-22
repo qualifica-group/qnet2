@@ -5,6 +5,7 @@ use App\Models\McpLink;
 use App\Models\User;
 use App\Services\McpLinks\EmailCollationKey;
 use App\Services\McpLinks\McpLinkService;
+use App\Services\McpLinks\OpenAttemptCounter;
 use Illuminate\Database\DeadlockException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -160,5 +161,21 @@ if (getenv('DB_CONNECTION') === 'mysql') {
 
         $held->release();
         callWithToken('POST', '/api/mcp/links', $key, $body)->assertCreated();
+    });
+
+    it('counts and gives back attempts with the atomic operations of the real database cache store', function () {
+        config(['cache.default' => 'database']);
+        Cache::forgetDriver();
+        $counter = new OpenAttemptCounter(Cache::store('database'));
+        $key = 'mcp-link-open:database-store:'.uniqid();
+
+        $first = $counter->reserve($key, 900);
+        $second = $counter->reserve($key, 900);
+        $counter->release($key, $first['generation']);
+        $counter->release($key, 'another-generation');
+        $third = $counter->reserve($key, 900);
+
+        expect([$first['count'], $second['count'], $third['count']])->toBe([1, 2, 2])
+            ->and([$second['generation'], $third['generation']])->toBe([$first['generation'], $first['generation']]);
     });
 }

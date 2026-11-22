@@ -528,6 +528,39 @@ it('never gives an attempt back to a later window, whatever the order in which e
     'client counter' => [100, 5],
 ]);
 
+it('keeps every attempt counted when a stalled request resumes after its counter lock expired', function () {
+    $counter = new OpenAttemptCounter(Cache::repository(new InterleavingArrayStore));
+    $key = 'mcp-link-open:stalled';
+    InterleavingArrayStore::$between = function () use ($counter, $key) {
+        // The stalled request has lost its lock: five other attempts are counted meanwhile.
+        Cache::lock('lock:'.$key)->forceRelease();
+        foreach (range(1, 5) as $ignored) {
+            $counter->reserve($key, 900);
+        }
+    };
+
+    $stalled = $counter->reserve($key, 900);
+
+    expect($stalled['count'])->toBe(6)
+        ->and($counter->reserve($key, 900)['count'])->toBe(7);
+});
+
+it('refuses the opening, with no password check, when the counter store refuses the write', function (array $refused) {
+    app()->instance(OpenAttemptCounter::class, new OpenAttemptCounter(Cache::repository(new RefusingArrayStore($refused))));
+    [, $key] = createApiClientWithKey();
+    $user = User::factory()->create();
+    $calls = 0;
+    scriptAuthenticate([fn () => failedVerification()], $calls);
+
+    callWithToken('POST', '/api/mcp/links', $key, ['email' => $user->email, 'password' => 'wrong', 'mcp_client' => 'c'])
+        ->assertStatus(429);
+
+    expect($calls)->toBe(0);
+})->with([
+    'every write' => [['add', 'put', 'increment']],
+    'the count only' => [['increment']],
+]);
+
 it('reports a connection lost while the tokens of an explicit revocation are deleted as tokens_not_deleted', function () {
     if (DB::getDriverName() !== 'sqlite') {
         $this->markTestSkipped('The lost connection is simulated with a sqlite trigger.');
