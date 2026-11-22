@@ -87,6 +87,8 @@ return [
             'system-health',
             // Spec 0359: Echo's private-channel auth for the in-app realtime chat.
             'broadcasting',
+            // MCP link module: reachable only with the connector's client key, not part of the integrator API.
+            'mcp',
         ],
     ],
 ];
