@@ -4,6 +4,7 @@ use App\Enums\McpLinkReason;
 use App\Models\McpLink;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\McpLinks\EmailCollationKey;
 use App\Services\McpLinks\McpLinkService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ function exchangedLink(?User $user = null): array
 
 function dropFails(): void
 {
-    $mock = Mockery::mock(McpLinkService::class, [app(AuthService::class)])->makePartial();
+    $mock = Mockery::mock(McpLinkService::class, [app(AuthService::class), app(EmailCollationKey::class)])->makePartial();
     $mock->shouldReceive('dropForUser')->andThrow(new RuntimeException('lock timeout'));
     app()->instance(McpLinkService::class, $mock);
 }
@@ -133,21 +134,6 @@ it('opens no live link when the user is deactivated between the check and the in
     expect(McpLink::query()->count())->toBe(0);
 });
 
-it('counts the failed openings on the account the database resolves, not on the email string', function () {
-    config(['mcp-link.open_attempts.max' => 2]);
-    [, $key] = createApiClientWithKey();
-    $user = User::factory()->create();
-
-    callWithToken('POST', '/api/mcp/links', $key, ['email' => $user->email, 'password' => 'wrong', 'mcp_client' => 'c'])->assertUnprocessable();
-
-    // MySQL collation makes `mario@` and `màrio@` one account; sqlite cannot, so the account
-    // is renamed instead: the counter must follow the account id, not the string.
-    $user->forceFill(['email' => 'renamed-'.$user->email])->saveQuietly();
-    callWithToken('POST', '/api/mcp/links', $key, ['email' => $user->email, 'password' => 'wrong', 'mcp_client' => 'c'])->assertUnprocessable();
-
-    callWithToken('POST', '/api/mcp/links', $key, ['email' => $user->email, 'password' => 'password', 'mcp_client' => 'c'])->assertStatus(429);
-});
-
 it('answers the same 429 for an address without account as for an existing account, with its own counter', function () {
     config(['mcp-link.open_attempts.max' => 2]);
     [, $key] = createApiClientWithKey();
@@ -193,3 +179,81 @@ it('costs no query on the links table for an ordinary token and one for a marked
     callWithToken('GET', '/api/auth/me', $marked)->assertOk();
     expect($linkQueries)->toBe(1);
 });
+
+it('keeps a link fallen across a deactivation and a reactivation while the token deletion keeps failing', function () {
+    if (DB::getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('The failing deletion is simulated with a sqlite trigger.');
+    }
+
+    [$key, $credential, $user, $link, $token] = exchangedLink();
+    DB::unprepared("CREATE TRIGGER deny_token_delete BEFORE DELETE ON personal_access_tokens BEGIN SELECT RAISE(ABORT, 'denied'); END");
+
+    $user->update(['is_active' => false]);
+    expect($link->fresh()->revoked_at)->not->toBeNull();
+
+    $user->fresh()->update(['is_active' => true]);
+
+    callWithToken('POST', '/api/mcp/links/exchange', $key, ['credential' => $credential])
+        ->assertUnauthorized()->assertJsonPath('data.reason', McpLinkReason::LinkRevoked->value);
+    callWithToken('GET', '/api/auth/me', $token)->assertUnauthorized();
+
+    DB::unprepared('DROP TRIGGER deny_token_delete');
+});
+
+it('keeps the old token rejected after a password change while the token deletion keeps failing', function () {
+    if (DB::getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('The failing deletion is simulated with a sqlite trigger.');
+    }
+
+    [, , $user, $link, $token] = exchangedLink();
+    DB::unprepared("CREATE TRIGGER deny_token_delete BEFORE DELETE ON personal_access_tokens BEGIN SELECT RAISE(ABORT, 'denied'); END");
+
+    $user->forceFill(['password' => 'Another-pass-123'])->save();
+
+    expect($link->fresh()->revoked_at)->not->toBeNull();
+    callWithToken('GET', '/api/auth/me', $token)->assertUnauthorized();
+
+    DB::unprepared('DROP TRIGGER deny_token_delete');
+});
+
+it('does not turn an ordinary client-login token into a link token through the device name', function () {
+    [$key, $credential, $user, $link] = exchangedLink();
+
+    $ordinary = callWithToken('POST', '/api/auth/client-login', $key, [
+        'email' => $user->email, 'password' => 'password', 'device_name' => McpLink::tokenName($link->id),
+    ])->assertOk()->json('data.token');
+
+    callWithToken('POST', "/api/mcp/links/{$link->id}/revoke", $key)->assertOk();
+
+    callWithToken('GET', '/api/auth/me', $ordinary)->assertOk();
+    callWithToken('POST', '/api/auth/refresh', $ordinary)->assertOk();
+});
+
+it('gives the same answers for an existing and a missing account whatever the spelling of the address', function () {
+    config(['mcp-link.open_attempts.max' => 2]);
+    [, $key] = createApiClientWithKey();
+    $user = User::factory()->create(['email' => 'mario@example.test']);
+    $attempt = fn (string $email) => callWithToken('POST', '/api/mcp/links', $key, ['email' => $email, 'password' => 'wrong', 'mcp_client' => 'c'])->status();
+
+    $existing = [$attempt('mario@example.test'), $attempt('mario@example.test'), $attempt('MARIO@example.test')];
+    $missing = [$attempt('luigi@example.test'), $attempt('luigi@example.test'), $attempt('LUIGI@example.test')];
+
+    expect($existing)->toBe([422, 422, 429])
+        ->and($missing)->toBe($existing);
+});
+
+it('counts the accented spelling of an address on the same counter, existing account or not (MySQL collation)', function (string $email, string $accented) {
+    if (! in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+        $this->markTestSkipped('Accent equivalence belongs to the MySQL collation of the email column.');
+    }
+
+    config(['mcp-link.open_attempts.max' => 2]);
+    [, $key] = createApiClientWithKey();
+    User::factory()->create(['email' => 'mario@example.test']);
+    $attempt = fn (string $address) => callWithToken('POST', '/api/mcp/links', $key, ['email' => $address, 'password' => 'wrong', 'mcp_client' => 'c'])->status();
+
+    expect([$attempt($email), $attempt($email), $attempt($accented)])->toBe([422, 422, 429]);
+})->with([
+    'existing' => ['mario@example.test', 'màrio@example.test'],
+    'missing' => ['luigi@example.test', 'lùigi@example.test'],
+]);

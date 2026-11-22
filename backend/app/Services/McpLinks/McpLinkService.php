@@ -11,9 +11,9 @@ use App\Models\User;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
+use Throwable;
 
 /**
  * Opening, exchange and revocation of MCP links. The credential is returned
@@ -24,7 +24,10 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class McpLinkService
 {
-    public function __construct(private readonly AuthService $auth) {}
+    public function __construct(
+        private readonly AuthService $auth,
+        private readonly EmailCollationKey $emailKey,
+    ) {}
 
     /**
      * @throws ValidationException
@@ -94,8 +97,8 @@ class McpLinkService
             $expiresAt = now()->addMinutes((int) config('mcp-link.access_token_ttl_minutes'));
             $expiresAt = $expiresAt->greaterThan($link->expires_at) ? $link->expires_at->copy() : $expiresAt;
 
-            // The name is the marker EnforceMcpLinkLife reads; a refresh keeps it.
-            $newToken = $user->createToken(McpLink::tokenName($link->id), ['*'], $expiresAt);
+            // The `mcp-link:<id>` ability is the marker EnforceMcpLinkLife reads.
+            $newToken = $user->createToken(McpLink::tokenName($link->id), McpLink::tokenAbilities($link->id), $expiresAt);
             $newToken->accessToken->forceFill(['api_client_id' => $client->id])->save();
             $link->tokens()->attach($newToken->accessToken->id);
 
@@ -126,9 +129,13 @@ class McpLinkService
     }
 
     /**
-     * Locking (current) reads after the user and link locks: under REPEATABLE READ a
-     * plain SELECT would use the snapshot of an earlier read of the caller's
-     * transaction and miss a token the exchange committed meanwhile.
+     * Step 1 marks the link fallen, durably and on its own: what keeps a link out of
+     * use is that mark, which the exchange and EnforceMcpLinkLife both check. Step 2
+     * deleting the tokens is best effort (a failure is reported, not thrown): the
+     * tokens of a fallen link are refused anyway. Locking (current) reads after the
+     * user and link locks: under REPEATABLE READ a plain SELECT would use the
+     * snapshot of an earlier read of the caller's transaction and miss a token the
+     * exchange committed meanwhile.
      */
     private function drop(McpLink $link, McpLinkReason $reason): void
     {
@@ -136,18 +143,23 @@ class McpLinkService
             User::query()->lockForUpdate()->find($link->user_id);
             $locked = McpLink::query()->lockForUpdate()->find($link->id);
 
-            if ($locked === null) {
-                return;
-            }
-
-            $tokenIds = DB::table('mcp_link_tokens')->where('mcp_link_id', $locked->id)->lockForUpdate()->pluck('personal_access_token_id');
-
-            PersonalAccessToken::query()->whereIn('id', $tokenIds)->delete();
-
-            if ($locked->revoked_at === null) {
+            if ($locked !== null && $locked->revoked_at === null) {
                 $locked->forceFill(['revoked_at' => now(), 'revoked_reason' => $reason])->save();
             }
         });
+
+        try {
+            DB::transaction(function () use ($link): void {
+                User::query()->lockForUpdate()->find($link->user_id);
+                McpLink::query()->lockForUpdate()->find($link->id);
+
+                $tokenIds = DB::table('mcp_link_tokens')->where('mcp_link_id', $link->id)->lockForUpdate()->pluck('personal_access_token_id');
+
+                PersonalAccessToken::query()->whereIn('id', $tokenIds)->delete();
+            });
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     private function createLink(ApiClient $client, User $authenticated, string $mcpClient): OpenedMcpLink
@@ -179,20 +191,17 @@ class McpLinkService
     }
 
     /**
-     * Counters of the failed openings: one per account (resolved by the database,
-     * so every spelling it treats as equal shares it), or one per unknown address
-     * with the same limit, plus a cap per API client so that a spray of addresses
-     * is bounded and the difference between known and unknown addresses is no oracle.
+     * Counters of the failed openings: one per address as the database compares
+     * addresses (see EmailCollationKey), the same whether the account exists or not,
+     * plus a cap per API client so that a spray of addresses is bounded.
      *
      * @return array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}
      */
     private function openLimits(ApiClient $client, string $email): array
     {
-        $accountId = User::query()->where('email', $email)->value('id');
-
         return [
             'account' => [
-                'key' => $accountId !== null ? "mcp-link-open:account:{$accountId}" : 'mcp-link-open:unknown:'.sha1(Str::lower($email)),
+                'key' => 'mcp-link-open:email:'.sha1($this->emailKey->for($email)),
                 'max' => (int) config('mcp-link.open_attempts.max'),
             ],
             'client' => [

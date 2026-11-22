@@ -8,21 +8,20 @@ use Closure;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
- * A token issued for an MCP link (named `mcp-link-<id>`, which a refresh keeps)
- * is valid only while its link is alive: not revoked, not expired, user active,
- * password unchanged since the opening. This is the defence that does not depend
- * on the immediate deletion done by the credential-change listener.
+ * A token issued for an MCP link carries the ability `mcp-link:<id>`, which only
+ * the exchange sets (and which any login or refresh would lose), so it cannot be
+ * obtained by choosing a device name. Such a token is valid only while its link
+ * is alive: not revoked, not expired, user active, password unchanged since the
+ * opening. This is the defence that does not depend on the immediate deletion
+ * done by the credential-change listener.
  *
- * The marker is the token name, read from the already authenticated token. It
- * counts only when the link exists and belongs to the token's user and API
- * client: a name chosen at an ordinary login that merely looks like it leaves an
- * ordinary token. Unmarked tokens cost no query; a marked one costs one read of
- * the link by primary key.
- *
- * A marked token is never refreshed: the refresh would issue a token with the
- * same marker, but the connector exchanges the credential again instead.
+ * The marker is read from the already authenticated token: unmarked tokens cost no
+ * query; a marked one costs one read of the link by primary key. A marked token
+ * whose link is gone or belongs to someone else is dead as well. A marked token is
+ * never refreshed: the connector exchanges the credential again instead.
  */
 class EnforceMcpLinkLife
 {
@@ -30,14 +29,23 @@ class EnforceMcpLinkLife
 
     public function handle(Request $request, Closure $next): Response
     {
-        $link = $this->linkOfToken($request);
-
-        if ($link === null) {
+        // No bearer token: nothing to look up, and no authentication triggered here.
+        if ($request->bearerToken() === null) {
             return $next($request);
         }
 
-        if (! $link->isAliveFor($request->user('sanctum'))) {
-            $request->user('sanctum')->currentAccessToken()->delete();
+        $user = $request->user('sanctum');
+        $token = $user?->currentAccessToken();
+        $linkId = $token instanceof PersonalAccessToken ? McpLink::linkIdFromAbilities($token->abilities ?? []) : null;
+
+        if ($linkId === null) {
+            return $next($request);
+        }
+
+        $link = McpLink::query()->find($linkId);
+
+        if ($link === null || ! $this->belongsTo($link, $token) || ! $link->isAliveFor($user)) {
+            $this->deleteBestEffort($token);
 
             return response()->json([
                 'success' => false,
@@ -55,26 +63,20 @@ class EnforceMcpLinkLife
         return $next($request);
     }
 
-    private function linkOfToken(Request $request): ?McpLink
+    private function belongsTo(McpLink $link, PersonalAccessToken $token): bool
     {
-        // No bearer token: nothing to look up, and no authentication triggered here.
-        if ($request->bearerToken() === null) {
-            return null;
+        return (int) $link->user_id === (int) $token->tokenable_id && (int) $link->api_client_id === (int) $token->api_client_id;
+    }
+
+    /**
+     * The 401 does not depend on the deletion: a dead link is refused at every request anyway.
+     */
+    private function deleteBestEffort(PersonalAccessToken $token): void
+    {
+        try {
+            $token->delete();
+        } catch (Throwable $e) {
+            report($e);
         }
-
-        $token = $request->user('sanctum')?->currentAccessToken();
-        $linkId = $token instanceof PersonalAccessToken ? McpLink::linkIdFromTokenName($token->name) : null;
-
-        if ($linkId === null) {
-            return null;
-        }
-
-        $link = McpLink::query()->find($linkId);
-
-        return $link !== null
-            && (int) $link->user_id === (int) $token->tokenable_id
-            && (int) $link->api_client_id === (int) $token->api_client_id
-            ? $link
-            : null;
     }
 }

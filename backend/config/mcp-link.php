@@ -25,8 +25,8 @@ return [
     'access_token_ttl_minutes' => (int) env('MCP_LINK_ACCESS_TOKEN_TTL_MINUTES', 60),
 
     // Failed openings before the route answers 429, with the same answer in every case:
-    // `max` per account (resolved by the database, not by the email string; an address
-    // that resolves to no account has its own counter with the same limit) and
+    // `max` per address as the database compares addresses (the same counter whether the
+    // account exists or not) and
     // `client_max` per API client, so that spraying addresses is bounded too.
     'open_attempts' => [
         'max' => (int) env('MCP_LINK_OPEN_MAX_ATTEMPTS', 5),

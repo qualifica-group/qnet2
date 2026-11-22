@@ -14,8 +14,14 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class McpLink extends Model
 {
-    /** Name prefix of the user tokens an exchange issues; a refresh keeps the name. */
+    /** Name prefix of the user tokens an exchange issues: a label only, any login can choose the same name. */
     public const string TOKEN_NAME_PREFIX = 'mcp-link-';
+
+    /**
+     * Ability that marks the tokens of a link. Only the exchange sets abilities: login,
+     * client-login and refresh all issue ['*'], so a caller cannot obtain this marker.
+     */
+    public const string ABILITY_PREFIX = 'mcp-link:';
 
     protected $fillable = [
         'user_id',
@@ -45,9 +51,28 @@ class McpLink extends Model
         return self::TOKEN_NAME_PREFIX.$linkId;
     }
 
-    public static function linkIdFromTokenName(string $name): ?int
+    /**
+     * '*' keeps the token as capable as an ordinary one (tokenCan passes on it); the second ability is the marker.
+     *
+     * @return array<int, string>
+     */
+    public static function tokenAbilities(int $linkId): array
     {
-        return preg_match('/^'.preg_quote(self::TOKEN_NAME_PREFIX, '/').'(\d+)$/', $name, $m) === 1 ? (int) $m[1] : null;
+        return ['*', self::ABILITY_PREFIX.$linkId];
+    }
+
+    /**
+     * @param  array<int, string>  $abilities
+     */
+    public static function linkIdFromAbilities(array $abilities): ?int
+    {
+        foreach ($abilities as $ability) {
+            if (preg_match('/^'.preg_quote(self::ABILITY_PREFIX, '/').'(\d+)$/', $ability, $m) === 1) {
+                return (int) $m[1];
+            }
+        }
+
+        return null;
     }
 
     /**
