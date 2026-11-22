@@ -9,10 +9,11 @@ use App\Models\ApiClient;
 use App\Models\McpLink;
 use App\Models\User;
 use App\Services\AuthService;
+use Illuminate\Contracts\Database\LostConnectionDetector;
+use Illuminate\Database\DeadlockException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
-use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 
 /**
@@ -20,7 +21,9 @@ use Throwable;
  * once; only its SHA-256 fingerprint is stored.
  *
  * Lock order everywhere (open, exchange, revoke, drop): the user row, then the
- * link row, then the link's tokens. All reads after a lock are locking reads.
+ * link row, then the token rows. That is the order a logout already follows
+ * (token row first, then its bridge row by cascade), so no lock is ever taken on
+ * the bridge table directly. Reads after a lock are locking (current) reads.
  */
 class McpLinkService
 {
@@ -36,22 +39,20 @@ class McpLinkService
      */
     public function open(ApiClient $client, string $email, string $password, string $mcpClient): OpenedMcpLink
     {
-        // Step 1: attempt limits, same answer whatever the address
+        // Step 1: reserve the attempt, atomically, before any password check
         $limits = $this->openLimits($client, $email);
-        $this->assertWithinLimits($limits);
+        $this->reserveAttempt($limits);
 
-        try {
-            // Step 2: same credential rules and generic failure as client-login
-            $user = $this->auth->authenticate($email, $password, revealInactive: false);
-            RateLimiter::clear($limits['account']['key']);
+        // Step 2: same credential rules and generic failure as client-login
+        $user = $this->auth->authenticate($email, $password, revealInactive: false);
 
-            // Step 3: the link is created on the locked user row
-            return DB::transaction(fn (): OpenedMcpLink => $this->createLink($client, $user, $mcpClient));
-        } catch (ValidationException $e) {
-            $this->hitLimits($limits);
+        // Step 3: the link is created on the locked user row
+        $opened = DB::transaction(fn (): OpenedMcpLink => $this->createLink($client, $user, $mcpClient));
 
-            throw $e;
-        }
+        // Step 4: only a successful opening gives the attempt back
+        $this->releaseAttempt($limits);
+
+        return $opened;
     }
 
     /**
@@ -130,12 +131,14 @@ class McpLinkService
 
     /**
      * Step 1 marks the link fallen, durably and on its own: what keeps a link out of
-     * use is that mark, which the exchange and EnforceMcpLinkLife both check. Step 2
-     * deleting the tokens is best effort (a failure is reported, not thrown): the
-     * tokens of a fallen link are refused anyway. Locking (current) reads after the
-     * user and link locks: under REPEATABLE READ a plain SELECT would use the
-     * snapshot of an earlier read of the caller's transaction and miss a token the
-     * exchange committed meanwhile.
+     * use is that mark, which the exchange and EnforceMcpLinkLife both check, and a
+     * failure of it propagates. Step 2 deleting the tokens is best effort: the
+     * tokens of a fallen link are refused anyway, so an ordinary failure is reported,
+     * but an error that invalidates the caller's transaction (see
+     * invalidatesTransaction) always propagates. The tokens are found by their
+     * `mcp-link:<id>` ability with one DELETE, a current read: under REPEATABLE READ
+     * a plain SELECT would use the snapshot of an earlier read of the caller's
+     * transaction and miss a token the exchange committed meanwhile.
      */
     private function drop(McpLink $link, McpLinkReason $reason): void
     {
@@ -150,16 +153,30 @@ class McpLinkService
 
         try {
             DB::transaction(function () use ($link): void {
-                User::query()->lockForUpdate()->find($link->user_id);
+                $user = User::query()->lockForUpdate()->find($link->user_id);
                 McpLink::query()->lockForUpdate()->find($link->id);
 
-                $tokenIds = DB::table('mcp_link_tokens')->where('mcp_link_id', $link->id)->lockForUpdate()->pluck('personal_access_token_id');
-
-                PersonalAccessToken::query()->whereIn('id', $tokenIds)->delete();
+                $user?->tokens()->where('abilities', 'like', '%"'.McpLink::ABILITY_PREFIX.$link->id.'"%')->delete();
             });
         } catch (Throwable $e) {
+            if (self::invalidatesTransaction($e)) {
+                throw $e;
+            }
+
             report($e);
         }
+    }
+
+    /**
+     * An error after which the caller's transaction is gone or in doubt (a deadlock, which
+     * Laravel raises as DeadlockException inside a nested transaction; a lost connection;
+     * a transaction already ended): swallowing it would let the caller go on in autocommit.
+     */
+    public static function invalidatesTransaction(Throwable $e): bool
+    {
+        return $e instanceof DeadlockException
+            || app(LostConnectionDetector::class)->causedByLostConnection($e)
+            || str_contains(strtolower($e->getMessage()), 'no active transaction');
     }
 
     private function createLink(ApiClient $client, User $authenticated, string $mcpClient): OpenedMcpLink
@@ -213,14 +230,18 @@ class McpLinkService
     }
 
     /**
+     * `hit` increments in one atomic cache operation and returns the new count, so
+     * concurrent requests cannot all pass a check made before the first one counts.
+     * Both counters are always incremented; beyond the limit no password is checked.
+     *
      * @param  array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}  $limits
      *
      * @throws TooManyOpenAttemptsException
      */
-    private function assertWithinLimits(array $limits): void
+    private function reserveAttempt(array $limits): void
     {
         $retryAfter = collect([$limits['account'], $limits['client']])
-            ->filter(fn (array $limit): bool => RateLimiter::tooManyAttempts($limit['key'], $limit['max']))
+            ->filter(fn (array $limit): bool => RateLimiter::hit($limit['key'], $limits['decay']) > $limit['max'])
             ->map(fn (array $limit): int => RateLimiter::availableIn($limit['key']));
 
         if ($retryAfter->isNotEmpty()) {
@@ -231,9 +252,13 @@ class McpLinkService
     /**
      * @param  array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}  $limits
      */
-    private function hitLimits(array $limits): void
+    private function releaseAttempt(array $limits): void
     {
-        RateLimiter::hit($limits['account']['key'], $limits['decay']);
-        RateLimiter::hit($limits['client']['key'], $limits['decay']);
+        foreach ([$limits['account'], $limits['client']] as $limit) {
+            // A counter that expired meanwhile would go negative and grant extra attempts.
+            if (RateLimiter::decrement($limit['key'], $limits['decay']) < 0) {
+                RateLimiter::clear($limit['key']);
+            }
+        }
     }
 }

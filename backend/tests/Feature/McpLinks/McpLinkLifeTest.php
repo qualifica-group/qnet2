@@ -6,9 +6,12 @@ use App\Models\User;
 use App\Services\AuthService;
 use App\Services\McpLinks\EmailCollationKey;
 use App\Services\McpLinks\McpLinkService;
+use Illuminate\Database\DeadlockException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -84,22 +87,115 @@ it('rejects the old token on the next request when the drop failed at an adminis
     expect($user->tokens()->count())->toBe(0);
 });
 
-it('does not let a link survive a deactivation and reactivation even when the first drop failed', function () {
+it('refuses a deactivation when the drop fails, so the user never ends up deactivated with live links', function () {
     $admin = userWithUserAbilities(['update']);
-    [$key, $credential, $user, $link] = exchangedLink();
+    [, , $user, $link] = exchangedLink();
     dropFails();
     Sanctum::actingAs($admin);
 
-    $this->putJson("/api/users/{$user->id}", ['is_active' => false])->assertOk();
-    expect($link->fresh()->revoked_at)->toBeNull();
+    $this->putJson("/api/users/{$user->id}", ['is_active' => false])->assertStatus(500);
 
-    $this->app->forgetInstance(McpLinkService::class);
-    // Through the model: the API reactivation also needs business function coverage, unrelated here.
-    $user->fresh()->update(['is_active' => true]);
+    expect($user->fresh()->is_active)->toBeTrue()
+        ->and($link->fresh()->revoked_at)->toBeNull();
+});
 
-    expect($link->fresh()->revoked_reason)->toBe(McpLinkReason::UserDeactivated);
+it('refuses a deactivation without transaction when the mark fails, leaving the user active', function () {
+    if (DB::getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('The failing mark is simulated with a sqlite trigger.');
+    }
+
+    [, , $user, $link] = exchangedLink();
+    DB::unprepared("CREATE TRIGGER deny_link_update BEFORE UPDATE ON mcp_links BEGIN SELECT RAISE(ABORT, 'denied'); END");
+
+    expect(fn () => $user->update(['is_active' => false]))->toThrow(QueryException::class);
+    expect($user->fresh()->is_active)->toBeTrue()
+        ->and($link->fresh()->revoked_at)->toBeNull();
+
+    DB::unprepared('DROP TRIGGER deny_link_update');
+});
+
+it('completes a password change when the mark fails, and the old token is rejected anyway', function () {
+    if (DB::getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('The failing mark is simulated with a sqlite trigger.');
+    }
+
+    [$key, $credential, $user, , $token] = exchangedLink();
+    DB::unprepared("CREATE TRIGGER deny_link_update BEFORE UPDATE ON mcp_links BEGIN SELECT RAISE(ABORT, 'denied'); END");
+
+    $user->forceFill(['password' => 'Another-pass-123'])->save();
+
+    callWithToken('GET', '/api/auth/me', $token)->assertUnauthorized();
     callWithToken('POST', '/api/mcp/links/exchange', $key, ['credential' => $credential])
-        ->assertUnauthorized()->assertJsonPath('data.reason', McpLinkReason::LinkRevoked->value);
+        ->assertUnauthorized()->assertJsonPath('data.reason', McpLinkReason::PasswordChanged->value);
+
+    DB::unprepared('DROP TRIGGER deny_link_update');
+});
+
+it('propagates an error that invalidates the transaction, even at a password change', function () {
+    [, , $user] = exchangedLink();
+    $mock = Mockery::mock(McpLinkService::class, [app(AuthService::class), app(EmailCollationKey::class)])->makePartial();
+    $mock->shouldReceive('dropForUser')->andThrow(new DeadlockException('Deadlock found'));
+    app()->instance(McpLinkService::class, $mock);
+
+    expect(fn () => $user->forceFill(['password' => 'Another-pass-123'])->save())->toThrow(DeadlockException::class);
+});
+
+it('tells the errors that invalidate the caller transaction from the ordinary ones', function (Throwable $error, bool $invalidates) {
+    expect(McpLinkService::invalidatesTransaction($error))->toBe($invalidates);
+})->with([
+    'deadlock' => [new DeadlockException('Deadlock found'), true],
+    'lost connection' => [new RuntimeException('SQLSTATE[HY000]: General error: 2006 MySQL server has gone away'), true],
+    'transaction already ended' => [new PDOException('There is no active transaction'), true],
+    'ordinary' => [new RuntimeException('denied'), false],
+]);
+
+it('takes no lock on the bridge table when it drops a link, in the order of a logout', function () {
+    [$key, , , $link] = exchangedLink();
+    $statements = [];
+    DB::listen(function ($query) use (&$statements) {
+        $statements[] = $query->sql;
+    });
+
+    callWithToken('POST', "/api/mcp/links/{$link->id}/revoke", $key)->assertOk();
+
+    expect(collect($statements)->filter(fn (string $sql) => str_contains($sql, 'mcp_link_tokens')))->toBeEmpty();
+});
+
+it('reserves the attempt before the password check, so a concurrent request is never verified', function () {
+    config(['mcp-link.open_attempts.max' => 2]);
+    [, $key] = createApiClientWithKey();
+    $user = User::factory()->create();
+    $body = ['email' => $user->email, 'password' => 'wrong', 'mcp_client' => 'c'];
+    $calls = 0;
+    $nested = null;
+    $this->partialMock(AuthService::class, function ($mock) use (&$calls, &$nested, $key, $body) {
+        $mock->shouldReceive('authenticate')->andReturnUsing(function () use (&$calls, &$nested, $key, $body) {
+            $calls++;
+
+            // The second verification is still running when a concurrent request arrives.
+            if ($calls === 2) {
+                $nested = callWithToken('POST', '/api/mcp/links', $key, $body)->status();
+            }
+
+            throw ValidationException::withMessages(['email' => [__('auth.failed')]]);
+        });
+    });
+
+    callWithToken('POST', '/api/mcp/links', $key, $body)->assertUnprocessable();
+    callWithToken('POST', '/api/mcp/links', $key, $body)->assertUnprocessable();
+
+    expect($calls)->toBe(2)
+        ->and($nested)->toBe(429);
+});
+
+it('gives the attempt back after a successful opening', function () {
+    config(['mcp-link.open_attempts.max' => 2, 'mcp-link.open_attempts.client_max' => 2]);
+    [, $key] = createApiClientWithKey();
+    $user = User::factory()->create();
+
+    foreach (range(1, 5) as $ignored) {
+        callWithToken('POST', '/api/mcp/links', $key, ['email' => $user->email, 'password' => 'password', 'mcp_client' => 'c'])->assertCreated();
+    }
 });
 
 it('leaves a token with a name that only imitates the marker as an ordinary token', function () {

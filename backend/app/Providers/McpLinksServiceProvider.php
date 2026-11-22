@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Wiring of the MCP link module: the credential-change listener. The routes are
+ * Wiring of the MCP link module: the credential-change listener (policies in the listener). The routes are
  * registered in bootstrap/app.php, like the API clients ones.
  */
 class McpLinksServiceProvider extends ServiceProvider
@@ -19,6 +19,7 @@ class McpLinksServiceProvider extends ServiceProvider
         // UsersSource (data migration, users just created). There the tokens
         // already issued stay valid until they expire, at most the exchange token
         // lifetime (mcp-link.access_token_ttl_minutes); the next exchange is refused.
-        User::updated(fn (User $user) => $this->app->make(DropMcpLinksOnCredentialChange::class)->handle($user));
+        User::updating(fn (User $user) => $this->app->make(DropMcpLinksOnCredentialChange::class)->beforeUpdate($user));
+        User::updated(fn (User $user) => $this->app->make(DropMcpLinksOnCredentialChange::class)->afterUpdate($user));
     }
 }
