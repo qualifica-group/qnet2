@@ -9,8 +9,11 @@ use App\Models\ApiClient;
 use App\Models\McpLink;
 use App\Models\User;
 use App\Services\AuthService;
+use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Database\LostConnectionDetector;
 use Illuminate\Database\DeadlockException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -108,11 +111,15 @@ class McpLinkService
     }
 
     /**
-     * Revoke a link of this client and delete the user tokens it issued.
+     * Revoke a link of this client and delete the user tokens it issued. The mark is
+     * confirmed first; if the deletion then fails the error is thrown so the client
+     * repeats the revocation (an already revoked link just completes the deletion).
+     *
+     * @throws McpLinkTokensNotDeletedException
      */
     public function revoke(ApiClient $client, int $linkId): void
     {
-        $this->drop(McpLink::query()->where('api_client_id', $client->id)->findOrFail($linkId), McpLinkReason::RevokedByClient);
+        $this->drop(McpLink::query()->where('api_client_id', $client->id)->findOrFail($linkId), McpLinkReason::RevokedByClient, failOnTokenDeletion: true);
     }
 
     /**
@@ -133,14 +140,15 @@ class McpLinkService
      * Step 1 marks the link fallen, durably and on its own: what keeps a link out of
      * use is that mark, which the exchange and EnforceMcpLinkLife both check, and a
      * failure of it propagates. Step 2 deleting the tokens is best effort: the
-     * tokens of a fallen link are refused anyway, so an ordinary failure is reported,
+     * tokens of a fallen link are refused anyway, so an ordinary failure is reported
+     * (and thrown only by an explicit revocation, which promises the deletion),
      * but an error that invalidates the caller's transaction (see
      * invalidatesTransaction) always propagates. The tokens are found by their
      * `mcp-link:<id>` ability with one DELETE, a current read: under REPEATABLE READ
      * a plain SELECT would use the snapshot of an earlier read of the caller's
      * transaction and miss a token the exchange committed meanwhile.
      */
-    private function drop(McpLink $link, McpLinkReason $reason): void
+    private function drop(McpLink $link, McpLinkReason $reason, bool $failOnTokenDeletion = false): void
     {
         DB::transaction(function () use ($link, $reason): void {
             User::query()->lockForUpdate()->find($link->user_id);
@@ -164,6 +172,10 @@ class McpLinkService
             }
 
             report($e);
+
+            if ($failOnTokenDeletion) {
+                throw new McpLinkTokensNotDeletedException($e);
+            }
         }
     }
 
@@ -230,9 +242,11 @@ class McpLinkService
     }
 
     /**
-     * `hit` increments in one atomic cache operation and returns the new count, so
-     * concurrent requests cannot all pass a check made before the first one counts.
-     * Both counters are always incremented; beyond the limit no password is checked.
+     * The limiter's `hit` is add + increment + sometimes put, not one atomic operation,
+     * so concurrent requests could lose updates and exceed the limit. Every change of a
+     * counter therefore runs under a cache lock named after the counter; a request that
+     * cannot get the lock in a short time is refused (the cautious side). Beyond the limit
+     * no password is checked. Both counters are always incremented, one lock at a time.
      *
      * @param  array{account: array{key: string, max: int}, client: array{key: string, max: int}, decay: int}  $limits
      *
@@ -241,7 +255,7 @@ class McpLinkService
     private function reserveAttempt(array $limits): void
     {
         $retryAfter = collect([$limits['account'], $limits['client']])
-            ->filter(fn (array $limit): bool => RateLimiter::hit($limit['key'], $limits['decay']) > $limit['max'])
+            ->filter(fn (array $limit): bool => $this->underLock($limit['key'], fn (): int => RateLimiter::hit($limit['key'], $limits['decay'])) > $limit['max'])
             ->map(fn (array $limit): int => RateLimiter::availableIn($limit['key']));
 
         if ($retryAfter->isNotEmpty()) {
@@ -255,10 +269,34 @@ class McpLinkService
     private function releaseAttempt(array $limits): void
     {
         foreach ([$limits['account'], $limits['client']] as $limit) {
-            // A counter that expired meanwhile would go negative and grant extra attempts.
-            if (RateLimiter::decrement($limit['key'], $limits['decay']) < 0) {
-                RateLimiter::clear($limit['key']);
+            try {
+                $this->underLock($limit['key'], function () use ($limit, $limits): void {
+                    // A counter that expired meanwhile would go negative and grant extra attempts.
+                    if (RateLimiter::decrement($limit['key'], $limits['decay']) < 0) {
+                        RateLimiter::clear($limit['key']);
+                    }
+                });
+            } catch (TooManyOpenAttemptsException) {
+                // Not given back: the attempt stays counted, the cautious side.
             }
+        }
+    }
+
+    /**
+     * @template T
+     *
+     * @param  Closure(): T  $change
+     * @return T
+     *
+     * @throws TooManyOpenAttemptsException when the lock is not obtained in time
+     */
+    private function underLock(string $counterKey, Closure $change): mixed
+    {
+        try {
+            return Cache::lock('lock:'.$counterKey, (int) config('mcp-link.open_attempts.counter_lock_seconds'))
+                ->block((int) config('mcp-link.open_attempts.counter_lock_wait_seconds'), $change);
+        } catch (LockTimeoutException) {
+            throw new TooManyOpenAttemptsException(1);
         }
     }
 }

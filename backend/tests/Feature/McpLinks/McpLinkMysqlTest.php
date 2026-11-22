@@ -2,9 +2,12 @@
 
 use App\Enums\McpLinkReason;
 use App\Models\McpLink;
+use App\Models\User;
+use App\Services\McpLinks\EmailCollationKey;
 use App\Services\McpLinks\McpLinkService;
 use Illuminate\Database\DeadlockException;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -125,5 +128,37 @@ if (getenv('DB_CONNECTION') === 'mysql') {
 
         expect($locking->first())->toContain('`users`')
             ->and($locking->contains(fn (string $sql) => str_contains($sql, 'mcp_link_tokens')))->toBeFalse();
+    });
+
+    it('excludes a second holder of the counter lock on the real database cache store', function () {
+        config(['cache.default' => 'database']);
+        Cache::forgetDriver();
+
+        $first = Cache::lock('lock:mcp-link-open:test', 10);
+        $second = Cache::store('database')->lock('lock:mcp-link-open:test', 10);
+
+        expect($first->get())->toBeTrue()
+            ->and($second->get())->toBeFalse();
+
+        $first->release();
+
+        expect($second->get())->toBeTrue();
+        $second->release();
+    });
+
+    it('refuses an opening while another request holds the counter lock on the real cache store', function () {
+        config(['cache.default' => 'database', 'mcp-link.open_attempts.counter_lock_wait_seconds' => 0]);
+        Cache::forgetDriver();
+        [, $key] = createApiClientWithKey();
+        $user = User::factory()->create();
+        $body = ['email' => $user->email, 'password' => 'password', 'mcp_client' => 'c'];
+        $held = Cache::lock('lock:mcp-link-open:email:'.sha1(app(EmailCollationKey::class)->for($user->email)), 10);
+
+        expect($held->get())->toBeTrue();
+        callWithToken('POST', '/api/mcp/links', $key, $body)->assertStatus(429);
+        expect(McpLink::query()->count())->toBe(0);
+
+        $held->release();
+        callWithToken('POST', '/api/mcp/links', $key, $body)->assertCreated();
     });
 }

@@ -6,9 +6,11 @@ use App\Models\User;
 use App\Services\AuthService;
 use App\Services\McpLinks\EmailCollationKey;
 use App\Services\McpLinks\McpLinkService;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Database\DeadlockException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -353,3 +355,56 @@ it('counts the accented spelling of an address on the same counter, existing acc
     'existing' => ['mario@example.test', 'màrio@example.test'],
     'missing' => ['luigi@example.test', 'lùigi@example.test'],
 ]);
+
+it('keeps the attempt counter atomic: a request that arrives between the increment and the write is refused, not verified', function () {
+    config([
+        'mcp-link.open_attempts.max' => 1,
+        'mcp-link.open_attempts.counter_lock_wait_seconds' => 0,
+    ]);
+    // The limiter keeps its registered limiters; only its counter store becomes the interleaving one.
+    $limiter = app(RateLimiter::class);
+    (new ReflectionProperty($limiter, 'cache'))->setValue($limiter, Cache::repository(new InterleavingArrayStore));
+
+    [, $key] = createApiClientWithKey();
+    $user = User::factory()->create();
+    $body = ['email' => $user->email, 'password' => 'wrong', 'mcp_client' => 'c'];
+    $calls = 0;
+    $concurrent = null;
+    $this->partialMock(AuthService::class, function ($mock) use (&$calls) {
+        $mock->shouldReceive('authenticate')->andReturnUsing(function () use (&$calls) {
+            $calls++;
+
+            throw ValidationException::withMessages(['email' => [__('auth.failed')]]);
+        });
+    });
+    InterleavingArrayStore::$between = function () use (&$concurrent, $key, $body) {
+        $concurrent = callWithToken('POST', '/api/mcp/links', $key, $body)->status();
+    };
+
+    callWithToken('POST', '/api/mcp/links', $key, $body)->assertUnprocessable();
+
+    expect($calls)->toBe(1)
+        ->and($concurrent)->toBe(429);
+});
+
+it('answers a failed explicit revocation with an error the connector can retry, and completes it the second time', function () {
+    if (DB::getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('The failing deletion is simulated with a sqlite trigger.');
+    }
+
+    [$key, , $user, $link, $token] = exchangedLink();
+    DB::unprepared("CREATE TRIGGER deny_token_delete BEFORE DELETE ON personal_access_tokens BEGIN SELECT RAISE(ABORT, 'denied'); END");
+
+    callWithToken('POST', "/api/mcp/links/{$link->id}/revoke", $key)
+        ->assertStatus(500)
+        ->assertJsonPath('success', false)
+        ->assertJsonPath('data.reason', McpLinkReason::TokensNotDeleted->value);
+
+    expect($link->fresh()->revoked_at)->not->toBeNull();
+    callWithToken('GET', '/api/auth/me', $token)->assertUnauthorized();
+
+    DB::unprepared('DROP TRIGGER deny_token_delete');
+
+    callWithToken('POST', "/api/mcp/links/{$link->id}/revoke", $key)->assertOk();
+    expect($user->tokens()->count())->toBe(0);
+});

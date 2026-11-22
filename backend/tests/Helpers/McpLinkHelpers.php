@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\McpLink;
 use App\Models\User;
+use Illuminate\Cache\ArrayStore;
 
 if (! function_exists('openLinkFor')) {
     /**
@@ -21,5 +22,31 @@ if (! function_exists('openLinkFor')) {
         ])->assertCreated();
 
         return [$key, $response->json('data.credential'), $user, McpLink::query()->findOrFail($response->json('data.link_id')), $client->id];
+    }
+}
+
+if (! class_exists('InterleavingArrayStore')) {
+    /**
+     * Array store whose increment is a read, a pause and a write, like a non-atomic backend
+     * increment: `$between` runs in the pause, once, where a concurrent request would.
+     */
+    final class InterleavingArrayStore extends ArrayStore
+    {
+        public static ?Closure $between = null;
+
+        public function increment($key, $value = 1)
+        {
+            $current = (int) $this->get($key);
+
+            if (self::$between !== null && str_contains($key, 'mcp-link-open')) {
+                $hook = self::$between;
+                self::$between = null;
+                $hook();
+            }
+
+            $this->put($key, $current + $value, 900);
+
+            return $current + $value;
+        }
     }
 }

@@ -20,4 +20,7 @@ enum McpLinkReason: string
     // Revocations only
     case RevokedByClient = 'revoked';
     case UserDeactivated = 'user_deactivated';
+
+    // Explicit revocation done, but the tokens could not be deleted: the client retries
+    case TokensNotDeleted = 'tokens_not_deleted';
 }

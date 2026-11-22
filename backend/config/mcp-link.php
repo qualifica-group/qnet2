@@ -31,6 +31,10 @@ return [
     'open_attempts' => [
         'max' => (int) env('MCP_LINK_OPEN_MAX_ATTEMPTS', 5),
         'client_max' => (int) env('MCP_LINK_OPEN_CLIENT_MAX_ATTEMPTS', 50),
+        // Every change of a counter runs under a cache lock (the limiter's own increment is not
+        // atomic): how long a held lock lives and how long a request waits for it before it is refused.
+        'counter_lock_seconds' => 5,
+        'counter_lock_wait_seconds' => 2,
         'decay_minutes' => (int) env('MCP_LINK_OPEN_DECAY_MINUTES', 15),
     ],
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\McpLinks;
 
 use App\Enums\HttpStatusEnum;
+use App\Enums\McpLinkReason;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\McpLinks\ExchangeMcpLinkRequest;
 use App\Http\Requests\McpLinks\OpenMcpLinkRequest;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Services\McpLinks\FirstAccessPendingException;
 use App\Services\McpLinks\McpLinkRejectedException;
 use App\Services\McpLinks\McpLinkService;
+use App\Services\McpLinks\McpLinkTokensNotDeletedException;
 use App\Services\McpLinks\ReleaseCommitNotConfiguredException;
 use App\Services\McpLinks\TooManyOpenAttemptsException;
 use App\Support\ApiClients\ApiClientRequestContext;
@@ -67,7 +69,12 @@ class McpLinkController extends BaseApiController
 
     public function revoke(RevokeMcpLinkRequest $request, int $mcpLink): JsonResponse
     {
-        $this->service->revoke(ApiClientRequestContext::resolve($request), $mcpLink);
+        try {
+            $this->service->revoke(ApiClientRequestContext::resolve($request), $mcpLink);
+        } catch (McpLinkTokensNotDeletedException) {
+            // The link is revoked and its tokens are refused; repeating the call finishes the deletion.
+            return $this->fail(__('The link is revoked but its tokens are not deleted yet. Repeat the request.'), HttpStatusEnum::INTERNAL_SERVER_ERROR->value, data: ['reason' => McpLinkReason::TokensNotDeleted->value]);
+        }
 
         return $this->ok(null, 'Link revoked.');
     }
