@@ -7,8 +7,8 @@ import { useFormalabSync, useFormalabWorkOrderLink } from '@/integrations/formal
 
 /**
  * Body of the work order's "Formalab" tab: the synced class, and the single
- * "Sincronizza" action. The edition is never chosen by hand: the server
- * matches it by the work order's course name.
+ * "Sincronizza" action. The edition is chosen in the work order's class select
+ * (matched by edition_id only): this panel never picks it.
  */
 export function FormalabWorkOrderPanel({ workOrderId }: { workOrderId: number }) {
   const { t } = useTranslation('formalab')

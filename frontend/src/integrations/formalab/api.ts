@@ -13,6 +13,9 @@ const BASE = '/integrations/formalab'
 /** Call-log table domain (`/api/tables/formalab-call-logs/*`). */
 export const FORMALAB_CALL_LOGS_DOMAIN = 'formalab-call-logs'
 
+/** Class catalogue table domain (`/api/tables/formalab-classes/*`). */
+export const FORMALAB_CLASSES_DOMAIN = 'formalab-classes'
+
 export async function fetchFormalabStatus(): Promise<FormalabStatus> {
   const { data } = await apiClient.get<ApiResponse<FormalabStatus>>(`${BASE}/status`)
   return data.data
@@ -33,8 +36,8 @@ export async function fetchFormalabWorkOrderLink(workOrderId: number): Promise<F
 }
 
 /**
- * "Sincronizza": the server finds the edition whose label equals the work
- * order's course name, re-reads it from Formalab and rewrites the course fields.
+ * "Sincronizza": the server re-reads from Formalab the edition chosen in the
+ * work order's class select and rewrites the mapped fields.
  */
 export async function syncFormalabWorkOrderLink(workOrderId: number): Promise<FormalabWorkOrderLink> {
   const { data } = await apiClient.post<ApiResponse<FormalabWorkOrderLink>>(`${BASE}/work-orders/${workOrderId}/sync`)

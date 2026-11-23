@@ -5,10 +5,14 @@ import { useFormalabWorkOrderTab } from '@/integrations/formalab/use-formalab-wo
 import type { IntegrationDefinition } from '@/integrations/types'
 
 const FormalabStatusPage = lazyRoute(() => import('@/integrations/formalab/components/formalab-status-page'))
+const FormalabClassesPage = lazyRoute(() => import('@/integrations/formalab/components/formalab-classes-page'))
 
 export const formalabIntegration: IntegrationDefinition = {
   key: FORMALAB_KEY,
   useWorkOrderTabs: useFormalabWorkOrderTab,
   ProductCategorySection: FormalabCategorySection,
-  devRoutes: [{ path: 'dev/formalab', element: <FormalabStatusPage /> }],
+  devRoutes: [
+    { path: 'dev/formalab', element: <FormalabStatusPage /> },
+    { path: 'dev/formalab/classes', element: <FormalabClassesPage /> },
+  ],
 }

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0426-formalab-class-select" status="implemented" owner="nicola" date="2026-11-23" extends="0423-formalab-category-settings">
+
+  <goal>
+    Il "Nome corso / edizione" della commessa non e' piu' un testo libero ma una SELECT sulle classi
+    Formalab della tabella d'appoggio locale (come `classi` nel QNet legacy). Il valore salvato e'
+    l'`edition_id` della classe: collegamento, sincronizzazione e propagazione dei campi abbinano
+    SOLO per `edition_id`, mai per codice o nome. Le classi hanno una pagina propria nel nuovo menu
+    "Integrazioni esterne" > Formalab.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-23 ("il campo nome corso deve essere un select che va a pescare le
+    classi, non un campo libero ... tutto il match andra' solo ed esclusivamente a edition_id e non a
+    codice"). Chiude gli aperti (1) e (3) dell'HANDOFF 0423. Sostituisce 0423 D-4 (tipo dell'attributo
+    chiave), D-6 (nome corso), D-7 (chiave del backfill) e 0422 D-5 (abbinamento per nome).
+
+    Decisioni (autonomia, memoria utente "decido io"):
+    - D-1 Tabella d'appoggio = `formalab_classes` (esiste dalla 0422, gemella di `classi` legacy),
+      aggiornata dalla sincronizzazione ogni 10 minuti, dal webhook e da "Sincronizza ora". Nuova
+      invariante: `formalab_classes.id` = `edition_id` (il mapper la scrive, la migrazione
+      2026_11_23_110000 riallinea le righe esistenti). Cosi' il campo relazione generico, che salva
+      l'`id` del record, salva proprio l'`edition_id`, e tutto il motore dei campi relazione
+      (validazione exists, etichette, filtri) funziona senza eccezioni.
+    - D-2 Punto di estensione GENERICO del core: `config('custom-fields.relation_only_targets')`
+      (entity_type => {model, label}) si somma ai target di sola relazione di
+      CustomFieldEntityRegistry. Formalab, solo da attiva, registra `formalab-classes`
+      (FormalabClass, etichetta `formalab:classes.entity`). Il core non nomina Formalab.
+    - D-3 L'attributo chiave (mappato su `label`) deve essere di tipo `relation` con
+      `relation_target.entity_type = formalab-classes` (cardinalita' one,
+      `for_select_resource = integrations/formalab/classes`). Ogni altro tipo = 422
+      `attribute_incompatible`. Gli altri campi restano come in 0423.
+    - D-4 Endpoint select (ADR 0011): `GET /api/integrations/formalab/classes/for-select`
+      (auth:sanctum, solo da attiva). `id` = edition_id, `label` = "codice - titolo", `subtitle` =
+      sede, stato classe e date. Ricerca su codice/titolo/etichetta e, se numerica, sull'edition_id;
+      ordine: data inizio decrescente, poi edition_id decrescente; `ids[]` sempre idratati.
+    - D-5 La commessa segue la select: al salvataggio di una commessa (attribute_values cambiati) il
+      collegamento si allinea all'edizione scelta (creato, spostato o rimosso se la select si
+      svuota) e i campi mappati si riscrivono subito dal catalogo locale. Un errore non blocca il
+      salvataggio: finisce in `sync_error` sul collegamento. La sincronizzazione del catalogo fa lo
+      stesso allineamento su tutte le commesse delle categorie collegate (Step 3, ex backfill per
+      nome) e poi propaga i cambi delle classi (invariato: per `payload_hash`).
+    - D-6 "Sincronizza" nella scheda Formalab della commessa: legge l'edizione scelta nella select,
+      la rilegge da Formalab e riscrive i campi. Select vuota = 422 "Scegli la classe Formalab".
+    - D-7 Stato: `unlinked_work_orders` = {linkable, unmatched, without_course_name}; sparisce
+      `ambiguous` (con l'edition_id non esiste piu'). `unmatched` = edizione scelta non presente nel
+      catalogo locale.
+    - D-8 Menu: nuova sezione di primo livello "Integrazioni esterne" (`external-integrations`,
+      prima di Develop), creata da chi la usa (oggi solo Formalab), con il gruppo "Formalab" e le
+      voci "Stato e configurazione" (`formalab`, /dev/formalab, invariata) e "Classi"
+      (`formalab-classes`, /dev/formalab/classes). Sparisce il gruppo "Servizi esterni" in Develop.
+      Visibilita' invariata: super-admin (come tutta l'integrazione).
+    - D-9 Pagina Classi: tabella `formalab-classes` (motore tabelle, sola lettura, super-admin) con
+      i campi della classe, piu' "Sincronizza ora" (stesso endpoint POST sync). Guida in-app: sezione
+      nuova della guida `formalab` (la pagina sta sotto /dev/formalab, nessuna chiave nuova).
+    - D-10 Conversione one-shot `Integrations\Formalab\Seeders\ClassSelectSeeder` (dopo `migrate` e
+      dopo una sincronizzazione del catalogo): ogni attributo mappato su `label` diventa relazione
+      verso le classi; i valori testo delle commesse diventano edition_id (dal collegamento
+      esistente, altrimenti dall'unica classe con quell'etichetta), quelli non trovati si svuotano e
+      vengono elencati in output. Idempotente.
+    - D-11 Migrazione legacy (backend.md §9, il legacy si adegua): `gol_corso` arriva come attributo
+      `relation` verso `formalab-classes` e il suo valore e' `orderformaziones.edition_id`. In
+      qnet-2 il valore passa dalla validazione relazione (exists su formalab_classes): sincronizzare
+      il catalogo PRIMA di migrare le commesse.
+  </context>
+
+  <contract>
+    <endpoint method="GET" path="/api/integrations/formalab/classes/for-select" auth="sanctum">
+      query: search?, offset?, limit?, ids[]? (ADR 0011)
+      200: { success, message, items: [{ id: edition_id, label: "CODE - Title", subtitle?: string }], pagination: { total, offset, limit, total_pages } }
+    </endpoint>
+    <table domain="formalab-classes" authz="super-admin" readonly="true">
+      columns: edition_id, code, title, status, course_status, start_date, end_date, total_hours,
+      exam_date, site_name, site_city, learners_count, last_seen_at
+    </table>
+    <change endpoint="GET /api/integrations/formalab/product-categories/{id}">
+      fields[].relation_entity_type: string|null (key field: "formalab-classes")
+      attributes[].relation_entity_type: string|null
+    </change>
+    <change endpoint="GET /api/integrations/formalab/status">
+      unlinked_work_orders: { linkable, unmatched, without_course_name } (ambiguous removed)
+    </change>
+    <navigation>
+      section external-integrations (integrations:nav.externalIntegrations)
+        group formalab-integration (formalab:nav.label)
+          formalab (formalab:nav.status) /dev/formalab
+          formalab-classes (formalab:nav.classes) /dev/formalab/classes
+    </navigation>
+  </contract>
+
+  <acceptance>
+    - AC-001 for-select: id = edition_id, ricerca per codice/titolo/edition_id, ids[] idratati, 401 senza login, 404 con integrazione spenta.
+    - AC-002 Sync: ogni riga di formalab_classes ha id = edition_id; la migrazione riallinea righe esistenti senza collisioni.
+    - AC-003 Mappatura: chiave su attributo non relazione o relazione verso altro = 422; relazione verso formalab-classes = ok.
+    - AC-004 Salvataggio commessa con classe scelta = collegamento creato e campi mappati scritti; cambio classe = collegamento spostato; select svuotata = collegamento rimosso.
+    - AC-005 La sincronizzazione collega/sposta per edition_id; un'etichetta identica su due classi non conta piu'.
+    - AC-006 "Sincronizza" commessa: usa l'edizione scelta; select vuota = 422.
+    - AC-007 Tabella formalab-classes: super-admin si', altri 403.
+    - AC-008 Menu: sezione Integrazioni esterne con Formalab > Stato e configurazione, Classi; nessun gruppo in Develop.
+    - AC-009 Seeder di conversione: attributo convertito, valori da collegamento / etichetta univoca, non trovati svuotati; seconda esecuzione senza effetti.
+  </acceptance>
+</spec>

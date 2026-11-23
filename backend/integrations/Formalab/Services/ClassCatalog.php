@@ -30,7 +30,7 @@ final class ClassCatalog
     {
         $now = now();
         $columns = array_keys($rows[0] ?? []);
-        $updatable = array_values(array_diff($columns, ['edition_id']));
+        $updatable = array_values(array_diff($columns, ['id', 'edition_id']));
 
         foreach (array_chunk($rows, self::UPSERT_CHUNK) as $chunk) {
             FormalabClass::query()->upsert(
@@ -41,16 +41,6 @@ final class ClassCatalog
         }
 
         return count($rows);
-    }
-
-    /**
-     * Editions whose "code - title" label equals the given course name.
-     *
-     * @return list<int>
-     */
-    public function editionIdsForLabel(string $label): array
-    {
-        return FormalabClass::query()->where('label', $label)->pluck('edition_id')->map(intval(...))->all();
     }
 
     /**

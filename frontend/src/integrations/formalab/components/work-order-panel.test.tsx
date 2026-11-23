@@ -43,7 +43,8 @@ describe('FormalabWorkOrderPanel', () => {
 
     render(<FormalabWorkOrderPanel workOrderId={7} />, { wrapper: Wrapper })
 
-    expect(await screen.findByText(/Non ancora sincronizzata/)).toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0426): the not-linked hint now points to the class select
+    expect(await screen.findByText(/Nessuna classe collegata/)).toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     expect(screen.getAllByRole('button')).toHaveLength(1)
 

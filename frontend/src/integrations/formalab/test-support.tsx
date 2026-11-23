@@ -52,13 +52,13 @@ export function buildCategorySettings(overrides: Partial<FormalabCategorySetting
     field_map: [],
     field_map_source_category: null,
     fields: [
-      { key: 'label', type: 'text', is_key: true, compatible_types: ['text', 'textarea'], suggested_attribute_code: 'gol_corso' },
-      { key: 'exam_date', type: 'date', is_key: false, compatible_types: ['date', 'text', 'textarea'], suggested_attribute_code: 'gol_data_esame' },
-      { key: 'total_hours', type: 'number', is_key: false, compatible_types: ['integer', 'decimal', 'text', 'textarea'], suggested_attribute_code: null },
+      { key: 'label', type: 'class', is_key: true, compatible_types: ['relation'], relation_entity_type: 'formalab-classes', suggested_attribute_code: 'gol_corso' },
+      { key: 'exam_date', type: 'date', is_key: false, compatible_types: ['date', 'text', 'textarea'], relation_entity_type: null, suggested_attribute_code: 'gol_data_esame' },
+      { key: 'total_hours', type: 'number', is_key: false, compatible_types: ['integer', 'decimal', 'text', 'textarea'], relation_entity_type: null, suggested_attribute_code: null },
     ],
     attributes: [
-      { code: 'gol_corso', name: 'Nome Corso / Ed.', type: 'text' },
-      { code: 'gol_data_esame', name: 'Data esame', type: 'date' },
+      { code: 'gol_corso', name: 'Nome Corso / Ed.', type: 'relation', relation_entity_type: 'formalab-classes' },
+      { code: 'gol_data_esame', name: 'Data esame', type: 'date', relation_entity_type: null },
     ],
     can_manage: true,
     ...overrides,

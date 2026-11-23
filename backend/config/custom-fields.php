@@ -50,6 +50,14 @@ return [
     ],
 
     /*
+    | Read-only models a RELATION field may point at, added by optional
+    | modules while booting (spec 0426 D-2): entity_type => ['model' =>
+    | class, 'label' => i18n key]. Empty here: the core ones are in
+    | CustomFieldEntityRegistry::RELATION_ONLY_TARGETS.
+    */
+    'relation_only_targets' => [],
+
+    /*
     | Hard limits of the `table` field type (spec 0180).
     */
     'table' => [

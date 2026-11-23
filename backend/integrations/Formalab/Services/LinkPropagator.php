@@ -56,7 +56,13 @@ final class LinkPropagator
             ->all();
     }
 
-    private function syncLink(FormalabWorkOrderLink $link): bool
+    /**
+     * Writes the link's class onto its work order and records the outcome on
+     * the link: the fingerprint on success, the reason on failure.
+     *
+     * @return bool whether any value of the work order actually changed
+     */
+    public function syncLink(FormalabWorkOrderLink $link): bool
     {
         $workOrder = WorkOrder::query()->find($link->work_order_id);
         $class = $link->formalabClass;

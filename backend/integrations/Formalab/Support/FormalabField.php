@@ -8,8 +8,9 @@ use Integrations\Formalab\Models\FormalabClass;
 
 /**
  * The fields of a Formalab class a category can map onto its work order
- * attributes (spec 0423 D-5). `label` ("code - title") is the key the work
- * order uses to find its edition.
+ * attributes (spec 0423 D-5). `label` is the key: it maps onto the work
+ * order's class select, a relation onto the catalogue whose value is the
+ * edition id (spec 0426 D-3), shown as "code - title".
  */
 enum FormalabField: string
 {
@@ -38,11 +39,14 @@ enum FormalabField: string
 
     public const string TYPE_NUMBER = 'number';
 
+    public const string TYPE_CLASS = 'class';
+
     /** Attribute types able to hold a value of each field type. */
     private const array COMPATIBLE_TYPES = [
         self::TYPE_TEXT => ['text', 'textarea'],
         self::TYPE_DATE => ['date', 'text', 'textarea'],
         self::TYPE_NUMBER => ['integer', 'decimal', 'text', 'textarea'],
+        self::TYPE_CLASS => ['relation'],
     ];
 
     /** The attribute codes the first release wrote (spec 0422 D-7), now only suggested. */
@@ -64,6 +68,7 @@ enum FormalabField: string
     public function type(): string
     {
         return match ($this) {
+            self::Label => self::TYPE_CLASS,
             self::StartDate, self::EndDate, self::ExamDate, self::IpCollectionDate,
             self::AdvanceCreditedAt, self::BalanceCreditedAt => self::TYPE_DATE,
             self::TotalHours, self::LearnersCount => self::TYPE_NUMBER,
@@ -84,14 +89,37 @@ enum FormalabField: string
         return $this === self::Label;
     }
 
+    /** The relation target the key attribute must point at; null for the other fields. */
+    public function relationEntityType(): ?string
+    {
+        return $this->isKey() ? FormalabClass::ENTITY_TYPE : null;
+    }
+
+    /**
+     * Whether an attribute (its type and relation target) can hold this field.
+     *
+     * @param  array<string, mixed>|null  $relationTarget
+     */
+    public function fits(string $attributeType, ?array $relationTarget): bool
+    {
+        $entityType = $this->relationEntityType();
+
+        return in_array($attributeType, $this->compatibleTypes(), true)
+            && ($entityType === null || ($relationTarget['entity_type'] ?? null) === $entityType);
+    }
+
     public function suggestedAttributeCode(): ?string
     {
         return self::SUGGESTED_CODES[$this->value] ?? null;
     }
 
-    /** The class value as the attribute stores it: dates as Y-m-d, '' / missing as null. */
+    /** The class value as the attribute stores it: the key as the edition id, dates as Y-m-d, '' / missing as null. */
     public function valueFrom(FormalabClass $class): mixed
     {
+        if ($this->isKey()) {
+            return $class->edition_id;
+        }
+
         $value = $class->getAttribute($this->value);
 
         if ($value instanceof \DateTimeInterface) {

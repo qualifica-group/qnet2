@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import {
+  attributeOptions,
   toPayload,
   useCategorySettingsForm,
   type CategorySettingsFormValues,
@@ -73,7 +74,7 @@ export function CategorySettingsEditor({ categoryId, settings, onClose }: Catego
       <div className="flex flex-col gap-2">
         <p className="text-xs text-muted-foreground">{t('category.fieldMapHelp')}</p>
         {settings.fields.map((formalabField) => {
-          const options = settings.attributes.filter((attribute) => formalabField.compatible_types.includes(attribute.type))
+          const options = attributeOptions(formalabField, settings.attributes)
           const fieldId = `formalab-map-${formalabField.key}`
           const errorId = `${fieldId}-error`
           return (

@@ -105,53 +105,51 @@ it('fails the run cleanly when the integration is not configured', function () {
     expect($run->outcome)->toBe('failure')->and(FormalabCallLog::query()->count())->toBe(0);
 });
 
-// spec 0423 D-15
-it('links on every sync the work orders whose course name matches one class, and writes their fields', function () {
+// spec 0423 D-15 — REQUIREMENT CHANGED (spec 0426): the match is the edition chosen in the class select
+it('links on every sync the work orders whose chosen edition is in the catalogue, and writes their fields', function () {
     formalabEnable();
     formalabFakeApi([
         formalabClassPayload(1, ['codice' => 'AAA', 'corso' => ['title' => 'Unique']]),
         formalabClassPayload(2, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
         formalabClassPayload(3, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
     ]);
-    $matching = formalabGolWorkOrder(['gol_corso' => 'AAA - Unique']);
-    $ambiguous = formalabGolWorkOrder(['gol_corso' => 'BBB - Twin']);
-    $unmatched = formalabGolWorkOrder(['gol_corso' => 'ZZZ - Nobody']);
-    $notLinkedCategory = formalabGolWorkOrder(['gol_corso' => 'AAA - Unique'], linkCategory: false);
+    // saved before the catalogue had their class: not linked yet
+    $matching = formalabGolWorkOrder(['gol_corso' => 1]);
+    $twin = formalabGolWorkOrder(['gol_corso' => 3]);
+    $unmatched = formalabGolWorkOrder(['gol_corso' => 99]);
+    $notLinkedCategory = formalabGolWorkOrder(['gol_corso' => 1], linkCategory: false);
+    expect(FormalabWorkOrderLink::query()->count())->toBe(0);
 
     $run = runFormalabSync();
 
-    expect($run->outcome)->toBe('success')->and($run->work_orders_updated)->toBe(1)
-        ->and(FormalabWorkOrderLink::query()->pluck('edition_id', 'work_order_id')->all())->toBe([$matching->id => 1])
+    expect($run->outcome)->toBe('success')->and($run->work_orders_updated)->toBe(2)
+        ->and(FormalabWorkOrderLink::query()->pluck('edition_id', 'work_order_id')->all())->toBe([$matching->id => 1, $twin->id => 3])
         ->and($matching->refresh()->attribute_values['gol_stato_corso'])->toBe('In corso')
-        ->and($ambiguous->refresh()->attribute_values)->not->toHaveKey('gol_stato_corso')
+        ->and($twin->refresh()->attribute_values['gol_stato_corso'])->toBe('In corso')
         ->and($unmatched->refresh()->attribute_values)->not->toHaveKey('gol_stato_corso')
         ->and($notLinkedCategory->refresh()->attribute_values)->not->toHaveKey('gol_stato_corso');
 
     // nothing new: the next run links and rewrites nothing
-    expect(runFormalabSync()->work_orders_updated)->toBe(0)->and(FormalabWorkOrderLink::query()->count())->toBe(1);
+    expect(runFormalabSync()->work_orders_updated)->toBe(0)->and(FormalabWorkOrderLink::query()->count())->toBe(2);
 });
 
-// spec 0423 D-15: without the "Collega commesse" counts, the status page tells why the rest is unlinked
+// spec 0423 D-15 — REQUIREMENT CHANGED (spec 0426 D-7): no "ambiguous" any more
 it('reports on the status page why the work orders of linked categories are still unlinked', function () {
     formalabEnable();
-    formalabFakeApi([
-        formalabClassPayload(1, ['codice' => 'AAA', 'corso' => ['title' => 'Unique']]),
-        formalabClassPayload(2, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
-        formalabClassPayload(3, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
-    ]);
-    formalabGolWorkOrder(['gol_corso' => 'AAA - Unique']);
-    formalabGolWorkOrder(['gol_corso' => 'BBB - Twin']);
-    formalabGolWorkOrder(['gol_corso' => 'ZZZ - Nobody']);
-    formalabGolWorkOrder(['gol_corso' => 'YYY - Nobody either']);
+    formalabFakeApi([formalabClassPayload(1)]);
+    formalabGolWorkOrder(['gol_corso' => 1]);
+    formalabGolWorkOrder(['gol_corso' => 98]);
+    formalabGolWorkOrder(['gol_corso' => 99]);
     formalabGolWorkOrder();
-    formalabGolWorkOrder(['gol_corso' => 'ZZZ - Nobody'], linkCategory: false);
+    formalabGolWorkOrder(['gol_corso' => 99], linkCategory: false);
 
     runFormalabSync();
-    // Created after the run: the next sync links it.
-    formalabGolWorkOrder(['gol_corso' => 'AAA - Unique']);
+    // Written without events (as a data import would): the next sync links it.
+    $late = formalabGolWorkOrder();
+    $late->forceFill(['attribute_values' => ['gol_corso' => 1]])->saveQuietly();
 
     expect(app(StatusReport::class)->handle()['unlinked_work_orders'])
-        ->toBe(['linkable' => 1, 'ambiguous' => 1, 'unmatched' => 2, 'without_course_name' => 1])
+        ->toBe(['linkable' => 1, 'unmatched' => 2, 'without_course_name' => 1])
         ->and(FormalabWorkOrderLink::query()->count())->toBe(1);
 });
 
@@ -168,7 +166,7 @@ it('propagates a changed class to the linked work orders only', function () {
 
     $values = $workOrder->refresh()->attribute_values;
     expect($run->work_orders_updated)->toBe(1)
-        ->and($values['gol_corso'])->toBe('COD-7 - Course 7')
+        ->and($values['gol_corso'])->toBe(7)
         ->and($values['gol_stato_corso'])->toBe('In corso')->and($values['gol_stato_classe'])->toBe('Avviata')
         ->and($values['gol_data_inizio_corso'])->toBe('2026-03-02')->and($values['gol_ore_totali_corso'])->toBe(300)
         ->and($values['gol_saldo_data_accredito'])->toBe('2026-09-01')
@@ -195,14 +193,15 @@ it('does not count an empty Formalab value on an already empty field as a change
 
     // same values the class carries; its empty fields are simply absent on the work order
     $workOrder = formalabGolWorkOrder([
-        'gol_corso' => 'COD-8 - Course 8',
+        'gol_corso' => 8,
         'gol_stato_corso' => 'In corso',
         'gol_stato_classe' => 'Avviata',
         'gol_data_inizio_corso' => '2026-03-02',
         'gol_data_fine_corso' => '2026-06-30',
         'gol_ore_totali_corso' => 300,
     ]);
-    FormalabWorkOrderLink::query()->create(['work_order_id' => $workOrder->id, 'edition_id' => 8]);
+    // REQUIREMENT CHANGED (spec 0426 D-5): saving the class select links the work order at once
+    expect(FormalabWorkOrderLink::query()->where('work_order_id', $workOrder->id)->value('edition_id'))->toBe(8);
 
     $run = runFormalabSync();
 
@@ -222,7 +221,7 @@ it('skips a linked work order without the course fields and goes on with the oth
     $run = runFormalabSync();
 
     expect($run->outcome)->toBe('success')->and($run->work_orders_updated)->toBe(1)
-        ->and($good->refresh()->attribute_values['gol_corso'])->toBe('COD-7 - Course 7');
+        ->and($good->refresh()->attribute_values['gol_corso'])->toBe(7);
 });
 
 it('records a sync error on the link of a work order whose fields refuse the value and goes on', function () {
@@ -242,5 +241,5 @@ it('records a sync error on the link of a work order whose fields refuse the val
     $error = FormalabWorkOrderLink::query()->where('work_order_id', $refusing->id)->first();
     expect($run->outcome)->toBe('success')->and($run->work_orders_updated)->toBe(1)
         ->and($error->sync_error)->not->toBeNull()->and($error->synced_hash)->toBeNull()
-        ->and($good->refresh()->attribute_values['gol_corso'])->toBe('COD-7 - Course 7');
+        ->and($good->refresh()->attribute_values['gol_corso'])->toBe(7);
 });

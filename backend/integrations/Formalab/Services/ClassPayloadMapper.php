@@ -10,7 +10,8 @@ use Throwable;
 /**
  * Turns one raw Formalab class payload into the formalab_classes columns.
  * Empty strings become null. The hash covers only the mapped columns, so a
- * change in the learners list alone never counts as a class change.
+ * change in the learners list alone never counts as a class change. The row
+ * id is the edition id (spec 0426 D-1): a relation field stores the edition.
  */
 final class ClassPayloadMapper
 {
@@ -53,7 +54,7 @@ final class ClassPayloadMapper
             'learners_count' => $this->integer($payload['num_discenti'] ?? null),
         ];
 
-        return $columns + ['payload_hash' => hash('sha256', json_encode($columns, JSON_THROW_ON_ERROR))];
+        return ['id' => $editionId] + $columns + ['payload_hash' => hash('sha256', json_encode($columns, JSON_THROW_ON_ERROR))];
     }
 
     private function text(mixed $value): ?string

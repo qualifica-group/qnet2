@@ -88,7 +88,6 @@ export function StatusCard({ status }: { status: FormalabStatus }) {
           <p className="text-xs text-muted-foreground">{t('status.unlinkedDescription')}</p>
           <dl className="flex flex-col gap-1.5">
             <Row label={t('status.unlinkedUnmatched')}>{unlinked.unmatched}</Row>
-            <Row label={t('status.unlinkedAmbiguous')}>{unlinked.ambiguous}</Row>
             <Row label={t('status.unlinkedWithoutCourseName')}>{unlinked.without_course_name}</Row>
             <Row label={t('status.unlinkedLinkable')}>{unlinked.linkable}</Row>
           </dl>

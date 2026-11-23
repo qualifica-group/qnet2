@@ -10,16 +10,24 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * One class (course edition) of the Formalab catalogue, mirrored locally by
  * the periodic sync. `payload_hash` is the fingerprint of the mapped columns:
- * work orders are rewritten only when it differs from their link's.
+ * work orders are rewritten only when it differs from their link's. Its id is
+ * always the edition id (spec 0426 D-1): the work order "course" field is a
+ * relation onto this model, so its value is the edition.
  */
 #[Fillable([
-    'edition_id', 'code', 'title', 'label', 'status', 'course_status',
+    'id', 'edition_id', 'code', 'title', 'label', 'status', 'course_status',
     'start_date', 'end_date', 'total_hours', 'exam_date', 'ip_collection_date',
     'advance_decree', 'advance_credited_at', 'balance_decree', 'balance_credited_at',
     'site_name', 'site_city', 'site_code', 'learners_count', 'payload_hash', 'last_seen_at',
 ])]
 class FormalabClass extends Model
 {
+    /** The relation target key of the work order "course" field (spec 0426 D-2). */
+    public const string ENTITY_TYPE = 'formalab-classes';
+
+    /** The for-select resource the relation field calls (/api/{resource}/for-select). */
+    public const string FOR_SELECT_RESOURCE = 'integrations/formalab/classes';
+
     protected $table = 'formalab_classes';
 
     /**

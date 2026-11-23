@@ -1,6 +1,9 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Integrations\Formalab\Models\FormalabWorkOrderLink;
+use Integrations\Formalab\Services\ClassCatalogSync;
+use Integrations\Formalab\Support\Trigger;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -14,7 +17,7 @@ function formalabLockedCodes(): array
 // AC-010
 it('shows the mapped fields of a linked category as locked, the course name excepted', function () {
     formalabEnable();
-    $workOrder = formalabGolWorkOrder(['gol_corso' => 'COD-5 - Course 5']);
+    $workOrder = formalabGolWorkOrder(['gol_corso' => 5]);
     $plain = formalabGolWorkOrder(linkCategory: false);
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
 
@@ -26,10 +29,12 @@ it('shows the mapped fields of a linked category as locked, the course name exce
     $this->getJson('/api/work-orders/'.$plain->id)->assertOk()->assertJsonPath('data.locked_attributes', []);
 });
 
-// AC-011
-it('refuses a user change to a locked field and accepts the course name, other fields and an unchanged resend', function () {
+// AC-011 — REQUIREMENT CHANGED (spec 0426): the course name is the class select (an edition of the catalogue)
+it('refuses a user change to a locked field and accepts the class select, other fields and an unchanged resend', function () {
     formalabEnable();
-    $workOrder = formalabGolWorkOrder(['gol_corso' => 'COD-5 - Course 5', 'gol_stato_corso' => 'In corso', 'gol_ore_totali_corso' => 120]);
+    formalabFakeApi([formalabClassPayload(5), formalabClassPayload(6)]);
+    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    $workOrder = formalabGolWorkOrder(['gol_corso' => 5]);
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
     $url = '/api/work-orders/'.$workOrder->id;
 
@@ -37,14 +42,19 @@ it('refuses a user change to a locked field and accepts the course name, other f
         ->assertUnprocessable()->assertJsonValidationErrors('attribute_values.gol_stato_corso');
     $this->patchJson($url, ['attribute_values' => ['gol_data_esame' => '2026-07-10']])
         ->assertUnprocessable()->assertJsonValidationErrors('attribute_values.gol_data_esame');
+    $this->patchJson($url, ['attribute_values' => ['gol_corso' => 99]])
+        ->assertUnprocessable()->assertJsonValidationErrors('attribute_values.gol_corso');
+    $this->patchJson($url, ['attribute_values' => ['gol_corso' => 'COD-6 - Course 6']])
+        ->assertUnprocessable()->assertJsonValidationErrors('attribute_values.gol_corso');
 
     $this->patchJson($url, ['attribute_values' => [
-        'gol_corso' => 'COD-6 - Course 6', 'gol_notice' => 'free', 'gol_stato_corso' => 'In corso', 'gol_ore_totali_corso' => '120', 'gol_data_esame' => '',
+        'gol_corso' => 6, 'gol_notice' => 'free', 'gol_stato_corso' => 'In corso', 'gol_ore_totali_corso' => '300', 'gol_data_esame' => '',
     ]])->assertOk();
 
     $values = $workOrder->refresh()->attribute_values;
-    expect($values['gol_corso'])->toBe('COD-6 - Course 6')->and($values['gol_notice'])->toBe('free')
-        ->and($values['gol_stato_corso'])->toBe('In corso');
+    expect($values['gol_corso'])->toBe(6)->and($values['gol_notice'])->toBe('free')
+        ->and($values['gol_stato_corso'])->toBe('In corso')
+        ->and(FormalabWorkOrderLink::query()->where('work_order_id', $workOrder->id)->value('edition_id'))->toBe(6);
 });
 
 it('locks the mapped fields on create and in the form context', function () {

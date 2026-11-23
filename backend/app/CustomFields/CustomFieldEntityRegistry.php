@@ -27,7 +27,9 @@ use Illuminate\Database\Eloquent\Model;
  * A RELATION field may also point at a read-only reference model that is not
  * custom-fieldable (spec 0225): RELATION_ONLY_TARGETS lists them. They are
  * valid relation targets only — never a host for custom fields — and expose a
- * `{entity_type}/for-select` endpoint like any other target.
+ * `{entity_type}/for-select` endpoint like any other target. An optional
+ * module adds its own through `config('custom-fields.relation_only_targets')`
+ * (spec 0426 D-2), with the i18n key of its label.
  */
 class CustomFieldEntityRegistry
 {
@@ -76,6 +78,8 @@ class CustomFieldEntityRegistry
      */
     public function relationTargets(): array
     {
+        $configured = $this->configuredRelationOnlyTargets();
+
         return [
             ...$this->entities(),
             ...array_map(
@@ -84,6 +88,14 @@ class CustomFieldEntityRegistry
                     'label' => "customFields.entities.{$entityType}",
                 ],
                 array_keys(self::RELATION_ONLY_TARGETS),
+            ),
+            ...array_map(
+                static fn (string $entityType, array $target): array => [
+                    'entity_type' => $entityType,
+                    'label' => $target['label'] ?? "customFields.entities.{$entityType}",
+                ],
+                array_keys($configured),
+                array_values($configured),
             ),
         ];
     }
@@ -95,7 +107,7 @@ class CustomFieldEntityRegistry
 
     public function isRelationTarget(string $entityType): bool
     {
-        return $this->isCustomFieldable($entityType) || array_key_exists($entityType, self::RELATION_ONLY_TARGETS);
+        return $this->isCustomFieldable($entityType) || $this->relationOnlyModelClass($entityType) !== null;
     }
 
     /**
@@ -106,7 +118,26 @@ class CustomFieldEntityRegistry
      */
     public function modelClassFor(string $entityType): ?string
     {
-        return $this->map()[$entityType]['model_class'] ?? self::RELATION_ONLY_TARGETS[$entityType] ?? null;
+        return $this->map()[$entityType]['model_class'] ?? $this->relationOnlyModelClass($entityType);
+    }
+
+    /**
+     * @return class-string<Model>|null
+     */
+    private function relationOnlyModelClass(string $entityType): ?string
+    {
+        return self::RELATION_ONLY_TARGETS[$entityType] ?? $this->configuredRelationOnlyTargets()[$entityType]['model'] ?? null;
+    }
+
+    /**
+     * Read at every call, not memoized: an optional module registers its
+     * targets while booting, after this singleton may have been built.
+     *
+     * @return array<string, array{model: class-string<Model>, label?: string}>
+     */
+    private function configuredRelationOnlyTargets(): array
+    {
+        return (array) config('custom-fields.relation_only_targets', []);
     }
 
     public function resourceFor(string $entityType): ?string

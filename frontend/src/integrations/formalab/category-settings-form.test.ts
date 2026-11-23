@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialValues, toPayload } from '@/integrations/formalab/category-settings-form'
+import { attributeOptions, initialValues, toPayload } from '@/integrations/formalab/category-settings-form'
 import { buildCategorySettings } from '@/integrations/formalab/test-support'
 
 describe('category settings form', () => {
@@ -27,5 +27,20 @@ describe('category settings form', () => {
     const child = buildCategorySettings({ is_root: false })
     expect(initialValues(child).inherit).toBe(true)
     expect(toPayload(child, { enabled: true, inherit: true, map: { label: 'gol_corso' } })).toEqual({ field_map: null })
+  })
+
+  // spec 0426 D-3: the key field accepts only relation attributes towards the Formalab classes
+  it('offers the key field only the relation attributes towards the Formalab classes', () => {
+    const settings = buildCategorySettings({
+      attributes: [
+        { code: 'gol_corso', name: 'Classe', type: 'relation', relation_entity_type: 'formalab-classes' },
+        { code: 'other_relation', name: 'Altra relazione', type: 'relation', relation_entity_type: 'registries' },
+        { code: 'course_text', name: 'Corso testo', type: 'text', relation_entity_type: null },
+      ],
+    })
+    const [keyField, examDate] = settings.fields
+
+    expect(attributeOptions(keyField, settings.attributes).map((attribute) => attribute.code)).toEqual(['gol_corso'])
+    expect(attributeOptions(examDate, settings.attributes).map((attribute) => attribute.code)).toEqual(['course_text'])
   })
 })

@@ -10,6 +10,7 @@ use App\Tables\AbstractTableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Integrations\Formalab\Models\FormalabCallLog;
+use Integrations\Formalab\Tables\Concerns\BuildsColumns;
 
 /**
  * The `formalab-call-logs` table domain: every call to or from Formalab.
@@ -18,6 +19,8 @@ use Integrations\Formalab\Models\FormalabCallLog;
  */
 class FormalabCallLogsTableDefinition extends AbstractTableDefinition
 {
+    use BuildsColumns;
+
     private const string LABELS = 'formalab:logs.columns';
 
     public function domain(): string
@@ -75,33 +78,6 @@ class FormalabCallLogsTableDefinition extends AbstractTableDefinition
             $this->column('trigger', 'text', sortable: true),
             $this->column('error_message', 'text'),
         ];
-    }
-
-    /**
-     * @param  array<int, string>|null  $options
-     * @return array<string, mixed>
-     */
-    private function column(string $id, string $type, bool $visible = true, bool $sortable = false, ?string $filter = null, ?array $options = null, bool $searchable = false): array
-    {
-        $column = [
-            'id' => $id,
-            'label' => self::LABELS.".{$id}",
-            'type' => $type,
-            'visible' => $visible,
-            'sortable' => $sortable,
-            'filterable' => $filter !== null,
-            'filterType' => $filter,
-        ];
-
-        if ($options !== null) {
-            $column['options'] = $options;
-        }
-
-        if ($searchable) {
-            $column['searchable'] = true;
-        }
-
-        return $column;
     }
 
     /**

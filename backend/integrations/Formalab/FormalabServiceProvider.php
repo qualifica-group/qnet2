@@ -5,19 +5,23 @@ declare(strict_types=1);
 namespace Integrations\Formalab;
 
 use App\Integrations\IntegrationRegistry;
+use App\Models\WorkOrder;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Integrations\Formalab\Console\SyncClassesCommand;
 use Integrations\Formalab\Health\FormalabHealthCheck;
 use Integrations\Formalab\Jobs\SyncFormalabClasses;
+use Integrations\Formalab\Listeners\FollowClassSelect;
 use Integrations\Formalab\Models\FormalabCallLog;
+use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabSyncRun;
 use Integrations\Formalab\Services\MappedFieldLock;
 use Integrations\Formalab\Support\Trigger;
 use Integrations\Formalab\Tables\FormalabCallLogsTableDefinition;
+use Integrations\Formalab\Tables\FormalabClassesTableDefinition;
 
 /**
- * Formalab integration (spec 0422), isolated from the core. Disabled
+ * Formalab integration (spec 0422, 0423, 0426), isolated from the core. Disabled
  * (FORMALAB_ENABLED=false, the default) it only loads its migrations and
  * translations: no route, menu entry, health check, table, command or
  * schedule exists. The state is read at boot, so a change needs
@@ -27,15 +31,34 @@ class FormalabServiceProvider extends ServiceProvider
 {
     public const string KEY = 'formalab';
 
-    private const string NAVIGATION_SECTION = 'develop';
-
-    /** Shared group of the external-service integrations inside Develop. */
-    private const array NAVIGATION_GROUP = [
-        'key' => 'external-services',
-        'label' => 'integrations:nav.externalServices',
-        'icon' => 'plug',
+    /**
+     * Top-level section shared by the external integrations (spec 0426 D-8),
+     * created by the first one that boots, just before Develop.
+     */
+    private const array NAVIGATION_SECTION = [
+        'key' => 'external-integrations',
+        'label' => 'integrations:nav.externalIntegrations',
+        'icon' => null,
         'route' => null,
         'permission' => null,
+        'type' => 'section',
+    ];
+
+    private const string NAVIGATION_SECTION_BEFORE = 'develop';
+
+    private const string SUPER_ADMIN = 'super-admin';
+
+    /** The Formalab group: status page and class catalogue, super-admin only. */
+    private const array NAVIGATION_GROUP = [
+        'key' => 'formalab-integration',
+        'label' => 'formalab:nav.label',
+        'icon' => 'graduation-cap',
+        'route' => null,
+        'permission' => null,
+        'children' => [
+            ['key' => self::KEY, 'label' => 'formalab:nav.status', 'icon' => 'activity', 'route' => '/dev/formalab', 'permission' => null, 'role' => self::SUPER_ADMIN],
+            ['key' => 'formalab-classes', 'label' => 'formalab:nav.classes', 'icon' => 'library', 'route' => '/dev/formalab/classes', 'permission' => null, 'role' => self::SUPER_ADMIN],
+        ],
     ];
 
     private const int MAX_CRON_MINUTES = 59;
@@ -55,71 +78,57 @@ class FormalabServiceProvider extends ServiceProvider
         }
 
         $this->loadRoutesFrom(__DIR__.'/routes/api.php');
-        $this->registerNavigationItem();
-        $this->registerTableDefinition();
+        $this->registerNavigation();
+        $this->registerTableDefinitions();
+        $this->registerClassRelationTarget();
         $this->app->tag([FormalabHealthCheck::class], 'system-health.checks');
         $this->app->tag([MappedFieldLock::class], 'work-orders.attribute-locks');
+        WorkOrder::saved(fn (WorkOrder $workOrder) => $this->app->make(FollowClassSelect::class)->handle($workOrder));
         $this->app->make(IntegrationRegistry::class)->activate(self::KEY);
         $this->callAfterResolving(Schedule::class, $this->schedule(...));
         $this->commands([SyncClassesCommand::class]);
     }
 
     /**
-     * Puts the status page under Develop > Servizi esterni (super-admin
-     * only), creating the group if no other integration did. Idempotent:
-     * with a cached config the item is already there and is not added again.
+     * Puts the Formalab group in the "Integrazioni esterne" section, creating
+     * the section before Develop if no other integration did. Idempotent: with
+     * a cached config the group is already there and is not added again.
      */
-    private function registerNavigationItem(): void
+    private function registerNavigation(): void
     {
-        $item = [
-            'key' => self::KEY,
-            'label' => 'formalab:nav.label',
-            'icon' => 'graduation-cap',
-            'route' => '/dev/formalab',
-            'permission' => null,
-            'role' => 'super-admin',
-        ];
+        $items = config('navigation.items', []);
 
-        $items = array_map(function (array $section) use ($item): array {
-            if (($section['key'] ?? null) !== self::NAVIGATION_SECTION) {
-                return $section;
+        if (! in_array(self::NAVIGATION_SECTION['key'], array_column($items, 'key'), true)) {
+            $position = array_search(self::NAVIGATION_SECTION_BEFORE, array_column($items, 'key'), true);
+            array_splice($items, $position === false ? count($items) : $position, 0, [[...self::NAVIGATION_SECTION, 'children' => []]]);
+        }
+
+        $items = array_map(static function (array $section): array {
+            if ($section['key'] === self::NAVIGATION_SECTION['key'] && ! in_array(self::NAVIGATION_GROUP['key'], array_column($section['children'], 'key'), true)) {
+                $section['children'][] = self::NAVIGATION_GROUP;
             }
 
-            $section['children'] = $this->withItemInGroup($section['children'] ?? [], $item);
-
             return $section;
-        }, config('navigation.items', []));
+        }, $items);
 
         config(['navigation.items' => $items]);
     }
 
-    /**
-     * @param  array<int, array<string, mixed>>  $children
-     * @param  array<string, mixed>  $item
-     * @return array<int, array<string, mixed>>
-     */
-    private function withItemInGroup(array $children, array $item): array
-    {
-        $keys = array_column($children, 'key');
-
-        if (! in_array(self::NAVIGATION_GROUP['key'], $keys, true)) {
-            $children[] = [...self::NAVIGATION_GROUP, 'children' => []];
-        }
-
-        return array_map(static function (array $child) use ($item): array {
-            if ($child['key'] === self::NAVIGATION_GROUP['key'] && ! in_array($item['key'], array_column($child['children'], 'key'), true)) {
-                $child['children'][] = $item;
-            }
-
-            return $child;
-        }, $children);
-    }
-
-    private function registerTableDefinition(): void
+    private function registerTableDefinitions(): void
     {
         config(['tables.definitions' => [
             ...config('tables.definitions', []),
             'formalab-call-logs' => FormalabCallLogsTableDefinition::class,
+            'formalab-classes' => FormalabClassesTableDefinition::class,
+        ]]);
+    }
+
+    /** The work order class select is a relation field onto the catalogue (spec 0426 D-2). */
+    private function registerClassRelationTarget(): void
+    {
+        config(['custom-fields.relation_only_targets' => [
+            ...config('custom-fields.relation_only_targets', []),
+            FormalabClass::ENTITY_TYPE => ['model' => FormalabClass::class, 'label' => 'formalab:classes.entity'],
         ]]);
     }
 

@@ -29,6 +29,7 @@ describe('devRoutes', () => {
     '/dev/api-clients',
     '/dev/api-docs',
     '/dev/formalab',
+    '/dev/formalab/classes',
   ])('registers %s inside the app router', (pathname) => {
     expect(matchRoutes(router.routes, { pathname })).not.toBeNull()
     expect(matchRoutes(devRoutes, { pathname })).not.toBeNull()
