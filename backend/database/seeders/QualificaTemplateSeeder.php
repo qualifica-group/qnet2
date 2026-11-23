@@ -43,7 +43,7 @@ class QualificaTemplateSeeder extends Seeder
      *
      * @var array<string, mixed>
      */
-    private const array MANAGER_RELATION_TARGET = [
+    public const array MANAGER_RELATION_TARGET = [
         'entity_type' => 'users',
         'cardinality' => 'one',
         'for_select_resource' => 'users',
