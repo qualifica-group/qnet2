@@ -25,8 +25,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 // The APL orientation practices (user directive 2026-10-05, "Campi Misure
 // APL" sheet, Orientamento/SFL GOL): "Orientamento Specialistico" gets its own
-// offer fields, form and working states, sharing the decree, reporting and
-// end-date fields with the other APL practices. Every seeded section is white.
+// fields, form and working states, sharing the decree, reporting and end-date
+// fields with the other APL practices. Every seeded section is white.
+// REQUIREMENT CHANGED 2026-11-23: the fields and the form are the Commessa's;
+// the offer keeps "Anagrafica Utente" alone, synced with it (spec 0425, D-9).
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -34,7 +36,7 @@ beforeEach(function (): void {
     config(['migrations.base_url' => null]);
 });
 
-it('gives the orientation practices their own offer fields, cut off the APL root', function (): void {
+it('gives the orientation practices their own Commessa fields, the offer keeping "Anagrafica Utente" synced', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicates.
 
@@ -45,8 +47,11 @@ it('gives the orientation practices their own offer fields, cut off the APL root
     expect($category->parent_id)->toBe($apl->id)
         ->and($category->is_selectable)->toBeTrue()
         ->and($category->inherits_quote_attributes)->toBeFalse()
-        ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::Quote)->pluck('code')->sort()->values()->all())
+        ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::WorkOrder)->pluck('code')->sort()->values()->all())
         ->toBe(collect($ownCodes)->sort()->values()->all())
+        ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::Quote)->pluck('code')->all())->toBe(['user_registry'])
+        ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::WorkOrder)->where('syncs_with_quote', true)->pluck('code')->all())->toBe(['user_registry'])
+        ->and(app(AttributeLayoutService::class)->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))->toBeNull()
         ->and($ownCodes)->toHaveCount(16);
 
     // One "Data fine" attribute shared with the internships, not a copy.
@@ -72,11 +77,11 @@ it('gives the orientation practices their own offer fields, cut off the APL root
         ]);
 });
 
-it('lays the orientation offer form out in the sheet order, every section white', function (): void {
+it('lays the orientation Commessa form out in the sheet order, every section white', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $category = ProductCategory::query()->where('name', AplOrientationAttributeCatalogue::CATEGORY)->sole();
-    $sections = app(AttributeLayoutService::class)->resolveWithFallback($category, AttributeContext::Quote, FormMode::Create)['sections'];
+    $sections = app(AttributeLayoutService::class)->resolveWithFallback($category, AttributeContext::WorkOrder, FormMode::Create)['sections'];
     $codesBySection = array_map(
         static fn (array $section): array => array_merge(...array_map(
             static fn (array $row): array => array_column($row['items'], 'attribute_code'),
@@ -95,34 +100,6 @@ it('lays the orientation offer form out in the sheet order, every section white'
                 'orientation_job_support_1_date', 'orientation_job_support_2_date', 'orientation_job_support_3_date',
             ],
         ]);
-});
-
-it('recomposes the orientation form the previous revision seeded, never one edited by hand', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $layouts = app(AttributeLayoutService::class);
-    $category = ProductCategory::query()->where('name', AplOrientationAttributeCatalogue::CATEGORY)->sole();
-    $seeded = $layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All);
-
-    // The blob the 2026-10-05 revision wrote: no "Anagrafica Utente" row.
-    $previous = $seeded;
-    array_shift($previous['sections'][0]['rows']);
-    $previous['sections'][0]['description'] = 'Rinnovo SFL, decreto e politiche attive della pratica.';
-    $layouts->upsert($category, AttributeContext::Quote, LayoutFormScope::All, $previous);
-
-    test()->seed(QualificaQuoteLayoutSeeder::class);
-
-    expect($layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))->toBe($seeded);
-
-    // The same form renamed by hand: a human's work, left exactly as it is.
-    $handEdited = $previous;
-    $handEdited['sections'][0]['title'] = 'Rinominata a mano';
-    $layouts->upsert($category, AttributeContext::Quote, LayoutFormScope::All, $handEdited);
-
-    test()->seed(QualificaQuoteLayoutSeeder::class);
-
-    expect($layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All)['sections'][0]['title'])
-        ->toBe('Rinominata a mano');
 });
 
 it('gives the orientation practices their own working states, winning over the APL branch set', function (): void {

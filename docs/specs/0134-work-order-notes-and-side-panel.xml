@@ -34,7 +34,9 @@
       utenti attivi con `work-orders.view` che sono Responsabili/Partecipanti oppure hanno
       `work-orders.viewAll`, piu' i super-admin. Scrittura = `notes.create` (core invariato).
       Nessuna unita' di scoping: `ownsQuote` false, `quoteScopes` vuoto. Deep link
-      `/work-orders/{id}` solo se il destinatario legge la Commessa, altrimenti null.
+      `/work-orders/{id}?tab=notes` (rev. 2026-11-23, segnalazione utente: dal 2026-11-16 un link
+      apre la Commessa su Info e la nota non si vedeva) solo se il destinatario legge la Commessa,
+      altrimenti null.
     </decision>
     <decision id="D-3">
       Layout: colonna sinistra = card attuale (header + tab Dettagli/Task); colonna destra = card
@@ -89,7 +91,7 @@
     <ac id="AC-004">Un membro con `notes.create` scrive una nota sulla Commessa; senza `notes.create` = 403.</ac>
     <ac id="AC-005">Menzionabili = membri + `viewAll` + super-admin, esclusi estranei e disattivati.</ac>
     <ac id="AC-006">`quote_id` su nota di Commessa = 422; `meta.quotes` vuoto.</ac>
-    <ac id="AC-007">Deep link `/work-orders/{id}` per chi vede la Commessa, null altrimenti.</ac>
+    <ac id="AC-007">Deep link `/work-orders/{id}?tab=notes` per chi vede la Commessa, null altrimenti.</ac>
     <ac id="AC-008">Dettaglio: card laterale con tab Note, Documenti e Log attivita'; log non piu' nella card principale; ogni tab assente senza il suo permesso, card assente senza nessuno.</ac>
     <ac id="AC-009">Alias `work_order` caricabile e listabile via `/api/attachments`; upload 403 senza `attachments.create`.</ac>
     <ac id="AC-010">`permissions.actions.view_documents` rispecchia `work-orders.viewDocuments`.</ac>

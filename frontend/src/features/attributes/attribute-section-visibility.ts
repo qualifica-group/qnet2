@@ -1,10 +1,11 @@
-import type { LayoutBlob, LayoutSection } from '@/features/attributes/attribute-layout-types'
+import type { LayoutBlob, LayoutSection, LayoutSectionCondition } from '@/features/attributes/attribute-layout-types'
 
 /**
  * The single FE implementation of the conditional-section rule (spec 0288 D-3),
  * mirroring backend `App\RequestManagement\AttributeSectionVisibility`.
  * A section with `visible_when` is visible only if the control attribute's
- * value is strictly `true` AND the section that places the control is visible
+ * value is strictly `true` — or, with `option_values` (spec 0424), is one of
+ * them or a list holding one of them — AND the section that places the control is visible
  * (chains can only arise from merged multi-category layouts). A control that
  * is not placed in the layout, or a cycle, hides the section. Sections without
  * a condition (and the synthetic "other information" one, which is not in the
@@ -23,6 +24,15 @@ function controlSectionsByCode(layout: LayoutBlob): Map<string, LayoutSection> {
   return byCode
 }
 
+function isConditionMet(condition: LayoutSectionCondition, value: unknown): boolean {
+  const options = condition.option_values
+  if (!options || options.length === 0) {
+    return value === true
+  }
+  const held: unknown[] = Array.isArray(value) ? value : [value]
+  return held.some((entry) => typeof entry === 'string' && options.includes(entry))
+}
+
 function evaluate(
   section: LayoutSection,
   byCode: ReadonlyMap<string, LayoutSection>,
@@ -34,7 +44,7 @@ function evaluate(
     return true
   }
   const container = byCode.get(condition.attribute_code)
-  if (!container || visiting.has(section.id) || values[condition.attribute_code] !== true) {
+  if (!container || visiting.has(section.id) || !isConditionMet(condition, values[condition.attribute_code])) {
     return false
   }
   return evaluate(container, byCode, values, new Set(visiting).add(section.id))

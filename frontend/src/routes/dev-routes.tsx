@@ -2,6 +2,7 @@ import { Navigate, type RouteObject } from 'react-router-dom'
 import { RedirectKeepingLocation } from '@/routes/redirect-keeping-location'
 import { lazyRoute } from '@/routes/lazy-route'
 import { MigrationRouteGuard } from '@/features/migrations/migration-route-guard'
+import { integrationDevRoutes } from '@/integrations'
 
 const MigrationsPage = lazyRoute(() => import('@/features/migrations/migrations-page'))
 const SystemHealthPage = lazyRoute(() => import('@/features/system-health/system-health-page'))
@@ -25,6 +26,7 @@ export const devRoutes: RouteObject[] = [
       { path: 'dev/migrations', element: <MigrationsPage /> },
       { path: 'dev/system-health', element: <SystemHealthPage /> },
       { path: 'dev/workspaces', element: <WorkspacesPage /> },
+      ...integrationDevRoutes,
     ],
   },
   { path: 'dev/api-clients', element: <ApiIntegrationsPage /> },

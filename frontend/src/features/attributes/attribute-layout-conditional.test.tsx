@@ -140,4 +140,10 @@ describe('attributeLayoutBlobSchema visible_when', () => {
     expect(parse({}).success).toBe(false)
     expect(parse({ attribute_code: '' }).success).toBe(false)
   })
+
+  it('spec 0424: a choice condition needs at least one entry', () => {
+    expect(parse({ attribute_code: 'groups', option_values: ['food', 'brc'] }).success).toBe(true)
+    expect(parse({ attribute_code: 'groups', option_values: [] }).success).toBe(false)
+    expect(parse({ attribute_code: 'groups', option_values: [''] }).success).toBe(false)
+  })
 })

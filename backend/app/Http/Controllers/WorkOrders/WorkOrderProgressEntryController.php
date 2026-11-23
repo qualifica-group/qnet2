@@ -38,7 +38,7 @@ class WorkOrderProgressEntryController extends BaseApiController
     public function store(StoreWorkOrderProgressEntryRequest $request, WorkOrder $workOrder): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             /** @var User $actor */
             $actor = $request->user();
@@ -53,7 +53,7 @@ class WorkOrderProgressEntryController extends BaseApiController
     public function destroy(WorkOrder $workOrder, WorkOrderProgressEntry $progressEntry): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             $this->service->delete($progressEntry);
 

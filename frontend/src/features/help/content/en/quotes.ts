@@ -42,7 +42,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The **Additional information** appears, below the **Offer** and **Costs** rows, as soon as the chosen opportunity or an offer row has a category that requires it: it is the same you see in **Request Management** for the same request, with the same values. Some sections appear only when a yes/no field is on: with the field off the section disappears, its required fields are not needed and its values are cleared on save. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation.',
+          text: 'The **Additional information** appears, below the **Offer** and **Costs** rows, as soon as the chosen opportunity or an offer row has a category that requires it: it is the same you see in **Request Management** for the same request, with the same values. Some sections appear only when a yes/no field is on: with the field off the section disappears, its required fields are not needed and its values are cleared on save. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation. A field with the link icon beside its name is **synced with the work order**: changing it also changes it on the linked work orders, and vice versa.',
         },
         {
           type: 'note',

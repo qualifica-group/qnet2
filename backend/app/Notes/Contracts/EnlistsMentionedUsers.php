@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Optional capability of a NotableEntity (spec 0353): whoever may edit the
- * record can mention a colleague outside its perimeter, and saving the note
+ * Optional capability of a NotableEntity (spec 0353): whoever reads the
+ * record's notes can mention a colleague outside its perimeter, and saving the note
  * enlists that person in the record under the host's own role.
  *
  * The host module declares the role and does the writing; the notes core
@@ -29,7 +29,7 @@ interface EnlistsMentionedUsers
     public function enlistmentRole(): string;
 
     /**
-     * Whether $actor may enlist people in $record (the host's update gate).
+     * Whether $actor may enlist people in $record (the host's notes read gate, D-2 rev.).
      */
     public function canEnlist(User $actor, Model $record): bool;
 

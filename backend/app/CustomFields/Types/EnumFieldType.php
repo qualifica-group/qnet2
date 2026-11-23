@@ -15,9 +15,9 @@ use Illuminate\Validation\Rule;
 
 /**
  * Discrete-choice field backed by the definition's `options()` (spec 0021
- * MVP). `config.display`: select|radio|badge (single value) or multiselect
- * (array). A single value is stored as a plain string; multiselect as a JSON
- * array of strings — both share the SAME set filter/sort/distinct behaviour
+ * MVP). `config.display`: select|radio|badge (single value) or
+ * multiselect/checklist (array, EnumDisplay). A single value is stored as a
+ * plain string; a multi value as a JSON array of strings — both share the SAME set filter/sort/distinct behaviour
  * (Concerns\AppliesSetFilter / ResolvesDistinctJsonValues handle either
  * shape transparently).
  */
@@ -106,6 +106,6 @@ class EnumFieldType implements FieldTypeHandler
 
     private function isMulti(CustomFieldDefinition $definition): bool
     {
-        return ($definition->config['display'] ?? null) === 'multiselect';
+        return EnumDisplay::isMultiValue($definition->config);
     }
 }

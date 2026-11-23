@@ -3,7 +3,8 @@ import type { EffectiveAttribute } from '@/features/product-categories/types'
 
 /**
  * Configuration rules for conditional sections (spec 0288 D-2/D-7), mirroring
- * the server validator: the control attribute is a `boolean`, placed in this
+ * the server validator: the control attribute is a `boolean` or an `enum`
+ * with options (one option per condition, spec 0424 D-2), placed in this
  * layout, outside the section it controls, in a section with no condition of
  * its own (no chains). Pure so the Select options and the auto-reset are
  * unit-testable without mounting the configurator.
@@ -22,7 +23,7 @@ function sectionIdByCode(blob: LayoutBlob): Map<string, string> {
   return byCode
 }
 
-/** The boolean attributes `sectionId` may use as its condition, sort_order-stable. */
+/** The boolean and choice attributes `sectionId` may use as its condition, sort_order-stable. */
 export function allowedConditionAttributes(
   blob: LayoutBlob,
   sectionId: string,
@@ -36,7 +37,7 @@ export function allowedConditionAttributes(
     .filter((attribute) => {
       const containerId = placedIn.get(attribute.code)
       return (
-        attribute.type === 'boolean' &&
+        (attribute.type === 'boolean' || (attribute.type === 'enum' && attribute.options.length > 0)) &&
         containerId !== undefined &&
         containerId !== sectionId &&
         unconditionalSectionIds.has(containerId)

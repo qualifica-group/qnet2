@@ -41,6 +41,7 @@ function toInheritedAttributes(
       name: attribute.name,
       type: attribute.type,
       is_required: attribute.is_required,
+      syncs_with_quote: attribute.syncs_with_quote,
       context,
     }))
   return [...tag(product, 'product'), ...tag(quote, 'quote'), ...tag(workOrder, 'work_order')]

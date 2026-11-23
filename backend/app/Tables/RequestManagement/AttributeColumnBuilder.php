@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement;
 
 use App\CustomFields\FieldTypeRegistry;
+use App\CustomFields\Types\EnumDisplay;
 use App\CustomFields\Types\FieldTypeHandler;
 
 /**
@@ -260,7 +261,7 @@ final class AttributeColumnBuilder
      */
     private function isMultiEnum(array $attributeRow): bool
     {
-        return ($attributeRow['config']['display'] ?? null) === 'multiselect';
+        return EnumDisplay::isMultiValue($attributeRow['config'] ?? null);
     }
 
     /**

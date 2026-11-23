@@ -2,6 +2,8 @@
 
 use App\Authorization\Denials\ForbiddenResponse;
 use App\Http\Middleware\CaptureCustomFields;
+use App\Http\Middleware\EnforceMcpLinkLife;
+use App\Http\Middleware\EnsureApiClientKey;
 use App\Http\Middleware\EnsureApiClientMethodAllowed;
 use App\Http\Middleware\EnsureFirstPasswordSet;
 use App\Http\Middleware\EnsureNotInMaintenance;
@@ -34,6 +36,11 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware(['api', 'auth:sanctum'])
                 ->prefix('api')
                 ->group(base_path('routes/api/api-clients.php'));
+
+            // MCP link module: the key of an API client only, never a user token.
+            Route::middleware(['api', 'auth:sanctum', EnsureApiClientKey::class])
+                ->prefix('api')
+                ->group(base_path('routes/api/mcp-links.php'));
         },
     )
     // Spec 0352: POST /api/broadcasting/auth signs private channel
@@ -87,6 +94,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Spec 0355: a user who must still choose the first password can only
         // reach the allow-listed endpoints.
         $middleware->api(append: [EnsureFirstPasswordSet::class]);
+
+        // MCP link module: a token issued for a link lives only while its link does.
+        // Every route that accepts a Sanctum token is in the `api` group (broadcasting/auth too).
+        $middleware->api(append: [EnforceMcpLinkLife::class]);
 
         // Per-session DB statement time limit for web/API requests only.
         $middleware->api(append: [LimitStatementDuration::class]);

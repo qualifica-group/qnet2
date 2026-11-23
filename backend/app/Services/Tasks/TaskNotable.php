@@ -184,9 +184,13 @@ final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
         return self::ROLE_WATCHER;
     }
 
+    /**
+     * Whoever reads the thread may call anyone into it (spec 0353 D-2 rev.,
+     * user directive 2026-11-23): the read gate, not the edit one.
+     */
     public function canEnlist(User $actor, Model $record): bool
     {
-        return $actor->can('update', $record);
+        return $this->authorizeRead($actor, $record);
     }
 
     public function modulePermission(): string

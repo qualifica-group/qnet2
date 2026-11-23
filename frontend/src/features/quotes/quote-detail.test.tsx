@@ -207,6 +207,7 @@ describe('QuoteDetailView — additional information layout', () => {
               config: null,
               relation_target: null,
               is_required: false,
+              is_synced: false,
               sort_order: 0,
               options: [],
             },

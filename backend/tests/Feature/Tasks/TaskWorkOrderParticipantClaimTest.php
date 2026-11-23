@@ -123,12 +123,14 @@ it('AC-007: the participant closes a task already assigned to someone else in th
     Notification::assertSentTo($assignee, TaskClosed::class);
 });
 
-it('AC-004: before completing the participant cannot edit the task, and a failed guard leaves no assignment', function () {
+// REQUIREMENT CHANGED (user directive 2026-11-23): the participant manages the commessa's tasks, so
+// editing no longer waits for the claim; editing assigns nobody, and a failed completion neither.
+it('AC-004: the participant edits the task without becoming its assignee, and a failed guard leaves no assignment', function () {
     $actor = participantClaimActor();
     $task = participantClaimTask(participantClaimWorkOrder($actor));
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tasks/{$task->id}", ['description' => 'x'])->assertForbidden();
+    $this->patchJson("/api/tasks/{$task->id}", ['description' => 'x'])->assertOk();
     $this->postJson("/api/tasks/{$task->id}/complete", [])->assertUnprocessable();
 
     expect($task->assignees()->count())->toBe(0)

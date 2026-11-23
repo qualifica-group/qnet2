@@ -151,6 +151,7 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode }: UseWorkOrderF
             context: {
               applicable_attributes: mode.workOrder.applicable_attributes,
               attribute_layout: mode.workOrder.attribute_layout,
+              locked_attributes: mode.workOrder.locked_attributes,
             },
           }
         : undefined,

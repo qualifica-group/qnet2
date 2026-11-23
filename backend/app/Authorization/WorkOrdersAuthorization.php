@@ -72,7 +72,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat', 'view_page', 'edit_page', 'request_proforma'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat', 'view_page', 'edit_page', 'request_proforma', 'record_progress'];
     }
 
     /**
@@ -86,6 +86,8 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
         // immutability itself is enforced ahead of this ceiling by
         // UpdateWorkOrderRequest's own `prohibited` rules.
         $mayWriteOnlyAtCreate = $mayWrite && $model === null;
+        // The closure is a detail action of whoever runs the commessa (WorkOrderPolicy::manage).
+        $mayClose = $mayWrite || ($model instanceof WorkOrder && $actor->can('manage', $model));
 
         return [
             'code' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
@@ -100,8 +102,8 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'callback_date' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'internal_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'is_force_closed' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'force_close_reason' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'is_force_closed' => $mayClose ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'force_close_reason' => $mayClose ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'quote_line_ids' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'task_template_id' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
@@ -147,7 +149,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'view_contract_data' => $model instanceof WorkOrder && $actor->can('viewContractData', $model),
             'manage_payments' => $model instanceof WorkOrder && $actor->can('managePayments', $model),
             // "Chiusura forzata"/"Riapri" are detail actions, not fields (user
-            // directive 2026-10-06): the same record-level update rule as the
+            // directive 2026-10-06): the record-level `manage` rule of the
             // PATCH they send, exactly one of the two by the closure state.
             'force_close' => $this->mayToggleForceClose($actor, $model, false),
             'reopen' => $this->mayToggleForceClose($actor, $model, true),
@@ -161,14 +163,16 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // the detail already proves the record-level `view` the endpoint asks;
             // whether a request may still be raised is the summary's call (spec 0193).
             'request_proforma' => $model instanceof WorkOrder && $actor->can('proforma-requests.create'),
+            // "Lista avanzamenti commessa": recording and deleting run the commessa, not its form.
+            'record_progress' => $model instanceof WorkOrder && $actor->can('manage', $model),
         ];
     }
 
-    /** Whether $actor may update $model while its `is_force_closed` equals $whenForceClosed. */
+    /** Whether $actor may manage $model while its `is_force_closed` equals $whenForceClosed. */
     private function mayToggleForceClose(User $actor, ?Model $model, bool $whenForceClosed): bool
     {
         return $model instanceof WorkOrder
             && (bool) $model->is_force_closed === $whenForceClosed
-            && $actor->can('update', $model);
+            && $actor->can('manage', $model);
     }
 }

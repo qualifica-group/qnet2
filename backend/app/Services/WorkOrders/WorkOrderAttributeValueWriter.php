@@ -39,6 +39,7 @@ final class WorkOrderAttributeValueWriter
         private readonly AttributeValueNormalizer $normalizer,
         private readonly AttributeSectionVisibility $visibility,
         private readonly TableRowNotifier $tableRowNotifier,
+        private readonly QuoteWorkOrderAttributeSync $sync,
     ) {}
 
     /**
@@ -80,5 +81,8 @@ final class WorkOrderAttributeValueWriter
 
         // Step 4: a table row that fired its event tells who the field names (spec 0390)
         $this->tableRowNotifier->notifyAttributes($workOrder, $applicable, $current, $merged);
+
+        // Step 5: the fields shared with the other side follow (spec 0425)
+        $this->sync->fromWorkOrder($workOrder, $applicable, $current, $merged);
     }
 }

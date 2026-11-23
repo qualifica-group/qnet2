@@ -7,7 +7,9 @@ namespace App\RequestManagement;
 /**
  * Server-side evaluation of the conditional sections of an attribute layout
  * (spec 0288, D-3/D-4): a section carrying `visible_when: {attribute_code}`
- * is shown only while that boolean attribute is active. The single
+ * is shown only while that boolean attribute is active; with
+ * `option_values` (spec 0424 D-2) only while that choice attribute holds one
+ * of them (single value) or lists one of them (multi value). The single
  * implementation of the rule — validator and writers both go through here
  * (the frontend mirrors it in `attribute-section-visibility.ts`).
  */
@@ -91,7 +93,8 @@ final class AttributeSectionVisibility
      */
     private function isVisible(int $index, array $sections, array $sectionOfCode, array $values, array $visiting): bool
     {
-        $control = $sections[$index]['visible_when']['attribute_code'] ?? null;
+        $condition = $sections[$index]['visible_when'] ?? null;
+        $control = $condition['attribute_code'] ?? null;
 
         if ($control === null) {
             return true;
@@ -103,13 +106,23 @@ final class AttributeSectionVisibility
             return false;
         }
 
-        return $this->isActive($values[$control] ?? null)
+        return $this->isActive($values[$control] ?? null, (array) ($condition['option_values'] ?? []))
             && $this->isVisible($container, $sections, $sectionOfCode, $values, $visiting + [$index => true]);
     }
 
-    /** Same truthy set as Laravel's `boolean` rule, since validation also sees unnormalized input. */
-    private function isActive(mixed $value): bool
+    /**
+     * Without options: same truthy set as Laravel's `boolean` rule, since
+     * validation also sees unnormalized input. With some: the value is one
+     * of them, or a list holding one of them.
+     *
+     * @param  array<int, mixed>  $options
+     */
+    private function isActive(mixed $value, array $options): bool
     {
+        if ($options !== []) {
+            return array_intersect(is_array($value) ? $value : [$value], $options) !== [];
+        }
+
         return $value === true || $value === 1 || $value === '1';
     }
 

@@ -29,7 +29,10 @@ use Illuminate\Support\Collection;
  */
 final class AttributeSetResolver
 {
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly SyncedAttributeCodes $syncedCodes,
+    ) {}
 
     /**
      * @param  array<int, int>  $categoryIds  distinct or not, any order — deduped and order-preserved internally
@@ -43,7 +46,7 @@ final class AttributeSetResolver
             return collect();
         }
 
-        $merged = $this->mergeByCode($categories, $context);
+        $merged = $this->markSynced($this->mergeByCode($categories, $context), $categories, $context);
 
         // Stable order — sort_order then code.
         return $merged->values()
@@ -79,6 +82,24 @@ final class AttributeSetResolver
         }
 
         return $merged;
+    }
+
+    /**
+     * Spec 0425, D-7: the codes the offer and its work orders share a value of.
+     *
+     * @param  Collection<string, ApplicableAttribute>  $merged
+     * @param  Collection<int, ProductCategory>  $categories
+     * @return Collection<string, ApplicableAttribute>
+     */
+    private function markSynced(Collection $merged, Collection $categories, AttributeContext $context): Collection
+    {
+        if ($context !== AttributeContext::Quote && $context !== AttributeContext::WorkOrder) {
+            return $merged;
+        }
+
+        $synced = array_flip($this->syncedCodes->forCategories($categories));
+
+        return $merged->map(static fn (ApplicableAttribute $attribute): ApplicableAttribute => isset($synced[$attribute->code]) ? $attribute->withSynced() : $attribute);
     }
 
     /**

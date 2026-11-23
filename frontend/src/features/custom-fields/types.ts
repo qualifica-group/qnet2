@@ -49,7 +49,7 @@ export const CUSTOM_FIELD_TYPES: readonly CustomFieldType[] = [
  * - textarea: rows/maxLength
  * - integer/decimal: min/max/step/decimals
  * - boolean: display ('checkbox'|'switch')
- * - enum: display ('select'|'multiselect'|'radio'|'badge')
+ * - enum: display ('select'|'multiselect'|'checklist'|'radio'|'badge')
  * - date/datetime/time/email/url/color: no extra config (native HTML input)
  * - table: columns/selectable/summary/min_rows/max_rows (see {@link TableFieldConfig})
  */
@@ -63,13 +63,22 @@ export interface CustomFieldConfig {
   max?: number
   step?: number
   decimals?: number
-  display?: 'checkbox' | 'switch' | 'select' | 'multiselect' | 'radio' | 'badge'
+  display?: 'checkbox' | 'switch' | 'select' | 'multiselect' | 'checklist' | 'radio' | 'badge'
   columns?: TableFieldColumn[]
   selectable?: TableFieldSelectable | null
   summary?: TableFieldSummary | null
   min_rows?: number
   max_rows?: number
   notify?: TableFieldNotify | null
+}
+
+/**
+ * Whether an `enum` field stores a LIST of option values (spec 0424 D-1):
+ * the multiselect dropdown and the checkbox list differ only in the control.
+ * Mirrors backend `App\CustomFields\Types\EnumDisplay::isMultiValue`.
+ */
+export function isMultiValueEnum(config: { display?: unknown } | null | undefined): boolean {
+  return config?.display === 'multiselect' || config?.display === 'checklist'
 }
 
 /** Column types a `table` field accepts (spec 0180 D-2: simple types only, no relation/nested table). */

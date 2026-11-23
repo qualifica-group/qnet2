@@ -34,7 +34,7 @@ final class MentionableUserDirectory
 
     public function list(User $actor, string $entityType, int $entityId, string $scope, ForSelectQuery $query): ForSelectResult
     {
-        // Step 1: the record must be readable; the extended scope also needs edit rights.
+        // Step 1: the record must be readable; the extended scope also needs the module to enlist.
         $record = $this->registry->findRecord($entityType, $entityId);
         $this->registry->assertReadable($actor, $entityType, $record);
 

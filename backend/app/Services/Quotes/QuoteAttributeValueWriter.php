@@ -11,6 +11,7 @@ use App\RequestManagement\AttributeSectionVisibility;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
 use App\Services\Notifications\TableRowNotifier;
+use App\Services\WorkOrders\QuoteWorkOrderAttributeSync;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -40,6 +41,7 @@ final class QuoteAttributeValueWriter
         private readonly AttributeValueNormalizer $normalizer,
         private readonly AttributeSectionVisibility $visibility,
         private readonly TableRowNotifier $tableRowNotifier,
+        private readonly QuoteWorkOrderAttributeSync $sync,
     ) {}
 
     /**
@@ -81,5 +83,8 @@ final class QuoteAttributeValueWriter
 
         // Step 4: a table row that fired its event tells who the field names (spec 0390)
         $this->tableRowNotifier->notifyAttributes($quote, $applicable, $current, $merged);
+
+        // Step 5: the fields shared with the other side follow (spec 0425)
+        $this->sync->fromQuote($quote, $applicable, $current, $merged);
     }
 }

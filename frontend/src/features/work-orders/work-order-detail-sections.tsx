@@ -168,6 +168,7 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
             attributes={workOrder.applicable_attributes}
             layout={workOrder.attribute_layout}
             values={workOrder.attribute_values}
+            lockedAttributes={workOrder.locked_attributes}
             inline={inline}
             control={editor.form.control}
             collapsible={false}

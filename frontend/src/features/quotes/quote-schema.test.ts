@@ -386,6 +386,7 @@ function conditionalAttribute(code: string, type: string, isRequired: boolean) {
     config: null,
     relation_target: null,
     is_required: isRequired,
+    is_synced: false,
     sort_order: 0,
     options: [],
   }

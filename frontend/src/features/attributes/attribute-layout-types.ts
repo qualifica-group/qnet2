@@ -42,9 +42,12 @@ export interface LayoutRow {
 /**
  * Spec 0288: a section shows only while the boolean attribute `attribute_code`
  * (placed in another, unconditional section of the same layout) is `true`.
+ * Spec 0424: with `option_values`, the control is a choice attribute and the
+ * section shows while its value is one of them or a list holding one of them.
  */
 export interface LayoutSectionCondition {
   attribute_code: string
+  option_values?: string[] | null
 }
 
 /** A titled, optionally collapsible group of rows. */

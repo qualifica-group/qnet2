@@ -41,7 +41,8 @@ final class MentionEnlistment
 
     /**
      * An outsider is admitted only when the module enlists, the author may
-     * edit the record and the person is an active, non-service user.
+     * enlist on the record (EnlistsMentionedUsers::canEnlist) and the person
+     * is an active, non-service user.
      *
      * @param  array<int, int>  $outsideIds
      *

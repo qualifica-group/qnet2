@@ -28,6 +28,7 @@ import { resolveManagerLabels } from '@/features/product-categories/resolve-mana
 import { ProductCategoryRulesRecordSection } from '@/features/product-categories/product-category-rules-record-section'
 import type { ProductCategoryDetailWithPermissions } from '@/features/product-categories/types'
 import { useProductCategoryInlineEdit } from '@/features/product-categories/use-product-category-inline-edit'
+import { IntegrationProductCategorySections } from '@/integrations/integration-product-category-sections'
 
 /** Three KPI tiles, not the strip's default four: a category is read on exactly these. */
 const STAT_STRIP_CLASS = '@2xl:grid-cols-3'
@@ -136,6 +137,7 @@ function ProductCategoryDetailContent({ category, onChanged }: ProductCategoryDe
               inline={inline}
               control={form.control}
             />
+            <IntegrationProductCategorySections categoryId={category.id} />
           </RecordSectionsGrid>
         </Form>
 

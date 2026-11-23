@@ -34,6 +34,7 @@ final readonly class ApplicableAttribute
         public bool $isRequired,
         public int $sortOrder,
         public array $options,
+        public bool $isSynced = false,
     ) {}
 
     /**
@@ -80,7 +81,20 @@ final readonly class ApplicableAttribute
         return new self(
             $this->id, $this->code, $this->name, $this->type, $this->description,
             $this->helpText, $this->placeholder, $this->icon, $this->config,
-            $this->relationTarget, $isRequired, $this->sortOrder, $this->options,
+            $this->relationTarget, $isRequired, $this->sortOrder, $this->options, $this->isSynced,
+        );
+    }
+
+    /**
+     * A copy marked as shared between the offer and its work orders (spec
+     * 0425, D-7): set by AttributeSetResolver, never read from a single row.
+     */
+    public function withSynced(): self
+    {
+        return new self(
+            $this->id, $this->code, $this->name, $this->type, $this->description,
+            $this->helpText, $this->placeholder, $this->icon, $this->config,
+            $this->relationTarget, $this->isRequired, $this->sortOrder, $this->options, true,
         );
     }
 
@@ -103,6 +117,7 @@ final readonly class ApplicableAttribute
             'is_required' => $this->isRequired,
             'sort_order' => $this->sortOrder,
             'options' => $this->options,
+            'is_synced' => $this->isSynced,
         ];
     }
 }

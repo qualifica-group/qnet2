@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0425 — Campi sincronizzati Offerta <-> Commessa, configurati per categoria. Primo uso: "Anagrafica Utente" di
+  Orientamento specialistico. Estende spec 0404 parte D (copia dall'offerta) e corregge il seeder one-shot del commit
+  1f04e9cd7 (mai eseguito).
+-->
+<spec id="0425-quote-work-order-synced-attributes" status="approved" owner="utente" date="2026-11-23">
+
+  <goal>
+    Un campo flessibile assegnato sia in Offerta sia in Commessa di una categoria puo' essere marcato "Sincronizzato con
+    l'offerta": da quel momento offerta e commesse collegate ne hanno un solo valore, chi lo modifica da una parte lo
+    ritrova dall'altra, anche alla creazione della commessa. Per Orientamento specialistico l'offerta tiene solo
+    "Anagrafica Utente", sincronizzata con la commessa; tutti gli altri campi stanno solo in commessa.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-23: "voglio che in offerta rimanga solo anagrafica cliente (che si trova anche in commessa
+    ora) ma voglio che quei due campi si sincronizzino e si parlino, se viene modificato in offerta, si ritrova anche in
+    commessa poi e viceversa (anche in creazione di commessa) [...] succedera' sicuramente anche in altri campi piu'
+    avanti, ho bisogno quindi di una configurazione ad hoc per questi casi". Risposte: configurazione PER CATEGORIA, sul
+    campo assegnato in Commessa; si sincronizza sempre lo STESSO campo (stesso codice), mai due campi diversi.
+    "Anagrafica cliente" = attributo `user_registry` ("Anagrafica Utente", relation a registries), l'unico campo
+    Orientamento oggi presente in entrambi dopo il one-shot.
+
+    Fatti verificati:
+    - Assegnazioni: tabella `attribute_category` (category_id, attribute_id, context, is_required, sort_order), scritta
+      a sostituzione completa da `ProductCategoryService::syncAttributes` (payload `attributes.*` di
+      Store/UpdateProductCategoryRequest). Ereditarieta' per contesto: `CategoryHierarchy::effectiveAttributes` /
+      `effectiveAttributesByCategory` via `EffectiveAttributeComposer` (porta `is_required`, `sort_order`).
+    - Set applicabile: `ApplicableAttribute` (unione per codice tra categorie, `isRequired` in OR, `toArray` esposto come
+      `applicable_attributes` da Offerta, Commessa, Gestione Richieste e dai `form-context`). Commessa:
+      `WorkOrderAttributeResolver` (categorie delle sue righe d'offerta). Offerta: `QuoteAttributeResolver`.
+    - Scritture dei valori: tutte passano da `QuoteAttributeValueWriter::apply` / `WorkOrderAttributeValueWriter::apply`
+      (merge in memoria, il chiamante salva): QuoteService, RequestManagementService, QuoteRegistryTransferService,
+      celle griglia (`OpportunityScopedTableDefinition`, `QuoteScopedTableDefinition`), WorkOrderService,
+      `WorkOrderQuoteAttributeCopier`, `LegacyAttributeValueApplier`.
+    - Legame offerta-commessa: `WorkOrderQuoteAttributeCopier::quoteIdsOf` / `WorkOrderSourceQuotes` (mono-offerta
+      `quote_id`, multi-offerta righe in `quote_line_work_order`). Alla generazione il copiatore riempie i vuoti per
+      codice, i valori inviati esplicitamente vincono (`keepCodes`).
+    - Campi bloccati da integrazione: `WorkOrderAttributeLocks` (spec 0423 D-14), icona `LockedSourceHint`.
+    - Il seeder `QualificaAplOrientationWorkOrderFieldsSeeder` (commit 1f04e9cd7, non eseguito) toglie dall'Offerta
+      TUTTI i campi; il catalogo (`AplPracticeCatalogue`, `QualificaBranchWorkOrderSeeder::CATEGORIES`) li crea solo in
+      Commessa.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Configurazione: nuova colonna `attribute_category.syncs_with_quote` (boolean, default false),
+      significativa solo sulle righe `context = work_order`. Ereditata come `is_required` (la riga della categoria che
+      assegna il campo decide; una figlia eredita l'assegnazione con il suo flag).</decision>
+    <decision id="D-2">Codici sincronizzati di una coppia (offerta O, commessa C collegata): i codici del set applicabile
+      di C con flag acceso in almeno una categoria di C, che stanno anche nel set applicabile di O. Un codice presente in
+      un solo lato non si sincronizza (il flag resta inerte).</decision>
+    <decision id="D-3">Propagazione nei due sensi, dentro i due writer, solo per i codici sincronizzati il cui valore e'
+      davvero cambiato (confronto valore salvato/valore unito; svuotare e' un cambiamento): scrittura di O -> tutte le
+      commesse collegate a O; scrittura di C -> tutte le offerte di C (multi-offerta: tutte) e, da ciascuna, le altre
+      commesse collegate. Vince l'ultima scrittura. La scrittura sul lato opposto e' diretta (solo quella chiave, nessuna
+      validazione dei campi obbligatori del bersaglio, nessuna sezione nascosta svuotata) e non ripropaga.</decision>
+    <decision id="D-4">Creazione commessa: un codice sincronizzato prende il valore dell'offerta (copiatore, gia' oggi);
+      se l'utente lo invia esplicitamente, quel valore vince e torna sull'offerta (D-3).</decision>
+    <decision id="D-5">Un codice bloccato da un'integrazione sulla commessa (WorkOrderAttributeLocks) non riceve valori
+      dall'offerta; le sue scritture verso l'offerta propagano normalmente.</decision>
+    <decision id="D-6">La propagazione e' una regola di configurazione: non richiede che chi scrive possa modificare il
+      record opposto (come oggi il copiatore). Commesse chiuse comprese: il campo resta allineato.</decision>
+    <decision id="D-7">Indicatore: `applicable_attributes[*].is_synced`, calcolato sulle categorie del record (offerta o
+      commessa): codice con flag acceso nel contesto Commessa di una di esse E presente nel loro contesto Offerta
+      (`App\RequestManagement\SyncedAttributeCodes`, applicato da `AttributeSetResolver`). [precisato in esecuzione:
+      calcolo per categorie, non per coppia offerta-commessa, cosi' vale anche per i form-context di un record non
+      ancora salvato.] Offerta e Commessa mostrano accanto all'etichetta un'icona di collegamento con tooltip
+      "Sincronizzato con la commessa" / "... con l'offerta".</decision>
+    <decision id="D-8">Abilitare il flag non riallinea i valori gia' divergenti: si allineano alla prima scrittura. Per
+      Orientamento l'allineamento lo fa il seeder (D-9).</decision>
+    <decision id="D-9">Orientamento specialistico: `user_registry` assegnato in Offerta E in Commessa con
+      `syncs_with_quote = true`; tutti gli altri campi solo in Commessa. Il one-shot (corretto, mai eseguito) non toglie
+      `user_registry` dall'Offerta, accende il flag, e allinea le commesse esistenti: valore dell'offerta se la commessa
+      e' vuota o diversa (prima di oggi la commessa non aveva il campo). Il form Offerta della categoria sparisce
+      (resta il solo campo, resa piatta). Il catalogo di produzione segue la stessa forma. [aggiunto in esecuzione: la
+      revisione 1f04e9cd7 del one-shot era gia' stata eseguita su qnet2 dev alle 11:16 UTC (offerta svuotata): il
+      one-shot corretto riassegna in Offerta i codici sincronizzati mancanti.]</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione `attribute_category.syncs_with_quote` + payload/validazione/risorsa del configuratore categoria.</item>
+      <item>Flag nel set effettivo e `is_synced` in `applicable_attributes` (Offerta, Commessa, form-context).</item>
+      <item>Servizio di propagazione chiamato dai due writer (D-3..D-6).</item>
+      <item>FE configuratore: interruttore "Sincronizzato con l'offerta" sui campi della scheda Commessa (anche sugli
+        ereditati in sola lettura: badge).</item>
+      <item>FE Offerta e Commessa: icona + tooltip sui campi sincronizzati.</item>
+      <item>Catalogo Orientamento + correzione `QualificaAplOrientationWorkOrderFieldsSeeder` (D-9).</item>
+      <item>Guide in-app IT/EN `product-categories`, `quotes`, `work-orders`; manuale Claude Docs (sezioni categorie,
+        offerte, commesse).</item>
+    </in>
+    <out>
+      <item>Sincronizzazione tra campi con codice diverso, o tra Offerta e Prodotto/Richiesta.</item>
+      <item>Riallineamento retroattivo quando si accende il flag (D-8) e azione "Allinea" manuale.</item>
+      <item>Indicatore in Gestione Richieste e nelle griglie (il valore si sincronizza comunque, perche' passano dai writer).</item>
+      <item>Voce di storico dedicata alla propagazione (oggi `attribute_values` non e' nel log attivita').</item>
+      <item>Notifiche/realtime sul record opposto.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST|PATCH" path="/api/product-categories, /api/product-categories/{productCategory}">
+      <request>
+        attributes[]: { attribute_id: int, context: 'product'|'quote'|'work_order', is_required?: bool,
+        sort_order?: int, syncs_with_quote?: bool (default false) }
+      </request>
+      <response status="200|201">
+        data.attributes[] e data.inherited_attributes[]: shape attuale + `syncs_with_quote: bool` (sempre presente;
+        false fuori da work_order).
+      </response>
+      <errors>
+        422 `attributes.N.syncs_with_quote` se true su una riga con context diverso da work_order
+        ("Only a Commessa field can be synced with the offer.").
+      </errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/product-categories/{productCategory}/effective-attributes?context=">
+      <response status="200">ogni riga + `syncs_with_quote: bool`.</response>
+    </endpoint>
+    <endpoint method="GET|POST" path="applicable_attributes di QuoteResource, WorkOrderResource, /api/quotes/form-context, /api/work-orders/form-context (e Gestione Richieste, additivo)">
+      <response status="200">ogni voce + `is_synced: bool` (D-7).</response>
+    </endpoint>
+    <endpoint method="(nessuno nuovo)" path="PATCH /api/quotes/{quote}, PATCH /api/work-orders/{workOrder}, POST work-orders, celle griglia">
+      <response status="200">shape invariata; effetto collaterale D-3 sui record collegati.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un admin categorie, quando salva una categoria con un campo Commessa `syncs_with_quote: true`, allora la risposta e la riga `attribute_category` lo riportano; una figlia che eredita il campo lo riporta in `inherited_attributes` e in effective-attributes.</criterion>
+    <criterion id="AC-002">Dato `syncs_with_quote: true` su una riga `quote` o `product`, quando si salva, allora 422 su `attributes.N.syncs_with_quote` e nulla cambia.</criterion>
+    <criterion id="AC-003">Dato un campo in Offerta e in Commessa con flag acceso, quando si modifica il valore dall'offerta (PATCH /quotes), allora tutte le commesse collegate (mono e multi-offerta) hanno lo stesso valore; gli altri codici delle commesse restano invariati.</criterion>
+    <criterion id="AC-004">Dato lo stesso caso, quando si modifica dalla commessa (PATCH /work-orders), allora l'offerta (tutte, se multi-offerta) e le altre commesse di quell'offerta hanno lo stesso valore.</criterion>
+    <criterion id="AC-005">Dato un valore sincronizzato, quando lo si svuota da un lato, allora e' vuoto anche dall'altro.</criterion>
+    <criterion id="AC-006">Dato il flag spento, o il codice presente in un solo lato, quando si modifica il campo, allora l'altro lato non cambia.</criterion>
+    <criterion id="AC-007">Dato un contratto validato con offerta valorizzata, quando si programma la commessa senza inviare il codice sincronizzato, allora la commessa lo ha uguale all'offerta; inviandolo con un altro valore, allora la commessa ha quello e l'offerta viene aggiornata.</criterion>
+    <criterion id="AC-008">Dato un codice sincronizzato bloccato da un'integrazione sulla commessa, quando si modifica l'offerta, allora la commessa non cambia.</criterion>
+    <criterion id="AC-009">Dato un codice sincronizzato, quando si modifica da cella griglia (Offerte o Commesse di categoria) o da Gestione Richieste, allora l'altro lato e' aggiornato.</criterion>
+    <criterion id="AC-010">`applicable_attributes` di offerta, commessa e dei due form-context riporta `is_synced: true` solo sui codici sincronizzati.</criterion>
+    <criterion id="AC-011">FE configuratore: la scheda Commessa mostra l'interruttore per ogni campo proprio e il badge sugli ereditati; Offerta e Prodotto non lo mostrano; il payload invia `syncs_with_quote`.</criterion>
+    <criterion id="AC-012">FE Offerta e Commessa: un campo `is_synced` mostra l'icona di collegamento con tooltip raggiungibile da tastiera; gli altri no.</criterion>
+    <criterion id="AC-013">Seed di catalogo: Orientamento specialistico ha in Offerta solo `user_registry`, in Commessa i 16 campi con `syncs_with_quote` acceso solo su `user_registry`; nessun form Offerta.</criterion>
+    <criterion id="AC-014">One-shot su un'installazione seedata col catalogo precedente: Offerta = solo `user_registry` (piu' nessun altro campo, CPI compresi), Commessa = tutti i campi dell'offerta con flag su `user_registry`, form Offerta spostato in Commessa, commesse esistenti allineate (user_registry dall'offerta anche se diverso, gli altri solo se vuoti); un secondo giro non scrive nulla.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Authz invariata sugli endpoint esistenti (D-6 per la propagazione). Migrazione reversibile.
+    Nessun N+1: la propagazione carica commesse/offerte collegate in query limitate, e non scatta se nessun codice
+    sincronizzato cambia (nessuna query in piu' sul percorso caldo delle celle senza flag). Identificatori inglesi; i18n
+    IT/EN. File entro 300/500 righe. Test Pest/Vitest eseguiti, `tsc -b --force`, ESLint, Pint.
+  </constraints>
+
+</spec>

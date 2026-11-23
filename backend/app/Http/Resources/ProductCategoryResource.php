@@ -126,6 +126,8 @@ class ProductCategoryResource extends JsonResource
                 'name' => $attribute->name,
                 'type' => $attribute->type,
                 'is_required' => (bool) $attribute->pivot->is_required,
+                // Spec 0425, D-1: meaningful on the `work_order` rows only.
+                'syncs_with_quote' => (bool) $attribute->pivot->syncs_with_quote,
                 'sort_order' => (int) $attribute->pivot->sort_order,
                 // Spec 0061: which section ("Attributi Prodotto" vs
                 // "Attributi Opportunita'") this OWN assignment belongs to —

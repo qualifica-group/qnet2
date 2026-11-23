@@ -59,5 +59,6 @@ export const attributes = {
     otherInformation: 'Altre informazioni',
     // Hint on a conditional section (spec 0288): the boolean attribute that shows it.
     visibleWhen: 'Visibile se: {{name}}',
+    visibleWhenAny: 'Visibile se in {{name}} è scelta almeno una tra: {{options}}',
   },
 }

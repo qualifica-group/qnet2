@@ -41,8 +41,6 @@ const QUOTE_LAYOUT_OWN_CATEGORIES = [
     'Tirocinio',
     // Behind its own barrier, with the apprenticeship form (user directive 2026-10-05).
     'Apprendistato',
-    // Behind its own barrier, with the orientation form (user directive 2026-10-05).
-    'Orientamento specialistico',
     // REQUIREMENT CHANGED: the SOA root, its own form (user directive 2026-10-15).
     'SOA',
     // REQUIREMENT CHANGED: the Sicurezza root, its own form (user directive 2026-10-15).
@@ -262,8 +260,9 @@ it('composes the offer layout only where it differs from the ancestor, and a sec
     // joined this list with the 2026-09-10 directive that emptied it: no
     // attribute, so no layout to compose. "Trattative in Corso" left it with
     // the category itself (user directive 2026-09-28). "Orientamento
-    // Specialistico" left it with its own form (user directive 2026-10-05).
-    foreach (['Consulenza', 'Presa Appuntamenti', 'APL'] as $name) {
+    // Specialistico" left it with its own form (user directive 2026-10-05) and
+    // is back, REQUIREMENT CHANGED 2026-11-23: its fields are the Commessa's.
+    foreach (['Consulenza', 'Presa Appuntamenti', 'APL', 'Orientamento specialistico'] as $name) {
         $category = ProductCategory::query()->where('name', $name)->firstOrFail();
 
         expect($service->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))

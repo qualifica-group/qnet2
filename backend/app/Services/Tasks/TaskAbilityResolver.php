@@ -63,8 +63,20 @@ final class TaskAbilityResolver
         'lead_id',
     ];
 
-    /** Creator/requester, assignee and manager may update; the watcher alone may not. */
+    /** Creator/requester, assignee and manager (or commessa member) may update; the watcher alone may not. */
     public static function canUpdate(User $actor, Task $task): bool
+    {
+        return self::isCreatorOrRequester($actor, $task)
+            || TaskRecordRoles::isAssignee($actor, $task)
+            || self::managesTheTask($actor, $task);
+    }
+
+    /**
+     * Whether $actor already owns $task in a role of its own, so completing
+     * it never turns them into an assignee (spec 0387): every canUpdate()
+     * row except the commessa member's, who claims the Task by completing it.
+     */
+    private static function holdsOwnTaskRole(User $actor, Task $task): bool
     {
         return self::isCreatorOrRequester($actor, $task)
             || TaskRecordRoles::isAssignee($actor, $task)
@@ -133,7 +145,17 @@ final class TaskAbilityResolver
      */
     public static function completionRequiresValidation(User $actor, Task $task): bool
     {
-        return $task->requires_validation && ! self::ownsTheMandate($actor, $task);
+        return $task->requires_validation && (! self::ownsTheMandate($actor, $task) || self::claimsByCompleting($actor, $task));
+    }
+
+    /**
+     * Spec 0387: completing turns the commessa member into an assignee, so
+     * the completion runs as an assignee's even though, until then, the
+     * member runs the Task like a manager (user directive 2026-11-23).
+     */
+    public static function claimsByCompleting(User $actor, Task $task): bool
+    {
+        return ! self::holdsOwnTaskRole($actor, $task) && TaskRecordRoles::isWorkOrderMemberClaimant($actor, $task);
     }
 
     public static function canBlock(User $actor, Task $task): bool
@@ -165,7 +187,13 @@ final class TaskAbilityResolver
 
     private static function ownsTheMandate(User $actor, Task $task): bool
     {
-        return self::isCreatorOrRequester($actor, $task) || TaskRecordRoles::isManager($actor, $task);
+        return self::isCreatorOrRequester($actor, $task) || self::managesTheTask($actor, $task);
+    }
+
+    /** The manager rows: `tasks.manageAll` (D-2) or a member of the Task's commessa (user directive 2026-11-23). */
+    private static function managesTheTask(User $actor, Task $task): bool
+    {
+        return TaskRecordRoles::isManager($actor, $task) || TaskRecordRoles::isWorkOrderManager($actor, $task);
     }
 
     private static function isCreatorOrRequester(User $actor, Task $task): bool

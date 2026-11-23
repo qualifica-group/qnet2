@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0424 — Campo a scelta "Lista di checkbox" (piu' voci spuntabili) e sezioni condizionali aperte da una VOCE
+  di un campo a scelta. Estende spec 0288 (sezioni condizionali) e il tipo enum di spec 0021.
+-->
+<spec id="0424-checklist-enum-and-option-conditions" status="approved" owner="utente" date="2026-11-23" revision="2">
+
+  <goal>
+    Il blocco "Certificazioni richieste" del form Offerta ISO diventa UN campo con una checkbox per norma (le 18 del
+    legacy, disposte su piu' colonne secondo la larghezza, piu' voci spuntabili insieme); ogni sezione "Info per standard ..." si apre quando e'
+    spuntata almeno una norma del suo gruppo, come nel legacy. Un seeder one-shot porta le installazioni esistenti al nuovo campo,
+    valori delle offerte compresi.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-23 (screenshot anteprima live del form Offerta ISO): "voglio che ci siano i checkbox a
+    lista, sempre con lo stesso comportamento [...] voglio la lista singola (stesso comportamento che apre o chiude le
+    sezioni), fammi un seeder one shot". Rev. 2 (stesso giorno), sulla voce "Standard 1090, 9001, ..., SA8000":
+    "questi devono essere in checkbox diversi!" -> una checkbox per norma; legacy `PreliminaryInfo\Iso`: group1 =
+    9001/14001/45001/27001/SA8000/13549/EMAS/Ecolabel/1090/16636, group2 = BRC/IFS/22000/22005/SA8000/13549,
+    group3..6 = 50001, 37001, 39001, 30415. Il seeder della rev. 1 era gia' stato eseguito su qnet2 dev
+    (`iso_requested_standard_groups`, 17 offerte).
+
+    Fatti verificati:
+    - Oggi (IsoCatalogue, decisione 2026-10-21) sei attributi `boolean` `iso_group_*` sul contesto Offerta della radice
+      "ISO", ognuno `visible_when` di una sezione "Info per standard ...", perche' una sezione si apre solo da un
+      booleano (spec 0288 D-1).
+    - Enum multi-valore = `config.display: 'multiselect'`, valore array di `value` di opzione. Il controllo
+      `display === 'multiselect'` e' ripetuto in: `AttributeValueValidator`, `AttributeValueNormalizer`,
+      `RequestAttributeValues` (import), `AttributeColumnBuilder` (griglie), `EnumFieldType` e
+      `PromoteCustomFieldIndexJob` (campi personalizzati); FE `attribute-values-schema.ts`,
+      `build-custom-fields-schema.ts`, `enum-field-control.tsx`.
+    - qnet2 dev: i sei booleani stanno solo su categoria 76 (ISO) contesto quote, 41 offerte valorizzate (15 general,
+      1 road_safety, 1 gender_equality a true), un solo layout (quote/all della radice). Nessun prodotto o commessa.
+    - `iso_standards` esiste gia' (campo Commessa, singole norme, `IsoWorkOrderCatalogue`): il nuovo campo Offerta
+      usa un codice diverso.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Nuovo `config.display: 'checklist'` per il tipo `enum` (attributi e campi personalizzati, il
+      form di configurazione e' condiviso): valore = array di `value` di opzione, identico a `multiselect` in
+      validazione, normalizzazione, griglie, filtri, import; cambia solo il controllo (griglia di checkbox su piu' colonne,
+      una per opzione). Una sola regola "enum multi-valore" per lato: BE `App\CustomFields\Types\EnumDisplay`
+      (`isMultiValue(?array $config)`), FE `isMultiValueEnum(config)` in `features/custom-fields/types.ts`.</decision>
+    <decision id="D-2">`visible_when` = `{ attribute_code: string, option_values?: string[]|null }`. Controllo `boolean`:
+      `option_values` assente/vuoto, regola di oggi. Controllo `enum` (qualsiasi display): almeno una voce, tutte tra
+      le opzioni dell'attributo; la sezione e' visibile quando il valore e' una di quelle voci (enum singolo) o ne
+      contiene almeno una (enum multi-valore). Restano le regole 0288 D-2 (posizionato, fuori dalla sezione
+      controllata, in sezione senza condizione). Normalizzazione: voci deduplicate, chiave persistita solo se non
+      vuota.</decision>
+    <decision id="D-3">Configuratore: il Select "Visibile solo se attivo" elenca booleani ed enum ammessi; scelto un
+      enum compare il MultiSelect "Voci che la aprono" (almeno una: lo schema Zod blocca il salvataggio). Indicazione
+      anteprima "Visibile se in Nome attributo e' scelta almeno una tra: A, B". La condizione si azzera da sola come oggi (campo fuori dal
+      layout o spostato); una voce poi tolta dall'attributo esce dalla condizione al primo cambio delle voci (finche'
+      resta, il server rifiuta il salvataggio).</decision>
+    <decision id="D-4">ISO: campo Offerta `iso_requested_standards` "Norme richieste", `enum` `checklist`, 18 opzioni
+      `standard_*` nell'ordine e con le etichette del legacy (`IsoCatalogue::STANDARD_OPTIONS`). La sezione
+      `iso-standards` ha il campo a tutta riga e "Altro" sotto; ogni sezione di gruppo ha
+      `visible_when: { attribute_code: iso_requested_standards, option_values: IsoCatalogue::GROUP_STANDARDS[id] }`.</decision>
+    <decision id="D-5">Seeder one-shot `IsoRequestedStandardsSeeder` (non in nessun seeder aggregato; sostituisce
+      `IsoRequestedStandardGroupsSeeder` della rev. 1), una transazione: (1) QualificaIsoQuoteFormSeeder (campo + form
+      ISO riscritto); (2) per ogni offerta, prodotto e commessa, i gruppi aperti da `iso_group_*` = true (produzione)
+      o da `iso_requested_standard_groups` (dev) diventano norme: gruppo di una norma -> quella norma; gruppo di piu'
+      norme -> le norme nominate dai prodotti delle righe dell'offerta (es. "Consulenza ISO 9001 + ISO 14001"),
+      altrimenti 9001 (generale) / 22000 (alimentare) — decisione utente 2026-11-23: il blocco resta aperto e i dati
+      salvi — con elenco delle offerte da ricontrollare in output; un gruppo gia' aperto da una norma presente non
+      aggiunge nulla; (3) `AttributeRemover` sui sei `iso_group_*` e su `iso_requested_standard_groups`. Query builder:
+      niente activity log ne' notifiche. Rieseguirlo non cambia nulla.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: `EnumDisplay`, i sei punti di D-1, `AttributeLayoutValidator` (shape + regole D-2),
+        `AttributeLayoutService::normalizeSection`, `AttributeSectionVisibility`; IsoCatalogue + seeder D-5.</item>
+      <item>FE: tipi/Zod del blob, `attribute-section-visibility.ts`, `EnumChecklist` + `enum-field-control.tsx`, voce
+        display nel form di configurazione, condizioni del configuratore (D-3), hint, i18n IT/EN.</item>
+      <item>Guide in-app IT/EN (`custom-fields`, `product-categories`), manuale Claude Docs, HANDOFF.</item>
+    </in>
+    <out>
+      <item>Colonne Tabella (`TableFieldConfigValidator`: enum di colonna resta select/radio).</item>
+      <item>Condizioni su altri tipi, condizioni multiple/AND/OR, "visibile se NON".</item>
+      <item>Legacy (`../qnet`): le opportunita' storiche gia' migrate sono riportate dal seeder D-5; nuovi import
+        legacy delle `check_*` non sono previsti (i codici ISO di qnet-2 non sono quelli legacy).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="PUT" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <request>`layout.sections.*.visible_when`: `null` | `{ attribute_code: string(max 191), option_values?: string(max 191)[]|null }`.</request>
+      <response status="200">Sezione con `visible_when` null o `{ attribute_code }` (booleano) o `{ attribute_code, option_values }` (enum).</response>
+      <errors>422 `attribute_layout`: controllo non booleano ne' enum; enum senza voci o con una voce inesistente;
+        booleano con voci; regole 0288 D-2.</errors>
+    </endpoint>
+    <endpoint method="POST|PUT|PATCH" path="attributi e campi personalizzati (store/update definizione)">
+      <request>`config.display` accetta anche `checklist` (enum).</request>
+    </endpoint>
+    <typescript>
+      LayoutSectionCondition { attribute_code: string; option_values?: string[] | null }
+      CustomFieldConfig.display += 'checklist'
+    </typescript>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Layout con sezione condizionata a `{enum, option_values validi}` salvato: 200 e GET restituisce
+      le voci deduplicate; enum senza voci, voce inesistente, booleano con voci, testo come controllo -> 422
+      `attribute_layout` (Pest).</criterion>
+    <criterion id="AC-002">`hiddenCodes`: enum multi con almeno una delle voci -> visibile, con nessuna/null -> nascosta;
+      enum singolo uguale a una voce -> visibile; booleano come oggi (Pest unit).</criterion>
+    <criterion id="AC-003">Attributo enum `checklist`: array di opzioni valide accettato e normalizzato, valore fuori
+      opzioni -> 422; la voce tolta in PATCH svuota la sezione condizionata (Pest).</criterion>
+    <criterion id="AC-004">Seeder D-5: da `iso_group_*` e da `iso_requested_standard_groups`, gruppi -> norme (dai prodotti
+      o di default), false ignorati, blocco migrato aperto; form riscritto; campi sostituiti spariti; seconda
+      esecuzione invariata (Pest).</criterion>
+    <criterion id="AC-005">FE: `checklist` renderizza una checkbox per opzione e scrive l'array; la sezione condizionata
+      a piu' voci compare con almeno una spuntata e sparisce senza; il configuratore salva l'enum e poi le voci
+      scelte; Zod rifiuta un enum senza voci (Vitest).</criterion>
+    <criterion id="AC-006">Guide IT/EN e parity verdi; Pint, ESLint, `tsc -b --force` puliti; suite mirate verdi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna dipendenza, nessuna migrazione DB (blob JSON e config JSON).</item>
+    <item>Authz invariata. Il seeder non e' in `DatabaseSeeder` ne' in `QualificaProductionDataSeeder`.</item>
+  </constraints>
+
+</spec>

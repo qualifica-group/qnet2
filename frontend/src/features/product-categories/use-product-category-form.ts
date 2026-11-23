@@ -55,6 +55,7 @@ function mapCategoryToFormValues(
       attribute_id: assignment.attribute_id,
       context: assignment.context,
       is_required: assignment.is_required,
+      syncs_with_quote: assignment.syncs_with_quote,
       sort_order: assignment.sort_order,
     })),
     business_function_id: category.business_function_id,

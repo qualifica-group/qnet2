@@ -9,7 +9,7 @@ import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-at
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
-import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
+import type { ApplicableAttributeSummary, LockedAttribute } from '@/features/work-orders/types'
 
 /**
  * "Informazioni aggiuntive" of the work order record (spec 0098), every
@@ -42,6 +42,7 @@ function attribute(overrides: Partial<ApplicableAttributeSummary>): ApplicableAt
     config: null,
     relation_target: null,
     is_required: false,
+    is_synced: false,
     sort_order: 0,
     options: [],
     ...overrides,
@@ -83,9 +84,10 @@ interface HarnessProps {
   values: Record<string, unknown>
   layout?: LayoutBlob | null
   permissions?: ResourcePermissions
+  lockedAttributes?: LockedAttribute[]
 }
 
-function Harness({ attributes, values, layout = null, permissions = FULL_PERMISSIONS }: HarnessProps) {
+function Harness({ attributes, values, layout = null, permissions = FULL_PERMISSIONS, lockedAttributes }: HarnessProps) {
   const form = useForm<WorkOrderFormValues>({
     defaultValues: { attribute_values: values } as unknown as WorkOrderFormValues,
   })
@@ -97,6 +99,7 @@ function Harness({ attributes, values, layout = null, permissions = FULL_PERMISS
           attributes={attributes}
           layout={layout}
           values={values}
+          lockedAttributes={lockedAttributes}
           inline={draft}
           control={form.control}
         />
@@ -125,6 +128,40 @@ describe('WorkOrderAttributesSection', () => {
     fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Site access' }) }))
 
     expect(screen.getByRole('textbox', { name: 'Site access' })).toHaveValue('Gate 3')
+  })
+
+  it('marks a synced field with a keyboard-reachable hint, and leaves the others bare', () => {
+    const synced = attribute({ is_synced: true })
+    const plain = attribute({ id: 3, code: 'notes', name: 'Notes' })
+    render(<Harness attributes={[synced, plain]} values={{ site_access: 'Gate 3', notes: 'x' }} />)
+
+    const hints = screen.getAllByRole('button', { name: /Synced with the offer/ })
+    expect(hints).toHaveLength(1)
+    hints[0].focus()
+    expect(hints[0]).toHaveFocus()
+  })
+
+  it('shows a field owned by an integration without any edit action, marked with its source', () => {
+    render(
+      <Harness
+        attributes={[SITE_ACCESS]}
+        values={{ site_access: 'Gate 3' }}
+        layout={LAYOUT}
+        lockedAttributes={[{ code: 'site_access', source: 'Formalab' }]}
+      />,
+    )
+
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Site access' }) }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Value received from Formalab: read-only.' })).toBeInTheDocument()
+  })
+
+  it('marks no source on a field the user edits', () => {
+    render(<Harness attributes={[SITE_ACCESS]} values={{ site_access: 'Gate 3' }} layout={LAYOUT} />)
+
+    expect(screen.queryByRole('button', { name: /Value received from/ })).not.toBeInTheDocument()
   })
 
   it('renders a filled table Attribute as a read-only mini table (spec 0180)', () => {

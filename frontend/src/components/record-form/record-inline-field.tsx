@@ -54,12 +54,14 @@ type RecordInlineFieldLayout = 'row' | 'block'
 interface FieldFrameProps {
   layout: RecordInlineFieldLayout
   label: string
+  /** Beside the label of a `row` (e.g. a badge naming where the value comes from). */
+  labelAdornment?: ReactNode
   icon?: ReactNode
   className?: string
   children: ReactNode
 }
 
-function FieldFrame({ layout, label, icon, className, children }: FieldFrameProps) {
+function FieldFrame({ layout, label, labelAdornment, icon, className, children }: FieldFrameProps) {
   if (layout === 'block') {
     return (
       <div className={cn('flex min-w-0 flex-col py-1', className)}>
@@ -69,7 +71,7 @@ function FieldFrame({ layout, label, icon, className, children }: FieldFrameProp
     )
   }
   return (
-    <RecordField label={label} icon={icon} className={className}>
+    <RecordField label={labelAdornment ? <>{label}{labelAdornment}</> : label} icon={icon} className={className}>
       {children}
     </RecordField>
   )
@@ -99,6 +101,7 @@ interface RecordInlineFieldProps {
   /** The field permission gating the row, when it is not `field` itself (an Attribute row: `attribute_values`). */
   metaKey?: string
   label: string
+  labelAdornment?: ReactNode
   icon?: ReactNode
   inline: InlineEdit
   /** The control shown while editing: the SAME field component the create form uses (spec 0195 D-3). */
@@ -130,6 +133,7 @@ export function RecordInlineField({
   field,
   metaKey = field,
   label,
+  labelAdornment,
   icon,
   inline,
   editor,
@@ -248,7 +252,7 @@ export function RecordInlineField({
   const value = placesOwnAction ? children(editAction) : children
 
   return (
-    <FieldFrame layout={layout} label={label} icon={icon} className={className}>
+    <FieldFrame layout={layout} label={label} labelAdornment={labelAdornment} icon={icon} className={className}>
       {editable ? (
         <div className={cn('group min-w-0', !placesOwnAction && 'flex items-start gap-1.5')}>
           {/* Mouse shortcut only: the pencil is the keyboard/screen-reader path. */}
