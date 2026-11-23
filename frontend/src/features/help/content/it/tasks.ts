@@ -24,7 +24,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Se hai dei sottoposti, vedi in automatico anche i task in cui almeno un assegnatario è un tuo sottoposto, anche indiretto (fino in fondo alla catena dei responsabili), compresi i colleghi disattivati: non serve alcun permesso dedicato, basta poter vedere i task. Se puoi vedere i Task e le Commesse, vedi anche i task delle commesse che vedi (quelle di cui sei Responsabile o Partecipante, o che vedi per sede, competenza o con Visualizza tutti), anche senza avere un ruolo sul task: è il caso dei task arrivati dal vecchio gestionale, che di solito non hanno assegnatari. Vedere un task della tua sede, del tuo team o di una tua commessa non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**.',
+          text: 'Se hai dei sottoposti, vedi in automatico anche i task in cui almeno un assegnatario è un tuo sottoposto, anche indiretto (fino in fondo alla catena dei responsabili), compresi i colleghi disattivati: non serve alcun permesso dedicato, basta poter vedere i task. Se puoi vedere i Task e le Commesse, vedi anche i task delle commesse che vedi (quelle di cui sei Responsabile o Partecipante, o che vedi per sede, competenza o con Visualizza tutti), anche senza avere un ruolo sul task: è il caso dei task arrivati dal vecchio gestionale, che di solito non hanno assegnatari. Vedere un task della tua sede o del tuo team non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**. I task di una commessa di cui sei **Responsabile** o **Partecipante** invece li gestisci come chi li ha creati (se ne sei assegnatario, come assegnatario).',
         },
         {
           type: 'tip',
@@ -249,7 +249,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un **task di commessa** può essere completato da un **Responsabile** o da un **Partecipante** della commessa anche se non ne è assegnatario, sia quando il task non ha assegnatari sia quando è già assegnato a un collega. Lo completi **a tuo nome**: diventi uno dei suoi **assegnatari** (gli assegnatari già presenti restano e ricevono la notifica di chiusura) e da lì valgono le regole di sempre: se il task richiede la validazione va in validazione, il segnatempo è registrato a tuo nome e la commessa avanza come per gli altri task. Se lasci attivo **Registra il segnatempo per tutti gli assegnatari**, lo stesso tempo va anche ai colleghi assegnati: per registrarlo solo a te, disattivala. Prima di completarlo non puoi modificarlo.',
+          text: 'Un **task di commessa** può essere completato da un **Responsabile** o da un **Partecipante** della commessa anche se non ne è assegnatario, sia quando il task non ha assegnatari sia quando è già assegnato a un collega. Lo completi **a tuo nome**: diventi uno dei suoi **assegnatari** (gli assegnatari già presenti restano e ricevono la notifica di chiusura) e da lì valgono le regole di sempre: se il task richiede la validazione va in validazione, il segnatempo è registrato a tuo nome e la commessa avanza come per gli altri task. Se lasci attivo **Registra il segnatempo per tutti gli assegnatari**, lo stesso tempo va anche ai colleghi assegnati: per registrarlo solo a te, disattivala. Anche prima di completarlo puoi modificarlo come chi lo ha creato, senza diventarne assegnatario.',
         },
       ],
     },

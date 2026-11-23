@@ -24,7 +24,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'If you have subordinates you automatically also see the tasks where at least one assignee is your subordinate, even indirectly (all the way down the chain of managers), deactivated colleagues included: no dedicated permission is needed, you only need to be able to view tasks. If you can view both Tasks and Work orders, you also see the tasks of the work orders you see (those where you are a Supervisor or a Participant, or that you see by site, by competence or with View all), even with no role on the task: this is the case of the tasks that came from the old system, which usually have no assignee. Seeing a task of your site, your team or one of your work orders does not let you edit it: for that you need a role on it (creator, requester, assignee) or the **Manage all** permission.',
+          text: 'If you have subordinates you automatically also see the tasks where at least one assignee is your subordinate, even indirectly (all the way down the chain of managers), deactivated colleagues included: no dedicated permission is needed, you only need to be able to view tasks. If you can view both Tasks and Work orders, you also see the tasks of the work orders you see (those where you are a Supervisor or a Participant, or that you see by site, by competence or with View all), even with no role on the task: this is the case of the tasks that came from the old system, which usually have no assignee. Seeing a task of your site or your team does not let you edit it: for that you need a role on it (creator, requester, assignee) or the **Manage all** permission. The tasks of a work order where you are a **Supervisor** or **Participant**, instead, you manage like their creator (as an assignee, if they are assigned to you).',
         },
         {
           type: 'tip',
@@ -246,7 +246,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A **work order task** can be completed by a **Supervisor** or a **Participant** of the work order even without being its assignee, both when the task has no assignees and when it is already assigned to a colleague. You complete it **in your own name**: you become one of its **assignees** (the existing assignees stay and receive the closing notification), and from then on the usual rules apply: if the task requires validation it goes into validation, the time entry is logged in your name and the work order advances as with the other tasks. If you leave **Log the time entry for all assignees** on, the same time also goes to the assigned colleagues: to log it only for you, turn it off. Before completing it you cannot edit it.',
+          text: 'A **work order task** can be completed by a **Supervisor** or a **Participant** of the work order even without being its assignee, both when the task has no assignees and when it is already assigned to a colleague. You complete it **in your own name**: you become one of its **assignees** (the existing assignees stay and receive the closing notification), and from then on the usual rules apply: if the task requires validation it goes into validation, the time entry is logged in your name and the work order advances as with the other tasks. If you leave **Log the time entry for all assignees** on, the same time also goes to the assigned colleagues: to log it only for you, turn it off. Even before completing it you can edit it like its creator, without becoming its assignee.',
         },
       ],
     },

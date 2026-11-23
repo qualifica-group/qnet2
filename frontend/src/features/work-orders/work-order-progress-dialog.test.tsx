@@ -32,12 +32,13 @@ const ENTRIES: WorkOrderProgressEntry[] = [
   { id: 2, percentage: 40, recorded_on: '2026-10-10', created_by: { id: 1, name: 'Mario Rossi' }, created_at: '2026-10-10T08:00:00Z' },
 ]
 
-function detail(overrides: { update?: boolean } = {}): WorkOrderDetailWithPermissions {
+// The write gate is the server's `record_progress` action (WorkOrderPolicy::manage), no longer `resource.update`.
+function detail(overrides: { recordProgress?: boolean } = {}): WorkOrderDetailWithPermissions {
   return {
     id: 7,
     code: 'COM-0007',
     is_force_closed: false,
-    permissions: { resource: { update: overrides.update ?? true }, fields: {}, actions: {} },
+    permissions: { resource: { update: false }, fields: {}, actions: { record_progress: overrides.recordProgress ?? true } },
   } as unknown as WorkOrderDetailWithPermissions
 }
 
@@ -152,7 +153,7 @@ describe('WorkOrderProgressDialog', () => {
   })
 
   it('is read-only without the update permission: list and total only', async () => {
-    fetchWorkOrderMock.mockResolvedValue(detail({ update: false }))
+    fetchWorkOrderMock.mockResolvedValue(detail({ recordProgress: false }))
     renderDialog()
     await waitFor(() => expect(screen.getByLabelText('Totale % raggiunto')).toHaveValue('70'))
     await waitFor(() => expect(fetchWorkOrderMock).toHaveBeenCalled())

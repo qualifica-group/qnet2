@@ -268,7 +268,8 @@ final class OpportunityColumnCatalog
                 'icon' => 'messages-square',
                 'type' => 'action',
                 'confirm' => false,
-                'permission' => 'request-management.view',
+                // Spec 0408 D-17: whoever sees the opportunity reads its thread.
+                'permission' => 'opportunities.view',
                 'count_field' => 'notes_count',
             ],
             [

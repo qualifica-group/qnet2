@@ -7,6 +7,7 @@ namespace App\Services\Tasks;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\RoleAssignmentGuard;
+use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
@@ -76,14 +77,19 @@ final class TaskRecordRoles
             return false;
         }
 
-        return DB::table('work_order_participant')
-            ->where('work_order_id', $task->work_order_id)
-            ->where('user_id', $actor->id)
-            ->exists()
-            || DB::table('work_order_supervisor')
-                ->where('work_order_id', $task->work_order_id)
-                ->where('user_id', $actor->id)
-                ->exists();
+        $workOrder = $task->relationLoaded('workOrder') ? $task->workOrder : null;
+
+        return WorkOrderVisibilityScope::isMember($workOrder ?? (int) $task->work_order_id, $actor);
+    }
+
+    /**
+     * User directive 2026-11-23: the Responsabile/Partecipante of the
+     * commessa runs its Tasks like a manager, with isManager()'s same deroga:
+     * on a Task they are assigned to they act as an assignee.
+     */
+    public static function isWorkOrderManager(User $actor, Task $task): bool
+    {
+        return self::isWorkOrderMemberClaimant($actor, $task) && ! self::isAssignee($actor, $task);
     }
 
     /**

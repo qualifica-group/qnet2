@@ -30,7 +30,7 @@ use Throwable;
  * `show()` combines two gates the data_contract names explicitly (D-9):
  * `view` on the commessa (WorkOrderPolicy — carries D-9's own membership
  * scope) AND `tasks.viewAny`. `is_read_only` is derived from the SAME
- * `update` ability the stage endpoints gate their mutations on, so a board
+ * `manage` ability the stage endpoints gate their mutations on, so a board
  * that says "read-only" and a stage mutation that 409s never disagree.
  *
  * `move()` authorizes on the TASK, not the commessa (D-9: `TaskPolicy::
@@ -89,7 +89,7 @@ class WorkOrderTaskBoardController extends BaseApiController
             return $this->ok([
                 'stages' => WorkOrderStageResource::collection($this->boardQuery->stages($workOrder)),
                 'tasks' => $tasks,
-                'is_read_only' => $workOrder->is_force_closed || ! $actor->can('update', $workOrder),
+                'is_read_only' => $workOrder->is_force_closed || ! $actor->can('manage', $workOrder),
                 'unstaged_logged_minutes' => $this->boardQuery->unstagedLoggedMinutes($workOrder),
             ]);
         } catch (Throwable $exception) {

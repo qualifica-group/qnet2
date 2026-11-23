@@ -19,7 +19,7 @@ class StoreWorkOrderProgressEntryRequest extends FormRequest
     {
         $workOrder = $this->route('workOrder');
 
-        return $workOrder instanceof WorkOrder && ($this->user()?->can('update', $workOrder) ?? false);
+        return $workOrder instanceof WorkOrder && ($this->user()?->can('manage', $workOrder) ?? false);
     }
 
     /**

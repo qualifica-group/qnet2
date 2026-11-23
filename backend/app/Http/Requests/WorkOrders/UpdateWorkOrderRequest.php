@@ -37,6 +37,9 @@ class UpdateWorkOrderRequest extends FormRequest
 
     private const int TITLE_MAX = 191;
 
+    /** The keys the "Chiusura forzata"/"Riapri" detail actions send. */
+    private const array CLOSURE_FIELDS = ['is_force_closed', 'force_close_reason', 'force_close_status_id'];
+
     public function authorize(): bool
     {
         // Authorization handled in the controller via WorkOrderPolicy.
@@ -102,6 +105,18 @@ class UpdateWorkOrderRequest extends FormRequest
             $workOrder = $this->route('workOrder');
             $this->rejectLockedAttributeChangesOf($validator, $workOrder);
         });
+    }
+
+    /**
+     * Whether the payload carries only the closure keys (and at least
+     * `is_force_closed`), so WorkOrderController authorizes it as the closure
+     * action rather than as the form.
+     */
+    public function isClosureOnly(): bool
+    {
+        $keys = array_keys($this->all());
+
+        return in_array('is_force_closed', $keys, true) && array_diff($keys, self::CLOSURE_FIELDS) === [];
     }
 
     protected function authorizationResource(): string

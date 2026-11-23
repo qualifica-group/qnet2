@@ -244,13 +244,14 @@ final class TaskCompletionService
      * the percorso is derived, so the
      * rest of complete() (validation, segnatempo, notifications) treats them
      * exactly as an assignee. Inside the transaction: a later guard rolls
-     * the assignment back with the completion. An actor who may already
-     * edit the Task (creator, requester, manager) is never assigned: it
-     * would cost a manager the manager standing (TaskRecordRoles::isManager()).
+     * the assignment back with the completion. An actor who already holds a
+     * role of their own on the Task (creator, requester, assignee, manager)
+     * is never assigned: it would cost a manager the manager standing
+     * (TaskRecordRoles::isManager()).
      */
     private function claimForWorkOrderMember(Task $task, User $actor): void
     {
-        if (TaskAbilityResolver::canUpdate($actor, $task) || ! TaskRecordRoles::isWorkOrderMemberClaimant($actor, $task)) {
+        if (! TaskAbilityResolver::claimsByCompleting($actor, $task)) {
             return;
         }
 

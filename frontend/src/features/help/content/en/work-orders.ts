@@ -151,7 +151,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The forced closure is an **action**, not a field: you find it at the top of the work order detail. It shows only if you may edit the work order.',
+          text: 'The forced closure is an **action**, not a field: you find it at the top of the work order detail. It shows if you may edit the work order or you are one of its **Supervisors** or **Participants**.',
         },
         {
           type: 'steps',
@@ -187,7 +187,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'You record and delete records if you may edit the work order, otherwise you only see the list. Progress does not change the work order status (see **Working phases**), nor do task statuses; the tasks percentage stays visible in the task board.',
+          text: 'You record and delete records if you may edit the work order or you are one of its **Supervisors** or **Participants**, otherwise you only see the list. Progress does not change the work order status (see **Working phases**), nor do task statuses; the tasks percentage stays visible in the task board.',
         },
       ],
     },
@@ -439,9 +439,9 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; the levels are cumulative:" },
         { type: 'table', headers: ["Permission", "Visible work orders"], rows: [["**View**", "Those where you are a **Supervisor** or a **Participant**."], ["**View by site**", "Your own plus those whose quote belongs to one of your sites. For a work order with several quotes, one is enough."], ["**View by competence**", "Your own plus those where at least one source quote has a category in your assignment scope, in any site. With **Scope on all categories**, all of them."], ["**View all**", "All of them."]] },
         { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to a work order you cannot see shows an access error. Seeing a work order does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
-        { type: 'paragraph', text: "Whoever sees a work order also sees its tasks on the task board and on the **Tasks** page, if they can view Tasks, even with no role on the task; private tasks stay excluded. Editing them takes a role on the task or the Tasks **Manage all** permission. Exception: a **Supervisor** or a **Participant** can complete a task of the work order in their own name, even when it is already assigned to a colleague, and completing it makes them one of its assignees." },
+        { type: 'paragraph', text: "Whoever sees a work order also sees its tasks on the task board and on the **Tasks** page, if they can view Tasks, even with no role on the task; private tasks stay excluded. Editing them takes a role on the task or the Tasks **Manage all** permission. A **Supervisor** or **Participant** runs the work order even without being able to edit it: they force close and reopen it, record its progress, manage the task board **Stages** and the work order's tasks (edit, delete, validate and block them like their creator; on a task assigned to them they stay an assignee). Only the fields of the work order form stay with whoever can edit it. They can also complete a task of the work order in their own name, even when it is already assigned to a colleague, and completing it makes them one of its assignees." },
         { type: 'note', text: "If you create a work order without being a Supervisor or a Participant, you will no longer see it unless you have **View all**, **View by site** or **View by competence**." },
-        { type: 'tip', text: "Whoever can edit the work order can involve a colleague who cannot see it by mentioning them in a note with **Mention anyone**: on save they become a **Participant** (see **Notes and documents** in the general guide)." },
+        { type: 'tip', text: "Whoever can see the work order's notes can involve a colleague who cannot see it by mentioning them in a note with **Mention anyone**: on save they become a **Participant** (see **Notes and documents** in the general guide)." },
       ],
     },
     ...recurringEmailSections,

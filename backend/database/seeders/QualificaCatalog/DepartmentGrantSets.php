@@ -37,11 +37,15 @@ final class DepartmentGrantSets
         'purchase_invoices_view', 'commission_accruals_view',
     ];
 
+    /**
+     * Sicurezza: commesse "Solo quelle in cui e' coinvolto" (question 29), not
+     * those of the sector (user directive 2026-11-23, supersedes D-6).
+     */
     public const array SAFETY = [
         'registries_view', 'registries_documents',
         'opportunities_view', 'opportunities_documents', 'opportunities_history',
         'quotes_view',
-        'work_orders_view', 'work_orders_view_competence', 'work_orders_economics', 'work_orders_invoices',
+        'work_orders_view', 'work_orders_economics', 'work_orders_invoices',
         'work_orders_documents', 'work_orders_emails', 'work_orders_history',
         'tasks_edit', 'tasks_validate', 'tasks_transfer',
         'proforma_view', 'proforma_request', 'invoices_view',
