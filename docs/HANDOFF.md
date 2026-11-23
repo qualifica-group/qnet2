@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Gruppi di documenti nelle checklist, allineati ad ArchivioSmart (spec 0427, 2026-11-23) — NON PROVATO NEL BROWSER
+
+- Tabella `document_checklist_sections` (name, description, position; massimo 20 per checklist, `config('archivio-smart.max_sections')`; nomi unici senza distinzione di maiuscole). Sulla voce: `section_id` (FK nullOnDelete) e `date_field` varchar(64). La colonna testo `section` è stata rimossa: la migrazione dati ha convertito i valori distinti in gruppi, nell'ordine della prima voce che li usava.
+- Il PUT/POST della checklist richiede sempre `sections: [{id|null, name, description}]` (sostituzione completa). Le voci indicano il gruppo con `section_index`, cioè l'indice in `sections`, e accettano `date_field` (snake_case, solo insieme a `max_age_days`). La risposta restituisce `sections[]` e `items[].section_index`.
+- Verso ArchivioSmart (D-1, nomi dei campi da confermare con chi sviluppa ArchivioSmart): `sections: [{external_id, name, description, sort_order}]`; sulle voci `section_external_id` più `section` (nome del gruppo, per transizione: oggi ArchivioSmart ricava il gruppo da questo nome); `validation_rules.date_field` vale `date_field` oppure `issue_date`.
+- Frontend:
+  - card "Gruppi di documenti" (`checklist-sections-editor.tsx`, hook `use-checklist-sections.ts`);
+  - select "Gruppo" nella voce (`checklist-item-section-select.tsx`);
+  - nel form la voce si lega al gruppo con una chiave interna, e `section_index` viene calcolato solo nel payload;
+  - spunta "Più documenti" (spenta = min 1/max 1, accesa = min 1/max 10; una voce con max_files maggiore di 1 si apre spuntata);
+  - "Campo data estratto";
+  - guide in-app IT/EN aggiornate.
+- Numerazione: 0422 e 0426 sono già usati dal remoto (formalab), da qui il numero 0427.
+- Prossimi passi:
+  - prova nel browser;
+  - conferma di ArchivioSmart sui nomi dei campi D-1;
+  - manuale Claude Docs (gruppi, select "Gruppo", "Più documenti", "Campo data estratto");
+  - spec delle richieste documentali (gruppi e categoria sulle richieste).
+
 ## Formalab: Nome corso = select sulle classi, abbinamento solo per edition_id, menu "Integrazioni esterne" (spec 0426, 2026-11-23) — VERDE MIRATO, NON COMMITTATO, MIGRAZIONE E SEEDER NON ESEGUITI SU qnet2
 
 - Tabella d'appoggio = `formalab_classes` (gemella di `classi` legacy). Invariante nuova `id = edition_id` (mapper + migrazione `2026_11_23_110000_align_formalab_class_ids_with_edition_ids`, due passaggi senza collisioni): il campo relazione salva l'id, quindi salva l'edition_id.

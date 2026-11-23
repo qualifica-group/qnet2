@@ -22,13 +22,13 @@ class DocumentChecklistService
 {
     public function create(SaveDocumentChecklistData $data): DocumentChecklist
     {
-        // Step 1: checklist + items in one transaction
+        // Step 1: checklist + sections + items in one transaction
         $checklist = DB::transaction(function () use ($data): DocumentChecklist {
             $checklist = DocumentChecklist::create([
                 ...$data->attributes(),
                 'sync_status' => DocumentChecklistSyncStatus::Pending,
             ]);
-            $this->replaceItems($checklist, $data);
+            $this->replaceContent($checklist, $data);
 
             return $checklist;
         });
@@ -47,7 +47,7 @@ class DocumentChecklistService
                 'sync_status' => DocumentChecklistSyncStatus::Pending,
                 'sync_error' => null,
             ])->save();
-            $this->replaceItems($checklist, $data);
+            $this->replaceContent($checklist, $data);
         });
 
         $this->queueSync($checklist);
@@ -114,26 +114,62 @@ class DocumentChecklistService
 
     public function loadDetail(DocumentChecklist $checklist): DocumentChecklist
     {
-        return $checklist->unsetRelation('items')->load(['items', 'category']);
+        return $checklist->unsetRelation('items')->unsetRelation('sections')->load(['items', 'sections', 'category']);
+    }
+
+    private function replaceContent(DocumentChecklist $checklist, SaveDocumentChecklistData $data): void
+    {
+        // Step 1: sections first, so the items can point to their ids
+        $sectionIds = $this->replaceSections($checklist, $data);
+
+        // Step 2: items, with section_index resolved to section_id
+        $this->replaceItems($checklist, $data, $sectionIds);
+    }
+
+    /**
+     * Full replacement: sections matched by id are updated (they keep the id), the
+     * missing ones are deleted (their items fall back to no section, nullOnDelete),
+     * new ones are created; `position` is the index in the payload.
+     *
+     * @return array<int, int> section ids in payload order, so a `section_index` maps to an id
+     */
+    private function replaceSections(DocumentChecklist $checklist, SaveDocumentChecklistData $data): array
+    {
+        $existing = $checklist->sections()->get();
+        $sectionIds = [];
+
+        foreach ($data->sections as $position => $section) {
+            $sectionIds[$position] = $section->id === null
+                ? $checklist->sections()->create($section->attributes($position))->id
+                : tap($existing->firstOrFail('id', $section->id))->update($section->attributes($position))->id;
+        }
+
+        $checklist->sections()->whereNotIn('id', $sectionIds)->delete();
+
+        return $sectionIds;
     }
 
     /**
      * Full replacement: items matched by id are updated, the missing ones are
      * deleted, new ones are created; `position` is the index in the payload.
+     *
+     * @param  array<int, int>  $sectionIds
      */
-    private function replaceItems(DocumentChecklist $checklist, SaveDocumentChecklistData $data): void
+    private function replaceItems(DocumentChecklist $checklist, SaveDocumentChecklistData $data, array $sectionIds): void
     {
         $existing = $checklist->items()->get();
         $keptIds = [];
 
         foreach ($data->items as $position => $item) {
+            $attributes = $item->attributes($position, $item->sectionIndex === null ? null : $sectionIds[$item->sectionIndex]);
+
             if ($item->id === null) {
-                $keptIds[] = $checklist->items()->create($item->attributes($position))->id;
+                $keptIds[] = $checklist->items()->create($attributes)->id;
 
                 continue;
             }
 
-            $existing->firstOrFail('id', $item->id)->update($item->attributes($position));
+            $existing->firstOrFail('id', $item->id)->update($attributes);
             $keptIds[] = $item->id;
         }
 

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0427-document-checklist-sections" status="approved" owner="utente" date="2026-11-23">
+
+  <goal>
+    Allineare l'inserimento delle checklist documentali di QNet a quello di ArchivioSmart: ogni checklist ha un elenco
+    ordinato di gruppi di documenti (nome, descrizione, al massimo 20) e la voce sceglie il gruppo da una select invece
+    di scriverlo a mano. Nello stesso passaggio la voce riceve "Più documenti" come spunta e il "Campo data estratto"
+    della regola sull'età massima.
+  </goal>
+
+  <context>
+    - Estende la spec 0403 (checklist + sync) e la 0410 (categorie). Model reali: `DocumentChecklist`,
+      `DocumentChecklistItem` (colonne `section` varchar(255) null, `min_files`, `max_files`, `max_age_days`, `position`),
+      `DocumentChecklistService`, `SaveDocumentChecklistRequest`, `SaveDocumentChecklistData`, `DocumentChecklistResource`,
+      `DocumentChecklistPayloadBuilder` (`DATE_FIELD = 'issue_date'` fisso), `config/archivio-smart.php`
+      (`max_files` 10, `max_lengths.section` 255).
+    - Frontend: `features/document-checklists/` (`document-checklist-schema.ts`, `checklist-items-editor.tsx`,
+      `checklist-item-fields.tsx`, `use-checklist-items.ts`, `document-checklist-form-values.ts`). Il salvataggio della
+      checklist è una sostituzione completa (testata + voci in un solo PUT), e così restano anche i gruppi.
+    - Schema ArchivioSmart, fornito dall'utente il 2026-11-23:
+      * `checklist_template_sections` (nome, descrizione, ordinamento), al massimo 20 per checklist;
+      * `checklist_template_items.section_id`, facoltativo, `ON DELETE SET NULL`;
+      * `min_files`/`max_files` sulla voce; `validation_rules` JSON;
+      * nelle richieste i gruppi con voci vengono copiati in `document_requests.checklist_snapshot.sections` e la voce ha
+        `section_index`. Non c'è una tabella dei gruppi.
+      * Oggi ArchivioSmart ricava il gruppo dal testo `section` che QNet invia sulla voce: ordine e descrizione del
+        gruppo non arrivano.
+    - Nell'interfaccia di ArchivioSmart: "Più documenti" è una spunta ("il cliente carica più file per questa voce");
+      "Campo data estratto" è il nome del campo estratto dall'AI (es. `issue_date`). Le voci senza gruppo finiscono
+      nella tab "Altri documenti".
+  </context>
+
+  <decisions>
+    <decision id="D-1" status="da confermare con ArchivioSmart">
+      Contratto verso ArchivioSmart: il PUT della checklist aggiunge
+      `sections: [{external_id, name, description, sort_order}]` e su ogni voce `section_external_id` (stringa o null).
+      Per transizione la voce continua a inviare anche `section`, cioè il nome del gruppo o null: un ArchivioSmart che
+      non legge ancora `sections` continua a funzionare come oggi. Chi sviluppa ArchivioSmart deve confermare i nomi
+      dei campi prima del build.
+    </decision>
+    <decision id="D-2">
+      In QNet i gruppi si chiamano `sections`, come in ArchivioSmart e come la colonna esistente: tabella
+      `document_checklist_sections`, FK `section_id` sulla voce. Nomi unici dentro la checklist (senza distinzione tra
+      maiuscole e minuscole), al massimo 20 (`config('archivio-smart.max_sections')`).
+    </decision>
+    <decision id="D-3">
+      Nel body del PUT/POST QNet la voce indica il gruppo con `section_index`, l'indice nell'array `sections` della
+      stessa richiesta, come lo snapshot delle richieste di ArchivioSmart. Serve perché un gruppo nuovo non ha ancora
+      un id. La risposta restituisce `sections[].id` e `items[].section_index`.
+    </decision>
+    <decision id="D-4">
+      Migrazione dei dati: per ogni checklist, i valori distinti di `section` diventano gruppi, nell'ordine della prima
+      voce che li usa (`position`); poi la colonna `section` viene rimossa. Il `down()` ricostruisce `section` dal
+      nome del gruppo.
+    </decision>
+    <decision id="D-5" status="da confermare">
+      "Più documenti" diventa una spunta. Spenta: min 1 e max 1. Accesa: min 1 e max `config('archivio-smart.max_files')`
+      (10, come la voce "Preventivi multipli" di ArchivioSmart). Le colonne `min_files`/`max_files` e il payload non
+      cambiano. All'apertura, una voce esistente con `max_files` maggiore di 1 si presenta con la spunta accesa.
+    </decision>
+    <decision id="D-6">
+      Nuova colonna `date_field` sulla voce: varchar(64) null, formato snake_case (`^[a-z][a-z0-9_]*$`). Si può
+      compilare solo con `max_age_days`. Il payload invia `validation_rules.date_field = date_field ?? 'issue_date'`.
+    </decision>
+    <decision id="D-7">
+      Eliminare un gruppo nel form non elimina le voci: passano a "Nessun gruppo" ("Altri documenti"). Ogni modifica a
+      gruppi o voci marca la checklist `pending` e la risincronizza, come oggi (spec 0403).
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Tabella `document_checklist_sections`, `section_id` sulla voce, migrazione dei dati da `section`, colonna `date_field`.</item>
+      <item>PUT/POST/GET della checklist con `sections` e `items[].section_index`, `items[].date_field`; validazione server.</item>
+      <item>Payload ArchivioSmart secondo D-1 (sections + section_external_id + section di transizione, date_field nelle regole).</item>
+      <item>Form checklist: card "Gruppi di documenti" (aggiungi, rinomina con descrizione, sposta su/giù, elimina); nella voce la select "Gruppo" con "Nessun gruppo (Altri documenti)", la spunta "Più documenti", il "Campo data estratto".</item>
+      <item>Guide in-app IT/EN `document-checklists` aggiornate; API docs della checklist.</item>
+    </in>
+    <out>
+      <item>Gruppi nelle richieste documentali (sarà la spec delle richieste, insieme al punto 8 del brief categorie).</item>
+      <item>Endpoint separati per i gruppi: si salvano solo con la checklist.</item>
+      <item>Visualizzazione delle voci raggruppate per gruppo nell'editor: l'elenco resta ordinato per `position`, con il gruppo indicato sulla voce.</item>
+      <item>Chi comanda su prompt e regole quando vengono modificati in ArchivioSmart: questione aperta, QNet continua a inviarli a ogni salvataggio.</item>
+      <item>"Prova il prompt" in QNet.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST|PUT" path="/api/document-checklists[/{id}]">
+      <request>
+        {
+          name, code, description, category_id, is_active,            // invariati (0403/0410)
+          sections: [ { id: number|null, name: string(1..255), description: string|null } ],  // ordine = array; max 20; nomi unici (case-insensitive)
+          items: [ {
+            id, name, description, is_required, allowed_file_types, max_file_size_kb,
+            min_files, max_files, validation_prompt, max_age_days,     // invariati
+            section_index: number|null,                                // indice in `sections`; null = nessun gruppo
+            date_field: string|null                                    // max 64, ^[a-z][a-z0-9_]*$, ammesso solo con max_age_days
+          } ]                                                          // il campo `section` (testo) non esiste più
+        }
+      </request>
+      <response status="200|201">
+        data: { ...DocumentChecklist 0410,
+                sections: [ { id: number, name: string, description: string|null } ],   // ordinati per position
+                items: [ { ...item 0403 senza `section`, section_index: number|null, date_field: string|null } ] }
+      </response>
+      <errors>
+        422: `sections` oltre 20 (`sections`), nome vuoto/oltre 255 (`sections.N.name`), nome duplicato (`sections.N.name`),
+             `sections.N.id` di un'altra checklist (`sections.N.id`), `items.N.section_index` fuori range (`items.N.section_index`),
+             `items.N.date_field` non valido o senza max_age_days (`items.N.date_field`).
+        403 senza permesso; 404 checklist inesistente. Invariati.
+      </errors>
+    </endpoint>
+    <endpoint method="PUT" path="{archivio_smart.base_url}/checklists/{id}" direction="outbound">
+      <request>
+        { name, code, category_external_id, description, is_active,
+          sections: [ { external_id: string, name, description: string|null, sort_order: int } ],
+          items: [ { ...payload 0403,
+                     section_external_id: string|null,
+                     section: string|null,                         // nome del gruppo, transizione (D-1)
+                     validation_rules: max_age_days ? { max_age_days, date_field: date_field ?? "issue_date" } : null } ] }
+      </request>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un POST con 2 sezioni e 3 voci (indici 0, 1, null), allora 201, 2 righe `document_checklist_sections` con position 0/1 e voci con `section_id` corrispondente o null; la risposta riporta `sections` e `items[].section_index` 0, 1, null.</criterion>
+    <criterion id="AC-002">Dato un PUT che rinomina la sezione esistente (stesso id), ne elimina un'altra e ne aggiunge una nuova, allora la sezione rinominata mantiene l'id, quella eliminata non esiste più, le sue voci hanno `section_id` null e la nuova sezione ha un id nuovo.</criterion>
+    <criterion id="AC-003">Dato un payload con 21 sezioni, un nome duplicato con maiuscole diverse, un `section_index` 5 con 2 sezioni, un id di sezione di un'altra checklist e un `date_field` "Issue Date" o senza max_age_days, allora 422 con un errore su ciascun campo e nessuna scrittura né job in coda.</criterion>
+    <criterion id="AC-004">La migrazione su una checklist con voci con `section` "B", "A", "B", null crea le sezioni "B" (position 0) e "A" (position 1) collegate alle voci; la colonna `section` non esiste più; il `down()` la ripristina con i nomi.</criterion>
+    <criterion id="AC-005">Il job invia il PUT con `sections` ordinate (external_id = id stringa, sort_order = position), `section_external_id` e `section` (nome) sulle voci, e `validation_rules.date_field` uguale al `date_field` della voce o "issue_date" se vuoto (Http::fake + assertSent).</criterion>
+    <criterion id="AC-006">Modificare solo i gruppi (rinomina o spostamento) marca la checklist pending e accoda il job (afterCommit), come ogni salvataggio 0403.</criterion>
+    <criterion id="AC-007">Frontend: nel form si aggiunge, rinomina, sposta ed elimina un gruppo; la select "Gruppo" della voce elenca i gruppi nell'ordine attuale più "Nessun gruppo"; eliminare un gruppo riporta a "Nessun gruppo" le voci che lo usavano; il payload inviato contiene `sections` e `section_index` coerenti (Vitest).</criterion>
+    <criterion id="AC-008">Frontend: la spunta "Più documenti" produce min 1/max 1 (spenta) o min 1/max 10 (accesa); una voce esistente con max_files 3 si apre con la spunta accesa (Vitest).</criterion>
+    <criterion id="AC-009">Frontend: "Campo data estratto" è abilitato solo con un'età massima valorizzata; un valore non snake_case mostra l'errore di validazione (Vitest).</criterion>
+    <criterion id="AC-010">Guide in-app `document-checklists` IT/EN aggiornate con gli stessi id di sezione; i parity test restano verdi.</criterion>
+    <criterion id="AC-011">Tutti i test 0403 e 0410 restano verdi; quelli che cambiano per la rimozione di `section` sono marcati REQUIREMENT CHANGED (spec 0422).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza, nessun nuovo permesso (`document-checklists.*`), nessun throttle.
+    - Authz server-side invariata (policy checklist). `$fillable` sul nuovo model, FK con indice, nomi indice sotto i 64 caratteri (MySQL).
+    - Migrazione dei dati reversibile e idempotente; mai modificare migrazioni già committate.
+    - Limiti in config (`archivio-smart.max_sections`, `max_lengths.date_field`), non nel codice.
+    - Mai token o body nei log di sync (0403).
+  </constraints>
+
+  <plan>
+    <task id="BE-01" owner="backend" lane="sequenziale" write="backend/database/migrations, app/Models">Migrazioni (sections, section_id, date_field, migrazione dati + drop section), model `DocumentChecklistSection`, relazioni. AC-004.</task>
+    <task id="BE-02" owner="backend" lane="dopo BE-01" write="app/Http/Requests, app/DataObjects, app/Services/DocumentChecklistService.php, app/Http/Resources, resources/api-docs, lang">Validazione, DTO, sync delle sezioni nel service, resource, API docs. AC-001..003, AC-006.</task>
+    <task id="BE-03" owner="backend" lane="dopo BE-01" write="app/Services/ArchivioSmart/DocumentChecklistPayloadBuilder.php, tests">Payload D-1/D-6. AC-005.</task>
+    <task id="FE-01" owner="frontend" lane="parallelo a BE (contratto congelato)" write="features/document-checklists/{types,schema,form-values,api}">Tipi, schema Zod, mappatura valori del form. AC-008/009 (logica).</task>
+    <task id="FE-02" owner="frontend" lane="dopo FE-01" write="features/document-checklists/*editor*, *fields*, sections editor, i18n">Card gruppi, select gruppo, spunta più documenti, campo data. AC-007..009.</task>
+    <task id="FE-03" owner="frontend" lane="dopo FE-02" write="features/help/content/{it,en}/document-checklists.ts">Guide in-app. AC-010.</task>
+    <task id="VER" owner="verifier" lane="gate finale">Mappatura AC, test mirati, gate completo. AC-011.</task>
+  </plan>
+
+</spec>

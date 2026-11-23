@@ -19,6 +19,7 @@ return [
     'max_file_size_kb' => 20480,
     'default_file_size_kb' => 10240,
     'max_items' => 200,
+    'max_sections' => 20,
     'max_files' => 10,
     'max_age_days' => 3650,
 
@@ -34,7 +35,7 @@ return [
         'name' => 255,
         'code' => 50,
         'description' => 2000,
-        'section' => 255,
+        'date_field' => 64,
         'validation_prompt' => 5000,
     ],
 ];

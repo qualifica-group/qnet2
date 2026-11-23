@@ -6,12 +6,13 @@ namespace App\DataObjects\DocumentChecklists;
 
 /**
  * Validated payload of POST/PUT /api/document-checklists (spec 0403): both are a
- * full replacement of the checklist and of its items, so one DTO serves both.
+ * full replacement of the checklist, its sections (spec 0427) and its items, so one DTO serves both.
  */
 final readonly class SaveDocumentChecklistData
 {
     /**
      * @param  array<int, DocumentChecklistItemData>  $items  in display order
+     * @param  array<int, DocumentChecklistSectionData>  $sections  in display order
      */
     public function __construct(
         public string $name,
@@ -20,6 +21,7 @@ final readonly class SaveDocumentChecklistData
         public bool $isActive,
         public ?int $categoryId,
         public array $items,
+        public array $sections,
     ) {}
 
     /**
@@ -36,6 +38,10 @@ final readonly class SaveDocumentChecklistData
             items: array_map(
                 DocumentChecklistItemData::fromValidated(...),
                 array_values($data['items'] ?? []),
+            ),
+            sections: array_map(
+                DocumentChecklistSectionData::fromValidated(...),
+                array_values($data['sections'] ?? []),
             ),
         );
     }

@@ -5,14 +5,19 @@ import type { DocumentChecklistFormValues } from '@/features/document-checklists
 
 const TOP_LEVEL_FIELDS = ['name', 'code', 'description', 'category_id', 'is_active'] as const
 const ITEMS_ROOT = 'items'
-/** Item key the server calls `id` and the form calls `server_id` (RHF reserves `id`). */
-const SERVER_ITEM_ID_FIELD = 'id'
-const FORM_ITEM_ID_FIELD = 'server_id'
-const ITEM_KEY = /^items\.(\d+)\.([a-z_]+)(?:\.\d+)?$/
+const SECTIONS_ROOT = 'sections'
+/** Server field names the form calls differently (RHF reserves `id`; group and files rules are form-only controls). */
+const SERVER_TO_FORM_FIELD: Record<string, string> = {
+  id: 'server_id',
+  section_index: 'section_key',
+  min_files: 'allow_multiple',
+  max_files: 'allow_multiple',
+}
+const ROW_KEY = /^(items|sections)\.(\d+)\.([a-z_]+)(?:\.\d+)?$/
 
 type FormErrorPath = Parameters<UseFormSetError<DocumentChecklistFormValues>>[0]
 
-/** Maps a server validation key (`items.2.max_files`, `items.0.allowed_file_types.1`) onto a form path, or null. */
+/** Maps a server validation key (`items.2.max_files`, `items.0.allowed_file_types.1`, `sections.1.name`) onto a form path, or null. */
 export function serverKeyToFormPath(key: string): FormErrorPath | null {
   if ((TOP_LEVEL_FIELDS as readonly string[]).includes(key)) {
     return key as FormErrorPath
@@ -20,12 +25,15 @@ export function serverKeyToFormPath(key: string): FormErrorPath | null {
   if (key === 'items') {
     return ITEMS_ROOT
   }
-  const match = ITEM_KEY.exec(key)
+  if (key === 'sections') {
+    return SECTIONS_ROOT
+  }
+  const match = ROW_KEY.exec(key)
   if (!match) {
     return null
   }
-  const field = match[2] === SERVER_ITEM_ID_FIELD ? FORM_ITEM_ID_FIELD : match[2]
-  return `items.${match[1]}.${field}` as FormErrorPath
+  const field = SERVER_TO_FORM_FIELD[match[3]] ?? match[3]
+  return `${match[1]}.${match[2]}.${field}` as FormErrorPath
 }
 
 /**

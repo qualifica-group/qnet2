@@ -32,6 +32,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'groups',
+      title: 'I gruppi di documenti',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'La card **Gruppi di documenti** raggruppa le voci: nel portale del cliente ogni gruppo diventa una scheda, e le voci senza gruppo vanno in "Altri documenti". Si possono creare fino a **20 gruppi** con **Nuovo gruppo**; ognuno ha un nome (unico nella checklist) e una descrizione, e mostra quante voci contiene. Riordinali con **Sposta su** / **Sposta giù**. Eliminando un gruppo le sue voci non vengono cancellate: passano a "Nessun gruppo".',
+        },
+      ],
+    },
+    {
       id: 'items',
       title: 'Le voci',
       blocks: [
@@ -45,12 +55,13 @@ const guide: HelpGuide = {
           rows: [
             ['Nome, Descrizione', 'Come si chiama il documento e cosa deve contenere.'],
             ['Obbligatoria', 'Il documento è indispensabile.'],
-            ['Gruppo', 'Nel portale del cliente ogni gruppo è una scheda; le voci senza gruppo vanno in "Altri documenti".'],
+            ['Gruppo', 'Si sceglie tra i gruppi della checklist; "Nessun gruppo" porta la voce in "Altri documenti".'],
             ['Tipi di file ammessi', 'pdf, jpg, jpeg, png, webp, heic, docx, odt, txt; ne serve almeno uno.'],
             ['Dimensione massima', 'Fino a 20480 KB (default 10240).'],
-            ['Numero minimo e massimo di file', 'Da 1 a 10; 1 e 1 significa un solo file.'],
+            ['Più documenti', 'Se attiva il cliente può caricare fino a 10 file per la voce; ogni file viene controllato da solo con lo stesso prompt e le stesse regole. Se spenta, un solo file.'],
             ['Prompt di validazione', 'Istruzione in italiano per l\'AI, per esempio "Verifica che sia una visura camerale e che riporti la ragione sociale".'],
             ['Età massima del documento', 'Facoltativa, in giorni (1-3650).'],
+            ['Campo data estratto', 'Nome del campo data che l\'AI estrae dal documento (per esempio issue_date), con lettere minuscole, cifre e _. Si compila solo con l\'età massima; se vuoto vale issue_date.'],
           ],
         },
       ],

@@ -1,14 +1,18 @@
 import { useTranslation } from 'react-i18next'
-import { useFormContext } from 'react-hook-form'
+import { useFormContext, useWatch } from 'react-hook-form'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import type { DocumentChecklistFormValues } from '@/features/document-checklists/document-checklist-schema'
+import { ChecklistItemSectionSelect } from '@/features/document-checklists/checklist-item-section-select'
+import {
+  ITEM_DATE_FIELD_MAX_LENGTH,
+  type DocumentChecklistFormValues,
+} from '@/features/document-checklists/document-checklist-schema'
 import { DOCUMENT_CHECKLIST_FILE_TYPES } from '@/features/document-checklists/types'
 
-type NumericItemField = 'max_file_size_kb' | 'min_files' | 'max_files' | 'max_age_days'
+type NumericItemField = 'max_file_size_kb' | 'max_age_days'
 
 interface ItemFieldsProps {
   index: number
@@ -88,6 +92,7 @@ function TextAreaField({
 export function ChecklistItemFields({ index }: ItemFieldsProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<DocumentChecklistFormValues>()
+  const maxAgeDays = useWatch({ control, name: `items.${index}.max_age_days` })
 
   return (
     <div className="grid grid-cols-1 gap-3 @lg:grid-cols-2">
@@ -106,20 +111,7 @@ export function ChecklistItemFields({ index }: ItemFieldsProps) {
           </FormItem>
         )}
       />
-      <FormField
-        control={control}
-        name={`items.${index}.section`}
-        render={({ field }) => (
-          <FormItem className="gap-1">
-            <FormLabel className="text-xs">{t('documentChecklists.item.section')}</FormLabel>
-            <FormControl>
-              <Input {...field} className="h-8" placeholder={t('documentChecklists.item.otherDocuments')} />
-            </FormControl>
-            <FormDescription className="text-xs">{t('documentChecklists.item.sectionHint')}</FormDescription>
-            <FormMessage className="text-xs" />
-          </FormItem>
-        )}
-      />
+      <ChecklistItemSectionSelect index={index} />
       <div className="@lg:col-span-2">
         <TextAreaField index={index} name="description" label={t('documentChecklists.item.description')} />
       </div>
@@ -174,8 +166,39 @@ export function ChecklistItemFields({ index }: ItemFieldsProps) {
         hint={t('documentChecklists.item.maxAgeDaysHint')}
         nullable
       />
-      <NumericField index={index} name="min_files" label={t('documentChecklists.item.minFiles')} />
-      <NumericField index={index} name="max_files" label={t('documentChecklists.item.maxFiles')} />
+      <FormField
+        control={control}
+        name={`items.${index}.date_field`}
+        render={({ field }) => (
+          <FormItem className="gap-1">
+            <FormLabel className="text-xs">{t('documentChecklists.item.dateField')}</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                className="h-8"
+                disabled={maxAgeDays === null}
+                maxLength={ITEM_DATE_FIELD_MAX_LENGTH}
+                placeholder="issue_date"
+              />
+            </FormControl>
+            <FormDescription className="text-xs">{t('documentChecklists.item.dateFieldHint')}</FormDescription>
+            <FormMessage className="text-xs" />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name={`items.${index}.allow_multiple`}
+        render={({ field }) => (
+          <FormItem className="gap-1 @lg:col-span-2">
+            <label className="flex items-center gap-1.5 text-xs font-medium">
+              <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
+              {t('documentChecklists.item.allowMultiple')}
+            </label>
+            <FormDescription className="text-xs">{t('documentChecklists.item.allowMultipleHint')}</FormDescription>
+          </FormItem>
+        )}
+      />
       <div className="@lg:col-span-2">
         <TextAreaField
           index={index}

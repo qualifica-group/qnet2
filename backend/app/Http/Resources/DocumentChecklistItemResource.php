@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
+ * The `section_index` is added by DocumentChecklistResource, which knows the section order.
+ *
  * @mixin DocumentChecklistItem
  */
 class DocumentChecklistItemResource extends JsonResource
@@ -22,7 +24,6 @@ class DocumentChecklistItemResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
-            'section' => $this->section,
             'is_required' => $this->is_required,
             'allowed_file_types' => $this->allowed_file_types,
             'max_file_size_kb' => $this->max_file_size_kb,
@@ -30,6 +31,7 @@ class DocumentChecklistItemResource extends JsonResource
             'max_files' => $this->max_files,
             'validation_prompt' => $this->validation_prompt,
             'max_age_days' => $this->max_age_days,
+            'date_field' => $this->date_field,
         ];
     }
 }

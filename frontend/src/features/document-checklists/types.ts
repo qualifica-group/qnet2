@@ -29,7 +29,8 @@ export interface DocumentChecklistItem {
   id: number
   name: string
   description: string | null
-  section: string | null
+  /** Index into the checklist `sections`; null = no group ("Altri documenti"). */
+  section_index: number | null
   is_required: boolean
   allowed_file_types: DocumentChecklistFileType[]
   max_file_size_kb: number
@@ -37,10 +38,23 @@ export interface DocumentChecklistItem {
   max_files: number
   validation_prompt: string | null
   max_age_days: number | null
+  /** Name of the AI-extracted date field (snake_case); only with `max_age_days`. */
+  date_field: string | null
 }
 
 /** Entry in a create/update request: `id` is null for a new entry. */
 export interface DocumentChecklistItemPayload extends Omit<DocumentChecklistItem, 'id'> {
+  id: number | null
+}
+
+/** Group of documents (spec 0427); in a request `id` is null for a new group and the array order is the order. */
+export interface DocumentChecklistSection {
+  id: number
+  name: string
+  description: string | null
+}
+
+export interface DocumentChecklistSectionPayload extends Omit<DocumentChecklistSection, 'id'> {
   id: number | null
 }
 
@@ -64,6 +78,7 @@ export interface DocumentChecklist {
   sync_status: DocumentChecklistSyncStatus
   sync_error: string | null
   synced_at: string | null
+  sections: DocumentChecklistSection[]
   items: DocumentChecklistItem[]
   created_at: string
   updated_at: string
@@ -81,6 +96,7 @@ export interface DocumentChecklistPayload {
   description: string | null
   category_id: number | null
   is_active: boolean
+  sections: DocumentChecklistSectionPayload[]
   items: DocumentChecklistItemPayload[]
 }
 

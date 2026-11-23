@@ -38,7 +38,8 @@ if (! function_exists('documentChecklistItemPayload')) {
             'id' => null,
             'name' => 'Documento di identita',
             'description' => null,
-            'section' => null,
+            // REQUIREMENT CHANGED (spec 0427): the free text `section` became `section_index` + `date_field`.
+            'section_index' => null,
             'is_required' => true,
             'allowed_file_types' => ['pdf'],
             'max_file_size_kb' => 10240,
@@ -46,6 +47,7 @@ if (! function_exists('documentChecklistItemPayload')) {
             'max_files' => 1,
             'validation_prompt' => null,
             'max_age_days' => null,
+            'date_field' => null,
         ], $overrides);
     }
 }
@@ -62,6 +64,7 @@ if (! function_exists('documentChecklistPayload')) {
             'code' => 'apertura',
             'description' => null,
             'is_active' => true,
+            'sections' => [],
             'items' => [
                 documentChecklistItemPayload(['name' => 'Documento A']),
                 documentChecklistItemPayload(['name' => 'Documento B']),

@@ -69,6 +69,14 @@ class DocumentChecklist extends BaseModel
     }
 
     /**
+     * @return HasMany<DocumentChecklistSection, $this>
+     */
+    public function sections(): HasMany
+    {
+        return $this->hasMany(DocumentChecklistSection::class)->orderBy('position');
+    }
+
+    /**
      * @return HasMany<DocumentChecklistSyncLog, $this>
      */
     public function syncLogs(): HasMany

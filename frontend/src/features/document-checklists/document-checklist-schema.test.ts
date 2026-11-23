@@ -12,7 +12,7 @@ beforeAll(async () => {
 const schema = () => buildDocumentChecklistSchema(i18n.t)
 
 function valid(overrides: Record<string, unknown> = {}) {
-  return { name: 'Opening', code: 'OPEN_1', description: '', category_id: null, is_active: true, items: [buildDefaultItem()], ...overrides }
+  return { name: 'Opening', code: 'OPEN_1', description: '', category_id: null, is_active: true, sections: [], items: [buildDefaultItem()], ...overrides }
 }
 
 function validWithItem(overrides: Record<string, unknown>) {
@@ -42,8 +42,19 @@ describe('buildDocumentChecklistSchema (spec 0403)', () => {
     expect(errorPaths(valid({ name: 'N'.repeat(256) }))).toContain('name')
   })
 
-  it('rejects max_files lower than min_files on max_files', () => {
-    expect(errorPaths(validWithItem({ min_files: 3, max_files: 2 }))).toContain('items.0.max_files')
+  // REQUIREMENT CHANGED (spec 0427): min/max files are replaced by the "More documents" checkbox, so the max-below-min rule is gone.
+  it('validates the extracted date field only with a maximum age (AC-009)', () => {
+    expect(errorPaths(validWithItem({ max_age_days: 30, date_field: 'Issue Date' }))).toContain('items.0.date_field')
+    expect(errorPaths(validWithItem({ max_age_days: 30, date_field: 'a'.repeat(65) }))).toContain('items.0.date_field')
+    expect(schema().safeParse(validWithItem({ max_age_days: 30, date_field: 'issue_date' })).success).toBe(true)
+    expect(schema().safeParse(validWithItem({ max_age_days: null, date_field: 'Issue Date' })).success).toBe(true)
+  })
+
+  it('rejects empty and duplicated group names (case-insensitive) and more than 20 groups (AC-007)', () => {
+    const section = (name: string) => ({ key: name, server_id: null, name, description: '' })
+    expect(errorPaths(valid({ sections: [section('')] }))).toContain('sections.0.name')
+    expect(errorPaths(valid({ sections: [section('Identity'), section('identity')] }))).toContain('sections.1.name')
+    expect(errorPaths(valid({ sections: Array.from({ length: 21 }, (_, i) => section(`G${i}`)) }))).toContain('sections')
   })
 
   it('rejects an item without file types and duplicated file types', () => {

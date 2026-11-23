@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * `allowed_file_types` holds DocumentChecklistFileType values.
  */
 #[Fillable([
-    'document_checklist_id', 'position', 'name', 'description', 'section', 'is_required',
-    'allowed_file_types', 'max_file_size_kb', 'min_files', 'max_files', 'validation_prompt', 'max_age_days',
+    'document_checklist_id', 'position', 'name', 'description', 'section_id', 'is_required',
+    'allowed_file_types', 'max_file_size_kb', 'min_files', 'max_files', 'validation_prompt', 'max_age_days', 'date_field',
 ])]
 class DocumentChecklistItem extends Model
 {
@@ -35,6 +35,14 @@ class DocumentChecklistItem extends Model
             'max_files' => 'integer',
             'max_age_days' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<DocumentChecklistSection, $this>
+     */
+    public function section(): BelongsTo
+    {
+        return $this->belongsTo(DocumentChecklistSection::class, 'section_id');
     }
 
     /**

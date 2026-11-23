@@ -2,6 +2,7 @@
 
 use App\Models\DocumentChecklist;
 use App\Models\DocumentChecklistItem;
+use App\Models\DocumentChecklistSection;
 use App\Services\ArchivioSmart\DocumentChecklistPayloadBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -11,17 +12,19 @@ it('builds the contract body with items ordered by position and typed values', f
     $checklist = DocumentChecklist::factory()->create([
         'name' => 'Apertura', 'code' => 'APERTURA', 'description' => '', 'is_active' => false,
     ]);
+    // REQUIREMENT CHANGED (spec 0427): the item points to a section row instead of holding free text.
+    $section = DocumentChecklistSection::factory()->for($checklist, 'checklist')->create(['name' => 'Societa', 'description' => 'Atti', 'position' => 0]);
     $second = DocumentChecklistItem::factory()->for($checklist, 'checklist')->create([
-        'position' => 1, 'name' => 'Visura', 'description' => 'Recente', 'section' => 'Societa',
+        'position' => 1, 'name' => 'Visura', 'description' => 'Recente', 'section_id' => $section->id,
         'is_required' => false, 'allowed_file_types' => ['pdf', 'jpg'], 'max_file_size_kb' => 2048,
         'min_files' => 1, 'max_files' => 3, 'validation_prompt' => 'Controlla la data', 'max_age_days' => 90,
     ]);
     $first = DocumentChecklistItem::factory()->for($checklist, 'checklist')->create([
-        'position' => 0, 'name' => 'Documento', 'description' => '', 'section' => null,
+        'position' => 0, 'name' => 'Documento', 'description' => '', 'section_id' => null,
         'validation_prompt' => '', 'max_age_days' => null,
     ]);
 
-    $payload = app(DocumentChecklistPayloadBuilder::class)->build($checklist->fresh('items'));
+    $payload = app(DocumentChecklistPayloadBuilder::class)->build($checklist->fresh(['items', 'sections']));
 
     expect($payload)->toBe([
         'name' => 'Apertura',
@@ -30,11 +33,15 @@ it('builds the contract body with items ordered by position and typed values', f
         'category_external_id' => null,
         'description' => null,
         'is_active' => false,
+        'sections' => [
+            ['external_id' => (string) $section->id, 'name' => 'Societa', 'description' => 'Atti', 'sort_order' => 0],
+        ],
         'items' => [
             [
                 'external_id' => (string) $first->id,
                 'name' => 'Documento',
                 'description' => null,
+                'section_external_id' => null,
                 'section' => null,
                 'is_required' => true,
                 'allowed_file_types' => ['pdf'],
@@ -48,6 +55,7 @@ it('builds the contract body with items ordered by position and typed values', f
                 'external_id' => (string) $second->id,
                 'name' => 'Visura',
                 'description' => 'Recente',
+                'section_external_id' => (string) $section->id,
                 'section' => 'Societa',
                 'is_required' => false,
                 'allowed_file_types' => ['pdf', 'jpg'],
@@ -64,5 +72,5 @@ it('builds the contract body with items ordered by position and typed values', f
 it('builds an empty items array for a checklist without items', function () {
     $checklist = DocumentChecklist::factory()->create();
 
-    expect(app(DocumentChecklistPayloadBuilder::class)->build($checklist->fresh('items'))['items'])->toBe([]);
+    expect(app(DocumentChecklistPayloadBuilder::class)->build($checklist->fresh(['items', 'sections']))['items'])->toBe([]);
 });

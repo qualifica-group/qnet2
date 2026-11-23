@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\DocumentChecklist;
+use App\Models\DocumentChecklistItem;
+use App\Models\DocumentChecklistSection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Relies on the caller having loaded `items` and `category` (DocumentChecklistService::loadDetail()).
+ * Relies on the caller having loaded `items`, `sections` and `category` (DocumentChecklistService::loadDetail()).
  *
  * @mixin DocumentChecklist
  */
@@ -20,6 +22,8 @@ class DocumentChecklistResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $sectionIndexes = $this->sections->pluck('id')->flip();
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -31,7 +35,15 @@ class DocumentChecklistResource extends JsonResource
             'sync_status' => $this->sync_status,
             'sync_error' => $this->sync_error,
             'synced_at' => $this->synced_at,
-            'items' => DocumentChecklistItemResource::collection($this->items),
+            'sections' => $this->sections->map(fn (DocumentChecklistSection $section): array => [
+                'id' => $section->id,
+                'name' => $section->name,
+                'description' => $section->description,
+            ])->all(),
+            'items' => $this->items->map(fn (DocumentChecklistItem $item): array => [
+                ...(new DocumentChecklistItemResource($item))->resolve($request),
+                'section_index' => $sectionIndexes[$item->section_id] ?? null,
+            ])->all(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

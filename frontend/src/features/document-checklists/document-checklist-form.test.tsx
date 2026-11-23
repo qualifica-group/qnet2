@@ -56,7 +56,9 @@ function item(id: number, name: string): DocumentChecklistItem {
     id,
     name,
     description: null,
-    section: null,
+    // REQUIREMENT CHANGED (spec 0427): the section text became section_index plus date_field.
+    section_index: null,
+    date_field: null,
     is_required: true,
     allowed_file_types: ['pdf'],
     max_file_size_kb: 10240,
@@ -79,6 +81,7 @@ function checklist(overrides: Partial<DocumentChecklistWithPermissions> = {}): D
     sync_status: 'synced',
     sync_error: null,
     synced_at: '2026-11-01T10:00:00Z',
+    sections: [],
     items: [item(11, 'ID card'), item(12, 'Tax code')],
     created_at: '2026-11-01T10:00:00Z',
     updated_at: '2026-11-01T10:00:00Z',

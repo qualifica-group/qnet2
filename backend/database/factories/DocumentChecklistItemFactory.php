@@ -25,7 +25,7 @@ class DocumentChecklistItemFactory extends Factory
             'position' => self::$nextPosition++,
             'name' => fake()->words(3, true),
             'description' => null,
-            'section' => null,
+            'section_id' => null,
             'is_required' => true,
             'allowed_file_types' => ['pdf'],
             'max_file_size_kb' => 10240,
@@ -33,6 +33,7 @@ class DocumentChecklistItemFactory extends Factory
             'max_files' => 1,
             'validation_prompt' => null,
             'max_age_days' => null,
+            'date_field' => null,
         ];
     }
 }

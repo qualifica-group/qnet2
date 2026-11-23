@@ -13,10 +13,13 @@ export const CHECKLIST_CODE_MAX_LENGTH = 50
 export const CHECKLIST_CODE_PATTERN = /^[A-Za-z0-9_-]+$/
 export const CHECKLIST_DESCRIPTION_MAX_LENGTH = 2000
 export const CHECKLIST_MAX_ITEMS = 200
+export const CHECKLIST_MAX_SECTIONS = 20
+export const SECTION_NAME_MAX_LENGTH = 255
 
 export const ITEM_NAME_MAX_LENGTH = 255
 export const ITEM_DESCRIPTION_MAX_LENGTH = 2000
-export const ITEM_SECTION_MAX_LENGTH = 255
+export const ITEM_DATE_FIELD_MAX_LENGTH = 64
+export const ITEM_DATE_FIELD_PATTERN = /^[a-z][a-z0-9_]*$/
 export const ITEM_VALIDATION_PROMPT_MAX_LENGTH = 5000
 export const ITEM_MAX_FILE_SIZE_KB = 20480
 export const ITEM_DEFAULT_FILE_SIZE_KB = 10240
@@ -28,8 +31,20 @@ function boundedInt(min: number, max: number, message: string) {
   return z.number(message).int(message).min(min, message).max(max, message)
 }
 
+function buildSectionSchema(t: TFunction) {
+  return z.object({
+    key: z.string(),
+    server_id: z.number().nullable(),
+    name: z
+      .string()
+      .trim()
+      .min(1, t('documentChecklists.validation.sectionNameRequired'))
+      .max(SECTION_NAME_MAX_LENGTH, t('documentChecklists.validation.sectionNameMax')),
+    description: z.string(),
+  })
+}
+
 function buildItemSchema(t: TFunction) {
-  const filesRange = t('documentChecklists.validation.filesRange')
   return z
     .object({
       server_id: z.number().nullable(),
@@ -38,24 +53,27 @@ function buildItemSchema(t: TFunction) {
         .min(1, t('documentChecklists.validation.itemNameRequired'))
         .max(ITEM_NAME_MAX_LENGTH, t('documentChecklists.validation.itemNameMax')),
       description: z.string().max(ITEM_DESCRIPTION_MAX_LENGTH, t('documentChecklists.validation.itemDescriptionMax')),
-      section: z.string().max(ITEM_SECTION_MAX_LENGTH, t('documentChecklists.validation.sectionMax')),
+      section_key: z.string(),
       is_required: z.boolean(),
       allowed_file_types: z
         .array(z.enum(DOCUMENT_CHECKLIST_FILE_TYPES))
         .min(1, t('documentChecklists.validation.fileTypesRequired'))
         .refine((types) => new Set(types).size === types.length, t('documentChecklists.validation.fileTypesDistinct')),
       max_file_size_kb: boundedInt(1, ITEM_MAX_FILE_SIZE_KB, t('documentChecklists.validation.fileSizeRange')),
-      min_files: boundedInt(1, ITEM_MAX_FILES, filesRange),
-      max_files: boundedInt(1, ITEM_MAX_FILES, filesRange),
+      allow_multiple: z.boolean(),
       validation_prompt: z
         .string()
         .max(ITEM_VALIDATION_PROMPT_MAX_LENGTH, t('documentChecklists.validation.validationPromptMax')),
       max_age_days: boundedInt(1, ITEM_MAX_AGE_DAYS, t('documentChecklists.validation.maxAgeRange')).nullable(),
+      date_field: z.string(),
     })
-    .refine((item) => item.max_files >= item.min_files, {
-      message: t('documentChecklists.validation.maxFilesBelowMin'),
-      path: ['max_files'],
-    })
+    .refine(
+      (item) =>
+        item.max_age_days === null ||
+        item.date_field.trim() === '' ||
+        (item.date_field.trim().length <= ITEM_DATE_FIELD_MAX_LENGTH && ITEM_DATE_FIELD_PATTERN.test(item.date_field.trim())),
+      { message: t('documentChecklists.validation.dateFieldFormat'), path: ['date_field'] },
+    )
 }
 
 /** Create/edit schema of the checklist (same shape; the server rules the locked code). */
@@ -73,9 +91,27 @@ export function buildDocumentChecklistSchema(t: TFunction) {
     description: z.string().max(CHECKLIST_DESCRIPTION_MAX_LENGTH, t('documentChecklists.validation.descriptionMax')),
     category_id: z.number().nullable(),
     is_active: z.boolean(),
+    sections: z
+      .array(buildSectionSchema(t))
+      .max(CHECKLIST_MAX_SECTIONS, t('documentChecklists.validation.sectionsMax'))
+      .superRefine((sections, context) => {
+        const seen = new Set<string>()
+        sections.forEach((section, index) => {
+          const name = section.name.trim().toLowerCase()
+          if (name !== '' && seen.has(name)) {
+            context.addIssue({
+              code: 'custom',
+              message: t('documentChecklists.validation.sectionNameDuplicate'),
+              path: [index, 'name'],
+            })
+          }
+          seen.add(name)
+        })
+      }),
     items: z.array(buildItemSchema(t)).max(CHECKLIST_MAX_ITEMS, t('documentChecklists.validation.itemsMax')),
   })
 }
 
 export type DocumentChecklistFormValues = z.infer<ReturnType<typeof buildDocumentChecklistSchema>>
+export type DocumentChecklistSectionFormValues = DocumentChecklistFormValues['sections'][number]
 export type DocumentChecklistItemFormValues = DocumentChecklistFormValues['items'][number]

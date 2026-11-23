@@ -5,6 +5,7 @@ import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
 import { Form } from '@/components/ui/form'
+import { ChecklistSectionsEditor } from '@/features/document-checklists/checklist-sections-editor'
 import { ChecklistItemsEditor } from '@/features/document-checklists/checklist-items-editor'
 import { fetchDocumentChecklistSyncLogs } from '@/features/document-checklists/api'
 import { ChecklistSyncLogsSection } from '@/features/document-checklists/checklist-sync-logs-section'
@@ -61,6 +62,9 @@ export function DocumentChecklistForm({ checklist, canEdit = true, onSuccess, on
                 codeLocked={checklist?.code_locked ?? false}
                 savedCategory={checklist?.category ?? null}
               />
+            </RecordSection>
+            <RecordSection title={t('documentChecklists.form.sections.groups.title')} full>
+              <ChecklistSectionsEditor />
             </RecordSection>
             <RecordSection title={t('documentChecklists.form.sections.items.title')} full>
               <ChecklistItemsEditor />

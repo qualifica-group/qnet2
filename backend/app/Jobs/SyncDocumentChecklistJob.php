@@ -67,7 +67,7 @@ class SyncDocumentChecklistJob implements ShouldQueue
         DocumentChecklistCategoryPayloadBuilder $categoryPayloads,
     ): void {
         // Step 1: read the current state (soft-deleted rows included: they mean DELETE)
-        $checklist = DocumentChecklist::withTrashed()->with(['items', 'category'])->find($this->documentChecklistId);
+        $checklist = DocumentChecklist::withTrashed()->with(['items', 'sections', 'category'])->find($this->documentChecklistId);
         if ($checklist === null) {
             return;
         }

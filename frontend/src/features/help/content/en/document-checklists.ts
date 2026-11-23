@@ -32,6 +32,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'groups',
+      title: 'Document groups',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The **Document groups** card groups the items: in the customer portal each group becomes a tab, and items without a group go under "Other documents". You can create up to **20 groups** with **New group**; each has a name (unique within the checklist) and a description, and shows how many items it holds. Reorder them with **Move up** / **Move down**. Deleting a group does not delete its items: they move to "No group".',
+        },
+      ],
+    },
+    {
       id: 'items',
       title: 'Items',
       blocks: [
@@ -45,12 +55,13 @@ const guide: HelpGuide = {
           rows: [
             ['Name, Description', 'What the document is called and what it must contain.'],
             ['Required', 'The document is indispensable.'],
-            ['Group', 'In the customer portal each group is a tab; items without a group go under "Other documents".'],
+            ['Group', 'Chosen among the checklist groups; "No group" puts the item under "Other documents".'],
             ['Allowed file types', 'pdf, jpg, jpeg, png, webp, heic, docx, odt, txt; at least one is needed.'],
             ['Maximum size', 'Up to 20480 KB (default 10240).'],
-            ['Minimum and maximum number of files', 'From 1 to 10; 1 and 1 means a single file.'],
+            ['More documents', 'When on, the customer can upload up to 10 files for the item; each file is checked on its own with the same prompt and rules. When off, a single file.'],
             ['Validation prompt', 'Instruction in Italian for the AI, for example "Check that it is a company registry extract and that it shows the company name".'],
             ['Maximum document age', 'Optional, in days (1-3650).'],
+            ['Extracted date field', 'Name of the date field the AI extracts from the document (for example issue_date), in lowercase letters, digits and _. Only with a maximum age; when empty it is issue_date.'],
           ],
         },
       ],
