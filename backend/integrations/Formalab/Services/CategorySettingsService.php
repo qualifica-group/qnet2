@@ -49,10 +49,11 @@ final class CategorySettingsService
 
     /**
      * @param  list<array{formalab_field: string, attribute_code: string}>|null  $fieldMap  null = no map of its own (a child inherits)
+     * @param  User|null  $actor  null for a system write (one-shot seeder)
      *
      * @throws ValidationException `enabled` overridden on a child, or a pair the category cannot hold
      */
-    public function update(ProductCategory $category, ?bool $enabled, ?array $fieldMap, User $actor): void
+    public function update(ProductCategory $category, ?bool $enabled, ?array $fieldMap, ?User $actor): void
     {
         // Step 1: `enabled` belongs to the root; a child may only repeat what it inherits
         $isRoot = $category->parent_id === null;
@@ -68,7 +69,7 @@ final class CategorySettingsService
 
         // Step 3: persist
         $setting = FormalabCategorySetting::query()->firstOrNew(['product_category_id' => $category->id]);
-        $setting->fill(['field_map' => $fieldMap === null ? null : array_values($fieldMap), 'updated_by' => $actor->id]);
+        $setting->fill(['field_map' => $fieldMap === null ? null : array_values($fieldMap), 'updated_by' => $actor?->id]);
 
         if ($isRoot && $enabled !== null) {
             $setting->enabled = $enabled;
