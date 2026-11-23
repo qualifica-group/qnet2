@@ -3,6 +3,11 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Fix: Report Vendite Agenti, colonna Stato (filtro/valori/ordinamento in errore) — COMMITTATO
+
+- `POST /api/tables/agent-sales-report/values` con `columnId=quote_workflow_status` dava 500 (`Unknown column 'quote_workflow_status'`): la spec 0404 (commit 92cb0d3b4) aveva tolto `quote_workflow_status` da `QuoteRelationColumns::DERIVED_RELATIONS` perche' Offerte mostra lo stato di sistema, ma il report usa ancora quella classe per lo stato di lavorazione -> la colonna finiva al motore generico. Stesso errore su filtro e ordinamento.
+- Fix: voce `quote_workflow_status` rimessa in `DERIVED_RELATIONS` (`backend/app/Tables/Quotes/QuoteRelationColumns.php`). Test di regressione in `tests/Feature/AgentSalesReport/AgentSalesReportTableTest.php` (valori, filtro, ordinamento). Manuale: nessun impatto.
+
 ## Integrazione Formalab (spec 0422, 2026-11-20) — VERDE, COMMITTATO (staging), ATTIVA IN DEV
 
 - Verticalizzazione isolata: backend `backend/integrations/Formalab/` (namespace `Integrations\Formalab\`, psr-4 in composer.json), frontend `frontend/src/integrations/formalab/`. Core toccato solo con punti di estensione generici: `App\Integrations\IntegrationRegistry` + `GET /api/integrations` (`data.active`), tag container `system-health.checks` in SystemHealthService, registro frontend `src/integrations/` (schede commessa, rotte dev, namespace i18n via glob), card health con etichette di fallback per check non core, guida in-app `formalab` (HELP_GUIDE_KEYS 109 -> 110).
