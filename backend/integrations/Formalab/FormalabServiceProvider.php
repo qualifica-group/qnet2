@@ -61,7 +61,10 @@ class FormalabServiceProvider extends ServiceProvider
         ],
     ];
 
-    private const int MAX_CRON_MINUTES = 59;
+    private const int MINUTES_PER_HOUR = 60;
+
+    /** An interval of an hour or more runs at minute 0 of every hour (user request 2026-11-23). */
+    private const string HOURLY_CRON = '0 * * * *';
 
     public function register(): void
     {
@@ -134,11 +137,12 @@ class FormalabServiceProvider extends ServiceProvider
 
     private function schedule(Schedule $schedule): void
     {
-        $minutes = max(1, min(self::MAX_CRON_MINUTES, (int) config('formalab.sync_interval_minutes')));
+        $minutes = max(1, (int) config('formalab.sync_interval_minutes'));
+        $cron = $minutes >= self::MINUTES_PER_HOUR ? self::HOURLY_CRON : "*/{$minutes} * * * *";
 
         $schedule->job(new SyncFormalabClasses(Trigger::Schedule))
             ->name('formalab:sync-classes')
-            ->cron("*/{$minutes} * * * *")
+            ->cron($cron)
             ->withoutOverlapping()
             ->onOneServer();
 

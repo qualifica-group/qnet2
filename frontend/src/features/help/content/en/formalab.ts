@@ -116,7 +116,7 @@ const guide: HelpGuide = {
           items: [
             'Choose the class in the work order\'s **course / edition name** field and save: the link is immediate and the mapped fields are filled from the catalogue.',
             'Open the **Formalab** tab to see the class data.',
-            'Click **Sync** to re-read the chosen edition from Formalab right away and rewrite the mapped fields. From then on the work order also updates by itself every 10 minutes.',
+            'Click **Sync** to re-read the chosen edition from Formalab right away and rewrite the mapped fields. From then on the work order also updates by itself every hour.',
             'If you change the class, save: the link moves to the new edition. If you clear the select, the link is removed.',
           ],
         },
@@ -125,7 +125,7 @@ const guide: HelpGuide = {
           items: [
             '**Work order cannot be linked**: its category is not linked to Formalab, or the map does not name the course / edition field.',
             '**No class chosen**: choose the class in the **course / edition name** field first (clicking **Sync** with an empty select shows "Choose the Formalab class").',
-            '**Class not in the catalogue**: the edition is new and the catalogue has not received it yet (it updates every 10 minutes, or use **Sync now** on the Classes page).',
+            '**Class not in the catalogue**: the edition is new and the catalogue has not received it yet (it updates every hour, or use **Sync now** on the Classes page).',
           ],
         },
         {
@@ -140,7 +140,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every **10 minutes** QNet rereads the class catalogue and links the work orders of the linked categories whose chosen edition is now in the catalogue (always by edition ID). If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone. When you choose, change or clear a work order\'s class, the link is updated as soon as you save.',
+          text: 'Every **hour** QNet rereads the class catalogue and links the work orders of the linked categories whose chosen edition is now in the catalogue (always by edition ID). If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone. When you choose, change or clear a work order\'s class, the link is updated as soon as you save.',
         },
         {
           type: 'paragraph',

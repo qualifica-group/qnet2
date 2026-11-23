@@ -17,7 +17,7 @@
 
     Decisioni (autonomia, memoria utente "decido io"):
     - D-1 Tabella d'appoggio = `formalab_classes` (esiste dalla 0422, gemella di `classi` legacy),
-      aggiornata dalla sincronizzazione ogni 10 minuti, dal webhook e da "Sincronizza ora". Nuova
+      aggiornata dalla sincronizzazione periodica (ogni ora dal 2026-11-23, prima 10 minuti), dal webhook e da "Sincronizza ora". Nuova
       invariante: `formalab_classes.id` = `edition_id` (il mapper la scrive, la migrazione
       2026_11_23_110000 riallinea le righe esistenti). Cosi' il campo relazione generico, che salva
       l'`id` del record, salva proprio l'`edition_id`, e tutto il motore dei campi relazione

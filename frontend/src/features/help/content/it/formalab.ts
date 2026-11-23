@@ -116,7 +116,7 @@ const guide: HelpGuide = {
           items: [
             'Scegli la classe nel campo **Nome corso / edizione** della commessa e salva: il collegamento è immediato e i campi mappati si compilano dal catalogo.',
             'Apri la scheda **Formalab** per vedere i dati della classe.',
-            'Fai clic su **Sincronizza** per rileggere subito da Formalab l\'edizione scelta e riscrivere i campi mappati. Da quel momento la commessa si aggiorna anche da sola ogni 10 minuti.',
+            'Fai clic su **Sincronizza** per rileggere subito da Formalab l\'edizione scelta e riscrivere i campi mappati. Da quel momento la commessa si aggiorna anche da sola ogni ora.',
             'Se cambi la classe, salva: il collegamento passa alla nuova edizione. Se svuoti la select, il collegamento viene rimosso.',
           ],
         },
@@ -125,7 +125,7 @@ const guide: HelpGuide = {
           items: [
             '**Commessa non collegabile**: la sua categoria non è collegata a Formalab, oppure la mappatura non indica il campo Nome corso / edizione.',
             '**Nessuna classe scelta**: scegli prima la classe nel campo **Nome corso / edizione** (premendo **Sincronizza** a select vuota compare "Scegli la classe Formalab").',
-            '**Classe non presente nel catalogo**: l\'edizione è nuova e il catalogo non l\'ha ancora ricevuta (si aggiorna ogni 10 minuti, oppure usa **Sincronizza ora** nella pagina Classi).',
+            '**Classe non presente nel catalogo**: l\'edizione è nuova e il catalogo non l\'ha ancora ricevuta (si aggiorna ogni ora, oppure usa **Sincronizza ora** nella pagina Classi).',
           ],
         },
         {
@@ -140,7 +140,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni **10 minuti** QNet rilegge il catalogo delle classi e collega le commesse delle categorie collegate che hanno scelto un\'edizione ora presente nel catalogo (sempre per ID edizione). Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata. Quando scegli, cambi o svuoti la classe di una commessa, il collegamento si aggiorna subito al salvataggio.',
+          text: 'Ogni **ora** QNet rilegge il catalogo delle classi e collega le commesse delle categorie collegate che hanno scelto un\'edizione ora presente nel catalogo (sempre per ID edizione). Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata. Quando scegli, cambi o svuoti la classe di una commessa, il collegamento si aggiorna subito al salvataggio.',
         },
         {
           type: 'paragraph',
