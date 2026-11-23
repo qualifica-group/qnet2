@@ -57,7 +57,7 @@ export default function ModuleDetailPage({ domain }: ModuleDetailPageProps) {
             </Button>
             {DetailPageActions ? <DetailPageActions id={entityId} /> : null}
             {!entry.detailOwnsEditAction && hasEditRoute && (
-              <Can permission={`${domain}.update`}>
+              <Can permission={`${entry.permissionDomain ?? domain}.update`}>
                 <Button asChild>
                   <Link to={`${entry.basePath}/${entityId}/edit`}>
                     <Pencil aria-hidden="true" />

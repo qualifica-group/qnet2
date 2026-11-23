@@ -111,6 +111,12 @@ export interface ModuleRegistryEntry {
   /** i18n key under `navigation.*`. */
   labelKey: string
   /**
+   * Prefix of the permissions that gate this module, when it is not the
+   * domain itself: the checklist categories hold none of their own and use
+   * `document-checklists.*` (spec 0410 D-2). Defaults to `domain`.
+   */
+  permissionDomain?: string
+  /**
    * When `false`, the generic `new`/`:id`/`:id/edit` routes are NOT generated
    * for this module: it keeps its own bespoke dedicated pages (declared by hand
    * in `router.tsx`), e.g. registries/referents/products whose detail pages own

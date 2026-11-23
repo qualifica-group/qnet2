@@ -23,9 +23,11 @@ export function resolveViewableDomain(domain: string, can: (permission: string) 
   const candidates = [domain, ...(VIEW_FALLBACK_DOMAINS[domain] ?? [])]
 
   return (
-    candidates.find(
-      (candidate) => getModuleRegistryEntry(candidate) !== undefined && can(`${candidate}.view`),
-    ) ?? null
+    candidates.find((candidate) => {
+      const entry = getModuleRegistryEntry(candidate)
+
+      return entry !== undefined && can(`${entry.permissionDomain ?? candidate}.view`)
+    }) ?? null
   )
 }
 

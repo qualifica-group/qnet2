@@ -45,8 +45,8 @@ export default function ModuleFormPage({ domain, variant }: ModuleFormPageProps)
   const basePath = entry?.basePath ?? ''
   // Strings are keyed by the camelCase namespace, NOT the kebab-case domain:
   // interpolating `domain` renders the raw key as the title for every
-  // multi-word module. The permission gate below keeps `domain` — permissions
-  // really are kebab-case (`reward-types.create`).
+  // multi-word module. The permission gate below keeps the kebab-case domain
+  // (`reward-types.create`), or the entry's `permissionDomain` when it has one.
   const ns = moduleI18nNamespace(domain)
 
   const isDuplicate = variant === 'duplicate'
@@ -97,7 +97,7 @@ export default function ModuleFormPage({ domain, variant }: ModuleFormPageProps)
 
   return (
     <Can
-      permission={`${domain}.${isEdit ? 'update' : 'create'}`}
+      permission={`${entry?.permissionDomain ?? domain}.${isEdit ? 'update' : 'create'}`}
       fallback={<p className="text-sm text-muted-foreground">{t(`${ns}.forbidden`)}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">

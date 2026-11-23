@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import i18n from '@/i18n'
@@ -11,10 +11,18 @@ import ModuleFormPage from '@/features/modules/module-form-page'
  * for the edit branch (untouched by spec 0045) closes the file.
  */
 
+/** Null = every permission granted; a set = only those. */
+const abilities = vi.hoisted(() => ({ granted: null as Set<string> | null }))
+
 vi.mock('@/features/modules/module-registry', () => ({
   getModuleRegistryEntry: (domain: string) =>
-    domain === 'projects' || domain === 'reward-types' || domain === 'request-management'
+    domain === 'projects' ||
+    domain === 'reward-types' ||
+    domain === 'request-management' ||
+    domain === 'document-checklist-categories'
       ? {
+          // Spec 0410 D-2: the categories hold no permissions of their own.
+          permissionDomain: domain === 'document-checklist-categories' ? 'document-checklists' : undefined,
           // The one module whose FormScreen renders its own visible heading
           // (user directive 2026-08-03): the host must not render a second.
           formOwnsHeader: domain === 'request-management',
@@ -45,7 +53,12 @@ vi.mock('@/features/modules/module-registry', () => ({
 }))
 
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({
+    can: (permission: string) => abilities.granted?.has(permission) ?? true,
+    hasRole: () => false,
+    roles: [],
+    isLoading: false,
+  }),
 }))
 
 vi.mock('@/components/page-header', () => ({
@@ -129,6 +142,44 @@ describe('ModuleFormPage', () => {
     expect(
       screen.queryByText('Client details and product lines of the new request.'),
     ).not.toBeInTheDocument()
+  })
+
+  /**
+   * Spec 0410 D-2: a module whose permissions live under another prefix is
+   * gated by `permissionDomain`, not by its own domain. Gating by the domain
+   * asked for `document-checklist-categories.create`, a permission no one
+   * holds, and refused the create page to every user.
+   */
+  describe('with a permissionDomain', () => {
+    function renderCategoryCreate(granted: string[]) {
+      abilities.granted = new Set(granted)
+      render(
+        <MemoryRouter initialEntries={['/document-checklist-categories/new']}>
+          <Routes>
+            <Route
+              path="/document-checklist-categories/new"
+              element={<ModuleFormPage domain="document-checklist-categories" />}
+            />
+          </Routes>
+        </MemoryRouter>,
+      )
+    }
+
+    afterEach(() => {
+      abilities.granted = null
+    })
+
+    it('opens the create form with the permission of the declared prefix', () => {
+      renderCategoryCreate(['document-checklists.create'])
+
+      expect(screen.getByText('form-create')).toBeInTheDocument()
+    })
+
+    it('refuses the create form without it', () => {
+      renderCategoryCreate(['document-checklists.view'])
+
+      expect(screen.queryByText('form-create')).not.toBeInTheDocument()
+    })
   })
 
   describe('after a successful save', () => {

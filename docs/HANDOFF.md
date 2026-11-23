@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Categorie delle checklist + sincronizzazione ArchivioSmart (spec 0410, 2026-11-23) — VERDE, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Categorie delle checklist + sincronizzazione ArchivioSmart (spec 0410, 2026-11-23) — COMMITTATO (6d5beb16a), NON PROVATO NEL BROWSER
 
 - Menu Configurazione > Documenti > Categorie checklist (`/document-checklist-categories`). Stessi permessi delle checklist (`document-checklists.*`), nessun permesso nuovo. Resource key authz/tabella `document-checklist-categories`, policy `DocumentChecklistCategoryPolicy` con prefisso `document-checklists`.
 - Tabelle `document_checklist_categories` (name unico, description, sort_order, `external_id` stabile, stato di sync, soft delete) e `document_checklist_category_sync_logs` (indice `dc_category_sync_logs_category_created_at_index`, nome corto per MySQL). Su `document_checklists` c'è `category_id` (FK, facoltativa).
@@ -11,6 +11,7 @@
 - Eliminare una categoria con checklist è bloccato: 422 con `errors.category`. "Sincronizza tutte" (`POST /document-checklists/sync-all`) accoda prima le categorie e risponde `{queued, queued_categories}`.
 - Endpoint: CRUD, `/for-select` (ADR 0011), `/{id}/sync`, `/{id}/sync-logs` (ultime 20 chiamate), griglia SSRM. La checklist espone `category {id,name}|null` e accetta `category_id`; la griglia ha `category_name`.
 - Frontend: `features/document-checklist-categories/*`. Il componente `checklist-sync-logs-section.tsx` è diventato generico (props `record`, `logsQueryKey`, `fetchLogs`). Nel form della checklist la categoria si sceglie con un `AsyncPaginatedSelect`. Guide in-app IT/EN `document-checklist-categories`, `HELP_GUIDE_KEYS` = 111.
+- Fix dopo il commit: il modulo categorie dichiara `permissionDomain: 'document-checklists'` (nuovo campo facoltativo di `ModuleRegistryEntry`). Lo usano `module-form-page`, `module-detail-page` e `use-viewable-domain` al posto del nome del modulo. Prima, aprendo i record "a pagina", la creazione chiedeva `document-checklist-categories.create`, un permesso che non esiste. Un modulo che usa i permessi di un altro deve dichiarare questo campo.
 - Verifica:
   - backend: 146/146 test in `tests/Feature/DocumentChecklists`; migrazioni applicate sul MySQL locale `qnet2`;
   - frontend: vitest completo 10.834/10.834, `tsc -b --force` e eslint puliti.

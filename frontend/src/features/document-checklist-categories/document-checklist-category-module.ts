@@ -7,6 +7,8 @@ export const moduleDefinition: ModuleDefinition = {
   basePath: '/document-checklist-categories',
   defaultMode: OPEN_MODE_MODAL,
   labelKey: 'navigation.documentChecklistCategories',
+  // D-2: gated by the checklists' permissions, there are no category permissions.
+  permissionDomain: 'document-checklists',
   // The detail IS the edit form: no edit route, no Edit button.
   generateEditRoute: false,
   detailOwnsEditAction: true,
