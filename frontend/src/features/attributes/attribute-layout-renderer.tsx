@@ -53,11 +53,18 @@ function conditionHint(
   attributesByCode: ReadonlyMap<string, EffectiveAttribute>,
   t: TFunction,
 ): string | null {
-  const code = section.visible_when?.attribute_code
-  if (!code) {
+  const condition = section.visible_when
+  if (!condition) {
     return null
   }
-  return t('attributes.layout.visibleWhen', { name: attributesByCode.get(code)?.name ?? code })
+  const attribute = attributesByCode.get(condition.attribute_code)
+  const name = attribute?.name ?? condition.attribute_code
+  const option = condition.option_value
+  if (!option) {
+    return t('attributes.layout.visibleWhen', { name })
+  }
+  const optionLabel = attribute?.options.find((entry) => entry.value === option)?.label ?? option
+  return t('attributes.layout.visibleWhen', { name: `${name}: ${optionLabel}` })
 }
 
 export function AttributeLayoutRenderer<TFieldValues extends AttributeLayoutFormShape>({

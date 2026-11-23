@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { buildTableFieldSchema } from '@/features/custom-fields/build-custom-fields-schema'
 import { toTableConfig } from '@/features/custom-fields/table-field-model'
-import type { CustomFieldConfig, CustomFieldValue } from '@/features/custom-fields/types'
+import { isMultiValueEnum, type CustomFieldConfig, type CustomFieldValue } from '@/features/custom-fields/types'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
 /**
@@ -28,7 +28,7 @@ interface EnumAttributeSource {
 
 /**
  * An `enum` attribute's value checked against its options: one code, or — for
- * a `multiselect` display — a LIST of codes, each checked on its own index.
+ * a multi-value display (multiselect, checklist) — a LIST of codes, each checked on its own index.
  * Mirrors the backend's `array` + per-element rule; the list stays nullable
  * because `seedAttributeValues` seeds every unset non-boolean as `null`.
  * Exported for the product form, whose effective attributes share the shape.
@@ -36,7 +36,7 @@ interface EnumAttributeSource {
 export function buildAttributeEnumSchema(attribute: EnumAttributeSource, invalidMessage: string): z.ZodTypeAny {
   const values = new Set(attribute.options.map((option) => option.value))
 
-  if (attribute.config?.display === 'multiselect') {
+  if (isMultiValueEnum(attribute.config)) {
     return z
       .array(z.string())
       .nullable()

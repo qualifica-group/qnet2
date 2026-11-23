@@ -44,7 +44,7 @@ function numberInputValue(value: number | null): string {
 /**
  * Per-`type` config controls (spec AC-025): text→minLength/maxLength/regex/
  * transform; textarea→rows/maxLength; integer/decimal→min/max/step/decimals;
- * boolean→display(checkbox|switch); enum→display(select|multiselect|radio|
+ * boolean→display(checkbox|switch); enum→display(select|multiselect|checklist|radio|
  * badge). Renders nothing for the config-less types (relation + the
  * string-backed scalars — see TYPES_WITHOUT_CONFIG). Not metadata-gated: it is
  * a per-type sub-form of the `type` field itself, mirroring the ENUM options
@@ -354,6 +354,7 @@ export function DefinitionTypeConfigFields<T extends FieldDefinitionFormValues>(
                 <SelectContent>
                   <SelectItem value="select">{t('customFields.form.configDisplaySelect')}</SelectItem>
                   <SelectItem value="multiselect">{t('customFields.form.configDisplayMultiselect')}</SelectItem>
+                  <SelectItem value="checklist">{t('customFields.form.configDisplayChecklist')}</SelectItem>
                   <SelectItem value="radio">{t('customFields.form.configDisplayRadio')}</SelectItem>
                   <SelectItem value="badge">{t('customFields.form.configDisplayBadge')}</SelectItem>
                 </SelectContent>

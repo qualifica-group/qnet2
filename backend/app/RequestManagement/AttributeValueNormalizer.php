@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\RequestManagement;
 
 use App\CustomFields\Table\TableFieldSchema;
+use App\CustomFields\Types\EnumDisplay;
 use Illuminate\Support\Collection;
 
 /**
@@ -68,7 +69,7 @@ final class AttributeValueNormalizer
 
     private function isMultiEnum(ApplicableAttribute $attribute): bool
     {
-        return ($attribute->config['display'] ?? null) === 'multiselect';
+        return EnumDisplay::isMultiValue($attribute->config);
     }
 
     private function normalizeRelation(mixed $value, ApplicableAttribute $attribute): mixed

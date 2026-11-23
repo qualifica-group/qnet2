@@ -44,7 +44,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Un Elenco di opzioni richiede almeno un'opzione, con valori tutti diversi; una Relazione richiede il modulo collegato.",
+          text: "Un Elenco di opzioni richiede almeno un'opzione, con valori tutti diversi; una Relazione richiede il modulo collegato. Un Elenco di opzioni visualizzato come Lista di checkbox (più scelte) mostra una casella per opzione e se ne spuntano quante servono.",
         },
       ],
     },

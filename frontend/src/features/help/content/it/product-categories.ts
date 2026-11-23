@@ -23,7 +23,7 @@ const guide: HelpGuide = {
             ['Attributi Prodotto', 'Campi aggiuntivi nella scheda Prodotto.'],
             ['Attributi Offerta', "Campi nelle Informazioni aggiuntive dell'Offerta e colonne nelle schede per categoria di Gestione Richieste."],
             ['Attributi Commessa', 'Campi nelle Informazioni aggiuntive della Commessa.'],
-            ['Layout attributi', 'Come questi campi sono disposti a video: sezioni, righe e larghezze.'],
+            ['Layout attributi', 'Come questi campi sono disposti a video: sezioni, righe e larghezze. Con **Visibile solo se attivo** una sezione compare solo quando un campo Sì/No è spuntato, oppure quando in un Elenco di opzioni è scelta una certa voce (es. "Norme richieste: Standard 50001"): in una Lista di checkbox ogni voce spuntata apre la sua sezione. Nascosta, i suoi campi si svuotano al salvataggio e non sono obbligatori.'],
             ['Modalità di gestione', 'Quante righe Categoria Prodotto può avere una scheda, in Opportunità e in Gestione Richieste.'],
             ['Offerta unica per opportunità', "Quante offerte può avere un'opportunità."],
             ['Più opportunità aperte per anagrafica', "Se un'anagrafica può avere più opportunità aperte sul ramo."],

@@ -6,6 +6,7 @@ namespace App\RequestManagement;
 
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\CustomFields\Table\TableFieldSchema;
+use App\CustomFields\Types\EnumDisplay;
 use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -202,7 +203,7 @@ final class AttributeValueValidator
     private function enumRules(ApplicableAttribute $attribute): array
     {
         $options = array_column($attribute->options, 'value');
-        $isMulti = ($attribute->config['display'] ?? null) === 'multiselect';
+        $isMulti = EnumDisplay::isMultiValue($attribute->config);
 
         if ($isMulti) {
             $rules = ['array'];

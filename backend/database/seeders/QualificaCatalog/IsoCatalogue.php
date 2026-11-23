@@ -15,11 +15,12 @@ use App\Enums\LayoutSectionVariant;
  *
  * The offer fields are the legacy "Informazioni Preliminari Iso" of the
  * opportunity. The legacy opens each norm-group block when ANY of its norms is
- * ticked; a section opens on ONE yes/no field (spec 0288), so the 19 norm
- * checkboxes became one checkbox per group, each opening its block (user
- * decision 2026-10-21). "Altro" opens nothing: it is a free-text field next to
- * the checkboxes (user directive 2026-10-30). The attachment has no field type
- * and is not carried over.
+ * ticked, so the 19 norm checkboxes became one entry per group (user decision
+ * 2026-10-21): since 2026-11-23 the entries of ONE checkbox-list field, each
+ * ticked entry opening its block (spec 0424; until then six yes/no fields,
+ * moved over by IsoRequestedStandardGroupsSeeder). "Altro" opens nothing: it
+ * is a free-text field under the list (user directive 2026-10-30). The
+ * attachment has no field type and is not carried over.
  *
  * The legacy codes (grp1_certification, check_9001...) stay on the "[OLD]"
  * categories as history: this branch uses English codes of its own, with the
@@ -33,8 +34,6 @@ final class IsoCatalogue
     public const string ROOT = 'ISO';
 
     public const string BUSINESS_FUNCTION = 'ISO';
-
-    private const array CHECKBOX = ['display' => 'checkbox'];
 
     private const array RADIO = ['display' => 'radio'];
 
@@ -63,21 +62,29 @@ final class IsoCatalogue
         ['key' => 'employees', 'label' => 'N. addetti per sito', 'type' => 'integer'],
     ]];
 
-    /**
-     * The group checkboxes, each opening the block of QUOTE_SECTIONS that
-     * names it in `visible_when`.
-     */
-    private const string GROUP_GENERAL = 'iso_group_general';
+    /** The checkbox list of the norm groups: each option opens the block of QUOTE_SECTIONS that names it. */
+    public const string STANDARD_GROUPS = 'iso_requested_standard_groups';
 
-    private const string GROUP_FOOD = 'iso_group_food';
+    public const string GROUP_GENERAL = 'general';
 
-    private const string GROUP_ENERGY = 'iso_group_energy';
+    public const string GROUP_FOOD = 'food';
 
-    private const string GROUP_ANTI_BRIBERY = 'iso_group_anti_bribery';
+    public const string GROUP_ENERGY = 'energy';
 
-    private const string GROUP_ROAD_SAFETY = 'iso_group_road_safety';
+    public const string GROUP_ANTI_BRIBERY = 'anti_bribery';
 
-    private const string GROUP_GENDER_EQUALITY = 'iso_group_gender_equality';
+    public const string GROUP_ROAD_SAFETY = 'road_safety';
+
+    public const string GROUP_GENDER_EQUALITY = 'gender_equality';
+
+    private const array STANDARD_GROUP_OPTIONS = [
+        ['value' => self::GROUP_GENERAL, 'label' => 'Standard 1090, 9001, 13549, 14001, 16636, 27001, 45001, Ecolabel, EMAS, SA8000'],
+        ['value' => self::GROUP_FOOD, 'label' => 'Standard BRC, IFS, 22000, 22005'],
+        ['value' => self::GROUP_ENERGY, 'label' => 'Standard 50001'],
+        ['value' => self::GROUP_ANTI_BRIBERY, 'label' => 'Standard 37001'],
+        ['value' => self::GROUP_ROAD_SAFETY, 'label' => 'Standard 39001'],
+        ['value' => self::GROUP_GENDER_EQUALITY, 'label' => 'Parità di genere + 30415'],
+    ];
 
     /** The norms outside the six groups, written by hand. */
     private const string OTHER_STANDARD = 'iso_other_standard';
@@ -89,12 +96,7 @@ final class IsoCatalogue
      * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, config?: array<string, mixed>}>
      */
     public const array QUOTE_ATTRIBUTES = [
-        ['code' => self::GROUP_GENERAL, 'name' => 'Standard 1090, 9001, 13549, 14001, 16636, 27001, 45001, Ecolabel, EMAS, SA8000', 'type' => 'boolean', 'config' => self::CHECKBOX],
-        ['code' => self::GROUP_FOOD, 'name' => 'Standard BRC, IFS, 22000, 22005', 'type' => 'boolean', 'config' => self::CHECKBOX],
-        ['code' => self::GROUP_ENERGY, 'name' => 'Standard 50001', 'type' => 'boolean', 'config' => self::CHECKBOX],
-        ['code' => self::GROUP_ANTI_BRIBERY, 'name' => 'Standard 37001', 'type' => 'boolean', 'config' => self::CHECKBOX],
-        ['code' => self::GROUP_ROAD_SAFETY, 'name' => 'Standard 39001', 'type' => 'boolean', 'config' => self::CHECKBOX],
-        ['code' => self::GROUP_GENDER_EQUALITY, 'name' => 'Parità di genere + 30415', 'type' => 'boolean', 'config' => self::CHECKBOX],
+        ['code' => self::STANDARD_GROUPS, 'name' => 'Norme richieste', 'type' => 'enum', 'config' => ['display' => 'checklist'], 'options' => self::STANDARD_GROUP_OPTIONS],
         ['code' => self::OTHER_STANDARD, 'name' => 'Altro', 'type' => 'text'],
         ['code' => 'iso_application_scope', 'name' => 'Campo di applicazione', 'type' => 'textarea'],
         ['code' => 'iso_active_sites', 'name' => 'N° cantieri/commesse attive', 'type' => 'text'],
@@ -147,20 +149,18 @@ final class IsoCatalogue
         ['code' => 'iso_surveillance_consulting_days', 'name' => 'N° G/U consulenza sorveglianza', 'type' => 'integer'],
     ];
 
-    private const string GROUP_DESCRIPTION = 'Compare quando il gruppo di norme è spuntato in Certificazioni richieste.';
+    private const string GROUP_DESCRIPTION = 'Compare quando il gruppo di norme è spuntato in Norme richieste.';
 
     /**
-     * The offer form, in the legacy reading order: the group checkboxes on
-     * top, each group block conditional on its checkbox (spec 0288).
+     * The offer form, in the legacy reading order: the group list on top,
+     * each group block conditional on its entry (spec 0424).
      *
-     * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string, visible_when?: string}}>
+     * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string, visible_when?: string, visible_when_option?: string}}>
      */
     public const array QUOTE_SECTIONS = [
         ['iso-standards', 'Certificazioni richieste', [
-            [self::GROUP_GENERAL],
-            [self::GROUP_FOOD, self::GROUP_ENERGY],
-            [self::GROUP_ANTI_BRIBERY, self::GROUP_ROAD_SAFETY],
-            [self::GROUP_GENDER_EQUALITY, self::OTHER_STANDARD],
+            [self::STANDARD_GROUPS],
+            [self::OTHER_STANDARD],
         ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Spunta i gruppi di norme richiesti: per ognuno si apre il blocco con le sue informazioni. Le altre norme vanno in Altro.']],
         ['iso-certification', 'Informazioni relative alla certificazione', [
             ['iso_application_scope'],
@@ -178,28 +178,28 @@ final class IsoCatalogue
         ['iso-group-general', 'Info per standard 1090/9001/13549/14001/16636/27001/45001/Ecolabel/EMAS/SA8000', [
             ['iso_g1_total_employees', 'iso_g1_revenue'],
             ['iso_g1_certification_type', 'iso_g1_notes'],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::GROUP_GENERAL]],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::STANDARD_GROUPS, 'visible_when_option' => self::GROUP_GENERAL]],
         ['iso-group-food', 'Info per standard BRC/IFS/22000/22005', [
             ['iso_g2_surface_sqm', 'iso_g2_production_lines'],
             ['iso_g2_processes', 'iso_g2_haccp_plans'],
             ['iso_g2_certification_type', 'iso_g2_activity_description'],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::GROUP_FOOD]],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::STANDARD_GROUPS, 'visible_when_option' => self::GROUP_FOOD]],
         ['iso-group-energy', 'Info per standard 50001', [
             ['iso_g3_total_employees', 'iso_g3_energy_employees'],
             ['iso_g3_certification_type', 'iso_g3_energy_sources'],
             ['iso_g3_electricity_consumption'],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::GROUP_ENERGY]],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::STANDARD_GROUPS, 'visible_when_option' => self::GROUP_ENERGY]],
         ['iso-group-anti-bribery', 'Info per standard 37001', [
             ['iso_g4_high_risk_employees', 'iso_g4_certification_type'],
             ['iso_g4_medium_risk_employees', 'iso_g4_low_risk_employees'],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::GROUP_ANTI_BRIBERY]],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::STANDARD_GROUPS, 'visible_when_option' => self::GROUP_ANTI_BRIBERY]],
         ['iso-group-road-safety', 'Info per standard 39001', [
             ['iso_g5_drivers', 'iso_g5_process_employees'],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::GROUP_ROAD_SAFETY]],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::STANDARD_GROUPS, 'visible_when_option' => self::GROUP_ROAD_SAFETY]],
         ['iso-group-gender-equality', 'Info per standard Parità di genere + 30415', [
             ['iso_g6_managers', 'iso_g6_clerks_workers'],
             ['iso_g6_male_female_ratio', 'iso_g6_online_discrimination'],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::GROUP_GENDER_EQUALITY]],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => self::GROUP_DESCRIPTION, 'visible_when' => self::STANDARD_GROUPS, 'visible_when_option' => self::GROUP_GENDER_EQUALITY]],
         ['iso-consulting', 'Tipologia di consulenza richiesta', [
             ['iso_service_type', 'iso_audit_assistance'],
             ['iso_initial_consulting_days', 'iso_surveillance_consulting_days'],

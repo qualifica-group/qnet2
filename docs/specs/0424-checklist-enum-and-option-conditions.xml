@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0424 — Campo a scelta "Lista di checkbox" (piu' voci spuntabili) e sezioni condizionali aperte da una VOCE
+  di un campo a scelta. Estende spec 0288 (sezioni condizionali) e il tipo enum di spec 0021.
+-->
+<spec id="0424-checklist-enum-and-option-conditions" status="approved" owner="utente" date="2026-11-23">
+
+  <goal>
+    Il blocco "Certificazioni richieste" del form Offerta ISO diventa UN campo con la lista dei gruppi di norme come
+    checkbox (uno per riga, piu' voci spuntabili insieme); ogni voce spuntata apre la sua sezione "Info per standard
+    ...", come oggi fanno i sei checkbox separati. Un seeder one-shot porta le installazioni esistenti al nuovo campo,
+    valori delle offerte compresi.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-23 (screenshot anteprima live del form Offerta ISO): "voglio che ci siano i checkbox a
+    lista, sempre con lo stesso comportamento [...] voglio la lista singola (stesso comportamento che apre o chiude le
+    sezioni), fammi un seeder one shot".
+
+    Fatti verificati:
+    - Oggi (IsoCatalogue, decisione 2026-10-21) sei attributi `boolean` `iso_group_*` sul contesto Offerta della radice
+      "ISO", ognuno `visible_when` di una sezione "Info per standard ...", perche' una sezione si apre solo da un
+      booleano (spec 0288 D-1).
+    - Enum multi-valore = `config.display: 'multiselect'`, valore array di `value` di opzione. Il controllo
+      `display === 'multiselect'` e' ripetuto in: `AttributeValueValidator`, `AttributeValueNormalizer`,
+      `RequestAttributeValues` (import), `AttributeColumnBuilder` (griglie), `EnumFieldType` e
+      `PromoteCustomFieldIndexJob` (campi personalizzati); FE `attribute-values-schema.ts`,
+      `build-custom-fields-schema.ts`, `enum-field-control.tsx`.
+    - qnet2 dev: i sei booleani stanno solo su categoria 76 (ISO) contesto quote, 41 offerte valorizzate (15 general,
+      1 road_safety, 1 gender_equality a true), un solo layout (quote/all della radice). Nessun prodotto o commessa.
+    - `iso_standards` esiste gia' (campo Commessa, singole norme, `IsoWorkOrderCatalogue`): il nuovo campo Offerta
+      usa un codice diverso.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Nuovo `config.display: 'checklist'` per il tipo `enum` (attributi e campi personalizzati, il
+      form di configurazione e' condiviso): valore = array di `value` di opzione, identico a `multiselect` in
+      validazione, normalizzazione, griglie, filtri, import; cambia solo il controllo (lista verticale di checkbox,
+      una per opzione). Una sola regola "enum multi-valore" per lato: BE `App\CustomFields\Types\EnumDisplay`
+      (`isMultiValue(?array $config)`), FE `isMultiValueEnum(config)` in `features/custom-fields/types.ts`.</decision>
+    <decision id="D-2">`visible_when` = `{ attribute_code: string, option_value?: string|null }`. Controllo `boolean`:
+      `option_value` assente/null, regola di oggi. Controllo `enum` (qualsiasi display): `option_value` obbligatorio e
+      tra le opzioni dell'attributo; la sezione e' visibile quando il valore e' quella voce (enum singolo) o la
+      contiene (enum multi-valore). Restano le regole 0288 D-2 (posizionato, fuori dalla sezione controllata, in
+      sezione senza condizione). Normalizzazione: `option_value` persistito solo se non vuoto.</decision>
+    <decision id="D-3">Configuratore: il Select "Visibile solo se attivo" elenca i booleani (nome attributo) e, per
+      ogni enum ammesso, una voce per opzione ("Nome attributo: Etichetta opzione"). Indicazione anteprima
+      "Visibile se: Nome attributo: Etichetta opzione". La condizione si azzera da sola come oggi (campo fuori dal
+      layout o spostato); un'opzione poi tolta dall'attributo resta mostrata nel Select col suo valore e il server
+      rifiuta il salvataggio finche' non si sceglie un'altra voce.</decision>
+    <decision id="D-4">ISO: campo Offerta `iso_requested_standard_groups` "Norme richieste", `enum` `checklist`,
+      opzioni general/food/energy/anti_bribery/road_safety/gender_equality con le etichette dei sei checkbox. La
+      sezione `iso-standards` ha il campo a tutta riga e "Altro" sotto; ogni sezione di gruppo ha
+      `visible_when: { attribute_code: iso_requested_standard_groups, option_value: &lt;gruppo&gt; }`.</decision>
+    <decision id="D-5">Seeder one-shot `IsoRequestedStandardGroupsSeeder` (non in nessun seeder aggregato), una
+      transazione: (1) crea/assegna il campo alla radice ISO contesto Offerta; (2) su ogni offerta, prodotto e
+      commessa con almeno un `iso_group_*` a true scrive l'array dei gruppi spuntati in
+      `iso_requested_standard_groups` (unione con un valore gia' presente); (3) riscrive il form Offerta della radice
+      da IsoCatalogue; (4) elimina i sei `iso_group_*` con `AttributeRemover` (valori, assegnazioni, layout, campi).
+      Scrittura via query builder: niente activity log ne' notifiche. Rieseguirlo non cambia nulla.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: `EnumDisplay`, i sei punti di D-1, `AttributeLayoutValidator` (shape + regole D-2),
+        `AttributeLayoutService::normalizeSection`, `AttributeSectionVisibility`; IsoCatalogue + seeder D-5.</item>
+      <item>FE: tipi/Zod del blob, `attribute-section-visibility.ts`, `EnumChecklist` + `enum-field-control.tsx`, voce
+        display nel form di configurazione, condizioni del configuratore (D-3), hint, i18n IT/EN.</item>
+      <item>Guide in-app IT/EN (`custom-fields`, `product-categories`), manuale Claude Docs, HANDOFF.</item>
+    </in>
+    <out>
+      <item>Colonne Tabella (`TableFieldConfigValidator`: enum di colonna resta select/radio).</item>
+      <item>Condizioni su altri tipi, condizioni multiple/AND/OR, "visibile se NON".</item>
+      <item>Legacy (`../qnet`): le opportunita' storiche gia' migrate sono riportate dal seeder D-5; nuovi import
+        legacy dei sei booleani non sono previsti (i codici ISO di qnet-2 non sono quelli legacy).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="PUT" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <request>`layout.sections.*.visible_when`: `null` | `{ attribute_code: string(max 191), option_value?: string(max 191)|null }`.</request>
+      <response status="200">Sezione con `visible_when` null o `{ attribute_code }` (booleano) o `{ attribute_code, option_value }` (enum).</response>
+      <errors>422 `attribute_layout`: controllo non booleano ne' enum; enum senza `option_value` o con opzione
+        inesistente; booleano con `option_value`; regole 0288 D-2.</errors>
+    </endpoint>
+    <endpoint method="POST|PUT|PATCH" path="attributi e campi personalizzati (store/update definizione)">
+      <request>`config.display` accetta anche `checklist` (enum).</request>
+    </endpoint>
+    <typescript>
+      LayoutSectionCondition { attribute_code: string; option_value?: string | null }
+      CustomFieldConfig.display += 'checklist'
+    </typescript>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Layout con sezione condizionata a `{enum, option_value valido}` salvato: 200 e GET restituisce
+      `option_value`; enum senza opzione, opzione inesistente, booleano con opzione, testo come controllo -> 422
+      `attribute_layout` (Pest).</criterion>
+    <criterion id="AC-002">`hiddenCodes`: enum multi con la voce -> visibile, senza la voce/null -> nascosta; enum
+      singolo uguale -> visibile; booleano come oggi (Pest unit).</criterion>
+    <criterion id="AC-003">Attributo enum `checklist`: array di opzioni valide accettato e normalizzato, valore fuori
+      opzioni -> 422; la voce tolta in PATCH svuota la sezione condizionata (Pest).</criterion>
+    <criterion id="AC-004">Seeder D-5: valori migrati (gruppi a true -> array, false ignorati), form riscritto con le
+      condizioni per opzione, `iso_group_*` spariti; seconda esecuzione invariata (Pest).</criterion>
+    <criterion id="AC-005">FE: `checklist` renderizza una checkbox per opzione e scrive l'array; la sezione condizionata
+      a una voce compare spuntandola e sparisce togliendola; il configuratore offre "Attributo: Opzione" e salva
+      `option_value` (Vitest).</criterion>
+    <criterion id="AC-006">Guide IT/EN e parity verdi; Pint, ESLint, `tsc -b --force` puliti; suite mirate verdi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna dipendenza, nessuna migrazione DB (blob JSON e config JSON).</item>
+    <item>Authz invariata. Il seeder non e' in `DatabaseSeeder` ne' in `QualificaProductionDataSeeder`.</item>
+  </constraints>
+
+</spec>

@@ -33,6 +33,7 @@ export const layoutRowSchema = z.object({
 
 export const layoutSectionConditionSchema = z.object({
   attribute_code: z.string().min(1),
+  option_value: z.string().min(1).nullable().optional(),
 })
 
 export const layoutSectionSchema = z.object({

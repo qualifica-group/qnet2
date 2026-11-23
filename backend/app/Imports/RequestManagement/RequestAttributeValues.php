@@ -2,6 +2,7 @@
 
 namespace App\Imports\RequestManagement;
 
+use App\CustomFields\Types\EnumDisplay;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeValueValidator;
 use Illuminate\Validation\ValidationException;
@@ -141,7 +142,7 @@ final class RequestAttributeValues
      */
     private function enum(array $attribute, string $raw): string|array|null
     {
-        $isMulti = ($attribute['config']['display'] ?? null) === 'multiselect';
+        $isMulti = EnumDisplay::isMultiValue($attribute['config'] ?? null);
         $items = $isMulti ? (preg_split('/[,;]/', $raw) ?: []) : [$raw];
         $picked = [];
 

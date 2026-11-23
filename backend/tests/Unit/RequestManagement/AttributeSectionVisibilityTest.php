@@ -109,3 +109,24 @@ it('mergeAndClear does not invent keys for hidden codes that were never stored',
 
     expect((new AttributeSectionVisibility)->mergeAndClear($layout, [], ['toggle' => false]))->toBe(['toggle' => false]);
 });
+
+// Spec 0424 D-2 (AC-002): a section opened by one option of a choice attribute.
+
+/**
+ * @return array<int, array<string, mixed>>
+ */
+function optionVisibilitySections(): array
+{
+    $dependent = visibilitySection(['food_note']);
+    $dependent['visible_when'] = ['attribute_code' => 'groups', 'option_value' => 'food'];
+
+    return [visibilitySection(['groups']), $dependent];
+}
+
+it('shows an option section while a multi value lists the option or a single value is it', function (mixed $value): void {
+    expect(hiddenFor(optionVisibilitySections(), ['groups' => $value]))->toBe([]);
+})->with([[['food']], [['energy', 'food']], ['food']]);
+
+it('hides an option section while the value does not hold the option', function (mixed $value): void {
+    expect(hiddenFor(optionVisibilitySections(), ['groups' => $value]))->toBe(['food_note']);
+})->with([[[]], [['energy']], ['energy'], [null], [true]]);

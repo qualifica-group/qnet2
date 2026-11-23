@@ -7,7 +7,9 @@ namespace App\RequestManagement;
 /**
  * Server-side evaluation of the conditional sections of an attribute layout
  * (spec 0288, D-3/D-4): a section carrying `visible_when: {attribute_code}`
- * is shown only while that boolean attribute is active. The single
+ * is shown only while that boolean attribute is active; with an
+ * `option_value` (spec 0424 D-2) only while that choice attribute holds that
+ * option (single value) or lists it (multi value). The single
  * implementation of the rule — validator and writers both go through here
  * (the frontend mirrors it in `attribute-section-visibility.ts`).
  */
@@ -91,7 +93,8 @@ final class AttributeSectionVisibility
      */
     private function isVisible(int $index, array $sections, array $sectionOfCode, array $values, array $visiting): bool
     {
-        $control = $sections[$index]['visible_when']['attribute_code'] ?? null;
+        $condition = $sections[$index]['visible_when'] ?? null;
+        $control = $condition['attribute_code'] ?? null;
 
         if ($control === null) {
             return true;
@@ -103,13 +106,21 @@ final class AttributeSectionVisibility
             return false;
         }
 
-        return $this->isActive($values[$control] ?? null)
+        return $this->isActive($values[$control] ?? null, $condition['option_value'] ?? null)
             && $this->isVisible($container, $sections, $sectionOfCode, $values, $visiting + [$index => true]);
     }
 
-    /** Same truthy set as Laravel's `boolean` rule, since validation also sees unnormalized input. */
-    private function isActive(mixed $value): bool
+    /**
+     * Without an option: same truthy set as Laravel's `boolean` rule, since
+     * validation also sees unnormalized input. With one: the value is that
+     * option, or a list holding it.
+     */
+    private function isActive(mixed $value, mixed $option): bool
     {
+        if (is_string($option) && $option !== '') {
+            return is_array($value) ? in_array($option, $value, true) : $value === $option;
+        }
+
         return $value === true || $value === 1 || $value === '1';
     }
 

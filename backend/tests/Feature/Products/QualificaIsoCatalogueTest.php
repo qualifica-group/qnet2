@@ -15,6 +15,7 @@ use App\Models\Registry;
 use App\RequestManagement\AttributeSectionVisibility;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\IsoRequestedStandardGroupsSeeder;
 use Database\Seeders\QualificaCatalog\BranchProducts;
 use Database\Seeders\QualificaCatalog\IsoCatalogue;
 use Database\Seeders\QualificaCatalog\IsoMultiStandardProductCatalogue;
@@ -29,8 +30,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 // The "ISO" branch (user directive 2026-10-21): a root linked to the "ISO"
 // business function, worked like "Consulenza", with the legacy "Informazioni
-// Preliminari Iso" as offer fields — one checkbox per norm group opening its
-// block (spec 0288) — and the legacy ISO Commessa blocks, always visible.
+// Preliminari Iso" as offer fields — one checkbox list of the norm groups,
+// each ticked group opening its block (spec 0424) — and the legacy ISO
+// Commessa blocks, always visible.
 // Its subcategories and products come from the "iso" service list.
 uses(RefreshDatabase::class);
 
@@ -90,7 +92,7 @@ it('seeds the ISO root with the selectable subcategories of the list, the ISO fu
     }
 });
 
-it('gives a subcategory the root offer fields and a form whose group blocks open on their checkbox', function (): void {
+it('gives a subcategory the root offer fields and a form whose group blocks open on their entry of the list', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $category = isoCategory(ISO_SAMPLE_CATEGORY);
@@ -102,27 +104,27 @@ it('gives a subcategory the root offer fields and a form whose group blocks open
         ->toBe($ownCodes)
         ->and(array_merge(...array_values($codesBySection)))->toEqualCanonicalizing($ownCodes)
         ->and(AttributeLayout::query()->where('product_category_id', $category->id)->exists())->toBeFalse()
-        ->and(collect($sections)->mapWithKeys(fn (array $section): array => [$section['id'] => $section['visible_when']['attribute_code'] ?? null])->all())
+        ->and(collect($sections)->mapWithKeys(fn (array $section): array => [$section['id'] => $section['visible_when']['option_value'] ?? null])->all())
         ->toBe([
             'iso-standards' => null,
             'iso-certification' => null,
             'iso-organisation' => null,
-            'iso-group-general' => 'iso_group_general',
-            'iso-group-food' => 'iso_group_food',
-            'iso-group-energy' => 'iso_group_energy',
-            'iso-group-anti-bribery' => 'iso_group_anti_bribery',
-            'iso-group-road-safety' => 'iso_group_road_safety',
-            'iso-group-gender-equality' => 'iso_group_gender_equality',
+            'iso-group-general' => 'general',
+            'iso-group-food' => 'food',
+            'iso-group-energy' => 'energy',
+            'iso-group-anti-bribery' => 'anti_bribery',
+            'iso-group-road-safety' => 'road_safety',
+            'iso-group-gender-equality' => 'gender_equality',
             'iso-consulting' => null,
         ])
-        ->and($codesBySection['iso-standards'])->toBe([
-            'iso_group_general', 'iso_group_food', 'iso_group_energy',
-            'iso_group_anti_bribery', 'iso_group_road_safety', 'iso_group_gender_equality',
-            'iso_other_standard',
-        ])
+        ->and(collect($sections)->pluck('visible_when.attribute_code')->filter()->unique()->values()->all())->toBe([IsoCatalogue::STANDARD_GROUPS])
+        ->and($codesBySection['iso-standards'])->toBe([IsoCatalogue::STANDARD_GROUPS, 'iso_other_standard'])
         ->and(Attribute::query()->where('code', 'iso_other_standard')->sole()->only(['name', 'type', 'config']))
         ->toBe(['name' => 'Altro', 'type' => 'text', 'config' => null])
-        ->and(Attribute::query()->where('code', 'iso_group_general')->sole()->config)->toBe(['display' => 'checkbox'])
+        ->and(Attribute::query()->where('code', IsoCatalogue::STANDARD_GROUPS)->sole()->only(['name', 'type', 'config']))
+        ->toBe(['name' => 'Norme richieste', 'type' => 'enum', 'config' => ['display' => 'checklist']])
+        ->and(Attribute::query()->where('code', IsoCatalogue::STANDARD_GROUPS)->sole()->options()->orderBy('sort_order')->pluck('label')->all())
+        ->toBe(['Standard 1090, 9001, 13549, 14001, 16636, 27001, 45001, Ecolabel, EMAS, SA8000', 'Standard BRC, IFS, 22000, 22005', 'Standard 50001', 'Standard 37001', 'Standard 39001', 'Parità di genere + 30415'])
         ->and(Attribute::query()->where('code', 'iso_g1_certification_type')->sole()->options()->orderBy('sort_order')->pluck('label')->all())
         ->toBe(['Prima certificazione', 'Estensione di scopo', 'Estensione di sito', 'Ricertificazione', 'Trasferimento di certificato', 'Variazione di certificato']);
 });
@@ -132,11 +134,11 @@ it('brings an installation already seeded up to the ISO offer fields and form, k
 
     $layouts = app(AttributeLayoutService::class);
     $root = isoCategory(IsoCatalogue::ROOT);
-    $quote = Quote::factory()->create(['attribute_values' => ['iso_group_general' => true, 'iso_g1_notes' => 'Kept']]);
+    $quote = Quote::factory()->create(['attribute_values' => [IsoCatalogue::STANDARD_GROUPS => ['general'], 'iso_g1_notes' => 'Kept']]);
 
     // An installation seeded before "Altro": the same form without it, and no such field.
     $older = $layouts->resolveExact($root, AttributeContext::Quote, LayoutFormScope::All);
-    $older['sections'][0]['rows'][3]['items'] = array_slice($older['sections'][0]['rows'][3]['items'], 0, 1);
+    unset($older['sections'][0]['rows'][1]);
     $layouts->upsert($root, AttributeContext::Quote, LayoutFormScope::All, $older);
     Attribute::query()->where('code', 'iso_other_standard')->sole()->delete();
 
@@ -156,19 +158,58 @@ it('brings an installation already seeded up to the ISO offer fields and form, k
         ->and(Attribute::query()->where('code', 'iso_other_standard')->count())->toBe(1)
         ->and(app(CategoryHierarchy::class)->effectiveAttributes(isoCategory(ISO_SAMPLE_CATEGORY), AttributeContext::Quote)->pluck('code'))
         ->toContain('iso_other_standard')
-        ->and($quote->fresh()->attribute_values)->toBe(['iso_group_general' => true, 'iso_g1_notes' => 'Kept']);
+        ->and($quote->fresh()->attribute_values)->toBe([IsoCatalogue::STANDARD_GROUPS => ['general'], 'iso_g1_notes' => 'Kept']);
 });
 
-it('hides a group block, its certification type select included, until its checkbox is ticked', function (): void {
+it('hides a group block, its certification type select included, until its entry is ticked', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $layout = app(AttributeLayoutService::class)->resolveWithFallback(isoCategory(ISO_SAMPLE_CATEGORY), AttributeContext::Quote, FormMode::Create);
     $visibility = app(AttributeSectionVisibility::class);
 
-    $hidden = $visibility->hiddenCodes($layout, ['iso_group_energy' => true]);
+    $hidden = $visibility->hiddenCodes($layout, [IsoCatalogue::STANDARD_GROUPS => ['energy', 'road_safety']]);
 
-    expect($hidden)->toContain('iso_g1_certification_type', 'iso_g2_certification_type', 'iso_g4_certification_type')
-        ->and($hidden)->not->toContain('iso_g3_certification_type', 'iso_g3_electricity_consumption', 'iso_application_scope', 'iso_group_general');
+    expect($hidden)->toContain('iso_g1_certification_type', 'iso_g2_certification_type', 'iso_g4_certification_type', 'iso_g6_managers')
+        ->and($hidden)->not->toContain('iso_g3_certification_type', 'iso_g3_electricity_consumption', 'iso_g5_drivers', 'iso_application_scope', IsoCatalogue::STANDARD_GROUPS);
+});
+
+it('moves an installation from the six group checkboxes to the list, values included, idempotently', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $layouts = app(AttributeLayoutService::class);
+    $root = isoCategory(IsoCatalogue::ROOT);
+
+    // The form as seeded before spec 0424: six yes/no fields, each opening its block.
+    $retired = IsoRequestedStandardGroupsSeeder::RETIRED_GROUP_FIELDS;
+    foreach (array_keys($retired) as $index => $code) {
+        $root->attributes()->attach(Attribute::factory()->create(['code' => $code, 'type' => 'boolean'])->id, ['context' => 'quote', 'is_required' => false, 'sort_order' => $index]);
+    }
+    $older = $layouts->resolveExact($root, AttributeContext::Quote, LayoutFormScope::All);
+    $older['sections'][0]['rows'][0]['items'] = array_map(static fn (string $code): array => ['attribute_code' => $code, 'width' => 'third'], array_keys($retired));
+    foreach ($older['sections'] as $index => $section) {
+        if (isset($section['visible_when']['option_value'])) {
+            $older['sections'][$index]['visible_when'] = ['attribute_code' => array_search($section['visible_when']['option_value'], $retired, true)];
+        }
+    }
+    $layouts->upsert($root, AttributeContext::Quote, LayoutFormScope::All, $older);
+
+    $ticked = Quote::factory()->create(['attribute_values' => ['iso_group_road_safety' => true, 'iso_group_general' => true, 'iso_group_food' => false, 'iso_g1_notes' => 'Kept']]);
+    $unticked = Quote::factory()->create(['attribute_values' => ['iso_group_general' => false, 'iso_other_standard' => 'ISO 50001']]);
+    $untouched = Quote::factory()->create(['attribute_values' => ['iso_g1_notes' => 'Alone']]);
+
+    test()->seed(IsoRequestedStandardGroupsSeeder::class);
+    test()->seed(IsoRequestedStandardGroupsSeeder::class);
+
+    $sections = $layouts->resolveExact($root, AttributeContext::Quote, LayoutFormScope::All)['sections'];
+
+    expect($ticked->fresh()->attribute_values)->toBe(['iso_g1_notes' => 'Kept', IsoCatalogue::STANDARD_GROUPS => ['general', 'road_safety']])
+        ->and($unticked->fresh()->attribute_values)->toBe(['iso_other_standard' => 'ISO 50001'])
+        ->and($untouched->fresh()->attribute_values)->toBe(['iso_g1_notes' => 'Alone'])
+        ->and(Attribute::query()->whereIn('code', array_keys($retired))->exists())->toBeFalse()
+        ->and(Attribute::query()->where('code', IsoCatalogue::STANDARD_GROUPS)->count())->toBe(1)
+        ->and(isoSectionCodes($sections)['iso-standards'])->toBe([IsoCatalogue::STANDARD_GROUPS, 'iso_other_standard'])
+        ->and(collect($sections)->firstWhere('id', 'iso-group-road-safety')['visible_when'])
+        ->toBe(['attribute_code' => IsoCatalogue::STANDARD_GROUPS, 'option_value' => 'road_safety']);
 });
 
 it('gives a subcategory the root Commessa fields and an always visible form, and leaves a configured form alone', function (): void {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\CustomFields\CustomFieldIndexDdlBuilder;
+use App\CustomFields\Types\EnumDisplay;
 use App\Models\CustomFieldDefinition;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -170,7 +171,7 @@ class PromoteCustomFieldIndexJob implements ShouldQueue
     private function isMultiValued(CustomFieldDefinition $definition): bool
     {
         if ($definition->type === 'enum') {
-            return ($definition->config['display'] ?? null) === 'multiselect';
+            return EnumDisplay::isMultiValue($definition->config);
         }
 
         if ($definition->type === 'relation') {
