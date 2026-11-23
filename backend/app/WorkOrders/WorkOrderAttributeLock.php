@@ -20,4 +20,7 @@ interface WorkOrderAttributeLock
      * @return list<string>
      */
     public function lockedCodes(array $categoryIds): array;
+
+    /** The name of the source, shown to the user beside the fields it owns (e.g. the external system's name). */
+    public function source(): string;
 }

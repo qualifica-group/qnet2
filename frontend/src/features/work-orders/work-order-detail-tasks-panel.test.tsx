@@ -88,7 +88,7 @@ function workOrder(): WorkOrderDetailWithPermissions {
     quote_lines: [],
     applicable_attributes: [],
     attribute_layout: null,
-    locked_attribute_codes: [],
+    locked_attributes: [],
     attribute_values: {},
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-01-01T09:00:00Z',

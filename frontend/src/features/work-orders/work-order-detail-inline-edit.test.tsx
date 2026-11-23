@@ -94,7 +94,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     quote_lines: [{ id: 11, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' }, registry: null }],
     applicable_attributes: [SITE_ACCESS],
     attribute_layout: null,
-    locked_attribute_codes: [],
+    locked_attributes: [],
     attribute_values: { site_access: 'Gate 3' },
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
@@ -131,7 +131,7 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.mocked(updateWorkOrder).mockReset()
   vi.mocked(fetchWorkOrderFormContext).mockReset()
-  vi.mocked(fetchWorkOrderFormContext).mockResolvedValue({ applicable_attributes: [], attribute_layout: null, locked_attribute_codes: [] })
+  vi.mocked(fetchWorkOrderFormContext).mockResolvedValue({ applicable_attributes: [], attribute_layout: null, locked_attributes: [] })
 })
 
 // REQUIREMENT CHANGED (spec 0403): the Info tab no longer has the Title row, the description is the sample field.

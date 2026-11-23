@@ -160,11 +160,17 @@ export interface ApplicableAttributeSummary {
  * that may not be saved yet — serves both the work order form and the
  * contract's "Programma" dialog.
  */
+/** An attribute owned by an integration (e.g. written from an external service), with the source's name. */
+export interface LockedAttribute {
+  code: string
+  source: string
+}
+
 export interface WorkOrderFormContext {
   applicable_attributes: ApplicableAttributeSummary[]
   attribute_layout: LayoutBlob | null
-  /** Codes owned by an integration (e.g. written from an external service): read-only. */
-  locked_attribute_codes: string[]
+  /** Owned by an integration: read-only, marked with the source's name. */
+  locked_attributes: LockedAttribute[]
 }
 
 /**
@@ -260,8 +266,8 @@ export interface WorkOrderDetail {
   applicable_attributes: ApplicableAttributeSummary[]
   /** Layout multi-categoria (spec 0062); `null` -> rendering flat. */
   attribute_layout: LayoutBlob | null
-  /** Codes owned by an integration (e.g. written from an external service): shown read-only, refused on write. */
-  locked_attribute_codes: string[]
+  /** Owned by an integration: shown read-only with the source's name, refused on write. */
+  locked_attributes: LockedAttribute[]
   created_at: string
   updated_at: string
 }

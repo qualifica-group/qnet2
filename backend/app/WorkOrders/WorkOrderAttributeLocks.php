@@ -26,17 +26,35 @@ final class WorkOrderAttributeLocks
      */
     public function lockedCodes(array $categoryIds): array
     {
+        return array_column($this->lockedAttributes($categoryIds), 'code');
+    }
+
+    /**
+     * Each locked code with the source that owns it (the first registered
+     * lock claiming a code wins).
+     *
+     * @param  list<int>  $categoryIds
+     * @return list<array{code: string, source: string}>
+     */
+    public function lockedAttributes(array $categoryIds): array
+    {
         if ($categoryIds === []) {
             return [];
         }
 
-        $codes = [];
+        $sources = [];
 
         foreach ($this->locks as $lock) {
-            array_push($codes, ...$lock->lockedCodes($categoryIds));
+            foreach ($lock->lockedCodes($categoryIds) as $code) {
+                $sources[$code] ??= $lock->source();
+            }
         }
 
-        return array_values(array_unique($codes));
+        return array_map(
+            static fn (string $code, string $source): array => ['code' => $code, 'source' => $source],
+            array_keys($sources),
+            array_values($sources),
+        );
     }
 
     /**

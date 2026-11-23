@@ -125,7 +125,7 @@ class WorkOrderResource extends JsonResource
             'applicable_attributes' => $this->resolveApplicableAttributes(),
             'attribute_layout' => app(WorkOrderAttributeResolver::class)->layout($this->resource, FormMode::View),
             // Owned by a registered WorkOrderAttributeLock: shown read-only, refused on write.
-            'locked_attribute_codes' => app(WorkOrderAttributeResolver::class)->lockedCodes($this->resource),
+            'locked_attributes' => app(WorkOrderAttributeResolver::class)->lockedAttributes($this->resource),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

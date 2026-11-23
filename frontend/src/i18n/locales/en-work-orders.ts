@@ -114,6 +114,7 @@ export const workOrders = {
     internalNotesPlaceholder: 'Write a note about this work order…',
     taskTemplate: 'Task template',
     lines: 'Product lines',
+    lockedSource: 'Value received from {{source}}: read-only.',
     additionalInformation: 'Additional information',
     created_at: 'Created at',
     updated_at: 'Updated at',

@@ -75,7 +75,7 @@ const guide: HelpGuide = {
             '**Field map**: for each Formalab field (course / edition name, status, dates, hours, decrees, site, learners…) choose the work order field to write it into. The list offers only the category\'s work order fields of a compatible type; fields left "Not linked" are not written.',
             'The **course / edition name** is required: it is the field the work order finds its Formalab edition from.',
             'A subcategory uses the map of the category above ("Map inherited from …"); turning on **Own map** lets it define a different one, and turning it off makes it inherit again.',
-            'On the work orders of linked categories the mapped fields are **read-only**: only Formalab updates them. The **course / edition name** field is the exception and stays editable, because it is used to find the edition.',
+            'On the work orders of linked categories the mapped fields are **read-only**: only Formalab updates them, and a sync icon appears beside the field name (hover it to read that the value comes from Formalab). The **course / edition name** field is the exception and stays editable, because it is used to find the edition.',
           ],
         },
         {

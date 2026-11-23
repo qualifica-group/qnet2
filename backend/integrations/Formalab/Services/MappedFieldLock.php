@@ -15,6 +15,8 @@ use Integrations\Formalab\Support\FormalabField;
  */
 final class MappedFieldLock implements WorkOrderAttributeLock
 {
+    private const string SOURCE = 'Formalab';
+
     public function __construct(private readonly CategoryFieldMapResolver $maps) {}
 
     public function lockedCodes(array $categoryIds): array
@@ -39,5 +41,10 @@ final class MappedFieldLock implements WorkOrderAttributeLock
         }
 
         return array_values(array_unique(array_diff($locked, $keys)));
+    }
+
+    public function source(): string
+    {
+        return self::SOURCE;
     }
 }

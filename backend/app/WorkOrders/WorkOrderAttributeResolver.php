@@ -68,6 +68,16 @@ final class WorkOrderAttributeResolver
     }
 
     /**
+     * lockedCodes() with the source owning each code, as the API exposes them.
+     *
+     * @return list<array{code: string, source: string}>
+     */
+    public function lockedAttributes(WorkOrder $workOrder): array
+    {
+        return $this->locks->lockedAttributes($this->categoryIdsForWorkOrder($workOrder));
+    }
+
+    /**
      * lockedCodes() for a not-yet-saved work order made of these quote lines.
      *
      * @param  array<int, int>  $quoteLineIds
@@ -85,7 +95,7 @@ final class WorkOrderAttributeResolver
      * Contract's "Programma" dialog.
      *
      * @param  array<int, int>  $quoteLineIds
-     * @return array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null, locked_attribute_codes: list<string>}
+     * @return array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null, locked_attributes: list<array{code: string, source: string}>}
      */
     public function formContext(array $quoteLineIds, FormMode $formMode): array
     {
@@ -94,7 +104,7 @@ final class WorkOrderAttributeResolver
         return [
             'applicable_attributes' => $this->setResolver->resolve($categoryIds, AttributeContext::WorkOrder),
             'attribute_layout' => $this->layoutMerger->resolve($categoryIds, AttributeContext::WorkOrder, $formMode),
-            'locked_attribute_codes' => $this->locks->lockedCodes($categoryIds),
+            'locked_attributes' => $this->locks->lockedAttributes($categoryIds),
         ];
     }
 

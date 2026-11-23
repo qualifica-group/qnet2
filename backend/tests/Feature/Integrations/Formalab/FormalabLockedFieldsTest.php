@@ -18,10 +18,12 @@ it('shows the mapped fields of a linked category as locked, the course name exce
     $plain = formalabGolWorkOrder(linkCategory: false);
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
 
-    $locked = $this->getJson('/api/work-orders/'.$workOrder->id)->assertOk()->json('data.locked_attribute_codes');
-    expect($locked)->toEqualCanonicalizing(formalabLockedCodes())->not->toContain('gol_corso')->not->toContain('gol_notice');
+    // REQUIREMENT CHANGED (2026-11-23): each locked field carries its source, shown beside it
+    $locked = $this->getJson('/api/work-orders/'.$workOrder->id)->assertOk()->json('data.locked_attributes');
+    expect(array_column($locked, 'code'))->toEqualCanonicalizing(formalabLockedCodes())->not->toContain('gol_corso')->not->toContain('gol_notice')
+        ->and(array_unique(array_column($locked, 'source')))->toBe(['Formalab']);
 
-    $this->getJson('/api/work-orders/'.$plain->id)->assertOk()->assertJsonPath('data.locked_attribute_codes', []);
+    $this->getJson('/api/work-orders/'.$plain->id)->assertOk()->assertJsonPath('data.locked_attributes', []);
 });
 
 // AC-011
@@ -53,7 +55,7 @@ it('locks the mapped fields on create and in the form context', function () {
     Sanctum::actingAs($actor);
 
     $context = $this->postJson('/api/work-orders/form-context', ['quote_line_ids' => [$line->id]])->assertOk();
-    expect($context->json('data.locked_attribute_codes'))->toEqualCanonicalizing(formalabLockedCodes());
+    expect(array_column($context->json('data.locked_attributes'), 'code'))->toEqualCanonicalizing(formalabLockedCodes());
 
     $this->postJson('/api/work-orders', [
         ...workOrderRequiredFields(), 'quote_id' => $line->quote_id, 'title' => 'New', 'type' => 'processing',
@@ -66,5 +68,5 @@ it('locks nothing while the integration is off', function () {
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
 
     $this->patchJson('/api/work-orders/'.$workOrder->id, ['attribute_values' => ['gol_stato_corso' => 'Concluso']])->assertOk()
-        ->assertJsonPath('data.locked_attribute_codes', []);
+        ->assertJsonPath('data.locked_attributes', []);
 });

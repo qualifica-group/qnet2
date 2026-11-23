@@ -24,7 +24,7 @@ use Illuminate\Support\Collection;
 class WorkOrderFormContextResource extends JsonResource
 {
     /**
-     * @param  array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null, locked_attribute_codes: list<string>}  $resource
+     * @param  array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null, locked_attributes: list<array{code: string, source: string}>}  $resource
      */
     public function __construct(array $resource)
     {
@@ -42,7 +42,7 @@ class WorkOrderFormContextResource extends JsonResource
                 ->values()
                 ->all(),
             'attribute_layout' => $this->resource['attribute_layout'],
-            'locked_attribute_codes' => $this->resource['locked_attribute_codes'],
+            'locked_attributes' => $this->resource['locked_attributes'],
         ];
     }
 }

@@ -18,6 +18,11 @@ it('unions the codes of the tagged locks and asks nothing for an empty category 
 
             return $categoryIds === [7] ? ['a', 'b', 'a'] : [];
         }
+
+        public function source(): string
+        {
+            return 'First';
+        }
     };
     app()->instance('test.lock', $lock);
     app()->tag(['test.lock'], 'work-orders.attribute-locks');
@@ -26,6 +31,33 @@ it('unions the codes of the tagged locks and asks nothing for an empty category 
     expect($locks->lockedCodes([7]))->toBe(['a', 'b'])
         ->and($locks->lockedCodes([]))->toBe([])
         ->and($lock->calls)->toBe(1);
+});
+
+it('names the source owning each locked code, the first registered lock winning a shared code', function () {
+    $lock = fn (array $codes, string $source): WorkOrderAttributeLock => new class($codes, $source) implements WorkOrderAttributeLock
+    {
+        public function __construct(private readonly array $codes, private readonly string $name) {}
+
+        public function lockedCodes(array $categoryIds): array
+        {
+            return $this->codes;
+        }
+
+        public function source(): string
+        {
+            return $this->name;
+        }
+    };
+    app()->instance('test.first', $lock(['a', 'b'], 'First'));
+    app()->instance('test.second', $lock(['b', 'c'], 'Second'));
+    app()->tag(['test.first', 'test.second'], 'work-orders.attribute-locks');
+    $locks = app(WorkOrderAttributeLocks::class);
+
+    expect($locks->lockedAttributes([7]))->toBe([
+        ['code' => 'a', 'source' => 'First'],
+        ['code' => 'b', 'source' => 'First'],
+        ['code' => 'c', 'source' => 'Second'],
+    ])->and($locks->lockedAttributes([]))->toBe([]);
 });
 
 it('reports only the locked codes a submission really changes', function () {
