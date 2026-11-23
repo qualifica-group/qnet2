@@ -7,7 +7,9 @@ use App\Enums\LayoutSectionVariant;
 /**
  * The APL practices — internships, apprenticeships, orientation — in one
  * place: each is a category with its own offer fields, offer form and working
- * states (user directives 2026-10-02, 2026-10-05). Pure data, read by the
+ * states (user directives 2026-10-02, 2026-10-05). Orientation's fields and
+ * form are the Commessa's since 2026-11-23 (QualificaBranchWorkOrderSeeder):
+ * it keeps only its working states here. Pure data, read by the
  * seeders that consume them (QualificaCatalogSeeder, QualificaQuoteLayoutSeeder,
  * WorkflowStatusCatalogue), so a new practice is one row per map here rather
  * than one line in each of those files.
@@ -25,7 +27,6 @@ final class AplPracticeCatalogue
     public const array QUOTE_ATTRIBUTES = [
         AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::ATTRIBUTES,
         ApprenticeshipAttributeCatalogue::CATEGORY => ApprenticeshipAttributeCatalogue::ATTRIBUTES,
-        AplOrientationAttributeCatalogue::CATEGORY => AplOrientationAttributeCatalogue::ATTRIBUTES,
     ];
 
     /**
@@ -39,7 +40,6 @@ final class AplPracticeCatalogue
     public const array FORMS = [
         AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::SECTIONS,
         ApprenticeshipAttributeCatalogue::CATEGORY => ApprenticeshipAttributeCatalogue::SECTIONS,
-        AplOrientationAttributeCatalogue::CATEGORY => AplOrientationAttributeCatalogue::SECTIONS,
     ];
 
     /**
@@ -51,7 +51,6 @@ final class AplPracticeCatalogue
      */
     public const array PREVIOUS_FORMS = [
         AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::PREVIOUS_SECTIONS,
-        AplOrientationAttributeCatalogue::CATEGORY => AplOrientationAttributeCatalogue::PREVIOUS_SECTIONS,
     ];
 
     /**

@@ -5,15 +5,19 @@ namespace Database\Seeders\QualificaCatalog;
 use App\Enums\LayoutSectionVariant;
 
 /**
- * The OFFERTA-context fields of the APL orientation practices (Orientamento /
- * SFL GOL), transcribed from the "Campi Misure APL" sheet (user directive
- * 2026-10-05, which brings back the 2026-10-01 sheet the internships had
- * replaced). Pure data, like AplInternshipAttributeCatalogue —
- * QualificaCatalogSeeder creates and assigns them on the CATEGORY,
- * QualificaQuoteLayoutSeeder lays them out in the SECTIONS below.
+ * The fields of the APL orientation practices (Orientamento / SFL GOL),
+ * transcribed from the "Campi Misure APL" sheet (user directive 2026-10-05,
+ * which brings back the 2026-10-01 sheet the internships had replaced). Pure
+ * data, like AplInternshipAttributeCatalogue. Born as OFFERTA fields, they are
+ * the COMMESSA's since 2026-11-23 (user directive: "i campi che ci sono in
+ * offerta devono essere passati in commessa ... da offerta deve essere
+ * tolto"): QualificaBranchWorkOrderSeeder creates and assigns them on the
+ * CATEGORY and lays them out in the SECTIONS below, and
+ * QualificaAplOrientationWorkOrderFieldsSeeder moved an installation already
+ * seeded.
  *
- * They are the category's WHOLE offer form: it is cut off the "APL" root
- * (CategoryInheritanceRules), so a field assigned on the root never reaches it.
+ * The category is cut off the "APL" root for the Offerta
+ * (CategoryInheritanceRules), so its offer has no flexible field left.
  *
  * "Anagrafica Utente" is a field of its own, a link to the registry of the
  * person the practice is for (user directive 2026-10-06): the opportunity's
@@ -77,7 +81,7 @@ final class AplOrientationAttributeCatalogue
     ];
 
     /**
-     * The offer form in the sheet's reading order: the header the operator
+     * The Commessa form in the sheet's reading order: the header the operator
      * checks first, then the practice data and the path dates. Every section
      * white (user directive 2026-10-05).
      *
@@ -89,42 +93,15 @@ final class AplOrientationAttributeCatalogue
             ['sfl_renewal_status', 'decree_status'],
             ['deliverable_policies', 'last_active_policy_date'],
         ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Anagrafica dell\'utente, rinnovo SFL, decreto e politiche attive della pratica.']],
-        self::DATA_SECTION,
-        self::PATH_SECTION,
+        ['apl-orientation-data', 'Dati pratica', [
+            ['orientation_measure', 'sfl_months_received'],
+            ['practice_end_date'],
+            ['reporting_id', 'decree_id'],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Misura, mensilità SFL già percepite (su 12) e riferimenti di rendicontazione.']],
+        ['apl-orientation-path', 'Percorso', [
+            ['orientation_convocation_date', 'orientation_intake_date'],
+            ['orientation_session_date', 'orientation_job_support_1_date'],
+            ['orientation_job_support_2_date', 'orientation_job_support_3_date'],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Date delle tappe del percorso di orientamento e accompagnamento.']],
     ];
-
-    /**
-     * The form the 2026-10-05 revision seeded, before "Anagrafica Utente" led
-     * the header: QualificaQuoteLayoutSeeder recognises it byte for byte and
-     * recomposes it, or an installation already seeded would get the new field
-     * only in the synthesized "other information" section.
-     *
-     * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
-     */
-    public const array PREVIOUS_SECTIONS = [
-        ['apl-orientation-header', 'Testata', [
-            ['sfl_renewal_status', 'decree_status'],
-            ['deliverable_policies', 'last_active_policy_date'],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Rinnovo SFL, decreto e politiche attive della pratica.']],
-        self::DATA_SECTION,
-        self::PATH_SECTION,
-    ];
-
-    /**
-     * @var array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}
-     */
-    private const array DATA_SECTION = ['apl-orientation-data', 'Dati pratica', [
-        ['orientation_measure', 'sfl_months_received'],
-        ['practice_end_date'],
-        ['reporting_id', 'decree_id'],
-    ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Misura, mensilità SFL già percepite (su 12) e riferimenti di rendicontazione.']];
-
-    /**
-     * @var array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}
-     */
-    private const array PATH_SECTION = ['apl-orientation-path', 'Percorso', [
-        ['orientation_convocation_date', 'orientation_intake_date'],
-        ['orientation_session_date', 'orientation_job_support_1_date'],
-        ['orientation_job_support_2_date', 'orientation_job_support_3_date'],
-    ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Date delle tappe del percorso di orientamento e accompagnamento.']];
 }
