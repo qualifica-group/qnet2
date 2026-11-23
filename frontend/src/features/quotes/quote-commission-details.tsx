@@ -14,7 +14,7 @@ import { commissionFlowSign } from '@/features/quotes/commission-calculator'
 import type { CommissionRole, SupplierCommissionDirection } from '@/features/commission-configurations/types'
 import type { QuoteLine, QuoteLineCommission } from '@/features/quotes/types'
 
-const ROLES: CommissionRole[] = ['COMMERCIAL', 'REPORTER', 'SUPERVISOR', 'SUPPLIER']
+const ROLES: CommissionRole[] = ['COMMERCIAL', 'COMMERCIAL_PARTNER', 'REPORTER', 'SUPERVISOR', 'SUPPLIER']
 
 /** Commission percentages are stored with 4 decimals; 2 are enough to read them. */
 const PERCENTAGE_DIGITS = 2

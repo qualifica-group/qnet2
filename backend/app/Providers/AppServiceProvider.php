@@ -81,6 +81,7 @@ use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\PurchaseRequestPriority;
 use App\Models\Quote;
 use App\Models\QuoteLineCommission;
+use App\Models\QuoteSystemStatus;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
@@ -120,6 +121,7 @@ use App\Models\WorkOrder;
 use App\Models\WorkOrderChatMessage;
 use App\Models\WorkOrderCost;
 use App\Models\WorkOrderLinePayment;
+use App\Models\WorkOrderPage;
 use App\Models\WorkOrderPaymentStatus;
 use App\Models\WorkOrderProgressEntry;
 use App\Models\WorkOrderStage;
@@ -132,6 +134,7 @@ use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
+use App\Tables\Opportunities\OpportunitySystemStatusColumn;
 use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
@@ -168,6 +171,8 @@ class AppServiceProvider extends ServiceProvider
         // serve a stale name/color, or a stale workflow, forever).
         $this->app->scoped(OpportunityStatusResolver::class);
         $this->app->scoped(OpportunityDefaultStatusResolver::class);
+        // Spec 0409: the grid definition and its relation columns share one memo of the `open` system status.
+        $this->app->scoped(OpportunitySystemStatusColumn::class);
 
         // Singleton so the custom-fieldable entity map (spec 0021) — built by
         // intersecting config/tables.php with config/authorization.php and
@@ -332,6 +337,8 @@ class AppServiceProvider extends ServiceProvider
             'quote' => Quote::class,
             'quote_workflow' => QuoteWorkflow::class,
             'quote_workflow_status' => QuoteWorkflowStatus::class,
+            // Spec 0404 part A: LogsModelActivity.
+            'quote_system_status' => QuoteSystemStatus::class,
             'commission_configuration' => CommissionConfiguration::class,
             'quote_line_commission' => QuoteLineCommission::class,
             'payment_method' => PaymentMethod::class,
@@ -362,6 +369,7 @@ class AppServiceProvider extends ServiceProvider
             // same reasoning as document_layout above.
             'work_order' => WorkOrder::class,
             'work_order_chat_message' => WorkOrderChatMessage::class,
+            'work_order_page' => WorkOrderPage::class,
             // Spec 0322: both audited (LogsModelActivity), so strict morph map needs them.
             'work_order_workflow' => WorkOrderWorkflow::class,
             'work_order_workflow_status' => WorkOrderWorkflowStatus::class,

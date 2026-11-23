@@ -53,3 +53,19 @@ it('exposes is_cc, true for a stored copy and false when absent', function () {
     expect($items['Copia']['data']['is_cc'])->toBeTrue()
         ->and($items['Diretta']['data']['is_cc'])->toBeFalse();
 });
+
+// The person behind a notification (who wrote the @mention), shown in the
+// campanella next to the timestamp; null when absent or malformed.
+it('exposes actor as {id, name}, null when absent or malformed', function () {
+    $user = User::factory()->create();
+    NotificationFactory::new()->forUser($user)->state(['data' => ['title' => 'Menzione', 'actor' => ['id' => 7, 'name' => 'Paola Sena']]])->create();
+    NotificationFactory::new()->forUser($user)->state(['data' => ['title' => 'Sistema']])->create();
+    NotificationFactory::new()->forUser($user)->state(['data' => ['title' => 'Rotta', 'actor' => 'Paola Sena']])->create();
+    Sanctum::actingAs($user);
+
+    $items = collect($this->getJson('/api/notifications')->assertOk()->json('items'))->keyBy('data.title');
+
+    expect($items['Menzione']['data']['actor'])->toBe(['id' => 7, 'name' => 'Paola Sena'])
+        ->and($items['Sistema']['data']['actor'])->toBeNull()
+        ->and($items['Rotta']['data']['actor'])->toBeNull();
+});

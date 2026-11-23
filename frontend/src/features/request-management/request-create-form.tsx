@@ -23,6 +23,9 @@ import { RequestForecastSection } from '@/features/request-management/request-fo
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
+import { RequestCreateRootSplitNotice } from '@/features/request-management/request-create-root-split-notice'
+import { RequestCreateDocumentsSection } from '@/features/request-management/request-create-documents-section'
+import { useRequestModule } from '@/features/request-management/request-module'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 import {
@@ -114,6 +117,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     isSubmitting,
     usingExistingRegistry,
     identityDraft,
+    identityCardKey,
     revalidateSignal,
     setIdentityDraft,
     contactsDraft,
@@ -128,6 +132,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     isContextLoading,
     vatRatePercentFor,
     rememberVatRatePercent,
+    documents,
   } = useRequestCreateForm({ onSuccess })
 
   // The two supervisory blocks of the attribution/team pair are rendered only
@@ -137,6 +142,9 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
   const { can } = useAbilities()
   const canPickSite = can(OPERATIONAL_SITES_VIEW_ANY_PERMISSION)
   const canAssignOperator = can(ASSIGN_OPERATOR_PERMISSION)
+  // Spec 0415 D-4: the same pair the work panel's Documenti tab needs to upload.
+  const requestModule = useRequestModule()
+  const canAttachDocuments = can(requestModule.permission('viewDocuments')) && can('attachments.create')
 
   // Spec 0097 rev-2 D-7/AC-011: the Sede and the operator slot are two
   // sections apart — adjacent ones in the side column since the 2026-09-10
@@ -221,10 +229,9 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                           resetUncoveredOfferRows(rows)
                         }}
                         area="requests"
+                        extraHints={[t('requestManagement.workPanel.productLines.hint')]}
                       />
-                      <p className="text-xs text-muted-foreground">
-                        {t('requestManagement.workPanel.productLines.hint')}
-                      </p>
+                      <RequestCreateRootSplitNotice rows={field.value} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -258,6 +265,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
               <RequestCreateClientSection
                 control={form.control}
                 identity={identityDraft}
+                identityCardKey={identityCardKey}
                 onIdentityChange={setIdentityDraft}
                 contacts={contactsDraft}
                 onContactsChange={setContactsDraft}
@@ -285,6 +293,8 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                   isLoading={isContextLoading}
                 />
               )}
+
+              {canAttachDocuments && <RequestCreateDocumentsSection documents={documents} />}
 
               <RecordFormActions
                 formId={REQUEST_CREATE_FORM_ID}

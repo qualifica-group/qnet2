@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\Contract;
 use App\Models\ContractRenewal;
 use App\Models\Quote;
+use App\Policies\QuotePolicy;
 use App\Services\Contracts\ContractActionAvailability;
 use App\Services\Contracts\ContractAlertResolver;
 use App\Services\Contracts\ContractPeriodWorkOrderCounter;
@@ -44,6 +45,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * `summary.*.gross` (like `quote.revenue_gross`) is DERIVED here (net + vat)
  * at request time — NEVER persisted (D-9, same rule as QuoteResource).
+ *
+ * Spec 0412, D-2: the offer's cost and margin (`quote.cost_net`,
+ * `quote.margin_net`, `summary.cost`, `summary.margin`) need the
+ * `quotes.viewCosts` permission. The permission, not the offer's record scope:
+ * the contract's own scope already decided who reads this record.
  */
 class ContractResource extends JsonResource
 {
@@ -62,11 +68,12 @@ class ContractResource extends JsonResource
 
         /** @var Quote $quote */
         $quote = $this->quote;
+        $mayViewCosts = (bool) $request->user()?->can(QuotePolicy::VIEW_COSTS_PERMISSION);
 
         return [
             'id' => $this->id,
             'quote_id' => $this->quote_id,
-            'quote' => $this->summarizeQuote($quote),
+            'quote' => $this->summarizeQuote($quote, $mayViewCosts),
             'registry' => $this->summarizeByName($quote->opportunity?->registry),
             'referent' => ReferentRef::summarize($quote->opportunity?->referent),
             'opportunity' => $this->summarizeByName($quote->opportunity),
@@ -74,6 +81,7 @@ class ContractResource extends JsonResource
             'company_site' => $this->summarizeByName($quote->companySite),
             'operational_site' => OperationalSiteLabel::summarize($quote->operationalSite),
             'commercial' => $this->summarizeByName($quote->commercial),
+            'commercial_partner' => $this->summarizeByName($quote->commercialPartner),
             'reporter' => $this->summarizeByName($quote->reporter),
             'supervisor' => $this->summarizeByName($quote->supervisor),
             'payment_method' => $this->summarizeByName($quote->paymentMethod),
@@ -106,7 +114,7 @@ class ContractResource extends JsonResource
             'renewals' => $this->summarizeRenewals(),
             'initial_period_work_orders_count' => $this->periodCounts()[0] ?? 0,
             'offer_lines' => QuoteLineResource::collection($quote->offerLines),
-            'summary' => $this->summarizeTotals($quote),
+            'summary' => $this->summarizeTotals($quote, $mayViewCosts),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
@@ -155,11 +163,11 @@ class ContractResource extends JsonResource
      * and amounts, projected read-only — never the source of truth here,
      * `quotes` remains it (D-1).
      *
-     * @return array{id: int, code: string, title: string, created_at: mixed, revenue_net: string, revenue_vat: string, revenue_gross: string, cost_net: string, margin_net: string}
+     * @return array<string, mixed>
      */
-    private function summarizeQuote(Quote $quote): array
+    private function summarizeQuote(Quote $quote, bool $mayViewCosts): array
     {
-        return [
+        $summary = [
             'id' => $quote->id,
             'code' => $quote->code,
             'title' => $quote->title,
@@ -167,9 +175,11 @@ class ContractResource extends JsonResource
             'revenue_net' => $quote->revenue_net,
             'revenue_vat' => $quote->revenue_vat,
             'revenue_gross' => $this->grossOf($quote->revenue_net, $quote->revenue_vat),
-            'cost_net' => $quote->cost_net,
-            'margin_net' => $quote->margin_net,
         ];
+
+        return $mayViewCosts
+            ? [...$summary, 'cost_net' => $quote->cost_net, 'margin_net' => $quote->margin_net]
+            : $summary;
     }
 
     /**
@@ -227,13 +237,13 @@ class ContractResource extends JsonResource
     /**
      * @return array<string, array<string, string>>
      */
-    private function summarizeTotals(Quote $quote): array
+    private function summarizeTotals(Quote $quote, bool $mayViewCosts): array
     {
-        return [
-            'revenue' => $this->amountTriplet($quote->revenue_net, $quote->revenue_vat),
-            'cost' => $this->amountTriplet($quote->cost_net, $quote->cost_vat),
-            'margin' => ['net' => $quote->margin_net],
-        ];
+        $revenue = ['revenue' => $this->amountTriplet($quote->revenue_net, $quote->revenue_vat)];
+
+        return $mayViewCosts
+            ? [...$revenue, 'cost' => $this->amountTriplet($quote->cost_net, $quote->cost_vat), 'margin' => ['net' => $quote->margin_net]]
+            : $revenue;
     }
 
     /**

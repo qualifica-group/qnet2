@@ -23,6 +23,7 @@ vi.mock('@/features/auth/use-abilities', () => ({
 }))
 
 const openViewMock = vi.fn()
+const openViewTabMock = vi.fn()
 const useModuleOpenerMock = vi.fn()
 vi.mock('@/features/modules/use-module-opener', () => ({
   useModuleOpener: (...args: unknown[]) => {
@@ -31,31 +32,27 @@ vi.mock('@/features/modules/use-module-opener', () => ({
       openCreate: vi.fn(),
       openCreateWith: vi.fn(),
       openView: openViewMock,
+      openViewTab: openViewTabMock,
       openDuplicate: vi.fn(),
       sheet: null,
     }
   },
 }))
 
-const deleteWorkOrderMock = vi.fn()
 vi.mock('@/features/work-orders/api', () => ({
   WORK_ORDERS_DOMAIN: 'work-orders',
-  // Spec 0363: the documents row action's dialog names the attachable owner.
-  WORK_ORDER_ATTACHABLE_ALIAS: 'work_order',
-  deleteWorkOrder: (...args: unknown[]) => deleteWorkOrderMock(...args),
-  // The row actions' force-close dialog (user directive 2026-10-06) reads and writes the record.
+  // The "Responsabili e Partecipanti" dialog (spec 0405) reads the record.
   workOrderDetailQueryKey: (id: number) => ['work-orders', 'detail', id],
   fetchWorkOrder: vi.fn(),
-  updateWorkOrder: vi.fn(),
 }))
 
-/** The row actions own a mutation (force close / reopen): every render needs a query client. */
+/** The row actions' team dialog reads the record: every render needs a query client. */
 function render(ui: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return rtlRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
 }
 
-const ROW: TableRow = { id: 9, actions: ['view', 'delete', 'activity'], title: 'Installazione impianto', code: 'COM-0009' }
+const ROW: TableRow = { id: 9, actions: ['view', 'team', 'notes'], title: 'Installazione impianto', code: 'COM-0009' }
 
 const refreshMock = vi.fn()
 interface TableViewStubProps {
@@ -75,8 +72,8 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onAction?.({ key: 'view', label: 'actions.view', icon: 'eye', type: 'action', confirm: false }, ROW)}>
           view row
         </button>
-        <button type="button" onClick={() => onAction?.({ key: 'delete', label: 'actions.delete', icon: 'trash', type: 'danger', confirm: true }, ROW)}>
-          delete row
+        <button type="button" onClick={() => onAction?.({ key: 'notes', label: 'workOrders.actions.openTab.notes', icon: 'messages-square', type: 'link', confirm: false, menu: true }, ROW)}>
+          notes row
         </button>
       </div>
     )
@@ -88,7 +85,7 @@ beforeEach(() => {
   canMock.mockReturnValue(true)
   useModuleOpenerMock.mockReset()
   openViewMock.mockReset()
-  deleteWorkOrderMock.mockReset()
+  openViewTabMock.mockReset()
   refreshMock.mockReset()
 })
 
@@ -120,11 +117,10 @@ describe('ContractWorkOrdersSection — row actions (D-9)', () => {
     expect(openViewMock).toHaveBeenCalledWith(ROW)
   })
 
-  it('refreshes the grid after a successful delete', async () => {
-    deleteWorkOrderMock.mockResolvedValue(undefined)
+  it('opens the Commessa on its tab from the menu entry (spec 0405)', () => {
     render(<ContractWorkOrdersSection quoteId={3} />)
-    screen.getByRole('button', { name: 'delete row' }).click()
-    await vi.waitFor(() => expect(refreshMock).toHaveBeenCalled())
+    screen.getByRole('button', { name: 'notes row' }).click()
+    expect(openViewTabMock).toHaveBeenCalledWith(ROW, 'notes')
   })
 })
 

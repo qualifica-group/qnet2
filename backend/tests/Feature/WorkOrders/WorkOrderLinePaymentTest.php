@@ -172,6 +172,31 @@ it('AC-010: a transition to a deliverable status notifies supervisors and partic
     });
 });
 
+it('AC-010: the deliverable email reads "Stato pagamento ok" with the client of the commessa', function () {
+    Notification::fake();
+    ['workOrder' => $workOrder, 'line' => $line, 'supervisor' => $supervisor] = deliverableScenario();
+    $workOrder->quote->opportunity->registry->update(['name' => 'ACME S.r.l.']);
+    $deliverable = WorkOrderPaymentStatus::factory()->deliverable()->create(['name' => 'Saldato']);
+
+    $this->patchJson(linePaymentUrl($workOrder, $line->id), ['work_order_payment_status_id' => $deliverable->id])->assertOk();
+
+    Notification::assertSentTo($supervisor, WorkOrderLineDeliverableNotification::class, function ($notification) use ($supervisor): bool {
+        app()->setLocale('it');
+
+        expect($notification->toMail($supervisor)->subject)->toBe('Stato pagamento ok: ACME S.r.l.')
+            ->and($notification->toArray($supervisor)['title'])->toBe('Stato pagamento ok: ACME S.r.l.');
+
+        return true;
+    });
+});
+
+it('AC-010: without a client the deliverable title is just "Stato pagamento ok"', function () {
+    app()->setLocale('it');
+    $notification = new WorkOrderLineDeliverableNotification(1, 'COM-1 - Title', 'Product', 'Saldato', 'Actor');
+
+    expect($notification->toArray(User::factory()->create())['title'])->toBe('Stato pagamento ok');
+});
+
 it('AC-010: no notification between two deliverable statuses, towards a non-deliverable one, or on other edits', function () {
     Notification::fake();
     ['workOrder' => $workOrder, 'line' => $line] = deliverableScenario();

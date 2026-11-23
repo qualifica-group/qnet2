@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0411-request-quote-per-root-category" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Richiesta utente 2026-11-18: "Opportunita'/Gestione Richieste: in base alle linee prodotto che seleziono mi genera
+    piu' offerte ma solo per quella categoria prodotto madre (es iso, apl ecc)". Risposte dell'utente: con linee di N
+    categorie madri (radici) diverse si creano N offerte sulla stessa opportunita', una per categoria madre, ciascuna
+    visibile solo nella scheda della sua categoria e con catalogo prodotti e campi solo di quella categoria; vale "solo
+    alla creazione, all'edit il sistema blocca".
+  </goal>
+
+  <context>
+    - "Nuova richiesta" (`RequestCreationService`) crea 1 opportunita' + 1 offerta; l'offerta non ha categorie proprie:
+      schede categoria, filtro categoria, campi aggiuntivi, workflow (fallback) e catalogo le ricavano dalle
+      `opportunity_product_lines` dell'opportunita' (tutte). Un'offerta ISO+APL compare quindi in entrambe le schede.
+    - Le categorie madri sono le radici dell'albero (`parent_id` null): ISO, APL, Formazione, Consulenza, ...
+      (`ProductCategoryBranches::rootIdOf`/`branchIds`).
+    - Una radice `single` (es. Formazione) ammette una sola linea: non puo' stare con altre radici.
+    - Lo stesso servizio e' usato dall'import di Gestione Richieste (una sola categoria per riga).
+  </context>
+
+  <decisions>
+    D-1 Nuova colonna `quotes.root_product_category_id` (nullable, FK `product_categories`, null on delete): la
+        categoria madre a cui l'offerta e' legata. Null = offerta non legata (tutte le offerte esistenti e quelle create
+        da Offerte/lead): comportamento invariato, legge tutte le linee dell'opportunita'.
+    D-2 Creazione da Gestione Richieste/Iscritti (form e import): le linee di prodotto si raggruppano per radice, in
+        ordine di prima comparsa; si crea un'offerta per radice, ognuna con `root_product_category_id` valorizzato
+        (anche con una sola radice). Ogni offerta riceve: attribuzione, team, sede, fonte, richiamo, stato di
+        lavorazione richiesto (se non valido per quella radice, il default del suo workflow) come oggi; le righe
+        offerta i cui prodotti sono di quella radice; i campi aggiuntivi applicabili a quella radice (un codice non
+        applicabile a nessuna offerta resta un 422). I premi (`rewards`) vanno solo sulla prima offerta, per non
+        duplicarli. Una riga offerta di un prodotto fuori da tutte le radici scelte resta un 422 su `offer_lines`.
+        La risposta e' il pannello della prima offerta, con `created_quote_ids` (tutte le offerte create).
+    D-3 Offerta legata: le sue "linee di prodotto" sono solo quelle dell'opportunita' sotto la sua radice. Valgono per
+        schede categoria (conteggi e righe) di Gestione Richieste/Iscritti, filtro della colonna Categoria prodotto,
+        cella Categoria prodotto della griglia, pannello Lavora (linee mostrate), campi aggiuntivi, classificazione del
+        workflow (fallback senza righe offerta), normalizzazione riga semplificata, competenza degli operatori.
+    D-4 Modifica (blocco): dal pannello Lavora o dalla cella di un'offerta legata le linee inviate devono stare tutte
+        sotto la sua radice (422 su `product_lines` altrimenti) e sostituiscono solo le linee di quella radice: le
+        linee delle altre radici (delle offerte sorelle) restano. Nella scelta della categoria madre il form propone
+        solo la radice dell'offerta.
+    D-5 Modifica dell'opportunita' (form/cella Opportunita'): se l'opportunita' ha offerte legate, non si puo'
+        aggiungere una linea di una radice senza offerta legata ne' togliere tutte le linee di una radice che ha
+        un'offerta legata (422 su `product_lines`). Opportunita' senza offerte legate: invariato.
+    D-6 Una riga offerta (Offerte o pannello) con un prodotto fuori dalla radice di un'offerta legata e' rifiutata
+        (422), invece di allargare la copertura dell'opportunita'.
+    D-8 (richiesta utente 2026-11-18, "un alert che dice che verranno create due richieste") Nel form "Nuova
+        richiesta", sotto le Linee di prodotto, un avviso compare appena le righe coprono 2+ categorie madri:
+        "verranno create N richieste, una per categoria madre (nomi)". Stesso raggruppamento del server
+        (radice della categoria, o la radice scelta se la categoria manca).
+    D-7 Fuori scope (segnalato): ordinamento e valori distinti del filtro della colonna Categoria prodotto restano
+        calcolati su tutte le linee dell'opportunita'; statistiche Gestione Richieste invariate; le offerte create
+        da Offerte, lead o trasferimento anagrafica nascono non legate.
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/request-management (e /api/enrollee-management)">
+      <request>Invariato.</request>
+      <response>`data` = pannello della prima offerta + `created_quote_ids`: number[] (una per categoria madre, in ordine
+        di prima comparsa nelle linee).</response>
+    </endpoint>
+    <endpoint method="GET|PATCH" path="/api/request-management/{quote}">
+      <response>`data.product_lines` = solo le linee della radice dell'offerta legata; nuovo
+        `data.root_product_category` = { id, name } | null.</response>
+      <request>`product_lines` di un'offerta legata: solo categorie della sua radice (altrimenti 422 `product_lines`).</request>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Creazione con linee ISO + APL: 1 opportunita' con entrambe le linee, 2 offerte legate (ISO, APL); `created_quote_ids` le elenca.</criterion>
+    <criterion id="AC-002">Creazione con due linee della stessa radice: 1 offerta legata a quella radice.</criterion>
+    <criterion id="AC-003">Le righe offerta e i campi aggiuntivi vanno ciascuno all'offerta della propria radice; i premi solo alla prima.</criterion>
+    <criterion id="AC-004">Scheda ISO: conteggio e righe includono l'offerta ISO e non quella APL (e viceversa); le offerte non legate restano in ogni scheda delle loro linee.</criterion>
+    <criterion id="AC-005">Pannello Lavora dell'offerta ISO: `product_lines` solo ISO, `root_product_category` = ISO.</criterion>
+    <criterion id="AC-006">PATCH dell'offerta ISO con una linea APL o di un'altra radice: 422; con un'altra linea ISO: salva e le linee APL restano.</criterion>
+    <criterion id="AC-007">Modifica dell'opportunita' con offerte legate: aggiungere una radice nuova o togliere una radice legata = 422; cambiare categoria dentro la stessa radice = ok.</criterion>
+    <criterion id="AC-008">Campi aggiuntivi e classificazione workflow dell'offerta legata considerano solo le linee della sua radice.</criterion>
+    <criterion id="AC-009">Riga offerta con prodotto di un'altra radice su un'offerta legata: 422.</criterion>
+    <criterion id="AC-010">FE: con righe di 2+ categorie madri il form mostra l'avviso con il numero e i nomi; con una sola madre nessun avviso.</criterion>
+  </acceptance>
+</spec>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0382-request-manager-position-columns" status="approved" owner="nicola" date="2026-11-10">
+<spec id="0382-request-manager-position-columns" status="superseded" superseded-by="0406-request-single-managers-column" owner="nicola" date="2026-11-10">
 
   <goal>
     In Gestione Richieste e Gestione Iscritti le colonne fisse Tutor, Operatore e Operatore APL lasciano il posto a una

@@ -15,7 +15,8 @@ uses(RefreshDatabase::class);
 /*
 |--------------------------------------------------------------------------
 | A parent Task is not completable with open DIRECT sub-tasks (spec 0123,
-| D-6, AC-018..AC-022)
+| D-6, AC-018..AC-022) — rectified by spec 0418: /complete closes them
+| with the parent (TaskCompleteWithOpenSubtasksTest), /approve still refuses
 |--------------------------------------------------------------------------
 |
 | `in_validation` counts as open. The count IGNORES TaskVisibilityScope
@@ -58,7 +59,10 @@ if (! function_exists('protectedTaskStatus')) {
 // AC-018/AC-019 — /complete refuses a parent with an open direct child
 // ---------------------------------------------------------------------------
 
-it('AC-018: a parent with a direct open child is 422 on /complete, status invariato, zero time_entries', function () {
+// REQUIREMENT CHANGED (spec 0418 D-1/D-2): /complete now closes the open
+// children with the parent, so the time entry is a TOTAL that needs shares.
+// Without them the request is refused, and nothing changes.
+it('AC-018: a parent with a direct open child is 422 on /complete without shares, status invariato, zero time_entries', function () {
     $actor = taskOpenSubtasksActorWith(['complete']);
     $parent = Task::factory()->create();
     $parent->assignees()->attach($actor->id);
@@ -68,7 +72,7 @@ it('AC-018: a parent with a direct open child is 422 on /complete, status invari
 
     $this->postJson("/api/tasks/{$parent->id}/complete", ['time_entry' => validTimeEntryPayload()])
         ->assertStatus(422)
-        ->assertJsonPath('message', 'This task has open sub-tasks: close them before completing it.');
+        ->assertJsonValidationErrors(['time_entry_shares']);
 
     $this->assertDatabaseHas('tasks', ['id' => $parent->id, 'task_status_id' => $originalStatusId]);
     expect(TimeEntry::where('task_id', $parent->id)->count())->toBe(0);
@@ -129,7 +133,9 @@ it('AC-021: an open child invisible to the actor still blocks /complete', functi
 // AC-022 — GET exposes open_subtasks_count and the permissions AND it in
 // ---------------------------------------------------------------------------
 
-it('AC-022: GET exposes open_subtasks_count, and it disables complete/complete_to_validation while > 0', function () {
+// REQUIREMENT CHANGED (spec 0418 D-5): open sub-tasks no longer disable
+// complete/complete_to_validation, the Completa closes them too.
+it('AC-022: GET exposes open_subtasks_count, and complete/complete_to_validation stay available while > 0', function () {
     $actor = taskOpenSubtasksActorWith(['view', 'complete']);
     $task = Task::factory()->requiringValidation()->create();
     $task->assignees()->attach($actor->id);
@@ -139,8 +145,8 @@ it('AC-022: GET exposes open_subtasks_count, and it disables complete/complete_t
     $this->getJson("/api/tasks/{$task->id}")
         ->assertOk()
         ->assertJsonPath('data.open_subtasks_count', 1)
-        ->assertJsonPath('permissions.actions.complete', false)
-        ->assertJsonPath('permissions.actions.complete_to_validation', false);
+        ->assertJsonPath('permissions.actions.complete', true)
+        ->assertJsonPath('permissions.actions.complete_to_validation', true);
 });
 
 it('AC-022: open_subtasks_count also disables approve while > 0', function () {

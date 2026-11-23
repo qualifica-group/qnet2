@@ -56,6 +56,7 @@ use App\Tables\PurchaseRequestLineStatusesTableDefinition;
 use App\Tables\PurchaseRequestPrioritiesTableDefinition;
 use App\Tables\PurchaseRequestsTableDefinition;
 use App\Tables\QuotesTableDefinition;
+use App\Tables\QuoteSystemStatusesTableDefinition;
 use App\Tables\QuoteWorkflowsTableDefinition;
 use App\Tables\ReferentsTableDefinition;
 use App\Tables\ReferentTypesTableDefinition;
@@ -146,6 +147,7 @@ return [
         // spec 0072: il modulo Contratti e il suo configuratore di stati.
         'contracts' => ContractsTableDefinition::class,
         'contract-statuses' => ContractStatusesTableDefinition::class,
+        'quote-system-statuses' => QuoteSystemStatusesTableDefinition::class,
         'operational-sites' => OperationalSitesTableDefinition::class,
         'referent-types' => ReferentTypesTableDefinition::class,
         'referents' => ReferentsTableDefinition::class,

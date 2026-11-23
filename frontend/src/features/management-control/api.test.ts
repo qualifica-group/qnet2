@@ -37,6 +37,7 @@ describe('management control api helpers', () => {
     expect(filters.businessFunctionIds).toEqual([])
     expect(filters.workOrderTypes).toEqual([])
     expect(filters.commercialIds).toEqual([])
+    expect(filters.commercialPartnerIds).toEqual([])
   })
 
   it('AC-015 omits empty filters and keeps arrays as contract keys', () => {
@@ -53,8 +54,9 @@ describe('management control api helpers', () => {
       businessFunctionIds: [4],
       workOrderTypes: ['project'],
       commercialIds: [7],
+      commercialPartnerIds: [8],
       revenueBasis: 'collected',
-      segmentBy: 'commercial',
+      segmentBy: 'commercial_partner',
     })
 
     expect(params).toEqual({
@@ -63,8 +65,9 @@ describe('management control api helpers', () => {
       business_function_id: [4],
       work_order_type: ['project'],
       commercial_id: [7],
+      commercial_partner_id: [8],
       revenue_basis: 'collected',
-      segment_by: 'commercial',
+      segment_by: 'commercial_partner',
     })
   })
 

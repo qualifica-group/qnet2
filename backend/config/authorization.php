@@ -53,6 +53,7 @@ use App\Authorization\PurchaseRequestLineStatusesAuthorization;
 use App\Authorization\PurchaseRequestPrioritiesAuthorization;
 use App\Authorization\PurchaseRequestsAuthorization;
 use App\Authorization\QuotesAuthorization;
+use App\Authorization\QuoteSystemStatusesAuthorization;
 use App\Authorization\QuoteWorkflowsAuthorization;
 use App\Authorization\ReferentsAuthorization;
 use App\Authorization\ReferentTypesAuthorization;
@@ -123,6 +124,7 @@ return [
         // spec 0072: il modulo Contratti e il suo configuratore di stati.
         'contracts' => ContractsAuthorization::class,
         'contract-statuses' => ContractStatusesAuthorization::class,
+        'quote-system-statuses' => QuoteSystemStatusesAuthorization::class,
         'operational-sites' => OperationalSitesAuthorization::class,
         'referent-types' => ReferentTypesAuthorization::class,
         'referents' => ReferentsAuthorization::class,

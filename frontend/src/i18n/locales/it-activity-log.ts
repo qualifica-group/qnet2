@@ -21,6 +21,10 @@ export const activityLog = {
     deleted: 'Eliminazione',
     restored: 'Ripristino',
     moved: 'Spostamento (organigramma)',
+    registry_transferred: 'Trasferimento ad altra anagrafica',
+    contract: {
+      removed: 'Contratto eliminato (offerta non più vinta)',
+    },
     impersonation: {
       started: 'Inizio impersonificazione',
       stopped: 'Fine impersonificazione',
@@ -133,6 +137,7 @@ export const activityLog = {
     size_class: 'Classe dimensionale',
     supervisor_id: 'Supervisore',
     commercial_id: 'Commerciale',
+    commercial_partner_id: 'Partner commerciale',
     reporter_id: 'Segnalatore',
     employee_count: 'Numero dipendenti',
     guard_name: 'Guard',

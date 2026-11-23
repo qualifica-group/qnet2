@@ -133,6 +133,16 @@ final readonly class CreateQuoteData
         // Appended after the pre-existing parameters (spec 0349): "Data
         // ricontatto", a plain optional date with nothing to inherit.
         public ?string $followUpDate = null,
+        // Appended (spec 0404 part A): the system status picked from Offerte,
+        // translated to a working status by QuoteWorkflowStatusAssigner.
+        public ?int $systemStatusId = null,
+        // Appended (spec 0411, D-1): the root category the offer is bound to,
+        // set only by RequestCreationService (one offer per root).
+        public ?int $rootProductCategoryId = null,
+        // Appended (spec 0417): partner commerciale snapshot, same Submitted
+        // semantics as the commercial.
+        public ?int $commercialPartnerId = null,
+        public bool $commercialPartnerIdSubmitted = false,
     ) {}
 
     /**
@@ -150,6 +160,8 @@ final readonly class CreateQuoteData
             note: $data['note'] ?? null,
             commercialId: isset($data['commercial_id']) ? (int) $data['commercial_id'] : null,
             commercialIdSubmitted: array_key_exists('commercial_id', $data),
+            commercialPartnerId: isset($data['commercial_partner_id']) ? (int) $data['commercial_partner_id'] : null,
+            commercialPartnerIdSubmitted: array_key_exists('commercial_partner_id', $data),
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
             reporterIdSubmitted: array_key_exists('reporter_id', $data),
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
@@ -173,6 +185,7 @@ final readonly class CreateQuoteData
             quoteDate: $data['quote_date'] ?? null,
             sourceId: isset($data['source_id']) ? (int) $data['source_id'] : null,
             followUpDate: $data['follow_up_date'] ?? null,
+            systemStatusId: isset($data['quote_system_status_id']) ? (int) $data['quote_system_status_id'] : null,
         );
     }
 
@@ -258,6 +271,7 @@ final readonly class CreateQuoteData
             'follow_up_date' => $this->followUpDate,
             'opportunity_id' => $this->opportunityId,
             'commercial_id' => $this->commercialId,
+            'commercial_partner_id' => $this->commercialPartnerId,
             'reporter_id' => $this->reporterId,
             'supervisor_id' => $this->supervisorId,
             'company_id' => $this->companyId,

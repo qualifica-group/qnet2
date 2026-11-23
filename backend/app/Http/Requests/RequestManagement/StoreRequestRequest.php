@@ -96,6 +96,8 @@ class StoreRequestRequest extends FormRequest
                 // "Commerciale" (spec 0357): optional, same shape and
                 // semantics as the Segnalatore it sits next to.
                 'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+                // "Partner commerciale" (spec 0417): twin of the Commerciale.
+                'commercial_partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
                 // "Supervisore" (spec 0097, D-9, user directive 2026-09-02):
                 // the created Offerta's commission recipient, same rule as
                 // the PATCH channel. Optional: an ABSENT key leaves the
@@ -209,6 +211,7 @@ class StoreRequestRequest extends FormRequest
             sourceId: isset($validated['source_id']) ? (int) $validated['source_id'] : null,
             reporterId: isset($validated['reporter_id']) ? (int) $validated['reporter_id'] : null,
             commercialId: isset($validated['commercial_id']) ? (int) $validated['commercial_id'] : null,
+            commercialPartnerId: isset($validated['commercial_partner_id']) ? (int) $validated['commercial_partner_id'] : null,
             supervisorId: isset($validated['supervisor_id']) ? (int) $validated['supervisor_id'] : null,
             supervisorIdSubmitted: array_key_exists('supervisor_id', $validated),
             rewards: array_key_exists('rewards', $validated) ? self::normalizeRewardTypeIds((array) $validated['rewards']) : null,

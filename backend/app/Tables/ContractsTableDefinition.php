@@ -12,6 +12,7 @@ use App\Services\Contracts\ContractActionAvailability;
 use App\Services\Contracts\ContractAlertResolver;
 use App\Services\Contracts\ContractVisibilityScope;
 use App\Services\Quotes\QuoteVisibilityScope;
+use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Contracts\Concerns\HasContractListFilters;
 use App\Tables\Contracts\Concerns\HasContractStatusTabs;
 use App\Tables\Contracts\ContractColumnCatalog;
@@ -52,6 +53,7 @@ use Illuminate\Support\Facades\Gate;
 class ContractsTableDefinition extends AbstractTableDefinition
 {
     use HasContractListFilters, HasContractStatusTabs;
+    use SearchesByIdNotLegacyId;
 
     private const string ALERT_COLUMN = 'alert';
 
@@ -100,6 +102,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
             'quote' => fn (Relation $quote) => QuoteVisibilityScope::withCompetenceVerdict($quote->getQuery(), Auth::user(), ContractVisibilityScope::RESOURCE),
             'quote.opportunity.registry',
             'quote.commercial',
+            'quote.commercialPartner',
             'quote.reporter',
             'quote.supervisor.avatar',
             // "Gestori Account" (user directive 2026-08-31): the offer's own
@@ -183,6 +186,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
             ...($quote === null ? [OfferLinesColumn::COLUMN_ID => []] : OfferLinesColumn::project($quote)),
             ...$this->relationColumns->projectRootCategories($quote),
             'commercial' => $this->summarize($quote?->commercial),
+            'commercial_partner' => $this->summarize($quote?->commercialPartner),
             'reporter' => $this->summarize($quote?->reporter),
             'supervisor' => $this->userSummary($quote?->supervisor),
             // Ordered by pivot position (Quote::managers()), no `position` in

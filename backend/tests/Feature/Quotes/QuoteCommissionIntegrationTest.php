@@ -10,6 +10,7 @@ use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\Models\QuoteLineCommission;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\Registry;
@@ -33,7 +34,8 @@ function quoteCommissionActor(array $abilities): User
     }
 
     // Spec 0316: not a visibility test, so the actor sees every quote.
-    $actor->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+    // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the actor sees the costs.
+    $actor->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'), Permission::findOrCreate('quotes.viewCosts', 'web'));
 
     return $actor;
 }
@@ -89,6 +91,7 @@ it('initializes only recipient-backed revenue commissions and summarizes authori
         ->and($response->json('data.cost_lines.0.commissions'))->toBe([])
         ->and($response->json('data.summary.commissions'))->toBe([
             'commercial' => '10.00',
+            'commercial_partner' => '0.00',
             'reporter' => '0.00',
             'supervisor' => '0.00',
             'supplier' => '20.00',
@@ -152,7 +155,8 @@ it('allows unchanged locked commission fields but rejects attempts to modify the
     Permission::findOrCreate('quotes.view');
     Permission::findOrCreate('quotes.update');
     $role = Role::create(['name' => 'commission-value-locked']);
-    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
+    // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the actor sees the costs.
+    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web'), Permission::findOrCreate('quotes.viewCosts', 'web')]);
     $role->fieldPermissions()->create([
         'resource' => 'quotes',
         'field' => 'commission_value',
@@ -465,4 +469,42 @@ it('initializes defaults in quote-create context and denies missing quote abilit
         'product_id' => $product->id,
         'line_net_amount' => 100,
     ])->assertForbidden();
+});
+
+it('spec 0417 AC-008/AC-009: a COMMERCIAL_PARTNER configuration yields a commission for the partner only, and the summary sums it', function () {
+    $partner = Referent::factory()->create();
+    $product = Product::factory()->create();
+    CommissionConfiguration::factory()->create([
+        'recipient_role' => CommissionRecipientRole::CommercialPartner,
+        'application_scope' => CommissionApplicationScope::Product,
+        'product_id' => $product->id,
+        'product_category_id' => null,
+        'value' => 8,
+        'valid_from' => '2026-01-01',
+    ]);
+
+    Sanctum::actingAs(quoteCommissionActor(['create', 'view']));
+    $defaults = fn (array $roles) => $this->postJson('/api/quotes/commission-defaults', [
+        'product_id' => $product->id,
+        'line_net_amount' => 100,
+        'reference_date' => '2026-07-29',
+        ...$roles,
+    ])->assertOk();
+
+    $defaults(['commercial_partner_id' => $partner->id])
+        ->assertJsonPath('data.commissions.0.recipient_role', 'COMMERCIAL_PARTNER')
+        ->assertJsonPath('data.commissions.0.recipient_id', $partner->id)
+        ->assertJsonPath('data.commissions.0.calculated_amount', '8.00');
+    expect($defaults([])->json('data.commissions'))->toBe([]);
+
+    $quote = Quote::factory()->create(['commercial_partner_id' => $partner->id]);
+    $line = QuoteLine::factory()->create(['quote_id' => $quote->id, 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => 100, 'net_amount' => 100, 'total_amount' => 100]);
+    QuoteLineCommission::factory()->create([
+        'quote_line_id' => $line->id, 'recipient_role' => CommissionRecipientRole::CommercialPartner,
+        'recipient_type' => 'referent', 'recipient_id' => $partner->id, 'calculated_amount' => 8,
+    ]);
+
+    $this->getJson("/api/quotes/{$quote->id}")->assertOk()
+        ->assertJsonPath('data.summary.commissions.commercial_partner', '8.00')
+        ->assertJsonPath('data.summary.commissions.commercial', '0.00');
 });

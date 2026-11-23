@@ -178,24 +178,3 @@ it('answers 404 when deleting an entry of another commessa (AC-012)', function (
 
     expect(WorkOrderProgressEntry::query()->whereKey($foreign->id)->exists())->toBeTrue();
 });
-
-it('offers the progress row action to whoever may view the work order', function () {
-    Sanctum::actingAs(workOrderUserWith(['viewAny', 'view']));
-    WorkOrder::factory()->create(['title' => 'Visibile']);
-
-    $items = $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items');
-    $keys = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.actions'))->pluck('key');
-
-    expect(collect($items)->firstWhere('title', 'Visibile')['actions'])->toContain('progress')
-        ->and($keys)->toContain('progress');
-});
-
-it('labels the progress row action without the dialog title placeholder', function () {
-    Sanctum::actingAs(workOrderUserWith(['viewAny', 'view']));
-
-    $actions = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.actions'));
-
-    // The row tooltip translates the label with no params: the dialog title
-    // (`n. {{code}}`) would leak its placeholder.
-    expect($actions->firstWhere('key', 'progress')['label'])->toBe('workOrders.progress.action');
-});

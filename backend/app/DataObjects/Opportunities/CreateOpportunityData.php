@@ -80,6 +80,8 @@ final readonly class CreateOpportunityData
         public ?array $rewards = null,
         public ?string $generalNotes = null,
         public ?string $name = null,
+        // Appended (spec 0417): partner commerciale, a Referent like the commercial.
+        public ?int $commercialPartnerId = null,
     ) {}
 
     /**
@@ -93,6 +95,7 @@ final readonly class CreateOpportunityData
             registryId: isset($data['registry_id']) ? (int) $data['registry_id'] : null,
             referentId: isset($data['referent_id']) ? (int) $data['referent_id'] : null,
             commercialId: isset($data['commercial_id']) ? (int) $data['commercial_id'] : null,
+            commercialPartnerId: isset($data['commercial_partner_id']) ? (int) $data['commercial_partner_id'] : null,
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
             leadId: isset($data['lead_id']) ? (int) $data['lead_id'] : null,
@@ -183,6 +186,7 @@ final readonly class CreateOpportunityData
             'registry_id' => $this->registryId,
             'referent_id' => $this->referentId,
             'commercial_id' => $this->commercialId,
+            'commercial_partner_id' => $this->commercialPartnerId,
             'reporter_id' => $this->reporterId,
             'supervisor_id' => $this->supervisorId,
             'operational_site_id' => $this->operationalSiteId,

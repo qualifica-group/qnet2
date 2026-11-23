@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Quotes\QuoteRegistryTransferController;
 use App\Http\Controllers\RequestManagement\CategoryTabPreferencesController;
 use App\Http\Controllers\RequestManagement\ProductCategoryTabsController;
 use App\Http\Controllers\RequestManagement\RequestManagementController;
@@ -134,6 +135,11 @@ foreach (RequestModule::cases() as $module) {
             ->whereNumber('exportRun')
             ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
     }
+
+    // Spec 0404, part B: move the offer to another anagrafica, under this
+    // module's own permission set.
+    Route::post("{$module->value}/{quote}/transfer-registry", [QuoteRegistryTransferController::class, 'forRequestModule'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
 
     Route::get("{$module->value}/{quote}", [RequestManagementController::class, 'show'])
         ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);

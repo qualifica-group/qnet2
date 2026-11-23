@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\TeamActivityRecordEnum;
 use App\Models\User;
 use Database\Seeders\Concerns\SyncsRoleMatrix;
 use Database\Seeders\QualificaCatalog\LegacyRoleCatalogue;
@@ -37,7 +38,8 @@ class QualificaLegacyRoleSeeder extends Seeder
         $this->call(QualificaRoleSeeder::class);
 
         // Step 2: the roles derived from the legacy ones.
-        $catalogue = Permission::query()->pluck('name');
+        // The team notifications (spec 0413) are granted one by one, never with a module.
+        $catalogue = Permission::query()->pluck('name')->diff(TeamActivityRecordEnum::permissions())->values();
 
         foreach (LegacyRoleCatalogue::ROLES as $name => $role) {
             $synced = $this->syncRole($name, $role['description'], $this->permissionsOf($role['permissions'], $catalogue));

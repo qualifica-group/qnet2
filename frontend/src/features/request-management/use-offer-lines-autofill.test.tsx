@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import i18n from '@/i18n'
@@ -89,6 +89,8 @@ function treeNode(overrides: Partial<ProductCategoryTreeNode> & { id: number; na
     multi_quote_work_order: false,
     usage_area: 'all',
     multiple_open_opportunities: false,
+    request_registry_type: 'individual',
+    request_offer_hidden: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     ...overrides,
@@ -249,22 +251,21 @@ describe('offer-line autofill — single-managed AND simplified category (spec 0
     // is asserted off the congealed amounts: net AND total both land on the
     // product's own price (49,90) once the seed lands. REQUIREMENT CHANGED
     // (spec 0268): the row's two amounts are repeated by the offer total
-    // footer, which only appears once a row exists.
-    const rows = screen.getByRole('region', { name: "Righe dell'offerta" })
-    await waitFor(() => expect(within(rows).getAllByText('49,90')).toHaveLength(4))
+    // footer, which only appears once a row exists. REQUIREMENT CHANGED
+    // (spec 0414 D-4): the simplified offer is one product select plus a
+    // single indicative line.
+    expect(await screen.findByText('Valore indicativo (IVA inclusa)')).toBeInTheDocument()
+    expect(screen.getByText('49,90 €')).toBeInTheDocument()
 
     expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
     // The autofill hands the row an id only: its label is resolved by id.
-    expect(await within(rows).findByText('Fibra 1000')).toBeInTheDocument()
+    const select = screen.getByRole('combobox', { name: 'Prodotto' })
+    await waitFor(() => expect(select).toHaveTextContent('Fibra 1000'))
 
     // `single` management mode caps the card at the one row the autofill
-    // already created. REQUIREMENT CHANGED (spec 0268 D-6): the catalogue
-    // turns into a single pick that replaces that row — no multi-add action.
-    expect(
-      screen.getByText('Categoria a riga singola: il prodotto che scegli sostituisce quello della riga.'),
-    ).toBeInTheDocument()
+    // already created: a plain single select, no multi-add action.
     expect(screen.queryByRole('button', { name: /^Aggiungi/ })).not.toBeInTheDocument()
   })
 })

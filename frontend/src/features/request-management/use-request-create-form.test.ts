@@ -27,6 +27,9 @@ const PHONE_CONTACT: ContactDraft = {
   is_primary: true,
 }
 
+const toastSuccessMock = vi.fn()
+vi.mock('sonner', () => ({ toast: { success: (message: string) => toastSuccessMock(message), error: vi.fn() } }))
+
 const createRequestMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
   // The create form resolves its "Informazioni aggiuntive" from the picked
@@ -42,9 +45,28 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRequestMock.mockReset()
+  toastSuccessMock.mockReset()
 })
 
 describe('useRequestCreateForm', () => {
+  it('announces one request per parent category when the creation produced several (spec 0411)', async () => {
+    createRequestMock.mockResolvedValueOnce({ id: 70, created_quote_ids: [70, 71] })
+    const onSuccess = vi.fn()
+    const { result } = renderCreateForm(onSuccess)
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(toastSuccessMock).toHaveBeenCalledWith('2 requests created, one per parent category.')
+    expect(onSuccess).toHaveBeenCalledWith(70)
+  })
+
   it('blocks submit and surfaces a client banner when neither a registry nor a complete identity is provided', async () => {
     const onSuccess = vi.fn()
     const { result } = renderCreateForm(onSuccess)
@@ -214,6 +236,32 @@ describe('useRequestCreateForm', () => {
     })
 
     expect(createRequestMock.mock.calls[1][0]).toMatchObject({ commercial_id: 21 })
+  })
+
+  /** Spec 0417 (AC-026): the Partner commerciale rides on the same "only when picked" rule. */
+  it('sends commercial_partner_id when picked, and omits the key entirely when it is not', async () => {
+    createRequestMock.mockResolvedValue({ id: 49 })
+    const { result } = renderCreateForm(vi.fn())
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('commercial_partner_id')
+
+    act(() => {
+      result.current.form.setValue('commercial_partner_id', 22)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ commercial_partner_id: 22 })
   })
 
   it('blocks submit when product_lines is empty (D-3)', async () => {
@@ -464,6 +512,32 @@ describe('useRequestCreateForm', () => {
     expect(result.current.form.formState.errors.registry_id?.message).toBe('The selected registry id is invalid.')
     expect(result.current.clientBlockError).toBe('The client identity first name field is required.')
     expect(onSuccess).not.toHaveBeenCalled()
+  })
+
+  /** Spec 0417 (AC-026): a 422 on the Partner commerciale lands on its own field. */
+  it('maps a 422 onto commercial_partner_id (RHF)', async () => {
+    createRequestMock.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        status: 422,
+        data: { errors: { commercial_partner_id: ['The selected commercial partner id is invalid.'] } },
+      },
+    })
+    const { result } = renderCreateForm(vi.fn())
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+      result.current.form.setValue('commercial_partner_id', 999)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(result.current.form.formState.errors.commercial_partner_id?.message).toBe(
+      'The selected commercial partner id is invalid.',
+    )
   })
 
   it('maps a 422 on product_lines.* into the product-lines banner', async () => {

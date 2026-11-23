@@ -89,6 +89,20 @@ function setPeriod(from: string, to: string) {
 
 // REQUIREMENT CHANGED (spec 0265 D-4): "Nuovo lancio" is a record draft in a side sheet, rows closed until opened.
 describe('CommissionSettlementRunSheet (spec 0213 AC-020, spec 0265 D-4)', () => {
+  it('offers the Commercial partner role and sends it (spec 0417 AC-024)', async () => {
+    apiMocks.create.mockResolvedValue(RESULT)
+    render(<CommissionSettlementRunSheet open onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper: wrapper() })
+
+    setPeriod('2026-09-01', '2026-09-30')
+    openRow('Roles')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Commercial partner' }))
+    applyRow()
+    launch()
+
+    await waitFor(() => expect(apiMocks.create).toHaveBeenCalled())
+    expect(apiMocks.create.mock.calls[0][0]).toMatchObject({ recipient_roles: ['COMMERCIAL_PARTNER'] })
+  })
+
   it('sends the contract body and then shows the run it created', async () => {
     apiMocks.create.mockResolvedValue(RESULT)
     const onLaunched = vi.fn()

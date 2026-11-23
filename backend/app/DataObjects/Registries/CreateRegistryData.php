@@ -12,7 +12,8 @@ namespace App\DataObjects\Registries;
  * `name` is intentionally absent: it is derived server-side from the
  * required nested personal-data card (mirrors CreateReferentData).
  * `primaryReferentId` is only the REQUESTED principale (PrimaryReferentElector
- * decides the stored one), so it stays out of attributes().
+ * decides the stored one), so it stays out of attributes(). `secondaryReferentId`
+ * (spec 0408) is a plain attribute the elector then keeps consistent.
  * `sectorIds`/`referentIds`/`managerSlots` are to-many references, synced by
  * RegistryService post-create via `->sync()` — they are NOT mass-assignable
  * columns, so they stay out of attributes() (mirrors CreateSectorData's
@@ -43,6 +44,12 @@ final readonly class CreateRegistryData
         public ?int $employeeCount,
         public ?string $generalNotes = null,
         public ?int $primaryReferentId = null,
+        // Appended (spec 0417): partner commerciale, a Referent like the commercial.
+        public ?int $commercialPartnerId = null,
+        public ?int $secondaryReferentId = null,
+        // Spec 0408 D-9: fill an empty secondario from the referents. Only the
+        // HTTP payload that omits the key opts in; imports set their roles.
+        public bool $autoFillSecondaryReferent = false,
     ) {}
 
     /**
@@ -61,6 +68,7 @@ final readonly class CreateRegistryData
                 : null,
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
             commercialId: isset($data['commercial_id']) ? (int) $data['commercial_id'] : null,
+            commercialPartnerId: isset($data['commercial_partner_id']) ? (int) $data['commercial_partner_id'] : null,
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
             vatGroup: $data['vat_group'] ?? null,
             isSupplier: (bool) ($data['is_supplier'] ?? false),
@@ -71,6 +79,8 @@ final readonly class CreateRegistryData
             employeeCount: isset($data['employee_count']) ? (int) $data['employee_count'] : null,
             generalNotes: $data['general_notes'] ?? null,
             primaryReferentId: isset($data['primary_referent_id']) ? (int) $data['primary_referent_id'] : null,
+            secondaryReferentId: isset($data['secondary_referent_id']) ? (int) $data['secondary_referent_id'] : null,
+            autoFillSecondaryReferent: ! array_key_exists('secondary_referent_id', $data),
         );
     }
 
@@ -109,7 +119,9 @@ final readonly class CreateRegistryData
             'size_class' => $this->sizeClass,
             'supervisor_id' => $this->supervisorId,
             'commercial_id' => $this->commercialId,
+            'commercial_partner_id' => $this->commercialPartnerId,
             'reporter_id' => $this->reporterId,
+            'secondary_referent_id' => $this->secondaryReferentId,
             'employee_count' => $this->employeeCount,
             'general_notes' => $this->generalNotes,
         ];

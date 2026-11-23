@@ -25,6 +25,8 @@ const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 interface RequestCreateClientSectionProps {
   control: Control<RequestCreateFormValues>
   identity: PersonalDataDraft
+  /** Remounts the identity card when the form changes its type from outside (spec 0410). */
+  identityCardKey: number
   onIdentityChange: (next: PersonalDataDraft) => void
   contacts: ContactDraft[]
   onContactsChange: (next: ContactDraft[]) => void
@@ -62,6 +64,7 @@ interface RequestCreateClientSectionProps {
 export function RequestCreateClientSection({
   control,
   identity,
+  identityCardKey,
   onIdentityChange,
   contacts,
   onContactsChange,
@@ -136,6 +139,7 @@ export function RequestCreateClientSection({
 
           <ClientGroup icon={UserRound} title={t('requestManagement.form.create.client.identityGroup')}>
             <PersonalDataCardForm
+              key={identityCardKey}
               value={identity}
               onChange={onIdentityChange}
               revalidateSignal={revalidateSignal}

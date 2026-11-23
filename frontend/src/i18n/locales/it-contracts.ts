@@ -10,7 +10,6 @@ export const contracts = {
   forbidden: 'Non hai i permessi per visualizzare i contratti.',
   statusTabs: {
     label: 'Stati contratto',
-    all: 'Tutti',
   },
   columns: {
     offerLines: 'Linee di prodotto',
@@ -20,6 +19,7 @@ export const contracts = {
     registry: 'Cliente',
     opportunity: 'Opportunità',
     commercial: 'Commerciale',
+    commercial_partner: 'Partner commerciale',
     reporter: 'Segnalatore',
     supervisor: 'Supervisore',
     managers: 'Gestori account',
@@ -49,6 +49,7 @@ export const contracts = {
     registry: 'Cliente',
     opportunity: 'Opportunità',
     commercial: 'Commerciale',
+    commercial_partner: 'Partner commerciale',
     supervisor: 'Supervisore',
     contractStatus: 'Stato contratto',
   },
@@ -87,6 +88,7 @@ export const contracts = {
     tabs: {
       contractDocuments: 'Documenti contratto',
       opportunityDocuments: 'Documenti opportunità',
+      quoteDocuments: 'Documenti offerta',
     },
     workOrders: {
       title: 'Commesse',

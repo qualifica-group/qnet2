@@ -79,8 +79,8 @@ function agentSalesReportFixture(): array
     $first->forceFill(['accepted_at' => '2026-04-01'])->saveQuietly();
     agentSalesReportTeam($first);
     $first->supervisor()->associate(User::factory()->create(['name' => 'Sonia Supervisore']))->saveQuietly();
-    agentSalesReportLine($first, ['product_id' => $consultancy->id, 'quantity' => 2, 'unit_price' => 50, 'net_amount' => 100, 'sort_order' => 1], ['SUPERVISOR' => 10, 'COMMERCIAL' => 20, 'REPORTER' => 5, 'SUPPLIER' => 99]);
-    agentSalesReportLine($first, ['product_id' => $institution->id, 'quantity' => 1, 'unit_price' => 50, 'net_amount' => 50, 'sort_order' => 2], ['COMMERCIAL' => 5]);
+    agentSalesReportLine($first, ['product_id' => $consultancy->id, 'quantity' => 2, 'unit_price' => 50, 'net_amount' => 100, 'sort_order' => 1], ['SUPERVISOR' => 10, 'COMMERCIAL' => 20, 'COMMERCIAL_PARTNER' => 7, 'REPORTER' => 5, 'SUPPLIER' => 99]);
+    agentSalesReportLine($first, ['product_id' => $institution->id, 'quantity' => 1, 'unit_price' => 50, 'net_amount' => 50, 'sort_order' => 2], ['COMMERCIAL' => 5, 'COMMERCIAL_PARTNER' => 3]);
     agentSalesReportLine($first, ['product_id' => $consultancy->id, 'line_type' => QuoteLineType::Cost, 'net_amount' => 777, 'sort_order' => 3]);
 
     $second = agentSalesReportQuote(agentSalesReportRegistry('Beta Srl', 'Roma'), ['title' => 'Seconda', 'quote_date' => '2026-02-01', 'revenue_net' => 0]);
@@ -118,23 +118,24 @@ it('AC-011: Dettagli writes blocks (a)-(d) per offer with commissions, net and t
 
     expect($response->headers->get('Content-Disposition'))->toContain('report-vendite-dettagli-'.now()->format('Ymd').'.xlsx')
         ->and($sheet[0][0])->toBe(__('agent_sales_report.export.code'))
-        ->and($sheet[0])->toHaveCount(18);
+        // REQUIREMENT CHANGED (spec 0417): partner commerciale
+        ->and($sheet[0])->toHaveCount(19);
 
     // (a) offer row, grid order: the 10 March offer comes before the 1 February one
     expect($sheet[1])->toBe([
         $first->code, '10/03/2026', '01/04/2026', 'Prima', 'Acme Spa', 'Via Roma 1, Scala B', '20100 - Milano',
         '+39 02 1234567', 'acmespa@example.com', 'Sede Nord', $first->quoteWorkflowStatus->name,
-        150, 100, 50, 'Gino Gestore', 'Sonia Supervisore', 'Carla Commerciale', 'Sara Segnalatrice',
+        150, 100, 50, 'Gino Gestore', 'Sonia Supervisore', 'Carla Commerciale', 'Paolo Partner', 'Sara Segnalatrice',
     ]);
 
     // (b) lines header, (c) one row per REVENUE line in sort_order, never the COST one
     expect($sheet[2][0])->toBe(__('agent_sales_report.export.root_category'))
-        ->and($sheet[3])->toBe(['Formazione', 'Sicurezza', 'Corso base', 2, 50, 100, ProductTypology::query()->where('code', 'consultancy')->value('name'), 10, 20, 5, 65])
+        ->and($sheet[3])->toBe(['Formazione', 'Sicurezza', 'Corso base', 2, 50, 100, ProductTypology::query()->where('code', 'consultancy')->value('name'), 10, 20, 7, 5, 58])
         ->and($sheet[4][2])->toBe('Quota ente')
-        ->and(array_slice($sheet[4], 3))->toBe([1, 50, 50, ProductTypology::query()->where('code', 'institution')->value('name'), 0, 5, 0, 45]);
+        ->and(array_slice($sheet[4], 3))->toBe([1, 50, 50, ProductTypology::query()->where('code', 'institution')->value('name'), 0, 5, 3, 0, 42]);
 
-    // (d) totals: supplier excluded; net = revenue_net - three commissions
-    expect($sheet[5])->toBe([__('agent_sales_report.export.total_commissions'), '', '', '', '', '', '', 10, 25, 5, 110])
+    // (d) totals: supplier excluded; net = revenue_net - four commissions (spec 0417)
+    expect($sheet[5])->toBe([__('agent_sales_report.export.total_commissions'), '', '', '', '', '', '', 10, 25, 10, 5, 100])
         ->and($sheet[6][0])->toBe($second->code)
         ->and($sheet[7][0])->toBe(__('agent_sales_report.export.root_category'))
         ->and($sheet[8][0])->toBe(__('agent_sales_report.export.total_commissions'))
@@ -150,10 +151,11 @@ it('AC-012: Righe dettaglio writes the header and one flat row per REVENUE line 
 
     expect($response->headers->get('Content-Disposition'))->toContain('report-vendite-righe-'.now()->format('Ymd').'.xlsx')
         ->and($sheet)->toHaveCount(3)
-        ->and($sheet[0])->toHaveCount(17)
+        // REQUIREMENT CHANGED (spec 0417): partner commerciale
+        ->and($sheet[0])->toHaveCount(19)
         ->and($sheet[1])->toBe([
             $first->code, '10/03/2026', 'Acme Spa', 'Formazione', 'Sicurezza', 'Corso base', 2, 50, 100, ProductTypology::query()->where('code', 'consultancy')->value('name'),
-            'Sonia Supervisore', 10, 'Carla Commerciale', 20, 'Sara Segnalatrice', 5, 65,
+            'Sonia Supervisore', 10, 'Carla Commerciale', 20, 'Paolo Partner', 7, 'Sara Segnalatrice', 5, 58,
         ])
         ->and($sheet[2][5])->toBe('Quota ente');
 });

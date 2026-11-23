@@ -76,10 +76,12 @@ class UpdateRegistryRequest extends FormRequest
             'referent_ids' => ['sometimes', 'array'],
             'referent_ids.*' => ['integer', Rule::exists('referents', 'id')],
             'primary_referent_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+            'secondary_referent_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             // Supervisor is an INTERNAL user (like managers); commercial/reporter
             // stay external referents.
             'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'vat_group' => ['sometimes', 'nullable', 'string', 'max:191'],
             'is_supplier' => ['sometimes', 'boolean'],
@@ -121,6 +123,7 @@ class UpdateRegistryRequest extends FormRequest
             $this->validatePhoneUniqueness($validator);
             $this->validateManagerSlots($validator);
             $this->validatePrimaryReferent($validator);
+            $this->validateSecondaryReferent($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

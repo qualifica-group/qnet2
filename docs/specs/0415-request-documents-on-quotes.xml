@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0415-request-documents-on-quotes" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Richiesta utente 2026-11-18: "i documenti su gestione richieste non devono essere messi su opportunita' ma su
+    offerte. In fase di creazione pero' c'e' il problema che se il sistema genera piu' offerte non si capisce su quale
+    offerta metterle, allora in quella fase, quando un utente allega i documenti, scegliere in quale offerta metterla."
+  </goal>
+
+  <context>
+    - Oggi Gestione Richieste/Iscritti aggancia i documenti all'Opportunita' (spec 0086 D-9): azione di riga
+      `documents` e badge `documents_count` su `quotes.opportunity_id`, tab Documenti del pannello Lavora su
+      `panel.opportunity_id`. L'Offerta non e' un owner di allegati (`attachments.attachable_types` non ha `quote`).
+    - La spec 0411 crea un'offerta per categoria madre: con linee di N radici la "Nuova richiesta" crea N offerte
+      (`created_quote_ids`, in ordine di prima comparsa della radice nelle linee).
+    - Il form "Nuova richiesta" non ha oggi un caricamento documenti.
+    - DB locale: 4418 documenti su 2275 opportunita' (in gran parte migrati dal legacy).
+  </context>
+
+  <decisions>
+    D-1 Nuovo owner allegati `quote` (alias gia' nel morph map): `Quote` usa `HasAttachments`, `quote` entra in
+        `attachments.attachable_types` e in `attachments.owner_scoped_types`.
+    D-2 Accesso ai documenti di un'offerta (`QuoteDocumentAccess`, come `OpportunityDocumentAccess`): `view`
+        dell'offerta (QuotePolicy), oppure l'offerta e' nel perimetro di Gestione Richieste o Iscritti dell'utente
+        (`request-management.view`/`enrollee-management.view` + `viewAll` o `RequestManagementScope::scopeToActor`),
+        oppure `contracts.view` e un contratto visibile su quell'offerta.
+    D-3 Gestione Richieste/Iscritti: azione di riga `documents`, badge `documents_count` e tab Documenti del pannello
+        Lavora puntano all'OFFERTA (upload/elimina come oggi). I documenti gia' presenti sull'opportunita' restano
+        dove sono (nessuno spostamento dati) e si vedono in sola lettura nel nuovo tab "Documenti opportunita'" del
+        pannello Lavora.
+    D-4 "Nuova richiesta": nuova sezione Documenti (visibile con `{modulo}.viewDocuments` + `attachments.create`).
+        I file si mettono in coda nel form e si caricano dopo il salvataggio. Con linee di 2+ categorie madri ogni file
+        ha un selettore "Offerta" con le categorie madri (stesso raggruppamento dell'avviso D-8 della 0411; default la
+        prima); con 0-1 categorie madri nessun selettore, tutto va all'unica offerta. Dopo il 201 il file della i-esima
+        categoria madre va su `created_quote_ids[i]`. Togliere dalle linee la categoria scelta per un file lo riporta
+        alla prima. Se un caricamento fallisce la richiesta resta creata e un avviso elenca i file da ricaricare dal
+        pannello.
+    D-5 Offerte e Contratti: il dettaglio Offerta e il dettaglio Contratto aggiungono un tab "Documenti offerta" in
+        sola lettura (come "Documenti opportunita'"), cosi' i file caricati in Gestione Richieste restano visibili.
+    D-6 Fuori scope (segnalato): azione di riga `documents` della griglia Offerte (resta sull'opportunita'), dettaglio
+        Opportunita' (mostra solo i suoi documenti), spostamento dei documenti esistenti dalle opportunita' alle offerte.
+  </decisions>
+
+  <data_contract>
+    <endpoint method="GET|POST" path="/api/attachments">
+      <request>`attachable_type` = `quote` ammesso, con `attachable_id` = id offerta; owner gate D-2.</request>
+    </endpoint>
+    <endpoint method="POST" path="/api/request-management (e /api/enrollee-management)">
+      <request>Invariato (i file non viaggiano nel POST).</request>
+      <response>Invariato: `created_quote_ids` in ordine di prima comparsa della categoria madre (spec 0411).</response>
+    </endpoint>
+    <table domain="request-management|enrollee-management">
+      <row>`documents_count` = documenti (collection `documents`) dell'offerta della riga.</row>
+    </table>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Un operatore di Gestione Richieste con l'offerta nel suo perimetro lista/carica/scarica/elimina i documenti `quote`; fuori perimetro 403.</criterion>
+    <criterion id="AC-002">Un utente con `quotes.view` sull'offerta li lista; con un contratto visibile su quell'offerta (`contracts.view`) li lista.</criterion>
+    <criterion id="AC-003">`documents_count` della griglia Gestione Richieste conta i documenti dell'offerta, non quelli dell'opportunita'.</criterion>
+    <criterion id="AC-004">Eliminare definitivamente un'offerta elimina i suoi documenti.</criterion>
+    <criterion id="AC-005">FE pannello Lavora: tab Documenti sull'offerta (modificabile), tab "Documenti opportunita'" in sola lettura.</criterion>
+    <criterion id="AC-006">FE Nuova richiesta con linee di 2 categorie madri: ogni file ha il selettore Offerta; dopo il salvataggio ogni file va all'offerta della sua categoria madre.</criterion>
+    <criterion id="AC-007">FE Nuova richiesta con 1 categoria madre: nessun selettore, i file vanno all'unica offerta.</criterion>
+    <criterion id="AC-008">FE dettaglio Offerta e Contratto: tab "Documenti offerta" in sola lettura.</criterion>
+  </acceptance>
+</spec>

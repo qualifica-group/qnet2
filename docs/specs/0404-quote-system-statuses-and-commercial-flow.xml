@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec ombrello a 6 parti (A-F), una per punto della richiesta utente del 2026-11-16.
+  Ogni parte ha decisioni, contratto e AC propri; si consegnano a fasi (vedi <microtasks>).
+  Le parti G (tab degli stati in Opportunita') e H (piu' offerte per categoria madre) sono state
+  ELIMINATE dalla spec su decisione utente del 2026-11-16: non si implementano.
+-->
+<spec id="0404-quote-system-statuses-and-commercial-flow" status="draft" owner="nicola" date="2026-11-16">
+
+  <goal>
+    Riordinare il flusso commerciale Offerte / Gestione Richieste / Opportunita' / Contratti / Commesse:
+    (A) Offerte mostra gli stati di sistema, configurabili e collegati agli stati di lavorazione, sincronizzati nei due
+    versi, con il nuovo stato "Vinto provvisorio"; (B) trasferimento di un'offerta a un'altra anagrafica, tracciato;
+    (C) categorie che richiedono il trasferimento contatto prima del contratto; (D) campi flessibili dell'offerta replicati
+    sulla commessa; (E) offerta a contratto congelata, modificabile solo con permesso e conferma; (F) una sola colonna
+    "Gestori account" in Gestione Richieste e Gestione Iscritti.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-16 (8 punti) + risposte del 2026-11-16:
+      R-1 Cambio stato di sistema da Offerte -> si applica il PRIMO stato di lavorazione (sort_order) collegato a quello
+          stato di sistema nel set dell'offerta.
+      R-2 Trasferimento ad altra anagrafica: la vecchia opportunita' RESTA intatta (note, documenti, attivita') e riceve
+          una voce di log.
+      R-4 Offerta a contratto: bloccato TUTTO, stato compreso, per chi non ha il nuovo permesso. Vedi E-D3 (Iscritti).
+      R-5 (2026-11-16) Procedere con D ed E; G e H eliminate dalla spec. E-D3 non confermato esplicitamente: si adotta la
+          proposta (campi operativi liberi in Gestione Iscritti), dichiarata nel riepilogo all'utente.
+
+    Fatti verificati nel codice:
+      - Gestione Richieste e Gestione Iscritti lavorano sulle Offerte (`quotes`, spec 0086, 0130); sono due configurazioni
+        dello stesso codice (`App\RequestManagement\RequestModule`, `RequestManagementScopedTableDefinition`). Offerte ha
+        la sua griglia (`QuotesTableDefinition`, colonna `quote_workflow_status`, cella `quote_workflow_status_id` in
+        `QuoteCellWriter`, filtro avanzato `quote_workflow_status` in `QuoteAdvancedFilterCatalog`).
+      - Stato di lavorazione = `QuoteWorkflowStatus` (`quote_workflow_statuses`: name, description, color, sort_order,
+        `group`, requires_note, `system_key`, `quote_workflow_id` nullable = set globale di default). Configuratore:
+        `QuoteWorkflowController` (rotte `quote-workflows*` e `quote-workflows/default-statuses` in `routes/api/lookups.php`),
+        scrittore `App\Services\QuoteWorkflows\WorkflowStatusWriter`; risolutore del set per criteri `QuoteWorkflowResolver`;
+        scrittura sull'offerta `App\Services\Quotes\QuoteWorkflowStatusWriter`.
+      - Oggi la "chiave di sistema" e' calcolata a codice: enum `App\Enums\WorkflowStatusGroup` (open, pending, validated
+        "Validato", closed_won, closed_lost) letto da ~28 classi (contratto su closed_won in `ContractLifecycleManager`,
+        Gestione Iscritti = validated + closed_won in `RequestModule`, stato calcolato opportunita'
+        `OpportunityStatusScope`/`OpportunityStatusResolver`, statistiche, import). `WorkflowStatusSystemKey` = open,
+        closed_won, closed_lost (righe obbligatorie, non eliminabili).
+      - Modello di configuratore stati CRUD con righe di sistema, riordino e for-select: `contract-statuses`
+        (`ContractStatusController`, `ContractStatusForSelectController`, `ContractStatusesTableDefinition`,
+        `SystemStatusGuard`/`StatusOrderManager`).
+      - Opportunita': stato calcolato dalle offerte (spec 0082/0083), colonna `status` (`OpportunityStatusColumn`),
+        senza offerte mostra la riga `open` del set di default risolto (`OpportunityDefaultStatusResolver`).
+        Tab di stato come in Contratti: spec 0397 (`meta.aggregates` per nome stato, il tab scrive il filtro set).
+      - Anagrafica dell'offerta = `quotes.opportunity_id` -> `opportunities.registry_id`; le categorie dell'offerta sono
+        quelle delle linee di prodotto dell'OPPORTUNITA' (`opportunity_product_lines`), i `quotes` non hanno categoria
+        propria (`RequestManagementScopedTableDefinition` filtra i tab per `opportunity_product_lines.product_category_id`).
+        Regola opportunita' aperte: `product_categories.multiple_open_opportunities` + `RegistryOpenOpportunityGuard`;
+        limite offerte: `single_quote_per_opportunity` + `OpportunityQuoteLimit`.
+      - Trasferimento contatto (spec 0079): `RequestTransferService`, permesso `request-management.transferContact`,
+        segna `quotes.is_transferred` / `transferred_from_operational_site_id`.
+      - Contratto: nasce quando l'offerta entra in closed_won (`ContractLifecycleManager::syncOnStatusChange`), salvo
+        `generates_contract = false` (`ContractEligibility`); relazione `Quote::contract()` (HasOne).
+      - Blocco esistente righe assegnate a commessa: `QuoteLineWorkOrderLock` + permesso `quotes.updateLockedLines`
+        (aggiunto da migrazione `2026_12_11_100000_add_quotes_update_locked_lines_permission.php`).
+      - Commessa: `work_orders.quote_id` + `quoteLines()`; `attribute_values` per codice attributo, scritti da
+        `WorkOrderAttributeValueWriter`; generazione da contratto: `contracts/{contract}/work-orders`(+`/batch`),
+        `MultiQuoteWorkOrderProgrammer`; i dialog "Programma" non chiedono gli attributi.
+      - Colonne team in Gestione Richieste/Iscritti: spec 0382 (`operator_ga2`, `manager_ga{n}`, `managers`).
+      - Creazione richiesta: `RequestCreationService::create` crea 1 opportunita' (con tutte le `productLines`) + 1 offerta.
+  </context>
+
+  <decisions>
+    <!-- A — Stati di sistema -->
+    A-D1 Nuova entita' configurabile "Stati di sistema" (`QuoteSystemStatus`, tabella `quote_system_statuses`), unica e
+         globale (non per workflow): name, color, sort_order, `behavior`, `system_key`. Configuratore CRUD come
+         `contract-statuses` (riordino, for-select, eliminazione solo se non collegato).
+    A-D0 PARITA' DI CONTROLLI (vincolante, decisione utente 2026-11-16): portare le chiavi di sistema in tabella, e
+         aggiungerne o modificarne a mano, NON cambia nessun controllo di oggi. Ogni regola che oggi legge
+         `quote_workflow_statuses.group` continua a leggerlo (A-D5) e si comporta allo stesso modo per ogni stato di
+         sistema col `behavior` corrispondente, anche se creato a mano:
+           - closed_won: crea il contratto (`ContractLifecycleManager`, `ContractEligibility`), timbra `accepted_at`
+             (`QuoteAcceptedDateStamper`); uscire da closed_won sospende il contratto; riattivazione (`ContractReactivator`);
+           - validated ("Vinto provvisorio", ex "Validato"): richiede almeno una riga ricavo (`LINE_REQUIRED_GROUPS` in
+             `QuoteWorkflowStatusWriter` e `ValidatesQuoteWorkflowStatus`), e' visibile in Gestione Iscritti con closed_won
+             (`RequestModule`), conta fra gli stati attivi dell'opportunita' (`OpportunityStatusScope::ACTIVE_GROUPS`);
+           - open/pending/validated attivi, closed_won/closed_lost chiusi: opportunita' aperte per anagrafica
+             (`RegistryOpenOpportunityGuard`), stato calcolato opportunita', impatto ricalcolo commissioni, operatore del
+             lead (`LeadRequestOperatorFollower`), indicatori report, statistiche, import;
+           - sul cambio stato dell'offerta: appartenenza al set risolto, reinvio dello stato attuale = nessun avanzamento,
+             `requires_note` (resta sullo stato di lavorazione), nota creata con `notes.create`;
+           - nel configuratore: riga `open` prima, closed_won/closed_lost in coda, righe con system_key non eliminabili e
+             col gruppo/comportamento fisso, nome obbligatorio.
+         Le uniche regole nuove sono quelle chieste esplicitamente: C (trasferimento contatto) ed E (offerta congelata),
+         piu' l'eliminazione di uno stato di sistema solo se non usato.
+    A-D2 `behavior` = la chiave che il codice conosce, con i valori di `WorkflowStatusGroup` (open, pending, validated,
+         closed_won, closed_lost). Lo stato di sistema e' una riga configurabile (nome, colore, ordine, quante se ne
+         vogliono); il comportamento e' una scelta fra questi 5 valori, perche' i controlli di A-D0 devono sapere cosa
+         significa "vinto"/"perso". Come oggi il gruppo di uno stato di lavorazione personalizzato si cambia liberamente,
+         cosi' il `behavior` di uno stato di sistema NON obbligatorio si cambia anche se e' collegato: il nuovo valore si
+         propaga al `group` di tutti gli stati di lavorazione collegati nella stessa transazione, senza effetti retroattivi
+         sulle offerte gia' in quello stato (oggi cambiare il gruppo non crea ne' sospende contratti: idem). Le righe
+         obbligatorie (A-D3) hanno il behavior fisso, come oggi le righe di sistema hanno il gruppo fisso.
+    A-D3 Righe obbligatorie con `system_key` (non eliminabili, comportamento fisso, nome/colore modificabili):
+         Aperto (open), Vinto (closed_won), Perso (closed_lost). Seed iniziale anche: In attesa (pending),
+         Vinto provvisorio (validated). "Vinto provvisorio" PRENDE IL POSTO di "Validato": stesso comportamento
+         (Gestione Iscritti lo mostra, richiede una riga ricavo, non genera contratto), quindi nessuna regola cambia, cambia
+         solo il nome visibile. Come oggi "Validato" non e' una chiave di sistema (direttiva utente 2026-08-07), anche
+         "Vinto provvisorio" e In attesa sono righe normali: modificabili ed eliminabili se non usate.
+    A-D4 Ogni stato di lavorazione (`quote_workflow_statuses`) ha `quote_system_status_id` obbligatorio. Backfill: ogni
+         riga esistente -> lo stato di sistema seed col comportamento uguale al suo `group`. Le righe con `system_key`
+         open/closed_won/closed_lost puntano alla riga di sistema con la stessa chiave e non si ricollegano.
+    A-D5 `quote_workflow_statuses.group` RESTA come proiezione denormalizzata del `behavior` dello stato di sistema
+         collegato, scritta solo da `WorkflowStatusWriter` (mai dal client): i ~28 lettori di `group` non cambiano. Il
+         configuratore non mostra piu' il select "gruppo", mostra il select "Stato di sistema".
+    A-D6 Sincronizzazione: lo stato di sistema di un'offerta NON e' salvato sull'offerta, e' sempre quello collegato al suo
+         stato di lavorazione. Cambio in Gestione Richieste -> Offerte lo vede subito. Cambio in Offerte (stato di
+         sistema S) -> si scrive `quote_workflow_status_id` = primo stato (sort_order) del set risolto dell'offerta
+         collegato a S (R-1); se lo stato attuale e' gia' collegato a S nessuna scrittura. Le regole del cambio stato
+         (requires_note, contratto, C, E) passano dallo stesso `QuoteWorkflowStatusWriter`.
+    A-D7 In Offerte (griglia, dettaglio, form, filtri) si vede e si sceglie solo lo stato di sistema; Gestione Richieste,
+         Gestione Iscritti e Contratti restano sugli stati di lavorazione. Le opzioni in Offerte sono solo gli stati di
+         sistema che hanno almeno uno stato collegato nel set risolto dell'offerta.
+    A-D8 Stati di lavorazione chiamati "In validazione" nei dati: restano righe di lavorazione; l'utente li collega a
+         "Vinto provvisorio" dal configuratore (il backfill li collega gia' se il loro group e' validated).
+    A-D9 Import/migrazione legacy che creano `quote_workflow_statuses`: impostano `quote_system_status_id` dal `group`
+         (primo stato di sistema con quel behavior). Nessun cambio al legacy (backend.md §9: e' una regola di qnet-2).
+
+    <!-- B — Trasferimento a nuova anagrafica -->
+    B-D1 Azione "Trasferisci ad altra anagrafica" nel dettaglio offerta e tra le azioni di riga di Offerte e di Gestione
+         Richieste/Iscritti. Permesso nuovo `quotes.transferRegistry` (Gestione Richieste: `request-management.transferRegistry`,
+         Iscritti: `enrollee-management.transferRegistry`, stesso pattern di `transferContact`).
+    B-D2 Dialog: anagrafica di destinazione (diversa dall'attuale) + i campi flessibili dell'offerta ("Informazioni
+         aggiuntive") precompilati e modificabili, validati come nell'update.
+    B-D3 Opportunita' di destinazione: categorie = quelle delle linee di prodotto della vecchia opportunita'. Se la nuova
+         anagrafica ha un'opportunita' aperta che copre quelle categorie e le categorie NON ammettono piu' opportunita'
+         aperte (`RegistryOpenOpportunityGuard`), l'offerta si aggancia a quella; altrimenti nasce una nuova opportunita'
+         (tramite `OpportunityService::create`) con le stesse linee di prodotto, commerciale, segnalatore, sede operativa;
+         referente vuoto. Se l'aggancio viola `single_quote_per_opportunity` -> 422, nessuna scrittura.
+    B-D4 La vecchia opportunita' resta intatta (R-2). Note/documenti dell'OFFERTA (scoped) viaggiano con l'offerta; quelli
+         dell'opportunita' restano dove sono.
+    B-D5 Log: evento activity `quote.registry_transferred` sull'offerta e sulle due opportunita', proprieta'
+         {from_registry {id, name}, to_registry {id, name}, from_opportunity_id, to_opportunity_id}, causer = attore.
+         Il dettaglio offerta mostra un avviso non rimovibile "Trasferita da A a B il gg/mm/aaaa da Nome" (ultimo
+         trasferimento), letto dall'activity log.
+    B-D6 Offerta con contratto: trasferimento rifiutato (422 "offerta a contratto"): il contratto, le commesse e le fatture
+         sono intestate al cliente; spostarle e' fuori scope.
+         REV. 2026-11-20 (decisione utente): il trasferimento e' consentito se il contratto NON e' stato
+         lavorato (`ContractUntouchedCheck`, spec 0072 D-3 rev.): il contratto non ha anagrafica propria,
+         la legge dall'offerta, quindi segue senza scritture. Contratto lavorato -> 422 come prima.
+
+    <!-- C — Obbligo trasferimento contatto -->
+    C-D1 Nuova impostazione categoria `requires_contact_transfer_before_contract` (bool, default false), nel form
+         Categoria prodotto, letta come `generates_contract`: basta una categoria coperta dall'opportunita' con il flag.
+    C-D2 Regola in `QuoteWorkflowStatusWriter`: un cambio che porta l'offerta in uno stato con behavior closed_won, quando
+         il contratto verrebbe creato (`ContractEligibility::allowsContract`) e `quotes.is_transferred = false`, e' rifiutato
+         con 422 su `quote_workflow_status_id` (o `quote_system_status_id` da Offerte): "Questa categoria richiede il
+         trasferimento del contatto prima del contratto". Vale su tutti i canali; "Vinto provvisorio" resta libero.
+         Non tocca offerte gia' vinte ne' le migrazioni legacy.
+         REV. 2026-11-20 (decisione utente: "l'obbligo del trasferimento dovra' essere effettuato quando vogliamo
+         validare il contratto e in nessun altra parte"): SUPERA C-D2 e la parte di C-D4 sul writer. Il passaggio a
+         closed_won e' libero e il contratto nasce come sempre; l'obbligo e' verificato SOLO da
+         `ContractActionService::validate` (`ContactTransferBeforeContractRule::assertValidatable`): 409 con
+         `quotes.contact_transfer_required_for_contract`. "Trasferisci contatto" (`QuoteTransferAvailability`) resta
+         disponibile con contratto non lavorato oppure, se l'obbligo e' ancora dovuto, finche' il contratto non e'
+         validato (evita lo stallo contratto lavorato-non trasferibile-non validabile); altrimenti flag
+         `transfer_contact` false e POST /request-management/transfer 409 `transfer_blocked_by_contract`.
+         REV. 2026-11-20 bis (decisione utente, offerta 30802): soddisfa l'obbligo anche "Trasferisci ad altra
+         anagrafica" (evento `registry_transferred` sull'offerta, `QuoteRegistryTransferNotice::exists`), oltre a
+         `is_transferred`. Messaggio: "Questa categoria richiede un trasferimento prima di validare il contratto".
+    C-D3 Esempio d'uso: categoria "Orientamento specialistico" (configurata dall'utente, non dal seed).
+    C-D4 [ESECUZIONE 2026-11-16] Il flag e' PER CATEGORIA (come `is_selectable`), non della radice: "Orientamento
+         specialistico" (id 26) e' figlia di APL insieme a Tirocinio/Apprendistato/... che non hanno l'obbligo. Vale solo
+         per le linee di prodotto dell'opportunita' su quella categoria, non per le sottocategorie. Regola in
+         `App\Services\Quotes\ContactTransferBeforeContractRule`, chiamata da `QuoteWorkflowStatusWriter::apply` prima
+         della nota; salta se l'offerta ha gia' un contratto (riattivazione). 422 su `quote_workflow_status_id`
+         (rimappato su `quote_system_status_id` da QuoteWorkflowStatusAssigner quando arriva da Offerte).
+    B-D7 [ESECUZIONE 2026-11-16] `QuoteRegistryTransferService` + `QuoteRegistryTransferController` (forQuotes /
+         forRequestModule). Nuova opportunita': copia anche supervisore e gestori (il team dell'offerta deve appartenere
+         all'opportunita', spec 0087 D-6); il team dell'offerta e' riallineato con `QuoteManagerWriter::sync(promote)`.
+         Su opportunita' esistente: `OpportunityProductLineCoverage::ensure` aggiunge le categorie dei prodotti mancanti.
+         Log: evento `registry_transferred` con proprieta' { kind: "registry_id", from {id,name}, to {id,name},
+         from_opportunity_id, to_opportunity_id }, reso nello Storico come lo spostamento dell'organigramma
+         (ActivityLogEntryResource). Rotte di modulo: risposta { id, opportunity_id, registry_id } (il pannello si chiude
+         come dopo Trasferisci contatto). Azione di riga nelle griglie NON fatta: il pulsante e' nel dettaglio offerta e
+         nel pannello Lavora.
+    B-D8 [RICHIESTA UTENTE 2026-11-18] Nel dialog di trasferimento anche il TITOLO dell'offerta, precompilato col titolo
+         attuale e modificabile, con le regole del titolo dell'update (spec 0171 rev.2, `QuoteTitleWriter::write`): vuoto
+         o uguale al titolo automatico = titolo automatico, altro valore = manuale. Campo facoltativo nel body: se assente
+         il titolo non si tocca. Il pannello Lavora di Gestione Richieste/Iscritti espone `title` (titolo dell'offerta)
+         per precompilarlo. Il cambio titolo e' registrato dal log automatico dell'offerta, come nell'update.
+
+    <!-- D — Replica campi flessibili offerta -> commessa -->
+    D-D1 Alla generazione di una commessa da contratto (singola, batch, multi-offerta) gli `attribute_values` della
+         commessa partono dai valori dell'offerta per i codici attributo presenti nel set risolto della commessa e non
+         vuoti. Multi-offerta: vale il primo valore non vuoto nell'ordine dei contratti selezionati.
+    D-D2 Azione "Copia dati dall'offerta" sulla commessa esistente: riempie SOLO i campi vuoti, mai sovrascrive. Le
+         commesse esistenti non vengono riempite in massa.
+    D-D3 "Stessi campi" = stesso codice attributo (`attributes.code`) e tipo compatibile; i valori non validi per la
+         commessa (opzione inesistente) si saltano.
+
+    <!-- E — Offerta a contratto congelata -->
+    E-D1 Un'offerta e' "a contratto" quando ha una riga `contracts` (qualunque stato del contratto).
+    E-D2 Permesso nuovo `quotes.updateContracted`. Senza: ogni scrittura sull'offerta (testata, righe, campi flessibili,
+         team, stato, celle di griglia) da Offerte, Gestione Richieste, Gestione Iscritti e Contratto -> 403
+         "Offerta a contratto: modifica non consentita". Note, documenti, task, attivita' NON sono congelati.
+    E-D3 [ADOTTATA 2026-11-16, proposta non contestata] Gestione Iscritti mostra proprio le offerte vinte (quindi a contratto): con R-4 alla lettera, chi
+         lavora gli iscritti senza il permesso non potrebbe piu' cambiare team, prossimo richiamo, sede, ne' fare il
+         trasferimento contatto. Proposta: restano liberi i campi OPERATIVI (team gestori account, prossimo richiamo,
+         sede operativa / trasferimento contatto); congelati quelli commerciali e lo stato.
+    E-D4 Con il permesso: la prima scrittura senza conferma riceve 409 `contracted_edit_confirmation_required`; il
+         frontend mostra un popup ("L'offerta e' a contratto: la modifica cambia un documento gia' accettato...") e
+         ripete la richiesta con `confirm_contracted_edit: true`. Ogni modifica confermata scrive nel log l'evento
+         `quote.contracted_edit`.
+    E-D5 Il blocco righe gia' assegnate a commessa (`QuoteLineWorkOrderLock`) resta com'e' e si somma.
+
+    <!-- F — Colonna unica gestori account -->
+    F-D1 In Gestione Richieste e Gestione Iscritti spariscono le colonne per posizione (`operator_ga2`, `manager_ga{n}`):
+         resta solo `managers` "Gestori account" in tutte le linguette, con tutto il team; ogni nome porta la sua
+         etichetta di posizione (etichetta della categoria se la linguetta ne ha, altrimenti "G.A. n"). Supera spec 0382
+         D-2, D-3, D-4, D-5, D-11 (colonne); restano D-6 (permesso `manager_slots`) e D-7 (notifiche).
+    F-D2 La colonna e' filtrabile (set per nome, con "Vuoti"), ordinabile per primo gestore in ordine di posizione,
+         modificabile dalla cella con l'editor del team intero. Viste/filtri salvati su colonne sparite: ignorati.
+    F-D3 La posizione 2 (Operatore) resta nei dati con tutto il suo comportamento (`quotes.operator_id`, visibilita',
+         notifiche, "Assegna Tutor" sulla posizione 1): cambia solo la presentazione in griglia.
+
+  </decisions>
+
+  <scope>
+    <in>
+      <item>A: tabella `quote_system_statuses` + seed + FK su `quote_workflow_statuses` + backfill; CRUD/riordino/for-select; permessi `quote-system-statuses.*`; pagina configuratore; select "Stato di sistema" nel configuratore workflow e negli stati di default; Offerte (griglia, cella, filtro avanzato, dettaglio, form) sugli stati di sistema; import legacy che creano stati di lavorazione.</item>
+      <item>B: endpoint + azione + dialog di trasferimento, risoluzione opportunita', log e avviso nel dettaglio offerta; permessi nuovi.</item>
+      <item>C: colonna categoria + form categoria + regola nel writer dello stato.</item>
+      <item>D: replica alla generazione della commessa + azione "Copia dati dall'offerta".</item>
+      <item>E: guardia di congelamento su tutti i canali di scrittura dell'offerta + permesso + popup di conferma + log.</item>
+      <item>F: colonna unica `managers` in Gestione Richieste e Gestione Iscritti.</item>
+      <item>Guide in-app IT+EN (§4-bis): quotes, request-management, enrollee-management, opportunities, quote-workflows, product-categories, work-orders, contracts + nuova guida `quote-system-statuses` e chiave in `HELP_GUIDE_KEYS`.</item>
+    </in>
+    <out>
+      <item>Statistiche e report per stato (`QuotesStatsDefinition`, report Gestione Richieste): restano sui gruppi/stati di lavorazione.</item>
+      <item>Trasferimento di offerte gia' a contratto (B-D6), spostamento di contratti/commesse/fatture su altra anagrafica.</item>
+      <item>Trasferimento massivo (piu' offerte in un colpo) ad altra anagrafica.</item>
+      <item>Riempimento massivo dei campi flessibili sulle commesse gia' esistenti (D-D2: solo azione per commessa).</item>
+      <item>Stati di sistema per Contratti/Commesse/Opportunita' come entita' separate.</item>
+      <item>Tab degli stati in Opportunita' e stato opportunita' sugli stati di sistema (ex parte G, eliminata 2026-11-16).</item>
+      <item>Piu' offerte per categoria madre alla creazione richiesta e tab sui prodotti dell'offerta (ex parte H, eliminata 2026-11-16).</item>
+      <item>Modifiche al QNet legacy.</item>
+      <item>Azione massiva "Assegna Tutor" e logica dell'Operatore (posizione 2): invariate.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Envelope di progetto `{ success, message, data }` su tutti gli endpoint. Errori: 401, 403 senza permesso,
+    404 risorsa non visibile, 422 validazione `{ success:false, message, errors }`.
+
+    <!-- A -->
+    <migration>
+      `quote_system_statuses`: id, name string(100) unique, color string(20) nullable, sort_order unsigned int,
+      behavior string(20) (valori WorkflowStatusGroup), system_key string(20) nullable unique (open|closed_won|closed_lost),
+      timestamps. Seed: Aperto/open/open, In attesa/pending, Vinto provvisorio/validated, Vinto/closed_won/closed_won,
+      Perso/closed_lost/closed_lost. `quote_workflow_statuses.quote_system_status_id` FK not null restrictOnDelete, indice,
+      backfill per group. Permessi `quote-system-statuses.view|create|update|delete` (super-admin).
+    </migration>
+    <endpoint method="GET" path="/api/quote-system-statuses/for-select">
+      <response status="200">standard for-select (ADR 0011): data: [{ id, label, meta: { color, behavior, system_key } }] in sort_order; auth:sanctum only.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/quote-system-statuses/rows (+ /columns)">
+      <response>griglia del configuratore (TableDefinition `quote-system-statuses`, default sort sort_order asc). Riga: { id, name, color,
+        behavior, system_key, sort_order, workflow_statuses_count, created_at, actions: view|delete(non di sistema)|activity }.</response>
+    </endpoint>
+    <endpoint method="GET|POST" path="/api/quote-system-statuses/{quoteSystemStatus}, /api/quote-system-statuses">
+      <request>POST { name:string req max100 unique, color:string req max32, behavior: open|pending|validated|closed_won|closed_lost req }</request>
+      <response status="200|201">{ data: QuoteSystemStatusResource { id, name, color, behavior, system_key, sort_order, workflow_statuses_count, created_at, updated_at }, permissions }</response>
+      <errors>403 senza permesso (`quote-system-statuses.view|create|update|delete`); 422 nome duplicato / behavior non valido.</errors>
+    </endpoint>
+    <endpoint method="PUT|PATCH|DELETE" path="/api/quote-system-statuses/{quoteSystemStatus}">
+      <request>PUT/PATCH { name?, color?, behavior? }</request>
+      <errors>422 `behavior` diverso su riga con system_key (A-D3); su riga normale il cambio e' ammesso e si propaga al `group` degli stati collegati (A-D2). DELETE: 422 su riga di sistema; 409 se collegato a stati di lavorazione (il messaggio li elenca); 204 altrimenti.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/quote-system-statuses/reorder">
+      <request>{ ordered_ids:int[] } = esattamente le righe SENZA system_key (Aperto fisso in testa, Vinto/Perso fissi in coda, come StatusOrderManager).</request>
+    </endpoint>
+    <endpoint method="POST|PUT" path="/api/quote-workflows, /api/quote-workflows/{quoteWorkflow}, /api/quote-workflows/default-statuses">
+      <request>`statuses[].quote_system_status_id`: int|null exists. Se presente vince e `group` = suo behavior; `statuses[].group` resta
+        accettato SOLO come ripiego quando l'id manca (compatibilita': client e import esistenti), richiesto uno dei due. Righe con
+        system_key: collegamento fisso alla riga di sistema omonima, id inviato ignorato; un `group` diverso resta 422 come oggi.</request>
+      <response status="200">ogni stato porta `quote_system_status_id` e `quote_system_status` { id, name, color, behavior } e `group` (sola lettura).</response>
+    </endpoint>
+    <rule>Invariante di modello (QuoteWorkflowStatus::saving): system_key valorizzato -> collegato alla riga di sistema con la stessa
+      chiave; FK impostata -> `group` = behavior; FK mancante o `group` cambiato da solo -> FK = primo stato di sistema (sort_order)
+      con behavior = group. Copre import, seeder, factory senza toccarli (A-D9).</rule>
+    <endpoint method="POST" path="/api/tables/quotes/rows (+ /columns, /distinct-values)">
+      <response>la colonna `quote_workflow_status` e il filtro avanzato omonimo SPARISCONO dalla griglia Offerte; al loro posto
+        `quote_system_status` (label `quotes.columns.quoteSystemStatus`, editor select, editableField `quote_system_status_id`,
+        notable, filtro set per nome con "(Vuoti)", ordinabile per nome; options catalogo = tutti gli stati di sistema
+        { value, label, color, requires_note:false }). Riga: `quote_system_status` { id, name, color } | null;
+        `quote_system_status_options`: int[] (stati di sistema con almeno uno stato collegato nel set risolto);
+        `quote_system_status_notes`: int[] (fra quelli, gli id il cui stato di lavorazione di destinazione `requires_note`).
+        Generico FE: `&lt;columnId&gt;_notes` sulla riga, se presente, decide la richiesta della nota per quella riga.
+        Filtro avanzato `quote_system_status` set per nome.</response>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tables/quotes/rows/{id}">
+      <request>{ column: "quote_system_status_id", value: int, note? } -> applica A-D6.</request>
+      <errors>422 su `quote_system_status_id` se nessuno stato del set e' collegato; 422 nota obbligatoria come oggi.</errors>
+    </endpoint>
+    <endpoint method="POST|PUT|PATCH" path="/api/quotes, /api/quotes/{quote}">
+      <request>nuovo `quote_system_status_id`: int|null exists (+ `note`); `quote_workflow_status_id` resta accettato (altri canali);
+        inviarli entrambi -> 422.</request>
+      <response>QuoteResource aggiunge `quote_system_status_id`, `quote_system_status` { id, name, color, behavior } | null e
+        `quote_system_statuses`: [{ id, name, color, behavior, requires_note }] (le opzioni di A-D7 per QUESTA offerta, in sort_order;
+        requires_note = lo stato di lavorazione di destinazione la richiede). Le chiavi `quote_workflow_status*` restano.</response>
+    </endpoint>
+
+    <!-- B -->
+    <endpoint method="POST" path="/api/quotes/{quote}/transfer-registry">
+      <request>{ registry_id:int req exists, diverso dall'attuale; title?: string|null max 191 (B-D8, regole del titolo dell'update; assente = invariato); attribute_values?: object (regole dell'update offerta) }</request>
+      <response status="200">QuoteResource (nuovo `opportunity_id`), message "Offerta trasferita a &lt;anagrafica&gt;".</response>
+      <errors>403 senza `quotes.transferRegistry` (o `request-management|enrollee-management.transferRegistry` sulla rotta del modulo); 422 stessa anagrafica / offerta a contratto / violazione single_quote_per_opportunity.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/request-management/{quote}/transfer-registry, /api/enrollee-management/{quote}/transfer-registry">
+      <request>come sopra; autorizzazione col set di permessi del modulo.</request>
+    </endpoint>
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <response>aggiunge `registry_transfer`: { from_registry_name, to_registry_name, transferred_at (ISO), causer_name } | null.</response>
+    </endpoint>
+
+    <!-- C -->
+    <endpoint method="POST|PUT" path="/api/product-categories, /api/product-categories/{productCategory}">
+      <request>`requires_contact_transfer_before_contract`: boolean (default false). Resource lo restituisce.</request>
+    </endpoint>
+
+    <!-- D -->
+    <endpoint method="POST" path="/api/contracts/{contract}/work-orders, .../work-orders/batch (+ multi-offerta)">
+      <request>invariato.</request>
+      <response>la commessa creata ha `attribute_values` precompilati (D-D1); valori inviati esplicitamente vincono.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/copy-quote-attributes">
+      <response status="200">{ data: WorkOrderResource, permissions, message: "N campi copiati dall'offerta" } (0 = nulla da copiare). Nessun body.
+        Commessa multi-offerta: offerte delle sue righe, in ordine di id.</response>
+      <errors>403 senza update sulla commessa; 404 commessa non visibile.</errors>
+    </endpoint>
+
+    <!-- E -->
+    <rule>
+      Ogni scrittura UTENTE sull'offerta a contratto passa da `ContractedQuoteGuard` (Offerte PATCH /quotes/{id} e celle
+      PATCH /tables/quotes/rows/{id}; Gestione Richieste/Iscritti PATCH /{request|enrollee}-management/{id} e celle;
+      titolo/righe da PATCH /contracts/{id}). Le scritture interne (validazione contratto, ricalcoli, migrazioni) no.
+      Contano solo i campi che CAMBIANO davvero (un valore reinviato uguale non conta). Campi liberi (E-D3, tutti i
+      canali): manager_slots/managers (team), next_callback_at, operational_site_id, general_notes, note.
+        senza `quotes.updateContracted` -> 403 { success:false, message:"Offerta a contratto: modifica non consentita", authorization };
+        con il permesso e senza `confirm_contracted_edit: true` nel body -> 409 { success:false, message, code:"contracted_edit_confirmation_required" };
+        con conferma -> scrittura + activity `contracted_edit` (properties.fields) sull'offerta.
+      QuoteResource e RequestManagementResource: `is_contracted`: bool, `can_update_contracted`: bool.
+      Il FE, su 409 con quel `code`, mostra il popup e ripete la STESSA richiesta aggiungendo `confirm_contracted_edit: true`.
+    </rule>
+
+    <!-- F -->
+    <endpoint method="GET" path="/api/tables/{request-management|enrollee-management}/columns">
+      <response>nessuna colonna `operator_ga2`/`manager_ga{n}`; `managers` sempre, label "Gestori account", filterType set,
+        sortable, editable. Righe: `managers`: [{ id, name, avatar_url, position, position_label }].</response>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- A -->
+    <criterion id="AC-001">Dopo la migrazione esistono i 5 stati di sistema seed e ogni stato di lavorazione e' collegato a quello col behavior uguale al suo group; le righe con system_key alla riga omonima.</criterion>
+    <criterion id="AC-002">CRUD stati di sistema: creazione/modifica/riordino con permesso; 403 senza; eliminazione 422 su riga di sistema o stato collegato (messaggio con i nomi), 200 su stato libero.</criterion>
+    <criterion id="AC-003">Cambiare `behavior` di una riga con system_key -> 422. Su una riga normale collegata -> 200 e il `group` di tutti gli stati di lavorazione collegati diventa il nuovo valore; nessun contratto creato o sospeso sulle offerte gia' in quegli stati.</criterion>
+    <criterion id="AC-003b">Parita' di controlli (A-D0): uno stato di sistema creato a mano con behavior closed_won / validated / closed_lost, collegato a uno stato di lavorazione, produce gli stessi effetti di oggi del gruppo omonimo (contratto e accepted_at su closed_won, sospensione all'uscita, riga ricavo obbligatoria e visibilita' in Iscritti su validated, opportunita' chiusa su closed_*). Le suite esistenti su contratti, Iscritti, stato opportunita', QuoteWorkflowStatusWriter e configuratore workflow restano verdi senza modifiche ai test.</criterion>
+    <criterion id="AC-004">Configuratore workflow: salvare uno stato con `quote_system_status_id` aggiorna `group` al behavior; inviare `group` non ha effetto; su riga di sistema il collegamento non cambia.</criterion>
+    <criterion id="AC-005">Griglia Offerte: la riga porta `quote_system_status` e le opzioni; nessun `quote_workflow_status`. Il filtro per nome stato di sistema restituisce solo le offerte collegate.</criterion>
+    <criterion id="AC-006">Da Offerte, scegliere lo stato di sistema S scrive il primo stato di lavorazione (sort_order) del set collegato a S; se lo stato attuale e' gia' collegato a S nessuna scrittura; senza stati collegati 422.</criterion>
+    <criterion id="AC-007">Da Gestione Richieste, cambiare lo stato di lavorazione cambia lo stato di sistema letto da Offerte sulla stessa offerta.</criterion>
+    <criterion id="AC-008">Passare da Offerte a uno stato di sistema closed_won crea il contratto come oggi; "Vinto provvisorio" no; Gestione Iscritti mostra le offerte in stati collegati a validated e closed_won.</criterion>
+    <criterion id="AC-009">FE: configuratore stati di sistema (lista, crea, modifica, riordino, elimina con messaggio); select "Stato di sistema" nel configuratore workflow; Offerte mostra e modifica solo stati di sistema.</criterion>
+    <!-- B -->
+    <criterion id="AC-010">Trasferimento verso un'anagrafica con opportunita' aperta della stessa categoria (multiple_open off): l'offerta passa su quella, nessuna nuova opportunita'.</criterion>
+    <criterion id="AC-011">Trasferimento verso un'anagrafica senza opportunita' aperta (o categoria multiple_open on): nasce una nuova opportunita' con linee, commerciale, segnalatore e sede della vecchia; referente vuoto.</criterion>
+    <criterion id="AC-012">La vecchia opportunita' resta con note/documenti; offerta e due opportunita' hanno l'evento `quote.registry_transferred` con da/a; `GET /quotes/{id}` porta `registry_transfer`.</criterion>
+    <criterion id="AC-013">I campi flessibili inviati nel trasferimento sono salvati con le regole dell'update (422 su valore non valido, nessuna scrittura parziale).</criterion>
+    <criterion id="AC-014">403 senza permesso (per modulo); 422 stessa anagrafica, offerta a contratto, violazione single_quote_per_opportunity, senza scritture.</criterion>
+    <criterion id="AC-015">FE: azione nel dettaglio e nelle righe, dialog con anagrafica + campi flessibili, avviso "Trasferita da A a B il ..." nel dettaglio.</criterion>
+    <criterion id="AC-015b">B-D8: il titolo inviato nel trasferimento e' salvato come manuale; vuoto o uguale all'automatico torna automatico; assente lascia il titolo com'e'; oltre 191 caratteri -> 422 senza scritture. Il dialog lo mostra precompilato nel dettaglio offerta e nel pannello Lavora.</criterion>
+    <!-- C -->
+    <criterion id="AC-016">Categoria col flag e offerta non trasferita: portarla in uno stato closed_won (da qualsiasi canale) -> 422 col messaggio; offerta trasferita -> contratto creato; categoria con generates_contract off -> nessun blocco.</criterion>
+    <criterion id="AC-017">"Vinto provvisorio" e' permesso anche senza trasferimento; il flag si salva e si legge dal form categoria.</criterion>
+    <!-- D -->
+    <criterion id="AC-018">Commessa generata da contratto: campi flessibili con lo stesso codice nel set della commessa copiati dall'offerta; valori inviati vincono; codici fuori set o opzioni non valide saltati.</criterion>
+    <criterion id="AC-019">Multi-offerta: vale il primo valore non vuoto nell'ordine dei contratti.</criterion>
+    <criterion id="AC-020">"Copia dati dall'offerta" riempie solo i campi vuoti e restituisce il conteggio; 403 senza update.</criterion>
+    <!-- E -->
+    <criterion id="AC-021">Offerta a contratto, attore senza `quotes.updateContracted`: update offerta, cella, cambio stato, righe da Contratto, updateWork su campo congelato -> 403, nessuna scrittura; note e documenti restano scrivibili.</criterion>
+    <criterion id="AC-022">Con il permesso: senza conferma 409 `contracted_edit_confirmation_required`; con conferma 200 + evento `quote.contracted_edit`.</criterion>
+    <criterion id="AC-023">Offerta senza contratto: nessun cambiamento di comportamento. Il blocco righe assegnate a commessa vale ancora.</criterion>
+    <criterion id="AC-024">FE: popup di conferma su 409 e reinvio con la conferma; campi in sola lettura e avviso "a contratto" per chi non ha il permesso.</criterion>
+    <!-- F -->
+    <criterion id="AC-025">Config colonne Gestione Richieste e Iscritti: nessuna colonna di posizione, `managers` "Gestori account" sempre, anche nelle linguette con etichette.</criterion>
+    <criterion id="AC-026">La riga elenca tutto il team con etichetta di posizione; filtro set per nome con "Vuoti"; scrittura dalla cella aggiorna il team e la posizione 2 continua ad aggiornare `operator_id`.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Authz server-side su ogni endpoint (Policy), FormRequest su ogni input, Resource in uscita.</item>
+    <item>`quote_system_status_id`, `system_key`, `behavior` delle righe di sistema e `group` mai mass-assignable dal client.</item>
+    <item>Migrazioni nuove e reversibili; nessuna migrazione committata modificata. Mai migrate:fresh/rollback/seed su DB dev.</item>
+    <item>Filtri e ordinamenti da allow-list (nessun orderByRaw/whereRaw da input). Conteggi tab senza N+1.</item>
+    <item>File entro 300/500 righe: nuove classi dedicate (es. `QuoteRegistryTransferService`, `ContractedQuoteGuard`, `QuoteSystemStatusService`), non gonfiare `QuoteService`/`RequestCreationService`.</item>
+    <item>Manuale (§4-bis): guide IT+EN aggiornate + nuova guida `quote-system-statuses`; manuale Claude Docs: sezioni Offerte, Gestione Richieste, Gestione Iscritti, Opportunita', Configurazione stati, Categorie prodotto, Commesse, Contratti.</item>
+    <item>Test: Pest mirati per ogni AC backend, Vitest per gli AC frontend; `tsc -b --force` pulito; Pint/ESLint puliti.</item>
+  </constraints>
+
+  <microtasks>
+    <!-- Fase 1 (fondamenta) poi fasi parallele. Lane: S = sequenziale, P = parallelo, G = gated su conferma utente. -->
+    <task id="MT-01" owner="backend"  lane="S"  deps="-"            ac="AC-001..AC-004,AC-003b,AC-008">A backend: migrazione+seed+backfill, model, CRUD/reorder/for-select, permessi, WorkflowStatusWriter, import legacy.</task>
+    <task id="MT-02" owner="backend"  lane="S"  deps="MT-01"        ac="AC-005..AC-007">A backend Offerte: colonna/cella/filtro, QuoteService+QuoteWorkflowStatusWriter (A-D6), QuoteResource.</task>
+    <task id="MT-03" owner="frontend" lane="P"  deps="MT-01 (contratto)" ac="AC-009">A frontend: features/quote-system-statuses (configuratore), select nel configuratore workflow, Offerte su stati di sistema, guide.</task>
+    <task id="MT-04" owner="backend"  lane="S"  deps="MT-02"        ac="AC-016,AC-017">C backend: colonna categoria, regola nel QuoteWorkflowStatusWriter.</task>
+    <task id="MT-05" owner="backend"  lane="S"  deps="MT-04"        ac="AC-021..AC-023">E backend: ContractedQuoteGuard su tutti i canali, permesso, 409/conferma, log.</task>
+    <task id="MT-06" owner="backend"  lane="S"  deps="MT-05"        ac="AC-010..AC-014">B backend: QuoteRegistryTransferService, rotte dei 3 moduli, permessi, log, registry_transfer.</task>
+    <task id="MT-07" owner="backend"  lane="P"  deps="-"            ac="AC-018..AC-020">D backend: replica alla generazione + copy-quote-attributes (solo WorkOrders/Contracts).</task>
+    <task id="MT-08" owner="backend"  lane="P"  deps="-"            ac="AC-025,AC-026">F backend: colonna unica in RequestManagement tables (solo app/Tables/RequestManagement).</task>
+    <task id="MT-10" owner="frontend" lane="P"  deps="contratti MT-04..MT-08" ac="AC-015,AC-017,AC-020,AC-024,AC-026">FE di C, B, D, E, F (file disgiunti per feature) + guide.</task>
+    <task id="MT-12" owner="verifier" lane="S"  deps="tutti"        ac="tutti">Suite mirate + suite completa a fine feature, tsc, lint, HANDOFF.</task>
+  </microtasks>
+
+</spec>

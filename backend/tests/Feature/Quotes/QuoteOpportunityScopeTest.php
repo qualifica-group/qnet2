@@ -2,6 +2,7 @@
 
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\QuoteSystemStatus;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -130,18 +131,21 @@ it('AC-007: a user without quotes.viewAny is denied even with opportunityId set'
     ])->assertForbidden();
 });
 
-it('AC-008: values for quote_workflow_status scoped to opportunity A excludes statuses only present on B', function () {
+// REQUIREMENT CHANGED (spec 0404 A-D7): the column is the system status.
+it('AC-008: values for quote_system_status scoped to opportunity A excludes statuses only present on B', function () {
     $actor = quoteTableUserWith(['viewAny']);
     $opportunityA = Opportunity::factory()->create();
     $opportunityB = Opportunity::factory()->create();
-    $statusOnA = QuoteWorkflowStatus::factory()->create(['name' => 'In revisione']);
-    $statusOnlyOnB = QuoteWorkflowStatus::factory()->create(['name' => 'Solo su B']);
+    $onA = QuoteSystemStatus::query()->create(['name' => 'In revisione', 'color' => 'amber', 'behavior' => 'pending', 'sort_order' => 15]);
+    $onlyOnB = QuoteSystemStatus::query()->create(['name' => 'Solo su B', 'color' => 'red', 'behavior' => 'pending', 'sort_order' => 16]);
+    $statusOnA = QuoteWorkflowStatus::factory()->create(['quote_system_status_id' => $onA->id]);
+    $statusOnlyOnB = QuoteWorkflowStatus::factory()->create(['quote_system_status_id' => $onlyOnB->id]);
     Quote::factory()->create(['opportunity_id' => $opportunityA->id, 'quote_workflow_status_id' => $statusOnA->id]);
     Quote::factory()->create(['opportunity_id' => $opportunityB->id, 'quote_workflow_status_id' => $statusOnlyOnB->id]);
     Sanctum::actingAs($actor);
 
     $values = $this->postJson('/api/tables/quotes/values', [
-        'columnId' => 'quote_workflow_status', 'opportunityId' => $opportunityA->id,
+        'columnId' => 'quote_system_status', 'opportunityId' => $opportunityA->id,
     ])->assertOk()->json('data.values');
 
     expect($values)->toContain('In revisione')

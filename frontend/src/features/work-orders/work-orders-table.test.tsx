@@ -1,9 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import WorkOrdersPage from '@/pages/work-orders-page'
 import { WorkOrdersTable } from '@/features/work-orders/work-orders-table'
@@ -37,36 +36,23 @@ vi.mock('@/components/page-header', () => ({
   PageHeader: ({ actions }: { actions?: ReactNode }) => <div>{actions}</div>,
 }))
 
-const deleteWorkOrderMock = vi.fn()
+// The "Responsabili e Partecipanti" dialog (spec 0405) reads the record.
 vi.mock('@/features/work-orders/api', () => ({
   WORK_ORDERS_DOMAIN: 'work-orders',
-  // Spec 0363: the documents row action's dialog names the attachable owner.
-  WORK_ORDER_ATTACHABLE_ALIAS: 'work_order',
-  deleteWorkOrder: (...args: unknown[]) => deleteWorkOrderMock(...args),
-  fetchWorkOrder: vi.fn(),
-  // The force-close row action's dialog (user directive 2026-10-06) reads and writes the record.
+  fetchWorkOrder: () => new Promise(() => {}),
+  deleteWorkOrder: vi.fn(),
   workOrderDetailQueryKey: (id: number) => ['work-orders', 'detail', id],
-  updateWorkOrder: vi.fn(),
 }))
 
-const toastSuccessMock = vi.fn()
-const toastErrorMock = vi.fn()
-vi.mock('sonner', () => ({
-  toast: {
-    success: (...args: unknown[]) => toastSuccessMock(...args),
-    error: (...args: unknown[]) => toastErrorMock(...args),
-  },
-}))
-
-const DELETE_ACTION: TableActionDefinition = {
-  key: 'delete',
-  label: 'actions.delete',
-  icon: 'trash',
-  type: 'danger',
-  confirm: true,
+const TEAM_ACTION: TableActionDefinition = {
+  key: 'team',
+  label: 'workOrders.actions.team.label',
+  icon: 'contact',
+  type: 'action',
+  confirm: false,
 }
 
-const ROW: TableRow = { id: 1, actions: ['delete'], title: 'Installazione impianto' }
+const ROW: TableRow = { id: 1, actions: ['team'], title: 'Installazione impianto' }
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
@@ -77,8 +63,8 @@ vi.mock('@/features/table/table-view', () => ({
     return (
       <div role="region" aria-label={`table-${domain}`}>
         <p>{scope?.attributeColumnsFromFilters ? 'attr-columns-from-filters' : 'no-attr-columns'}</p>
-        <button type="button" onClick={() => onAction?.(DELETE_ACTION, ROW)}>
-          delete row
+        <button type="button" onClick={() => onAction?.(TEAM_ACTION, ROW)}>
+          team row
         </button>
       </div>
     )
@@ -114,9 +100,6 @@ beforeAll(async () => {
 beforeEach(() => {
   canMock.mockReset()
   canMock.mockReturnValue(true)
-  deleteWorkOrderMock.mockReset()
-  toastSuccessMock.mockReset()
-  toastErrorMock.mockReset()
 })
 
 describe('WorkOrdersPage — permission gating (AC-070)', () => {
@@ -152,44 +135,11 @@ describe('WorkOrdersTable — no create affordance', () => {
   })
 })
 
-describe('WorkOrdersTable — delete', () => {
-  it('shows the success toast and refreshes on a successful delete', async () => {
-    deleteWorkOrderMock.mockResolvedValue(undefined)
-
+describe('WorkOrdersTable — legacy row actions (spec 0405)', () => {
+  it('opens the "Responsabili e Partecipanti" dialog of the row', async () => {
     renderTable()
-    screen.getByRole('button', { name: 'delete row' }).click()
+    fireEvent.click(screen.getByRole('button', { name: 'team row' }))
 
-    await waitFor(() => expect(deleteWorkOrderMock).toHaveBeenCalledWith(1))
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalled())
-  })
-
-  it("shows the server's 403 reason, using the backend re-authorization, not the UI gate", async () => {
-    deleteWorkOrderMock.mockRejectedValue(
-      new AxiosError('Forbidden', '403', undefined, undefined, {
-        status: 403,
-        data: { success: false, message: 'Forbidden' },
-      } as never),
-    )
-
-    renderTable()
-    screen.getByRole('button', { name: 'delete row' }).click()
-
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'))
-  })
-
-  it('shows the generic conflict message on a 409 (D-11 future guard)', async () => {
-    deleteWorkOrderMock.mockRejectedValue(
-      new AxiosError('Conflict', '409', undefined, undefined, {
-        status: 409,
-        data: { success: false, message: 'Conflict' },
-      } as never),
-    )
-
-    renderTable()
-    screen.getByRole('button', { name: 'delete row' }).click()
-
-    await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('Cannot delete: the work order is used elsewhere.'),
-    )
+    expect(await screen.findByRole('heading', { name: 'Supervisors and Participants' })).toBeInTheDocument()
   })
 })

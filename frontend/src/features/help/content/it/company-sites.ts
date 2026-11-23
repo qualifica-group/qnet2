@@ -45,6 +45,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Non esiste una pagina di modifica separata: la sede si modifica **direttamente dal suo dettaglio**, una riga alla volta, campi personalizzati compresi. Premi la **matita** (o fai clic sul valore), cambia il valore e premi **Salva**: si salva solo quella riga; **Annulla** o Esc la lasciano com'era. I **Dati azienda** si modificano insieme (sono sempre di un'azienda) e anche le **Banche** si salvano come elenco unico. **Contatti**, **Indirizzo** e **Logo** si gestiscono lì stesso e si salvano subito.",
         },
+        {
+          type: 'note',
+          text: "Il campo **Responsabile emissione proforma** indica chi emette le proforma della sede: a ogni richiesta proforma su un'offerta di questa sede riceve un'attività (categoria Contabile) e la relativa notifica. Se è vuoto la richiesta parte comunque, ma nessuno riceve l'attività.",
+        },
       ],
     },
     {

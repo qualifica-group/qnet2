@@ -104,6 +104,7 @@ require_once __DIR__.'/Helpers/AttachmentHelpers.php';
 require_once __DIR__.'/Helpers/ReportColumnStatusHelpers.php';
 require_once __DIR__.'/Helpers/RecordMergeHelpers.php';
 require_once __DIR__.'/Helpers/DocumentChecklistHelpers.php';
+require_once __DIR__.'/Helpers/AssignmentNotificationHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

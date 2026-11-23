@@ -83,6 +83,7 @@ function baseFields(t: TFunction) {
     requires_quote: z.boolean(),
     is_selectable: z.boolean(),
     is_active: z.boolean(),
+    requires_contact_transfer_before_contract: z.boolean(),
     is_reportable: z.boolean().nullable(),
     // null = inherit the nearest configured ancestor's columns (spec 0141);
     // key validity against the catalogue is enforced server-side (422).
@@ -93,6 +94,8 @@ function baseFields(t: TFunction) {
     multi_quote_work_order: z.boolean(),
     usage_area: z.enum(['all', 'requests', 'opportunities']),
     multiple_open_opportunities: z.boolean(),
+    request_registry_type: z.enum(['individual', 'company']),
+    request_offer_hidden: z.boolean(),
     simplified_offer_line: z.boolean(),
     // null = inherit the nearest declaring ancestor's value (spec 0188); roots never use it.
     simplified_offer_line_override: z.boolean().nullable(),

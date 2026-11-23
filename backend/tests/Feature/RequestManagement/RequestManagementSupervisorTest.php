@@ -284,6 +284,7 @@ it('AC-014: writing the team leaves the supervisor exactly where it was', functi
     $supervisor = User::factory()->create();
     $quote = supervisorFieldQuote($operator, $supervisor);
     $newOperator = User::factory()->create();
+    grantAssignmentNotifications($newOperator);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [

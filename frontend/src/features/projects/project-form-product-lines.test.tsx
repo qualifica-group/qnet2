@@ -42,6 +42,8 @@ function node(overrides: Partial<ProductCategoryTreeNode> & { id: number }): Pro
     multi_quote_work_order: false,
     usage_area: 'all',
     multiple_open_opportunities: false,
+    request_registry_type: 'individual',
+    request_offer_hidden: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     ...overrides,
@@ -147,7 +149,8 @@ describe('Project — product_lines (spec 0132, AC-045)', () => {
     renderDetail(projectFixture())
 
     fireEvent.click(pencilOf('Product lines'))
-    await waitFor(() => expect(screen.getByTestId('select-Product category 1')).toBeEnabled())
+    // Spec 0416 (REQUIREMENT CHANGED): the fixture's root is `multiple`, so the row picks with the multi-select.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Product category 1' })).toBeEnabled())
   })
 
   it('adds a second independent row via "Add", each scoped by its OWN root category', async () => {

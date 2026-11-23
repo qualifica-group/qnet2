@@ -11,7 +11,7 @@ import { DEFAULT_LINE_QUANTITY, type LineCommissionDefaults } from '@/features/q
 import type { QuoteCatalogProduct, QuoteLineCommissionsAdapter } from '@/features/quotes/line-editor/types'
 
 type CommissionDefaultsResponse = Awaited<ReturnType<typeof fetchQuoteCommissionDefaults>>
-type ChangedRole = 'COMMERCIAL' | 'REPORTER' | 'SUPERVISOR'
+type ChangedRole = 'COMMERCIAL' | 'COMMERCIAL_PARTNER' | 'REPORTER' | 'SUPERVISOR'
 
 /** What a pick brings when no role context is known: an empty block, as before. */
 const NO_DEFAULTS: LineCommissionDefaults = { commissions: [], supplierCommissionDirection: null }
@@ -38,6 +38,7 @@ function roleScope(context: QuoteCommissionContext, productId: number, supplierI
     product_id: productId,
     supplier_id: supplierId,
     commercial_id: context.commercialId,
+    commercial_partner_id: context.commercialPartnerId,
     reporter_id: context.reporterId,
     supervisor_id: context.supervisorId,
   }
@@ -46,6 +47,7 @@ function roleScope(context: QuoteCommissionContext, productId: number, supplierI
 function changedRoles(previous: QuoteCommissionContext, next: QuoteCommissionContext): ChangedRole[] {
   return [
     previous.commercialId !== next.commercialId ? 'COMMERCIAL' : null,
+    previous.commercialPartnerId !== next.commercialPartnerId ? 'COMMERCIAL_PARTNER' : null,
     previous.reporterId !== next.reporterId ? 'REPORTER' : null,
     previous.supervisorId !== next.supervisorId ? 'SUPERVISOR' : null,
   ].filter((role): role is ChangedRole => role !== null)

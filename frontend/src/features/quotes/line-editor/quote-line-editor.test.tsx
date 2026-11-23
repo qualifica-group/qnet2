@@ -39,6 +39,8 @@ function treeNode(id: number, name: string, children: ProductCategoryTreeNode[] 
     multi_quote_work_order: false,
     usage_area: 'all',
     multiple_open_opportunities: false,
+    request_registry_type: 'individual',
+    request_offer_hidden: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
   }
@@ -107,7 +109,6 @@ function Harness({ initialRows = [EMPTY_LINE_ROW], ...props }: HarnessProps) {
       categoryTree={TREE}
       maxRows={200}
       singleCategoryMode={false}
-      simplified={false}
       knownLines={[]}
       vatRatePercentFor={(id) => (id === 7 ? 22 : null)}
       rememberVatRatePercent={() => {}}
@@ -246,19 +247,6 @@ describe('QuoteLineEditor — scelta e righe', () => {
     const rows = onChangeSpy.mock.lastCall?.[0] as QuoteLineFormValues[]
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ id: 70, product_id: 901, quantity: 2 })
-  })
-
-  it('AC-008: a simplified card congeals a priceless pick and shows amounts only', async () => {
-    renderEditor({ simplified: true })
-    await screen.findByText('Corso Primo Soccorso')
-
-    fireEvent.click(option('Corso Primo Soccorso'))
-    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 1 selezionato' }))
-
-    expect(onChangeSpy.mock.lastCall?.[0][0]).toMatchObject({ product_id: 901, quantity: 1, unit_price: 0 })
-    expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
   })
 
   it('AC-009: live amounts and offer total follow the row, and the row can be removed', async () => {

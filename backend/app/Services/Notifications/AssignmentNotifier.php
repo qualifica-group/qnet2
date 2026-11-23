@@ -80,8 +80,12 @@ final class AssignmentNotifier
      *                        message names the system as the author.
      * @param  ?int  $supervisorId  the user newly holding `supervisor_id`,
      *                              null when this write did not change it
-     * @param  array<int, int>  $managerPositions  userId => 1-based "G.A. n"
-     *                                             slot, for NEW attachments only
+     * @param  array<int, int>  $managerPositions  userId => slot, for NEW
+     *                                             attachments only; the slot
+     *                                             is not part of the message:
+     *                                             every Gestore Account is the
+     *                                             same role (decisione utente
+     *                                             2026-11-18)
      */
     public function notify(
         Model $record,
@@ -137,19 +141,17 @@ final class AssignmentNotifier
                     role: AssignmentRoleEnum::Supervisor,
                     recordId: $recordId,
                     recordLabel: $recordLabel,
-                    position: null,
                     actorName: $actorName,
                     details: $details,
                 ));
             }
 
-            foreach ($managerPositions as $userId => $position) {
+            foreach (array_keys($managerPositions) as $userId) {
                 $recipients->get($userId)?->notify(new RecordAssignmentNotification(
                     target: $target,
                     role: AssignmentRoleEnum::Manager,
                     recordId: $recordId,
                     recordLabel: $recordLabel,
-                    position: $position,
                     actorName: $actorName,
                     details: $details,
                 ));
@@ -203,7 +205,6 @@ final class AssignmentNotifier
                         role: $role,
                         recordId: $recordId,
                         recordLabel: $recordLabel,
-                        position: null,
                         actorName: $actorName,
                         details: $details,
                     ));

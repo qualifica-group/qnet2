@@ -34,11 +34,12 @@ interface DocumentRenderSubject
     public function resolveVariable(string $category, string $key, User $actor): string;
 
     /**
-     * The rows of a products_table `source`, in display order: one map per
-     * row, already formatted display text keyed by column key (the keys
-     * DocumentLayoutProductSources::for($module) lists for that source).
+     * The rows of a products_table `source` for $actor, in display order: one
+     * map per row, already formatted display text keyed by column key (the
+     * keys DocumentLayoutProductSources::for($module) lists for that source).
+     * A source $actor may not read yields no rows (spec 0412: quote costs).
      *
      * @return array<int, array<string, string>>
      */
-    public function productRows(string $source): array;
+    public function productRows(string $source, User $actor): array;
 }

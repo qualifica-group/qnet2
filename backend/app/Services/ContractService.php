@@ -7,7 +7,10 @@ namespace App\Services;
 use App\DataObjects\Contracts\UpdateContractData;
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Models\Contract;
+use App\Models\Quote;
 use App\Models\User;
+use App\Services\Notifications\TeamActivityNotifier;
+use App\Services\Quotes\ContractedQuoteGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,7 +21,11 @@ use Illuminate\Support\Facades\DB;
  */
 class ContractService
 {
-    public function __construct(private readonly QuoteService $quoteService) {}
+    public function __construct(
+        private readonly QuoteService $quoteService,
+        private readonly ContractedQuoteGuard $contractedGuard,
+        private readonly TeamActivityNotifier $teamActivity,
+    ) {}
 
     /**
      * Relations eager-loaded for the detail read tree (ContractResource), so
@@ -41,6 +48,7 @@ class ContractService
         'quote.companySite',
         'quote.operationalSite.addresses.city',
         'quote.commercial',
+        'quote.commercialPartner',
         'quote.reporter',
         'quote.supervisor',
         'quote.paymentMethod',
@@ -82,18 +90,24 @@ class ContractService
     public function update(Contract $contract, UpdateContractData $data, ?User $actor = null): Contract
     {
         DB::transaction(function () use ($contract, $data, $actor): void {
-            // Step 1: the contract's own columns.
+            // Step 1: the contract's own columns; a status move reaches the actor's managers (spec 0413).
+            $previousStatusId = $contract->contract_status_id;
             $contract->fill($data->submittedAttributes())->save();
+            $this->teamActivity->statusChanged($contract, $previousStatusId, $actor);
 
             // Step 2: the offer-side keys, only when submitted.
             $quoteAttributes = $data->quoteAttributes();
 
             if ($quoteAttributes !== []) {
                 // The actor is only needed by the offer write; a data-only update (seeders, tools) has none.
-                $this->quoteService->update(
-                    $contract->quote()->firstOrFail(),
-                    UpdateQuoteData::fromValidated($quoteAttributes),
-                    $actor ?? throw new \InvalidArgumentException('An actor is required to update the offer title or lines.'),
+                $actor ?? throw new \InvalidArgumentException('An actor is required to update the offer title or lines.');
+                $quote = $contract->quote()->firstOrFail();
+                // Spec 0404 part E: the offer is under contract by definition here.
+                $this->contractedGuard->run(
+                    $quote,
+                    $actor,
+                    $quoteAttributes,
+                    fn (): Quote => $this->quoteService->update($quote, UpdateQuoteData::fromValidated($quoteAttributes), $actor),
                 );
             }
         });

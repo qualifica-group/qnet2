@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import {
   TABLE_COLUMN_TYPES,
+  TABLE_GRID_LABEL_MAX_LENGTH,
   TABLE_KEY_PATTERN,
   TABLE_NOTIFY_MAX_EMAILS,
   TABLE_NOTIFY_MAX_IDS,
@@ -35,6 +36,7 @@ export function fieldDefinitionTableFields() {
     selectable_label: z.string(),
     summary_column: z.string(),
     summary_strategy: z.enum(['', 'selected', 'max', 'min']),
+    summary_grid_label: z.string().max(TABLE_GRID_LABEL_MAX_LENGTH),
     min_rows: z.number().int().nonnegative().nullable(),
     max_rows: z.number().int().positive().nullable(),
     notify_enabled: z.boolean(),

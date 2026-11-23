@@ -10,6 +10,8 @@ final class AiChatDriverManager
 
     public const DRIVER_ANTHROPIC = 'anthropic';
 
+    public const DRIVER_OPENROUTER = 'openrouter';
+
     /**
      * Config is read on every call (not cached in the constructor) so the
      * singleton never serves a stale driver choice.
@@ -21,6 +23,7 @@ final class AiChatDriverManager
         return match ($name) {
             self::DRIVER_OPENAI => self::DRIVER_OPENAI,
             self::DRIVER_ANTHROPIC => self::DRIVER_ANTHROPIC,
+            self::DRIVER_OPENROUTER => self::DRIVER_OPENROUTER,
             default => null,
         };
     }
@@ -29,7 +32,7 @@ final class AiChatDriverManager
     {
         return match ($this->driverName()) {
             self::DRIVER_OPENAI => true,
-            self::DRIVER_ANTHROPIC => filled(config('ai-assistant.anthropic.api_key')),
+            self::DRIVER_ANTHROPIC, self::DRIVER_OPENROUTER => filled(config("ai-assistant.{$this->driverName()}.api_key")),
             default => false,
         };
     }
@@ -52,6 +55,7 @@ final class AiChatDriverManager
 
         return match ($this->driverName()) {
             self::DRIVER_ANTHROPIC => new AnthropicDriver,
+            self::DRIVER_OPENROUTER => new OpenRouterDriver,
             default => new OpenAiCompatibleDriver,
         };
     }

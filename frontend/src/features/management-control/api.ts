@@ -39,6 +39,7 @@ export function defaultIncomeStatementFilters(): IncomeStatementFilters {
     businessFunctionIds: [],
     workOrderTypes: [],
     commercialIds: [],
+    commercialPartnerIds: [],
     revenueBasis: 'contract',
     segmentBy: 'none',
   }
@@ -55,6 +56,7 @@ export function toIncomeStatementParams(filters: IncomeStatementFilters): Income
     ...(filters.businessFunctionIds.length > 0 ? { business_function_id: filters.businessFunctionIds } : {}),
     ...(filters.workOrderTypes.length > 0 ? { work_order_type: filters.workOrderTypes } : {}),
     ...(filters.commercialIds.length > 0 ? { commercial_id: filters.commercialIds } : {}),
+    ...(filters.commercialPartnerIds.length > 0 ? { commercial_partner_id: filters.commercialPartnerIds } : {}),
     revenue_basis: filters.revenueBasis,
     segment_by: filters.segmentBy,
   }

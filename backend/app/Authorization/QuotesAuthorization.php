@@ -6,7 +6,10 @@ namespace App\Authorization;
 
 use App\Models\Quote;
 use App\Models\User;
+use App\Policies\QuotePolicy;
 use App\Services\Commissions\CommissionRecalculationImpact;
+use App\Services\Quotes\QuoteRegistryTransferService;
+use App\Services\Quotes\QuoteTransferAvailability;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -25,7 +28,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * `offer_lines`/`cost_lines` (D-8/D-11) are the two repeatable line sets: an
  * empty array is a legitimate, authoritative full-replace (AC-036), so
- * neither is `mandatory`.
+ * neither is `mandatory`. `cost_lines` is hidden, so neither shown nor
+ * writable, without `quotes.viewCosts` (spec 0412, D-2).
  *
  * `attribute_values` (spec 0084): declared EXPLICITLY, unlike the former
  * Opportunity-level field it replaces — on the Opportunity it carried no
@@ -44,6 +48,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
     public function __construct(
         FieldPermissionRepository $fieldPermissionRepository,
         private readonly CommissionRecalculationImpact $recalculationImpact,
+        private readonly QuoteTransferAvailability $transferAvailability,
     ) {
         parent::__construct($fieldPermissionRepository);
     }
@@ -66,7 +71,10 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('follow_up_date', 'date'),
             new FieldDefinition('opportunity_id', 'select', mandatory: true),
             new FieldDefinition('quote_workflow_status_id', 'select', mandatory: true),
+            // Spec 0404 A-D7: what Offerte shows and edits.
+            new FieldDefinition('quote_system_status_id', 'select'),
             new FieldDefinition('commercial_id', 'select'),
+            new FieldDefinition('commercial_partner_id', 'select'),
             new FieldDefinition('reporter_id', 'select'),
             new FieldDefinition('supervisor_id', 'select'),
             new FieldDefinition('company_id', 'select'),
@@ -97,7 +105,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'generate_document', 'recalculate_commissions'];
+        return ['delete', 'export', 'import', 'view_activity', 'generate_document', 'recalculate_commissions', 'transfer_registry', 'view_costs'];
     }
 
     /**
@@ -118,7 +126,9 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             // already exists, regardless of write ability.
             'opportunity_id' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'quote_system_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commercial_partner_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'company_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
@@ -130,7 +140,11 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             'internal_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'cost_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'cost_lines' => match (true) {
+                ! $actor->can(QuotePolicy::VIEW_COSTS_PERMISSION) => FieldPermission::hidden(),
+                $mayWrite => FieldPermission::visibleEditable(),
+                default => FieldPermission::visibleReadonly(),
+            },
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commissions' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commission_recipient' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
@@ -162,6 +176,16 @@ class QuotesAuthorization extends AbstractResourceAuthorization
                 && $this->actorMayWrite($actor, $model)
                 && $this->fieldPermissions($actor, $model)['commissions']->editable
                 && ! $this->recalculationImpact->isClosed($model),
+            // Spec 0404 B-D1/B-D6 rev.: same gate as QuoteRegistryTransferController;
+            // an offer moves while its contract, if any, has not been worked on.
+            'transfer_registry' => $model instanceof Quote
+                && $this->actorMayWrite($actor, $model)
+                && $actor->can('quotes.'.QuoteRegistryTransferService::ABILITY)
+                && $this->transferAvailability->allowsRegistryTransfer($model),
+            // Spec 0412, D-2/D-5: on create (no record yet) the permission alone.
+            'view_costs' => $model instanceof Quote
+                ? $actor->can(QuotePolicy::VIEW_COSTS_ABILITY, $model)
+                : $actor->can(QuotePolicy::VIEW_COSTS_PERMISSION),
         ];
     }
 }

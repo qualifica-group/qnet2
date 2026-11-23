@@ -1,5 +1,6 @@
 import type { HelpGuide } from '../../types'
 import { recurringEmailSections } from './parts/work-orders-recurring-emails'
+import { costsSections } from './parts/work-orders-costs'
 import { taskSections } from './parts/work-orders-tasks'
 
 const guide: HelpGuide = {
@@ -13,15 +14,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. Sotto l'intestazione (titolo, stato, indicatori) c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Chat**, **Email** e **Attività** dove previste. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. Le schede si comportano come pagine: entrando nella commessa è attiva **Info**; ricaricando la pagina resti sulla scheda in cui eri, e un salvataggio dentro una scheda non riporta su Info. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
+          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. Sotto l'intestazione (titolo con sotto il nome dell'azienda cliente, stato, indicatori) c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Chat**, **Email** e **Attività** dove previste. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. Le schede si comportano come pagine: entrando nella commessa è attiva **Info**; ricaricando la pagina resti sulla scheda in cui eri, e un salvataggio dentro una scheda non riporta su Info. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
         },
         {
           type: 'paragraph',
-          text: "La scheda **Info** è divisa in due colonne come nel vecchio QNet. A sinistra: **Info cliente** (**Azienda** con il link all'anagrafica, **Sede legale** con P.IVA e codice fiscale, **Tag**, **Email/PEC**, **Telefono**, **Referente 1** cioè il referente principale dell'anagrafica, **Referente 2** cioè il referente collegato successivo, **Commerciale**, **Settore** e **Commenti** cioè le note generali dell'anagrafica; email, PEC e telefoni si toccano per scrivere o chiamare), poi **Dati contrattuali commessa** (Titolo, **Importo** cioè l'imponibile totale dei prodotti, visibile a chi vede i dati contrattuali, **Stato pagamento**, Data inizio, il link al Contratto, le **Linee prodotto**, poi le righe prodotto con il loro stato di pagamento e i totali Totale Consulenza, Totale Ente e Totale Ricavi), **Stato lavorazione** e **Team** (Supervisori e Partecipanti). A destra: **Riferimenti Società e Funzioni Aziendali** (Società, Sede, Sede operativa, Funzione aziendale: le funzioni aziendali delle Linee prodotto), **Data richiamo**, **Descrizione commessa** (Commessa n., Tipo commessa e la descrizione) e sotto i campi flessibili (**Informazioni aggiuntive**), se le righe prodotto ne prevedono. Info cliente viene dall'anagrafica e si modifica lì; Riferimenti e Linee prodotto vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono. Indirizzo, P.IVA, codice fiscale e recapiti si vedono solo se hai il permesso di vedere anagrafiche e referenti. Nella commessa non ci sono le sezioni Contesto (Fonte), Buoni, Documento e pagamento né il Modello di Task.",
+          text: "La scheda **Info** è divisa in due colonne come nel vecchio QNet. A sinistra: **Info cliente** (**Azienda** con il link all'anagrafica, **Sede legale** con P.IVA e codice fiscale, **Tag**, **Email/PEC**, **Telefono**, **Referente 1** cioè il referente principale dell'anagrafica, **Referente 2** cioè il referente secondario dell'anagrafica (vuoto se non è indicato), **Commerciale**, **Partner commerciale**, **Settore** e **Commenti** cioè le note generali dell'anagrafica; email, PEC e telefoni si toccano per scrivere o chiamare), poi **Dati contrattuali commessa** (**Importo** cioè l'imponibile totale dei prodotti, visibile a chi vede i dati contrattuali, Data inizio, il link al Contratto, le **Linee prodotto**, poi ogni prodotto della commessa con i suoi campi di pagamento e i totali Totale Consulenza, Totale Ente e Totale Ricavi), **Stato lavorazione** e **Team** (Supervisori e Partecipanti). A destra: **Riferimenti Società e Funzioni Aziendali** (Società, Sede, Sede operativa, Funzione aziendale: le funzioni aziendali delle Linee prodotto), **Data richiamo**, **Descrizione commessa** (Commessa n., Tipo commessa e la descrizione) e sotto i campi flessibili (**Informazioni aggiuntive**), se le righe prodotto ne prevedono. Info cliente viene dall'anagrafica e si modifica lì; Riferimenti e Linee prodotto vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono. Indirizzo, P.IVA, codice fiscale e recapiti si vedono solo se hai il permesso di vedere anagrafiche e referenti. Nella commessa non ci sono le sezioni Contesto (Fonte), Buoni, Documento e pagamento né il Modello di Task.",
         },
         {
           type: 'note',
-          text: "Lo **Stato pagamento** della commessa si sceglie dall'elenco degli **Stati pagamento commessa** (gli stessi delle righe) e si modifica nel dettaglio con la matita, solo se puoi gestire i pagamenti della commessa. Non è più un campo flessibile (non c'è più fra le Informazioni aggiuntive né fra i campi flessibili delle categorie): i valori che c'erano sono stati spostati qui. Lo stato pagamento di ogni riga prodotto resta nei Dati contrattuali.",
+          text: "Lo **Stato pagamento** non è un campo della commessa ma di **ogni prodotto**: lo trovi in **Dati contrattuali commessa**, sotto il prodotto. Non è più un campo flessibile (non c'è più fra le Informazioni aggiuntive né fra i campi flessibili delle categorie): i valori che c'erano sono stati copiati sui prodotti della commessa che non avevano uno stato.",
         },
         {
           type: 'paragraph',
@@ -59,6 +60,32 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'row-actions',
+      title: "Azioni della tabella",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Nella colonna **Azioni** dell'elenco Commesse (anche nelle sezioni Commesse del Contratto e dell'Anagrafica) trovi le azioni del vecchio QNet: l'**occhio** apre la commessa, **Responsabili e Partecipanti** apre un popup con le persone della commessa, **Info** apre la commessa sulla scheda Info. Il menu con i tre puntini apre la commessa direttamente sulla scheda **Storico Note**, **Task** o **Documenti**; in fondo al menu c'è **Elimina** (vedi **Eliminare una commessa**).",
+        },
+        {
+          type: 'paragraph',
+          text: "Nel popup **Responsabili e Partecipanti** aggiungi o togli Responsabili e Partecipanti con la matita, con le stesse regole del dettaglio. In fondo, se puoi richiedere proforma, c'è **Richiedi proforma**; **Chiudi** chiude il popup.",
+        },
+        {
+          type: 'note',
+          text: "Task e Documenti compaiono nel menu solo se puoi vedere quelle schede, Elimina solo se hai il permesso di eliminare le commesse. Chiusura forzata, Avanzamento, Richiedi aggiornamento, Richiedi proforma e Attività non sono più azioni di riga: le trovi nel dettaglio della commessa. L'avanzamento si apre anche dalla cella **Avanzamento** della tabella.",
+        },
+        {
+          type: 'paragraph',
+          text: "Se puoi richiedere proforma, la tabella ha anche la colonna **€**, come nel vecchio QNet: l'icona dell'euro è **grigia** se la commessa non ha richieste proforma, **blu** se c'è una richiesta in attesa di emissione, **gialla** se le proforma richieste sono state emesse. Passando col mouse sull'icona leggi lo stato. Cliccando l'icona grigia o blu si apre la finestra **Richiesta emissione Proforma**; quella gialla non è cliccabile. La colonna si può ordinare (non richiesta, richiesta, emessa) e filtrare per **Non richiesta**, **Richiesta**, **Emessa**.",
+        },
+        {
+          type: 'paragraph',
+          text: "La colonna **Stato pagamento** mostra gli stati di pagamento dei prodotti della commessa raggruppati per tipologia: il badge **Consulenza** o **Ente** e, accanto, gli stati dei prodotti di quella tipologia (per esempio **Consulenza** Saldato, Nessuno stato · **Ente** Da pagare). Un prodotto senza stato conta come **Nessuno stato**; più prodotti con lo stesso stato lo mostrano una volta. Passando col mouse sulla cella vedi ogni prodotto, con codice e nome, e il suo stato. La colonna non si ordina. Il filtro elenca le coppie tipologia e stato presenti, per esempio **Ente: Da pagare** o **Consulenza: Nessuno stato**: tiene le commesse con almeno un prodotto in una delle coppie scelte, e la ricerca del filtro trova anche solo lo stato o la tipologia.",
+        },
+      ],
+    },
+    {
       id: 'list-editing',
       title: "Modifica rapida dall'elenco",
       blocks: [
@@ -68,7 +95,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). La colonna **Periodo** indica in quale periodo del contratto è stata programmata la commessa: **Iniziale** o **Rinnovo N** (vedi la guida Contratti, Rinnovare il contratto). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Periodo, Stato, Avanzamento, Creata il e Aggiornata il.",
+          text: "La **Chiusura forzata** si fa dal dettaglio della commessa (chiede il motivo), non da una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). La colonna **Periodo** indica in quale periodo del contratto è stata programmata la commessa: **Iniziale** o **Rinnovo N** (vedi la guida Contratti, Rinnovare il contratto). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Periodo, Stato, Avanzamento, Creata il e Aggiornata il.",
         },
       ],
     },
@@ -98,7 +125,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Commesse** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le commesse dove sei **Responsabile** o **Partecipante** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le commesse di ogni categoria, altrimenti solo le commesse delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova le commesse anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
+          text: "All'apertura la pagina **Commesse** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi le commesse dove sei **Responsabile** o **Partecipante** (e quelle della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi le commesse di ogni categoria, altrimenti le commesse delle tue categorie (con tutte le loro sottocategorie) più quelle, di qualunque categoria, dove sei **Responsabile** o **Partecipante**: una commessa che ti assegnano fuori dalla tua competenza resta in elenco. Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: vedi solo le commesse di quelle categorie (anche quelle dove sei Responsabile o Partecipante di altre categorie escono dall'elenco) e la scelta resta salvata. Il campo **Cerca** trova le commesse anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\". Digitando solo numeri trova anche la commessa con quell'**ID** esatto (la colonna nascosta **ID**), oltre a quelle che hanno il numero nel codice; l'id del vecchio gestionale non viene cercato.",
         },
         {
           type: 'paragraph',
@@ -110,7 +137,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con la **Categoria madre** vuota. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Sono i campi della commessa: si ordinano, si filtrano e si esportano; se hai il permesso di modificare le commesse si modificano nella cella, tranne quando il campo non riguarda quella commessa (la cella resta in sola lettura). I valori restano leggibili anche nel dettaglio.",
+          text: "Le colonne dei campi flessibili compaiono in fondo all'elenco quando il filtro di categoria indica una sola categoria: una sola voce in **Categoria prodotto** oppure, se quella è vuota, una sola categoria madre attuale in **Categoria madre** (per esempio ISO). Scegliendo una categoria madre attuale entrano nell'elenco anche i record delle categorie vecchie collegate (per esempio [OLD] ISO), che nel filtro non compaiono come voci a parte, e le colonne sono prima quelle della categoria attuale, poi quelle delle vecchie. Con due categorie madri attuali diverse vedi i record di entrambe ma nessuna colonna; lo stesso con la **Categoria madre** vuota. Per vedere solo i record di una categoria vecchia o solo di una nuova usa **Categoria prodotto**. Un campo con lo stesso nome in più categorie può comparire due volte. Sono i campi della commessa: si ordinano, si filtrano e si esportano; se hai il permesso di modificare le commesse si modificano nella cella, tranne quando il campo non riguarda quella commessa (la cella resta in sola lettura). I valori restano leggibili anche nel dettaglio. Le **Verifiche ispettive** compaiono come colonna **Data verifica ispettiva**: la data della verifica segnata come attiva, vuota se nessuna riga è attiva; le verifiche si gestiscono nel dettaglio della commessa.",
         },
         {
           type: 'note',
@@ -124,7 +151,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi in alto nel dettaglio della commessa e tra le azioni di riga della tabella Commesse (anche nella scheda Commesse del Contratto). Compare solo se puoi modificare la commessa.',
+          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi in alto nel dettaglio della commessa. Compare solo se puoi modificare la commessa.',
         },
         {
           type: 'steps',
@@ -152,7 +179,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            "Apri **Lista avanzamenti commessa**: clicca la cella **Avanzamento** della tabella, oppure premi **Avanzamento commessa** in alto nel dettaglio della commessa (accanto a Chiusura forzata) o tra le azioni di riga.",
+            "Apri **Lista avanzamenti commessa**: clicca la cella **Avanzamento** della tabella, oppure premi **Avanzamento commessa** in alto nel dettaglio della commessa (accanto a Chiusura forzata).",
             'Il campo **Totale % raggiunto** mostra la somma già registrata. Scrivi in **% Stato attuale** il nuovo totale (da 1 a 100): deve essere maggiore del totale raggiunto. Indica la **Data** (obbligatoria).',
             'Premi **Conferma**: la registrazione viene salvata (come differenza rispetto al totale) e il popup si chiude.',
             "Per eliminare una riga premi il cestino nella colonna Azioni, poi conferma con il cestino o annulla con la X: il totale scende dell'incremento di quella riga.",
@@ -170,7 +197,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio e tra le azioni di riga della tabella Commesse; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa **Da pianificare** o **In lavorazione** (non su una Conclusa, Annullata o Disdetta). La commessa non viene modificata.',
+          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio della commessa; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa **Da pianificare** o **In lavorazione** (non su una Conclusa, Annullata o Disdetta). La commessa non viene modificata.',
         },
         {
           type: 'table',
@@ -234,73 +261,30 @@ const guide: HelpGuide = {
       ],
     },
     ...taskSections,
-    {
-      id: 'costs',
-      title: 'Costi',
-      blocks: [
-        {
-          type: 'paragraph',
-          text: 'Nel dettaglio della Commessa, **Costi** è una scheda di **Amministrazione**, insieme a Proforma attiva e Proforma passiva (se puoi vedere solo i Costi, la scheda in alto è direttamente **Costi**). I **Dati contrattuali** non sono una scheda: stanno nella scheda **Info**, nella sezione **Dati contrattuali**. La scheda **Costi** confronta i costi **preventivati** (le righe di costo dell\'offerta imputate alle righe di ricavo della commessa) con i costi **effettivi** inseriti qui. Compare solo se hai il permesso di vedere i costi.',
-        },
-        {
-          type: 'table',
-          headers: ['Voce', 'Significato'],
-          rows: [
-            ['Scostamento', 'Costo effettivo meno costo preventivato: se positivo è uno **sforamento** (segnalato con icona e testo, non solo con il colore).'],
-            ['Margine', 'Ricavo delle righe della commessa meno i costi. Il ricavo è l\'imponibile, tranne sulle righe con commissione Fornitore **ricevuta**, dove è la sola commissione Fornitore (come nei Dati contrattuali). Le altre provvigioni sono escluse.'],
-            ['Non attribuiti', 'Costi effettivi senza una riga offerta di riferimento: entrano nel costo effettivo totale.'],
-            ['Consuntivo complessivo', 'Somma, al netto dell\'IVA, di tre fonti: i **costi inseriti a mano**, le righe degli **ODA impegnati** della commessa (approvati, inviati al fornitore, parzialmente o interamente evasi) **non ancora fatturati** (l’impegnato di una riga è la quantità ordinata non ancora fatturata per il prezzo unitario, oppure la quantità ricevuta se il residuo è chiuso), e le righe delle **fatture passive e proforma** della commessa. Una riga ODA fatturata conta una sola volta, con l\'importo del documento passivo. Bozze, ODA in validazione e annullati sono esclusi.'],
-            ['Margine consuntivo', 'Ricavo meno il consuntivo complessivo; lo scostamento complessivo è il consuntivo complessivo meno il costo preventivato.'],
-            ['Per tipo di costo', 'Tabella con, per ogni **tipo di costo** (colore e natura: diretto, indiretto, generale), l\'importo delle tre fonti e il totale. I costi senza tipo sono nella riga **Senza tipo di costo**. Il budget non è ripartito per tipo di costo.'],
-          ],
-        },
-        {
-          type: 'note',
-          text: 'I costi generici dell\'offerta, non imputati a nessuna riga di ricavo, sono mostrati a parte come informazione e non entrano nei totali del confronto.',
-        },
-        {
-          type: 'steps',
-          items: [
-            'Apri la scheda **Costi effettivi**: un unico riquadro con a sinistra il **Catalogo prodotti** e a destra i costi effettivi come card (su schermi stretti uno sotto l\'altro). Senza il permesso di gestire i costi il catalogo non compare e le card sono in sola lettura.',
-            'Nel **Catalogo prodotti** cerca per nome o descrizione: ogni prodotto mostra nome, codice, tipologia, prezzo di costo con unità di misura, categoria e descrizione.',
-            'Spunta uno o più prodotti e premi **Aggiungi N selezionati**: ogni prodotto diventa un costo con data di oggi, quantità 1, prezzo di costo, IVA, unità di misura e **sottoconto costo** del prodotto. Lo stesso prodotto si può aggiungere più volte.',
-            "Se il prodotto ha dei fornitori, il **fornitore** si sceglie solo tra quelli del prodotto: il predefinito e il suo costo sono proposti e, cambiando fornitore, cambia il prezzo. Se il fornitore ha una commissione Fornitore su quel prodotto, il prezzo è 0 e non modificabile, con l'avviso accanto al fornitore. Con un prodotto senza fornitori, o senza prodotto, il fornitore è libero come prima.",
-            'In ogni card trovi in alto prodotto, codice e categoria con il cestino per rimuoverla; sotto quantità per prezzo unitario, IVA, **Riga offerta di riferimento** e imponibile, IVA e totale; in fondo data, **sottoconto costo**, **fornitore**, **riferimento documento** e descrizione aggiuntiva. In fondo al riquadro c\'è il **Totale costi**.',
-            'Per cambiare prodotto rimuovi la card e scegli il prodotto dal catalogo.',
-            'Premi **Salva** per sostituire l\'intero elenco dei costi, oppure **Annulla** per tornare all\'ultimo salvataggio.',
-          ],
-        },
-        {
-          type: 'tip',
-          text: 'I costi effettivi si possono inserire anche su una commessa completata o chiusa, perché spesso arrivano dopo la chiusura.',
-        },
-      ],
-    },
+    ...costsSections,
     {
       id: 'contract-data',
       title: 'Dati contrattuali commessa',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nella scheda **Info** del dettaglio Commessa, in fondo alla colonna di sinistra, la sezione **Dati contrattuali commessa** mostra per ogni riga prodotto gli importi già salvati sull\'offerta e **spiega come si arriva al ricavo**. Senza il permesso di vedere i dati contrattuali vedi solo l\'elenco dei prodotti. Senza il permesso di vedere i **costi** della commessa la sezione non compare affatto, nemmeno l\'elenco dei prodotti, e non puoi modificare i pagamenti. Il nome del prodotto è un **link** al prodotto. Ogni riga prodotto sta su **una sola riga** (codice, nome e tipologia affiancati); su schermi stretti ogni riga diventa una scheda compatta.',
+          text: 'Nella scheda **Info** del dettaglio Commessa, nella colonna di sinistra, la sezione **Dati contrattuali commessa** mostra **ogni prodotto della commessa** uno sotto l\'altro, con gli stessi campi del vecchio QNet. Il nome del prodotto è un **link** al prodotto.',
         },
         {
           type: 'table',
-          headers: ['Colonna', 'Significato'],
+          headers: ['Campo', 'Significato'],
           rows: [
-            ['Prodotto', 'Codice, nome e tipologia del prodotto.'],
-            ['Q.tà e Prezzo unitario', 'Quantità e prezzo della riga.'],
-            ['Imponibile', 'Quantità per prezzo unitario, come salvato sull\'offerta.'],
-            ['Commissione Fornitore', 'La commissione del fornitore sulla riga, se la vedi.'],
-            ['Netto commissioni', 'Imponibile meno tutte le commissioni della riga, se le vedi.'],
-            ['Ricavo effettivo', 'Se la tipologia della riga ha la commissione Fornitore **ricevuta** è la sola commissione Fornitore; se è **pagata** o non calcolata è l\'imponibile.'],
-            ['Pagamento', 'Stato di pagamento (badge del colore dello stato), badge **Insoluto** se ci sono insoluti; l\'accordo sui pagamenti si legge nel tooltip della cella.'],
-            ['Azioni', 'Il pulsante con la matita apre il popup **Pagamento riga** (solo con il permesso di gestire i pagamenti).'],
+            ['Titolo', 'Codice e nome del prodotto; in una commessa con più offerte anche il cliente della riga.'],
+            ['Importo', 'L\'imponibile della riga, come salvato sull\'offerta. Il tooltip mostra il calcolo, ad esempio "2 × 500,00 = 1.000,00".'],
+            ['Stato Pagamento', 'Accanto alla dicitura c\'è il badge della tipologia del prodotto (**Consulenza** o **Ente**), così sai di quale pagamento si tratta. Il valore è lo stato di pagamento del prodotto (badge del colore dello stato), oppure **Nessuno stato**. Con il permesso di gestire i pagamenti accanto c\'è la matita.'],
+            ['Documento', 'La proforma o fattura della commessa che fattura il prodotto, con numero e stato del pagamento (Pagata, Non scaduta, Scaduta, Gravemente scaduta); se ce ne sono più, la più recente. Se puoi vedere le fatture, il **numero** è un link che apre il documento in un pannello laterale. **Nessuna proforma emessa** se il prodotto non è ancora stato fatturato.'],
+            ['Accordo sui Pagamenti', 'Il testo dell\'accordo sui pagamenti del prodotto.'],
+            ['Insoluti', '**Sì** se il prodotto ha insoluti, altrimenti **No**.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Il **come si calcola** ogni importo sta nel tooltip: passa il mouse, naviga con la tastiera (Tab) o tocca l\'importo sottolineato a tratti per vedere la formula, ad esempio "2 × 500,00 = 1.000,00" per l\'Imponibile, "10% di 2.000,00 = 200,00" per la Commissione Fornitore (con tipo, base = margine della riga e importo), "1.000,00 − 250,00 = 750,00" per il Netto commissioni e il perché del Ricavo effettivo (commissione ricevuta, oppure imponibile). Sotto le righe ci sono i totali, come nel vecchio QNet: **Totale Consulenza**, **Totale Ente** (uno per tipologia: l\'imponibile, con accanto il ricavo quando è diverso; quelli a 0,00 sono attenuati), poi, se visibili, Commissioni e Netto commissioni, infine **Totale Ricavi**, ciascuno col suo tooltip. Se non vedi le commissioni, le relative colonne e totali non compaiono.'
+          text: 'Chi non ha il permesso di vedere i **costi** o i **dati contrattuali** della commessa vede per ogni prodotto solo **Titolo** e **Stato Pagamento** (con il badge Consulenza o Ente), senza importi, documento, accordo o insoluti, e non può modificare i pagamenti. Sotto i prodotti ci sono i totali, come nel vecchio QNet: **Totale Consulenza**, **Totale Ente** (uno per tipologia: l\'imponibile, con accanto il ricavo quando è diverso; quelli a 0,00 sono attenuati), poi, se visibili, Commissioni e Netto commissioni, infine **Totale Ricavi**, ciascuno col suo tooltip che spiega il calcolo.',
         },
         {
           type: 'warning',
@@ -309,21 +293,20 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Premi il pulsante con la matita a fine riga (disponibile solo con il permesso di gestire i pagamenti): si apre il popup **Pagamento riga**.',
+            'Premi la matita accanto allo **Stato Pagamento** del prodotto (disponibile solo con il permesso di gestire i pagamenti): si apre il popup **Pagamento riga**.',
             'Scegli lo **stato di pagamento**, scrivi l\'**accordo sui pagamenti** e indica se ci sono **insoluti**.',
-            'Premi **Salva** per salvare la riga e chiudere il popup, oppure **Annulla** per scartare le modifiche.',
+            'Premi **Salva** per salvare il prodotto e chiudere il popup, oppure **Annulla** per scartare le modifiche.',
           ],
         },
         {
           type: 'paragraph',
-          text: '**Azione massiva**: con il permesso di gestire i pagamenti ogni riga ha una casella di selezione, e quella nell\'intestazione seleziona tutte le righe. Serve per segnare in un colpo solo più prodotti, ad esempio tutti come **Saldato** o come **Insoluto**.',
+          text: '**Tutti i prodotti insieme**: con il permesso di gestire i pagamenti e più di un prodotto, sopra i prodotti c\'è il pulsante **Imposta pagamento su tutte le righe**. Serve per segnare in un colpo solo tutti i prodotti, ad esempio come **Saldato** o come **Insoluto**.',
         },
         {
           type: 'steps',
           items: [
-            'Seleziona le righe con le caselle (o tutte con la casella dell\'intestazione): sopra la tabella compare la barra con il numero di righe selezionate.',
-            'Premi **Imposta pagamento**: nel popup scegli lo **stato di pagamento** (anche **Nessuno stato**) e/o gli **insoluti** (Sì/No). Un campo lasciato su **Non modificare** resta com\'è su ogni riga.',
-            'Premi **Applica**: i valori vengono salvati su tutte le righe selezionate insieme (se una non può essere salvata non cambia nessuna) e la selezione si azzera. **Deseleziona** toglie la selezione senza salvare.',
+            'Premi **Imposta pagamento su tutte le righe**: nel popup scegli lo **stato di pagamento** (anche **Nessuno stato**) e/o gli **insoluti** (Sì/No). Un campo lasciato su **Non modificare** resta com\'è su ogni prodotto.',
+            'Premi **Applica**: i valori vengono salvati su tutti i prodotti insieme (se uno non può essere salvato non cambia nessuno).',
           ],
         },
         {
@@ -332,7 +315,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Gli stati di pagamento si configurano in **Stati pagamento commessa**. Quando una riga passa a uno stato con **Si può consegnare**, supervisori e partecipanti della commessa ricevono una notifica. I dati di pagamento si modificano anche su una commessa completata o chiusa.',
+          text: 'Gli stati di pagamento si configurano in **Stati pagamento commessa**. Quando una riga passa a uno stato con **Si può consegnare**, supervisori e partecipanti della commessa (tranne chi ha fatto la modifica) ricevono una notifica nella campanella e una email **Stato pagamento ok** con il nome dell\'azienda cliente. I dati di pagamento si modificano anche su una commessa completata o chiusa.',
         },
       ],
     },
@@ -389,17 +372,27 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'proforma-request',
-      title: 'Richiesta di proforma (pulsante €)',
+      id: 'copy-quote-attributes',
+      title: "Dati copiati dall'offerta",
       blocks: [
         {
           type: 'paragraph',
-          text: 'Se hai il permesso di creare richieste proforma, nella colonna **Azioni** dell\'elenco Commesse (anche nel tab Commesse del contratto e dell\'anagrafica) trovi il pulsante **€**, sempre visibile sulla riga (non finisce mai nel menu con i tre puntini). Il colore indica lo stato: **grigio** nessuna richiesta, **blu** richiesta inviata e non ancora evasa, **giallo** richieste già evase (proforma emessa). La stessa richiesta si fa anche dentro la commessa, con il pulsante **Richiedi proforma** in alto accanto ad **Avanzamento commessa**: apre la stessa finestra.',
+          text: "Quando la commessa nasce da un contratto (**Programma**, creazione multipla o commessa multi-offerta), le **Informazioni aggiuntive** con lo stesso codice di quelle dell'offerta partono già compilate; nella commessa multi-offerta vale il primo valore non vuoto. Per le commesse esistenti usa **Copia dati dall'offerta** nell'intestazione (serve **Modifica**): riempie solo i campi vuoti, non sovrascrive mai, e ti dice quanti campi ha copiato.",
+        },
+      ],
+    },
+    {
+      id: 'proforma-request',
+      title: 'Richiesta di proforma',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Se hai il permesso di creare richieste proforma, trovi il pulsante **Richiedi proforma** in alto nel dettaglio della commessa, accanto ad **Avanzamento commessa**, in fondo al popup **Responsabili e Partecipanti** dell\'elenco Commesse e nell\'icona della colonna **€** della tabella (vedi **Azioni della tabella**): aprono tutti la stessa finestra.',
         },
         {
           type: 'steps',
           items: [
-            'Premi il pulsante **€** grigio: si apre la finestra **Richiesta emissione Proforma: Commessa #numero**.',
+            'Premi **Richiedi proforma**: si apre la finestra **Richiesta emissione Proforma: Commessa #numero**.',
             'Controlla la **Modalità di pagamento** presa dall\'offerta (se manca compare **Non indicata**).',
             'Scrivi le **Note per la Contabilità** (obbligatorie, massimo 5000 caratteri): il testo è precompilato con il titolo della finestra.',
             'Premi **Invia richiesta**. Il sistema crea una richiesta per le righe di tipo Consulenza e una per ciascun fornitore delle righe di tipo Ente (il fornitore scelto sulla riga dell’offerta).',
@@ -407,7 +400,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Con il pulsante **€** blu la finestra mostra **Ultima richiesta del** e la data: finché la richiesta non è evasa non se ne può inviare un\'altra e **Invia richiesta** resta disattivato. Con il pulsante giallo non si apre nulla: le richieste sono già evase e non se ne possono generare di nuove. Una commessa genera le richieste una sola volta.',
+          text: 'Se c\'è già una richiesta non evasa, la finestra mostra **Ultima richiesta del** e la data: non se ne può inviare un\'altra e **Invia richiesta** resta disattivato. Una commessa genera le richieste una sola volta: con le richieste già evase non se ne possono generare di nuove.',
         },
         {
           type: 'tip',
@@ -421,7 +414,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Una commessa **non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: in questo caso il pulsante **Elimina** non compare. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
+          text: 'Una commessa si elimina in tre modi, tutti con il permesso di eliminare le commesse: dal menu con i tre puntini della sua riga (**Elimina**), dal pulsante **Elimina** in alto nel suo dettaglio, oppure selezionandone una o più nell\'elenco e usando **Elimina selezionati**. Prima di eliminare ti viene chiesta una conferma; eliminata dal dettaglio, si torna all\'elenco. **Non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: nel dettaglio il pulsante Elimina non compare, dalla riga compare un messaggio che spiega il motivo, con Elimina selezionati il messaggio la conta tra quelle non eliminate. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
         },
       ],
     },
@@ -431,7 +424,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "La pagina **Commesse** mostra solo le commesse di **lavorazione**. Le commesse di tipo **Progetto** hanno una pagina propria, **Commesse di Progetto**, con la colonna **Non letti** e la tab **Chat** nel dettaglio; per ora quella pagina non compare nel menu. Dentro un **Contratto** e un'**Anagrafica**, le sezioni **Commesse** mostrano ancora le commesse di tutti i tipi: da lì trovi anche quelle di progetto.",
+          text: "La pagina **Commesse** mostra le commesse di tutti i tipi, **Lavorazione** e **Progetto**: la colonna **Tipo commessa** le distingue e il suo filtro restringe l'elenco a un tipo solo. Le commesse di progetto hanno anche una pagina propria, **Commesse di Progetto**, con la colonna **Non letti** e la tab **Chat** nel dettaglio; per ora quella pagina non compare nel menu. Anche le sezioni **Commesse** di un **Contratto** e di un'**Anagrafica** mostrano le commesse di tutti i tipi.",
         },
         {
           type: 'note',
@@ -446,7 +439,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; i livelli si sommano:" },
         { type: 'table', headers: ["Permesso", "Commesse visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Responsabile** o **Partecipante**."], ["**Visualizza per sede**", "Le tue e quelle la cui offerta è di una tua sede. Per una commessa con più offerte basta che lo sia una."], ["**Visualizza per competenza**", "Le tue e quelle in cui almeno una offerta di origine ha una categoria nel tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** tutte."], ["**Visualizza tutti**", "Tutte."]] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di una commessa che non puoi vedere mostra un errore di accesso. Vedere una commessa non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
-        { type: 'paragraph', text: "Chi vede una commessa vede anche i suoi task nel task board e nella pagina **Task**, se ha il permesso di vedere i Task, anche quando non ha un ruolo sul task; restano esclusi i task privati. Per modificarli serve un ruolo sul task o il permesso **Gestisci tutto** dei Task. Eccezione: un **Responsabile** o un **Partecipante** può completare un task della commessa che non ha assegnatari, e completandolo ne diventa assegnatario." },
+        { type: 'paragraph', text: "Chi vede una commessa vede anche i suoi task nel task board e nella pagina **Task**, se ha il permesso di vedere i Task, anche quando non ha un ruolo sul task; restano esclusi i task privati. Per modificarli serve un ruolo sul task o il permesso **Gestisci tutto** dei Task. Eccezione: un **Responsabile** o un **Partecipante** può completare a suo nome un task della commessa, anche se è già assegnato a un collega, e completandolo ne diventa uno degli assegnatari." },
         { type: 'note', text: "Se crei una commessa senza esserne Responsabile o Partecipante, non la vedrai più a meno di avere **Visualizza tutti**, **Visualizza per sede** o **Visualizza per competenza**." },
         { type: 'tip', text: "Chi può modificare la commessa può coinvolgere un collega che non la vede menzionandolo in una nota con **Menziona chiunque**: al salvataggio diventa **Partecipante** (vedi **Note e documenti** nella guida generale)." },
       ],

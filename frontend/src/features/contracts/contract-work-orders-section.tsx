@@ -2,14 +2,12 @@ import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from '
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { RecordCard, RecordCardHeader } from '@/components/detail/record-panel'
-import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import { PRESET_LIST_FILTERS } from '@/features/table/advanced-filters/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
-import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 
 export interface ContractWorkOrdersSectionHandle {
   /** Purges and reloads the tab's grid (AC-062: called after "Programma" generates a new Commessa). */
@@ -62,22 +60,7 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
     const [rowCount, setRowCount] = useState<number | null>(null)
     const handleRowCountChanged = useCallback((next: number | null) => setRowCount(next), [])
 
-    const {
-      handleAction,
-      isBusy,
-      activityRow,
-      closeActivity,
-      proformaRow,
-      closeProforma,
-      resolveActionState,
-      iconMap,
-      renderers,
-      sheet,
-      forceCloseDialog,
-    progressDialog,
-    requestUpdateDialog,
-    collaborationDialogs,
-    } = useWorkOrderRowActions({ onMutated: refreshGrid, forceMode: OPEN_MODE_MODAL })
+    const { handleAction, resolveActionHref, iconMap, renderers, sheet, dialogs } = useWorkOrderRowActions({ onMutated: refreshGrid, forceMode: OPEN_MODE_MODAL })
 
     const count = rowCount ?? 0
 
@@ -102,22 +85,14 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
             hiddenAdvancedFilters={PRESET_LIST_FILTERS}
             renderers={renderers}
             onAction={handleAction}
-            isBusy={isBusy}
-            resolveActionState={resolveActionState}
+            resolveActionHref={resolveActionHref}
             iconMap={iconMap}
             onRowCountChanged={handleRowCountChanged}
           />
         </div>
 
         {sheet}
-        {forceCloseDialog}
-        {progressDialog}
-        {requestUpdateDialog}
-        {collaborationDialogs}
-
-        <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refreshGrid} />
-
-        <ResourceActivityDialog resource={WORK_ORDERS_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
+        {dialogs}
       </RecordCard>
     )
   },

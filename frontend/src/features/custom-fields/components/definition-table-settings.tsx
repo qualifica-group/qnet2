@@ -2,11 +2,13 @@ import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { FieldDefinitionFormValues } from '@/features/custom-fields/field-definition-form-values'
 import {
+  TABLE_GRID_LABEL_MAX_LENGTH,
   TABLE_MAX_ROWS,
+  isGridLabelColumn,
   type TableColumnRow,
   type TableDefinitionBag,
 } from '@/features/custom-fields/field-definition-table'
@@ -22,6 +24,8 @@ interface DefinitionTableSettingsProps {
   summaryColumns: TableColumnRow[]
   onSelectableChange: (enabled: boolean) => void
   onSummaryColumnChange: (key: string) => void
+  /** Offers the grid label of a date summary (attributes only: custom field grids keep the table cell). */
+  gridLabel?: boolean
 }
 
 function numberInputValue(value: number | null): string {
@@ -35,8 +39,10 @@ export function DefinitionTableSettings({
   summaryColumns,
   onSelectableChange,
   onSummaryColumnChange,
+  gridLabel = false,
 }: DefinitionTableSettingsProps) {
   const { t } = useTranslation()
+  const showGridLabel = gridLabel && table.summary_column !== '' && isGridLabelColumn(table, table.summary_column)
 
   return (
     <div className="flex flex-col gap-3">
@@ -130,6 +136,22 @@ export function DefinitionTableSettings({
             />
           ) : null}
         </div>
+        {showGridLabel ? (
+          <FormField
+            control={control}
+            name="table.summary_grid_label"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs">{t('customFields.tableEditor.summaryGridLabel')}</FormLabel>
+                <FormControl>
+                  <Input className="h-8 text-sm" autoComplete="off" maxLength={TABLE_GRID_LABEL_MAX_LENGTH} {...field} />
+                </FormControl>
+                <FormDescription className="text-xs">{t('customFields.tableEditor.summaryGridLabelHint')}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-2">

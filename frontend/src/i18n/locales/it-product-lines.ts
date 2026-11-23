@@ -15,7 +15,7 @@ export const productLines = {
   category: 'Categoria prodotto {{n}}',
   add: 'Aggiungi riga prodotto',
   remove: 'Rimuovi riga prodotto',
-  hint: 'Ogni riga collega una categoria genitore a una sua categoria discendente: scegli prima la categoria genitore, poi la categoria (filtrata di conseguenza). Con "Filtro" puoi restringere la scelta a un gruppo intermedio. Rimuovi una riga con il cestino.',
+  hint: 'Una riga per categoria genitore: scegli la categoria genitore, poi una o più sue categorie ("Seleziona tutte" le prende tutte, un clic su un gruppo prende tutto il gruppo). Le categorie gestite a riga singola ammettono una sola categoria. Con "Filtro" puoi restringere la scelta a un gruppo intermedio. Rimuovi una riga con il cestino.',
   /** Filtro intermedio facoltativo tra categoria genitore e categoria (direttiva utente 2026-10-08), solo UI: non viene salvato. */
   filterCategory: 'Filtro intermedio {{n}}',
   addFilter: 'Filtro',
@@ -34,6 +34,12 @@ export const productLines = {
   selectPlaceholder: 'Seleziona…',
   selectEmpty: 'Nessun risultato trovato.',
   selectError: 'Impossibile caricare le opzioni.',
+  /** Spec 0416: scelta multipla delle categorie di una categoria genitore. */
+  selectAllSubcategories: 'Seleziona tutte',
+  allSubcategoriesSelected: 'Tutte le categorie',
+  clearSubcategories: 'Deseleziona tutte',
+  subcategoriesCount: '{{selected}} di {{total}} selezionate',
+  includeChildrenHint: 'Clicca di nuovo per includere anche le sue sottocategorie.',
   /** Spec 0129 D-5: nome accessibile per riga della checkbox "Tutte" (CompetenceLinesField). */
   allCategories: 'Tutte le categorie, riga {{n}}',
   /** Etichetta visibile accanto alla checkbox. */

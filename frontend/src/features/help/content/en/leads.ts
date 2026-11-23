@@ -143,7 +143,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "If you assign or change the lead's **Operator** after the conversion, the requests born from the lead move to the new operator too, who is notified. Closed requests and those you assigned by hand to another operator in Request Management stay as they are; removing the operator from the lead does not remove it from the requests.",
+          text: "If you assign or change the lead's **Operator** after the conversion, the requests born from the lead move to the new operator too, who is notified unless already among the request's Account managers. Closed requests and those you assigned by hand to another operator in Request Management stay as they are; removing the operator from the lead does not remove it from the requests.",
         },
         {
           type: 'paragraph',

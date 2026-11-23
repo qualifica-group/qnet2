@@ -5,6 +5,7 @@
  */
 
 import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
+import type { InvoicePaymentStatus, InvoiceType } from '@/features/invoices/types'
 
 export type ContractCommissionType = 'PERCENTAGE' | 'FIXED_AMOUNT'
 
@@ -34,6 +35,15 @@ export interface ContractLinePayment {
   has_unpaid: boolean
 }
 
+/** Spec 0403 D-3: the newest document of THIS commessa billing the line, with its computed payment status. */
+export interface ContractLineDocument {
+  id: number
+  type: InvoiceType
+  /** "12/2026" */
+  number_label: string
+  payment_status: InvoicePaymentStatus
+}
+
 export interface ContractDataLine {
   quote_line_id: number
   product: { id: number; code: string; name: string }
@@ -51,6 +61,8 @@ export interface ContractDataLine {
   effective_revenue: string
   warnings: ContractDataWarning[]
   payment: ContractLinePayment
+  /** Null: no proforma issued for the line yet. */
+  document: ContractLineDocument | null
 }
 
 export interface ContractTypologyTotal {

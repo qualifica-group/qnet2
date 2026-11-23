@@ -5,6 +5,8 @@
  * engineering size limits (see `.claude/rules/engineering.md` §6).
  */
 
+import { requestManagementDashboard } from './en-request-management-dashboard'
+
 export const requestManagement = {
   title: 'Request Management',
   subtitle: 'Work opportunities: verify contacts and complete dynamic fields.',
@@ -20,7 +22,6 @@ export const requestManagement = {
     expectedCloseDate: 'Expected close date',
     managerGa1: 'Tutor',
     managers: 'Account managers',
-    otherManagers: 'Other account managers',
     operationalSite: 'Operational site',
     firstName: 'First name',
     lastName: 'Last name',
@@ -144,6 +145,8 @@ export const requestManagement = {
         reporterSearch: 'Search a reporter',
         commercial: 'Sales rep',
         commercialSearch: 'Search a sales rep',
+        commercialPartner: 'Commercial partner',
+        commercialPartnerSearch: 'Search a commercial partner',
         operationalSite: 'Operational site',
         operationalSiteSearch: 'Search a site',
         selectPlaceholder: 'Select',
@@ -175,6 +178,22 @@ export const requestManagement = {
       save: 'Create request',
       saving: 'Creating…',
       success: 'Request created.',
+      /** Spec 0411: one offer per parent category of the product lines. */
+      successPerRoot: '{{count}} requests created, one per parent category.',
+      /** Spec 0411: shown before saving when the lines span several parent categories. */
+      /** Spec 0415: files queued in New request, uploaded onto the offers after the save. */
+      documents: {
+        title: 'Documents',
+        description: 'The files are attached to the request when it is saved.',
+        descriptionPerOffer: 'Several requests will be created: for each file pick the request (parent category) to attach it to.',
+        pick: 'Choose the files to attach',
+        offerFor: 'Request to attach {{name}} to',
+        offerOption: '{{root}} request',
+        remove: 'Remove {{name}}',
+        uploadFailed_one: 'Request created, but the file {{names}} was not uploaded: attach it from the request panel.',
+        uploadFailed_other: 'Request created, but {{count}} files were not uploaded ({{names}}): attach them from the request panel.',
+      },
+      rootSplitNotice: 'Note: the product lines belong to {{count}} parent categories ({{roots}}). Saving will create {{count}} requests, one per parent category, on the same opportunity.',
       validation: {
         productLinesRequired: 'Add at least one product line.',
         productLineIncomplete: 'Select a parent category and a product category for every row.',
@@ -196,8 +215,15 @@ export const requestManagement = {
    */
   offerLines: {
     hintNoCategory: 'Pick a product category first: it scopes the selectable products.',
-    hintSimplified:
-      'Simplified category: pick the product, quantity, unit price and VAT rate are filled in automatically by the system.',
+    hintSimplified: 'Pick the product: quantity, price and VAT are set by the system.',
+    hiddenByCategory: 'The product category of this request hides the offer in Gestione Richieste.',
+    simplified: {
+      label: 'Product',
+      placeholder: 'Pick the product…',
+      placeholderMany: 'Pick the products…',
+      remove: 'Remove',
+      indicativeValue: 'Indicative value (VAT included)',
+    },
     editAction: 'Edit the offer rows',
     dialogTitle: 'Offer rows',
     dialogDescription: 'Edit product, quantity, unit price and VAT of this offer\'s rows.',
@@ -233,6 +259,8 @@ export const requestManagement = {
       reporterSearch: 'Search a reporter',
       commercial: 'Sales rep',
       commercialSearch: 'Search a sales rep',
+      commercialPartner: 'Commercial partner',
+      commercialPartnerSearch: 'Search a commercial partner',
       operationalSite: 'Operational site',
       operationalSiteSearch: 'Search a site',
       selectPlaceholder: 'Select',
@@ -292,10 +320,14 @@ export const requestManagement = {
       description: "The request's product lines.",
       fieldLabel: 'Product lines',
       hint: 'The categories chosen here scope the products of interest and, once saved, the request-specific fields.',
+      /** Spec 0411: the request is bound to one parent category. */
+      rootLocked: 'This request belongs to the parent category {{root}}: only its categories can be chosen. For another category create a new request.',
     },
     collaboration: {
       notesTab: 'Notes',
       documentsTab: 'Documents',
+      /** Spec 0415: the files already on the opportunity, read-only. */
+      opportunityDocumentsTab: 'Opportunity documents',
       activityTab: 'History',
     },
     validation: {
@@ -390,80 +422,5 @@ export const requestManagement = {
       jobFailed: 'Report generation failed. Please try again.',
     },
   },
-  // Charts dashboard (spec 0107): shown by the Request Management Statistics page (spec 0185);
-  // category/operator names stay domain values, never i18n keys.
-  dashboard: {
-    regionLabel: 'Request Management dashboard',
-    pageForbidden: "You don't have permission to view Request Management Statistics.",
-    editFilters: 'Filters',
-    // Spec 0192: one-click periods in the toolbar.
-    periods: {
-      label: 'Period',
-      today: 'Today',
-      yesterday: 'Yesterday',
-      last7Days: 'Last 7 days',
-      thisMonth: 'This month',
-      lastMonth: 'Last month',
-      all: 'All time',
-      custom: 'Custom',
-    },
-    tabsLabel: 'Statistics sections',
-    overviewTab: 'Overview',
-    applied: {
-      title: 'Applied filters',
-      period: 'Period',
-      periodValue: '{{from}} – {{to}}',
-      // Spec 0169 D-5: open bounds.
-      periodFrom: 'from {{from}}',
-      periodTo: 'up to {{to}}',
-      periodAll: 'All time',
-      categories: 'Categories',
-      sites: 'Sites',
-      operators: 'Operators',
-      rowMode: 'Rows',
-      more: '+{{count}}',
-      allOperatorsOfSites: 'All of the selected sites',
-    },
-    noCategories:
-      'Nothing to show yet: there are no requests in the categories included in the report. The dashboard will fill in as soon as one is recorded.',
-    errors: {
-      network: 'Unable to reach the server: check your connection and try again.',
-      invalidFilters:
-        'The applied filters are no longer valid (for example a category is no longer available). Update them from the Filters button.',
-      generic: 'Unable to load the dashboard because of a server error. Please try again shortly.',
-    },
-    empty: 'No charts to show for this selection.',
-    // Spec 0141: a reportable category may have no column configured.
-    tilesEmpty: 'No columns configured for this category.',
-    overall: 'Overall',
-    indicatorsChartTitle: 'Indicator profile',
-    // Spec 0192 D-4: comparison with the previous period of equal length.
-    trend: {
-      new: 'New',
-      vsPrevious: 'Previous period: {{value}}',
-    },
-    shares: {
-      title: 'Split by category',
-      others: 'Other categories',
-      item: '{{label}}: {{value}} ({{percent}}%)',
-      lead: '{{label}} {{percent}}%',
-      more: '+{{count}} more',
-    },
-    breakdown: {
-      title: 'Split by current status',
-      trigger: '{{label}} split by status',
-      item: '{{label}}: {{value}}',
-    },
-    heatmap: {
-      title: 'Categories × indicators map',
-      description: 'Darker = higher value for that indicator. Click a category to open it.',
-      category: 'Category',
-      notConfigured: 'Not configured',
-    },
-    leaderboard: {
-      title: 'Operator ranking',
-      rank: 'Rank',
-      operator: 'Operator',
-    },
-  },
+  dashboard: requestManagementDashboard,
 }

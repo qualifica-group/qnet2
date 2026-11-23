@@ -22,6 +22,7 @@ use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestAttributeResolver;
 use App\RequestManagement\RequestModule;
+use App\RequestManagement\RequestRegistryTypeResolver;
 use App\Services\QuoteService;
 use App\Services\RequestManagement\RequestAssignmentService;
 use App\Services\RequestManagement\RequestCreationService;
@@ -82,15 +83,17 @@ class RequestManagementController extends BaseApiController
      * (the criteria are a collection of objects), gated by the SAME
      * `request-management.create` that gates the form itself.
      */
-    public function formContext(RequestFormContextRequest $request): JsonResponse
+    public function formContext(RequestFormContextRequest $request, RequestRegistryTypeResolver $registryTypes): JsonResponse
     {
         try {
             $module = RequestModule::fromRequest($request);
             Gate::forUser($request->user())->authorize($module->permission('create'));
+            $categoryIds = $request->productCategoryIds();
 
-            return $this->ok(new RequestFormContextResource(
-                $this->attributeResolver->forCategories($request->productCategoryIds(), FormMode::Create),
-            ));
+            return $this->ok(new RequestFormContextResource([
+                ...$this->attributeResolver->forCategories($categoryIds, FormMode::Create),
+                'registry_type' => $registryTypes->forCategories($categoryIds),
+            ]));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -202,6 +205,8 @@ class RequestManagementController extends BaseApiController
                         // Spec 0357: the Offerta's "Commerciale", next to
                         // the Segnalatore in the attribution block.
                         'commercial_id',
+                        // Spec 0417: the "Partner commerciale" twin.
+                        'commercial_partner_id',
                         // Spec 0097, D-9: the "Supervisore", the Offerta's
                         // commission recipient — an attribution scalar
                         // written like the two above, independent of the
@@ -209,10 +214,9 @@ class RequestManagementController extends BaseApiController
                         'supervisor_id',
                         // Spec 0097, D-5: the panel writes the WHOLE team.
                         // `operator_id` is deliberately NOT in this list any
-                        // more — UpdateRequestRequest no longer validates it,
-                        // so it could never reach `validated()`; it survives
-                        // as `updateWork()`'s internal key for the grid cell,
-                        // the bulk assign and the transfer.
+                        // more — UpdateRequestRequest prohibits it; the bulk
+                        // assign and the transfer write that slot through
+                        // RequestOperatorWriter.
                         'manager_slots',
                         // Spec 0056: the Sede operativa, same attribution block.
                         'operational_site_id',

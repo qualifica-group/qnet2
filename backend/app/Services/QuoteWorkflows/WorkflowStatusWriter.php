@@ -28,6 +28,10 @@ use Illuminate\Support\Facades\DB;
  * so every write here that touches either goes through forceFill()/
  * forceCreate() — the request-payload fields (name/color/group) remain on
  * the normal, guarded fill() path.
+ *
+ * Spec 0404 part A: a custom row carries its system status link
+ * (`quote_system_status_id`, its `group` follows); a system row stays linked
+ * to the system status with its own key (QuoteWorkflowStatus saving hook).
  */
 final class WorkflowStatusWriter
 {
@@ -45,10 +49,10 @@ final class WorkflowStatusWriter
      * pinned rows' descriptive fields when the client filled them up front;
      * null falls back to the default label.
      *
-     * @param  array<int, array{name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $customStatuses
-     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $openOverride
-     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedWonOverride
-     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedLostOverride
+     * @param  array<int, array{name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}>  $customStatuses
+     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool, notify?: ?array<string, mixed>}|null  $openOverride
+     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool, notify?: ?array<string, mixed>}|null  $closedWonOverride
+     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool, notify?: ?array<string, mixed>}|null  $closedLostOverride
      */
     public function createWithCustoms(
         ?int $workflowId,
@@ -86,7 +90,7 @@ final class WorkflowStatusWriter
      * assertMutableSystemRow() instead (everything but `group`, spec 0047
      * data contract) and never counted as a custom / never deleted.
      *
-     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statusRows
+     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}>  $statusRows
      */
     public function syncCustoms(?int $workflowId, array $statusRows): void
     {
@@ -143,21 +147,24 @@ final class WorkflowStatusWriter
      * contract): rejects, with a 422, any submission whose `group` differs
      * from what is currently persisted.
      *
-     * @param  array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}  $submitted
+     * @param  array{id: ?int, name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}  $submitted
      */
     public function assertMutableSystemRow(QuoteWorkflowStatus $status, array $submitted): void
     {
-        if ($submitted['group'] !== $status->group->value) {
+        $group = $submitted['group'] ?? null;
+
+        if ($group !== null && $group !== $status->group->value) {
             abort(422, "The '{$status->name}' status is a system status: its group cannot change.");
         }
     }
 
     /**
      * The purely DESCRIPTIVE attributes every row (system or custom) accepts:
-     * name, description, color and the `requires_note` marker — everything
+     * name, description, color, the `requires_note` marker and the `notify`
+     * email (spec 0419) — everything
      * but `group`, which a system row may never change.
      *
-     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}  $row
+     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool, notify?: ?array<string, mixed>}  $row
      * @return array<string, mixed>
      */
     private function descriptiveAttributes(array $row): array
@@ -167,11 +174,30 @@ final class WorkflowStatusWriter
             'description' => $row['description'],
             'color' => $row['color'],
             'requires_note' => $row['requires_note'],
+            // Spec 0419: absent (seeders, older callers) = no notification.
+            'notify' => $row['notify'] ?? null,
         ];
     }
 
     /**
-     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $override  client-supplied descriptive seed for this pinned row
+     * Spec 0404 part A: the submitted system status link wins; a bare `group`
+     * (older clients, imports) is left to the model's saving hook, which links
+     * the first system status with that behavior.
+     *
+     * @param  array{group?: ?string, quote_system_status_id?: ?int}  $row
+     * @return array<string, mixed>
+     */
+    private function linkAttributes(array $row): array
+    {
+        $systemStatusId = $row['quote_system_status_id'] ?? null;
+
+        return $systemStatusId !== null
+            ? ['quote_system_status_id' => $systemStatusId]
+            : ['group' => $row['group'] ?? null];
+    }
+
+    /**
+     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool, notify?: ?array<string, mixed>}|null  $override  client-supplied descriptive seed for this pinned row
      */
     private function forceCreateSystemRow(?int $workflowId, WorkflowStatusSystemKey $key, int $sortOrder, ?array $override = null): void
     {
@@ -190,11 +216,12 @@ final class WorkflowStatusWriter
             'system_key' => $key->value,
             'group' => $group,
             'requires_note' => $override['requires_note'] ?? false,
+            'notify' => $override['notify'] ?? null,
         ]);
     }
 
     /**
-     * @param  array{name: string, description: ?string, color: ?string, group: string, requires_note: bool}  $status
+     * @param  array{name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}  $status
      */
     private function forceCreateCustomRow(?int $workflowId, array $status, int $sortOrder): void
     {
@@ -205,8 +232,9 @@ final class WorkflowStatusWriter
             'color' => $status['color'],
             'sort_order' => $sortOrder,
             'system_key' => null,
-            'group' => $status['group'],
+            ...$this->linkAttributes($status),
             'requires_note' => $status['requires_note'],
+            'notify' => $status['notify'] ?? null,
         ]);
     }
 
@@ -214,9 +242,9 @@ final class WorkflowStatusWriter
      * Splits $statusRows into [systemRows, customRows] by whether a
      * submitted `id` resolves to an existing SYSTEM row in $existing.
      *
-     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statusRows
+     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}>  $statusRows
      * @param  Collection<int, QuoteWorkflowStatus>  $existing
-     * @return array{0: array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>, 1: array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>}
+     * @return array{0: array<int, array{id: ?int, name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}>, 1: array<int, array{id: ?int, name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}>}
      */
     private function partitionSubmitted(array $statusRows, Collection $existing): array
     {
@@ -237,7 +265,7 @@ final class WorkflowStatusWriter
     }
 
     /**
-     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $systemRows
+     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}>  $systemRows
      * @param  Collection<int, QuoteWorkflowStatus>  $existing
      */
     private function applySystemUpdates(array $systemRows, Collection $existing): void
@@ -257,7 +285,7 @@ final class WorkflowStatusWriter
      * deletes the customs left out, and returns the kept ids IN ORDER — the
      * sequence resequence() places between 'open' and 'closed'.
      *
-     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $customRows
+     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group?: ?string, quote_system_status_id?: ?int, requires_note: bool, notify?: ?array<string, mixed>}>  $customRows
      * @param  Collection<int, QuoteWorkflowStatus>  $existing
      * @return array<int, int>
      */
@@ -272,7 +300,7 @@ final class WorkflowStatusWriter
                     ...$this->descriptiveAttributes($row),
                     'sort_order' => 0,
                     'system_key' => null,
-                    'group' => $row['group'],
+                    ...$this->linkAttributes($row),
                 ]);
 
                 $keptIds[] = $created->id;
@@ -286,7 +314,7 @@ final class WorkflowStatusWriter
                 abort(422, "Unknown custom status id [{$row['id']}] for this workflow.");
             }
 
-            $status->fill([...$this->descriptiveAttributes($row), 'group' => $row['group']])->save();
+            $status->fill([...$this->descriptiveAttributes($row), ...$this->linkAttributes($row)])->save();
             $keptIds[] = $status->id;
         }
 

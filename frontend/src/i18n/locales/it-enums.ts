@@ -95,6 +95,7 @@ export const enums = {
   },
   commission_recipient_role: {
     COMMERCIAL: 'Commerciale',
+    COMMERCIAL_PARTNER: 'Partner commerciale',
     REPORTER: 'Segnalatore',
     SUPERVISOR: 'Supervisore',
   },
@@ -209,6 +210,12 @@ export const enums = {
     completed: 'Conclusa',
     cancelled: 'Annullata',
     terminated: 'Disdetta',
+  },
+  // Stato proforma della commessa (spec 0407), valori del filtro della colonna "€".
+  work_order_proforma_status: {
+    none: 'Non richiesta',
+    pending: 'Richiesta',
+    issued: 'Emessa',
   },
   // Filtri avanzati della tabella Task (spec 0147), come nella board della commessa.
   task_list_status: {

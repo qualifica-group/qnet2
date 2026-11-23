@@ -35,9 +35,20 @@ vi.mock('@/features/modules/module-registry', () => ({
           basePath: '/projects',
           defaultMode: 'modal',
           labelKey: 'navigation.projects',
-          DetailScreen: ({ id, onEdit, onSaved }: { id: number; onEdit?: () => void; onSaved?: () => void }) => (
+          DetailScreen: ({
+            id,
+            onEdit,
+            onSaved,
+            initialTab,
+          }: {
+            id: number
+            onEdit?: () => void
+            onSaved?: () => void
+            initialTab?: string
+          }) => (
             <div>
               <div>{`detail-${id}`}</div>
+              <div>{`tab:${initialTab ?? 'none'}`}</div>
               {onEdit && <button onClick={onEdit}>detail-edit</button>}
               {onSaved && <button onClick={onSaved}>detail-save</button>}
             </div>
@@ -65,10 +76,11 @@ function LocationProbe() {
 }
 
 function Harness() {
-  const { openCreate, openCreateWith, openView, sheet } = useModuleOpener('projects')
+  const { openCreate, openCreateWith, openView, openViewTab, sheet } = useModuleOpener('projects')
   return (
     <div>
       <button onClick={() => openView({ id: 5 } as TableRow)}>view</button>
+      <button onClick={() => openViewTab({ id: 5 } as TableRow, 'notes')}>view-notes</button>
       <button onClick={() => openCreate()}>create</button>
       {/*
         Passed straight to `onClick`, exactly as the 24 production call sites do
@@ -188,6 +200,15 @@ describe('useModuleOpener', () => {
       expect(screen.queryByText(/^detail-/)).not.toBeInTheDocument()
     })
 
+    it('spec 0405: openViewTab navigates to the detail page with the tab in the query', () => {
+      renderHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'view-notes' }))
+
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects/5?tab=notes')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
     it('AC-002: openCreate(params) navigates to the deep-link with a query string', () => {
       renderHarness()
 
@@ -300,6 +321,21 @@ describe('useModuleOpener', () => {
 
       expect(screen.getByText('detail-5')).toBeInTheDocument()
       expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+
+    it('spec 0405: openViewTab opens the Sheet handing the tab to the detail, view keeps none', () => {
+      renderHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'view-notes' }))
+      expect(screen.getByText('tab:notes')).toBeInTheDocument()
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+
+    it('spec 0405: a plain view hands no tab to the detail', () => {
+      renderHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'view' }))
+      expect(screen.getByText('tab:none')).toBeInTheDocument()
     })
 
     it("view's onEdit swaps the SAME Sheet to the edit form for that row, never a second Sheet", () => {

@@ -29,6 +29,9 @@ final class TableFieldSchema
 
     public const array SUMMARY_STRATEGIES = ['selected', 'max', 'min'];
 
+    /** Summary column types a `summary.grid_label` may name: the grid column then shows that date alone. */
+    public const array GRID_LABEL_COLUMN_TYPES = ['date', 'datetime'];
+
     public const array RESERVED_KEYS = ['id'];
 
     private const array NUMERIC_TYPES = ['integer', 'decimal'];

@@ -63,6 +63,7 @@ class ProductCategoryService
                 'revenue_type_id' => $data->revenueTypeId,
                 'is_selectable' => $data->isSelectable,
                 'is_active' => $data->isActive,
+                'requires_contact_transfer_before_contract' => $data->requiresContactTransferBeforeContract,
                 'is_reportable' => $data->isReportable,
                 'report_columns' => $this->normalizeReportColumns($data->reportColumns),
                 'manager_labels' => $this->normalizeManagerLabels($data->managerLabels),

@@ -272,6 +272,8 @@ export interface TableActionDefinition {
   count_field?: string | null
   /** Always rendered on the row, on top of the first `INLINE_ACTION_LIMIT` actions, never in the overflow menu. */
   pinned?: boolean
+  /** Always in the overflow menu, never inline: the counterpart of `pinned` (spec 0405). */
+  menu?: boolean
 }
 
 /** A single sort directive. */

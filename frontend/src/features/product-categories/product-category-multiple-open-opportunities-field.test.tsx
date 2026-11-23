@@ -103,6 +103,7 @@ describe('resolveInheritedMultipleOpenOpportunitiesFlag', () => {
         id: 1,
         name: 'Electronics',
         multiple_open_opportunities: true,
+        request_registry_type: 'individual',
         children: [treeNode({ id: 2, name: 'Wiring', parent_id: 1, multiple_open_opportunities: true })],
       }),
     ])

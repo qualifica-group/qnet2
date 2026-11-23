@@ -31,7 +31,8 @@ if (! function_exists('singleOfferLineActor')) {
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['quotes.create', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
+        // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the actor sees the costs.
+        $user->givePermissionTo(['quotes.create', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web'), Permission::findOrCreate('quotes.viewCosts', 'web')]);
 
         QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
 

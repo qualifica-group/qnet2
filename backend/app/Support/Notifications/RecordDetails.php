@@ -61,7 +61,7 @@ final class RecordDetails
      */
     private const array QUOTE_RELATIONS = [
         'opportunity.registry', 'source',
-        'quoteWorkflowStatus', 'supervisor', 'operator',
+        'quoteWorkflowStatus', 'supervisor', 'managers',
         'operationalSite.addresses.city',
     ];
 
@@ -136,7 +136,7 @@ final class RecordDetails
             'notifications.fields.sdi_code' => $personalData?->sdi_code,
             'notifications.fields.source' => $registry->source?->name,
             'notifications.fields.supervisor' => $registry->supervisor?->name,
-            'notifications.fields.account_managers' => self::managerList($registry->managers),
+            'notifications.fields.account_managers' => self::nameList($registry->managers),
         ]);
     }
 
@@ -155,13 +155,13 @@ final class RecordDetails
             'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
             'notifications.fields.status' => self::statusLabel($opportunity),
             'notifications.fields.supervisor' => $opportunity->supervisor?->name,
-            'notifications.fields.operator' => $opportunity->operatorManager()?->name,
+            'notifications.fields.account_managers' => self::nameList($opportunity->managers),
         ]);
     }
 
     /**
      * Spec 0186: the Offerta's OWN facts — its title, Sede, working status,
-     * Supervisore, Fonte (spec 0332) and GA2 Operatore (spec 0087, D-10: they can diverge from
+     * Supervisore, Fonte (spec 0332) and Gestori Account (they can diverge from
      * the parent Opportunity's) — plus the client, which only the Opportunity
      * carries.
      *
@@ -180,7 +180,7 @@ final class RecordDetails
             'notifications.fields.status' => $quote->quoteWorkflowStatus?->name,
             'notifications.fields.source' => $quote->source?->name,
             'notifications.fields.supervisor' => $quote->supervisor?->name,
-            'notifications.fields.operator' => $quote->operator?->name,
+            'notifications.fields.account_managers' => self::nameList($quote->managers),
         ]);
     }
 
@@ -201,7 +201,7 @@ final class RecordDetails
             'notifications.fields.status' => $workOrder->workOrderWorkflowStatus?->name,
             'notifications.fields.start_date' => $workOrder->start_date?->format('d/m/Y'),
             'notifications.fields.supervisors' => $workOrder->supervisors->pluck('name')->implode(', '),
-            'notifications.fields.participants' => self::managerList($workOrder->participants),
+            'notifications.fields.participants' => self::positionedList($workOrder->participants),
         ]);
     }
 
@@ -218,13 +218,23 @@ final class RecordDetails
     }
 
     /**
-     * The managers as "1. Ada Lovelace, 2. Alan Turing" — the pivot position
-     * is the "G.A. n" slot and carries the order of importance, so it is part
-     * of the information, not decoration.
+     * The Gestori Account as "Ada Lovelace, Alan Turing", in team order: they
+     * are all the same role (decisione utente 2026-11-18), so no slot number.
+     *
+     * @param  Collection<int, User>  $users
+     */
+    private static function nameList(Collection $users): ?string
+    {
+        return $users->isEmpty() ? null : $users->pluck('name')->implode(', ');
+    }
+
+    /**
+     * The Commessa's Partecipanti as "1. Ada Lovelace, 2. Alan Turing": there
+     * the pivot position carries the order of importance.
      *
      * @param  Collection<int, User>  $managers
      */
-    private static function managerList(iterable $managers): ?string
+    private static function positionedList(iterable $managers): ?string
     {
         $parts = [];
 

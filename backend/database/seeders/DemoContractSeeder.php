@@ -125,8 +125,18 @@ class DemoContractSeeder extends Seeder
             self::SHAPE_VALIDATED => $this->validate($contract, $faker, $actor),
             self::SHAPE_WORKING => $this->moveToWorkingStatus($contract, $faker),
             self::SHAPE_TERMINATED => $this->terminate($contract, $faker, $actor),
-            self::SHAPE_SUSPENDED => $this->moveQuoteToGroup($quote, WorkflowStatusSystemKey::Open, $actor),
+            self::SHAPE_SUSPENDED => $this->suspend($contract, $quote, $faker, $actor),
         };
+    }
+
+    /**
+     * Only a contract already worked on survives its offer leaving closed_won
+     * (spec 0072 D-3 rev.): an untouched one would be deleted, not suspended.
+     */
+    private function suspend(Contract $contract, Quote $quote, Generator $faker, User $actor): void
+    {
+        $this->fillDetails($contract, $faker, $faker->numberBetween(90, 365));
+        $this->moveQuoteToGroup($quote, WorkflowStatusSystemKey::Open, $actor);
     }
 
     private function validate(Contract $contract, Generator $faker, User $actor): void
@@ -197,7 +207,7 @@ class DemoContractSeeder extends Seeder
     /**
      * Moves the offer onto the row of ITS OWN resolved workflow set carrying
      * $systemKey — never a status picked from another set (spec 0083 AC-021).
-     * Leaving closed_won is what suspends the contract (D-3).
+     * Leaving closed_won is what suspends a worked-on contract (D-3).
      */
     private function moveQuoteToGroup(Quote $quote, WorkflowStatusSystemKey $systemKey, User $actor): void
     {

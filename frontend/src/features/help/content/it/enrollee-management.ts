@@ -26,7 +26,7 @@ const guide: HelpGuide = {
               'Creazione',
               'Non ha il pulsante di creazione: una richiesta entra negli iscritti solo cambiando stato.',
             ],
-            ['Permessi', 'Ha permessi propri, separati da quelli di Gestione Richieste.'],
+            ['Permessi', 'Ha permessi propri, separati da quelli di Gestione Richieste (anche **Trasferisci contatto** e **Trasferisci ad altra anagrafica**).'],
             ['Categorie', 'Come in Gestione Richieste: le categorie con **Visibile in** su **Opportunità / Offerte** non hanno una scheda e non si possono scegliere, e gli iscritti che hanno solo categorie di questo tipo non compaiono.'],
             [
               'Documenti e note',
@@ -64,6 +64,20 @@ const guide: HelpGuide = {
             'Un prodotto già nelle righe è segnato **Già aggiunto** e non si seleziona: la quantità si cambia sulla riga.',
             'Con una categoria a riga singola il clic su un prodotto sostituisce quello della riga; con una categoria semplificata la riga mostra solo gli importi.',
           ],
+        },
+      ],
+    },
+    {
+      id: 'quote-under-contract',
+      title: "Offerta a contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Se l'offerta ha un contratto è **congelata**: nel pannello **Lavora** compare l'avviso **Offerta a contratto** e, senza il permesso **Modifica offerte a contratto**, i campi sono in sola lettura (anche le celle della lista). Con il permesso, il salvataggio chiede prima conferma in un popup.",
+        },
+        {
+          type: 'note',
+          text: "Restano sempre modificabili i campi operativi: **Gestori account** (team), **Data prossimo richiamo**, **Sede operativa** e **Note generali**.",
         },
       ],
     },

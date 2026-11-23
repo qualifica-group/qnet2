@@ -29,8 +29,8 @@ const guide: HelpGuide = {
             ['Originating lead', '**Lead** (optional, prefills and locks the derived fields; visible only to the roles allowed to, normally the super-admin)'],
             ['General notes', 'Free-form text'],
             ['Details', '**Title** (optional), **Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
-            ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Reporter** with the **Assigned rewards**'],
-            ['Classification', '**Product lines** (at least one row: parent category, optional intermediate **Filter**, product category; categories whose **Used in** is **Requests / Enrollees** are not offered), **Products of interest**'],
+            ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Commercial partner**, **Reporter** with the **Assigned rewards**'],
+            ['Classification', '**Product lines** (at least one row, one per parent category: parent category, optional intermediate **Filter**, one or more product categories with **Select all**; categories whose **Used in** is **Requests / Enrollees** are not offered), **Products of interest**'],
             ['Team', '**Supervisor**, **Account managers**'],
           ],
         },
@@ -40,7 +40,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'When you pick the **Registry**, **Sales rep**, **Reporter**, **Supervisor** and **Account managers** are filled with the registry\'s own. If you already entered different ones, QNet asks whether to **Replace** your values or **Keep mine**: nothing you chose is cleared without confirmation.',
+          text: 'When you pick the **Registry**, **Sales rep**, **Commercial partner**, **Reporter**, **Supervisor** and **Account managers** are filled with the registry\'s own. If you already entered different ones, QNet asks whether to **Replace** your values or **Keep mine**: nothing you chose is cleared without confirmation.',
         },
         {
           type: 'paragraph',
@@ -79,11 +79,25 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Some fields carry other values into the same save: changing the **Registry** gives the Contact the new registry's main referent (it stays empty if the registry has none; the same happens when you pick a **Lead**, if the registry changes or the Contact is empty) and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover; the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
+          text: "Some fields carry other values into the same save: changing the **Registry** gives the Contact the new registry's main referent (it stays empty if the registry has none; the same happens when you pick a **Lead**, if the registry changes or the Contact is empty) and proposes the registry's Sales rep, Commercial partner, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover (when the opportunity has requests created from Request management, one per parent category, the rows may change only inside those parent categories: no parent category is added or removed); the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
         },
         {
           type: 'note',
           text: 'A field with no pencil is not editable by you: your role makes it read-only, or it is inherited and locked by the originating lead (Registry), or changing it would change a field you cannot touch. The **Originating lead** cannot be changed and, when your role cannot see it, it shows neither on create nor in the detail; the **Status** is computed from the quotes.',
+        },
+      ],
+    },
+    {
+      id: 'system-status-tabs',
+      title: "System status tabs",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the top right of the **Opportunities** page you find the tabs of the quotes' system statuses, the same as on the **Quotes** page: **All**, then one for each status, in the order of the **Quote system statuses** page (for example **Aperto**, **In attesa**, **Vinto provvisorio**, **Vinto**, **Perso**). A tab shows the opportunities with at least one quote in that status; opportunities without quotes sit in the tab of the opening status (**Aperto**). **All** removes the filter. Next to each tab, except **All**, is the number of opportunities (only when not zero): it follows the search and the active filters. An opportunity with quotes in different statuses appears, and is counted, in each of those tabs.",
+        },
+        {
+          type: 'paragraph',
+          text: "The tab filters the **System status** column, hidden by default: you can show it from the table options to see the system statuses of each opportunity's quotes. The **Status** column keeps showing the working statuses.",
         },
       ],
     },
@@ -103,7 +117,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Opportunities** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the opportunities where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the opportunities of every category, otherwise only the opportunities of your categories (with all their subcategories). Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: your choice is saved. The **Search** field also finds opportunities by client (registry) name: part of the name is enough, for example \"napoli\".",
+          text: "When it opens, the **Opportunities** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the opportunities where you are **Supervisor** or **Account manager** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the opportunities of every category, otherwise the opportunities of your categories (with all their subcategories) plus those of any category where you are **Supervisor** or **Account manager**: a record you are put on outside your competence stays in the list. Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: you see only the opportunities of those categories (those of other categories where you are Supervisor or Account manager leave the list too) and your choice is saved. The **Search** field also finds opportunities by client (registry) name: part of the name is enough, for example \"napoli\". Typing digits only also finds the opportunity with that exact **ID** (the hidden **ID** column), on top of the results whose name contains the number; the id from the old system is not searched.",
         },
         {
           type: 'paragraph',
@@ -133,11 +147,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Supervisor, Account managers, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Commercial partner, Supervisor, Account managers, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',
-          text: "Changing the **Registry** from the list gives the Contact the new registry's main referent (empty if it has none; if you cannot edit the Contact and the row already has one, the registry change is not allowed) and fills the **empty** roles (Sales rep, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
+          text: "Changing the **Registry** from the list gives the Contact the new registry's main referent (empty if it has none; if you cannot edit the Contact and the row already has one, the registry change is not allowed) and fills the **empty** roles (Sales rep, Commercial partner, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
         },
         {
           type: 'paragraph',
@@ -155,7 +169,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Categories with the **Several open opportunities per registry** rule are the exception: their opportunities never block the others and are created even when the registry already has an open one, and with Multiple mode the offer can carry several rows. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD]) never block either, nor do those migrated from the old system without any category.',
+          text: 'A registry can have only one open opportunity at a time. If one already exists, QNet proposes **Add the offer to this opportunity**. Categories with the **Several open opportunities per registry** rule are the exception: their opportunities never block the others and are created even when the registry already has an open one, and with Multiple mode the offer can carry several rows. Open opportunities whose lines all sit on legacy categories (the catalogue migrated from the old system, today prefixed [OLD], and the **No categoria** category, which holds the migrated products without a category) never block either, nor do those migrated from the old system without any category.',
         },
       ],
     },

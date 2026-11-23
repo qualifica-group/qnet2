@@ -138,3 +138,29 @@ describe('selectable row (spec 0074)', () => {
     expect(selectableSwitch).toBeEnabled()
   })
 })
+
+describe('contact transfer before the contract row (spec 0404 C-D1)', () => {
+  it('create mode: the switch is off by default and can be turned on', async () => {
+    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Contact transfer before the contract' }))
+    const transferSwitch = await screen.findByRole('switch', { name: 'Contact transfer before the contract' })
+    expect(transferSwitch).not.toBeChecked()
+
+    fireEvent.click(transferSwitch)
+
+    await waitFor(() => expect(transferSwitch).toBeChecked())
+  })
+
+  it('edit mode: a child edits its own value, never inherited', async () => {
+    renderDetail(childCategory({ requires_contact_transfer_before_contract: true }))
+
+    fireEvent.click(pencilOf('requiresContactTransfer') as HTMLElement)
+    const transferSwitch = await screen.findByRole('switch', { name: 'Contact transfer before the contract' })
+
+    expect(transferSwitch).toBeChecked()
+    expect(transferSwitch).toBeEnabled()
+  })
+})

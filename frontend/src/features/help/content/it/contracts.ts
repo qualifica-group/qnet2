@@ -11,11 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il contratto non si crea a mano: nasce quando un'offerta passa a uno stato **Chiuso con esito positivo**, con data di **Accettazione** del giorno e lo stato **Predefinito** di **Stati Contratto**. Non nasce se la categoria prodotto è impostata per non generare contratti. Se l'offerta esce dallo stato positivo, il contratto viene **Sospeso** e QNet ricorda lo stato precedente.",
+          text: "Il contratto non si crea a mano: nasce quando un'offerta passa a uno stato **Chiuso con esito positivo**, con data di **Accettazione** del giorno e lo stato **Predefinito** di **Stati Contratto**. Non nasce se la categoria prodotto è impostata per non generare contratti. Se l'offerta esce dallo stato positivo e sul contratto non è stato fatto ancora nulla (stato ancora quello iniziale, nessuna validazione, nessuna data di rinnovo o scadenza, note di pagamento o commenti, nessun documento, rinnovo o commessa), il contratto viene **eliminato** e lo **Storico** dell'offerta registra **Contratto eliminato (offerta non più vinta)**; se l'offerta torna vinta nasce un contratto nuovo. Se invece il contratto è già stato lavorato, viene **Sospeso** e QNet ricorda lo stato precedente.",
         },
         {
           type: 'paragraph',
-          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati contratto** (Offerta, Opportunità, Data offerta) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisore e Gestori account dell'offerta) e **Società e sedi**, poi **Documento e pagamento** e **Ciclo di vita**. I dati dell'offerta sono in sola lettura e si modificano dall'offerta; Titolo, righe dei servizi, Note di pagamento, Rinnovo, Scadenza e Commenti si modificano qui.",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati contratto** (Offerta, Opportunità, Data offerta) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Partner commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisore e Gestori account dell'offerta) e **Società e sedi**, poi **Documento e pagamento** e **Ciclo di vita**. I dati dell'offerta sono in sola lettura e si modificano dall'offerta; Titolo, righe dei servizi, Note di pagamento, Rinnovo, Scadenza e Commenti si modificano qui. Tra le schede a destra, **Documenti contratto** si gestisce qui; **Documenti offerta** (i file caricati sulla richiesta in Gestione Richieste o Gestione Iscritti) e **Documenti opportunità** sono in sola lettura.",
         },
       ],
     },
@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Valida contratto**: indica la **Data di validazione** (non futura). Serve almeno una riga prodotto: se il contratto non ne ha, aggiungila dalla scheda prima di validare. Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza): su quei contratti compare invece **Programma**, se non sono sospesi.',
+            '**Valida contratto**: indica la **Data di validazione** (non futura). Serve almeno una riga prodotto: se il contratto non ne ha, aggiungila dalla scheda prima di validare. Se una categoria dell\'offerta ha **Trasferimento contatto prima del contratto**, l\'offerta va prima trasferita con **Trasferisci contatto** o **Trasferisci ad altra anagrafica**, altrimenti la validazione viene rifiutata. Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza): su quei contratti compare invece **Programma**, se non sono sospesi.',
             '**Disdici contratto**: indica **Data di disdetta**, **Motivazione** e **Stato di destinazione**. Con lo stato **Annullato** tutte le commesse del contratto vengono chiuse, anche quelle concluse, e restano chiuse se riapri il contratto. Con qualsiasi altro stato vengono chiuse solo le commesse ancora aperte, che **Riapri contratto** riporta allo stato che avevano. I task delle commesse non cambiano.',
             'Dati del contratto: **Scadenza**, **Rinnovo**, **Note di pagamento** e **Commenti** si modificano direttamente nella scheda, finché il contratto è Aperto, In attesa o Chiuso positivo (Validato): premi la matita accanto al campo (o fai clic sul valore), cambia il valore e premi **Salva** (Annulla, Esc o un clic fuori chiudono senza salvare). I Commenti si scrivono dentro il loro riquadro in cima alla scheda.',
             '**Riapri contratto**: riporta il contratto in lavorazione; se era sospeso, torna allo stato precedente. Riaprendo un contratto Chiuso positivo o Chiuso negativo si azzerano anche la data e l\'autore della validazione, così il contratto si può validare di nuovo; i valori precedenti restano in **Cronologia attività**.',
@@ -74,6 +74,16 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Se il salvataggio viene rifiutato (per esempio per una riga bloccata) il messaggio compare sulla riga e le tue modifiche restano nella finestra di modifica, così puoi correggerle.',
+        },
+      ],
+    },
+    {
+      id: 'edit-quote-under-contract',
+      title: "Titolo e righe di un'offerta a contratto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Modificare nel dettaglio del contratto il titolo o le righe dell'offerta cambia un documento già accettato: serve il permesso **Modifica offerte a contratto** e il salvataggio chiede conferma in un popup **Offerta a contratto**. Senza il permesso la modifica viene rifiutata.",
         },
       ],
     },
@@ -200,7 +210,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "All'apertura la pagina **Contratti** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi i contratti dove sei **Supervisore** o **Gestore account** (e quelli della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi i contratti di ogni categoria, altrimenti solo i contratti delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova i contratti anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\".",
+          text: "All'apertura la pagina **Contratti** mostra tutti i record che il tuo profilo ti permette di vedere, senza un filtro **Assegnazione**: con il permesso di vedere tutto vedi tutto, altrimenti vedi i contratti dove sei **Supervisore** o **Gestore account** (e quelli della tua sede o della tua competenza, se il profilo lo prevede). Nel pannello **Filtri avanzati** la **Categoria madre** parte vuota, e vuota vale per tutte le categorie madri in cui sei abilitato: se sei abilitato a tutte vedi i contratti di ogni categoria, altrimenti solo i contratti delle tue categorie (con tutte le loro sottocategorie). Aprendo l'elenco del campo trovi solo le categorie madri che puoi scegliere: tutte se sei abilitato a tutto, altrimenti solo le tue. Scegline una o più e premi **Applica** per restringere: la scelta resta salvata. Il campo **Cerca** trova i contratti anche per nome del cliente (l'anagrafica): basta una parte del nome, per esempio \"napoli\". Digitando solo numeri trova anche il contratto con quell'**ID** esatto (la colonna nascosta **ID**), oltre ai risultati che hanno il numero nel codice; l'id del vecchio gestionale non viene cercato.",
         },
         {
           type: 'paragraph',

@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
@@ -8,6 +9,7 @@ import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/
 import { WorkOrderForm } from '@/features/work-orders/work-order-form'
 import { parseEntityId } from '@/routes/entity-id'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
+import { moduleDefinition } from '@/features/work-orders/work-order-module'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
@@ -24,9 +26,12 @@ import type { WorkOrderDetail } from '@/features/work-orders/types'
  * Spec 0195 applied to Commesse (user directive 2026-10-06): the detail edits
  * its fields in place, so `onEdit` is never used; each save reports through
  * `onChanged` (the modal host refreshes its grid and keeps the record open).
+ * After "Elimina" the record is gone: the Sheet closes (`onSaved`, modal) or
+ * the page goes back to the list.
  */
-export function WorkOrderDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
+export function WorkOrderDetailScreen({ id, onChanged, onSaved, initialTab }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   // A save inside a tab (Task, Documenti...) refreshes the commessa too: swap
   // the data in place instead of remounting, so the open tab stays open.
   const {
@@ -52,7 +57,18 @@ export function WorkOrderDetailScreen({ id, onChanged }: ModuleDetailScreenProps
     return <DetailLoading />
   }
 
-  return <WorkOrderDetailView workOrder={workOrder} onChanged={onChanged} />
+  const handleDeleted = () => {
+    onChanged?.()
+    if (onSaved) {
+      onSaved()
+    } else {
+      void navigate(moduleDefinition.basePath)
+    }
+  }
+
+  return (
+    <WorkOrderDetailView workOrder={workOrder} onChanged={onChanged} onDeleted={handleDeleted} initialTab={initialTab} />
+  )
 }
 
 export function WorkOrderFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {

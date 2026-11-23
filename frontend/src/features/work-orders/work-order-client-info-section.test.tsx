@@ -27,6 +27,7 @@ function info(overrides: Partial<WorkOrderClientInfo> = {}): WorkOrderClientInfo
     phones: [{ type: 'phone', icon: 'phone', label: 'Telefono', value: '+39 02 111111' }],
     referents: [{ id: 15, name: 'Mario Bianchi', referent_type: null, primary_contacts: [] }],
     commercial: { id: 30, name: 'Agente Rossi' },
+    commercial_partner: { id: 31, name: 'Partner Bianchi' },
     sectors: ['EA 28 — Costruzioni'],
     comments: 'Cliente storico',
     ...overrides,
@@ -51,6 +52,7 @@ beforeAll(async () => {
 })
 
 describe('WorkOrderClientInfoSection', () => {
+  // REQUIREMENT CHANGED (spec 0417): Commercial partner row after Commercial.
   it('shows every legacy row in order', () => {
     renderSection(info())
 
@@ -64,6 +66,7 @@ describe('WorkOrderClientInfoSection', () => {
       'Referent 1',
       'Referent 2',
       'Commercial',
+      'Commercial partner',
       'Sector',
       'Comments',
     ])
@@ -92,13 +95,21 @@ describe('WorkOrderClientInfoSection', () => {
     expect(within(row('Referent 1')).getByRole('link', { name: 'Mario Bianchi' })).toBeInTheDocument()
     expect(within(row('Referent 2')).queryByRole('link')).not.toBeInTheDocument()
     expect(within(row('Commercial')).getByRole('link', { name: 'Agente Rossi' })).toBeInTheDocument()
+    expect(within(row('Commercial partner')).getByRole('link', { name: 'Partner Bianchi' })).toBeInTheDocument()
     expect(within(row('Sector')).getByText('EA 28 — Costruzioni')).toBeInTheDocument()
     expect(within(row('Comments')).getByText('Cliente storico')).toBeInTheDocument()
   })
 
+  it('keeps each referent in its slot: Referent 2 without Referent 1 (spec 0408 D-5)', () => {
+    renderSection(info({ referents: [null, { id: 16, name: 'Pasqualina Pagano', referent_type: null, primary_contacts: [] }] }))
+
+    expect(within(row('Referent 1')).queryByRole('link')).not.toBeInTheDocument()
+    expect(within(row('Referent 2')).getByRole('link', { name: 'Pasqualina Pagano' })).toBeInTheDocument()
+  })
+
   it('keeps the rows with the empty marker when the client has nothing to show', () => {
     renderSection(
-      info({ legal_address: null, vat_number: null, tax_code: null, tags: [], emails: [], phones: [], referents: [], commercial: null, sectors: [], comments: null }),
+      info({ legal_address: null, vat_number: null, tax_code: null, tags: [], emails: [], phones: [], referents: [null, null], commercial: null, sectors: [], comments: null }),
     )
 
     for (const label of ['Registered office', 'Tags', 'Email/PEC', 'Phone', 'Referent 1', 'Commercial', 'Sector', 'Comments']) {

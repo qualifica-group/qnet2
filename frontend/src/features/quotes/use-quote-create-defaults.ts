@@ -30,7 +30,7 @@ const NO_IDS: number[] = []
 export function useQuoteCreateDefaults(mode: QuoteCreateFormMode, quoteForm: QuoteFormState) {
   const { form, rememberVatRatePercent, rememberProductTypology, rememberProductName } = quoteForm
 
-  // Directive 2026-07-29: Commerciale, Segnalatore and Supervisore are always
+  // Directive 2026-07-29: Commerciale, Partner commerciale, Segnalatore and Supervisore are always
   // inherited from the picked Opportunita' — straight from its for-select
   // `meta` (no extra fetch), then freely editable (spec 0065 D-3: the quote
   // keeps a snapshot, never a live link). Wired as the opportunity select's
@@ -40,6 +40,7 @@ export function useQuoteCreateDefaults(mode: QuoteCreateFormMode, quoteForm: Quo
   const applyInheritedValues = useCallback(
     (meta: OpportunityForSelectMeta | null) => {
       form.setValue('commercial_id', meta?.commercial?.id ?? null, { shouldDirty: true })
+      form.setValue('commercial_partner_id', meta?.commercial_partner?.id ?? null, { shouldDirty: true })
       form.setValue('reporter_id', meta?.reporter?.id ?? null, { shouldDirty: true })
       form.setValue('supervisor_id', meta?.supervisor?.id ?? null, { shouldDirty: true })
       // Directive 2026-07-30: the sede operativa is inherited on the same terms

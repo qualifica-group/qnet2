@@ -36,7 +36,7 @@ describe('QuoteCommissionSummary signs', () => {
   it('marks Commercial, Reporter and Supervisor as going out and a zero without sign', () => {
     render(
       <QuoteCommissionSummary
-        totals={{ commercial: 30, reporter: 12.5, supervisor: 0, supplier: 0 }}
+        totals={{ commercial: 30, commercial_partner: 0, reporter: 12.5, supervisor: 0, supplier: 0 }}
         receivedSupplier={0}
       />,
     )
@@ -49,19 +49,19 @@ describe('QuoteCommissionSummary signs', () => {
   })
 
   it('marks a received Supplier commission as coming in', () => {
-    render(<QuoteCommissionSummary totals={{ commercial: 0, reporter: 0, supervisor: 0, supplier: 200 }} receivedSupplier={200} />)
+    render(<QuoteCommissionSummary totals={{ commercial: 0, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 200 }} receivedSupplier={200} />)
 
     expect(rowText('Supplier')).toBe('Supplier+200.00')
   })
 
   it('marks a paid Supplier commission as going out', () => {
-    render(<QuoteCommissionSummary totals={{ commercial: 0, reporter: 0, supervisor: 0, supplier: 90 }} receivedSupplier={0} />)
+    render(<QuoteCommissionSummary totals={{ commercial: 0, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 90 }} receivedSupplier={0} />)
 
     expect(rowText('Supplier')).toBe(`Supplier${MINUS}90.00`)
   })
 
   it('splits a quote with both Supplier directions into received and paid rows', () => {
-    render(<QuoteCommissionSummary totals={{ commercial: 0, reporter: 0, supervisor: 0, supplier: 290 }} receivedSupplier={200} />)
+    render(<QuoteCommissionSummary totals={{ commercial: 0, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 290 }} receivedSupplier={200} />)
 
     expect(rowText('Supplier (received)')).toBe('Supplier (received)+200.00')
     expect(rowText('Supplier (paid)')).toBe(`Supplier (paid)${MINUS}90.00`)
@@ -87,7 +87,7 @@ describe('QuoteSummary commission card wiring', () => {
     render(
       <QuoteSummary
         totals={{ revenue: { net: 3000, vat: 0, gross: 3000 }, cost: { net: 0, vat: 0, gross: 0 }, margin: { net: 1110 } }}
-        commissionTotals={{ commercial: 0, reporter: 0, supervisor: 0, supplier: 290 }}
+        commissionTotals={{ commercial: 0, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 290 }}
         productMargins={{
           rows: [
             marginRow({ key: 'a', supplierCommissionDirection: 'RECEIVED', supplierCommissionNet: 200 }),

@@ -30,7 +30,9 @@ use App\CustomFields\Types\FieldTypeHandler;
  *    -> `QuoteAttributeValueWriter`),
  *    so this shape only needs to pass the STRUCTURAL "is this column
  *    declared editable" gate and stay permissive for Step 5's generic
- *    pre-check.
+ *    pre-check. It carries the `filterType` of the mapping table, which the
+ *    custom filter rules read (CustomFilterRuleValidator::resolveType()):
+ *    without it every `attr.*` rule was refused.
  *  - `resolved()` — the FULL shape `GET /columns` emits, per the frozen
  *    spec 0064 mapping table (type/filterType/editor/options/badges/relation).
  *
@@ -66,7 +68,10 @@ final class AttributeColumnBuilder
      */
     private const string RAW_TYPE_SENTINEL = 'attribute';
 
-    public function __construct(private readonly FieldTypeRegistry $typeRegistry) {}
+    public function __construct(
+        private readonly FieldTypeRegistry $typeRegistry,
+        private readonly AttributeSummaryDateColumn $summaryDateColumn,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $attributeRow
@@ -103,11 +108,12 @@ final class AttributeColumnBuilder
     {
         return [
             'id' => $this->id($attributeRow),
-            'label' => (string) $attributeRow['name'],
+            'label' => $this->label($attributeRow),
             'type' => self::RAW_TYPE_SENTINEL,
             'visible' => false,
             'sortable' => true,
             'filterable' => true,
+            'filterType' => $this->mapping($attributeRow)['filterType'],
             'editable' => ! $this->isTable($attributeRow),
             'editableField' => self::EDITABLE_FIELD,
             'nullable' => true,
@@ -124,7 +130,7 @@ final class AttributeColumnBuilder
 
         $column = [
             'id' => $this->id($attributeRow),
-            'label' => (string) $attributeRow['name'],
+            'label' => $this->label($attributeRow),
             'type' => $mapping['type'],
             'visible' => true,
             'width' => null,
@@ -162,6 +168,19 @@ final class AttributeColumnBuilder
     }
 
     /**
+     * The attribute name, or the `summary.grid_label` of a table shown as its
+     * summary date (AttributeSummaryDateColumn).
+     *
+     * @param  array<string, mixed>  $attributeRow
+     */
+    private function label(array $attributeRow): string
+    {
+        return $this->summaryDateColumn->applies($attributeRow)
+            ? $this->summaryDateColumn->label($attributeRow)
+            : (string) $attributeRow['name'];
+    }
+
+    /**
      * The (type, filterType, editor) triad per the frozen spec 0064 mapping
      * table.
      *
@@ -170,6 +189,10 @@ final class AttributeColumnBuilder
      */
     private function mapping(array $attributeRow): array
     {
+        if ($this->summaryDateColumn->applies($attributeRow)) {
+            return ['type' => 'datetime', 'filterType' => 'date', 'editor' => null];
+        }
+
         return match ((string) $attributeRow['type']) {
             'text', 'textarea', 'email', 'url', 'color', 'time' => ['type' => 'text', 'filterType' => 'text', 'editor' => null],
             'integer', 'decimal' => ['type' => 'number', 'filterType' => 'number', 'editor' => null],

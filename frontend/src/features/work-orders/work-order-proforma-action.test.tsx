@@ -1,14 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
-import { createRowActionsRenderer } from '@/features/table/row-actions'
-import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { ProformaSummary } from '@/features/proforma-requests/types'
-import { PROFORMA_ACTION_ICONS, useProformaActionState } from '@/features/work-orders/proforma-row-action'
-import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
+import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
 import { WorkOrderDetailHeader } from '@/features/work-orders/work-order-detail-header'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
@@ -22,18 +18,6 @@ vi.mock('@/features/proforma-requests/api', async (importOriginal) => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-const PROFORMA_ACTION: TableActionDefinition = {
-  key: 'proforma',
-  label: 'proformaRequests.cell.none',
-  icon: 'euro',
-  type: 'action',
-  confirm: false,
-}
-
-function row(status: string): TableRow {
-  return { id: 7, code: 'C-2026-007', proforma_status: status, actions: ['proforma'] }
-}
-
 function summary(overrides: Partial<ProformaSummary> = {}): ProformaSummary {
   return {
     status: 'none',
@@ -44,25 +28,11 @@ function summary(overrides: Partial<ProformaSummary> = {}): ProformaSummary {
   }
 }
 
-function renderActionCell(status: string, onAction = vi.fn()) {
-  const resolveActionState = renderHook(() => useProformaActionState()).result.current
-  const Cell = createRowActionsRenderer([PROFORMA_ACTION], onAction, {
-    resolveActionState,
-    iconMap: PROFORMA_ACTION_ICONS,
-  })
-  const params = { data: row(status) } as unknown as ICellRendererParams
-  return render(
-    <ConfirmDialogProvider>
-      <Cell {...params} />
-    </ConfirmDialogProvider>,
-  )
-}
-
 function renderDialog(onSent = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <WorkOrderProformaDialog row={row('none')} onClose={vi.fn()} onSent={onSent} />
+      <ProformaRequestDialog workOrderId={7} workOrderCode="C-2026-007" open onOpenChange={vi.fn()} onSent={onSent} />
     </QueryClientProvider>,
   )
   return onSent
@@ -77,26 +47,9 @@ beforeEach(() => {
   createRequestsMock.mockReset()
 })
 
-describe('work order "€" row action (spec 0193 AC-007)', () => {
-  it('is grey/blue and clickable for none/pending, yellow and disabled once issued', () => {
-    const onAction = vi.fn()
-    const none = renderActionCell('none', onAction)
-    const grey = screen.getByRole('button', { name: /request proforma issue/i })
-    expect(grey).toHaveClass('text-muted-foreground')
-    fireEvent.click(grey)
-    expect(onAction).toHaveBeenCalledWith(PROFORMA_ACTION, expect.objectContaining({ id: 7 }))
-    none.unmount()
-
-    const pending = renderActionCell('pending')
-    expect(screen.getByRole('button', { name: /proforma requested/i })).toHaveClass('text-blue-600')
-    pending.unmount()
-
-    renderActionCell('issued')
-    const yellow = screen.getByRole('button', { name: /proforma issued/i })
-    expect(yellow).toHaveClass('text-yellow-600')
-    expect(yellow).toBeDisabled()
-  })
-
+// REQUIREMENT CHANGED (spec 0405): the grid row has no "€" action; the dialog opens from
+// the detail header and the "Responsabili e Partecipanti" dialog.
+describe('proforma request dialog (spec 0193 AC-007)', () => {
   it('opens the modal with the work order code and payment method, then sends the note', async () => {
     fetchSummaryMock.mockResolvedValue(summary())
     createRequestsMock.mockResolvedValue([])

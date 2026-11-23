@@ -35,7 +35,7 @@ return [
     ],
     'PUT /quotes/{quote}' => [
         'summary' => 'Update a quote',
-        'description' => 'Partially updates the quote; opportunity_id cannot change. offer_lines and cost_lines, when sent, replace the lines (offer lines cannot be emptied); manager_slots replaces the account managers; attribute_values are merged. Totals, commission amounts, title and opportunity name are recomputed. A status change follows the workflow rules (note when required), is logged, creates the contract when it becomes won or suspends it when it leaves won; managers are notified. Requires quotes.update and edit rights on the submitted fields.',
+        'description' => 'Partially updates the quote; opportunity_id cannot change. offer_lines and cost_lines, when sent, replace the lines (offer lines cannot be emptied); manager_slots replaces the account managers; attribute_values are merged. Totals, commission amounts, title and opportunity name are recomputed. A status change follows the workflow rules (note when required), is logged, creates the contract when it becomes won or suspends it when it leaves won; managers are notified. Requires quotes.update and edit rights on the submitted fields. On a quote under contract, changing anything but the team, the next callback and the operational site needs quotes.updateContracted (403 otherwise) and confirm_contracted_edit: true in the body (409 with code contracted_edit_confirmation_required otherwise).',
     ],
     'DELETE /quotes/{quote}' => [
         'summary' => 'Delete a quote',
@@ -52,5 +52,9 @@ return [
     'POST /quotes/{quote}/recalculate-commissions' => [
         'summary' => 'Recalculate the commissions of a quote',
         'description' => 'Realigns the commissions of an open quote to the current commission rules. mode is KEEP_MANUAL (refresh only rule-driven commissions, keep manual overrides) or REGENERATE_ALL (rebuild every commission from the rules). 422 when the quote is won or lost. Returns the updated quote and the permissions block. Requires quotes.update and edit rights on commissions.',
+    ],
+    'POST /quotes/{quote}/transfer-registry' => [
+        'summary' => 'Transfer the offer to another registry',
+        'description' => "Moves the offer to another registry: registry_id (required, different from the current one) optional title (the offer's title, max 191 characters, with the offer update's title rules: absent = unchanged, blank = back to the automatic title) and optional attribute_values (the offer's additional information, validated like the offer update). The offer joins the destination's open opportunity when its categories allow only one open opportunity per registry, otherwise a new opportunity is created with the old one's product lines, commercial, reporter, supervisor, operational site and team, without a referent. The old opportunity is kept; notes scoped to the offer move with it. A registry_transferred activity entry is written on the offer and on both opportunities. 422 for the same registry, an offer under contract, or a destination opportunity that accepts a single offer and already has one; nothing is written on error. Requires quotes.update and quotes.transferRegistry. Returns the updated quote and the permissions block.",
     ],
 ];

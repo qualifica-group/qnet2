@@ -31,7 +31,6 @@ return [
         'client' => 'Client',
         'operational_site' => 'Operational site',
         'status' => 'Status',
-        'operator' => 'Operator',
 
         // Shared
         'source' => 'Source',

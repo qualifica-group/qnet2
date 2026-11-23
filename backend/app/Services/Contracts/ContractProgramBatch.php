@@ -8,6 +8,7 @@ use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\Enums\WorkOrderType;
 use App\Models\Contract;
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\WorkOrderQuoteAttributeCopier;
 use App\Services\WorkOrderService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -25,7 +26,10 @@ final class ContractProgramBatch
 {
     public const int MAX_GROUPS = 50;
 
-    public function __construct(private readonly WorkOrderService $workOrders) {}
+    public function __construct(
+        private readonly WorkOrderService $workOrders,
+        private readonly WorkOrderQuoteAttributeCopier $attributeCopier,
+    ) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $groups  validated groups, in order
@@ -39,7 +43,10 @@ final class ContractProgramBatch
 
             foreach (array_values($groups) as $index => $group) {
                 try {
-                    $created[] = $this->workOrders->create($this->toData($contract, $group));
+                    $workOrder = $this->workOrders->create($this->toData($contract, $group));
+                    // Spec 0404 D-D1: the offer's flexible fields fill the new work order.
+                    $this->attributeCopier->fill($workOrder, [$contract->quote_id]);
+                    $created[] = $workOrder;
                 } catch (ValidationException $exception) {
                     // Step 2: point the error at the offending group; the
                     // exception leaves the closure, so everything rolls back.

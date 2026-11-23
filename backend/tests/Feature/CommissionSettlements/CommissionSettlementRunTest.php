@@ -240,3 +240,16 @@ it('rejects an invalid run body with 422', function (array $override, string $fi
     'supplier role' => [['recipient_roles' => ['SUPPLIER']], 'recipient_roles.0'],
     'negative threshold' => [['min_amount' => '-1'], 'min_amount'],
 ]);
+
+it('spec 0417 AC-010: the COMMERCIAL_PARTNER role filter takes only that role movements', function () {
+    Sanctum::actingAs(settlementAdmin());
+    $company = Company::factory()->create();
+    $ann = settlementAgent();
+    settlementMovement($ann, $company, '100.00', overrides: ['recipient_role' => 'COMMERCIAL']);
+    settlementMovement($ann, $company, '70.00', overrides: ['recipient_role' => 'COMMERCIAL_PARTNER']);
+
+    $this->postJson(RUN_URL, settlementRunBody(['recipient_roles' => ['COMMERCIAL_PARTNER']]))
+        ->assertCreated()->assertJsonPath('data.run.settlements_count', 1);
+
+    expect(CommissionSettlement::query()->sole()->accruals_amount)->toBe('70.00');
+});

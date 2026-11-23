@@ -18,6 +18,7 @@ import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ModuleCreateParams } from '@/features/modules/types'
+import type { ContractedQuoteFlags } from '@/features/quotes/contracted-quote'
 import type { QuoteLine, QuoteLineInput, QuoteRelationRef } from '@/features/quotes/quote-line-types'
 
 /**
@@ -86,6 +87,27 @@ export interface QuoteWorkflowStatusRef {
   requires_note: boolean
 }
 
+/**
+ * The system status of a quote (spec 0404): the one Offerte shows and edits.
+ * It is never stored on the quote, it is the system status linked by the
+ * working status the quote holds (Gestione Richieste edits that one).
+ */
+export interface QuoteSystemStatusRef {
+  id: number
+  name: string
+  color: string | null
+  behavior: string
+}
+
+/**
+ * An option of the system status select for THIS quote (spec 0404 A-D7):
+ * only the system statuses with a linked working status in the quote's
+ * resolved set. `requires_note` makes the note mandatory when it is the TARGET.
+ */
+export interface QuoteSystemStatusOption extends QuoteSystemStatusRef {
+  requires_note: boolean
+}
+
 /** One side (`revenue`/`cost`) of the persisted economic summary (D-9). */
 export interface QuoteAmountBreakdown {
   net: string
@@ -100,9 +122,10 @@ export interface QuoteAmountBreakdown {
  */
 export interface QuoteSummary {
   revenue: QuoteAmountBreakdown
-  cost: QuoteAmountBreakdown
-  margin: { net: string }
-  commissions?: Record<'commercial' | 'reporter' | 'supervisor' | 'supplier', string>
+  /** Spec 0412: absent without `permissions.actions.view_costs`, like `margin`. */
+  cost?: QuoteAmountBreakdown
+  margin?: { net: string }
+  commissions?: Record<'commercial' | 'commercial_partner' | 'reporter' | 'supervisor' | 'supplier', string>
   /**
    * Spec 0099 (D-6/D-7): the REVENUE lines' imponibile grouped by the
    * typology of their product — one entry per CONFIGURED typology, ordered by
@@ -130,7 +153,15 @@ export interface QuoteTypologyTotal {
  * quote itself, never re-derived from the opportunity again. `company`/
  * `company_site` have no opportunity counterpart: always picked by hand.
  */
-export interface QuoteDetail {
+/** Spec 0404 B-D5: names stored at transfer time, `transferred_at` ISO 8601. */
+export interface QuoteRegistryTransfer {
+  from_registry_name: string | null
+  to_registry_name: string | null
+  transferred_at: string | null
+  causer_name: string | null
+}
+
+export interface QuoteDetail extends ContractedQuoteFlags {
   id: number
   /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
   old_id?: number | null
@@ -142,6 +173,8 @@ export interface QuoteDetail {
   follow_up_date: string | null
   opportunity_id: number
   opportunity: QuoteRelationRef
+  /** Spec 0404 B-D5: the latest move to another anagrafica, `null` when never moved. */
+  registry_transfer: QuoteRegistryTransfer | null
   /**
    * Read-only projection of the parent Opportunity (user directive
    * 2026-08-31): its anagrafica, referente, righe
@@ -155,12 +188,14 @@ export interface QuoteDetail {
   referent?: ReferentRef | null
   product_lines?: ProductLine[]
   general_notes?: string | null
-  quote_workflow_status_id: number
-  quote_workflow_status: QuoteWorkflowStatusRef
-  /** The set resolved by the backend for THIS quote: the select never offers anything outside it (AC-050). */
-  quote_workflow_statuses: QuoteWorkflowStatusRef[]
+  quote_system_status_id: number | null
+  quote_system_status: QuoteSystemStatusRef | null
+  /** The options resolved by the backend for THIS quote, in `sort_order`: the select never offers anything outside them. */
+  quote_system_statuses: QuoteSystemStatusOption[]
   commercial_id: number | null
   commercial: QuoteRelationRef | null
+  commercial_partner_id: number | null
+  commercial_partner: QuoteRelationRef | null
   reporter_id: number | null
   reporter: QuoteRelationRef | null
   supervisor_id: number | null
@@ -241,7 +276,8 @@ export interface QuoteDetail {
    */
   attribute_view_layout?: LayoutBlob | null
   offer_lines: QuoteLine[]
-  cost_lines: QuoteLine[]
+  /** Spec 0412: absent without `permissions.actions.view_costs`. */
+  cost_lines?: QuoteLine[]
   summary: QuoteSummary
   created_at: string
   updated_at: string
@@ -276,13 +312,14 @@ export interface CreateQuotePayload {
   /** Spec 0349: `null` = no date (and clears it on update). */
   follow_up_date?: string | null
   opportunity_id: number
-  /** Omitted on create: the backend assigns the `open` row of the set it resolves (AC-020). */
-  quote_workflow_status_id?: number | null
+  /** Omitted on create: the backend assigns the `open` row of the set it resolves (AC-020). Never sent together with `quote_workflow_status_id`. */
+  quote_system_status_id?: number | null
   /** Mandatory only when the TARGET status carries `requires_note` (AC-023); never persisted on the quote. */
   note?: string | null
   /** Spec 0084: merge SPARSO server-side — i `code` assenti conservano il valore precedente. */
   attribute_values?: Record<string, CustomFieldValue>
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   reporter_id?: number | null
   supervisor_id?: number | null
   /**

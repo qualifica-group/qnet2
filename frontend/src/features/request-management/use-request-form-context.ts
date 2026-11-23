@@ -18,6 +18,7 @@ const NO_ATTRIBUTES: RequestFormContext['applicable_attributes'] = []
 const EMPTY_CONTEXT: RequestFormContext = {
   applicable_attributes: NO_ATTRIBUTES,
   attribute_layout: null,
+  registry_type: null,
 }
 
 /**

@@ -20,6 +20,7 @@ export type RootFlagName =
   | 'generates_contract'
   | 'multi_quote_work_order'
   | 'multiple_open_opportunities'
+  | 'request_offer_hidden'
   | 'simplified_offer_line'
 
 interface ProductCategoryRootFlagFieldProps {

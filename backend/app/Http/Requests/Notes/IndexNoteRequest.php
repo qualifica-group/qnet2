@@ -3,9 +3,8 @@
 namespace App\Http\Requests\Notes;
 
 use App\DataObjects\Notes\NoteCursor;
-use App\DataObjects\Notes\NoteQuoteScope;
 use App\Http\Requests\Notes\Concerns\ValidatesNotableEntity;
-use App\Http\Requests\Notes\Concerns\ValidatesQuoteOwnership;
+use App\Http\Requests\Notes\Concerns\ValidatesQuoteScope;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use InvalidArgumentException;
@@ -24,14 +23,11 @@ use InvalidArgumentException;
 class IndexNoteRequest extends FormRequest
 {
     use ValidatesNotableEntity;
-    use ValidatesQuoteOwnership;
+    use ValidatesQuoteScope;
 
     private const int DEFAULT_LIMIT = 20;
 
     private const int MAX_LIMIT = 50;
-
-    /** @var array<int, string> */
-    private const array FIXED_QUOTE_SCOPES = ['all', 'general'];
 
     public function authorize(): bool
     {
@@ -66,7 +62,7 @@ class IndexNoteRequest extends FormRequest
                 }
             }
 
-            $this->validateQuoteScopeFormat($validator);
+            $this->validateQuoteScopeFormat($validator, $this->query('quote_scope'));
         });
     }
 
@@ -82,32 +78,5 @@ class IndexNoteRequest extends FormRequest
         $limit = $this->validated('limit');
 
         return $limit === null ? self::DEFAULT_LIMIT : (int) $limit;
-    }
-
-    public function quoteScope(): NoteQuoteScope
-    {
-        return NoteQuoteScope::fromParam($this->validated('quote_scope'));
-    }
-
-    /**
-     * `'all'`/`'general'`/absent are always well-formed; a numeric value is
-     * additionally checked for appartenenza (AC-013) via
-     * ValidatesQuoteOwnership; anything else is malformed (AC-014).
-     */
-    private function validateQuoteScopeFormat(Validator $validator): void
-    {
-        $scope = $this->query('quote_scope');
-
-        if ($scope === null || $scope === '' || in_array($scope, self::FIXED_QUOTE_SCOPES, true)) {
-            return;
-        }
-
-        if (! ctype_digit($scope)) {
-            $validator->errors()->add('quote_scope', 'The quote_scope is malformed.');
-
-            return;
-        }
-
-        $this->validateQuoteOwnership($validator, 'quote_scope', $scope);
     }
 }

@@ -124,12 +124,11 @@ final class RequestAssignmentService
      * the GA1 slot, or has that slot CLEARED when $userId is null (D-2).
      * Whole operation is one transaction.
      *
-     * Two things assignOperators() does that this deliberately does not, each
-     * following what the per-cell GA1 editor already does: it sends no
-     * assignment notification (GA1 scopes no visibility and assigns nobody,
-     * D-5), and it needs no distributor (only the Operatore slot is bound to
-     * a Sede, D-1, so there is no site-scoped pool to balance across and the
-     * action has a single mode).
+     * Unlike assignOperators() it needs no distributor (only the Operatore
+     * slot is bound to a Sede, D-1, so there is no site-scoped pool to
+     * balance across and the action has a single mode). Like the per-cell
+     * team editor, it notifies whoever is newly put in the slot (D-5 rev.
+     * 2026-11-18: every new Gestore Account is told, by bell and email).
      *
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
      * @param  RequestModule  $module  spec 0130: governs the D-3 row scope.
@@ -237,26 +236,17 @@ final class RequestAssignmentService
         $changed = [];
         $old = [];
 
-        if ($writeOperator) {
-            $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
-        }
+        $attached = $writeOperator ? $this->operatorWriter->apply($quote, $operatorId, $changed, $old) : [];
 
         if ($changed === []) {
             return;
         }
 
         // spec 0081: one assignment notification per offer, exactly as the
-        // per-record work panel emits — a batch of N produces N. Notified
-        // against the Offerta itself (spec 0186, D-2): its title, its card,
-        // its link.
-        if (($changed['operator_id'] ?? null) !== null) {
-            $this->assignmentNotifier->notify(
-                $quote,
-                $actor,
-                null,
-                [$changed['operator_id'] => ManagerPositions::OPERATOR],
-            );
-        }
+        // per-record work panel emits — a batch of N produces N, and only to
+        // whoever is newly in the team (decisione utente 2026-11-18). Notified
+        // against the Offerta itself (spec 0186, D-2).
+        $this->assignmentNotifier->notify($quote, $actor, null, $attached);
 
         activity($quote->opportunity->getTable())
             ->performedOn($quote->opportunity)
@@ -276,17 +266,22 @@ final class RequestAssignmentService
      * D-9 keeps the module's whole history there, and the pivot slot is not
      * a fillable attribute, so no automatic model-event log would ever see
      * this write.
+     *
+     * Only a user genuinely ATTACHED to the team is notified: one already in
+     * it and merely moved onto GA1 is not, as in the work panel.
      */
     private function assignManagerGa1ToOne(Quote $quote, User $actor, ?int $userId): void
     {
         $changed = [];
         $old = [];
 
-        $this->operatorWriter->applyPosition($quote, ManagerPositions::GA1, $userId, $changed, $old);
+        $attached = $this->operatorWriter->applyPosition($quote, ManagerPositions::GA1, $userId, $changed, $old);
 
         if ($changed === []) {
             return;
         }
+
+        $this->assignmentNotifier->notify($quote, $actor, null, $attached);
 
         activity($quote->opportunity->getTable())
             ->performedOn($quote->opportunity)

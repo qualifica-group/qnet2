@@ -22,6 +22,7 @@ import {
   type ContractWorkOrdersSectionHandle,
 } from '@/features/contracts/contract-work-orders-section'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
+import { QUOTE_ATTACHABLE_ALIAS } from '@/features/quotes/api'
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { RequestOfferLinesField } from '@/features/request-management/request-offer-lines-section'
@@ -40,7 +41,7 @@ interface ContractDetailViewProps {
  * own, so there is no Notes tab here).
  *
  * The contract's own documents honour the actor's attachment abilities; the
- * opportunity's are ALWAYS read-only (AC-047): they belong to another record,
+ * offer's (spec 0415) and the opportunity's are ALWAYS read-only (AC-047): they belong to another record,
  * this screen only shows them. Attività is gated on its own action flag and
  * absent entirely when unauthorized.
  */
@@ -60,6 +61,15 @@ function useCollaborationTabs(contract: ContractDetailWithPermissions): RecordCo
           canUpload={can('attachments.create')}
           canDelete={can('attachments.delete')}
         />
+      ),
+    },
+    {
+      value: 'quote-documents',
+      label: t('contracts.detail.tabs.quoteDocuments'),
+      icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+      badge: <DocumentsTabCount resource={QUOTE_ATTACHABLE_ALIAS} id={contract.quote_id} />,
+      content: (
+        <DocumentsSection resource={QUOTE_ATTACHABLE_ALIAS} id={contract.quote_id} canUpload={false} canDelete={false} />
       ),
     },
     {
@@ -168,6 +178,7 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
                     errors={offerLineErrors}
                     vatRatePercentFor={editor.vatRatePercentFor}
                     rememberVatRatePercent={editor.rememberVatRatePercent}
+                    ignoreHiddenRule
                   />
                 }
               >

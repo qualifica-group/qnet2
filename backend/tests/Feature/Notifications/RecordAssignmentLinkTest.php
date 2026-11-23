@@ -50,7 +50,6 @@ if (! function_exists('assignmentNotificationFor')) {
             role: AssignmentRoleEnum::Manager,
             recordId: 7,
             recordLabel: 'Acme deal',
-            position: 2,
             actorName: 'Actor',
         );
     }
@@ -109,6 +108,7 @@ it('an opportunity assignment never points a request-management-only recipient t
 
     $actor = linkUserWith(['opportunities.update', 'opportunities.viewAll']);
     $recipient = linkUserWith(['request-management.view']);
+    grantAssignmentNotifications($recipient);
     $opportunity = Opportunity::factory()->create();
     Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
@@ -214,7 +214,6 @@ it('never persists an absolute URL in action_url (AC-017)', function () {
         role: AssignmentRoleEnum::Supervisor,
         recordId: 7,
         recordLabel: 'Acme',
-        position: null,
         actorName: 'Actor',
     ))->toArray($recipient);
 
@@ -239,7 +238,7 @@ it('translates every string the two notifications emit (AC-026)', function () {
         'You were assigned as Supervisor',
         'You were assigned as Account Manager',
         ':actor assigned you as Supervisor on :label.',
-        ':actor assigned you as Account Manager :position on :label.',
+        ':actor assigned you as Account Manager on :label.',
         'Contact transferred',
         'Contact no longer assigned to you',
         'New contact assigned to you',
@@ -272,6 +271,7 @@ it('a GA2 assignment notification opens the Offerta, not the Opportunity, for a 
 
     $actor = linkUserWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $recipient = linkUserWith(['request-management.view']);
+    grantAssignmentNotifications($recipient);
     $opportunity = Opportunity::factory()->create();
     $quote = Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);

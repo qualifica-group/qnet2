@@ -177,19 +177,3 @@ it('needs a writable manager_slots: readonly and append-only actors stay out of 
     'readonly' => [['viewAny', 'view', 'viewAll', 'update']],
     'append only' => [['viewAny', 'view', 'viewAll', 'update', 'appendTeamMember']],
 ]);
-
-it('the Operatore cell still writes slot 2 alone (AC-013)', function () {
-    Sanctum::actingAs(managersColumnActor('request-management'));
-    $tutor = User::factory()->create();
-    $operator = User::factory()->create();
-    $replacement = User::factory()->create();
-    $quote = managersColumnQuote([1 => $tutor->id, 2 => $operator->id]);
-
-    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
-        'column' => 'operator_ga2',
-        'value' => $replacement->id,
-    ])->assertOk();
-
-    expect($quote->fresh()->operator_id)->toBe($replacement->id)
-        ->and($quote->managers()->pluck('position', 'users.id')->all())->toBe([$tutor->id => 1, $replacement->id => 2]);
-});

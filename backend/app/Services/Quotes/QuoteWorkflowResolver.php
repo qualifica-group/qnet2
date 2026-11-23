@@ -138,7 +138,8 @@ final class QuoteWorkflowResolver
             return $this->statusesCache[$cacheKey];
         }
 
-        $query = QuoteWorkflowStatus::query()->orderBy('sort_order');
+        // The system status link rides along for Offerte (spec 0404 part A).
+        $query = QuoteWorkflowStatus::query()->with('systemStatus')->orderBy('sort_order');
 
         $statuses = $workflow === null
             ? $query->whereNull('quote_workflow_id')->get()

@@ -29,11 +29,12 @@ export function buildCreatePayload(values: QuoteFormValues, suggestedCode?: stri
     quote_date: values.quote_date,
     follow_up_date: values.follow_up_date,
     opportunity_id: values.opportunity_id as number,
-    quote_workflow_status_id: values.quote_workflow_status_id,
+    quote_system_status_id: values.quote_system_status_id,
     // Spec 0084: la mappa viaggia sempre alla create — non c'e' nulla di
     // persistito da conservare, quindi il merge sparso lato server non serve.
     attribute_values: values.attribute_values,
     commercial_id: values.commercial_id,
+    commercial_partner_id: values.commercial_partner_id,
     reporter_id: values.reporter_id,
     supervisor_id: values.supervisor_id,
     // Spec 0087 (D-5): the create form opens on `DEFAULT_MANAGER_SLOTS` empty
@@ -71,6 +72,8 @@ export function buildCreatePayload(values: QuoteFormValues, suggestedCode?: stri
  * `offer_lines`/`cost_lines` are included only when the row SET actually
  * changed (D-8: an included key is a full-replace, so an unchanged tab must
  * stay omitted to leave the persisted set untouched, AC-036/037).
+ * `cost_lines` never travels when the original came without them (spec 0412:
+ * no `view_costs`), so an edit never touches costs the user cannot see.
  */
 export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetail): UpdateQuotePayload {
   const payload: UpdateQuotePayload = {}
@@ -109,11 +112,11 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
     payload.attribute_values = values.attribute_values
   }
 
-  // Spec 0083: the transition note rides along ONLY when the status actually
+  // Spec 0404: the transition note rides along ONLY when the status actually
   // changes — the server demands it on the transition, not on the row (AC-026),
   // so a quote already parked on a `requires_note` row saves without one.
-  if (values.quote_workflow_status_id !== original.quote_workflow_status_id) {
-    payload.quote_workflow_status_id = values.quote_workflow_status_id
+  if (values.quote_system_status_id !== original.quote_system_status_id) {
+    payload.quote_system_status_id = values.quote_system_status_id
 
     const note = (values.note ?? '').trim()
 
@@ -123,6 +126,9 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   }
   if (values.commercial_id !== original.commercial_id) {
     payload.commercial_id = values.commercial_id
+  }
+  if (values.commercial_partner_id !== original.commercial_partner_id) {
+    payload.commercial_partner_id = values.commercial_partner_id
   }
   if (values.reporter_id !== original.reporter_id) {
     payload.reporter_id = values.reporter_id
@@ -176,7 +182,7 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   // can tell a generic cost from one newly attributed to a brand-new offer
   // row via `offer_line_index`.
   const costLines = toLineInputs(values.cost_lines, offerLineReferenceResolver(values.offer_lines))
-  if (!sameLines(costLines, originalLineInputs(original.cost_lines))) {
+  if (original.cost_lines !== undefined && !sameLines(costLines, originalLineInputs(original.cost_lines))) {
     payload.cost_lines = costLines
   }
 

@@ -49,6 +49,26 @@ describe('NotificationItem — courtesy copy marker (spec 0153 D-14)', () => {
   })
 })
 
+describe('NotificationItem — actor (who mentioned you, as in q-net)', () => {
+  it('shows the actor name next to the timestamp when data.actor is set', () => {
+    render(
+      <NotificationItem
+        notification={buildNotification({
+          data: { title: 'You were mentioned', message: null, level: 'info', action_url: null, actor: { id: 7, name: 'Paola Sena' } },
+        })}
+        onMarkAsRead={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Paola Sena')).toBeInTheDocument()
+    expect(screen.getByText('PS')).toBeInTheDocument()
+  })
+
+  it('shows no actor when data.actor is absent', () => {
+    render(<NotificationItem notification={buildNotification()} onMarkAsRead={vi.fn()} />)
+    expect(screen.queryByText('PS')).not.toBeInTheDocument()
+  })
+})
+
 describe('NotificationItem', () => {
   it('renders the title and message from the data payload', () => {
     render(

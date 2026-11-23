@@ -309,6 +309,9 @@ it('AC-010: the 201 response is a full RequestManagementResource, matching the G
         'data' => ['id', 'opportunity_id', 'name', 'registry', 'product_lines', 'status', 'client_identity', 'client_contacts', 'client_address'],
     ]);
 
+    // REQUIREMENT CHANGED (spec 0411 data_contract): the 201 also lists every
+    // offer the creation produced (one per parent category), the GET does not.
     $shown = $this->getJson("/api/request-management/{$quoteId}")->assertOk();
-    expect(array_keys($created->json('data')))->toBe(array_keys($shown->json('data')));
+    expect($created->json('data.created_quote_ids'))->toBe([$quoteId])
+        ->and(array_values(array_diff(array_keys($created->json('data')), ['created_quote_ids'])))->toBe(array_keys($shown->json('data')));
 });

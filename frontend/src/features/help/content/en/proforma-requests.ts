@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Requests are not created from this list: they are sent with the **€** button of the **Work orders** list (see the Work orders guide). A work order generates its requests **only once**: if it already has one (pending or issued) no more can be sent. For each work order the system generates **one request** for the **Consultancy** lines and **one request per supplier** of the **Institution** lines. The Institution request does not bill the institution the sale price but the **commission** we are owed (see **Institution requests and commissions**).',
+          text: 'Requests are not created from this list: they are sent with **Request proforma**, from the work order detail or from the **Supervisors and Participants** popup of the **Work orders** list (see the Work orders guide). A work order generates its requests **only once**: if it already has one (pending or issued) no more can be sent. For each work order the system generates **one request** for the **Consultancy** lines and **one request per supplier** of the **Institution** lines. The Institution request does not bill the institution the sale price but the **commission** we are owed (see **Institution requests and commissions**).',
         },
         {
           type: 'table',
@@ -39,6 +39,10 @@ const guide: HelpGuide = {
             ['**Status**', '**Pending** until invoicing issues the proforma, then **Issued**.'],
             ['**Assigned to / Requested by**', 'The user who sent the request.'],
           ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Together with the requests the system opens a **task** (category **Contabile**, accounting, default type) for the **Responsabile emissione proforma** (proforma issuing manager) of the quote\'s company site, who receives the assignment notification. Whoever sends the request is the creator and requester of the task, which is due in **2 days**, is linked to the work order and is closed by hand. Requests with the same manager end up in **a single task**; quotes of sites with different managers open one task each. When the site has no manager, the request is still sent without a task.',
         },
       ],
     },

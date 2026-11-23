@@ -4,6 +4,7 @@ namespace App\DataObjects\ProductCategories;
 
 use App\Enums\CategoryManagementMode;
 use App\Enums\CategoryUsageArea;
+use App\Enums\PersonalDataTypeEnum;
 
 /**
  * Validated payload for creating a product category
@@ -34,6 +35,8 @@ final readonly class CreateProductCategoryData
         public bool $isSelectable = true,
         /** Spec 0208: a plain per-node flag, defaulting to active when omitted. */
         public bool $isActive = true,
+        /** Spec 0404 C-D1: a plain per-node flag, defaulting to false when omitted. */
+        public bool $requiresContactTransferBeforeContract = false,
         /** Spec 0131 (user directive 2026-09-18): own override of the inherited report flag; null = inherit. */
         public ?bool $isReportable = null,
         /** Spec 0141: own report column selection; null = inherit. Normalized (catalog order, [] -> null) by ProductCategoryService, never here. */
@@ -50,6 +53,10 @@ final readonly class CreateProductCategoryData
         public ?CategoryUsageArea $usageArea = null,
         /** User request 2026-11-11: same root-only semantics, null = not submitted (root's value, or false at a fresh root). */
         public ?bool $multipleOpenOpportunities = null,
+        /** Spec 0410: same root-only semantics, null = not submitted (root's value, or `individual` at a fresh root). */
+        public ?PersonalDataTypeEnum $requestRegistryType = null,
+        /** Spec 0414: same root-only semantics, null = not submitted (root's value, or false at a fresh root). */
+        public ?bool $requestOfferHidden = null,
         /** Spec 0114: same root-only semantics, null = not submitted (root's value, or FALSE at a fresh root — the pre-existing fully-manual offer line). */
         public ?bool $simplifiedOfferLine = null,
         /** Spec 0188: a child's OWN declaration of the rule; null = inherit. Always null on a root. */
@@ -81,6 +88,7 @@ final readonly class CreateProductCategoryData
             requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
             isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : true,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+            requiresContactTransferBeforeContract: (bool) ($data['requires_contact_transfer_before_contract'] ?? false),
             isReportable: isset($data['is_reportable']) ? (bool) $data['is_reportable'] : null,
             reportColumns: array_key_exists('report_columns', $data) && $data['report_columns'] !== null ? (array) $data['report_columns'] : null,
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
@@ -89,6 +97,8 @@ final readonly class CreateProductCategoryData
             multiQuoteWorkOrder: array_key_exists('multi_quote_work_order', $data) ? (bool) $data['multi_quote_work_order'] : null,
             usageArea: array_key_exists('usage_area', $data) ? CategoryUsageArea::from((string) $data['usage_area']) : null,
             multipleOpenOpportunities: array_key_exists('multiple_open_opportunities', $data) ? (bool) $data['multiple_open_opportunities'] : null,
+            requestRegistryType: array_key_exists('request_registry_type', $data) ? PersonalDataTypeEnum::from((string) $data['request_registry_type']) : null,
+            requestOfferHidden: array_key_exists('request_offer_hidden', $data) ? (bool) $data['request_offer_hidden'] : null,
             simplifiedOfferLine: array_key_exists('simplified_offer_line', $data) ? (bool) $data['simplified_offer_line'] : null,
             simplifiedOfferLineOverride: isset($data['simplified_offer_line_override']) ? (bool) $data['simplified_offer_line_override'] : null,
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,

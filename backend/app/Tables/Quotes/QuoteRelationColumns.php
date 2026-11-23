@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * The GENERIC relation-derived column machinery for the `quotes` domain
  * (spec 0065, MT-05), extracted out of QuotesTableDefinition (file-size
- * split, engineering.md §6): `opportunity`/`quote_workflow_status`/
+ * split, engineering.md §6): `opportunity`/
  * `commercial`/`reporter`/`supervisor`/`company`/`company_site`/`source` (own-FK,
  * simple relation-label columns) and `managers` (`quote_user` pivot,
  * to-many, spec 0087 D-1/T-10) — a `whereHas` set filter (allow-listed
@@ -29,6 +29,7 @@ final class QuoteRelationColumns
     public function __construct(
         private readonly RootCategoriesColumn $rootCategoriesColumn,
         private readonly QuoteRegistryColumn $registryColumn,
+        private readonly QuoteSystemStatusColumn $systemStatusColumn,
     ) {}
 
     /**
@@ -67,8 +68,8 @@ final class QuoteRelationColumns
      */
     private const array DERIVED_RELATIONS = [
         'opportunity' => ['relation' => 'opportunity', 'table' => 'opportunities', 'fk' => 'opportunity_id'],
-        'quote_workflow_status' => ['relation' => 'quoteWorkflowStatus', 'table' => 'quote_workflow_statuses', 'fk' => 'quote_workflow_status_id'],
         'commercial' => ['relation' => 'commercial', 'table' => 'referents', 'fk' => 'commercial_id'],
+        'commercial_partner' => ['relation' => 'commercialPartner', 'table' => 'referents', 'fk' => 'commercial_partner_id'],
         'reporter' => ['relation' => 'reporter', 'table' => 'referents', 'fk' => 'reporter_id'],
         'supervisor' => ['relation' => 'supervisor', 'table' => 'users', 'fk' => 'supervisor_id'],
         'company' => ['relation' => 'company', 'table' => 'companies', 'fk' => 'company_id', 'label' => 'denomination'],
@@ -95,6 +96,12 @@ final class QuoteRelationColumns
 
         if ($columnId === OfferLinesColumn::COLUMN_ID) {
             OfferLinesColumn::applyFilter($query, $this->filterValues($filter), $this->matchesBlankEntry($filter));
+
+            return true;
+        }
+
+        if ($columnId === QuoteSystemStatusColumn::COLUMN_ID) {
+            $this->systemStatusColumn->applyFilter($query, $filter);
 
             return true;
         }
@@ -184,6 +191,12 @@ final class QuoteRelationColumns
             return true;
         }
 
+        if ($columnId === QuoteSystemStatusColumn::COLUMN_ID) {
+            $this->systemStatusColumn->applySort($query, $direction);
+
+            return true;
+        }
+
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
         if ($config === null) {
@@ -216,6 +229,10 @@ final class QuoteRelationColumns
 
         if ($columnId === OfferLinesColumn::COLUMN_ID) {
             return OfferLinesColumn::distinctValues($query, $search, $limit);
+        }
+
+        if ($columnId === QuoteSystemStatusColumn::COLUMN_ID) {
+            return $this->systemStatusColumn->distinctValues($search, $query, $limit);
         }
 
         if ($columnId === RootCategoriesColumn::COLUMN_ID) {
@@ -308,21 +325,6 @@ final class QuoteRelationColumns
             ->pluck('users.name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
-    }
-
-    /**
-     * `whereHas` on a relation's own `name`, bound and never raw — shared by
-     * a derived-column set filter (applyFilter) and its advanced-filter twin
-     * (QuotesTableDefinition::applyAdvancedFilter, `quote_workflow_status`).
-     *
-     * @param  Builder<Model>  $query
-     * @param  array<int, string>  $values
-     */
-    public function applyNameWhereHas(Builder $query, string $relation, array $values): void
-    {
-        $query->whereHas($relation, static function (Builder $relatedQuery) use ($values): void {
-            $relatedQuery->whereIn('name', $values);
-        });
     }
 
     /**

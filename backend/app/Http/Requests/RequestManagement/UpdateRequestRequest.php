@@ -137,6 +137,8 @@ class UpdateRequestRequest extends FormRequest
             // "Commerciale" (spec 0357): the Offerta's own commercial
             // Referent, sparse like the Segnalatore above.
             'commercial_id' => ['sometimes', 'nullable', 'integer', 'exists:referents,id'],
+            // "Partner commerciale" (spec 0417): twin of the Commerciale above.
+            'commercial_partner_id' => ['sometimes', 'nullable', 'integer', 'exists:referents,id'],
             // "Supervisore" (spec 0097, D-9): the Offerta's commission
             // recipient, back on this channel by user directive 2026-09-02
             // with the SAME rule UpdateQuoteRequest declares for it — one
@@ -189,9 +191,8 @@ class UpdateRequestRequest extends FormRequest
             // Offerta's WHOLE team, with the same ordered, gap-aware shape
             // and the same shared trait the quotes endpoints use — the lone
             // `operator_id` picker this endpoint used to take is GONE from
-            // the rules (it survives ONLY as `updateWork()`'s internal key
-            // for the grid cell / bulk assign / transfer channels, which
-            // never come through this FormRequest).
+            // the rules (the bulk assign and the transfer write that slot
+            // through RequestOperatorWriter, never through this FormRequest).
             ...$this->managerSlotsRules(),
             // …and that removal is declared, not silent (lead decision
             // 2026-09-02). The two keys address the SAME pivot from two

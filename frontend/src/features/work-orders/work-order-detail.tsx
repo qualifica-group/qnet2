@@ -14,6 +14,10 @@ interface WorkOrderDetailViewProps {
   workOrder: WorkOrderDetailWithPermissions
   /** Called after an in-place save, so the host refreshes whatever lists the work order (spec 0195 D-7). */
   onChanged?: () => void
+  /** After "Elimina" in the header: the host leaves the deleted record. */
+  onDeleted?: () => void
+  /** The tab to open first outside the work order's page (spec 0405). */
+  initialTab?: string
 }
 
 /**
@@ -39,7 +43,7 @@ export function WorkOrderDetailView(props: WorkOrderDetailViewProps) {
   )
 }
 
-function WorkOrderDetailContent({ workOrder, onChanged }: WorkOrderDetailViewProps) {
+function WorkOrderDetailContent({ workOrder, onChanged, onDeleted, initialTab }: WorkOrderDetailViewProps) {
   const { t } = useTranslation()
   const editor = useWorkOrderInlineEdit(workOrder, onChanged)
   const createdAt = formatDateTime(workOrder.created_at)
@@ -50,7 +54,7 @@ function WorkOrderDetailContent({ workOrder, onChanged }: WorkOrderDetailViewPro
       <RecordBody
         header={
           <>
-            <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} />
+            <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} onDeleted={onDeleted} />
             <WorkOrderDetailStats workOrder={workOrder} />
           </>
         }
@@ -58,6 +62,7 @@ function WorkOrderDetailContent({ workOrder, onChanged }: WorkOrderDetailViewPro
 
       <WorkOrderDetailTabs
         workOrder={workOrder}
+        initialTab={initialTab}
         info={
           /* Provider only (no DOM): the inline editors share the edit form. */
           <Form {...editor.form}>

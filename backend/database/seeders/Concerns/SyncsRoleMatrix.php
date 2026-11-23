@@ -5,6 +5,7 @@ namespace Database\Seeders\Concerns;
 use App\Models\Role;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
+use App\Support\Notifications\AssignmentNotificationChannels;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -29,6 +30,9 @@ trait SyncsRoleMatrix
 
     /** The quote visibility widenings the two request modules mirror (spec 0340 rev.3: the competence tier too). */
     private const array QUOTE_VISIBILITY_TIERS = ['viewAll', 'viewSite', 'viewCompetence'];
+
+    /** Reading a request or an enrollee includes its documents, as the mansionario's enrollee read block (spec 0408 D-15). */
+    private const array REQUEST_READ_ABILITIES = ['viewAny', 'view', 'viewDocuments'];
 
     /** The modules whose `viewAll` also carries `viewCompetence` (spec 0340, user directive 2026-11-02). */
     private const array COMPETENCE_SIGHT_RESOURCES = ['opportunities', 'quotes', 'contracts', 'work-orders'];
@@ -57,13 +61,18 @@ trait SyncsRoleMatrix
 
     /**
      * @param  Collection<int, string>  $permissions
+     * @param  bool  $requestSightFromQuotes  false for a role whose questionnaire answered the request
+     *                                        modules itself (spec 0408 D-14): its grants are kept as given
+     * @param  bool  $assignmentNotifications  false for a single-person add-on role (spec 0420 D-4)
      */
-    private function syncRole(string $name, string $description, Collection $permissions): Role
+    private function syncRole(string $name, string $description, Collection $permissions, bool $requestSightFromQuotes = true, bool $assignmentNotifications = true): Role
     {
         $role = Role::findOrCreate($name, Guard::getDefaultName(User::class));
         $role->description = $description;
         $role->save();
-        $role->syncPermissions($this->withRequestModulesSight($this->withCompetenceSight($permissions))->all());
+        $permissions = $this->withCompetenceSight($permissions);
+        $permissions = $requestSightFromQuotes ? $this->withRequestModulesSight($permissions) : $permissions;
+        $role->syncPermissions(($assignmentNotifications ? $this->withAssignmentNotifications($permissions) : $permissions)->all());
 
         return $role;
     }
@@ -87,9 +96,27 @@ trait SyncsRoleMatrix
     }
 
     /**
+     * Every operational seeded role (one that sees at least one module)
+     * receives the assignment notifications, bell and email, of every module
+     * (spec 0420 D-4): the pre-0420 behaviour, which the administrator then
+     * narrows role by role. A role that sees nothing (e.g. import only) stays as declared.
+     *
+     * @param  Collection<int, string>  $permissions
+     * @return Collection<int, string>
+     */
+    private function withAssignmentNotifications(Collection $permissions): Collection
+    {
+        if (! $permissions->contains(fn (string $permission): bool => str_ends_with($permission, '.view'))) {
+            return $permissions;
+        }
+
+        return $permissions->merge(AssignmentNotificationChannels::permissions())->unique()->values();
+    }
+
+    /**
      * Whoever sees opportunities and quotes also sees Gestione Richieste and
-     * Gestione Iscritti (user directive 2026-10-27), read-only, as wide as
-     * their quotes: every offer, their Sedi's, or only the ones they operate.
+     * Gestione Iscritti (user directive 2026-10-27), read-only with the
+     * documents, as wide as their quotes: every offer, their Sedi's, or only the ones they operate.
      *
      * @param  Collection<int, string>  $permissions
      * @return Collection<int, string>
@@ -100,7 +127,7 @@ trait SyncsRoleMatrix
             return $permissions;
         }
 
-        $abilities = collect(['viewAny', 'view'])
+        $abilities = collect(self::REQUEST_READ_ABILITIES)
             ->merge(collect(self::QUOTE_VISIBILITY_TIERS)->filter(fn (string $tier): bool => $permissions->contains("quotes.{$tier}")));
 
         return $permissions

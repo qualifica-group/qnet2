@@ -47,11 +47,12 @@ final class VariableResolver
     {
         return match ($category) {
             'quote' => $this->quoteFields->quote($key, $quote) ?? '',
-            'totals' => $this->quoteFields->totals($key, $quote) ?? '',
+            'totals' => $this->quoteFields->totals($key, $quote, $actor) ?? '',
             'document' => $this->quoteFields->document($key, $actor) ?? '',
             'client' => $this->partyFields->client($key, $quote, $actor) ?? '',
             'referent' => $this->partyFields->referent($key, $quote) ?? '',
             'commercial' => $this->partyFields->commercial($key, $quote) ?? '',
+            'commercial_partner' => $this->partyFields->commercialPartner($key, $quote) ?? '',
             'reporter' => $this->partyFields->reporter($key, $quote) ?? '',
             'supervisor' => $this->partyFields->supervisor($key, $quote) ?? '',
             'company' => $this->organizationFields->company($key, $quote) ?? '',

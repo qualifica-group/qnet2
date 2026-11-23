@@ -26,7 +26,7 @@ function AlertCell({ value }: ICellRendererParams) {
  * Custom cell renderers keyed by the backend column `id` (spec 0072
  * `data_contract`, AC-029). `code`/`title` show the underlying QUOTE's code
  * (D-1: contracts have no code of their own); `registry`/`opportunity`/
- * `commercial`/`reporter` are `{id, name}` relations (mirrors
+ * `commercial`/`commercial_partner`/`reporter` are `{id, name}` relations (mirrors
  * `opportunityColumnRenderers`); `supervisor` a `users` FK rendered as a
  * person avatar+name; `managers` (user directive 2026-08-31) is the offer's
  * G.A. avatar stack, the exact `UserStackCell` the Offerte grid already uses;
@@ -41,6 +41,7 @@ export const contractColumnRenderers: TableRendererMap = {
   registry: (params) => <RelationCell {...params} icon={Building2} />,
   opportunity: (params) => <RelationCell {...params} icon={Handshake} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
+  commercial_partner: (params) => <RelationCell {...params} icon={Handshake} />,
   reporter: (params) => <RelationCell {...params} icon={UserRound} />,
   supervisor: (params) => <UserCell {...params} />,
   managers: (params) => <UserStackCell {...params} />,

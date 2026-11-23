@@ -206,3 +206,56 @@ it('validates an updated line against the roles submitted in the same request', 
 
     expect($line->commissions()->sole()->recipient_id)->toBe($replacement->id);
 });
+
+it('spec 0417 AC-009: exposes the commercial partner recipient, null when none was picked', function () {
+    $partner = Referent::factory()->create();
+    $product = recipientLockProduct();
+
+    Sanctum::actingAs(recipientLockActor(['create']));
+
+    $this->postJson('/api/quotes/commission-recipients', [
+        'product_id' => $product->id,
+        'commercial_partner_id' => $partner->id,
+    ])->assertOk()
+        ->assertJsonPath('data.COMMERCIAL_PARTNER', ['type' => 'referent', 'id' => $partner->id, 'name' => $partner->name])
+        ->assertJsonPath('data.COMMERCIAL', null);
+
+    $this->postJson('/api/quotes/commission-recipients', ['product_id' => $product->id])
+        ->assertOk()->assertJsonPath('data.COMMERCIAL_PARTNER', null);
+});
+
+it('spec 0417 AC-008: a COMMERCIAL_PARTNER commission is 422 without a partner and accepted for the quote partner', function () {
+    $partner = Referent::factory()->create();
+    $stranger = Referent::factory()->create();
+    $product = recipientLockProduct();
+    $withoutPartner = Quote::factory()->create();
+    $withPartner = Quote::factory()->create(['commercial_partner_id' => $partner->id]);
+    $line = QuoteLine::factory()->create([
+        'quote_id' => $withPartner->id, 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => 100, 'net_amount' => 100, 'total_amount' => 100,
+    ]);
+
+    Sanctum::actingAs(recipientLockActor(['update', 'view']));
+
+    $payload = fn (?int $lineId, int $recipientId): array => ['offer_lines' => [[
+        ...($lineId === null ? [] : ['id' => $lineId]),
+        'product_id' => $product->id,
+        'quantity' => 1,
+        'unit_price' => 100,
+        'commissions' => [[
+            'recipient_role' => 'COMMERCIAL_PARTNER',
+            'recipient_type' => 'referent',
+            'recipient_id' => $recipientId,
+            'commission_type' => 'PERCENTAGE',
+            'value' => 10,
+            'origin' => 'MANUAL_OVERRIDE',
+        ]],
+    ]]];
+
+    $this->patchJson("/api/quotes/{$withoutPartner->id}", $payload(null, $partner->id))
+        ->assertStatus(422)->assertJsonValidationErrors(['offer_lines.0.commissions.0.recipient_role']);
+    $this->patchJson("/api/quotes/{$withPartner->id}", $payload($line->id, $stranger->id))
+        ->assertStatus(422)->assertJsonValidationErrors(['offer_lines.0.commissions.0.recipient_id']);
+    $this->patchJson("/api/quotes/{$withPartner->id}", $payload($line->id, $partner->id))->assertOk();
+
+    expect($line->commissions()->sole()->recipient_id)->toBe($partner->id);
+});

@@ -246,7 +246,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A **work order task with no assignees** can be completed by a **Supervisor** or a **Participant** of the work order, even without being its assignee. Completing it makes you its **assignee**, and from then on the usual rules apply: if the task requires validation it goes into validation, the time entry is logged in your name and the work order advances as with the other tasks. Before completing it you cannot edit it. If the task already has an assignee, only that assignee counts.',
+          text: 'A **work order task** can be completed by a **Supervisor** or a **Participant** of the work order even without being its assignee, both when the task has no assignees and when it is already assigned to a colleague. You complete it **in your own name**: you become one of its **assignees** (the existing assignees stay and receive the closing notification), and from then on the usual rules apply: if the task requires validation it goes into validation, the time entry is logged in your name and the work order advances as with the other tasks. If you leave **Log the time entry for all assignees** on, the same time also goes to the assigned colleagues: to log it only for you, turn it off. Before completing it you cannot edit it.',
         },
       ],
     },
@@ -282,7 +282,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "With **Validation** on, an assignee's completion does not close the task: it goes to validation and the requester must approve or reject it. You cannot complete a task with open sub-tasks, nor act on a blocked task.",
+          text: "With **Validation** on, an assignee's completion does not close the task: it goes to validation and the requester must approve or reject it. You cannot approve a task in validation with open sub-tasks, nor act on a blocked task.",
         },
         {
           type: 'note',
@@ -299,6 +299,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "When completing **several tasks at once** (bulk action), the feedback is applied identically to every task, while the time entered in the time entry is a **total** that is split among the tasks. Under the time entry the **Split among tasks** section shows an editable preview: the minutes are divided equally (the remainder, one minute each, goes to the first tasks of the selection) and you can correct each share, which must add up to the total and be at least 1 minute each; **Split equally** restores the division. Changing the total or the start time recalculates the shares. If you set a start time, each task gets a consecutive time slot (e.g. 09:00-09:30, 09:30-10:00). The **Track time** switch only shows up when none of the selected tasks requires the time entry; when it is off there is no split. If even one task is not eligible, the action is all or nothing: it stops with an error and no task is completed. The same holds for **Complete** on the work order task board.",
+        },
+        {
+          type: 'note',
+          text: 'When you complete a task that still has **open sub-tasks**, the Complete window warns that they will be completed together with the task: the parent and its open sub-tasks (nested ones too, but not those under a sub-task that is already closed) close in a single operation. The time entered in the time entry is a **total**: the **Split among tasks** section divides it between the task and each open sub-task, with the same rules as completing several tasks at once (the task on the first row, then the sub-tasks in tree order). Feedback and "for all assignees" apply to every task; the chosen validation status applies to the task only. If even one sub-task cannot be closed from here (for example it is not yours, it is blocked, it is in validation or it would need validation), nothing is completed and a message lists which sub-tasks and why: complete it on its own first.',
         },
         {
           type: 'paragraph',
@@ -371,7 +375,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The row carries the same actions as the detail (Complete, Reopen, Approve, Reject, Block, Unblock, Request update), plus **Duplicate** (opens the create form pre-filled with the same data — except attachments, sub-tasks, status, completion date and time entries, and with no parent task) and **Notes** (opens the task’s notes panel, with the note count on the icon’s badge).',
+          text: 'The row carries the same actions as the detail (Complete, Reopen, Approve, Reject, Block, Unblock, Request update), plus **Duplicate** (opens the create form pre-filled with the same data — except attachments, sub-tasks, status, completion date and time entries, and with no parent task) and **Notes** (opens the task’s notes panel, found under **More actions**: the count of the notes you have not read yet shows on the **More actions** button and next to the entry).',
         },
         {
           type: 'paragraph',

@@ -167,7 +167,9 @@ describe('RuleBuilderDialog', () => {
 
     expect(await screen.findByRole('textbox', { name: 'Value' })).toHaveValue('acme')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save view' }))
+    // Editing opens on the view's name: "Save" is the main action, no "Save view" step.
+    expect(screen.queryByRole('button', { name: 'Save view' })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'View name' })).toHaveValue(CUSTOM_FILTER_VIEW.name)
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
@@ -179,5 +181,17 @@ describe('RuleBuilderDialog', () => {
         rules: CUSTOM_FILTER_VIEW.rules,
       }),
     )
+  })
+
+  it('applies an edited view without saving as an ad-hoc filter, not tagged with the view', async () => {
+    const { onApply } = renderDialog({ editingView: CUSTOM_FILTER_VIEW })
+
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Value' }), { target: { value: 'globex' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply without saving' }))
+
+    await waitFor(() =>
+      expect(onApply).toHaveBeenCalledWith({ and: [{ field: 'name', operator: 'contains', value: 'globex' }], or: [] }, {}),
+    )
+    expect(updateFilterView).not.toHaveBeenCalled()
   })
 })

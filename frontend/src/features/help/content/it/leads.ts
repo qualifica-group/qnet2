@@ -143,7 +143,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Se assegni o cambi l'**Operatore** del lead dopo la conversione, anche le richieste nate dal lead passano al nuovo operatore, che riceve la notifica. Restano invariate le richieste chiuse e quelle a cui hai assegnato a mano un altro operatore in Gestione Richieste; togliere l'operatore dal lead non lo toglie dalle richieste.",
+          text: "Se assegni o cambi l'**Operatore** del lead dopo la conversione, anche le richieste nate dal lead passano al nuovo operatore, che riceve la notifica se non era già tra i Gestori account della richiesta. Restano invariate le richieste chiuse e quelle a cui hai assegnato a mano un altro operatore in Gestione Richieste; togliere l'operatore dal lead non lo toglie dalle richieste.",
         },
         {
           type: 'paragraph',

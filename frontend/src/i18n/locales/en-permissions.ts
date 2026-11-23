@@ -44,6 +44,10 @@ export const permissions = {
     // Operator at creation (user directive 2026-07-29).
     assignOperator: 'Assign operator',
     appendTeamMember: 'Add to team',
+    // Spec 0404 B-D1: move the offer to another registry.
+    transferRegistry: 'Transfer to another registry',
+    // Spec 0404 E-D2: writing on an offer under contract (frozen).
+    updateContracted: 'Edit quotes under contract',
     impersonate: 'Impersonate',
     // Non-canonical abilities introduced by spec 0078: `manage` gates
     // approve/reject on a field-change-request (FieldChangeRequestPolicy);
@@ -101,6 +105,13 @@ export const permissions = {
     calendarAll: 'Calendar: everyone',
     // Spec 0360 D-8: change (not remove) the offer rows assigned to a work order.
     updateLockedLines: 'Edit rows assigned to a work order',
+    // Spec 0412: the offer's costs and margins (cost rows, summary, columns, statistics).
+    viewCosts: 'View costs and margins',
+    // Spec 0413: notifications of the team's activity on offers, contracts and work orders.
+    notifyTeam: 'Receive team notifications',
+    // Spec 0420: notice when put in charge as Account Manager or Supervisor.
+    notifyAssignment: 'Receive the assignment notification',
+    notifyAssignmentEmail: 'Receive the assignment email',
   },
   resources: {
     users: 'Users',
@@ -120,6 +131,7 @@ export const permissions = {
     companies: 'Companies',
     'company-sites': 'Company Sites',
     'contract-statuses': 'Contract Statuses',
+    'quote-system-statuses': 'Quote system statuses',
     contracts: 'Contracts',
     'custom-fields': 'Custom Fields',
     'document-layouts': 'Layouts',

@@ -7,11 +7,12 @@ namespace App\Tables\RequestManagement;
 use App\Enums\ContactTypeEnum;
 use App\Models\Contact;
 use App\Models\Opportunity;
+use App\Models\OpportunityProductLine;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\Quotes\QuoteRootScope;
 use App\Services\Quotes\QuoteWorkflowResolver;
-use App\Support\ManagerPositions;
 use App\Support\OperationalSiteLabel;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\ProductLinePairsColumn;
@@ -52,6 +53,7 @@ final class RequestRowMapper
     public function __construct(
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly ProductLinePairsColumn $productLinePairs,
+        private readonly QuoteRootScope $rootScope,
     ) {}
 
     /**
@@ -60,6 +62,7 @@ final class RequestRowMapper
     public function map(Quote $row): array
     {
         $opportunity = $row->opportunity;
+        $rootLines = $this->rootScope->filterLines($opportunity?->productLines ?? collect(), $row->root_product_category_id);
 
         return [
             'id' => $row->id,
@@ -88,30 +91,23 @@ final class RequestRowMapper
             // 0075), re-derived through `quote.opportunity` (spec 0086).
             // Projected as the {funzione aziendale, categoria} PAIRS — ids
             // for the inline editor to commit, names for the cell to render.
-            'product_categories' => $this->productLinePairs->project($opportunity),
+            // Spec 0411, D-3: a bound offer shows only its own root's lines.
+            'product_categories' => $this->productLinePairs->projectLines($rootLines),
             // The `product_categories` inline editor's OWN scope (spec 0075,
             // D-6): the opportunity's product-line category ids, unchanged in
             // shape from the former ProductsOfInterestColumn::SCOPE_COLUMN
             // projection (data contract: "invariata come scope dell'editor
             // delle linee").
-            'product_category_ids' => $this->productCategoryIds($opportunity),
+            'product_category_ids' => $this->productCategoryIds($rootLines),
             // "Linee di prodotto" (spec 0086, D-7): the offer's own REVENUE
             // lines' products, replacing "Prodotti di interesse" on this
             // domain only (AC-021).
             ...OfferLinesColumn::project($row),
-            // Position 2, the Operatore: spec 0087, D-9 — a real FK on
-            // `quotes` (`operator_id`), denormalized from the pivot.
-            RequestManagerColumns::OPERATOR_COLUMN_ID => $this->userSummary($row->operator),
-            // Spec 0373 D-7: the whole team, in `managers()` position order.
-            // Each person carries its position, so a category tab can keep
-            // only the unnamed ones ("Altri gestori account", spec 0382 D-11).
+            // Spec 0373 D-7 / spec 0406: the whole team, in `managers()`
+            // position order, the grid's only Gestori Account column.
             RequestManagerColumns::MANAGERS_COLUMN_ID => $row->managers
                 ->map(fn (User $user): array => [...($this->userSummary($user) ?? []), 'position' => (int) $user->pivot->position])
                 ->all(),
-            // Every other position (spec 0382), read from the `quote_user`
-            // pivot: the team is eager-loaded for the whole page, so this
-            // costs no per-row query.
-            ...$this->positionOccupants($row),
             // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
             // FK — the site has no own name, so its label is composed
             // server-side from its primary address.
@@ -191,34 +187,6 @@ final class RequestRowMapper
     }
 
     /**
-     * The manager occupying one `quote_user` position, or null when the slot
-     * is empty — read off the ALREADY-LOADED relation (this mapper never
-     * queries, see the class docblock).
-     */
-    /**
-     * @return array<string, array{id: int, name: string, avatar_url: string|null}|null>
-     */
-    private function positionOccupants(Quote $row): array
-    {
-        $occupants = [];
-
-        foreach (RequestManagerColumns::positions() as $position => $columnId) {
-            if ($position !== ManagerPositions::OPERATOR) {
-                $occupants[$columnId] = $this->userSummary($this->managerAt($row, $position));
-            }
-        }
-
-        return $occupants;
-    }
-
-    private function managerAt(Quote $row, int $position): ?User
-    {
-        return $row->managers->first(
-            static fn (User $manager): bool => (int) $manager->pivot->position === $position,
-        );
-    }
-
-    /**
      * A person summary carrying the inline avatar (data URI) for the shared
      * UserCell — mirrors QuotesTableDefinition::userSummary/
      * OpportunitiesTableDefinition::userSummary. Null when unset.
@@ -269,11 +237,12 @@ final class RequestRowMapper
      * The `product_categories` inline editor's scope (spec 0075, D-6): the
      * distinct product-line category ids of the offer's opportunity.
      *
+     * @param  Collection<int, OpportunityProductLine>  $lines
      * @return array<int, int>
      */
-    private function productCategoryIds(?Opportunity $opportunity): array
+    private function productCategoryIds(Collection $lines): array
     {
-        return ($opportunity?->productLines ?? collect())
+        return $lines
             ->pluck('product_category_id')
             ->unique()
             ->values()

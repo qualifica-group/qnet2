@@ -13,7 +13,9 @@ import { cn } from '@/lib/utils'
 import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderRequestUpdateDialog } from '@/features/work-orders/work-order-request-update-dialog'
+import { WorkOrderCopyQuoteAttributesAction } from '@/features/work-orders/work-order-copy-quote-attributes-action'
 import { WorkOrderClosureActions } from '@/features/work-orders/work-order-closure-actions'
+import { WorkOrderDeleteAction } from '@/features/work-orders/work-order-delete-action'
 import type { WorkOrderDetailWithPermissions, WorkOrderType, WorkOrderWorkPhase } from '@/features/work-orders/types'
 
 /**
@@ -69,11 +71,17 @@ interface WorkOrderDetailHeaderProps {
   onChanged?: () => void
 }
 
+interface WorkOrderDetailHeaderActionsProps extends WorkOrderDetailHeaderProps {
+  /** After "Elimina": the host leaves the record. Absent, no delete is offered. */
+  onDeleted?: () => void
+}
+
 /**
- * Identity band: monogram, title, code subtitle, status/type pills and the
- * closure action (the fields edit in place below).
+ * Identity band: monogram, title, the client company as subtitle (user
+ * directive 2026-11-18, it replaces the code; the code only when there is no
+ * client), status/type pills, the closure action and Elimina (the fields edit in place below).
  */
-export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailHeaderProps) {
+export function WorkOrderDetailHeader({ workOrder, onChanged, onDeleted }: WorkOrderDetailHeaderActionsProps) {
   return (
     <RecordCardHeader
       media={
@@ -81,7 +89,7 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
       }
       title={workOrder.title}
       legacyId={workOrder.old_id}
-      subtitle={workOrder.code}
+      subtitle={workOrder.registry?.name ?? workOrder.code}
       badges={
         <>
           <WorkOrderStatusBadge status={workOrder.status.value} />
@@ -92,11 +100,13 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
       actions={
         <>
           <WorkOrderProgressAction workOrder={workOrder} onChanged={onChanged} />
+          <WorkOrderCopyQuoteAttributesAction workOrder={workOrder} onChanged={onChanged} />
           {workOrder.permissions.actions.request_update ? <WorkOrderRequestUpdateAction workOrder={workOrder} /> : null}
           {workOrder.permissions.actions.request_proforma ? (
             <WorkOrderProformaAction workOrder={workOrder} onChanged={onChanged} />
           ) : null}
           <WorkOrderClosureActions workOrder={workOrder} onChanged={onChanged} />
+          {onDeleted ? <WorkOrderDeleteAction workOrder={workOrder} onDeleted={onDeleted} /> : null}
         </>
       }
     />

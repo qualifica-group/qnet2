@@ -22,7 +22,13 @@ export interface ProductCategoryRootSelectProps {
   triggerLabel: string
   /** The module the card belongs to (spec 0389): roots reserved to the other one are not listed, the saved one stays. */
   area?: CategoryPickArea
+  /** Spec 0411: list only this root (a request bound to one parent category); the saved one stays. */
+  onlyRootId?: number | null
+  /** Spec 0416: roots another row already holds, listed disabled — their categories go in that row. */
+  takenRootIds?: readonly number[]
 }
+
+const NO_TAKEN_ROOTS: readonly number[] = []
 
 /**
  * The card row's FIRST step (spec 0132 D-1): every root category (a node with
@@ -40,6 +46,8 @@ export function ProductCategoryRootSelect({
   otherRowsFilled = false,
   triggerLabel,
   area,
+  onlyRootId = null,
+  takenRootIds = NO_TAKEN_ROOTS,
 }: ProductCategoryRootSelectProps) {
   const { t } = useTranslation()
   const treeQuery = useProductCategoryTree()
@@ -52,13 +60,14 @@ export function ProductCategoryRootSelect({
     const keepIds = [value, categoryId].filter((id): id is number => id !== null)
     return cardCategoryTree(tree, keepIds)
       .filter((root) => root.id === value || isRootUsableIn(root, area))
+      .filter((root) => onlyRootId === null || root.id === onlyRootId || root.id === value)
       .map((root) => ({
         id: root.id,
         name: root.name,
         depth: 0,
-        disabled: isSingleRootBlocked(root, otherRowsFilled),
+        disabled: isSingleRootBlocked(root, otherRowsFilled) || (root.id !== value && takenRootIds.includes(root.id)),
       }))
-  }, [tree, otherRowsFilled, value, categoryId, area])
+  }, [tree, otherRowsFilled, value, categoryId, area, onlyRootId, takenRootIds])
 
   return (
     <SearchableSelect

@@ -35,6 +35,7 @@ export function buildCreatePayload(
 
   const payload: CreateOpportunityPayload = {
     commercial_id: values.commercial_id,
+    commercial_partner_id: values.commercial_partner_id,
     reporter_id: values.reporter_id,
     // The create schema guarantees this value before the payload builder runs;
     // the shared RHF value remains nullable because edit permits clearing it.
@@ -107,6 +108,9 @@ export function buildUpdatePayload(
   }
   if (values.commercial_id !== original.commercial_id) {
     payload.commercial_id = values.commercial_id
+  }
+  if (values.commercial_partner_id !== original.commercial_partner_id) {
+    payload.commercial_partner_id = values.commercial_partner_id
   }
   if (values.reporter_id !== original.reporter_id) {
     payload.reporter_id = values.reporter_id

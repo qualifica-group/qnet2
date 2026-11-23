@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0413-team-activity-notifications" status="implemented" owner="utente" date="2026-11-18">
+
+  <goal>
+    Questionario Back Office, nota di Martina Mosca (SUPERVISOR): "Notifiche creazione ed avanzamento stato Offerta,
+    Contratto, Commessa del TEAM BACK OFFICE". Chi ha il permesso riceve una notifica (campanella + email secondo
+    preferenza) quando una persona del suo team crea o cambia stato di un'offerta, un contratto o una commessa.
+  </goal>
+
+  <context>
+    D-1 Decisione utente 2026-11-18: e' un permesso, assegnato a chi deve riceverla. Un permesso per modulo:
+        `quotes.notifyTeam`, `contracts.notifyTeam`, `work-orders.notifyTeam` ("Ricevere le notifiche del team"),
+        ability delle tre Policy (`TeamActivityRecordEnum::ABILITY`).
+    D-2 "Del team" = l'organigramma (come spec 0408 D-4): l'autore della scrittura e' sotto il destinatario a
+        qualunque livello (`TimeEntrySubordinateResolver::allAncestorIds`). Destinatari: responsabili attivi
+        dell'autore con il permesso, da ruolo o diretto (query sulle righe permesso, non `can()`: super-admin
+        passa ogni gate e riceverebbe tutto), autore escluso.
+    D-3 Eventi: offerta creata o cambio di "Stato di lavorazione" (`quote_workflow_status_id`, da Offerte e da
+        Gestione Richieste: passano tutti da `ContractLifecycleManager::syncOnStatusChange`, che riconosce la
+        creazione dal record appena creato); contratto aperto (automatico all'offerta vinta), sospeso, validato,
+        cambio stato, disdetto, riattivato, modifica generica dello stato; commessa creata (primo stato in
+        `WorkOrderWorkflowStatusAssigner::persist`) o cambio di "Stato lavorazione" registrato (form, cella,
+        chiusura forzata/riapertura, task chiuso, chiusura/ripristino da contratto: una notifica per commessa).
+    D-4 Nessuna notifica per scritture di sistema: `AssignmentNotifier::muted()` (import richieste, migrazione
+        legacy commesse e ora anche offerte, realign) o nessun utente autenticato (console, job). Inviata dopo il
+        commit (`DB::afterCommit`).
+    D-5 Il permesso non entra nelle concessioni "modulo intero" (admin, mansioni, ruoli legacy di
+        `QualificaRoleSeeder`/`QualificaLegacyRoleSeeder`): ogni responsabile riceverebbe tutto del proprio
+        organigramma. Si da' uno per uno: oggi il ruolo aggiuntivo `reparto-backoffice-notifiche-team` (solo Mosca,
+        chiave `team_activity_notifications` della spec 0408).
+    D-6 Messaggio: autore, record (offerta per titolo, commessa "codice - titolo", contratto con il titolo della
+        sua offerta), stati da/a; email con la scheda del record (per il contratto quella dell'offerta) e il bottone
+        se il destinatario puo' aprire il record (`TeamActivityRecordEnum::pathFor`), altrimenti la frase di
+        richiesta accesso. Nessuna modifica al frontend delle notifiche (tipo libero, rendering generico).
+  </context>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Una modifica di stato di un membro del team arriva ai responsabili sopra di lui con il permesso, non a responsabili senza permesso, non a chi ha il permesso fuori dalla catena, non all'autore.</criterion>
+    <criterion id="AC-002">Il messaggio riporta autore, record, stato precedente e nuovo.</criterion>
+    <criterion id="AC-003">Nessuna notifica se lo stato non cambia, sotto `muted()` o senza utente autenticato.</criterion>
+    <criterion id="AC-004">Offerta nuova e commessa nuova sono annunciate come creazione; un cambio stato contratto da "Modifica stato" arriva ai responsabili; senza `contracts.view` la notifica non ha link.</criterion>
+  </acceptance_criteria>
+</spec>

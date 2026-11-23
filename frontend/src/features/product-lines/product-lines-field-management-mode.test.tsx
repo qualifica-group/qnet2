@@ -26,6 +26,8 @@ const MULTI_ROOT_ID = 800
 const MULTI_CATEGORY_A = 801
 const MULTI_CATEGORY_B = 802
 const OTHER_MULTI_ROOT_ID = 700
+const OTHER_MULTI_CATEGORY = 701
+const THIRD_MULTI_ROOT_ID = 600
 
 /**
  * Two roots: one `single` mode, one `multiple`. `management_mode` is already
@@ -77,6 +79,13 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
         is_active: true,
         children: [node({ id: 701, name: 'Other multi category', parent_id: 700 })],
       }),
+      node({
+        id: 600,
+        name: 'Third multi root',
+        is_selectable: false,
+        is_active: true,
+        children: [node({ id: 601, name: 'Third multi category', parent_id: 600 })],
+      }),
     ],
   }
 })
@@ -120,6 +129,15 @@ vi.mock('@/components/ui/searchable-select', () => ({
         ))}
     </div>
   ),
+}))
+
+/** Spec 0416: a `multiple` root picks with the multi-select, probed like the single select. */
+vi.mock('@/components/ui/searchable-multi-select', async () =>
+  await import('@/features/product-lines/searchable-multi-select-probe'))
+
+/** The category quick-create needs the auth context and has its own suites. */
+vi.mock('@/components/form/use-quick-create-action', () => ({
+  useQuickCreateAction: () => ({ renderAction: () => null }),
 }))
 
 interface HarnessProps {
@@ -198,22 +216,23 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7, spec 01
   })
 
   it("AC-042 rev.2: changing the FIRST row's root leaves the other rows untouched", async () => {
+    // Spec 0416 (REQUIREMENT CHANGED): two lines of one root are one row, so the rows sit on two roots.
     renderHarness({
       defaultValue: [
         { root_category_id: MULTI_ROOT_ID, product_category_id: MULTI_CATEGORY_A },
-        { root_category_id: MULTI_ROOT_ID, product_category_id: MULTI_CATEGORY_B },
+        { root_category_id: OTHER_MULTI_ROOT_ID, product_category_id: OTHER_MULTI_CATEGORY },
       ],
     })
 
-    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${OTHER_MULTI_ROOT_ID}` }))
+    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${THIRD_MULTI_ROOT_ID}` }))
 
     await waitFor(() =>
-      expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(OTHER_MULTI_ROOT_ID)),
+      expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(THIRD_MULTI_ROOT_ID)),
     )
     // Only the edited row loses its category (it was scoped by the old root).
     expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('')
-    expect(screen.getByTestId('value-Parent category 2')).toHaveTextContent(String(MULTI_ROOT_ID))
-    expect(screen.getByTestId('value-Product category 2')).toHaveTextContent(String(MULTI_CATEGORY_B))
+    expect(screen.getByTestId('value-Parent category 2')).toHaveTextContent(String(OTHER_MULTI_ROOT_ID))
+    expect(screen.getByTestId('value-Product category 2')).toHaveTextContent(String(OTHER_MULTI_CATEGORY))
   })
 
   it('AC-041 on edit: a row LOADED on a single-mode category disables "Add" without being re-picked', async () => {
@@ -224,7 +243,7 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7, spec 01
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled())
   })
 
-  it('AC-042 rev.2 on edit: rows LOADED on a multiple-mode category keep their root editable, scoped to their OWN root', async () => {
+  it('AC-042 rev.2 on edit: lines LOADED on a multiple-mode category keep their root editable, scoped to their OWN root', async () => {
     renderHarness({
       defaultValue: [
         { root_category_id: null, product_category_id: MULTI_CATEGORY_A },
@@ -232,15 +251,16 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7, spec 01
       ],
     })
 
-    await waitFor(() => expect(screen.getByTestId('disabled-Parent category 2')).toHaveTextContent('false'))
+    // Spec 0416 (REQUIREMENT CHANGED): the two lines of one root load as ONE row holding both.
+    await waitFor(() => expect(screen.getByTestId('disabled-Parent category 1')).toHaveTextContent('false'))
+    expect(screen.queryByTestId('select-Parent category 2')).not.toBeInTheDocument()
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(`${MULTI_CATEGORY_A},${MULTI_CATEGORY_B}`)
     // Spec 0132: a card row's second select is scoped to its OWN root only —
-    // the other root's branch is not even listed as disabled context, unlike
-    // the retired business-function scoping (where roots sharing a function
-    // stayed mutually visible).
-    expect(screen.getByTestId('options-Product category 2')).toHaveTextContent(
+    // the other root's branch is not even listed as disabled context.
+    expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(
       `${MULTI_ROOT_ID}:disabled,${MULTI_CATEGORY_A},${MULTI_CATEGORY_B}`,
     )
-    expect(screen.getByTestId('options-Product category 2')).not.toHaveTextContent(String(SINGLE_ROOT_ID))
+    expect(screen.getByTestId('options-Product category 1')).not.toHaveTextContent(String(SINGLE_ROOT_ID))
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
   })
 
@@ -263,9 +283,10 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7, spec 01
       ],
     })
 
+    // Spec 0416 (REQUIREMENT CHANGED): row 1's own root is listed disabled too, its categories go in row 1.
     await waitFor(() =>
       expect(screen.getByTestId('options-Parent category 2')).toHaveTextContent(
-        `${SINGLE_ROOT_ID}:disabled,${MULTI_ROOT_ID},${OTHER_MULTI_ROOT_ID}`,
+        `${SINGLE_ROOT_ID}:disabled,${MULTI_ROOT_ID}:disabled,${OTHER_MULTI_ROOT_ID}`,
       ),
     )
     // Row 1 is blocked too: row 2 has no root yet, so it stays free.

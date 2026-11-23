@@ -17,10 +17,10 @@ import {
   QuoteOpportunityField,
   QuoteTitleField,
 } from '@/features/quotes/quote-identity-fields'
-import { QuoteWorkflowStatusControls } from '@/features/quotes/quote-workflow-status-field'
+import { QuoteSystemStatusControls } from '@/features/quotes/quote-system-status-field'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
-import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
+import type { QuoteSystemStatusOption, QuoteSystemStatusRef } from '@/features/quotes/types'
 
 /** What the identity rows show: the persisted record on the detail, the draft on create. */
 export interface QuoteIdentityValues {
@@ -32,14 +32,14 @@ export interface QuoteIdentityValues {
   /** Spec 0349 "Data ricontatto": `Y-m-d` or `null`. */
   followUpDate: string | null
   /** `null` on create: the backend assigns the `open` row of the set it resolves (AC-020). */
-  status: QuoteWorkflowStatusRef | null
+  status: QuoteSystemStatusRef | null
   opportunity: RelationFieldRef | null
 }
 
-/** The status set of a persisted quote: absent on create, where no transition happens. */
+/** The system statuses of a persisted quote: absent on create, where no transition happens. */
 interface StatusContext {
-  statuses: QuoteWorkflowStatusRef[]
-  originalStatusId: number
+  statuses: QuoteSystemStatusOption[]
+  originalStatusId: number | null
 }
 
 /** The create flow's hooks on the Opportunita' row (role inheritance, preset lock). */
@@ -61,9 +61,9 @@ interface StatusEditorProps extends StatusContext {
 
 /** The status select plus, when the target demands it, the transition note (AC-023). */
 function StatusEditor({ control, statuses, originalStatusId }: StatusEditorProps) {
-  const selectedStatusId = useWatch({ control, name: 'quote_workflow_status_id' })
+  const selectedStatusId = useWatch({ control, name: 'quote_system_status_id' })
   return (
-    <QuoteWorkflowStatusControls
+    <QuoteSystemStatusControls
       control={control}
       statuses={statuses}
       originalStatusId={originalStatusId}
@@ -137,8 +137,8 @@ export function QuoteIdentitySection({
         </RecordInlineField>
         {status && values.status ? (
           <RecordInlineField
-            field="quote_workflow_status_id"
-            label={t('quotes.form.workflowStatus')}
+            field="quote_system_status_id"
+            label={t('quotes.form.systemStatus')}
             inline={inline}
             editor={<StatusEditor control={control} {...status} />}
           >

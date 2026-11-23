@@ -28,7 +28,6 @@ return [
         'client' => 'Cliente',
         'operational_site' => 'Sede operativa',
         'status' => 'Stato',
-        'operator' => 'Operatore',
 
         // Comuni
         'source' => 'Fonte',

@@ -6,6 +6,7 @@ use App\Http\Controllers\Quotes\QuoteCommissionRecipientsController;
 use App\Http\Controllers\Quotes\QuoteController;
 use App\Http\Controllers\Quotes\QuoteDocumentController;
 use App\Http\Controllers\Quotes\QuoteForSelectController;
+use App\Http\Controllers\Quotes\QuoteRegistryTransferController;
 use App\Http\Controllers\Quotes\QuoteWithOpportunityController;
 use App\Http\Controllers\Quotes\RecalculateQuoteCommissionsController;
 use Illuminate\Support\Facades\Route;
@@ -51,6 +52,10 @@ Route::delete('quotes/{quote}', [QuoteController::class, 'destroy']);
 // synchronously and streamed back, never persisted. POST (not GET): it
 // produces an artifact, mirroring `POST /api/exports/{domain}`.
 Route::post('quotes/{quote}/document', QuoteDocumentController::class);
+
+// Spec 0404, part B: move the offer to another anagrafica (quotes.update +
+// quotes.transferRegistry, checked in the controller).
+Route::post('quotes/{quote}/transfer-registry', [QuoteRegistryTransferController::class, 'forQuotes']);
 
 // Spec 0308: explicit realignment of an open quote's commissions to the
 // current rules (impact counts for the dialog, then the recalculation).

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,9 @@ import { NoteQuoteScopeSelect } from '@/features/notes/note-quote-scope-select'
 import type { NoteQuoteRef, NoteQuoteScope } from '@/features/notes/types'
 import { NoteList } from '@/features/notes/note-list'
 import { useNotes } from '@/features/notes/use-notes'
+import { markNotesRead } from '@/features/notes/api'
+import { notesKeys } from '@/features/notes/query-keys'
+import { useMarkReadOnLoad } from '@/hooks/use-mark-read-on-load'
 
 /** Hoistato: un `[]` inline creerebbe un riferimento nuovo a ogni render. */
 const NO_QUOTES: NoteQuoteRef[] = []
@@ -31,9 +35,10 @@ interface NotesSectionProps {
    */
   lockedQuoteId?: number | null
   /**
-   * Chiamata quando il thread cambia di dimensione — nota creata (root o reply)
-   * o eliminata. Serve agli host che mostrano un conteggio proprio (il badge
-   * `notes_count` di una riga SSRM): la lista si aggiorna da sola via React
+   * Chiamata quando il conteggio del thread cambia — nota creata (root o reply)
+   * o eliminata, oppure note non lette appena segnate come lette. Serve agli
+   * host che mostrano un conteggio proprio (il badge `notes_count` di una riga
+   * SSRM, che conta solo le non lette): la lista si aggiorna da sola via React
    * Query, quel conteggio no, ed e' un valore del server che va rifetchato
    * subito, non alla chiusura del dialog. La modifica di una nota non la
    * chiama: cambia il testo, non il conteggio.
@@ -75,7 +80,22 @@ export function NotesSection({
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
+    dataUpdatedAt,
+    isPlaceholderData,
   } = useNotes(entityType, entityId, true, quoteScope)
+  const queryClient = useQueryClient()
+  // Seen = read: the thread on screen stops counting in the grids' `notes`
+  // badge and in the Note tab's count, which every list of the record
+  // carries (`meta.unread`), so they are re-read. The previous scope's
+  // placeholder page is not what the user asked to see, so it marks nothing.
+  useMarkReadOnLoad(
+    isPlaceholderData ? 0 : dataUpdatedAt,
+    () => markNotesRead(entityType, entityId, quoteScope),
+    () => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists(entityType, entityId) })
+      onThreadChanged?.()
+    },
+  )
 
   const roots = data?.pages.flatMap((page) => page.data) ?? []
   // Spec 0085 amendment: le Offerte arrivano con il thread, non dall'host —

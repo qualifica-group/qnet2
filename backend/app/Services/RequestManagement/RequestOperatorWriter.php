@@ -11,10 +11,10 @@ use App\Support\ManagerPositions;
 
 /**
  * Writes an offer's Gestori Account from the request-management module —
- * apply() moves the GA2 "Operatore" slot alone (the grid cell, the bulk
- * assign, the transfer), applyPosition() any other slot alone (its grid
- * column and the bulk GA1 assign, spec 0382), applySlots() replaces the WHOLE
- * team (the work panel, spec 0097). All of them funnel into
+ * apply() moves the GA2 "Operatore" slot alone (the bulk assign, the
+ * transfer), applyPosition() any other slot alone (the bulk GA1 assign),
+ * applySlots() replaces the WHOLE team (the work panel and the grid's
+ * "Gestori account" cell, spec 0097/0373). All of them funnel into
  * the same single writer, so the channels can never grow divergent rules.
  *
  * apply() (spec 0087, D-9) moves the `quote_user` OPERATOR slot
@@ -49,9 +49,9 @@ final class RequestOperatorWriter
 {
     /**
      * The wire-facing key a single-slot transition is reported under
-     * (`manager_ga1_id`, `manager_ga5_id`, ...): the same key the grid column
-     * writes under (RequestManagerColumns), so the operational history reads
-     * with the vocabulary of the write channel and older entries keep theirs.
+     * (`manager_ga1_id`, `manager_ga5_id`, ...), so the operational history
+     * reads with the vocabulary of the write channel and older entries keep
+     * theirs.
      */
     private const string POSITION_FIELD = 'manager_ga%d_id';
 
@@ -71,8 +71,8 @@ final class RequestOperatorWriter
      * (TableCellUpdateService::update() falls back to the in-memory $quote
      * when the post-write re-fetch comes back empty). That fallback instance
      * must already reflect the new team, or the response ships the OLD one
-     * under a 200 — `managers` included, being what the position columns
-     * project.
+     * under a 200 — `managers` included, being what the "Gestori account"
+     * column projects.
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
@@ -96,13 +96,13 @@ final class RequestOperatorWriter
         return $attached;
     }
 
-    public static function positionField(int $position): string
+    private static function positionField(int $position): string
     {
         return sprintf(self::POSITION_FIELD, $position);
     }
 
     /**
-     * One slot alone (spec 0382 D-7): the same single-slot move apply()
+     * One slot alone (the bulk GA1 assign): the same single-slot move apply()
      * performs on the Operatore, through the same writer and the same
      * `promoteToOpportunity: true` this module always opts into — every other
      * slot survives untouched, and a user already elsewhere in the team is

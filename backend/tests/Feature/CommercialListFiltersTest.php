@@ -75,6 +75,32 @@ it('lists every record the actor sees, without an assignment filter', function (
         ->assertJsonValidationErrors(['advancedFilters.assignment']);
 })->with('commercial grids');
 
+// REQUIREMENT CHANGED (user directive 2026-11-20): on Opportunità and Offerte the default parent category no
+// longer hides a record where the actor is in the team (Supervisore or Gestore account) outside their
+// competence; a pick among the actor's roots still narrows to those alone. Contratti unchanged.
+it('limits an actor without viewAll to their parent categories, plus by default the records where they are in the team', function (string $domain) {
+    $actor = categoryTabGridActor($domain, viewAll: false);
+    [$function, $root] = competenceVisibilityCategory();
+    $child = ProductCategory::factory()->create(['parent_id' => $root->id, 'business_function_id' => $function->id]);
+    grantCompetence($actor, $function, $child);
+    $foreignRoot = ProductCategory::factory()->create();
+    [$inBranch] = commercialRecord($domain, $child);
+    [$supervised] = commercialRecord($domain, $foreignRoot);
+    [$managed] = commercialRecord($domain, $foreignRoot);
+    commercialRecord($domain, $foreignRoot);
+    $inBranch->update(['supervisor_id' => $actor->id]);
+    $supervised->update(['supervisor_id' => $actor->id]);
+    $managed->managers()->attach($actor->id, ['position' => 1]);
+    Sanctum::actingAs($actor);
+    $byDefault = [$inBranch->id, $supervised->id, $managed->id];
+
+    expect(commercialIds($domain, ['parent_category' => []]))->toBe($byDefault)
+        ->and(commercialIds($domain, ['parent_category' => [0]]))->toBe($byDefault)
+        ->and(commercialIds($domain, ['parent_category' => [$foreignRoot->id]]))->toBe($byDefault)
+        ->and(commercialIds($domain, ['parent_category' => [$root->id]]))->toBe([$inBranch->id])
+        ->and(commercialIds($domain, ['parent_category' => [$root->id, $foreignRoot->id]]))->toBe([$inBranch->id]);
+})->with(['opportunities', 'quotes']);
+
 it('limits an actor without viewAll enabled on some parent categories to those, whatever is picked', function (string $domain) {
     $actor = categoryTabGridActor($domain, viewAll: false);
     [$function, $root] = competenceVisibilityCategory();
@@ -92,7 +118,7 @@ it('limits an actor without viewAll enabled on some parent categories to those, 
         ->and(commercialIds($domain, ['parent_category' => [$root->id]]))->toBe([$inBranch->id])
         ->and(commercialIds($domain, ['parent_category' => [0]]))->toBe([$inBranch->id])
         ->and(commercialIds($domain, ['parent_category' => [$foreignRoot->id]]))->toBe([$inBranch->id]);
-})->with('commercial grids');
+})->with(['contracts']);
 
 it('does not limit an actor with viewAll, whatever their competence', function (string $domain) {
     $actor = categoryTabGridActor($domain);

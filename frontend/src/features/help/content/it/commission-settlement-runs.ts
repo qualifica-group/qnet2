@@ -24,7 +24,7 @@ const guide: HelpGuide = {
           items: [
             'Premi **Nuovo lancio**: si apre una scheda laterale con le righe chiuse. Apri una riga con la matita, cambiala e conferma con **Fatto** (o **Ripristina**).',
             'Indica il periodo. **Periodo al** è la data che conta: entrano **tutti** i movimenti aperti maturati fino a quel giorno, anche quelli di periodi precedenti rimasti in sospeso. **Periodo dal** è solo informativo. Per default è proposto il mese scorso.',
-            'Se vuoi, restringi con **Società**, **Agenti** e **Ruoli** (Commerciale, Segnalatore, Supervisore). Lasciando vuoto si considera tutto.',
+            'Se vuoi, restringi con **Società**, **Agenti** e **Ruoli** (Commerciale, Partner commerciale, Segnalatore, Supervisore). Lasciando vuoto si considera tutto.',
             'Se vuoi, indica una **soglia minima**: gli estratti sotto quell’importo non vengono creati. Se la lasci vuota vale la soglia predefinita del sistema.',
             'Premi **Lancia**: il lancio è immediato e la scheda mostra il lancio appena creato, con estratti creati e agenti saltati. Se esci prima di lanciare, dopo aver cambiato qualcosa, ti viene chiesta conferma.',
           ],

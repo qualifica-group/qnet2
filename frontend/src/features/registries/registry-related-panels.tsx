@@ -28,7 +28,6 @@ import { useTaskRowActions } from '@/features/tasks/use-task-row-actions'
 import { useTaskStatusCellIntercept } from '@/features/tasks/use-task-status-cell-intercept'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
-import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 import { PRESET_LIST_FILTERS } from '@/features/table/advanced-filters/types'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableViewHandle } from '@/features/table/table-view'
@@ -146,23 +145,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
   const { t } = useTranslation()
   const { can } = useAbilities()
   const { tableRef, refresh } = useRelatedGridRefresh()
-  const {
-    handleAction,
-    isBusy,
-    activityRow,
-    closeActivity,
-    proformaRow,
-    closeProforma,
-    resolveActionState,
-    iconMap,
-    renderers,
-    openCreateWith,
-    sheet,
-    forceCloseDialog,
-    progressDialog,
-    requestUpdateDialog,
-    collaborationDialogs,
-  } = useWorkOrderRowActions({ onMutated: refresh, forceMode: OPEN_MODE_MODAL })
+  const { handleAction, resolveActionHref, iconMap, renderers, openCreateWith, sheet, dialogs } = useWorkOrderRowActions({ onMutated: refresh, forceMode: OPEN_MODE_MODAL })
 
   return (
     <>
@@ -174,8 +157,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
         renderers={renderers}
         iconMap={iconMap}
         onAction={handleAction}
-        isBusy={isBusy}
-        resolveActionState={resolveActionState}
+        resolveActionHref={resolveActionHref}
         onRowCountChanged={onRowCountChanged}
         create={
           can('work-orders.create')
@@ -187,12 +169,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
         }
       />
       {sheet}
-      {forceCloseDialog}
-      {progressDialog}
-      {requestUpdateDialog}
-      {collaborationDialogs}
-      <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refresh} />
-      <ResourceActivityDialog resource={WORK_ORDERS_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
+      {dialogs}
     </>
   )
 }

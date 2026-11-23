@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 class CommissionSettlementRunRequest extends FormRequest
 {
     /** The agent roles a run can be narrowed to: SUPPLIER is not an agent commission. */
-    private const array FILTERABLE_ROLES = ['COMMERCIAL', 'REPORTER', 'SUPERVISOR'];
+    private const array FILTERABLE_ROLES = ['COMMERCIAL', 'COMMERCIAL_PARTNER', 'REPORTER', 'SUPERVISOR'];
 
     private const string AMOUNT_MAX = '9999999999999.99';
 

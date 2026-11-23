@@ -7,6 +7,7 @@ import { RecordCardHeader } from '@/components/detail/record-panel'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { sumCommissionTotals } from '@/features/quotes/commission-calculator'
 import { QuoteStatsStrip } from '@/features/quotes/quote-detail-header'
+import { useQuoteCostsVisible } from '@/features/quotes/use-quote-costs-visible'
 import { useQuoteLiveTotals } from '@/features/quotes/use-quote-live-totals'
 import type { QuoteFormState } from '@/features/quotes/use-quote-form'
 
@@ -30,6 +31,7 @@ export function QuoteFormHeader({ quoteForm, formId, onCancel }: QuoteFormHeader
   const { t } = useTranslation()
   const { form, serverError, vatRatePercentFor } = quoteForm
   const { field: fieldPermission } = useResourcePermissions()
+  const costsVisible = useQuoteCostsVisible()
   const [title, code] = useWatch({ control: form.control, name: ['title', 'code'] })
   const { totals, commissionTotals } = useQuoteLiveTotals(form.control, vatRatePercentFor)
   const { isSubmitting } = form.formState
@@ -69,9 +71,11 @@ export function QuoteFormHeader({ quoteForm, formId, onCancel }: QuoteFormHeader
       <QuoteStatsStrip
         revenueNet={totals.revenue.net}
         revenueGross={totals.revenue.gross}
-        costNet={totals.cost.net}
-        costGross={totals.cost.gross}
-        marginNet={totals.margin.net}
+        costs={
+          costsVisible
+            ? { costNet: totals.cost.net, costGross: totals.cost.gross, marginNet: totals.margin.net }
+            : null
+        }
         commissionTotal={fieldPermission('commissions').visible ? sumCommissionTotals(commissionTotals) : null}
       />
     </>

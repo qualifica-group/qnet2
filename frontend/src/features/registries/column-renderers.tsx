@@ -90,7 +90,7 @@ function SizeClassCell({ value }: ICellRendererParams) {
  * need special rendering appear here; `name` falls back to the AG Grid
  * default text cell and `created_at`/`primary_contact` reuse the shared
  * domain-agnostic renderers (spec 0020). The team columns reuse the
- * Opportunita'/Offerte cells: `commercial`/`reporter` are referent relations
+ * Opportunita'/Offerte cells: `commercial`/`commercial_partner`/`reporter` are referent relations
  * with a kind icon, `supervisor` one person, `managers` ("Operatori") an
  * avatar stack.
  */
@@ -101,6 +101,7 @@ export const registryColumnRenderers: TableRendererMap = {
   size_class: (params) => <SizeClassCell {...params} />,
   primary_contact: (params) => <ContactsCell {...params} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
+  commercial_partner: (params) => <RelationCell {...params} icon={Briefcase} />,
   supervisor: (params) => <UserCell {...params} />,
   reporter: (params) => <RelationCell {...params} icon={UserRound} />,
   managers: (params) => <UserStackCell {...params} />,

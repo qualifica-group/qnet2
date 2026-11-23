@@ -21,6 +21,7 @@ export interface OpportunityRecordValues {
   registry: RelationFieldRef | null
   referent: ReferentRef | null
   commercial: RelationFieldRef | null
+  commercial_partner: RelationFieldRef | null
   reporter: RelationFieldRef | null
   /** Read-only origin; `null` on a create, whose lead has its own open picker. */
   lead: OpportunityLeadRef | null

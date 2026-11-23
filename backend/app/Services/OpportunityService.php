@@ -20,6 +20,7 @@ use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\ProductLines\ProductLineWriter;
 use App\Services\Quotes\QuoteManagerSyncMode;
+use App\Services\Quotes\QuoteRootScope;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Support\ManagerPositions;
 use App\Support\PeopleChangeLog;
@@ -61,6 +62,7 @@ class OpportunityService
         'registry',
         'referent.referentType',
         'commercial',
+        'commercialPartner',
         'reporter',
         'supervisor',
         // Spec 0056: the site has no own name, its label is composed
@@ -96,6 +98,7 @@ class OpportunityService
         private readonly ProductCategoryCoherence $coherence,
         private readonly RegistryOpenOpportunityGuard $openOpportunityGuard,
         private readonly QuoteManagerSyncMode $syncMode,
+        private readonly QuoteRootScope $rootScope,
         private readonly LeadConversionOfferCreator $conversionOfferCreator,
         private readonly OpportunityNameWriter $nameWriter,
     ) {}
@@ -275,6 +278,12 @@ class OpportunityService
             }
 
             if ($data->hasProductLines()) {
+                // Spec 0411, D-5: the roots of the bound offers are fixed.
+                $this->rootScope->assertOpportunityKeepsBoundRoots(
+                    $opportunity,
+                    array_map(static fn (array $line): int => (int) $line['product_category_id'], $data->productLines),
+                    'product_lines',
+                );
                 $this->productLineWriter->sync($opportunity, $data->productLines);
             }
 

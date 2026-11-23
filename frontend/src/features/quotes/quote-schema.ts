@@ -13,7 +13,7 @@ import { hasProductSuppliers } from '@/features/products/product-suppliers'
 import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
-import type { ApplicableAttributeSummary, QuoteWorkflowStatusRef } from '@/features/quotes/types'
+import type { ApplicableAttributeSummary, QuoteSystemStatusOption } from '@/features/quotes/types'
 
 /**
  * Zod schema for the quote create/edit form, built as a factory so validation
@@ -258,16 +258,17 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[], oppo
     // block submit until it is set.
     // Spec 0396: in the new opportunity + offer procedure the opportunity does not exist yet.
     opportunity_id: opportunityPending ? z.number().nullable() : requiredRelationId(t('quotes.form.opportunityRequired')),
-    // Spec 0083: the operational status of the quote, picked from the set the
+    // Spec 0404: the system status of the quote, picked from the options the
     // backend resolved for it. Nullable on create — omitted means "assign the
     // `open` row of the resolved set" (AC-020).
-    quote_workflow_status_id: z.number().nullable(),
+    quote_system_status_id: z.number().nullable(),
     // Transition note. Never persisted on the quote: it becomes a note on the
     // parent opportunity's thread, and is mandatory only when the TARGET status
     // carries `requires_note` (AC-023). The requirement is a refine on the
-    // update schema, not a field-level rule, because it depends on the set.
+    // update schema, not a field-level rule, because it depends on the options.
     note: z.string().max(INTERNAL_NOTES_MAX_LENGTH, t('quotes.form.noteMax')).nullable(),
     commercial_id: z.number().nullable(),
+    commercial_partner_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
     // Spec 0059 D-3, extended to the Offerta origin (directive 2026-08-31):
     // reward assignments for the Segnalatore, the chips under the reporter
@@ -415,7 +416,7 @@ export function buildCreateQuoteSchema(
  */
 export function buildUpdateQuoteSchema(
   t: TFunction,
-  statuses: QuoteWorkflowStatusRef[],
+  statuses: QuoteSystemStatusOption[],
   originalStatusId: number | null,
   originalHasOfferLines: boolean,
   attributes: ApplicableAttributeSummary[] = [],
@@ -437,7 +438,7 @@ export function buildUpdateQuoteSchema(
       })
     }
 
-    const targetId = values.quote_workflow_status_id
+    const targetId = values.quote_system_status_id
 
     if (targetId === null || targetId === originalStatusId) {
       return

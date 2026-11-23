@@ -39,7 +39,8 @@ it('declares every column the form edits as a single field', function () {
     $editable = collect($this->getJson('/api/tables/registries/columns')->assertOk()->json('data.columns'))
         ->where('editable', true)->pluck('id')->sort()->values()->all();
 
-    expect($editable)->toBe(['agreement_status', 'commercial', 'is_supplier', 'managers', 'reporter', 'size_class', 'source', 'supervisor']);
+    // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+    expect($editable)->toBe(['agreement_status', 'commercial', 'commercial_partner', 'is_supplier', 'managers', 'reporter', 'size_class', 'source', 'supervisor']);
 });
 
 it('saves scalar, enum and relation cells through the form path', function () {

@@ -133,19 +133,20 @@ beforeEach(() => {
   vi.mocked(fetchWorkOrderFormContext).mockResolvedValue({ applicable_attributes: [], attribute_layout: null })
 })
 
+// REQUIREMENT CHANGED (spec 0403): the Info tab no longer has the Title row, the description is the sample field.
 describe('WorkOrderDetailView — in-place editing', () => {
   it('saves the edited field alone and reports the change', async () => {
     const record = workOrder()
-    vi.mocked(updateWorkOrder).mockResolvedValueOnce({ ...record, title: 'Nuovo titolo' })
+    vi.mocked(updateWorkOrder).mockResolvedValueOnce({ ...record, description: 'Nuovo testo' })
     const { onChanged } = renderDetail(record)
 
-    fireEvent.click(queryPencil(label('workOrders.form.title'))!)
-    fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.form.title') }), {
-      target: { value: 'Nuovo titolo' },
+    fireEvent.click(queryPencil(label('workOrders.detail.description'))!)
+    fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.detail.description') }), {
+      target: { value: 'Nuovo testo' },
     })
     fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.save') }))
 
-    await waitFor(() => expect(updateWorkOrder).toHaveBeenCalledWith(4, { title: 'Nuovo titolo' }))
+    await waitFor(() => expect(updateWorkOrder).toHaveBeenCalledWith(4, { description: 'Nuovo testo' }))
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
     expect(screen.queryByRole('button', { name: label('common.inlineEdit.save') })).not.toBeInTheDocument()
   })
@@ -153,33 +154,33 @@ describe('WorkOrderDetailView — in-place editing', () => {
   it('restores the persisted value on cancel, without any request', () => {
     renderDetail(workOrder())
 
-    fireEvent.click(queryPencil(label('workOrders.form.title'))!)
-    fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.form.title') }), {
+    fireEvent.click(queryPencil(label('workOrders.detail.description'))!)
+    fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.detail.description') }), {
       target: { value: 'Da scartare' },
     })
     fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.cancel') }))
 
     expect(updateWorkOrder).not.toHaveBeenCalled()
-    expect(screen.queryByRole('textbox', { name: label('workOrders.form.title') })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: label('workOrders.detail.description') })).not.toBeInTheDocument()
   })
 
   it('keeps the editor open with the server message on a refused save', async () => {
     vi.mocked(updateWorkOrder).mockRejectedValueOnce(
       new axios.AxiosError('422', '422', undefined, undefined, {
         status: 422,
-        data: { errors: { title: ['Titolo non valido.'] } },
+        data: { errors: { description: ['Descrizione non valida.'] } },
       } as never),
     )
     renderDetail(workOrder())
 
-    fireEvent.click(queryPencil(label('workOrders.form.title'))!)
-    fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.form.title') }), {
+    fireEvent.click(queryPencil(label('workOrders.detail.description'))!)
+    fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.detail.description') }), {
       target: { value: 'X' },
     })
     fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.save') }))
 
-    expect(await screen.findByText('Titolo non valido.')).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: label('workOrders.form.title') })).toBeInTheDocument()
+    expect(await screen.findByText('Descrizione non valida.')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: label('workOrders.detail.description') })).toBeInTheDocument()
   })
 
   it('offers no edit on the fields fixed at creation (code, task template)', () => {
@@ -187,7 +188,7 @@ describe('WorkOrderDetailView — in-place editing', () => {
 
     expect(queryPencil(label('workOrders.form.code'))).not.toBeInTheDocument()
     expect(queryPencil(label('workOrders.detail.taskTemplate'))).not.toBeInTheDocument()
-    expect(queryPencil(label('workOrders.form.title'))).toBeInTheDocument()
+    expect(queryPencil(label('workOrders.detail.description'))).toBeInTheDocument()
   })
 
   it('offers no edit at all to an actor whose fields are read-only', () => {
@@ -198,7 +199,7 @@ describe('WorkOrderDetailView — in-place editing', () => {
         ...record.permissions,
         fields: Object.fromEntries(
           ['code', 'task_template_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'supervisor_ids',
-            'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id', 'work_order_payment_status_id'].map((key) => [key, READ_ONLY_FIELD]),
+            'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id'].map((key) => [key, READ_ONLY_FIELD]),
         ),
       },
     })

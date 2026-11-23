@@ -12,8 +12,9 @@ vi.mock('@/features/attachments/api', () => ({
   listAttachments: (resource: string, id: number, collection: string) => listAttachmentsMock(resource, id, collection),
 }))
 
-function list(count: number): AttachmentList {
-  return { documents: Array.from({ length: count }, (_, index) => ({ id: index + 1 }) as Attachment), legacyUrl: null }
+// REQUIREMENT CHANGED (2026-11-19): the tab counts the unread files, not the whole list.
+function list(count: number, unread: number = count): AttachmentList {
+  return { documents: Array.from({ length: count }, (_, index) => ({ id: index + 1 }) as Attachment), legacyUrl: null, unread }
 }
 
 function renderCount() {
@@ -30,16 +31,16 @@ afterEach(() => {
 })
 
 describe('DocumentsTabCount', () => {
-  it('counts the documents of the default collection, the list DocumentsSection shows', async () => {
-    listAttachmentsMock.mockResolvedValue(list(4))
+  it('counts the unread documents of the default collection, the list DocumentsSection shows', async () => {
+    listAttachmentsMock.mockResolvedValue(list(6, 4))
     renderCount()
 
     expect(await screen.findByText('4')).toBeInTheDocument()
     expect(listAttachmentsMock).toHaveBeenCalledWith('task', 7, 'documents')
   })
 
-  it('shows nothing without documents', async () => {
-    listAttachmentsMock.mockResolvedValue(list(0))
+  it('shows nothing when every document is read', async () => {
+    listAttachmentsMock.mockResolvedValue(list(3, 0))
     const { container } = renderCount()
 
     await vi.waitFor(() => expect(listAttachmentsMock).toHaveBeenCalled())

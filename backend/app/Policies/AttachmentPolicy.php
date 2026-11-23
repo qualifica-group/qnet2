@@ -5,11 +5,13 @@ namespace App\Policies;
 use App\Models\Attachment;
 use App\Models\Opportunity;
 use App\Models\OutboundEmail;
+use App\Models\Quote;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\RichText\RichText;
 use App\RichText\RichTextOwnerAccess;
 use App\Services\Opportunities\OpportunityDocumentAccess;
+use App\Services\Quotes\QuoteDocumentAccess;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
@@ -26,11 +28,12 @@ use Illuminate\Database\Eloquent\Model;
  *   through the nested `work-orders/{workOrder}/emails/{email}/attachments/*`
  *   endpoints, authorized on the owning Commessa.
  *
- * Files owned by an opportunity, work order or contract
+ * Files owned by an opportunity, offer, work order or contract
  * (`attachments.owner_scoped_types`, spec 0316 D-9) additionally require the
  * actor to be able to `view` the owning record, on every endpoint. For an
- * opportunity "can view" is OpportunityDocumentAccess (any screen showing its
- * documents), not the Opportunity policy alone.
+ * opportunity "can view" is OpportunityDocumentAccess, for an offer
+ * QuoteDocumentAccess (spec 0415): any screen showing their documents, not
+ * the record policy alone.
  *
  * Every other owner maps to the `attachments.{ability}` permission
  * (registered by `php artisan permissions:sync`), resource-level, no
@@ -151,11 +154,13 @@ class AttachmentPolicy extends BasePolicy
             return false;
         }
 
-        // The opportunity is also worked from other screens (request management,
-        // contract detail) whose users hold no `opportunities.view`.
-        return $owner instanceof Opportunity
-            ? OpportunityDocumentAccess::allows($user, $owner)
-            : $user->can('view', $owner);
+        // Opportunity and offer are also worked from other screens (request
+        // management, contract detail) whose users hold no `view` on them.
+        return match (true) {
+            $owner instanceof Opportunity => OpportunityDocumentAccess::allows($user, $owner),
+            $owner instanceof Quote => QuoteDocumentAccess::allows($user, $owner),
+            default => $user->can('view', $owner),
+        };
     }
 
     /**

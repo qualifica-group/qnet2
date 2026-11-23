@@ -107,6 +107,7 @@ function contract(status: ContractStatusRef, actions: Partial<ResourcePermission
     company_site: null,
     operational_site: null,
     commercial: null,
+    commercial_partner: null,
     reporter: null,
     supervisor: null,
     payment_method: null,

@@ -273,3 +273,15 @@ export type TaskActionKey =
   | 'close_via_status'
   | 'create_subtask'
   | 'change_status'
+
+/**
+ * One open sub-task a parent's Completa closes with it (spec 0418,
+ * `GET /tasks/{task}/open-subtasks`), in tree order; `depth` 1 = direct child.
+ */
+export interface TaskOpenSubtask {
+  id: number
+  title: string
+  depth: number
+  requires_time_entry: boolean
+  requires_closure_feedback: boolean
+}

@@ -72,7 +72,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat', 'request_proforma'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'request_update', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat', 'view_page', 'edit_page', 'request_proforma'];
     }
 
     /**
@@ -106,10 +106,6 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'task_template_id' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'work_order_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            // Spec 0402: set on the detail only, by whoever manages the payments of this commessa.
-            'work_order_payment_status_id' => $model instanceof WorkOrder && $mayWrite && $actor->can('managePayments', $model)
-                ? FieldPermission::visibleEditable()
-                : FieldPermission::visibleReadonly(),
         ];
     }
 
@@ -158,6 +154,9 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // Spec 0359: the single chat rule, never a Gate ability.
             'view_chat' => $model instanceof WorkOrder && $chat->canRead($actor, $model),
             'write_chat' => $model instanceof WorkOrder && $chat->canWrite($actor, $model),
+            // Spec 0420, D-2: the notes page follows the very same rule as the chat.
+            'view_page' => $model instanceof WorkOrder && $chat->canRead($actor, $model),
+            'edit_page' => $model instanceof WorkOrder && $chat->canWrite($actor, $model),
             // Ticket #427857: the grid's "€" action in the detail header. Reaching
             // the detail already proves the record-level `view` the endpoint asks;
             // whether a request may still be raised is the summary's call (spec 0193).

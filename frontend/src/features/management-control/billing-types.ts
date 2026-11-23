@@ -2,7 +2,7 @@ import type { ScopeFilters } from '@/features/management-control/types'
 
 /* Spec 0271: GET /api/management-control/billing. */
 
-export const BILLING_GROUP_BYS = ['business_function', 'company', 'commercial'] as const
+export const BILLING_GROUP_BYS = ['business_function', 'company', 'commercial', 'commercial_partner'] as const
 export type BillingGroupBy = (typeof BILLING_GROUP_BYS)[number]
 
 /** Age of a work order since its start, in the order of the contract. */

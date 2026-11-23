@@ -35,7 +35,10 @@ use Illuminate\Support\Collection;
  */
 final class QuoteManagerLabelResolver
 {
-    public function __construct(private readonly CategoryManagerLabelResolver $categoryLabels) {}
+    public function __construct(
+        private readonly CategoryManagerLabelResolver $categoryLabels,
+        private readonly QuoteRootScope $rootScope,
+    ) {}
 
     /**
      * @return array<int, string>
@@ -66,7 +69,8 @@ final class QuoteManagerLabelResolver
      */
     private function opportunityCategories(Quote $quote): Collection
     {
-        return $quote->opportunity->productLines
+        // Spec 0411, D-3: a bound offer reads only its root's lines.
+        return $this->rootScope->linesOf($quote)
             ->pluck('productCategory')
             ->filter()
             ->unique('id')

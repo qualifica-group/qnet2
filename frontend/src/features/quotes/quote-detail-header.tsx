@@ -8,7 +8,9 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { useViewableDomain } from '@/features/modules/use-viewable-domain'
 import { WorkflowStatusBadge } from '@/features/workflow-statuses/workflow-status-badge'
 import { QuoteRecalculateCommissions } from '@/features/quotes/quote-recalculate-commissions'
+import { QuoteDetailRegistryTransfer } from '@/features/quotes/registry-transfer/quote-registry-transfer-button'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
+import { useQuoteCostsVisible } from '@/features/quotes/use-quote-costs-visible'
 import { useQuoteDocument } from '@/features/quotes/use-quote-document'
 import { cn } from '@/lib/utils'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
@@ -20,7 +22,7 @@ import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
  */
 
 /** The four commission roles of the persisted summary (D-9), in the order the summary card lists them. */
-const COMMISSION_ROLES = ['commercial', 'reporter', 'supervisor', 'supplier'] as const
+const COMMISSION_ROLES = ['commercial', 'commercial_partner', 'reporter', 'supervisor', 'supplier'] as const
 
 interface QuoteDetailHeaderProps {
   quote: QuoteDetailWithPermissions
@@ -84,14 +86,16 @@ export function QuoteDetailHeader({ quote, onChanged }: QuoteDetailHeaderProps) 
       legacyId={quote.old_id}
       subtitle={quote.code}
       badges={
-        <WorkflowStatusBadge
-          name={quote.quote_workflow_status.name}
-          color={quote.quote_workflow_status.color}
-        />
+        quote.quote_system_status ? (
+          <WorkflowStatusBadge name={quote.quote_system_status.name} color={quote.quote_system_status.color} />
+        ) : null
       }
       actions={
         <>
           {quote.contract_id ? <QuoteContractButton contractId={quote.contract_id} /> : null}
+          {quote.permissions.actions.transfer_registry ? (
+            <QuoteDetailRegistryTransfer quote={quote} onChanged={onChanged} />
+          ) : null}
           {quote.permissions.actions.recalculate_commissions ? (
             <QuoteRecalculateCommissions quoteId={quote.id} onChanged={onChanged} />
           ) : null}
@@ -113,12 +117,18 @@ export function QuoteDetailHeader({ quote, onChanged }: QuoteDetailHeaderProps) 
   )
 }
 
-interface QuoteStatsStripProps {
-  revenueNet: number
-  revenueGross: number
+/** The cost side of the KPI strip. */
+export interface QuoteStatsCosts {
   costNet: number
   costGross: number
   marginNet: number
+}
+
+interface QuoteStatsStripProps {
+  revenueNet: number
+  revenueGross: number
+  /** `null` hides the cost and margin tiles (spec 0412: no `view_costs`). */
+  costs: QuoteStatsCosts | null
   /** The total commissioned amount; `null` hides the tile (no commissions visibility). */
   commissionTotal: number | null
 }
@@ -129,14 +139,7 @@ interface QuoteStatsStripProps {
  * reading a single row. Pure render: the detail feeds the persisted summary
  * (D-9), the create form the live totals of the lines being typed.
  */
-export function QuoteStatsStrip({
-  revenueNet,
-  revenueGross,
-  costNet,
-  costGross,
-  marginNet,
-  commissionTotal,
-}: QuoteStatsStripProps) {
+export function QuoteStatsStrip({ revenueNet, revenueGross, costs, commissionTotal }: QuoteStatsStripProps) {
   const { t } = useTranslation()
 
   return (
@@ -147,18 +150,24 @@ export function QuoteStatsStrip({
         value={formatQuoteAmount(revenueNet)}
         hint={t('quotes.detail.stats.grossHint', { amount: formatQuoteAmount(revenueGross) })}
       />
-      <RecordStat
-        label={t('quotes.columns.costNet')}
-        icon={<TrendingDown aria-hidden="true" />}
-        value={formatQuoteAmount(costNet)}
-        hint={t('quotes.detail.stats.grossHint', { amount: formatQuoteAmount(costGross) })}
-      />
-      <RecordStat
-        label={t('quotes.columns.marginNet')}
-        icon={<Wallet aria-hidden="true" />}
-        value={<span className={cn(marginNet < 0 && 'text-destructive')}>{formatQuoteAmount(marginNet)}</span>}
-        hint={t('quotes.form.summary.marginHint')}
-      />
+      {costs !== null ? (
+        <>
+          <RecordStat
+            label={t('quotes.columns.costNet')}
+            icon={<TrendingDown aria-hidden="true" />}
+            value={formatQuoteAmount(costs.costNet)}
+            hint={t('quotes.detail.stats.grossHint', { amount: formatQuoteAmount(costs.costGross) })}
+          />
+          <RecordStat
+            label={t('quotes.columns.marginNet')}
+            icon={<Wallet aria-hidden="true" />}
+            value={
+              <span className={cn(costs.marginNet < 0 && 'text-destructive')}>{formatQuoteAmount(costs.marginNet)}</span>
+            }
+            hint={t('quotes.form.summary.marginHint')}
+          />
+        </>
+      ) : null}
       {commissionTotal !== null ? (
         <RecordStat
           label={t('quotes.detail.stats.commissions')}
@@ -173,10 +182,13 @@ export function QuoteStatsStrip({
 /**
  * The detail's KPI strip over the PERSISTED summary (D-9), never a client
  * recomputation. The commission total is hidden entirely when the actor may
- * not see commissions, the same field gate the rows themselves honour.
+ * not see commissions, the same field gate the rows themselves honour; cost
+ * and margin without `view_costs` (spec 0412), when the server omits them.
  */
 export function QuoteDetailStats({ quote }: { quote: QuoteDetailWithPermissions }) {
   const showCommissions = quote.permissions.fields.commissions?.visible ?? true
+  const costsVisible = useQuoteCostsVisible()
+  const { cost, margin } = quote.summary
   const commissionTotal = COMMISSION_ROLES.reduce(
     (total, role) => total + Number(quote.summary.commissions?.[role] ?? 0),
     0,
@@ -186,9 +198,11 @@ export function QuoteDetailStats({ quote }: { quote: QuoteDetailWithPermissions 
     <QuoteStatsStrip
       revenueNet={Number(quote.summary.revenue.net)}
       revenueGross={Number(quote.summary.revenue.gross)}
-      costNet={Number(quote.summary.cost.net)}
-      costGross={Number(quote.summary.cost.gross)}
-      marginNet={Number(quote.summary.margin.net)}
+      costs={
+        costsVisible && cost && margin
+          ? { costNet: Number(cost.net), costGross: Number(cost.gross), marginNet: Number(margin.net) }
+          : null
+      }
       commissionTotal={showCommissions ? commissionTotal : null}
     />
   )

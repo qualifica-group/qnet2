@@ -49,6 +49,7 @@ import { workflowStatuses } from './it-workflow-statuses'
 import { quotes } from './it-quotes'
 import { quotesWithOpportunity } from './it-quotes-with-opportunity'
 import { contractStatuses } from './it-contract-statuses'
+import { quoteSystemStatuses } from './it-quote-system-statuses'
 import { contracts } from './it-contracts'
 import { workOrders } from './it-work-orders'
 import { outboundEmails } from './it-outbound-emails'
@@ -74,6 +75,7 @@ import { workOrderPaymentStatuses } from './it-work-order-payment-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
 import { dashboard } from './it-dashboard'
+import { workOrderPage } from './it-work-order-page'
 import { agentSalesReport } from './it-agent-sales-report'
 import { requestManagement } from './it-request-management'
 import { categoryTabs } from './it-category-tabs'
@@ -440,6 +442,7 @@ export const it: TranslationResources = {
   workflowStatuses,
   quotes: { ...quotes, withOpportunity: quotesWithOpportunity, stats: moduleStats.quotes },
   contractStatuses,
+  quoteSystemStatuses,
   contracts,
   workOrders,
   outboundEmails,
@@ -483,6 +486,7 @@ export const it: TranslationResources = {
   impersonation,
   documentLayouts,
   dashboard,
+  workOrderPage,
   help,
   apiIntegrations,
   apiClients,

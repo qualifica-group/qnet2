@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Euro, Info, ListChecks, MessageSquare, MessagesSquare, Paperclip, Receipt, ReceiptText } from 'lucide-react'
+import { Euro, Info, ListChecks, MessageSquare, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText } from 'lucide-react'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -13,6 +13,7 @@ import { useRegistryDocumentsTab } from '@/features/registries/use-registry-docu
 import { WorkOrderChatPanel } from '@/features/work-order-chat/work-order-chat-panel'
 import { WorkOrderChatTabLabel } from '@/features/work-order-chat/work-order-chat-tab-label'
 import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-costs-section'
+import { WorkOrderPagePanel } from '@/features/work-order-page/work-order-page-panel'
 import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-order-invoices-section'
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
@@ -205,6 +206,15 @@ export function useWorkOrderDetailTabs({
       label: <WorkOrderChatTabLabel workOrderId={workOrder.id} />,
       icon: <MessageSquare className="size-3.5" aria-hidden="true" />,
       content: <WorkOrderChatPanel workOrderId={workOrder.id} canWriteAction={actions.write_chat === true} />,
+    })
+  }
+  // Workspace notes page (spec 0420): right after the chat, same access rule.
+  if (actions.view_page) {
+    tabs.push({
+      value: 'page',
+      label: t('workOrderPage.tabTitle'),
+      icon: <NotebookPen className="size-3.5" aria-hidden="true" />,
+      content: <WorkOrderPagePanel workOrderId={workOrder.id} canEditAction={actions.edit_page === true} />,
     })
   }
   if (outboundEmailsTab) {

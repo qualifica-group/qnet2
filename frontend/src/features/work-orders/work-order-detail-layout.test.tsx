@@ -82,6 +82,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
       phones: [],
       referents: [{ id: 15, name: 'Mario Bianchi', referent_type: { id: 3, name: 'Amministratore' } }],
       commercial: { id: 30, name: 'Luca Verdi' },
+      commercial_partner: { id: 31, name: 'Anna Partner' },
       sectors: ['EA 28 — Costruzioni'],
       comments: null,
     },
@@ -186,10 +187,25 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     expect(within(callback).getByText('10/04/2026')).toBeInTheDocument()
     // REQUIREMENT CHANGED (user directive 2026-11-16): "Dati commessa" merged into "Dati contrattuali commessa".
     const data = screen.getByRole('heading', { level: 3, name: /work order contract data/i }).closest('section') as HTMLElement
-    expect(within(data).getByText('Installazione impianto')).toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0403): no work order title in the contract data.
+    expect(within(data).queryByText('Installazione impianto')).not.toBeInTheDocument()
     expect(within(data).getByRole('link', { name: /QUO-0004/ })).toBeInTheDocument()
     expect(within(data).queryByText('COM-0001')).not.toBeInTheDocument()
     expect(sectionTitles()).not.toContain('work order data')
+  })
+
+  // REQUIREMENT CHANGED (user directive 2026-11-18): the client company under the title, not the "COM-..." code.
+  it('shows the client company under the title, the code only when there is no client', () => {
+    const subtitleOf = () =>
+      screen.getByRole('heading', { level: 2, name: 'Installazione impianto' }).parentElement?.nextElementSibling
+        ?.textContent
+
+    const { unmount } = render(<WorkOrderDetailView workOrder={workOrder()} />)
+    expect(subtitleOf()).toBe('Acme S.p.A.')
+    unmount()
+
+    render(<WorkOrderDetailView workOrder={workOrder({ registry: null })} />)
+    expect(subtitleOf()).toBe('COM-0001')
   })
 
   it('links the Contratto from the data section, not from a section of its own', () => {

@@ -11,6 +11,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\Task;
 use App\Models\TaskTemplate;
@@ -18,6 +19,7 @@ use App\Models\TaskTemplateItem;
 use App\Models\TreasuryMovement;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderPage;
 
 return [
 
@@ -205,6 +207,11 @@ return [
         'purchase_invoice' => PurchaseInvoice::class,
         // Treasury movement documents (spec 0360): alias in the global morph map.
         'treasury_movement' => TreasuryMovement::class,
+        // Work order page images (spec 0420): rich_text owner, alias in the global morph map.
+        'work_order_page' => WorkOrderPage::class,
+        // Offer documents (spec 0415, D-1): uploaded from Gestione Richieste /
+        // Iscritti, one offer per parent category. Alias in the global morph map.
+        'quote' => Quote::class,
     ],
     /*
     |--------------------------------------------------------------------------
@@ -218,6 +225,6 @@ return [
     |
     */
 
-    'owner_scoped_types' => ['opportunity', 'work_order', 'contract', 'treasury_movement'],
+    'owner_scoped_types' => ['opportunity', 'quote', 'work_order', 'contract', 'treasury_movement'],
 
 ];

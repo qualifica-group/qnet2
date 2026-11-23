@@ -57,7 +57,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Work order** (code, title, type, dates, description) and **Sender** (name and email of who sends it).',
-            '**Quote**, **Client**, **Opportunity**, **Referent**, **Sales rep**, **Reporter**, **Supervisor**, **Company** and **Company site**: the same data from the linked quote already used in document layouts.',
+            '**Quote**, **Client**, **Opportunity**, **Referent**, **Sales rep**, **Commercial partner**, **Reporter**, **Supervisor**, **Company** and **Company site**: the same data from the linked quote already used in document layouts.',
           ],
         },
         {

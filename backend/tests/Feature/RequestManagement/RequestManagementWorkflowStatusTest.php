@@ -27,6 +27,8 @@ use Spatie\Permission\Models\Permission;
 // state, which no longer exists; this one belongs to the record the module IS
 // since spec 0086.
 
+// REQUIREMENT CHANGED (spec 0404 part E): the offers here are under contract, so the
+// actor holds `quotes.updateContracted` and the writes carry the confirmation.
 uses(RefreshDatabase::class);
 
 if (! function_exists('requestWorkflowActor')) {
@@ -49,6 +51,8 @@ if (! function_exists('requestWorkflowActor')) {
         if ($canCreateNotes) {
             $user->givePermissionTo('notes.create');
         }
+
+        $user->givePermissionTo(Permission::findOrCreate('quotes.updateContracted'));
 
         return $user;
     }
@@ -119,7 +123,7 @@ it('PATCH advances the Offerta to a status of the resolved set', function () {
     $target = requestWorkflowGlobalStatus();
     Sanctum::actingAs($actor);
 
-    $response = $this->patchJson("/api/request-management/{$quote->id}", [
+    $response = $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $target->id,
     ])->assertOk();
 
@@ -137,7 +141,7 @@ it('PATCH to a status outside the resolved workflow -> 422, status unchanged', f
     $foreign = QuoteWorkflowStatus::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $foreign->id,
     ])
         ->assertStatus(422)
@@ -157,7 +161,7 @@ it('PATCH to a requires_note status with no note -> 422 on `note`, status unchan
     $target = requestWorkflowGlobalStatus(requiresNote: true);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $target->id,
     ])
         ->assertStatus(422)
@@ -172,7 +176,7 @@ it('PATCH to a requires_note status WITH a note advances and records the note', 
     $target = requestWorkflowGlobalStatus(requiresNote: true);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $target->id,
         'note' => 'Cliente ricontattato, si passa allo stato successivo.',
     ])->assertOk();
@@ -196,7 +200,7 @@ it('PATCH resending the CURRENT status is not an advance and demands no note', f
     $current->update(['requires_note' => true]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $current->id,
     ])->assertOk();
 
@@ -210,7 +214,7 @@ it('PATCH without request-management.update -> 403, status unchanged', function 
     $target = requestWorkflowGlobalStatus();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $target->id,
     ])->assertForbidden();
 
@@ -233,7 +237,7 @@ it('PATCH into a closed_won status creates the Contratto', function () {
 
     expect(Contract::where('quote_id', $quote->id)->exists())->toBeFalse();
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $closedWon->id,
     ])->assertOk();
 
@@ -252,13 +256,15 @@ it('PATCH back OUT of closed_won suspends the Contratto instead of deleting it',
     $open = requestWorkflowGlobalStatus();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $closedWon->id,
     ])->assertOk();
 
     $statusBefore = Contract::where('quote_id', $quote->id)->value('contract_status_id');
+    // REQUIREMENT CHANGED (spec 0072 D-3 rev. 2026-11-20): only a worked-on contract survives the offer leaving closed_won.
+    Contract::where('quote_id', $quote->id)->sole()->forceFill(['payment_notes' => 'Bonifico'])->save();
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $open->id,
     ])->assertOk();
 
@@ -276,11 +282,11 @@ it('PATCH of another field on an already closed_won request does not duplicate t
     $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $closedWon->id,
     ])->assertOk();
 
-    $this->patchJson("/api/request-management/{$quote->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'quote_workflow_status_id' => $closedWon->id,
     ])->assertOk();
 
@@ -311,7 +317,7 @@ it('PATCH product_lines re-resolves the working status onto the workflow the new
     $workflow->criteria()->create(['field' => 'product_category_id', 'value_id' => $category->id]);
     Sanctum::actingAs($actor);
 
-    $response = $this->patchJson("/api/request-management/{$quote->id}", [
+    $response = $this->patchJson("/api/request-management/{$quote->id}", [...contractedEditConfirmed(), 
         'product_lines' => [[
             'business_function_id' => $category->business_function_id,
             'product_category_id' => $category->id,

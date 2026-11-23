@@ -95,6 +95,8 @@ export interface BuildRequestCreatePayloadArgs {
   reporterId: number | null
   /** "Commerciale" (spec 0357): the created Offerta's commercial Referent, `null` when none was picked. */
   commercialId: number | null
+  /** "Partner commerciale" (spec 0417): `null` when none was picked. */
+  commercialPartnerId: number | null
   /** Spec 0097 rev-2 D-9: the created Offerta's Supervisore, `null` when none was picked. */
   supervisorId: number | null
   /**
@@ -139,6 +141,7 @@ export function buildRequestCreatePayload({
   sourceId,
   reporterId,
   commercialId,
+  commercialPartnerId,
   supervisorId,
   managerSlots,
   operationalSiteId,
@@ -170,6 +173,7 @@ export function buildRequestCreatePayload({
     source_id: sourceId,
     reporter_id: reporterId,
     ...(commercialId !== null ? { commercial_id: commercialId } : {}),
+    ...(commercialPartnerId !== null ? { commercial_partner_id: commercialPartnerId } : {}),
     ...(supervisorId !== null ? { supervisor_id: supervisorId } : {}),
     ...(managerSlots.some((slot) => slot !== null) ? { manager_slots: managerSlots } : {}),
     ...(operationalSiteId !== null ? { operational_site_id: operationalSiteId } : {}),

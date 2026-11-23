@@ -23,6 +23,14 @@ vi.mock('@/features/quote-workflows/api', async (importOriginal) => ({
   fetchCriterionFields: (...args: unknown[]) => fetchCriterionFieldsMock(...args),
 }))
 
+vi.mock('@/features/quote-system-statuses/use-quote-system-status-options', async () => {
+  const { SYSTEM_STATUS_OPTIONS } = await import('@/features/quote-workflows/quote-system-status-options.fixtures')
+  return {
+    QUOTE_SYSTEM_STATUSES_FOR_SELECT_RESOURCE: 'quote-system-statuses',
+    useQuoteSystemStatusOptions: () => ({ options: SYSTEM_STATUS_OPTIONS, isLoading: false }),
+  }
+})
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 /** Role-based stand-in of the async value picker (see the create form test). */
@@ -70,9 +78,9 @@ function quoteWorkflow(overrides: Partial<QuoteWorkflowDetailWithPermissions> = 
       },
     ],
     statuses: [
-      { id: 10, name: 'Open', color: null, sort_order: 0, system_key: 'open', group: 'open', description: null, requires_note: false },
-      { id: 11, name: 'Alpha', color: 'blue', sort_order: 10, system_key: null, group: 'pending', description: null, requires_note: false },
-      { id: 13, name: 'Closed', color: null, sort_order: 30, system_key: 'closed_won', group: 'closed_won', description: null, requires_note: false },
+      { id: 10, name: 'Open', color: null, sort_order: 0, system_key: 'open', group: 'open', quote_system_status_id: 1, quote_system_status: { id: 1, name: 'open', color: null, behavior: 'open' }, description: null, requires_note: false },
+      { id: 11, name: 'Alpha', color: 'blue', sort_order: 10, system_key: null, group: 'pending', quote_system_status_id: 2, quote_system_status: { id: 2, name: 'pending', color: null, behavior: 'pending' }, description: null, requires_note: false },
+      { id: 13, name: 'Closed', color: null, sort_order: 30, system_key: 'closed_won', group: 'closed_won', quote_system_status_id: 4, quote_system_status: { id: 4, name: 'closed_won', color: null, behavior: 'closed_won' }, description: null, requires_note: false },
     ],
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -198,6 +206,9 @@ describe('QuoteWorkflowDetailView — in-place editing (spec 0242)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add status' }))
     const names = screen.getAllByRole('textbox', { name: 'Status name' })
     fireEvent.change(names[2], { target: { value: 'Bravo' } })
+    // The new custom row (inserted before the pinned tail) must link a system status.
+    fireEvent.click(screen.getAllByRole('combobox', { name: 'System status' })[2])
+    fireEvent.click(await screen.findByRole('option', { name: 'In attesa' }))
     saveRow()
 
     await waitFor(() => expect(updateQuoteWorkflowMock).toHaveBeenCalledTimes(1))
@@ -216,7 +227,7 @@ describe('QuoteWorkflowDetailView — in-place editing (spec 0242)', () => {
     mockRowRects()
     const withTwoCustoms = quoteWorkflow()
     withTwoCustoms.statuses.splice(2, 0, {
-      id: 12, name: 'Bravo', color: 'green', sort_order: 20, system_key: null, group: 'pending', description: null, requires_note: false,
+      id: 12, name: 'Bravo', color: 'green', sort_order: 20, system_key: null, group: 'pending', quote_system_status_id: 2, quote_system_status: { id: 2, name: 'pending', color: null, behavior: 'pending' }, description: null, requires_note: false,
     })
     updateQuoteWorkflowMock.mockResolvedValue(withTwoCustoms)
     render(<QuoteWorkflowDetailView quoteWorkflow={withTwoCustoms} />)

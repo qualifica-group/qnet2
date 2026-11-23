@@ -38,6 +38,7 @@ class QuoteFactory extends Factory
                 ->value('id')
                 ?? QuoteWorkflowStatus::factory()->global()->system('open')->create()->id,
             'commercial_id' => null,
+            'commercial_partner_id' => null,
             'reporter_id' => null,
             'supervisor_id' => null,
             'internal_notes' => null,

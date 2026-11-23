@@ -123,7 +123,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Opportunities, quotes, tasks, rewards, settlements, fiscal profiles, projects, campaigns, commissions and the roles (sales rep, reporter, primary referent) on registries always move to the kept referent: they are listed in **Links moving to the kept record**.',
+          text: 'Opportunities, quotes, tasks, rewards, settlements, fiscal profiles, projects, campaigns, commissions and the roles (sales rep, commercial partner, reporter, primary referent) on registries always move to the kept referent: they are listed in **Links moving to the kept record**.',
         },
         {
           type: 'warning',

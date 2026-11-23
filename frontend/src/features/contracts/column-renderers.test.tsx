@@ -36,13 +36,13 @@ describe('contractColumnRenderers.code', () => {
 })
 
 describe('contractColumnRenderers relation columns', () => {
-  it.each(['registry', 'opportunity', 'commercial', 'reporter'])('renders the %s relation name with a kind icon', (columnId) => {
+  it.each(['registry', 'opportunity', 'commercial', 'commercial_partner', 'reporter'])('renders the %s relation name with a kind icon', (columnId) => {
     const { container } = renderCell(columnId, { id: 1, name: 'Acme Spa' })
     expect(screen.getByText('Acme Spa')).toBeInTheDocument()
     expect(container.querySelector('svg')).not.toBeNull()
   })
 
-  it.each(['registry', 'opportunity', 'commercial', 'reporter'])('renders an em dash for %s when unset', (columnId) => {
+  it.each(['registry', 'opportunity', 'commercial', 'commercial_partner', 'reporter'])('renders an em dash for %s when unset', (columnId) => {
     renderCell(columnId, null)
     expect(screen.getByText('—')).toBeInTheDocument()
   })

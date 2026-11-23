@@ -44,6 +44,23 @@ final class QuoteVisibilityScope
     public const COMPETENCE_VERDICT_ATTRIBUTE = 'competence_scoped';
 
     /**
+     * The offers where the actor is in the team (Supervisore or Gestore
+     * account): the membership tier of scopeToActor(), also kept by the
+     * page's default parent category (CommercialListFilterApplier).
+     *
+     * @template TModel of Quote
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function whereMember(Builder $query, User $user): Builder
+    {
+        return $query
+            ->where('quotes.supervisor_id', $user->id)
+            ->orWhereHas('managers', fn (Builder $managers) => $managers->whereKey($user->id));
+    }
+
+    /**
      * @template TModel of Quote
      *
      * @param  Builder<TModel>  $query  rooted on (or nested under) `quotes`
@@ -65,9 +82,7 @@ final class QuoteVisibilityScope
         // Own the disjunction in a closure so the OR cannot escape the
         // caller's filters.
         return $query->where(function (Builder $scoped) use ($user, $siteIds, $reach): void {
-            $scoped
-                ->where('quotes.supervisor_id', $user->id)
-                ->orWhereHas('managers', fn (Builder $managers) => $managers->whereKey($user->id));
+            self::whereMember($scoped, $user);
 
             if ($siteIds !== []) {
                 $scoped->orWhereIn('quotes.operational_site_id', $siteIds);

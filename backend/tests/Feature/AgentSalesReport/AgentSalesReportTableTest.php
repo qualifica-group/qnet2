@@ -15,12 +15,13 @@ use Spatie\Permission\Models\Permission;
  */
 uses(RefreshDatabase::class);
 
+// REQUIREMENT CHANGED (spec 0417): `commercial_partner` right after `commercial`.
 // Tasks 427625/427940, REQUIREMENT CHANGED: product line and category after the title, the
 // taxable amount net of the reporter's commission after the reporter, and a `view` row action.
 const AGENT_SALES_REPORT_COLUMNS = [
     'code', 'quote_date', 'accepted_at', 'registry', 'title', 'root_category', 'category', 'address', 'postal_code',
     'city', 'phone', 'email', 'company_site', 'managers', 'quote_workflow_status', 'revenue_net', 'commercial',
-    'reporter', 'revenue_net_after_reporter',
+    'commercial_partner', 'reporter', 'revenue_net_after_reporter',
 ];
 
 /**
@@ -91,6 +92,7 @@ it('AC-005: projects every contract value of a fully populated offer', function 
         ->and($row['revenue_net'])->toEqual(1234.5)
         ->and($row['company_site']['name'])->toBe('Sede Nord')
         ->and($row['commercial'])->toBe(['id' => $team['commercial']->id, 'name' => 'Carla Commerciale'])
+        ->and($row['commercial_partner'])->toBe(['id' => $team['commercialPartner']->id, 'name' => 'Paolo Partner'])
         ->and($row['reporter']['name'])->toBe('Sara Segnalatrice')
         ->and($row['managers'][0]['name'])->toBe('Gino Gestore')
         ->and($row['quote_workflow_status']['id'])->toBe($status->id)
@@ -148,6 +150,8 @@ it('AC-007: filters by registry, commercial and title search, and the total foll
 
     expect($ids(['filterModel' => ['registry' => ['filterType' => 'set', 'values' => ['Acme Spa']]]]))->toBe([$acme->id])
         ->and($ids(['filterModel' => ['commercial' => ['filterType' => 'set', 'values' => [$team['commercial']->name]]]]))->toBe([$other->id])
+        // Spec 0417: the commercial partner column filters like the commercial one.
+        ->and($ids(['filterModel' => ['commercial_partner' => ['filterType' => 'set', 'values' => [$team['commercialPartner']->name]]]]))->toBe([$other->id])
         ->and($ids(['search' => 'Antincendio']))->toBe([$other->id])
         ->and($ids(['search' => $acme->code]))->toBe([$acme->id])
         ->and($ids(['filterModel' => ['city' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'Rom']]]))->toBe([$other->id]);

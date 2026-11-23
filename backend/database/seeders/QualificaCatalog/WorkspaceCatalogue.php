@@ -73,7 +73,7 @@ final class WorkspaceCatalogue
                     ...self::SHARED_KEYS,
                     // Pipeline.
                     'projects', 'campaigns', 'leads', 'imports', 'pipeline-statuses',
-                    'opportunities', 'quote-workflows', 'quotes', 'work-orders', 'contract-statuses', 'contracts',
+                    'opportunities', 'quote-workflows', 'quote-system-statuses', 'quotes', 'work-orders', 'contract-statuses', 'contracts',
                     'request-management', 'field-change-requests', 'enrollee-management', 'request-statistics',
                     'agent-sales-report',
                     // The commercial back office asks for proformas (spec 0299 D-8).

@@ -23,6 +23,7 @@ interface UseDefaultStatusesLabels {
   saved: string
   genericError: string
   nameRequired: string
+  systemStatusRequired: string
 }
 
 interface UseDefaultStatusesArgs {
@@ -36,7 +37,7 @@ interface UseDefaultStatusesArgs {
  * loads the GLOBAL default status set, mirrors it into local editable rows
  * for `<WorkflowStatusesEditor>`, and persists an explicit Save via `PUT
  * /quote-workflows/default-statuses` (unlike the per-drag auto-save of
- * `useStatusReorder`, since this editor also edits name/color/group, not
+ * `useStatusReorder`, since this editor also edits name/color/system status, not
  * just order).
  */
 export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) {
@@ -81,6 +82,10 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
     const hasEmptyCustomName = rows.some((row) => row.system_key === null && row.name.trim() === '')
     if (hasEmptyCustomName) {
       setError(labels.nameRequired)
+      return false
+    }
+    if (rows.some((row) => row.system_key === null && row.quote_system_status_id === null)) {
+      setError(labels.systemStatusRequired)
       return false
     }
     setError(null)

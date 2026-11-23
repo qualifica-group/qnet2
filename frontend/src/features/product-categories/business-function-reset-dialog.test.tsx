@@ -87,6 +87,8 @@ function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCate
     multi_quote_work_order: false,
     usage_area: 'all',
     multiple_open_opportunities: false,
+    request_registry_type: 'individual',
+    request_offer_hidden: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     ...overrides,

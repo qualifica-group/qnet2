@@ -85,10 +85,13 @@ class StoreQuoteRequest extends FormRequest
             'follow_up_date' => ['nullable', 'date_format:Y-m-d'],
             'opportunity_id' => ['required', 'integer', Rule::exists('opportunities', 'id')],
             'quote_workflow_status_id' => ['nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
+            // Spec 0404 A-D7: Offerte picks the system status, never both.
+            'quote_system_status_id' => ['nullable', 'integer', Rule::exists('quote_system_statuses', 'id'), 'prohibits:quote_workflow_status_id'],
             // Spec 0083, T-04, AC-023: the note a `requires_note` destination
             // demands. Same bound as StoreNoteRequest's `body`.
             'note' => ['nullable', 'string', 'max:5000'],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
+            'commercial_partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'company_id' => ['nullable', 'integer', Rule::exists('companies', 'id')],

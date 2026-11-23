@@ -55,6 +55,7 @@ function leadFollowSetOperator(Quote $quote, int $operatorId): void
 
 it('the lead form: an operator assigned after the conversion reaches the request, team and notification', function () {
     $operator = User::factory()->create();
+    grantAssignmentNotifications($operator);
     [$lead, [$quote]] = leadFollowFixture(null, [['operator_id' => null]]);
 
     $this->patchJson("/api/leads/{$lead->id}", ['operator_id' => $operator->id])->assertOk();

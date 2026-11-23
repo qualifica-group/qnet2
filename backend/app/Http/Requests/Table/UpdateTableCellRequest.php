@@ -18,9 +18,9 @@ use Illuminate\Validation\Rule;
  * convention (authorization/whitelisting stay out of the FormRequest so a
  * malformed shape never masks the real 403/422/404).
  *
- * `product_category_id` / `product_category_branch_id` (spec 0382 D-11,
- * optional): the category tab the cell was edited in, as the rows endpoint
- * receives it.
+ * `product_category_id` / `product_category_branch_id` (optional): the
+ * category tab the cell was edited in, as the rows endpoint receives it, so
+ * the returned row carries that tab's flexible columns (spec 0406 D-5).
  */
 class UpdateTableCellRequest extends FormRequest
 {

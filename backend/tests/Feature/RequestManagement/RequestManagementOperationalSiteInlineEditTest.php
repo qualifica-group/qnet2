@@ -76,18 +76,6 @@ it('operational_site advertises a relation editor over operational-sites', funct
         ->and($column['relation']['resource'])->toBe('operational-sites');
 });
 
-it('operator_ga2 declares the row-scoped param that narrows its picker to the row site', function () {
-    Sanctum::actingAs(siteInlineEditActor(['viewAny', 'update']));
-
-    $column = siteInlineEditColumns()['operator_ga2'];
-
-    expect($column['relation']['resource'])->toBe('users')
-        // The Sede half is untouched by the competence half the direttiva
-        // utente 2026-09-10 added next to it.
-        ->and($column['relation']['scope']['operational_site_id'])->toBe('operational_site')
-        ->and($column['relation']['scope']['competence_category_ids'])->toBe('assignment_category_ids');
-});
-
 it('a column without a declared scope emits no scope key at all', function () {
     Sanctum::actingAs(siteInlineEditActor(['viewAny', 'update']));
 

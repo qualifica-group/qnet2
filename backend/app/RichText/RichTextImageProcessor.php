@@ -48,7 +48,7 @@ final class RichTextImageProcessor
      * @throws ValidationException new-image or html_max violations, none of
      *                             which leave a partial attachment/file behind
      */
-    public function process(string $html, Model $owner, User $uploader, bool $allowMentions, string $field): RichTextImageResult
+    public function process(string $html, Model $owner, User $uploader, bool $allowMentions, string $field, RichTextProfile $profile = RichTextProfile::Standard): RichTextImageResult
     {
         $body = RichTextDom::parse($html);
 
@@ -62,10 +62,13 @@ final class RichTextImageProcessor
         $this->keepOwnedReferences($body, $owner);
 
         // Step 3: final sanitize pass (allow-list, link/mention enforcement).
-        $html = $this->sanitizer->sanitize(RichTextDom::serializeInner($body), $allowMentions);
+        $html = $this->sanitizer->sanitize(RichTextDom::serializeInner($body), $allowMentions, $profile);
 
-        // Step 4: length guard on the persisted HTML (D-5).
-        $this->assertHtmlWithinLimit($html, $field);
+        // Step 4: length guard on the persisted HTML (D-5); the page profile has
+        // its own byte limit, enforced by the page service.
+        if ($profile === RichTextProfile::Standard) {
+            $this->assertHtmlWithinLimit($html, $field);
+        }
 
         return new RichTextImageResult($html, $this->referencedAttachmentIds($html), $createdIds);
     }

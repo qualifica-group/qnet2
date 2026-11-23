@@ -21,6 +21,14 @@ vi.mock('@/features/quote-workflows/api', async (importOriginal) => ({
   fetchCriterionFields: () => Promise.resolve(CRITERION_FIELDS),
 }))
 
+vi.mock('@/features/quote-system-statuses/use-quote-system-status-options', async () => {
+  const { SYSTEM_STATUS_OPTIONS } = await import('@/features/quote-workflows/quote-system-status-options.fixtures')
+  return {
+    QUOTE_SYSTEM_STATUSES_FOR_SELECT_RESOURCE: 'quote-system-statuses',
+    useQuoteSystemStatusOptions: () => ({ options: SYSTEM_STATUS_OPTIONS, isLoading: false }),
+  }
+})
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
@@ -66,10 +74,10 @@ const SOURCE: QuoteWorkflowDetail = {
     { id: 1, field: 'product_category_branch_id', value_id: 23, value_label: 'Consulenza', field_label: 'quoteWorkflows.criterionFields.product_category_branch_id', field_source: 'native' },
   ],
   statuses: [
-    { id: 101, name: 'Nuova richiesta', description: 'Appena arrivata', color: 'slate', sort_order: 0, system_key: 'open', group: 'open', requires_note: false },
-    { id: 102, name: 'In trattativa', description: null, color: 'amber', sort_order: 1, system_key: null, group: 'pending', requires_note: true },
-    { id: 103, name: 'Vinta', description: null, color: 'green', sort_order: 2, system_key: 'closed_won', group: 'closed_won', requires_note: false },
-    { id: 104, name: 'Persa', description: null, color: 'red', sort_order: 3, system_key: 'closed_lost', group: 'closed_lost', requires_note: true },
+    { id: 101, name: 'Nuova richiesta', description: 'Appena arrivata', color: 'slate', sort_order: 0, system_key: 'open', group: 'open', quote_system_status_id: 1, quote_system_status: { id: 1, name: 'open', color: null, behavior: 'open' }, requires_note: false },
+    { id: 102, name: 'In trattativa', description: null, color: 'amber', sort_order: 1, system_key: null, group: 'pending', quote_system_status_id: 2, quote_system_status: { id: 2, name: 'pending', color: null, behavior: 'pending' }, requires_note: true },
+    { id: 103, name: 'Vinta', description: null, color: 'green', sort_order: 2, system_key: 'closed_won', group: 'closed_won', quote_system_status_id: 4, quote_system_status: { id: 4, name: 'closed_won', color: null, behavior: 'closed_won' }, requires_note: false },
+    { id: 104, name: 'Persa', description: null, color: 'red', sort_order: 3, system_key: 'closed_lost', group: 'closed_lost', quote_system_status_id: 5, quote_system_status: { id: 5, name: 'closed_lost', color: null, behavior: 'closed_lost' }, requires_note: true },
   ],
   created_at: '2026-11-05T00:00:00Z',
   updated_at: '2026-11-05T00:00:00Z',
@@ -117,7 +125,7 @@ describe('QuoteWorkflowForm — duplicate (spec 0354 AC-008)', () => {
     expect(payload.criteria).toEqual([{ field: 'source_id', value_id: 23 }])
     expect(payload.statuses).toEqual([
       { name: 'Nuova richiesta', description: 'Appena arrivata', color: 'slate', group: 'open', system_key: 'open', requires_note: false },
-      { name: 'In trattativa', description: null, color: 'amber', group: 'pending', system_key: null, requires_note: true },
+      { name: 'In trattativa', description: null, color: 'amber', quote_system_status_id: 2, system_key: null, requires_note: true },
       { name: 'Vinta', description: null, color: 'green', group: 'closed_won', system_key: 'closed_won', requires_note: false },
       { name: 'Persa', description: null, color: 'red', group: 'closed_lost', system_key: 'closed_lost', requires_note: true },
     ])

@@ -51,7 +51,7 @@ export function allocatedCostNetByOfferLineKey(
 
 /** Spec 0145 (D-3): the live margin's own subtraction, over every role at once. */
 export function sumCommissionTotals(totals: CommissionTotals): number {
-  return roundCommission(totals.commercial + totals.reporter + totals.supervisor + totals.supplier)
+  return roundCommission(totals.commercial + totals.commercial_partner + totals.reporter + totals.supervisor + totals.supplier)
 }
 
 /**
@@ -126,7 +126,7 @@ function lineCommissionAmounts(line: CommissionableLine, costNetByKey: Map<strin
   const net = roundCommission((line.quantity ?? 0) * (line.unit_price ?? 0))
   const allocatedCostNet = line.client_key ? costNetByKey.get(line.client_key) ?? 0 : 0
   const base = calculateCommissionBaseNet(net, allocatedCostNet)
-  const perRole: CommissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 }
+  const perRole: CommissionTotals = { commercial: 0, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 0 }
   for (const commission of line.commissions ?? []) {
     const key = commission.recipient_role.toLowerCase() as Lowercase<CommissionRole>
     perRole[key] = roundCommission(
@@ -141,7 +141,7 @@ export function calculateCommissionTotals(
   costLines: CostLineInput[] = [],
 ): CommissionTotals {
   const costNetByKey = allocatedCostNetByOfferLineKey(costLines)
-  const totals: CommissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 }
+  const totals: CommissionTotals = { commercial: 0, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 0 }
   for (const line of lines) {
     const { perRole } = lineCommissionAmounts(line, costNetByKey)
     for (const key of Object.keys(totals) as Array<keyof CommissionTotals>) {
@@ -162,7 +162,7 @@ export function calculateMarginBeforeCosts(lines: CommissionableLine[], costLine
   return lines.reduce((sum, line) => {
     const { net, perRole } = lineCommissionAmounts(line, costNetByKey)
     const direction = line.commissions ? effectiveSupplierDirection(line.commissions, line.supplier_commission_direction) : null
-    const others = roundCommission(perRole.commercial + perRole.reporter + perRole.supervisor)
+    const others = roundCommission(perRole.commercial + perRole.commercial_partner + perRole.reporter + perRole.supervisor)
     return roundCommission(sum + calculateLineMarginBeforeCosts(net, perRole.supplier, others, direction))
   }, 0)
 }

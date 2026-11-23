@@ -23,8 +23,8 @@ use Laravel\Sanctum\Sanctum;
  * Spec 0097, D-3: the operator's field key is now `manager_slots` — the panel
  * edits the whole team, the operator is its slot 2 — so the restriction is
  * seeded and asserted on THAT key. Nothing else about the rule changes: the
- * same three channels stay closed, the grid's `operator_ga2` cell included
- * (its `editableField` moved to the same new key).
+ * same three channels stay closed (the grid's Operatore cell was removed by
+ * spec 0406).
  *
  * Direttiva utente 2026-09-08: the TEAM half of that rule is narrowed, and the
  * narrowing is declared rather than silent. `manager_slots` is no longer
@@ -224,8 +224,9 @@ it('keeps the grid cells of both fields non-editable for the commercial', functi
     $columns = collect($this->getJson('/api/tables/request-management/columns')->assertOk()->json('data.columns'))
         ->keyBy('id');
 
+    // REQUIREMENT CHANGED (spec 0406): the Operatore cell no longer exists.
     expect($columns['operational_site']['editable'])->toBeFalse()
-        ->and($columns['operator_ga2']['editable'])->toBeFalse();
+        ->and($columns)->not->toHaveKey('operator_ga2');
 
     // The endpoint is the authority, not the flag above: TableCellUpdateService
     // re-derives the field permission against the real row and refuses.

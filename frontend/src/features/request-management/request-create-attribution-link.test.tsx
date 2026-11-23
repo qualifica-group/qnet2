@@ -172,6 +172,17 @@ describe('Create form — section order', () => {
   })
 })
 
+describe('Create form — Commercial partner (spec 0417)', () => {
+  /** AC-026: the Partner commerciale follows the Commerciale in the attribution section. */
+  it('renders the partner right after the Commerciale', () => {
+    renderForm()
+
+    const commercial = screen.getByTestId('select-Sales rep')
+    const partner = screen.getByTestId('select-Commercial partner')
+    expect(commercial.compareDocumentPosition(partner)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+})
+
 describe('Create form — the Sede scopes the Operatore picker', () => {
   it('sends no filter while no Sede is chosen', () => {
     renderForm()

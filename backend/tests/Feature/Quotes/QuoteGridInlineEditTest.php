@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\QuoteSystemStatus;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\User;
@@ -53,8 +54,9 @@ it('declares every column the form edits as a single field', function () {
     // REQUIREMENT CHANGED: spec 0332 — `source` is an editable relation column.
     // REQUIREMENT CHANGED: spec 0349 — `follow_up_date` is an editable date column.
     expect($editable)->toBe([
-        'commercial', 'company', 'company_site', 'follow_up_date', 'managers', 'operational_site',
-        'quote_workflow_status', 'reporter', 'source', 'supervisor', 'title',
+        // REQUIREMENT CHANGED (spec 0417): commercial_partner added right after commercial.
+        'commercial', 'commercial_partner', 'company', 'company_site', 'follow_up_date', 'managers', 'operational_site',
+        'quote_system_status', 'reporter', 'source', 'supervisor', 'title',
     ]);
 });
 
@@ -92,27 +94,35 @@ it('applies the form cross-check: a site of another company is refused', functio
     expect($quote->fresh()->company_site_id)->toBeNull();
 });
 
+// REQUIREMENT CHANGED (spec 0404 A-D7): Offerte edits the system status; the
+// transition note is the one its destination working status asks for.
 it('requires the transition note when the target status asks for it', function () {
     Sanctum::actingAs(quoteGridEditor());
     $quote = quoteGridQuote();
-    $target = QuoteWorkflowStatus::factory()->global()->create(['requires_note' => true, 'sort_order' => 99]);
+    $systemStatus = QuoteSystemStatus::query()->create(['name' => 'Budget', 'color' => 'amber', 'behavior' => 'pending', 'sort_order' => 15]);
+    $target = QuoteWorkflowStatus::factory()->global()->create(['requires_note' => true, 'sort_order' => 99, 'quote_system_status_id' => $systemStatus->id]);
 
-    patchQuoteCell($quote, 'quote_workflow_status', $target->id)->assertUnprocessable();
-    patchQuoteCell($quote, 'quote_workflow_status', $target->id, 'Cliente in attesa di budget')->assertOk();
+    patchQuoteCell($quote, 'quote_system_status', $systemStatus->id)->assertUnprocessable();
+    patchQuoteCell($quote, 'quote_system_status', $systemStatus->id, 'Cliente in attesa di budget')->assertOk();
 
     expect($quote->fresh()->quote_workflow_status_id)->toBe($target->id);
 });
 
-it('offers the per-row status set and the domain catalogue', function () {
+it('offers the per-row system statuses, their note markers and the domain catalogue', function () {
     Sanctum::actingAs(quoteGridEditor());
     $quote = quoteGridQuote();
+    $systemStatus = QuoteSystemStatus::query()->create(['name' => 'Budget', 'color' => 'amber', 'behavior' => 'pending', 'sort_order' => 15]);
+    QuoteWorkflowStatus::factory()->global()->create(['requires_note' => true, 'sort_order' => 99, 'quote_system_status_id' => $systemStatus->id]);
 
     $columns = collect($this->getJson('/api/tables/quotes/columns')->assertOk()->json('data.columns'));
     $row = collect($this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 10])->assertOk()->json('items'))
         ->firstWhere('id', $quote->id);
+    $currentSystemStatusId = $quote->quoteWorkflowStatus->quote_system_status_id;
 
-    expect($columns->firstWhere('id', 'quote_workflow_status')['options'])->not->toBeEmpty()
-        ->and($row['quote_workflow_status_options'])->toContain($quote->quote_workflow_status_id);
+    expect($columns->firstWhere('id', 'quote_system_status')['options'])->not->toBeEmpty()
+        ->and($row['quote_system_status']['id'])->toBe($currentSystemStatusId)
+        ->and($row['quote_system_status_options'])->toContain($currentSystemStatusId, $systemStatus->id)
+        ->and($row['quote_system_status_notes'])->toBe([$systemStatus->id]);
 });
 
 it('keeps code and aggregates read-only', function () {

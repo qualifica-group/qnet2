@@ -56,13 +56,13 @@ describe('BillingFiltersBar', () => {
     expect(onChange).toHaveBeenCalledWith({ ...filters, dateFrom: '2026-02-01' })
   })
 
-  it('AC-011 the grouping offers the three dimensions and reports the choice', async () => {
+  it('AC-011 the grouping offers the four dimensions and reports the choice', async () => {
     const onChange = vi.fn()
     const filters = defaultBillingFilters()
     renderWithClient(<BillingFiltersBar filters={filters} onChange={onChange} />)
 
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Group the amount to invoice by' }), { key: 'ArrowDown' })
-    for (const name of ['Business function', 'Company', 'Sales representative']) {
+    for (const name of ['Business function', 'Company', 'Sales representative', 'Commercial partner']) {
       expect(await screen.findByRole('option', { name })).toBeInTheDocument()
     }
     fireEvent.click(screen.getByRole('option', { name: 'Sales representative' }))

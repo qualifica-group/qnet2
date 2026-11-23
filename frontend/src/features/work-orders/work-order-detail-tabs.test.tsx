@@ -69,6 +69,10 @@ vi.mock('@/features/work-order-chat/work-order-chat-panel', () => ({
   WorkOrderChatPanel: ({ canWriteAction }: { canWriteAction: boolean }) => <div>chat-panel write:{String(canWriteAction)}</div>,
 }))
 
+vi.mock('@/features/work-order-page/work-order-page-panel', () => ({
+  WorkOrderPagePanel: ({ canEditAction }: { canEditAction: boolean }) => <div>page-panel edit:{String(canEditAction)}</div>,
+}))
+
 vi.mock('@/features/attachments/documents-section', () => ({
   DocumentsSection: ({ resource }: { resource: string }) => <div>documents-section {resource}</div>,
 }))
@@ -214,6 +218,23 @@ describe('WorkOrderDetailTabs', () => {
 
     expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument()
   })
+
+  it('adds the Workspace notes tab right after the Chat with view_page and passes edit_page (spec 0420 AC-001)', () => {
+    renderTabs({ view_chat: true, view_page: true, edit_page: true })
+
+    const tabs = topTabs()
+    expect(tabs.indexOf('Workspace notes')).toBe(tabs.indexOf('Chat') + 1)
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Workspace notes' }))
+
+    expect(screen.getByText('page-panel edit:true')).toBeInTheDocument()
+  })
+
+  it('has no Workspace notes tab without view_page (spec 0420 AC-001)', () => {
+    renderTabs({ view_chat: true, edit_page: true })
+
+    expect(screen.queryByRole('tab', { name: 'Workspace notes' })).not.toBeInTheDocument()
+  })
 })
 
 describe('WorkOrderDetailTabs — tabs behave like pages', () => {
@@ -250,6 +271,26 @@ describe('WorkOrderDetailTabs — tabs behave like pages', () => {
     render(<WorkOrderDetailTabs workOrder={workOrder({})} info={<div>info-sections</div>} />, `${PAGE_URL}?tab=costs`)
 
     expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('data-state', 'active')
+  })
+
+  it('opens the initial tab in the modal Sheet (spec 0405, the grid menu)', () => {
+    render(<WorkOrderDetailTabs workOrder={workOrder({})} info={<div>info-sections</div>} initialTab="notes" />)
+
+    expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('data-state', 'active')
+    expect(screen.getByText('notes-section')).toBeInTheDocument()
+  })
+
+  it('opens the group holding the requested sub-tab (spec 0405, Documenti)', () => {
+    render(
+      <WorkOrderDetailTabs
+        workOrder={workOrder({ view_documents: true }, { id: 1, name: 'Acme' })}
+        info={<div>info-sections</div>}
+      />,
+      `${PAGE_URL}?tab=documents`,
+    )
+
+    expect(screen.getByRole('tab', { name: 'Documents' })).toHaveAttribute('data-state', 'active')
+    expect(screen.getByText('documents-section work_order')).toBeInTheDocument()
   })
 
   it('keeps the tab off the URL outside the work order page (modal Sheet over the list)', () => {

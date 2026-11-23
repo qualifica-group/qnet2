@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 class AttributeService
 {
     /** Tables whose `attribute_values` JSON map is keyed by attribute code (`deletion.usages.*` labels). */
-    private const array VALUE_TABLES = ['products', 'quotes', 'work_orders'];
+    public const array VALUE_TABLES = ['products', 'quotes', 'work_orders'];
 
     public function __construct(
         private readonly FieldTypeRegistry $fieldTypeRegistry,

@@ -73,6 +73,9 @@ export const workOrders = {
     work_phase: 'Fase',
     work_order_workflow_status: 'Stato lavorazione',
     completion_percentage: 'Avanzamento',
+    // Spec 0407: la colonna "€" del vecchio QNet, stato della richiesta proforma.
+    proforma_status: '€',
+    line_payment_statuses: 'Stato pagamento',
     created_at: 'Creata il',
     updated_at: 'Aggiornata il',
     chat_unread_count: 'Non letti',
@@ -133,6 +136,7 @@ export const workOrders = {
       phones: 'Telefono',
       referent: 'Referente {{slot}}',
       commercial: 'Commerciale',
+      commercialPartner: 'Partner commerciale',
       sectors: 'Settore',
       comments: 'Commenti',
     },
@@ -147,8 +151,31 @@ export const workOrders = {
       countLabel: '{{count}} task',
     },
   },
-  /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
+  /** The grid row actions (spec 0405) and the detail actions, "Chiusura forzata" and its inverse included (user directive 2026-10-06). */
   actions: {
+    delete: {
+      label: 'Elimina',
+      confirmTitle: 'Eliminare la commessa?',
+      confirmDescription: 'La commessa {{code}} verrà eliminata definitivamente, con i suoi responsabili e partecipanti.',
+      confirm: 'Elimina',
+      cancel: 'Annulla',
+      success: 'Commessa eliminata.',
+      error: 'Impossibile eliminare la commessa.',
+    },
+    team: {
+      label: 'Responsabili e Partecipanti',
+      description: 'Commessa {{code}}: aggiungi o togli Responsabili e Partecipanti.',
+    },
+    openTab: {
+      info: 'Info',
+      notes: 'Storico Note',
+      tasks: 'Task',
+      documents: 'Documenti',
+    },
+    copyQuoteAttributes: {
+      label: "Copia dati dall'offerta",
+      error: "Impossibile copiare i dati dall'offerta. Riprova.",
+    },
     requestUpdate: {
       label: 'Richiedi aggiornamento',
       title: 'Richiedi aggiornamento',
@@ -417,7 +444,6 @@ export const workOrders = {
     },
     created: 'Commessa creata con successo.',
     updated: 'Commessa aggiornata con successo.',
-    deleted: 'Commessa eliminata con successo.',
     codeRequired: 'Il numero commessa è obbligatorio.',
     codeMax: 'Il numero commessa può contenere al massimo 32 caratteri.',
     titlePlaceholder: 'Automatico: codice e prodotti della commessa',
@@ -434,8 +460,6 @@ export const workOrders = {
     openTasksWarning_one: '{{count}} task aperto verrà chiuso con esito negativo.',
     openTasksWarning_other: '{{count}} task aperti verranno chiusi con esito negativo.',
     genericError: 'Si è verificato un errore. Riprova.',
-    deleteError: 'Impossibile eliminare la commessa. Riprova.',
-    deleteConflict: 'Impossibile eliminare: la commessa è utilizzata altrove.',
     sections: {
       offer: {
         title: 'Offerta e righe prodotto',

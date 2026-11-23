@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0419-quote-status-notifications" status="approved" owner="utente" date="2026-11-20">
+
+  <goal>
+    Nel configuratore degli stati di lavorazione dell'offerta (workflow offerta e stati predefiniti), accanto a
+    "Richiede una nota esplicativa", ogni stato puo' prevedere una notifica: quando un utente porta un'offerta
+    in quello stato parte un'email (oggetto e testo scritti nel configuratore) ai destinatari scelti.
+    Task 10 della riunione 12-16 novembre ("prevedere notifica sullo stato dell'offerta con destinatario e testo").
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-20: "nel configuratore di stati voglio che ci sia la possibilita' di prevedere una
+    notifica in base allo stato (tipo come la nota obbligatoria se si sceglie uno stato). Questa email bisogna
+    poterla settare e scegliere il destinatario".
+    Ogni cambio di stato di lavorazione fatto da un utente passa da `QuoteWorkflowStatusWriter::apply`
+    (Offerte, Gestione Richieste/Iscritti, celle di griglia, creazione con stato scelto). I destinatari
+    riprendono il modello gia' usato dagli eventi delle tabelle flessibili (spec 0390 D-3).
+  </context>
+
+  <decisions>
+    <decision id="D-1">Configurazione sullo stato di lavorazione (`quote_workflow_statuses.notify`, json nullable),
+      non sullo stato di sistema: gli stati di sistema si scelgono in Offerte ma arrivano sempre a uno stato di
+      lavorazione (spec 0404 A), quindi la notifica scatta anche da li'. Vale per stati personalizzati e fissi.</decision>
+    <decision id="D-2">Email scritta nel configuratore: `subject` (obbligatorio, max 191) e `message` (testo
+      semplice obbligatorio, max 5000, a capo conservati). Niente "Modello email": i modelli oggi sono solo
+      della commessa (spec 0175 D-10).</decision>
+    <decision id="D-3">Destinatari combinabili come la spec 0390 D-3: `record_team` (Supervisore, Operatore e
+      Gestori Account dell'offerta, `RecordTeam`), `user_ids`, `role_ids` (utenti attivi del ruolo), `emails`
+      liberi anche esterni. Almeno uno. Utenti solo attivi, autore escluso, indirizzo libero uguale all'email di un
+      utente gia' notificato non riceve doppio. Utenti: campanella + email secondo preferenza; indirizzi liberi
+      solo email, senza la scheda interna dell'offerta.</decision>
+    <decision id="D-4">Scatta solo quando l'offerta ENTRA nello stato per scelta di un utente (`apply`, stato
+      diverso dal corrente). Silenziosa: re-invio dello stesso stato, ricalcolo automatico dello stato
+      (`rebaseline`), import/migrazioni sotto `AssignmentNotifier::muted()`. Parte dopo il commit.</decision>
+    <decision id="D-5">I recipienti si calcolano con un'unica classe condivisa con la spec 0390
+      (`NotifyRecipients`), estratta da `TableRowNotifier` senza cambiarne il comportamento.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione colonna `notify`; model (fillable, cast array); validazione nei 3 endpoint di scrittura
+        degli stati; DTO e `WorkflowStatusWriter`; `QuoteWorkflowStatusResource` e `QuoteWorkflowResource`.</item>
+      <item>`QuoteStatusNotifier` (chiamato da `QuoteWorkflowStatusWriter::apply`) + `QuoteStatusNotification`.</item>
+      <item>FE: nell'editor stati delle offerte interruttore "Invia notifica" + finestra di configurazione
+        (oggetto, testo, persone dell'offerta, utenti, ruoli, indirizzi); idratazione e payload.</item>
+      <item>i18n BE/FE IT/EN, guida in-app `quote-workflows` IT/EN, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Stati di lavorazione della commessa; stati di sistema; variabili nel testo; allegati.</item>
+      <item>Notifica su ricalcolo automatico dello stato o su cambi fatti da import/migrazioni.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <shape name="QuoteWorkflowStatus.notify">
+      notify: {
+        subject: string,          // 1..191
+        message: string,          // 1..5000, testo semplice
+        record_team: boolean,     // persone dell'offerta (D-3)
+        user_ids: int[],          // 0..50 utenti esistenti, distinti
+        role_ids: int[],          // 0..50 ruoli esistenti, distinti
+        emails: string[]          // 0..20 indirizzi validi, distinti
+      } | null                    // null = nessuna notifica
+      Almeno un destinatario: record_team = true oppure una lista non vuota.
+    </shape>
+    <endpoint method="POST|PUT|PATCH" path="/api/quote-workflows(/{id}) , PUT /api/quote-workflows/default-statuses">
+      <request>`statuses[].notify` opzionale come sopra (assente = null, come `requires_note` assente = false).</request>
+      <response status="200|201">Invariata + `statuses[].notify`.</response>
+      <errors>422 `statuses.N.notify` (nessun destinatario / non oggetto), `statuses.N.notify.subject`,
+        `statuses.N.notify.message`, `statuses.N.notify.user_ids(.M)`, `statuses.N.notify.role_ids(.M)`,
+        `statuses.N.notify.emails(.M)`.</errors>
+    </endpoint>
+    <shape name="Notifica (database)">
+      { title: subject, message: ":actor ha portato :offerta nello stato \":stato\".", level: info, action_url: path offerta per il destinatario o null }
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">PUT default-statuses con `notify` valido su uno stato: 200, `notify` persistito e restituito identico; senza `notify` lo stato torna a null. (Pest)</criterion>
+    <criterion id="AC-002">`notify` senza destinatari, oggetto/testo vuoti, utenti/ruoli inesistenti o duplicati, email non valide: 422 con la chiave del contratto. (Pest)</criterion>
+    <criterion id="AC-003">POST /api/quote-workflows con `notify` su uno stato personalizzato e su uno fisso: 201 e `notify` sui due stati. (Pest)</criterion>
+    <criterion id="AC-004">Offerta portata da un utente in uno stato con notify `record_team`: Supervisore e Gestori Account ricevono campanella (+ email per preferenza) con oggetto e testo configurati; l'autore no. (Pest)</criterion>
+    <criterion id="AC-005">Con `user_ids` [attivo, disattivato], `role_ids` [ruolo di Z], `emails` [esterno, email dell'attivo in maiuscolo]: ricevono l'attivo, Z e l'esterno (solo mail, una volta); il disattivato no. (Pest)</criterion>
+    <criterion id="AC-006">Nessuna notifica: stato senza notify, re-invio dello stesso stato, cambio sotto `AssignmentNotifier::muted()`, cambio rifiutato con 422. (Pest)</criterion>
+    <criterion id="AC-007">FE: attivando "Invia notifica" si apre la finestra; con oggetto, testo e almeno un destinatario il salvataggio scrive `notify` sulla riga e il payload lo contiene; senza destinatari compare l'errore; spegnendo l'interruttore `notify` torna null. (Vitest)</criterion>
+    <criterion id="AC-008">i18n IT/EN e guida `quote-workflows` IT/EN aggiornate, `help-content-parity.test.ts` verde. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza; nessun observer: chiamata esplicita dal writer.
+    - Notifica dopo il commit (`DB::afterCommit`), autore escluso, solo utenti attivi; la Notification non interroga il DB.
+    - File entro 300/500 righe; identificatori in inglese; UI compatta.
+  </constraints>
+
+</spec>

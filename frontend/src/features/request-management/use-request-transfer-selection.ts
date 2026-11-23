@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { apiErrorMessage } from '@/lib/forbidden-message'
+import { refusedActionMessage } from '@/lib/forbidden-message'
 import type {
   AssignOperatorsDialogInput,
   AssignOperatorsDialogSite,
@@ -79,7 +79,7 @@ export function useRequestTransferSelection(onTransferred: () => void) {
           operator_id: input.operator_id,
         })
       } catch (error) {
-        toast.error(apiErrorMessage(error, t('requestManagement.transfer.errors.generic'), i18n))
+        toast.error(refusedActionMessage(error, t('requestManagement.transfer.errors.generic'), i18n))
         throw error
       }
     },

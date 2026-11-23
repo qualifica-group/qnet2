@@ -41,8 +41,6 @@ interface QuoteLineCardProps {
   lockedWorkOrderCodes?: string[] | null
   /** Spec 0360 D-8: the actor holds `quotes.updateLockedLines`: an assigned row's fields stay editable, its removal stays locked. */
   assignedRowEditable?: boolean
-  /** Spec 0114: amounts only, the server congeals quantity/price/VAT. */
-  simplified: boolean
   error?: QuoteLineRowErrors
   vatRatePercentFor: (vatRateId: number) => number | null
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
@@ -89,7 +87,6 @@ export function QuoteLineCard({
   disabled: editorDisabled,
   lockedWorkOrderCodes = null,
   assignedRowEditable = false,
-  simplified,
   error,
   vatRatePercentFor,
   rememberVatRatePercent,
@@ -158,73 +155,71 @@ export function QuoteLineCard({
       </QuoteLineCardHeading>
 
       <div className={LINE_CARD_STRIP_CLASS}>
-        {simplified ? null : (
-          <div className="flex flex-wrap items-start gap-2">
-            <div className="flex w-20 flex-col gap-1">
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                aria-label={t('quotes.form.lineQuantity', { n: position })}
-                aria-invalid={!!error?.quantity}
-                aria-describedby={error?.quantity ? quantityErrorId : undefined}
-                disabled={disabled}
-                value={numberInputValue(row.quantity)}
-                onChange={(event) => onChangeField({ quantity: parseNumberInput(event.target.value) })}
-                className={INPUT_CLASS}
-              />
-              {error?.quantity ? (
-                <span id={quantityErrorId} role="alert" className="text-[11px] text-destructive">
-                  {error.quantity.message}
-                </span>
-              ) : null}
-            </div>
-            <span className="pt-2 text-xs text-muted-foreground">{row.unit_of_measure?.symbol ?? ''} ×</span>
-            <div className="flex w-28 flex-col gap-1">
-              <Input
-                type="number"
-                step="0.01"
-                aria-label={t('quotes.form.lineUnitPrice', { n: position })}
-                aria-invalid={!!error?.unit_price}
-                aria-describedby={error?.unit_price ? unitPriceErrorId : priceLocked ? commissionNoteId : undefined}
-                disabled={disabled || priceLocked}
-                value={numberInputValue(row.unit_price)}
-                onChange={(event) => onChangeField({ unit_price: parseNumberInput(event.target.value) })}
-                className={INPUT_CLASS}
-              />
-              {error?.unit_price ? (
-                <span id={unitPriceErrorId} role="alert" className="text-[11px] text-destructive">
-                  {error.unit_price.message}
-                </span>
-              ) : null}
-            </div>
-            <div className="w-36">
-              <AsyncPaginatedSelect
-                resource={VAT_RATES_FOR_SELECT_RESOURCE}
-                value={row.vat_rate_id}
-                onChange={(vatRateId) => onChangeField({ vat_rate_id: vatRateId })}
-                onItemChange={(item) => {
-                  const vatItem = item as VatRateForSelectItem | null
-                  if (vatItem?.meta.rate != null) {
-                    rememberVatRatePercent(vatItem.id, Number(vatItem.meta.rate))
-                  }
-                }}
-                selectedItem={vatRateItem}
-                disabled={disabled}
-                className={VAT_TRIGGER_CLASS}
-                labels={{
-                  placeholder: t('quotes.form.lineVatRatePlaceholder'),
-                  searchPlaceholder: t('quotes.form.lineVatRateSearch'),
-                  empty: t('quotes.form.lineVatRateEmpty'),
-                  error: t('quotes.form.lineVatRateLoadError'),
-                  clearLabel: t('common.clear'),
-                  triggerLabel: t('quotes.form.lineVatRate', { n: position }),
-                  retry: t('common.retry'),
-                }}
-              />
-            </div>
+        <div className="flex flex-wrap items-start gap-2">
+          <div className="flex w-20 flex-col gap-1">
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              aria-label={t('quotes.form.lineQuantity', { n: position })}
+              aria-invalid={!!error?.quantity}
+              aria-describedby={error?.quantity ? quantityErrorId : undefined}
+              disabled={disabled}
+              value={numberInputValue(row.quantity)}
+              onChange={(event) => onChangeField({ quantity: parseNumberInput(event.target.value) })}
+              className={INPUT_CLASS}
+            />
+            {error?.quantity ? (
+              <span id={quantityErrorId} role="alert" className="text-[11px] text-destructive">
+                {error.quantity.message}
+              </span>
+            ) : null}
           </div>
-        )}
+          <span className="pt-2 text-xs text-muted-foreground">{row.unit_of_measure?.symbol ?? ''} ×</span>
+          <div className="flex w-28 flex-col gap-1">
+            <Input
+              type="number"
+              step="0.01"
+              aria-label={t('quotes.form.lineUnitPrice', { n: position })}
+              aria-invalid={!!error?.unit_price}
+              aria-describedby={error?.unit_price ? unitPriceErrorId : priceLocked ? commissionNoteId : undefined}
+              disabled={disabled || priceLocked}
+              value={numberInputValue(row.unit_price)}
+              onChange={(event) => onChangeField({ unit_price: parseNumberInput(event.target.value) })}
+              className={INPUT_CLASS}
+            />
+            {error?.unit_price ? (
+              <span id={unitPriceErrorId} role="alert" className="text-[11px] text-destructive">
+                {error.unit_price.message}
+              </span>
+            ) : null}
+          </div>
+          <div className="w-36">
+            <AsyncPaginatedSelect
+              resource={VAT_RATES_FOR_SELECT_RESOURCE}
+              value={row.vat_rate_id}
+              onChange={(vatRateId) => onChangeField({ vat_rate_id: vatRateId })}
+              onItemChange={(item) => {
+                const vatItem = item as VatRateForSelectItem | null
+                if (vatItem?.meta.rate != null) {
+                  rememberVatRatePercent(vatItem.id, Number(vatItem.meta.rate))
+                }
+              }}
+              selectedItem={vatRateItem}
+              disabled={disabled}
+              className={VAT_TRIGGER_CLASS}
+              labels={{
+                placeholder: t('quotes.form.lineVatRatePlaceholder'),
+                searchPlaceholder: t('quotes.form.lineVatRateSearch'),
+                empty: t('quotes.form.lineVatRateEmpty'),
+                error: t('quotes.form.lineVatRateLoadError'),
+                clearLabel: t('common.clear'),
+                triggerLabel: t('quotes.form.lineVatRate', { n: position }),
+                retry: t('common.retry'),
+              }}
+            />
+          </div>
+        </div>
 
         {suppliers.length > 0 ? (
           <div className="flex w-full max-w-60 flex-col gap-1">

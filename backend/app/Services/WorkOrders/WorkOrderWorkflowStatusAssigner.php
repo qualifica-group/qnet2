@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderWorkflowStatus;
+use App\Services\Notifications\TeamActivityNotifier;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -35,7 +36,10 @@ final class WorkOrderWorkflowStatusAssigner
     /** The groups a forced closure may land on: positive or negative outcome. */
     private const array CLOSING_GROUPS = [WorkOrderStatus::Completed, WorkOrderStatus::Closed];
 
-    public function __construct(private readonly WorkOrderWorkflowResolver $resolver) {}
+    public function __construct(
+        private readonly WorkOrderWorkflowResolver $resolver,
+        private readonly TeamActivityNotifier $teamActivity,
+    ) {}
 
     /**
      * The `open` row of the GLOBAL default set: the insert-time placeholder,
@@ -239,6 +243,14 @@ final class WorkOrderWorkflowStatusAssigner
 
         if ($logChange) {
             $this->logChange($workOrder, $previousStatusId, $targetId, $causer ?? Auth::user());
+        }
+
+        // Spec 0413: the first status of a fresh commessa is its creation; a
+        // logged move is a status change. Both reach the actor's managers.
+        if ($previousStatusId === null && $workOrder->wasRecentlyCreated) {
+            $this->teamActivity->created($workOrder, $causer);
+        } elseif ($logChange) {
+            $this->teamActivity->statusChanged($workOrder, $previousStatusId, $causer);
         }
     }
 

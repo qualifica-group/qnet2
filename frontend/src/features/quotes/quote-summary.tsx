@@ -22,6 +22,7 @@ import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLine, QuoteSummary as QuoteSummaryData, QuoteTypologyTotal } from '@/features/quotes/types'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import type { ProductTypologyForSelectItem } from '@/features/product-typologies/for-select-api'
+import { useQuoteCostsVisible } from '@/features/quotes/use-quote-costs-visible'
 import { useQuoteLiveTotals } from '@/features/quotes/use-quote-live-totals'
 import type { CommissionTotals } from './commission-calculator'
 
@@ -46,7 +47,11 @@ export function formatSignedQuoteAmount(value: number): string {
   return `${value > 0 ? '+' : '\u2212'}${formatQuoteAmount(Math.abs(value))}`
 }
 
-/** Maps the persisted `QuoteSummary` (decimal strings, D-9) onto the numeric shape the presentational component renders. */
+/**
+ * Maps the persisted `QuoteSummary` (decimal strings, D-9) onto the numeric
+ * shape the presentational component renders. Cost and margin absent (spec
+ * 0412, no `view_costs`) read as 0: the summary then hides their cards.
+ */
 export function totalsFromPersistedSummary(summary: QuoteSummaryData): QuoteTotalsSummary {
   return {
     revenue: {
@@ -55,11 +60,11 @@ export function totalsFromPersistedSummary(summary: QuoteSummaryData): QuoteTota
       gross: Number(summary.revenue.gross),
     },
     cost: {
-      net: Number(summary.cost.net),
-      vat: Number(summary.cost.vat),
-      gross: Number(summary.cost.gross),
+      net: Number(summary.cost?.net ?? 0),
+      vat: Number(summary.cost?.vat ?? 0),
+      gross: Number(summary.cost?.gross ?? 0),
     },
-    margin: { net: Number(summary.margin.net) },
+    margin: { net: Number(summary.margin?.net ?? 0) },
   }
 }
 
@@ -168,6 +173,8 @@ interface QuoteSummaryProps {
   showProductMargins?: boolean
   /** The saved rows behind the "Dettaglio provvigioni" toggle (detail only: the live form has no persisted amounts). */
   commissionDetails?: { offerLines: QuoteLine[]; costLines: QuoteLine[] }
+  /** Spec 0412: false hides the cost and margin cards and the "Margine per prodotto" breakdown (no `view_costs`). */
+  showCosts?: boolean
 }
 
 /**
@@ -183,15 +190,16 @@ interface QuoteSummaryProps {
  */
 export function QuoteSummary({
   totals,
-  commissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 },
+  commissionTotals = { commercial: 0, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 0 },
   typologyBuckets = EMPTY_TYPOLOGY_BUCKETS,
   productMargins,
   showProductMargins = true,
   commissionDetails,
+  showCosts = true,
 }: QuoteSummaryProps) {
   const { t } = useTranslation()
   const marginNegative = totals.margin.net < 0
-  const hasAdvanced = productMargins !== undefined && showProductMargins && productMargins.rows.length > 0
+  const hasAdvanced = productMargins !== undefined && showCosts && showProductMargins && productMargins.rows.length > 0
   const hasCommissionDetails =
     commissionDetails !== undefined &&
     showProductMargins &&
@@ -208,33 +216,37 @@ export function QuoteSummary({
           vatLabel={t('quotes.form.summary.vat')}
           grossLabel={t('quotes.form.summary.gross')}
         />
-        <QuoteAmountBlock
-          icon={TrendingDown}
-          title={t('quotes.form.summary.cost')}
-          aggregate={totals.cost}
-          netLabel={t('quotes.form.summary.net')}
-          vatLabel={t('quotes.form.summary.vat')}
-          grossLabel={t('quotes.form.summary.gross')}
-        />
+        {showCosts ? (
+          <QuoteAmountBlock
+            icon={TrendingDown}
+            title={t('quotes.form.summary.cost')}
+            aggregate={totals.cost}
+            netLabel={t('quotes.form.summary.net')}
+            vatLabel={t('quotes.form.summary.vat')}
+            grossLabel={t('quotes.form.summary.gross')}
+          />
+        ) : null}
         <QuoteCommissionSummary
           totals={commissionTotals}
           receivedSupplier={productMargins ? receivedSupplierCommission(productMargins.rows) : 0}
         />
-        <div className="flex flex-col gap-1.5 rounded-md border bg-card p-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Wallet aria-hidden="true" className="size-3.5" />
-            {t('quotes.form.summary.margin')}
+        {showCosts ? (
+          <div className="flex flex-col gap-1.5 rounded-md border bg-card p-3">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              <Wallet aria-hidden="true" className="size-3.5" />
+              {t('quotes.form.summary.margin')}
+            </div>
+            <p
+              className={cn(
+                'text-lg font-semibold tabular-nums',
+                marginNegative ? 'text-destructive' : 'text-foreground',
+              )}
+            >
+              {formatQuoteAmount(totals.margin.net)}
+            </p>
+            <p className="text-[11px] text-muted-foreground">{t('quotes.form.summary.marginHint')}</p>
           </div>
-          <p
-            className={cn(
-              'text-lg font-semibold tabular-nums',
-              marginNegative ? 'text-destructive' : 'text-foreground',
-            )}
-          >
-            {formatQuoteAmount(totals.margin.net)}
-          </p>
-          <p className="text-[11px] text-muted-foreground">{t('quotes.form.summary.marginHint')}</p>
-        </div>
+        ) : null}
         <QuoteTypologyBlock buckets={typologyBuckets} />
       </div>
       {hasAdvanced || hasCommissionDetails ? (
@@ -304,6 +316,7 @@ export function QuoteLiveSummary({
 }: QuoteLiveSummaryProps) {
   const { offerLines, costLines, commissionTotals, totals } = useQuoteLiveTotals(control, vatRatePercentFor)
   const { field: fieldPermission } = useResourcePermissions()
+  const costsVisible = useQuoteCostsVisible()
 
   // Spec 0099, D-6: the SAME arithmetic the buckets' server-side counterpart
   // uses — each revenue row's already-rounded net (`quote-totals.ts`), summed
@@ -349,6 +362,7 @@ export function QuoteLiveSummary({
       typologyBuckets={typologyBuckets}
       productMargins={productMargins}
       showProductMargins={fieldPermission('commissions').visible}
+      showCosts={costsVisible}
     />
   )
 }

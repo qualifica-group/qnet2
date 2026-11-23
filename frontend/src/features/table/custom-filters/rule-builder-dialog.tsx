@@ -71,8 +71,10 @@ function RuleGroupSection({ headingLabel, addLabel, emptyLabel, count, onAdd, ch
  * queste condizioni (E)" and "Oppure una di queste (O)" — each a list of
  * field/operator/value rows, capped and validated by `buildRuleBuilderSchema`.
  * "Applica" activates the rules without persisting; "Salva come vista" also
- * creates/updates a `TableFilterView` whose `rules` carries them (`filters`/
- * `advancedFilters` saved empty, per contract).
+ * creates a `TableFilterView` whose `rules` carries them (`filters`/
+ * `advancedFilters` saved empty, per contract). Editing a saved view opens
+ * straight on its name/visibility with "Salva" as the main action, so a
+ * change to a saved filter is stored on the view instead of only applied.
  */
 export function RuleBuilderDialog({
   domain,
@@ -102,6 +104,8 @@ export function RuleBuilderDialog({
   const [name, setName] = useState('')
   const [visibility, setVisibility] = useState<FilterViewVisibility>('private')
   const isSaving = createView.isPending || updateView.isPending
+  const isEditing = editingView !== null
+  const showSavePanel = saveOpen || isEditing
 
   // Resets the form/save panel to the editing target every time the dialog
   // opens — a plain state sync (react-hooks.md), not a data fetch.
@@ -123,8 +127,11 @@ export function RuleBuilderDialog({
     form.setValue(`${group}.${index}.values`, [])
   }
 
+  // Applied without saving: an ad-hoc filter, never tagged with the edited
+  // view, or the view's saved rules would later replace it (see
+  // `use-sync-custom-filter-with-view.ts`).
   const submitApply = form.handleSubmit((values) => {
-    onApply(formValuesToRules(values, usableColumns), { viewId: editingView?.id, name: editingView?.name })
+    onApply(formValuesToRules(values, usableColumns), {})
     onOpenChange(false)
   })
 
@@ -218,7 +225,7 @@ export function RuleBuilderDialog({
           </form>
         </Form>
 
-        {saveOpen ? (
+        {showSavePanel ? (
           <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 p-3">
             <Input
               value={name}
@@ -234,7 +241,11 @@ export function RuleBuilderDialog({
         ) : null}
 
         <DialogFooter>
-          {saveOpen ? (
+          {isEditing ? (
+            <Button type="button" variant="outline" onClick={() => void submitApply()} disabled={isSaving}>
+              {t('table.customFilters.applyWithoutSaving')}
+            </Button>
+          ) : saveOpen ? (
             <Button type="button" variant="outline" onClick={() => setSaveOpen(false)} disabled={isSaving}>
               {t('common.cancel')}
             </Button>
@@ -243,7 +254,7 @@ export function RuleBuilderDialog({
               {t('table.saveView')}
             </Button>
           )}
-          {saveOpen ? (
+          {showSavePanel ? (
             <Button type="button" onClick={() => void submitSave()} disabled={isSaving || name.trim().length === 0}>
               {t('table.save')}
             </Button>

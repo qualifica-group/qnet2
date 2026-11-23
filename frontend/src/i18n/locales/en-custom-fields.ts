@@ -133,6 +133,8 @@ export const customFields = {
     summaryColumn: 'Summary column',
     summaryStrategy: 'Strategy',
     summaryNone: 'No summary',
+    summaryGridLabel: 'Grid date column',
+    summaryGridLabelHint: 'When filled in, the grid column takes this name and shows only the summary date (blank when missing).',
     strategies: {
       selected: 'Selected row',
       max: 'Maximum',

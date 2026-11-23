@@ -56,7 +56,8 @@ it('builds the anagrafica detail card from the record, skipping empty fields', f
     expect($details)->toHaveKey('notifications.fields.name')
         ->and($details['notifications.fields.name'])->toBe('Acme S.p.A.')
         ->and($details['notifications.fields.supervisor'])->toBe('Rosa Falzarano')
-        ->and($details['notifications.fields.account_managers'])->toBe('2. Ada Lovelace')
+        // REQUIREMENT CHANGED (2026-11-18): every Gestore Account is the same role, no slot number.
+        ->and($details['notifications.fields.account_managers'])->toBe('Ada Lovelace')
         // The value is the i18n KEY: it is translated per recipient, later.
         ->and($details['notifications.fields.type'])->toBe('notifications.values.client')
         // No source on this registry: the row is omitted, not left blank.
@@ -78,7 +79,9 @@ it('builds the opportunity detail card from the record', function () {
         ->and($details['notifications.fields.client'])->toBe('Acme S.p.A.')
         // REQUIREMENT CHANGED: spec 0332 — the Fonte is shown on the offer card only.
         ->and($details)->not->toHaveKey('notifications.fields.source')
-        ->and($details['notifications.fields.operator'])->toBe('Mario Rossi');
+        // REQUIREMENT CHANGED (2026-11-18): the whole team, no "Operatore" row.
+        ->and($details['notifications.fields.account_managers'])->toBe('Mario Rossi')
+        ->and($details)->not->toHaveKey('notifications.fields.operator');
 });
 
 it('builds the offer detail card with its own Fonte', function () {
@@ -118,7 +121,6 @@ it('puts a real HTML table in the assignment email', function () {
         role: AssignmentRoleEnum::Manager,
         recordId: $registry->id,
         recordLabel: $registry->name,
-        position: 2,
         actorName: 'Rosa Falzarano',
         details: RecordDetails::for($registry),
     ))->toMail($recipient)->render();
@@ -175,7 +177,6 @@ it('translates the assignment email and its detail card per recipient locale', f
         role: AssignmentRoleEnum::Supervisor,
         recordId: $registry->id,
         recordLabel: $registry->name,
-        position: null,
         actorName: 'Rosa Falzarano',
         details: RecordDetails::for($registry),
     );

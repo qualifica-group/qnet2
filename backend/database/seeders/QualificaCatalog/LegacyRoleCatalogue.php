@@ -32,6 +32,9 @@ final class LegacyRoleCatalogue
 
     private const array WRITE_DELETE = ['viewAny', 'view', 'create', 'update', 'delete'];
 
+    /** Spec 0412, D-4: whoever saw the offers saw their costs and margins too. */
+    private const string QUOTE_COSTS = 'viewCosts';
+
     /**
      * The pickers of the opportunity and quote forms that are not for-selects
      * (as CommercialBackOfficeRoleCatalogue::SELECT_ONLY_RESOURCES).
@@ -121,7 +124,7 @@ final class LegacyRoleCatalogue
                 'registries' => self::WRITE,
                 'referents' => self::WRITE,
                 'opportunities' => [...self::WRITE_DELETE, 'export', 'viewAll'],
-                'quotes' => [...self::WRITE_DELETE, 'viewAll'],
+                'quotes' => [...self::WRITE_DELETE, 'viewAll', self::QUOTE_COSTS],
                 'work-orders' => [...self::WRITE, 'export', 'viewAll', 'viewContractData', 'viewCosts', 'viewInvoices', 'managePayments', 'viewDocuments'],
                 'contracts' => [...self::READ, 'viewAll', 'export'],
                 'purchase-requests' => ['view', 'viewAll', 'fulfill'],
@@ -138,7 +141,7 @@ final class LegacyRoleCatalogue
                 'registries' => self::WRITE,
                 'referents' => self::WRITE,
                 'opportunities' => self::WRITE_DELETE,
-                'quotes' => self::WRITE,
+                'quotes' => [...self::WRITE, self::QUOTE_COSTS],
                 'work-orders' => self::WRITE,
                 'contracts' => self::READ,
                 // Task 427522: the enrollee's documents are the training office's working material.
@@ -154,7 +157,7 @@ final class LegacyRoleCatalogue
                 'referents' => self::WRITE_DELETE,
                 'sources' => self::WRITE,
                 'opportunities' => [...self::WRITE_DELETE, 'export'],
-                'quotes' => self::WRITE_DELETE,
+                'quotes' => [...self::WRITE_DELETE, self::QUOTE_COSTS],
                 'work-orders' => self::WRITE_DELETE,
                 'contracts' => self::READ,
                 'products' => self::WRITE_DELETE,
@@ -169,7 +172,7 @@ final class LegacyRoleCatalogue
                 'referents' => ['viewAny', 'view', 'create'],
                 'sources' => self::WRITE,
                 'opportunities' => self::WRITE,
-                'quotes' => ['viewAny', 'view', 'create'],
+                'quotes' => ['viewAny', 'view', 'create', self::QUOTE_COSTS],
                 'work-orders' => self::READ,
                 'contracts' => self::READ,
                 'document-layouts' => self::WRITE,
@@ -186,7 +189,7 @@ final class LegacyRoleCatalogue
                 'registries' => self::WRITE,
                 'referents' => self::WRITE_DELETE,
                 'opportunities' => self::WRITE,
-                'quotes' => self::WRITE,
+                'quotes' => [...self::WRITE, self::QUOTE_COSTS],
                 'work-orders' => self::WRITE,
                 'contracts' => self::READ,
                 'document-bundles' => self::WRITE,
@@ -202,7 +205,7 @@ final class LegacyRoleCatalogue
                 'registries' => [...self::WRITE, 'export'],
                 'referents' => self::WRITE_DELETE,
                 'opportunities' => [...self::WRITE_DELETE, 'export'],
-                'quotes' => self::WRITE_DELETE,
+                'quotes' => [...self::WRITE_DELETE, self::QUOTE_COSTS],
                 'work-orders' => [...self::WRITE_DELETE, 'export'],
                 'contracts' => [...self::READ, 'export', 'program'],
                 'enrollee-management' => self::READ,

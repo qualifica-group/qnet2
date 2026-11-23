@@ -9,12 +9,14 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
 import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
+import { QUOTE_ATTACHABLE_ALIAS } from '@/features/quotes/api'
 import { useRequestModule } from '@/features/request-management/request-module'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 import { useInvalidateRequestDashboard } from '@/features/request-management/use-request-dashboard'
 
 const NOTES_TAB = 'notes'
 const DOCUMENTS_TAB = 'documents'
+const OPPORTUNITY_DOCUMENTS_TAB = 'opportunity-documents'
 const ACTIVITY_TAB = 'activity'
 
 
@@ -29,9 +31,11 @@ interface RequestWorkCollaborationProps {
  * tab strip: notes, documents and history compete for the same space instead
  * of stacking three full-height sections below the editable form. Each tab
  * mounts a self-contained feature section; gating stays here, mirroring the
- * table's row actions. Every section is keyed on `panel.opportunity_id`, not
- * `panel.id`: documents/notes/activity stay anchored to the Opportunity
- * (spec 0086 D-9), the same record the table's row actions target.
+ * table's row actions. Notes and activity are keyed on `panel.opportunity_id`
+ * (spec 0086 D-9), the same record the table's row actions target. The
+ * documents are the Offerta's own (`panel.id`, spec 0415 D-3); the files
+ * already on the Opportunity stay there and are shown READ-ONLY in their own
+ * tab, like the Offer detail does.
  *
  * Le note aggiungono a quell'ancoraggio il filtro sull'Offerta
  * (`lockedQuoteId={panel.id}`, direttiva utente 2026-08-07): il thread resta
@@ -64,9 +68,18 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
               <TabsTrigger value={DOCUMENTS_TAB}>
                 <RecordTabIcon
                   icon={<Paperclip className="size-3.5" aria-hidden="true" />}
-                  badge={<DocumentsTabCount resource={OPPORTUNITY_ATTACHABLE_ALIAS} id={panel.opportunity_id} />}
+                  badge={<DocumentsTabCount resource={QUOTE_ATTACHABLE_ALIAS} id={panel.id} />}
                 />
                 {t('requestManagement.workPanel.collaboration.documentsTab', { defaultValue: 'Documents' })}
+              </TabsTrigger>
+            )}
+            {canViewDocuments && (
+              <TabsTrigger value={OPPORTUNITY_DOCUMENTS_TAB}>
+                <RecordTabIcon
+                  icon={<Paperclip className="size-3.5" aria-hidden="true" />}
+                  badge={<DocumentsTabCount resource={OPPORTUNITY_ATTACHABLE_ALIAS} id={panel.opportunity_id} />}
+                />
+                {t('requestManagement.workPanel.collaboration.opportunityDocumentsTab')}
               </TabsTrigger>
             )}
             {canViewActivity && (
@@ -91,10 +104,20 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
           {canViewDocuments && (
             <TabsContent value={DOCUMENTS_TAB}>
               <DocumentsSection
-                resource={OPPORTUNITY_ATTACHABLE_ALIAS}
-                id={panel.opportunity_id}
+                resource={QUOTE_ATTACHABLE_ALIAS}
+                id={panel.id}
                 canUpload={can('attachments.create')}
                 canDelete={can('attachments.delete')}
+              />
+            </TabsContent>
+          )}
+          {canViewDocuments && (
+            <TabsContent value={OPPORTUNITY_DOCUMENTS_TAB}>
+              <DocumentsSection
+                resource={OPPORTUNITY_ATTACHABLE_ALIAS}
+                id={panel.opportunity_id}
+                canUpload={false}
+                canDelete={false}
               />
             </TabsContent>
           )}

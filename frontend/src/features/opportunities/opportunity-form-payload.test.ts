@@ -13,10 +13,12 @@ describe('buildCreatePayload', () => {
   it('includes the required supervisor and every truly optional field as null when unset (AC-082)', () => {
     const payload = buildCreatePayload(createValues())
 
+    // REQUIREMENT CHANGED (spec 0417): the payload also carries commercial_partner_id.
     expect(payload).toEqual({
       registry_id: 1,
       referent_id: null,
       commercial_id: null,
+      commercial_partner_id: null,
       reporter_id: null,
       supervisor_id: 9,
       operational_site_id: null,

@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'A registry can have several Referents, plus a Commercial referent and a Reporter. One of the Referents is the **Main referent** (usually the first one added): it is the one opportunities and tasks suggest when you pick the registry.',
+            'A registry can have several Referents, plus a Commercial referent, a Commercial partner and a Reporter. One of the Referents is the **Main referent** (Referent 1, usually the first one added): it is the one opportunities and tasks suggest when you pick the registry. Another one can be the **Secondary referent** (Referent 2): while it is empty, the next referent you add becomes it automatically (usually the second one added).',
             'Supervisor and Account managers are QNet users, not referents.',
             'Every Company Site belongs to a Company; Operational Sites are independent and are chosen, for example, on opportunities.',
           ],
@@ -35,7 +35,7 @@ const guide: HelpGuide = {
             'The search finds the name or company name (even a part inside it), the VAT number or tax code, a phone number of the registry (primary or not, with or without spaces) and the name or phone of a linked referent. For VAT number, tax code, phones and referents type the start of the word or number, at least 3 characters: for example "ros" finds the referent Rossi, "02 6885" finds 02 6885 7892.',
             'Use the tabs above the table to split the registries: All, Individuals or Companies. The Type column shows which group each row belongs to.',
             'To narrow the search use the column filters, for example Source, Supplier or Agreement status.',
-            "The Commercial, Supervisor, Reporter and Operators columns show the registry's team: Operators lists the Account managers in their order. You can filter them by name and sort them, except Operators, which can only be filtered.",
+            "The Commercial, Commercial partner, Supervisor, Reporter and Operators columns show the registry's team: Operators lists the Account managers in their order. You can filter them by name and sort them, except Operators, which can only be filtered.",
             'To see the card, open the row Actions menu and choose View.',
           ],
         },
@@ -58,13 +58,13 @@ const guide: HelpGuide = {
           headers: ['Section', 'What it contains'],
           rows: [
             ['Personal details', 'Denomination (companies) or Name and Surname (individuals), tax code, VAT number and, for individuals, date and place of birth.'],
-            ['Relations', 'Source, Business sectors, Commercial referent and Reporter.'],
+            ['Relations', 'Source, Business sectors, Commercial referent, Commercial partner and Reporter.'],
             ['Team', 'Supervisor and Account managers, in order of importance from the top; reorder them with Move up and Move down.'],
             ['Business data', 'VAT group, Supplier, Qualified supplier (suppliers only), Agreement status (In negotiation, Rejected or Agreed), Size class, Employee count and Agreement notes.'],
             ['General notes', 'The yellow box, the same as in Request management (at the top of the registry data on the record view, at the top of the right-hand column when creating): free text (up to 5000 characters) with what whoever opens the registry should read first.'],
             ['Contacts', 'Email, Phone (required), PEC, Fax and Website; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
-            ['Referents', "The client's contact people, full width below the other sections: each card shows the name, then its Referent type (for example Administrator, Accounting or Owner) and the primary contacts. The Main referent carries the Main badge and is picked from the **Main referent** row (only among the linked referents; if you remove the main one it moves to the first one left)."],
+            ['Referents', "The client's contact people, full width below the other sections: each card shows the name, then its Referent type (for example Administrator, Accounting or Owner) and the primary contacts. The Main referent carries the Main badge and is picked from the **Main referent** row (only among the linked referents; if you remove the main one it moves to the first one left). The Secondary referent carries the Secondary badge and is picked from the **Secondary referent** row among the other linked referents, or None; while it is empty, adding a referent sets it to the one just added (you can change it or set it back to None before saving); if you remove it from the referents or pick it as the main one, the secondary stays empty. They are the Referent 1 and Referent 2 the work order shows in Client info."],
             ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module. They also appear on the detail, grouped as in the form.'],
           ],
         },
@@ -115,7 +115,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Source, Supplier, Convention status, Size class, Commercial, Supervisor, Reporter, Operators) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Source, Supplier, Convention status, Size class, Commercial, Commercial partner, Supervisor, Reporter, Operators) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',
@@ -184,7 +184,7 @@ const guide: HelpGuide = {
           items: [
             'Open the tab of the module you need.',
             'Press New opportunity, New quote, New work order or New task above the table.',
-            "Fill in the form: the opportunity and the task already start on the registry (the opportunity also takes the client's Sales rep, Reporter, Supervisor and Account managers); for the quote and the work order, the opportunity or quote picker offers only the client's ones.",
+            "Fill in the form: the opportunity and the task already start on the registry (the opportunity also takes the client's Sales rep, Commercial partner, Reporter, Supervisor and Account managers); for the quote and the work order, the opportunity or quote picker offers only the client's ones.",
             "Save: the tab's table refreshes.",
           ],
         },
@@ -229,7 +229,7 @@ const guide: HelpGuide = {
             'If Possible duplicate appears, at the top of the right-hand column, check it before continuing.',
             'In Contacts, in the right-hand column, fill in at least the Phone.',
             'Fill in the address with the right Site type; with Add address enter the further sites.',
-            'Open the rows you need: in Relations, if needed, Commercial referent and Reporter; in Team Supervisor and Account managers; in Referents the contact people. Confirm each row with Done.',
+            'Open the rows you need: in Relations, if needed, Commercial referent, Commercial partner and Reporter; in Team Supervisor and Account managers; in Referents the contact people. Confirm each row with Done.',
             'Press Save.',
           ],
         },

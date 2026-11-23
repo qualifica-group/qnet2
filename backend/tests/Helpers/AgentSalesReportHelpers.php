@@ -88,23 +88,25 @@ if (! function_exists('agentSalesReportLine')) {
 
 if (! function_exists('agentSalesReportTeam')) {
     /**
-     * Gives the quote a company site, commercial, reporter and one account manager.
+     * Gives the quote a company site, commercial, commercial partner (spec 0417), reporter and one account manager.
      *
-     * @return array{commercial: Referent, reporter: Referent, manager: User}
+     * @return array{commercial: Referent, commercialPartner: Referent, reporter: Referent, manager: User}
      */
     function agentSalesReportTeam(Quote $quote): array
     {
         $commercial = Referent::factory()->create(['name' => 'Carla Commerciale']);
+        $commercialPartner = Referent::factory()->create(['name' => 'Paolo Partner']);
         $reporter = Referent::factory()->create(['name' => 'Sara Segnalatrice']);
         $manager = User::factory()->create(['name' => 'Gino Gestore']);
 
         $quote->forceFill([
             'commercial_id' => $commercial->id,
+            'commercial_partner_id' => $commercialPartner->id,
             'reporter_id' => $reporter->id,
             'company_site_id' => CompanySite::factory()->create(['name' => 'Sede Nord'])->id,
         ])->saveQuietly();
         $quote->managers()->attach($manager->id, ['position' => 2]);
 
-        return compact('commercial', 'reporter', 'manager');
+        return compact('commercial', 'commercialPartner', 'reporter', 'manager');
     }
 }

@@ -26,7 +26,7 @@ const guide: HelpGuide = {
               'Creation',
               'It has no creation button: a request enters the enrollees only by changing status.',
             ],
-            ['Permissions', 'It has its own permissions, separate from Request Management.'],
+            ['Permissions', 'It has its own permissions, separate from Request Management (including **Transfer contact** and **Transfer to another registry**).'],
             ['Categories', 'As in Request Management: categories whose **Used in** is **Opportunities / Quotes** have no tab and cannot be picked, and enrollees with only such categories are not listed.'],
             [
               'Documents and notes',
@@ -64,6 +64,20 @@ const guide: HelpGuide = {
             'A product already on the rows is marked **Already added** and cannot be selected: change its quantity on the row.',
             'On a single-row category a click on a product replaces the row product; on a simplified category the row shows the amounts only.',
           ],
+        },
+      ],
+    },
+    {
+      id: 'quote-under-contract',
+      title: 'Offer under contract',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "If the offer has a contract it is **frozen**: the **Work** panel shows the **Offer under contract** notice and, without the **Edit quotes under contract** permission, the fields are read-only (list cells too). With the permission, saving first asks for confirmation in a popup.",
+        },
+        {
+          type: 'note',
+          text: "The operational fields stay always editable: **Account managers** (team), **Next callback date**, **Operational site** and **General notes**.",
         },
       ],
     },

@@ -57,7 +57,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Commessa** (codice, titolo, tipo, date, descrizione) e **Mittente** (nome ed email di chi invia).',
-            "**Preventivo**, **Cliente**, **Opportunità**, **Referente**, **Commerciale**, **Segnalatore**, **Supervisore**, **Società** e **Sede**: gli stessi dati dell'offerta collegata già usati nei layout dei documenti.",
+            "**Preventivo**, **Cliente**, **Opportunità**, **Referente**, **Commerciale**, **Partner commerciale**, **Segnalatore**, **Supervisore**, **Società** e **Sede**: gli stessi dati dell'offerta collegata già usati nei layout dei documenti.",
           ],
         },
         {

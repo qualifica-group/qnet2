@@ -10,13 +10,13 @@ use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Services\TaskService;
+use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Tasks\TaskAdvancedFilterApplier;
 use App\Tables\Tasks\TaskAdvancedFilterCatalog;
 use App\Tables\Tasks\TaskAggregateColumns;
 use App\Tables\Tasks\TaskCellWriter;
 use App\Tables\Tasks\TaskColumnCatalog;
 use App\Tables\Tasks\TaskDerivedColumnResolver;
-use App\Tables\Tasks\TaskIdSearchMatcher;
 use App\Tables\Tasks\TaskKanbanGroupScope;
 use App\Tables\Tasks\TaskRelationColumns;
 use App\Tables\Tasks\TaskRowActionResolver;
@@ -106,7 +106,7 @@ class TasksTableDefinition extends AbstractTableDefinition
         // `addSelect($this->aggregateColumns->selects())` (spec 0156, D-2)
         // resolves `actual_minutes`/`parent_title` in the SAME query too.
         $query = Task::query()
-            ->withCount(['subtasks', 'notes'])
+            ->withCount(['subtasks', ...NotesCountColumn::of('notes')])
             ->with([
                 ...TaskStatusResolver::EAGER_LOADS,
                 'taskType',
@@ -338,24 +338,6 @@ class TasksTableDefinition extends AbstractTableDefinition
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
         return $this->derivedColumnResolver->applySort($query, $columnId, $direction);
-    }
-
-    /**
-     * Spec 0156, D-1: the quick search also matches an exact numeric id,
-     * OR-combined with the `title` LIKE the generic engine already applies
-     * to the other searchable column (App\Tables\Tasks\TaskIdSearchMatcher).
-     *
-     * @param  Builder<Task>  $query
-     */
-    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
-    {
-        if ($columnId !== 'id') {
-            return false;
-        }
-
-        TaskIdSearchMatcher::apply($query, $pattern);
-
-        return true;
     }
 
     /**

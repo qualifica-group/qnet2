@@ -87,9 +87,11 @@ class DemoRolesSeeder extends Seeder
 
     private function viewerPermissions(Collection $allPermissions): Collection
     {
+        // Spec 0412, D-4: whoever saw the offers saw their costs and margins too.
         return $allPermissions->filter(
             static fn (string $permission): bool => str_ends_with($permission, '.viewAny')
                 || str_ends_with($permission, '.view')
+                || $permission === 'quotes.viewCosts'
         )->values();
     }
 

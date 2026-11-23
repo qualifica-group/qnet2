@@ -11,4 +11,6 @@ return [
     // chiuso-positivo finche' il dato manca, anche se questo salvataggio
     // cambia altro.
     'fiscal_identity_required_on_closed_won' => 'La richiesta e\' chiusa con esito positivo: inserisci il codice fiscale o la partita IVA del cliente per poterla salvare.',
+    // Decisione utente 2026-11-20: il contatto si sposta solo con un contratto non lavorato.
+    'transfer_blocked_by_contract' => 'Non puoi trasferire il contatto: il contratto di :codes è già stato lavorato.',
 ];

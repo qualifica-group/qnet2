@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'management-control-billing',
   title: 'Billing',
-  summary: 'What is left to invoice on the open work orders, by business function, company or sales representative and by age, and the proforma cycle: issued, converted to invoice, still open and average times.',
+  summary: 'What is left to invoice on the open work orders, by business function, company, sales representative or commercial partner and by age, and the proforma cycle: issued, converted to invoice, still open and average times.',
   sections: [
     {
       id: 'overview',
@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'You can narrow by **company**, **company site** and **operational site**, and choose how to group the amount to invoice: by **business function**, **company** or **sales representative**. The **period** (by default from 1 January to today) applies **only to the proforma cycle**: the amount to invoice is always the situation as of today.',
+          text: 'You can narrow by **company**, **company site** and **operational site**, and choose how to group the amount to invoice: by **business function**, **company**, **sales representative** or **commercial partner**. The **period** (by default from 1 January to today) applies **only to the proforma cycle**: the amount to invoice is always the situation as of today.',
         },
         {
           type: 'note',

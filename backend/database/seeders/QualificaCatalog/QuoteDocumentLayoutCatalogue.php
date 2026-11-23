@@ -35,10 +35,19 @@ namespace Database\Seeders\QualificaCatalog;
  * What the contract cannot express was left out: the second "folder" products
  * table of `services` and `iso` (one table lists every line), multi-column
  * sections, floating decorative shapes in the header.
+ *
+ * `services` and `iso` were reconverted on 2026-11-18 from their November
+ * revisions (task 427544: the "Allegato A" privacy notice, with its static
+ * tables and bullet list, and in `iso` the "Privacy" clauses 10.1-10.4);
+ * an installation seeded before gets them through
+ * QualificaQuoteLayoutRevisionSeeder.
  */
 final class QuoteDocumentLayoutCatalogue
 {
     public const string CODE_PREFIX = 'qualifica_quote_';
+
+    /** Start of every layout's description, followed by its source file. */
+    public const string DESCRIPTION_PREFIX = 'Importato dal QNet legacy: ';
 
     /**
      * Height of the footer band printed at the bottom of every client
@@ -50,9 +59,9 @@ final class QuoteDocumentLayoutCatalogue
 
     /** @var array<string, array{0: string, 1: string}> */
     public const array LAYOUTS = [
-        'services' => ['Layout servizi', 'LAYOUT_PREVENTIVO_GENERICO_SERVIZI rev.4.01.2026.docx'],
+        'services' => ['Layout servizi', 'LAYOUT_PREVENTIVO_GENERICO_SERVIZI rev.12.11.2026.docx'],
         'services_previous' => ['Vecchio Layout Servizi (non toccare)', 'LAYOUT_PREVENTIVO_GENERICO_SERVIZI.docx'],
-        'iso' => ['Preventivo ISO', 'Template preventivo_ISO Rev. 5.01.2026.docx'],
+        'iso' => ['Preventivo ISO', 'Template preventivo_ISO Rev. 10.11.2026.docx'],
         'mepa' => ['PREVENTIVO Mepa', 'Template preventivo_MEPA Rev. 3.01.2026.docx'],
         'tender_preparation' => ['PREVENTIVO PREPARAZIONE GARE', 'Template preventivo _Preparazione gare Rev. 4.01.2026.docx'],
         'safety_haccp' => ['PREVENTIVO SIC_HACCP', 'Template preventivo _SIC_HACCP Rev. 3.01.2026.docx'],

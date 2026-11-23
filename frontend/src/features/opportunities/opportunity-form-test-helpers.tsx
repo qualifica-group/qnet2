@@ -108,7 +108,7 @@ export function AsyncPaginatedMultiSelectDouble({
 /** Names the closed rows show: the create form resolves ids through `fetchForSelect` (`useForSelectLabels`). */
 export const FOR_SELECT_LABELS: Record<string, Record<number, string>> = {
   registries: { 10: 'Acme S.p.A.', 20: 'Beta Srl', 30: 'Gamma Spa' },
-  referents: { 1: 'Contact One', 71: 'Sara Conti', 81: 'Elio Fabbri' },
+  referents: { 1: 'Contact One', 71: 'Sara Conti', 72: 'Paolo Neri', 81: 'Elio Fabbri' },
   users: { 1: 'User One', 61: 'Ivo Bianchi', 91: 'Gina Manager', 93: 'Turi Manager', 300: 'Giulia Bianchi' },
 }
 
@@ -159,6 +159,7 @@ export const ROW = {
   registry: 'Registry',
   referent: 'Contact',
   commercial: 'Sales rep',
+  commercialPartner: 'Commercial partner',
   reporter: 'Reporter',
   productLines: 'Product lines',
   productsOfInterest: 'Products of interest',

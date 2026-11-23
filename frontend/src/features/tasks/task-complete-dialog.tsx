@@ -1,10 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { toast } from 'sonner'
 import axios from 'axios'
-import type { TFunction } from 'i18next'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -21,78 +19,22 @@ import { RelationSelectField } from '@/components/form/relation-select-field'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { TASK_STATUSES_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 import { IN_VALIDATION_GROUP_PARAMS } from '@/features/tasks/task-action-availability'
+import { TaskCompleteCascadeSection } from '@/features/tasks/task-complete-cascade-section'
 import { TaskCompleteTimeEntryToggleSection } from '@/features/tasks/task-complete-time-entry-toggle'
 import { useTaskSelectLabels } from '@/features/tasks/task-select-labels'
 import { useCompleteTask } from '@/features/tasks/use-task-mutations'
+import { useTaskBulkTimeEntryShares } from '@/features/tasks/use-task-bulk-time-entry-shares'
+import { handleTaskCompleteCascadeError, useTaskCompleteCascade } from '@/features/tasks/use-task-complete-cascade'
 import { useTaskCompleteTimeEntryForm } from '@/features/tasks/use-task-complete-time-entry-form'
-import type { CompleteTaskPayload, CompleteTaskTimeEntryPayload, TaskDetailWithPermissions } from '@/features/tasks/types'
+import {
+  buildCompletePayload,
+  buildCompleteTaskSchema,
+  completeTaskDefaultValues,
+  type CompleteTaskFormValues,
+} from '@/features/tasks/task-complete-form'
+import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 
 const SERVER_ERROR_FIELDS = ['closure_feedback', 'validation_status_id'] as const
-
-/**
- * Spec 0121 RECTIFIES spec 0116 D-8/AC-043: the completion path is no longer a
- * client choice, so there is no `request_validation` switch to read any more
- * — `toValidation` (`permissions.actions.complete_to_validation`, D-6) is a
- * prop carrying the SERVER's own verdict. The closure feedback stays optional
- * unless the task requires one (D-4, unchanged shape); the validation-status
- * pick is required exactly when the server sent the task down that path.
- */
-function buildCompleteTaskSchema(t: TFunction, requiresFeedback: boolean, toValidation: boolean) {
-  return z
-    .object({
-      closure_feedback: z.string(),
-      validation_status_id: z.number().nullable(),
-      for_all_assignees: z.boolean(),
-    })
-    .superRefine((values, ctx) => {
-      if (requiresFeedback && values.closure_feedback.trim() === '') {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['closure_feedback'],
-          message: t('tasks.actions.completeDialog.feedbackRequired'),
-        })
-      }
-      if (toValidation && values.validation_status_id === null) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['validation_status_id'],
-          message: t('tasks.actions.completeDialog.validationStatusRequired'),
-        })
-      }
-    })
-}
-
-type CompleteTaskFormValues = z.infer<ReturnType<typeof buildCompleteTaskSchema>>
-
-function completeTaskDefaultValues(): CompleteTaskFormValues {
-  return { closure_feedback: '', validation_status_id: null, for_all_assignees: true }
-}
-
-/**
- * Omits `closure_feedback` when blank; omits `validation_status_id` entirely
- * off the validation path (D-3). `time_entry` is present whenever
- * `useTaskCompleteTimeEntryForm.validate()` returns a payload — always, on a
- * task that requires it (spec 0123 D-1); `undefined` (so the key is dropped
- * at the wire boundary) when the task's own segnatempo is optional and the
- * "Registra il tempo" switch is off (spec 0162 D-3). `for_all_assignees`
- * (spec 0205, RECTIFIES spec 0155 D-6) is always sent: the actor's own
- * checkbox choice, checked by default.
- */
-function buildCompletePayload(
-  values: CompleteTaskFormValues,
-  toValidation: boolean,
-  timeEntry: CompleteTaskTimeEntryPayload | undefined,
-): CompleteTaskPayload {
-  const payload: CompleteTaskPayload = { time_entry: timeEntry, for_all_assignees: values.for_all_assignees }
-  const feedback = values.closure_feedback.trim()
-  if (feedback !== '') {
-    payload.closure_feedback = feedback
-  }
-  if (toValidation) {
-    payload.validation_status_id = values.validation_status_id
-  }
-  return payload
-}
 
 interface TaskCompleteDialogProps {
   open: boolean
@@ -115,6 +57,11 @@ interface TaskCompleteDialogProps {
  * changes. The segnatempo is now MANDATORY on both paths (spec 0123 D-1): the
  * "Segnatempo" section below is a SEPARATE `useForm` (`use-task-complete-time-entry-form.ts`)
  * validated and submitted together with this one.
+ *
+ * Spec 0418: on a task with open sub-tasks the Completa closes them too
+ * (`useTaskCompleteCascade`): the segnatempo becomes a TOTAL split between the
+ * task and its open sub-tasks ("Ripartizione"), and the segnatempo or the
+ * feedback is required when any of those tasks requires it.
  */
 export function TaskCompleteDialog({
   open,
@@ -125,7 +72,8 @@ export function TaskCompleteDialog({
   const { t } = useTranslation()
   const selectLabels = useTaskSelectLabels()
   const toValidation = task.permissions.actions.complete_to_validation
-  const schema = buildCompleteTaskSchema(t, task.requires_closure_feedback, toValidation)
+  const cascade = useTaskCompleteCascade(task, open)
+  const schema = buildCompleteTaskSchema(t, cascade.requiresClosureFeedback, toValidation)
 
   const form = useForm<CompleteTaskFormValues>({
     resolver: zodResolver(schema),
@@ -134,8 +82,9 @@ export function TaskCompleteDialog({
   const closureFeedback = useWatch({ control: form.control, name: 'closure_feedback' })
   const timeEntryForm = useTaskCompleteTimeEntryForm({
     taskTypeId: task.task_type_id,
-    requiresTimeEntry: task.requires_time_entry,
+    requiresTimeEntry: cascade.requiresTimeEntry,
   })
+  const shares = useTaskBulkTimeEntryShares(timeEntryForm, cascade.targets)
 
   const completeMutation = useCompleteTask({
     taskId: task.id,
@@ -155,9 +104,12 @@ export function TaskCompleteDialog({
     if (timeEntryPayload === null) {
       return
     }
+    if (cascade.active && timeEntryPayload !== undefined && !shares.isValid) {
+      return
+    }
     try {
       await completeMutation.mutateAsync(
-        buildCompletePayload(values, toValidation, timeEntryPayload),
+        buildCompletePayload(values, toValidation, timeEntryPayload, cascade.active ? shares.shares : undefined),
       )
     } catch (error) {
       // 409 (Task bloccato, AC-044) has no field to attach to: a dedicated
@@ -166,6 +118,9 @@ export function TaskCompleteDialog({
       // any other 422 (wrong phase, `isCompletable`) falls back to the generic phase toast.
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         toast.error(t('tasks.actions.errors.blocked'))
+        return
+      }
+      if (handleTaskCompleteCascadeError(t, error, shares)) {
         return
       }
       const timeEntryHandled = timeEntryForm.applyServerErrors(error)
@@ -182,8 +137,8 @@ export function TaskCompleteDialog({
   // deliberately NOT mirrored here: a missing validation status leaves the
   // button clickable, so the submit attempt runs the schema and shows the
   // field error under the picker instead of silently doing nothing.
-  const feedbackMissing = task.requires_closure_feedback && closureFeedback.trim() === ''
-  const submitDisabled = completeMutation.isPending || feedbackMissing
+  const feedbackMissing = cascade.requiresClosureFeedback && closureFeedback.trim() === ''
+  const submitDisabled = completeMutation.isPending || feedbackMissing || cascade.isLoading || cascade.isError
 
   return (
     <Dialog
@@ -216,7 +171,7 @@ export function TaskCompleteDialog({
                 name="closure_feedback"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel required={task.requires_closure_feedback}>
+                    <FormLabel required={cascade.requiresClosureFeedback}>
                       {t('tasks.actions.completeDialog.feedback')}
                     </FormLabel>
                     <FormControl>
@@ -255,6 +210,15 @@ export function TaskCompleteDialog({
               ) : null}
 
               <TaskCompleteTimeEntryToggleSection timeEntryForm={timeEntryForm} disabled={completeMutation.isPending} />
+
+              {cascade.active ? (
+                <TaskCompleteCascadeSection
+                  cascade={cascade}
+                  shares={shares}
+                  showShares={timeEntryForm.enabled}
+                  disabled={completeMutation.isPending}
+                />
+              ) : null}
 
               {timeEntryForm.enabled ? (
                 <FormField

@@ -66,11 +66,7 @@ final class NoteService
         $record = $this->authorizedRecord($user, $entityType, $entityId);
         $limit ??= self::DEFAULT_LIMIT;
 
-        $roots = Note::query()
-            ->where('notable_type', $record->getMorphClass())
-            ->where('notable_id', $record->getKey())
-            ->whereNull('parent_id');
-        $this->applyQuoteScope($roots, $scope);
+        $roots = $this->scopedRoots($record, $scope);
 
         $query = (clone $roots)
             ->with([
@@ -96,8 +92,21 @@ final class NoteService
             $hasMore,
             $this->registry->quoteScopes($entityType, $record),
             $this->registry->mentionOutsideFor($user, $entityType, $record),
-            $this->threadTotal($roots),
+            $this->thread($roots)->unreadBy((int) $user->getKey())->count(),
         );
+    }
+
+    /**
+     * POST /api/notes/read — the user is looking at the scoped thread: every
+     * note it shows (roots plus their replies) becomes read for them, so the
+     * grids' `notes_count` badge stops counting it. Same read authorization
+     * as listing. Returns how many notes became read.
+     */
+    public function markThreadRead(User $user, string $entityType, int $entityId, NoteQuoteScope $scope): int
+    {
+        $roots = $this->scopedRoots($this->authorizedRecord($user, $entityType, $entityId), $scope);
+
+        return Note::markReadBy((int) $user->getKey(), $this->thread($roots));
     }
 
     /**
@@ -293,6 +302,22 @@ final class NoteService
     }
 
     /**
+     * The ROOT notes of $record's thread narrowed by $scope (D-2).
+     *
+     * @return Builder<Note>
+     */
+    private function scopedRoots(Model $record, NoteQuoteScope $scope): Builder
+    {
+        $roots = Note::query()
+            ->where('notable_type', $record->getMorphClass())
+            ->where('notable_id', $record->getKey())
+            ->whereNull('parent_id');
+        $this->applyQuoteScope($roots, $scope);
+
+        return $roots;
+    }
+
+    /**
      * D-2, applied in QUERY (never after the fetch — the keyset pagination
      * requires it): an allow-list of the three scope shapes, no interpolated
      * input reaches the query.
@@ -307,18 +332,18 @@ final class NoteService
     }
 
     /**
-     * Every note the scoped thread shows — its roots plus their replies, the
-     * same set the grids' `notes_count` badge counts — independent of the
-     * page, so the collaboration tab can badge it without walking the cursor.
+     * $roots plus their replies: what the thread shows, marks read and counts.
      *
      * @param  Builder<Note>  $roots
+     * @return Builder<Note>
      */
-    private function threadTotal(Builder $roots): int
+    private function thread(Builder $roots): Builder
     {
-        $rootCount = (clone $roots)->count();
-        $replyCount = Note::query()->whereIn('parent_id', (clone $roots)->select('id'))->count();
+        $rootIds = (clone $roots)->select('id');
 
-        return $rootCount + $replyCount;
+        return Note::query()->where(fn (Builder $notes) => $notes
+            ->whereIn('id', $rootIds)
+            ->orWhereIn('parent_id', clone $rootIds));
     }
 
     private function applyCursor(Builder $query, ?NoteCursor $cursor): void

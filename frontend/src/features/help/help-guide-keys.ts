@@ -27,6 +27,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'document-bundles',
   'document-checklists',
   'contract-statuses',
+  'quote-system-statuses',
   'contracts',
   'request-management',
   'request-statistics',

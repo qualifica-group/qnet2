@@ -99,6 +99,7 @@ export interface UpdateRequestWorkPayload extends RequestForecastPayload {
   source_id?: number | null
   reporter_id?: number | null
   commercial_id?: number | null
+  commercial_partner_id?: number | null
   /**
    * Spec 0097 rev-2 D-9: the Offerta's Supervisore, written by this module
    * again (user directive 2026-09-02). Travels like every other attribution
@@ -185,6 +186,8 @@ export interface CreateRequestPayload extends RequestForecastPayload {
   reporter_id?: number | null
   /** "Commerciale" (spec 0357): sent only when picked, same reason as `supervisor_id` below. */
   commercial_id?: number
+  /** "Partner commerciale" (spec 0417): sent only when picked, like `commercial_id`. */
+  commercial_partner_id?: number
   /**
    * Spec 0097 rev-2 D-9: the created Offerta's Supervisore. Sent only when
    * picked, like `operational_site_id` below: on create there is no persisted

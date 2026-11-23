@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le richieste non si creano da questo elenco: si inviano dal pulsante **€** dell\'elenco **Commesse** (vedi la guida Commesse). Una commessa genera le richieste **una sola volta**: se ne ha già una (da evadere o evasa) non se ne possono inviare altre. Per ogni commessa il sistema genera **una richiesta** per le righe di tipo **Consulenza** e **una richiesta per ciascun fornitore** delle righe di tipo **Ente**. La richiesta Ente non fattura all\'ente il prezzo di vendita ma la **provvigione** che ci spetta (vedi **Richieste Ente e provvigioni**).',
+          text: 'Le richieste non si creano da questo elenco: si inviano con **Richiedi proforma**, dal dettaglio della commessa o dal popup **Responsabili e Partecipanti** dell\'elenco **Commesse** (vedi la guida Commesse). Una commessa genera le richieste **una sola volta**: se ne ha già una (da evadere o evasa) non se ne possono inviare altre. Per ogni commessa il sistema genera **una richiesta** per le righe di tipo **Consulenza** e **una richiesta per ciascun fornitore** delle righe di tipo **Ente**. La richiesta Ente non fattura all\'ente il prezzo di vendita ma la **provvigione** che ci spetta (vedi **Richieste Ente e provvigioni**).',
         },
         {
           type: 'table',
@@ -39,6 +39,10 @@ const guide: HelpGuide = {
             ['**Stato**', '**Da evadere** finché la fatturazione non emette la proforma, poi **Evasa**.'],
             ['**Assegnata a / Richiesta da**', 'L\'utente che ha inviato la richiesta.'],
           ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Insieme alle richieste il sistema apre un\'**attività** (categoria **Contabile**, tipologia predefinita) per il **Responsabile emissione proforma** della società sede dell\'offerta, che riceve la notifica di assegnazione. Chi invia la richiesta è creatore e richiedente dell\'attività, che ha scadenza a **2 giorni**, è collegata alla commessa e si chiude a mano. Le richieste con lo stesso responsabile finiscono in **una sola attività**; offerte di sedi con responsabili diversi aprono un\'attività per ciascuno. Se la sede non ha un responsabile, la richiesta parte comunque senza attività.',
         },
       ],
     },

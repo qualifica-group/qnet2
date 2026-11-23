@@ -95,13 +95,7 @@ export const quoteWorkflows = {
       defaultOpenName: 'Aperto',
       defaultClosedWonName: 'Chiuso con esito positivo',
       defaultClosedLostName: 'Chiuso con esito negativo',
-      group: {
-        open: 'Aperto',
-        pending: 'In attesa',
-        validated: 'Validato',
-        closed_won: 'Chiuso con esito positivo',
-        closed_lost: 'Chiuso con esito negativo',
-      },
+      systemStatusRequired: 'Ogni stato di lavorazione richiede uno stato di sistema.',
     },
   },
   defaultStatuses: {

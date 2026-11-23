@@ -10,6 +10,7 @@ use App\Enums\WorkflowStatusGroup;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Services\ContractService;
+use App\Services\Notifications\TeamActivityNotifier;
 use App\Services\WorkOrders\ContractWorkOrderClosure;
 use Illuminate\Support\Facades\DB;
 
@@ -46,16 +47,21 @@ class ContractReactivator
         private readonly ContractService $contractService,
         private readonly ContractStatusResolver $statusResolver,
         private readonly ContractWorkOrderClosure $workOrderClosure,
+        private readonly TeamActivityNotifier $teamActivity,
     ) {}
 
     public function reactivate(Contract $contract, ReactivateContractData $data): Contract
     {
         DB::transaction(function () use ($contract, $data): void {
             $this->assertReactivatable($contract);
+            $previousStatusId = $contract->contract_status_id;
 
             $this->isClosed($contract)
                 ? $this->reactivateClosed($contract, $data)
                 : $this->reactivateSuspended($contract);
+
+            // Spec 0413: both reactivations move the status.
+            $this->teamActivity->statusChanged($contract, $previousStatusId);
         });
 
         return $this->contractService->loadDetail($contract->fresh());

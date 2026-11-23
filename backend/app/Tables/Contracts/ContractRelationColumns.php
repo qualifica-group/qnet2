@@ -73,6 +73,7 @@ final class ContractRelationColumns
         'registry' => 'quote.opportunity.registry',
         'opportunity' => 'quote.opportunity',
         'commercial' => 'quote.commercial',
+        'commercial_partner' => 'quote.commercialPartner',
         'reporter' => 'quote.reporter',
         'supervisor' => 'quote.supervisor',
         // To-many (the `quote_user` pivot): filterable through the same
@@ -106,6 +107,7 @@ final class ContractRelationColumns
     private const array QUOTE_RELATION_FKS = [
         'opportunity' => ['table' => 'opportunities', 'fk' => 'opportunity_id'],
         'commercial' => ['table' => 'referents', 'fk' => 'commercial_id'],
+        'commercial_partner' => ['table' => 'referents', 'fk' => 'commercial_partner_id'],
         'reporter' => ['table' => 'referents', 'fk' => 'reporter_id'],
         'supervisor' => ['table' => 'users', 'fk' => 'supervisor_id'],
     ];

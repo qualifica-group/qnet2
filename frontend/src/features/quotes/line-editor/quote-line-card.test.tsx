@@ -55,7 +55,6 @@ function renderCard(
           product={PRODUCT}
           categoryPath="Formazione > Sicurezza"
           disabled={false}
-          simplified={false}
           vatRatePercentFor={() => null}
           rememberVatRatePercent={rememberVatRatePercent}
           onChangeField={vi.fn()}

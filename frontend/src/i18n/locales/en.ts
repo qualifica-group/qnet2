@@ -54,6 +54,7 @@ import { workflowStatuses } from './en-workflow-statuses'
 import { quotes } from './en-quotes'
 import { quotesWithOpportunity } from './en-quotes-with-opportunity'
 import { contractStatuses } from './en-contract-statuses'
+import { quoteSystemStatuses } from './en-quote-system-statuses'
 import { contracts } from './en-contracts'
 import { workOrders } from './en-work-orders'
 import { outboundEmails } from './en-outbound-emails'
@@ -80,6 +81,7 @@ import { rewardedReferents } from './en-rewarded-referents'
 import { fieldChangeRequests } from './en-field-change-requests'
 import { documentLayouts } from './en-document-layouts'
 import { dashboard } from './en-dashboard'
+import { workOrderPage } from './en-work-order-page'
 import { navigation } from './en-navigation'
 import { settings } from './en-settings'
 import { agentSalesReport } from './en-agent-sales-report'
@@ -454,6 +456,7 @@ export const en = {
   workflowStatuses,
   quotes: { ...quotes, withOpportunity: quotesWithOpportunity, stats: moduleStats.quotes },
   contractStatuses,
+  quoteSystemStatuses,
   contracts,
   workOrders,
   outboundEmails,
@@ -497,6 +500,7 @@ export const en = {
   impersonation,
   documentLayouts,
   dashboard,
+  workOrderPage,
   help,
   apiIntegrations,
   apiClients,

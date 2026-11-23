@@ -60,6 +60,7 @@ export const navigation = {
   quoteWorkflows: 'Offer status configurator',
   quotes: 'Quotes',
   contractStatuses: 'Contract Statuses',
+  quoteSystemStatuses: 'Quote system statuses',
   contracts: 'Contracts',
   workOrders: 'Work orders',
   projectWorkOrders: 'Project Work Orders',

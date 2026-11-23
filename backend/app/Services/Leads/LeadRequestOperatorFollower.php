@@ -10,7 +10,6 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\RequestManagement\RequestOperatorWriter;
-use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -99,13 +98,14 @@ final class LeadRequestOperatorFollower
         $changed = [];
         $old = [];
 
-        $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
+        $attached = $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
 
         if ($changed === []) {
             return;
         }
 
-        $this->assignmentNotifier->notify($quote, $actor, null, [$operatorId => ManagerPositions::OPERATOR]);
+        // Only whoever is newly in the team, like every other Gestore Account write (decisione utente 2026-11-18).
+        $this->assignmentNotifier->notify($quote, $actor, null, $attached);
 
         activity($quote->opportunity->getTable())
             ->performedOn($quote->opportunity)

@@ -49,9 +49,10 @@ final class RichTextSanitizer
 
     private const string LINK_REL = 'noopener noreferrer nofollow';
 
-    public function sanitize(string $html, bool $allowMentions): string
+    public function sanitize(string $html, bool $allowMentions, RichTextProfile $profile = RichTextProfile::Standard): string
     {
-        $sanitizer = new HtmlSanitizer($this->buildConfig($allowMentions));
+        $config = $profile === RichTextProfile::Page ? $this->buildPageConfig() : $this->buildConfig($allowMentions);
+        $sanitizer = new HtmlSanitizer($config);
         $firstPass = $sanitizer->sanitize($html);
 
         $body = RichTextDom::parse($firstPass);
@@ -63,7 +64,31 @@ final class RichTextSanitizer
             $this->enforceMentions($body);
         }
 
+        if ($profile === RichTextProfile::Page) {
+            (new RichTextPageProfile)->enforce($body);
+        }
+
         return RichTextDom::serializeInner($body);
+    }
+
+    /**
+     * The `page` profile (spec 0420): standard vocabulary plus RichTextPageProfile::ELEMENTS,
+     * no mentions. The input length cap is lifted: the symfony default (20000
+     * characters) would silently truncate a long page; the size limit is enforced
+     * on the result by the page service.
+     */
+    private function buildPageConfig(): HtmlSanitizerConfig
+    {
+        $config = new HtmlSanitizerConfig;
+
+        foreach ([...self::ALLOWED_ELEMENTS, ...RichTextPageProfile::ELEMENTS] as $element => $attributes) {
+            $config = $config->allowElement($element, $attributes);
+        }
+
+        return $config
+            ->allowElement('img', [RichText::IMAGE_ATTR_ID, 'alt'])
+            ->allowLinkSchemes(self::LINK_SCHEMES)
+            ->withMaxInputLength(PHP_INT_MAX);
     }
 
     private function buildConfig(bool $allowMentions): HtmlSanitizerConfig

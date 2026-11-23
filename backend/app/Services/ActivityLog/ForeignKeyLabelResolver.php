@@ -22,7 +22,7 @@ use Spatie\Activitylog\Models\Activity;
  * `_id` field with no matching relation resolves to a null display, not an
  * error.
  *
- * The one exception is `activity-log.foreign_keys`: fields an EXPLICIT
+ * The one exception is `config/activity-log-foreign-keys.php`: fields an EXPLICIT
  * `activity()` entry reports on a subject that has no relation for them
  * (request management logs Quote-level fields on the Opportunity, D-9). Such
  * a field may also carry a LIST of ids (`product_lines`, `manager_slots`),
@@ -94,7 +94,7 @@ final class ForeignKeyLabelResolver
     {
         $fields = collect(($activity->properties ?? new Collection)->get('attributes', []))->keys();
         /** @var array<string, class-string<Model>> $explicit */
-        $explicit = config("activity-log.foreign_keys.{$activity->subject_type}", []);
+        $explicit = config("activity-log-foreign-keys.{$activity->subject_type}", []);
         $map = [];
 
         foreach ($fields as $field) {

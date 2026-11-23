@@ -25,7 +25,7 @@ const guide: HelpGuide = {
             '**Collected**: the part of the invoiced taxable amount the customer has already paid, in proportion to the collections recorded on the installments.',
             '**Costs**: from four sources, added up. The **manual costs** entered on the work order, the **supplier orders (PO)** not yet invoiced (committed), the **purchase invoices** linked to the work order and the **labor cost**.',
             '**Labor cost**: the timesheet hours recorded on the work order, each multiplied by the **hourly cost** of the person who worked them, derived from the salary of the contract condition in force on the date of the hour (User record, Contract history: hourly as is, monthly divided by 173, yearly divided by 2,076). A raise therefore does not change the costs of earlier months. Hours without a work order do not enter the income statement. The hours of people with no condition with a salary on that date are **counted in the hours but not valued**: a note “of which … not valued” appears under the hours, and the cost is understated until you complete the contract history.',
-            '**Commissions**: those of the sales representative, reporter, supervisor and the supplier commissions that are paid out. They reduce the margin.',
+            '**Commissions**: those of the sales representative, commercial partner, reporter, supervisor and the supplier commissions that are paid out. They reduce the margin.',
             '**Expected margin**: contract revenue minus budgeted costs minus budgeted commissions. **Actual margin**: actual revenue minus actual costs minus accrued commissions.',
           ],
         },
@@ -41,7 +41,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'You can narrow by **company**, **company site**, **operational site**, **business function**, **work order type** and **sales representative**. Companies, sites and sales representative are those of the work order’s reference quote (for a multi-quote work order, the first one).',
+          text: 'You can narrow by **company**, **company site**, **operational site**, **business function**, **work order type**, **sales representative** and **commercial partner**. Companies, sites, sales representative and commercial partner are those of the work order’s reference quote (for a multi-quote work order, the first one).',
         },
         {
           type: 'table',
@@ -78,7 +78,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'With **Segmentation** you choose whether to split the statement by **company**, **company site**, **operational site**, **work order type** or **sales representative**. Each value gets a block with its subtotal and **the same statement by business function** computed on the work orders of that value only. With **None** (default) you only see the main statement.',
+          text: 'With **Segmentation** you choose whether to split the statement by **company**, **company site**, **operational site**, **work order type**, **sales representative** or **commercial partner**. Each value gets a block with its subtotal and **the same statement by business function** computed on the work orders of that value only. With **None** (default) you only see the main statement.',
         },
         {
           type: 'paragraph',

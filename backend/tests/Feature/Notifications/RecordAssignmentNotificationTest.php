@@ -105,7 +105,9 @@ it('resubmitting the SAME supervisor notifies nobody (AC-003)', function () {
 // AC-004 / AC-005 / AC-006 — the "Gestore Account" slots of an anagrafica
 // ---------------------------------------------------------------------------
 
-it('notifies a manager attached to ANY slot, carrying that slot number (AC-004)', function () {
+// REQUIREMENT CHANGED (2026-11-18, user decision): every Gestore Account is
+// the same role, so the message no longer carries the slot number.
+it('notifies a manager attached to ANY slot, without a slot number (AC-004)', function () {
     Notification::fake();
 
     $actor = assignmentActorWith(['registries.update', 'registries.view']);
@@ -117,8 +119,12 @@ it('notifies a manager attached to ANY slot, carrying that slot number (AC-004)'
     $this->patchJson("/api/registries/{$registry->id}", ['manager_slots' => [null, null, $manager->id]])
         ->assertOk();
 
-    Notification::assertSentTo($manager, function (RecordAssignmentNotification $notification) use ($manager): bool {
-        return str_contains((string) $notification->toArray($manager)['message'], '3');
+    Notification::assertSentTo($manager, function (RecordAssignmentNotification $notification) use ($manager, $actor, $registry): bool {
+        // The recipient may also get the no-access sentence appended.
+        return str_starts_with((string) $notification->toArray($manager)['message'], __(':actor assigned you as Account Manager on :label.', [
+            'actor' => $actor->name,
+            'label' => $registry->fresh()->name,
+        ]));
     });
 });
 
@@ -183,6 +189,7 @@ it('applies the same supervisor and manager rules to an opportunity (AC-008)', f
     $actor = assignmentActorWith(['opportunities.update', 'opportunities.viewAll']);
     $supervisor = User::factory()->create();
     $manager = User::factory()->create();
+    grantAssignmentNotifications($supervisor, $manager);
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -204,12 +211,14 @@ it('applies the same supervisor and manager rules to an opportunity (AC-008)', f
 // shifts the two id sequences apart (a throwaway Opportunity created before
 // the real one) so a passing assertion can never be a coincidental id match.
 
-it('notifies the operator assigned from the work panel, at the GA2 slot (AC-009)', function () {
+// REQUIREMENT CHANGED (2026-11-18): same message for every slot, no number.
+it('notifies the manager assigned from the work panel to the GA2 slot (AC-009)', function () {
     Notification::fake();
 
     Opportunity::factory()->create();
     $actor = assignmentActorWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $operator = User::factory()->create();
+    grantAssignmentNotifications($operator);
     $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -219,12 +228,32 @@ it('notifies the operator assigned from the work panel, at the GA2 slot (AC-009)
     // being its OPERATOR slot — the assignment notification is unchanged.
     $this->patchJson("/api/request-management/{$quote->id}", ['manager_slots' => [null, $operator->id]])->assertOk();
 
-    Notification::assertSentTo($operator, function (RecordAssignmentNotification $notification) use ($operator): bool {
-        return str_contains(
-            (string) $notification->toArray($operator)['message'],
-            (string) Opportunity::OPERATOR_MANAGER_POSITION,
-        );
+    Notification::assertSentTo($operator, function (RecordAssignmentNotification $notification) use ($operator, $actor, $quote): bool {
+        // The recipient may also get the no-access sentence appended.
+        return str_starts_with((string) $notification->toArray($operator)['message'], __(':actor assigned you as Account Manager on :label.', [
+            'actor' => $actor->name,
+            'label' => $quote->fresh()->title,
+        ]));
     });
+});
+
+// REQUIREMENT CHANGED (2026-11-18, user decision): the Operatore slot is not
+// special any more — a member already in the team moved onto it is only moved.
+it('moving a member already in the team onto the GA2 slot notifies nobody (AC-009)', function () {
+    Notification::fake();
+
+    Opportunity::factory()->create();
+    $actor = assignmentActorWith(['request-management.view', 'request-management.viewAll', 'request-management.update']);
+    $teammate = User::factory()->create();
+    $quote = Quote::factory()->create();
+    $quote->managers()->attach($teammate->id, ['position' => ManagerPositions::GA1]);
+    $quote->opportunity->managers()->attach($teammate->id, ['position' => ManagerPositions::GA1]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", ['manager_slots' => [null, $teammate->id]])->assertOk();
+
+    Notification::assertNothingSent();
+    expect($quote->fresh()->operator_id)->toBe($teammate->id);
 });
 
 it('a bulk assignment of N requests produces N notifications for the operator (AC-010)', function () {
@@ -239,6 +268,7 @@ it('a bulk assignment of N requests produces N notifications for the operator (A
     // test is unaffected: it still takes one write per offer.
     $site = OperationalSite::factory()->withAddress()->create();
     $operator = User::factory()->create();
+    grantAssignmentNotifications($operator);
     EmploymentProfile::factory()->for($operator)->physicalSite($site)->create();
     $requests = Quote::factory()->count(3)->create(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);

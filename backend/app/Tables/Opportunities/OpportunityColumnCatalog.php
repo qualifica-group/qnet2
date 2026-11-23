@@ -70,6 +70,7 @@ final class OpportunityColumnCatalog
                 'relation' => ['resource' => 'referents', 'scope' => ['registry_id' => 'registry'], 'lockScope' => true],
             ],
             [...self::derivedColumn('commercial', 'opportunities.columns.commercial'), ...self::editableRelation('referents', 'commercial_id')],
+            [...self::derivedColumn('commercial_partner', 'opportunities.columns.commercial_partner'), ...self::editableRelation('referents', 'commercial_partner_id')],
             [...self::derivedColumn('supervisor', 'opportunities.columns.supervisor'), ...self::editableRelation('users', 'supervisor_id')],
             // Account managers (opportunity_user pivot, to-many), rendered as an
             // avatar stack. Not sortable (a to-many value has no single sort
@@ -89,6 +90,7 @@ final class OpportunityColumnCatalog
             ],
             self::derivedColumn('operational_site', 'opportunities.columns.operationalSite'),
             OpportunityStatusColumn::declaration('opportunities.columns.status'),
+            OpportunitySystemStatusColumn::declaration('opportunities.columns.systemStatus'),
             [
                 ...self::aggregatedColumn('product_category', 'opportunities.columns.productCategory'),
                 // Spec 0206, D-9: the same two-step editor as Gestione Richieste.

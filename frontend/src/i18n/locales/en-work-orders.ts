@@ -73,6 +73,9 @@ export const workOrders = {
     work_phase: 'Phase',
     work_order_workflow_status: 'Work status',
     completion_percentage: 'Progress',
+    // Spec 0407: the legacy "€" column, the proforma request state.
+    proforma_status: '€',
+    line_payment_statuses: 'Payment status',
     created_at: 'Created at',
     updated_at: 'Updated at',
     chat_unread_count: 'Unread',
@@ -133,6 +136,7 @@ export const workOrders = {
       phones: 'Phone',
       referent: 'Referent {{slot}}',
       commercial: 'Commercial',
+      commercialPartner: 'Commercial partner',
       sectors: 'Sector',
       comments: 'Comments',
     },
@@ -147,8 +151,31 @@ export const workOrders = {
       countLabel: '{{count}} tasks',
     },
   },
-  /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
+  /** The grid row actions (spec 0405) and the detail actions, "Chiusura forzata" and its inverse included (user directive 2026-10-06). */
   actions: {
+    delete: {
+      label: 'Delete',
+      confirmTitle: 'Delete the work order?',
+      confirmDescription: 'Work order {{code}} will be permanently deleted, together with its supervisors and participants.',
+      confirm: 'Delete',
+      cancel: 'Cancel',
+      success: 'Work order deleted.',
+      error: 'Could not delete the work order.',
+    },
+    team: {
+      label: 'Supervisors and Participants',
+      description: 'Work order {{code}}: add or remove Supervisors and Participants.',
+    },
+    openTab: {
+      info: 'Info',
+      notes: 'Notes history',
+      tasks: 'Tasks',
+      documents: 'Documents',
+    },
+    copyQuoteAttributes: {
+      label: 'Copy data from the offer',
+      error: 'Could not copy the data from the offer. Try again.',
+    },
     requestUpdate: {
       label: 'Request update',
       title: 'Request update',
@@ -417,7 +444,6 @@ export const workOrders = {
     },
     created: 'Work order created successfully.',
     updated: 'Work order updated successfully.',
-    deleted: 'Work order deleted successfully.',
     codeRequired: 'Work order number is required.',
     codeMax: 'Work order number must be at most 32 characters.',
     titlePlaceholder: "Automatic: the work order's code and products",
@@ -434,8 +460,6 @@ export const workOrders = {
     openTasksWarning_one: '{{count}} open task will be closed with a negative outcome.',
     openTasksWarning_other: '{{count}} open tasks will be closed with a negative outcome.',
     genericError: 'Something went wrong. Please try again.',
-    deleteError: 'Unable to delete the work order. Please try again.',
-    deleteConflict: 'Cannot delete: the work order is used elsewhere.',
     sections: {
       offer: {
         title: 'Offer and product lines',

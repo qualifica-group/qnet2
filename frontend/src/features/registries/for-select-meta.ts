@@ -9,6 +9,7 @@ import type { OpportunityManagerRef } from '@/features/opportunities/types'
 export interface RegistryForSelectMeta {
   is_qualified_supplier: boolean
   commercial: RelationFieldRef | null
+  commercial_partner: RelationFieldRef | null
   reporter: RelationFieldRef | null
   /** Directive 2026-07-29: inherited alongside commercial/reporter when an anagrafica is picked. */
   supervisor: RelationFieldRef | null

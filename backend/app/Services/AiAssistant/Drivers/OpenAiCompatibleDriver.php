@@ -10,12 +10,10 @@ use Generator;
 
 /**
  * Chat Completions streaming for OpenAI and compatible servers (LM Studio...).
- *
- * The output cap is sent as `max_completion_tokens`: OpenAI deprecated
- * `max_tokens` and newer models reject it; compatible servers ignore or accept
- * the new name.
+ * Subclasses (OpenRouter) reuse the wire format with their own config section,
+ * named after driverName().
  */
-final class OpenAiCompatibleDriver extends AbstractSseChatDriver
+class OpenAiCompatibleDriver extends AbstractSseChatDriver
 {
     private const IMAGE_PREFIX = 'image/';
 
@@ -24,14 +22,28 @@ final class OpenAiCompatibleDriver extends AbstractSseChatDriver
         return AiChatDriverManager::DRIVER_OPENAI;
     }
 
+    /**
+     * OpenAI deprecated `max_tokens` and newer models reject it; compatible
+     * servers ignore or accept the new name.
+     */
+    protected function outputTokensParameter(): string
+    {
+        return 'max_completion_tokens';
+    }
+
+    final protected function setting(string $key): mixed
+    {
+        return config("ai-assistant.{$this->driverName()}.{$key}");
+    }
+
     protected function url(): string
     {
-        return rtrim((string) config('ai-assistant.openai.base_url'), '/').'/chat/completions';
+        return rtrim((string) $this->setting('base_url'), '/').'/chat/completions';
     }
 
     protected function headers(): array
     {
-        $key = config('ai-assistant.openai.api_key');
+        $key = $this->setting('api_key');
 
         return filled($key) ? ['Authorization' => 'Bearer '.$key] : [];
     }
@@ -39,10 +51,10 @@ final class OpenAiCompatibleDriver extends AbstractSseChatDriver
     protected function payload(AiChatPrompt $prompt): array
     {
         $payload = [
-            'model' => config('ai-assistant.openai.model'),
+            'model' => $this->setting('model'),
             'stream' => true,
             'stream_options' => ['include_usage' => true],
-            'max_completion_tokens' => (int) config('ai-assistant.max_output_tokens'),
+            $this->outputTokensParameter() => (int) config('ai-assistant.max_output_tokens'),
             'messages' => $this->messages($prompt),
         ];
 
@@ -54,7 +66,7 @@ final class OpenAiCompatibleDriver extends AbstractSseChatDriver
         return $payload;
     }
 
-    protected function translate(Generator $events): Generator
+    final protected function translate(Generator $events): Generator
     {
         $model = null;
         $in = null;

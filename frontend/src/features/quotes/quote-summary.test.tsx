@@ -31,9 +31,10 @@ const EMPTY_VALUES: QuoteFormValues = {
   quote_date: '2026-03-15',
   follow_up_date: null,
   opportunity_id: 1,
-  quote_workflow_status_id: null,
+  quote_system_status_id: null,
   note: null,
   commercial_id: null,
+  commercial_partner_id: null,
   reporter_id: null,
   supervisor_id: null,
   manager_slots: [],
@@ -157,7 +158,7 @@ describe('QuoteSummary block order (spec 0145 D-8/AC-009)', () => {
     render(
       <QuoteSummary
         totals={{ revenue: { net: 100, vat: 0, gross: 100 }, cost: { net: 10, vat: 0, gross: 10 }, margin: { net: 60 } }}
-        commissionTotals={{ commercial: 30, reporter: 0, supervisor: 0, supplier: 0 }}
+        commissionTotals={{ commercial: 30, commercial_partner: 0, reporter: 0, supervisor: 0, supplier: 0 }}
       />,
     )
 

@@ -4,30 +4,22 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement;
 
-use App\Models\EmploymentProfile;
-use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
-use App\Services\Assignment\AssignmentCandidates;
-use App\Services\Assignment\AssignmentSiteResolver;
-use App\Services\Assignment\OperatorCompetence;
-use App\Services\Assignment\QuoteCompetence;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\RewardAssignmentWriter;
-use App\Support\ManagerPositions;
-use Illuminate\Validation\ValidationException;
 
 /**
  * The request's ATTRIBUTION block as the work panel writes it (user directive
  * 2026-07-22, spec 0056/0059/0086/0087/0097): "Fonte", "Segnalatore", "Sede
- * operativa", "Supervisore", the GA2 "Operatore" and the reward assignments —
+ * operativa", "Supervisore", the Gestori Account team and the reward assignments —
  * extracted from RequestManagementService, which owns the panel's read/update
  * lifecycle and had grown past the file-size ceiling (engineering.md §6).
  *
  * One class, several entry points rather than one `apply()`: the caller
  * interleaves them with its own steps because they do not all happen at the
  * same moment — the plain scalars are filled BEFORE the models are saved, while
- * the operator slot (a pivot row) and the rewards (their own table) are
+ * the team (pivot rows) and the rewards (their own table) are
  * written AFTER. That ordering is the caller's business, the rules are this
  * class'.
  *
@@ -41,10 +33,6 @@ final class RequestAttributionWriter
         private readonly RequestOperatorWriter $operatorWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
-        private readonly AssignmentSiteResolver $siteResolver,
-        private readonly QuoteCompetence $quoteCompetence,
-        private readonly AssignmentCandidates $candidates,
-        private readonly OperatorCompetence $competence,
     ) {}
 
     /**
@@ -76,7 +64,7 @@ final class RequestAttributionWriter
     {
         $submitted = [];
 
-        foreach (['reporter_id', 'commercial_id', 'operational_site_id', 'supervisor_id', 'source_id'] as $key) {
+        foreach (['reporter_id', 'commercial_id', 'commercial_partner_id', 'operational_site_id', 'supervisor_id', 'source_id'] as $key) {
             if (! array_key_exists($key, $data)) {
                 continue;
             }
@@ -102,124 +90,14 @@ final class RequestAttributionWriter
     }
 
     /**
-     * The GA2 "Operatore" (user directive 2026-07-22; spec 0087, D-9):
-     * delegated to RequestOperatorWriter, the ONE implementation of the
-     * operator-slot-sync rule shared with the bulk assignment
-     * (RequestAssignmentService) and the transfer flow
-     * (RequestTransferService). Never touches `quotes.supervisor_id`
-     * (D-13/D-14, INV-5).
-     *
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    public function applyOperator(Quote $quote, mixed $value, User $actor, array &$changed, array &$old): void
-    {
-        $operatorId = $value === null ? null : (int) $value;
-
-        $this->assertOperatorCovers($quote, $operatorId);
-
-        $attached = $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
-        $this->notifyAssignments($quote, $actor, $attached, $changed);
-    }
-
-    /**
-     * The GA2 cell may only receive an operator the offer itself would have
-     * accepted (direttiva utente 2026-09-10): a member of its own
-     * `quotes.operational_site_id` (spec 0113, D-4) competent for its own
-     * product lines (spec 0110, INV-1). Not re-implemented here — it is the
-     * SAME composition the bulk assignment validates against and
-     * `mode=balanced` distributes over, so the two channels onto this one
-     * slot can never disagree on who is eligible.
-     *
-     * WHY THIS LIVES IN THE WRITER, not in the table engine: the inline cell
-     * reaches this slot through the generic `updateCell` path, whose write
-     * check is RelationValueScopeChecker — which resolves the submitted id
-     * through `users/for-select` WITHOUT the row's Sede or categories, and
-     * receives neither the row nor the column's `relation.scope`. And
-     * `relation.lockScope` is NOT a server gate: it is a UI flag telling the
-     * editor not to offer the "show everyone" escape (ResolvesColumnConfig),
-     * nothing more. Reading it as a gate is the exact misunderstanding that
-     * makes this guard necessary. The precedent is `products_of_interest`,
-     * which likewise enforces its own coherence in its domain writer.
-     *
-     * An offer demanding no category is unconstrained on COMPETENCE (INV-4a).
-     *
-     * An offer with NO Sede is judged on COMPETENCE ALONE here (direttiva
-     * utente 2026-09-10) and stays editable — deliberately the OPPOSITE of the
-     * bulk endpoint, where a Sede-less offer is incompatible. The two are not
-     * inconsistent: in the bulk ONE operator is chosen for EVERY targeted
-     * offer, so an offer that can express no candidate would make that single
-     * choice arbitrary; here the operator is picked for THIS offer alone.
-     * Applying the bulk rule to this path would make a Sede-less offer
-     * impossible to assign until somebody gives it a Sede — a dead end whose
-     * cause is invisible to whoever hits it. Do not "align" the two.
-     *
-     * A null CLEARS the slot and is left alone: releasing an offer is not
-     * assigning it to anybody, so there is nobody to be ineligible.
-     */
-    private function assertOperatorCovers(Quote $quote, ?int $operatorId): void
-    {
-        if ($operatorId === null) {
-            return;
-        }
-
-        $quoteId = (int) $quote->id;
-        $siteByQuote = $this->siteResolver->forQuotes([$quoteId]);
-        $requiredByQuote = $this->quoteCompetence->requiredByQuote([$quoteId]);
-
-        // No Sede: competence alone decides, and the offer stays assignable.
-        // The Sede pool already drops a switched-off operator (spec 0194);
-        // without a Sede the switch is checked here.
-        if (($siteByQuote[$quoteId] ?? null) === null) {
-            if (! $this->isSwitchedOff($operatorId)
-                && $this->competence->competent([$operatorId], $requiredByQuote[$quoteId] ?? []) !== []) {
-                return;
-            }
-        } elseif (in_array($operatorId, $this->candidates->byRecord($siteByQuote, $requiredByQuote)[$quoteId] ?? [], true)) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'operator_id' => [__('The chosen operator is not enabled for the Sede or the product categories of this request.')],
-        ]);
-    }
-
-    /**
-     * Spec 0194: the "Assegnabile" switch is off on the operator's profile. A
-     * user with no profile is not switched off: their assignability is
-     * whatever it was before the switch existed.
-     */
-    private function isSwitchedOff(int $operatorId): bool
-    {
-        return EmploymentProfile::query()
-            ->where('user_id', $operatorId)
-            ->where('is_assignable', false)
-            ->exists();
-    }
-
-    /**
-     * One Gestore Account position other than the Operatore (spec 0382 D-7,
-     * the grid's position columns), delegated to the SAME RequestOperatorWriter
-     * as the Operatore above, and notified like it: a user newly put in that
-     * position is told so (task 426900, spec 0097 D-6 as amended 2026-11-10).
-     *
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    public function applyManagerPosition(Quote $quote, int $position, mixed $value, User $actor, array &$changed, array &$old): void
-    {
-        $attached = $this->operatorWriter->applyPosition($quote, $position, $value === null ? null : (int) $value, $changed, $old);
-        $this->notifyAssignments($quote, $actor, $attached, $changed);
-    }
-
-    /**
      * The WHOLE team, as the work panel now writes it (spec 0097, D-1/D-5):
      * delegated to the SAME RequestOperatorWriter — which reports
      * `manager_slots` on any genuine move and `operator_id` only when the
-     * OPERATOR slot itself changes hands — and then through the SAME
-     * notification path as applyOperator() above. That is the whole point of
-     * D-6: an assignment is an assignment regardless of which editor produced
-     * it, and a reshuffle of members already in the team notifies nobody.
+     * OPERATOR slot itself changes hands. Every member genuinely ATTACHED to
+     * the team is notified against the Offerta (spec 0186, D-2/D-3); one
+     * already in it and merely moved, whatever the slot, and a removal notify
+     * nobody (decisione utente 2026-11-18: every Gestore Account is the same
+     * role, the Operatore slot included).
      *
      * @param  array<int, int|null>  $slots
      * @param  array<string, mixed>  $changed
@@ -228,34 +106,7 @@ final class RequestAttributionWriter
     public function applyTeam(Quote $quote, array $slots, User $actor, array &$changed, array &$old): void
     {
         $attached = $this->operatorWriter->applySlots($quote, $slots, $changed, $old);
-        $this->notifyAssignments($quote, $actor, $attached, $changed);
-    }
-
-    /**
-     * Who is newly put in charge, in which position, like the Offerta card
-     * (spec 0186, D-3; task 426900): every manager genuinely ATTACHED to the
-     * team, plus an existing member moved onto the Operatore slot (spec 0081:
-     * the writer reports `operator_id` only on a genuine transition). A member
-     * merely renumbered, and a removal, notify nobody. Notified against the
-     * Offerta itself (spec 0186, D-2): its title, its card, its link.
-     *
-     * @param  array<int, int>  $attached  `userId => position`
-     * @param  array<string, mixed>  $changed
-     */
-    private function notifyAssignments(Quote $quote, User $actor, array $attached, array $changed): void
-    {
-        $positions = $attached;
-        $newOperatorId = $changed['operator_id'] ?? null;
-
-        if ($newOperatorId !== null) {
-            $positions[(int) $newOperatorId] = ManagerPositions::OPERATOR;
-        }
-
-        if ($positions === []) {
-            return;
-        }
-
-        $this->assignmentNotifier->notify($quote, $actor, null, $positions);
+        $this->assignmentNotifier->notify($quote, $actor, null, $attached);
     }
 
     /**

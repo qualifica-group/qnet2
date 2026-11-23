@@ -98,6 +98,53 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'workspace-notes',
+      title: 'La scheda Appunti',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Ogni commessa di progetto ha anche una scheda **Appunti**, subito dopo la Chat: una **pagina condivisa dal team**, fatta di blocchi, per tenere insieme testo, elenchi, task e sondaggi. La vedono e la modificano le stesse persone che usano la chat (Responsabili, Partecipanti e amministratori). Non è la scheda **Note** della commessa, che resta com'era.",
+        },
+        {
+          type: 'list',
+          items: [
+            '**Blocchi di testo**: paragrafi, titoli da H1 a H4, elenchi puntati, numerati e **checklist**, citazioni, divisori, immagini e **date** (badge).',
+            '**Tabelle**, **callout** (info, successo, attenzione, errore) e **blocchi comprimibili**: anche i titoli possono essere comprimibili, e chiudendoli nascondi tutto fino al titolo successivo dello stesso livello o superiore. Aprire e chiudere vale solo per te e non si salva.',
+            '**Task**: crea un task della commessa direttamente dalla pagina (titolo e scadenza; richiedente e assegnatario sei tu). Il blocco mostra stato, assegnatari e scadenza; cliccandolo si apre il dettaglio del task, dove lo completi o lo modifichi. Se un task non è più visibile per te o è stato eliminato vedi **Task non disponibile**.',
+            "**Sondaggi**: una domanda con da 2 a 10 opzioni. Ognuno ha **un voto**, che può cambiare o ritirare cliccando di nuovo l'opzione scelta; i voti sono **nominativi** e li vede chi legge la pagina.",
+            "**Come si inserisce e si formatta**: selezionando del testo compare una **barra** con grassetto, corsivo, sottolineato, barrato, evidenziatore, colore, link e il menu **Stili** (paragrafo, titoli, elenchi, citazione, callout); digitando **/** si apre l'elenco di tutti i blocchi; la **barra in fondo** inserisce tabella, elenchi, task e sondaggi.",
+            "**Spostare i blocchi**: passando con il mouse su un blocco compare a sinistra la **maniglia**. Trascinala per spostare il blocco, oppure cliccala per **Trasforma in**, **Duplica**, **Sposta su/giù** ed **Elimina**. Su telefono e tablet la maniglia apre solo il menu.",
+          ],
+        },
+        {
+          type: 'table',
+          headers: ['Scorciatoia', 'Effetto'],
+          rows: [
+            ['Ctrl+Alt+0', 'Paragrafo'],
+            ['Ctrl+Alt+1 … Ctrl+Alt+4', 'Titolo H1 … H4'],
+            ['Ctrl+Shift+8', 'Elenco puntato'],
+            ['Ctrl+Shift+7', 'Elenco numerato'],
+            ['Ctrl+Shift+9', 'Checklist'],
+            ['Ctrl+K', 'Link'],
+            ['Alt+Shift+Freccia su / giù', 'Sposta il blocco'],
+            ['/', 'Menu dei blocchi (a inizio riga)'],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Il **salvataggio è automatico**: poco dopo aver smesso di scrivere compare **Salvataggio...** e poi **Salvato**. Se il salvataggio non riesce vedi **Errore, riprova** e il testo non va perso.',
+        },
+        {
+          type: 'warning',
+          text: "Non c'è la modifica simultanea: se un collega salva prima di te compare **Modificata da ...: ricarica**. Il salvataggio si ferma; con **Ricarica** vedi la sua versione e le tue modifiche non salvate vanno perse, quindi copiale prima se ti servono.",
+        },
+        {
+          type: 'note',
+          text: 'Quando la commessa è **Completata** o **Chiusa** (o se non hai il permesso di modifica) la pagina è in **sola lettura**: niente barre, niente voti.',
+        },
+      ],
+    },
+    {
       id: 'no-notifications',
       title: 'Nessuna notifica',
       blocks: [

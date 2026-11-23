@@ -50,8 +50,9 @@ export interface ContractQuoteRef {
   revenue_net: string
   revenue_vat: string
   revenue_gross: string
-  cost_net: string
-  margin_net: string
+  /** Spec 0412: absent without `quotes.viewCosts`, like `margin_net`. */
+  cost_net?: string
+  margin_net?: string
 }
 
 /** One side of the persisted economic summary (mirrors `QuoteAmountBreakdown`). */
@@ -64,8 +65,9 @@ export interface ContractAmountBreakdown {
 /** The contract's read-only economic summary, projected from the quote (BR-7). */
 export interface ContractSummary {
   revenue: ContractAmountBreakdown
-  cost: ContractAmountBreakdown
-  margin: { net: string }
+  /** Spec 0412: absent without `quotes.viewCosts`, like `margin`. */
+  cost?: ContractAmountBreakdown
+  margin?: { net: string }
 }
 
 /** Calculated at read time (D-4/BR-6), never persisted; `null` when neither threshold applies. */
@@ -99,6 +101,7 @@ export interface ContractDetail {
   company_site: ContractRelationRef | null
   operational_site: ContractOperationalSiteRef | null
   commercial: ContractRelationRef | null
+  commercial_partner: ContractRelationRef | null
   reporter: ContractRelationRef | null
   supervisor: ContractRelationRef | null
   payment_method: ContractRelationRef | null

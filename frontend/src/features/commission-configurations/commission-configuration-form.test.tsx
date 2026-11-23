@@ -151,6 +151,14 @@ describe('CommissionConfigurationForm create (spec 0241 AC-004)', () => {
     expect(screen.queryByRole('combobox', { name: /^Recipient type/ })).not.toBeInTheDocument()
   })
 
+  it('offers the Commercial partner role right after Commercial (spec 0417 AC-024)', async () => {
+    renderForm()
+    openRow('Recipient')
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
+    const names = (await screen.findAllByRole('option')).map((option) => option.textContent)
+    expect(names.indexOf('Commercial partner')).toBe(names.indexOf('Commercial') + 1)
+  })
+
   it('asks for the direction only with the Supplier role and sends it (spec 0306 AC-010)', async () => {
     createMock.mockResolvedValue(configurationFixture())
     renderForm()

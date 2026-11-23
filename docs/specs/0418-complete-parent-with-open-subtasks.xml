@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0418-complete-parent-with-open-subtasks" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Completare un task padre che ha ancora sotto-task aperti: invece del blocco (spec 0123 D-6) il popup
+    "Completa" chiude padre e sotto-task aperti insieme e il segnatempo diventa un TOTALE ripartito tra il
+    padre e i sotto-task, come nella chiusura multipla (spec 0338).
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-18: "se un task padre ha dei figli ancora da completare, quando si tenta di
+    completare il segnatempo gli fa vedere il tempo del padre e dei figli (un po come succede per chiusura
+    task massivi)". Oggi `permissions.actions.complete` e' false con `open_subtasks_count > 0` e
+    `POST /api/tasks/{task}/complete` risponde 422 (spec 0123 D-6, AC-018..AC-022).
+  </context>
+
+  <decisions>
+    <decision id="D-1">Il Completa del padre con sotto-task aperti chiude in un'unica operazione TUTTO O NIENTE
+      il padre e i suoi sotto-task aperti a ogni livello (si scende solo attraverso sotto-task aperti: il
+      sotto-albero di un figlio gia' chiuso non si tocca, coerente con D-6 che conta i soli figli diretti).
+      Ordine di chiusura: dal piu' profondo al padre.</decision>
+    <decision id="D-2">Segnatempo: il totale inserito si ripartisce tra padre e sotto-task con la stessa sezione
+      "Ripartizione" del completa massivo (parti uguali, quote modificabili, somma = totale, fasce consecutive
+      con l'ora di inizio). Ordine delle righe: padre, poi i sotto-task in ordine di albero.</decision>
+    <decision id="D-3">Feedback di chiusura e "per tutti gli assegnatari" valgono per ogni task chiuso (ogni
+      assegnatario registra la quota del proprio task). Lo stato di validazione scelto vale solo per il padre.</decision>
+    <decision id="D-4">Un sotto-task che non si puo' chiudere (non visibile, senza permesso, bloccato, in
+      validazione, segnatempo o feedback obbligatori mancanti, oppure che andrebbe in validazione) annulla
+      tutto: 422 con `incompatible_tasks` (stessa shape di `/api/tasks/bulk`) e il motivo per ogni task.</decision>
+    <decision id="D-5">REQUIREMENT CHANGED spec 0123 D-6: `permissions.actions.complete` e
+      `complete_to_validation` non sono piu' negati dai sotto-task aperti. Restano invariati: `approve` (un
+      padre in validazione con figli aperti non si approva), il 422 di `/approve` e il blocco nelle azioni
+      massive (`/api/tasks/bulk` e bacheca commessa).</decision>
+    <decision id="D-6">Il popup mostra l'elenco solo dei sotto-task visibili all'utente: un sotto-task aperto
+      invisibile rende l'operazione incompatibile (D-4), come oggi blocca il completamento (AC-021).</decision>
+  </decisions>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/tasks/{task}/open-subtasks">
+      Authz: `complete` sul task (TaskPolicy). Risposta `{ success, data: [{ id, title, depth,
+      requires_time_entry, requires_closure_feedback }] }`: sotto-task aperti visibili (D-1, D-6), in ordine di
+      albero (pre-ordine, `subtask_position`/`id`), `depth` 1 = figlio diretto.
+    </endpoint>
+    <endpoint method="POST" path="/api/tasks/{task}/complete">
+      Nuovo campo `time_entry_shares: [{ task_id, minutes }]` (stesse regole di spec 0338):
+      required quando il task ha sotto-task aperti E `time_entry` e' presente; prohibited altrimenti.
+      task_id distinct, minutes integer >= 1, somma = `time_entry.minutes` (422 `time_entry_shares`),
+      fine fascia entro le 23:59 (422 `time_entry.minutes`). L'insieme dei task_id deve essere esattamente
+      padre + sotto-task aperti (422 `time_entry_shares`).
+      Incompatibilita' (D-4): 422 `{ success:false, message, errors: { task_ids }, incompatible_tasks: [{id, reason}] }`.
+      Successo: risposta invariata (dettaglio del padre).
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Padre con due figli aperti: `/complete` con totale 90 e quote {padre 30, figlio 30, figlio 30} chiude i tre task e crea tre segnatempo da 30 minuti con fasce consecutive se c'e' l'ora di inizio.</criterion>
+    <criterion id="AC-002">Nipote aperto sotto un figlio aperto: chiusi tutti e tre; un figlio chiuso con un nipote aperto non entra nell'elenco ne' nelle quote.</criterion>
+    <criterion id="AC-003">Quote che non coprono esattamente padre + sotto-task aperti -> 422 `time_entry_shares`, nulla cambia. Somma diversa dal totale -> 422 `time_entry_shares`.</criterion>
+    <criterion id="AC-004">Un figlio che l'utente non puo' chiudere (o che andrebbe in validazione) -> 422 `incompatible_tasks` con il suo id, nessun task chiuso e nessun segnatempo creato.</criterion>
+    <criterion id="AC-005">Padre senza sotto-task aperti: `time_entry_shares` -> 422; comportamento invariato altrimenti.</criterion>
+    <criterion id="AC-006">`permissions.actions.complete` true con `open_subtasks_count > 0`; `approve` resta false.</criterion>
+    <criterion id="AC-007">GET open-subtasks restituisce i sotto-task aperti in ordine di albero con `depth`; 403 senza `complete` sul padre.</criterion>
+    <criterion id="AC-008">(FE) Con `open_subtasks_count > 0` il popup avvisa che si chiudono anche N sotto-task e, con segnatempo attivo, mostra la Ripartizione su padre + sotto-task; il payload porta `time_entry_shares`.</criterion>
+  </acceptance>
+
+  <scope>
+    <out>
+      <item>Azioni massive (`/api/tasks/bulk`, bacheca commessa): un padre con figli aperti resta incompatibile.</item>
+      <item>Approva del padre con figli aperti, cambio stato manuale verso uno stato chiuso.</item>
+    </out>
+  </scope>
+</spec>

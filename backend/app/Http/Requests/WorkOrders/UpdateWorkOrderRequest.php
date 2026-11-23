@@ -81,8 +81,6 @@ class UpdateWorkOrderRequest extends FormRequest
             // enforced by WorkOrderWorkflowStatusAssigner (422), the single
             // choke point every write channel reaches.
             'work_order_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_order_workflow_statuses', 'id')],
-            // Spec 0402: the commessa's "Stato pagamento", any active configured status (null clears it).
-            'work_order_payment_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_order_payment_statuses', 'id')->where('is_active', true)],
             // Spec 0098: "Informazioni aggiuntive", same sparse-PATCH
             // convention as UpdateQuoteRequest — validated server-side by
             // WorkOrderAttributeValueWriter (WorkOrderService::update()).

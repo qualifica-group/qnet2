@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/sonner'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
+import { ContractedEditConfirmBridge } from '@/components/contracted-edit-confirm-bridge'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/features/auth/auth-provider'
 import { UiScaleProvider } from '@/features/appearance/ui-scale-provider'
@@ -27,6 +28,7 @@ function App() {
                 <ColorPresetProvider>
                   <TooltipProvider>
                     <ConfirmDialogProvider>
+                      <ContractedEditConfirmBridge />
                       <FieldChangeRequestDialogProvider>
                         <Suspense fallback={<FullScreenLoader />}>
                           <DateDisplayProvider>

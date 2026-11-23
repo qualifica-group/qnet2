@@ -16,9 +16,11 @@ use App\Models\Contract;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Contracts\ContractActionAvailability;
+use App\Services\WorkOrders\WorkOrderQuoteAttributeCopier;
 use App\Services\WorkOrderService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -37,6 +39,7 @@ class ContractWorkOrderController extends BaseApiController
 
     public function __construct(
         private readonly WorkOrderService $service,
+        private readonly WorkOrderQuoteAttributeCopier $attributeCopier,
         private readonly ContractActionAvailability $availability,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
@@ -59,7 +62,13 @@ class ContractWorkOrderController extends BaseApiController
                 taskTemplateId: $request->validated('task_template_id') !== null ? (int) $request->validated('task_template_id') : null,
             );
 
-            $workOrder = $this->service->create($data);
+            // Spec 0404 D-D1: the offer's flexible fields fill what the dialog did not send.
+            $workOrder = DB::transaction(function () use ($data, $contract): WorkOrder {
+                $workOrder = $this->service->create($data);
+                $this->attributeCopier->fill($workOrder, [$contract->quote_id], array_keys($data->attributeValues ?? []));
+
+                return $workOrder;
+            });
 
             return $this->okWithPermissions(
                 new WorkOrderResource($workOrder),

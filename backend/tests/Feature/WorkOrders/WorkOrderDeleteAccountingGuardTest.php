@@ -61,19 +61,6 @@ it('deletes a commessa that only has tasks, costs and hours (AC-007)', function 
     $this->assertDatabaseMissing('work_orders', ['id' => $workOrder->id]);
 });
 
-it('does not offer delete on the grid row of a commessa with documents (AC-008)', function (Closure $attach) {
-    Sanctum::actingAs(workOrderUserWith(['viewAny', 'view', 'delete']));
-    $blocked = WorkOrder::factory()->create(['title' => 'Bloccata']);
-    WorkOrder::factory()->create(['title' => 'Libera']);
-    $attach($blocked);
-
-    $items = collect($this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 25])
-        ->assertOk()->json('items'));
-
-    expect($items->firstWhere('title', 'Bloccata')['actions'])->not->toContain('delete')
-        ->and($items->firstWhere('title', 'Libera')['actions'])->toContain('delete');
-})->with('accounting documents');
-
 it('reports permissions.actions.delete=false in the detail of a commessa with documents (AC-008)', function () {
     Sanctum::actingAs(workOrderUserWith(['viewAny', 'view', 'delete']));
     $blocked = WorkOrder::factory()->create();

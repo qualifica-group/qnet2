@@ -109,6 +109,8 @@ class QualificaTemplateSeeder extends Seeder
             ['key' => 'responsible_tickets', 'label' => 'Responsabile Ticket', 'type' => 'relation', 'relation_target' => self::MANAGER_RELATION_TARGET],
             ['key' => 'responsible_validation_contracts', 'label' => 'Responsabile Validazione contratti', 'type' => 'relation', 'relation_target' => self::MANAGER_RELATION_TARGET],
             ['key' => 'responsible_validation_contracts_two', 'label' => 'Responsabile Validazione contratti 2', 'type' => 'relation', 'relation_target' => self::MANAGER_RELATION_TARGET],
+            // Spec 0421: assignee of the Task a proforma request opens.
+            ['key' => 'responsible_proforma', 'label' => 'Responsabile emissione proforma', 'type' => 'relation', 'relation_target' => self::MANAGER_RELATION_TARGET],
             ['key' => 'proforma_progressive', 'label' => 'Progressivo proforma', 'type' => 'integer'],
             ['key' => 'invoice_progressive', 'label' => 'Progressivo fattura', 'type' => 'integer'],
             ['key' => 'quotation_layout', 'label' => 'Layout preventivo', 'type' => 'integer'],

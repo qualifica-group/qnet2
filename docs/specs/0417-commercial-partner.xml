@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0417-commercial-partner" status="approved" owner="utente" date="2026-11-18">
+
+  <goal>
+    Richiesta utente 2026-11-18: "inserire oltre che a segnalatore e a commerciale anche un altro campo partner
+    commerciale (uguale al campo commerciale). Questo partner commerciale quindi deve avere le stesse funzioni e
+    comparire allo stesso posto di segnalatore e commerciale".
+    Nuovo campo "Partner commerciale" (un Referente, come "Commerciale") su anagrafiche, opportunita' e preventivi, con
+    le stesse funzioni del Commerciale ovunque il Commerciale esiste oggi, provvigioni incluse (risposta utente
+    2026-11-18: "Si', ruolo proprio").
+  </goal>
+
+  <context>
+    - Il Commerciale e' `commercial_id` (FK `referents`) su `registries` (nullOnDelete), `opportunities` e `quotes`
+      (restrictOnDelete), relazione `commercial()` su `Registry`/`Opportunity`/`Quote`, `Referent::opportunitiesAsCommercial()`.
+    - Eredita': anagrafica -> opportunita' lato FE (`use-registry-role-inheritance.ts`, conferma
+      `opportunities.form.registryRolesConfirm`) e lato griglia (`OpportunityCellWriter::INHERITED_ROLE_FIELDS`);
+      opportunita' -> preventivo come SNAPSHOT una tantum (`QuoteService::applySnapshotDefaults`, flag
+      `commercialIdSubmitted`); copia nel trasferimento anagrafica (`QuoteRegistryTransferService::newOpportunityData`)
+      e nella creazione da Gestione Richieste (`RequestCreationService`: anagrafica nuova, opportunita', preventivo).
+    - Provvigioni: `CommissionRecipientRole` (`COMMERCIAL`/`REPORTER`/`SUPERVISOR`/`SUPPLIER`, colonna `recipient_role`
+      string(32)), `CommissionRecipientResolver` (un destinatario per ruolo, dalla selezione a monte),
+      `QuoteCommissionInitializer`, `QuoteLineCommissionWriter`, `POST /quotes/commission-defaults`,
+      `POST /quotes/commission-recipients`, `ValidatesQuoteLineCommissions`, `QuoteCommissionSummaryCalculator`
+      (`summary.commissions.{commercial,reporter,supervisor,supplier}`), maturazioni (`AccrualStateLoader::ROLES`),
+      liquidazioni (`CommissionSettlementRunRequest::FILTERABLE_ROLES`), costi commessa
+      (`WorkOrderFigureSources::COST_ROLES`), report vendite agenti (`AgentSalesReportReader`: netto = importo -
+      supervisore - commerciale - segnalatore), conto economico (`IncomeStatementSegmenter`, filtro `commercial_id`),
+      fatturazione (`BacklogAggregator`, `BillingFilters::GROUP_COMMERCIAL`).
+    - Nessuno scope di visibilita' dei record dipende da `commercial_id` (verificato: `OpportunityVisibilityScope`,
+      `QuoteVisibilityScope`, `WorkOrderVisibilityScope` usano solo supervisore/gestori/partecipanti).
+    - `partner_id`/`partner()` esistono gia' su `projects`/`campaigns` (Referente "Partner" di progetto): il nuovo campo
+      NON puo' chiamarsi `partner` (collisione in `ReferentMergeDefinition` e `AiMentionRegistry`).
+    - Il legacy QNet non ha un Partner commerciale come Referente (solo testo libero `partner_commerciale` negli import
+      GOL dei discenti): non c'e' nulla da migrare.
+  </context>
+
+  <decisions>
+    D-1 Naming (inglese, parallelo esatto al Commerciale): colonna `commercial_partner_id`, relazione
+        `commercialPartner()`, chiave Resource `commercial_partner`, colonna/filtro di griglia `commercial_partner`,
+        caso enum `CommissionRecipientRole::CommercialPartner = 'COMMERCIAL_PARTNER'`, chiave di riepilogo
+        `summary.commissions.commercial_partner`, campi DTO `commercialPartnerId` + `commercialPartnerIdSubmitted`.
+        Etichette UI: IT "Partner commerciale", EN "Commercial partner".
+    D-2 Schema: UNA migrazione nuova che aggiunge `commercial_partner_id` (nullable, FK `referents`) subito dopo
+        `commercial_id`: `registries` nullOnDelete, `opportunities` e `quotes` restrictOnDelete (stessa disciplina del
+        Commerciale). Reversibile. Nessun backfill: i record esistenti restano senza partner.
+    D-3 Stesse funzioni del Commerciale, punto per punto: validazione `exists:referents` (nullable); permesso di campo
+        identico a `commercial_id` in Registries/Opportunities/Quotes/RequestManagementAuthorization; bloccato sui
+        preventivi a contratto come gli altri campi non in `ContractedQuoteGuard::FREE_FIELDS`; eredita' anagrafica ->
+        opportunita' (FE con la stessa conferma, griglia riempie solo se vuoto); snapshot opportunita' -> preventivo
+        (omesso = copiato, inviato = vince l'inviato); copia nel trasferimento anagrafica e nella creazione da Gestione
+        Richieste; cambio sul preventivo = risincronizzazione delle provvigioni come per il Commerciale.
+    D-4 Ruolo provvigionale `COMMERCIAL_PARTNER`: tipi destinatario ammessi `['referent','user']` (come Commerciale),
+        default `referent`; colore `indigo` (palette di `BADGE_COLOR_CLASSES`); destinatario risolto da `quotes.commercial_partner_id`; nessun partner = nessuna
+        provvigione ammessa per quel ruolo (stessa regola del Commerciale). Entra in: configurazioni provvigioni, righe
+        d'offerta, riepilogo preventivo, maturazioni, liquidazioni (filtro ruoli), costi commessa, report vendite agenti
+        (colonna nome + colonna provvigione, sottratta dal netto, tabella ed export Excel), saldo del preventivo.
+    D-5 Firma `CommissionRecipientResolver::resolve(?int $supplierId, ?int $commercialId, ?int $commercialPartnerId,
+        ?int $reporterId, ?int $supervisorId)`; `QuoteCommissionDefaultsData` e i FormRequest dei due endpoint
+        provvigioni accettano `commercial_partner_id` come `commercial_id`.
+    D-6 Controllo di gestione: nuovo segmento conto economico `segment_by=commercial_partner` + filtro
+        `commercial_partner_id[]` [revised 2026-11-18: stessa convenzione del filtro esistente `commercial_id[]`] (eco in `applied.commercial_partner_id`); nuovo raggruppamento fatturazione
+        `group_by=commercial_partner`. Join con alias distinto sulla tabella `referents`.
+    D-7 Referenti: guard di eliminazione 409 anche per `opportunitiesAsCommercialPartner()`; merge anagrafiche
+        (`RegistryMergeDefinition`, campo relazione) e merge referenti (`ReferentMergeDefinition`, riferimenti su
+        opportunities/quotes/registries) includono `commercial_partner_id`.
+    D-8 Variabili: categoria `commercial_partner` (name, email, phone) nei layout documento (catalogo, resolver,
+        eager load di `QuoteRenderSubject`) e nelle variabili email commessa; mention AI `commercial_partner` su
+        anagrafiche/opportunita'/preventivi; info cliente della commessa `client_info.commercial_partner`; Contratto
+        `commercial_partner` (dal preventivo). Testo descrittivo in `ApiModuleDescriptions`.
+    D-9 Posizione UI: subito DOPO "Commerciale" ovunque (Relazioni anagrafica, "Anagrafica e contatti" di
+        opportunita'/preventivo, proiezione Contratto, Attribuzione di Gestione Richieste in pannello Lavora e Nuova
+        richiesta, colonne e filtri avanzati delle griglie subito dopo `commercial`, ruolo provvigionale subito dopo
+        Commerciale). Stesso picker del Commerciale (lista completa dei referenti con riepilogo contatti).
+    D-10 DTO: i nuovi parametri dei costruttori hanno default (`null` / `false`) cosi' i chiamanti che non hanno un
+        partner (conversione lead, import lead, stub fornitore agente, migrazione legacy, seeder) restano invariati;
+        i chiamanti che propagano il Commerciale propagano anche il partner esplicitamente.
+    D-11 Split obbligati dal limite 500 righe prima di aggiungere chiavi: `i18n/locales/{it,en}-request-management.ts`
+        (502/495) e `features/help/content/{it,en}/work-orders.ts` (501), se toccati.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione + model (`Registry`, `Opportunity`, `Quote`, `Referent`) + factory con `commercial_partner_id => null`.</item>
+      <item>CRUD anagrafiche/opportunita'/preventivi (FormRequest, DTO, Service, Resource, Authorization) e for-select meta.</item>
+      <item>Griglie: colonna, cella editabile, filtro avanzato su anagrafiche/opportunita'/preventivi; colonna e filtro (sola lettura) su contratti.</item>
+      <item>Eredita' e snapshot (D-3), trasferimento anagrafica, Gestione Richieste (pannello Lavora + Nuova richiesta).</item>
+      <item>Provvigioni (D-4, D-5), report vendite agenti, controllo di gestione (D-6), costi commessa.</item>
+      <item>Guard eliminazione referente, merge (D-7), variabili documento/email, mention AI, info cliente commessa, Contratto (D-8).</item>
+      <item>Frontend di tutti i punti sopra, i18n IT/EN, guide in-app IT/EN, manuale Claude Docs (sezioni elencate al build).</item>
+    </in>
+    <out>
+      <item>Migrazione dal legacy: nessuna sorgente (il partner arriva sempre `null`); niente cambi nel repo `../qnet`.</item>
+      <item>Testo libero `partner_commerciale` degli import GOL del legacy: non mappato.</item>
+      <item>`RegistryResponsibleReferents` (rielezione del referente principale in migrazione): il partner non conta.</item>
+      <item>Import Excel di Gestione Richieste: oggi non gestisce nemmeno il Commerciale, resta invariato.</item>
+      <item>Scope di visibilita' dei record per partner (non esiste nemmeno per il Commerciale).</item>
+      <item>Seeder `Qualifica*`/`Demo*`: nessun partner generato (salvo il minimo per non rompere i test).</item>
+      <item>Backfill dei record esistenti.</item>
+      <item>`partner_id` di progetti e campagne: invariato.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Shape aggiunta. Tutto il resto delle risposte resta invariato. Envelope { success, message, data }. -->
+    <entity name="CommercialPartnerRef">
+      Stessa shape gia' emessa per `commercial` nella stessa Resource (Registry: `toPersonRef`, con i contatti primari;
+      Opportunity/Quote/RequestManagement/Contract: `summarizeByName`; for-select meta: `{ id, name }`). `null` se assente.
+    </entity>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/registries, /api/registries/{registry}">
+      <request>`commercial_partner_id`: integer|null, `exists:referents,id` (opzionale; su update applicato solo se presente)</request>
+      <response status="200|201">data += `commercial_partner_id`: int|null, `commercial_partner`: CommercialPartnerRef|null</response>
+      <errors>422 id inesistente; 422/ignorato se il campo e' readonly per l'attore (come `commercial_id`)</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/registries/{registry}">
+      <response status="200">data += `commercial_partner_id`, `commercial_partner`</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/registries/for-select">
+      <response status="200">items[].meta += `commercial_partner`: { id, name } | null</response>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH|GET" path="/api/opportunities, /api/opportunities/{opportunity}">
+      <request>`commercial_partner_id`: integer|null, `exists:referents,id`</request>
+      <response status="200|201">data += `commercial_partner_id`, `commercial_partner`</response>
+      <errors>422 id inesistente o campo readonly</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/opportunities/for-select">
+      <response status="200">items[].meta += `commercial_partner`: { id, name } | null</response>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH|GET" path="/api/quotes, /api/quotes/{quote}, /api/quotes/with-opportunity">
+      <request>`commercial_partner_id`: integer|null. Su create: chiave OMESSA = copia `opportunity.commercial_partner_id`; chiave presente (anche null) = vince il valore inviato.</request>
+      <response status="200|201">data += `commercial_partner_id`, `commercial_partner`; `summary.commissions` += `commercial_partner`: string decimale</response>
+      <errors>422 id inesistente, campo readonly, preventivo a contratto</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/quotes/commission-defaults">
+      <request>+= `commercial_partner_id`: integer|null (come `commercial_id`)</request>
+      <response status="200">le righe di default possono contenere `recipient_role: "COMMERCIAL_PARTNER"`</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/quotes/commission-recipients">
+      <request>+= `commercial_partner_id`: integer|null</request>
+      <response status="200">data += chiave `COMMERCIAL_PARTNER`: { recipient_type, recipient_id, ... } | null (stessa shape di `COMMERCIAL`)</response>
+    </endpoint>
+    <endpoint method="POST|PUT" path="quote lines commissions (payload righe d'offerta esistente)">
+      <request>`commissions[].recipient_role` ammette `COMMERCIAL_PARTNER`; destinatario = partner del preventivo</request>
+      <errors>422 se il ruolo e' COMMERCIAL_PARTNER e il preventivo non ha partner, o il destinatario non coincide</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PATCH" path="/api/request-management, /api/request-management/{quote}">
+      <request>POST e PATCH += `commercial_partner_id`: integer|null (PATCH scrive sul preventivo come `commercial_id`; POST propaga ad anagrafica nuova, opportunita' e preventivo)</request>
+      <response status="200">data += `commercial_partner_id`, `commercial_partner`</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/quotes/{quote}/transfer-registry">
+      <response status="200">l'opportunita' creata copia `commercial_partner_id` dall'origine</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/contracts/{contract}, /api/work-orders/{workOrder}">
+      <response status="200">contratto: data += `commercial_partner`; commessa: `client_info.commercial_partner` (dall'anagrafica) e `commercial_partner` (dal preventivo)</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/table/{registries|opportunities|quotes|contracts|agent-sales-report}">
+      <response status="200">colonna `commercial_partner` (subito dopo `commercial`), filtro avanzato `commercial_partner` (source referents); editabile su registries/opportunities/quotes (fk `commercial_partner_id`); agent-sales-report += colonna `commercial_partner`; export += "Partner commerciale" e "Provvigione partner commerciale", netto al netto anche di quest'ultima</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/management-control/income-statement">
+      <request>`segment_by` ammette `commercial_partner`; `commercial_partner_id[]`: integer[] (exists referents)</request>
+      <response status="200">`applied.commercial_partner_id`: int[]; segmenti `{ id, name }` per partner</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/management-control/billing">
+      <request>`group_by` ammette `commercial_partner`</request>
+    </endpoint>
+    <endpoint method="POST" path="/api/commission-settlement-runs">
+      <request>`recipient_roles[]` ammette `COMMERCIAL_PARTNER`</request>
+    </endpoint>
+    <endpoint method="GET" path="enum / options">
+      <response status="200">`commission_recipient_role` += `COMMERCIAL_PARTNER` (label `commission_configurations.roles.commercial_partner`, color `indigo`), subito dopo `COMMERCIAL`</response>
+    </endpoint>
+    <endpoint method="GET" path="document layout / email template variables">
+      <response status="200">categoria `commercial_partner` con `name`, `email`, `phone` (stessa shape della categoria `commercial`)</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend (Pest) -->
+    <criterion id="AC-001">Dopo la migrazione `registries`, `opportunities`, `quotes` hanno `commercial_partner_id` nullable FK `referents`; eliminare il referente azzera il campo sull'anagrafica ed e' bloccato da opportunita'/preventivi; `down()` rimuove le colonne.</criterion>
+    <criterion id="AC-002">POST/PATCH anagrafica con `commercial_partner_id` valido lo salva e la risposta contiene `commercial_partner`; con id inesistente 422 senza scritture; un attore senza permesso di scrittura non lo modifica.</criterion>
+    <criterion id="AC-003">Come AC-002 per le opportunita'.</criterion>
+    <criterion id="AC-004">Creando un preventivo senza la chiave `commercial_partner_id` il valore e' copiato dall'opportunita'; inviandola (anche `null`) vince il valore inviato; modificare l'opportunita' dopo non cambia il preventivo.</criterion>
+    <criterion id="AC-005">`/registries/for-select` e `/opportunities/for-select` espongono `meta.commercial_partner` { id, name } o null.</criterion>
+    <criterion id="AC-006">Le griglie anagrafiche/opportunita'/preventivi hanno la colonna editabile `commercial_partner` e il filtro avanzato omonimo; la griglia contratti ha colonna e filtro in sola lettura; cambiando l'anagrafica di un'opportunita' da griglia il partner vuoto viene ereditato, quello valorizzato no.</criterion>
+    <criterion id="AC-007">DELETE di un referente usato come partner su un'opportunita' risponde 409; il merge di referenti sposta `commercial_partner_id` su anagrafiche/opportunita'/preventivi al superstite; il merge di anagrafiche offre il campo.</criterion>
+    <criterion id="AC-008">Le opzioni di `recipient_role` delle configurazioni provvigioni sono esattamente COMMERCIAL, COMMERCIAL_PARTNER, REPORTER, SUPERVISOR, SUPPLIER; una configurazione COMMERCIAL_PARTNER genera la provvigione di riga destinata al partner del preventivo; senza partner nessuna provvigione per quel ruolo e il salvataggio manuale con quel ruolo da' 422.</criterion>
+    <criterion id="AC-009">`/quotes/commission-recipients` restituisce la chiave COMMERCIAL_PARTNER; `/quotes/commission-defaults` considera `commercial_partner_id`; `summary.commissions.commercial_partner` somma le provvigioni del ruolo; cambiare il partner del preventivo risincronizza le provvigioni.</criterion>
+    <criterion id="AC-010">Le maturazioni includono il ruolo COMMERCIAL_PARTNER; un run di liquidazione filtrato su `recipient_roles=[COMMERCIAL_PARTNER]` prende solo quei movimenti; i costi commessa includono le provvigioni del partner.</criterion>
+    <criterion id="AC-011">Il report vendite agenti ha la colonna `commercial_partner` filtrabile; gli export riportano nome e provvigione del partner e il netto = importo - supervisore - commerciale - partner - segnalatore.</criterion>
+    <criterion id="AC-012">Conto economico: `segment_by=commercial_partner` segmenta per partner, `commercial_partner_id[]` filtra ed e' riportato in `applied`; fatturazione: `group_by=commercial_partner` raggruppa per partner; il Commerciale continua a funzionare (join con alias).</criterion>
+    <criterion id="AC-013">Gestione Richieste: GET espone il partner; PATCH lo scrive sul preventivo (rifiutato se readonly o a contratto); POST con anagrafica nuova lo scrive su anagrafica, opportunita' e preventivo; con anagrafica esistente non tocca l'anagrafica.</criterion>
+    <criterion id="AC-014">Il trasferimento anagrafica di un preventivo copia il partner sull'opportunita' nuova.</criterion>
+    <criterion id="AC-015">Layout documento ed email commessa risolvono `commercial_partner.name/email/phone`; il catalogo variabili contiene la categoria; Contratto e commessa espongono il partner (D-8).</criterion>
+    <!-- Frontend (Vitest) -->
+    <criterion id="AC-020">Anagrafica (creazione e dettaglio): "Partner commerciale" compare subito dopo "Commerciale", il salvataggio invia `commercial_partner_id` (solo se cambiato in update), un 422 sul campo si mostra sul campo.</criterion>
+    <criterion id="AC-021">Opportunita': campo dopo "Commerciale"; scegliendo un'anagrafica il partner viene ereditato; se l'utente ne aveva inserito uno diverso compare la conferma (testo che nomina il Partner commerciale) e "Mantieni" lo conserva.</criterion>
+    <criterion id="AC-022">Preventivo: campo dopo "Commerciale" (creazione, dettaglio, wizard con opportunita'); scegliendo l'opportunita' il partner viene precompilato; nel wizard non sovrascrive un valore toccato dall'utente.</criterion>
+    <criterion id="AC-023">Dialog provvigioni di riga: riga ruolo "Partner commerciale" con destinatario bloccato sul partner del preventivo (disabilitata se assente); riepilogo, margine e dettaglio del preventivo includono il totale del partner.</criterion>
+    <criterion id="AC-024">Configurazioni provvigioni: il select ruolo offre "Partner commerciale" con tipi destinatario referente/utente; run di liquidazione: checkbox del ruolo.</criterion>
+    <criterion id="AC-025">Contratto (dettaglio e colonna), report vendite agenti (colonna), conto economico (segmento e filtro), fatturazione (raggruppamento), info cliente commessa mostrano il partner.</criterion>
+    <criterion id="AC-026">Gestione Richieste: in pannello Lavora e Nuova richiesta il campo compare subito dopo "Commerciale" e viene inviato.</criterion>
+    <criterion id="AC-027">Guide in-app IT/EN aggiornate con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Solo librerie gia' presenti.
+    - Authz server-side identica a `commercial_id` (FieldPermission), FormRequest su ogni input, `safe()->only()`.
+    - Ordinamento/filtro di griglia da allow-list (RelationColumns/Catalog), mai input grezzo.
+    - Nessun comando distruttivo sul DB di sviluppo (niente migrate:fresh/rollback/seed); solo `php artisan migrate`.
+    - Test mirati in sviluppo (`XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/...`, Vitest per file); suite completa una
+      volta a fine feature. Typecheck con `npx tsc -b --force`.
+    - File: 300 soft / 500 hard (D-11). Fixture e test esistenti che elencano set esatti (ruoli, colonne, categorie,
+      chiavi meta) si aggiornano dichiarandoli REQUIREMENT CHANGED (spec 0417).
+    - Le modifiche non committate della spec 0415 / trasferimento anagrafica presenti al 2026-11-18 non si toccano:
+      i microtask che condividono quei file partono dopo il loro commit.
+  </constraints>
+
+</spec>

@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Gate;
  * Read-only `agent-sales-report` domain over `quotes` (spec 0365, D-4/D-5): the legacy "Report
  * Vendite Agenti". No row action, no bulk action, no editable cell. Rows are limited by
  * QuoteVisibilityScope (spec 0316), exactly like the Offerte grid. The relation columns
- * (`company_site`, `managers`, `quote_workflow_status`, `commercial`, `reporter`) reuse the
+ * (`company_site`, `managers`, `quote_workflow_status`, `commercial`, `commercial_partner`, `reporter`) reuse the
  * `quotes` domain's own filter/sort/distinct machinery; `registry` and `city` are the report's
  * own (AgentSalesReportRegistryColumns); `address`/`postal_code`/`phone`/`email` are projected
  * from the Registry card's primary address and primary contacts; `root_category`/`category`
@@ -74,7 +74,7 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
             'opportunity.registry.personalData.addresses' => static fn ($query) => $query->where('is_primary', true),
             'opportunity.registry.personalData.addresses.city',
             'opportunity.registry.personalData.contacts' => static fn ($query) => $query->where('is_primary', true),
-            'companySite', 'quoteWorkflowStatus', 'commercial', 'reporter', 'managers.avatar', 'offerLines.commissions',
+            'companySite', 'quoteWorkflowStatus', 'commercial', 'commercialPartner', 'reporter', 'managers.avatar', 'offerLines.commissions',
             ...AgentSalesReportCategoryColumns::eagerLoads(),
         ]);
     }
@@ -153,6 +153,7 @@ class AgentSalesReportTableDefinition extends AbstractTableDefinition
             'quote_workflow_status' => $this->summarizeStatus($row->quoteWorkflowStatus),
             'revenue_net' => $row->revenue_net,
             'commercial' => $this->summarize($row->commercial),
+            'commercial_partner' => $this->summarize($row->commercialPartner),
             'reporter' => $this->summarize($row->reporter),
             'revenue_net_after_reporter' => $this->revenueNetAfterReporter($row),
         ];

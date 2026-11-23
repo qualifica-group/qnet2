@@ -40,7 +40,8 @@ function supplierDirectionQuoteActor(): User
     }
 
     $user = User::factory()->create();
-    $user->givePermissionTo(['quotes.view', 'quotes.create', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
+    // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the actor sees the costs.
+    $user->givePermissionTo(['quotes.view', 'quotes.create', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web'), Permission::findOrCreate('quotes.viewCosts', 'web')]);
 
     return $user;
 }
@@ -341,7 +342,8 @@ it('AC-008: without the commission_type permission the direction cannot change, 
     Permission::findOrCreate('quotes.view');
     Permission::findOrCreate('quotes.update');
     $role = Role::create(['name' => 'commission-type-locked']);
-    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
+    // REQUIREMENT CHANGED (spec 0412): not a cost-permission test, so the actor sees the costs.
+    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web'), Permission::findOrCreate('quotes.viewCosts', 'web')]);
     $role->fieldPermissions()->create(['resource' => 'quotes', 'field' => 'commission_type', 'visible' => true, 'editable' => false, 'required' => false]);
     $actor = User::factory()->create();
     $actor->assignRole($role);

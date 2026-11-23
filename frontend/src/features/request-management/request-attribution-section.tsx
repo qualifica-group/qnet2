@@ -29,6 +29,8 @@ interface RequestAttributionSectionProps {
   reporter: RequestRelationRef | null
   /** "Commerciale" (spec 0357): the Offerta's commercial Referent. */
   commercial: RequestRelationRef | null
+  /** "Partner commerciale" (spec 0417): the Offerta's commercial partner Referent. */
+  commercialPartner: RequestRelationRef | null
   /** Spec 0059 D-3: the panel's persisted reward assignments, for the "abbinamento buono" control under the Segnalatore field. */
   rewards: RewardAssignmentRef[]
 }
@@ -58,6 +60,7 @@ export function RequestAttributionSection({
   source,
   reporter,
   commercial,
+  commercialPartner,
   rewards,
 }: RequestAttributionSectionProps) {
   const { t } = useTranslation()
@@ -138,6 +141,21 @@ export function RequestAttributionSection({
             defaultValue: 'Search a sales rep',
           })}
           selected={commercial}
+          {...selectLabels}
+        />
+
+        <RelationSelectField
+          control={control}
+          name="commercial_partner_id"
+          metaKey="commercial_partner_id"
+          label={t('requestManagement.workPanel.attribution.commercialPartner', {
+            defaultValue: 'Commercial partner',
+          })}
+          resource={REFERENTS_FOR_SELECT_RESOURCE}
+          searchPlaceholder={t('requestManagement.workPanel.attribution.commercialPartnerSearch', {
+            defaultValue: 'Search a commercial partner',
+          })}
+          selected={commercialPartner}
           {...selectLabels}
         />
       </div>

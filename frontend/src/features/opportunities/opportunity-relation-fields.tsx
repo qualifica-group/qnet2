@@ -94,6 +94,29 @@ export function OpportunityCommercialField({ control, selected }: SelectedFieldP
   )
 }
 
+/** "Partner commerciale": same picker and contacts recap as the Commerciale. */
+export function OpportunityCommercialPartnerField({ control, selected }: SelectedFieldProps) {
+  const { t } = useTranslation()
+  const selectLabels = useSelectLabels()
+  const commercialPartnerId = useWatch({ control, name: 'commercial_partner_id' })
+
+  return (
+    <div className={FIELD_STACK_CLASS}>
+      <RelationSelectField
+        control={control}
+        name="commercial_partner_id"
+        metaKey="commercial_partner_id"
+        label={t('opportunities.form.commercialPartner')}
+        resource={REFERENTS_FOR_SELECT_RESOURCE}
+        searchPlaceholder={t('opportunities.form.commercialPartnerSearch')}
+        selected={selected}
+        {...selectLabels}
+      />
+      <OpportunityContactRecap referentId={commercialPartnerId} />
+    </div>
+  )
+}
+
 /** "Supervisore": never required (directive 2026-07-21, it derives from the lead's Operatore, which may be empty). */
 export function OpportunitySupervisorField({ control, selected }: SelectedFieldProps) {
   const { t } = useTranslation()

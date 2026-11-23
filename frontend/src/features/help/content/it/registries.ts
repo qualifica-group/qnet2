@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "Un'anagrafica può avere più Referenti, oltre a un Commerciale e un Segnalatore. Uno dei Referenti è il **Referente principale** (di norma il primo inserito): è quello che opportunità e attività propongono quando scegli l'anagrafica.",
+            "Un'anagrafica può avere più Referenti, oltre a un Commerciale, un Partner commerciale e un Segnalatore. Uno dei Referenti è il **Referente principale** (Referente 1, di norma il primo inserito): è quello che opportunità e attività propongono quando scegli l'anagrafica. Un altro può essere il **Referente secondario** (Referente 2): se è vuoto, il prossimo referente che aggiungi lo diventa da solo (di norma il secondo inserito).",
             'Supervisore e Gestori account sono utenti di QNet, non referenti.',
             'Ogni Società sede appartiene a una Società aziendale; le Sedi operative sono indipendenti e si scelgono, per esempio, nelle opportunità.',
           ],
@@ -35,7 +35,7 @@ const guide: HelpGuide = {
             "La ricerca trova il nome o la ragione sociale (anche una parte interna), la partita IVA o il codice fiscale, un numero di telefono dell'anagrafica (principale o no, con o senza spazi) e il nome o il telefono di un referente collegato. Per partita IVA, codice fiscale, telefoni e referenti scrivi l'inizio della parola o del numero, almeno 3 caratteri: per esempio \"ros\" trova il referente Rossi, \"02 6885\" trova 02 6885 7892.",
             'Usa le schede sopra la tabella per separare le anagrafiche: Tutte, Persone fisiche o Aziende. La colonna Tipo mostra a quale gruppo appartiene ogni riga.',
             'Per restringere la ricerca usa i filtri sulle colonne, per esempio Fonte, Fornitore o Stato convenzione.',
-            "Le colonne Commerciale, Supervisore, Segnalatore e Operatori mostrano il team dell'anagrafica: Operatori riporta i Gestori account nel loro ordine. Puoi filtrarle per nome e ordinarle, tranne Operatori che si filtra soltanto.",
+            "Le colonne Commerciale, Partner commerciale, Supervisore, Segnalatore e Operatori mostrano il team dell'anagrafica: Operatori riporta i Gestori account nel loro ordine. Puoi filtrarle per nome e ordinarle, tranne Operatori che si filtra soltanto.",
             'Per vedere la scheda, apri il menu Azioni della riga e scegli Visualizza.',
           ],
         },
@@ -58,13 +58,13 @@ const guide: HelpGuide = {
           headers: ['Sezione', 'Cosa contiene'],
           rows: [
             ['Dati anagrafici', 'Ragione sociale (aziende) oppure Nome e Cognome (persone fisiche), codice fiscale, partita IVA e, per le persone fisiche, data e luogo di nascita.'],
-            ['Relazioni', 'Fonte, Settori merceologici, Commerciale e Segnalatore.'],
+            ['Relazioni', 'Fonte, Settori merceologici, Commerciale, Partner commerciale e Segnalatore.'],
             ['Team', 'Supervisore e Gestori account, in ordine di importanza dal primo in alto; riordinali con Sposta su e Sposta giù.'],
             ['Dati commerciali', 'Gruppo IVA, Fornitore, Fornitore qualificato (solo per i fornitori), Stato convenzione (In trattativa, Respinta o Concordata), Classe dimensionale, Numero dipendenti e Note convenzione.'],
             ['Note generali', "Il riquadro giallo, lo stesso di Gestione richieste (nel dettaglio in cima ai dati dell'anagrafica, nella creazione in cima alla colonna di destra): un testo libero (fino a 5000 caratteri) con ciò che chi apre l'anagrafica deve leggere per primo."],
             ['Contatti', 'Email, Telefono (obbligatorio), PEC, Fax e Sito web; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
             ['Indirizzi', 'Uno o più indirizzi, ciascuno con un Tipo sede: Sede legale, Consegna, Fatturazione o Sede operativa.'],
-            ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni: ogni card mostra il nome, sotto il suo Tipo referente (per esempio Amministratore, Contabilità o Titolare) e i contatti principali. Il Referente principale porta il badge Principale e si sceglie dalla riga **Referente principale** (solo tra i referenti collegati; se togli quello principale passa al primo rimasto).'],
+            ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni: ogni card mostra il nome, sotto il suo Tipo referente (per esempio Amministratore, Contabilità o Titolare) e i contatti principali. Il Referente principale porta il badge Principale e si sceglie dalla riga **Referente principale** (solo tra i referenti collegati; se togli quello principale passa al primo rimasto). Il Referente secondario porta il badge Secondario e si sceglie dalla riga **Referente secondario** tra gli altri referenti collegati, oppure Nessuno; quando è vuoto e aggiungi un referente, si imposta da solo su quello appena aggiunto (puoi cambiarlo o rimetterlo a Nessuno prima di salvare); se lo togli dai referenti o lo scegli come principale, il secondario resta vuoto. Sono il Referente 1 e il Referente 2 che la commessa mostra in Info cliente.'],
             ['Altri campi', "I campi personalizzati delle anagrafiche, tra cui Tag: scegli uno o più tag dall'elenco gestito nel modulo Tag. Compaiono anche nel dettaglio, raggruppati come nel modulo."],
           ],
         },
@@ -115,7 +115,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Fonte, Fornitore, Stato convenzione, Classe dimensionale, Commerciale, Supervisore, Segnalatore, Operatori) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Fonte, Fornitore, Stato convenzione, Classe dimensionale, Commerciale, Partner commerciale, Supervisore, Segnalatore, Operatori) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
@@ -184,7 +184,7 @@ const guide: HelpGuide = {
           items: [
             'Apri la scheda del modulo che ti serve.',
             'Premi il pulsante Nuova opportunità, Nuova offerta, Nuova commessa o Nuovo task sopra la tabella.',
-            "Compila il modulo: l'Opportunità e il Task partono già sull'anagrafica (l'opportunità prende anche Commerciale, Segnalatore, Supervisore e Gestori account del cliente); per l'Offerta e la Commessa la scelta dell'opportunità o dell'offerta propone solo quelle del cliente.",
+            "Compila il modulo: l'Opportunità e il Task partono già sull'anagrafica (l'opportunità prende anche Commerciale, Partner commerciale, Segnalatore, Supervisore e Gestori account del cliente); per l'Offerta e la Commessa la scelta dell'opportunità o dell'offerta propone solo quelle del cliente.",
             'Salva: la tabella della scheda si aggiorna.',
           ],
         },
@@ -229,7 +229,7 @@ const guide: HelpGuide = {
             'Se compare Possibile duplicato, in cima alla colonna di destra, controlla prima di continuare.',
             'Nei Contatti, nella colonna di destra, compila almeno il Telefono.',
             'Compila l\'indirizzo con il Tipo sede giusto; con Aggiungi indirizzo inserisci le altre sedi.',
-            'Apri le righe che ti servono: in Relazioni, se serve, Commerciale e Segnalatore; in Team Supervisore e Gestori account; in Referenti le persone di contatto. Conferma ogni riga con Fatto.',
+            'Apri le righe che ti servono: in Relazioni, se serve, Commerciale, Partner commerciale e Segnalatore; in Team Supervisore e Gestori account; in Referenti le persone di contatto. Conferma ogni riga con Fatto.',
             'Premi Salva.',
           ],
         },

@@ -22,12 +22,12 @@ final class AgentSalesReportDetailsExporter
     /** Offer header fields in the legacy order, keyed by the `lang` label. */
     private const array OFFER_LABELS = [
         'code', 'date', 'accepted', 'title', 'registry', 'address', 'zip_city', 'phone', 'email', 'company_site',
-        'status', 'revenue_net', 'consultancy', 'institution', 'managers', 'supervisor', 'commercial', 'reporter',
+        'status', 'revenue_net', 'consultancy', 'institution', 'managers', 'supervisor', 'commercial', 'commercial_partner', 'reporter',
     ];
 
     private const array LINE_LABELS = [
         'root_category', 'category', 'product', 'quantity', 'unit_price', 'amount', 'typology',
-        'supervisor_commission', 'commercial_commission', 'reporter_commission', 'net',
+        'supervisor_commission', 'commercial_commission', 'commercial_partner_commission', 'reporter_commission', 'net',
     ];
 
     public function __construct(private readonly ExportWriterFactory $writers) {}
@@ -83,12 +83,13 @@ final class AgentSalesReportDetailsExporter
             implode('; ', array_column($header['managers'], 'name')),
             $block['supervisor'],
             $header['commercial']['name'] ?? null,
+            $header['commercial_partner']['name'] ?? null,
             $header['reporter']['name'] ?? null,
         ];
     }
 
     /**
-     * Totals under the three commission columns; Netto is the offer's `revenue_net` less them.
+     * Totals under the four commission columns; Netto is the offer's `revenue_net` less them.
      *
      * @param  array<string, mixed>  $block
      * @return list<string|float>
@@ -98,10 +99,11 @@ final class AgentSalesReportDetailsExporter
         $lines = collect($block['lines']);
         $supervisor = round($lines->sum('supervisor_commission'), self::DECIMALS);
         $commercial = round($lines->sum('commercial_commission'), self::DECIMALS);
+        $commercialPartner = round($lines->sum('commercial_partner_commission'), self::DECIMALS);
         $reporter = round($lines->sum('reporter_commission'), self::DECIMALS);
-        $net = round((float) $block['header']['revenue_net'] - $supervisor - $commercial - $reporter, self::DECIMALS);
+        $net = round((float) $block['header']['revenue_net'] - $supervisor - $commercial - $commercialPartner - $reporter, self::DECIMALS);
 
-        return [__('agent_sales_report.export.total_commissions'), '', '', '', '', '', '', $supervisor, $commercial, $reporter, $net];
+        return [__('agent_sales_report.export.total_commissions'), '', '', '', '', '', '', $supervisor, $commercial, $commercialPartner, $reporter, $net];
     }
 
     private function date(?string $isoDate): string

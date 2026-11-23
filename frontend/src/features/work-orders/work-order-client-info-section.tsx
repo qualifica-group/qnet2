@@ -92,6 +92,9 @@ export function WorkOrderClientInfoSection({ registry, info }: WorkOrderClientIn
         <RecordField label={t('workOrders.detail.clientInfo.commercial')}>
           <ReferentValue referent={info.commercial} />
         </RecordField>
+        <RecordField label={t('workOrders.detail.clientInfo.commercialPartner')}>
+          <ReferentValue referent={info.commercial_partner} />
+        </RecordField>
         <RecordField label={t('workOrders.detail.clientInfo.sectors')}>
           <ChipList items={info.sectors} />
         </RecordField>

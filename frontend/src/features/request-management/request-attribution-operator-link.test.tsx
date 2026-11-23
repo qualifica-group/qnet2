@@ -129,6 +129,8 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     referent: { id: 20, name: 'Mario Rossi' },
     commercial_id: null,
     commercial: null,
+    commercial_partner_id: null,
+    commercial_partner: null,
     source_id: 30,
     source: { id: 30, name: 'Web' },
     reporter_id: null,
