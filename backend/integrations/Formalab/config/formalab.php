@@ -15,6 +15,14 @@ return [
     'token_ttl_minutes' => (int) env('FORMALAB_TOKEN_TTL_MINUTES', 1440),
 
     'sync_interval_minutes' => (int) env('FORMALAB_SYNC_INTERVAL_MINUTES', 60),
+
+    // The catalogue sync runs on its own queue, served by one worker process:
+    // a long sync never holds up the other queues and two syncs never overlap.
+    'queue' => env('FORMALAB_QUEUE', 'formalab'),
+
+    // The worker kills a sync running longer than this (a full sync takes
+    // 5-10 minutes). Must stay below queue.connections.database.retry_after.
+    'sync_timeout_seconds' => (int) env('FORMALAB_SYNC_TIMEOUT_SECONDS', 1200),
     'log_retention_days' => (int) env('FORMALAB_LOG_RETENTION_DAYS', 90),
 
     // Shared secret Formalab sends in X-Formalab-Token. Empty: no inbound route.

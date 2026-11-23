@@ -10,11 +10,11 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Integrations\Formalab\Console\SyncClassesCommand;
 use Integrations\Formalab\Health\FormalabHealthCheck;
-use Integrations\Formalab\Jobs\SyncFormalabClasses;
 use Integrations\Formalab\Listeners\FollowClassSelect;
 use Integrations\Formalab\Models\FormalabCallLog;
 use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabSyncRun;
+use Integrations\Formalab\Services\CatalogSyncLauncher;
 use Integrations\Formalab\Services\MappedFieldLock;
 use Integrations\Formalab\Support\Trigger;
 use Integrations\Formalab\Tables\FormalabCallLogsTableDefinition;
@@ -140,7 +140,8 @@ class FormalabServiceProvider extends ServiceProvider
         $minutes = max(1, (int) config('formalab.sync_interval_minutes'));
         $cron = $minutes >= self::MINUTES_PER_HOUR ? self::HOURLY_CRON : "*/{$minutes} * * * *";
 
-        $schedule->job(new SyncFormalabClasses(Trigger::Schedule))
+        // Opens the run and queues it, unless a sync is still running (then this turn is skipped)
+        $schedule->call(fn () => $this->app->make(CatalogSyncLauncher::class)->queue(Trigger::Schedule))
             ->name('formalab:sync-classes')
             ->cron($cron)
             ->withoutOverlapping()

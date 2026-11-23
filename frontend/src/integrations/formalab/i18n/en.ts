@@ -23,6 +23,7 @@ export const formalabEn = {
   actions: {
     sync: 'Sync now',
     syncQueued: 'Sync started.',
+    syncRunning: 'Sync running',
     syncError: 'Could not start the sync.',
     testConnection: 'Test connection',
     testOk: 'Connection successful ({{ms}} ms).',

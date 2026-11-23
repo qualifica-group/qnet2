@@ -2,9 +2,7 @@
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Integrations\Formalab\Models\FormalabClass;
-use Integrations\Formalab\Models\FormalabSyncRun;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
-use Integrations\Formalab\Services\ClassCatalogSync;
 use Integrations\Formalab\Services\EditionRefresher;
 use Integrations\Formalab\Services\StatusReport;
 use Integrations\Formalab\Support\Trigger;
@@ -12,22 +10,17 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
-function formalabRemovedSync(): FormalabSyncRun
-{
-    return app(ClassCatalogSync::class)->handle(Trigger::Manual);
-}
-
 // D-12
 it('removes on sync the classes Formalab no longer lists, unlinking their work orders and emptying their class select', function () {
     formalabEnable();
     $catalog = formalabFakeApi([formalabClassPayload(5), formalabClassPayload(6)]);
-    formalabRemovedSync();
+    formalabSync();
     $kept = formalabGolWorkOrder(['gol_corso' => 5]);
     $orphan = formalabGolWorkOrder(['gol_corso' => 6, 'gol_notice' => 'keep me']);
     expect(FormalabWorkOrderLink::query()->count())->toBe(2);
 
     $catalog['classes'] = [formalabClassPayload(5)];
-    $run = formalabRemovedSync();
+    $run = formalabSync();
 
     $values = $orphan->refresh()->attribute_values;
     expect($run->outcome)->toBe('success')->and($run->classes_removed)->toBe(1)
@@ -43,11 +36,11 @@ it('removes on sync the classes Formalab no longer lists, unlinking their work o
 it('removes nothing when Formalab lists no class at all', function () {
     formalabEnable();
     $catalog = formalabFakeApi([formalabClassPayload(5)]);
-    formalabRemovedSync();
+    formalabSync();
     formalabGolWorkOrder(['gol_corso' => 5]);
 
     $catalog['classes'] = [];
-    $run = formalabRemovedSync();
+    $run = formalabSync();
 
     expect($run->classes_removed)->toBe(0)
         ->and(FormalabClass::query()->count())->toBe(1)
@@ -57,11 +50,11 @@ it('removes nothing when Formalab lists no class at all', function () {
 it('removes nothing when the page cap stopped the read before the last page', function () {
     formalabEnable(['page_size' => 1, 'max_pages' => 1]);
     $catalog = formalabFakeApi([formalabClassPayload(5)]);
-    formalabRemovedSync();
+    formalabSync();
     formalabGolWorkOrder(['gol_corso' => 5]);
 
     $catalog['classes'] = [formalabClassPayload(7), formalabClassPayload(8)];
-    $run = formalabRemovedSync();
+    $run = formalabSync();
 
     expect($run->classes_removed)->toBe(0)
         ->and(FormalabClass::query()->pluck('edition_id')->sort()->values()->all())->toBe([5, 7])
@@ -71,7 +64,7 @@ it('removes nothing when the page cap stopped the read before the last page', fu
 it('removes a class Formalab answers 404 for on the work order sync', function () {
     formalabEnable();
     $catalog = formalabFakeApi([formalabClassPayload(5)]);
-    formalabRemovedSync();
+    formalabSync();
     $workOrder = formalabGolWorkOrder(['gol_corso' => 5]);
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
 
@@ -87,7 +80,7 @@ it('removes a class Formalab answers 404 for on the work order sync', function (
 it('removes a class Formalab answers 404 for on a webhook refresh', function () {
     formalabEnable();
     $catalog = formalabFakeApi([formalabClassPayload(5), formalabClassPayload(6)]);
-    formalabRemovedSync();
+    formalabSync();
     formalabGolWorkOrder(['gol_corso' => 6]);
 
     $catalog['classes'] = [formalabClassPayload(5)];

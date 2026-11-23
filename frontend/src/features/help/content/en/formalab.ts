@@ -44,7 +44,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Button', 'What it does'],
           rows: [
-            ['**Sync now**', 'Starts the sync right away: it rereads the class catalogue, aligns the work orders to the edition chosen in their select (matched by edition ID only) and updates the fields of the linked work orders. The status refreshes a few seconds after the click.'],
+            ['**Sync now**', 'Starts the sync right away: it rereads the class catalogue, aligns the work orders to the edition chosen in their select (matched by edition ID only) and updates the fields of the linked work orders. **One sync runs at a time**: until the running one (the automatic one included) has finished, the button stays disabled and shows **Sync running**, and the page refreshes on its own when it ends.'],
             ['**Test connection**', 'Tries to reach the service and shows the response time or the reason for the error.'],
           ],
         },
@@ -66,7 +66,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Under **External integrations › Formalab › Classes** you find the **class catalogue** read from Formalab, read-only: edition ID, code, title, class and course status, dates, hours, site, learners and last read. It is the same list the work order picks its class from. **Sync now** starts reading the catalogue right away (the sync is queued: reload the table after a few seconds).',
+          text: 'Under **External integrations › Formalab › Classes** you find the **class catalogue** read from Formalab, read-only: edition ID, code, title, class and course status, dates, hours, site, learners and last read. It is the same list the work order picks its class from. **Sync now** starts reading the catalogue right away (the sync is queued and takes a few minutes: while it runs the button is disabled; reload the table once it has finished).',
         },
       ],
     },
@@ -141,6 +141,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'Every **hour** QNet rereads the class catalogue and links the work orders of the linked categories whose chosen edition is now in the catalogue (always by edition ID). If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone. When you choose, change or clear a work order\'s class, the link is updated as soon as you save.',
+        },
+        {
+          type: 'paragraph',
+          text: 'If a sync is still running at the scheduled time, that turn is skipped: two syncs never start together. A sync interrupted before finishing (for example by a server restart) shows in **Last sync** as **Failed** with the message "Sync interrupted"; the next one starts over.',
         },
         {
           type: 'paragraph',

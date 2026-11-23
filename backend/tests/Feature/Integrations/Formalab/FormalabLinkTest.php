@@ -6,8 +6,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
-use Integrations\Formalab\Services\ClassCatalogSync;
-use Integrations\Formalab\Support\Trigger;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -19,7 +17,7 @@ const FORMALAB_SYNC_SUFFIX = '/sync';
 function formalabCatalog(array $classes): ArrayObject
 {
     $catalog = formalabFakeApi($classes);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
 
     return $catalog;
 }
@@ -150,7 +148,7 @@ it('links on sync by edition id, the twin labels included, and leaves linked wor
     $alreadyLinked = formalabGolWorkOrder(['gol_corso' => 4]);
     $manual = FormalabWorkOrderLink::query()->create(['work_order_id' => $alreadyLinked->id, 'edition_id' => 4]);
 
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
 
     expect(FormalabWorkOrderLink::query()->where('work_order_id', $matching->id)->value('edition_id'))->toBe(1)
         ->and(FormalabWorkOrderLink::query()->where('work_order_id', $twin->id)->value('edition_id'))->toBe(3)

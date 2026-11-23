@@ -35,18 +35,18 @@ final class ClassCatalogSync
         private readonly RemovedClassCleanup $cleanup,
     ) {}
 
-    public function handle(Trigger $trigger): FormalabSyncRun
+    /**
+     * Runs the sync of a run opened by CatalogSyncLauncher, the only entry
+     * point: it keeps two syncs from ever running together.
+     */
+    public function handle(FormalabSyncRun $run): FormalabSyncRun
     {
-        // Step 1: open the run
-        $run = FormalabSyncRun::query()->create([
-            'trigger' => $trigger->value,
-            'outcome' => FormalabSyncRun::OUTCOME_RUNNING,
-            'started_at' => now(),
-        ]);
+        // Step 1: the run starts now (it was opened when requested, maybe while queued)
+        $run->update(['started_at' => now()]);
 
         try {
             // Step 2: read every page, then write the catalogue atomically
-            ['rows' => $rows, 'complete' => $complete] = $this->fetchAll($trigger);
+            ['rows' => $rows, 'complete' => $complete] = $this->fetchAll(Trigger::from($run->trigger));
             DB::transaction(fn (): int => $this->catalog->upsert($rows));
 
             // Step 3: classes Formalab no longer lists are removed, with their links (only on a complete, non-empty read)

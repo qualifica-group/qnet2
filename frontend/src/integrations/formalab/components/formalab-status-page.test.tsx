@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
 import FormalabStatusPage from '@/integrations/formalab/components/formalab-status-page'
 import { createWrapper } from '@/integrations/formalab/test-support'
@@ -33,6 +34,7 @@ const status: FormalabStatus = {
   credentials_configured: true,
   inbound_enabled: false,
   sync_interval_minutes: 10,
+  sync_in_progress: false,
   last_sync: {
     id: 1,
     trigger: 'manual',
@@ -123,6 +125,33 @@ describe('FormalabStatusPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sincronizza ora' }))
 
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Sincronizzazione avviata.'))
+  })
+
+  // User request 2026-11-23: never two syncs together
+  it('disables the sync while one is running', async () => {
+    fetchStatusMock.mockResolvedValue({ ...status, sync_in_progress: true })
+    const { Wrapper } = createWrapper()
+
+    render(<FormalabStatusPage />, { wrapper: Wrapper })
+
+    expect(await screen.findByRole('button', { name: 'Sincronizzazione in corso' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Sincronizza ora' })).not.toBeInTheDocument()
+  })
+
+  it('shows the server reason when the sync is refused, and rereads the status', async () => {
+    syncMock.mockRejectedValue(
+      new AxiosError('Conflict', '409', undefined, undefined, {
+        status: 409,
+        data: { success: false, message: 'Sincronizzazione gia in corso' },
+      } as AxiosResponse),
+    )
+    const { Wrapper } = createWrapper()
+    render(<FormalabStatusPage />, { wrapper: Wrapper })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sincronizza ora' }))
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Sincronizzazione gia in corso'))
+    await waitFor(() => expect(fetchStatusMock).toHaveBeenCalledTimes(2))
   })
 
   it('reports the connection latency, or the failure', async () => {

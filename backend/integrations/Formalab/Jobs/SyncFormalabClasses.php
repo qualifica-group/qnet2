@@ -4,27 +4,44 @@ declare(strict_types=1);
 
 namespace Integrations\Formalab\Jobs;
 
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Integrations\Formalab\Models\FormalabSyncRun;
+use Integrations\Formalab\Services\CatalogSyncLauncher;
 use Integrations\Formalab\Services\ClassCatalogSync;
-use Integrations\Formalab\Support\Trigger;
+use Throwable;
 
 /**
- * Queued catalogue sync. Unique: a second dispatch while one is pending or
- * running is dropped instead of piling up.
+ * Queued catalogue sync of a run opened by CatalogSyncLauncher, on the
+ * Formalab queue. Never retried: a killed or timed-out sync closes its run as
+ * interrupted and the next request starts a fresh one.
  */
-class SyncFormalabClasses implements ShouldBeUnique, ShouldQueue
+class SyncFormalabClasses implements ShouldQueue
 {
     use Queueable;
 
-    /** Seconds the uniqueness lock outlives a crashed worker. */
-    public int $uniqueFor = 900;
+    public int $tries = 1;
 
-    public function __construct(public readonly Trigger $trigger = Trigger::Schedule) {}
+    public int $timeout;
+
+    public function __construct(public readonly int $runId)
+    {
+        $this->onQueue((string) config('formalab.queue'));
+        $this->timeout = (int) config('formalab.sync_timeout_seconds');
+    }
 
     public function handle(ClassCatalogSync $sync): void
     {
-        $sync->handle($this->trigger);
+        $run = FormalabSyncRun::query()->find($this->runId);
+
+        // A run closed while the job waited (abandoned, then closed by a newer request) is not run again.
+        if ($run?->outcome === FormalabSyncRun::OUTCOME_RUNNING) {
+            $sync->handle($run);
+        }
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        app(CatalogSyncLauncher::class)->interrupt($this->runId);
     }
 }

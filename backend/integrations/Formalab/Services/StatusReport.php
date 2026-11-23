@@ -18,6 +18,7 @@ final class StatusReport
     public function __construct(
         private readonly CourseFieldWriter $courseFields,
         private readonly LinkBackfill $backfill,
+        private readonly CatalogSyncLauncher $launcher,
     ) {}
 
     /**
@@ -33,6 +34,7 @@ final class StatusReport
             'credentials_configured' => (string) config('formalab.user_email') !== '' && (string) config('formalab.user_password') !== '',
             'inbound_enabled' => (string) config('formalab.inbound_token') !== '',
             'sync_interval_minutes' => (int) config('formalab.sync_interval_minutes'),
+            'sync_in_progress' => $this->launcher->inProgress(),
             'last_sync' => $this->lastSync(),
             'classes_count' => FormalabClass::query()->count(),
             'linked_work_orders_count' => FormalabWorkOrderLink::query()->count(),

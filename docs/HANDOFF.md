@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Formalab: coda dedicata `formalab`, un solo sync alla volta (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+
+- Causa (prod, letta sulla copia `qnet2`): i sync schedulati delle 16:50/17:10/17:30 morivano a meta' (worker ucciso: deploy o timeout), 3 job `SyncFormalabClasses` restavano `reserved` sulla coda `default` e i run #2/#4/#5 `running` per sempre. Il job non aveva `$tries`/`$timeout`/`failed()`.
+- Ingresso unico `Services/CatalogSyncLauncher` (`queue()`, `open()`, `inProgress()`, `interrupt()`): sotto lock `formalab:catalog-sync:open` chiude i run abbandonati (`running` oltre `sync_timeout_seconds` + 300 s), rifiuta se c'e' un sync catalogo (trigger schedule|manual) `running`, altrimenti apre il run e accoda il job. I run webhook/work_order non contano.
+- `Jobs/SyncFormalabClasses(int $runId)`: coda `config('formalab.queue')` (env `FORMALAB_QUEUE`, default `formalab`), `$tries = 1`, `$timeout = formalab.sync_timeout_seconds` (env `FORMALAB_SYNC_TIMEOUT_SECONDS`, default 1200, sotto retry_after 1900), `failed()` -> `interrupt()`; se il run e' gia' chiuso non gira. Niente piu' `ShouldBeUnique`.
+- `ClassCatalogSync::handle(FormalabSyncRun $run)` (prima `handle(Trigger)`): riceve il run aperto e ne reimposta `started_at` all'avvio reale. Comando `formalab:sync-classes` = `open()` + `handle()` inline, errore se gia' in corso. Schedule = `$schedule->call(launcher->queue(Schedule))`, nome `formalab:sync-classes` invariato.
+- API: `POST /sync` -> 409 `sync_already_running` se in corso; `GET /status` + `sync_in_progress: boolean`. Messaggi nuovi `sync_already_running`, `sync_interrupted` (IT/EN).
+- Frontend: componente condiviso `components/sync-button.tsx` (pagine stato e classi), disattivato con "Sincronizzazione in corso" e icona che gira; `useFormalabStatus` rilegge ogni 5 s (`SYNC_POLL_INTERVAL_MS`) finche' `sync_in_progress`; tolto `SYNC_REFETCH_DELAY_MS`. Guida `formalab` IT/EN aggiornata.
+- Test: `FormalabSyncQueueTest` (+9), helper condiviso `formalabSync()` in `tests/Helpers/FormalabHelpers.php` al posto di `app(ClassCatalogSync::class)->handle(Trigger::Manual)` e delle funzioni locali `runFormalabSync`/`formalabRemovedSync`. `tests/Feature/Integrations/Formalab` 90/90 con `FORMALAB_ENABLED=false`; Vitest formalab 27/27, help 165/165, ESLint e `tsc -b --force` puliti.
+- PREESISTENTE da sapere: il `.env` locale ha `FORMALAB_ENABLED=true` e `phpunit.xml` non lo fissa, quindi 7 test di attivazione/health/lock falliscono se lanciati senza `FORMALAB_ENABLED=false`.
+- `composer dev`: nuovo listener `queue:listen --queue=formalab --tries=1 --timeout=0`.
+- **Deploy (obbligatorio):** worker dedicato a UN SOLO processo `php artisan queue:work --queue=formalab --tries=1 --timeout=1260` (timeout del worker >= quello del job). Senza, il sync resta "in corso" in coda e dopo 25 min viene chiuso come interrotto. Dopo il deploy cancellare in prod le 3 righe `jobs` 22281/22310/22411 (coda `default`, payload vecchio con `trigger`: ripresi fallirebbero); i run #2/#4/#5 si chiudono da soli come interrotti alla prima richiesta (al piu' il giro orario).
+- Manuale Claude Docs: sezione Formalab › Sincronizza ora / Sincronizzazione automatica da allineare alla guida in-app.
+
 ## Formalab: Nome corso = select sulle classi, abbinamento solo per edition_id, menu "Integrazioni esterne" (spec 0426, 2026-11-23) — VERDE MIRATO, NON COMMITTATO, MIGRAZIONE E SEEDER NON ESEGUITI SU qnet2
 
 - Tabella d'appoggio = `formalab_classes` (gemella di `classi` legacy). Invariante nuova `id = edition_id` (mapper + migrazione `2026_11_23_110000_align_formalab_class_ids_with_edition_ids`, due passaggi senza collisioni): il campo relazione salva l'id, quindi salva l'edition_id.

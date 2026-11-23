@@ -58,6 +58,20 @@
       `*/N`), senza sovrapposizioni, comando `formalab:sync-classes`. Upsert per edition_id in
       formalab_classes con payload_hash; le classi non piu' restituite restano (last_seen_at
       vecchio). Ogni esecuzione e' una riga di formalab_sync_runs.
+    - D-4bis [REQUIREMENT CHANGED, richiesta utente 2026-11-23] Coda dedicata e un solo sync alla
+      volta. In produzione i sync schedulati morivano a meta' (processo del worker ucciso: deploy o
+      timeout) lasciando job "reserved" in `jobs` e run `running` per sempre. Ora:
+      `CatalogSyncLauncher` e' l'unico ingresso (pulsante, schedule, comando): sotto un lock apre il
+      run `running` al momento della richiesta (copre attesa in coda + esecuzione) solo se non c'e'
+      gia' un sync catalogo (trigger schedule|manual) `running`; altrimenti rifiuta (POST 409, turno
+      schedulato saltato, comando in errore). Job `SyncFormalabClasses(runId)` sulla coda
+      `config('formalab.queue')` (env FORMALAB_QUEUE, default `formalab`, un worker a un solo
+      processo), `$tries = 1`, `$timeout = FORMALAB_SYNC_TIMEOUT_SECONDS` (default 1200, sotto
+      retry_after 1900), `failed()` chiude il run come interrotto; un job il cui run e' gia' chiuso
+      non gira. Un run `running` piu' vecchio di timeout + 300 s (worker ucciso senza failed())
+      non blocca piu' e viene chiuso come interrotto alla richiesta successiva. Status espone
+      `sync_in_progress`; la UI disattiva "Sincronizza ora" (pagine stato e classi) e rilegge lo
+      stato ogni 5 s finche' e' in corso.
     - D-5 [REQUIREMENT CHANGED, decisione utente 2026-11-20] Collegamento commessa -> edizione:
       tabella formalab_work_order_links (una per commessa). L'edizione NON si sceglie a mano: la
       scheda "Formalab" ha solo "Sincronizza", che trova l'unica classe del catalogo con label
@@ -135,6 +149,7 @@
         credentials_configured: boolean,
         inbound_enabled: boolean,           // FORMALAB_INBOUND_TOKEN valorizzato
         sync_interval_minutes: number,
+        sync_in_progress: boolean,          // D-4bis: sync catalogo in coda o in esecuzione
         last_sync: null | { id, trigger: "schedule"|"manual"|"webhook"|"work_order", outcome: "running"|"success"|"failure",
                             started_at, finished_at|null, classes_synced: number, work_orders_updated: number, error_message: string|null,
                             warning_message: string|null },
@@ -147,6 +162,7 @@
 
     <endpoint method="POST" path="/api/integrations/formalab/sync" auth="super-admin">
       <response status="202">{ success, message, data: null }  // job accodato (trigger manual)</response>
+      <errors>409 { success: false, message } sync catalogo gia' in coda o in corso (D-4bis)</errors>
     </endpoint>
 
     <endpoint method="POST" path="/api/integrations/formalab/test-connection" auth="super-admin">
@@ -226,6 +242,7 @@
     <criterion id="AC-011">Health check: configurazione mancante -> down; connessione ok e sync recente -> ok; sync piu' vecchio di 3 intervalli -> degraded; fallimenti nelle 24h -> degraded.</criterion>
     <criterion id="AC-012">Prune: log e sync run oltre FORMALAB_LOG_RETENTION_DAYS eliminati da model:prune.</criterion>
     <criterion id="AC-013">Frontend: con integrazione non attiva nessuna scheda Formalab sulla commessa e nessuna rotta /dev/formalab; attiva: scheda visibile su commessa eligible o collegata, scelta edizione, scollega; pagina stato con card, azioni e tabella log.</criterion>
+    <criterion id="AC-015">D-4bis: sync accodato su `formalab` con tries 1 e timeout; secondo POST mentre e' in corso -> 409 e nessun nuovo job; turno schedulato saltato se in corso; run abbandonato oltre timeout+300 s chiuso come interrotto e non blocca; failed() chiude il run; job di un run gia' chiuso non chiama Formalab; comando rifiutato se in corso; UI: pulsante disattivato con "Sincronizzazione in corso" su pagina stato e classi.</criterion>
     <criterion id="AC-014">Guida in-app `formalab` IT/EN, help-content-parity verde.</criterion>
   </acceptance_criteria>
 

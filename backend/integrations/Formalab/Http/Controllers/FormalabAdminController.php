@@ -8,7 +8,7 @@ use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use Illuminate\Http\JsonResponse;
 use Integrations\Formalab\Exceptions\FormalabException;
-use Integrations\Formalab\Jobs\SyncFormalabClasses;
+use Integrations\Formalab\Services\CatalogSyncLauncher;
 use Integrations\Formalab\Services\FormalabClient;
 use Integrations\Formalab\Services\StatusReport;
 use Integrations\Formalab\Support\Trigger;
@@ -23,6 +23,7 @@ class FormalabAdminController extends BaseApiController
     public function __construct(
         private readonly StatusReport $statusReport,
         private readonly FormalabClient $client,
+        private readonly CatalogSyncLauncher $launcher,
     ) {}
 
     /**
@@ -38,12 +39,15 @@ class FormalabAdminController extends BaseApiController
     }
 
     /**
-     * POST /api/integrations/formalab/sync: queues the catalogue sync.
+     * POST /api/integrations/formalab/sync: queues the catalogue sync, 409
+     * while one is already running.
      */
     public function sync(): JsonResponse
     {
         try {
-            SyncFormalabClasses::dispatch(Trigger::Manual);
+            if ($this->launcher->queue(Trigger::Manual) === null) {
+                return $this->fail(__('formalab::messages.sync_already_running'), HttpStatusEnum::CONFLICT->value);
+            }
 
             return $this->ok(null, __('formalab::messages.sync_queued'), HttpStatusEnum::ACCEPTED);
         } catch (Throwable $exception) {

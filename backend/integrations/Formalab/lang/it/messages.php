@@ -10,6 +10,8 @@ return [
     'course_name_missing' => 'Scegli la classe Formalab nel campo della commessa mappato sul Nome corso / edizione.',
     'invalid_token' => 'Token Formalab non valido o mancante.',
     'sync_queued' => 'Sincronizzazione Formalab accodata.',
+    'sync_already_running' => 'Una sincronizzazione Formalab e\' gia\' in corso: attendi che finisca.',
+    'sync_interrupted' => 'Sincronizzazione interrotta prima di finire (processo fermato o timeout): la prossima riparte da capo.',
     'course_fields_missing' => 'Campi mappati non piu\' presenti tra gli attributi, quindi non aggiornati: :codes.',
     'category' => [
         'enabled_inherited' => 'Il collegamento a Formalab si decide sulla categoria radice: questa categoria lo eredita.',

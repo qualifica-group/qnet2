@@ -10,6 +10,8 @@ return [
     'course_name_missing' => 'Choose the Formalab class in the work order field mapped to the course / edition name.',
     'invalid_token' => 'Invalid or missing Formalab token.',
     'sync_queued' => 'Formalab synchronization queued.',
+    'sync_already_running' => 'A Formalab sync is already running: wait for it to finish.',
+    'sync_interrupted' => 'Sync interrupted before finishing (process stopped or timed out): the next one starts over.',
     'course_fields_missing' => 'Mapped fields no longer among the attributes, so not updated: :codes.',
     'category' => [
         'enabled_inherited' => 'The Formalab link is decided on the root category: this category inherits it.',

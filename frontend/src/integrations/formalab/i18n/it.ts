@@ -23,6 +23,7 @@ export const formalabIt = {
   actions: {
     sync: 'Sincronizza ora',
     syncQueued: 'Sincronizzazione avviata.',
+    syncRunning: 'Sincronizzazione in corso',
     syncError: 'Impossibile avviare la sincronizzazione.',
     testConnection: 'Verifica connessione',
     testOk: 'Connessione riuscita ({{ms}} ms).',

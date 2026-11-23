@@ -23,6 +23,8 @@ export interface FormalabStatus {
   credentials_configured: boolean
   inbound_enabled: boolean
   sync_interval_minutes: number
+  /** A catalogue sync is queued or running: another one is refused (409) until it ends. */
+  sync_in_progress: boolean
   last_sync: FormalabSyncRun | null
   classes_count: number
   linked_work_orders_count: number

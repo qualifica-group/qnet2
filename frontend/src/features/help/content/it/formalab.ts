@@ -44,7 +44,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Pulsante', 'Cosa fa'],
           rows: [
-            ['**Sincronizza ora**', 'Avvia subito la sincronizzazione: rilegge il catalogo classi, allinea le commesse all\'edizione scelta nella loro select (abbinamento solo per ID edizione) e aggiorna i campi delle commesse collegate. Lo stato si aggiorna a pochi secondi dal clic.'],
+            ['**Sincronizza ora**', 'Avvia subito la sincronizzazione: rilegge il catalogo classi, allinea le commesse all\'edizione scelta nella loro select (abbinamento solo per ID edizione) e aggiorna i campi delle commesse collegate. Si esegue **una sincronizzazione alla volta**: finché quella avviata (anche quella automatica) non è finita il pulsante resta disattivato e mostra **Sincronizzazione in corso**, e la pagina si aggiorna da sola quando termina.'],
             ['**Verifica connessione**', 'Prova a contattare il servizio e mostra il tempo di risposta oppure il motivo dell\'errore.'],
           ],
         },
@@ -66,7 +66,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In **Integrazioni esterne › Formalab › Classi** trovi il **catalogo delle classi** letto da Formalab, in sola lettura: ID edizione, codice, titolo, stato classe e corso, date, ore, sede, discenti e ultima lettura. È lo stesso elenco da cui la commessa sceglie la classe. Il pulsante **Sincronizza ora** avvia subito la lettura del catalogo (la sincronizzazione parte in coda: ricarica la tabella dopo qualche secondo).',
+          text: 'In **Integrazioni esterne › Formalab › Classi** trovi il **catalogo delle classi** letto da Formalab, in sola lettura: ID edizione, codice, titolo, stato classe e corso, date, ore, sede, discenti e ultima lettura. È lo stesso elenco da cui la commessa sceglie la classe. Il pulsante **Sincronizza ora** avvia subito la lettura del catalogo (la sincronizzazione parte in coda e dura alcuni minuti: mentre è in corso il pulsante è disattivato; ricarica la tabella quando è finita).',
         },
       ],
     },
@@ -141,6 +141,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'Ogni **ora** QNet rilegge il catalogo delle classi e collega le commesse delle categorie collegate che hanno scelto un\'edizione ora presente nel catalogo (sempre per ID edizione). Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata. Quando scegli, cambi o svuoti la classe di una commessa, il collegamento si aggiorna subito al salvataggio.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Se all\'ora prevista è ancora in corso una sincronizzazione, quel giro viene saltato: due sincronizzazioni non partono mai insieme. Una sincronizzazione interrotta prima di finire (per esempio per un riavvio del server) compare in **Ultima sincronizzazione** come **Fallita** con il messaggio "Sincronizzazione interrotta"; la successiva riparte da capo.',
         },
         {
           type: 'paragraph',

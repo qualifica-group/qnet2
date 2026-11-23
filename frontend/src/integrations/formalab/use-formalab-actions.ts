@@ -6,9 +6,6 @@ import { startFormalabSync, testFormalabConnection } from '@/integrations/formal
 import { serverMessage } from '@/integrations/formalab/error-message'
 import { formalabKeys } from '@/integrations/formalab/query-keys'
 
-/** The sync is queued (202): give the job a moment before rereading the status. */
-export const SYNC_REFETCH_DELAY_MS = 3000
-
 /** The three super-admin actions of the status page, each with its own toast. */
 export function useFormalabActions() {
   const { t } = useTranslation('formalab')
@@ -20,11 +17,10 @@ export function useFormalabActions() {
 
   const sync = useMutation({
     mutationFn: startFormalabSync,
-    onSuccess: () => {
-      toast.success(t('actions.syncQueued'))
-      window.setTimeout(() => void refreshStatus(), SYNC_REFETCH_DELAY_MS)
-    },
+    onSuccess: () => toast.success(t('actions.syncQueued')),
+    // 409: a sync is already running; either way the status tells where it stands
     onError: (error) => toast.error(serverMessage(error, t('actions.syncError'))),
+    onSettled: () => void refreshStatus(),
   })
 
   const testConnection = useMutation({
