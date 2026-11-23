@@ -192,7 +192,7 @@ it('AC-006: a note submitted with quote_id is 422 and meta.quotes is empty', fun
         ->assertJsonPath('meta.quotes', []);
 });
 
-it('AC-007: the deep link is /work-orders/{id} for a recipient who sees it, null otherwise', function () {
+it('AC-007: the deep link opens the Note tab of /work-orders/{id} for a recipient who sees it, null otherwise', function () {
     $member = workOrderNoteActor(['view']);
     $stranger = workOrderNoteActor(['view']);
     $unpermitted = workOrderNoteActor([]);
@@ -201,7 +201,7 @@ it('AC-007: the deep link is /work-orders/{id} for a recipient who sees it, null
     $workOrder->participants()->attach($unpermitted, ['position' => 1]);
     $notable = app(WorkOrderNotable::class);
 
-    expect($notable->deepLinkPath($workOrder, $member, null))->toBe("/work-orders/{$workOrder->id}")
+    expect($notable->deepLinkPath($workOrder, $member, null))->toBe("/work-orders/{$workOrder->id}?tab=notes")
         ->and($notable->deepLinkPath($workOrder, $stranger, null))->toBeNull()
         ->and($notable->deepLinkPath($workOrder, $unpermitted, null))->toBeNull()
         ->and($notable->label($workOrder))->toBe("{$workOrder->code} — {$workOrder->title}");

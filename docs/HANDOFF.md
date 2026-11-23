@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Menzione su commessa: il link apre la scheda Note (spec 0134 D-2/AC-007 rev., segnalazione Consiglia Cosentino 2026-11-23) — COMMITTATO SU MAIN
+
+- Segnalazione: dalla notifica di menzione non si arrivava alla nota. Il link c'era (`/work-orders/{id}` in campanella, pagina Notifiche, email), ma dal 2026-11-16 una visita fresca alla commessa apre Info: la nota restava nascosta nella scheda Note.
+- Fix: `WorkOrderNotable::deepLinkPath()` restituisce `/work-orders/{id}?tab=notes` (stesso formato dell'azione riga "Storico Note"). Nessuna modifica frontend: la campanella naviga al path, la pagina Notifiche segue il link (non apre la modale perche' `findModuleRecordByPath` non accetta query string), la mail usa "Apri commessa" (`ModuleActionLabel` legge solo il path).
+- Le notifiche gia' inviate restano con il vecchio link (aprono Info). Task (`TaskNotable`) non toccato.
+- Test: `WorkOrderNotesTest` AC-007 aggiornato (REQUIREMENT CHANGED); Notes + Notifications + WorkOrderNotesTest 359 verdi; Pint pulito; help Vitest 163 verdi. Manuale: guide in-app IT/EN `general.ts` (passo menzione) + manuale Claude Docs aggiornati.
+
 ## Fix: Report Vendite Agenti, colonna Stato (filtro/valori/ordinamento in errore) — COMMITTATO
 
 - `POST /api/tables/agent-sales-report/values` con `columnId=quote_workflow_status` dava 500 (`Unknown column 'quote_workflow_status'`): la spec 0404 (commit 92cb0d3b4) aveva tolto `quote_workflow_status` da `QuoteRelationColumns::DERIVED_RELATIONS` perche' Offerte mostra lo stato di sistema, ma il report usa ancora quella classe per lo stato di lavorazione -> la colonna finiva al motore generico. Stesso errore su filtro e ordinamento.
