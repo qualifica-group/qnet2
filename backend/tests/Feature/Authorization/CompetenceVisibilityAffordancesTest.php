@@ -13,10 +13,11 @@ uses(RefreshDatabase::class);
 
 /**
  * @param  array<int, string>  $requestManagementAbilities
+ * @param  array<int, string>  $gridAbilities
  */
-function competenceNotesActor(string $grid, array $requestManagementAbilities): User
+function competenceNotesActor(string $grid, array $requestManagementAbilities, array $gridAbilities = ['viewAny', 'view', 'viewAll']): User
 {
-    $actor = competenceVisibilityActor($grid, ['viewAny', 'view', 'viewAll']);
+    $actor = competenceVisibilityActor($grid, $gridAbilities);
 
     foreach ($requestManagementAbilities as $ability) {
         $actor->givePermissionTo(Permission::findOrCreate("request-management.{$ability}", 'web'));
@@ -34,19 +35,19 @@ function competenceRowActions(mixed $test, string $grid, int $id): array
         ->firstWhere('id', $id)['actions'];
 }
 
-it('offers notes on an opportunity grid row whose offer is in my competence, not on one outside it (AC-017)', function (): void {
+// REQUIREMENT CHANGED (spec 0408 D-17, 2026-11-23): on the Opportunita grid
+// the notes action follows the row's visibility (OpportunityTableActionsTest).
+// The Gestione Richieste competence tier still opens the thread to an actor
+// who does not see the opportunity by themselves.
+it('opens the thread of an opportunity whose offer is in my competence, not of one outside it (AC-017)', function (): void {
     [$function, $mine] = competenceVisibilityCategory();
     [, $other] = competenceVisibilityCategory();
     $reachable = categoryTabRequestQuote([$mine]);
     $unreachable = categoryTabRequestQuote([$other]);
-    $actor = competenceNotesActor('opportunities', ['view', 'viewCompetence']);
+    $actor = competenceNotesActor('opportunities', ['view', 'viewCompetence'], ['viewAny', 'view']);
     grantCompetence($actor, $function, $mine);
     Sanctum::actingAs($actor);
 
-    expect(competenceRowActions($this, 'opportunities', $reachable->opportunity_id))->toContain('notes')
-        ->and(competenceRowActions($this, 'opportunities', $unreachable->opportunity_id))->not->toContain('notes');
-
-    // The affordance and the notes endpoint agree (RequestManagementScope::reachesOpportunity).
     Permission::findOrCreate('notes.create', 'web');
     Permission::findOrCreate('request-management.viewAll', 'web');
     $this->getJson('/api/notes/mentionable-users?entity_type=request-management&entity_id='.$reachable->opportunity_id)->assertOk();
@@ -58,7 +59,9 @@ it('lists a competence colleague among the mentionable users of a thread they ca
     [, $other] = competenceVisibilityCategory();
     $reachable = categoryTabRequestQuote([$mine]);
     $unreachable = categoryTabRequestQuote([$other]);
-    $colleague = competenceNotesActor('opportunities', ['view', 'viewCompetence']);
+    // Spec 0408 D-17: a colleague who sees every opportunity is mentionable
+    // everywhere, so this one reaches the thread through competence only.
+    $colleague = competenceNotesActor('opportunities', ['view', 'viewCompetence'], ['viewAny', 'view']);
     grantCompetence($colleague, $function, $mine);
     $reader = competenceNotesActor('opportunities', ['view', 'viewAll']);
     Sanctum::actingAs($reader);
@@ -71,14 +74,15 @@ it('lists a competence colleague among the mentionable users of a thread they ca
         ->and($mentionable($unreachable->opportunity_id))->not->toContain($colleague->id);
 });
 
-it('does not offer notes by competence without request-management.viewCompetence (AC-017)', function (): void {
+it('does not open the thread by competence without request-management.viewCompetence (AC-017)', function (): void {
     [$function, $mine] = competenceVisibilityCategory();
     $reachable = categoryTabRequestQuote([$mine]);
-    $actor = competenceNotesActor('opportunities', ['view']);
+    $actor = competenceNotesActor('opportunities', ['view'], ['viewAny', 'view']);
     grantCompetence($actor, $function, $mine);
+    Permission::findOrCreate('request-management.viewAll', 'web');
     Sanctum::actingAs($actor);
 
-    expect(competenceRowActions($this, 'opportunities', $reachable->opportunity_id))->not->toContain('notes');
+    $this->getJson('/api/notes/mentionable-users?entity_type=request-management&entity_id='.$reachable->opportunity_id)->assertForbidden();
 });
 
 it('offers notes on an offer grid row in my competence, not on one outside it (AC-017)', function (): void {

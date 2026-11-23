@@ -129,6 +129,12 @@
         cartella "permessi per reparti" contro `DepartmentGrantSets`: nessun'altra difformita' oltre (a); restano le
         scelte gia' documentate (D-4 gestione attivita' degli altri via organigramma, D-6 chiusura forzata senza
         modifica, D-10 contratti APL "Non so").
+    D-17 Segnalazione utente 2026-11-23 (Gessica Crispo, `reparto-apl`, opportunita' 30808): APL vede tutte le
+        opportunita' (`opportunities_view_all`) ma le richieste solo della propria sede, e le note dell'opportunita'
+        seguivano il perimetro di Gestione Richieste (offerta su Giugliano, lei su Frattamaggiore: 403). Decisione
+        utente: chi vede l'opportunita' (OpportunityPolicy::view) ne legge e scrive le note e vi e' menzionabile, per
+        tutti i ruoli; resta valido anche il perimetro di Gestione Richieste. Azione "Note" dell'elenco Opportunita'
+        e scheda Note del dettaglio seguono la vista dell'opportunita'.
   </context>
 
   <acceptance_criteria>
@@ -140,5 +146,6 @@
     <criterion id="AC-006">Back Office e Commerciale seguono i rispettivi questionari per livello; Fabozzi ha `admin`, i supervisori commerciali tengono i ruoli di notifica e approvano le richieste di modifica fonte (D-14).</criterion>
     <criterion id="AC-007">Chi vede richieste o iscritti ne vede i documenti; Back Office, Commerciale e APL creano e modificano le richieste in cui sono coinvolti senza eliminarle; i supervisori "Tutte" (Back Office senior, Commerciale senior) eliminano, assegnano l'operatore, modificano la fonte e gestiscono l'intero modulo Iscritti (D-15).</criterion>
     <criterion id="AC-008">Sicurezza vede solo le commesse in cui e' coinvolta; chi legge le note di commessa o task menziona chiunque e il menzionato riceve un link che apre il record (D-16).</criterion>
+    <criterion id="AC-009">Chi vede un'opportunita' ne legge le note anche se nessuna sua offerta e' nel suo perimetro di Gestione Richieste, e chi la vede compare tra i menzionabili; chi ha `opportunities.view` ma non la vede riceve 403 (D-17, `tests/Feature/Notes/OpportunityViewerNotesTest.php`).</criterion>
   </acceptance_criteria>
 </spec>

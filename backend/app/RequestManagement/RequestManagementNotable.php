@@ -9,7 +9,9 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Notes\Contracts\NotableEntity;
 use App\Services\Assignment\OperatorCompetence;
+use App\Services\Opportunities\OpportunityVisibilityScope;
 use App\Services\RequestManagement\RequestManagementScope;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +47,8 @@ use Spatie\Permission\Models\Permission;
  */
 class RequestManagementNotable implements NotableEntity
 {
+    private const OPPORTUNITY_VIEW_PERMISSION = 'opportunities.view';
+
     protected function module(): RequestModule
     {
         return RequestModule::Requests;
@@ -76,11 +80,16 @@ class RequestManagementNotable implements NotableEntity
      * which is exactly what scopeToActor() + `exists()` already answer — a
      * short circuit there would hand them the thread of every Opportunity,
      * including those with no Offerta of theirs at all.
+     *
+     * Spec 0408 D-17 (decisione utente 2026-11-23): whoever sees the
+     * Opportunity (OpportunityPolicy::view) reads its thread too, even when
+     * none of its Offerte is in their Gestione Richieste scope.
      */
     public function authorizeRead(User $user, Model $record): bool
     {
         /** @var Opportunity $record */
-        return RequestManagementScope::reachesOpportunity($user, (int) $record->getKey(), $this->module());
+        return RequestManagementScope::reachesOpportunity($user, (int) $record->getKey(), $this->module())
+            || $user->can('view', $record);
     }
 
     /**
@@ -132,11 +141,12 @@ class RequestManagementNotable implements NotableEntity
         ]);
 
         $competence = $this->competenceTier($record);
+        $opportunityViewers = $this->opportunityViewersTier($record);
 
         return User::query()
             ->excludingServiceAccounts()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($module, $teamIds, $siteIds, $siteTiers, $competence): void {
+            ->where(function (Builder $query) use ($module, $teamIds, $siteIds, $siteTiers, $competence, $opportunityViewers): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
                     ->orWhere(function (Builder $canRead) use ($module, $teamIds, $siteIds, $siteTiers, $competence): void {
                         $canRead->permission($module->permission('view'))
@@ -159,8 +169,45 @@ class RequestManagementNotable implements NotableEntity
                                         ->whereIn('id', $competence['user_ids']));
                                 }
                             });
-                    });
+                    })
+                    ->when($opportunityViewers !== null, fn (Builder $viewers) => $viewers->orWhere($opportunityViewers));
             });
+    }
+
+    /**
+     * The users who see the Opportunity (spec 0408 D-17), authorizeRead()'s
+     * second branch read from the other end: holders of `opportunities.view`
+     * who hold `viewAll`, are its Supervisore or one of its Gestori account,
+     * or hold `viewCompetence` with a competence reaching its product lines
+     * (OpportunityVisibilityScope). Null when `opportunities.view` has no row
+     * (same never-500 rule as the site tiers).
+     *
+     * @return (Closure(Builder): void)|null
+     */
+    private function opportunityViewersTier(Opportunity $record): ?Closure
+    {
+        $view = $this->existingPermission(self::OPPORTUNITY_VIEW_PERMISSION);
+
+        if ($view === null) {
+            return null;
+        }
+
+        $viewAll = $this->existingPermission(OpportunityVisibilityScope::VIEW_ALL_PERMISSION);
+        $competence = $this->existingPermission(OpportunityVisibilityScope::VIEW_COMPETENCE_PERMISSION);
+        $memberIds = $record->managers()->pluck('users.id')->push($record->supervisor_id)->filter()->all();
+        $competentIds = $competence === null ? [] : app(OperatorCompetence::class)->reachingUserIds(
+            $record->productLines()->pluck('product_category_id')->filter()->map(intval(...))->all(),
+        );
+
+        return static function (Builder $viewer) use ($view, $viewAll, $competence, $memberIds, $competentIds): void {
+            $viewer->permission($view)->where(function (Builder $access) use ($viewAll, $competence, $memberIds, $competentIds): void {
+                $access->whereIn('id', $memberIds)
+                    ->when($viewAll !== null, fn (Builder $all) => $all->orWhere(fn (Builder $holder) => $holder->permission($viewAll)))
+                    ->when($competence !== null && $competentIds !== [], fn (Builder $byCompetence) => $byCompetence->orWhere(
+                        fn (Builder $holder) => $holder->permission($competence)->whereIn('id', $competentIds),
+                    ));
+            });
+        };
     }
 
     /**

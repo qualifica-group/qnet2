@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Note dell'opportunita': le legge chi vede l'opportunita' (spec 0408 D-17/AC-009, segnalazione utente 2026-11-23) — VERDE MIRATO, COMMITTATO
+
+- Caso: Gessica Crispo (`reparto-apl`, sede Frattamaggiore) vede tutte le opportunita' (`opportunities.viewAll`) ma la 30808 ha l'unica offerta QUO-105238 su Giugliano: il perimetro di Gestione Richieste (team/sede/competenza) la escludeva, quindi 403 "Non puoi leggere le note di questo record".
+- Regola nuova (decisione utente, tutti i ruoli): `RequestManagementNotable::authorizeRead` = perimetro Gestione Richieste OPPURE `$user->can('view', $opportunity)` (OpportunityPolicy). `mentionableUsersQuery` aggiunge `opportunityViewersTier` (`opportunities.view` + viewAll / Supervisore / Gestori account / `viewCompetence` via `OperatorCompetence::reachingUserIds`). Vale anche per lo slug `enrollee-management` (sottoclasse, stesso thread).
+- Elenco Opportunita': azione `notes` = `view` della riga (`OpportunitiesTableDefinition::actionsFor`), permesso dichiarato `opportunities.view` (`OpportunityColumnCatalog`); tolti `allowsNotes`, `widensRequestScope` e la EXISTS `request_scoped_quote_exists`. FE: scheda Note del dettaglio con `opportunities.view` o `request-management.view`.
+- Test: nuovo `tests/Feature/Notes/OpportunityViewerNotesTest.php` (5); REQUIREMENT CHANGED `OpportunityTableActionsTest` (3), `CompetenceVisibilityAffordancesTest` AC-017 (3, attore senza `opportunities.viewAll`), `RequestTeamVisibilityTest` AC-008 (dataset Opportunita'); `opportunity-detail.test.tsx` +1. Notes, Opportunities, RequestManagement, EnrolleeManagement, Authorization verdi salvo i rossi preesistenti (`managers is not sortable`, PermissionCatalogue AC-004 741/721). Pint, ESLint, help Vitest 162, `tsc -b --force` puliti.
+- Manuale: guida in-app `general.ts` IT/EN (sezione note); Claude Docs rev 950 (sezione Note, paragrafo "Con Rispondi...").
+- Nessun seeder ne' migrazione: basta il deploy.
+
 ## Commesse: Responsabile/Partecipante gestisce la commessa anche senza `work-orders.update` (spec 0387 D-7, 0379 AC-005 rev., decisione utente 2026-11-23) — VERDE MIRATO, NON COMMITTATO
 
 - `WorkOrderPolicy::manage` (non e' un permesso, fuori da `abilities()`): `update` oppure `view` + membro (`WorkOrderVisibilityScope::isMember`, in memoria se `supervisors`/`participants` sono caricati). Usato da: PATCH con sole chiavi di chiusura (`UpdateWorkOrderRequest::isClosureOnly`, altrimenti `update`), azioni `force_close`/`reopen` e campi `is_force_closed`/`force_close_reason`, nuova azione `record_progress` + endpoint avanzamento, fasi (`WorkOrderStageController`), `is_read_only` del board, ricarica Modello di Task. Restano a `update`: form e copia attributi offerta.
