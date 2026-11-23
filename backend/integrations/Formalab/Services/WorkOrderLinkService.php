@@ -13,9 +13,9 @@ use Integrations\Formalab\Models\FormalabWorkOrderLink;
 use Integrations\Formalab\Support\Trigger;
 
 /**
- * The work order side of the integration: the link to the Formalab edition
- * is never chosen by hand, it is found from the course name (spec 0422 D-5),
- * read from the attribute the work order's category maps on it (spec 0423).
+ * The work order side of the integration: the edition is the one chosen in
+ * the work order's class select, the attribute its category maps on `label`
+ * (spec 0426); the match is the edition id only.
  */
 final class WorkOrderLinkService
 {
@@ -38,22 +38,23 @@ final class WorkOrderLinkService
     }
 
     /**
-     * "Sincronizza": finds the edition whose label equals the work order's
-     * course name (the attribute its category maps on `label`), re-reads it live from Formalab, writes the
-     * course fields and records the link. Nothing is saved on failure.
+     * "Sincronizza": re-reads live from Formalab the edition chosen in the
+     * work order's class select, records the link and writes the course
+     * fields. Nothing is saved on failure.
      *
-     * @throws ValidationException not eligible, no course name, no or several matching editions, edition gone, or a value refused by the fields
+     * @throws ValidationException not eligible, no class chosen, edition gone, or a value refused by the fields
      * @throws FormalabException Formalab not reachable
      */
     public function sync(WorkOrder $workOrder, User $actor): FormalabWorkOrderLink
     {
-        // Step 1: only work orders of a linked category mapping the course name can be synced
+        // Step 1: only work orders of a linked category mapping the class can be synced
         if (! $this->isEligible($workOrder)) {
             throw ValidationException::withMessages(['work_order' => __('formalab::messages.not_eligible')]);
         }
 
-        // Step 2: the edition is the one whose label equals the course name
-        $editionId = $this->matchEdition($workOrder);
+        // Step 2: the edition is the one chosen in the class select
+        $editionId = $this->courseWriter->editionIdOf($workOrder)
+            ?? throw ValidationException::withMessages(['work_order' => __('formalab::messages.course_name_missing')]);
 
         // Step 3: live read of the class (also refreshes the local catalogue)
         $class = $this->catalog->refresh($editionId, Trigger::WorkOrder);
@@ -62,40 +63,16 @@ final class WorkOrderLinkService
             throw ValidationException::withMessages(['work_order' => __('formalab::messages.class_not_found')]);
         }
 
-        // Step 4: write the fields and record the link in one transaction
+        // Step 4: record the link first (the work order save then finds it aligned), then write the fields
         DB::transaction(function () use ($workOrder, $class, $actor): void {
+            $link = FormalabWorkOrderLink::query()->firstOrNew(['work_order_id' => $workOrder->id]);
+            $link->fill(['edition_id' => $class->edition_id, 'linked_by' => $link->linked_by ?? $actor->id])->save();
+
             $this->courseWriter->apply($workOrder, $class);
 
-            $link = FormalabWorkOrderLink::query()->firstOrNew(['work_order_id' => $workOrder->id]);
-            $link->fill([
-                'edition_id' => $class->edition_id,
-                'linked_by' => $link->linked_by ?? $actor->id,
-                'synced_hash' => $class->payload_hash,
-                'synced_at' => now(),
-                'sync_error' => null,
-            ])->save();
+            $link->update(['synced_hash' => $class->payload_hash, 'synced_at' => now(), 'sync_error' => null]);
         });
 
         return $this->find($workOrder);
-    }
-
-    /**
-     * @throws ValidationException empty course name, or no / several catalogue classes with that label
-     */
-    private function matchEdition(WorkOrder $workOrder): int
-    {
-        $courseName = $this->courseWriter->courseNameOf($workOrder);
-
-        if ($courseName === null) {
-            throw ValidationException::withMessages(['work_order' => __('formalab::messages.course_name_missing')]);
-        }
-
-        $editionIds = $this->catalog->editionIdsForLabel($courseName);
-
-        return match (count($editionIds)) {
-            1 => $editionIds[0],
-            0 => throw ValidationException::withMessages(['work_order' => __('formalab::messages.course_name_unmatched')]),
-            default => throw ValidationException::withMessages(['work_order' => __('formalab::messages.course_name_ambiguous')]),
-        };
     }
 }

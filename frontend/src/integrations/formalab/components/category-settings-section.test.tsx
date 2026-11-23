@@ -62,7 +62,8 @@ describe('FormalabCategorySection', () => {
 
     expect(await screen.findByText('Ereditato da GOL')).toBeInTheDocument()
     expect(screen.getByText('Mappatura ereditata da GOL')).toBeInTheDocument()
-    expect(screen.getByText('Nome corso / edizione')).toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0426): the key field is now the class select
+    expect(screen.getByText('Classe Formalab (edizione)')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Modifica' }))
     expect(screen.queryByRole('switch', { name: 'Collegata a Formalab' })).not.toBeInTheDocument()
@@ -85,7 +86,7 @@ describe('FormalabCategorySection', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Modifica' }))
     fireEvent.click(screen.getByRole('button', { name: 'Salva' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Mappa il Nome corso / edizione')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Mappa il Nome corso / edizione su un campo relazione')
     expect(updateSettingsMock).not.toHaveBeenCalled()
   })
 

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Http;
 use Integrations\Formalab\FormalabServiceProvider;
 use Integrations\Formalab\Models\FormalabCallLog;
 use Integrations\Formalab\Models\FormalabCategorySetting;
+use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Support\FormalabField;
 
 if (! function_exists('formalabEnable')) {
@@ -155,22 +156,41 @@ if (! function_exists('formalabFakeApi')) {
 if (! function_exists('formalabCourseAttributes')) {
     /**
      * The 12 course field attributes plus `gol_notice` (not a course field),
-     * reused when they already exist.
+     * reused when they already exist. REQUIREMENT CHANGED (spec 0426):
+     * `gol_corso` is the class select (relation onto the Formalab classes).
      *
      * @return array<string, Attribute> code => attribute
      */
     function formalabCourseAttributes(): array
     {
         $types = [
-            'gol_corso' => 'text', 'gol_stato_corso' => 'text', 'gol_stato_classe' => 'text',
+            'gol_corso' => 'relation', 'gol_stato_corso' => 'text', 'gol_stato_classe' => 'text',
             'gol_data_inizio_corso' => 'date', 'gol_data_fine_corso' => 'date', 'gol_ore_totali_corso' => 'integer',
             'gol_data_esame' => 'date', 'gol_data_ip_incasso' => 'date', 'gol_anticipo_decreto_numero_data' => 'text',
             'gol_anticipo_data_accredito' => 'date', 'gol_saldo_decreto_numero_data' => 'text', 'gol_saldo_data_accredito' => 'date',
             'gol_notice' => 'text',
         ];
 
-        return collect($types)->map(fn (string $type, string $code): Attribute => Attribute::query()->where('code', $code)->first()
-            ?? Attribute::factory()->create(['code' => $code, 'type' => $type]))->all();
+        return collect($types)->map(function (string $type, string $code): Attribute {
+            $attribute = Attribute::query()->where('code', $code)->first() ?? Attribute::factory()->create(['code' => $code, 'type' => $type === 'relation' ? 'text' : $type]);
+
+            return $type === 'relation' ? formalabClassSelectAttribute($attribute) : $attribute;
+        })->all();
+    }
+}
+
+if (! function_exists('formalabClassSelectAttribute')) {
+    /**
+     * Turns an attribute into the work order class select: a relation onto the
+     * Formalab classes, whose value is the edition id (spec 0426 D-3).
+     */
+    function formalabClassSelectAttribute(Attribute $attribute): Attribute
+    {
+        $attribute->forceFill(['type' => 'relation', 'relation_target' => [
+            'entity_type' => FormalabClass::ENTITY_TYPE, 'cardinality' => 'one', 'for_select_resource' => FormalabClass::FOR_SELECT_RESOURCE,
+        ]])->save();
+
+        return $attribute;
     }
 }
 

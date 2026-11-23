@@ -2,10 +2,30 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
-import type { FormalabCategorySettings, FormalabCategorySettingsPayload } from '@/integrations/formalab/types'
+import type {
+  FormalabCategoryAttribute,
+  FormalabCategoryField,
+  FormalabCategorySettings,
+  FormalabCategorySettingsPayload,
+} from '@/integrations/formalab/types'
 
-/** The Formalab field the work order finds its edition by. */
+/** The Formalab field the work order finds its edition by (a select on the Formalab classes). */
 export const KEY_FIELD = 'label'
+
+/**
+ * Attributes a Formalab field can be written into: a compatible type and, for
+ * a field bound to a relation target (the key field), the same target.
+ */
+export function attributeOptions(
+  field: FormalabCategoryField,
+  attributes: FormalabCategoryAttribute[],
+): FormalabCategoryAttribute[] {
+  return attributes.filter(
+    (attribute) =>
+      field.compatible_types.includes(attribute.type) &&
+      (field.relation_entity_type === null || attribute.relation_entity_type === field.relation_entity_type),
+  )
+}
 
 function buildSchema(messages: { keyMissing: string; duplicate: string }) {
   return z

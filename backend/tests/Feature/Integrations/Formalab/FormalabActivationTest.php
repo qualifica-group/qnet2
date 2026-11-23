@@ -23,6 +23,8 @@ it('exposes nothing about Formalab when the integration is disabled', function (
     }
 
     $this->getJson('/api/tables/formalab-call-logs/columns')->assertNotFound();
+    $this->getJson('/api/tables/formalab-classes/columns')->assertNotFound();
+    $this->getJson('/api/integrations/formalab/classes/for-select')->assertNotFound();
     expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data'))->all())->not->toContain('formalab');
     $keys = collect($this->getJson('/api/system-health')->assertOk()->json('data.checks'))->pluck('key')->all();
     expect($keys)->not->toContain('formalab')
@@ -36,12 +38,16 @@ it('shows the integration to a super-admin only when it is enabled', function ()
 
     $this->getJson('/api/integrations')->assertOk()->assertJsonPath('data.active', ['formalab']);
 
-    $navigation = $this->getJson('/api/navigation')->json('data');
-    $develop = collect($navigation)->firstWhere('key', 'develop');
-    $group = collect($develop['children'])->firstWhere('key', 'external-services');
-    expect($group['label'])->toBe('integrations:nav.externalServices')
-        ->and(collect($group['children'])->pluck('route', 'key')->all())->toBe(['formalab' => '/dev/formalab'])
-        ->and(collect($develop['children'])->pluck('key'))->not->toContain('formalab');
+    // REQUIREMENT CHANGED (spec 0426 D-8): own section "Integrazioni esterne" before Develop, Formalab group with status and classes
+    $navigation = collect($this->getJson('/api/navigation')->json('data'));
+    $keys = $navigation->pluck('key')->all();
+    $section = $navigation->firstWhere('key', 'external-integrations');
+    $group = collect($section['children'])->firstWhere('key', 'formalab-integration');
+    expect($section['label'])->toBe('integrations:nav.externalIntegrations')
+        ->and(array_search('external-integrations', $keys, true))->toBe(array_search('develop', $keys, true) - 1)
+        ->and($group['label'])->toBe('formalab:nav.label')
+        ->and(collect($group['children'])->pluck('route', 'key')->all())->toBe(['formalab' => '/dev/formalab', 'formalab-classes' => '/dev/formalab/classes'])
+        ->and(navigationNodeKeys($navigation->firstWhere('key', 'develop')['children'])->all())->not->toContain('formalab');
 
     $keys = collect($this->getJson('/api/system-health')->assertOk()->json('data.checks'))->pluck('key')->all();
     expect($keys)->toBe(['database', 'email', 'queue', 'security', 'formalab']);
@@ -72,9 +78,10 @@ it('adds a single menu entry even when the provider boots twice (cached config)'
     $this->app->register(FormalabServiceProvider::class, force: true);
     Sanctum::actingAs(formalabSuperAdmin());
 
-    $develop = collect($this->getJson('/api/navigation')->json('data'))->firstWhere('key', 'develop');
-    $groups = collect($develop['children'])->where('key', 'external-services');
+    $sections = collect($this->getJson('/api/navigation')->json('data'))->where('key', 'external-integrations');
+    $groups = collect($sections->first()['children'])->where('key', 'formalab-integration');
 
-    expect($groups)->toHaveCount(1)
+    expect($sections)->toHaveCount(1)
+        ->and($groups)->toHaveCount(1)
         ->and(collect($groups->first()['children'])->where('key', 'formalab'))->toHaveCount(1);
 });

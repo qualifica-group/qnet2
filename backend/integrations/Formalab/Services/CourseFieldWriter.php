@@ -29,19 +29,22 @@ final class CourseFieldWriter
         private readonly CategoryFieldMapResolver $maps,
     ) {}
 
-    /** Eligible = the attribute mapped on the course name is applicable to the work order. */
+    /** Eligible = the attribute mapped on the class (`label`) is applicable to the work order. */
     public function isEligible(WorkOrder $workOrder): bool
     {
-        return $this->applicableMap($workOrder, $this->resolver->resolve($workOrder)) !== [];
+        return $this->applicableMap($workOrder) !== [];
     }
 
-    /** The value of the attribute mapped on the course name, trimmed; null when empty or not eligible. */
-    public function courseNameOf(WorkOrder $workOrder): ?string
+    /**
+     * The edition chosen in the work order's class select (the attribute
+     * mapped on `label`, spec 0426); null when empty, not an id, or not eligible.
+     */
+    public function editionIdOf(WorkOrder $workOrder): ?int
     {
-        $code = $this->applicableMap($workOrder, $this->resolver->resolve($workOrder))[FormalabField::Label->value] ?? null;
-        $name = $code === null ? '' : trim((string) ($workOrder->attribute_values[$code] ?? ''));
+        $code = $this->applicableMap($workOrder)[FormalabField::Label->value] ?? null;
+        $value = $code === null ? null : ($workOrder->attribute_values[$code] ?? null);
 
-        return $name === '' ? null : $name;
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : null;
     }
 
     /** How many distinct attribute codes the saved category maps use. */
@@ -108,15 +111,24 @@ final class CourseFieldWriter
 
     /**
      * The work order's map restricted to its applicable attributes; empty
-     * when the course name is not among them (the edition cannot be found).
+     * when the class select is not among them (the edition cannot be found).
      *
-     * @param  Collection<int, ApplicableAttribute>  $applicable
+     * The applicable attributes are resolved only when a linked category
+     * maps the key, so a work order outside Formalab costs one map lookup.
+     *
+     * @param  Collection<int, ApplicableAttribute>|null  $applicable  null = resolve them here
      * @return array<string, string> formalab_field => attribute_code
      */
-    private function applicableMap(WorkOrder $workOrder, Collection $applicable): array
+    private function applicableMap(WorkOrder $workOrder, ?Collection $applicable = null): array
     {
-        $codes = $applicable->pluck('code')->all();
-        $map = array_filter($this->maps->forWorkOrder($workOrder), static fn (string $code): bool => in_array($code, $codes, true));
+        $map = $this->maps->forWorkOrder($workOrder);
+
+        if (! isset($map[FormalabField::Label->value])) {
+            return [];
+        }
+
+        $codes = ($applicable ?? $this->resolver->resolve($workOrder))->pluck('code')->all();
+        $map = array_filter($map, static fn (string $code): bool => in_array($code, $codes, true));
 
         return isset($map[FormalabField::Label->value]) ? $map : [];
     }

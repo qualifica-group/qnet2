@@ -145,6 +145,14 @@ const SEGMENT_LABELS: Record<string, string> = {
   'reset-password': 'auth.resetPasswordTitle',
 }
 
+/**
+ * Full-path overrides (unprefixed path => i18n key) for segments whose name is
+ * ambiguous on its own, e.g. `classes` under an integration page.
+ */
+const PATH_LABELS: Record<string, string> = {
+  '/dev/formalab/classes': 'formalab:nav.classes',
+}
+
 function humanize(segment: string): string {
   return segment
     .replace(/-/g, ' ')
@@ -191,7 +199,7 @@ function useCrumbs(): Crumb[] {
 
   return segments.map((segment, index) => {
     const path = '/' + segments.slice(0, index + 1).join('/')
-    const key = SEGMENT_LABELS[segment]
+    const key = PATH_LABELS[path] ?? SEGMENT_LABELS[segment]
     const label = key && i18n.exists(key) ? t(key) : humanize(segment)
     return { label: titles[path] ?? label, href: slug ? link(path) : path, path }
   })

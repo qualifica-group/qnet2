@@ -43,6 +43,7 @@ final class CategorySettingsService
             'fields' => array_map(fn (FormalabField $field): array => $this->describeField($field, $attributes), FormalabField::cases()),
             'attributes' => $attributes->map(static fn (array $row): array => [
                 'code' => $row['code'], 'name' => $row['name'], 'type' => $row['type'],
+                'relation_entity_type' => $row['relation_target']['entity_type'] ?? null,
             ])->values()->all(),
         ];
     }
@@ -62,7 +63,7 @@ final class CategorySettingsService
             throw ValidationException::withMessages(['enabled' => __('formalab::messages.category.enabled_inherited')]);
         }
 
-        // Step 2: every pair must name a compatible work order attribute of the category, the key included
+        // Step 2: every pair must name a compatible work order attribute of the category, the key a class select
         if ($fieldMap !== null) {
             $this->assertMapFits($category, $fieldMap);
         }
@@ -85,16 +86,16 @@ final class CategorySettingsService
      */
     private function assertMapFits(ProductCategory $category, array $fieldMap): void
     {
-        $typesByCode = $this->attributesOf($category)->pluck('type', 'code');
+        $rowsByCode = $this->attributesOf($category)->keyBy('code');
         $errors = [];
 
         foreach (array_values($fieldMap) as $index => $pair) {
             $field = FormalabField::from($pair['formalab_field']);
-            $type = $typesByCode->get($pair['attribute_code']);
+            $row = $rowsByCode->get($pair['attribute_code']);
 
-            if ($type === null) {
+            if ($row === null) {
                 $errors["field_map.{$index}.attribute_code"] = __('formalab::messages.category.attribute_not_in_category');
-            } elseif (! in_array($type, $field->compatibleTypes(), true)) {
+            } elseif (! $this->fits($field, $row)) {
                 $errors["field_map.{$index}.attribute_code"] = __('formalab::messages.category.attribute_incompatible');
             }
         }
@@ -132,8 +133,17 @@ final class CategorySettingsService
             'type' => $field->type(),
             'is_key' => $field->isKey(),
             'compatible_types' => $field->compatibleTypes(),
-            'suggested_attribute_code' => $suggestedRow !== null && in_array($suggestedRow['type'], $field->compatibleTypes(), true) ? $suggested : null,
+            'relation_entity_type' => $field->relationEntityType(),
+            'suggested_attribute_code' => $suggestedRow !== null && $this->fits($field, $suggestedRow) ? $suggested : null,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row  an effectiveAttributes() row
+     */
+    private function fits(FormalabField $field, array $row): bool
+    {
+        return $field->fits((string) $row['type'], is_array($row['relation_target'] ?? null) ? $row['relation_target'] : null);
     }
 
     /**

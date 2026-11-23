@@ -24,8 +24,8 @@ export interface FormalabStatus {
   last_sync: FormalabSyncRun | null
   classes_count: number
   linked_work_orders_count: number
-  /** Why the work orders of the linked categories are still unlinked (spec 0423 D-15): `linkable` wait for the next sync. */
-  unlinked_work_orders: { linkable: number; ambiguous: number; unmatched: number; without_course_name: number }
+  /** Why the work orders of the linked categories are still unlinked (spec 0426 D-7): `linkable` wait for the next sync. */
+  unlinked_work_orders: { linkable: number; unmatched: number; without_course_name: number }
   /** Course field codes (flexible attributes) that no attribute carries any more: they stop updating. */
   missing_course_fields: string[]
   calls_last_24h: { total: number; failures: number; inbound: number; outbound: number }
@@ -70,7 +70,7 @@ export interface FormalabWorkOrderLink {
 }
 
 /** Spec 0423: the Formalab section of a product category. */
-export type FormalabFieldType = 'text' | 'date' | 'number'
+export type FormalabFieldType = 'text' | 'date' | 'number' | 'class'
 
 export interface FormalabFieldMapPair {
   formalab_field: string
@@ -80,9 +80,11 @@ export interface FormalabFieldMapPair {
 export interface FormalabCategoryField {
   key: string
   type: FormalabFieldType
-  /** The course / edition name: the work order finds its edition from it. */
+  /** The Formalab class chosen on the work order (edition_id): the work order finds its edition from it. */
   is_key: boolean
   compatible_types: string[]
+  /** Set on the key field: only relation attributes towards this entity type are offered (spec 0426). */
+  relation_entity_type: string | null
   suggested_attribute_code: string | null
 }
 
@@ -90,6 +92,8 @@ export interface FormalabCategoryAttribute {
   code: string
   name: string
   type: string
+  /** Target entity type of a relation attribute, null for any other type. */
+  relation_entity_type: string | null
 }
 
 export interface FormalabCategoryRef {

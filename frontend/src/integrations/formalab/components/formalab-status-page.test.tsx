@@ -46,7 +46,7 @@ const status: FormalabStatus = {
   },
   classes_count: 1395,
   linked_work_orders_count: 42,
-  unlinked_work_orders: { linkable: 1, ambiguous: 2, unmatched: 14, without_course_name: 447 },
+  unlinked_work_orders: { linkable: 1, unmatched: 14, without_course_name: 447 },
   missing_course_fields: [],
   calls_last_24h: { total: 150, failures: 3, inbound: 2, outbound: 148 },
 }
@@ -89,9 +89,10 @@ describe('FormalabStatusPage', () => {
     const card = (await screen.findByRole('heading', { name: 'Commesse non collegate' })).closest('div')
     expect(card).not.toBeNull()
     const rows = within(card as HTMLElement)
-    expect(rows.getByText('Nessuna classe con quel nome corso').nextSibling).toHaveTextContent('14')
-    expect(rows.getByText('Nome corso di più classi').nextSibling).toHaveTextContent('2')
-    expect(rows.getByText('Senza nome corso').nextSibling).toHaveTextContent('447')
+    // REQUIREMENT CHANGED (spec 0426 D-7): matching is by edition_id, the "ambiguous" reason is gone
+    expect(rows.getByText('Classe scelta non presente nel catalogo').nextSibling).toHaveTextContent('14')
+    expect(rows.queryByText('Nome corso di più classi')).not.toBeInTheDocument()
+    expect(rows.getByText('Senza classe Formalab scelta').nextSibling).toHaveTextContent('447')
     expect(rows.getByText('Si collegano al prossimo giro').nextSibling).toHaveTextContent('1')
   })
 

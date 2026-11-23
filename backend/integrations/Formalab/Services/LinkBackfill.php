@@ -9,11 +9,13 @@ use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
 
 /**
- * Links the not-yet-linked work orders of a linked category whose course name
- * (the attribute mapped on `label`, spec 0423) equals the label of exactly
- * one catalogue class. A label shared by several classes is ambiguous:
- * skipped and counted. Run by every catalogue sync (spec 0423 D-15);
- * pending() tells the status page why the rest is still unlinked.
+ * Links the not-yet-linked work orders of a linked category whose class
+ * select (the attribute mapped on `label`) holds an edition of the local
+ * catalogue: the match is the edition id only (spec 0426). Run by every
+ * catalogue sync; pending() tells the status page why the rest is still
+ * unlinked. A work order saved in the app is linked at once by
+ * FollowClassSelect: this covers the ones written before their class was
+ * in the catalogue.
  */
 final class LinkBackfill
 {
@@ -28,22 +30,23 @@ final class LinkBackfill
      * Only records the links: the fields are written by the next propagation
      * (a new link has never synced, so it is pending).
      *
-     * @return array{linked: int, ambiguous: int, unmatched: int}
+     * @return array{linked: int, unmatched: int}
      */
     public function link(): array
     {
-        $counts = ['linked' => 0, 'ambiguous' => 0, 'unmatched' => 0];
+        $counts = ['linked' => 0, 'unmatched' => 0];
+        $catalogued = $this->cataloguedEditionIds();
 
-        $this->eachUnlinked(function (WorkOrder $workOrder, ?array $editions) use (&$counts): void {
-            if ($editions === null) {
+        $this->eachUnlinked(function (WorkOrder $workOrder, ?int $editionId) use ($catalogued, &$counts): void {
+            if ($editionId === null) {
                 return;
             }
 
-            if (count($editions) === 1) {
-                FormalabWorkOrderLink::query()->create(['work_order_id' => $workOrder->id, 'edition_id' => $editions[0]]);
+            if (isset($catalogued[$editionId])) {
+                FormalabWorkOrderLink::query()->create(['work_order_id' => $workOrder->id, 'edition_id' => $editionId]);
                 $counts['linked']++;
             } else {
-                $counts[$editions === [] ? 'unmatched' : 'ambiguous']++;
+                $counts['unmatched']++;
             }
         });
 
@@ -53,20 +56,21 @@ final class LinkBackfill
     /**
      * Why the unlinked work orders of the linked categories are still
      * unlinked, without linking anything: `linkable` ones wait for the next
-     * catalogue sync, the others need their course name or the class fixed.
+     * catalogue sync, `unmatched` chose an edition missing from the
+     * catalogue, `without_course_name` chose no class.
      *
-     * @return array{linkable: int, ambiguous: int, unmatched: int, without_course_name: int}
+     * @return array{linkable: int, unmatched: int, without_course_name: int}
      */
     public function pending(): array
     {
-        $counts = ['linkable' => 0, 'ambiguous' => 0, 'unmatched' => 0, 'without_course_name' => 0];
+        $counts = ['linkable' => 0, 'unmatched' => 0, 'without_course_name' => 0];
+        $catalogued = $this->cataloguedEditionIds();
 
-        $this->eachUnlinked(function (WorkOrder $workOrder, ?array $editions) use (&$counts): void {
+        $this->eachUnlinked(function (WorkOrder $workOrder, ?int $editionId) use ($catalogued, &$counts): void {
             $reason = match (true) {
-                $editions === null => 'without_course_name',
-                $editions === [] => 'unmatched',
-                count($editions) === 1 => 'linkable',
-                default => 'ambiguous',
+                $editionId === null => 'without_course_name',
+                isset($catalogued[$editionId]) => 'linkable',
+                default => 'unmatched',
             };
             $counts[$reason]++;
         });
@@ -76,39 +80,27 @@ final class LinkBackfill
 
     /**
      * Calls $visit with every unlinked work order of a linked category and
-     * the catalogue editions whose label equals its course name (null: no
-     * course name).
+     * the edition chosen in its class select (null: none).
      *
-     * @param  callable(WorkOrder, list<int>|null): void  $visit
+     * @param  callable(WorkOrder, int|null): void  $visit
      */
     private function eachUnlinked(callable $visit): void
     {
-        // Step 1: label => edition ids of the catalogue
-        $editionsByLabel = $this->editionsByLabel();
-
-        // Step 2: every unlinked work order of a linked category, with the editions of its course name
         WorkOrder::query()
             ->whereHas('quoteLines.product', fn ($query) => $query->whereIn('category_id', $this->maps->enabledCategoryIds()))
             ->whereNotIn('id', FormalabWorkOrderLink::query()->select('work_order_id'))
-            ->chunkById(self::CHUNK, function ($workOrders) use ($editionsByLabel, $visit): void {
+            ->chunkById(self::CHUNK, function ($workOrders) use ($visit): void {
                 foreach ($workOrders as $workOrder) {
-                    $label = $this->courseWriter->courseNameOf($workOrder);
-                    $visit($workOrder, $label === null ? null : ($editionsByLabel[$label] ?? []));
+                    $visit($workOrder, $this->courseWriter->editionIdOf($workOrder));
                 }
             });
     }
 
     /**
-     * @return array<string, list<int>>
+     * @return array<int, true> edition id => true
      */
-    private function editionsByLabel(): array
+    private function cataloguedEditionIds(): array
     {
-        $map = [];
-
-        foreach (FormalabClass::query()->get(['edition_id', 'label']) as $class) {
-            $map[$class->label][] = $class->edition_id;
-        }
-
-        return $map;
+        return FormalabClass::query()->pluck('edition_id')->mapWithKeys(static fn (int $id): array => [$id => true])->all();
     }
 }
