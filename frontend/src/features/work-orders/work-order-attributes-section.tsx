@@ -10,10 +10,15 @@ import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { AttributeLayoutView, type AttributeFieldRenderer } from '@/features/attributes/attribute-layout-view'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
-import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
+import { SyncedAttributeHint } from '@/features/attributes/synced-attribute-hint'
+import { LockedSourceHint } from '@/features/work-orders/locked-source-hint'
+import type { ApplicableAttributeSummary, LockedAttribute } from '@/features/work-orders/types'
 
 /** Where the open/closed state of the work orders' "Informazioni aggiuntive" is kept, shared by detail and create. */
 export const WORK_ORDER_ADDITIONAL_INFORMATION_STORAGE_KEY = 'work-orders.additional-information'
+
+/** No locked attribute: hoisted for a stable default reference. */
+const NO_LOCKED_ATTRIBUTES: LockedAttribute[] = []
 
 /** The form-field path of one Attribute's value: the key of its in-place row. */
 function attributeFieldPath(code: string): string {
@@ -32,6 +37,8 @@ interface WorkOrderAttributesSectionProps {
   layout: LayoutBlob | null
   /** The values the closed rows show: persisted on the detail, the draft's on create. */
   values: Record<string, unknown>
+  /** Owned by an integration: the row shows its value and the source's name, never an editor. */
+  lockedAttributes?: LockedAttribute[]
   inline: InlineEdit
   control: Control<WorkOrderFormValues>
   /** Create form: the operator can fold it away. Detail: a fixed column of its own (user directive 2026-11-05). */
@@ -56,6 +63,7 @@ export function WorkOrderAttributesSection({
   attributes,
   layout,
   values,
+  lockedAttributes = NO_LOCKED_ATTRIBUTES,
   inline,
   control,
   collapsible = true,
@@ -63,21 +71,34 @@ export function WorkOrderAttributesSection({
 }: WorkOrderAttributesSectionProps) {
   const { t } = useTranslation()
   const effectiveAttributes = useEffectiveAttributes(attributes)
+  const lockedSources = useMemo(
+    () => new Map(lockedAttributes.map((locked) => [locked.code, locked.source])),
+    [lockedAttributes],
+  )
 
   if (attributes.length === 0) {
     return null
   }
 
   const effectiveByCode = new Map(effectiveAttributes.map((attribute) => [attribute.code, attribute]))
+  const syncedCodes = new Set(attributes.filter((attribute) => attribute.is_synced).map((attribute) => attribute.code))
 
   const renderField: AttributeFieldRenderer = (attribute, value, fieldClassName) => {
     const effective = effectiveByCode.get(attribute.code)
+    const lockedSource = lockedSources.get(attribute.code)
     return (
       <RecordInlineField
         field={attributeFieldPath(attribute.code)}
         metaKey="attribute_values"
         label={attribute.name}
         inline={inline}
+        canEdit={lockedSource === undefined}
+        labelAdornment={
+          <>
+            {lockedSource === undefined ? null : <LockedSourceHint source={lockedSource} />}
+            {syncedCodes.has(attribute.code) ? <SyncedAttributeHint hint={t('workOrders.detail.syncedWithQuote')} /> : null}
+          </>
+        }
         className={fieldClassName}
         editor={
           effective ? (

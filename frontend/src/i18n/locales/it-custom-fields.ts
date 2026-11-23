@@ -303,6 +303,7 @@ export const customFields = {
     configDisplaySwitch: 'Interruttore',
     configDisplaySelect: 'Select',
     configDisplayMultiselect: 'Selezione multipla',
+    configDisplayChecklist: 'Lista di checkbox (più scelte)',
     configDisplayRadio: 'Pulsanti radio',
     configDisplayBadge: 'Badge',
     validationRequired: 'Obbligatorio',

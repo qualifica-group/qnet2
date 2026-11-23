@@ -167,8 +167,14 @@ it('the notes row action reaches a team member on the Offerte and Opportunita gr
 
     $items = collect($this->postJson("/api/tables/{$table}/rows", ['startRow' => 0, 'endRow' => 50])->assertOk()->json('items'));
 
-    expect($items->firstWhere('id', $rowIds[0])['actions'])->toContain('notes')
-        ->and($items->firstWhere('id', $rowIds[1])['actions'])->not->toContain('notes');
+    $foreignActions = $items->firstWhere('id', $rowIds[1])['actions'];
+
+    expect($items->firstWhere('id', $rowIds[0])['actions'])->toContain('notes');
+    // REQUIREMENT CHANGED (spec 0408 D-17): on the Opportunita grid the notes
+    // action follows the row's visibility, here `opportunities.viewAll`.
+    $table === 'quotes'
+        ? expect($foreignActions)->not->toContain('notes')
+        : expect($foreignActions)->toContain('notes');
 })->with([
     'Offerte' => ['quotes', 'quotes'],
     'Opportunita' => ['opportunities', 'opportunities'],

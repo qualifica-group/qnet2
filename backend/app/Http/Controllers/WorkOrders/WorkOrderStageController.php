@@ -22,7 +22,7 @@ use Throwable;
  * D-2/D-4/D-9): index/store/update/destroy/reorder/close/reopen.
  *
  * Thin controller: every endpoint is gated on the OWNING commessa
- * (WorkOrderPolicy — `view` for the read, `update` for every mutation, D-9),
+ * (WorkOrderPolicy — `view` for the read, `manage` for every mutation, D-9 rev. 2026-11-23),
  * never a Policy of the stage's own. `Route::scopeBindings()`
  * (routes/api/work-order-task-board.php) is what turns a `{stage}` from
  * another commessa into a 404 before this class ever runs.
@@ -62,7 +62,7 @@ class WorkOrderStageController extends BaseApiController
     public function store(StoreWorkOrderStageRequest $request, WorkOrder $workOrder): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             $stage = $this->service->create($workOrder, $request->name());
 
@@ -78,7 +78,7 @@ class WorkOrderStageController extends BaseApiController
     public function update(UpdateWorkOrderStageRequest $request, WorkOrder $workOrder, WorkOrderStage $stage): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             $stage = $this->service->rename($workOrder, $stage, $request->name());
 
@@ -98,7 +98,7 @@ class WorkOrderStageController extends BaseApiController
     public function destroy(WorkOrder $workOrder, WorkOrderStage $stage): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             $this->service->delete($workOrder, $stage);
 
@@ -115,7 +115,7 @@ class WorkOrderStageController extends BaseApiController
     public function reorder(ReorderWorkOrderStagesRequest $request, WorkOrder $workOrder): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             $stages = $this->service->reorder($workOrder, $request->stageIds());
 
@@ -131,7 +131,7 @@ class WorkOrderStageController extends BaseApiController
     public function close(Request $request, WorkOrder $workOrder, WorkOrderStage $stage): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             /** @var User $actor */
             $actor = $request->user();
@@ -151,7 +151,7 @@ class WorkOrderStageController extends BaseApiController
     public function reopen(WorkOrder $workOrder, WorkOrderStage $stage): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             $stage = $this->service->reopen($workOrder, $stage);
 

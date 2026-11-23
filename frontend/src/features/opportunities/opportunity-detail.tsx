@@ -44,7 +44,7 @@ function useCollaborationTabs(opportunity: OpportunityDetailData): RecordCollabo
   const registryDocumentsTab = useRegistryDocumentsTab(opportunity.registry_id)
   const tabs: RecordCollaborationTab[] = []
 
-  if (can('request-management.view')) {
+  if (can('opportunities.view') || can('request-management.view')) {
     tabs.push({
       value: NOTES_TAB,
       label: t('notes.section.title'),
@@ -54,10 +54,10 @@ function useCollaborationTabs(opportunity: OpportunityDetailData): RecordCollabo
        * The notes hang off the Opportunity record itself
        * (`RequestManagementNotable::modelClass()` resolves to `Opportunity`),
        * so `opportunity.id` is the same thread the work panel reads. The
-       * server additionally requires `request-management.viewAll` OR being
-       * that opportunity's GA2 operator (`RequestManagementNotable::authorizeRead`),
-       * which the client cannot evaluate — `NotesSection` owns its own error
-       * state for that residual case, same exposure the work panel has.
+       * server reads it for whoever sees the opportunity (spec 0408 D-17) or
+       * reaches one of its Offerte in Gestione Richieste
+       * (`RequestManagementNotable::authorizeRead`); `NotesSection` owns its
+       * own error state for the residual case the client cannot evaluate.
        */
       content: (
         <NotesSection

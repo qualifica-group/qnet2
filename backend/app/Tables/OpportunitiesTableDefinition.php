@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\OpportunityVisibilityScope;
 use App\Services\ProductCategories\UsageAreaRowFilter;
-use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Concerns\SearchesByIdNotLegacyId;
 use App\Tables\Opportunities\Concerns\HasOpportunitySystemStatusTabs;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
@@ -119,7 +118,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // Spec 0316: rows, totals, filters, export, inline edit and bulk delete
         // all start here, so the visibility rule lives in one place.
         // Spec 0389 rev.2: opportunities whose categories are all reserved to Gestione Richieste are not listed.
-        $query = UsageAreaRowFilter::apply(OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user()), 'opportunities.id', CategoryUsageArea::Opportunities)
+        return UsageAreaRowFilter::apply(OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user()), 'opportunities.id', CategoryUsageArea::Opportunities)
             ->with([
                 'registry', 'referent', 'commercial', 'commercialPartner', 'supervisor.avatar',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
@@ -140,32 +139,6 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             // replies, soft-deleted excluded — same projection Gestione
             // Richieste carries.
             ->withCount(NotesCountColumn::of('notes'));
-
-        // Spec 0105 D-10, spec 0340: whether one of the row's Offerte is in the
-        // actor's Gestione Richieste scope through the site or competence tier.
-        // The rule is on the OFFERTE (RequestManagementScope::scopeToActor(),
-        // never re-spelled here) and this list eager-loads no quotes, hence one
-        // EXISTS subquery for the whole page instead of a query per row. Added
-        // only for an actor who can use it: allowsNotes() reads it as absent.
-        $actor = Auth::user();
-
-        if ($actor !== null && $this->widensRequestScope($actor)) {
-            $query->withExists([
-                'quotes as request_scoped_quote_exists' => fn (Builder $quotes): Builder => RequestManagementScope::scopeToActor($quotes, $actor),
-            ]);
-        }
-
-        return $query;
-    }
-
-    /**
-     * Whether the actor is scoped to some Offerte without seeing them all
-     * (team, site or competence tier): the only case where the EXISTS above
-     * can change allowsNotes()' verdict.
-     */
-    private function widensRequestScope(User $actor): bool
-    {
-        return $actor->can('request-management.view') && ! $actor->can('request-management.viewAll');
     }
 
     /**
@@ -299,10 +272,9 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Allowed action keys for a single row, via OpportunityPolicy — except
-     * `notes`, whose thread is registered under the `request-management`
-     * entity_type (RequestManagementNotable): its gate is that module's own
-     * permission set, never OpportunityPolicy. `edit` is gone as a row action
+     * Allowed action keys for a single row, via OpportunityPolicy. `notes`
+     * follows `view` (spec 0408 D-17): whoever sees the opportunity reads its
+     * thread (RequestManagementNotable::authorizeRead). `edit` is gone as a row action
      * (user directive 2026-08-05): editing starts from the detail surface,
      * gated there by `opportunities.update`, which the update endpoint
      * re-checks.
@@ -314,12 +286,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         $allowed = [];
 
         if (Gate::forUser($actor)->allows('view', $row)) {
-            $allowed[] = 'view';
-        }
-
-        /** @var Opportunity $row */
-        if ($this->allowsNotes($actor, $row)) {
-            $allowed[] = 'notes';
+            array_push($allowed, 'view', 'notes');
         }
 
         if (Gate::forUser($actor)->allows('delete', $row)) {
@@ -335,34 +302,6 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
-    }
-
-    /**
-     * The SAME rule RequestManagementNotable::authorizeRead applies when the
-     * note endpoints re-check the thread: `request-management.view` AND one of
-     * `request-management.viewAll`, being that opportunity's GA2 Operatore, or
-     * reaching one of its Offerte through the team (spec 0373) or `viewSite`
-     * (spec 0105).
-     * The full rule is evaluated here — unlike the request-management table,
-     * this list is NOT already scoped to the actor's own opportunities, so
-     * checking only `request-management.view` would offer the action on rows
-     * whose thread the actor cannot read (a 403 inside the dialog). Reads the
-     * eager-loaded `managers` collection via `operatorManager()`, the single
-     * expression of the "position 2 = operator" rule: no per-row query.
-     *
-     * Spec 0105, spec 0340, spec 0373: the team, site and competence tiers read
-     * `request_scoped_quote_exists`, the EXISTS flag baseQuery() projects for
-     * a scoped actor — absent (hence false) otherwise.
-     */
-    private function allowsNotes(User $actor, Opportunity $row): bool
-    {
-        if (! $actor->can('request-management.view')) {
-            return false;
-        }
-
-        return $actor->can('request-management.viewAll')
-            || $row->operatorManager()?->id === $actor->id
-            || (bool) ($row->request_scoped_quote_exists ?? false);
     }
 
     /**

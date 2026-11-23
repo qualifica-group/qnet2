@@ -9,7 +9,7 @@ import type { ApplicableAttribute } from '@/features/request-management/types'
  * it as a single string rejected every pick with Zod's "Invalid input".
  */
 
-function enumAttribute(display: 'select' | 'multiselect'): ApplicableAttribute {
+function enumAttribute(display: 'select' | 'multiselect' | 'checklist'): ApplicableAttribute {
   return {
     id: 30,
     code: 'degree',
@@ -34,8 +34,8 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-describe('buildAttributeValuesSchema — multiselect enum', () => {
-  const schema = buildAttributeValuesSchema([enumAttribute('multiselect')], i18n.t)
+describe.each(['multiselect', 'checklist'] as const)('buildAttributeValuesSchema — %s enum (a list)', (display) => {
+  const schema = buildAttributeValuesSchema([enumAttribute(display)], i18n.t)
 
   it('accepts a list of valid option codes', () => {
     expect(schema.safeParse({ degree: ['high_school', 'degree'] }).success).toBe(true)

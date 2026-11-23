@@ -93,6 +93,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     quote_lines: [],
     applicable_attributes: [],
     attribute_layout: null,
+    locked_attributes: [],
     attribute_values: {},
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
@@ -126,6 +127,7 @@ const SITE_ACCESS_ATTRIBUTE: ApplicableAttributeSummary = {
   config: null,
   relation_target: null,
   is_required: false,
+  is_synced: false,
   sort_order: 0,
   options: [],
 }

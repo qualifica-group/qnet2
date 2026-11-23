@@ -118,5 +118,6 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'api-integrations',
   'api-docs',
   'workspaces',
+  'formalab',
   'ai-assistant',
 ]

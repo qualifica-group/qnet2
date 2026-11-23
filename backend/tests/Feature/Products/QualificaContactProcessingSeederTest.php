@@ -173,7 +173,8 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
     // Plus the Sicurezza root (REQUIREMENT CHANGED, 2026-10-15) and the nine
     // Gare lines asking for documents, the GDPR and the Finanza Agevolata roots
     // (REQUIREMENT CHANGED, 2026-10-20). Plus the ISO root (REQUIREMENT CHANGED, 2026-10-21).
-    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(26);
+    // Minus the orientation (REQUIREMENT CHANGED, 2026-11-23): its form is the Commessa's.
+    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(25);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
     $moliseQuoteLayout = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);
@@ -243,8 +244,9 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
     // self-employment flag in the `quote` context alone, so on the Commessa it
     // has nothing its parent does not already say. Plus the SOA root's own
     // Commessa form (REQUIREMENT CHANGED, QualificaBranchWorkOrderSeeder, 2026-10-15),
-    // and the ISO root's (REQUIREMENT CHANGED, 2026-10-21).
-    expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(9);
+    // and the ISO root's (REQUIREMENT CHANGED, 2026-10-21), and the orientation's,
+    // moved from the Offerta (REQUIREMENT CHANGED, 2026-11-23).
+    expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(10);
 
     $moliseWorkOrderLayout = $service->resolveWithFallback($molise, AttributeContext::WorkOrder, FormMode::Create);
 

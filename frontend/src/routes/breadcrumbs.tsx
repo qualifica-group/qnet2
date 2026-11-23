@@ -134,6 +134,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   // i18next namespace instead of merging into `en.ts`/`it.ts` (see
   // `features/migrations/i18n.ts`).
   migrations: 'migrations:nav.label',
+  formalab: 'formalab:nav.label',
   dev: 'navigation.develop',
   'system-health': 'navigation.systemHealth',
   'api-clients': 'navigation.apiIntegrations',

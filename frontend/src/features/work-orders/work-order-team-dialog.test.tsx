@@ -61,6 +61,7 @@ function workOrder(actions: Record<string, boolean>, update = true): WorkOrderDe
     quote_lines: [],
     applicable_attributes: [],
     attribute_layout: null,
+    locked_attributes: [],
     attribute_values: {},
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-01-01T09:00:00Z',
@@ -93,7 +94,7 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.mocked(fetchWorkOrder).mockReset()
   vi.mocked(fetchWorkOrderFormContext).mockReset()
-  vi.mocked(fetchWorkOrderFormContext).mockResolvedValue({ applicable_attributes: [], attribute_layout: null })
+  vi.mocked(fetchWorkOrderFormContext).mockResolvedValue({ applicable_attributes: [], attribute_layout: null, locked_attributes: [] })
 })
 
 describe('WorkOrderTeamDialog (spec 0405)', () => {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Concerns;
 
+use App\Enums\AttributeContext;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -44,6 +45,11 @@ trait ValidatesAttributeContextAssignments
             }
 
             $seen[$key] = true;
+
+            // Spec 0425, D-1: only a Commessa field is synced with the offer.
+            if (filter_var($row['syncs_with_quote'] ?? false, FILTER_VALIDATE_BOOLEAN) && $row['context'] !== AttributeContext::WorkOrder->value) {
+                $validator->errors()->add("attributes.{$index}.syncs_with_quote", 'Only a Commessa field can be synced with the offer.');
+            }
         }
     }
 }

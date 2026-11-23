@@ -67,7 +67,7 @@ export const taskSections: HelpSection[] = [
         },
         {
           type: 'note',
-          text: 'Serve il permesso di modificare la commessa. Su una commessa chiusa il board è in sola lettura e la voce non compare. Il campo **Modello di Task** nella scheda Info mostra il modello caricato per ultimo.',
+          text: 'Serve il permesso di modificare la commessa, oppure esserne **Responsabile** o **Partecipante**. Su una commessa chiusa il board è in sola lettura e la voce non compare. Il campo **Modello di Task** nella scheda Info mostra il modello caricato per ultimo.',
         },
       ],
     },

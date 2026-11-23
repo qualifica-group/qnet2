@@ -103,6 +103,8 @@ export interface ProductCategoryAttributeAssignment {
   name: string
   type: CustomFieldType
   is_required: boolean
+  /** Work order context only: the field is shared with the offer (spec 0425). Always false elsewhere. */
+  syncs_with_quote?: boolean
   sort_order: number
   context: AttributeContext
 }
@@ -114,6 +116,7 @@ export interface ProductCategoryInheritedAttribute {
   name: string
   type: CustomFieldType
   is_required: boolean
+  syncs_with_quote?: boolean
   context: AttributeContext
 }
 
@@ -278,6 +281,7 @@ export interface EffectiveAttribute {
   config: CustomFieldConfig | null
   relation_target: CustomFieldRelationTarget | null
   is_required: boolean
+  syncs_with_quote?: boolean
   sort_order: number
   inherited: boolean
   context: AttributeContext
@@ -318,6 +322,8 @@ export interface AttributeAssignmentInput {
   attribute_id: number
   context: AttributeContext
   is_required?: boolean
+  /** Meaningful only for `work_order`: the server rejects true on other contexts. */
+  syncs_with_quote?: boolean
   sort_order?: number
 }
 

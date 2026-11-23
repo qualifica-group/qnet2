@@ -151,7 +151,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi in alto nel dettaglio della commessa. Compare solo se puoi modificare la commessa.',
+          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi in alto nel dettaglio della commessa. Compare se puoi modificare la commessa oppure se ne sei **Responsabile** o **Partecipante**.',
         },
         {
           type: 'steps',
@@ -187,7 +187,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Registri ed elimini le registrazioni se puoi modificare la commessa, altrimenti vedi solo l'elenco. L'avanzamento non cambia lo stato della commessa (vedi **Fasi di lavorazione**), e nemmeno lo stato dei task; la percentuale dei task resta visibile nel task board.",
+          text: "Registri ed elimini le registrazioni se puoi modificare la commessa o se ne sei **Responsabile** o **Partecipante**, altrimenti vedi solo l'elenco. L'avanzamento non cambia lo stato della commessa (vedi **Fasi di lavorazione**), e nemmeno lo stato dei task; la percentuale dei task resta visibile nel task board.",
         },
       ],
     },
@@ -379,6 +379,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Quando la commessa nasce da un contratto (**Programma**, creazione multipla o commessa multi-offerta), le **Informazioni aggiuntive** con lo stesso codice di quelle dell'offerta partono già compilate; nella commessa multi-offerta vale il primo valore non vuoto. Per le commesse esistenti usa **Copia dati dall'offerta** nell'intestazione (serve **Modifica**): riempie solo i campi vuoti, non sovrascrive mai, e ti dice quanti campi ha copiato.",
         },
+        {
+          type: 'paragraph',
+          text: "Un campo con l'icona di collegamento accanto al nome è **sincronizzato con l'offerta** (lo decide la categoria): ha un solo valore nell'offerta e in tutte le sue commesse. Se lo modifichi o lo svuoti qui cambia anche nell'offerta e nelle altre commesse della stessa offerta; alla creazione la commessa prende il valore dell'offerta, a meno che tu non ne scriva un altro.",
+        },
       ],
     },
     {
@@ -439,9 +443,9 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; i livelli si sommano:" },
         { type: 'table', headers: ["Permesso", "Commesse visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Responsabile** o **Partecipante**."], ["**Visualizza per sede**", "Le tue e quelle la cui offerta è di una tua sede. Per una commessa con più offerte basta che lo sia una."], ["**Visualizza per competenza**", "Le tue e quelle in cui almeno una offerta di origine ha una categoria nel tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** tutte."], ["**Visualizza tutti**", "Tutte."]] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di una commessa che non puoi vedere mostra un errore di accesso. Vedere una commessa non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
-        { type: 'paragraph', text: "Chi vede una commessa vede anche i suoi task nel task board e nella pagina **Task**, se ha il permesso di vedere i Task, anche quando non ha un ruolo sul task; restano esclusi i task privati. Per modificarli serve un ruolo sul task o il permesso **Gestisci tutto** dei Task. Eccezione: un **Responsabile** o un **Partecipante** può completare a suo nome un task della commessa, anche se è già assegnato a un collega, e completandolo ne diventa uno degli assegnatari." },
+        { type: 'paragraph', text: "Chi vede una commessa vede anche i suoi task nel task board e nella pagina **Task**, se ha il permesso di vedere i Task, anche quando non ha un ruolo sul task; restano esclusi i task privati. Per modificarli serve un ruolo sul task o il permesso **Gestisci tutto** dei Task. Chi è **Responsabile** o **Partecipante** gestisce la commessa anche senza poterla modificare: fa la chiusura forzata e la riapertura, registra l'avanzamento, gestisce le **Fasi** del task board e i task della commessa (li modifica, elimina, valida e blocca come chi li ha creati; su un task di cui è assegnatario resta un assegnatario). Solo i campi della scheda della commessa restano a chi può modificarla. Può anche completare a suo nome un task della commessa, anche se è già assegnato a un collega, e completandolo ne diventa uno degli assegnatari." },
         { type: 'note', text: "Se crei una commessa senza esserne Responsabile o Partecipante, non la vedrai più a meno di avere **Visualizza tutti**, **Visualizza per sede** o **Visualizza per competenza**." },
-        { type: 'tip', text: "Chi può modificare la commessa può coinvolgere un collega che non la vede menzionandolo in una nota con **Menziona chiunque**: al salvataggio diventa **Partecipante** (vedi **Note e documenti** nella guida generale)." },
+        { type: 'tip', text: "Chi vede le note della commessa può coinvolgere un collega che non la vede menzionandolo in una nota con **Menziona chiunque**: al salvataggio diventa **Partecipante** (vedi **Note e documenti** nella guida generale)." },
       ],
     },
     ...recurringEmailSections,

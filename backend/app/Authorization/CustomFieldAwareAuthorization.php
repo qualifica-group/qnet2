@@ -6,6 +6,7 @@ namespace App\Authorization;
 
 use App\CustomFields\CustomFieldProvider;
 use App\CustomFields\FieldTypeRegistry;
+use App\CustomFields\Types\EnumDisplay;
 use App\Models\CustomFieldDefinition;
 use App\Models\User;
 use App\Services\RoleAssignmentGuard;
@@ -174,7 +175,7 @@ final class CustomFieldAwareAuthorization implements ResourceAuthorization
     private function isMultiValued(CustomFieldDefinition $definition): bool
     {
         return match ($definition->type) {
-            'enum' => ($definition->config['display'] ?? null) === 'multiselect',
+            'enum' => EnumDisplay::isMultiValue($definition->config),
             'relation' => ($definition->relation_target['cardinality'] ?? 'one') === 'many',
             default => false,
         };

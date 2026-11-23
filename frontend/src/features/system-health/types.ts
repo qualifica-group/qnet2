@@ -6,7 +6,8 @@
 
 export type HealthStatus = 'ok' | 'degraded' | 'down'
 
-export type HealthCheckKey = 'database' | 'email' | 'queue' | 'security'
+/** Core checks plus any added by an active integration (its own i18n namespace labels them). */
+export type HealthCheckKey = string
 
 export interface HealthDetail {
   key: string

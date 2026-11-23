@@ -48,7 +48,7 @@ function mutatingButtons(): HTMLElement[] {
 }
 
 // The collaboration card reads the actor's client abilities to gate its Notes
-// tab (`request-management.view`): stub them, this suite has no AuthProvider
+// tab (`opportunities.view` or `request-management.view`): stub them, this suite has no AuthProvider
 // (mirrors `request-work-panel.test.tsx`). Defaults to false so the existing
 // read-only assertions below stay unaffected by the collaboration card.
 const { canMock } = vi.hoisted(() => ({ canMock: vi.fn<(permission: string) => boolean>() }))
@@ -273,6 +273,14 @@ describe('OpportunityDetailView — collaboration', () => {
     expect(notesTab).toHaveAttribute('aria-selected', 'true')
     expect(screen.queryByRole('tab', { name: 'Documents' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Activity log' })).not.toBeInTheDocument()
+    expect(screen.getByText('notes:request-management:1')).toBeInTheDocument()
+  })
+
+  it('shows the Notes tab to whoever sees the opportunity, without request-management.view (spec 0408 D-17)', () => {
+    canMock.mockImplementation((permission: string) => permission === 'opportunities.view')
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
+
+    expect(screen.getByRole('tab', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByText('notes:request-management:1')).toBeInTheDocument()
   })
 

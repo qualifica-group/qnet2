@@ -4,6 +4,7 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { getTableConfig, isRowSelected, toColumnDescriptor } from '@/features/custom-fields/table-field-model'
 import {
+  isMultiValueEnum,
   rawKey,
   type CustomFieldDescriptor,
   type CustomFieldValue,
@@ -83,7 +84,7 @@ function buildEnumSchema(descriptor: CustomFieldDescriptor, t: TFunction) {
   const optionValues = new Set((descriptor.options ?? []).map((option) => option.value))
   const invalidMessage = t('customFields.validation.enumInvalid')
 
-  if (descriptor.config?.display === 'multiselect') {
+  if (isMultiValueEnum(descriptor.config)) {
     // `null` = not set, as the server returns a multi value nobody filled yet.
     return z.array(z.string()).nullable().superRefine((values, ctx) => {
       values?.forEach((value, index) => {

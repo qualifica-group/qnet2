@@ -104,6 +104,7 @@ function baseFields(t: TFunction) {
         attribute_id: z.number(),
         context: z.enum(['product', 'quote', 'work_order']),
         is_required: z.boolean(),
+        syncs_with_quote: z.boolean().optional(),
         sort_order: z.number().int(),
       }),
     ),

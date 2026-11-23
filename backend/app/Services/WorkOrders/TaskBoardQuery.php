@@ -49,7 +49,12 @@ final class TaskBoardQuery
 
         $query = TaskVisibilityScope::scopeToActor($query, $actor);
 
-        return $this->orderedFlat($query->get(), $this->stageRanks($workOrder));
+        // Every card's permissions ask whether the actor runs this commessa
+        // (TaskRecordRoles::isWorkOrderMemberClaimant): answered from one load.
+        $workOrder->loadMissing(['supervisors', 'participants']);
+        $tasks = $query->get()->each(fn (Task $task) => $task->setRelation('workOrder', $workOrder));
+
+        return $this->orderedFlat($tasks, $this->stageRanks($workOrder));
     }
 
     /**

@@ -67,7 +67,7 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
 
   it('shows each assignment only under its own context section', () => {
     renderEditor([
-      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 },
       { attribute_id: 2, context: 'quote', is_required: false, sort_order: 0 },
     ])
 
@@ -91,7 +91,7 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Color' }))
 
     expect(onChange).toHaveBeenCalledWith([
-      { attribute_id: 1, context: 'work_order', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'work_order', is_required: false, syncs_with_quote: false, sort_order: 0 },
     ])
   })
 
@@ -103,13 +103,13 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Color' }))
 
     expect(onChange).toHaveBeenCalledWith([
-      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 },
     ])
   })
 
   it('the same attribute can be assigned to both sections independently (two rows)', () => {
     const value: AttributeAssignmentInput[] = [
-      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 },
     ]
     const { onChange } = renderEditor(value)
 
@@ -118,14 +118,14 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Color' }))
 
     expect(onChange).toHaveBeenCalledWith([
-      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
-      { attribute_id: 1, context: 'quote', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 },
+      { attribute_id: 1, context: 'quote', is_required: false, syncs_with_quote: false, sort_order: 0 },
     ])
   })
 
   it('removing a row only affects its own context, not the sibling assignment of the same attribute', () => {
     const value: AttributeAssignmentInput[] = [
-      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 },
       { attribute_id: 1, context: 'quote', is_required: true, sort_order: 2 },
     ]
     const { onChange } = renderEditor(value)
@@ -154,15 +154,50 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
     expect(within(quoteSection).getByText('Inherited from ancestor categories')).toBeInTheDocument()
   })
 
+  it('offers the offer-sync switch only on work order assignments and sends it when toggled', () => {
+    const { onChange } = renderEditor([
+      { attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 },
+      { attribute_id: 2, context: 'quote', is_required: false, syncs_with_quote: false, sort_order: 0 },
+      { attribute_id: 1, context: 'work_order', is_required: false, syncs_with_quote: false, sort_order: 0 },
+    ])
+
+    const switches = screen.getAllByRole('checkbox', { name: /Synced with the offer/ })
+    expect(switches).toHaveLength(1)
+
+    fireEvent.click(switches[0])
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ context: 'product', syncs_with_quote: false }),
+      expect.objectContaining({ context: 'quote', syncs_with_quote: false }),
+      expect.objectContaining({ context: 'work_order', syncs_with_quote: true }),
+    ])
+  })
+
+  it('badges an inherited work order field that is synced with the offer', () => {
+    renderEditor([], [
+      {
+        attribute_id: 1,
+        code: 'color',
+        name: 'Color',
+        type: 'enum',
+        is_required: false,
+        syncs_with_quote: true,
+        context: 'work_order',
+      },
+    ])
+
+    expect(screen.getByText('Synced with the offer')).toBeInTheDocument()
+  })
+
   it('shows a visible "Order" label next to the sort_order input', () => {
-    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, sort_order: 0 }])
+    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 }])
 
     expect(screen.getAllByText('Order')[0]).toBeInTheDocument()
     expect(screen.getAllByLabelText('Order')[0]).toBeInTheDocument()
   })
 
   it('reveals what "Required" means in a tooltip', async () => {
-    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, sort_order: 0 }])
+    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 }])
 
     fireEvent.focus(screen.getAllByLabelText('When on, the product MUST fill in this attribute.')[0])
     await waitFor(() => {
@@ -173,7 +208,7 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
   })
 
   it('describes the enum type in a tooltip on the badge', async () => {
-    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, sort_order: 0 }])
+    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, syncs_with_quote: false, sort_order: 0 }])
 
     fireEvent.focus(screen.getAllByText('List of options')[0])
     await waitFor(() => {

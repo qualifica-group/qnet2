@@ -11,7 +11,7 @@ import type { ApplicableAttributeSummary, WorkOrderDetailWithPermissions } from 
 vi.mock('@/features/work-orders/api', () => ({
   createWorkOrder: vi.fn(),
   updateWorkOrder: vi.fn(),
-  fetchWorkOrderFormContext: vi.fn().mockResolvedValue({ applicable_attributes: [], attribute_layout: null }),
+  fetchWorkOrderFormContext: vi.fn().mockResolvedValue({ applicable_attributes: [], attribute_layout: null, locked_attributes: [] }),
   workOrderDetailQueryKey: (id: number) => ['work-orders', 'detail', id],
 }))
 
@@ -29,6 +29,7 @@ const SITE_ACCESS: ApplicableAttributeSummary = {
   config: null,
   relation_target: null,
   is_required: false,
+  is_synced: false,
   sort_order: 0,
   options: [],
 }
@@ -61,6 +62,7 @@ function persistedWorkOrder(overrides: Partial<WorkOrderDetailWithPermissions> =
     quote_lines: [{ id: 11, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' }, registry: null }],
     applicable_attributes: [SITE_ACCESS],
     attribute_layout: null,
+    locked_attributes: [],
     // An empty PHP map arrives as `[]`: the defaults must still seed every applicable code.
     attribute_values: [] as unknown as Record<string, never>,
     created_at: '2026-01-01T00:00:00Z',

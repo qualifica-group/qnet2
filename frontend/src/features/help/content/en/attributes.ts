@@ -44,7 +44,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'An Option list requires at least one option, with all values different; a Relation requires the linked module.',
+          text: 'An Option list requires at least one option, with all values different; a Relation requires the linked module. An Option list displayed as a Checkbox list (multiple choice) shows one box per option and you tick as many as needed.',
         },
       ],
     },

@@ -272,11 +272,30 @@ final class AttributeLayoutService
             'default_collapsed' => (bool) $section['default_collapsed'],
             'columns' => (int) $section['columns'],
             'sort_order' => (int) $section['sort_order'],
-            'visible_when' => isset($section['visible_when']['attribute_code'])
-                ? ['attribute_code' => (string) $section['visible_when']['attribute_code']]
-                : null,
+            'visible_when' => $this->normalizeCondition($section['visible_when'] ?? null),
             'rows' => array_values(array_map($this->normalizeRow(...), $section['rows'])),
         ];
+    }
+
+    /**
+     * `option_values` only for a choice control (spec 0424 D-2): a yes/no
+     * condition keeps the 0288 shape.
+     *
+     * @return array{attribute_code: string, option_values?: list<string>}|null
+     */
+    private function normalizeCondition(mixed $condition): ?array
+    {
+        if (! isset($condition['attribute_code'])) {
+            return null;
+        }
+
+        $options = array_values(array_unique(array_filter(
+            (array) ($condition['option_values'] ?? []),
+            static fn (mixed $option): bool => is_string($option) && $option !== '',
+        )));
+
+        return ['attribute_code' => (string) $condition['attribute_code']]
+            + ($options === [] ? [] : ['option_values' => $options]);
     }
 
     /**

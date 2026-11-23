@@ -11,13 +11,15 @@ use App\Services\System\Checks\EmailHealthCheck;
 use App\Services\System\Checks\HealthCheck;
 use App\Services\System\Checks\QueueHealthCheck;
 use App\Services\System\Checks\SecurityHealthCheck;
+use Illuminate\Container\Attributes\Tag;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
  * Aggregates the live health of the critical subsystems (database, email,
  * queue, security hardening), the online users and the runtime versions for
- * the System Health page (spec 0187).
+ * the System Health page (spec 0187). Optional modules append their own
+ * checks by tagging them `system-health.checks` in the container.
  * A single checker failing never fails the endpoint: it degrades that
  * check's status to "down" instead.
  *
@@ -35,8 +37,9 @@ final readonly class SystemHealthService
         SecurityHealthCheck $security,
         private OnlineUsersService $onlineUsers,
         private RuntimeVersionsService $runtimeVersions,
+        #[Tag('system-health.checks')] iterable $extraChecks = [],
     ) {
-        $this->checks = [$database, $email, $queue, $security];
+        $this->checks = [$database, $email, $queue, $security, ...$extraChecks];
     }
 
     /**
@@ -47,7 +50,7 @@ final readonly class SystemHealthService
         // Step 1: run every checker, isolating unexpected failures per-check.
         $results = array_map(fn (HealthCheck $check): array => $this->runSafely($check), $this->checks);
 
-        // Step 2: overall = worst status among the 4 checks.
+        // Step 2: overall = worst status among all the checks.
         $overall = HealthStatusEnum::worst(...array_map(
             static fn (array $result): HealthStatusEnum => $result['status'],
             $results,

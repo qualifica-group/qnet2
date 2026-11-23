@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0423-formalab-category-settings" status="implemented" owner="nicola" date="2026-11-23" extends="0422-formalab-integration">
+
+  <goal>
+    Il collegamento a Formalab si decide per CATEGORIA di prodotto, non piu' per la presenza del
+    campo `gol_corso`: una impostazione "Collegata a Formalab" sulla categoria (stessa logica delle
+    altre impostazioni padre/figlio: la decide la radice, i figli la ereditano) e, per ogni
+    categoria, la mappatura tra i campi di Formalab e i campi flessibili della commessa. La
+    sincronizzazione scrive solo i campi mappati.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-23. Sostituisce D-5 (eleggibilita'), D-6 (chiave del backfill),
+    D-7 (codici fissi) e D-13 (controllo dei codici) della spec 0422; tutto il resto resta valido.
+
+    Decisioni (autonomia, memoria utente "decido io"):
+    - D-1 Isolamento invariato (0422 D-1): niente colonne nuove su product_categories. Le
+      impostazioni vivono nella tabella dell'integrazione `formalab_category_settings` e la sezione
+      UI entra nel dettaglio categoria da un punto di estensione GENERICO del registro frontend
+      (`ProductCategorySection` di IntegrationDefinition), che non nomina Formalab.
+    - D-2 `enabled` e' ROOT-OWNED come le impostazioni core (requires_quote & co.): solo una
+      categoria senza padre lo decide, i discendenti lo ereditano e lo vedono in sola lettura
+      ("ereditato da X"). A differenza del core NON e' denormalizzato: si risolve leggendo la
+      radice a ogni uso (la tabella e' dell'integrazione, il core non la riallinea su spostamenti).
+      Inviarlo su una figlia con un valore diverso da quello ereditato = 422.
+    - D-3 La mappatura (`field_map`) e' per categoria con ereditarieta' dall'antenato piu' vicino
+      (come la riga d'offerta semplificata, spec 0188): una categoria che non ne dichiara una propria
+      usa quella del primo antenato che la dichiara. Sulla figlia `field_map: null` = eredita; sulla
+      radice null = nessuna mappatura.
+    - D-4 Una mappatura e' un elenco di coppie {formalab_field, attribute_code}: ogni campo Formalab
+      e ogni attributo al massimo una volta; l'attributo deve essere un attributo commessa
+      (contesto work_order) effettivo della categoria e di tipo compatibile (testo -> text/textarea;
+      data -> date/text/textarea; numero -> integer/decimal/text/textarea). Se non vuota deve
+      contenere `label` (Nome corso / edizione): e' la chiave con cui la commessa trova l'edizione.
+    - D-5 Campi Formalab offerti (FormalabField): label, code, title, status, course_status,
+      start_date, end_date, total_hours, exam_date, ip_collection_date, advance_decree,
+      advance_credited_at, balance_decree, balance_credited_at, site_name, site_city, site_code,
+      learners_count. Per i 12 campi di 0422 D-7 il codice `gol_*` corrispondente e' proposto come
+      suggerimento (precompilato nell'editor se l'attributo e' disponibile), mai applicato da solo.
+    - D-6 Commessa: le sue categorie sono quelle dei prodotti delle sue righe (come gli attributi
+      commessa). Mappatura effettiva = unione delle mappature delle categorie COLLEGATE, nell'ordine
+      delle righe (primo vince per campo Formalab e per attributo). Eleggibile = l'attributo mappato
+      su `label` e' applicabile alla commessa. Il nome del corso e' il valore di quell'attributo.
+      Non eleggibile alla propagazione (categoria scollegata dopo il link) = sync_error sul link con
+      il motivo, nessuna scrittura.
+    - D-7 Backfill: candidate le commesse non collegate con almeno una riga di una categoria
+      collegata; chiave = valore dell'attributo mappato su `label`.
+    - D-8 Controllo `course_fields` (health, stato `missing_course_fields`, warning del sync run):
+      codici usati nelle mappature salvate che non esistono piu' tra gli attributi. Valore
+      "presenti/totali"; nessuna mappatura = ok "0/0".
+    - D-9 Authz: GET = view sulla categoria, PUT = update sulla categoria (permessi
+      product-categories esistenti, nessun permesso nuovo). Rotte solo con FORMALAB_ENABLED=true.
+    - D-10 Nessuna migrazione dei dati esistenti: dopo il rilascio nessuna categoria e' collegata
+      finche' un utente non la configura (in dev: COM-20228 smette di aggiornarsi finche' la sua
+      categoria non e' collegata e mappata), salvo il seeder one-shot di D-11.
+    - D-11 (richiesta utente 2026-11-23) Seeder one-shot per il rilascio in produzione,
+      `Integrations\Formalab\Seeders\TrainingCategoriesSeeder`: le categorie dei servizi legacy con
+      spec_service = 16 (Formazione; old_id 74, 104, 114, 123, 142, 189, letti dal DB legacy il
+      2026-11-23) ricevono il collegamento sulla loro radice e una mappatura propria con i campi
+      suggeriti che portano (tipo compatibile, nome corso incluso), validata da
+      CategorySettingsService. Una mappatura propria gia' presente resta; categoria assente o senza
+      nome corso = avviso e salto; rilanciarlo non cambia nulla. Le altre categorie dei rami
+      abilitati restano senza mappatura (fuori, come nel legacy).
+    - D-12 (richiesta utente 2026-11-23) Lo stesso seeder collega anche la radice corrente
+      "Formazione" (non legacy, per nome). Non ha campi corso (solo campi del discente; `id_corso`
+      contiene un id numerico, non il "codice - titolo" di Formalab, quindi non e' una chiave):
+      il seeder le assegna in contesto commessa i 12 attributi corso suggeriti (non obbligatori, dopo i
+      suoi, saltando quelli gia' assegnati), che le sottocategorie ereditano, poi la collega e la mappa
+      sulla radice. Le sottocategorie con barriera di ereditarieta' (Avviso 1 POC, Avviso 20 in dev)
+      restano senza campi e quindi fuori. Nel modulo commessa i campi non messi nel layout compaiono
+      nella sezione "Altre informazioni".
+    - D-13 (richiesta utente 2026-11-23) I campi mappati sono in SOLA LETTURA per l'utente sulle
+      commesse delle categorie collegate, tranne quello mappato su `label` (Nome corso / edizione):
+      resta modificabile perche' e' l'unico modo di indicare l'edizione (D-5 di 0422, nessuna scelta
+      manuale). Core generico, senza nominare Formalab: interfaccia App\WorkOrders\WorkOrderAttributeLock
+      (tag container `work-orders.attribute-locks`), raccolta da WorkOrderAttributeLocks;
+      WorkOrderAttributeResolver::lockedCodes()/lockedCodesForQuoteLines(); le request Store/Update
+      commessa e GenerateContractWorkOrder rifiutano (422 su `attribute_values.<code>`) un valore
+      diverso da quello salvato (reinviare lo stesso valore non e' una modifica; '' = null);
+      `locked_attribute_codes` in WorkOrderResource e in form-context; il frontend mostra quelle righe
+      senza modifica. Le scritture di sistema (Formalab, copia dall'offerta, migrazione) non passano
+      dalle request e non sono toccate. Formalab registra il proprio lock (MappedFieldLock) solo da attiva.
+    - D-14 (richiesta utente 2026-11-23, sostituisce `locked_attribute_codes` di D-13) Ogni lock dichiara
+      il nome della sua sorgente (`WorkOrderAttributeLock::source()`, Formalab = "Formalab");
+      WorkOrderAttributeLocks::lockedAttributes() = lista {code, source} (a parita' di codice vince il
+      primo lock registrato). L'API espone `locked_attributes` al posto di `locked_attribute_codes`. Il
+      frontend mostra accanto all'etichetta della riga bloccata l'icona di sincronizzazione
+      (`LockedSourceHint`, tooltip "Valore ricevuto da {sorgente}: in sola lettura.", nome della sorgente
+      solo nel tooltip: l'etichetta testuale era troppo invadente, decisione utente).
+    - D-15 (richiesta utente 2026-11-23) La sincronizzazione del catalogo ("Sincronizza ora" e giro
+      schedulato ogni 10 minuti, ClassCatalogSync) collega anche le commesse non ancora collegate:
+      dopo aver scritto il catalogo esegue `LinkBackfill::link()` (stessa regola di D-7: nome corso =
+      etichetta di una sola classe) e poi la propagazione, che scrive i campi dei collegamenti nuovi e
+      di quelli cambiati. Rimossi (decisione utente, ridondanti) il pulsante "Collega commesse", l'endpoint
+      POST /api/integrations/formalab/link-work-orders e il comando `formalab:link-work-orders`
+      (sostituisce D-6 di 0422). Il webhook non collega: lo fa il giro successivo.
+    - D-16 (richiesta utente 2026-11-23) Senza il pulsante, i conteggi del collegamento non si vedevano piu'.
+      La pagina Formalab mostra la card "Commesse non collegate": le commesse delle categorie collegate ancora
+      senza collegamento, per motivo, calcolate al momento (`LinkBackfill::pending()`, stessa regola di
+      `link()`): `unmatched` nessuna classe con quel nome corso, `ambiguous` nome di piu' classi,
+      `without_course_name`, `linkable` (combaciano, le collega il prossimo giro). Status endpoint:
+      `unlinked_work_orders: { linkable, ambiguous, unmatched, without_course_name }`. Non nello Stato del
+      sistema: le commesse senza corrispondenza ci sono sempre, il check resterebbe giallo per sempre.
+  </context>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/integrations/formalab/product-categories/{productCategory}" auth="Gate view sulla categoria">
+      <response status="200">{ success, message, data: FormalabCategorySettings }
+        FormalabCategorySettings = {
+          is_root: boolean,
+          enabled: boolean,                                    // effettivo (della radice)
+          enabled_source_category: { id, name } | null,        // radice da cui e' ereditato; null sulla radice
+          own_field_map: boolean,                              // la categoria dichiara una mappatura propria
+          field_map: { formalab_field: string, attribute_code: string }[],   // effettiva
+          field_map_source_category: { id, name } | null,      // antenato da cui e' ereditata; null se propria o assente
+          fields: { key: string, type: "text"|"date"|"number", is_key: boolean,
+                    compatible_types: string[], suggested_attribute_code: string|null }[],
+          attributes: { code: string, name: string, type: string }[],      // attributi commessa effettivi della categoria
+          can_manage: boolean }                                // Gate update</response>
+      <errors>403; 404 categoria o integrazione disattiva</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/integrations/formalab/product-categories/{productCategory}" auth="Gate update sulla categoria">
+      <request>{ enabled?: boolean, field_map: { formalab_field, attribute_code }[] | null }</request>
+      <response status="200">{ success, message, data: FormalabCategorySettings }</response>
+      <errors>403; 404; 422 enabled su una figlia diverso dall'ereditato / campo Formalab sconosciuto o ripetuto / attributo ripetuto, non della categoria o di tipo incompatibile / mappatura senza `label`</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PATCH" path="/api/work-orders/{workOrder}, /api/work-orders, /api/work-orders/form-context" auth="invariata">
+      <response>+ locked_attributes: { code: string, source: string }[]   // D-13/D-14; [] senza lock registrati</response>
+      <errors>422 attribute_values.&lt;code&gt; su un campo bloccato modificato (create, update, Programma da contratto)</errors>
+    </endpoint>
+
+    <schema>
+      formalab_category_settings: id, product_category_id (fk product_categories cascade, unique), enabled (bool default false),
+        field_map (json null), updated_by (fk users null on delete), timestamps.
+    </schema>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">GET su una radice mai configurata: enabled false, field_map [], fields 18 con `label` is_key, attributes = attributi commessa effettivi; can_manage secondo update.</criterion>
+    <criterion id="AC-002">PUT sulla radice salva enabled e mappatura; la figlia eredita enabled (sorgente = radice) e la mappatura (sorgente = antenato); PUT con enabled diverso sulla figlia = 422; la figlia puo' dichiarare una mappatura propria e tornare a ereditare con null.</criterion>
+    <criterion id="AC-003">PUT rifiuta (422): campo sconosciuto o ripetuto, attributo ripetuto, attributo non della categoria, tipo incompatibile, mappatura non vuota senza `label`. Senza update = 403, senza view = 403.</criterion>
+    <criterion id="AC-004">Commessa: senza categoria collegata non eleggibile (sync 422, nessuna scheda); collegata e mappata scrive SOLO i campi mappati, negli attributi scelti (anche con codici diversi da gol_*).</criterion>
+    <criterion id="AC-005">Propagazione: categoria scollegata dopo il link = sync_error sul link e nessuna scrittura.</criterion>
+    <criterion id="AC-006">Backfill: solo commesse di categorie collegate, chiave = attributo mappato su `label`.</criterion>
+    <criterion id="AC-007">Health/stato: codice mappato che non esiste piu' = degraded con il codice; nessuna mappatura = ok "0/0".</criterion>
+    <criterion id="AC-008">Frontend: sezione "Formalab" nel dettaglio categoria solo con integrazione attiva; radice modifica il collegamento, figlia lo vede ereditato; editor mappatura con attributi filtrati per tipo e suggerimenti; figlia sceglie tra ereditata e propria.</criterion>
+    <criterion id="AC-010">Commessa di categoria collegata: locked_attribute_codes = campi mappati tranne il nome corso; senza collegamento o integrazione spenta = [].</criterion>
+    <criterion id="AC-011">PATCH/POST commessa: valore diverso su un campo bloccato = 422; nome corso, altri campi e reinvio del valore salvato accettati; il frontend non offre la modifica delle righe bloccate.</criterion>
+    <criterion id="AC-012">locked_attributes porta per ogni campo bloccato la sorgente ("Formalab"); la riga bloccata mostra l'icona di sincronizzazione con il tooltip che nomina la sorgente, le righe modificabili no.</criterion>
+    <criterion id="AC-013">Sincronizzazione del catalogo: commessa non collegata con nome corso unico nel catalogo = collegata e campi scritti; ambigua, senza corrispondenza o di categoria non collegata = non collegata; un secondo giro non collega ne' riscrive nulla.</criterion>
+    <criterion id="AC-009">Guida in-app `formalab` IT/EN aggiornata, parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessun riferimento a Formalab nel core oltre a quelli di 0422 D-1.</item>
+    <item>Scrittura dei campi commessa solo via WorkOrderAttributeValueWriter.</item>
+    <item>Mai migrate/fresh/rollback/seed sul DB qnet2; Pest solo senza config cache.</item>
+  </constraints>
+
+</spec>

@@ -33,6 +33,9 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
 {
     public const string VIEW_PERMISSION = 'work-orders.view';
 
+    /** The detail tab holding the notes: a plain `/work-orders/{id}` opens on Info (user directive 2026-11-16). */
+    private const string NOTES_TAB_QUERY = '?tab=notes';
+
     public function modelClass(): string
     {
         return WorkOrder::class;
@@ -122,12 +125,13 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
 
     /**
      * Per-recipient: a mention can reach someone the Commessa is closed to,
-     * and a link that lands on a 403 is worse than no link at all.
+     * and a link that lands on a 403 is worse than no link at all. It opens
+     * the Note tab, where the mention is (spec 0134 D-2 rev. 2026-11-23).
      */
     public function deepLinkPath(Model $record, User $recipient, ?int $quoteId): ?string
     {
         /** @var WorkOrder $record */
-        return $this->authorizeRead($recipient, $record) ? '/work-orders/'.$record->getKey() : null;
+        return $this->authorizeRead($recipient, $record) ? '/work-orders/'.$record->getKey().self::NOTES_TAB_QUERY : null;
     }
 
     public function enlistmentRole(): string
@@ -135,9 +139,13 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
         return self::ROLE_PARTICIPANT;
     }
 
+    /**
+     * Whoever reads the thread may call anyone into it (spec 0353 D-2 rev.,
+     * user directive 2026-11-23): the read gate, not the edit one.
+     */
     public function canEnlist(User $actor, Model $record): bool
     {
-        return $actor->can('update', $record);
+        return $this->authorizeRead($actor, $record);
     }
 
     public function modulePermission(): string

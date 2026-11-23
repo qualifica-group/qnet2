@@ -38,7 +38,7 @@ const guide: HelpGuide = {
             ['Company, Address, Postal code, City, Phone, Email', 'The customer record: main address and contacts.'],
             ['Title', 'The quote title.'],
             ['Product line', 'The parent category of the products sold (ISO, SOA, GDPR, Safety, Tenders, APL, Training…). When the quote has no products yet, the one of the categories set on the opportunity. Several values are separated by commas.'],
-            ['Product category', 'The category of the products sold (for example ISO - 14001), with the same rule as Product line.'],
+            ['Product category', 'The category of the products sold (for example ISO - Consulenza), with the same rule as Product line.'],
             ['Company site', 'The quote\'s company site.'],
             ['Managers', 'The quote\'s account managers.'],
             ['Stage', 'The quote\'s working status.'],

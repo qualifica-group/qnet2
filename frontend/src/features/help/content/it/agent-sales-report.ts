@@ -38,7 +38,7 @@ const guide: HelpGuide = {
             ['Azienda, Indirizzo, CAP, Città, Telefono, Email', 'Anagrafica del cliente: indirizzo e contatti principali.'],
             ['Titolo', 'Il titolo dell’offerta.'],
             ['Linea prodotto', 'La categoria madre dei prodotti venduti (ISO, SOA, GDPR, Sicurezza, Gare, APL, Formazione…). Se l’offerta non ha ancora prodotti, quella delle categorie indicate sull’opportunità. Più valori sono separati da virgola.'],
-            ['Categoria prodotto', 'La categoria dei prodotti venduti (per esempio ISO - 14001), con la stessa regola della Linea prodotto.'],
+            ['Categoria prodotto', 'La categoria dei prodotti venduti (per esempio ISO - Consulenza), con la stessa regola della Linea prodotto.'],
             ['Unità aziendale', 'La sede aziendale dell’offerta.'],
             ['Responsabili', 'I gestori account dell’offerta.'],
             ['Fase', 'Lo stato di lavorazione dell’offerta.'],

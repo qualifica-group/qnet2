@@ -30,6 +30,7 @@ final class WorkOrderLineWriter
     public function __construct(
         private readonly MultiQuoteLineRules $multiQuoteRules,
         private readonly RenewalPeriodResolver $periods,
+        private readonly QuoteWorkOrderAttributeSync $attributeSync,
     ) {}
 
     /**
@@ -70,6 +71,12 @@ final class WorkOrderLineWriter
 
         // Spec 0201, D-11: a line that leaves the commessa takes its payment data with it.
         $workOrder->linePayments()->whereIn('quote_line_id', $changes['detached'])->delete();
+
+        // Spec 0425, D-4: a newly linked offer hands over its synced values the commessa lacks.
+        if ($changes['attached'] !== []) {
+            $workOrder->unsetRelation('quoteLines');
+            $this->attributeSync->adoptQuoteValues($workOrder);
+        }
     }
 
     /**

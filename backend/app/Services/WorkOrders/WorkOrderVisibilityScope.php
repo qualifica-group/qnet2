@@ -106,6 +106,23 @@ final class WorkOrderVisibilityScope
     }
 
     /**
+     * Whether $user is a Responsabile or Partecipante of the commessa: the
+     * record-level membership whereMember() expresses as a query. Answered in
+     * memory when both relations are loaded (the task board loads them once).
+     */
+    public static function isMember(WorkOrder|int $workOrder, User $user): bool
+    {
+        if ($workOrder instanceof WorkOrder && $workOrder->relationLoaded('supervisors') && $workOrder->relationLoaded('participants')) {
+            return $workOrder->supervisors->contains('id', $user->id) || $workOrder->participants->contains('id', $user->id);
+        }
+
+        $workOrderId = $workOrder instanceof WorkOrder ? (int) $workOrder->getKey() : $workOrder;
+
+        return DB::table('work_order_supervisor')->where('work_order_id', $workOrderId)->where('user_id', $user->id)->exists()
+            || DB::table('work_order_participant')->where('work_order_id', $workOrderId)->where('user_id', $user->id)->exists();
+    }
+
+    /**
      * Whether scopeToActor() leaves the actor every commessa: `viewAll`, or the
      * "all categories" competence. Lets a caller skip the subquery (spec 0379 D-7).
      */

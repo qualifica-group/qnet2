@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { EnumBadgePicker } from '@/features/custom-fields/components/enum-badge-picker'
+import { EnumChecklist } from '@/features/custom-fields/components/enum-checklist'
 import { EnumRadioGroup } from '@/features/custom-fields/components/enum-radio-group'
 import type { CustomFieldControlProps } from '@/features/custom-fields/components/custom-field-control-props'
 
@@ -16,8 +17,8 @@ function toStringArray(value: unknown): string[] {
 }
 
 /**
- * `type: 'enum'` → `Select` (single, default), `MultiSelect`, `EnumRadioGroup`
- * or `EnumBadgePicker` per `config.display`. Options always come from
+ * `type: 'enum'` → `Select` (single, default), `MultiSelect`, `EnumChecklist`,
+ * `EnumRadioGroup` or `EnumBadgePicker` per `config.display`. Options always come from
  * `descriptor.options` (never `form_enums`: custom enums are admin-defined
  * per field, not a shared app-wide enum).
  */
@@ -44,6 +45,21 @@ export function EnumFieldControl({
         onChange={onChange}
         disabled={disabled}
         aria-label={descriptor.label}
+      />
+    )
+  }
+
+  if (display === 'checklist') {
+    return (
+      <EnumChecklist
+        id={id}
+        describedBy={describedBy}
+        invalid={invalid}
+        label={descriptor.label}
+        options={options}
+        value={toStringArray(value)}
+        onChange={onChange}
+        disabled={disabled}
       />
     )
   }

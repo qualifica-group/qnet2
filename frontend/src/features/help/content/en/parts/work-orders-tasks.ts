@@ -67,7 +67,7 @@ export const taskSections: HelpSection[] = [
         },
         {
           type: 'note',
-          text: 'You need the permission to edit the work order. On a closed work order the board is read-only and the item is not shown. The **Task template** field in the Info tab shows the template loaded last.',
+          text: 'You need the permission to edit the work order, or to be one of its **Supervisors** or **Participants**. On a closed work order the board is read-only and the item is not shown. The **Task template** field in the Info tab shows the template loaded last.',
         },
       ],
     },

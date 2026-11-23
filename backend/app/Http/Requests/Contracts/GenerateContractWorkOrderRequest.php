@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\Contracts;
 
 use App\Enums\WorkOrderType;
+use App\Http\Requests\Concerns\RejectsLockedWorkOrderAttributes;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,6 +28,8 @@ use Illuminate\Validation\Rule;
  */
 class GenerateContractWorkOrderRequest extends FormRequest
 {
+    use RejectsLockedWorkOrderAttributes;
+
     private const int TITLE_MAX = 191;
 
     public function authorize(): bool
@@ -59,5 +63,12 @@ class GenerateContractWorkOrderRequest extends FormRequest
             // WorkOrderAttributeValueWriter.
             'attribute_values' => ['sometimes', 'array'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $this->rejectLockedAttributeChangesOnCreate($validator);
+        });
     }
 }

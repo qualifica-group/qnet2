@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'attribute_locked' => 'Questo campo e\' aggiornato da un servizio esterno e non puo\' essere modificato.',
     'delete_has_accounting_documents' => 'La commessa non può essere eliminata: ha documenti contabili collegati (richieste proforma, fatture, ordini di acquisto o fatture passive).',
     'lines_not_offer_revenue' => 'Le righe scelte devono essere righe di ricavo delle offerte dei contratti selezionati.',
     'line_already_programmed' => 'Una delle righe scelte è già nella commessa :code: ogni riga può stare in una sola commessa.',

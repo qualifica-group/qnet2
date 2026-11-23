@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0422-formalab-integration" status="implemented" owner="nicola" date="2026-11-20">
+
+  <goal>
+    Verticalizzazione per il cliente attuale: collegamento di qnet-2 al servizio esterno Formalab
+    (gestionale corsi/classi GOL), isolato dal core. Con FORMALAB_ENABLED=false (default) un'azienda
+    che usa qnet-2 non vede nulla che riguardi Formalab: nessun menu, nessuna rotta, nessuna scheda,
+    nessuna card health, nessun job. Con l'integrazione attiva: catalogo classi sincronizzato,
+    commesse GOL collegate a un'edizione con i 12 campi corso (campi flessibili gol_*) aggiornati da
+    Formalab, log di ogni chiamata in entrata e in uscita, pagina di stato e card nello Stato del
+    sistema.
+  </goal>
+
+  <context>
+    Legacy (/Users/Repository/qnet), letto il 2026-11-20:
+    - app/Services/FormalabService.php: POST /api/login {email,password} -> accessToken (cache 1
+      giorno, 401 -> token buttato e un solo retry); GET /api/classi?per_page=100&amp;page=N
+      (risposta {classi[], per_page, current_page, last_page, total}); GET /api/classi/{id}
+      ({classe}); GET /api/discenti (per codice fiscale). TLS non verificato (withoutVerifying):
+      il certificato e' valido, qnet-2 lo verifica.
+    - app/Jobs/ImportClassiFromFormalab.php ogni 10 minuti: copia le classi nella tabella `classi`
+      (edition_id = classe.id).
+    - Commessa GOL (Manageorder::datiFormazione/saveClasse): l'utente sceglie l'edizione
+      (orderformaziones.edition_id); la scheda mostra in sola lettura i dati della classe. In
+      qnet-2 quei dati sono i campi flessibili della commessa (work_orders.attribute_values,
+      per codice) migrati da LegacyWorkOrderAttributeValues::COURSE_FIELDS: identici al legacy.
+      L'edition_id NON e' stato migrato: in dev 1101 commesse hanno gol_corso valorizzato.
+    - In entrata il legacy esponeva GET /api/formazioni (cognome, nome, telefono,
+      nome_corso_edizione da pre_info_formaziones). Quei dati in qnet-2 non esistono in forma
+      strutturata (migrati come note): non portato (vedi out).
+    - Forma reale di una classe (GET /api/classi, 2026-11-20): id, codice (con spazi finali),
+      start_dt, end_dt, data_esame, data_ip_incasso, anticipo_data_accredito,
+      anticipo_num_decreto_data, saldo_data_accredito, saldo_num_decreto_data (stringhe, '' = vuoto),
+      num_discenti, sede_parte_teorica{denominazione, city, address, codice_sede},
+      corso{title, abbreviated_title, total_hours, codice_corso}, stato{name}, stato_corso{name},
+      discenti[]. 1395 classi, 14 pagine da 100.
+
+    Decisioni (autonomia, memoria utente "decido io", 2026-11-20):
+    - D-1 Isolamento. Backend in `backend/integrations/Formalab/` (namespace `Integrations\Formalab\`,
+      voce psr-4 in composer.json), frontend in `frontend/src/integrations/formalab/`. Il core
+      riceve solo punti di estensione GENERICI, che non nominano Formalab:
+      (a) `App\Integrations\IntegrationRegistry` + GET /api/integrations (chiavi attive);
+      (b) SystemHealthService accetta i check aggiuntivi col tag container `system-health.checks`;
+      (c) frontend `src/integrations/` (registro: integrazioni attive, schede commessa aggiuntive,
+      rotte dev aggiuntive, namespace i18n). Le uniche righe del core che nominano Formalab sono la
+      registrazione del provider (bootstrap/providers.php), il registro frontend
+      (src/integrations/index.ts) e la guida in-app `formalab` (visibile solo con la voce di menu).
+    - D-2 FORMALAB_ENABLED (default false), letto al boot da FormalabServiceProvider. Disattivo: il
+      provider carica SOLO le migrazioni (tabelle formalab_* presenti e vuote, niente da mostrare) e
+      nient'altro: nessuna rotta (404), nessuna voce menu, nessuna schedulazione, nessun check
+      health, nessuna chiave in /api/integrations, nessuna TableDefinition. Cambio di stato in
+      produzione = .env + `php artisan config:cache`.
+    - D-3 Uscita: login con FORMALAB_USER_EMAIL/FORMALAB_USER_PASSWORD, token in cache
+      (FORMALAB_TOKEN_TTL_MINUTES, default 1440), 401 -> token rimosso e un solo retry; timeout
+      FORMALAB_TIMEOUT_SECONDS (default 30); TLS verificato. Ogni chiamata HTTP (login compreso)
+      scrive una riga in formalab_call_logs, mai credenziali o token.
+    - D-4 Sync catalogo: job in coda ogni FORMALAB_SYNC_INTERVAL_MINUTES (default 10, cron
+      `*/N`), senza sovrapposizioni, comando `formalab:sync-classes`. Upsert per edition_id in
+      formalab_classes con payload_hash; le classi non piu' restituite restano (last_seen_at
+      vecchio). Ogni esecuzione e' una riga di formalab_sync_runs.
+    - D-5 [REQUIREMENT CHANGED, decisione utente 2026-11-20] Collegamento commessa -> edizione:
+      tabella formalab_work_order_links (una per commessa). L'edizione NON si sceglie a mano: la
+      scheda "Formalab" ha solo "Sincronizza", che trova l'unica classe del catalogo con label
+      uguale al gol_corso della commessa, la rilegge live (GET /api/classi/{id}), scrive i campi e
+      registra/aggiorna il link (authz: update sulla commessa). Nome vuoto, nessuna o piu' classi
+      con quel nome = 422 con il motivo. Cambiando il nome, Sincronizza passa all'edizione nuova.
+      Rimossi: scelta manuale (PUT), ricerca classi (GET classes), scollegamento (DELETE).
+    - D-6 Collegamento automatico (backfill, comando `formalab:link-work-orders` e pulsante nella
+      pagina di stato): commesse senza link il cui gol_corso e' identico a
+      trim(codice) + " - " + trim(corso.title) di UNA sola classe del catalogo. Piu' classi con la
+      stessa etichetta = ambigua, saltata e contata.
+    - D-7 Campi scritti (codice attributo <- classe Formalab): gol_corso <- trim(codice)." - ".trim(corso.title);
+      gol_stato_corso <- stato_corso.name; gol_stato_classe <- stato.name; gol_data_inizio_corso <- start_dt;
+      gol_data_fine_corso <- end_dt; gol_ore_totali_corso <- corso.total_hours; gol_data_esame <- data_esame;
+      gol_data_ip_incasso <- data_ip_incasso; gol_anticipo_decreto_numero_data <- anticipo_num_decreto_data;
+      gol_anticipo_data_accredito <- anticipo_data_accredito; gol_saldo_decreto_numero_data <- saldo_num_decreto_data;
+      gol_saldo_data_accredito <- saldo_data_accredito. '' / null -> null. Scrittura SOLO tramite
+      App\Services\WorkOrders\WorkOrderAttributeValueWriter, limitata ai codici applicabili alla
+      commessa, con voce di activity log. Propagazione al sync solo per i link la cui classe ha
+      payload_hash diverso da links.synced_hash (niente riscritture inutili). Errore su una
+      commessa = sync_error sul link, il sync continua.
+    - D-8 Entrata: POST /api/integrations/formalab/webhooks/classes, header `X-Formalab-Token`
+      confrontato con FORMALAB_INBOUND_TOKEN (hash_equals). Token non configurato = rotta assente
+      (404). Effetto: rilettura immediata delle edizioni indicate e propagazione alle commesse
+      collegate. Ogni chiamata in entrata (anche rifiutata) e' loggata. Va configurato lato Formalab:
+      finche' non lo e', il sync periodico copre l'aggiornamento.
+    - D-9 Log: formalab_call_logs e formalab_sync_runs prunabili dopo FORMALAB_LOG_RETENTION_DAYS
+      (default 90), prune schedulato dal provider.
+    - D-10 Health: check `formalab` (solo se attiva) con dettagli configuration, connection
+      (sonda live GET /api/classi?per_page=1, timeout FORMALAB_HEALTH_TIMEOUT_SECONDS default 5),
+      last_sync (ok entro 3 intervalli e ultimo esito ok; degraded se vecchio o fallito; down se
+      mai eseguito), recent_failures (chiamate fallite nelle ultime 24h: 0 ok, >0 degraded).
+      Entra nell'esito complessivo.
+    - D-11 Pagina di stato `/dev/formalab`, voce menu in Develop &gt; Servizi esterni (gruppo
+      `external-services`, label `integrations:nav.externalServices`, creato dal provider se assente
+      e condiviso dalle integrazioni future; voce aggiunta una sola volta anche con config in cache,
+      decisione utente 2026-11-20), solo ruolo super-admin: nessun nuovo permesso nel catalogo.
+    - D-13 (decisione utente 2026-11-20) Il legame con i campi flessibili e' per CODICE attributo
+      (CourseFieldWriter::CODES). Un codice rinominato/eliminato in Configurazione &gt; Attributi
+      fermerebbe l'aggiornamento senza errore: per renderlo visibile, dettaglio health
+      `course_fields` (degraded con i codici mancanti), `missing_course_fields` nello stato e
+      `warning_message` sul sync run. Nessun blocco dei codici nel core (isolamento D-1).
+    - D-14 Un valore vuoto di Formalab su un campo gia' vuoto non viene inviato (niente voci di
+      activity log senza cambi reali). Colonne code/title/label di formalab_classes a 512
+      (dati reali: label fino a 399 caratteri).
+    - D-12 Nessuna nuova dipendenza. Migrazioni sempre caricate (anche disattiva) perche' i test
+      girano su sqlite con RefreshDatabase e phpunit.xml non si tocca.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend `backend/integrations/Formalab/`: provider, config, routes, migrazioni, model, client HTTP con log, sync job+comando, link service, webhook, health check, TableDefinition dei log, lang IT/EN.</item>
+      <item>Core generico: IntegrationRegistry + GET /api/integrations; tag `system-health.checks` in SystemHealthService; composer psr-4; registrazione provider; .env.example.</item>
+      <item>Frontend `frontend/src/integrations/`: registro generico + `formalab/` (pagina stato+log, scheda commessa, i18n IT/EN); aggancio generico nelle schede commessa, nelle rotte dev, nella card health (etichetta check sconosciuto).</item>
+      <item>Guida in-app `formalab` IT/EN (chiave in HELP_GUIDE_KEYS).</item>
+      <item>Test Pest (Http::fake) e Vitest.</item>
+    </in>
+    <out>
+      <item>Porting di GET /api/formazioni e dei discenti (pre_info_formaziones, prospetto contabile discenti, notule, export discenti): i dati non esistono strutturati in qnet-2. Prossimo sotto-task possibile: elenco discenti della classe nella scheda Formalab.</item>
+      <item>Campi corso in sola lettura quando la commessa e' collegata (oggi restano modificabili; il sync successivo li riallinea a Formalab).</item>
+      <item>Manuale completo Claude Docs: integrazione specifica del cliente, da decidere con l'utente se e dove documentarla.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Tutte le rotte formalab esistono SOLO con FORMALAB_ENABLED=true. -->
+
+    <endpoint method="GET" path="/api/integrations" auth="sanctum">
+      <response status="200">{ success, message, data: { active: string[] } }  // es. ["formalab"] o []</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/integrations/formalab/status" auth="sanctum + role super-admin">
+      <response status="200">{ success, message, data: {
+        base_url: string|null,              // solo schema+host
+        credentials_configured: boolean,
+        inbound_enabled: boolean,           // FORMALAB_INBOUND_TOKEN valorizzato
+        sync_interval_minutes: number,
+        last_sync: null | { id, trigger: "schedule"|"manual"|"webhook"|"work_order", outcome: "running"|"success"|"failure",
+                            started_at, finished_at|null, classes_synced: number, work_orders_updated: number, error_message: string|null,
+                            warning_message: string|null },
+        classes_count: number,
+        linked_work_orders_count: number,
+        missing_course_fields: string[],    // D-13
+        calls_last_24h: { total: number, failures: number, inbound: number, outbound: number } } }</response>
+      <errors>403 non super-admin; 404 integrazione disattiva</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/integrations/formalab/sync" auth="super-admin">
+      <response status="202">{ success, message, data: null }  // job accodato (trigger manual)</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/integrations/formalab/test-connection" auth="super-admin">
+      <response status="200">{ success, message, data: { ok: boolean, latency_ms: number|null, message: string|null } }</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/integrations/formalab/link-work-orders" auth="super-admin">
+      <response status="200">{ success, message, data: { linked: number, ambiguous: number, unmatched: number } }</response>
+    </endpoint>
+
+    <table domain="formalab-call-logs" auth="super-admin (TableDefinition::viewAny)">
+      Colonne: id, created_at, direction (inbound|outbound), method, endpoint, status_code, outcome (success|failure),
+      duration_ms, trigger, error_message. Ordinamento default created_at desc. Filtri: direction, outcome, created_at.
+      Servito dal framework tabellare esistente (/api/tables/formalab-call-logs/...), registrato dal provider solo se attiva.
+    </table>
+
+    <endpoint method="GET" path="/api/integrations/formalab/work-orders/{workOrder}" auth="Gate view sulla commessa">
+      <response status="200">{ success, message, data: FormalabWorkOrderLink }
+        FormalabWorkOrderLink = {
+          eligible: boolean,        // il set applicabile della commessa contiene gol_corso
+          can_manage: boolean,      // Gate update sulla commessa
+          link: null | {
+            edition_id: number,
+            linked_at: string, linked_by: { id, name } | null,
+            synced_at: string|null, sync_error: string|null,
+            class: null | FormalabClass } }
+        FormalabClass = { edition_id, label, code, title, status: string|null, course_status: string|null,
+                          start_date: string|null, end_date: string|null, total_hours: number|null,
+                          exam_date: string|null, site_name: string|null, site_city: string|null,
+                          learners_count: number|null, last_seen_at: string|null }</response>
+      <errors>403; 404 commessa o integrazione disattiva</errors>
+    </endpoint>
+
+
+    <endpoint method="POST" path="/api/integrations/formalab/work-orders/{workOrder}/sync" auth="Gate update sulla commessa">
+      <!-- D-5 / D-15 (utente 2026-11-20): unica azione della scheda commessa. -->
+      <response status="200">{ success, message, data: FormalabWorkOrderLink }  // match per gol_corso sul catalogo, rilettura live, scrittura campi, link creato o aggiornato (linked_at invariato)</response>
+      <errors>403; 404; 422 (chiave work_order) commessa senza campi corso / nome corso vuoto / nessuna edizione con quel nome / piu' edizioni con quel nome / classe non piu' su Formalab / valore rifiutato; 502 Formalab non raggiungibile (niente salvato)</errors>
+    </endpoint>
+
+
+
+    <endpoint method="POST" path="/api/integrations/formalab/webhooks/classes" auth="header X-Formalab-Token (no sanctum)">
+      <request>{ edition_ids: integer[] (1..50) }</request>
+      <response status="200">{ success, message, data: { refreshed: number, work_orders_updated: number } }</response>
+      <errors>401 token errato/assente; 404 FORMALAB_INBOUND_TOKEN non configurato o integrazione disattiva; 422 payload</errors>
+    </endpoint>
+
+    <health check="formalab">
+      details keys: configuration | connection | last_sync | recent_failures | course_fields (value: host, latency "123 ms", ISO timestamp, count, "12/12" o codici mancanti)
+    </health>
+
+    <schema>
+      formalab_classes: id, edition_id (unsigned big, unique), code, title, label (index), status, course_status,
+        start_date (date null), end_date, total_hours (unsigned int null), exam_date, ip_collection_date,
+        advance_decree, advance_credited_at (date null), balance_decree, balance_credited_at (date null),
+        site_name, site_city, site_code, learners_count, payload_hash (char 64), last_seen_at, timestamps.
+      formalab_work_order_links: id, work_order_id (fk cascade, unique), edition_id (index), linked_by (fk users null on delete),
+        synced_hash (char 64 null), synced_at, sync_error (text null), timestamps.
+      formalab_call_logs: id, direction, method, endpoint, request_summary (json null), status_code (null),
+        outcome, duration_ms, trigger, error_message (text null), response_summary (string null), created_at (index), updated_at.
+      formalab_sync_runs: id, trigger, outcome, started_at, finished_at, classes_synced, work_orders_updated, error_message, warning_message (text null), timestamps.
+    </schema>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">FORMALAB_ENABLED=false: GET /api/integrations -> active []; tutte le rotte /api/integrations/formalab/* 404; nessuna voce menu formalab; nessun check `formalab` in /api/system-health; nessun job formalab nella schedulazione; dominio tabellare formalab-call-logs 404.</criterion>
+    <criterion id="AC-002">FORMALAB_ENABLED=true: active ["formalab"], voce menu Develop > Formalab visibile solo al super-admin, check `formalab` presente in /api/system-health.</criterion>
+    <criterion id="AC-003">Sync (Http::fake, 2 pagine): upsert di tutte le classi per edition_id, nessun duplicato al secondo run, una riga formalab_sync_runs success con classes_synced, una riga di log per login e per ogni pagina, nessuna credenziale/token nei log.</criterion>
+    <criterion id="AC-004">Token scaduto: risposta 401 -> nuovo login e un solo retry; il secondo 401 e' un fallimento loggato, il sync run e' failure con error_message.</criterion>
+    <criterion id="AC-005">Formalab giu' (ConnectionException/500): sync run failure, log failure con error_message, nessuna eccezione non gestita, catalogo invariato.</criterion>
+    <criterion id="AC-006">Commessa GOL collegata: dopo un sync con la classe cambiata i 12 campi gol_* della commessa riflettono Formalab ('' -> null), altri attributi invariati, voce di activity log; senza cambi della classe nessuna riscrittura.</criterion>
+    <criterion id="AC-007">[REQUIREMENT CHANGED] POST sync: utente con update -> 200, edizione trovata per nome corso, rilettura live, campi scritti, link salvato (ripetuto: un solo link, linked_at invariato; nome cambiato: edizione nuova); senza update -> 403; senza campi corso / nome vuoto / nessuna o piu' edizioni -> 422; Formalab giu' -> 502 e niente salvato.</criterion>
+    <criterion id="AC-008">Backfill link-work-orders: match esatto su gol_corso collega; etichetta ambigua non collega ed e' contata; commesse gia' collegate non toccate.</criterion>
+    <criterion id="AC-009">Webhook: token corretto -> 200 e classi rilette; token errato -> 401 loggato come inbound failure; token non configurato -> 404.</criterion>
+    <criterion id="AC-010">Status/test-connection/sync: super-admin 200/202; altri utenti 403.</criterion>
+    <criterion id="AC-011">Health check: configurazione mancante -> down; connessione ok e sync recente -> ok; sync piu' vecchio di 3 intervalli -> degraded; fallimenti nelle 24h -> degraded.</criterion>
+    <criterion id="AC-012">Prune: log e sync run oltre FORMALAB_LOG_RETENTION_DAYS eliminati da model:prune.</criterion>
+    <criterion id="AC-013">Frontend: con integrazione non attiva nessuna scheda Formalab sulla commessa e nessuna rotta /dev/formalab; attiva: scheda visibile su commessa eligible o collegata, scelta edizione, scollega; pagina stato con card, azioni e tabella log.</criterion>
+    <criterion id="AC-014">Guida in-app `formalab` IT/EN, help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessun riferimento a Formalab nel core oltre a quelli elencati in D-1.</item>
+    <item>Credenziali e token mai nei log, nelle risposte API o nella pagina (solo "configurate si'/no").</item>
+    <item>Scrittura dei campi commessa solo via WorkOrderAttributeValueWriter.</item>
+    <item>Mai migrate/fresh/rollback/seed sul DB di sviluppo qnet2: le migrazioni si provano solo nei test.</item>
+  </constraints>
+
+</spec>

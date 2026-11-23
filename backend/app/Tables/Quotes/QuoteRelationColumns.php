@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * The GENERIC relation-derived column machinery for the `quotes` domain
  * (spec 0065, MT-05), extracted out of QuotesTableDefinition (file-size
- * split, engineering.md §6): `opportunity`/
+ * split, engineering.md §6): `opportunity`/`quote_workflow_status`/
  * `commercial`/`reporter`/`supervisor`/`company`/`company_site`/`source` (own-FK,
  * simple relation-label columns) and `managers` (`quote_user` pivot,
  * to-many, spec 0087 D-1/T-10) — a `whereHas` set filter (allow-listed
@@ -63,11 +63,15 @@ final class QuoteRelationColumns
      * the site has no label COLUMN at all (its identity is its primary
      * address), so it is delegated to the shared OperationalSiteColumn by
      * QuotesTableDefinition, exactly as on Opportunities.
+     * `quote_workflow_status` is no longer an Offerte column (spec 0404 shows
+     * the system status there), but the Report Vendite Agenti still shows the
+     * working status through this class.
      *
      * @var array<string, array{relation: string, table: string, fk: string, label?: string}>
      */
     private const array DERIVED_RELATIONS = [
         'opportunity' => ['relation' => 'opportunity', 'table' => 'opportunities', 'fk' => 'opportunity_id'],
+        'quote_workflow_status' => ['relation' => 'quoteWorkflowStatus', 'table' => 'quote_workflow_statuses', 'fk' => 'quote_workflow_status_id'],
         'commercial' => ['relation' => 'commercial', 'table' => 'referents', 'fk' => 'commercial_id'],
         'commercial_partner' => ['relation' => 'commercialPartner', 'table' => 'referents', 'fk' => 'commercial_partner_id'],
         'reporter' => ['relation' => 'reporter', 'table' => 'referents', 'fk' => 'reporter_id'],

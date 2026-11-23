@@ -90,7 +90,7 @@ describe('section condition Select', () => {
     render(<Harness initialBlob={{ sections: [makeSection('only', 'Only', ['sku'])] }} />)
 
     expect(screen.getByRole('combobox', { name: 'Visible only if active' })).toBeDisabled()
-    expect(screen.getByText(/No yes\/no attribute available/)).toBeInTheDocument()
+    expect(screen.getByText(/No yes\/no or choice attribute available/)).toBeInTheDocument()
   })
 
   it('disables the Select of a section that controls another one', () => {

@@ -86,7 +86,7 @@ beforeEach(() => {
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
   fetchWorkOrderFormContextMock.mockReset()
-  fetchWorkOrderFormContextMock.mockResolvedValue({ applicable_attributes: [], attribute_layout: null })
+  fetchWorkOrderFormContextMock.mockResolvedValue({ applicable_attributes: [], attribute_layout: null, locked_attributes: [] })
 })
 
 describe('WorkOrderFormBody — a replica of the detail', () => {

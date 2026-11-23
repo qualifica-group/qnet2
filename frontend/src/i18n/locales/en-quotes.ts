@@ -105,6 +105,7 @@ export const quotes = {
     rewardsCount_one: '{{count}} reward assigned',
     rewardsCount_other: '{{count}} rewards assigned',
     newAttributes: 'Additional information brought by the new products',
+    syncedWithWorkOrder: 'Synced with the work order: editing it here also changes it in the linked work orders.',
     createdAt: 'Created at',
     updatedAt: 'Updated at',
     linesEmpty: 'No rows yet.',

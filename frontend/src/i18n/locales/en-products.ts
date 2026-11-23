@@ -109,6 +109,9 @@ export const productCategories = {
     attributeError: 'Unable to load attributes.',
     isRequired: 'Required',
     isRequiredHelp: 'When on, the product MUST fill in this attribute.',
+    syncsWithQuote: 'Synced with the offer',
+    syncsWithQuoteHelp:
+      'The same field is also assigned in the Offer: there is a single value. Whoever edits it on one side finds it on the other, also when the work order is created.',
     sortOrder: 'Order',
     sortOrderHelp: 'The position this field appears at in the product form.',
     removeAttribute: 'Remove attribute',

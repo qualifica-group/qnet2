@@ -24,7 +24,7 @@ final class EffectiveAttributeComposer
      * wins, but keeps the position where the attribute FIRST appeared.
      *
      * @param  Collection<int, ProductCategory>  $chain  root-first, ending with $category
-     * @param  callable(ProductCategory): iterable<int, array{descriptor: array{fields: array<string, mixed>, options: array<int, array<string, mixed>>}, is_required: bool, sort_order: int}>  $ownAssignments  a level's own assignments in $context
+     * @param  callable(ProductCategory): iterable<int, array{descriptor: array{fields: array<string, mixed>, options: array<int, array<string, mixed>>}, is_required: bool, syncs_with_quote: bool, sort_order: int}>  $ownAssignments  a level's own assignments in $context
      * @return Collection<int, array<string, mixed>>
      */
     public static function compose(ProductCategory $category, Collection $chain, AttributeContext $context, callable $ownAssignments): Collection
@@ -40,6 +40,7 @@ final class EffectiveAttributeComposer
                 $entry = [
                     ...$assignment['descriptor']['fields'],
                     'is_required' => $assignment['is_required'],
+                    'syncs_with_quote' => $assignment['syncs_with_quote'],
                     'sort_order' => $assignment['sort_order'],
                     'inherited' => ! $isOwn,
                     'context' => $context->value,
@@ -61,13 +62,14 @@ final class EffectiveAttributeComposer
     /**
      * An assignment read through the `attributes` relation (pivot loaded).
      *
-     * @return array{descriptor: array{fields: array<string, mixed>, options: array<int, array<string, mixed>>}, is_required: bool, sort_order: int}
+     * @return array{descriptor: array{fields: array<string, mixed>, options: array<int, array<string, mixed>>}, is_required: bool, syncs_with_quote: bool, sort_order: int}
      */
     public static function assignmentFromPivot(Attribute $attribute): array
     {
         return [
             'descriptor' => self::describe($attribute),
             'is_required' => (bool) $attribute->pivot->is_required,
+            'syncs_with_quote' => (bool) $attribute->pivot->syncs_with_quote,
             'sort_order' => (int) $attribute->pivot->sort_order,
         ];
     }

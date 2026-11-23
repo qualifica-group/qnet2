@@ -185,6 +185,7 @@ export function WorkOrderCreateSections({ workOrderForm, draft, registryId = nul
           attributes={attributeContext.applicable_attributes}
           layout={attributeContext.attribute_layout}
           values={values.attribute_values ?? {}}
+          lockedAttributes={attributeContext.locked_attributes}
           inline={draft}
           control={form.control}
           className={FULL_WIDTH_SECTION_CLASS}

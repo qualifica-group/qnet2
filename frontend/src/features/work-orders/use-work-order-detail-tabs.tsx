@@ -18,6 +18,7 @@ import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-or
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
+import { useIntegrationWorkOrderTabs } from '@/integrations/use-integration-work-order-tabs'
 
 export const WORK_ORDER_INFO_TAB = 'info'
 
@@ -83,6 +84,7 @@ export function useWorkOrderDetailTabs({
   const { t } = useTranslation()
   const { can } = useAbilities()
   const { actions } = workOrder.permissions
+  const integrationTabs = useIntegrationWorkOrderTabs(workOrder)
   const registryDocumentsTab = useRegistryDocumentsTab(workOrder.registry?.id)
   const outboundEmailsTab = useOutboundEmailsTab(
     { type: 'work-orders', id: workOrder.id },
@@ -223,6 +225,9 @@ export function useWorkOrderDetailTabs({
   if (actions.view_activity) {
     tabs.push({ ...activityLogTab(WORK_ORDERS_DOMAIN, workOrder.id, t('activityLog.title')), padded: true })
   }
+
+  // Step 7: tabs contributed by the active integrations, after the core ones.
+  tabs.push(...integrationTabs)
 
   return tabs
 }

@@ -22,8 +22,8 @@ uses(RefreshDatabase::class);
 | Mentions outside the record (spec 0353)
 |--------------------------------------------------------------------------
 |
-| Whoever may edit a commessa or a task can mention a colleague who cannot
-| read it yet; saving the note enlists that person (Partecipante / Osservatore)
+| Whoever reads the notes of a commessa or a task can mention a colleague who
+| cannot read it yet (D-2 rev. 2026-11-23, was: whoever may edit it); saving the note enlists that person (Partecipante / Osservatore)
 | and notifies them once. Actors never hold `viewAll`, so "outside" is real.
 */
 
@@ -86,7 +86,8 @@ if (! function_exists('outsideMentionUser')) {
 }
 
 // AC-001
-it('AC-001: meta.mention_outside reflects module support and the right to edit', function () {
+// REQUIREMENT CHANGED (D-2 rev. 2026-11-23): a reader of the notes is allowed too, not only an editor.
+it('AC-001: meta.mention_outside reflects module support and the right to read the notes', function () {
     [$editor, $workOrder] = outsideWorkOrder();
     $reader = outsideMentionUser(['work-orders.view', 'notes.create']);
     $workOrder->participants()->attach($reader, ['position' => 1]);
@@ -97,7 +98,7 @@ it('AC-001: meta.mention_outside reflects module support and the right to edit',
 
     Sanctum::actingAs($reader);
     $this->getJson("/api/notes?entity_type=work-orders&entity_id={$workOrder->id}")
-        ->assertOk()->assertJsonPath('meta.mention_outside', ['allowed' => false, 'role' => 'participant']);
+        ->assertOk()->assertJsonPath('meta.mention_outside', ['allowed' => true, 'role' => 'participant']);
 
     [$taskEditor, $task] = outsideTask();
     Sanctum::actingAs($taskEditor);
@@ -155,14 +156,15 @@ it('AC-003: scope extended lists every active non-service user with the flags', 
 });
 
 // AC-004
-it('AC-004: scope extended is 403 without edit rights, on unsupported modules and on unreadable records; unknown scope is 422', function () {
+// REQUIREMENT CHANGED (D-2 rev. 2026-11-23): a plain reader now gets the extended list.
+it('AC-004: scope extended is open to readers, 403 on unsupported modules and on unreadable records; unknown scope is 422', function () {
     [$editor, $workOrder] = outsideWorkOrder();
     $reader = outsideMentionUser(['work-orders.view']);
     $workOrder->participants()->attach($reader, ['position' => 1]);
     $url = "/api/notes/mentionable-users?entity_type=work-orders&entity_id={$workOrder->id}";
 
     Sanctum::actingAs($reader);
-    $this->getJson("{$url}&scope=extended")->assertForbidden();
+    $this->getJson("{$url}&scope=extended")->assertOk();
 
     $registry = Registry::factory()->create();
     Sanctum::actingAs(outsideMentionUser(['registries.view']));
@@ -213,21 +215,20 @@ it('AC-006: an outsider mentioned on a task becomes Osservatore and can then rea
     $this->getJson("/api/notes?entity_type=tasks&entity_id={$task->id}")->assertOk();
 });
 
-// AC-007
-it('AC-007: an author without update gets 422 and nothing changes', function () {
+// AC-007, REQUIREMENT CHANGED (D-2 rev. 2026-11-23): was "an author without update gets 422".
+it('AC-007: an author who only reads the commessa enlists the outsider, who gets a working link', function () {
     Notification::fake();
-    [$editor, $workOrder] = outsideWorkOrder();
+    [, $workOrder] = outsideWorkOrder();
     $reader = outsideMentionUser(['work-orders.view', 'notes.create']);
     $workOrder->participants()->attach($reader, ['position' => 1]);
     $outsider = outsideMentionUser(['work-orders.view']);
     Sanctum::actingAs($reader);
 
     outsidePost($this, 'work-orders', $workOrder->id, $outsider)
-        ->assertStatus(422)->assertJsonValidationErrors('mentions');
+        ->assertCreated()->assertJsonPath('meta.enlisted_user_ids', [$outsider->id]);
 
-    expect(Note::query()->count())->toBe(0)
-        ->and(DB::table('work_order_participant')->where('user_id', $outsider->id)->exists())->toBeFalse();
-    Notification::assertNothingSent();
+    expect(DB::table('work_order_participant')->where('work_order_id', $workOrder->id)->where('user_id', $outsider->id)->exists())->toBeTrue();
+    Notification::assertSentTo($outsider, NoteMentionNotification::class, fn ($n) => $n->toArray($outsider)['action_url'] === "/work-orders/{$workOrder->id}?tab=notes");
 });
 
 // AC-008

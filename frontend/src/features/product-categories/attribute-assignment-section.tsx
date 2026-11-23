@@ -12,12 +12,15 @@ import { FIELD_TYPE_ICONS } from '@/features/custom-fields/field-type-icons'
 import { DataTypeBadge, InfoTooltip } from '@/features/product-categories/attribute-assignment-row-controls'
 import type {
   AttributeAssignmentInput,
+  AttributeContext,
   ProductCategoryInheritedAttribute,
 } from '@/features/product-categories/types'
 
 const EMPTY_CATALOG: AttributeCatalogEntry[] = []
 
 interface AttributeAssignmentSectionProps {
+  /** The usage context this section edits: only `work_order` offers the offer-sync switch. */
+  context: AttributeContext
   title: string
   description: string
   /** Already filtered to this section's context. */
@@ -46,6 +49,7 @@ interface AttributeAssignmentSectionProps {
  * (task #19). `AttributeAssignmentEditor` renders one of these per context.
  */
 export function AttributeAssignmentSection({
+  context,
   title,
   description,
   assignments,
@@ -159,6 +163,19 @@ export function AttributeAssignmentSection({
                   {t('productCategories.form.isRequired')}
                   <InfoTooltip label={t('productCategories.form.isRequiredHelp')} />
                 </label>
+                {context === 'work_order' && (
+                  <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Checkbox
+                      checked={assignment.syncs_with_quote ?? false}
+                      disabled={disabled}
+                      onCheckedChange={(checked) =>
+                        onUpdate(assignment.attribute_id, { syncs_with_quote: checked === true })
+                      }
+                    />
+                    {t('productCategories.form.syncsWithQuote')}
+                    <InfoTooltip label={t('productCategories.form.syncsWithQuoteHelp')} />
+                  </label>
+                )}
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <span>{t('productCategories.form.sortOrder')}</span>
                   <InfoTooltip label={t('productCategories.form.sortOrderHelp')} />
@@ -213,6 +230,11 @@ export function AttributeAssignmentSection({
                   {attribute.is_required && (
                     <Badge variant="outline" className="text-xs">
                       {t('productCategories.form.isRequired')}
+                    </Badge>
+                  )}
+                  {attribute.syncs_with_quote && (
+                    <Badge variant="outline" className="text-xs">
+                      {t('productCategories.form.syncsWithQuote')}
                     </Badge>
                   )}
                 </li>

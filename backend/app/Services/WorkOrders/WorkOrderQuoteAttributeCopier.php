@@ -6,14 +6,13 @@ namespace App\Services\WorkOrders;
 
 use App\Enums\FormMode;
 use App\Models\Quote;
-use App\Models\QuoteLine;
 use App\Models\WorkOrder;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeValueValidator;
 use App\Support\PeopleChangeLog;
 use App\WorkOrders\WorkOrderAttributeResolver;
+use App\WorkOrders\WorkOrderQuoteLinks;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -28,12 +27,11 @@ use Illuminate\Validation\ValidationException;
  */
 final class WorkOrderQuoteAttributeCopier
 {
-    private const string LINE_PIVOT = 'quote_line_work_order';
-
     public function __construct(
         private readonly WorkOrderAttributeResolver $attributeResolver,
         private readonly AttributeValueValidator $validator,
         private readonly WorkOrderAttributeValueWriter $writer,
+        private readonly WorkOrderQuoteLinks $links,
     ) {}
 
     /**
@@ -73,17 +71,7 @@ final class WorkOrderQuoteAttributeCopier
      */
     public function quoteIdsOf(WorkOrder $workOrder): array
     {
-        if ($workOrder->quote_id !== null) {
-            return [$workOrder->quote_id];
-        }
-
-        return QuoteLine::query()
-            ->whereIn('id', DB::table(self::LINE_PIVOT)->where('work_order_id', $workOrder->id)->select('quote_line_id'))
-            ->distinct()
-            ->orderBy('quote_id')
-            ->pluck('quote_id')
-            ->map(static fn (mixed $id): int => (int) $id)
-            ->all();
+        return $this->links->quoteIdsOf($workOrder);
     }
 
     /**

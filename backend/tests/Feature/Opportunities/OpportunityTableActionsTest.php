@@ -14,12 +14,10 @@ uses(RefreshDatabase::class);
  * Row actions of the `opportunities` table (user directive 2026-08-05):
  * identical layout to Gestione Richieste — no `edit` (the detail surface owns
  * the Edit button, gated there by `opportunities.update`), plus the `notes`
- * action and its `notes_count` badge. `notes` is gated by
- * `request-management.view`, not an `opportunities.*` ability: the thread is
- * registered under the `request-management` entity_type
- * (config/notes.php → RequestManagementNotable), so that is the permission the
- * note endpoints re-check — together with the GA2 scope, which the per-row
- * gate reproduces in full.
+ * action and its `notes_count` badge. REQUIREMENT CHANGED (spec 0408 D-17,
+ * 2026-11-23): `notes` follows `view` — whoever sees the opportunity reads its
+ * thread (RequestManagementNotable::authorizeRead), whatever their Gestione
+ * Richieste scope.
  *
  * @param  array<int, string>  $abilities  `opportunities.*` suffixes
  * @param  array<int, string>  $requestManagementAbilities  `request-management.*` suffixes
@@ -76,12 +74,12 @@ it('the action catalogue never declares edit and keeps the Gestione Richieste or
         ->and($keys)->not->toContain('edit');
 });
 
-it('the notes action is gated by request-management.view and carries the notes_count badge', function () {
-    Sanctum::actingAs(opportunityActionsUserWith(['viewAny']));
+it('the notes action is gated by opportunities.view and carries the notes_count badge', function () {
+    Sanctum::actingAs(opportunityActionsUserWith(['viewAny'], ['view']));
     $actions = $this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.actions');
     expect(collect($actions)->pluck('key'))->not->toContain('notes');
 
-    Sanctum::actingAs(opportunityActionsUserWith(['viewAny'], ['view']));
+    Sanctum::actingAs(opportunityActionsUserWith(['viewAny', 'view']));
     $actions = $this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.actions');
 
     $notes = collect($actions)->firstWhere('key', 'notes');
@@ -99,8 +97,7 @@ it('row.actions omits edit even for an actor holding opportunities.update', func
         ->assertOk()->json('items'));
     $actions = $items->firstWhere('id', $opportunity->id)['actions'];
 
-    expect($actions)->not->toContain('edit')
-        ->and($actions)->not->toContain('notes');
+    expect($actions)->not->toContain('edit');
 });
 
 it('row.actions contains notes for an actor holding request-management.view + viewAll', function () {
@@ -114,27 +111,16 @@ it('row.actions contains notes for an actor holding request-management.view + vi
     expect($items->firstWhere('id', $opportunity->id)['actions'])->toContain('notes');
 });
 
-it('row.actions offers notes only on the rows whose thread the actor can actually read (GA2 scope)', function () {
-    // Without `request-management.viewAll` the note endpoints authorize only
-    // the opportunities where the actor is the GA2 Operatore
-    // (RequestManagementNotable::authorizeRead) — the row action must not
-    // promise more than that, or the dialog 403s.
-    $actor = opportunityActionsUserWith(['viewAny', 'view'], ['view']);
-    $asOperator = Opportunity::factory()->create();
-    $asOperator->managers()->attach($actor->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
-    // GA1 (position 1) is NOT the operator slot: out of scope.
-    $asOtherManager = Opportunity::factory()->create();
-    $asOtherManager->managers()->attach($actor->id, ['position' => 1]);
-    $unrelated = Opportunity::factory()->create();
-
+it('row.actions offers notes on every row the actor sees, without any Gestione Richieste scope (spec 0408 D-17)', function () {
+    $actor = opportunityActionsUserWith(['viewAny', 'view']);
+    $opportunity = Opportunity::factory()->create();
+    Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
 
     $items = collect($this->postJson('/api/tables/opportunities/rows', ['startRow' => 0, 'endRow' => 25])
         ->assertOk()->json('items'));
 
-    expect($items->firstWhere('id', $asOperator->id)['actions'])->toContain('notes')
-        ->and($items->firstWhere('id', $asOtherManager->id)['actions'])->not->toContain('notes')
-        ->and($items->firstWhere('id', $unrelated->id)['actions'])->not->toContain('notes');
+    expect($items->firstWhere('id', $opportunity->id)['actions'])->toContain('notes');
 });
 
 it('rows: notes_count counts roots AND replies, per opportunity', function () {

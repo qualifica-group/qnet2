@@ -14,7 +14,7 @@ function sameAssignments(a: AttributeAssignmentInput[], b: AttributeAssignmentIn
     return false
   }
   const key = (assignment: AttributeAssignmentInput) =>
-    `${assignment.attribute_id}:${assignment.context}:${assignment.is_required ?? false}:${assignment.sort_order ?? 0}`
+    `${assignment.attribute_id}:${assignment.context}:${assignment.is_required ?? false}:${assignment.syncs_with_quote ?? false}:${assignment.sort_order ?? 0}`
   const bKeys = new Set(b.map(key))
   return a.every((assignment) => bKeys.has(key(assignment)))
 }
@@ -237,6 +237,7 @@ export function buildUpdatePayload(
     attribute_id: a.attribute_id,
     context: a.context,
     is_required: a.is_required,
+    syncs_with_quote: a.syncs_with_quote,
     sort_order: a.sort_order,
   }))
   if (!sameAssignments(values.attributes, originalAssignments)) {

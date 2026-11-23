@@ -99,6 +99,8 @@ class StoreProductCategoryRequest extends FormRequest
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],
             'attributes.*.is_required' => ['sometimes', 'boolean'],
+            // Spec 0425, D-1: `work_order` rows only (ValidatesAttributeContextAssignments).
+            'attributes.*.syncs_with_quote' => ['sometimes', 'boolean'],
             'attributes.*.sort_order' => ['sometimes', 'integer'],
             // Spec 0080: sparse position->label map for the "Gestori Account"
             // section. Key range (1..MANAGER_LABEL_MAX_POSITION) is checked by
