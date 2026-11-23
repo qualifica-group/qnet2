@@ -39,8 +39,8 @@ class WorkOrderLinkController extends BaseApiController
     }
 
     /**
-     * POST /api/integrations/formalab/work-orders/{workOrder}/sync: match the
-     * edition by course name, re-read it from Formalab and write the fields.
+     * POST /api/integrations/formalab/work-orders/{workOrder}/sync: re-read
+     * from Formalab the edition chosen in the class select and write the fields.
      */
     public function sync(Request $request, WorkOrder $workOrder): JsonResponse
     {
