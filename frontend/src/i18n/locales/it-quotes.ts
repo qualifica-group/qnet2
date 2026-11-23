@@ -105,6 +105,7 @@ export const quotes = {
     rewardsCount_one: '{{count}} buono assegnato',
     rewardsCount_other: '{{count}} buoni assegnati',
     newAttributes: 'Informazioni aggiuntive portate dai nuovi prodotti',
+    syncedWithWorkOrder: 'Sincronizzato con la commessa: modificandolo qui cambia anche nelle commesse collegate.',
     createdAt: 'Creato il',
     updatedAt: 'Aggiornato il',
     linesEmpty: 'Nessuna riga presente.',

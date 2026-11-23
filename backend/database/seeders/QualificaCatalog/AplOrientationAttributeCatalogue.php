@@ -14,10 +14,11 @@ use App\Enums\LayoutSectionVariant;
  * tolto"): QualificaBranchWorkOrderSeeder creates and assigns them on the
  * CATEGORY and lays them out in the SECTIONS below, and
  * QualificaAplOrientationWorkOrderFieldsSeeder moved an installation already
- * seeded.
+ * seeded. The offer keeps "Anagrafica Utente" alone, synced with the
+ * Commessa (spec 0425).
  *
  * The category is cut off the "APL" root for the Offerta
- * (CategoryInheritanceRules), so its offer has no flexible field left.
+ * (CategoryInheritanceRules), so no root field reaches its offer.
  *
  * "Anagrafica Utente" is a field of its own, a link to the registry of the
  * person the practice is for (user directive 2026-10-06): the opportunity's
@@ -48,14 +49,38 @@ final class AplOrientationAttributeCatalogue
     public const string CATEGORY = 'Orientamento specialistico';
 
     /**
+     * "Anagrafica Utente": the one field the offer keeps, synced with the
+     * Commessa (spec 0425, D-9).
+     *
+     * @var array{code: string, name: string, type: string, relation_target: array<string, mixed>}
+     */
+    public const array USER_REGISTRY = ['code' => 'user_registry', 'name' => 'Anagrafica Utente', 'type' => 'relation', 'relation_target' => [
+        'entity_type' => 'registries',
+        'cardinality' => 'one',
+        'for_select_resource' => 'registries',
+    ]];
+
+    /**
+     * The OFFERTA fields: "Anagrafica Utente" alone, laid out flat (no form).
+     *
+     * @var list<array{code: string, name: string, type: string, relation_target: array<string, mixed>}>
+     */
+    public const array QUOTE_ATTRIBUTES = [self::USER_REGISTRY];
+
+    /**
+     * The Commessa codes synced with the offer (spec 0425).
+     *
+     * @var list<string>
+     */
+    public const array SYNCED_CODES = ['user_registry'];
+
+    /**
+     * The COMMESSA fields.
+     *
      * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, relation_target?: array<string, mixed>, config?: array<string, mixed>}>
      */
     public const array ATTRIBUTES = [
-        ['code' => 'user_registry', 'name' => 'Anagrafica Utente', 'type' => 'relation', 'relation_target' => [
-            'entity_type' => 'registries',
-            'cardinality' => 'one',
-            'for_select_resource' => 'registries',
-        ]],
+        self::USER_REGISTRY,
         ['code' => 'sfl_renewal_status', 'name' => 'SFL', 'type' => 'enum', 'options' => [
             ['value' => 'to_renew', 'label' => 'Da rinnovare'],
             ['value' => 'renewed', 'label' => 'Rinnovato'],

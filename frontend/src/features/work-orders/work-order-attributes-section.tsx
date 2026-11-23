@@ -10,6 +10,7 @@ import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { AttributeLayoutView, type AttributeFieldRenderer } from '@/features/attributes/attribute-layout-view'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
+import { SyncedAttributeHint } from '@/features/attributes/synced-attribute-hint'
 import { LockedSourceHint } from '@/features/work-orders/locked-source-hint'
 import type { ApplicableAttributeSummary, LockedAttribute } from '@/features/work-orders/types'
 
@@ -80,6 +81,7 @@ export function WorkOrderAttributesSection({
   }
 
   const effectiveByCode = new Map(effectiveAttributes.map((attribute) => [attribute.code, attribute]))
+  const syncedCodes = new Set(attributes.filter((attribute) => attribute.is_synced).map((attribute) => attribute.code))
 
   const renderField: AttributeFieldRenderer = (attribute, value, fieldClassName) => {
     const effective = effectiveByCode.get(attribute.code)
@@ -91,7 +93,12 @@ export function WorkOrderAttributesSection({
         label={attribute.name}
         inline={inline}
         canEdit={lockedSource === undefined}
-        labelAdornment={lockedSource === undefined ? undefined : <LockedSourceHint source={lockedSource} />}
+        labelAdornment={
+          <>
+            {lockedSource === undefined ? null : <LockedSourceHint source={lockedSource} />}
+            {syncedCodes.has(attribute.code) ? <SyncedAttributeHint hint={t('workOrders.detail.syncedWithQuote')} /> : null}
+          </>
+        }
         className={fieldClassName}
         editor={
           effective ? (

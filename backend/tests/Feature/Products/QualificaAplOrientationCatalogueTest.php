@@ -27,8 +27,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 // APL" sheet, Orientamento/SFL GOL): "Orientamento Specialistico" gets its own
 // fields, form and working states, sharing the decree, reporting and end-date
 // fields with the other APL practices. Every seeded section is white.
-// REQUIREMENT CHANGED 2026-11-23: the fields and the form are the Commessa's,
-// the offer keeps none ("da offerta deve essere tolto").
+// REQUIREMENT CHANGED 2026-11-23: the fields and the form are the Commessa's;
+// the offer keeps "Anagrafica Utente" alone, synced with it (spec 0425, D-9).
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -36,7 +36,7 @@ beforeEach(function (): void {
     config(['migrations.base_url' => null]);
 });
 
-it('gives the orientation practices their own Commessa fields and no offer field', function (): void {
+it('gives the orientation practices their own Commessa fields, the offer keeping "Anagrafica Utente" synced', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicates.
 
@@ -49,7 +49,9 @@ it('gives the orientation practices their own Commessa fields and no offer field
         ->and($category->inherits_quote_attributes)->toBeFalse()
         ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::WorkOrder)->pluck('code')->sort()->values()->all())
         ->toBe(collect($ownCodes)->sort()->values()->all())
-        ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::Quote))->toBeEmpty()
+        ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::Quote)->pluck('code')->all())->toBe(['user_registry'])
+        ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::WorkOrder)->where('syncs_with_quote', true)->pluck('code')->all())->toBe(['user_registry'])
+        ->and(app(AttributeLayoutService::class)->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))->toBeNull()
         ->and($ownCodes)->toHaveCount(16);
 
     // One "Data fine" attribute shared with the internships, not a copy.

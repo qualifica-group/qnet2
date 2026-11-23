@@ -127,6 +127,7 @@ const SITE_ACCESS_ATTRIBUTE: ApplicableAttributeSummary = {
   config: null,
   relation_target: null,
   is_required: false,
+  is_synced: false,
   sort_order: 0,
   options: [],
 }

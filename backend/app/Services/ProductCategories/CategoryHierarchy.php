@@ -413,7 +413,7 @@ final class CategoryHierarchy
         $pivots = DB::table('attribute_category')
             ->where('context', $context->value)
             ->orderBy('sort_order')
-            ->get(['category_id', 'attribute_id', 'is_required', 'sort_order']);
+            ->get(['category_id', 'attribute_id', 'is_required', 'syncs_with_quote', 'sort_order']);
 
         $descriptors = Attribute::query()
             ->whereIn('id', $pivots->pluck('attribute_id')->unique())
@@ -427,6 +427,7 @@ final class CategoryHierarchy
             ->map(static fn (Collection $rows): Collection => $rows->map(static fn (object $pivot): array => [
                 'descriptor' => $descriptors->get($pivot->attribute_id),
                 'is_required' => (bool) $pivot->is_required,
+                'syncs_with_quote' => (bool) $pivot->syncs_with_quote,
                 'sort_order' => (int) $pivot->sort_order,
             ]));
 
@@ -461,6 +462,7 @@ final class CategoryHierarchy
                     'name' => $attribute->name,
                     'type' => $attribute->type,
                     'is_required' => (bool) $attribute->pivot->is_required,
+                    'syncs_with_quote' => (bool) $attribute->pivot->syncs_with_quote,
                     'context' => $context->value,
                 ];
 

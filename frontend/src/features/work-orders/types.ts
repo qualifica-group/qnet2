@@ -150,6 +150,8 @@ export interface ApplicableAttributeSummary {
   config: Record<string, unknown> | null
   relation_target: Record<string, unknown> | null
   is_required: boolean
+  /** True when the field is shared between the offer and its work orders (spec 0425). */
+  is_synced: boolean
   sort_order: number
   options: WorkOrderAttributeOptionRef[]
 }

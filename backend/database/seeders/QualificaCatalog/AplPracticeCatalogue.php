@@ -9,7 +9,7 @@ use App\Enums\LayoutSectionVariant;
  * place: each is a category with its own offer fields, offer form and working
  * states (user directives 2026-10-02, 2026-10-05). Orientation's fields and
  * form are the Commessa's since 2026-11-23 (QualificaBranchWorkOrderSeeder):
- * it keeps only its working states here. Pure data, read by the
+ * its offer keeps "Anagrafica Utente" alone, with no form (spec 0425). Pure data, read by the
  * seeders that consume them (QualificaCatalogSeeder, QualificaQuoteLayoutSeeder,
  * WorkflowStatusCatalogue), so a new practice is one row per map here rather
  * than one line in each of those files.
@@ -27,6 +27,7 @@ final class AplPracticeCatalogue
     public const array QUOTE_ATTRIBUTES = [
         AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::ATTRIBUTES,
         ApprenticeshipAttributeCatalogue::CATEGORY => ApprenticeshipAttributeCatalogue::ATTRIBUTES,
+        AplOrientationAttributeCatalogue::CATEGORY => AplOrientationAttributeCatalogue::QUOTE_ATTRIBUTES,
     ];
 
     /**

@@ -379,6 +379,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Quando la commessa nasce da un contratto (**Programma**, creazione multipla o commessa multi-offerta), le **Informazioni aggiuntive** con lo stesso codice di quelle dell'offerta partono già compilate; nella commessa multi-offerta vale il primo valore non vuoto. Per le commesse esistenti usa **Copia dati dall'offerta** nell'intestazione (serve **Modifica**): riempie solo i campi vuoti, non sovrascrive mai, e ti dice quanti campi ha copiato.",
         },
+        {
+          type: 'paragraph',
+          text: "Un campo con l'icona di collegamento accanto al nome è **sincronizzato con l'offerta** (lo decide la categoria): ha un solo valore nell'offerta e in tutte le sue commesse. Se lo modifichi o lo svuoti qui cambia anche nell'offerta e nelle altre commesse della stessa offerta; alla creazione la commessa prende il valore dell'offerta, a meno che tu non ne scriva un altro.",
+        },
       ],
     },
     {

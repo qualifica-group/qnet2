@@ -379,6 +379,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "When the work order is born from a contract (**Schedule**, batch creation or multi-offer work order), the **Additional information** fields sharing a code with the offer's start already filled; on a multi-offer work order the first non-empty value wins. For existing work orders use **Copy data from the offer** in the header (requires **Edit**): it fills only empty fields, never overwrites, and tells you how many fields it copied.",
         },
+        {
+          type: 'paragraph',
+          text: "A field with the link icon beside its name is **synced with the offer** (the category decides it): it has a single value on the offer and on all its work orders. Changing or clearing it here changes it on the offer and on the other work orders of the same offer too; when created, the work order takes the offer's value unless you write another one.",
+        },
       ],
     },
     {

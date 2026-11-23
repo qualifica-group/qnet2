@@ -16,7 +16,7 @@ use App\Enums\PersonalDataTypeEnum;
 final readonly class CreateProductCategoryData
 {
     /**
-     * @param  array<int, array{attribute_id: int, context: string, is_required?: bool, sort_order?: int}>|null  $attributes
+     * @param  array<int, array{attribute_id: int, context: string, is_required?: bool, syncs_with_quote?: bool, sort_order?: int}>|null  $attributes
      */
     public function __construct(
         public string $name,

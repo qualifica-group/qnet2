@@ -115,6 +115,7 @@ export const workOrders = {
     taskTemplate: 'Modello di Task',
     lines: 'Righe prodotto',
     lockedSource: 'Valore ricevuto da {{source}}: in sola lettura.',
+    syncedWithQuote: "Sincronizzato con l'offerta: modificandolo qui cambia anche nell'offerta.",
     additionalInformation: 'Informazioni aggiuntive',
     created_at: 'Creata il',
     updated_at: 'Aggiornata il',

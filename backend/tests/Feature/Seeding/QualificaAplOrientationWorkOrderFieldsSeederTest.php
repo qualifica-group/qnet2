@@ -12,8 +12,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
  * The Orientamento specialistico offer fields move to the Commessa, with the
- * offer's form; the existing work orders take their offer's values and the
- * offer keeps none of the fields.
+ * offer's form; the existing work orders take their offer's values.
+ * REQUIREMENT CHANGED (spec 0425, D-9): the offer keeps "Anagrafica Utente",
+ * synced with the Commessa, whose value it imposes on every work order.
  */
 uses(RefreshDatabase::class);
 
@@ -23,6 +24,7 @@ beforeEach(function (): void {
     $this->category = ProductCategory::factory()->create(['name' => AplOrientationAttributeCatalogue::CATEGORY]);
     categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'orientation_measure_note'], $this->category);
     categoryTabAttribute(AttributeContext::Quote, 'date', ['code' => 'orientation_intake_date'], $this->category);
+    categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'user_registry'], $this->category);
     AttributeLayout::query()->create([
         'product_category_id' => $this->category->id,
         'context' => AttributeContext::Quote,
@@ -37,7 +39,7 @@ beforeEach(function (): void {
     ]);
 
     $this->quote = categoryTabQuote([$this->category]);
-    $this->quote->forceFill(['attribute_values' => ['orientation_measure_note' => 'Presa in carico', 'orientation_intake_date' => '2026-11-02']])->saveQuietly();
+    $this->quote->forceFill(['attribute_values' => ['orientation_measure_note' => 'Presa in carico', 'orientation_intake_date' => '2026-11-02', 'user_registry' => '42']])->saveQuietly();
 });
 
 function aplOrientationWorkOrder(Quote $quote, array $values = [], int $renewal = 0): WorkOrder
@@ -49,14 +51,17 @@ function aplOrientationWorkOrder(Quote $quote, array $values = [], int $renewal 
     return $workOrder;
 }
 
-it('moves every offer field and the offer form to the Commessa', function () {
+it('moves every offer field and the offer form to the Commessa, the offer keeping "Anagrafica Utente" synced', function () {
     $this->seed(QualificaAplOrientationWorkOrderFieldsSeeder::class);
 
     $codesIn = fn (AttributeContext $context): array => $this->category->attributes()->wherePivot('context', $context->value)->pluck('code')->sort()->values()->all();
+    $syncedIn = $this->category->attributes()->wherePivot('context', AttributeContext::WorkOrder->value)->get()
+        ->filter(fn ($attribute): bool => (bool) $attribute->pivot->syncs_with_quote)->pluck('code')->all();
     $forms = AttributeLayout::query()->where('product_category_id', $this->category->id)->get();
 
-    expect($codesIn(AttributeContext::WorkOrder))->toBe(['orientation_intake_date', 'orientation_measure_note'])
-        ->and($codesIn(AttributeContext::Quote))->toBe([])
+    expect($codesIn(AttributeContext::WorkOrder))->toBe(['orientation_intake_date', 'orientation_measure_note', 'user_registry'])
+        ->and($codesIn(AttributeContext::Quote))->toBe(['user_registry'])
+        ->and($syncedIn)->toBe(['user_registry'])
         ->and($forms->pluck('context')->all())->toBe([AttributeContext::WorkOrder])
         ->and($forms->sole()->form_mode)->toBe(LayoutFormScope::All)
         ->and(collect($forms->sole()->layout['sections'][0]['rows'][0]['items'])->pluck('attribute_code')->all())
@@ -66,14 +71,14 @@ it('moves every offer field and the offer form to the Commessa', function () {
     expect($this->quote->fresh()->attribute_values)->toHaveKey('orientation_measure_note');
 });
 
-it('fills the existing work orders from their offer without overwriting a value', function () {
+it('fills the existing work orders from their offer without overwriting a value, except the synced one', function () {
     $empty = aplOrientationWorkOrder($this->quote);
-    $written = aplOrientationWorkOrder($this->quote, ['orientation_measure_note' => 'Scritto a mano'], 1);
+    $written = aplOrientationWorkOrder($this->quote, ['orientation_measure_note' => 'Scritto a mano', 'user_registry' => '7'], 1);
 
     $this->seed(QualificaAplOrientationWorkOrderFieldsSeeder::class);
 
-    expect($empty->fresh()->attribute_values)->toEqual(['orientation_measure_note' => 'Presa in carico', 'orientation_intake_date' => '2026-11-02'])
-        ->and($written->fresh()->attribute_values)->toEqual(['orientation_measure_note' => 'Scritto a mano', 'orientation_intake_date' => '2026-11-02']);
+    expect($empty->fresh()->attribute_values)->toEqual(['orientation_measure_note' => 'Presa in carico', 'orientation_intake_date' => '2026-11-02', 'user_registry' => '42'])
+        ->and($written->fresh()->attribute_values)->toEqual(['orientation_measure_note' => 'Scritto a mano', 'orientation_intake_date' => '2026-11-02', 'user_registry' => '42']);
 });
 
 it('puts the offer form over the catalogue one and changes nothing on a second run', function () {
@@ -90,8 +95,24 @@ it('puts the offer form over the catalogue one and changes nothing on a second r
     $afterFirst = $workOrder->fresh()->updated_at;
     $this->seed(QualificaAplOrientationWorkOrderFieldsSeeder::class);
 
-    expect($this->category->attributes()->wherePivot('context', AttributeContext::WorkOrder->value)->count())->toBe(3)
+    expect($this->category->attributes()->wherePivot('context', AttributeContext::WorkOrder->value)->count())->toBe(4)
         ->and($formAfterFirst['sections'][0]['id'])->toBe('apl-orientation-path')
         ->and(AttributeLayout::query()->where('product_category_id', $this->category->id)->sole()->layout)->toBe($formAfterFirst)
         ->and($workOrder->fresh()->updated_at->equalTo($afterFirst))->toBeTrue();
+});
+
+it('gives "Anagrafica Utente" back to the offer where the previous revision already withdrew it', function () {
+    $workOrder = aplOrientationWorkOrder($this->quote);
+    // The 1f04e9cd7 state: every field in the Commessa only, the values still on the offer.
+    $ids = $this->category->attributes()->wherePivot('context', AttributeContext::Quote->value)->pluck('attributes.id')->all();
+    foreach ($ids as $id) {
+        $this->category->attributes()->attach($id, ['context' => AttributeContext::WorkOrder->value, 'is_required' => false, 'sort_order' => 0]);
+    }
+    $this->category->attributes()->wherePivot('context', AttributeContext::Quote->value)->detach();
+    AttributeLayout::query()->where('product_category_id', $this->category->id)->update(['context' => AttributeContext::WorkOrder]);
+
+    $this->seed(QualificaAplOrientationWorkOrderFieldsSeeder::class);
+
+    expect($this->category->attributes()->wherePivot('context', AttributeContext::Quote->value)->pluck('code')->all())->toBe(['user_registry'])
+        ->and($workOrder->fresh()->attribute_values['user_registry'])->toBe('42');
 });

@@ -42,6 +42,7 @@ function attribute(overrides: Partial<ApplicableAttributeSummary>): ApplicableAt
     config: null,
     relation_target: null,
     is_required: false,
+    is_synced: false,
     sort_order: 0,
     options: [],
     ...overrides,
@@ -127,6 +128,17 @@ describe('WorkOrderAttributesSection', () => {
     fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Site access' }) }))
 
     expect(screen.getByRole('textbox', { name: 'Site access' })).toHaveValue('Gate 3')
+  })
+
+  it('marks a synced field with a keyboard-reachable hint, and leaves the others bare', () => {
+    const synced = attribute({ is_synced: true })
+    const plain = attribute({ id: 3, code: 'notes', name: 'Notes' })
+    render(<Harness attributes={[synced, plain]} values={{ site_access: 'Gate 3', notes: 'x' }} />)
+
+    const hints = screen.getAllByRole('button', { name: /Synced with the offer/ })
+    expect(hints).toHaveLength(1)
+    hints[0].focus()
+    expect(hints[0]).toHaveFocus()
   })
 
   it('shows a field owned by an integration without any edit action, marked with its source', () => {

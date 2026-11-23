@@ -24,8 +24,9 @@ trait SeedsCategoryAttributes
 {
     /**
      * @param  list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, relation_target?: array<string, mixed>, config?: array<string, mixed>}>  $specs
+     * @param  list<string>  $syncedCodes  Commessa codes synced with the offer (spec 0425)
      */
-    protected function seedCategoryAttributes(ProductCategory $category, array $specs, AttributeContext $context): void
+    protected function seedCategoryAttributes(ProductCategory $category, array $specs, AttributeContext $context, array $syncedCodes = []): void
     {
         foreach ($specs as $spec) {
             $attribute = Attribute::firstOrCreate(
@@ -41,7 +42,7 @@ trait SeedsCategoryAttributes
             );
 
             $this->seedAttributeOptions($attribute, $spec['options'] ?? []);
-            $this->assignAttribute($category, $attribute, $context);
+            $this->assignAttribute($category, $attribute, $context, in_array($spec['code'], $syncedCodes, true));
         }
     }
 
@@ -69,23 +70,29 @@ trait SeedsCategoryAttributes
     /**
      * Additive on purpose, unlike ProductCategoryService::syncAttributes()
      * which is a full replace: a re-seed must not wipe the assignments made
-     * by hand from the category configurator.
+     * by hand from the category configurator. The sync flag is additive too:
+     * turned on when asked, never turned off.
      */
-    protected function assignAttribute(ProductCategory $category, Attribute $attribute, AttributeContext $context): void
+    protected function assignAttribute(ProductCategory $category, Attribute $attribute, AttributeContext $context, bool $syncsWithQuote = false): void
     {
-        $isAssigned = $category->attributes()
+        $assigned = $category->attributes()
             ->wherePivot('context', $context->value)
             ->where('attributes.id', $attribute->id)
-            ->exists();
+            ->first();
 
-        if ($isAssigned) {
+        if ($assigned === null) {
+            $category->attributes()->attach($attribute->id, [
+                'context' => $context->value,
+                'is_required' => false,
+                'syncs_with_quote' => $syncsWithQuote,
+                'sort_order' => 0,
+            ]);
+
             return;
         }
 
-        $category->attributes()->attach($attribute->id, [
-            'context' => $context->value,
-            'is_required' => false,
-            'sort_order' => 0,
-        ]);
+        if ($syncsWithQuote && ! $assigned->pivot->syncs_with_quote) {
+            $category->attributes()->wherePivot('context', $context->value)->updateExistingPivot($attribute->id, ['syncs_with_quote' => true]);
+        }
     }
 }

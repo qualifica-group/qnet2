@@ -328,7 +328,7 @@ class ProductCategoryService
      * transaction-wrapped (a partial failure never leaves the category with
      * only its old rows deleted).
      *
-     * @param  array<int, array{attribute_id: int, context: string, is_required?: bool, sort_order?: int}>  $attributes
+     * @param  array<int, array{attribute_id: int, context: string, is_required?: bool, syncs_with_quote?: bool, sort_order?: int}>  $attributes
      */
     private function syncAttributes(ProductCategory $category, array $attributes): void
     {
@@ -346,6 +346,7 @@ class ProductCategoryService
                 'category_id' => $category->id,
                 'context' => (string) $row['context'],
                 'is_required' => (bool) ($row['is_required'] ?? false),
+                'syncs_with_quote' => (bool) ($row['syncs_with_quote'] ?? false),
                 'sort_order' => (int) ($row['sort_order'] ?? 0),
                 'created_at' => $now,
                 'updated_at' => $now,

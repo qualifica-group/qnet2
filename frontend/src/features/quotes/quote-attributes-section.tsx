@@ -6,6 +6,7 @@ import { RecordInlineField, type InlineEdit } from '@/components/record-form/rec
 import { AdditionalInformationSection } from '@/features/attributes/additional-information-section'
 import { AttributeLayoutField } from '@/features/attributes/attribute-layout-field'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import { SyncedAttributeHint } from '@/features/attributes/synced-attribute-hint'
 import { AttributeLayoutView, type AttributeFieldRenderer } from '@/features/attributes/attribute-layout-view'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
@@ -62,6 +63,7 @@ export function QuoteAttributesSection({
   }
 
   const effectiveByCode = new Map(effectiveAttributes.map((attribute) => [attribute.code, attribute]))
+  const syncedCodes = new Set(attributes.filter((attribute) => attribute.is_synced).map((attribute) => attribute.code))
 
   const renderField: AttributeFieldRenderer = (attribute, value, fieldClassName) => {
     const effective = effectiveByCode.get(attribute.code)
@@ -71,6 +73,9 @@ export function QuoteAttributesSection({
         metaKey="attribute_values"
         label={attribute.name}
         inline={inline}
+        labelAdornment={
+          syncedCodes.has(attribute.code) ? <SyncedAttributeHint hint={t('quotes.detail.syncedWithWorkOrder')} /> : undefined
+        }
         className={fieldClassName}
         editor={
           effective ? (

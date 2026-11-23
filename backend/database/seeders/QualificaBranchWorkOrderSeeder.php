@@ -20,7 +20,7 @@ use Illuminate\Database\Seeder;
  * the root alone. The subcategories inherit the fields and, since spec 0115,
  * the form, so none needs a row of its own. Plus "Orientamento specialistico"
  * under APL (user directive 2026-11-23), whose offer fields became its
- * Commessa's.
+ * Commessa's, "Anagrafica Utente" synced with the offer (spec 0425).
  *
  * Kept apart from QualificaContactProcessingSeeder, which owns the Commessa
  * form of the Formazione branch only: the sets never share a category.
@@ -45,12 +45,12 @@ class QualificaBranchWorkOrderSeeder extends Seeder
     ];
 
     /**
-     * Non-root category name => [its Commessa fields, its Commessa form].
+     * Non-root category name => [its Commessa fields, its Commessa form, the codes synced with the offer].
      *
-     * @var array<string, array{0: list<array<string, mixed>>, 1: list<array{0: string, 1: string, 2: list<list<string>>, 3: array<string, mixed>}>}>
+     * @var array<string, array{0: list<array<string, mixed>>, 1: list<array{0: string, 1: string, 2: list<list<string>>, 3: array<string, mixed>}>, 2: list<string>}>
      */
     private const array CATEGORIES = [
-        AplOrientationAttributeCatalogue::CATEGORY => [AplOrientationAttributeCatalogue::ATTRIBUTES, AplOrientationAttributeCatalogue::SECTIONS],
+        AplOrientationAttributeCatalogue::CATEGORY => [AplOrientationAttributeCatalogue::ATTRIBUTES, AplOrientationAttributeCatalogue::SECTIONS, AplOrientationAttributeCatalogue::SYNCED_CODES],
     ];
 
     public function __construct(private readonly AttributeLayoutService $layouts) {}
@@ -63,19 +63,20 @@ class QualificaBranchWorkOrderSeeder extends Seeder
             $this->seedSet(ProductCategory::query()->where('name', $rootName)->whereNull('parent_id')->firstOrFail(), $attributes, $sections);
         }
 
-        foreach (self::CATEGORIES as $name => [$attributes, $sections]) {
-            $this->seedSet(ProductCategory::query()->where('name', $name)->sole(), $attributes, $sections);
+        foreach (self::CATEGORIES as $name => [$attributes, $sections, $syncedCodes]) {
+            $this->seedSet(ProductCategory::query()->where('name', $name)->sole(), $attributes, $sections, $syncedCodes);
         }
     }
 
     /**
      * @param  list<array<string, mixed>>  $attributes
      * @param  list<array{0: string, 1: string, 2: list<list<string>>, 3: array<string, mixed>}>  $sections
+     * @param  list<string>  $syncedCodes
      */
-    private function seedSet(ProductCategory $category, array $attributes, array $sections): void
+    private function seedSet(ProductCategory $category, array $attributes, array $sections, array $syncedCodes = []): void
     {
         // Step 1: the fields, before the form validates its codes against them.
-        $this->seedCategoryAttributes($category, $attributes, AttributeContext::WorkOrder);
+        $this->seedCategoryAttributes($category, $attributes, AttributeContext::WorkOrder, $syncedCodes);
 
         // Step 2: the form, unless one is already configured.
         if ($this->layouts->resolveExact($category, AttributeContext::WorkOrder, LayoutFormScope::All) !== null) {

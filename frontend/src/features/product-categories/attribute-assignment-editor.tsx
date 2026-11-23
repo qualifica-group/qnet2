@@ -59,7 +59,7 @@ export function AttributeAssignmentEditor({
 
   const addAssignment = (context: AttributeContext, attributeId: number) => {
     const inSection = byContext(context)
-    onChange([...value, { attribute_id: attributeId, context, is_required: false, sort_order: inSection.length }])
+    onChange([...value, { attribute_id: attributeId, context, is_required: false, syncs_with_quote: false, sort_order: inSection.length }])
   }
 
   const updateAssignment = (
@@ -86,6 +86,7 @@ export function AttributeAssignmentEditor({
         <p className="text-xs text-muted-foreground">{t('productCategories.form.attributesHelp')}</p>
 
         <AttributeAssignmentSection
+          context="product"
           title={t('productCategories.form.sections.productAttributes.title')}
           description={t('productCategories.form.sections.productAttributes.description')}
           assignments={byContext('product')}
@@ -99,6 +100,7 @@ export function AttributeAssignmentEditor({
         />
 
         <AttributeAssignmentSection
+          context="quote"
           title={t('productCategories.form.sections.quoteAttributes.title')}
           description={t('productCategories.form.sections.quoteAttributes.description')}
           assignments={byContext('quote')}
@@ -112,6 +114,7 @@ export function AttributeAssignmentEditor({
         />
 
         <AttributeAssignmentSection
+          context="work_order"
           title={t('productCategories.form.sections.workOrderAttributes.title')}
           description={t('productCategories.form.sections.workOrderAttributes.description')}
           assignments={byContext('work_order')}

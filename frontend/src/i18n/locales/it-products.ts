@@ -109,6 +109,9 @@ export const productCategories = {
     attributeError: 'Impossibile caricare gli attributi.',
     isRequired: 'Obbligatorio',
     isRequiredHelp: 'Se attivo, il prodotto DEVE valorizzare questo attributo.',
+    syncsWithQuote: "Sincronizzato con l'offerta",
+    syncsWithQuoteHelp:
+      "Lo stesso campo e' assegnato anche in Offerta: ne esiste un solo valore. Chi lo modifica da una parte lo ritrova dall'altra, anche alla creazione della commessa.",
     sortOrder: 'Ordine',
     sortOrderHelp: 'La posizione in cui questo campo compare nel form del prodotto.',
     removeAttribute: 'Rimuovi attributo',
