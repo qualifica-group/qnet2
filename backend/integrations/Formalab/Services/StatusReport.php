@@ -62,6 +62,7 @@ final class StatusReport
             'finished_at' => $run->finished_at?->toIso8601String(),
             'classes_synced' => $run->classes_synced,
             'work_orders_updated' => $run->work_orders_updated,
+            'classes_removed' => $run->classes_removed,
             'error_message' => $run->error_message,
             'warning_message' => $run->warning_message,
         ];

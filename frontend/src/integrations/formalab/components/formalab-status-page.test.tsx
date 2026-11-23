@@ -41,6 +41,7 @@ const status: FormalabStatus = {
     finished_at: '2026-11-20T10:00:05Z',
     classes_synced: 0,
     work_orders_updated: 0,
+    classes_removed: 2,
     error_message: 'Formalab non raggiungibile',
     warning_message: null,
   },
@@ -77,6 +78,7 @@ describe('FormalabStatusPage', () => {
     expect(await screen.findByText('https://formalab.example.test')).toBeInTheDocument()
     expect(screen.getByText('1395')).toBeInTheDocument()
     expect(screen.getByText('Fallita')).toBeInTheDocument()
+    expect(screen.getByText("Classi rimosse (non piu' su Formalab)").nextSibling).toHaveTextContent('2')
     expect(screen.getByRole('alert')).toHaveTextContent('Formalab non raggiungibile')
     expect(screen.getByText('table:formalab-call-logs')).toBeInTheDocument()
   })

@@ -62,6 +62,14 @@
       `relation` verso `formalab-classes` e il suo valore e' `orderformaziones.edition_id`. In
       qnet-2 il valore passa dalla validazione relazione (exists su formalab_classes): sincronizzare
       il catalogo PRIMA di migrare le commesse.
+    - D-12 (richiesta utente 2026-11-23) Classe non piu' esistente su Formalab: viene tolta dal
+      catalogo, i collegamenti delle sue commesse eliminati e la select della classe svuotata (con voce
+      di storico); gli altri campi mappati restano con gli ultimi valori. Rilevata (a) dalla
+      sincronizzazione completa: edizioni locali assenti dall'elenco, solo se la lettura e' completa
+      (nessun taglio per `max_pages`) e non vuota; (b) da ogni lettura singola con 404 (Sincronizza
+      della commessa, webhook). Verificato su Formalab reale: le 39 edizioni note al legacy e assenti
+      dall'elenco rispondono 404 anche per id. Conteggio in `formalab_sync_runs.classes_removed`
+      (migrazione 2026_11_23_120000), esposto in `last_sync.classes_removed`.
   </context>
 
   <contract>
@@ -97,6 +105,7 @@
     - AC-006 "Sincronizza" commessa: usa l'edizione scelta; select vuota = 422.
     - AC-007 Tabella formalab-classes: super-admin si', altri 403.
     - AC-008 Menu: sezione Integrazioni esterne con Formalab > Stato e configurazione, Classi; nessun gruppo in Develop.
+    - AC-010 Classe assente dall'elenco (lettura completa) o 404 per id = classe rimossa, link eliminati, select svuotata; elenco vuoto o troncato = nessuna rimozione.
     - AC-009 Seeder di conversione: attributo convertito, valori da collegamento / etichetta univoca, non trovati svuotati; seconda esecuzione senza effetti.
   </acceptance>
 </spec>

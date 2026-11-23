@@ -19,6 +19,7 @@ final class ClassCatalog
     public function __construct(
         private readonly FormalabClient $client,
         private readonly ClassPayloadMapper $mapper,
+        private readonly RemovedClassCleanup $cleanup,
     ) {}
 
     /**
@@ -44,7 +45,8 @@ final class ClassCatalog
     }
 
     /**
-     * Reads one edition live from Formalab and stores it.
+     * Reads one edition live from Formalab and stores it. An edition Formalab
+     * answers 404 for is removed, with its work order links (spec 0426 D-12).
      *
      * @return FormalabClass|null null when Formalab has no such edition
      *
@@ -56,6 +58,8 @@ final class ClassCatalog
             $body = $this->client->get('/api/classi/'.$editionId, [], $trigger);
         } catch (FormalabException $exception) {
             if ($exception->isNotFound()) {
+                $this->cleanup->handle([$editionId]);
+
                 return null;
             }
 

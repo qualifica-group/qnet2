@@ -11,6 +11,8 @@ export interface FormalabSyncRun {
   finished_at: string | null
   classes_synced: number
   work_orders_updated: number
+  /** Classes removed because Formalab no longer has them (spec 0426 D-12). */
+  classes_removed: number
   error_message: string | null
   /** Set on a run that succeeded with a caveat, e.g. course fields whose attribute code no longer exists. */
   warning_message: string | null

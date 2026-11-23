@@ -61,6 +61,7 @@ export function StatusCard({ status }: { status: FormalabStatus }) {
               </Row>
               <Row label={t('status.classesSynced')}>{lastSync.classes_synced}</Row>
               <Row label={t('status.workOrdersUpdated')}>{lastSync.work_orders_updated}</Row>
+              <Row label={t('status.classesRemoved')}>{lastSync.classes_removed}</Row>
               {lastSync.error_message ? (
                 <p role="alert" className="text-xs text-destructive">
                   {lastSync.error_message}

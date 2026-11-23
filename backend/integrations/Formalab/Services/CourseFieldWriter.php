@@ -41,10 +41,16 @@ final class CourseFieldWriter
      */
     public function editionIdOf(WorkOrder $workOrder): ?int
     {
-        $code = $this->applicableMap($workOrder)[FormalabField::Label->value] ?? null;
+        $code = $this->keyCodeOf($workOrder);
         $value = $code === null ? null : ($workOrder->attribute_values[$code] ?? null);
 
         return is_numeric($value) && (int) $value > 0 ? (int) $value : null;
+    }
+
+    /** The code of the work order's class select (the attribute mapped on `label`); null when not eligible. */
+    public function keyCodeOf(WorkOrder $workOrder): ?string
+    {
+        return $this->applicableMap($workOrder)[FormalabField::Label->value] ?? null;
     }
 
     /** How many distinct attribute codes the saved category maps use. */

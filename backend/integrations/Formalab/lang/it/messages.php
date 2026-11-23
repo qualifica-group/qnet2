@@ -6,7 +6,7 @@ return [
     'unreachable' => 'Formalab non e\' raggiungibile.',
     'http_error' => 'Formalab ha risposto con un errore (HTTP :status).',
     'not_eligible' => 'La categoria di questa commessa non e\' collegata a Formalab, oppure la sua mappatura non porta la classe Formalab su un campo della commessa.',
-    'class_not_found' => 'La classe non esiste su Formalab.',
+    'class_not_found' => 'La classe non esiste piu\' su Formalab: e\' stata tolta dal catalogo, il collegamento della commessa rimosso e la classe scelta svuotata.',
     'course_name_missing' => 'Scegli la classe Formalab nel campo della commessa mappato sul Nome corso / edizione.',
     'invalid_token' => 'Token Formalab non valido o mancante.',
     'sync_queued' => 'Sincronizzazione Formalab accodata.',

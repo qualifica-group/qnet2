@@ -6,7 +6,7 @@ return [
     'unreachable' => 'Formalab is not reachable.',
     'http_error' => 'Formalab answered with an error (HTTP :status).',
     'not_eligible' => 'This work order\'s category is not linked to Formalab, or its field map does not bring the Formalab class onto a work order field.',
-    'class_not_found' => 'The class does not exist on Formalab.',
+    'class_not_found' => 'The class no longer exists on Formalab: it was removed from the catalogue, the work order link deleted and the chosen class emptied.',
     'course_name_missing' => 'Choose the Formalab class in the work order field mapped to the course / edition name.',
     'invalid_token' => 'Invalid or missing Formalab token.',
     'sync_queued' => 'Formalab synchronization queued.',

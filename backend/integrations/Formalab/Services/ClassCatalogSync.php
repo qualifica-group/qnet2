@@ -7,6 +7,7 @@ namespace Integrations\Formalab\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Integrations\Formalab\Exceptions\FormalabException;
+use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabSyncRun;
 use Integrations\Formalab\Support\Trigger;
 use Throwable;
@@ -14,9 +15,10 @@ use Throwable;
 /**
  * The full catalogue sync: every page of /api/classi is read first and only
  * then written in one transaction, so a Formalab outage leaves the catalogue
- * untouched. Then the work orders not linked yet whose course name matches
- * one class are linked (spec 0423 D-15), and every changed or new link gets
- * the class fields. Every run is one formalab_sync_runs row; failures are
+ * untouched. The classes Formalab no longer lists are removed with their
+ * links (spec 0426 D-12), then the work orders not linked yet whose class
+ * select holds a catalogued edition are linked (spec 0423 D-15, 0426), and
+ * every changed or new link gets the class fields. Every run is one formalab_sync_runs row; failures are
  * recorded, never thrown.
  */
 final class ClassCatalogSync
@@ -30,6 +32,7 @@ final class ClassCatalogSync
         private readonly LinkBackfill $backfill,
         private readonly LinkPropagator $propagator,
         private readonly CourseFieldWriter $courseFields,
+        private readonly RemovedClassCleanup $cleanup,
     ) {}
 
     public function handle(Trigger $trigger): FormalabSyncRun
@@ -43,21 +46,25 @@ final class ClassCatalogSync
 
         try {
             // Step 2: read every page, then write the catalogue atomically
-            $rows = $this->fetchAll($trigger);
+            ['rows' => $rows, 'complete' => $complete] = $this->fetchAll($trigger);
             DB::transaction(fn (): int => $this->catalog->upsert($rows));
 
-            // Step 3: link the work orders whose course name now matches one class
+            // Step 3: classes Formalab no longer lists are removed, with their links (only on a complete, non-empty read)
+            $removed = $complete && $rows !== [] ? $this->removeMissing($rows) : 0;
+
+            // Step 4: link the work orders whose class select now holds a catalogued edition
             $this->backfill->link();
 
-            // Step 4: push the changed classes, and the new links, to the work orders
+            // Step 5: push the changed classes, and the new links, to the work orders
             $updated = $this->propagator->propagate();
 
-            // Step 5: close the run as a success
+            // Step 6: close the run as a success
             $run->update([
                 'outcome' => FormalabSyncRun::OUTCOME_SUCCESS,
                 'finished_at' => now(),
                 'classes_synced' => count($rows),
                 'work_orders_updated' => $updated,
+                'classes_removed' => $removed,
                 'warning_message' => $this->missingFieldsWarning(),
             ]);
         } catch (Throwable $exception) {
@@ -83,7 +90,25 @@ final class ClassCatalogSync
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @param  list<array<string, mixed>>  $rows  the classes Formalab listed
+     * @return int classes removed
+     */
+    private function removeMissing(array $rows): int
+    {
+        $missing = FormalabClass::query()
+            ->whereNotIn('edition_id', array_column($rows, 'edition_id'))
+            ->pluck('edition_id')
+            ->map(intval(...))
+            ->all();
+
+        return $missing === [] ? 0 : $this->cleanup->handle($missing)['classes'];
+    }
+
+    /**
+     * `complete` is false when the page cap stopped the read before the last
+     * page: what was not read is unknown, never removed.
+     *
+     * @return array{rows: list<array<string, mixed>>, complete: bool}
      *
      * @throws FormalabException
      */
@@ -108,6 +133,6 @@ final class ClassCatalogSync
             $page++;
         } while ($page <= $lastPage && $page <= (int) config('formalab.max_pages'));
 
-        return array_values($rows);
+        return ['rows' => array_values($rows), 'complete' => $page > $lastPage];
     }
 }

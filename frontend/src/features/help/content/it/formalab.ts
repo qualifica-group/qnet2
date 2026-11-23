@@ -140,7 +140,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni **10 minuti** QNet rilegge il catalogo delle classi e riallinea tutte le commesse delle categorie collegate all\'edizione scelta nella loro select (collega, sposta o scollega, per ID edizione), scrivendo subito i loro campi. Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata.',
+          text: 'Ogni **10 minuti** QNet rilegge il catalogo delle classi e collega le commesse delle categorie collegate che hanno scelto un\'edizione ora presente nel catalogo (sempre per ID edizione). Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata. Quando scegli, cambi o svuoti la classe di una commessa, il collegamento si aggiorna subito al salvataggio.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Se una classe **non esiste più su Formalab** (non compare più nel catalogo, oppure Formalab risponde che non esiste quando la rilegge con **Sincronizza** o con una notifica), QNet la toglie dal catalogo, **rimuove il collegamento** delle sue commesse e **svuota la classe scelta** nella loro select; gli altri campi della commessa restano con gli ultimi valori. Il numero di classi rimosse compare in **Ultima sincronizzazione**. Se Formalab restituisce un catalogo vuoto o incompleto non viene rimosso nulla.',
         },
       ],
     },

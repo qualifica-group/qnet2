@@ -56,6 +56,7 @@ export const formalabEn = {
     finishedAt: 'Finished',
     classesSynced: 'Classes updated',
     workOrdersUpdated: 'Work orders updated',
+    classesRemoved: 'Classes removed (no longer on Formalab)',
     calls24h: 'Calls in the last 24 hours',
     callsTotal: 'Total',
     callsFailures: 'Failed',

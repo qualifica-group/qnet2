@@ -140,7 +140,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every **10 minutes** QNet rereads the class catalogue and realigns every work order of the linked categories to the edition chosen in its select (links, moves or unlinks, by edition ID), writing their fields right away. If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone.',
+          text: 'Every **10 minutes** QNet rereads the class catalogue and links the work orders of the linked categories whose chosen edition is now in the catalogue (always by edition ID). If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone. When you choose, change or clear a work order\'s class, the link is updated as soon as you save.',
+        },
+        {
+          type: 'paragraph',
+          text: 'If a class **no longer exists on Formalab** (it is no longer in the catalogue, or Formalab answers that it does not exist when **Sync** or a notification rereads it), QNet removes it from the catalogue, **deletes the link** of its work orders and **clears the chosen class** in their select; the other work order fields keep their last values. The number of removed classes shows in **Last sync**. If Formalab returns an empty or incomplete catalogue nothing is removed.',
         },
       ],
     },
