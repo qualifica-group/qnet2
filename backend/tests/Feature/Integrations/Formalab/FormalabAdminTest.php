@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -7,7 +8,6 @@ use Integrations\Formalab\Models\FormalabCallLog;
 use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabSyncRun;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
-use Integrations\Formalab\Services\CourseFieldWriter;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -19,6 +19,8 @@ it('serves the status page data to a super-admin without any secret', function (
     FormalabSyncRun::query()->create(['trigger' => 'schedule', 'outcome' => 'success', 'started_at' => now(), 'finished_at' => now(), 'classes_synced' => 1]);
     FormalabCallLog::query()->create(['direction' => 'outbound', 'method' => 'GET', 'endpoint' => '/api/classi', 'outcome' => 'success', 'status_code' => 200, 'trigger' => 'schedule']);
     FormalabCallLog::query()->create(['direction' => 'inbound', 'method' => 'POST', 'endpoint' => '/x', 'outcome' => 'failure', 'status_code' => 401, 'trigger' => 'webhook']);
+    // REQUIREMENT CHANGED (spec 0423 D-8): the checked codes are the ones the category maps use
+    formalabLinkCategory(ProductCategory::factory()->create(), [['formalab_field' => 'label', 'attribute_code' => 'gol_corso']]);
     Sanctum::actingAs(formalabSuperAdmin());
 
     $response = $this->getJson('/api/integrations/formalab/status')->assertOk();
@@ -27,7 +29,7 @@ it('serves the status page data to a super-admin without any secret', function (
         ->assertJsonPath('data.inbound_enabled', true)->assertJsonPath('data.sync_interval_minutes', 10)
         ->assertJsonPath('data.classes_count', 1)->assertJsonPath('data.linked_work_orders_count', 0)
         ->assertJsonPath('data.last_sync.outcome', 'success')->assertJsonPath('data.last_sync.warning_message', null)
-        ->assertJsonPath('data.missing_course_fields', CourseFieldWriter::CODES)
+        ->assertJsonPath('data.missing_course_fields', ['gol_corso'])
         ->assertJsonPath('data.calls_last_24h', ['total' => 2, 'failures' => 1, 'inbound' => 1, 'outbound' => 1]);
     expect($response->getContent())->not->toContain('p4ss-never-logged')->not->toContain('inbound-secret-token');
 });

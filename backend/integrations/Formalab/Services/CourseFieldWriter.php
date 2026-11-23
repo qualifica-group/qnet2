@@ -6,98 +6,96 @@ namespace Integrations\Formalab\Services;
 
 use App\Models\Attribute;
 use App\Models\WorkOrder;
+use App\RequestManagement\ApplicableAttribute;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Support\PeopleChangeLog;
 use App\WorkOrders\WorkOrderAttributeResolver;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Integrations\Formalab\Models\FormalabClass;
+use Integrations\Formalab\Support\FormalabField;
 
 /**
- * Writes the 12 course fields (flexible attributes `gol_*`) of a work order
- * from a Formalab class. The only write path is WorkOrderAttributeValueWriter,
- * limited to the attributes applicable to the work order, with the same
- * activity log entry an app edit would leave.
+ * Writes a Formalab class onto a work order through the field map of its
+ * categories (spec 0423): only the mapped attributes applicable to the work
+ * order, through WorkOrderAttributeValueWriter, with the same activity log
+ * entry an app edit would leave.
  */
 final class CourseFieldWriter
 {
-    /** The course field the work order must have for the integration to apply. */
-    public const string ELIGIBILITY_CODE = 'gol_corso';
-
-    /** The attribute codes this integration writes, in the order of values(). */
-    public const array CODES = [
-        'gol_corso', 'gol_stato_corso', 'gol_stato_classe', 'gol_data_inizio_corso', 'gol_data_fine_corso',
-        'gol_ore_totali_corso', 'gol_data_esame', 'gol_data_ip_incasso', 'gol_anticipo_decreto_numero_data',
-        'gol_anticipo_data_accredito', 'gol_saldo_decreto_numero_data', 'gol_saldo_data_accredito',
-    ];
-
     public function __construct(
         private readonly WorkOrderAttributeResolver $resolver,
         private readonly WorkOrderAttributeValueWriter $writer,
+        private readonly CategoryFieldMapResolver $maps,
     ) {}
 
+    /** Eligible = the attribute mapped on the course name is applicable to the work order. */
     public function isEligible(WorkOrder $workOrder): bool
     {
-        return $this->resolver->resolve($workOrder)->contains('code', self::ELIGIBILITY_CODE);
+        return $this->applicableMap($workOrder, $this->resolver->resolve($workOrder)) !== [];
+    }
+
+    /** The value of the attribute mapped on the course name, trimmed; null when empty or not eligible. */
+    public function courseNameOf(WorkOrder $workOrder): ?string
+    {
+        $code = $this->applicableMap($workOrder, $this->resolver->resolve($workOrder))[FormalabField::Label->value] ?? null;
+        $name = $code === null ? '' : trim((string) ($workOrder->attribute_values[$code] ?? ''));
+
+        return $name === '' ? null : $name;
+    }
+
+    /** How many distinct attribute codes the saved category maps use. */
+    public function mappedCodesCount(): int
+    {
+        return count($this->maps->mappedCodes());
     }
 
     /**
-     * The course field codes no attribute carries any more (renamed or
+     * The mapped attribute codes no attribute carries any more (renamed or
      * deleted in Configurazione > Attributi): those fields stop updating.
      *
      * @return list<string>
      */
     public function missingCodes(): array
     {
-        $existing = Attribute::query()->whereIn('code', self::CODES)->pluck('code')->all();
+        $mapped = $this->maps->mappedCodes();
+        $existing = Attribute::query()->whereIn('code', $mapped)->pluck('code')->all();
 
-        return array_values(array_diff(self::CODES, $existing));
-    }
-
-    /**
-     * Attribute code => value, '' / missing already as null.
-     *
-     * @return array<string, mixed>
-     */
-    public function values(FormalabClass $class): array
-    {
-        return [
-            'gol_corso' => $class->label,
-            'gol_stato_corso' => $class->course_status,
-            'gol_stato_classe' => $class->status,
-            'gol_data_inizio_corso' => $class->start_date?->format('Y-m-d'),
-            'gol_data_fine_corso' => $class->end_date?->format('Y-m-d'),
-            'gol_ore_totali_corso' => $class->total_hours,
-            'gol_data_esame' => $class->exam_date?->format('Y-m-d'),
-            'gol_data_ip_incasso' => $class->ip_collection_date?->format('Y-m-d'),
-            'gol_anticipo_decreto_numero_data' => $class->advance_decree,
-            'gol_anticipo_data_accredito' => $class->advance_credited_at?->format('Y-m-d'),
-            'gol_saldo_decreto_numero_data' => $class->balance_decree,
-            'gol_saldo_data_accredito' => $class->balance_credited_at?->format('Y-m-d'),
-        ];
+        return array_values(array_diff($mapped, $existing));
     }
 
     /**
      * @return bool whether any value of the work order actually changed
      *
-     * @throws ValidationException a value is refused by the attribute rules
+     * @throws ValidationException the work order is not eligible, or a value is refused by the attribute rules
      */
     public function apply(WorkOrder $workOrder, FormalabClass $class): bool
     {
-        // Step 1: only the course fields applicable to this work order, without
-        // an empty value for a field that is already empty (not a change)
+        // Step 1: the map of its linked categories, limited to the applicable attributes
         $applicable = $this->resolver->resolve($workOrder);
+        $map = $this->applicableMap($workOrder, $applicable);
+
+        if ($map === []) {
+            throw ValidationException::withMessages(['work_order' => __('formalab::messages.not_eligible')]);
+        }
+
+        // Step 2: the class values, without an empty value for a field that is already empty (not a change)
         $current = $workOrder->attribute_values ?? [];
-        $submitted = array_filter(
-            array_intersect_key($this->values($class), array_flip($applicable->pluck('code')->all())),
-            static fn (mixed $value, string $code): bool => $value !== null || ($current[$code] ?? null) !== null,
-            ARRAY_FILTER_USE_BOTH,
-        );
+        $submitted = [];
+
+        foreach ($map as $field => $code) {
+            $value = FormalabField::from($field)->valueFrom($class);
+
+            if ($value !== null || ($current[$code] ?? null) !== null) {
+                $submitted[$code] = $value;
+            }
+        }
 
         if ($submitted === []) {
             return false;
         }
 
-        // Step 2: write through the shared pipeline and leave the audit entry
+        // Step 3: write through the shared pipeline and leave the audit entry
         $captured = PeopleChangeLog::capture($workOrder);
         $changed = [];
         $old = [];
@@ -106,5 +104,20 @@ final class CourseFieldWriter
         PeopleChangeLog::log($captured);
 
         return $changed !== [];
+    }
+
+    /**
+     * The work order's map restricted to its applicable attributes; empty
+     * when the course name is not among them (the edition cannot be found).
+     *
+     * @param  Collection<int, ApplicableAttribute>  $applicable
+     * @return array<string, string> formalab_field => attribute_code
+     */
+    private function applicableMap(WorkOrder $workOrder, Collection $applicable): array
+    {
+        $codes = $applicable->pluck('code')->all();
+        $map = array_filter($this->maps->forWorkOrder($workOrder), static fn (string $code): bool => in_array($code, $codes, true));
+
+        return isset($map[FormalabField::Label->value]) ? $map : [];
     }
 }

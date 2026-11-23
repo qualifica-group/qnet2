@@ -72,3 +72,52 @@ export interface FormalabWorkOrderLink {
   can_manage: boolean
   link: FormalabLink | null
 }
+
+/** Spec 0423: the Formalab section of a product category. */
+export type FormalabFieldType = 'text' | 'date' | 'number'
+
+export interface FormalabFieldMapPair {
+  formalab_field: string
+  attribute_code: string
+}
+
+export interface FormalabCategoryField {
+  key: string
+  type: FormalabFieldType
+  /** The course / edition name: the work order finds its edition from it. */
+  is_key: boolean
+  compatible_types: string[]
+  suggested_attribute_code: string | null
+}
+
+export interface FormalabCategoryAttribute {
+  code: string
+  name: string
+  type: string
+}
+
+export interface FormalabCategoryRef {
+  id: number
+  name: string
+}
+
+export interface FormalabCategorySettings {
+  is_root: boolean
+  /** Effective: the branch root decides it. */
+  enabled: boolean
+  enabled_source_category: FormalabCategoryRef | null
+  own_field_map: boolean
+  /** Effective: own, else the nearest ancestor's. */
+  field_map: FormalabFieldMapPair[]
+  field_map_source_category: FormalabCategoryRef | null
+  fields: FormalabCategoryField[]
+  attributes: FormalabCategoryAttribute[]
+  can_manage: boolean
+}
+
+export interface FormalabCategorySettingsPayload {
+  /** Root only: a child inherits it. */
+  enabled?: boolean
+  /** null = no map of its own (a child inherits its ancestor's). */
+  field_map: FormalabFieldMapPair[] | null
+}

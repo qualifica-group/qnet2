@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react'
 import type { RouteObject } from 'react-router-dom'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 import type { WorkOrderDetailTab } from '@/features/work-orders/use-work-order-detail-tabs'
@@ -18,6 +19,8 @@ export interface IntegrationDefinition {
   key: string
   /** Extra tabs of the work order detail; called unconditionally on every render. */
   useWorkOrderTabs?: (args: IntegrationWorkOrderTabsArgs) => WorkOrderDetailTab[]
+  /** Extra full-width section of the product category detail, rendered only while the integration is active. */
+  ProductCategorySection?: ComponentType<{ categoryId: number }>
   /** Extra routes of the "Develop" menu section. */
   devRoutes?: RouteObject[]
 }

@@ -116,15 +116,16 @@ final class FormalabHealthCheck extends AbstractHealthCheck
     }
 
     /**
-     * The 12 flexible fields the sync writes must still exist under their
-     * code: a renamed or deleted one would stop updating without an error.
+     * The attributes the category field maps write must still exist under
+     * their code: a renamed or deleted one would stop updating without an error.
      */
     private function courseFieldsDetail(): array
     {
         $missing = $this->courseFields->missingCodes();
+        $total = $this->courseFields->mappedCodesCount();
 
         return $missing === []
-            ? $this->detail('course_fields', HealthStatusEnum::Ok, count(CourseFieldWriter::CODES).'/'.count(CourseFieldWriter::CODES))
+            ? $this->detail('course_fields', HealthStatusEnum::Ok, $total.'/'.$total)
             : $this->detail('course_fields', HealthStatusEnum::Degraded, implode(', ', $missing), __('formalab::messages.health.course_fields_missing'));
     }
 }

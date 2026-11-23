@@ -42,7 +42,7 @@ it('is ok with a live connection and a recent successful sync', function () {
     formalabEnable();
     formalabFakeApi([formalabClassPayload(1)]);
     formalabRecentSync();
-    formalabCourseAttributes();
+    formalabGolWorkOrder(); // REQUIREMENT CHANGED (spec 0423 D-8): the checked fields are those of a linked category map
 
     $result = formalabHealth();
 
@@ -58,6 +58,7 @@ it('is degraded when a course field code was renamed or deleted and lists the mi
     formalabEnable();
     formalabFakeApi([formalabClassPayload(1)]);
     formalabRecentSync();
+    formalabGolWorkOrder();
     $attributes = formalabCourseAttributes();
     $attributes['gol_data_esame']->update(['code' => 'gol_exam_date_renamed']);
     $attributes['gol_stato_classe']->delete();

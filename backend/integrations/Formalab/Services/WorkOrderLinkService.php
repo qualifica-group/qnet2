@@ -14,7 +14,8 @@ use Integrations\Formalab\Support\Trigger;
 
 /**
  * The work order side of the integration: the link to the Formalab edition
- * is never chosen by hand, it is found from the course name (spec 0422 D-5).
+ * is never chosen by hand, it is found from the course name (spec 0422 D-5),
+ * read from the attribute the work order's category maps on it (spec 0423).
  */
 final class WorkOrderLinkService
 {
@@ -38,7 +39,7 @@ final class WorkOrderLinkService
 
     /**
      * "Sincronizza": finds the edition whose label equals the work order's
-     * course name (gol_corso), re-reads it live from Formalab, writes the
+     * course name (the attribute its category maps on `label`), re-reads it live from Formalab, writes the
      * course fields and records the link. Nothing is saved on failure.
      *
      * @throws ValidationException not eligible, no course name, no or several matching editions, edition gone, or a value refused by the fields
@@ -46,7 +47,7 @@ final class WorkOrderLinkService
      */
     public function sync(WorkOrder $workOrder, User $actor): FormalabWorkOrderLink
     {
-        // Step 1: only work orders carrying the course fields can be synced
+        // Step 1: only work orders of a linked category mapping the course name can be synced
         if (! $this->isEligible($workOrder)) {
             throw ValidationException::withMessages(['work_order' => __('formalab::messages.not_eligible')]);
         }
@@ -83,9 +84,9 @@ final class WorkOrderLinkService
      */
     private function matchEdition(WorkOrder $workOrder): int
     {
-        $courseName = trim((string) ($workOrder->attribute_values[CourseFieldWriter::ELIGIBILITY_CODE] ?? ''));
+        $courseName = $this->courseWriter->courseNameOf($workOrder);
 
-        if ($courseName === '') {
+        if ($courseName === null) {
             throw ValidationException::withMessages(['work_order' => __('formalab::messages.course_name_missing')]);
         }
 

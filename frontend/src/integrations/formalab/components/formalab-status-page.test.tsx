@@ -93,7 +93,8 @@ describe('FormalabStatusPage', () => {
     render(<FormalabStatusPage />, { wrapper: Wrapper })
 
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('Campi corso non trovati')
+    // REQUIREMENT CHANGED (spec 0423 D-8): the check covers the fields mapped in the categories
+    expect(alert).toHaveTextContent('Campi mappati non trovati')
     expect(alert).toHaveTextContent('gol_data_esame, gol_stato_classe')
     expect(screen.getByText('Campi corso mancanti')).toBeInTheDocument()
   })

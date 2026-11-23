@@ -9,15 +9,20 @@ use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
 
 /**
- * Links the not-yet-linked work orders whose course name equals the label of
- * exactly one catalogue class. A label shared by several classes is
- * ambiguous: skipped and counted.
+ * Links the not-yet-linked work orders of a linked category whose course name
+ * (the attribute mapped on `label`, spec 0423) equals the label of exactly
+ * one catalogue class. A label shared by several classes is ambiguous:
+ * skipped and counted.
  */
 final class LinkBackfill
 {
     private const int CHUNK = 500;
 
-    public function __construct(private readonly LinkPropagator $propagator) {}
+    public function __construct(
+        private readonly LinkPropagator $propagator,
+        private readonly CategoryFieldMapResolver $maps,
+        private readonly CourseFieldWriter $courseWriter,
+    ) {}
 
     /**
      * @return array{linked: int, ambiguous: int, unmatched: int}
@@ -28,15 +33,17 @@ final class LinkBackfill
         $editionsByLabel = $this->editionsByLabel();
         $counts = ['linked' => 0, 'ambiguous' => 0, 'unmatched' => 0];
 
-        // Step 2: classify every unlinked work order that has a course name
+        // Step 2: classify every unlinked work order of a linked category that has a course name
+        $categoryIds = $this->maps->enabledCategoryIds();
+
         WorkOrder::query()
-            ->whereNotNull('attribute_values->'.CourseFieldWriter::ELIGIBILITY_CODE)
+            ->whereHas('quoteLines.product', static fn ($query) => $query->whereIn('category_id', $categoryIds))
             ->whereNotIn('id', FormalabWorkOrderLink::query()->select('work_order_id'))
             ->chunkById(self::CHUNK, function ($workOrders) use ($editionsByLabel, &$counts): void {
                 foreach ($workOrders as $workOrder) {
-                    $label = trim((string) ($workOrder->attribute_values[CourseFieldWriter::ELIGIBILITY_CODE] ?? ''));
+                    $label = $this->courseWriter->courseNameOf($workOrder);
 
-                    if ($label === '') {
+                    if ($label === null) {
                         continue;
                     }
 

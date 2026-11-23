@@ -1,6 +1,8 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import type {
+  FormalabCategorySettings,
+  FormalabCategorySettingsPayload,
   FormalabConnectionTest,
   FormalabLinkSummary,
   FormalabStatus,
@@ -45,3 +47,16 @@ export async function syncFormalabWorkOrderLink(workOrderId: number): Promise<Fo
   return data.data
 }
 
+
+export async function fetchFormalabCategorySettings(categoryId: number): Promise<FormalabCategorySettings> {
+  const { data } = await apiClient.get<ApiResponse<FormalabCategorySettings>>(`${BASE}/product-categories/${categoryId}`)
+  return data.data
+}
+
+export async function updateFormalabCategorySettings(
+  categoryId: number,
+  payload: FormalabCategorySettingsPayload,
+): Promise<FormalabCategorySettings> {
+  const { data } = await apiClient.put<ApiResponse<FormalabCategorySettings>>(`${BASE}/product-categories/${categoryId}`, payload)
+  return data.data
+}

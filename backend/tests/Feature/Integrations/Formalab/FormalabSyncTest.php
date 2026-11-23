@@ -10,7 +10,6 @@ use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabSyncRun;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
 use Integrations\Formalab\Services\ClassCatalogSync;
-use Integrations\Formalab\Services\CourseFieldWriter;
 use Integrations\Formalab\Support\Trigger;
 use Spatie\Activitylog\Models\Activity;
 
@@ -45,13 +44,10 @@ it('syncs every page, stays idempotent and never logs credentials or tokens', fu
     expect($dump)->not->toContain('p4ss-never-logged')->not->toContain('token-from-login')->not->toContain('qnet@formalab.test');
 });
 
-it('keeps the written codes and the CODES list identical', function () {
-    expect(array_keys(app(CourseFieldWriter::class)->values(new FormalabClass)))->toBe(CourseFieldWriter::CODES);
-});
-
 it('records in a successful run the course fields whose code no longer exists', function () {
     formalabEnable();
     formalabFakeApi([formalabClassPayload(1)]);
+    formalabGolWorkOrder(); // REQUIREMENT CHANGED (spec 0423 D-8): only mapped codes are checked
     formalabCourseAttributes()['gol_saldo_data_accredito']->update(['code' => 'gol_balance_renamed']);
 
     $run = runFormalabSync();

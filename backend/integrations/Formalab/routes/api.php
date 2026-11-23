@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Integrations\Formalab\Http\Controllers\CategorySettingsController;
 use Integrations\Formalab\Http\Controllers\FormalabAdminController;
 use Integrations\Formalab\Http\Controllers\WebhookController;
 use Integrations\Formalab\Http\Controllers\WorkOrderLinkController;
@@ -22,6 +23,9 @@ Route::prefix('api/integrations/formalab')->middleware('api')->group(function ()
 
         Route::get('work-orders/{workOrder}', [WorkOrderLinkController::class, 'show']);
         Route::post('work-orders/{workOrder}/sync', [WorkOrderLinkController::class, 'sync']);
+
+        Route::get('product-categories/{productCategory}', [CategorySettingsController::class, 'show']);
+        Route::put('product-categories/{productCategory}', [CategorySettingsController::class, 'update']);
     });
 
     // Without a configured token the endpoint does not exist.

@@ -14,6 +14,8 @@ use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Facades\Http;
 use Integrations\Formalab\FormalabServiceProvider;
 use Integrations\Formalab\Models\FormalabCallLog;
+use Integrations\Formalab\Models\FormalabCategorySetting;
+use Integrations\Formalab\Support\FormalabField;
 
 if (! function_exists('formalabEnable')) {
     /**
@@ -172,14 +174,47 @@ if (! function_exists('formalabCourseAttributes')) {
     }
 }
 
+if (! function_exists('formalabSuggestedMap')) {
+    /**
+     * The 12 course fields of the first release as a category field map
+     * (spec 0423 D-5 suggestions).
+     *
+     * @return list<array{formalab_field: string, attribute_code: string}>
+     */
+    function formalabSuggestedMap(): array
+    {
+        return collect(FormalabField::cases())
+            ->filter(fn (FormalabField $field): bool => $field->suggestedAttributeCode() !== null)
+            ->map(fn (FormalabField $field): array => ['formalab_field' => $field->value, 'attribute_code' => $field->suggestedAttributeCode()])
+            ->values()
+            ->all();
+    }
+}
+
+if (! function_exists('formalabLinkCategory')) {
+    /**
+     * Stores the Formalab settings of a category, as the PUT endpoint would.
+     *
+     * @param  list<array{formalab_field: string, attribute_code: string}>|null  $map
+     */
+    function formalabLinkCategory(ProductCategory $category, ?array $map, bool $enabled = true): FormalabCategorySetting
+    {
+        return FormalabCategorySetting::query()->updateOrCreate(
+            ['product_category_id' => $category->id],
+            ['enabled' => $enabled, 'field_map' => $map],
+        );
+    }
+}
+
 if (! function_exists('formalabGolWorkOrder')) {
     /**
      * A work order whose product category carries the 12 course fields plus
-     * `gol_notice` (not a course field), so `gol_corso` is applicable.
+     * `gol_notice` (not a course field). By default the category is linked to
+     * Formalab with the suggested map (spec 0423), so the work order is eligible.
      *
      * @param  array<string, mixed>  $values  initial attribute_values
      */
-    function formalabGolWorkOrder(array $values = []): WorkOrder
+    function formalabGolWorkOrder(array $values = [], bool $linkCategory = true): WorkOrder
     {
         $category = ProductCategory::factory()->create();
         $position = 0;
@@ -188,6 +223,10 @@ if (! function_exists('formalabGolWorkOrder')) {
             $category->attributes()->attach($attribute->id, [
                 'is_required' => false, 'sort_order' => $position++, 'context' => AttributeContext::WorkOrder->value,
             ]);
+        }
+
+        if ($linkCategory) {
+            formalabLinkCategory($category, formalabSuggestedMap());
         }
 
         $line = QuoteLine::factory()->create(['product_id' => Product::factory()->create(['category_id' => $category->id])->id]);
