@@ -125,11 +125,13 @@ class WorkOrderController extends BaseApiController
 
     /**
      * PUT/PATCH /api/work-orders/{workOrder} — update an existing work order.
+     * A payload of the closure keys alone is the "Chiusura forzata"/"Riapri"
+     * action (WorkOrderPolicy::manage); anything else is the form (`update`).
      */
     public function update(UpdateWorkOrderRequest $request, WorkOrder $workOrder): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize($request->isClosureOnly() ? 'manage' : 'update', $workOrder);
 
             $workOrder = $this->service->update($workOrder, $request->toData());
 

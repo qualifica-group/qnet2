@@ -31,7 +31,7 @@ class WorkOrderTaskTemplateReloadController extends BaseApiController
     public function __invoke(ReloadWorkOrderTaskTemplateRequest $request, WorkOrder $workOrder): JsonResponse
     {
         try {
-            $this->authorize('update', $workOrder);
+            $this->authorize('manage', $workOrder);
 
             /** @var User $actor */
             $actor = $request->user();

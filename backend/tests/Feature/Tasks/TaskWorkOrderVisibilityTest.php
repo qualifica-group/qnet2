@@ -144,19 +144,26 @@ it('AC-004 grants nothing without work-orders.view nor to whoever does not see t
     expect(workOrderTierGridTitles())->toBe([]);
 });
 
-it('AC-005 is read-only: no update nor delete without a record role or manageAll', function () {
+// REQUIREMENT CHANGED (user directive 2026-11-23): the Responsabile/Partecipante of the commessa
+// manages its tasks; the tier stays read-only for whoever reaches it without being a member.
+it('AC-005 is read-only for a non-member reader; a member of the commessa manages its tasks', function () {
+    $reader = workOrderTierActor(['viewAny', 'view', 'update', 'delete'], ['view', 'viewAll']);
     $supervisor = workOrderTierActor(['viewAny', 'view', 'update', 'delete']);
     $workOrder = WorkOrder::factory()->create();
     $workOrder->supervisors()->attach($supervisor->id);
     $task = workOrderTierTask($workOrder, 'Primo contatto');
-    Sanctum::actingAs($supervisor);
 
+    Sanctum::actingAs($reader);
     expect($this->patchJson("/api/tasks/{$task->id}", ['title' => 'Cambiato'])->status())->toBeIn([403, 422]);
     $this->deleteJson("/api/tasks/{$task->id}")->assertForbidden();
-
-    expect($supervisor->can('view', $task))->toBeTrue()
-        ->and($supervisor->can('update', $task))->toBeFalse()
+    expect($reader->can('view', $task))->toBeTrue()
+        ->and($reader->can('update', $task))->toBeFalse()
         ->and($task->fresh()->title)->toBe('Primo contatto');
+
+    Sanctum::actingAs($supervisor);
+    $this->patchJson("/api/tasks/{$task->id}", ['title' => 'Cambiato'])->assertOk();
+    expect($task->fresh()->title)->toBe('Cambiato');
+    $this->deleteJson("/api/tasks/{$task->id}")->assertSuccessful();
 });
 
 it('AC-006 lets work-orders.viewAll see the tasks of every commessa, not those without one', function () {

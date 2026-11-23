@@ -38,7 +38,7 @@
     <criterion id="AC-002">Lo stesso vale per un Partecipante e per chi vede la commessa per sede.</criterion>
     <criterion id="AC-003">Un Task privato della commessa resta invisibile a chi non ne e' membro.</criterion>
     <criterion id="AC-004">Senza `work-orders.view` il tier non si applica; chi non vede la commessa non vede i suoi Task.</criterion>
-    <criterion id="AC-005">Il tier e' in sola lettura: niente update/delete senza ruolo o `tasks.manageAll`.</criterion>
+    <criterion id="AC-005">Il tier e' in sola lettura: niente update/delete senza ruolo o `tasks.manageAll`. Rev. 2026-11-23 (spec 0387 D-7): il Responsabile/Partecipante della commessa gestisce i suoi task; resta in sola lettura chi raggiunge il task dal tier senza esserne membro (sede, competenza, Visualizza tutti).</criterion>
     <criterion id="AC-006">Chi ha `work-orders.viewAll` vede i Task non privati di tutte le commesse, non quelli senza commessa.</criterion>
     <criterion id="AC-007">Il verdetto per record coincide con la query, anche con relazioni gia' caricate.</criterion>
     <criterion id="AC-008">Il Responsabile della commessa e' menzionabile sui suoi Task non privati, non su quelli privati.</criterion>

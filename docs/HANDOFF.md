@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse: Responsabile/Partecipante gestisce la commessa anche senza `work-orders.update` (spec 0387 D-7, 0379 AC-005 rev., decisione utente 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+
+- `WorkOrderPolicy::manage` (non e' un permesso, fuori da `abilities()`): `update` oppure `view` + membro (`WorkOrderVisibilityScope::isMember`, in memoria se `supervisors`/`participants` sono caricati). Usato da: PATCH con sole chiavi di chiusura (`UpdateWorkOrderRequest::isClosureOnly`, altrimenti `update`), azioni `force_close`/`reopen` e campi `is_force_closed`/`force_close_reason`, nuova azione `record_progress` + endpoint avanzamento, fasi (`WorkOrderStageController`), `is_read_only` del board, ricarica Modello di Task. Restano a `update`: form e copia attributi offerta.
+- Task: `TaskRecordRoles::isWorkOrderManager` (membro non assegnatario) entra in `canUpdate`/mandato via `TaskAbilityResolver::managesTheTask`; `claimsByCompleting` tiene la rivendicazione della 0387 (diventa assegnatario al completamento e va in validazione se richiesta). `TaskBoardQuery::tasks` imposta la relazione `workOrder` con i membri caricati (AC-007 0163: 19 query).
+- FE: `use-work-order-progress.ts` legge `permissions.actions.record_progress`.
+- Test: nuovo `tests/Feature/WorkOrders/WorkOrderMemberManagementTest.php` (4); REQUIREMENT CHANGED `TaskWorkOrderVisibilityTest` AC-005, `TaskWorkOrderParticipantClaimTest` AC-004, `work-order-progress-dialog.test.tsx` (fixture). WorkOrders 597, Tasks 732, Notes 121, Seeding 295 verdi; Pint, help Vitest 162, `tsc -b --force` puliti.
+- Manuale: guide in-app IT/EN `work-orders.ts`, `tasks.ts`, `parts/work-orders-tasks.ts`; Claude Docs rev 949. Nota: prima di questa modifica il manuale (rev 942) diceva "chiusura forzata a chiunque possa aprire la commessa": corretto in "Responsabile o Partecipante".
+
+## Ruoli `reparto-*`: menziona chiunque, Sicurezza solo commesse proprie (spec 0408 D-16, spec 0353 D-2 rev., segnalazione utente 2026-11-23) — VERDE MIRATO, NON COMMITTATO, SEEDER DA RIESEGUIRE
+
+- Sicurezza (domanda 29 "Solo quelle in cui e' coinvolto"): tolto `work_orders_view_competence` da `DepartmentGrantSets::SAFETY` (supera la scelta D-6).
+- Documenti: nessun cambio. La regola "chi vede il modulo ne vede i documenti" e' stata provata e ritirata (decisione utente 2026-11-23): restano le risposte del questionario.
+- Menzioni (cambio di regola, vale per tutti i ruoli): `WorkOrderNotable::canEnlist` e `TaskNotable::canEnlist` = `authorizeRead` (chi legge le note), non piu' `can('update')`. Il fuori perimetro diventa Partecipante/Osservatore e il link della notifica apre il record se ha `work-orders.view`/`tasks.view`. Opportunita'/offerte restano senza "Menziona chiunque" (spec 0353 D-1: manca la decisione su chi diventa "partecipante" di un'offerta; i Gestori Account hanno significato operativo).
+- Riesame dei 14 questionari di `~/Downloads/permessi per reparti/` contro `DepartmentGrantSets` (script di confronto per domanda): unica difformita' la 29 di Sicurezza; restano le scelte documentate D-4 (gestione attivita' altrui via organigramma: Sicurezza, Marketing, APL, Back Office, Finanza Agevolata hanno risposto Si'/team alla 52), D-6 (chiusura forzata senza modifica commessa: Sicurezza, Accreditamenti, Gare, SOA), D-10 (contratti APL "Non so").
+- Test: nuovo `tests/Feature/Seeding/DepartmentRoleCollaborationTest.php` (4: Sicurezza solo commesse proprie, menzione da lettore su commessa e task con link, link su offerta del team); `NoteMentionOutsideTest` AC-001/004/007 REQUIREMENT CHANGED. Guide in-app IT/EN `general.ts` e `work-orders.ts` (chi vede le note). Help Vitest 162 verdi, `tsc -b --force` pulito.
+- DA FARE con ok utente: `php artisan db:seed --class=QualificaDepartmentRoleSeeder --force` sull'ambiente.
+
 ## Menzione su commessa: il link apre la scheda Note (spec 0134 D-2/AC-007 rev., segnalazione Consiglia Cosentino 2026-11-23) — COMMITTATO SU MAIN
 
 - Segnalazione: dalla notifica di menzione non si arrivava alla nota. Il link c'era (`/work-orders/{id}` in campanella, pagina Notifiche, email), ma dal 2026-11-16 una visita fresca alla commessa apre Info: la nota restava nascosta nella scheda Note.

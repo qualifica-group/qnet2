@@ -46,7 +46,12 @@
       lettura del thread della gestione richieste.</decision>
     <decision id="D-2">Chi puo' sbloccare: chi puo' MODIFICARE il record (`can('update', $record)`: policy della
       commessa o del task). Nessun permesso nuovo. Il server lo espone in `meta.mention_outside.allowed` e lo
-      ricontrolla su ogni chiamata.</decision>
+      ricontrolla su ogni chiamata.
+      REV. 2026-11-23 (decisione utente: "chi ha accesso alle note deve anche avere il permesso di menzionare
+      chiunque"): sblocca chi LEGGE le note del record (`canEnlist` = gate di lettura del thread, cioe'
+      `authorizeRead`: permesso `view` + perimetro). Supera la condizione "puo' modificare" anche in D-5, AC-001,
+      AC-004 e AC-007 (AC-007 ora: un lettore senza `update` aggiunge il fuori perimetro, che riceve il link).
+      Opportunita'/offerte restano escluse come da D-1.</decision>
     <decision id="D-3">Ruolo di aggiunta: commessa -> Partecipante (prima posizione libera); task -> Osservatore.
       Testo UI accurato per modulo ("verra' aggiunto come Partecipante" / "come Osservatore").</decision>
     <decision id="D-4">Elenco sbloccato = tutti gli utenti attivi non di servizio. Ogni voce indica se e' gia'

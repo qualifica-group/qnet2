@@ -55,7 +55,7 @@ export function useWorkOrderProgress({ workOrderId, onMutated, onSaved }: UseWor
   const entries = entriesQuery.data ?? EMPTY_ENTRIES
   const total = useMemo(() => entries.reduce((sum, entry) => sum + entry.percentage, 0), [entries])
   const detail = detailQuery.data
-  const canWrite = Boolean(detail?.permissions.resource.update)
+  const canWrite = Boolean(detail?.permissions.actions.record_progress)
 
   const form = useForm<ProgressFormValues>({
     resolver: zodResolver(buildProgressSchema(t, total)),

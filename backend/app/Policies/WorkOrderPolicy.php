@@ -20,6 +20,12 @@ use Illuminate\Database\Eloquent\Model;
  * record an actor may not see is not a record they may edit or delete by
  * guessing its id.
  *
+ * `manage` (user directive 2026-11-23) is what the people running the
+ * commessa do outside its form: force close/reopen, the task board and its
+ * "Fasi". Whoever may `update`, or a Responsabile/Partecipante who may
+ * `view` it; the form itself stays `update`. Not a permission: absent from
+ * abilities() on purpose.
+ *
  * `viewActivity` stays resource-level (BasePolicy): the aggregated log's
  * per-record boundary is `view`, which PolicyActivityLogAuthorizer already
  * checks on the record itself.
@@ -39,6 +45,12 @@ class WorkOrderPolicy extends BasePolicy
     public function update(User $user, Model $model): bool|Response
     {
         return $this->withinPerimeter($user->can($this->permission('update')), fn (): bool => $this->isInScope($user, $model), 'work_order_out_of_scope');
+    }
+
+    public function manage(User $user, WorkOrder $workOrder): bool
+    {
+        return $user->can('update', $workOrder)
+            || ($user->can('view', $workOrder) && WorkOrderVisibilityScope::isMember($workOrder, $user));
     }
 
     public function delete(User $user, Model $model): bool|Response
