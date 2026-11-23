@@ -17,6 +17,7 @@ Route::prefix('api/integrations/formalab')->middleware('api')->group(function ()
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::middleware('super-admin')->group(function (): void {
             Route::get('status', [FormalabAdminController::class, 'status']);
+            Route::get('sync-state', [FormalabAdminController::class, 'syncState']);
             Route::post('sync', [FormalabAdminController::class, 'sync']);
             Route::post('test-connection', [FormalabAdminController::class, 'testConnection']);
         });

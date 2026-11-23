@@ -7,6 +7,7 @@ import { createWrapper } from '@/integrations/formalab/test-support'
 import type { FormalabStatus } from '@/integrations/formalab/types'
 
 const fetchStatusMock = vi.fn()
+const fetchSyncStateMock = vi.fn()
 const syncMock = vi.fn()
 const testMock = vi.fn()
 const activeMock = vi.fn()
@@ -16,6 +17,7 @@ const toastError = vi.fn()
 vi.mock('@/integrations/formalab/api', () => ({
   FORMALAB_CALL_LOGS_DOMAIN: 'formalab-call-logs',
   fetchFormalabStatus: () => fetchStatusMock(),
+  fetchFormalabSyncState: () => fetchSyncStateMock(),
   startFormalabSync: () => syncMock(),
   testFormalabConnection: () => testMock(),
 }))
@@ -60,6 +62,7 @@ describe('FormalabStatusPage', () => {
     vi.clearAllMocks()
     activeMock.mockReturnValue({ isActive: true, isLoading: false })
     fetchStatusMock.mockResolvedValue(status)
+    fetchSyncStateMock.mockResolvedValue({ sync_in_progress: false, last_sync: status.last_sync })
   })
 
   it('renders nothing of the integration when it is not active', () => {
@@ -129,7 +132,7 @@ describe('FormalabStatusPage', () => {
 
   // User request 2026-11-23: never two syncs together
   it('disables the sync while one is running', async () => {
-    fetchStatusMock.mockResolvedValue({ ...status, sync_in_progress: true })
+    fetchSyncStateMock.mockResolvedValue({ sync_in_progress: true, last_sync: null })
     const { Wrapper } = createWrapper()
 
     render(<FormalabStatusPage />, { wrapper: Wrapper })
@@ -138,7 +141,7 @@ describe('FormalabStatusPage', () => {
     expect(screen.queryByRole('button', { name: 'Sincronizza ora' })).not.toBeInTheDocument()
   })
 
-  it('shows the server reason when the sync is refused, and rereads the status', async () => {
+  it('shows the server reason when the sync is refused, and rereads the sync state', async () => {
     syncMock.mockRejectedValue(
       new AxiosError('Conflict', '409', undefined, undefined, {
         status: 409,
@@ -151,6 +154,19 @@ describe('FormalabStatusPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sincronizza ora' }))
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Sincronizzazione gia in corso'))
+    await waitFor(() => expect(fetchSyncStateMock).toHaveBeenCalledTimes(2))
+  })
+
+  it('rereads the full status once when the running sync ends', async () => {
+    fetchSyncStateMock.mockResolvedValueOnce({ sync_in_progress: true, last_sync: null })
+    fetchSyncStateMock.mockResolvedValue({ sync_in_progress: false, last_sync: status.last_sync })
+    const { Wrapper, client } = createWrapper()
+    render(<FormalabStatusPage />, { wrapper: Wrapper })
+
+    expect(await screen.findByRole('button', { name: 'Sincronizzazione in corso' })).toBeDisabled()
+    await client.refetchQueries({ queryKey: ['formalab', 'sync-state'] })
+
+    expect(await screen.findByRole('button', { name: 'Sincronizza ora' })).toBeEnabled()
     await waitFor(() => expect(fetchStatusMock).toHaveBeenCalledTimes(2))
   })
 

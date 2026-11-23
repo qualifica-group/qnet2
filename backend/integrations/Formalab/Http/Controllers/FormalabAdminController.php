@@ -39,6 +39,18 @@ class FormalabAdminController extends BaseApiController
     }
 
     /**
+     * GET /api/integrations/formalab/sync-state: whether a sync runs and the last run, polled while one runs.
+     */
+    public function syncState(): JsonResponse
+    {
+        try {
+            return $this->ok($this->statusReport->syncState());
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
      * POST /api/integrations/formalab/sync: queues the catalogue sync, 409
      * while one is already running.
      */

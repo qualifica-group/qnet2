@@ -86,12 +86,22 @@ final class LinkBackfill
      */
     private function eachUnlinked(callable $visit): void
     {
+        // The class select depends only on the work order's categories (in line order): resolved once per combination
+        $keyCodes = [];
+
         WorkOrder::query()
+            ->with('quoteLines.product.category')
             ->whereHas('quoteLines.product', fn ($query) => $query->whereIn('category_id', $this->maps->enabledCategoryIds()))
             ->whereNotIn('id', FormalabWorkOrderLink::query()->select('work_order_id'))
-            ->chunkById(self::CHUNK, function ($workOrders) use ($visit): void {
+            ->chunkById(self::CHUNK, function ($workOrders) use ($visit, &$keyCodes): void {
                 foreach ($workOrders as $workOrder) {
-                    $visit($workOrder, $this->courseWriter->editionIdOf($workOrder));
+                    $categories = $workOrder->quoteLines->pluck('product.category.id')->filter()->unique()->implode(',');
+
+                    if (! array_key_exists($categories, $keyCodes)) {
+                        $keyCodes[$categories] = $this->courseWriter->keyCodeOf($workOrder);
+                    }
+
+                    $visit($workOrder, $this->courseWriter->editionIdAt($workOrder, $keyCodes[$categories]));
                 }
             });
     }

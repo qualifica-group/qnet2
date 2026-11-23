@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useFormalabActions } from '@/integrations/formalab/use-formalab-actions'
-import { useFormalabStatus } from '@/integrations/formalab/use-formalab-status'
+import { useFormalabSyncState } from '@/integrations/formalab/use-formalab-sync-state'
 
 /**
  * "Sincronizza ora" of the status and classes pages: disabled while a sync is
@@ -12,7 +12,7 @@ import { useFormalabStatus } from '@/integrations/formalab/use-formalab-status'
  */
 export function SyncButton() {
   const { t } = useTranslation('formalab')
-  const { data } = useFormalabStatus()
+  const { data } = useFormalabSyncState()
   const { sync } = useFormalabActions()
   const running = data?.sync_in_progress === true
 

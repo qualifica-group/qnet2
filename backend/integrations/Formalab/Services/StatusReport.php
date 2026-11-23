@@ -34,8 +34,7 @@ final class StatusReport
             'credentials_configured' => (string) config('formalab.user_email') !== '' && (string) config('formalab.user_password') !== '',
             'inbound_enabled' => (string) config('formalab.inbound_token') !== '',
             'sync_interval_minutes' => (int) config('formalab.sync_interval_minutes'),
-            'sync_in_progress' => $this->launcher->inProgress(),
-            'last_sync' => $this->lastSync(),
+            ...$this->syncState(),
             'classes_count' => FormalabClass::query()->count(),
             'linked_work_orders_count' => FormalabWorkOrderLink::query()->count(),
             'unlinked_work_orders' => $this->backfill->pending(),
@@ -46,6 +45,19 @@ final class StatusReport
                 'inbound' => (clone $calls)->where('direction', FormalabCallLog::DIRECTION_INBOUND)->count(),
                 'outbound' => (clone $calls)->where('direction', FormalabCallLog::DIRECTION_OUTBOUND)->count(),
             ],
+        ];
+    }
+
+    /**
+     * The cheap part the page polls while a sync runs (two queries).
+     *
+     * @return array{sync_in_progress: bool, last_sync: array<string, mixed>|null}
+     */
+    public function syncState(): array
+    {
+        return [
+            'sync_in_progress' => $this->launcher->inProgress(),
+            'last_sync' => $this->lastSync(),
         ];
     }
 

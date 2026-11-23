@@ -14,13 +14,20 @@ export function useFormalabActions() {
     () => queryClient.invalidateQueries({ queryKey: formalabKeys.status }),
     [queryClient],
   )
+  const refreshSyncState = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: formalabKeys.syncState }),
+    [queryClient],
+  )
 
   const sync = useMutation({
     mutationFn: startFormalabSync,
     onSuccess: () => toast.success(t('actions.syncQueued')),
-    // 409: a sync is already running; either way the status tells where it stands
+    // 409: a sync is already running; either way its state and the last run tell where it stands
     onError: (error) => toast.error(serverMessage(error, t('actions.syncError'))),
-    onSettled: () => void refreshStatus(),
+    onSettled: () => {
+      void refreshSyncState()
+      void refreshStatus()
+    },
   })
 
   const testConnection = useMutation({

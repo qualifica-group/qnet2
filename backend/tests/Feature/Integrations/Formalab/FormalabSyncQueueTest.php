@@ -1,12 +1,17 @@
 <?php
 
+use App\Models\QuoteLine;
+use App\Models\User;
+use App\Models\WorkOrder;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Integrations\Formalab\Jobs\SyncFormalabClasses;
 use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabSyncRun;
+use Integrations\Formalab\Services\LinkBackfill;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -15,6 +20,17 @@ uses(RefreshDatabase::class);
 function formalabOpenRun(int $secondsAgo = 0, string $trigger = 'schedule'): FormalabSyncRun
 {
     return FormalabSyncRun::query()->create(['trigger' => $trigger, 'outcome' => 'running', 'started_at' => now()->subSeconds($secondsAgo)]);
+}
+
+/** Another work order on the same product (so the same categories) as $of. */
+function formalabSiblingWorkOrder(WorkOrder $of, array $values): WorkOrder
+{
+    $line = QuoteLine::factory()->create(['product_id' => $of->quoteLines()->value('product_id')]);
+    $workOrder = WorkOrder::factory()->create(['quote_id' => $line->quote_id]);
+    $workOrder->quoteLines()->attach($line->id);
+    $workOrder->forceFill(['attribute_values' => $values])->save();
+
+    return $workOrder;
 }
 
 /** Past the sync timeout plus the launcher's margin: the worker that held the run is gone. */
@@ -131,4 +147,37 @@ it('refuses the console sync while another is running', function () {
 
     $this->artisan('formalab:sync-classes')->expectsOutput(__('formalab::messages.sync_already_running'))->assertFailed();
     expect(FormalabSyncRun::query()->count())->toBe(1);
+});
+
+it('serves the cheap sync state to a super-admin only', function () {
+    formalabEnable();
+    $run = formalabOpenRun(0, 'manual');
+    Sanctum::actingAs(formalabSuperAdmin());
+
+    $this->getJson('/api/integrations/formalab/sync-state')->assertOk()
+        ->assertJsonPath('data.sync_in_progress', true)->assertJsonPath('data.last_sync.id', $run->id);
+
+    Sanctum::actingAs(User::factory()->create());
+    $this->getJson('/api/integrations/formalab/sync-state')->assertForbidden();
+});
+
+// The backfill and the status page scanned every unlinked work order with ~12 queries each (5,500 on production)
+it('resolves the class select once per category combination, not once per work order', function () {
+    formalabEnable();
+    $first = formalabGolWorkOrder();
+    $countQueries = function (): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        app(LinkBackfill::class)->pending();
+
+        return count(DB::getQueryLog());
+    };
+    $withOne = $countQueries();
+
+    foreach (range(1, 10) as $i) {
+        formalabSiblingWorkOrder($first, ['gol_corso' => (string) (900 + $i)]);
+    }
+
+    expect($countQueries())->toBe($withOne)
+        ->and(app(LinkBackfill::class)->pending())->toBe(['linkable' => 0, 'unmatched' => 10, 'without_course_name' => 1]);
 });

@@ -70,8 +70,11 @@
       retry_after 1900), `failed()` chiude il run come interrotto; un job il cui run e' gia' chiuso
       non gira. Un run `running` piu' vecchio di timeout + 300 s (worker ucciso senza failed())
       non blocca piu' e viene chiuso come interrotto alla richiesta successiva. Status espone
-      `sync_in_progress`; la UI disattiva "Sincronizza ora" (pagine stato e classi) e rilegge lo
-      stato ogni 5 s finche' e' in corso.
+      `sync_in_progress`; la UI disattiva "Sincronizza ora" (pagine stato e classi) e rilegge ogni
+      5 s, finche' e' in corso, il solo `GET /sync-state` (2 query); a fine sync rilegge una volta
+      lo status completo. Il backfill (e il conteggio `unlinked_work_orders` dello status) carica
+      le commesse in blocco con le categorie e risolve la select classe una volta per combinazione
+      di categorie: sulla copia di prod da 5.504 query / 7 s a 95 query / 0,19 s.
     - D-5 [REQUIREMENT CHANGED, decisione utente 2026-11-20] Collegamento commessa -> edizione:
       tabella formalab_work_order_links (una per commessa). L'edizione NON si sceglie a mano: la
       scheda "Formalab" ha solo "Sincronizza", che trova l'unica classe del catalogo con label
@@ -157,6 +160,12 @@
         linked_work_orders_count: number,
         missing_course_fields: string[],    // D-13
         calls_last_24h: { total: number, failures: number, inbound: number, outbound: number } } }</response>
+      <errors>403 non super-admin; 404 integrazione disattiva</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/integrations/formalab/sync-state" auth="super-admin">
+      <!-- D-4bis: la parte leggera dello status, interrogata ogni 5 s mentre un sync e' in corso -->
+      <response status="200">{ success, data: { sync_in_progress: boolean, last_sync: (come in status) } }</response>
       <errors>403 non super-admin; 404 integrazione disattiva</errors>
     </endpoint>
 

@@ -3,7 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Formalab: coda dedicata `formalab`, un solo sync alla volta (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+## Formalab: polling leggero e backfill senza N+1 (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+
+- Misura sulla copia di prod: `GET /status` (e la fase backfill del sync) facevano 5.504 query / 7 s per le 464 commesse non collegate (~12 query a commessa: mappa categoria + attributi applicabili); il polling ogni 5 s lo martellava.
+- `LinkBackfill::eachUnlinked`: `with('quoteLines.product.category')` + `keyCodeOf` una volta per combinazione ordinata di categorie, poi `CourseFieldWriter::editionIdAt($workOrder, $code)` (nuovo; `editionIdOf` lo usa). Ora 95 query / 0,19 s, stesso risultato.
+- Nuovo `GET /api/integrations/formalab/sync-state` (`StatusReport::syncState()`: `sync_in_progress` + `last_sync`, 2 query); `handle()` lo include. Frontend: `use-formalab-sync-state.ts` (polling 5 s solo mentre e' in corso; alla fine invalida `formalabKeys.status`), `SyncButton` lo usa; `useFormalabStatus` non fa piu' polling.
+- Test: `FormalabSyncQueueTest` +2 (sync-state super-admin/403; query costanti al crescere delle commesse). Formalab 92/92 (`FORMALAB_ENABLED=false`), Vitest formalab 28/28, ESLint e tsc puliti.
+- Non toccato (segnalato): `LinkPropagator` scrive ogni commessa col pipeline completo (resolver, writer, save, listener, activity log): pesa solo quando molte classi cambiano. Lettura da Formalab: 6-21 s a pagina lato loro.
+
+## Formalab: coda dedicata `formalab`, un solo sync alla volta (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, COMMITTATO 978f5b0fb
 
 - Causa (prod, letta sulla copia `qnet2`): i sync schedulati delle 16:50/17:10/17:30 morivano a meta' (worker ucciso: deploy o timeout), 3 job `SyncFormalabClasses` restavano `reserved` sulla coda `default` e i run #2/#4/#5 `running` per sempre. Il job non aveva `$tries`/`$timeout`/`failed()`.
 - Ingresso unico `Services/CatalogSyncLauncher` (`queue()`, `open()`, `inProgress()`, `interrupt()`): sotto lock `formalab:catalog-sync:open` chiude i run abbandonati (`running` oltre `sync_timeout_seconds` + 300 s), rifiuta se c'e' un sync catalogo (trigger schedule|manual) `running`, altrimenti apre il run e accoda il job. I run webhook/work_order non contano.

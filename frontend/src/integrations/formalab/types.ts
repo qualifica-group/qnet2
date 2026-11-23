@@ -18,6 +18,13 @@ export interface FormalabSyncRun {
   warning_message: string | null
 }
 
+/** `GET /sync-state`: the cheap part of the status, polled while a sync runs. */
+export interface FormalabSyncState {
+  /** A catalogue sync is queued or running: another one is refused (409) until it ends. */
+  sync_in_progress: boolean
+  last_sync: FormalabSyncRun | null
+}
+
 export interface FormalabStatus {
   base_url: string | null
   credentials_configured: boolean

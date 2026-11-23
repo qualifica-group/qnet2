@@ -5,14 +5,14 @@ import FormalabClassesPage from '@/integrations/formalab/components/formalab-cla
 import { createWrapper } from '@/integrations/formalab/test-support'
 
 const syncMock = vi.fn()
-const fetchStatusMock = vi.fn()
+const fetchSyncStateMock = vi.fn()
 const activeMock = vi.fn()
 const toastSuccess = vi.fn()
 
 vi.mock('@/integrations/formalab/api', () => ({
   FORMALAB_CLASSES_DOMAIN: 'formalab-classes',
   startFormalabSync: () => syncMock(),
-  fetchFormalabStatus: () => fetchStatusMock(),
+  fetchFormalabSyncState: () => fetchSyncStateMock(),
   testFormalabConnection: vi.fn(),
 }))
 vi.mock('@/integrations/use-active-integrations', () => ({ useIsIntegrationActive: () => activeMock() }))
@@ -28,12 +28,12 @@ describe('FormalabClassesPage', () => {
     await i18n.changeLanguage('it')
     vi.clearAllMocks()
     activeMock.mockReturnValue({ isActive: true, isLoading: false })
-    fetchStatusMock.mockResolvedValue({ sync_in_progress: false })
+    fetchSyncStateMock.mockResolvedValue({ sync_in_progress: false, last_sync: null })
   })
 
   // User request 2026-11-23: never two syncs together, from either page
   it('disables the sync while one is running', async () => {
-    fetchStatusMock.mockResolvedValue({ sync_in_progress: true })
+    fetchSyncStateMock.mockResolvedValue({ sync_in_progress: true, last_sync: null })
     const { Wrapper } = createWrapper()
 
     render(<FormalabClassesPage />, { wrapper: Wrapper })
