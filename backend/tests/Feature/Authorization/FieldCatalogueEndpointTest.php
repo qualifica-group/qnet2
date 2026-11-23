@@ -192,6 +192,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // name mandatory, description/is_active optional — both are the
         // Commessa email module's configurators, D-14).
         'email-templates', 'document-bundles',
+        // spec 0403 `document-checklists` (DocumentChecklistsAuthorization: name/code
+        // mandatory, `code` read-only once the checklist is synced; REQUIREMENT CHANGED).
+        'document-checklists',
         // spec 0101 the Task module and its five configurators
         // (TasksAuthorization: title/task_status_id mandatory, `creator_id`
         // server-set and `completion_percentage` derived from the status, so

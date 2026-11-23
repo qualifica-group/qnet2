@@ -17,6 +17,7 @@ use App\Models\AbsenceType;
 use App\Models\Address;
 use App\Models\AgentFiscalProfile;
 use App\Models\AiMessage;
+use App\Models\ArchivioSmartSetting;
 use App\Models\Attachment;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
@@ -40,6 +41,7 @@ use App\Models\CostType;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\DocumentBundle;
+use App\Models\DocumentChecklist;
 use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
 use App\Models\EmploymentContract;
@@ -406,6 +408,9 @@ class AppServiceProvider extends ServiceProvider
             // `attachable` owner (its own `email_attachments` collection).
             'email_template' => EmailTemplate::class,
             'document_bundle' => DocumentBundle::class,
+            // Spec 0403: activity-log subject of the document checklists.
+            'document_checklist' => DocumentChecklist::class,
+            'archivio_smart_setting' => ArchivioSmartSetting::class,
             'outbound_email' => OutboundEmail::class,
             // Spec 0317: menu apps configured by the super-admin (audited).
             'workspace' => Workspace::class,

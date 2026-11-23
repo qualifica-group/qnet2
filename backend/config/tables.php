@@ -23,6 +23,7 @@ use App\Tables\ContractTypesTableDefinition;
 use App\Tables\CostTypesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
 use App\Tables\DocumentBundlesTableDefinition;
+use App\Tables\DocumentChecklistsTableDefinition;
 use App\Tables\DocumentLayoutsTableDefinition;
 use App\Tables\EmailTemplatesTableDefinition;
 use App\Tables\EnasarcoParametersTableDefinition;
@@ -240,6 +241,7 @@ return [
         // appoggio del modulo email dalla Commessa.
         'email-templates' => EmailTemplatesTableDefinition::class,
         'document-bundles' => DocumentBundlesTableDefinition::class,
+        'document-checklists' => DocumentChecklistsTableDefinition::class,
     ],
 
 ];

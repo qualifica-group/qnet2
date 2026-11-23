@@ -17,6 +17,7 @@ use App\Models\ContractType;
 use App\Models\CostType;
 use App\Models\CustomFieldDefinition;
 use App\Models\DocumentBundle;
+use App\Models\DocumentChecklist;
 use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
 use App\Models\EnasarcoParameter;
@@ -404,6 +405,10 @@ return [
         ],
         'document-bundles' => [
             'model' => DocumentBundle::class,
+        ],
+        // spec 0403: checklist documentali sincronizzate con ArchivioSmart.
+        'document-checklists' => [
+            'model' => DocumentChecklist::class,
         ],
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => [

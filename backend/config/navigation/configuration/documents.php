@@ -29,5 +29,12 @@ return [
             'route' => '/document-bundles',
             'permission' => 'document-bundles.view',
         ],
+        [
+            'key' => 'document-checklists',
+            'label' => 'navigation.documentChecklists',
+            'icon' => 'list-checks',
+            'route' => '/document-checklists',
+            'permission' => 'document-checklists.view',
+        ],
     ],
 ];

@@ -124,6 +124,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'document-layouts': 'navigation.documentLayouts',
   'email-templates': 'navigation.emailTemplates',
   'document-bundles': 'navigation.documentBundles',
+  'document-checklists': 'navigation.documentChecklists',
   imports: 'navigation.imports',
   'pipeline-statuses': 'navigation.pipelineStatuses',
   'field-change-requests': 'navigation.fieldChangeRequests',

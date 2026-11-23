@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0403-document-checklists-archivio-smart" status="draft" owner="utente" date="2026-11-23">
+
+  <goal>
+    Gli utenti abilitati gestiscono in QNet 2 le "Checklist documentali" (Configurazione > Documenti):
+    checklist con voci ordinate che descrivono i documenti da raccogliere. Ogni modifica viene inviata
+    in modo asincrono alla piattaforma esterna ArchivioSmart tramite la sua API REST pubblica.
+    In elenco si vede lo stato di sincronizzazione di ogni checklist, con la possibilita' di riprovare.
+  </goal>
+
+  <context>
+    <item>Fonte: brief utente del 2026-11-23 (API ArchivioSmart: PUT/DELETE/GET /checklists/{external_id}, GET /me; Bearer as_...; risposte {"data": ...}; 422 {"errors": {campo: [msg it]}}; 409; 401; 429 con Retry-After; max 120 richieste/min).</item>
+    <item>Direzione: QNet 2 -> ArchivioSmart. ArchivioSmart non chiama mai QNet 2 per le checklist.</item>
+    <item>Modulo di riferimento da imitare: "Modelli documenti" (spec 0175), cioe' DocumentBundlesTableDefinition + DocumentBundles/DocumentBundleColumnCatalog, DocumentBundleController (okWithPermissions / noContent / handleControllerException), DocumentBundleService, DocumentBundlesAuthorization (AbstractResourceAuthorization), DocumentBundlePolicy (BasePolicy), routes/api/document-bundles.php incluso in routes/api.php dentro auth:sanctum, frontend features/document-bundles (moduleDefinition OPEN_MODE_MODAL, detail = form).</item>
+    <item>Menu: backend/config/navigation/configuration/documents.php (gruppo `config-documents`, label navigation.documents). Nuova voce figlia `document-checklists`, icona `list-checks` (gia' mappata in frontend/src/features/navigation/icon-map.ts).</item>
+    <item>Permessi: `permissions:sync` (SyncPermissions) li ricava da navigation + BasePolicy::abilities(). Abilita' extra si dichiarano sovrascrivendo abilities() nella Policy (come InvoicePolicy con sendEmail).</item>
+    <item>Code: QUEUE_CONNECTION=database. Nessun job esistente con retry/backoff (SendOutboundEmailJob ha $tries=1 per scelta). GenerateApiDocsJob usa ShouldBeUnique.</item>
+    <item>Segreti a riposo: cast `encrypted` gia' usato (EmploymentProfile.iban, FinancialAccount.card_number). Non esiste oggi una tabella di impostazioni applicative: se ne crea una dedicata a riga singola.</item>
+    <item>Client HTTP esterni esistenti: App\Migrations\Support\ExternalApiClient, App\Services\Graph\GraphMailClient (Http facade). Nei test: Http::fake, nessuna chiamata reale.</item>
+    <item>Riordino voci: @dnd-kit/core + @dnd-kit/sortable gia' in package.json. Form ripetuti: useFieldArray (es. features/purchase-orders/use-purchase-order-form.ts).</item>
+    <item>Guide in-app: frontend/src/features/help/content/{it,en}/&lt;key&gt;.ts + HELP_GUIDE_KEYS (oggi 108 voci, test help-guide-keys.test.ts).</item>
+    <item>
+      Decisioni utente (2026-11-23):
+      D-1 scope = checklist + sincronizzazione; la creazione delle richieste di documenti (PUT /requests/{id}) e' una spec successiva.
+      D-2 una sola connessione per l'installazione (base URL + token cifrato), con "Prova connessione" che chiama GET /me.
+      D-3 eliminazione = soft delete; la riga resta come traccia anche dopo il DELETE remoto, cosi' l'id non viene mai riusato.
+      D-4 codice salvato in maiuscolo; modificabile solo finche' la checklist non e' mai stata sincronizzata con successo (first_synced_at nullo), poi in sola lettura.
+      D-5 permessi document-checklists.* standard + `document-checklists.manageConnection` per vedere e modificare la connessione.
+      D-6 il job legge lo stato attuale della checklist quando parte; una sola esecuzione per checklist alla volta; nuovi tentativi con attesa crescente su errori di rete/5xx/429 (Retry-After); nessun nuovo tentativo su 401/409/422.
+      D-7 log delle chiamate in una tabella dedicata; nel dettaglio della checklist la sezione "Sincronizzazioni" mostra le ultime 20 chiamate.
+      D-8 la connessione si configura da un pulsante "Connessione ArchivioSmart" nella toolbar della pagina Checklist, visibile solo con manageConnection.
+      D-9 dimensione massima per file: 1..20480 KB, default per una nuova voce 10240 KB.
+      D-10 menu: Configurazione > Documenti > Checklist documentali.
+    </item>
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabelle: document_checklists (soft delete), document_checklist_items, document_checklist_sync_logs, archivio_smart_settings (una sola riga).</item>
+      <item>Model: DocumentChecklist, DocumentChecklistItem, DocumentChecklistSyncLog, ArchivioSmartSetting; enum DocumentChecklistSyncStatus (pending, synced, failed), DocumentChecklistSyncOperation (upsert, delete), DocumentChecklistFileType (pdf, jpg, jpeg, png, webp, heic, docx, odt, txt).</item>
+      <item>config/archivio-smart.php: timeout, tries, backoff, max_file_size_kb (20480), default_file_size_kb (10240), sync_log_display_limit (20), limiti di lunghezza.</item>
+      <item>CRUD checklist con voci (sostituzione completa delle voci a ogni salvataggio), attiva/disattiva, eliminazione (soft).</item>
+      <item>ArchivioSmartClient (Http facade): upsertChecklist, deleteChecklist, me. Il token compare solo nell'header Authorization, mai in log, eccezioni o risposte.</item>
+      <item>DocumentChecklistPayloadBuilder: costruisce il body PUT dallo stato attuale (external_id = id come stringa, validation_rules o null).</item>
+      <item>SyncDocumentChecklistJob: PUT se la checklist esiste, DELETE se e' soft-deleted; retry/backoff; aggiorna lo stato; scrive il log.</item>
+      <item>Endpoint di sincronizzazione manuale (singola e tutte) e lettura del log.</item>
+      <item>Endpoint della connessione: lettura (senza token), salvataggio, prova (GET /me).</item>
+      <item>TableDefinition `document-checklists` (griglia SSRM) con colonne di stato sincronizzazione e azione di riga `sync`.</item>
+      <item>Voce di menu, permessi, activity log (LogsModelActivity) su DocumentChecklist e ArchivioSmartSetting (con il token escluso).</item>
+      <item>Frontend: feature `document-checklists` (griglia, dettaglio/form con editor delle voci ordinabile, sezione Sincronizzazioni, dialog Connessione, azione Sincronizza tutte).</item>
+      <item>Guide in-app IT+EN `document-checklists`, HELP_GUIDE_KEYS 108 -> 109; segnalazione delle sezioni del manuale Claude Docs da aggiornare.</item>
+    </in>
+    <out>
+      <item>Creazione delle richieste di documenti (PUT /requests/{id}) e relativo selettore delle checklist (for-select): spec successiva (D-1).</item>
+      <item>Lettura/riallineamento da ArchivioSmart verso QNet 2 (GET /checklists): non si importa niente da ArchivioSmart.</item>
+      <item>Webhook o qualsiasi chiamata da ArchivioSmart verso QNet 2.</item>
+      <item>Una connessione per societa'/tenant (D-2: unica).</item>
+      <item>Ripristino di una checklist eliminata; export/import Excel delle checklist; duplicazione.</item>
+      <item>Pulizia automatica del log delle chiamate (nessuna scadenza, decisione rinviata).</item>
+      <item>Migrazione dati dal QNet legacy (il legacy non ha checklist).</item>
+      <item>Seeder demo: nessun Demo*Seeder (le checklist demo creerebbero job verso un servizio esterno).</item>
+    </out>
+  </scope>
+
+  <data_model>
+    <table name="document_checklists">
+      id (bigint autoincrement, external_id = (string) id), name varchar(255), code varchar(50) (maiuscolo, indicizzato),
+      description text null, is_active bool default true,
+      sync_status varchar(20) default 'pending' (enum DocumentChecklistSyncStatus), sync_error text null,
+      synced_at timestamp null (ultima sincronizzazione riuscita), first_synced_at timestamp null (blocca il codice, D-4),
+      timestamps, deleted_at (soft delete, D-3).
+      Unicita' del codice: verificata nel FormRequest tra le checklist non eliminate (il codice e' gia' maiuscolo, quindi il confronto non dipende da maiuscole/minuscole).
+    </table>
+    <table name="document_checklist_items">
+      id (external_id = (string) id), document_checklist_id FK cascade, position unsigned int (ordine di visualizzazione, 0-based),
+      name varchar(255), description text null, section varchar(255) null, is_required bool,
+      allowed_file_types json (array di DocumentChecklistFileType, almeno 1, senza duplicati),
+      max_file_size_kb unsigned int, min_files unsigned tinyint, max_files unsigned tinyint,
+      validation_prompt text null, max_age_days unsigned smallint null, timestamps.
+      Le voci tolte dal form vengono eliminate fisicamente; l'autoincrement non riusa gli id.
+      Indice (document_checklist_id, position).
+    </table>
+    <table name="document_checklist_sync_logs">
+      id, document_checklist_id FK (nessun cascade: la checklist non viene mai cancellata fisicamente), operation varchar(10) (upsert|delete),
+      outcome varchar(20) (success|failed|retrying), http_status smallint null (null = errore di rete / connessione non configurata),
+      attempt unsigned tinyint, message varchar(1000) null, created_at.
+      Indice (document_checklist_id, created_at). Non contiene mai il token, l'header Authorization o il body inviato.
+    </table>
+    <table name="archivio_smart_settings">
+      id, base_url varchar(255) null, token text null (cast `encrypted`, $hidden), timestamps. Al massimo una riga (ArchivioSmartSetting::current()).
+    </table>
+  </data_model>
+
+  <data_contract>
+    <!-- Envelope di progetto: { success, message, data } (+ permissions dove indicato). Tutti gli endpoint sotto auth:sanctum, senza throttle. -->
+
+    <shape name="DocumentChecklistItem">
+      {
+        id: number | null,               // null = voce nuova (solo in request)
+        name: string,                    // 1..255
+        description: string | null,      // max 2000
+        section: string | null,          // max 255; null => "Altri documenti" nel portale ArchivioSmart
+        is_required: boolean,
+        allowed_file_types: ("pdf"|"jpg"|"jpeg"|"png"|"webp"|"heic"|"docx"|"odt"|"txt")[],  // min 1, distinct
+        max_file_size_kb: number,        // intero 1..20480
+        min_files: number,               // intero 1..10
+        max_files: number,               // intero 1..10, >= min_files
+        validation_prompt: string | null,// max 5000
+        max_age_days: number | null      // intero 1..3650
+      }
+      L'ordine dell'array = ordine di visualizzazione (position).
+    </shape>
+
+    <shape name="DocumentChecklist">
+      {
+        id: number,
+        name: string,
+        code: string,                    // maiuscolo
+        description: string | null,
+        is_active: boolean,
+        code_locked: boolean,            // first_synced_at != null (D-4)
+        sync_status: "pending" | "synced" | "failed",
+        sync_error: string | null,
+        synced_at: string | null,        // ISO 8601
+        items: DocumentChecklistItem[],  // presenti in show/store/update
+        created_at: string,
+        updated_at: string
+      }
+    </shape>
+
+    <endpoint method="POST" path="/api/tables/document-checklists/rows">
+      <request>Contratto SSRM generico della TableDefinition (invariato).</request>
+      <response status="200">
+        Riga: { id, name, code, is_active, items_count, sync_status, sync_error, synced_at, created_at, actions: ("view"|"delete"|"activity"|"sync"|"activate")[] }.
+        baseQuery esclude le checklist eliminate (soft delete). Ordinamento di default: name asc.
+        Filtri: name, code (testo), is_active (bool), sync_status (set).
+      </response>
+      <errors>403 senza document-checklists.viewAny.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-checklists/{documentChecklist}">
+      <response status="200">{ data: DocumentChecklist, permissions: ResourcePermissions }</response>
+      <errors>403 senza view; 404 se inesistente o eliminata.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-checklists">
+      <request>{ name: string, code: string, description?: string | null, is_active?: boolean (default true), items: DocumentChecklistItem[] (0..200, id sempre null) }</request>
+      <response status="201">{ data: DocumentChecklist (sync_status "pending"), permissions }. Effetto: dispatch di SyncDocumentChecklistJob dopo il commit.</response>
+      <errors>
+        403 senza create.
+        422 regole: name required|max:255; code required|max:50|regex:/^[A-Za-z0-9_-]+$/|unico tra le non eliminate (dopo upper());
+        description nullable|max:2000; items array|max:200; regole voce come nella shape.
+        Messaggi in italiano; chiavi errore delle voci nella forma items.N.campo.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/document-checklists/{documentChecklist}">
+      <request>
+        Stesso body di POST (sostituzione completa). items[].id: id di una voce della STESSA checklist (altrimenti 422) oppure null per una voce nuova.
+        Voci esistenti non presenti nell'array = eliminate. code: se code_locked e il valore cambia -> 422 sul campo code.
+      </request>
+      <response status="200">{ data: DocumentChecklist (sync_status "pending"), permissions }. Dispatch del job dopo il commit.</response>
+      <errors>403 senza update; 404 eliminata; 422 come POST + code bloccato + id voce estraneo.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/document-checklists/{documentChecklist}/activation">
+      <request>{ is_active: boolean }</request>
+      <response status="200">{ data: DocumentChecklist, permissions }. sync_status -> pending + dispatch del job.</response>
+      <errors>403 senza update; 422 is_active mancante o non booleano.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/document-checklists/{documentChecklist}">
+      <response status="204">Soft delete + sync_status pending + dispatch del job (che fara' DELETE remoto). Anche dal bulk delete generico della tabella (deleteModel -> stesso service).</response>
+      <errors>403 senza delete; 404 gia' eliminata.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-checklists/{documentChecklist}/sync">
+      <response status="202">{ data: DocumentChecklist (sync_status "pending") }. Dispatch del job.</response>
+      <errors>403 senza update; 404 eliminata.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-checklists/sync-all">
+      <response status="202">{ data: { queued: number } }: un job per ogni checklist non eliminata, ognuna passa a pending.</response>
+      <errors>403 senza update.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-checklists/{documentChecklist}/sync-logs">
+      <response status="200">{ data: { id, operation: "upsert"|"delete", outcome: "success"|"failed"|"retrying", http_status: number|null, attempt: number, message: string|null, created_at: string }[] } (ultime 20, dalla piu' recente)</response>
+      <errors>403 senza view.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/archivio-smart/settings">
+      <response status="200">{ data: { base_url: string|null, has_token: boolean, updated_at: string|null } }. Il token non viene MAI restituito, nemmeno in parte.</response>
+      <errors>403 senza document-checklists.manageConnection.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/archivio-smart/settings">
+      <request>{ base_url: string (required, url, scheme https, max 255; in local/testing anche http), token?: string (min 10, max 500; assente o vuoto = token invariato) }</request>
+      <response status="200">{ data: { base_url, has_token, updated_at } }</response>
+      <errors>403 senza manageConnection; 422 validazione.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/archivio-smart/settings/test">
+      <request>nessun body (usa la connessione salvata)</request>
+      <response status="200">{ data: { ok: boolean, http_status: number|null, message: string } }. ok=true solo se GET {base_url}/me risponde 200. Il messaggio non contiene mai il token.</response>
+      <errors>403 senza manageConnection; 422 se la connessione non e' configurata.</errors>
+    </endpoint>
+
+    <outbound name="ArchivioSmart">
+      PUT {base_url}/checklists/{id} con header Authorization: Bearer {token}, Accept: application/json, e body
+      { name, code, description, is_active, items: [ { external_id: (string) item.id, name, description, section, is_required,
+        allowed_file_types, max_file_size_kb, min_files, max_files, validation_prompt,
+        validation_rules: max_age_days ? { max_age_days, date_field: "issue_date" } : null } ] } (items ordinati per position).
+      DELETE {base_url}/checklists/{id}: 204 = successo (anche se la checklist non esiste).
+      Esiti del job:
+        200/201/204 -> synced, sync_error null, synced_at=now, first_synced_at valorizzato se nullo (solo upsert);
+        422 -> failed, sync_error = messaggi di errors uniti (max 1000 caratteri), nessun nuovo tentativo;
+        409 -> failed, messaggio i18n "esiste gia' in ArchivioSmart una checklist non creata da QNet 2", nessun nuovo tentativo;
+        401 -> failed, messaggio i18n "token ArchivioSmart non valido", nessun nuovo tentativo;
+        429 -> outcome retrying, release(Retry-After secondi; 60 se l'header manca);
+        5xx / ConnectionException -> retrying con backoff da config [10, 30, 90, 300] s; all'ultimo tentativo failed;
+        connessione non configurata -> failed con messaggio i18n, nessuna chiamata HTTP;
+        altro 4xx -> failed, nessun nuovo tentativo.
+      Ogni tentativo scrive una riga in document_checklist_sync_logs.
+    </outbound>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con document-checklists.create, quando invia POST con 2 voci valide, allora risponde 201, salva il codice in maiuscolo, salva le voci con position 0 e 1, sync_status "pending", e SyncDocumentChecklistJob viene messo in coda una volta (Queue::fake).</criterion>
+    <criterion id="AC-002">Dato un payload con code "ab c", name di 256 caratteri, 201 voci, una voce senza allowed_file_types, min_files 3 e max_files 2, max_file_size_kb 20481, max_age_days 3651, file type "exe": allora 422 con un errore su ciascuno dei campi corrispondenti, nessuna riga creata e nessun job in coda.</criterion>
+    <criterion id="AC-003">Data una checklist esistente con codice "APERTURA", quando un'altra viene creata con codice "apertura", allora 422 su code; se la prima e' eliminata (soft delete), allora la creazione riesce.</criterion>
+    <criterion id="AC-004">Data una checklist con voci A, B, C, quando PUT invia [C (id), nuova D, A (id)], allora B viene eliminata, C ha position 0, D e' creata con position 1, A ha position 2, e gli id di A e C non cambiano.</criterion>
+    <criterion id="AC-005">Quando PUT invia un items[].id che appartiene a un'altra checklist, allora 422 e nessuna modifica.</criterion>
+    <criterion id="AC-006">Data una checklist con first_synced_at valorizzato, quando PUT cambia il codice, allora 422 su code; quando PUT reinvia lo stesso codice, allora 200. Lo show espone code_locked=true.</criterion>
+    <criterion id="AC-007">Utente senza permessi: 403 su show/store/update/activation/delete/sync/sync-all/sync-logs; senza manageConnection: 403 sui tre endpoint archivio-smart/settings, anche se ha tutti gli altri permessi document-checklists.*.</criterion>
+    <criterion id="AC-008">Il job su una checklist non eliminata invia PUT {base_url}/checklists/{id} con Bearer token e body identico al contratto (external_id stringa, items ordinati per position, validation_rules {max_age_days, date_field:"issue_date"} oppure null, campi facoltativi vuoti inviati come null). Verificato con Http::fake + Http::assertSent.</criterion>
+    <criterion id="AC-009">Risposta 201 o 200: sync_status "synced", sync_error null, synced_at e first_synced_at valorizzati; una riga di log outcome success con http_status corretto.</criterion>
+    <criterion id="AC-010">Risposta 422 con {"errors":{"code":["Il codice e' gia' in uso."]}}: sync_status "failed", sync_error contiene il messaggio, il job non viene rimesso in coda (nessun release), una riga di log failed con http_status 422. Stesso comportamento senza nuovi tentativi per 401 e 409, con il loro messaggio i18n.</criterion>
+    <criterion id="AC-011">Risposta 429 con Retry-After: 7: il job chiama release(7) e scrive un log retrying; risposta 503 o ConnectionException: release con il backoff del tentativo corrente; all'ultimo tentativo sync_status "failed".</criterion>
+    <criterion id="AC-012">Il job legge lo stato attuale: se la checklist viene modificata dopo il dispatch e prima dell'esecuzione, il PUT contiene i valori nuovi. Due dispatch ravvicinati per la stessa checklist non producono due esecuzioni sovrapposte (middleware WithoutOverlapping con chiave = id).</criterion>
+    <criterion id="AC-013">DELETE /api/document-checklists/{id}: 204, la riga resta con deleted_at valorizzato, sparisce da show (404) e dalla griglia; il job invia DELETE {base_url}/checklists/{id}; con 204 sync_status "synced". Lo stesso percorso vale per il bulk delete generico della tabella.</criterion>
+    <criterion id="AC-014">PATCH activation {is_active:false}: 200, is_active false, sync_status pending, job in coda; il PUT successivo contiene "is_active": false.</criterion>
+    <criterion id="AC-015">POST sync-all con 3 checklist attive/inattive e 1 eliminata: 202 {queued: 3}, 3 job in coda. POST /{id}/sync: 202 e un job in coda.</criterion>
+    <criterion id="AC-016">Connessione non configurata: il job non fa chiamate HTTP (Http::assertNothingSent), sync_status "failed" con il messaggio i18n "Connessione ArchivioSmart non configurata", una riga di log con http_status null.</criterion>
+    <criterion id="AC-017">Il token non compare mai: GET/PUT settings rispondono solo has_token; nel DB la colonna token e' cifrata (valore grezzo diverso dal token); nessuna riga di document_checklist_sync_logs, nessun messaggio di sync_error, nessuna voce di activity log e nessun Log:: scritto durante il job contiene la stringa del token (asserzione su Log::spy e sul DB).</criterion>
+    <criterion id="AC-018">PUT settings senza token mantiene il token salvato; con token nuovo lo sostituisce; base_url non https in produzione -> 422.</criterion>
+    <criterion id="AC-019">POST settings/test: con /me 200 -> {ok:true, http_status:200}; con 401 -> {ok:false, http_status:401, message i18n}; senza connessione -> 422.</criterion>
+    <criterion id="AC-020">GET sync-logs restituisce al massimo 20 righe della sola checklist richiesta, ordinate dalla piu' recente.</criterion>
+    <criterion id="AC-021">Griglia: POST /api/tables/document-checklists/rows restituisce le colonne del contratto, esclude le eliminate e mette le azioni "sync" e "activate" solo a chi ha update.</criterion>
+    <criterion id="AC-022">Menu: la voce document-checklists compare sotto config-documents solo con document-checklists.view; permissions:sync crea document-checklists.manageConnection.</criterion>
+    <criterion id="AC-023">(FE) Lo schema Zod del form rispecchia le regole del backend: rifiuta code con caratteri non ammessi, max_files minore di min_files, zero tipi di file, max_file_size_kb maggiore di 20480, piu' di 200 voci; una nuova voce parte con max_file_size_kb 10240, min_files 1, max_files 1, allowed_file_types ["pdf"].</criterion>
+    <criterion id="AC-024">(FE) Il form crea/modifica una checklist con voci aggiunte, rimosse e riordinate (pulsanti su/giu' accessibili da tastiera, piu' drag con dnd-kit) e invia items nell'ordine mostrato; con code_locked il campo codice e' in sola lettura; i 422 del server (anche items.N.campo) vengono mostrati sul campo giusto.</criterion>
+    <criterion id="AC-025">(FE) La griglia mostra il badge di stato (Sincronizzata / In errore / In attesa) con testo, non solo colore, e il messaggio di errore nel tooltip; l'azione di riga "Sincronizza di nuovo" chiama /sync e aggiorna la riga; "Sincronizza tutte" in toolbar chiama /sync-all e mostra un toast con il numero di checklist in coda.</criterion>
+    <criterion id="AC-026">(FE) Il pulsante "Connessione ArchivioSmart" e' visibile solo con manageConnection; il dialog mostra la base URL e "Token impostato" senza mostrare il token; il campo token vuoto non lo sovrascrive; "Prova connessione" mostra l'esito.</criterion>
+    <criterion id="AC-027">(FE) Il dettaglio mostra la sezione "Sincronizzazioni" con le ultime 20 chiamate (data, operazione, esito, codice HTTP, messaggio).</criterion>
+    <criterion id="AC-028">(FE) Guide in-app IT ed EN `document-checklists` con gli stessi id di sezione; HELP_GUIDE_KEYS passa da 108 a 109 (REQUIREMENT CHANGED nel test); help-content-parity.test.ts verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: Http facade di Laravel, coda database, dnd-kit/RHF/Zod/TanStack Query/AG Grid gia' presenti.</item>
+    <item>Authz server-side su ogni endpoint (Policy + ResourceAuthorization + TableDefinition::actionsFor). Nessun throttle sugli endpoint (backend.md §2).</item>
+    <item>Layering: Controller sottile -> FormRequest (toData) -> DocumentChecklistService (transazione: checklist + voci) -> Resource. Il dispatch del job avviene dopo il commit (afterCommit).</item>
+    <item>Token: cast `encrypted`, $hidden, escluso dall'activity log; mai in log, eccezioni, risposte o sync_error. ArchivioSmartClient non logga request/response.</item>
+    <item>Numeri magici (tentativi, backoff, timeout, limiti di dimensione, limite del log) in config/archivio-smart.php.</item>
+    <item>Tutti gli identificatori in inglese; i testi visibili all'utente in i18n (lang/it, lang/en backend; i18next frontend).</item>
+    <item>File sotto i 300 righe (500 come limite massimo): l'editor delle voci va in componenti separati.</item>
+    <item>Test: Pest con Http::fake e Queue::fake, nessuna chiamata reale; Vitest per schema, form, griglia e dialog.</item>
+    <item>Manuale: guide in-app IT+EN aggiornate; manuale Claude Docs, nuova sezione "Configurazione > Documenti > Checklist documentali" (aggiornata se il connettore e' disponibile, altrimenti segnalata).</item>
+  </constraints>
+
+</spec>

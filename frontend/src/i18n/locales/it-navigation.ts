@@ -67,6 +67,7 @@ export const navigation = {
   workOrderWorkflows: 'Configuratore Stati Commessa',
   emailTemplates: 'Modelli email',
   documentBundles: 'Modelli documenti',
+  documentChecklists: 'Checklist documentali',
   tasks: 'Task',
   taskStatuses: 'Stati Task',
   taskTypes: 'Tipologie Task',

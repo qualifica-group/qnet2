@@ -66,6 +66,7 @@ export const navigation = {
   workOrderWorkflows: 'Work order status configurator',
   emailTemplates: 'Email templates',
   documentBundles: 'Document bundles',
+  documentChecklists: 'Document checklists',
   tasks: 'Tasks',
   taskStatuses: 'Task Statuses',
   taskTypes: 'Task Types',

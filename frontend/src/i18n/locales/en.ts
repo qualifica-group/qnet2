@@ -59,6 +59,7 @@ import { workOrders } from './en-work-orders'
 import { outboundEmails } from './en-outbound-emails'
 import { emailTemplates } from './en-email-templates'
 import { documentBundles } from './en-document-bundles'
+import { documentChecklists } from './en-document-checklists'
 import { taskTemplates } from './en-task-templates'
 import { supportTopics } from './en-support-topics'
 import { supportRequests } from './en-support-requests'
@@ -458,6 +459,7 @@ export const en = {
   outboundEmails,
   emailTemplates,
   documentBundles,
+  documentChecklists,
   taskTemplates,
   tasks: { ...tasks, stats: moduleStats.tasks },
   taskStatuses,

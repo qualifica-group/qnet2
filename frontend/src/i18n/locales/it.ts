@@ -54,6 +54,7 @@ import { workOrders } from './it-work-orders'
 import { outboundEmails } from './it-outbound-emails'
 import { emailTemplates } from './it-email-templates'
 import { documentBundles } from './it-document-bundles'
+import { documentChecklists } from './it-document-checklists'
 import { taskTemplates } from './it-task-templates'
 import { supportTopics } from './it-support-topics'
 import { supportRequests } from './it-support-requests'
@@ -444,6 +445,7 @@ export const it: TranslationResources = {
   outboundEmails,
   emailTemplates,
   documentBundles,
+  documentChecklists,
   taskTemplates,
   tasks: { ...tasks, stats: moduleStats.tasks },
   taskStatuses,
