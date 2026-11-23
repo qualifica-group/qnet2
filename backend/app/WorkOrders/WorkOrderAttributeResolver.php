@@ -37,6 +37,7 @@ final class WorkOrderAttributeResolver
     public function __construct(
         private readonly AttributeSetResolver $setResolver,
         private readonly AttributeLayoutMerger $layoutMerger,
+        private readonly WorkOrderAttributeLocks $locks,
     ) {}
 
     /**
@@ -56,13 +57,35 @@ final class WorkOrderAttributeResolver
     }
 
     /**
+     * The attribute codes of the work order the user cannot edit (owned by a
+     * registered WorkOrderAttributeLock).
+     *
+     * @return list<string>
+     */
+    public function lockedCodes(WorkOrder $workOrder): array
+    {
+        return $this->locks->lockedCodes($this->categoryIdsForWorkOrder($workOrder));
+    }
+
+    /**
+     * lockedCodes() for a not-yet-saved work order made of these quote lines.
+     *
+     * @param  array<int, int>  $quoteLineIds
+     * @return list<string>
+     */
+    public function lockedCodesForQuoteLines(array $quoteLineIds): array
+    {
+        return $this->locks->lockedCodes($this->categoryIdsForQuoteLineIds($quoteLineIds));
+    }
+
+    /**
      * The `POST /api/work-orders/form-context` shape (spec 0098, D-7): both
      * blocks, resolved once for the SAME category-id list — the not-yet-saved
      * `quote_line_ids` composed so far, be it the WorkOrder form or the
      * Contract's "Programma" dialog.
      *
      * @param  array<int, int>  $quoteLineIds
-     * @return array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
+     * @return array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null, locked_attribute_codes: list<string>}
      */
     public function formContext(array $quoteLineIds, FormMode $formMode): array
     {
@@ -71,6 +94,7 @@ final class WorkOrderAttributeResolver
         return [
             'applicable_attributes' => $this->setResolver->resolve($categoryIds, AttributeContext::WorkOrder),
             'attribute_layout' => $this->layoutMerger->resolve($categoryIds, AttributeContext::WorkOrder, $formMode),
+            'locked_attribute_codes' => $this->locks->lockedCodes($categoryIds),
         ];
     }
 

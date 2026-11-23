@@ -13,6 +13,7 @@ use Integrations\Formalab\Health\FormalabHealthCheck;
 use Integrations\Formalab\Jobs\SyncFormalabClasses;
 use Integrations\Formalab\Models\FormalabCallLog;
 use Integrations\Formalab\Models\FormalabSyncRun;
+use Integrations\Formalab\Services\MappedFieldLock;
 use Integrations\Formalab\Support\Trigger;
 use Integrations\Formalab\Tables\FormalabCallLogsTableDefinition;
 
@@ -58,6 +59,7 @@ class FormalabServiceProvider extends ServiceProvider
         $this->registerNavigationItem();
         $this->registerTableDefinition();
         $this->app->tag([FormalabHealthCheck::class], 'system-health.checks');
+        $this->app->tag([MappedFieldLock::class], 'work-orders.attribute-locks');
         $this->app->make(IntegrationRegistry::class)->activate(self::KEY);
         $this->callAfterResolving(Schedule::class, $this->schedule(...));
         $this->commands([SyncClassesCommand::class, LinkWorkOrdersCommand::class]);

@@ -75,6 +75,7 @@ const guide: HelpGuide = {
             '**Mappatura dei campi**: per ogni campo di Formalab (nome corso / edizione, stato, date, ore, decreti, sede, discenti…) scegli il campo della commessa in cui scriverlo. L\'elenco propone solo i campi commessa della categoria di tipo compatibile; i campi lasciati "Non collegato" non vengono scritti.',
             'Il **Nome corso / edizione** è obbligatorio: è il campo da cui la commessa trova la sua edizione su Formalab.',
             'Una sottocategoria usa la mappatura della categoria superiore ("Mappatura ereditata da …"); attivando **Mappatura propria** può definirne una diversa, e spegnendola torna a ereditare.',
+            'Sulle commesse delle categorie collegate i campi mappati sono **in sola lettura**: li aggiorna solo Formalab. Fa eccezione il campo del **Nome corso / edizione**, che resta modificabile perché serve a trovare l\'edizione.',
           ],
         },
         {

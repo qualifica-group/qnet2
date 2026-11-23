@@ -55,6 +55,7 @@ function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     ],
     applicable_attributes: [],
     attribute_layout: null,
+    locked_attribute_codes: [],
     attribute_values: {},
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',

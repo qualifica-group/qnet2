@@ -5,7 +5,7 @@ import { fetchWorkOrderFormContext } from '@/features/work-orders/api'
 import type { WorkOrderFormContext } from '@/features/work-orders/types'
 
 /** Nessuna riga offerta scelta: nessuna categoria, quindi nessun attributo. Hoistato per riferimento stabile. */
-const EMPTY_CONTEXT: WorkOrderFormContext = { applicable_attributes: [], attribute_layout: null }
+const EMPTY_CONTEXT: WorkOrderFormContext = { applicable_attributes: [], attribute_layout: null, locked_attribute_codes: [] }
 
 /** What a persisted work order already resolved for its own lines (`WorkOrderResource`). */
 export interface PersistedWorkOrderContext {

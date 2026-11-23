@@ -5,6 +5,7 @@ namespace App\Http\Requests\WorkOrders;
 use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\Enums\WorkOrderType;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\RejectsLockedWorkOrderAttributes;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -33,7 +34,7 @@ use Illuminate\Validation\Rule;
  */
 class StoreWorkOrderRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesManagerSlots;
+    use EnforcesFieldPermissions, RejectsLockedWorkOrderAttributes, ValidatesManagerSlots;
 
     private const string PARTICIPANT_SLOTS_FIELD = 'participant_slots';
 
@@ -106,6 +107,7 @@ class StoreWorkOrderRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->validateManagerSlots($validator, self::PARTICIPANT_SLOTS_FIELD);
             $this->enforceFieldPermissions($validator);
+            $this->rejectLockedAttributeChangesOnCreate($validator);
         });
     }
 

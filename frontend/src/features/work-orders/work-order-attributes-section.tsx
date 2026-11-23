@@ -15,6 +15,9 @@ import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
 /** Where the open/closed state of the work orders' "Informazioni aggiuntive" is kept, shared by detail and create. */
 export const WORK_ORDER_ADDITIONAL_INFORMATION_STORAGE_KEY = 'work-orders.additional-information'
 
+/** No locked attribute: hoisted for a stable default reference. */
+const NO_LOCKED_CODES: string[] = []
+
 /** The form-field path of one Attribute's value: the key of its in-place row. */
 function attributeFieldPath(code: string): string {
   return `attribute_values.${code}`
@@ -32,6 +35,8 @@ interface WorkOrderAttributesSectionProps {
   layout: LayoutBlob | null
   /** The values the closed rows show: persisted on the detail, the draft's on create. */
   values: Record<string, unknown>
+  /** Owned by an integration: the row shows its value but never opens an editor. */
+  lockedCodes?: string[]
   inline: InlineEdit
   control: Control<WorkOrderFormValues>
   /** Create form: the operator can fold it away. Detail: a fixed column of its own (user directive 2026-11-05). */
@@ -56,6 +61,7 @@ export function WorkOrderAttributesSection({
   attributes,
   layout,
   values,
+  lockedCodes = NO_LOCKED_CODES,
   inline,
   control,
   collapsible = true,
@@ -78,6 +84,7 @@ export function WorkOrderAttributesSection({
         metaKey="attribute_values"
         label={attribute.name}
         inline={inline}
+        canEdit={!lockedCodes.includes(attribute.code)}
         className={fieldClassName}
         editor={
           effective ? (

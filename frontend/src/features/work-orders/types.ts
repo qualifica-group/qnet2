@@ -163,6 +163,8 @@ export interface ApplicableAttributeSummary {
 export interface WorkOrderFormContext {
   applicable_attributes: ApplicableAttributeSummary[]
   attribute_layout: LayoutBlob | null
+  /** Codes owned by an integration (e.g. written from an external service): read-only. */
+  locked_attribute_codes: string[]
 }
 
 /**
@@ -258,6 +260,8 @@ export interface WorkOrderDetail {
   applicable_attributes: ApplicableAttributeSummary[]
   /** Layout multi-categoria (spec 0062); `null` -> rendering flat. */
   attribute_layout: LayoutBlob | null
+  /** Codes owned by an integration (e.g. written from an external service): shown read-only, refused on write. */
+  locked_attribute_codes: string[]
   created_at: string
   updated_at: string
 }

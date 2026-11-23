@@ -69,6 +69,17 @@
       sulla radice. Le sottocategorie con barriera di ereditarieta' (Avviso 1 POC, Avviso 20 in dev)
       restano senza campi e quindi fuori. Nel modulo commessa i campi non messi nel layout compaiono
       nella sezione "Altre informazioni".
+    - D-13 (richiesta utente 2026-11-23) I campi mappati sono in SOLA LETTURA per l'utente sulle
+      commesse delle categorie collegate, tranne quello mappato su `label` (Nome corso / edizione):
+      resta modificabile perche' e' l'unico modo di indicare l'edizione (D-5 di 0422, nessuna scelta
+      manuale). Core generico, senza nominare Formalab: interfaccia App\WorkOrders\WorkOrderAttributeLock
+      (tag container `work-orders.attribute-locks`), raccolta da WorkOrderAttributeLocks;
+      WorkOrderAttributeResolver::lockedCodes()/lockedCodesForQuoteLines(); le request Store/Update
+      commessa e GenerateContractWorkOrder rifiutano (422 su `attribute_values.<code>`) un valore
+      diverso da quello salvato (reinviare lo stesso valore non e' una modifica; '' = null);
+      `locked_attribute_codes` in WorkOrderResource e in form-context; il frontend mostra quelle righe
+      senza modifica. Le scritture di sistema (Formalab, copia dall'offerta, migrazione) non passano
+      dalle request e non sono toccate. Formalab registra il proprio lock (MappedFieldLock) solo da attiva.
   </context>
 
   <data_contract>
@@ -94,6 +105,11 @@
       <errors>403; 404; 422 enabled su una figlia diverso dall'ereditato / campo Formalab sconosciuto o ripetuto / attributo ripetuto, non della categoria o di tipo incompatibile / mappatura senza `label`</errors>
     </endpoint>
 
+    <endpoint method="GET|POST|PATCH" path="/api/work-orders/{workOrder}, /api/work-orders, /api/work-orders/form-context" auth="invariata">
+      <response>+ locked_attribute_codes: string[]   // D-13; [] senza lock registrati</response>
+      <errors>422 attribute_values.&lt;code&gt; su un campo bloccato modificato (create, update, Programma da contratto)</errors>
+    </endpoint>
+
     <schema>
       formalab_category_settings: id, product_category_id (fk product_categories cascade, unique), enabled (bool default false),
         field_map (json null), updated_by (fk users null on delete), timestamps.
@@ -109,6 +125,8 @@
     <criterion id="AC-006">Backfill: solo commesse di categorie collegate, chiave = attributo mappato su `label`.</criterion>
     <criterion id="AC-007">Health/stato: codice mappato che non esiste piu' = degraded con il codice; nessuna mappatura = ok "0/0".</criterion>
     <criterion id="AC-008">Frontend: sezione "Formalab" nel dettaglio categoria solo con integrazione attiva; radice modifica il collegamento, figlia lo vede ereditato; editor mappatura con attributi filtrati per tipo e suggerimenti; figlia sceglie tra ereditata e propria.</criterion>
+    <criterion id="AC-010">Commessa di categoria collegata: locked_attribute_codes = campi mappati tranne il nome corso; senza collegamento o integrazione spenta = [].</criterion>
+    <criterion id="AC-011">PATCH/POST commessa: valore diverso su un campo bloccato = 422; nome corso, altri campi e reinvio del valore salvato accettati; il frontend non offre la modifica delle righe bloccate.</criterion>
     <criterion id="AC-009">Guida in-app `formalab` IT/EN aggiornata, parity verde.</criterion>
   </acceptance_criteria>
 

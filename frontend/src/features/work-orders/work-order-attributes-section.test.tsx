@@ -83,9 +83,10 @@ interface HarnessProps {
   values: Record<string, unknown>
   layout?: LayoutBlob | null
   permissions?: ResourcePermissions
+  lockedCodes?: string[]
 }
 
-function Harness({ attributes, values, layout = null, permissions = FULL_PERMISSIONS }: HarnessProps) {
+function Harness({ attributes, values, layout = null, permissions = FULL_PERMISSIONS, lockedCodes }: HarnessProps) {
   const form = useForm<WorkOrderFormValues>({
     defaultValues: { attribute_values: values } as unknown as WorkOrderFormValues,
   })
@@ -97,6 +98,7 @@ function Harness({ attributes, values, layout = null, permissions = FULL_PERMISS
           attributes={attributes}
           layout={layout}
           values={values}
+          lockedCodes={lockedCodes}
           inline={draft}
           control={form.control}
         />
@@ -125,6 +127,15 @@ describe('WorkOrderAttributesSection', () => {
     fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Site access' }) }))
 
     expect(screen.getByRole('textbox', { name: 'Site access' })).toHaveValue('Gate 3')
+  })
+
+  it('shows a field owned by an integration without any edit action', () => {
+    render(<Harness attributes={[SITE_ACCESS]} values={{ site_access: 'Gate 3' }} layout={LAYOUT} lockedCodes={['site_access']} />)
+
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Site access' }) }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders a filled table Attribute as a read-only mini table (spec 0180)', () => {

@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'attribute_locked' => 'This field is updated by an external service and cannot be changed.',
     'delete_has_accounting_documents' => 'The work order cannot be deleted: it has linked accounting documents (proforma requests, invoices, purchase orders or purchase invoices).',
     'lines_not_offer_revenue' => 'The selected lines must be revenue lines of the selected contracts\' offers.',
     'line_already_programmed' => 'One of the selected lines is already in work order :code: each line can belong to one work order only.',

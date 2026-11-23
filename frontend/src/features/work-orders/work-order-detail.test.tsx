@@ -118,6 +118,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     ],
     applicable_attributes: [],
     attribute_layout: null,
+    locked_attribute_codes: [],
     attribute_values: {},
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
