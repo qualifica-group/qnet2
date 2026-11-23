@@ -2,14 +2,9 @@ import { useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import {
-  linkFormalabWorkOrders,
-  startFormalabSync,
-  testFormalabConnection,
-} from '@/integrations/formalab/api'
+import { startFormalabSync, testFormalabConnection } from '@/integrations/formalab/api'
 import { serverMessage } from '@/integrations/formalab/error-message'
 import { formalabKeys } from '@/integrations/formalab/query-keys'
-import type { FormalabLinkSummary } from '@/integrations/formalab/types'
 
 /** The sync is queued (202): give the job a moment before rereading the status. */
 export const SYNC_REFETCH_DELAY_MS = 3000
@@ -45,14 +40,5 @@ export function useFormalabActions() {
     onError: (error) => toast.error(serverMessage(error, t('actions.testError'))),
   })
 
-  const linkWorkOrders = useMutation<FormalabLinkSummary>({
-    mutationFn: linkFormalabWorkOrders,
-    onSuccess: (summary) => {
-      toast.success(t('actions.linkDone', { ...summary }))
-      void refreshStatus()
-    },
-    onError: (error) => toast.error(serverMessage(error, t('actions.linkError'))),
-  })
-
-  return { sync, testConnection, linkWorkOrders }
+  return { sync, testConnection }
 }

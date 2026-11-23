@@ -122,7 +122,7 @@ it('answers 502 and saves nothing when Formalab is not reachable', function () {
         ->and($workOrder->refresh()->attribute_values['gol_stato_corso'])->toBe('In corso');
 });
 
-// AC-008
+// AC-008 — REQUIREMENT CHANGED (spec 0423 D-15): the linking runs inside every catalogue sync, no endpoint of its own
 it('links by exact course name, skips ambiguous labels and leaves linked work orders alone', function () {
     formalabEnable();
     formalabFakeApi([
@@ -131,16 +131,13 @@ it('links by exact course name, skips ambiguous labels and leaves linked work or
         formalabClassPayload(3, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
         formalabClassPayload(4, ['codice' => 'CCC', 'corso' => ['title' => 'Linked']]),
     ]);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
     $matching = formalabGolWorkOrder(['gol_corso' => 'AAA - Unique']);
     $ambiguous = formalabGolWorkOrder(['gol_corso' => 'BBB - Twin']);
     $unmatched = formalabGolWorkOrder(['gol_corso' => 'ZZZ - Nobody']);
     $alreadyLinked = formalabGolWorkOrder(['gol_corso' => 'CCC - Linked']);
     $manual = FormalabWorkOrderLink::query()->create(['work_order_id' => $alreadyLinked->id, 'edition_id' => 1]);
-    Sanctum::actingAs(formalabSuperAdmin());
 
-    $this->postJson('/api/integrations/formalab/link-work-orders')->assertOk()
-        ->assertJsonPath('data', ['linked' => 1, 'ambiguous' => 1, 'unmatched' => 1]);
+    app(ClassCatalogSync::class)->handle(Trigger::Manual);
 
     expect(FormalabWorkOrderLink::query()->where('work_order_id', $matching->id)->value('edition_id'))->toBe(1)
         ->and(FormalabWorkOrderLink::query()->where('work_order_id', $ambiguous->id)->exists())->toBeFalse()

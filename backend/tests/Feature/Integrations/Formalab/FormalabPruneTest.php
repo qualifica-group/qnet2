@@ -20,12 +20,11 @@ it('prunes logs and sync runs older than the retention window', function () {
     expect(FormalabCallLog::query()->count())->toBe(1)->and(FormalabSyncRun::query()->count())->toBe(1);
 });
 
-it('registers the two console commands only when enabled', function () {
+it('registers the console command only when enabled', function () {
     expect(array_key_exists('formalab:sync-classes', Artisan::all()))->toBeFalse();
 
     formalabEnable();
     formalabFakeApi([formalabClassPayload(1)]);
 
     $this->artisan('formalab:sync-classes')->assertSuccessful();
-    $this->artisan('formalab:link-work-orders')->assertSuccessful();
 });

@@ -172,17 +172,14 @@ it('records a sync error and writes nothing when the category was unlinked after
         ->and($workOrder->refresh()->attribute_values['gol_stato_corso'])->toBe('In corso');
 });
 
-// AC-006
-it('backfills only the work orders of a linked category, by the attribute mapped on the course name', function () {
+// AC-006 — REQUIREMENT CHANGED (spec 0423 D-15): the linking runs inside every catalogue sync
+it('links only the work orders of a linked category, by the attribute mapped on the course name', function () {
     formalabEnable();
     formalabFakeApi([formalabClassPayload(1, ['codice' => 'AAA', 'corso' => ['title' => 'Unique']])]);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
     $linked = formalabGolWorkOrder(['gol_corso' => 'AAA - Unique']);
     $notLinked = formalabGolWorkOrder(['gol_corso' => 'AAA - Unique'], linkCategory: false);
-    Sanctum::actingAs(formalabSuperAdmin());
 
-    $this->postJson('/api/integrations/formalab/link-work-orders')->assertOk()
-        ->assertJsonPath('data', ['linked' => 1, 'ambiguous' => 0, 'unmatched' => 0]);
+    app(ClassCatalogSync::class)->handle(Trigger::Manual);
 
     expect(FormalabWorkOrderLink::query()->pluck('work_order_id')->all())->toBe([$linked->id])
         ->and(FormalabWorkOrderLink::query()->where('work_order_id', $notLinked->id)->exists())->toBeFalse()

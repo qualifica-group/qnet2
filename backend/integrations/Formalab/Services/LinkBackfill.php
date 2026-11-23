@@ -12,22 +12,24 @@ use Integrations\Formalab\Models\FormalabWorkOrderLink;
  * Links the not-yet-linked work orders of a linked category whose course name
  * (the attribute mapped on `label`, spec 0423) equals the label of exactly
  * one catalogue class. A label shared by several classes is ambiguous:
- * skipped and counted.
+ * skipped and counted. Run by every catalogue sync (spec 0423 D-15).
  */
 final class LinkBackfill
 {
     private const int CHUNK = 500;
 
     public function __construct(
-        private readonly LinkPropagator $propagator,
         private readonly CategoryFieldMapResolver $maps,
         private readonly CourseFieldWriter $courseWriter,
     ) {}
 
     /**
+     * Only records the links: the fields are written by the next propagation
+     * (a new link has never synced, so it is pending).
+     *
      * @return array{linked: int, ambiguous: int, unmatched: int}
      */
-    public function handle(): array
+    public function link(): array
     {
         // Step 1: label => edition ids of the catalogue
         $editionsByLabel = $this->editionsByLabel();
@@ -57,11 +59,6 @@ final class LinkBackfill
                     }
                 }
             });
-
-        // Step 3: the new links get the class fields right away
-        if ($counts['linked'] > 0) {
-            $this->propagator->propagate();
-        }
 
         return $counts;
     }

@@ -4,7 +4,6 @@ import type {
   FormalabCategorySettings,
   FormalabCategorySettingsPayload,
   FormalabConnectionTest,
-  FormalabLinkSummary,
   FormalabStatus,
   FormalabWorkOrderLink,
 } from '@/integrations/formalab/types'
@@ -25,11 +24,6 @@ export async function startFormalabSync(): Promise<void> {
 
 export async function testFormalabConnection(): Promise<FormalabConnectionTest> {
   const { data } = await apiClient.post<ApiResponse<FormalabConnectionTest>>(`${BASE}/test-connection`)
-  return data.data
-}
-
-export async function linkFormalabWorkOrders(): Promise<FormalabLinkSummary> {
-  const { data } = await apiClient.post<ApiResponse<FormalabLinkSummary>>(`${BASE}/link-work-orders`)
   return data.data
 }
 

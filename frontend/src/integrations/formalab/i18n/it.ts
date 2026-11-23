@@ -8,9 +8,6 @@ export const formalabIt = {
     testConnection: 'Verifica connessione',
     testOk: 'Connessione riuscita ({{ms}} ms).',
     testError: 'Connessione non riuscita.',
-    linkWorkOrders: 'Collega commesse',
-    linkDone: 'Collegate {{linked}} commesse; ambigue {{ambiguous}}; senza corrispondenza {{unmatched}}.',
-    linkError: 'Impossibile collegare le commesse.',
   },
   status: {
     loadError: 'Impossibile caricare lo stato dell\'integrazione.',

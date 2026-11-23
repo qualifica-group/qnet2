@@ -35,12 +35,6 @@ export interface FormalabConnectionTest {
   message: string | null
 }
 
-export interface FormalabLinkSummary {
-  linked: number
-  ambiguous: number
-  unmatched: number
-}
-
 export interface FormalabClass {
   edition_id: number
   label: string

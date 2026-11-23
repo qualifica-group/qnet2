@@ -8,9 +8,6 @@ export const formalabEn = {
     testConnection: 'Test connection',
     testOk: 'Connection successful ({{ms}} ms).',
     testError: 'Connection failed.',
-    linkWorkOrders: 'Link work orders',
-    linkDone: 'Linked {{linked}} work orders; ambiguous {{ambiguous}}; unmatched {{unmatched}}.',
-    linkError: 'Could not link the work orders.',
   },
   status: {
     loadError: 'Could not load the integration status.',

@@ -16,7 +16,7 @@ it('exposes nothing about Formalab when the integration is disabled', function (
 
     $this->getJson('/api/integrations')->assertOk()->assertJsonPath('data.active', []);
 
-    foreach (['get' => ['status', 'classes', 'work-orders/1'], 'post' => ['sync', 'test-connection', 'link-work-orders', 'webhooks/classes']] as $method => $paths) {
+    foreach (['get' => ['status', 'classes', 'work-orders/1'], 'post' => ['sync', 'test-connection', 'webhooks/classes']] as $method => $paths) {
         foreach ($paths as $path) {
             $this->{$method.'Json'}("/api/integrations/formalab/{$path}")->assertNotFound();
         }

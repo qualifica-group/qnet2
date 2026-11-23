@@ -104,6 +104,32 @@ it('fails the run cleanly when the integration is not configured', function () {
     expect($run->outcome)->toBe('failure')->and(FormalabCallLog::query()->count())->toBe(0);
 });
 
+// spec 0423 D-15
+it('links on every sync the work orders whose course name matches one class, and writes their fields', function () {
+    formalabEnable();
+    formalabFakeApi([
+        formalabClassPayload(1, ['codice' => 'AAA', 'corso' => ['title' => 'Unique']]),
+        formalabClassPayload(2, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
+        formalabClassPayload(3, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
+    ]);
+    $matching = formalabGolWorkOrder(['gol_corso' => 'AAA - Unique']);
+    $ambiguous = formalabGolWorkOrder(['gol_corso' => 'BBB - Twin']);
+    $unmatched = formalabGolWorkOrder(['gol_corso' => 'ZZZ - Nobody']);
+    $notLinkedCategory = formalabGolWorkOrder(['gol_corso' => 'AAA - Unique'], linkCategory: false);
+
+    $run = runFormalabSync();
+
+    expect($run->outcome)->toBe('success')->and($run->work_orders_updated)->toBe(1)
+        ->and(FormalabWorkOrderLink::query()->pluck('edition_id', 'work_order_id')->all())->toBe([$matching->id => 1])
+        ->and($matching->refresh()->attribute_values['gol_stato_corso'])->toBe('In corso')
+        ->and($ambiguous->refresh()->attribute_values)->not->toHaveKey('gol_stato_corso')
+        ->and($unmatched->refresh()->attribute_values)->not->toHaveKey('gol_stato_corso')
+        ->and($notLinkedCategory->refresh()->attribute_values)->not->toHaveKey('gol_stato_corso');
+
+    // nothing new: the next run links and rewrites nothing
+    expect(runFormalabSync()->work_orders_updated)->toBe(0)->and(FormalabWorkOrderLink::query()->count())->toBe(1);
+});
+
 // AC-006
 it('propagates a changed class to the linked work orders only', function () {
     formalabEnable();

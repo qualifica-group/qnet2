@@ -8,7 +8,6 @@ import type { FormalabStatus } from '@/integrations/formalab/types'
 const fetchStatusMock = vi.fn()
 const syncMock = vi.fn()
 const testMock = vi.fn()
-const linkMock = vi.fn()
 const activeMock = vi.fn()
 const toastSuccess = vi.fn()
 const toastError = vi.fn()
@@ -18,7 +17,6 @@ vi.mock('@/integrations/formalab/api', () => ({
   fetchFormalabStatus: () => fetchStatusMock(),
   startFormalabSync: () => syncMock(),
   testFormalabConnection: () => testMock(),
-  linkFormalabWorkOrders: () => linkMock(),
 }))
 vi.mock('@/integrations/use-active-integrations', () => ({ useIsIntegrationActive: () => activeMock() }))
 vi.mock('@/routes/breadcrumbs', () => ({ AppBreadcrumbs: () => null }))
@@ -120,17 +118,5 @@ describe('FormalabStatusPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Verifica connessione' }))
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Credenziali rifiutate'))
-  })
-
-  it('summarises the automatic linking', async () => {
-    linkMock.mockResolvedValue({ linked: 5, ambiguous: 2, unmatched: 9 })
-    const { Wrapper } = createWrapper()
-    render(<FormalabStatusPage />, { wrapper: Wrapper })
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Collega commesse' }))
-
-    await waitFor(() =>
-      expect(toastSuccess).toHaveBeenCalledWith('Collegate 5 commesse; ambigue 2; senza corrispondenza 9.'),
-    )
   })
 })

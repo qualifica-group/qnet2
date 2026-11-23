@@ -7,7 +7,6 @@ namespace Integrations\Formalab;
 use App\Integrations\IntegrationRegistry;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
-use Integrations\Formalab\Console\LinkWorkOrdersCommand;
 use Integrations\Formalab\Console\SyncClassesCommand;
 use Integrations\Formalab\Health\FormalabHealthCheck;
 use Integrations\Formalab\Jobs\SyncFormalabClasses;
@@ -62,7 +61,7 @@ class FormalabServiceProvider extends ServiceProvider
         $this->app->tag([MappedFieldLock::class], 'work-orders.attribute-locks');
         $this->app->make(IntegrationRegistry::class)->activate(self::KEY);
         $this->callAfterResolving(Schedule::class, $this->schedule(...));
-        $this->commands([SyncClassesCommand::class, LinkWorkOrdersCommand::class]);
+        $this->commands([SyncClassesCommand::class]);
     }
 
     /**

@@ -43,9 +43,8 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Button', 'What it does'],
           rows: [
-            ['**Sync now**', 'Starts the class catalogue sync right away; the status refreshes a few seconds after the click.'],
+            ['**Sync now**', 'Starts the sync right away: it rereads the class catalogue, links the work orders not yet linked whose course name matches exactly one class and updates the fields of the linked work orders. The status refreshes a few seconds after the click.'],
             ['**Test connection**', 'Tries to reach the service and shows the response time or the reason for the error.'],
-            ['**Link work orders**', 'Automatically links the work orders not yet linked whose course matches exactly one class of the catalogue. It shows how many were linked, how many are ambiguous and how many have no match.'],
           ],
         },
       ],
@@ -131,7 +130,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every **10 minutes** QNet rereads the class catalogue. If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone.',
+          text: 'Every **10 minutes** QNet rereads the class catalogue and links the work orders not yet linked whose course name matches exactly one class, writing their fields right away. If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone.',
         },
       ],
     },

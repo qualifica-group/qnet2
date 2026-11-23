@@ -14,8 +14,10 @@ use Throwable;
 /**
  * The full catalogue sync: every page of /api/classi is read first and only
  * then written in one transaction, so a Formalab outage leaves the catalogue
- * untouched. Every run is one formalab_sync_runs row; failures are recorded,
- * never thrown.
+ * untouched. Then the work orders not linked yet whose course name matches
+ * one class are linked (spec 0423 D-15), and every changed or new link gets
+ * the class fields. Every run is one formalab_sync_runs row; failures are
+ * recorded, never thrown.
  */
 final class ClassCatalogSync
 {
@@ -25,6 +27,7 @@ final class ClassCatalogSync
         private readonly FormalabClient $client,
         private readonly ClassPayloadMapper $mapper,
         private readonly ClassCatalog $catalog,
+        private readonly LinkBackfill $backfill,
         private readonly LinkPropagator $propagator,
         private readonly CourseFieldWriter $courseFields,
     ) {}
@@ -43,10 +46,13 @@ final class ClassCatalogSync
             $rows = $this->fetchAll($trigger);
             DB::transaction(fn (): int => $this->catalog->upsert($rows));
 
-            // Step 3: push the changed classes to the linked work orders
+            // Step 3: link the work orders whose course name now matches one class
+            $this->backfill->link();
+
+            // Step 4: push the changed classes, and the new links, to the work orders
             $updated = $this->propagator->propagate();
 
-            // Step 4: close the run as a success
+            // Step 5: close the run as a success
             $run->update([
                 'outcome' => FormalabSyncRun::OUTCOME_SUCCESS,
                 'finished_at' => now(),

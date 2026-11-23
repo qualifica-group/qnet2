@@ -87,6 +87,13 @@
       frontend mostra accanto all'etichetta della riga bloccata l'icona di sincronizzazione
       (`LockedSourceHint`, tooltip "Valore ricevuto da {sorgente}: in sola lettura.", nome della sorgente
       solo nel tooltip: l'etichetta testuale era troppo invadente, decisione utente).
+    - D-15 (richiesta utente 2026-11-23) La sincronizzazione del catalogo ("Sincronizza ora" e giro
+      schedulato ogni 10 minuti, ClassCatalogSync) collega anche le commesse non ancora collegate:
+      dopo aver scritto il catalogo esegue `LinkBackfill::link()` (stessa regola di D-7: nome corso =
+      etichetta di una sola classe) e poi la propagazione, che scrive i campi dei collegamenti nuovi e
+      di quelli cambiati. Rimossi (decisione utente, ridondanti) il pulsante "Collega commesse", l'endpoint
+      POST /api/integrations/formalab/link-work-orders e il comando `formalab:link-work-orders`
+      (sostituisce D-6 di 0422). Il webhook non collega: lo fa il giro successivo.
   </context>
 
   <data_contract>
@@ -135,6 +142,7 @@
     <criterion id="AC-010">Commessa di categoria collegata: locked_attribute_codes = campi mappati tranne il nome corso; senza collegamento o integrazione spenta = [].</criterion>
     <criterion id="AC-011">PATCH/POST commessa: valore diverso su un campo bloccato = 422; nome corso, altri campi e reinvio del valore salvato accettati; il frontend non offre la modifica delle righe bloccate.</criterion>
     <criterion id="AC-012">locked_attributes porta per ogni campo bloccato la sorgente ("Formalab"); la riga bloccata mostra l'icona di sincronizzazione con il tooltip che nomina la sorgente, le righe modificabili no.</criterion>
+    <criterion id="AC-013">Sincronizzazione del catalogo: commessa non collegata con nome corso unico nel catalogo = collegata e campi scritti; ambigua, senza corrispondenza o di categoria non collegata = non collegata; un secondo giro non collega ne' riscrive nulla.</criterion>
     <criterion id="AC-009">Guida in-app `formalab` IT/EN aggiornata, parity verde.</criterion>
   </acceptance_criteria>
 

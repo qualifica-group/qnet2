@@ -65,7 +65,6 @@ it('refuses the admin endpoints to everyone else', function () {
         $this->{$method.'Json'}("/api/integrations/formalab/{$path}")->assertForbidden();
     }
     $this->postJson('/api/integrations/formalab/test-connection')->assertForbidden();
-    $this->postJson('/api/integrations/formalab/link-work-orders')->assertForbidden();
     $this->getJson('/api/tables/formalab-call-logs/columns')->assertForbidden();
     expect(FormalabWorkOrderLink::query()->count())->toBe(0);
 });

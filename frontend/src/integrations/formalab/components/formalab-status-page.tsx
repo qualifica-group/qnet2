@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Link2, RefreshCw, Plug } from 'lucide-react'
+import { RefreshCw, Plug } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,7 +34,7 @@ export default function FormalabStatusPage() {
 function StatusContent() {
   const { t } = useTranslation('formalab')
   const { data, isLoading, isError } = useFormalabStatus()
-  const { sync, testConnection, linkWorkOrders } = useFormalabActions()
+  const { sync, testConnection } = useFormalabActions()
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
@@ -48,10 +48,6 @@ function StatusContent() {
             <Button size="sm" variant="secondary" disabled={testConnection.isPending} onClick={() => testConnection.mutate()}>
               <Plug className="size-3.5" aria-hidden />
               {t('actions.testConnection')}
-            </Button>
-            <Button size="sm" variant="secondary" disabled={linkWorkOrders.isPending} onClick={() => linkWorkOrders.mutate()}>
-              <Link2 className="size-3.5" aria-hidden />
-              {t('actions.linkWorkOrders')}
             </Button>
           </>
         }

@@ -18,7 +18,6 @@ Route::prefix('api/integrations/formalab')->middleware('api')->group(function ()
             Route::get('status', [FormalabAdminController::class, 'status']);
             Route::post('sync', [FormalabAdminController::class, 'sync']);
             Route::post('test-connection', [FormalabAdminController::class, 'testConnection']);
-            Route::post('link-work-orders', [FormalabAdminController::class, 'linkWorkOrders']);
         });
 
         Route::get('work-orders/{workOrder}', [WorkOrderLinkController::class, 'show']);

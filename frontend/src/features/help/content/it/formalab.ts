@@ -43,9 +43,8 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Pulsante', 'Cosa fa'],
           rows: [
-            ['**Sincronizza ora**', 'Avvia subito la sincronizzazione del catalogo classi; lo stato si aggiorna a pochi secondi dal clic.'],
+            ['**Sincronizza ora**', 'Avvia subito la sincronizzazione: rilegge il catalogo classi, collega le commesse non ancora collegate il cui nome corso coincide con una sola classe e aggiorna i campi delle commesse collegate. Lo stato si aggiorna a pochi secondi dal clic.'],
             ['**Verifica connessione**', 'Prova a contattare il servizio e mostra il tempo di risposta oppure il motivo dell\'errore.'],
-            ['**Collega commesse**', 'Collega in automatico le commesse non ancora collegate il cui corso coincide con una sola classe del catalogo. Mostra quante sono state collegate, quante sono ambigue e quante senza corrispondenza.'],
           ],
         },
       ],
@@ -131,7 +130,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni **10 minuti** QNet rilegge il catalogo delle classi. Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata.',
+          text: 'Ogni **10 minuti** QNet rilegge il catalogo delle classi e collega le commesse non ancora collegate il cui nome corso coincide con una sola classe, scrivendo subito i loro campi. Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata.',
         },
       ],
     },
