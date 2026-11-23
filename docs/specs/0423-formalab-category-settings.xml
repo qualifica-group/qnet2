@@ -94,6 +94,13 @@
       di quelli cambiati. Rimossi (decisione utente, ridondanti) il pulsante "Collega commesse", l'endpoint
       POST /api/integrations/formalab/link-work-orders e il comando `formalab:link-work-orders`
       (sostituisce D-6 di 0422). Il webhook non collega: lo fa il giro successivo.
+    - D-16 (richiesta utente 2026-11-23) Senza il pulsante, i conteggi del collegamento non si vedevano piu'.
+      La pagina Formalab mostra la card "Commesse non collegate": le commesse delle categorie collegate ancora
+      senza collegamento, per motivo, calcolate al momento (`LinkBackfill::pending()`, stessa regola di
+      `link()`): `unmatched` nessuna classe con quel nome corso, `ambiguous` nome di piu' classi,
+      `without_course_name`, `linkable` (combaciano, le collega il prossimo giro). Status endpoint:
+      `unlinked_work_orders: { linkable, ambiguous, unmatched, without_course_name }`. Non nello Stato del
+      sistema: le commesse senza corrispondenza ci sono sempre, il check resterebbe giallo per sempre.
   </context>
 
   <data_contract>

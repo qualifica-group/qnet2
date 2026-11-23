@@ -26,6 +26,7 @@ const guide: HelpGuide = {
             '**Configurazione**: indirizzo del servizio, se le credenziali e la ricezione delle notifiche sono configurate, ogni quanti minuti avviene la sincronizzazione, classi nel catalogo e commesse collegate.',
             '**Ultima sincronizzazione**: esito (in corso, riuscita, fallita), origine, orari di avvio e fine, classi e commesse aggiornate ed eventuale messaggio di errore.',
             '**Chiamate nelle ultime 24 ore**: totale, fallite, in entrata e in uscita.',
+            '**Commesse non collegate**: le commesse delle categorie collegate che la sincronizzazione non ha potuto collegare, divise per motivo: nessuna classe con quel nome corso (nome cambiato su Formalab o scritto diverso), nome corso di più classi, senza nome corso. **Si collegano al prossimo giro** conta quelle che combaciano già e verranno collegate dalla prossima sincronizzazione. Per collegarne una, correggi il nome corso sulla commessa e premi **Sincronizza** nella sua scheda Formalab, oppure attendi il prossimo giro.',
             '**Campi mappati non trovati**: compare solo se un campo della commessa usato nella mappatura di una categoria non esiste più tra gli attributi, perché il suo codice è stato rinominato o eliminato in Configurazione › Attributi. Elenca i codici mancanti: quei campi non vengono aggiornati finché il codice non viene ripristinato o la mappatura corretta.',
           ],
         },

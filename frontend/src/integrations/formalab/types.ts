@@ -24,6 +24,8 @@ export interface FormalabStatus {
   last_sync: FormalabSyncRun | null
   classes_count: number
   linked_work_orders_count: number
+  /** Why the work orders of the linked categories are still unlinked (spec 0423 D-15): `linkable` wait for the next sync. */
+  unlinked_work_orders: { linkable: number; ambiguous: number; unmatched: number; without_course_name: number }
   /** Course field codes (flexible attributes) that no attribute carries any more: they stop updating. */
   missing_course_fields: string[]
   calls_last_24h: { total: number; failures: number; inbound: number; outbound: number }

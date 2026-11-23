@@ -15,7 +15,10 @@ use Integrations\Formalab\Models\FormalabWorkOrderLink;
  */
 final class StatusReport
 {
-    public function __construct(private readonly CourseFieldWriter $courseFields) {}
+    public function __construct(
+        private readonly CourseFieldWriter $courseFields,
+        private readonly LinkBackfill $backfill,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -33,6 +36,7 @@ final class StatusReport
             'last_sync' => $this->lastSync(),
             'classes_count' => FormalabClass::query()->count(),
             'linked_work_orders_count' => FormalabWorkOrderLink::query()->count(),
+            'unlinked_work_orders' => $this->backfill->pending(),
             'missing_course_fields' => $this->courseFields->missingCodes(),
             'calls_last_24h' => [
                 'total' => (clone $calls)->count(),

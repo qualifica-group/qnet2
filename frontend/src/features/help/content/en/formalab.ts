@@ -26,6 +26,7 @@ const guide: HelpGuide = {
             '**Configuration**: service address, whether credentials and inbound notifications are configured, how often the sync runs, classes in the catalogue and linked work orders.',
             '**Last sync**: outcome (running, succeeded, failed), trigger, start and end times, classes and work orders updated and any error message.',
             '**Calls in the last 24 hours**: total, failed, inbound and outbound.',
+            '**Unlinked work orders**: the work orders of the linked categories the sync could not link, by reason: no class with that course name (renamed on Formalab or spelled differently), course name of several classes, no course name. **Linked at the next run** counts those that already match and the next sync will link. To link one, fix the course name on the work order and press **Sync** on its Formalab tab, or wait for the next run.',
             '**Mapped fields not found**: appears only when a work order field used in a category map no longer exists among the attributes, because its code was renamed or deleted in Configuration › Attributes. It lists the missing codes: those fields are not updated until the code is restored or the map fixed.',
           ],
         },

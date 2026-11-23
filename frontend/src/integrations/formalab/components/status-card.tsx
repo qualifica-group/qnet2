@@ -22,7 +22,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 /** Configuration, last sync and 24h traffic of the integration, as returned by the status endpoint. */
 export function StatusCard({ status }: { status: FormalabStatus }) {
   const { t } = useTranslation('formalab')
-  const { last_sync: lastSync, calls_last_24h: calls } = status
+  const { last_sync: lastSync, calls_last_24h: calls, unlinked_work_orders: unlinked } = status
   const yesNo = (value: boolean) => (value ? t('status.yes') : t('status.no'))
 
   return (
@@ -34,7 +34,7 @@ export function StatusCard({ status }: { status: FormalabStatus }) {
           <p className="text-xs break-words">{status.missing_course_fields.join(', ')}</p>
         </Card>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Card className="gap-2 p-4">
           <h2 className="text-base font-semibold">{t('status.configuration')}</h2>
           <dl className="flex flex-col gap-1.5">
@@ -80,6 +80,17 @@ export function StatusCard({ status }: { status: FormalabStatus }) {
             <Row label={t('status.callsFailures')}>{calls.failures}</Row>
             <Row label={t('status.callsInbound')}>{calls.inbound}</Row>
             <Row label={t('status.callsOutbound')}>{calls.outbound}</Row>
+          </dl>
+        </Card>
+
+        <Card className="gap-2 p-4">
+          <h2 className="text-base font-semibold">{t('status.unlinked')}</h2>
+          <p className="text-xs text-muted-foreground">{t('status.unlinkedDescription')}</p>
+          <dl className="flex flex-col gap-1.5">
+            <Row label={t('status.unlinkedUnmatched')}>{unlinked.unmatched}</Row>
+            <Row label={t('status.unlinkedAmbiguous')}>{unlinked.ambiguous}</Row>
+            <Row label={t('status.unlinkedWithoutCourseName')}>{unlinked.without_course_name}</Row>
+            <Row label={t('status.unlinkedLinkable')}>{unlinked.linkable}</Row>
           </dl>
         </Card>
       </div>

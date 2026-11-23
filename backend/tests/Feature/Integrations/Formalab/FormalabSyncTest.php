@@ -10,6 +10,7 @@ use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabSyncRun;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
 use Integrations\Formalab\Services\ClassCatalogSync;
+use Integrations\Formalab\Services\StatusReport;
 use Integrations\Formalab\Support\Trigger;
 use Spatie\Activitylog\Models\Activity;
 
@@ -128,6 +129,30 @@ it('links on every sync the work orders whose course name matches one class, and
 
     // nothing new: the next run links and rewrites nothing
     expect(runFormalabSync()->work_orders_updated)->toBe(0)->and(FormalabWorkOrderLink::query()->count())->toBe(1);
+});
+
+// spec 0423 D-15: without the "Collega commesse" counts, the status page tells why the rest is unlinked
+it('reports on the status page why the work orders of linked categories are still unlinked', function () {
+    formalabEnable();
+    formalabFakeApi([
+        formalabClassPayload(1, ['codice' => 'AAA', 'corso' => ['title' => 'Unique']]),
+        formalabClassPayload(2, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
+        formalabClassPayload(3, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
+    ]);
+    formalabGolWorkOrder(['gol_corso' => 'AAA - Unique']);
+    formalabGolWorkOrder(['gol_corso' => 'BBB - Twin']);
+    formalabGolWorkOrder(['gol_corso' => 'ZZZ - Nobody']);
+    formalabGolWorkOrder(['gol_corso' => 'YYY - Nobody either']);
+    formalabGolWorkOrder();
+    formalabGolWorkOrder(['gol_corso' => 'ZZZ - Nobody'], linkCategory: false);
+
+    runFormalabSync();
+    // Created after the run: the next sync links it.
+    formalabGolWorkOrder(['gol_corso' => 'AAA - Unique']);
+
+    expect(app(StatusReport::class)->handle()['unlinked_work_orders'])
+        ->toBe(['linkable' => 1, 'ambiguous' => 1, 'unmatched' => 2, 'without_course_name' => 1])
+        ->and(FormalabWorkOrderLink::query()->count())->toBe(1);
 });
 
 // AC-006

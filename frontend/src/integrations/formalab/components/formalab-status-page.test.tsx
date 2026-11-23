@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import FormalabStatusPage from '@/integrations/formalab/components/formalab-status-page'
 import { createWrapper } from '@/integrations/formalab/test-support'
@@ -46,6 +46,7 @@ const status: FormalabStatus = {
   },
   classes_count: 1395,
   linked_work_orders_count: 42,
+  unlinked_work_orders: { linkable: 1, ambiguous: 2, unmatched: 14, without_course_name: 447 },
   missing_course_fields: [],
   calls_last_24h: { total: 150, failures: 3, inbound: 2, outbound: 148 },
 }
@@ -78,6 +79,20 @@ describe('FormalabStatusPage', () => {
     expect(screen.getByText('Fallita')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('Formalab non raggiungibile')
     expect(screen.getByText('table:formalab-call-logs')).toBeInTheDocument()
+  })
+
+  it('tells why the work orders of the linked categories are still unlinked', async () => {
+    const { Wrapper } = createWrapper()
+
+    render(<FormalabStatusPage />, { wrapper: Wrapper })
+
+    const card = (await screen.findByRole('heading', { name: 'Commesse non collegate' })).closest('div')
+    expect(card).not.toBeNull()
+    const rows = within(card as HTMLElement)
+    expect(rows.getByText('Nessuna classe con quel nome corso').nextSibling).toHaveTextContent('14')
+    expect(rows.getByText('Nome corso di più classi').nextSibling).toHaveTextContent('2')
+    expect(rows.getByText('Senza nome corso').nextSibling).toHaveTextContent('447')
+    expect(rows.getByText('Si collegano al prossimo giro').nextSibling).toHaveTextContent('1')
   })
 
   it('warns about course fields whose attribute code no longer exists', async () => {
