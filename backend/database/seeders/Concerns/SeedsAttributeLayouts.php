@@ -51,17 +51,17 @@ trait SeedsAttributeLayouts
      * (a field alone on its row spans it whole). Opt-in, so the blobs already
      * seeded compose exactly as before. The style's `visible_when` names the
      * attribute that opens the section: a yes/no one (spec 0288), or a choice
-     * one with the option in `visible_when_option` (spec 0424).
+     * one with the options that open it in `visible_when_options` (spec 0424).
      *
      * @param  list<list<string>>  $rows  attribute codes, one inner list per rendered row
-     * @param  array{variant: LayoutSectionVariant, columns: int, description: string, visible_when?: string, visible_when_option?: string}|null  $style
+     * @param  array{variant: LayoutSectionVariant, columns: int, description: string, visible_when?: string, visible_when_options?: list<string>}|null  $style
      * @return array<string, mixed>
      */
     protected function layoutSection(string $id, string $title, array $rows, int $sortOrder, ?array $style = null): array
     {
         $condition = isset($style['visible_when'])
             ? ['visible_when' => ['attribute_code' => $style['visible_when']]
-                + (isset($style['visible_when_option']) ? ['option_value' => $style['visible_when_option']] : [])]
+                + (isset($style['visible_when_options']) ? ['option_values' => $style['visible_when_options']] : [])]
             : [];
 
         return $condition + [

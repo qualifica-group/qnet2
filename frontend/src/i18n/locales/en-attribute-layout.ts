@@ -25,6 +25,8 @@ export const attributeLayout = {
     sectionDefaultCollapsedLabel: 'Collapsed by default',
     sectionConditionLabel: 'Visible only if active',
     sectionConditionAlways: 'Always visible',
+    sectionConditionOptionsLabel: 'Entries that open it',
+    sectionConditionOptionsPlaceholder: 'Pick at least one entry',
     conditionNoOptionsHelp: "No yes/no or choice attribute available: place one in another section without a condition.",
     conditionControlsOthersHelp: "Other sections depend on an attribute of this one, so it cannot be conditional.",
     addRow: 'Add row',

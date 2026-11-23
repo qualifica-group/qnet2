@@ -16,8 +16,10 @@ interface EnumChecklistProps {
 
 /**
  * `enum` field, `config.display: 'checklist'` (spec 0424 D-1): one checkbox
- * per option, one per line, any number ticked. The value is the list of the
- * ticked option values, kept in the options' order.
+ * per option, any number ticked. The value is the list of the ticked option
+ * values, kept in the options' order. The boxes flow in as many columns as
+ * the field's width holds (no breakpoint: the same field sits in a full-width
+ * form row or in a narrow half-width cell), one column on a phone.
  */
 export function EnumChecklist({
   id,
@@ -49,12 +51,12 @@ export function EnumChecklist({
       aria-label={label}
       aria-describedby={describedBy}
       aria-invalid={invalid}
-      className="flex flex-col gap-1.5"
+      className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-4 gap-y-2"
     >
       {options.map((option, index) => {
         const checkboxId = `${baseId}-${index}`
         return (
-          <div key={option.value} className="flex items-center gap-2">
+          <div key={option.value} className="flex min-w-0 items-start gap-2">
             <Checkbox
               id={checkboxId}
               checked={value.includes(option.value)}
@@ -63,7 +65,7 @@ export function EnumChecklist({
             />
             <label
               htmlFor={checkboxId}
-              className={cn('text-sm', disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
+              className={cn('text-sm leading-4', disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
             >
               {option.label}
             </label>

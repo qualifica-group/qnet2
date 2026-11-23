@@ -23,7 +23,7 @@ const guide: HelpGuide = {
             ['Product Attributes', 'Extra fields on the Product card.'],
             ['Offer Attributes', "Fields in the Offer's Additional information, and columns in the per-category cards of Request Management."],
             ['Work Order Attributes', "Fields in the Work Order's Additional information."],
-            ['Attribute layout', 'How these fields are arranged on screen: sections, rows and widths. With **Visible only if active** a section shows only while a Yes/No field is ticked, or while an Option list holds a given entry (e.g. "Norme richieste: Standard 50001"): in a Checkbox list each ticked entry opens its own section. While hidden, its fields are emptied on save and are not required.'],
+            ['Attribute layout', 'How these fields are arranged on screen: sections, rows and widths. With **Visible only if active** a section shows only while a Yes/No field is ticked, or while an Option list holds at least one of the **Entries that open it** (e.g. the "Info per standard 1090/9001/…" block opens when 9001, 14001 or another norm of its group is ticked in "Norme richieste"). One entry can open several sections. While hidden, its fields are emptied on save and are not required.'],
             ['Management mode', 'How many Product Category rows a card can have, in Opportunities and Request Management.'],
             ['Single offer per opportunity', 'How many offers an opportunity can have.'],
             ['Several open opportunities per registry', 'Whether a registry can keep several open opportunities on the branch.'],

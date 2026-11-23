@@ -21,6 +21,8 @@ export const attributeLayout = {
     sectionDefaultCollapsedLabel: 'Chiusa di default',
     sectionConditionLabel: 'Visibile solo se attivo',
     sectionConditionAlways: 'Sempre visibile',
+    sectionConditionOptionsLabel: 'Voci che la aprono',
+    sectionConditionOptionsPlaceholder: 'Scegli almeno una voce',
     conditionNoOptionsHelp: "Nessun attributo sì/no o a scelta disponibile: inseriscine uno in un'altra sezione senza condizione.",
     conditionControlsOthersHelp: "Altre sezioni dipendono da un attributo di questa sezione: non può essere condizionata.",
     addRow: 'Aggiungi riga',

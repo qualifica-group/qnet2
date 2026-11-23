@@ -59,12 +59,12 @@ function conditionHint(
   }
   const attribute = attributesByCode.get(condition.attribute_code)
   const name = attribute?.name ?? condition.attribute_code
-  const option = condition.option_value
-  if (!option) {
+  const options = condition.option_values
+  if (!options || options.length === 0) {
     return t('attributes.layout.visibleWhen', { name })
   }
-  const optionLabel = attribute?.options.find((entry) => entry.value === option)?.label ?? option
-  return t('attributes.layout.visibleWhen', { name: `${name}: ${optionLabel}` })
+  const labels = options.map((option) => attribute?.options.find((entry) => entry.value === option)?.label ?? option)
+  return t('attributes.layout.visibleWhenAny', { name, options: labels.join(', ') })
 }
 
 export function AttributeLayoutRenderer<TFieldValues extends AttributeLayoutFormShape>({

@@ -6,7 +6,7 @@ import { AttributeLayoutConfigurator } from '@/features/attributes/layout-config
 import type { LayoutBlob, LayoutSection } from '@/features/attributes/attribute-layout-types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 
-/** Spec 0424 AC-005: a section opened by one entry of a checkbox list, configured and previewed. */
+/** Spec 0424 AC-005: a section opened by any of some entries of a checkbox list, configured and previewed. */
 
 function attribute(code: string, name: string, type: EffectiveAttribute['type'], sortOrder: number): EffectiveAttribute {
   return {
@@ -26,7 +26,7 @@ function attribute(code: string, name: string, type: EffectiveAttribute['type'],
     context: 'quote',
     options:
       type === 'enum'
-        ? ['Food', 'Energy'].map((label, index) => ({
+        ? ['Food', 'Energy', 'Brc'].map((label, index) => ({
             value: label.toLowerCase(),
             label,
             color: null,
@@ -68,8 +68,8 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-describe('section condition on a checkbox-list entry', () => {
-  it('offers one item per option and stores the chosen option in the blob', async () => {
+describe('section condition on checkbox-list entries', () => {
+  it('picks the choice attribute, then the entries that open the section', async () => {
     const onSave = vi.fn()
     render(
       <Harness
@@ -79,19 +79,23 @@ describe('section condition on a checkbox-list entry', () => {
     )
 
     fireEvent.click(screen.getAllByRole('combobox', { name: 'Visible only if active' })[1])
-    expect(await screen.findByRole('option', { name: 'Groups: Energy' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('option', { name: 'Groups: Food' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Groups' }))
+    expect(onSave.mock.lastCall?.[0].sections[1].visible_when).toEqual({ attribute_code: 'groups', option_values: [] })
 
-    expect(onSave.mock.lastCall?.[0].sections[1].visible_when).toEqual({ attribute_code: 'groups', option_value: 'food' })
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Entries that open it' }), { button: 0, ctrlKey: false })
+    fireEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Food' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Brc' }))
+
+    expect(onSave.mock.lastCall?.[0].sections[1].visible_when).toEqual({ attribute_code: 'groups', option_values: ['food', 'brc'] })
   })
 
-  it('shows the section in the preview while its entry is ticked, among other entries', () => {
+  it('shows the section in the preview while any of its entries is ticked', () => {
     render(
       <Harness
         initialBlob={{
           sections: [
             makeSection('standards', 'Standards', ['groups']),
-            makeSection('food', 'Food block', ['food_note'], { attribute_code: 'groups', option_value: 'food' }),
+            makeSection('food', 'Food block', ['food_note'], { attribute_code: 'groups', option_values: ['food', 'brc'] }),
           ],
         }}
       />,
@@ -102,9 +106,13 @@ describe('section condition on a checkbox-list entry', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Energy' }))
     expect(screen.queryByRole('heading', { name: 'Food block' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Food' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Brc' }))
     expect(screen.getByRole('heading', { name: 'Food block' })).toBeInTheDocument()
-    expect(screen.getByText('Visible if: Groups: Food')).toBeInTheDocument()
+    expect(screen.getByText('Visible if Groups holds at least one of: Food, Brc')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Food' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Brc' }))
+    expect(screen.getByRole('heading', { name: 'Food block' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Food' }))
     expect(screen.queryByRole('heading', { name: 'Food block' })).not.toBeInTheDocument()

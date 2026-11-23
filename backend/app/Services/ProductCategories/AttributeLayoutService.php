@@ -278,10 +278,10 @@ final class AttributeLayoutService
     }
 
     /**
-     * `option_value` only for a choice control (spec 0424 D-2): a yes/no
+     * `option_values` only for a choice control (spec 0424 D-2): a yes/no
      * condition keeps the 0288 shape.
      *
-     * @return array{attribute_code: string, option_value?: string}|null
+     * @return array{attribute_code: string, option_values?: list<string>}|null
      */
     private function normalizeCondition(mixed $condition): ?array
     {
@@ -289,10 +289,13 @@ final class AttributeLayoutService
             return null;
         }
 
-        $option = $condition['option_value'] ?? null;
+        $options = array_values(array_unique(array_filter(
+            (array) ($condition['option_values'] ?? []),
+            static fn (mixed $option): bool => is_string($option) && $option !== '',
+        )));
 
         return ['attribute_code' => (string) $condition['attribute_code']]
-            + (is_string($option) && $option !== '' ? ['option_value' => $option] : []);
+            + ($options === [] ? [] : ['option_values' => $options]);
     }
 
     /**

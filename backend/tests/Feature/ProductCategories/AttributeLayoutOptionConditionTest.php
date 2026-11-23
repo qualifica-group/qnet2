@@ -17,7 +17,7 @@ use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// Spec 0424: a section opened by ONE option of a choice attribute (D-2),
+// Spec 0424: a section opened by any of some options of a choice attribute (D-2),
 // the checkbox-list display storing a list (D-1) — layout contract
 // (AC-001) and the write pipeline of an offer (AC-003).
 
@@ -89,24 +89,24 @@ function putOptionLayout(ProductCategory $category, array $visibleWhen): TestRes
     ]);
 }
 
-it('AC-001: a section conditioned on an option of a choice attribute is saved and returned', function (): void {
+it('AC-001: a section conditioned on options of a choice attribute is saved and returned, deduplicated', function (): void {
     $category = optionConditionCategory();
     Sanctum::actingAs(productCategoryUserWith(['view', 'update']));
 
-    putOptionLayout($category, ['attribute_code' => OPTION_CONTROL, 'option_value' => 'food'])
+    putOptionLayout($category, ['attribute_code' => OPTION_CONTROL, 'option_values' => ['food', 'energy', 'food']])
         ->assertOk()
-        ->assertJsonPath('data.layout.sections.1.visible_when', ['attribute_code' => OPTION_CONTROL, 'option_value' => 'food']);
+        ->assertJsonPath('data.layout.sections.1.visible_when', ['attribute_code' => OPTION_CONTROL, 'option_values' => ['food', 'energy']]);
 
     $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=quote&form_mode=create")
         ->assertOk()
-        ->assertJsonPath('data.layout.sections.1.visible_when.option_value', 'food');
+        ->assertJsonPath('data.layout.sections.1.visible_when.option_values', ['food', 'energy']);
 });
 
 it('AC-001: a yes/no condition keeps its shape, an empty option included', function (): void {
     $category = optionConditionCategory();
     Sanctum::actingAs(productCategoryUserWith(['view', 'update']));
 
-    putOptionLayout($category, ['attribute_code' => 'toggle', 'option_value' => ''])
+    putOptionLayout($category, ['attribute_code' => 'toggle', 'option_values' => []])
         ->assertOk()
         ->assertJsonPath('data.layout.sections.1.visible_when', ['attribute_code' => 'toggle']);
 });
@@ -121,9 +121,9 @@ it('AC-001: an option condition that does not fit its attribute is 422 on attrib
 
     expect(AttributeLayout::query()->count())->toBe(0);
 })->with([
-    'choice without option' => [['attribute_code' => OPTION_CONTROL], 'must name one of its options'],
-    'option of another attribute' => [['attribute_code' => OPTION_CONTROL, 'option_value' => 'ghost'], 'does not belong'],
-    'yes/no with an option' => [['attribute_code' => 'toggle', 'option_value' => 'food'], 'takes no option'],
+    'choice without option' => [['attribute_code' => OPTION_CONTROL], 'must name at least one of its options'],
+    'option of another attribute' => [['attribute_code' => OPTION_CONTROL, 'option_values' => ['food', 'ghost']], '"ghost" option does not belong'],
+    'yes/no with an option' => [['attribute_code' => 'toggle', 'option_values' => ['food']], 'takes no option'],
 ]);
 
 /**
@@ -146,7 +146,7 @@ function optionQuoteSurface(): Product
         'form_mode' => LayoutFormScope::All->value,
         'layout' => ['sections' => [
             optionSection('controls', [OPTION_CONTROL, 'toggle']),
-            optionSection('dependent', [OPTION_NOTE], ['attribute_code' => OPTION_CONTROL, 'option_value' => 'food'], 1),
+            optionSection('dependent', [OPTION_NOTE], ['attribute_code' => OPTION_CONTROL, 'option_values' => ['food']], 1),
         ]],
     ]);
 

@@ -77,15 +77,15 @@ describe('attribute section visibility on a choice option (spec 0424 D-2)', () =
   const OPTION_LAYOUT: LayoutBlob = {
     sections: [
       section('main', ['groups']),
-      { ...section('food', ['food_note']), visible_when: { attribute_code: 'groups', option_value: 'food' } },
+      { ...section('food', ['food_note']), visible_when: { attribute_code: 'groups', option_values: ['food', 'brc'] } },
     ],
   }
 
-  it.each([[['food']], [['energy', 'food']], ['food']])('shows the section when the value holds the option: %j', (value) => {
+  it.each([[['food']], [['energy', 'brc']], ['food'], ['brc']])('shows the section when the value holds one of the options: %j', (value) => {
     expect(hiddenAttributeCodes(OPTION_LAYOUT, { groups: value }).size).toBe(0)
   })
 
-  it.each([[[]], [['energy']], ['energy'], [null], [true]])('hides the section when the value lacks the option: %j', (value) => {
+  it.each([[[]], [['energy']], ['energy'], [null], [true]])('hides the section when the value holds none of the options: %j', (value) => {
     expect([...hiddenAttributeCodes(OPTION_LAYOUT, { groups: value })]).toEqual(['food_note'])
   })
 })

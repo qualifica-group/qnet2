@@ -36,7 +36,7 @@ final class AttributeLayoutValidator
     /** A yes/no control opens its sections when ticked (spec 0288 D-1). */
     private const string BOOLEAN_CONTROL_TYPE = 'boolean';
 
-    /** A choice control opens a section when one of its options is chosen (spec 0424 D-2). */
+    /** A choice control opens a section when any of the named options is chosen (spec 0424 D-2). */
     private const string CHOICE_CONTROL_TYPE = 'enum';
 
     public function __construct(private readonly CategoryHierarchy $hierarchy) {}
@@ -97,7 +97,8 @@ final class AttributeLayoutValidator
             'layout.sections.*.sort_order' => ['required', 'integer'],
             'layout.sections.*.visible_when' => ['nullable', 'array'],
             'layout.sections.*.visible_when.attribute_code' => ['required_with:layout.sections.*.visible_when', 'string', 'max:191'],
-            'layout.sections.*.visible_when.option_value' => ['nullable', 'string', 'max:191'],
+            'layout.sections.*.visible_when.option_values' => ['nullable', 'array'],
+            'layout.sections.*.visible_when.option_values.*' => ['string', 'max:191'],
             'layout.sections.*.rows' => ['required', 'array'],
             'layout.sections.*.rows.*.id' => ['required', 'string', 'max:191'],
             'layout.sections.*.rows.*.items' => ['required', 'array', 'min:1'],
@@ -136,7 +137,7 @@ final class AttributeLayoutValidator
 
     /**
      * Each controlling attribute must be placed in this layout, be a boolean
-     * (no option) or an enum naming one of its options (spec 0424 D-2), sit
+     * (no option) or an enum naming some of its options (spec 0424 D-2), sit
      * outside the section it controls and inside an unconditional one (no
      * chains): a condition chain could never be evaluated without a cycle
      * guard, and the editor only offers what passes these rules.
@@ -169,7 +170,7 @@ final class AttributeLayoutValidator
                 ! isset($sectionByCode[$controlCode]) => "The \"{$controlCode}\" attribute controls a section but is not placed in the layout.",
                 $sectionByCode[$controlCode] === $index => "The \"{$controlCode}\" attribute cannot control the section it is placed in.",
                 ($layout['sections'][$sectionByCode[$controlCode]]['visible_when'] ?? null) !== null => "The \"{$controlCode}\" attribute sits in a conditional section and cannot control another section.",
-                default => $this->controlTypeError($controlCode, $attributesByCode->get($controlCode), $section['visible_when']['option_value'] ?? null),
+                default => $this->controlTypeError($controlCode, $attributesByCode->get($controlCode), $section['visible_when']['option_values'] ?? []),
             };
 
             if ($message !== null) {
@@ -179,33 +180,33 @@ final class AttributeLayoutValidator
     }
 
     /**
-     * A boolean control takes no option; an enum control needs one of its own
-     * options; any other type cannot control a section.
+     * A boolean control takes no option; an enum control needs at least one
+     * option, all its own; any other type cannot control a section.
      *
      * @param  array<string, mixed>|null  $attribute  effective attribute entry
+     * @param  array<int, string>  $optionValues
      */
-    private function controlTypeError(string $code, ?array $attribute, mixed $optionValue): ?string
+    private function controlTypeError(string $code, ?array $attribute, array $optionValues): ?string
     {
         $type = $attribute['type'] ?? null;
-        $hasOption = is_string($optionValue) && $optionValue !== '';
 
         if ($type === self::BOOLEAN_CONTROL_TYPE) {
-            return $hasOption ? "The \"{$code}\" attribute is a yes/no attribute: its condition takes no option." : null;
+            return $optionValues === [] ? null : "The \"{$code}\" attribute is a yes/no attribute: its condition takes no option.";
         }
 
         if ($type !== self::CHOICE_CONTROL_TYPE) {
             return "The \"{$code}\" attribute controls a section but is not a boolean or choice attribute.";
         }
 
-        if (! $hasOption) {
-            return "The \"{$code}\" attribute is a choice attribute: its condition must name one of its options.";
+        if ($optionValues === []) {
+            return "The \"{$code}\" attribute is a choice attribute: its condition must name at least one of its options.";
         }
 
-        $options = array_column($attribute['options'] ?? [], 'value');
+        $unknown = array_diff($optionValues, array_column($attribute['options'] ?? [], 'value'));
 
-        return in_array($optionValue, $options, true)
+        return $unknown === []
             ? null
-            : "The \"{$optionValue}\" option does not belong to the \"{$code}\" attribute.";
+            : 'The "'.reset($unknown)."\" option does not belong to the \"{$code}\" attribute.";
     }
 
     /**
