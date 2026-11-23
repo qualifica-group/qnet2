@@ -54,13 +54,21 @@
       finche' un utente non la configura (in dev: COM-20228 smette di aggiornarsi finche' la sua
       categoria non e' collegata e mappata), salvo il seeder one-shot di D-11.
     - D-11 (richiesta utente 2026-11-23) Seeder one-shot per il rilascio in produzione,
-      `Integrations\Formalab\Seeders\LegacyCategoriesSeeder`: le categorie dei servizi legacy con
+      `Integrations\Formalab\Seeders\TrainingCategoriesSeeder`: le categorie dei servizi legacy con
       spec_service = 16 (Formazione; old_id 74, 104, 114, 123, 142, 189, letti dal DB legacy il
       2026-11-23) ricevono il collegamento sulla loro radice e una mappatura propria con i campi
       suggeriti che portano (tipo compatibile, nome corso incluso), validata da
       CategorySettingsService. Una mappatura propria gia' presente resta; categoria assente o senza
       nome corso = avviso e salto; rilanciarlo non cambia nulla. Le altre categorie dei rami
       abilitati restano senza mappatura (fuori, come nel legacy).
+    - D-12 (richiesta utente 2026-11-23) Lo stesso seeder collega anche la radice corrente
+      "Formazione" (non legacy, per nome). Non ha campi corso (solo campi del discente; `id_corso`
+      contiene un id numerico, non il "codice - titolo" di Formalab, quindi non e' una chiave):
+      il seeder le assegna in contesto commessa i 12 attributi corso suggeriti (non obbligatori, dopo i
+      suoi, saltando quelli gia' assegnati), che le sottocategorie ereditano, poi la collega e la mappa
+      sulla radice. Le sottocategorie con barriera di ereditarieta' (Avviso 1 POC, Avviso 20 in dev)
+      restano senza campi e quindi fuori. Nel modulo commessa i campi non messi nel layout compaiono
+      nella sezione "Altre informazioni".
   </context>
 
   <data_contract>
