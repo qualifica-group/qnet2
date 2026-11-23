@@ -22,6 +22,7 @@ class DocumentChecklistPayloadBuilder
         return [
             'name' => $checklist->name,
             'code' => $checklist->code,
+            'category_external_id' => $checklist->category_id === null ? null : (string) $checklist->category_id,
             'description' => $this->nullIfBlank($checklist->description),
             'is_active' => (bool) $checklist->is_active,
             'items' => $checklist->items

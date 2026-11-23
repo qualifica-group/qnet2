@@ -44,12 +44,20 @@ export interface DocumentChecklistItemPayload extends Omit<DocumentChecklistItem
   id: number | null
 }
 
+/** Category of a checklist as embedded in it (spec 0410). */
+export interface DocumentChecklistCategoryRef {
+  id: number
+  name: string
+}
+
 /** Checklist as returned by show/store/update/activation (envelope `data`). */
 export interface DocumentChecklist {
   id: number
   name: string
   code: string
   description: string | null
+  /** Optional category (spec 0410); null = uncategorized. */
+  category: DocumentChecklistCategoryRef | null
   is_active: boolean
   /** True once synced successfully: the code is then read-only. */
   code_locked: boolean
@@ -71,6 +79,7 @@ export interface DocumentChecklistPayload {
   name: string
   code: string
   description: string | null
+  category_id: number | null
   is_active: boolean
   items: DocumentChecklistItemPayload[]
 }
@@ -85,6 +94,12 @@ export interface DocumentChecklistSyncLog {
   attempt: number
   message: string | null
   created_at: string
+}
+
+/** Response of POST /document-checklists/sync-all (spec 0410). */
+export interface SyncAllResult {
+  queued: number
+  queued_categories: number
 }
 
 /** Saved connection: the token is never returned, only whether it is set. */

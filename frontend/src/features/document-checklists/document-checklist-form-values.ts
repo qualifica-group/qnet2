@@ -29,7 +29,7 @@ export function buildDefaultItem(): DocumentChecklistItemFormValues {
 
 /** Default values of the create form. */
 export function buildDefaultChecklistValues(): DocumentChecklistFormValues {
-  return { name: '', code: '', description: '', is_active: true, items: [] }
+  return { name: '', code: '', description: '', category_id: null, is_active: true, items: [] }
 }
 
 function itemToFormValues(item: DocumentChecklistItem): DocumentChecklistItemFormValues {
@@ -54,6 +54,7 @@ export function checklistToFormValues(checklist: DocumentChecklist): DocumentChe
     name: checklist.name,
     code: checklist.code,
     description: checklist.description ?? '',
+    category_id: checklist.category?.id ?? null,
     is_active: checklist.is_active,
     items: checklist.items.map(itemToFormValues),
   }
@@ -86,6 +87,7 @@ export function buildChecklistPayload(values: DocumentChecklistFormValues): Docu
     name: values.name.trim(),
     code: values.code.trim(),
     description: emptyToNull(values.description),
+    category_id: values.category_id,
     is_active: values.is_active,
     items: values.items.map(itemToPayload),
   }

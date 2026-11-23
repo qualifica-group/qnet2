@@ -26,6 +26,8 @@ it('builds the contract body with items ordered by position and typed values', f
     expect($payload)->toBe([
         'name' => 'Apertura',
         'code' => 'APERTURA',
+        // REQUIREMENT CHANGED (spec 0410): category_external_id is always present.
+        'category_external_id' => null,
         'description' => null,
         'is_active' => false,
         'items' => [

@@ -9,6 +9,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Resources\DocumentChecklistResource;
 use App\Http\Resources\DocumentChecklistSyncLogResource;
 use App\Models\DocumentChecklist;
+use App\Services\DocumentChecklistCategoryService;
 use App\Services\DocumentChecklistService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,10 @@ class DocumentChecklistSyncController extends BaseApiController
 {
     use AuthorizesRequests;
 
-    public function __construct(private readonly DocumentChecklistService $service) {}
+    public function __construct(
+        private readonly DocumentChecklistService $service,
+        private readonly DocumentChecklistCategoryService $categoryService,
+    ) {}
 
     /**
      * POST /api/document-checklists/{documentChecklist}/sync
@@ -44,14 +48,18 @@ class DocumentChecklistSyncController extends BaseApiController
     }
 
     /**
-     * POST /api/document-checklists/sync-all
+     * POST /api/document-checklists/sync-all (categories, then checklists)
      */
     public function syncAll(): JsonResponse
     {
         try {
             $this->authorize('update', new DocumentChecklist);
 
-            return $this->ok(['queued' => $this->service->requestSyncAll()], 'Accepted', HttpStatusEnum::ACCEPTED);
+            // Categories first: ArchivioSmart must know them before the checklists that use them (D-9).
+            $queuedCategories = $this->categoryService->requestSyncAll();
+            $queued = $this->service->requestSyncAll();
+
+            return $this->ok(['queued' => $queued, 'queued_categories' => $queuedCategories], 'Accepted', HttpStatusEnum::ACCEPTED);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

@@ -71,6 +71,7 @@ export function buildDocumentChecklistSchema(t: TFunction) {
       .max(CHECKLIST_CODE_MAX_LENGTH, t('documentChecklists.validation.codeMax'))
       .regex(CHECKLIST_CODE_PATTERN, t('documentChecklists.validation.codeFormat')),
     description: z.string().max(CHECKLIST_DESCRIPTION_MAX_LENGTH, t('documentChecklists.validation.descriptionMax')),
+    category_id: z.number().nullable(),
     is_active: z.boolean(),
     items: z.array(buildItemSchema(t)).max(CHECKLIST_MAX_ITEMS, t('documentChecklists.validation.itemsMax')),
   })

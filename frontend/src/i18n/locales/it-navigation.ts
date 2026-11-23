@@ -69,6 +69,7 @@ export const navigation = {
   emailTemplates: 'Modelli email',
   documentBundles: 'Modelli documenti',
   documentChecklists: 'Checklist documentali',
+  documentChecklistCategories: 'Categorie checklist',
   tasks: 'Task',
   taskStatuses: 'Stati Task',
   taskTypes: 'Tipologie Task',

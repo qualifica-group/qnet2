@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0410-document-checklist-categories-archivio-smart" status="approved" owner="utente" date="2026-11-23">
+
+  <goal>
+    Gli utenti abilitati alle checklist documentali gestiscono in QNet 2 le "Categorie checklist"
+    (Configurazione > Documenti), le associano facoltativamente alle checklist (al piu' una per checklist)
+    e QNet 2 le invia ad ArchivioSmart in modo asincrono, inviando sempre la categoria prima della checklist
+    che la usa. In ArchivioSmart le categorie servono a filtrare checklist e richieste.
+  </goal>
+
+  <context>
+    <item>Estende la spec 0403 (checklist documentali + sincronizzazione ArchivioSmart), stessa connessione, stesso token, stessa coda.</item>
+    <item>Fonte: brief utente del 2026-11-23 (API ArchivioSmart: PUT/DELETE /categories/{external_id}; campo category_external_id nel PUT /checklists/{external_id}; 422/409/429 come per le checklist).</item>
+    <item>
+      Codice 0403 da estendere (nomi verificati):
+      App\Jobs\SyncDocumentChecklistJob (WithoutOverlapping per id, tries/backoff da config, interpret/retryOrFail/releaseAfterRateLimit/log);
+      App\Services\ArchivioSmart\ArchivioSmartClient (upsertChecklist, deleteChecklist, me; request() con timeout da config);
+      App\Services\ArchivioSmart\DocumentChecklistPayloadBuilder::build();
+      App\Services\DocumentChecklistService (create/update/setActivation/delete/requestSync/requestSyncAll/recentSyncLogs, markPending + queueSync afterCommit);
+      enum DocumentChecklistSyncStatus / DocumentChecklistSyncOperation / DocumentChecklistSyncOutcome;
+      DocumentChecklistsAuthorization (AbstractResourceAuthorization: resourcePermissions/actionPermissions/actorMayWrite usano "{resource()}.{ability}");
+      DocumentChecklistPolicy (BasePolicy, resource 'document-checklists', abilities incl. manageConnection);
+      DocumentChecklistsTableDefinition + Tables/DocumentChecklists/DocumentChecklistColumnCatalog;
+      routes/api/document-checklists.php (sync-all sopra i wildcard); config/archivio-smart.php;
+      menu backend/config/navigation/configuration/documents.php (gruppo config-documents).
+      Selettori FK: standard for-select (ADR 0011, es. DocumentBundleForSelectController + AsyncPaginatedSelect nel frontend).
+    </item>
+    <item>Frontend 0403: features/document-checklists (checklist-sync-status, checklist-sync-status-cell, checklist-sync-logs-section, use-document-checklist-row-actions, document-checklist-form-body, document-checklists-table).</item>
+    <item>Icona di menu disponibile in frontend/src/features/navigation/icon-map.ts: `list-tree`.</item>
+    <item>MySQL: nomi di indice esplicitamente corti quando quello generato supera 64 caratteri (lezione della 0403).</item>
+    <item>
+      Decisioni utente (2026-11-23):
+      D-1 voce di menu propria: Configurazione > Documenti > Categorie checklist (griglia + dettaglio/form come le altre anagrafiche); nel form della checklist la categoria si sceglie da un selettore.
+      D-2 permessi: gli stessi delle checklist (document-checklists.*). Nessun nuovo permesso.
+      D-3 eliminazione di una categoria con checklist non eliminate: QNet 2 la rifiuta subito con un messaggio che indica quante checklist contiene; nessuno spostamento automatico.
+      D-4 come per le checklist: badge di stato con errore, "Sincronizza di nuovo", storico delle ultime 20 chiamate nel dettaglio.
+    </item>
+    <item>
+      Decisioni tecniche proposte (da validare con la spec):
+      D-5 eliminazione = soft delete (come D-3 della 0403): la riga resta come traccia, l'id non viene riusato. Nome unico tra le categorie non eliminate, senza distinzione maiuscole/minuscole.
+      D-6 external_id della categoria = (string) id.
+      D-7 ordine: il job della checklist, se la checklist ha una categoria con sync_status diverso da "synced", invia prima il PUT della categoria nello stesso tentativo (idempotente). Esito della categoria: successo -> prosegue con la checklist; errore transitorio -> la checklist va in retry; errore definitivo -> checklist "failed" con il messaggio "Categoria non sincronizzata: ...".
+      D-8 modifica di una categoria = solo PUT della categoria (le checklist la referenziano per external_id, non vanno rinviate). Cambio categoria di una checklist = PUT della checklist (gia' previsto dall'update).
+      D-9 "Sincronizza tutte" (gia' esistente, toolbar Checklist) mette in coda prima tutte le categorie non eliminate e poi tutte le checklist non eliminate: e' l'allineamento iniziale, ripetibile.
+      D-10 DELETE remoto della categoria: 422 viene ritentato con backoff solo finche' esistono checklist con sync_status "pending" (il loro spostamento/eliminazione remota non e' ancora arrivato); altrimenti "failed" con il messaggio di ArchivioSmart.
+      D-11 la logica comune ai due job (interpretazione della risposta, retry/backoff, Retry-After, log senza token) viene estratta e condivisa: nessuna duplicazione; il comportamento 0403 resta identico (i test 0403 restano verdi senza modifiche).
+    </item>
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabelle: document_checklist_categories (soft delete), document_checklist_category_sync_logs; colonna document_checklists.category_id (FK nullable).</item>
+      <item>Model DocumentChecklistCategory (LogsModelActivity, morph alias `document_checklist_category`), DocumentChecklistCategorySyncLog; relazioni DocumentChecklist::category() / DocumentChecklistCategory::checklists().</item>
+      <item>ArchivioSmartClient: upsertCategory, deleteCategory. Payload categoria completo a ogni PUT.</item>
+      <item>DocumentChecklistPayloadBuilder: campo category_external_id sempre presente (string o null).</item>
+      <item>SyncDocumentChecklistCategoryJob (PUT o DELETE se soft-deleted) + invio preventivo della categoria nel job della checklist (D-7).</item>
+      <item>CRUD categorie: endpoint, FormRequest, service, policy (prefisso document-checklists), ResourceAuthorization, TableDefinition + column catalog, for-select, sync singola, sync-logs.</item>
+      <item>Checklist: campo category_id nel form/request/resource, colonna e filtro "Categoria" in griglia.</item>
+      <item>sync-all esteso alle categorie (D-9).</item>
+      <item>Voce di menu, i18n backend (lang it/en) e frontend, API docs (ApiModuleDescriptions + resources/api-docs/operations).</item>
+      <item>Frontend: feature `document-checklist-categories` (griglia, dettaglio/form, stato e storico sync riusando i componenti 0403 resi generici), selettore categoria nel form checklist.</item>
+      <item>Guide in-app IT+EN: nuova `document-checklist-categories` (HELP_GUIDE_KEYS 109 -> 110), aggiornata `document-checklists` (campo Categoria, Sincronizza tutte invia anche le categorie).</item>
+    </in>
+    <out>
+      <item>Categoria nelle richieste di documenti (punto 8 del brief): le richieste non esistono ancora in QNet 2, va nella spec delle richieste.</item>
+      <item>Lettura/riallineamento da ArchivioSmart (GET /categories): non si importa niente.</item>
+      <item>Categorie create nel backoffice di ArchivioSmart: QNet 2 non le vede, non le usa, non le adotta.</item>
+      <item>Spostamento automatico delle checklist all'eliminazione della categoria (D-3).</item>
+      <item>Nuovi permessi dedicati alle categorie (D-2).</item>
+      <item>Ripristino di una categoria eliminata; export/import Excel; categorie annidate.</item>
+      <item>Seeder demo (stesso motivo della 0403: genererebbero job verso un servizio esterno).</item>
+    </out>
+  </scope>
+
+  <data_model>
+    <table name="document_checklist_categories">
+      id (external_id = (string) id), name varchar(255), description text null, sort_order unsigned smallint default 0,
+      sync_status varchar(20) default 'pending' (DocumentChecklistSyncStatus), sync_error text null, synced_at timestamp null,
+      timestamps, deleted_at. Unicita' di name tra le non eliminate verificata nel FormRequest (case-insensitive).
+    </table>
+    <table name="document_checklist_category_sync_logs">
+      id, document_checklist_category_id FK (nessun cascade), operation varchar(10) (DocumentChecklistSyncOperation),
+      outcome varchar(20) (DocumentChecklistSyncOutcome), http_status smallint null, attempt unsigned tinyint,
+      message varchar(1000) null, created_at. Indice (document_checklist_category_id, created_at) con nome esplicito corto.
+      Mai token, header Authorization o body.
+    </table>
+    <table name="document_checklists (modifica)">
+      category_id unsigned bigint null, FK -> document_checklist_categories.id (nessun cascade: le categorie si eliminano solo in modo logico), indicizzata.
+      Nuova migrazione (la 0403 non si tocca).
+    </table>
+  </data_model>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data } (+ permissions dove indicato). auth:sanctum, nessun throttle.
+         Permessi: tutte le verifiche usano document-checklists.{viewAny|view|create|update|delete|viewActivity} (D-2). -->
+
+    <shape name="DocumentChecklistCategory">
+      {
+        id: number,
+        name: string,                    // 1..255, unico tra le non eliminate (case-insensitive)
+        description: string | null,      // max 2000
+        sort_order: number,              // intero 0..65535, default 0
+        checklists_count: number,        // checklist non eliminate associate
+        sync_status: "pending" | "synced" | "failed",
+        sync_error: string | null,
+        synced_at: string | null,
+        created_at: string,
+        updated_at: string
+      }
+    </shape>
+
+    <endpoint method="POST" path="/api/tables/document-checklist-categories/rows">
+      <response status="200">
+        Riga: { id, name, description, sort_order, checklists_count, sync_status, sync_error, synced_at, created_at, actions: ("view"|"delete"|"activity"|"sync")[] }.
+        Esclude le eliminate. Ordinamento di default: sort_order asc, name asc. Filtri: name (testo), sync_status (set).
+        "sync" solo con update; "delete" solo con delete.
+      </response>
+      <errors>403 senza document-checklists.viewAny.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-checklist-categories/for-select">
+      <request>Standard for-select (ADR 0011): search, page, per_page.</request>
+      <response status="200">Paginato standard for-select: elementi { id, label: name }, solo categorie non eliminate, ordinate per sort_order, name.</response>
+      <errors>Solo auth:sanctum (ADR 0011).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-checklist-categories/{documentChecklistCategory}">
+      <response status="200">{ data: DocumentChecklistCategory, permissions: ResourcePermissions }</response>
+      <errors>403 senza view; 404 se inesistente o eliminata.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-checklist-categories">
+      <request>{ name: string, description?: string | null, sort_order?: number (default 0) }</request>
+      <response status="201">{ data: DocumentChecklistCategory (sync_status "pending"), permissions }. Dispatch di SyncDocumentChecklistCategoryJob dopo il commit.</response>
+      <errors>403 senza create; 422: name required|max:255|unico; description nullable|max:2000; sort_order integer|min:0|max:65535. Messaggi in italiano.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/document-checklist-categories/{documentChecklistCategory}">
+      <request>Stesso body di POST (sostituzione completa).</request>
+      <response status="200">{ data, permissions }, sync_status "pending", sync_error null, job in coda. Le checklist della categoria NON vengono rimesse in coda (D-8).</response>
+      <errors>403 senza update; 404 eliminata; 422 come POST.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/document-checklist-categories/{documentChecklistCategory}">
+      <response status="204">Solo se la categoria non ha checklist non eliminate: soft delete + pending + job (DELETE remoto).</response>
+      <errors>
+        403 senza delete; 404 gia' eliminata;
+        422 su `category` se ha checklist non eliminate: "La categoria contiene ancora N checklist: spostale in un'altra categoria o eliminale prima." (D-3), nessuna modifica e nessun job.
+        Il bulk delete generico della tabella passa dallo stesso service e rifiuta allo stesso modo.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-checklist-categories/{documentChecklistCategory}/sync">
+      <response status="202">{ data: DocumentChecklistCategory (pending) }, un job in coda.</response>
+      <errors>403 senza update; 404 eliminata.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-checklist-categories/{documentChecklistCategory}/sync-logs">
+      <response status="200">Stessa shape dei sync-logs delle checklist (ultime 20, dalla piu' recente).</response>
+      <errors>403 senza view.</errors>
+    </endpoint>
+
+    <change target="DocumentChecklist (shape 0403)">
+      Aggiunge category: { id: number, name: string } | null (in show/store/update/activation/sync).
+      Request POST/PUT: aggiunge category_id?: number | null (nullable, exists tra le categorie non eliminate; assente = null).
+    </change>
+
+    <change target="POST /api/tables/document-checklists/rows">
+      Riga: aggiunge category_name: string | null. Filtro category_name (testo). Ordinabile.
+    </change>
+
+    <change target="POST /api/document-checklists/sync-all">
+      Response 202: { data: { queued: number, queued_categories: number } }. Prima le categorie non eliminate, poi le checklist non eliminate (D-9). Permesso invariato (update).
+    </change>
+
+    <outbound name="ArchivioSmart">
+      PUT {base_url}/categories/{id}: body completo { name, description (null se vuota), sort_order }. 201/200 = successo.
+      DELETE {base_url}/categories/{id}: 204 = successo (anche se non esiste).
+      PUT {base_url}/checklists/{id}: body 0403 + category_external_id: (string) category_id oppure null, SEMPRE presente.
+      Esiti del job categoria: come la 0403 (2xx synced; 401/409/422 failed senza retry; 429 release(Retry-After); 5xx/rete backoff; connessione assente failed senza HTTP),
+      eccetto 422 sul DELETE: retry con backoff solo se esistono checklist in "pending" (D-10).
+      Messaggio 409 categoria: "Esiste gia' in ArchivioSmart una categoria non creata da QNet 2 con questo identificativo".
+      422 su name (nome gia' usato da una categoria del backoffice): failed con il messaggio di ArchivioSmart, mostrato all'utente.
+      Job checklist (D-7): categoria assegnata e non "synced" -> PUT categoria prima, con log nella tabella delle categorie e aggiornamento del suo stato;
+      se la categoria e' eliminata (soft) la checklist non puo' riferirla: non succede perche' D-3 lo impedisce.
+    </outbound>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Utente con document-checklists.create: POST categoria valida -> 201, sync_status pending, SyncDocumentChecklistCategoryJob in coda una volta (Queue::fake).</criterion>
+    <criterion id="AC-002">POST con name vuoto, name di 256 caratteri, description di 2001, sort_order -1 e 65536 -> 422 sui campi, nessuna riga, nessun job. Nome "Mutui" gia' presente come "mutui" -> 422 su name; se l'esistente e' eliminata -> 201.</criterion>
+    <criterion id="AC-003">Utente senza permessi document-checklists.*: 403 su show/store/update/delete/sync/sync-logs delle categorie e sulla griglia. Nessun nuovo permesso: permissions:sync dopo la feature crea 0 permessi document-checklist-categories.*.</criterion>
+    <criterion id="AC-004">Il job categoria invia PUT {base_url}/categories/{id} con Bearer e body { name, description, sort_order } completo (description null se vuota). 201/200 -> synced + log success; ripetuto con 200 -> synced, nessun effetto aggiuntivo.</criterion>
+    <criterion id="AC-005">Job categoria: 422 {"errors":{"name":["Il valore di nome e' gia' in uso."]}} -> failed con quel messaggio, nessun release; 409 -> failed con messaggio i18n; 429 Retry-After 7 -> release(7); 503 -> backoff; ultimo tentativo -> failed. Connessione assente -> nessuna HTTP, failed.</criterion>
+    <criterion id="AC-006">DELETE categoria con 2 checklist non eliminate -> 422 su category con "2" nel messaggio, nessuna modifica, nessun job. Con solo checklist eliminate o nessuna -> 204, soft delete, job che invia DELETE {base_url}/categories/{id}; 204 -> synced. Bulk delete generico: stesso rifiuto.</criterion>
+    <criterion id="AC-007">Job DELETE categoria con risposta 422 su category: se esiste almeno una checklist pending -> release con backoff (log retrying); se nessuna -> failed con il messaggio di ArchivioSmart.</criterion>
+    <criterion id="AC-008">PUT checklist (job 0403) contiene sempre category_external_id: "12" se category_id=12, null se senza categoria (chiave presente in entrambi i casi). Http::assertSent.</criterion>
+    <criterion id="AC-009">Job checklist con categoria "pending": invia prima PUT /categories/{id} e poi PUT /checklists/{id} nello stesso tentativo (ordine verificato con Http::recorded); categoria -> synced. Con categoria gia' "synced" -> solo il PUT della checklist.</criterion>
+    <criterion id="AC-010">Job checklist con categoria pending e PUT categoria 422 -> nessun PUT della checklist; categoria failed; checklist failed con sync_error che inizia con il messaggio i18n "Categoria non sincronizzata". PUT categoria 503 -> checklist in retry (release con backoff), nessun PUT della checklist.</criterion>
+    <criterion id="AC-011">POST/PUT checklist con category_id di una categoria inesistente o eliminata -> 422 su category_id. Con category_id valido -> salvato; show espone category {id, name}; senza campo -> category null.</criterion>
+    <criterion id="AC-012">PUT categoria: le checklist associate non vengono rimesse in coda (solo il job categoria, Queue::assertPushed count).</criterion>
+    <criterion id="AC-013">POST sync-all con 2 categorie (+1 eliminata) e 3 checklist (+1 eliminata): 202 {queued: 3, queued_categories: 2}; tutte pending; job categorie dispatchati prima dei job checklist.</criterion>
+    <criterion id="AC-014">Griglia categorie: colonne del contratto, esclude le eliminate, checklists_count conta solo le checklist non eliminate, azione sync solo con update. Griglia checklist: colonna category_name valorizzata e filtrabile.</criterion>
+    <criterion id="AC-015">GET sync-logs categoria: max 20 righe della sola categoria, dalla piu' recente. Nessuna riga di log, sync_error, activity log o Log:: contiene il token.</criterion>
+    <criterion id="AC-016">Menu: voce document-checklist-categories sotto config-documents visibile con document-checklists.view; for-select restituisce solo categorie non eliminate ordinate per sort_order, name.</criterion>
+    <criterion id="AC-017">Regressione 0403: tutti i test in tests/Feature/DocumentChecklists esistenti restano verdi senza modifiche, salvo quelli il cui requisito cambia (payload con category_external_id, sync-all con queued_categories), marcati REQUIREMENT CHANGED (spec 0410).</criterion>
+    <criterion id="AC-018">(FE) Schema Zod categoria: name obbligatorio max 255, description max 2000, sort_order intero 0..65535 default 0; i 422 del server (incluso name gia' in uso) appaiono sul campo.</criterion>
+    <criterion id="AC-019">(FE) Pagina Categorie: griglia con badge di stato (testo + tooltip errore), azioni Sincronizza di nuovo ed Elimina; il 422 di eliminazione con checklist mostra il messaggio del server in un toast; il dettaglio mostra la sezione Sincronizzazioni (ultime 20).</criterion>
+    <criterion id="AC-020">(FE) Form checklist: selettore "Categoria" (for-select, svuotabile) che invia category_id o null; griglia checklist con colonna "Categoria"; "Sincronizza tutte" mostra un toast con categorie e checklist in coda.</criterion>
+    <criterion id="AC-021">(FE) Guide in-app IT+EN `document-checklist-categories` con gli stessi id di sezione; `document-checklists` aggiornata in entrambe le lingue; HELP_GUIDE_KEYS 109 -> 110 (REQUIREMENT CHANGED in help-guide-keys.test.ts e workspaces-help.test.ts); help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Http facade, coda database, Http::fake/Queue::fake nei test, nessuna chiamata reale.</item>
+    <item>Authz server-side su ogni endpoint con i permessi document-checklists.* (policy categorie con prefisso 'document-checklists' che non dichiara abilita' proprie; ResourceAuthorization con chiave risorsa 'document-checklist-categories' e controlli sul prefisso 'document-checklists'). Nessun throttle.</item>
+    <item>Logica di sync condivisa tra i due job (D-11), nessuna duplicazione di interpret/retry/log; token mai in log, eccezioni, risposte, sync_error.</item>
+    <item>Migrazioni nuove (le 0403 non si toccano piu' dopo il commit); nomi di indice sotto i 64 caratteri, verificati su MySQL locale oltre che su SQLite.</item>
+    <item>Numeri (sort_order max, limiti) in config/archivio-smart.php.</item>
+    <item>Identificatori in inglese; testi utente in i18n. File sotto 300 righe (500 massimo).</item>
+    <item>Manuale: guide in-app IT+EN; manuale Claude Docs, sezione "Configurazione > Documenti > Categorie checklist" + campo Categoria nelle Checklist (aggiornato se il connettore e' disponibile, altrimenti segnalato).</item>
+  </constraints>
+
+  <plan>
+    <microtask id="BE-01" owner="backend" lane="sequenziale" depends="-">Migrazioni (categories, category_sync_logs, category_id su checklists), model + relazioni + factory, morph map, config. Verifica: migrate su SQLite (Pest) + MySQL locale.</microtask>
+    <microtask id="BE-02" owner="backend" lane="sequenziale" depends="BE-01">Estrazione della logica di sync condivisa, SyncDocumentChecklistCategoryJob, client upsertCategory/deleteCategory, payload category_external_id, invio preventivo categoria nel job checklist. Verifica: AC-004, 005, 007, 008, 009, 010, 015, 017.</microtask>
+    <microtask id="BE-03" owner="backend" lane="sequenziale" depends="BE-02">CRUD categorie (request, service, controller, policy, authorization, TableDefinition + catalog, for-select, sync, sync-logs, routes, menu, lang, API docs); category_id nelle checklist (request, DTO, resource, griglia); sync-all esteso. Verifica: AC-001, 002, 003, 006, 011, 012, 013, 014, 016.</microtask>
+    <microtask id="FE-01" owner="frontend" lane="parallelo a BE-*" depends="contratto">features/document-checklist-categories (types, api, query-keys, schema, form, griglia, dettaglio), componenti di stato/storico 0403 resi generici, pagina, route, breadcrumbs, i18n IT/EN. Verifica: AC-018, 019.</microtask>
+    <microtask id="FE-02" owner="frontend" lane="sequenziale" depends="FE-01">Selettore Categoria nel form checklist, colonna in griglia, toast sync-all. Verifica: AC-020.</microtask>
+    <microtask id="FE-03" owner="frontend" lane="sequenziale" depends="FE-02">Guide in-app IT+EN, HELP_GUIDE_KEYS 110, test conteggio. Verifica: AC-021.</microtask>
+    <microtask id="VER" owner="verifier" lane="gated" depends="tutti">Test mirati per microtask; gate finale: suite backend completa, vitest completo, tsc -b --force, eslint, pint; migrazioni provate su MySQL locale.</microtask>
+  </plan>
+
+</spec>

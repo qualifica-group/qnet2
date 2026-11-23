@@ -3,7 +3,7 @@ import type { UseFormSetError } from 'react-hook-form'
 import { notifyFormErrors } from '@/features/auth/form-errors'
 import type { DocumentChecklistFormValues } from '@/features/document-checklists/document-checklist-schema'
 
-const TOP_LEVEL_FIELDS = ['name', 'code', 'description', 'is_active'] as const
+const TOP_LEVEL_FIELDS = ['name', 'code', 'description', 'category_id', 'is_active'] as const
 const ITEMS_ROOT = 'items'
 /** Item key the server calls `id` and the form calls `server_id` (RHF reserves `id`). */
 const SERVER_ITEM_ID_FIELD = 'id'

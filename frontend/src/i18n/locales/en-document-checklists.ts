@@ -11,9 +11,11 @@ export const documentChecklists = {
   columns: {
     name: 'Name',
     code: 'Code',
+    category_name: 'Category',
     is_active: 'Active',
     items_count: 'Items',
     sync_status: 'Synchronization',
+    sync_error: 'Sync error',
     synced_at: 'Last synchronization',
     created_at: 'Created at',
   },
@@ -47,8 +49,7 @@ export const documentChecklists = {
     dragHandle: 'Drag to reorder',
   },
   toast: {
-    syncQueued_one: '{{count}} checklist queued for synchronization',
-    syncQueued_other: '{{count}} checklists queued for synchronization',
+    syncAllQueued: 'Queued for synchronization: {{categories}} categories and {{checklists}} checklists.',
     syncAgainQueued: 'Synchronization queued.',
     activated: 'Checklist activated.',
     deactivated: 'Checklist deactivated.',
@@ -76,6 +77,11 @@ export const documentChecklists = {
     code: 'Code',
     codeHint: 'Letters, numbers, hyphen and underscore only. Saved in uppercase.',
     codeLocked: 'The code can no longer be changed after the first synchronization',
+    category: 'Category',
+    categoryPlaceholder: 'No category',
+    categorySearch: 'Search category…',
+    categoryEmpty: 'No category found.',
+    categoryError: 'Unable to load the categories.',
     description: 'Description',
     isActive: 'Active',
     save: 'Save',
@@ -95,7 +101,7 @@ export const documentChecklists = {
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, code, description and status of the checklist.',
+        description: 'Name, code, category, description and status of the checklist.',
       },
       items: {
         title: 'Items',

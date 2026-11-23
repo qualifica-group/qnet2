@@ -40,8 +40,10 @@ export function useDocumentChecklistRowActions({ openView, refreshGrid }: Option
 
   const syncAll = useMutation({
     mutationFn: () => syncAllDocumentChecklists(),
-    onSuccess: ({ queued }) => {
-      toast.success(t('documentChecklists.toast.syncQueued', { count: queued }))
+    onSuccess: ({ queued, queued_categories }) => {
+      toast.success(
+        t('documentChecklists.toast.syncAllQueued', { checklists: queued, categories: queued_categories }),
+      )
       refreshGrid()
     },
     onError: failure('documentChecklists.toast.syncError'),

@@ -79,6 +79,7 @@ const RewardedReferentsPage = lazyRoute(() => import('@/pages/rewarded-referents
 const DocumentLayoutsPage = lazyRoute(() => import('@/pages/document-layouts-page'))
 const EmailTemplatesPage = lazyRoute(() => import('@/pages/email-templates-page'))
 const DocumentBundlesPage = lazyRoute(() => import('@/pages/document-bundles-page'))
+const DocumentChecklistCategoriesPage = lazyRoute(() => import('@/pages/document-checklist-categories-page'))
 const DocumentChecklistsPage = lazyRoute(() => import('@/pages/document-checklists-page'))
 const RequestManagementDetailPage = lazyRoute(() => import('@/pages/request-management-detail-page'))
 const LeadImportPage = lazyRoute(() => import('@/pages/lead-import-page'))
@@ -379,6 +380,10 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
   {
     path: 'document-checklists',
     element: <DocumentChecklistsPage />,
+  },
+  {
+    path: 'document-checklist-categories',
+    element: <DocumentChecklistCategoriesPage />,
   },
   {
     path: 'request-management',

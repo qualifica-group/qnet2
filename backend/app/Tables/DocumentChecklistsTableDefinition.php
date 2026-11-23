@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Tables;
 
 use App\Models\DocumentChecklist;
+use App\Models\DocumentChecklistCategory;
 use App\Models\User;
 use App\Services\DocumentChecklistService;
+use App\Services\Table\FilterApplier;
 use App\Tables\DocumentChecklists\DocumentChecklistColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,11 +17,15 @@ use Illuminate\Support\Facades\Gate;
 /**
  * Table definition of the `document-checklists` domain (spec 0403). Soft-deleted
  * checklists never appear (the model's global scope); `items_count` is an
- * aggregate column. The `sync` row action follows the `update` ability.
+ * aggregate column and `category_name` is derived from the category relation
+ * (spec 0410). The `sync` row action follows the `update` ability.
  */
 class DocumentChecklistsTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly DocumentChecklistService $service) {}
+    public function __construct(
+        private readonly DocumentChecklistService $service,
+        private readonly FilterApplier $filters,
+    ) {}
 
     public function domain(): string
     {
@@ -42,7 +48,7 @@ class DocumentChecklistsTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        return DocumentChecklist::query()->withCount('items');
+        return DocumentChecklist::query()->with('category')->withCount('items');
     }
 
     /**
@@ -97,6 +103,7 @@ class DocumentChecklistsTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'name' => $row->name,
             'code' => $row->code,
+            'category_name' => $row->category?->name,
             'is_active' => $row->is_active,
             'items_count' => (int) $row->items_count,
             'sync_status' => $row->sync_status->value,
@@ -104,6 +111,50 @@ class DocumentChecklistsTableDefinition extends AbstractTableDefinition
             'synced_at' => $row->synced_at,
             'created_at' => $row->created_at,
         ];
+    }
+
+    /**
+     * Derived text filter on the category name (case-insensitive contains, or exact for `equals`).
+     * The value is a bound parameter with the LIKE wildcards escaped.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $columnConfig
+     * @param  array<string, mixed>  $filter
+     */
+    public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
+    {
+        if ($columnId !== 'category_name') {
+            return false;
+        }
+
+        $value = $filter['filter'] ?? null;
+        if (! is_scalar($value) || $value === '') {
+            return true;
+        }
+
+        $exact = ($filter['type'] ?? null) === 'equals';
+        $query->whereHas('category', fn (Builder $category) => $exact
+            ? $category->where('name', (string) $value)
+            : $category->where('name', 'like', '%'.$this->filters->escapeLike((string) $value).'%'));
+
+        return true;
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     */
+    public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
+    {
+        if ($columnId !== 'category_name') {
+            return false;
+        }
+
+        $query->orderBy(
+            DocumentChecklistCategory::query()->select('name')->whereColumn('document_checklist_categories.id', 'document_checklists.category_id')->limit(1),
+            $direction,
+        );
+
+        return true;
     }
 
     /**

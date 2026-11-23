@@ -58,6 +58,7 @@ class SaveDocumentChecklistRequest extends FormRequest
             ],
             'description' => ['nullable', 'string', 'max:'.$max['description']],
             'is_active' => ['sometimes', 'boolean'],
+            'category_id' => ['nullable', 'integer', Rule::exists('document_checklist_categories', 'id')->whereNull('deleted_at')],
             'items' => ['present', 'array', 'max:'.config('archivio-smart.max_items')],
             ...$this->itemRules($checklist, $max),
         ];

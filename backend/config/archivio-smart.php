@@ -26,6 +26,9 @@ return [
     'sync_log_display_limit' => 20,
     'error_message_max_length' => 1000,
 
+    // Category sort_order upper bound (unsigned smallint), mirrored by the FormRequest and the frontend schema.
+    'max_category_sort_order' => 65535,
+
     // Maximum field lengths (ArchivioSmart contract).
     'max_length' => [
         'name' => 255,

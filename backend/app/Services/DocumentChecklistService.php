@@ -114,7 +114,7 @@ class DocumentChecklistService
 
     public function loadDetail(DocumentChecklist $checklist): DocumentChecklist
     {
-        return $checklist->unsetRelation('items')->load('items');
+        return $checklist->unsetRelation('items')->load(['items', 'category']);
     }
 
     /**

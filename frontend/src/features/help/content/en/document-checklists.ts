@@ -24,6 +24,7 @@ const guide: HelpGuide = {
           items: [
             '**Name**: the name shown in lists.',
             '**Code**: letters, digits, _ and - only; saved in uppercase and unique. It can no longer be changed after the first successful sync.',
+            '**Category**: optional, only one per checklist; pick it from the categories created in **Configuration › Documents › Checklist categories**, and you can clear it. It is used to filter checklists and requests in ArchivioSmart.',
             '**Description**: free note.',
             '**Active**: to stop using a checklist, deactivating it is better than deleting it.',
           ],
@@ -60,7 +61,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Columns: name, code, active, items, sync, last sync, created on. The sync status can be:',
+          text: 'Columns: name, code, category, active, items, sync, last sync, created on. The sync status can be:',
         },
         {
           type: 'list',
@@ -83,7 +84,7 @@ const guide: HelpGuide = {
             '**Sync again** (row): resends the checklist to ArchivioSmart.',
             '**Activate** / **Deactivate** (row).',
             '**Delete** (row): the checklist is also removed from ArchivioSmart.',
-            '**Sync all**: initial alignment of all checklists.',
+            '**Sync all**: initial alignment; it sends all the categories first and then all the checklists, and a message tells how many were queued.',
           ],
         },
       ],

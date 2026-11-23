@@ -8,6 +8,7 @@ import type {
   DocumentChecklistPayload,
   DocumentChecklistSyncLog,
   DocumentChecklistWithPermissions,
+  SyncAllResult,
   UpdateArchivioSmartSettingsPayload,
 } from '@/features/document-checklists/types'
 
@@ -62,9 +63,9 @@ export async function syncDocumentChecklist(id: number): Promise<DocumentCheckli
   return data.data
 }
 
-/** Queues a sync of every non-deleted checklist (202). */
-export async function syncAllDocumentChecklists(): Promise<{ queued: number }> {
-  const { data } = await apiClient.post<ApiResponse<{ queued: number }>>('/document-checklists/sync-all')
+/** Queues a sync of every non-deleted category, then every non-deleted checklist (202, spec 0410 D-9). */
+export async function syncAllDocumentChecklists(): Promise<SyncAllResult> {
+  const { data } = await apiClient.post<ApiResponse<SyncAllResult>>('/document-checklists/sync-all')
   return data.data
 }
 

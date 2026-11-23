@@ -6,8 +6,10 @@ import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-pa
 import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
 import { Form } from '@/components/ui/form'
 import { ChecklistItemsEditor } from '@/features/document-checklists/checklist-items-editor'
+import { fetchDocumentChecklistSyncLogs } from '@/features/document-checklists/api'
 import { ChecklistSyncLogsSection } from '@/features/document-checklists/checklist-sync-logs-section'
 import { DocumentChecklistFormBody } from '@/features/document-checklists/document-checklist-form-body'
+import { documentChecklistKeys } from '@/features/document-checklists/query-keys'
 import { useDocumentChecklistForm } from '@/features/document-checklists/use-document-checklist-form'
 import type { DocumentChecklist, DocumentChecklistWithPermissions } from '@/features/document-checklists/types'
 
@@ -55,7 +57,10 @@ export function DocumentChecklistForm({ checklist, canEdit = true, onSuccess, on
         <fieldset disabled={!canEdit} className="min-w-0">
           <RecordSectionsGrid>
             <RecordSection title={t('documentChecklists.form.sections.identity.title')} full>
-              <DocumentChecklistFormBody codeLocked={checklist?.code_locked ?? false} />
+              <DocumentChecklistFormBody
+                codeLocked={checklist?.code_locked ?? false}
+                savedCategory={checklist?.category ?? null}
+              />
             </RecordSection>
             <RecordSection title={t('documentChecklists.form.sections.items.title')} full>
               <ChecklistItemsEditor />
@@ -64,7 +69,11 @@ export function DocumentChecklistForm({ checklist, canEdit = true, onSuccess, on
         </fieldset>
         {checklist ? (
           <RecordSectionsGrid className="border-t">
-            <ChecklistSyncLogsSection checklist={checklist} />
+            <ChecklistSyncLogsSection
+              record={checklist}
+              logsQueryKey={documentChecklistKeys.syncLogs(checklist.id)}
+              fetchLogs={() => fetchDocumentChecklistSyncLogs(checklist.id)}
+            />
           </RecordSectionsGrid>
         ) : null}
       </RecordCreateLayout>

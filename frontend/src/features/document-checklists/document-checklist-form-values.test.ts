@@ -12,6 +12,7 @@ const CHECKLIST: DocumentChecklist = {
   name: 'Opening',
   code: 'OPEN',
   description: null,
+  category: { id: 4, name: 'Mortgages' },
   is_active: false,
   code_locked: true,
   sync_status: 'synced',
@@ -51,7 +52,14 @@ describe('document checklist form values (spec 0403)', () => {
   })
 
   it('starts a new checklist active and empty', () => {
-    expect(buildDefaultChecklistValues()).toEqual({ name: '', code: '', description: '', is_active: true, items: [] })
+    expect(buildDefaultChecklistValues()).toEqual({
+      name: '',
+      code: '',
+      description: '',
+      category_id: null,
+      is_active: true,
+      items: [],
+    })
   })
 
   it('maps a saved checklist to form values keeping the entry id as server_id', () => {
@@ -59,6 +67,15 @@ describe('document checklist form values (spec 0403)', () => {
 
     expect(values.description).toBe('')
     expect(values.items[0]).toMatchObject({ server_id: 11, section: '', validation_prompt: '', max_age_days: 90 })
+  })
+
+  it('maps the category to category_id and back to the payload, null when absent (spec 0410)', () => {
+    expect(checklistToFormValues(CHECKLIST).category_id).toBe(4)
+    expect(buildChecklistPayload(checklistToFormValues(CHECKLIST)).category_id).toBe(4)
+
+    const uncategorized = checklistToFormValues({ ...CHECKLIST, category: null })
+    expect(uncategorized.category_id).toBeNull()
+    expect(buildChecklistPayload(uncategorized).category_id).toBeNull()
   })
 
   it('builds a payload with null for empty optional text and the entry id', () => {

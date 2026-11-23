@@ -24,6 +24,7 @@ const guide: HelpGuide = {
           items: [
             '**Nome**: il nome mostrato negli elenchi.',
             '**Codice**: solo lettere, cifre, _ e -; viene salvato in maiuscolo ed è unico. Non si può più modificare dopo la prima sincronizzazione riuscita.',
+            '**Categoria**: facoltativa, una sola per checklist; si sceglie tra le categorie create in **Configurazione › Documenti › Categorie checklist** e si può svuotare. Serve a filtrare checklist e richieste in ArchivioSmart.',
             '**Descrizione**: nota libera.',
             '**Attiva**: per smettere di usare una checklist è meglio disattivarla che eliminarla.',
           ],
@@ -60,7 +61,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Colonne: nome, codice, attiva, voci, sincronizzazione, ultima sincronizzazione, creata il. Lo stato di sincronizzazione può essere:',
+          text: 'Colonne: nome, codice, categoria, attiva, voci, sincronizzazione, ultima sincronizzazione, creata il. Lo stato di sincronizzazione può essere:',
         },
         {
           type: 'list',
@@ -83,7 +84,7 @@ const guide: HelpGuide = {
             '**Sincronizza di nuovo** (riga): rinvia la checklist ad ArchivioSmart.',
             '**Attiva** / **Disattiva** (riga).',
             '**Elimina** (riga): la checklist viene tolta anche da ArchivioSmart.',
-            '**Sincronizza tutte**: allineamento iniziale di tutte le checklist.',
+            '**Sincronizza tutte**: allineamento iniziale; invia prima tutte le categorie e poi tutte le checklist, e un messaggio indica quante sono state messe in coda.',
           ],
         },
       ],

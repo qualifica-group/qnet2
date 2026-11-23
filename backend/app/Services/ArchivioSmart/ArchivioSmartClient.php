@@ -38,6 +38,24 @@ class ArchivioSmartClient
     }
 
     /**
+     * @param  array<string, mixed>  $payload
+     *
+     * @throws ConnectionException
+     */
+    public function upsertCategory(ArchivioSmartSetting $setting, string $externalId, array $payload): Response
+    {
+        return $this->request($setting)->put($this->categoryPath($externalId), $payload);
+    }
+
+    /**
+     * @throws ConnectionException
+     */
+    public function deleteCategory(ArchivioSmartSetting $setting, string $externalId): Response
+    {
+        return $this->request($setting)->delete($this->categoryPath($externalId));
+    }
+
+    /**
      * @throws ConnectionException
      */
     public function me(ArchivioSmartSetting $setting): Response
@@ -58,5 +76,10 @@ class ArchivioSmartClient
     private function checklistPath(string $externalId): string
     {
         return '/checklists/'.rawurlencode($externalId);
+    }
+
+    private function categoryPath(string $externalId): string
+    {
+        return '/categories/'.rawurlencode($externalId);
     }
 }

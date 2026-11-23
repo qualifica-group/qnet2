@@ -21,6 +21,7 @@ use App\Authorization\ContractTypesAuthorization;
 use App\Authorization\CostTypesAuthorization;
 use App\Authorization\CustomFieldsAuthorization;
 use App\Authorization\DocumentBundlesAuthorization;
+use App\Authorization\DocumentChecklistCategoriesAuthorization;
 use App\Authorization\DocumentChecklistsAuthorization;
 use App\Authorization\DocumentLayoutsAuthorization;
 use App\Authorization\EmailTemplatesAuthorization;
@@ -154,6 +155,7 @@ return [
         'email-templates' => EmailTemplatesAuthorization::class,
         'document-bundles' => DocumentBundlesAuthorization::class,
         'document-checklists' => DocumentChecklistsAuthorization::class,
+        'document-checklist-categories' => DocumentChecklistCategoriesAuthorization::class,
         'request-management' => RequestManagementAuthorization::class,
         // Spec 0130: "Gestione Iscritti" — same field/action catalogue as
         // request-management, own resource() (see the class docblock).

@@ -68,6 +68,7 @@ export const navigation = {
   emailTemplates: 'Email templates',
   documentBundles: 'Document bundles',
   documentChecklists: 'Document checklists',
+  documentChecklistCategories: 'Checklist categories',
   tasks: 'Tasks',
   taskStatuses: 'Task Statuses',
   taskTypes: 'Task Types',

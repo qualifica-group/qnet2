@@ -4,22 +4,22 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\ArchivioSmartCallResult;
 use App\Enums\DocumentChecklistSyncOperation;
-use App\Enums\DocumentChecklistSyncOutcome;
 use App\Enums\DocumentChecklistSyncStatus;
+use App\Jobs\Concerns\PushesToArchivioSmart;
 use App\Models\ArchivioSmartSetting;
 use App\Models\DocumentChecklist;
 use App\Services\ArchivioSmart\ArchivioSmartClient;
+use App\Services\ArchivioSmart\DocumentChecklistCategoryPayloadBuilder;
 use App\Services\ArchivioSmart\DocumentChecklistPayloadBuilder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -31,7 +31,7 @@ use Throwable;
  */
 class SyncDocumentChecklistJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable;
+    use Dispatchable, InteractsWithQueue, PushesToArchivioSmart, Queueable;
 
     /** Seconds before an overlapped run is released back to the queue. */
     private const OVERLAP_RELEASE_SECONDS = 10;
@@ -61,10 +61,13 @@ class SyncDocumentChecklistJob implements ShouldQueue
         ];
     }
 
-    public function handle(ArchivioSmartClient $client, DocumentChecklistPayloadBuilder $payloads): void
-    {
+    public function handle(
+        ArchivioSmartClient $client,
+        DocumentChecklistPayloadBuilder $payloads,
+        DocumentChecklistCategoryPayloadBuilder $categoryPayloads,
+    ): void {
         // Step 1: read the current state (soft-deleted rows included: they mean DELETE)
-        $checklist = DocumentChecklist::withTrashed()->with('items')->find($this->documentChecklistId);
+        $checklist = DocumentChecklist::withTrashed()->with(['items', 'category'])->find($this->documentChecklistId);
         if ($checklist === null) {
             return;
         }
@@ -73,27 +76,20 @@ class SyncDocumentChecklistJob implements ShouldQueue
             : DocumentChecklistSyncOperation::Upsert;
 
         // Step 2: no connection, no call
-        $setting = ArchivioSmartSetting::current();
-        if ($setting === null || ! $setting->isConfigured()) {
-            $this->failSync($checklist, $operation, null, __('archivio_smart.not_configured'));
-
+        $setting = $this->configuredSetting($checklist, $operation);
+        if ($setting === null) {
             return;
         }
 
-        // Step 3: call ArchivioSmart
-        try {
-            $externalId = (string) $checklist->id;
-            $response = $operation === DocumentChecklistSyncOperation::Delete
-                ? $client->deleteChecklist($setting, $externalId)
-                : $client->upsertChecklist($setting, $externalId, $payloads->build($checklist));
-        } catch (ConnectionException) {
-            $this->retryOrFail($checklist, $operation, null, __('archivio_smart.network_error'));
-
+        // Step 3: ArchivioSmart must know the category before the checklist that uses it (D-7)
+        if ($operation === DocumentChecklistSyncOperation::Upsert && ! $this->categoryIsReady($checklist, $setting, $client, $categoryPayloads)) {
             return;
         }
 
-        // Step 4: interpret the outcome
-        $this->interpret($checklist, $operation, $response);
+        // Step 4: call ArchivioSmart and interpret the outcome
+        $this->push($checklist, $operation, $setting, fn (ArchivioSmartSetting $setting): Response => $operation === DocumentChecklistSyncOperation::Delete
+            ? $client->deleteChecklist($setting, (string) $checklist->id)
+            : $client->upsertChecklist($setting, (string) $checklist->id, $payloads->build($checklist)));
     }
 
     /**
@@ -114,105 +110,38 @@ class SyncDocumentChecklistJob implements ShouldQueue
         ]);
     }
 
-    private function interpret(DocumentChecklist $checklist, DocumentChecklistSyncOperation $operation, Response $response): void
-    {
-        $status = $response->status();
-
-        match (true) {
-            in_array($status, [200, 201, 204], true) => $this->succeed($checklist, $operation, $status),
-            $status === 422 => $this->failSync($checklist, $operation, $status, $this->validationMessage($response)),
-            $status === 401 => $this->failSync($checklist, $operation, $status, __('archivio_smart.unauthorized')),
-            $status === 409 => $this->failSync($checklist, $operation, $status, __('archivio_smart.conflict')),
-            $status === 429 => $this->releaseAfterRateLimit($checklist, $operation, $response),
-            $status >= 500 => $this->retryOrFail($checklist, $operation, $status, __('archivio_smart.server_error', ['status' => $status])),
-            default => $this->failSync($checklist, $operation, $status, __('archivio_smart.unexpected_status', ['status' => $status])),
-        };
-    }
-
-    private function succeed(DocumentChecklist $checklist, DocumentChecklistSyncOperation $operation, int $status): void
-    {
-        $attributes = [
-            'sync_status' => DocumentChecklistSyncStatus::Synced,
-            'sync_error' => null,
-            'synced_at' => now(),
-        ];
-        if ($operation === DocumentChecklistSyncOperation::Upsert && $checklist->first_synced_at === null) {
-            $attributes['first_synced_at'] = now();
-        }
-
-        activity()->withoutLogs(fn () => $checklist->update($attributes));
-        $this->log($checklist, $operation, DocumentChecklistSyncOutcome::Success, $status, null);
-    }
-
-    private function failSync(DocumentChecklist $checklist, DocumentChecklistSyncOperation $operation, ?int $status, string $message): void
-    {
-        $this->markFailed($checklist, $message);
-        $this->log($checklist, $operation, DocumentChecklistSyncOutcome::Failed, $status, $message);
-    }
-
-    private function retryOrFail(DocumentChecklist $checklist, DocumentChecklistSyncOperation $operation, ?int $status, string $message): void
-    {
-        if ($this->attempts() >= $this->tries) {
-            $this->failSync($checklist, $operation, $status, $message);
-
-            return;
-        }
-
-        $this->log($checklist, $operation, DocumentChecklistSyncOutcome::Retrying, $status, $message);
-        $this->release($this->backoffSeconds());
-    }
-
-    private function releaseAfterRateLimit(DocumentChecklist $checklist, DocumentChecklistSyncOperation $operation, Response $response): void
-    {
-        $retryAfter = $response->header('Retry-After');
-        $delay = ctype_digit($retryAfter) ? (int) $retryAfter : (int) config('archivio-smart.retry_after_fallback');
-
-        $this->log($checklist, $operation, DocumentChecklistSyncOutcome::Retrying, 429, null);
-        $this->release($delay);
-    }
-
-    private function backoffSeconds(): int
-    {
-        /** @var array<int, int> $backoff */
-        $backoff = config('archivio-smart.backoff');
-
-        return (int) ($backoff[$this->attempts() - 1] ?? end($backoff));
-    }
-
-    private function validationMessage(Response $response): string
-    {
-        $errors = $response->json('errors');
-        $messages = is_array($errors) ? collect($errors)->flatten()->filter(fn (mixed $message): bool => is_string($message))->implode(' ') : '';
-
-        return $messages !== '' ? $messages : __('archivio_smart.validation_failed');
-    }
-
-    private function markFailed(DocumentChecklist $checklist, string $message): void
-    {
-        activity()->withoutLogs(fn () => $checklist->update([
-            'sync_status' => DocumentChecklistSyncStatus::Failed,
-            'sync_error' => $this->truncate($message),
-        ]));
-    }
-
-    private function log(
+    /**
+     * Sends the category first when it is not synced yet (idempotent PUT, logged on
+     * the category). Returns false when the checklist must stop here: the job has
+     * been released (transient error) or the checklist has been failed (final error).
+     */
+    private function categoryIsReady(
         DocumentChecklist $checklist,
-        DocumentChecklistSyncOperation $operation,
-        DocumentChecklistSyncOutcome $outcome,
-        ?int $status,
-        ?string $message,
-    ): void {
-        $checklist->syncLogs()->create([
-            'operation' => $operation,
-            'outcome' => $outcome,
-            'http_status' => $status,
-            'attempt' => $this->attempts(),
-            'message' => $message === null ? null : $this->truncate($message),
-        ]);
-    }
+        ArchivioSmartSetting $setting,
+        ArchivioSmartClient $client,
+        DocumentChecklistCategoryPayloadBuilder $categoryPayloads,
+    ): bool {
+        $category = $checklist->category;
+        if ($category === null || $category->sync_status === DocumentChecklistSyncStatus::Synced) {
+            return true;
+        }
 
-    private function truncate(string $message): string
-    {
-        return Str::limit($message, (int) config('archivio-smart.error_message_max_length'), '');
+        $result = $this->push(
+            $category,
+            DocumentChecklistSyncOperation::Upsert,
+            $setting,
+            fn (ArchivioSmartSetting $setting): Response => $client->upsertCategory($setting, (string) $category->id, $categoryPayloads->build($category)),
+        );
+
+        if ($result === ArchivioSmartCallResult::Failed) {
+            $this->failSync(
+                $checklist,
+                DocumentChecklistSyncOperation::Upsert,
+                null,
+                __('archivio_smart.category_not_synced', ['reason' => $this->failureMessage]),
+            );
+        }
+
+        return $result === ArchivioSmartCallResult::Succeeded;
     }
 }

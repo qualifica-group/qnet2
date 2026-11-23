@@ -5,6 +5,8 @@ return [
     'not_configured' => 'ArchivioSmart connection not configured',
     'unauthorized' => 'Invalid ArchivioSmart token',
     'conflict' => 'A checklist with this identifier already exists in ArchivioSmart and was not created by QNet 2',
+    'category_conflict' => 'A category with this identifier already exists in ArchivioSmart and was not created by QNet 2',
+    'category_not_synced' => 'Category not synced: :reason',
     'validation_failed' => 'ArchivioSmart rejected the checklist',
     'server_error' => 'ArchivioSmart responded with a server error (:status)',
     'network_error' => 'Unable to reach ArchivioSmart',

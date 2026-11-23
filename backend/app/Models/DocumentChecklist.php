@@ -8,6 +8,7 @@ use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\DocumentChecklistFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -18,7 +19,7 @@ use Spatie\Activitylog\LogOptions;
  * succeeded (D-4).
  */
 #[Fillable([
-    'name', 'code', 'description', 'is_active', 'sync_status', 'sync_error', 'synced_at', 'first_synced_at',
+    'category_id', 'name', 'code', 'description', 'is_active', 'sync_status', 'sync_error', 'synced_at', 'first_synced_at',
 ])]
 class DocumentChecklist extends BaseModel
 {
@@ -49,6 +50,14 @@ class DocumentChecklist extends BaseModel
             'synced_at' => 'datetime',
             'first_synced_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return BelongsTo<DocumentChecklistCategory, $this>
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(DocumentChecklistCategory::class, 'category_id');
     }
 
     /**

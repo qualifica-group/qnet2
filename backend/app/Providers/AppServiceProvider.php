@@ -42,6 +42,7 @@ use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\DocumentBundle;
 use App\Models\DocumentChecklist;
+use App\Models\DocumentChecklistCategory;
 use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
 use App\Models\EmploymentContract;
@@ -418,6 +419,7 @@ class AppServiceProvider extends ServiceProvider
             'document_bundle' => DocumentBundle::class,
             // Spec 0403: activity-log subject of the document checklists.
             'document_checklist' => DocumentChecklist::class,
+            'document_checklist_category' => DocumentChecklistCategory::class,
             'archivio_smart_setting' => ArchivioSmartSetting::class,
             'outbound_email' => OutboundEmail::class,
             // Spec 0317: menu apps configured by the super-admin (audited).

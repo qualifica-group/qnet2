@@ -23,6 +23,7 @@ use App\Tables\ContractTypesTableDefinition;
 use App\Tables\CostTypesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
 use App\Tables\DocumentBundlesTableDefinition;
+use App\Tables\DocumentChecklistCategoriesTableDefinition;
 use App\Tables\DocumentChecklistsTableDefinition;
 use App\Tables\DocumentLayoutsTableDefinition;
 use App\Tables\EmailTemplatesTableDefinition;
@@ -244,6 +245,7 @@ return [
         'email-templates' => EmailTemplatesTableDefinition::class,
         'document-bundles' => DocumentBundlesTableDefinition::class,
         'document-checklists' => DocumentChecklistsTableDefinition::class,
+        'document-checklist-categories' => DocumentChecklistCategoriesTableDefinition::class,
     ],
 
 ];

@@ -5,6 +5,10 @@ return [
     // Spec 0403, D-4: shown on `code` when a synced checklist's code is changed.
     'code_locked' => 'Il codice non è più modificabile dopo la prima sincronizzazione con ArchivioSmart.',
 
+    // Spec 0410.
+    'category_name_taken' => 'Esiste già una categoria con questo nome.',
+    'category_has_checklists' => 'La categoria contiene ancora :count checklist: spostale in un\'altra categoria o eliminale prima.',
+
     'duplicate_file_types' => 'I tipi di file consentiti non possono essere ripetuti.',
 
     // Validation attribute names. `item_<field>` maps to `items.*.<field>`.
@@ -13,6 +17,8 @@ return [
         'code' => 'codice',
         'description' => 'descrizione',
         'is_active' => 'stato attivo',
+        'sort_order' => 'ordine',
+        'category_id' => 'categoria',
         'items' => 'voci',
         'item_id' => 'voce',
         'item_name' => 'nome della voce',

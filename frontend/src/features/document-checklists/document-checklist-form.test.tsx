@@ -21,6 +21,27 @@ vi.mock('@/features/document-checklists/api', () => ({
   fetchDocumentChecklistSyncLogs: (...args: unknown[]) => syncLogsMock(...args),
 }))
 
+vi.mock('@/components/ui/async-paginated-select', () => ({
+  AsyncPaginatedSelect: ({
+    value,
+    onChange,
+    selectedItem,
+    labels,
+  }: {
+    value: number | null
+    onChange: (next: number | null) => void
+    selectedItem?: { label: string } | null
+    labels: { triggerLabel: string; clearLabel: string }
+  }) => (
+    <div>
+      <button type="button" role="combobox" aria-expanded="false" aria-label={labels.triggerLabel} onClick={() => onChange(9)}>
+        {value === null ? 'none' : (selectedItem?.label ?? `#${value}`)}
+      </button>
+      <button type="button" aria-label={labels.clearLabel} onClick={() => onChange(null)} />
+    </div>
+  ),
+}))
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function wrapper() {
@@ -52,6 +73,7 @@ function checklist(overrides: Partial<DocumentChecklistWithPermissions> = {}): D
     name: 'Onboarding',
     code: 'ONB',
     description: null,
+    category: null,
     is_active: true,
     code_locked: false,
     sync_status: 'synced',
@@ -141,6 +163,50 @@ describe('DocumentChecklistForm - create (spec 0403 AC-024)', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(input.getAttribute('aria-describedby')).toContain(message.id)
     expect(createMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('DocumentChecklistForm - category selector (spec 0410 AC-020)', () => {
+  it('sends the chosen category_id on create and null when none is chosen', async () => {
+    createMock.mockResolvedValue(checklist())
+    render(<DocumentChecklistForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    fireEvent.change(nameBoxes()[0], { target: { value: 'Onboarding' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^Code/ }), { target: { value: 'onb' } })
+    fireEvent.click(screen.getByRole('combobox', { name: i18n.t('documentChecklists.form.category') }))
+    fireEvent.click(saveButton())
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(createMock.mock.calls[0][0].category_id).toBe(9)
+
+    createMock.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.clear') }))
+    fireEvent.click(saveButton())
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(createMock.mock.calls[0][0].category_id).toBeNull()
+  })
+
+  it('shows the saved category on edit and lets the user clear it', async () => {
+    updateMock.mockResolvedValue(checklist())
+    renderEdit({ category: { id: 4, name: 'Mortgages' } })
+
+    expect(screen.getByRole('combobox', { name: i18n.t('documentChecklists.form.category') })).toHaveTextContent('Mortgages')
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.clear') }))
+    fireEvent.click(saveButton())
+
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1))
+    expect(updateMock.mock.calls[0][1].category_id).toBeNull()
+  })
+
+  it('puts a server 422 on category_id on the field', async () => {
+    updateMock.mockRejectedValue(validationError({ category_id: ['The selected category is invalid.'] }))
+    renderEdit()
+
+    fireEvent.click(saveButton())
+
+    expect(await screen.findByText('The selected category is invalid.')).toHaveAttribute('role', 'alert')
   })
 })
 

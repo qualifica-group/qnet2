@@ -112,14 +112,14 @@ describe('DocumentChecklistsTable toolbar', () => {
     expect(screen.getByRole('button', { name: 'connection' })).toBeInTheDocument()
   })
 
-  it('queues every checklist and toasts the plural count', async () => {
-    syncAllMock.mockResolvedValue({ queued: 3 })
+  it('queues categories then checklists and toasts both counts (spec 0410 AC-020)', async () => {
+    syncAllMock.mockResolvedValue({ queued: 3, queued_categories: 2 })
     renderTable()
 
     fireEvent.click(screen.getByRole('button', { name: 'Sync all' }))
 
     await waitFor(() =>
-      expect(toastSuccessMock).toHaveBeenCalledWith(i18n.t('documentChecklists.toast.syncQueued', { count: 3 })),
+      expect(toastSuccessMock).toHaveBeenCalledWith(i18n.t('documentChecklists.toast.syncAllQueued', { checklists: 3, categories: 2 })),
     )
     expect(refreshMock).toHaveBeenCalled()
   })

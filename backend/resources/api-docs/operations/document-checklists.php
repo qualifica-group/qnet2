@@ -3,11 +3,11 @@
 return [
     'POST /document-checklists' => [
         'summary' => 'Create a document checklist',
-        'description' => 'Creates a checklist with its ordered items (0 to 200; the array order is the display order, item ids must be null). code is stored uppercase, accepts letters, digits, dash and underscore and must be unique among non-deleted checklists. Each item has name, optional description/section/validation_prompt/max_age_days, is_required, allowed_file_types (at least one of pdf, jpg, jpeg, png, webp, heic, docx, odt, txt, no duplicates), max_file_size_kb (1 to 20480) and min_files/max_files (1 to 10, max_files not below min_files). The checklist starts with sync_status pending and a job sends it to ArchivioSmart after the commit. Answers 201 with the checklist and a permissions block. Requires document-checklists.create.',
+        'description' => 'Creates a checklist with its ordered items (0 to 200; the array order is the display order, item ids must be null) and an optional category_id (a non-deleted document checklist category, null or missing for none). code is stored uppercase, accepts letters, digits, dash and underscore and must be unique among non-deleted checklists. Each item has name, optional description/section/validation_prompt/max_age_days, is_required, allowed_file_types (at least one of pdf, jpg, jpeg, png, webp, heic, docx, odt, txt, no duplicates), max_file_size_kb (1 to 20480) and min_files/max_files (1 to 10, max_files not below min_files). The checklist starts with sync_status pending and a job sends it to ArchivioSmart after the commit. Answers 201 with the checklist and a permissions block. Requires document-checklists.create.',
     ],
     'GET /document-checklists/{documentChecklist}' => [
         'summary' => 'Get a document checklist',
-        'description' => 'Returns the checklist with its items in display order, the sync state (sync_status, sync_error, synced_at), code_locked and a permissions block for the caller. Deleted checklists answer 404. Requires document-checklists.view.',
+        'description' => 'Returns the checklist with its items in display order, its category ({ id, name } or null), the sync state (sync_status, sync_error, synced_at), code_locked and a permissions block for the caller. Deleted checklists answer 404. Requires document-checklists.view.',
     ],
     'PUT /document-checklists/{documentChecklist}' => [
         'summary' => 'Update a document checklist',
@@ -23,7 +23,7 @@ return [
     ],
     'POST /document-checklists/sync-all' => [
         'summary' => 'Queue the sync of every document checklist',
-        'description' => 'Marks every non-deleted checklist pending and queues one sync job for each. Answers 202 with data.queued, the number of checklists queued. Requires document-checklists.update.',
+        'description' => 'Marks every non-deleted category pending and queues one sync job for each, then does the same for every non-deleted checklist, so categories reach ArchivioSmart first. Answers 202 with data.queued (checklists queued) and data.queued_categories (categories queued). Requires document-checklists.update.',
     ],
     'POST /document-checklists/{documentChecklist}/sync' => [
         'summary' => 'Queue the sync of a document checklist',

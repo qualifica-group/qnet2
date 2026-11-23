@@ -12,7 +12,7 @@ beforeAll(async () => {
 const schema = () => buildDocumentChecklistSchema(i18n.t)
 
 function valid(overrides: Record<string, unknown> = {}) {
-  return { name: 'Opening', code: 'OPEN_1', description: '', is_active: true, items: [buildDefaultItem()], ...overrides }
+  return { name: 'Opening', code: 'OPEN_1', description: '', category_id: null, is_active: true, items: [buildDefaultItem()], ...overrides }
 }
 
 function validWithItem(overrides: Record<string, unknown>) {

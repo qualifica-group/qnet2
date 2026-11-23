@@ -30,3 +30,6 @@ Route::delete('document-checklists/{documentChecklist}', [DocumentChecklistContr
 
 Route::post('document-checklists/{documentChecklist}/sync', [DocumentChecklistSyncController::class, 'sync']);
 Route::get('document-checklists/{documentChecklist}/sync-logs', [DocumentChecklistSyncController::class, 'logs']);
+
+// The categories of the checklists (spec 0410) share the module and its permissions.
+require __DIR__.'/document-checklist-categories.php';

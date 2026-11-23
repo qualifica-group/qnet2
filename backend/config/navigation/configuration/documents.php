@@ -36,5 +36,12 @@ return [
             'route' => '/document-checklists',
             'permission' => 'document-checklists.view',
         ],
+        [
+            'key' => 'document-checklist-categories',
+            'label' => 'navigation.documentChecklistCategories',
+            'icon' => 'list-tree',
+            'route' => '/document-checklist-categories',
+            'permission' => 'document-checklists.view',
+        ],
     ],
 ];

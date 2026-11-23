@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Categorie delle checklist + sincronizzazione ArchivioSmart (spec 0410, 2026-11-23) — VERDE, NON COMMITTATO, NON PROVATO NEL BROWSER
+
+- Menu Configurazione > Documenti > Categorie checklist (`/document-checklist-categories`). Stessi permessi delle checklist (`document-checklists.*`), nessun permesso nuovo. Resource key authz/tabella `document-checklist-categories`, policy `DocumentChecklistCategoryPolicy` con prefisso `document-checklists`.
+- Tabelle `document_checklist_categories` (name unico, description, sort_order, `external_id` stabile, stato di sync, soft delete) e `document_checklist_category_sync_logs` (indice `dc_category_sync_logs_category_created_at_index`, nome corto per MySQL). Su `document_checklists` c'è `category_id` (FK, facoltativa).
+- Sync con `SyncDocumentChecklistCategoryJob`: PUT o DELETE su `/categories/{external_id}`. Logica comune ai due job nel trait `app/Jobs/Concerns/PushesToArchivioSmart.php` (enum `ArchivioSmartCallResult`): 429 rispetta Retry-After; 5xx e rete con backoff; 401/409/422 falliscono senza retry. Il job della checklist (D-7) aspetta che la categoria sia sincronizzata prima di inviarsi; il PUT della checklist contiene sempre `category_external_id`, anche null.
+- Eliminare una categoria con checklist è bloccato: 422 con `errors.category`. "Sincronizza tutte" (`POST /document-checklists/sync-all`) accoda prima le categorie e risponde `{queued, queued_categories}`.
+- Endpoint: CRUD, `/for-select` (ADR 0011), `/{id}/sync`, `/{id}/sync-logs` (ultime 20 chiamate), griglia SSRM. La checklist espone `category {id,name}|null` e accetta `category_id`; la griglia ha `category_name`.
+- Frontend: `features/document-checklist-categories/*`. Il componente `checklist-sync-logs-section.tsx` è diventato generico (props `record`, `logsQueryKey`, `fetchLogs`). Nel form della checklist la categoria si sceglie con un `AsyncPaginatedSelect`. Guide in-app IT/EN `document-checklist-categories`, `HELP_GUIDE_KEYS` = 111.
+- Verifica:
+  - backend: 146/146 test in `tests/Feature/DocumentChecklists`; migrazioni applicate sul MySQL locale `qnet2`;
+  - frontend: vitest completo 10.834/10.834, `tsc -b --force` e eslint puliti.
+  - I rossi della suite backend completa sono tutti preesistenti: ZipArchive, PermissionCatalogue AC-004, ApiDocsDescriptions, TableBulkDelete, EmploymentProductLine e altri. `composer test --processes=4` va in timeout su `QualificaTemplateSeederTest` (150 s).
+- Rilievi aperti, non bloccanti:
+  - D-10: `onUnprocessable` controlla qualunque checklist pending, non solo quelle della categoria (si può stringere con `where('category_id', ...)`);
+  - `instanceof DocumentChecklist` nel trait.
+- Prossimi passi:
+  - prova nel browser;
+  - aggiornare il manuale Claude Docs ("Categorie checklist" e campo "Categoria" nelle checklist);
+  - spec delle richieste documentali, che includerà la categoria sulle richieste (punto 8 del brief).
+
 ## Checklist documentali + sincronizzazione ArchivioSmart (spec 0403, 2026-11-23) — COMMITTATO (06770e785), NON PROVATO NEL BROWSER
 
 - Menu Configurazione > Documenti > Checklist documentali (`/document-checklists`, permessi `document-checklists.*` + `document-checklists.manageConnection`). Checklist con voci ordinate; ogni salvataggio, attivazione (`PATCH /{id}/activation`) ed eliminazione (soft delete, la riga resta come traccia: id mai riusato) mette `sync_status=pending` e dispatcha `SyncDocumentChecklistJob(id)->afterCommit()`.

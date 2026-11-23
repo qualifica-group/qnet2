@@ -29,6 +29,16 @@ final class DocumentChecklistColumnCatalog
                 'searchable' => true,
             ],
             [
+                // Derived from the category relation (DocumentChecklistsTableDefinition).
+                'id' => 'category_name',
+                'label' => 'documentChecklists.columns.category_name',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'text',
+            ],
+            [
                 'id' => 'code',
                 'label' => 'documentChecklists.columns.code',
                 'type' => 'text',
@@ -99,6 +109,7 @@ final class DocumentChecklistColumnCatalog
         return [
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'code', 'type' => 'text'],
+            ['columnId' => 'category_name', 'type' => 'text'],
             ['columnId' => 'is_active', 'type' => 'boolean'],
             ['columnId' => 'sync_status', 'type' => 'set'],
         ];

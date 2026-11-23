@@ -1,20 +1,27 @@
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, type QueryKey } from '@tanstack/react-query'
 import { TriangleAlert } from 'lucide-react'
 import { RecordSection } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { fetchDocumentChecklistSyncLogs } from '@/features/document-checklists/api'
 import { ChecklistSyncStatusBadge } from '@/features/document-checklists/checklist-sync-status'
-import { documentChecklistKeys } from '@/features/document-checklists/query-keys'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import type { DocumentChecklist, DocumentChecklistSyncLog } from '@/features/document-checklists/types'
+import type { DocumentChecklistSyncLog, DocumentChecklistSyncStatus } from '@/features/document-checklists/types'
 
 const SYNC_LOGS_SHOWN = 20
 const LOG_SKELETON_ROWS = 3
 
+/** Sync fields shared by checklists and categories (spec 0410: the same section serves both). */
+interface SyncedRecord {
+  sync_status: DocumentChecklistSyncStatus
+  sync_error: string | null
+  synced_at: string | null
+}
+
 interface ChecklistSyncLogsSectionProps {
-  checklist: DocumentChecklist
+  record: SyncedRecord
+  logsQueryKey: QueryKey
+  fetchLogs: () => Promise<DocumentChecklistSyncLog[]>
 }
 
 const CELL_CLASS = 'px-2 py-1.5 align-top'
@@ -52,36 +59,37 @@ function SyncLogsTable({ logs }: { logs: DocumentChecklistSyncLog[] }) {
 }
 
 /**
- * "Sincronizzazioni" block of the checklist detail (spec 0403 AC-027): the
- * current sync state (+ last error) and the latest outbound calls.
+ * "Sincronizzazioni" block of a detail (spec 0403 AC-027, generic since spec
+ * 0410): the current sync state (+ last error) and the latest outbound calls,
+ * fetched through the caller's fetcher.
  */
-export function ChecklistSyncLogsSection({ checklist }: ChecklistSyncLogsSectionProps) {
+export function ChecklistSyncLogsSection({ record, logsQueryKey, fetchLogs }: ChecklistSyncLogsSectionProps) {
   const { t } = useTranslation()
   const logsQuery = useQuery({
-    queryKey: documentChecklistKeys.syncLogs(checklist.id),
-    queryFn: () => fetchDocumentChecklistSyncLogs(checklist.id),
+    queryKey: logsQueryKey,
+    queryFn: fetchLogs,
   })
   const logs = logsQuery.data?.slice(0, SYNC_LOGS_SHOWN) ?? []
-  const syncedAt = formatDateTime(checklist.synced_at)
+  const syncedAt = formatDateTime(record.synced_at)
 
   return (
     <RecordSection title={t('documentChecklists.syncLogs.title')} full>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <ChecklistSyncStatusBadge status={checklist.sync_status} />
+        <ChecklistSyncStatusBadge status={record.sync_status} />
         {syncedAt ? (
           <span>
             {t('documentChecklists.detail.syncedAt')}: {syncedAt}
           </span>
         ) : null}
       </div>
-      {checklist.sync_error ? (
+      {record.sync_error ? (
         <p
           role="alert"
           className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"
         >
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           <span>
-            <span className="font-medium">{t('documentChecklists.detail.syncError')}:</span> {checklist.sync_error}
+            <span className="font-medium">{t('documentChecklists.detail.syncError')}:</span> {record.sync_error}
           </span>
         </p>
       ) : null}

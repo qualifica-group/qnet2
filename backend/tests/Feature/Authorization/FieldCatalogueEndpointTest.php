@@ -197,6 +197,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0403 `document-checklists` (DocumentChecklistsAuthorization: name/code
         // mandatory, `code` read-only once the checklist is synced; REQUIREMENT CHANGED).
         'document-checklists',
+        // REQUIREMENT CHANGED (spec 0410): `document-checklist-categories` (DocumentChecklistCategoriesAuthorization:
+        // name mandatory, description/sort_order optional; permissions are the document-checklists.* ones).
+        'document-checklist-categories',
         // spec 0101 the Task module and its five configurators
         // (TasksAuthorization: title/task_status_id mandatory, `creator_id`
         // server-set and `completion_percentage` derived from the status, so

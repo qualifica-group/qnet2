@@ -18,6 +18,7 @@ final readonly class SaveDocumentChecklistData
         public string $code,
         public ?string $description,
         public bool $isActive,
+        public ?int $categoryId,
         public array $items,
     ) {}
 
@@ -31,6 +32,7 @@ final readonly class SaveDocumentChecklistData
             code: (string) $data['code'],
             description: $data['description'] ?? null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+            categoryId: isset($data['category_id']) ? (int) $data['category_id'] : null,
             items: array_map(
                 DocumentChecklistItemData::fromValidated(...),
                 array_values($data['items'] ?? []),
@@ -48,6 +50,7 @@ final readonly class SaveDocumentChecklistData
             'code' => $this->code,
             'description' => $this->description,
             'is_active' => $this->isActive,
+            'category_id' => $this->categoryId,
         ];
     }
 }

@@ -11,9 +11,11 @@ export const documentChecklists = {
   columns: {
     name: 'Nome',
     code: 'Codice',
+    category_name: 'Categoria',
     is_active: 'Attiva',
     items_count: 'Voci',
     sync_status: 'Sincronizzazione',
+    sync_error: 'Errore di sincronizzazione',
     synced_at: 'Ultima sincronizzazione',
     created_at: 'Creata il',
   },
@@ -47,8 +49,7 @@ export const documentChecklists = {
     dragHandle: 'Trascina per riordinare',
   },
   toast: {
-    syncQueued_one: '{{count}} checklist in coda di sincronizzazione',
-    syncQueued_other: '{{count}} checklist in coda di sincronizzazione',
+    syncAllQueued: 'In coda di sincronizzazione: {{categories}} categorie e {{checklists}} checklist.',
     syncAgainQueued: 'Sincronizzazione messa in coda.',
     activated: 'Checklist attivata.',
     deactivated: 'Checklist disattivata.',
@@ -76,6 +77,11 @@ export const documentChecklists = {
     code: 'Codice',
     codeHint: 'Solo lettere, numeri, trattino e trattino basso. Viene salvato in maiuscolo.',
     codeLocked: 'Il codice non è più modificabile dopo la prima sincronizzazione',
+    category: 'Categoria',
+    categoryPlaceholder: 'Nessuna categoria',
+    categorySearch: 'Cerca categoria…',
+    categoryEmpty: 'Nessuna categoria trovata.',
+    categoryError: 'Impossibile caricare le categorie.',
     description: 'Descrizione',
     isActive: 'Attiva',
     save: 'Salva',
@@ -95,7 +101,7 @@ export const documentChecklists = {
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, codice, descrizione e stato della checklist.',
+        description: 'Nome, codice, categoria, descrizione e stato della checklist.',
       },
       items: {
         title: 'Voci',
