@@ -17,6 +17,7 @@ function productItem(meta: Partial<QuoteProductForSelectItem['meta']> = {}): Quo
       vat_rate: '22.00',
       unit_of_measure: { id: 1, name: 'Giorno', symbol: 'gg' },
       product_typology: null,
+      cost_vat_rate: { id: 4, name: 'IVA al 0%', rate: '0.00' },
       ...meta,
     },
   }
@@ -30,17 +31,17 @@ function withCostType(costType: { id: number; name: string; color: string }): Qu
 }
 
 describe('costRowPatchFromProduct (D-8)', () => {
-  it('prefills unit price from products.cost (never price), VAT rate and unit of measure', () => {
+  it('prefills unit price from products.cost (never price), unit of measure and the 0% cost VAT', () => {
     const patch = costRowPatchFromProduct(productItem(), createEmptyCostRow())
 
-    expect(patch).toMatchObject({ product_id: 9, unit_price: 12.5, vat_rate_id: 3 })
+    expect(patch).toMatchObject({ product_id: 9, unit_price: 12.5, vat_rate_id: 4 })
     expect(patch.display).toMatchObject({
       product_code: 'CST-0009',
       product_name: 'Noleggio auto',
       product_category: 'Spese',
       unit_symbol: 'gg',
-      vat_name: 'IVA 22%',
-      vat_percent: 22,
+      vat_name: 'IVA al 0%',
+      vat_percent: 0,
     })
   })
 
@@ -68,9 +69,9 @@ describe('costRowPatchFromProduct (D-8)', () => {
     expect(kept).not.toHaveProperty('cost_type_id')
   })
 
-  it('handles a product with no cost, VAT rate or unit', () => {
+  it('handles a product with no cost or unit, and no 0% cost VAT rate', () => {
     const patch = costRowPatchFromProduct(
-      productItem({ cost: null, vat_rate_id: null, vat_rate_name: null, vat_rate: null, unit_of_measure: null }),
+      productItem({ cost: null, unit_of_measure: null, cost_vat_rate: null }),
       createEmptyCostRow(),
     )
 

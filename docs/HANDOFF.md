@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Costi a IVA 0% (decisione utente 2026-11-24) — VERDE MIRATO, COMMITTATO (qnet-2 + legacy), COMANDO NON ANCORA ESEGUITO
+
+- Regola: righe COSTO dell'offerta e costi effettivi della commessa partono sull'aliquota **"IVA al 0%"** (non vuota). Le righe di RICAVO restano con l'IVA del prodotto. L'operatore puo' cambiarla a mano.
+- Backend: `App\Support\Amounts\CostVatRate::resolve()` trova l'aliquota per nome `config('work-orders.cost_vat_rate_name')` (env `COST_VAT_RATE_NAME`, default `IVA al 0%`) + rate 0 (id diverso per ambiente; `once()`). `ProductForSelectResource` espone `meta.cost_vat_rate` `{id,name,rate}|null` (additivo).
+- Frontend: `QuoteProductForSelectMeta.cost_vat_rate`; `lineValuesFromProduct(item, 'cost')` -> `cost_vat_rate.id` (null se manca); `costRowPatchFromProduct` -> id + `display.vat_*` dalla stessa. Test aggiornati (REQUIREMENT CHANGED): `use-quote-lines-field.test.ts`, `cost-row-product.test.ts`, `work-order-costs-section.test.tsx`.
+- Comando one-shot idempotente `php artisan costs:clear-vat [--dry-run]` (`app/Console/Commands/ClearCostVat.php`, test `tests/Feature/WorkOrders/ClearCostVatCommandTest.php`): porta `quote_lines` COST e `work_order_costs` sull'aliquota 0% (IVA 0, total=net), in transazione, senza activity log; fallisce se l'aliquota non esiste.
+- Legacy (`../qnet`, committato): `LegacyQuoteCosts::ZERO_VAT_RATE_ID = 2` ("IVA al 0%" in `rates`), non legge piu' `rate`; `mapCostLine` e `LegacyWorkOrderCosts` inviano quell'id; tolti i lookup `rates` dei costi. Verificato in tinker: 21 costi reali, tutti `vat_rate_id` 2.
+- Guide IT/EN: `quotes.ts` (catalogo), `parts/work-orders-costs.ts`; manuale Claude Docs: paragrafo catalogo offerta.
+- Prossimo: eseguire `costs:clear-vat` su qnet2 (e staging/prod al deploy, dopo aver verificato che "IVA al 0%" esista); commit qnet-2 + legacy su richiesta, esclusi i file Formalab di un altro lavoro in corso.
+
 ## Formalab: Prospetto contabile discenti, ST-1 (spec 0427, 2026-11-24) — VERDE MIRATO, COMMITTATO, MIGRAZIONE APPLICATA SU qnet2
 
 - Port del Livewire legacy `ProspettoContabileDiscenti` (calcoli identici, valori attesi ricavati eseguendo i metodi legacy in memoria su classe 926 / COM-12574, 4 stati di incasso). Pulsante in Amministrazione > Costi solo con Formalab attiva + commessa idonea + classe collegata (`view_costs`).
