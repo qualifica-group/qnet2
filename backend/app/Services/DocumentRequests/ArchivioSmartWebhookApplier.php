@@ -86,16 +86,19 @@ class ArchivioSmartWebhookApplier
         $isItemEvent = str_starts_with($event->event, self::DOCUMENT_EVENT_PREFIX);
 
         $changes = [];
-        $needsRefresh = $isItemEvent && $isStale;
         if (! $isStale) {
             $changes = $this->requestChanges($event->event, $data, $occurredAt);
-            $needsRefresh = $isItemEvent && ! $this->applyItem($request, $event->event, $data, $occurredAt, $changes);
+            if ($isItemEvent) {
+                $this->applyItem($request, $event->event, $data, $occurredAt, $changes);
+            }
         }
 
         $changes['last_event_at'] = $request->last_event_at === null || $occurredAt->gt($request->last_event_at) ? $occurredAt : $request->last_event_at;
         activity()->withoutLogs(fn () => $request->forceFill($changes)->save());
 
-        if ($needsRefresh) {
+        // A document event carries neither the request counters nor the item's file
+        // list (nor a stale or unknown item): the full request is re-read from ArchivioSmart.
+        if ($isItemEvent) {
             $this->requests->request($request, DocumentRequestOperation::Refresh);
         }
     }
@@ -123,23 +126,18 @@ class ArchivioSmartWebhookApplier
             $changes['status'] = $status;
         }
 
-        foreach (['items_count', 'items_uploaded_count', 'items_satisfied_count'] as $counter) {
-            if (isset($remote[$counter]) && is_numeric($remote[$counter])) {
-                $changes[$counter] = (int) $remote[$counter];
-            }
-        }
-
         return $changes;
     }
 
     /**
-     * Sets the state of the named item in the snapshot. Returns false when the
-     * item is not there: the snapshot is stale and needs a refresh.
+     * Sets the state of the named item in the snapshot right away, so it shows
+     * even before the refresh answers. An item missing from the snapshot is left
+     * to the refresh.
      *
      * @param  array<string, mixed>  $data
      * @param  array<string, mixed>  $changes  receives the new snapshot
      */
-    private function applyItem(DocumentRequest $request, string $event, array $data, CarbonInterface $occurredAt, array &$changes): bool
+    private function applyItem(DocumentRequest $request, string $event, array $data, CarbonInterface $occurredAt, array &$changes): void
     {
         $itemId = is_array($data['item'] ?? null) ? ($data['item']['id'] ?? null) : null;
         $snapshot = $request->snapshot ?? [];
@@ -147,7 +145,7 @@ class ArchivioSmartWebhookApplier
 
         $index = collect($items)->search(static fn (array $item): bool => is_scalar($itemId) && (string) ($item['id'] ?? '') === (string) $itemId);
         if ($index === false) {
-            return false;
+            return;
         }
 
         $validation = is_array($data['validation'] ?? null) ? $data['validation'] : [];
@@ -165,7 +163,5 @@ class ArchivioSmartWebhookApplier
         }
 
         $changes['snapshot'] = [...$snapshot, 'items' => $items];
-
-        return true;
     }
 }

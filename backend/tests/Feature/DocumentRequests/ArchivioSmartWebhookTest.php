@@ -171,6 +171,7 @@ it('AC-012: when queueing fails the event is not recorded, so the retried delive
 
 it('AC-013: document.uploaded sets the item to uploaded', function () {
     documentRequestConnection(DR_WEBHOOK_SECRET);
+    Queue::fake([SyncDocumentRequestJob::class]);
     $request = webhookRequest();
 
     postArchivioSmartWebhook($this, webhookBody('document.uploaded', $request, ['item' => ['id' => 12]]), 'document.uploaded', 'evt-up')->assertStatus(202);
@@ -183,6 +184,7 @@ it('AC-013: document.uploaded sets the item to uploaded', function () {
 
 it('AC-013: document.validated with ko sets the status, the reason and the latest validation of the item', function () {
     documentRequestConnection(DR_WEBHOOK_SECRET);
+    Queue::fake([SyncDocumentRequestJob::class]);
     $request = webhookRequest();
 
     postArchivioSmartWebhook($this, webhookBody('document.validated', $request, [
@@ -224,18 +226,20 @@ it('AC-013: request.completed sets status and completed_at, request.expired sets
         ->and($expired->completed_at)->toBeNull();
 });
 
-it('AC-013: an item event updates the request status carried in data.request and the counters', function () {
+it('AC-013: an item event updates the request status carried in data.request and queues a refresh for the counters and the files', function () {
     documentRequestConnection(DR_WEBHOOK_SECRET);
+    Queue::fake([SyncDocumentRequestJob::class]);
     $request = webhookRequest();
-    $body = webhookBody('document.uploaded', $request, ['item' => ['id' => 11]]);
-    $body['data']['request'] += ['items_uploaded_count' => 1];
 
-    postArchivioSmartWebhook($this, $body, 'document.uploaded', 'evt-s')->assertStatus(202);
+    // The real document.* payload carries data.request without counters and the item without its file list.
+    postArchivioSmartWebhook($this, webhookBody('document.uploaded', $request, ['item' => ['id' => 11]]), 'document.uploaded', 'evt-s')->assertStatus(202);
 
     $request->refresh();
     expect($request->status)->toBe(DocumentRequestStatus::InProgress)
-        ->and($request->items_uploaded_count)->toBe(1)
-        ->and($request->last_event_at->toDateString())->toBe('2026-12-02');
+        ->and($request->snapshot['items'][0]['status'])->toBe('uploaded')
+        ->and($request->last_event_at->toDateString())->toBe('2026-12-02')
+        ->and($request->pending_operation)->toBe(DocumentRequestOperation::Refresh);
+    Queue::assertPushed(SyncDocumentRequestJob::class, fn (SyncDocumentRequestJob $job) => $job->documentRequestId === $request->id && $job->operation === DocumentRequestOperation::Refresh);
 });
 
 it('AC-014: an older event does not roll the request status back', function () {

@@ -26,7 +26,7 @@
 - Webhook `POST /api/webhooks/archivio-smart` (`routes/api/webhooks.php`, senza auth né throttle):
   - `VerifyArchivioSmartSignature`: HMAC-SHA256 sul raw body; 404 senza segreto, 401 con firma errata, altrimenti 202.
   - Registrazione evento e dispatch stanno in un'unica transazione: se la coda fallisce l'evento non resta "received" e il retry di ArchivioSmart viene elaborato.
-  - `ProcessArchivioSmartWebhookJob` → `ArchivioSmartWebhookApplier`: l'ordine si decide confrontando `occurred_at` con `remote_updated_at`; un `document.*` fuori ordine accoda un refresh; le richieste sconosciute vengono marcate ignored.
+  - `ProcessArchivioSmartWebhookJob` → `ArchivioSmartWebhookApplier`: l'ordine si decide confrontando `occurred_at` con `remote_updated_at`; ogni `document.*` aggiorna subito lo stato della voce e accoda un refresh, perché il payload reale non porta contatori né elenco file; le richieste sconosciute vengono marcate ignored.
 - Frontend:
   - `features/document-requests/`: scheda "Richieste documenti" nel gruppo documenti della commessa, dialog crea/modifica, sollecita, annulla con conferma, aggiorna stato, log; polling ogni 5 s mentre l'invio è pending.
   - Connessione ArchivioSmart: segreto webhook (vuoto = invariato; la UI non permette di rimuoverlo) e `webhook_url` copiabile.
