@@ -83,6 +83,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "The **Payment status** column shows the payment statuses of the work order's products grouped by typology: the **Consulenza** or **Ente** badge and, beside it, the statuses of that typology's products (for example **Consulenza** Saldato, No status · **Ente** Da pagare). A product without a status counts as **No status**; several products with the same status show it once. Hovering the cell shows each product, with code and name, and its status. The column cannot be sorted. The filter lists the typology and status pairs present, for example **Ente: Da pagare** or **Consulenza: No status**: it keeps the work orders with at least one product in a picked pair, and the filter search also finds just the status or the typology.",
         },
+        {
+          type: 'paragraph',
+          text: "If you see the work orders' **Contract data**, the table also has the **Consultancy amount** and **Total revenue** columns, as in the old QNet. **Consultancy amount** adds up the net amount of the work order's **Consulenza** products. **Total revenue** is the same total as the Contract data tab: the net amount of every product, except those with a **received** supplier commission (usually the **Ente** ones), which count only for that commission. Both can be sorted and filtered by amount (equals, greater than, less than, between).",
+        },
       ],
     },
     {

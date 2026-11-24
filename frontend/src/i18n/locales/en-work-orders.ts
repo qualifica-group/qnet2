@@ -76,6 +76,8 @@ export const workOrders = {
     // Spec 0407: the legacy "€" column, the proforma request state.
     proforma_status: '€',
     line_payment_statuses: 'Payment status',
+    consultancy_amount: 'Consultancy amount',
+    total_revenue: 'Total revenue',
     created_at: 'Created at',
     updated_at: 'Updated at',
     chat_unread_count: 'Unread',

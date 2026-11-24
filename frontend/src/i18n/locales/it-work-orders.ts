@@ -76,6 +76,8 @@ export const workOrders = {
     // Spec 0407: la colonna "€" del vecchio QNet, stato della richiesta proforma.
     proforma_status: '€',
     line_payment_statuses: 'Stato pagamento',
+    consultancy_amount: 'Importo consulenza',
+    total_revenue: 'Totale ricavo',
     created_at: 'Creata il',
     updated_at: 'Aggiornata il',
     chat_unread_count: 'Non letti',

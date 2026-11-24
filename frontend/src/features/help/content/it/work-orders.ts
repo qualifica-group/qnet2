@@ -83,6 +83,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "La colonna **Stato pagamento** mostra gli stati di pagamento dei prodotti della commessa raggruppati per tipologia: il badge **Consulenza** o **Ente** e, accanto, gli stati dei prodotti di quella tipologia (per esempio **Consulenza** Saldato, Nessuno stato · **Ente** Da pagare). Un prodotto senza stato conta come **Nessuno stato**; più prodotti con lo stesso stato lo mostrano una volta. Passando col mouse sulla cella vedi ogni prodotto, con codice e nome, e il suo stato. La colonna non si ordina. Il filtro elenca le coppie tipologia e stato presenti, per esempio **Ente: Da pagare** o **Consulenza: Nessuno stato**: tiene le commesse con almeno un prodotto in una delle coppie scelte, e la ricerca del filtro trova anche solo lo stato o la tipologia.",
         },
+        {
+          type: 'paragraph',
+          text: "Se vedi i **Dati contrattuali** delle commesse, la tabella ha anche le colonne **Importo consulenza** e **Totale ricavo**, come nel vecchio QNet. **Importo consulenza** somma l'imponibile dei prodotti di tipologia **Consulenza** della commessa. **Totale ricavo** è lo stesso totale della tab Dati contrattuali: l'imponibile di ogni prodotto, tranne quelli con provvigione fornitore **ricevuta** (di solito gli **Ente**), che contano solo per quella provvigione. Entrambe si ordinano e si filtrano per importo (uguale, maggiore, minore, compreso fra).",
+        },
       ],
     },
     {

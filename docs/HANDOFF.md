@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse: colonne "Importo consulenza" e "Totale ricavo" (richiesta utente 2026-11-24, come legacy `OrdersTable` `importo_consulenza`/`totale_ricavi`) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+
+- Backend: `App\Tables\WorkOrders\WorkOrderAmountColumns` (colonne `consultancy_amount`, `total_revenue`, `type: number`, filtro `number`, ordinabili). Valori riga stringa decimale (`"1500.00"`) calcolati dalle righe pivot eager-loaded (`EAGER_LOADS` = `quoteLines.product.productTypology`, `quoteLines.commissions`, caricati solo se visibili). `consultancy_amount` = somma `net_amount` delle righe con tipologia `code = consultancy`; `total_revenue` = somma `LineEffectiveRevenue::cents` (RECEIVED -> sole provvigioni SUPPLIER, altrimenti netto) = stesso totale `effective_revenue` della tab Dati contrattuali. Filtro (derived table + FilterApplier) e sort (subquery correlata) con la stessa regola in SQL.
+- Visibilita': solo con `work-orders.viewContractData` + `work-orders.viewCosts` (come WorkOrderPolicy::viewContractData; legacy "commessa importi"): senza, niente colonne, valori, filtro, sort. Ordine: dopo `line_payment_statuses`, prima di `proforma_status`. Cablaggio in `WorkOrdersTableDefinition` (columns/filters/baseQuery/mapRow) e `WorkOrderDerivedColumns` (applyFilter/applySort).
+- FE: `CurrencyCell` in `features/work-orders/column-renderers.tsx`; i18n `workOrders.columns.consultancy_amount`/`total_revenue` IT/EN.
+- Test: `tests/Feature/WorkOrders/WorkOrderAmountColumnsTest.php` (9), `column-renderers.test.tsx` (+2). Pest WorkOrders 618/623 (5 rossi preesistenti: WorkOrderAttributeLocksTest 3, QuoteLineWorkOrderMigrationTest 2), Tables 74, Projects 100, Exports 43; Vitest work-orders+help 61 file/549; ESLint, Pint, `tsc -b --force` puliti. Verifica DB dev: 200 commesse a caso, 0 differenze fra `total_revenue` e `effective_revenue` della tab Dati contrattuali.
+- Guide in-app `work-orders` IT/EN (paragrafo dopo "Stato pagamento") + manuale Claude Docs (paragrafo "Colonne Importo consulenza e Totale ricavo." dopo "Colonna Stato pagamento.").
+
 ## Costi a IVA 0% (decisione utente 2026-11-24) — VERDE MIRATO, COMMITTATO (qnet-2 + legacy), COMANDO NON ANCORA ESEGUITO
 
 - Regola: righe COSTO dell'offerta e costi effettivi della commessa partono sull'aliquota **"IVA al 0%"** (non vuota). Le righe di RICAVO restano con l'IVA del prodotto. L'operatore puo' cambiarla a mano.
@@ -373,7 +381,7 @@
 - Fuori scope (D-6): azione `documents` della griglia Offerte (resta sull'opportunita'), dettaglio Opportunita', spostamento dei documenti esistenti.
 - Da verificare nel browser: Nuova richiesta con righe ISO + APL, due file su richieste diverse -> ognuno nel tab Documenti della sua richiesta.
 
-## Trasferimento offerta ad altra anagrafica: anche il titolo (spec 0404 B-D8, 2026-11-18) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Trasferimento offerta ad altra anagrafica: anche il titolo (spec 0404 B-D8, 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente: nel dialog "Trasferisci ad altra anagrafica", oltre ad anagrafica e campi flessibili, anche la modifica del titolo dell'offerta. Seconda richiesta (stesso giorno): popup "piu' professionale come un vero CRM, piu' largo e spazioso".
 - Contratto: body `title?: string|null` max 191 (`TransferQuoteRegistryRequest::titleSubmitted()/title()`), regole di `QuoteTitleWriter::write` (vuoto/uguale all'automatico = automatico, altro = manuale; assente = invariato). `QuoteRegistryTransferService::transfer($quote, $registryId, $attributeValues, $titleSubmitted, $title, $actor)`: Step 5 dopo i campi flessibili; il cambio titolo resta nel log automatico dell'offerta. `RequestManagementResource` espone `title` (titolo dell'offerta) per precompilare il dialog dal pannello Lavora. Spec 0404 B-D8 + AC-015b + endpoint aggiornati; api-docs delle 3 rotte aggiornate.
@@ -432,7 +440,7 @@
 - Seeder one-shot `QualificaRequestRegistryTypeSeeder` (D-5): Formazione/APL (e le [OLD] collegate) Persona fisica, tutto il resto Azienda; test `QualificaRequestRegistryTypeSeederTest`. Anteprima sul DB locale: 4 radici individual (41 categorie su 368), 46 radici company. NON ESEGUITO: in attesa di ok utente.
 - Da verificare a mano: Nuova richiesta con una categoria radice impostata su Azienda -> la scheda vuota passa ad Azienda; con dati gia' scritti resta com'e'.
 
-## Un'offerta per categoria madre da Gestione Richieste (spec 0411, 2026-11-18) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Un'offerta per categoria madre da Gestione Richieste (spec 0411, 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente: "in base alle linee prodotto che seleziono mi genera piu' offerte ma solo per quella categoria prodotto madre (es iso, apl)"; risposte: N radici = N offerte sulla stessa opportunita', ognuna solo nella sua scheda/catalogo/campi; "solo alla creazione, all'edit il sistema blocca".
 - BE: colonna `quotes.root_product_category_id` (migrazione `2026_12_17_110000_add_root_product_category_id_to_quotes_table`, nullable, null = offerta non legata, comportamento invariato) — DA LANCIARE su qnet2 con ok utente. Relazione `Quote::rootProductCategory`, non fillable: la scrive solo `QuoteService::create` da `CreateQuoteData::rootProductCategoryId`.
@@ -568,7 +576,7 @@
 - `time-entry-entry-cells.tsx`: tooltip sul titolo agganciato a uno `span` (il bottone disabilitato non riceve eventi puntatore), bottone `disabled:pointer-events-none`.
 - Test in `time-entry-day-entries-table.test.tsx`; guide IT/EN `time-entries` e manuale Claude Docs (sezione Segnatempo) aggiornati; PDF del manuale da rigenerare.
 
-## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Riferimento legacy: `q-net/src/app/features/notifications/notifications-panel.tsx` (avatar + nome `assigned_by` accanto alla data).
 - BE: `NotificationData` ha la chiave `actor` `{id, name}|null` (sempre presente nel payload; malformata/assente -> null). `NoteMentionNotification::toArray()` la valorizza con l'autore della nota. Le notifiche gia' salvate restano senza actor (nessun backfill: il nome e' gia' nel messaggio).
@@ -655,7 +663,7 @@
 - Riparazione dati qnet-2: migrazione `2026_12_16_100000_normalize_enum_custom_field_values_to_option_values` (generica su tutti i campi enum, singoli e multiselect: valore non valido che coincide case-insensitive con valore o etichetta di un'opzione -> valore dell'opzione; `down()` no-op). Test `tests/Feature/CustomFields/NormalizeEnumCustomFieldValuesMigrationTest.php`; fixture `ProductsSourceImportTest` allineata al nuovo contratto (`consulenza`). Applicata su qnet2 locale con `--path` (1.462 righe corrette); su prod gira al deploy.
 - Manuale: nessun impatto.
 
-## Offerta: trasferimento ad altra anagrafica + obbligo di trasferimento contatto prima del contratto (spec 0404 parti B e C, 2026-11-16) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER, MIGRAZIONI NON LANCIATE SU qnet2
+## Offerta: trasferimento ad altra anagrafica + obbligo di trasferimento contatto prima del contratto (spec 0404 parti B e C, 2026-11-16) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER, MIGRAZIONI NON LANCIATE SU qnet2
 
 - Richiesta utente 2026-11-16 (sessione qnet-2-89, in parallelo alla parte A di qnet-2-03). Decisioni di esecuzione in spec 0404 C-D4 e B-D7.
 - **C** — colonna `product_categories.requires_contact_transfer_before_contract` (migrazione `2026_12_15_110000`), flag PER CATEGORIA (non della radice: Orientamento specialistico id 26 e' figlia di APL). Regola `App\Services\Quotes\ContactTransferBeforeContractRule` chiamata in `QuoteWorkflowStatusWriter::apply` (tutti i canali): verso closed_won, con contratto generabile (`ContractEligibility`), senza contratto esistente e `is_transferred = false` -> 422 `quote_workflow_status_id` (`quotes.contact_transfer_required_for_contract`; da Offerte rimappato su `quote_system_status_id` dalla parte A). FE: tile `ContactTransferRule` (generico `NodeSwitchRule` in `product-category-flag-rules.tsx`) + riga nella sezione regole. **Da fare dall'utente**: accendere il flag su "Orientamento specialistico" (nessun seed).
