@@ -226,7 +226,7 @@ final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
             ? null
             : WorkOrder::query()->find($task->work_order_id);
 
-        return $workOrder === null ? null : (new WorkOrderNotable)->mentionableUsersQuery($workOrder)->select('users.id');
+        return $workOrder === null ? null : (new WorkOrderNotable)->readersQuery($workOrder)->select('users.id');
     }
 
     /**

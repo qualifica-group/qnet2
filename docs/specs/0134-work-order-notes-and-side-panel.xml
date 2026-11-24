@@ -30,9 +30,13 @@
       `App\Services\WorkOrders\WorkOrderNotable`; `WorkOrder` usa `HasNotes`.
     </decision>
     <decision id="D-2">
-      Lettura = `work-orders.view` AND `WorkOrderVisibilityScope::isVisibleTo`. Menzionabili =
-      utenti attivi con `work-orders.view` che sono Responsabili/Partecipanti oppure hanno
-      `work-orders.viewAll`, piu' i super-admin. Scrittura = `notes.create` (core invariato).
+      Lettura = `work-orders.view` AND `WorkOrderVisibilityScope::isVisibleTo`. Menzionabili
+      (rev. 2026-11-24, segnalazione utente sulla commessa 13101: con la @ uscivano quasi tutti) =
+      solo il team: Responsabili/Partecipanti attivi, non di servizio, che leggono la commessa
+      (`WorkOrderNotable::mentionableUsersQuery` = `readersQuery` ristretto ai membri). Chi la legge
+      senza essere nel team (`work-orders.viewAll`, `viewSite`, super-admin) si menziona con
+      "Menziona chiunque" ed entra tra i Partecipanti (spec 0353). `readersQuery` (lettori) resta
+      il perimetro usato dai Task della commessa (spec 0379 D-8). Scrittura = `notes.create` (core invariato).
       Nessuna unita' di scoping: `ownsQuote` false, `quoteScopes` vuoto. Deep link
       `/work-orders/{id}?tab=notes` (rev. 2026-11-23, segnalazione utente: dal 2026-11-16 un link
       apre la Commessa su Info e la nota non si vedeva) solo se il destinatario legge la Commessa,

@@ -6,6 +6,7 @@ use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\WorkOrderNotable;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -194,7 +195,9 @@ it('AC-022: for-select equals the grid for a site-tier actor', function () {
     expect($picker)->toBe($grid)->and($picker)->toHaveCount(2);
 });
 
-it('AC-023: the mentionable set includes viewSite holders of the offer site', function () {
+// REQUIREMENT CHANGED (spec 0134 D-2 rev. 2026-11-24): a viewSite holder still reads the
+// commessa but leaves the @ menu, which offers the team only.
+it('AC-023: viewSite holders of the offer site read the commessa but are not in the @ menu', function () {
     Permission::findOrCreate('notes.create');
     $mine = OperationalSite::factory()->create();
     $other = OperationalSite::factory()->create();
@@ -212,6 +215,9 @@ it('AC-023: the mentionable set includes viewSite holders of the offer site', fu
     $ids = collect($this->getJson("/api/notes/mentionable-users?entity_type=work-orders&entity_id={$workOrder->id}")
         ->assertOk()->json('items'))->pluck('id')->sort()->values()->all();
 
-    expect($ids)->toContain($member->id, $inSite->id)
-        ->and($ids)->not->toContain($siteWrongPermission->id, $siteOtherSite->id);
+    $readers = app(WorkOrderNotable::class)->readersQuery($workOrder)->pluck('id')->all();
+
+    expect($ids)->toBe([$member->id])
+        ->and($readers)->toContain($member->id, $inSite->id)
+        ->and($readers)->not->toContain($siteWrongPermission->id, $siteOtherSite->id);
 });

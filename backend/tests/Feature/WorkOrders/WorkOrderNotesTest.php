@@ -21,8 +21,8 @@ uses(RefreshDatabase::class);
 |
 | The WorkOrder registers itself as a host of the agnostic notes component;
 | no endpoint is added. Read access is `work-orders.view` AND the membership
-| scope (WorkOrderVisibilityScope), the mentionable set is that same rule
-| read from the other end. Actors are built WITHOUT `work-orders.viewAll`
+| scope (WorkOrderVisibilityScope); the mentionable set is the team
+| (Responsabili, Partecipanti) among the readers. Actors are built WITHOUT `work-orders.viewAll`
 | unless the test is about it, so a 403 may mean "not a member".
 */
 
@@ -144,9 +144,12 @@ it('AC-004: a member WITHOUT notes.create is 403 and nothing is written', functi
     expect(Note::count())->toBe(0);
 });
 
-it('AC-005: the mentionable set is exactly the members, plus viewAll holders, viewSite holders of the offer site and super-admins', function () {
+// REQUIREMENT CHANGED (D-2 rev. 2026-11-24, user report): the @ menu offers the team only,
+// the readers outside it (viewAll, viewSite, super-admin) are reached through "Menziona chiunque".
+it('AC-005: the mentionable set is exactly the active Responsabili and Partecipanti who can read the work order', function () {
     $supervisor = workOrderNoteActor(['view']);
     $participant = workOrderNoteActor(['view']);
+    $memberWithoutView = workOrderNoteActor([]);
     $viewAll = workOrderNoteActor(['view', 'viewAll']);
     $stranger = workOrderNoteActor(['view']);
     $site = OperationalSite::factory()->create();
@@ -162,15 +165,38 @@ it('AC-005: the mentionable set is exactly the members, plus viewAll holders, vi
     $workOrder->quote->update(['operational_site_id' => $site->id]);
     $workOrder->participants()->attach($participant, ['position' => 1]);
     $workOrder->participants()->attach($inactive, ['position' => 2]);
+    $workOrder->participants()->attach($memberWithoutView, ['position' => 3]);
 
     Sanctum::actingAs($supervisor);
 
     $ids = collect($this->getJson("/api/notes/mentionable-users?entity_type=work-orders&entity_id={$workOrder->id}")
         ->assertOk()->json('items'))->pluck('id')->sort()->values()->all();
 
-    expect($ids)->toBe(
+    expect($ids)->toBe(collect([$supervisor->id, $participant->id])->sort()->values()->all());
+
+    // The readers (the Task perimeter of spec 0379 D-8) are untouched.
+    $readers = app(WorkOrderNotable::class)->readersQuery($workOrder)->pluck('id')->sort()->values()->all();
+
+    expect($readers)->toBe(
         collect([$supervisor->id, $participant->id, $viewAll->id, $siteHolder->id, $superAdmin->id])->sort()->values()->all()
     );
+});
+
+it('AC-005: a reader outside the team mentioned in a note joins the Partecipanti', function () {
+    $supervisor = workOrderNoteActor(['view']);
+    $viewAll = workOrderNoteActor(['view', 'viewAll']);
+    $workOrder = workOrderWithSupervisor($supervisor);
+
+    Sanctum::actingAs($supervisor);
+
+    $this->postJson('/api/notes', [
+        'entity_type' => 'work-orders',
+        'entity_id' => $workOrder->id,
+        'body' => sprintf('Ciao <span data-type="mention" data-id="%d" data-label="%s">@%s</span>', $viewAll->id, $viewAll->name, $viewAll->name),
+        'mentions' => [$viewAll->id],
+    ])->assertCreated()->assertJsonPath('meta.enlisted_user_ids', [$viewAll->id]);
+
+    expect($workOrder->participants()->pluck('users.id')->all())->toBe([$viewAll->id]);
 });
 
 it('AC-006: a note submitted with quote_id is 422 and meta.quotes is empty', function () {
