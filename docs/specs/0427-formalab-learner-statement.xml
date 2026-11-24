@@ -16,10 +16,9 @@
     Sotto-task:
     - ST-1 (questa consegna) Prospetto in lettura con tutti i calcoli, modifica di % / importo provvigione
       per discente, fornitore del partner, scenario provvigioni Economico/Finanziario, i due export Excel.
-    - ST-2 Migrazione dal legacy (backend.md §9) delle provvigioni dei discenti: `pre_info_formaziones`
-      (partner_commerciale_percentuale, partner_commerciale_importo, partner_commerciale_id) ->
-      `formalab_learner_commissions`. Endpoint legacy nuovo + sorgente qnet-2. Il testo libero
-      `partner_commerciale` NON si migra (D-2 revised 2026-11-24).
+    - ST-2 [revised 2026-11-24, D-8] Recupero dal legacy (backend.md §9) di Partner commerciale e
+      provvigioni dei discenti: endpoint legacy `learner-commercial-partners` + seeder one-shot qnet-2
+      `Integrations\Formalab\Seeders\LearnerCommercialPartnerSeeder` (non una sorgente di migrazione).
     - ST-3 Azioni di scrittura del legacy: "Genera Notula/e" (fornitore privato + riga di costo notula sul
       preventivo + ricevuta PDF), "Genera ODA Partner" (ordine fornitore con scadenze), "Importa Discenti
       da Formalab" (anagrafica + opportunita' + offerta per discente), selezione discenti/partner.
@@ -74,6 +73,21 @@
       anagrafica con quel codice fiscale; mostra numero e data. Lo stato (attesa IBAN/ricevuta/pagamento)
       arriva con ST-4.
     - D-7 Stato ODA del partner: ultimo `purchase_orders` della commessa con quel fornitore.
+    - D-8 [2026-11-24, richiesta utente: "la stringa scritta a mano non era nient'altro che il ga3
+      dell'offerta"] Il testo libero `pre_info_formaziones.partner_commerciale` e' il G.A.3 dell'opportunita'
+      (`opportunities.assigned3_to`, un utente) scritto a mano. Il LEGACY confronta il testo col nome del G.A.3
+      (parole senza accenti/maiuscole/punteggiatura, in qualsiasi ordine; vale anche se le parole dell'uno
+      stanno tutte nell'altro: "Marilisa Taglialatela" = "Marilisa Scafati Taglialatela") e manda l'utente
+      solo se e' la stessa persona; altrimenti un warning (testo senza G.A.3, testo diverso dal G.A.3).
+      qnet-2 (seeder): utente per `old_id` -> referente dell'utente: quello con `user_id` = utente, altrimenti
+      quello con lo stesso nome (stessa normalizzazione; piu' omonimi = il migrato con id minore + warning),
+      altrimenti nuovo referente interno di tipo "Commerciale" con nome ed email dell'utente (`user_id` non
+      valorizzato: il collegamento utente/referente cambia l'identita' delle provvigioni, spec 0090 D-5).
+      Il referente diventa Partner commerciale dell'opportunita' (per `old_id`) e dei suoi preventivi, solo
+      dove e' vuoto, senza toccare `updated_at` ne' le provvigioni delle righe d'offerta. Le provvigioni
+      (% / importo / fornitore) vanno in `formalab_learner_commissions` per codice fiscale dalla riga che il
+      prospetto legacy legge (la prima per CF), riempiendo solo i valori vuoti (vince qnet-2).
+      Ri-eseguibile senza effetti.
   </context>
 
   <contract>
@@ -138,6 +152,17 @@
       balance_attribute gol_importo_saldo, learner_revenue_product {services, 1326},
       learner_cost_product {expense_reports, 8}, partner_commission_product {expense_reports, 9}
     </config>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/learner-commercial-partners" auth="migration token">
+      query: offset?, limit? (1-100, default 50). Righe di `pre_info_formaziones` con testo partner, %, importo
+      o fornitore, in ordine di id.
+      200 { items: [{ id, opportunity_id, tax_code: string|null,
+                      commercial_partner_user_id: int|null (G.A.3 solo se il testo e' la stessa persona),
+                      commission: null | { percentage: float|null, amount: float|null,
+                                           supplier_registry_id: int|null (id legacy companies) }
+                        (solo sulla prima riga per codice fiscale e se ha almeno un valore),
+                      warnings: list&lt;string&gt; }],
+            pagination: { total, offset, limit, total_pages } }
+    </endpoint>
   </contract>
 
   <acceptance>
@@ -159,5 +184,9 @@
     - AC-009 Export Excel completo e per partner con il layout del legacy; per partner senza righe MOL.
     - AC-010 Avanzamento: percentuali per mese e ricavo del servizio 1326 ripartito.
     - AC-011 Classe non leggibile = class_status unavailable; senza discenti = empty.
+    - AC-012 Seeder: G.A.3 con referente omonimo = quel referente; senza = referente creato (una volta sola);
+      Partner commerciale messo su opportunita' e preventivi vuoti, non sovrascritto se gia' presente;
+      provvigioni scritte per codice fiscale solo nei valori vuoti, fornitore per `old_id`; righe senza
+      utente (warning legacy) non assegnano partner; seconda esecuzione senza cambiamenti.
   </acceptance>
 </spec>

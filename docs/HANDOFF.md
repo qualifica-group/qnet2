@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Campi collegati in una sola colonna (spec 0429, segnalazione utente 2026-11-24) — VERDE MIRATO, NON COMMITTATO, MIGRAZIONE E SEEDER NON LANCIATI SU qnet2
+## Campi collegati in una sola colonna (spec 0429, segnalazione utente 2026-11-24) — VERDE MIRATO, COMMITTATO (0e08fe8e3), MIGRAZIONE E SEEDER NON LANCIATI SU qnet2
 
 - Causa: filtrando ISO, Commesse/Offerte/Contratti mostrano le colonne di ISO e [OLD] ISO (spec 0374) e i due cataloghi hanno campi doppi (es. "Data di assegnazione" = `iso_assignment_date` e `data_inizio_lavorazione`): 17 nomi doppi sulle commesse, 26 sulle offerte. Supera spec 0374 D-10 per i campi collegati.
 - Soluzione (D-1..D-7): `attributes.current_attribute_id` (campo vecchio -> attuale, niente catene, solo tipi compatibili `Services\Attributes\AttributeLinkRules`: date, datetime, text/textarea, integer/decimal, boolean). `Tables\CategoryTabs\LinkedAttributeColumns` piega in griglia il vecchio nella colonna `attr.<attuale>` (valore = primo non vuoto; filtro "attuale presente E filtro, altrimenti vecchio" = COALESCE con gli handler di tipo; sort COALESCE; distinti = unione; cella scritta sul codice che il record ha, risposta PATCH anche sotto la colonna unita). Aggancio in `AttributeGridColumns::linked()` + trait `AppendsCategoryAttributeColumns`/`WritesCategoryAttributeCells`. Scheda campo: "Campo attuale" (`GET /api/attributes/for-select`, permesso di campo `current_attribute_id`).
@@ -12,6 +12,16 @@
 - Test: `LinkedAttributeColumnsTest` (8), `AttributeCurrentAttributeTest` (8, con reversibilita'), REQUIREMENT CHANGED `AttributeMetaTest` (catalogo campi + `current_attribute_id`). Pest CategoryTabs 106, Attributes 112, Contracts 243, Migration 943, Opportunities 305 verdi; rossi preesistenti: WorkOrderAttributeLocksTest (3) e QuoteLineWorkOrderMigrationTest (2) anche da soli e senza toccare codice di questa spec, `managers is not sortable`, AttributeLayoutConditionalSection formContext, LibreOffice (3), SupplierCommissionDirection AC-004 (rosso anche senza la nuova migrazione), ApiDocsDescriptions (operazioni di altre spec; `GET /attributes/for-select` descritta). Vitest attributes 142 + help 165 verdi (nuovo `attribute-current-attribute-field.test.tsx`), `tsc -b --force` ed ESLint puliti, Pint pulito.
 - Manuale: guide `attributes` (sezione `current-attribute`), `work-orders`, `quotes`, `contracts` IT/EN; Claude Docs aggiornato (Colonne dei campi flessibili di Offerte e Commesse, nuovo paragrafo Campo attuale, nota sui 41 collegamenti ISO). NON provato nel browser.
 - Prossimo passo possibile: enum con mappa dei valori (Standard ISO, Annualita' del certificato, Scopo confermato, Supporto verifica) e tabelle.
+
+## Formalab: Partner commerciale e provvigioni dei discenti dal legacy (spec 0427 D-8 / ST-2 rivisto, 2026-11-24) — VERDE MIRATO, COMMITTATO (qnet-2 + legacy), SEEDER NON ANCORA ESEGUITO
+
+- Richiesta utente: il testo `pre_info_formaziones.partner_commerciale` era il G.A.3 dell'opportunita' (`assigned3_to`) scritto a mano; se e' la stessa persona, il referente del G.A.3 (trovato o creato) diventa Partner commerciale, piu' le % / importi / fornitore scritti sul prospetto. Con un seeder.
+- Legacy (NON committato, git legacy soggetto a §3.6): `Api/V2/LearnerCommercialPartnerMigrationController` + rotta `migration/learner-commercial-partners`. Il confronto testo/G.A.3 e' nel legacy (parole senza accenti/ordine, una inclusa nell'altra); i casi scartati escono come `warnings`. Commissione solo sulla prima riga per CF (come legge il prospetto legacy). Verificato con tinker: 6.830 righe, 5.028 con G.A.3, 3.515 con provvigione.
+- qnet-2: `integrations/Formalab/Seeders/LearnerCommercialPartnerSeeder` + `Seeders/Support/UserReferentResolver` (referente con `user_id`, altrimenti omonimo — migrato con id minore —, altrimenti nuovo referente interno "Commerciale" con nome+email, SENZA `user_id`: il link fonde le identita' provvigionali, spec 0090 D-5). Partner solo dove vuoto su opportunita' e preventivi, `toBase()->update` (niente updated_at/activity/resync provvigioni). Provvigioni: riempie solo i valori vuoti.
+- Prova a secco su qnet2 (transazione annullata, dati dell'endpoint legacy): 6 referenti creati, 5.028 opportunita' + 5.028 preventivi, 3.515 provvigioni, 0,9 s. Scartati (warning): es. 437 "Pasquale Vetrano" con G.A.3 Annalisa Giordano, 433 "Interno", 244 "Domenico Communara" e 198 "Fabio Mariniello" senza G.A.3.
+- Esecuzione in prod: deploy del legacy, poi `php artisan db:seed --class="Integrations\Formalab\Seeders\LearnerCommercialPartnerSeeder" --force`. Ri-eseguibile.
+- Test: `FormalabLearnerCommercialPartnerSeederTest` 4; Formalab 111/111 (`FORMALAB_ENABLED=false`); Pint pulito.
+- Manuale: nessun impatto (recupero dati; la guida dice gia' che il partner e' quello dell'offerta).
 
 ## Picker stato delle azioni contratto bloccato senza `contracts.update` (segnalazione utente 2026-11-24, Annarita Palumbo) — VERDE MIRATO, COMMITTATO
 
