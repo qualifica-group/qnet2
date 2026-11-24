@@ -121,6 +121,27 @@ class FilterApplier
     }
 
     /**
+     * $query narrowed to the rows whose `$column` contains `$search`, for a
+     * distinct-value lookup that caps its list (500): narrowing BEFORE the cap
+     * keeps a match beyond it findable. The caller still matches `$search` on
+     * each value, so the narrowing only ever drops rows that cannot match.
+     *
+     * @param  Builder<Model>  $query
+     * @return Builder<Model>
+     */
+    public function narrowedBySearch(Builder $query, string $column, ?string $search): Builder
+    {
+        if ($search === null || $search === '') {
+            return $query;
+        }
+
+        $narrowed = clone $query;
+        $this->applyText($narrowed, $column, ['type' => 'contains', 'filter' => $search], 'and');
+
+        return $narrowed;
+    }
+
+    /**
      * Whether this column's blank entry also covers the empty string, on top of
      * `NULL`. Public because TableService builds the very same blank entry when
      * it lists a column's distinct values: both sides must agree on what "empty
@@ -296,7 +317,7 @@ class FilterApplier
             $to = $this->numericOrNull($filter['filterTo'] ?? null);
 
             if ($from !== null && $to !== null) {
-                $query->whereBetween($column, [$from, $to], $boolean);
+                $this->whereNumeric($query, $column, $boolean, static fn (Builder $target, string $join): Builder => $target->whereBetween($column, [$from, $to], $join));
             }
 
             return;
@@ -317,7 +338,30 @@ class FilterApplier
             default => '=', // 'equals'
         };
 
-        $query->where($column, $operator, $value, $boolean);
+        $this->whereNumeric($query, $column, $boolean, static fn (Builder $target, string $join): Builder => $target->where($column, $operator, $value, $join));
+    }
+
+    /**
+     * MySQL reads a JSON `null` through a JSON path as the string 'null' and
+     * casts it to 0 in a numeric comparison, so "= 0" or "< 5" on an attribute
+     * matched its empty cells: on a JSON path the comparison is guarded by a
+     * not-null, the same outcome a real nullable column gives.
+     *
+     * @param  Builder<Model>  $query
+     * @param  callable(Builder<Model>, string): mixed  $condition
+     */
+    private function whereNumeric(Builder $query, string $column, string $boolean, callable $condition): void
+    {
+        if (! str_contains($column, '->')) {
+            $condition($query, $boolean);
+
+            return;
+        }
+
+        $query->where(static function (Builder $group) use ($column, $condition): void {
+            $group->whereNotNull($column);
+            $condition($group, 'and');
+        }, boolean: $boolean);
     }
 
     /**
