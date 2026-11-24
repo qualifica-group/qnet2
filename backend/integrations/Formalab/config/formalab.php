@@ -31,4 +31,17 @@ return [
     'page_size' => 100,
     'max_pages' => 200,
 
+    // "Prospetto contabile discenti" (spec 0427): the legacy figures and the
+    // products standing for the legacy service 1326 and expense reports 8/9.
+    'learner_statement' => [
+        'cost_per_hour' => 1.0,
+        'revenue_per_hour' => 0.85,
+        'cache_minutes' => (int) env('FORMALAB_LEARNER_STATEMENT_CACHE_MINUTES', 360),
+        'advance_attribute' => 'gol_importo_anticipo',
+        'balance_attribute' => 'gol_importo_saldo',
+        'learner_revenue_product' => ['old_source' => 'services', 'old_id' => 1326],
+        'learner_cost_product' => ['old_source' => 'expense_reports', 'old_id' => 8],
+        'partner_commission_product' => ['old_source' => 'expense_reports', 'old_id' => 9],
+    ],
+
 ];

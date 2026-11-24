@@ -1,5 +1,7 @@
 /** Traduzioni italiane (namespace `formalab`, spec 0422). */
+import { learnerStatementIt } from '@/integrations/formalab/i18n/it-learner-statement'
 export const formalabIt = {
+  learnerStatement: learnerStatementIt,
   nav: { label: 'Formalab', status: 'Stato e configurazione', classes: 'Classi' },
   classes: {
     entity: 'Classi Formalab',

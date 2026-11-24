@@ -18,6 +18,7 @@ import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-or
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
+import { IntegrationWorkOrderAccountingActions } from '@/integrations/integration-work-order-accounting-actions'
 import { useIntegrationWorkOrderTabs } from '@/integrations/use-integration-work-order-tabs'
 
 export const WORK_ORDER_INFO_TAB = 'info'
@@ -142,7 +143,13 @@ export function useWorkOrderDetailTabs({
       value: 'costs',
       label: t('workOrders.costs.title'),
       icon: <Euro className="size-3.5" aria-hidden="true" />,
-      content: <WorkOrderCostsSection workOrderId={workOrder.id} canManage={actions.manage_costs === true} />,
+      // Integration actions on top of the costs (e.g. Formalab "Prospetto contabile discenti", spec 0427).
+      content: (
+        <>
+          <IntegrationWorkOrderAccountingActions workOrder={workOrder} />
+          <WorkOrderCostsSection workOrderId={workOrder.id} canManage={actions.manage_costs === true} />
+        </>
+      ),
     })
   }
   if (actions.view_invoices) {

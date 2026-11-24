@@ -135,6 +135,35 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'learner-statement',
+      title: 'Prospetto contabile discenti',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Sulle commesse di una categoria collegata a Formalab, con la classe scelta, la scheda **Amministrazione** > **Costi** mostra il pulsante **Prospetto contabile discenti** (serve il permesso di vedere i costi della commessa). Il prospetto legge i discenti della classe da Formalab, con le loro ore di presenza e l\'esito, e li incrocia con il preventivo della commessa, come nel QNet precedente.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Costo del discente**: ore di presenza intere × 1 €/h; **ricavo**: ore arrotondate al quarto d\'ora per difetto × 0,85 €/h. Le ore non superano il totale ore del corso.',
+            '**Riepilogo Costi e Ricavi**: costo discenti, altri costi del preventivo (escluse le provvigioni partner), ricavi formazione, utile, **MOL Qualifica** e **utile a discente** (diviso per i discenti che hanno superato il corso).',
+            '**Scenari**: con solo l\'anticipo incassato compaiono acconto reale, saldo previsto e totale economico previsionale; con solo il saldo il pagamento unico; con anticipo e saldo le due tranche e il totale finanziario reale. Anticipo e saldo vengono dai campi **€ Anticipo Incassato** e **€ Saldo Incassato** della commessa.',
+            '**Provvigioni partner**: per ogni discente con partner si indica una **percentuale** (applicata all\'utile a discente) oppure un **importo fisso**; le modifiche si salvano uscendo dal campo. Lo scenario **Economico** usa l\'utile previsto, il **Finanziario** quello incassato ed è disponibile solo con il saldo registrato.',
+            '**Fornitore del partner**: nel riepilogo per partner si sceglie il fornitore con cui il partner viene pagato; vale per tutti i suoi discenti della classe. Accanto compare l\'ordine fornitore del partner sulla commessa, se esiste.',
+            '**Avanzamento Commessa**: le percentuali di avanzamento per mese, con la quota del ricavo discenti.',
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: '**Esporta Excel** scarica il prospetto completo; **Esporta per Partner** un foglio per ogni partner con i soli suoi discenti, senza il MOL Qualifica. **Aggiorna da Formalab** rilegge subito la classe.',
+        },
+        {
+          type: 'note',
+          text: 'Modificare percentuali, importi e fornitori richiede il permesso di gestire i costi della commessa. In fase di sviluppo: generazione delle notule e degli ordini ai partner, importazione dei discenti, notule discenti.',
+        },
+      ],
+    },
+    {
       id: 'automatic-sync',
       title: 'Sincronizzazione automatica',
       blocks: [

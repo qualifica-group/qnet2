@@ -135,6 +135,35 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'learner-statement',
+      title: 'Learner accounting statement',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'On the work orders of a category linked to Formalab, with the class chosen, the **Administration** > **Costs** tab shows the **Learner accounting statement** button (it needs the permission to see the work order costs). The statement reads the class learners from Formalab, with their attendance hours and outcome, and matches them with the work order quote, as in the previous QNet.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Learner cost**: whole attendance hours × 1 €/h; **revenue**: hours rounded down to the quarter × 0.85 €/h. Hours never exceed the course total hours.',
+            '**Costs and Revenue Summary**: learner cost, other quote costs (partner commissions excluded), training revenue, profit, **MOL Qualifica** and **profit per learner** (divided by the learners who passed).',
+            '**Scenarios**: with only the advance collected, actual advance, forecast balance and forecast economic total appear; with only the balance, the single payment; with both, the two tranches and the actual financial total. Advance and balance come from the **€ Anticipo Incassato** and **€ Saldo Incassato** fields of the work order.',
+            '**Partner commissions**: each learner with a partner gets a **percentage** (applied to the profit per learner) or a **fixed amount**; changes are saved when leaving the field. The **Economic** scenario uses the forecast profit, the **Financial** one the collected profit and is available only once the balance is recorded.',
+            '**Partner supplier**: in the summary by partner you pick the supplier the partner is paid through; it applies to all the partner learners of the class. Next to it, the partner purchase order on the work order, if any.',
+            '**Work order progress**: the progress percentages by month, with their share of the learner revenue.',
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: '**Export Excel** downloads the whole statement; **Export per Partner** one sheet per partner with only its learners, without MOL Qualifica. **Refresh from Formalab** reads the class again right away.',
+        },
+        {
+          type: 'note',
+          text: 'Changing percentages, amounts and suppliers requires the permission to manage the work order costs. Under development: learner notes and partner purchase orders generation, learner import, learner notes.',
+        },
+      ],
+    },
+    {
       id: 'automatic-sync',
       title: 'Automatic sync',
       blocks: [

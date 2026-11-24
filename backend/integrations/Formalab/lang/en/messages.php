@@ -12,6 +12,8 @@ return [
     'sync_queued' => 'Formalab synchronization queued.',
     'sync_already_running' => 'A Formalab sync is already running: wait for it to finish.',
     'sync_interrupted' => 'Sync interrupted before finishing (process stopped or timed out): the next one starts over.',
+    'learner_not_in_class' => 'The learner is not in this work order\'s class.',
+    'no_partners' => 'No commercial partner found in the work order.',
     'course_fields_missing' => 'Mapped fields no longer among the attributes, so not updated: :codes.',
     'category' => [
         'enabled_inherited' => 'The Formalab link is decided on the root category: this category inherits it.',

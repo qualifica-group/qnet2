@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0427-formalab-learner-statement" status="in-progress" owner="nicola" date="2026-11-24" extends="0426-formalab-class-select">
+
+  <goal>
+    Portare in qnet-2 il "Prospetto contabile discenti" del QNet legacy
+    (`app/Livewire/Orders/ProspettoContabileDiscenti.php` + vista `prospetto-contabile-discenti.blade.php`,
+    pulsante nella sezione "€" della commessa) con la STESSA logica e gli STESSI calcoli. In qnet-2 il
+    pulsante compare solo se l'integrazione Formalab e' attiva e la commessa appartiene a una categoria
+    collegata a Formalab (spec 0423) con una classe scelta.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-24 ("riportarmi tutto come e' pari pari anche la logica e calcoli").
+    Il legacy e' grande (3.904 righe PHP + 1.093 Blade): il lavoro e' diviso in sotto-task (CLAUDE.md §3.2).
+
+    Sotto-task:
+    - ST-1 (questa consegna) Prospetto in lettura con tutti i calcoli, modifica di % / importo provvigione
+      per discente, fornitore del partner, scenario provvigioni Economico/Finanziario, i due export Excel.
+    - ST-2 Migrazione dal legacy (backend.md §9) dei dati partner dei discenti: `pre_info_formaziones`
+      (partner_commerciale, partner_commerciale_percentuale, partner_commerciale_importo,
+      partner_commerciale_id) -> `formalab_learner_commissions`. Endpoint legacy nuovo + sorgente qnet-2.
+    - ST-3 Azioni di scrittura del legacy: "Genera Notula/e" (fornitore privato + riga di costo notula sul
+      preventivo + ricevuta PDF), "Genera ODA Partner" (ordine fornitore con scadenze), "Importa Discenti
+      da Formalab" (anagrafica + opportunita' + offerta per discente), selezione discenti/partner.
+    - ST-4 Modulo "Notule discenti" (pagina pubblica a token, IBAN, email, PDF): prerequisito del pulsante
+      "Importa liquidazioni (Notule discenti)" e dello stato dell'ODA discente. Nel legacy 0 notule.
+
+    Corrispondenze legacy -> qnet-2 (verificate sulla commessa legacy 12574 = COM-12574, classe 926):
+    - `orderformaziones.edition_id` -> classe scelta nella select della commessa
+      (`CourseFieldWriter::editionIdOf`), altrimenti `formalab_work_order_links.edition_id`.
+    - `orderformaziones.importo_anticipo / importo_saldo` -> attributi commessa `gol_importo_anticipo` /
+      `gol_importo_saldo` (spec 0182).
+    - Discenti e corso -> lettura `GET /api/classi/{edition}` di Formalab (`classe.discenti`, `classe.corso`),
+      in cache come nel legacy (`FormalabService::getClasse`, 6 ore); `refresh=1` la rilegge.
+      Le info corso (titolo, stato, date, sede, due fasi) vengono dallo stesso payload (nel legacy dalla
+      tabella `classi`, che ne e' la copia).
+    - `quotationservices` / `quotationexpensereports` / `quotationemployees` -> `quote_lines` del preventivo
+      della commessa (`work_orders.quote_id`): REVENUE e COST. Servizio 1326 "Servizio Cablato" = prodotto
+      `old_source=services, old_id=1326`; spesa 8 (notula discenti) = prodotto `expense_reports/8`;
+      spesa 9 (ODA partner, esclusa dai costi) = prodotto `expense_reports/9`. Configurabili in
+      `formalab.learner_statement.*`.
+    - `avanzamento_commesse` -> `work_order_progress_entries` raggruppate per anno/mese di `recorded_on`.
+    - `proformfora_heads` (ODA partner) -> `purchase_orders` (supplier_id + work_order_id); stati 1-7 = enum
+      `PurchaseOrderStatus`.
+    - `companies` (fornitore del partner) -> `registries`.
+
+    Decisioni (autonomia, memoria utente "decido io"):
+    - D-1 Calcoli identici al legacy (tariffe 1 EUR/h costo su ore intere, 0,85 EUR/h ricavo su ore a quarti
+      d'ora per difetto, tetto `corso.total_hours`; stati A solo acconto / B solo saldo / C acconto+saldo;
+      coefficienti di tranche; provvigioni a percentuale sull'utile a discente dello scenario scelto, a
+      importo fisso altrimenti; MOL). Float PHP come nel legacy, arrotondamenti negli stessi punti.
+      Le stranezze del legacy restano: il riepilogo partner esclude solo i "non superati" (`false`), le
+      provvigioni di tranche contano solo i "superati" (`true`) senza guardare il partner; la
+      ripartizione per mese usa solo il ricavo del servizio 1326.
+    - D-2 Dati partner per discente in tabella propria `formalab_learner_commissions`, chiave codice
+      fiscale (il legacy lavora per codice fiscale: `PreInfoFormazione::where('codice_fiscale')->first()`):
+      partner_name, percentage, amount, supplier_registry_id. Partner del discente = `partner_name` della
+      riga; se vuoto, il Partner commerciale (spec 0417) dell'anagrafica con quel codice fiscale.
+    - D-3 Scrittura % : percentuale limitata 0-100; se > 0 l'importo salvato = utile a discente dello
+      scenario attivo x % (come `updatedPercentualiPartner`). Scrittura importo: >= 0. Il legacy
+      riallineava gli importi a ogni apertura (`allineaImportiPartner`): in qnet-2 la lettura non scrive;
+      l'importo salvato di una riga a percentuale non entra in nessun calcolo, quindi i numeri non cambiano.
+    - D-4 Autorizzazione: lettura ed export = `viewCosts` della commessa; modifiche = `manageCosts`.
+      Pulsante nella scheda Amministrazione > Costi (il "€" legacy), tramite punto di estensione
+      generico delle integrazioni (`WorkOrderAccountingActions`).
+    - D-5 Classe non leggibile da Formalab (errore o 404) = prospetto con avviso "Dati classe non
+      disponibili" e solo l'avanzamento, come il legacy; classe senza discenti = avviso "Nessun discente".
+    - D-6 Colonna ODA del discente: riga di costo notula (prodotto spesa 8) del preventivo con fornitore =
+      anagrafica con quel codice fiscale; mostra numero e data. Lo stato (attesa IBAN/ricevuta/pagamento)
+      arriva con ST-4.
+    - D-7 Stato ODA del partner: ultimo `purchase_orders` della commessa con quel fornitore.
+  </context>
+
+  <contract>
+    <endpoint method="GET" path="/api/integrations/formalab/work-orders/{workOrder}/learner-statement" auth="sanctum" authz="viewCosts">
+      query: commission_scenario? (economic|financial; default financial se saldo > 0, altrimenti economic;
+             financial senza saldo = economic), refresh? (bool: rilegge la classe da Formalab)
+      422 not_eligible | course_name_missing
+      200 data: {
+        edition_id: int, class_status: "ok"|"empty"|"unavailable", can_manage: bool,
+        class: null | { code, title, status, start_date, end_date, total_hours, two_phase, site_name,
+                        site_address, site_city, site_code, learners_total, learners_passed,
+                        learners_failed, passed_percentage },
+        rates: { cost_per_hour, revenue_per_hour },
+        commission_scenario: "economic"|"financial", financial_available: bool,
+        payment_state: "none"|"advance_only"|"balance_only"|"advance_and_balance",
+        costs: { learners, other_lines: [{ title, note, amount }], other_total, total },
+        summary: {
+          learners_count, learner_revenue, training_revenue, total_revenue, partial_profit, commissions, mol,
+          profit_per_learner,
+          advance: null | Tranche, forecast_balance: null | Tranche, balance: null | Tranche,
+          forecast_total: null | { total_revenue, total_costs, partial_profit, commissions, mol, profit_per_learner },
+          actual_total: null | { total_revenue, difference, total_costs, partial_profit, commissions, mol, profit_per_learner },
+          single_payment: null | { learner_revenue, training_revenue, balance, total_revenue, difference,
+                                   partial_profit, commissions, mol, profit_per_learner }
+        },
+        Tranche = { amount, weight, costs, partial_profit, commissions, mol, profit_per_learner },
+        learners: [{ id, first_name, last_name, tax_code, presence: { hours, minutes }, absence: { hours, minutes },
+                     phases: null | { presence_training, presence_internship, absence_training, absence_internship } (minuti),
+                     passed: true|false|null, cost_hours, cost, revenue_hours, revenue, margin,
+                     partner: string|null, percentage, amount, commission, learner_order: null | { id, date } }],
+        totals: { presence: { hours, minutes }, absence: { hours, minutes },
+                  phases: null | { presence_training, presence_internship, absence_training, absence_internship },
+                  learner_costs, learner_revenue },
+        partners: { partial_profit, profit_per_learner, total,
+                    tranche: { advance_weight, advance_commissions, balance_weight, balance_commissions,
+                               forecast_balance_weight, forecast_balance_commissions },
+                    items: [{ key, name, learners_count, total, supplier: null | { id, name },
+                              purchase_order: null | { id, number, status, total },
+                              learners: [{ name, percentage, manual_amount, commission, type: "percentage"|"amount" }] }] },
+        progress: { items: [{ year, month, percentage, revenue }], total_percentage, total_revenue }
+      }
+    </endpoint>
+    <endpoint method="PUT" path="/api/integrations/formalab/work-orders/{workOrder}/learner-statement/learners/{taxCode}/commission" auth="sanctum" authz="manageCosts">
+      body: { percentage?: number|null, amount?: number|null, commission_scenario: "economic"|"financial" } (uno dei due)
+      404 discente non nella classe; 200 data: statement (come GET)
+    </endpoint>
+    <endpoint method="PUT" path="/api/integrations/formalab/work-orders/{workOrder}/learner-statement/partners/supplier" auth="sanctum" authz="manageCosts">
+      body: { partner: string, supplier_id: int|null (registries), commission_scenario }
+      200 data: statement (come GET)
+    </endpoint>
+    <endpoint method="GET" path="/api/integrations/formalab/work-orders/{workOrder}/learner-statement/export" auth="sanctum" authz="viewCosts">
+      query: commission_scenario?, variant? ("full" default | "partners": un foglio per partner, senza MOL)
+      200 application/vnd.openxmlformats-officedocument.spreadsheetml.sheet (layout del legacy exportExcel / exportExcelPartners)
+      422 no_partners (variant partners senza partner)
+    </endpoint>
+    <table name="formalab_learner_commissions">
+      id, tax_code (unique, 32), partner_name (nullable), percentage decimal(5,2) nullable,
+      amount decimal(12,2) nullable, supplier_registry_id (FK registries, nullOnDelete), timestamps
+    </table>
+    <config key="formalab.learner_statement">
+      cost_per_hour 1, revenue_per_hour 0.85, cache_minutes 360, advance_attribute gol_importo_anticipo,
+      balance_attribute gol_importo_saldo, learner_revenue_product {services, 1326},
+      learner_cost_product {expense_reports, 8}, partner_commission_product {expense_reports, 9}
+    </config>
+  </contract>
+
+  <acceptance>
+    - AC-001 Pulsante "Prospetto contabile discenti" in Amministrazione > Costi solo con Formalab attiva,
+      commessa idonea (categoria collegata) e classe scelta, e con `view_costs`.
+    - AC-002 GET: 403 senza viewCosts; 422 commessa non idonea o senza classe; 404 con Formalab spenta.
+    - AC-003 Ore e importi per discente: costo = ore intere (tetto total_hours) x 1; ricavo = ore a quarti per
+      difetto (tetto) x 0,85; margine = ricavo - costo; ordinamento cognome, nome.
+    - AC-004 Costi: discenti = righe costo spesa 8 legate al ricavo 1326; altri = tutte le altre righe di costo
+      escluse le spese 9; ricavi formazione = righe ricavo esclusa la 1326.
+    - AC-005 Scenari: stato A (solo acconto) = acconto + saldo previsto + totale economico previsionale; stato B
+      (solo saldo) = scenario finanziario pagamento unico; stato C = acconto + saldo + totale finanziario reale;
+      nessun importo = solo economico. Valori uguali al legacy sugli stessi dati.
+    - AC-006 Provvigioni: % sull'utile a discente dello scenario (economico/finanziario), importo fisso senza %;
+      riepilogo per partner ordinato per nome; finanziario non selezionabile senza saldo.
+    - AC-007 PUT commissione: 403 senza manageCosts; % limitata 0-100 e importo calcolato salvato; importo
+      manuale >= 0; discente fuori classe 404.
+    - AC-008 PUT fornitore partner: salvato su tutti i discenti della classe con quel partner.
+    - AC-009 Export Excel completo e per partner con il layout del legacy; per partner senza righe MOL.
+    - AC-010 Avanzamento: percentuali per mese e ricavo del servizio 1326 ripartito.
+    - AC-011 Classe non leggibile = class_status unavailable; senza discenti = empty.
+  </acceptance>
+</spec>

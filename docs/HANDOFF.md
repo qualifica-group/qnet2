@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Formalab: Prospetto contabile discenti, ST-1 (spec 0427, 2026-11-24) — VERDE MIRATO, COMMITTATO, MIGRAZIONE APPLICATA SU qnet2
+
+- Port del Livewire legacy `ProspettoContabileDiscenti` (calcoli identici, valori attesi ricavati eseguendo i metodi legacy in memoria su classe 926 / COM-12574, 4 stati di incasso). Pulsante in Amministrazione > Costi solo con Formalab attiva + commessa idonea + classe collegata (`view_costs`).
+- Backend (`integrations/Formalab/`): tabella `formalab_learner_commissions` (migrazione `2026_11_24_100000`, chiave `tax_code`: partner_name, percentage, amount, supplier_registry_id), config `formalab.learner_statement.*` (tariffe 1/0,85, attributi `gol_importo_anticipo/saldo`, prodotti legacy services/1326, expense_reports/8 e /9). `Services/LearnerStatement/`: ClassRoster (GET /api/classi/{id} in cache 6h, `refresh`), LearnerFigures, QuoteFigures, CommissionBook (partner da riga salvata, altrimenti Partner commerciale dell'anagrafica con quel CF), StatementCalculator, Loader, Presenter (+SummaryPresenter), CommissionEditor. `Exports/` (PhpSpreadsheet, layout legacy: completo e per partner senza MOL). Rotte GET/PUT/GET export sotto `work-orders/{id}/learner-statement`.
+- Frontend: `integrations/formalab/learner-statement/*` (dialog, riepilogo scenari, tabella discenti con %/importo a blur, partner con fornitore e ODA, avanzamento, export); punto di estensione generico `IntegrationDefinition.WorkOrderAccountingActions` montato in `use-work-order-detail-tabs` sopra i Costi. i18n `formalab:learnerStatement.*` in `i18n/{it,en}-learner-statement.ts`; guida `formalab` IT/EN sezione `learner-statement`.
+- Test: `FormalabLearnerStatementTest` 14/14; Pest Integrations+System+Navigation 160/160 (`FORMALAB_ENABLED=false`); Vitest integrations/help 205, work-orders/costs 426; tsc -b, ESLint, Pint puliti. `StatementCalculator` 323 righe (sopra soglia morbida, solo getter).
+- Ambiente: il `vendor/composer` locale non mappava `Integrations\` (tutti i test Formalab fallivano con "class not found"): rigenerato con `composer dump-autoload -o`.
+- qnet2: la tabella era gia' stata creata da un `migrate` interrotto prima di registrarsi (identica, vuota): registrata a mano in `migrations` (batch 50), nessun DROP. Verificato su COM-12574: stessi numeri del legacy (utile 40.283,47, utile/discente 4.028,347), provvigioni a 0 finche' non arriva ST-2.
+- DA FARE: ST-2 migrazione dati partner dal legacy (pre_info_formaziones: 6.826 con partner, 3.364 con %, 1.108 con fornitore; il legacy legge la PRIMA riga per CF). ST-3 azioni: Genera Notula/e, Genera ODA Partner (con scadenze), Importa discenti, selezioni. ST-4 modulo Notule discenti (prerequisito di "Importa liquidazioni" e dello stato ODA discente).
+- Differenze dichiarate dal legacy: la lettura non riallinea gli importi salvati (non influenza i calcoli); colonna ODA discente senza stato (arriva con ST-4); refresh classe esplicito.
+
 ## Formalab: polling leggero e backfill senza N+1 (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, NON COMMITTATO
 
 - Misura sulla copia di prod: `GET /status` (e la fase backfill del sync) facevano 5.504 query / 7 s per le 464 commesse non collegate (~12 query a commessa: mappa categoria + attributi applicabili); il polling ogni 5 s lo martellava.
