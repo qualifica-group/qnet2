@@ -41,7 +41,8 @@ it('200: field catalogue matches the frozen contract, in order', function () {
     $response = $this->getJson('/api/meta/attributes')->assertOk();
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['code', 'name', 'type', 'description', 'help_text', 'placeholder', 'icon', 'config', 'relation_target', 'options']);
+    // REQUIREMENT CHANGED (spec 0429 D-7): the "Campo attuale" link closes the catalogue.
+    expect($keys)->toBe(['code', 'name', 'type', 'description', 'help_text', 'placeholder', 'icon', 'config', 'relation_target', 'options', 'current_attribute_id']);
 
     $fields = collect($response->json('data.fields'))->keyBy('key');
     expect($fields['code']['mandatory'])->toBeTrue()

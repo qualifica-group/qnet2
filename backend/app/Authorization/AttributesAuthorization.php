@@ -44,6 +44,8 @@ class AttributesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('config', 'custom'),
             new FieldDefinition('relation_target', 'custom'),
             new FieldDefinition('options', 'custom'),
+            // Spec 0429: the current field a legacy one continues.
+            new FieldDefinition('current_attribute_id', 'select'),
         ];
     }
 
@@ -77,6 +79,7 @@ class AttributesAuthorization extends AbstractResourceAuthorization
             'config' => $writable(),
             'relation_target' => $writable(),
             'options' => $writable(),
+            'current_attribute_id' => $writable(),
         ];
     }
 

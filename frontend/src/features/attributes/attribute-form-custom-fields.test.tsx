@@ -96,6 +96,7 @@ function attribute(
     icon: null,
     config: null,
     relation_target: null,
+    current_attribute_id: null,
     options: [],
     created_at: '2026-01-01T00:00:00Z',
     permissions: permissionsWithNotes(),

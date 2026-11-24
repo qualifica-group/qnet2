@@ -5,6 +5,7 @@ namespace App\Http\Requests\Attributes;
 use App\CustomFields\FieldTypeRegistry;
 use App\DataObjects\Attributes\UpdateAttributeData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesCurrentAttribute;
 use App\Http\Requests\Concerns\ValidatesFieldTypeDefinition;
 use App\Models\Attribute;
 use Illuminate\Contracts\Validation\Validator;
@@ -27,7 +28,7 @@ use Illuminate\Validation\Rule;
  */
 class UpdateAttributeRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesFieldTypeDefinition;
+    use EnforcesFieldPermissions, ValidatesCurrentAttribute, ValidatesFieldTypeDefinition;
 
     public function authorize(): bool
     {
@@ -53,6 +54,7 @@ class UpdateAttributeRequest extends FormRequest
             'icon' => ['sometimes', 'nullable', 'string', 'max:191'],
             'config' => ['sometimes', 'nullable', 'array'],
             'relation_target' => ['sometimes', 'nullable', 'array'],
+            'current_attribute_id' => ['sometimes', 'nullable', 'integer', Rule::exists('attributes', 'id')],
             'options' => ['sometimes', 'array'],
             'options.*.value' => ['required', 'string', 'max:191'],
             'options.*.label' => ['required', 'string', 'max:191'],
@@ -70,6 +72,7 @@ class UpdateAttributeRequest extends FormRequest
             $this->validateEnumOptions($validator);
             $this->validateRelationTarget($validator);
             $this->validateTableConfig($validator);
+            $this->validateCurrentAttribute($validator);
         });
     }
 
@@ -120,6 +123,14 @@ class UpdateAttributeRequest extends FormRequest
         $attribute = $this->route('attribute');
 
         return $this->has('config') ? $this->input('config') : $attribute->config;
+    }
+
+    protected function linkedAttribute(): ?Attribute
+    {
+        /** @var Attribute $attribute */
+        $attribute = $this->route('attribute');
+
+        return $attribute;
     }
 
     protected function authorizationResource(): string

@@ -125,6 +125,25 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'current-attribute',
+      title: 'Campo attuale',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Un campo vecchio (per esempio quelli delle categorie [OLD] ISO) può indicare il **Campo attuale** che lo continua. Nelle griglie di Offerte, Commesse e Contratti, quando nello stesso elenco ci sono entrambi, i due campi stanno in una sola colonna, quella del campo attuale: sui record nuovi mostra il valore del campo nuovo, sui record vecchi quello del campo vecchio. Filtro, ordinamento, elenco dei valori ed esportazione valgono su entrambi; modificando la cella, il valore va nel campo che quel record ha.",
+        },
+        {
+          type: 'list',
+          items: [
+            'Il Campo attuale si sceglie, si cambia o si toglie dalla riga omonima della scheda; la ricerca trova per nome o per codice.',
+            "Si collegano solo campi dello stesso genere: date con date, data e ora con data e ora, testi con testi, numeri con numeri, sì/no con sì/no. Elenchi di opzioni e tabelle non si collegano e restano in colonne separate.",
+            'Un campo non si collega a se stesso, e i collegamenti non si concatenano: il campo attuale non può avere a sua volta un campo attuale.',
+            'Il collegamento non sposta né copia i valori: togliendolo, le due colonne tornano separate.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'duplicate-attribute',
       title: 'Duplicare un attributo',
       blocks: [

@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLog\ActivityLogController;
 use App\Http\Controllers\Addresses\AddressController;
 use App\Http\Controllers\Attachments\AttachmentController;
 use App\Http\Controllers\Attributes\AttributeController;
+use App\Http\Controllers\Attributes\AttributeForSelectController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ImpersonationController;
 use App\Http\Controllers\Companies\CompanyController;
@@ -372,6 +373,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // catalogue assignable to product categories. Authorization
     // (attributes.view/create/update/delete) is enforced server-side in
     // AttributeController via AttributePolicy on every endpoint.
+    // "Campo attuale" picker (spec 0429, ADR 0011): ABOVE attributes/{attribute}
+    // so the literal segment wins over the bound wildcard.
+    Route::get('attributes/for-select', AttributeForSelectController::class);
     Route::get('attributes/{attribute}', [AttributeController::class, 'show']);
     Route::post('attributes', [AttributeController::class, 'store']);
     Route::match(['put', 'patch'], 'attributes/{attribute}', [AttributeController::class, 'update']);

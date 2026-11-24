@@ -22,6 +22,7 @@ import {
 } from '@/features/custom-fields/field-definition-defaults'
 import { applyTableConfigServerErrors } from '@/features/custom-fields/table-definition-errors'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
+import { currentAttributeLabel } from '@/features/attributes/attribute-current-attribute'
 
 /** Server-side field names mapped onto the form for 422 handling. */
 const SERVER_ERROR_FIELDS = [
@@ -38,12 +39,22 @@ const SERVER_ERROR_FIELDS = [
   'relation_target.cardinality',
   'relation_target.for_select_resource',
   'options',
+  'current_attribute_id',
 ] as const
 
 /** Appended to the source `code` on duplicate: `code` is unique and snake_case, so the i18n copy suffix cannot be reused. */
 const DUPLICATE_CODE_SUFFIX = '_copy'
 
 export type AttributeFormValues = CreateAttributeFormValues
+
+/** The saved "Campo attuale" as the form holds it (spec 0429). */
+function currentAttributeValues(attribute: AttributeDetail): Pick<AttributeFormValues, 'current_attribute_id' | 'current_attribute_label'> {
+  const current = attribute.current_attribute ?? null
+  return {
+    current_attribute_id: attribute.current_attribute_id ?? null,
+    current_attribute_label: current ? currentAttributeLabel(current) : null,
+  }
+}
 
 /** Suffixes the source `code`, trimming the source so the result stays within the backend limit. */
 function duplicateCode(code: string): string {
@@ -98,6 +109,7 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
         code: attribute.code,
         name: attribute.name,
         ...hydrateFieldDefinitionValues(attribute),
+        ...currentAttributeValues(attribute),
         custom_fields: customFields.defaultValues,
       }
     }
@@ -107,6 +119,7 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
         code: duplicateCode(source.code),
         name: source.name + t('common.copySuffix'),
         ...hydrateFieldDefinitionValues(source),
+        ...currentAttributeValues(source),
         custom_fields: customFields.defaultValues,
       }
     }
@@ -114,6 +127,8 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
       code: '',
       name: '',
       ...emptyFieldDefinitionValues(),
+      current_attribute_id: null,
+      current_attribute_label: null,
       custom_fields: customFields.defaultValues,
     }
   }, [mode, customFields.defaultValues, t])

@@ -5,6 +5,8 @@ import { RecordFieldList, RecordSection } from '@/components/detail/record-panel
 import { TextInlineRow } from '@/components/record-form/inline-rows'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import { Badge } from '@/components/ui/badge'
+import { DetailEmpty } from '@/components/detail/detail-panel'
+import { AttributeCurrentAttributeField } from '@/features/attributes/attribute-current-attribute-field'
 import { toDefinitionValues } from '@/features/attributes/attribute-definition-values'
 import { AttributeTypeSections } from '@/features/attributes/attribute-type-sections'
 import type { AttributeFormValues } from '@/features/attributes/use-attribute-form'
@@ -23,6 +25,8 @@ interface AttributeSectionsProps {
   creating: boolean
   /** `false` without the attribute's `update` permission: no row offers a pencil. */
   canEdit: boolean
+  /** The saved attribute, left out of its own "Campo attuale" options; absent on create. */
+  attributeId?: number
 }
 
 /**
@@ -32,7 +36,7 @@ interface AttributeSectionsProps {
  * resource's custom fields. Closed rows read the form values, which mirror the
  * saved attribute while no editor is open.
  */
-export function AttributeSections({ form, inline, creating, canEdit }: AttributeSectionsProps) {
+export function AttributeSections({ form, inline, creating, canEdit, attributeId }: AttributeSectionsProps) {
   const { t } = useTranslation()
   const { control } = form
   const values = form.watch()
@@ -69,6 +73,19 @@ export function AttributeSections({ form, inline, creating, canEdit }: Attribute
               <TypeIcon className="size-3.5" aria-hidden="true" />
               {t(`customFields.types.${values.type}`)}
             </Badge>
+          </RecordInlineField>
+          <RecordInlineField
+            field="current_attribute_id"
+            label={t('attributes.form.currentAttribute')}
+            inline={inline}
+            canEdit={canEdit}
+            editor={<AttributeCurrentAttributeField control={control} attributeId={attributeId} />}
+          >
+            {values.current_attribute_label ? (
+              <span className="break-words">{values.current_attribute_label}</span>
+            ) : (
+              <DetailEmpty />
+            )}
           </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
