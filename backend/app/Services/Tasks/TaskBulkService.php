@@ -10,6 +10,7 @@ use App\Exceptions\Tasks\TaskBulkIncompatibleException;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
+use App\Services\Notifications\TaskNotifier;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -41,9 +42,16 @@ final class TaskBulkService
     public function __construct(
         private readonly TaskBulkActionExecutor $executor,
         private readonly TaskBulkTimeEntrySplitter $splitter,
+        private readonly TaskNotifier $notifier,
     ) {}
 
+    /** Spec 0428: the closures of the whole batch reach each recipient as one summary. */
     public function execute(BulkTaskData $data, User $actor): int
+    {
+        return $this->notifier->summarizingClosures(fn (): int => $this->executeAllOrNothing($data, $actor));
+    }
+
+    private function executeAllOrNothing(BulkTaskData $data, User $actor): int
     {
         return DB::transaction(function () use ($data, $actor): int {
             $tasks = $this->resolveVisibleTasks($data->taskIds, $actor);

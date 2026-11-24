@@ -66,6 +66,9 @@ it('exposes one public method per event and nothing else (AC-006)', function () 
         'closed',
         'feedbackInserted',
         'locked',
+        // Spec 0428 (REQUIREMENT CHANGED): the one non-event method, which
+        // groups the closures of a multi-task operation into one summary.
+        'summarizingClosures',
         'uncompleted',
         'unlocked',
         'validationApproved',

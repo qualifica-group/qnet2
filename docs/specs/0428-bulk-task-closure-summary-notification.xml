@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0428-bulk-task-closure-summary-notification" status="approved" owner="nicola" date="2026-11-24">
+
+  <goal>
+    Chi chiude piu' task in una sola operazione (Completa massiva, o un task padre che chiude con se' i sotto-task) fa arrivare a ogni destinatario UNA notifica riepilogativa, non una per task.
+  </goal>
+
+  <context>
+    D-1 Segnalazione utente 2026-11-24: chiudendo i 18 task di fase di una commessa con la Completa massiva, il richiedente riceve 18 email "Attivita' completata" nello stesso minuto. Precedente: WorkOrderTasksAssignedNotification (un riepilogo al posto di un TaskAssigned per task generato).
+    D-2 Ambito: le voci 2/3 della Mappa Notifiche (TaskClosed, TaskFeedbackInserted) emesse durante POST /api/tasks/bulk (action complete), POST /api/work-orders/{workOrder}/task-board/bulk (action complete) e POST /api/tasks/{task}/complete quando chiude anche sotto-task aperti (spec 0418). Le altre notifiche (validazione richiesta, assegnazione...) restano una per task.
+    D-3 Destinatari invariati: l'audience di ogni task resta quella di TaskNotificationAudience::closure() (spec 0153 D-11, spec 0388); cambia solo il raggruppamento, per destinatario.
+    D-4 Un destinatario toccato da UN solo task dell'operazione riceve la notifica per-task di sempre (TaskClosed o TaskFeedbackInserted); da due in su riceve TasksClosedSummaryNotification con il numero, l'elenco dei titoli (nella mail) e, se tutti i task sono della stessa commessa, il nome e il link della commessa (se puo' aprirla).
+    D-5 Nessuna notifica se l'operazione fallisce (tutto-o-niente): il riepilogo parte dopo il commit, come le notifiche per-task.
+  </context>
+
+  <contract>
+    <endpoint>Nessun endpoint nuovo ne' cambio di shape. Nuovo tipo di notifica `App\Notifications\TasksClosedSummaryNotification` (database + mail per preferenza), payload `{ title, message, level, action_url }` come le altre.</endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>TaskNotifier (raccolta delle chiusure di un'operazione), TasksClosedSummaryNotification, TaskBulkService, TaskBulkActionService, TaskCascadeCompletionService, lang it.</item>
+      <item>Guida `tasks` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Riepilogo di altre notifiche diverse dalla chiusura.</item>
+      <item>Comando console BulkCompleteTasks.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Completa massiva di 3 task con lo stesso richiedente: il richiedente riceve 1 TasksClosedSummaryNotification e nessun TaskClosed/TaskFeedbackInserted.</criterion>
+    <criterion id="AC-002">Un destinatario toccato da un solo task dell'operazione riceve la notifica per-task di sempre.</criterion>
+    <criterion id="AC-003">Stesso comportamento sulla Completa massiva della bacheca commessa e sulla chiusura di un padre con sotto-task aperti.</criterion>
+    <criterion id="AC-004">La chiusura singola di un task resta invariata.</criterion>
+    <criterion id="AC-005">Operazione fallita (un task incompatibile): nessuna notifica.</criterion>
+    <criterion id="AC-006">Il riepilogo cita la commessa e ne da' il link quando tutti i task sono della stessa commessa e il destinatario puo' aprirla.</criterion>
+  </acceptance>
+</spec>
