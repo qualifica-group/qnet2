@@ -61,6 +61,7 @@ import { outboundEmails } from './en-outbound-emails'
 import { emailTemplates } from './en-email-templates'
 import { documentBundles } from './en-document-bundles'
 import { documentChecklists } from './en-document-checklists'
+import { documentRequests } from './en-document-requests'
 import { documentChecklistCategories } from './en-document-checklist-categories'
 import { taskTemplates } from './en-task-templates'
 import { supportTopics } from './en-support-topics'
@@ -464,6 +465,7 @@ export const en = {
   emailTemplates,
   documentBundles,
   documentChecklists,
+  documentRequests,
   documentChecklistCategories,
   taskTemplates,
   tasks: { ...tasks, stats: moduleStats.tasks },

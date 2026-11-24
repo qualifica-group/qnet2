@@ -81,6 +81,9 @@ vi.mock('@/features/notes/notes-section', () => ({ NotesSection: () => <div>note
 vi.mock('@/features/notes/notes-tab-count', () => ({ NotesTabCount: () => null }))
 vi.mock('@/features/activity-log/activity-log-section', () => ({ ActivityLogSection: () => <div>activity-section</div> }))
 vi.mock('@/features/outbound-emails/use-outbound-emails-tab', () => ({ useOutboundEmailsTab: () => null }))
+vi.mock('@/features/document-requests/document-requests-section', () => ({
+  DocumentRequestsSection: ({ workOrderId }: { workOrderId: number }) => <div>document-requests-section {workOrderId}</div>,
+}))
 
 function workOrder(actions: Record<string, boolean>, registry: { id: number; name: string } | null = null) {
   return {
@@ -111,7 +114,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   canMock.mockReset()
-  canMock.mockReturnValue(true)
+  // The document requests tab has its own gate (spec 0428): the legacy-order tests run without it.
+  canMock.mockImplementation((permission) => !permission.startsWith('document-requests.'))
 })
 
 describe('WorkOrderDetailTabs', () => {
@@ -122,6 +126,22 @@ describe('WorkOrderDetailTabs', () => {
     expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('data-state', 'active')
     expect(screen.getByText('info-sections')).toBeInTheDocument()
     expect(screen.queryByText('task-board')).not.toBeInTheDocument()
+  })
+
+  it('has no Document requests tab without document-requests.viewAny (spec 0428)', () => {
+    renderTabs({ view_documents: true })
+
+    expect(topTabs()).toEqual(['Info', 'Tasks', 'Work order documents', 'Notes'])
+  })
+
+  it('adds Document requests to the Documents group with document-requests.viewAny (spec 0428)', () => {
+    canMock.mockReturnValue(true)
+    renderTabs({ view_documents: true })
+
+    expect(topTabs()).toEqual(['Info', 'Tasks', 'Documents', 'Notes'])
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Documents' }))
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Document requests' }))
+    expect(screen.getByText('document-requests-section 4')).toBeInTheDocument()
   })
 
   it('keeps Info alone when nothing else is authorized', () => {

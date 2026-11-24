@@ -48,7 +48,7 @@ class ArchivioSmartSettingsController extends BaseApiController
             $this->authorize('manageConnection', DocumentChecklist::class);
 
             return $this->ok(new ArchivioSmartSettingResource(
-                $this->service->save($request->baseUrl(), $request->newToken()),
+                $this->service->save($request->baseUrl(), $request->newToken(), $request->changesWebhookSecret(), $request->newWebhookSecret()),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

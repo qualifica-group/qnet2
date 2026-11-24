@@ -3,6 +3,46 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Richieste di documenti dalla commessa verso ArchivioSmart (spec 0428, 2026-11-24) — NON PROVATO NEL BROWSER
+
+- Tabelle:
+  - `document_requests`: figlia di `work_orders`; `external_id` = id QNet; snapshot JSON di gruppi e voci; `status` remoto null fino alla prima risposta; `delivery_status` pending|delivered|failed; `pending_operation`; `delivery_error`.
+  - `document_request_sync_logs`.
+  - `archivio_smart_webhook_events`, con `event_id` unico.
+  - `archivio_smart_settings.webhook_secret` (encrypted, hidden).
+- Permessi `document-requests.viewAny|view|create|update`, in `permission_only_resources`.
+  - view e update richiedono anche view sulla commessa (`DocumentRequestPolicy`).
+  - Dopo il deploy: `php artisan migrate` + `php artisan permissions:sync`.
+- API:
+  - `GET|POST /api/work-orders/{wo}/document-requests` (meta `can_create`) e `.../defaults`;
+  - `GET|PUT /api/document-requests/{id}`, `POST .../remind|cancel|refresh`, `GET .../sync-logs`;
+  - `GET /api/document-checklists/for-select` (solo attive + synced, filtro `category_id`);
+  - la risorsa ha `permissions: {update, remind, cancel}`.
+- Invio:
+  - `SyncDocumentRequestJob(id, operation, send)`, accodato `afterCommit`, con WithoutOverlapping;
+  - 5xx/429 → retry; 422/409 → failed con messaggio;
+  - il trait `PushesToArchivioSmart` ora accetta un `BackedEnum` come operazione;
+  - `customer_external_id` non viene mai inviato.
+- Webhook `POST /api/webhooks/archivio-smart` (`routes/api/webhooks.php`, senza auth né throttle):
+  - `VerifyArchivioSmartSignature`: HMAC-SHA256 sul raw body; 404 senza segreto, 401 con firma errata, altrimenti 202.
+  - Registrazione evento e dispatch stanno in un'unica transazione: se la coda fallisce l'evento non resta "received" e il retry di ArchivioSmart viene elaborato.
+  - `ProcessArchivioSmartWebhookJob` → `ArchivioSmartWebhookApplier`: l'ordine si decide confrontando `occurred_at` con `remote_updated_at`; un `document.*` fuori ordine accoda un refresh; le richieste sconosciute vengono marcate ignored.
+- Frontend:
+  - `features/document-requests/`: scheda "Richieste documenti" nel gruppo documenti della commessa, dialog crea/modifica, sollecita, annulla con conferma, aggiorna stato, log; polling ogni 5 s mentre l'invio è pending.
+  - Connessione ArchivioSmart: segreto webhook (vuoto = invariato; la UI non permette di rimuoverlo) e `webhook_url` copiabile.
+  - Guide IT/EN `work-orders` e `document-checklists`; etichette dei permessi IT/EN.
+- DA CONFERMARE con ArchivioSmart:
+  - nomi dei campi della risposta (`data.*`, con `updated_at` → `remote_updated_at`);
+  - nomi del webhook: header `X-Archiviosmart-Event`, `-Event-Id`, `-Timestamp`; campi `data.request.external_id`, `data.item.id`, `data.validation.*`;
+  - se cambiano, si correggono in `DocumentRequestRemoteWriter` e `ArchivioSmartWebhookApplier`;
+  - etichette degli stati voce: oggi solo pending/uploaded/ok/ko;
+  - nelle note ArchivioSmart deve usare il campo `body`, non `content`;
+  - serve un URL HTTPS pubblico per il webhook.
+- Manuale Claude Docs da aggiornare a mano: commessa > Richieste documenti; connessione ArchivioSmart (segreto webhook).
+- Verifica: AC 20/20 PASS.
+  - Gate completo backend: 53 rossi, tutti pre-esistenti o estranei alla feature: ZipArchive, dropForeign SQLite, permessi request-management duplicati nel catalogo, seeder demo, `TaskBoardEndpointsTest:69`, `PendingChangeRequestsColumnTest:89` (in contraddizione con la spec 0086), `RequestManagementAllColumnsSortFilterTest:113`.
+  - Frontend: 10928 test verdi, tsc pulito.
+
 ## Gruppi di documenti nelle checklist, allineati ad ArchivioSmart (spec 0427, 2026-11-23) — NON PROVATO NEL BROWSER
 
 - Tabella `document_checklist_sections` (name, description, position; massimo 20 per checklist, `config('archivio-smart.max_sections')`; nomi unici senza distinzione di maiuscole). Sulla voce: `section_id` (FK nullOnDelete) e `date_field` varchar(64). La colonna testo `section` è stata rimossa: la migrazione dati ha convertito i valori distinti in gruppi, nell'ordine della prima voce che li usava.

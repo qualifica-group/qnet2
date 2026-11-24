@@ -116,7 +116,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Visible only to users with the dedicated permission. You set the API **base address** and the **token**. The token is never shown: leave the field empty to keep it unchanged. **Test connection** checks that the details are correct.",
+          text: "Visible only to users with the dedicated permission. You set the API **base address** and the **token**. The token is never shown: leave the field empty to keep it unchanged. The **webhook secret** (starting with whsec_) is never shown either: it verifies the updates ArchivioSmart sends to QNet. Copy the **webhook URL** with **Copy** and paste it in ArchivioSmart; without a secret the updates are not accepted. **Test connection** checks that the details are correct.",
         },
       ],
     },

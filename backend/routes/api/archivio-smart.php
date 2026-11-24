@@ -17,3 +17,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('archivio-smart/settings', [ArchivioSmartSettingsController::class, 'show']);
 Route::put('archivio-smart/settings', [ArchivioSmartSettingsController::class, 'update']);
 Route::post('archivio-smart/settings/test', [ArchivioSmartSettingsController::class, 'test']);
+
+// Document requests of the work orders (spec 0428) go through the same connection.
+require __DIR__.'/document-requests.php';

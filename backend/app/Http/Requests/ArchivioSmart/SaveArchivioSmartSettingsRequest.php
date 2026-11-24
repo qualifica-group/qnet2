@@ -30,6 +30,7 @@ class SaveArchivioSmartSettingsRequest extends FormRequest
         return [
             'base_url' => ['required', 'string', 'max:255', $schemes],
             'token' => ['nullable', 'string', 'min:10', 'max:500'],
+            'webhook_secret' => ['sometimes', 'nullable', 'string', 'min:10', 'max:500'],
         ];
     }
 
@@ -41,6 +42,7 @@ class SaveArchivioSmartSettingsRequest extends FormRequest
         return [
             'base_url' => __('archivio_smart.attributes.base_url'),
             'token' => __('archivio_smart.attributes.token'),
+            'webhook_secret' => __('archivio_smart.attributes.webhook_secret'),
         ];
     }
 
@@ -52,6 +54,21 @@ class SaveArchivioSmartSettingsRequest extends FormRequest
         $token = $this->validated('token');
 
         return filled($token) ? $token : null;
+    }
+
+    /**
+     * Omitted key = keep the saved secret; a sent key (blank included) = replace or remove it (spec 0428).
+     */
+    public function changesWebhookSecret(): bool
+    {
+        return array_key_exists('webhook_secret', $this->validated());
+    }
+
+    public function newWebhookSecret(): ?string
+    {
+        $secret = $this->validated('webhook_secret');
+
+        return filled($secret) ? $secret : null;
     }
 
     public function baseUrl(): string

@@ -44,6 +44,7 @@ use App\Models\DocumentBundle;
 use App\Models\DocumentChecklist;
 use App\Models\DocumentChecklistCategory;
 use App\Models\DocumentLayout;
+use App\Models\DocumentRequest;
 use App\Models\EmailTemplate;
 use App\Models\EmploymentContract;
 use App\Models\EmploymentProfile;
@@ -421,6 +422,8 @@ class AppServiceProvider extends ServiceProvider
             'document_checklist' => DocumentChecklist::class,
             'document_checklist_category' => DocumentChecklistCategory::class,
             'archivio_smart_setting' => ArchivioSmartSetting::class,
+            // Spec 0428: activity-log subject of the document requests.
+            'document_request' => DocumentRequest::class,
             'outbound_email' => OutboundEmail::class,
             // Spec 0317: menu apps configured by the super-admin (audited).
             'workspace' => Workspace::class,

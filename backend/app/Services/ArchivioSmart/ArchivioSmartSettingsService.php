@@ -23,15 +23,20 @@ class ArchivioSmartSettingsService
     }
 
     /**
-     * Creates or updates the only row; a null token keeps the saved one.
+     * Creates or updates the only row; a null token keeps the saved one. The webhook
+     * secret changes only when `$changeWebhookSecret` is set: a null value then removes it.
      */
-    public function save(string $baseUrl, ?string $token): ArchivioSmartSetting
+    public function save(string $baseUrl, ?string $token, bool $changeWebhookSecret = false, ?string $webhookSecret = null): ArchivioSmartSetting
     {
         $setting = $this->current();
         $setting->base_url = $baseUrl;
 
         if ($token !== null) {
             $setting->token = $token;
+        }
+
+        if ($changeWebhookSecret) {
+            $setting->webhook_secret = filled($webhookSecret) ? $webhookSecret : null;
         }
 
         $setting->save();

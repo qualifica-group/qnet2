@@ -15,8 +15,21 @@ vi.mock('@/features/document-checklists/api', () => ({
   testArchivioSmartConnection: () => testConnectionMock(),
 }))
 
-const SAVED: ArchivioSmartSettings = { base_url: 'https://archivio.example.com/api', has_token: true, updated_at: null }
-const EMPTY: ArchivioSmartSettings = { base_url: null, has_token: false, updated_at: null }
+const WEBHOOK_URL = 'https://qnet.example.com/api/webhooks/archivio-smart'
+const SAVED: ArchivioSmartSettings = {
+  base_url: 'https://archivio.example.com/api',
+  has_token: true,
+  has_webhook_secret: true,
+  webhook_url: WEBHOOK_URL,
+  updated_at: null,
+}
+const EMPTY: ArchivioSmartSettings = {
+  base_url: null,
+  has_token: false,
+  has_webhook_secret: false,
+  webhook_url: WEBHOOK_URL,
+  updated_at: null,
+}
 
 function httpError(status: number, data: object): AxiosError {
   return Object.assign(new AxiosError('request failed'), { response: { status, data } })
@@ -57,7 +70,7 @@ describe('ArchivioSmartConnectionDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salva connessione' }))
 
     await waitFor(() => expect(updateSettingsMock).toHaveBeenCalled())
-    expect(updateSettingsMock.mock.calls[0][0]).toEqual({ base_url: SAVED.base_url, token: '' })
+    expect(updateSettingsMock.mock.calls[0][0]).toEqual({ base_url: SAVED.base_url, token: '', webhook_secret: '' })
   })
 
   it('sends the typed token', async () => {
@@ -70,8 +83,57 @@ describe('ArchivioSmartConnectionDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salva connessione' }))
 
     await waitFor(() =>
-      expect(updateSettingsMock).toHaveBeenCalledWith({ base_url: 'https://a.example.com', token: 'secret-token-123' }),
+      expect(updateSettingsMock).toHaveBeenCalledWith({
+        base_url: 'https://a.example.com',
+        token: 'secret-token-123',
+        webhook_secret: '',
+      }),
     )
+  })
+
+  it('shows the copyable webhook URL and "Segreto impostato" without ever showing the secret (spec 0428)', async () => {
+    getSettingsMock.mockResolvedValue(SAVED)
+    renderDialog()
+
+    expect(await screen.findByLabelText('URL del webhook')).toHaveValue(WEBHOOK_URL)
+    expect(screen.getByLabelText('URL del webhook')).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'Copia' })).toBeInTheDocument()
+    expect(screen.getByText('Segreto impostato')).toBeInTheDocument()
+    const secret = screen.getByLabelText('Segreto del webhook')
+    expect(secret).toHaveValue('')
+    expect(secret).toHaveAttribute('type', 'password')
+  })
+
+  it('sends the typed webhook secret and says "Segreto non impostato" while none is saved', async () => {
+    getSettingsMock.mockResolvedValue(EMPTY)
+    updateSettingsMock.mockResolvedValue(SAVED)
+    renderDialog()
+
+    fireEvent.change(await screen.findByLabelText('URL base'), { target: { value: 'https://a.example.com' } })
+    expect(screen.getByText('Segreto non impostato')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Segreto del webhook'), { target: { value: 'whsec_0123456789' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salva connessione' }))
+
+    await waitFor(() =>
+      expect(updateSettingsMock).toHaveBeenCalledWith({
+        base_url: 'https://a.example.com',
+        token: '',
+        webhook_secret: 'whsec_0123456789',
+      }),
+    )
+  })
+
+  it('rejects a too short webhook secret', async () => {
+    getSettingsMock.mockResolvedValue(SAVED)
+    renderDialog()
+
+    const secret = await screen.findByLabelText('Segreto del webhook')
+    fireEvent.change(secret, { target: { value: 'short' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salva connessione' }))
+
+    expect(await screen.findByText('Il segreto del webhook deve contenere almeno 10 caratteri.')).toHaveAttribute('id')
+    expect(secret).toHaveAttribute('aria-invalid', 'true')
+    expect(updateSettingsMock).not.toHaveBeenCalled()
   })
 
   it('rejects an invalid URL with the accessible error triad', async () => {

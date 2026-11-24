@@ -56,6 +56,42 @@ class ArchivioSmartClient
     }
 
     /**
+     * Creates or edits a document request (spec 0428): the same idempotent PUT.
+     *
+     * @param  array<string, mixed>  $payload
+     *
+     * @throws ConnectionException
+     */
+    public function upsertRequest(ArchivioSmartSetting $setting, string $externalId, array $payload): Response
+    {
+        return $this->request($setting)->put($this->requestPath($externalId), $payload);
+    }
+
+    /**
+     * @throws ConnectionException
+     */
+    public function remindRequest(ArchivioSmartSetting $setting, string $externalId): Response
+    {
+        return $this->request($setting)->post($this->requestPath($externalId).'/remind');
+    }
+
+    /**
+     * @throws ConnectionException
+     */
+    public function cancelRequest(ArchivioSmartSetting $setting, string $externalId): Response
+    {
+        return $this->request($setting)->post($this->requestPath($externalId).'/cancel');
+    }
+
+    /**
+     * @throws ConnectionException
+     */
+    public function getRequest(ArchivioSmartSetting $setting, string $externalId): Response
+    {
+        return $this->request($setting)->get($this->requestPath($externalId));
+    }
+
+    /**
      * @throws ConnectionException
      */
     public function me(ArchivioSmartSetting $setting): Response
@@ -76,6 +112,11 @@ class ArchivioSmartClient
     private function checklistPath(string $externalId): string
     {
         return '/checklists/'.rawurlencode($externalId);
+    }
+
+    private function requestPath(string $externalId): string
+    {
+        return '/requests/'.rawurlencode($externalId);
     }
 
     private function categoryPath(string $externalId): string

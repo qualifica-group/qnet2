@@ -13,6 +13,7 @@ import {
   type ArchivioSmartSettingsFormValues,
 } from '@/features/document-checklists/archivio-smart-settings-schema'
 import { ArchivioSmartConnectionTestResult } from '@/features/document-checklists/archivio-smart-connection-test-result'
+import { ArchivioSmartWebhookFields } from '@/features/document-checklists/archivio-smart-webhook-fields'
 import type { useArchivioSmartConnection } from '@/features/document-checklists/use-archivio-smart-connection'
 import type { ArchivioSmartSettings } from '@/features/document-checklists/types'
 
@@ -22,13 +23,13 @@ interface ArchivioSmartConnectionFormProps {
   onClose: () => void
 }
 
-/** Base URL + write-only token. The saved token is never read back: `has_token` only drives the badge. */
+/** Base URL + write-only token and webhook secret (spec 0428). The saved token is never read back: `has_token` only drives the badge. */
 export function ArchivioSmartConnectionForm({ settings, connection, onClose }: ArchivioSmartConnectionFormProps) {
   const { t } = useTranslation()
   const { save, test } = connection
   const form = useForm<ArchivioSmartSettingsFormValues>({
     resolver: zodResolver(buildArchivioSmartSettingsSchema(t)),
-    defaultValues: { base_url: settings.base_url ?? '', token: '' },
+    defaultValues: { base_url: settings.base_url ?? '', token: '', webhook_secret: '' },
   })
   const canTest = settings.has_token && Boolean(settings.base_url)
 
@@ -36,11 +37,12 @@ export function ArchivioSmartConnectionForm({ settings, connection, onClose }: A
     save.mutate(values, {
       onSuccess: () => {
         form.resetField('token', { defaultValue: '' })
+        form.resetField('webhook_secret', { defaultValue: '' })
         test.reset()
         toast.success(t('documentChecklists.connection.saved'))
       },
       onError: (error) => {
-        if (!applyServerValidationErrors(error, form.setError, ['base_url', 'token'])) {
+        if (!applyServerValidationErrors(error, form.setError, ['base_url', 'token', 'webhook_secret'])) {
           toast.error(t('documentChecklists.connection.saveError'))
         }
       },
@@ -90,6 +92,7 @@ export function ArchivioSmartConnectionForm({ settings, connection, onClose }: A
             </FormItem>
           )}
         />
+        <ArchivioSmartWebhookFields settings={settings} />
         <ArchivioSmartConnectionTestResult test={test} />
         <DialogFooter>
           <Button type="button" variant="secondary" disabled={!canTest || test.isPending} onClick={() => test.mutate()}>

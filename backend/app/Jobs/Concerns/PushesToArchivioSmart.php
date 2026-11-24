@@ -10,6 +10,7 @@ use App\Enums\DocumentChecklistSyncOutcome;
 use App\Enums\DocumentChecklistSyncStatus;
 use App\Models\ArchivioSmartSetting;
 use App\Models\DocumentChecklist;
+use BackedEnum;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\ConnectionException;
@@ -17,10 +18,12 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Str;
 
 /**
- * Sync logic shared by the checklist and the category jobs (spec 0403, spec 0410 D-11):
- * outcome interpretation, retry/backoff, Retry-After and the sync log. It works on
- * any record with `sync_status`, `sync_error`, `synced_at` and a `syncLogs()` relation.
- * Every log row never holds the token, the headers or the body.
+ * Sync logic shared by the checklist, the category and the document request jobs
+ * (spec 0403, spec 0410 D-11, spec 0428): outcome interpretation, retry/backoff,
+ * Retry-After and the sync log. The default `succeed()`/`markFailed()` work on any
+ * record with `sync_status`, `sync_error`, `synced_at` and a `syncLogs()` relation;
+ * a job with another state model overrides them. `$operation` is the job's own
+ * operation enum. Every log row never holds the token, the headers or the body.
  *
  * The host job provides `$tries`, `attempts()` and `release()`.
  */
@@ -32,7 +35,7 @@ trait PushesToArchivioSmart
     /**
      * Returns the saved connection, or null after failing the record when it is missing.
      */
-    protected function configuredSetting(Model $record, DocumentChecklistSyncOperation $operation): ?ArchivioSmartSetting
+    protected function configuredSetting(Model $record, BackedEnum $operation): ?ArchivioSmartSetting
     {
         $setting = ArchivioSmartSetting::current();
         if ($setting === null || ! $setting->isConfigured()) {
@@ -47,7 +50,7 @@ trait PushesToArchivioSmart
     /**
      * @param  Closure(ArchivioSmartSetting): Response  $call
      */
-    protected function push(Model $record, DocumentChecklistSyncOperation $operation, ArchivioSmartSetting $setting, Closure $call): ArchivioSmartCallResult
+    protected function push(Model $record, BackedEnum $operation, ArchivioSmartSetting $setting, Closure $call): ArchivioSmartCallResult
     {
         try {
             $response = $call($setting);
@@ -58,7 +61,7 @@ trait PushesToArchivioSmart
         return $this->interpret($record, $operation, $response);
     }
 
-    protected function interpret(Model $record, DocumentChecklistSyncOperation $operation, Response $response): ArchivioSmartCallResult
+    protected function interpret(Model $record, BackedEnum $operation, Response $response): ArchivioSmartCallResult
     {
         $status = $response->status();
 
@@ -76,12 +79,12 @@ trait PushesToArchivioSmart
     /**
      * A 422 is final unless the job overrides this (the category DELETE, D-10).
      */
-    protected function onUnprocessable(Model $record, DocumentChecklistSyncOperation $operation, Response $response): ArchivioSmartCallResult
+    protected function onUnprocessable(Model $record, BackedEnum $operation, Response $response): ArchivioSmartCallResult
     {
         return $this->failSync($record, $operation, 422, $this->validationMessage($response));
     }
 
-    protected function succeed(Model $record, DocumentChecklistSyncOperation $operation, int $status): ArchivioSmartCallResult
+    protected function succeed(Model $record, BackedEnum $operation, int $status): ArchivioSmartCallResult
     {
         $attributes = [
             'sync_status' => DocumentChecklistSyncStatus::Synced,
@@ -98,7 +101,7 @@ trait PushesToArchivioSmart
         return ArchivioSmartCallResult::Succeeded;
     }
 
-    protected function failSync(Model $record, DocumentChecklistSyncOperation $operation, ?int $status, string $message): ArchivioSmartCallResult
+    protected function failSync(Model $record, BackedEnum $operation, ?int $status, string $message): ArchivioSmartCallResult
     {
         $this->markFailed($record, $message);
         $this->log($record, $operation, DocumentChecklistSyncOutcome::Failed, $status, $message);
@@ -107,7 +110,7 @@ trait PushesToArchivioSmart
         return ArchivioSmartCallResult::Failed;
     }
 
-    protected function retryOrFail(Model $record, DocumentChecklistSyncOperation $operation, ?int $status, string $message): ArchivioSmartCallResult
+    protected function retryOrFail(Model $record, BackedEnum $operation, ?int $status, string $message): ArchivioSmartCallResult
     {
         if ($this->attempts() >= $this->tries) {
             return $this->failSync($record, $operation, $status, $message);
@@ -119,7 +122,7 @@ trait PushesToArchivioSmart
         return ArchivioSmartCallResult::Released;
     }
 
-    protected function releaseAfterRateLimit(Model $record, DocumentChecklistSyncOperation $operation, Response $response): ArchivioSmartCallResult
+    protected function releaseAfterRateLimit(Model $record, BackedEnum $operation, Response $response): ArchivioSmartCallResult
     {
         $retryAfter = $response->header('Retry-After');
         $delay = ctype_digit($retryAfter) ? (int) $retryAfter : (int) config('archivio-smart.retry_after_fallback');
@@ -140,7 +143,7 @@ trait PushesToArchivioSmart
 
     protected function log(
         Model $record,
-        DocumentChecklistSyncOperation $operation,
+        BackedEnum $operation,
         DocumentChecklistSyncOutcome $outcome,
         ?int $status,
         ?string $message,
@@ -167,7 +170,7 @@ trait PushesToArchivioSmart
         return (int) ($backoff[$this->attempts() - 1] ?? end($backoff));
     }
 
-    private function conflictMessage(Model $record): string
+    protected function conflictMessage(Model $record): string
     {
         return $record instanceof DocumentChecklist
             ? __('archivio_smart.conflict')

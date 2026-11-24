@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocumentChecklists\DocumentChecklistController;
+use App\Http\Controllers\DocumentChecklists\DocumentChecklistForSelectController;
 use App\Http\Controllers\DocumentChecklists\DocumentChecklistSyncController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,12 +16,15 @@ use Illuminate\Support\Facades\Route;
 | (backend.md section 2). Authorization (document-checklists.*) is enforced in
 | the controllers via DocumentChecklistPolicy.
 |
-| `sync-all` is declared ABOVE the {documentChecklist} wildcard routes so its
-| literal segment is never taken for an id. Soft-deleted checklists resolve to
+| `sync-all` and `for-select` are declared ABOVE the {documentChecklist} wildcard routes so their
+| literal segments are never taken for an id. Soft-deleted checklists resolve to
 | 404 through the default route model binding.
 */
 
 Route::post('document-checklists/sync-all', [DocumentChecklistSyncController::class, 'syncAll']);
+
+// Options of the document request dialog (spec 0428), gated by document-requests.create.
+Route::get('document-checklists/for-select', DocumentChecklistForSelectController::class);
 
 Route::post('document-checklists', [DocumentChecklistController::class, 'store']);
 Route::get('document-checklists/{documentChecklist}', [DocumentChecklistController::class, 'show']);

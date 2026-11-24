@@ -118,17 +118,21 @@ export interface SyncAllResult {
   queued_categories: number
 }
 
-/** Saved connection: the token is never returned, only whether it is set. */
+/** Saved connection: token and webhook secret are never returned, only whether they are set (spec 0428). */
 export interface ArchivioSmartSettings {
   base_url: string | null
   has_token: boolean
+  has_webhook_secret: boolean
+  /** Absolute URL of the inbound webhook endpoint, to paste in ArchivioSmart. */
+  webhook_url: string
   updated_at: string | null
 }
 
-/** Body of PUT /archivio-smart/settings; an omitted token leaves the saved one unchanged. */
+/** Body of PUT /archivio-smart/settings; an omitted token or webhook secret leaves the saved one unchanged. */
 export interface UpdateArchivioSmartSettingsPayload {
   base_url: string
   token?: string
+  webhook_secret?: string
 }
 
 /** Outcome of POST /archivio-smart/settings/test. */

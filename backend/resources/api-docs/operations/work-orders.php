@@ -201,4 +201,16 @@ return [
         'summary' => 'Move a task on the work order board',
         'description' => 'Moves the root task task_id into work_order_stage_id (null for the "no stage" group) at the zero-based position, counted after removing it from its origin group. Returns tasks, the new stage and position of the affected rows. 422 when the task is a sub-task or belongs to another work order, or the stage belongs to another work order; 409 when the stage is closed or the work order is force-closed. Requires update permission on the task.',
     ],
+    'GET /work-orders/{workOrder}/document-requests' => [
+        'summary' => 'List the document requests of a work order',
+        'description' => 'Returns data (the requests of the work order, newest first) and meta.can_create. Each request has the checklist copy ({ id, code, name }), category_name, due_date, recipient_email, message, status (null until ArchivioSmart answers the first time, then draft, sent, in_progress, completed, expired or cancelled), counters, sections and items with their state and latest validation (files are only counted as documents_count), the dates, delivery_status (pending, delivered or failed), pending_operation, delivery_error and a permissions block (update, remind, cancel). Requires document-requests.viewAny and view on the work order.',
+    ],
+    'GET /work-orders/{workOrder}/document-requests/defaults' => [
+        'summary' => 'Get the default values of a new document request',
+        'description' => 'Returns data.recipient_email (the primary email of the customer of the work order, or of its first offer when it has several; null when missing) and data.customer_name. Requires document-requests.create and view on the work order.',
+    ],
+    'POST /work-orders/{workOrder}/document-requests' => [
+        'summary' => 'Request documents from the customer',
+        'description' => 'Creates the request from an active and synced checklist (document_checklist_id) with an optional due_date (YYYY-MM-DD, today or later), recipient_email (valid email, max 255), message (max 2000) and send (boolean, default true). Answers 201 with the request: delivery_status pending and pending_operation upsert, because a job sends it to ArchivioSmart after the commit. The checklist and the work order cannot be changed afterwards. Requires document-requests.create and view on the work order.',
+    ],
 ];

@@ -82,13 +82,16 @@ export async function getArchivioSmartSettings(): Promise<ArchivioSmartSettings>
   return data.data
 }
 
-/** Saves the connection. An empty token is omitted so the saved one stays unchanged. */
+/** Saves the connection. An empty token or webhook secret is omitted so the saved one stays unchanged. */
 export async function updateArchivioSmartSettings(
   payload: UpdateArchivioSmartSettingsPayload,
 ): Promise<ArchivioSmartSettings> {
   const body: UpdateArchivioSmartSettingsPayload = { base_url: payload.base_url }
   if (payload.token) {
     body.token = payload.token
+  }
+  if (payload.webhook_secret) {
+    body.webhook_secret = payload.webhook_secret
   }
   const { data } = await apiClient.put<ApiResponse<ArchivioSmartSettings>>('/archivio-smart/settings', body)
   return data.data

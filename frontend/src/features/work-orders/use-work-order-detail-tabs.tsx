@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Euro, Info, ListChecks, MessageSquare, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText } from 'lucide-react'
+import { Euro, FileCheck2, Info, ListChecks, MessageSquare, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText } from 'lucide-react'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -8,6 +8,7 @@ import { DocumentsTabCount } from '@/features/attachments/documents-tab-count'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
 import { NotesTabCount } from '@/features/notes/notes-tab-count'
+import { DocumentRequestsSection } from '@/features/document-requests/document-requests-section'
 import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-emails-tab'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { WorkOrderChatPanel } from '@/features/work-order-chat/work-order-chat-panel'
@@ -133,6 +134,15 @@ export function useWorkOrderDetailTabs({
   }
   if (registryDocumentsTab) {
     documentTabs.push({ ...registryDocumentsTab, padded: true })
+  }
+  // Document requests to the customer through ArchivioSmart (spec 0428): own gate, own padding.
+  if (can('document-requests.viewAny')) {
+    documentTabs.push({
+      value: 'document-requests',
+      label: t('documentRequests.tab'),
+      icon: <FileCheck2 className="size-3.5" aria-hidden="true" />,
+      content: <DocumentRequestsSection workOrderId={workOrder.id} />,
+    })
   }
 
   // Step 4: Amministrazione = Costi + proforma attive e passive.

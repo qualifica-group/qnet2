@@ -46,7 +46,14 @@ it('GET answers an empty connection when nothing is saved', function () {
 
     $this->getJson('/api/archivio-smart/settings')
         ->assertOk()
-        ->assertJsonPath('data', ['base_url' => null, 'has_token' => false, 'updated_at' => null]);
+        ->assertJsonPath('data', [
+            'base_url' => null,
+            'has_token' => false,
+            // REQUIREMENT CHANGED (spec 0428): the connection also holds the webhook secret and exposes the webhook URL.
+            'has_webhook_secret' => false,
+            'webhook_url' => url('/api/webhooks/archivio-smart'),
+            'updated_at' => null,
+        ]);
 });
 
 it('AC-017: GET and PUT never return the token nor any part of it, and it is encrypted at rest', function () {

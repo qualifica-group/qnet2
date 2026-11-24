@@ -18,8 +18,21 @@ return [
     'connection_ok' => 'ArchivioSmart connection successful',
     'connection_failed' => 'ArchivioSmart connection failed (:status)',
 
+    // Document requests (spec 0428).
+    'request_conflict' => 'ArchivioSmart refused the request: a request with this identifier already exists',
+    'request_status_closed' => 'The request can no longer be edited',
+    'request_not_remindable' => 'Only a sent or in progress request can be reminded',
+    'request_not_cancellable' => 'A completed or expired request cannot be cancelled',
+    'webhook_not_found' => 'Not found',
+    'webhook_invalid_signature' => 'Invalid signature',
+
     'attributes' => [
         'base_url' => 'base URL',
         'token' => 'token',
+        'due_date' => 'due date',
+        'recipient_email' => 'recipient email',
+        'message' => 'message',
+        'document_checklist_id' => 'checklist',
+        'webhook_secret' => 'webhook secret',
     ],
 ];

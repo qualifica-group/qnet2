@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DataObjects\DocumentChecklists\SaveDocumentChecklistData;
+use App\DataObjects\Shared\ForSelectQuery;
+use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\DocumentChecklistSyncStatus;
 use App\Jobs\SyncDocumentChecklistJob;
 use App\Models\DocumentChecklist;
@@ -75,6 +77,26 @@ class DocumentChecklistService
         });
 
         $this->queueSync($checklist);
+    }
+
+    /**
+     * Checklists a document request can use (spec 0428, D-8): active and synced,
+     * by name, optionally of one category. ADR 0011 pagination.
+     */
+    public function forSelect(ForSelectQuery $query, ?int $categoryId): ForSelectResult
+    {
+        $base = DocumentChecklist::query()
+            ->where('is_active', true)
+            ->where('sync_status', DocumentChecklistSyncStatus::Synced)
+            ->when($categoryId !== null, fn ($builder) => $builder->where('category_id', $categoryId))
+            ->when($query->hasSearch(), fn ($builder) => $builder->where(
+                fn ($search) => $search->where('name', 'like', '%'.$query->search.'%')->orWhere('code', 'like', '%'.$query->search.'%'),
+            ));
+
+        $total = (clone $base)->count();
+        $page = $base->with('category:id,name')->orderBy('name')->orderBy('id')->offset($query->offset)->limit($query->limit)->get();
+
+        return new ForSelectResult(items: $page, total: $total, offset: $query->offset, limit: $query->limit);
     }
 
     public function requestSync(DocumentChecklist $checklist): DocumentChecklist

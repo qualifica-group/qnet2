@@ -168,6 +168,7 @@ export const permissions = {
     'financial-accounts': 'Financial accounts',
     'treasury-movements': 'Treasury movements',
     'treasury-types': 'Financial sub-accounts',
+    'document-requests': 'Document requests',
     'proforma-requests': 'Proforma requests',
     'purchase-requests': 'Purchase requests (RDA)',
     'purchase-orders': 'Purchase orders (ODA)',

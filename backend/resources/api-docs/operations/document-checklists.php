@@ -5,6 +5,10 @@ return [
         'summary' => 'Create a document checklist',
         'description' => 'Creates a checklist with its ordered sections (document groups: 0 to 20, name unique ignoring case, optional description; section ids must be null) and its ordered items (0 to 200; the array order is the display order, item ids must be null) and an optional category_id (a non-deleted document checklist category, null or missing for none). code is stored uppercase, accepts letters, digits, dash and underscore and must be unique among non-deleted checklists. Each item has name, optional description/validation_prompt/max_age_days, optional section_index (index in the sections array of the same request, null for no section), optional date_field (the extracted date field of the age rule: snake_case, max 64, only allowed with max_age_days), is_required, allowed_file_types (at least one of pdf, jpg, jpeg, png, webp, heic, docx, odt, txt, no duplicates), max_file_size_kb (1 to 20480) and min_files/max_files (1 to 10, max_files not below min_files). The checklist starts with sync_status pending and a job sends it to ArchivioSmart after the commit. Answers 201 with the checklist and a permissions block. Requires document-checklists.create.',
     ],
+    'GET /document-checklists/for-select' => [
+        'summary' => 'List the checklists that can be requested',
+        'description' => 'Options for the request documents dialog: only active checklists already synced with ArchivioSmart, ordered by name. Query: search (name or code), category_id, offset, limit. Answers { items: [{ id, label, code, category_name }], pagination }. Requires document-requests.create.',
+    ],
     'GET /document-checklists/{documentChecklist}' => [
         'summary' => 'Get a document checklist',
         'description' => 'Returns the checklist with its sections ({ id, name, description } in display order), its items in display order (each with section_index and date_field), its category ({ id, name } or null), the sync state (sync_status, sync_error, synced_at), code_locked and a permissions block for the caller. Deleted checklists answer 404. Requires document-checklists.view.',

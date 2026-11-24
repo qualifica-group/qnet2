@@ -116,7 +116,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Visibile solo a chi ha il permesso dedicato. Si imposta l\'**indirizzo base dell\'API** e il **token**. Il token non viene mai mostrato: lascia il campo vuoto per non cambiarlo. **Prova connessione** verifica che i dati siano corretti.',
+          text: 'Visibile solo a chi ha il permesso dedicato. Si imposta l\'**indirizzo base dell\'API** e il **token**. Il token non viene mai mostrato: lascia il campo vuoto per non cambiarlo. Anche il **segreto del webhook** (che inizia con whsec_) non viene mai mostrato: serve a verificare gli aggiornamenti che ArchivioSmart invia a QNet. Copia l\'**URL del webhook** con **Copia** e incollalo in ArchivioSmart; senza segreto gli aggiornamenti non vengono accettati. **Prova connessione** verifica che i dati siano corretti.',
         },
       ],
     },

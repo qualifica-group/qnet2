@@ -13,6 +13,7 @@ use App\Models\DocumentChecklist;
 use App\Models\DocumentChecklistCategory;
 use App\Services\ArchivioSmart\ArchivioSmartClient;
 use App\Services\ArchivioSmart\DocumentChecklistCategoryPayloadBuilder;
+use BackedEnum;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
@@ -106,7 +107,7 @@ class SyncDocumentChecklistCategoryJob implements ShouldQueue
      * not been moved or removed in ArchivioSmart yet, so it is retried while
      * checklists are still waiting to be synced; otherwise it is final.
      */
-    protected function onUnprocessable(Model $record, DocumentChecklistSyncOperation $operation, Response $response): ArchivioSmartCallResult
+    protected function onUnprocessable(Model $record, BackedEnum $operation, Response $response): ArchivioSmartCallResult
     {
         $waitingForChecklists = $operation === DocumentChecklistSyncOperation::Delete
             && DocumentChecklist::withTrashed()

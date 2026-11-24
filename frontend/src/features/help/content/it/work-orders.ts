@@ -413,6 +413,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'document-requests',
+      title: 'Richieste documenti al cliente',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Nella scheda **Documenti › Richieste documenti** del dettaglio della commessa chiedi al cliente i documenti di una **checklist documentale** tramite ArchivioSmart e ne segui l'avanzamento. La scheda compare solo se hai il permesso di vedere le richieste documenti.",
+        },
+        {
+          type: 'list',
+          items: [
+            "**Richiedi documenti**: scegli la checklist (puoi restringere l'elenco per **categoria**; compaiono solo le checklist attive e già sincronizzate con ArchivioSmart), la **scadenza** (oggi o dopo), l'**email del destinatario** (precompilata con l'email principale dell'anagrafica del cliente, se c'è) e un **messaggio** di al massimo 2000 caratteri. Con l'interruttore acceso la richiesta parte subito.",
+            "**Stato**: ogni richiesta mostra lo stato remoto (**Inviata**, **In corso**, **Completata**, **Scaduta**, **Annullata**, **Bozza**), una barra con le voci soddisfatte sul totale e le voci raggruppate come nella checklist, ciascuna con il suo stato, il motivo (per esempio perché un documento va corretto) e il numero di file caricati.",
+            "**In attesa di invio** significa che la richiesta è in coda verso ArchivioSmart; se l'invio non riesce compare **Invio non riuscito** con il messaggio di ArchivioSmart, e puoi correggere i dati con **Modifica**.",
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: "Azioni (con il permesso di modifica): **Modifica** (scadenza, destinatario e messaggio; la checklist non cambia, e non è possibile se la richiesta è completata, scaduta o annullata), **Sollecita** (solo se la richiesta è inviata o in corso), **Annulla richiesta** (chiede conferma e non è possibile se è completata o scaduta), **Aggiorna stato** (rilegge la richiesta da ArchivioSmart) e **Sincronizzazioni** (le ultime 20 chiamate verso ArchivioSmart).",
+        },
+      ],
+    },
+    {
       id: 'deleting-a-work-order',
       title: 'Eliminare una commessa',
       blocks: [

@@ -41,6 +41,11 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware(['api', 'auth:sanctum', EnsureApiClientKey::class])
                 ->prefix('api')
                 ->group(base_path('routes/api/mcp-links.php'));
+
+            // Spec 0428: inbound webhooks, authenticated by signature, not by user token.
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/api/webhooks.php'));
         },
     )
     // Spec 0352: POST /api/broadcasting/auth signs private channel

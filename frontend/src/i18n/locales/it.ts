@@ -56,6 +56,7 @@ import { outboundEmails } from './it-outbound-emails'
 import { emailTemplates } from './it-email-templates'
 import { documentBundles } from './it-document-bundles'
 import { documentChecklists } from './it-document-checklists'
+import { documentRequests } from './it-document-requests'
 import { documentChecklistCategories } from './it-document-checklist-categories'
 import { taskTemplates } from './it-task-templates'
 import { supportTopics } from './it-support-topics'
@@ -450,6 +451,7 @@ export const it: TranslationResources = {
   emailTemplates,
   documentBundles,
   documentChecklists,
+  documentRequests,
   documentChecklistCategories,
   taskTemplates,
   tasks: { ...tasks, stats: moduleStats.tasks },

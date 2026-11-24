@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0428-document-requests-archivio-smart" status="approved" owner="utente" date="2026-11-23">
+
+  <goal>
+    Dalla commessa di QNet 2 si creano richieste di documenti su ArchivioSmart (checklist attiva, scadenza, destinatario,
+    messaggio), se ne segue l'avanzamento voce per voce e si possono modificare, sollecitare e annullare. ArchivioSmart
+    aggiorna QNet 2 con webhook firmati.
+  </goal>
+
+  <context>
+    - Brief ArchivioSmart "richieste di documenti" incollato dall'utente il 2026-11-23 (§1-§10). È la fonte del contratto in
+      uscita. Non si inventano comportamenti di ArchivioSmart che il brief non descrive.
+    - Già presenti:
+      * connessione `archivio_smart_settings` (riga singola, `base_url` e `token` cifrato, endpoint `GET/PUT /api/archivio-smart/settings`, `POST .../test` su `GET /me`);
+      * client `App\Services\ArchivioSmart\ArchivioSmartClient`;
+      * trait `App\Jobs\Concerns\PushesToArchivioSmart` con l'enum `ArchivioSmartCallResult` (429 con Retry-After, backoff `config('archivio-smart.backoff')`, nessun retry su 401/409/422, log senza token né body);
+      * permessi `document-checklists.*` + `manageConnection`;
+      * checklist con `code`, `is_active`, `sync_status`, `category_id` (spec 0403/0410/0427).
+    - Commessa = `App\Models\WorkOrder`. Il cliente si raggiunge con `quote -> opportunity -> registry`; `quote_id` è null per le commesse con più offerte.
+    - Email del cliente: contatti polimorfici, `Registry::primaryContact('email')`.
+    - Note: `POST /api/notes` richiede `entity_type: "work-orders"` e il testo in **`body`** (ArchivioSmart oggi invia `content`: va corretto da loro).
+    - Allegati: `POST /api/attachments` con `attachable_type: "work_order"`.
+    - Modello per l'endpoint webhook: `integrations/Formalab/Http/Middleware/InboundWebhookGuard.php` (confronto a tempo costante, log di ogni chiamata in ingresso).
+    - Dettaglio commessa nel frontend: `features/work-orders/use-work-order-detail-tabs.tsx`, con un gruppo di schede `documents-group`.
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Nuova entità `DocumentRequest`, figlia di `WorkOrder` (tabella `document_requests`). `external_id` verso ArchivioSmart =
+      `(string) id`, quindi esiste prima della prima chiamata e non cambia mai. Ogni chiamata in uscita va in coda.
+    </decision>
+    <decision id="D-2">
+      Nuovi permessi `document-requests.viewAny|view|create|update`.
+      * `create` = "Richiedi documenti";
+      * `update` = modifica, sollecito, annullamento e "Aggiorna stato".
+      Ogni azione richiede anche il permesso di vedere la commessa: si usa la policy esistente di `WorkOrder` (`view`).
+    </decision>
+    <decision id="D-3">
+      Gruppi, voci e file della richiesta sono una copia JSON (`snapshot`: `sections`, `items` con `documents`) della forma §4 di
+      ArchivioSmart. Ogni lettura (`GET`, risposta di PUT/remind/cancel) la sostituisce per intero. I webhook aggiornano solo lo
+      stato della voce indicata e i campi della richiesta. Non c'è una tabella relazionale delle voci.
+    </decision>
+    <decision id="D-4">
+      Le operazioni in uscita sono `upsert`, `remind`, `cancel` e `refresh`. Le esegue un job (`SyncDocumentRequestJob`) che le
+      porta a termine una alla volta per richiesta (`WithoutOverlapping`).
+      * Stato dell'invio `delivery_status`: `pending` (in coda o in retry), `delivered`, `failed`.
+      * `delivery_error` contiene il messaggio di ArchivioSmart: per un 422 quello del campo, per un 409 `message`.
+      * L'ultima operazione richiesta è salvata in `pending_operation`.
+      * 503 = ritenta con backoff (§2). 401/409/422 = `failed`, senza retry.
+    </decision>
+    <decision id="D-5">
+      Lo stato remoto (`status`: draft|sent|in_progress|completed|expired|cancelled) resta null finché ArchivioSmart non
+      risponde la prima volta. Lo scrive solo la risposta di ArchivioSmart o un webhook, mai QNet 2 da solo.
+    </decision>
+    <decision id="D-6">
+      Webhook: `POST /api/webhooks/archivio-smart`, senza login.
+      * Firma: header `Signature` = HMAC-SHA256 esadecimale del corpo grezzo con il segreto `whsec_…`, salvato cifrato in
+        `archivio_smart_settings.webhook_secret`. Confronto con `hash_equals`.
+      * Firma errata o assente → 401. Segreto non configurato → 404.
+      * Firma valida → 202 subito, poi `ProcessArchivioSmartWebhookJob` in coda.
+      * Idempotenza: tabella `archivio_smart_webhook_events` (`event_id` unico). Un duplicato → 202 e nessuna elaborazione.
+      * Ordine: un evento con `occurred_at` precedente a `remote_updated_at` della richiesta non sovrascrive i campi della
+        richiesta. Per `document.*` accoda invece un `refresh` (§6.B.4).
+      * Richiesta con `external_id` null o sconosciuto: evento registrato come `ignored` e nessuna modifica (§6.B.5).
+      * `ping` e `request.created`: solo registrati.
+      * Log senza segreto, firma né corpo.
+    </decision>
+    <decision id="D-7">
+      Destinatario precompilato: l'email principale dell'anagrafica cliente della commessa (`quote.opportunity.registry`; con più
+      offerte, la prima offerta). Se manca, il campo resta vuoto: ArchivioSmart usa quella del cliente oppure risponde 422.
+      `customer_external_id` non si invia mai (§4).
+    </decision>
+    <decision id="D-8">
+      Si possono scegliere solo le checklist attive e sincronizzate (`is_active` e `sync_status = synced`), filtrabili per
+      categoria. Dopo la creazione una richiesta non cambia più né checklist né commessa.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: `document_requests`, `document_request_sync_logs`, `archivio_smart_webhook_events`, `webhook_secret` in `archivio_smart_settings`; model, policy, permessi.</item>
+      <item>API QNet: elenco per commessa, valori di creazione, creazione, dettaglio, modifica, sollecito, annullamento, aggiornamento, log delle chiamate; checklist for-select.</item>
+      <item>Job di sync (upsert/remind/cancel/refresh) con riuso di client e trait; nuovi metodi del client.</item>
+      <item>Endpoint webhook firmato, idempotente, in coda; segreto webhook e URL del webhook nella finestra della connessione.</item>
+      <item>Frontend: scheda "Richieste documenti" nel gruppo documenti della commessa (elenco, avanzamento, voci per gruppo, azioni), dialog "Richiedi documenti", dialog di modifica, campo del segreto nella connessione; guide in-app IT/EN.</item>
+    </in>
+    <out>
+      <item>Facoltativi del §7.7 (sollecito automatico, notifiche agli utenti).</item>
+      <item>Riallineamento periodico in polling (§6.C).</item>
+      <item>Download dei documenti (§6.D): si usano gli allegati automatici sulla commessa (§6.A, lato ArchivioSmart).</item>
+      <item>Richieste create a mano in ArchivioSmart: non si importano.</item>
+      <item>Modifiche alle API note/allegati di QNet: ArchivioSmart deve usare `body`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <model name="DocumentRequest" table="document_requests">
+      id, work_order_id (FK, indice), document_checklist_id (FK, nullOnDelete), checklist_code varchar(64) (copia al momento della creazione),
+      checklist_name varchar(255), category_name varchar(255) null, due_date date null, recipient_email varchar(255) null,
+      message text null (max 2000), status varchar(20) null, title varchar(255) null, items_count/items_uploaded_count/items_satisfied_count unsigned smallint default 0,
+      snapshot json null ({sections:[{name,description}], items:[{id,section_index,name,description,is_required,min_files,max_files,status,status_reason,latest_validation,documents:[…]}]}),
+      sent_at/last_reminded_at/completed_at/cancelled_at/expired_at/link_expires_at timestamp null, remote_updated_at timestamp null,
+      last_event_at timestamp null, delivery_status varchar(20) (pending|delivered|failed), pending_operation varchar(20) null, delivery_error text null,
+      created_by (FK users, nullOnDelete), timestamps.
+    </model>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/document-requests">
+      <response status="200">{ success, message, data: [DocumentRequest], meta: { can_create: bool } } (ordine: created_at desc)</response>
+      <errors>403 senza document-requests.viewAny o senza view sulla commessa.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/document-requests/defaults">
+      <response status="200">{ data: { recipient_email: string|null, customer_name: string|null } }</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/document-checklists/for-select">
+      <request>?search=&amp;category_id=&amp;offset=&amp;limit= (ADR 0011); solo attive e sincronizzate</request>
+      <response status="200">{ items: [{ id, label, code, category_name }], pagination }</response>
+      <errors>403 senza document-requests.create.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/document-requests">
+      <request>{ document_checklist_id: int, due_date: "YYYY-MM-DD"|null (oggi o dopo), recipient_email: email|null (max 255), message: string|null (max 2000), send: bool (default true) }</request>
+      <response status="201">{ data: DocumentRequest } con delivery_status "pending", pending_operation "upsert"; il job è accodato dopo il commit</response>
+      <errors>422: document_checklist_id inesistente, non attiva o non sincronizzata; due_date passata; email non valida; message oltre 2000. 403 senza create.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/document-requests/{documentRequest}">
+      <response status="200">{ data: DocumentRequest }</response>
+    </endpoint>
+    <endpoint method="PUT" path="/api/document-requests/{documentRequest}">
+      <request>{ due_date, recipient_email, message, send: bool }: solo questi campi (§4, modifica)</request>
+      <response status="200">{ data } con pending_operation "upsert"</response>
+      <errors>422 `status` se la richiesta è completed, expired o cancelled. 403 senza update.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/remind">
+      <errors>422 `status` se lo stato non è sent o in_progress.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/cancel">
+      <errors>422 `status` se è completed o expired. Su una richiesta già cancelled: 200, niente in coda (§4 idempotente).</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/refresh"/>
+    <endpoint method="GET" path="/api/document-requests/{documentRequest}/sync-logs">
+      <response status="200">{ data: [{ id, operation, outcome, http_status, attempt, message, created_at }] } (ultimi 20)</response>
+    </endpoint>
+
+    <shape name="DocumentRequest">
+      { id, work_order_id, checklist: { id|null, code, name }, category_name, due_date, recipient_email, message,
+        status|null, title|null, items_count, items_uploaded_count, items_satisfied_count,
+        sections: [{ name, description }], items: [{ id, section_index, name, description, is_required, min_files, max_files,
+        status, status_reason, latest_validation: { outcome, reason_for_customer, decided_by, created_at }|null, documents_count }],
+        sent_at, last_reminded_at, completed_at, cancelled_at, expired_at, link_expires_at, remote_updated_at,
+        delivery_status, pending_operation, delivery_error, created_at,
+        permissions: { update, remind, cancel } }
+    </shape>
+
+    <endpoint method="PUT|POST" path="{archivio_smart.base_url}/requests/{external_id}[/remind|/cancel]" direction="outbound">
+      <request>PUT: creazione { project_external_id: (string) work_order_id, checklist_code, due_date, recipient_email, message, send }; modifica { due_date, recipient_email, message, send }. remind/cancel: nessun corpo. GET /requests/{external_id} per refresh.</request>
+      <response>{ data: forma §4 } → salvata (D-3). 200 o 201 = delivered.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/webhooks/archivio-smart" direction="inbound">
+      <request>Header Signature, X-Archiviosmart-Event, X-Archiviosmart-Event-Id, X-Archiviosmart-Timestamp; body §6.B</request>
+      <response status="202">{ success: true }</response>
+      <errors>401 firma errata o assente; 404 segreto non configurato.</errors>
+      <effects>
+        document.uploaded → la voce `data.item.id` va a `uploaded`;
+        document.validated → la voce va a `validation.item_status`, con `status_reason` = `validation.reason_for_customer` e `latest_validation`;
+        request.completed / request.expired → status e `completed_at` / `expired_at`;
+        tutti gli eventi con `data.request` aggiornano `status` della richiesta se `occurred_at` non è più vecchio di `remote_updated_at`.
+      </effects>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/archivio-smart/settings">
+      <request>aggiunge webhook_secret?: string (omesso = invariato, "" = rimosso)</request>
+      <response>aggiunge has_webhook_secret: bool, webhook_url: string (URL assoluto dell'endpoint)</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con document-requests.create e view sulla commessa, POST di creazione con checklist attiva e sincronizzata → 201, riga con delivery_status pending, job accodato dopo il commit; il job invia PUT /requests/{id} con project_external_id stringa, checklist_code, send true, e senza customer_external_id (Http::assertSent).</criterion>
+    <criterion id="AC-002">La risposta 201 di ArchivioSmart salva status, title, contatori, sezioni, voci e date, e mette delivery_status delivered; ripetere il job con risposta 200 non crea altre righe.</criterion>
+    <criterion id="AC-003">422 di ArchivioSmart su customer_external_id o checklist_code → delivery_status failed, delivery_error = messaggio del campo, nessun retry; 503 o 500 → job rilasciato con backoff e delivery_status ancora pending; 429 → rilasciato dopo Retry-After.</criterion>
+    <criterion id="AC-004">POST con checklist disattivata o non sincronizzata, due_date passata, email non valida o message di 2001 caratteri → 422 sui rispettivi campi, nessuna riga e nessun job.</criterion>
+    <criterion id="AC-005">Senza document-requests.viewAny/create/update, o senza view sulla commessa, ogni endpoint risponde 403. La for-select delle checklist restituisce solo le attive e sincronizzate, filtrate per category_id.</criterion>
+    <criterion id="AC-006">defaults restituisce l'email principale dell'anagrafica cliente della commessa, null se manca; per una commessa con più offerte quella della prima offerta.</criterion>
+    <criterion id="AC-007">PUT di modifica invia solo due_date, recipient_email, message e send; su una richiesta completed, expired o cancelled → 422 `status` senza job.</criterion>
+    <criterion id="AC-008">remind su una richiesta sent → POST /requests/{id}/remind e salvataggio della risposta (last_reminded_at); su draft o completed → 422 `status`, nessun job.</criterion>
+    <criterion id="AC-009">cancel su sent → POST /cancel e status cancelled dalla risposta; su una già cancelled → 200 senza job; su completed o expired → 422.</criterion>
+    <criterion id="AC-010">refresh → GET /requests/{id} e sostituzione completa dello snapshot.</criterion>
+    <criterion id="AC-011">Webhook con firma valida → 202 e job accodato; firma alterata o assente → 401 senza job; segreto non configurato → 404.</criterion>
+    <criterion id="AC-012">Lo stesso event_id inviato due volte viene elaborato una volta sola (una riga in archivio_smart_webhook_events, stato della voce cambiato una volta).</criterion>
+    <criterion id="AC-013">document.validated con item_status ko e reason_for_customer → la voce dello snapshot ha status ko e status_reason uguale al motivo; request.completed → status completed e completed_at valorizzato; request.expired → expired.</criterion>
+    <criterion id="AC-014">Un evento con occurred_at precedente a remote_updated_at non riporta indietro lo status della richiesta; un document.* fuori ordine accoda un refresh.</criterion>
+    <criterion id="AC-015">Un evento con external_id null o sconosciuto viene registrato come ignored e non modifica nulla; ping viene solo registrato.</criterion>
+    <criterion id="AC-016">Il segreto webhook è salvato cifrato, non viene mai restituito (solo has_webhook_secret) e non compare nei log; il token non compare nei log di sync (ricerca della stringa nei log).</criterion>
+    <criterion id="AC-017">Frontend: la scheda "Richieste documenti" elenca le richieste con l'etichetta di stato del §5, la barra (satisfied/items) e le voci per gruppo con stato e motivazione; le azioni compaiono secondo i permessi e lo stato; "in attesa di invio" e l'errore di invio sono visibili.</criterion>
+    <criterion id="AC-018">Frontend: il dialog "Richiedi documenti" propone solo checklist selezionabili, filtrabili per categoria, con l'email precompilata da defaults; l'invio chiama il POST e un 422 viene mostrato sul campo.</criterion>
+    <criterion id="AC-019">Frontend: annulla chiede conferma; sollecita e annulla chiamano gli endpoint e aggiornano la scheda.</criterion>
+    <criterion id="AC-020">Guide in-app IT/EN aggiornate (commessa: richieste documenti; connessione: segreto webhook), con parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Throttle solo dove già previsto: il webhook non ha throttle.
+    - Niente segreti nel codice; token e segreto webhook cifrati e mai nei log; nei log nessun dato personale (email o messaggio).
+    - Authz server-side su ogni endpoint (policy `DocumentRequestPolicy` + view della commessa); Resource con envelope di progetto.
+    - Riuso di `ArchivioSmartClient` e `PushesToArchivioSmart`, senza duplicare retry e log.
+    - Nomi di indici e FK sotto i 64 caratteri; migrazioni reversibili.
+    - Testi UI in italiano (IT/EN via i18n); UI compatta (`ui-design.md`).
+  </constraints>
+
+  <plan>
+    <task id="BE-01" owner="backend" lane="sequenziale" write="backend/database, app/Models, app/Policies, config/authorization+permessi">Migrazioni, model, policy, permessi, segreto webhook nella connessione. AC-005, AC-016 (parte).</task>
+    <task id="BE-02" owner="backend" lane="dopo BE-01" write="app/Http (document requests), app/Services/DocumentRequest*, app/Jobs/SyncDocumentRequestJob, client">API QNet, job, client. AC-001..010.</task>
+    <task id="BE-03" owner="backend" lane="dopo BE-01" write="app/Http/Controllers/Webhooks, middleware, app/Jobs/ProcessArchivioSmartWebhookJob">Webhook. AC-011..016.</task>
+    <task id="FE-01" owner="frontend" lane="parallelo a BE (contratto congelato)" write="frontend/src/features/document-requests, work-orders tabs, document-checklists connection dialog, i18n, help">Scheda, dialog, azioni, segreto webhook, guide. AC-017..020.</task>
+    <task id="VER" owner="verifier" lane="gate finale">Mappatura degli AC, test mirati, gate completo.</task>
+  </plan>
+
+</spec>

@@ -37,5 +37,7 @@ return [
         'description' => 2000,
         'date_field' => 64,
         'validation_prompt' => 5000,
+        'request_message' => 2000,
+        'email' => 255,
     ],
 ];

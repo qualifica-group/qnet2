@@ -286,6 +286,8 @@ return [
         'revenue-types',
         // Spec 0360: `treasury-types.*` (financial sub-accounts), same as revenue-types.
         'treasury-types',
+        // Spec 0428: `document-requests.*` is used from the work order detail, no menu entry of its own.
+        'document-requests',
     ],
 
 ];

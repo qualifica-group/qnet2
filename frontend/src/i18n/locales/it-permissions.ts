@@ -171,6 +171,7 @@ export const permissions = {
     'financial-accounts': 'Gestione Conti',
     'treasury-movements': 'Movimenti di tesoreria',
     'treasury-types': 'Sottoconti finanziari',
+    'document-requests': 'Richieste documenti',
     'proforma-requests': 'Richieste Proforma',
     'purchase-requests': 'Richieste di acquisto (RDA)',
     'purchase-orders': 'Ordini di acquisto (ODA)',
