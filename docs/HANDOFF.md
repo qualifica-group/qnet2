@@ -61,6 +61,15 @@
 - Guide IT/EN: `quotes.ts` (catalogo), `parts/work-orders-costs.ts`; manuale Claude Docs: paragrafo catalogo offerta.
 - Prossimo: eseguire `costs:clear-vat` su qnet2 (e staging/prod al deploy, dopo aver verificato che "IVA al 0%" esista); commit qnet-2 + legacy su richiesta, esclusi i file Formalab di un altro lavoro in corso.
 
+## Formalab: partner del prospetto = Partner commerciale dell'offerta del discente (spec 0427 D-2 revised, 2026-11-24) — VERDE MIRATO, NON COMMITTATO
+
+- Richiesta utente: "bisogna prendere il campo partner commerciale che si trova sulla offerta del discente. nient'altro". Nel legacy il partner era solo testo libero `pre_info_formaziones.partner_commerciale` (import GOL, creazione opportunita' GOL, info preliminari).
+- `CommissionBook::offerPartners`: CF -> anagrafiche (`personal_data`) -> opportunita' (`registry_id`) -> offerte; vale la piu' recente (id maggiore) con `commercial_partner_id`. Nessun fallback (ne' testo legacy ne' Partner commerciale dell'anagrafica). Colonna `formalab_learner_commissions.partner_name` rimossa: migrazione nuova `2026_11_24_110000_drop_partner_name_...` (NON eseguita su qnet2: va lanciata con `migrate`; la tabella e' vuota). ST-2 non migra piu' il testo `partner_commerciale`.
+- Fornitore del partner e riepilogo restano legati al NOME del partner (referente).
+- Dati: sulla copia locale nessuna offerta dei discenti della classe 926 ha il Partner commerciale (1 offerta in tutto il DB): finche' non viene compilato sulle offerte il prospetto mostra 0 partner.
+- Test: `FormalabLearnerStatementTest` 15 (REQUIREMENT CHANGED: fixture partner via offerte, nuovo test "offerta piu' recente con partner", nuovo test "nessun partner senza offerta con partner", export per partner senza partner = offerte senza partner). Formalab 107/107 con `FORMALAB_ENABLED=false` (il test "disabled" fallisce col `.env` locale `FORMALAB_ENABLED=true`, preesistente). Pint, Vitest help 165/165, tsc -b puliti.
+- Manuale: guida `formalab` IT/EN aggiornata; il manuale Claude Docs non ha una sezione Formalab/Prospetto (da aggiungere quando il modulo esce da "in sviluppo").
+
 ## Formalab: Prospetto contabile discenti, ST-1 (spec 0427, 2026-11-24) — VERDE MIRATO, COMMITTATO, MIGRAZIONE APPLICATA SU qnet2
 
 - Port del Livewire legacy `ProspettoContabileDiscenti` (calcoli identici, valori attesi ricavati eseguendo i metodi legacy in memoria su classe 926 / COM-12574, 4 stati di incasso). Pulsante in Amministrazione > Costi solo con Formalab attiva + commessa idonea + classe collegata (`view_costs`).

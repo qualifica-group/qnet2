@@ -16,9 +16,10 @@
     Sotto-task:
     - ST-1 (questa consegna) Prospetto in lettura con tutti i calcoli, modifica di % / importo provvigione
       per discente, fornitore del partner, scenario provvigioni Economico/Finanziario, i due export Excel.
-    - ST-2 Migrazione dal legacy (backend.md §9) dei dati partner dei discenti: `pre_info_formaziones`
-      (partner_commerciale, partner_commerciale_percentuale, partner_commerciale_importo,
-      partner_commerciale_id) -> `formalab_learner_commissions`. Endpoint legacy nuovo + sorgente qnet-2.
+    - ST-2 Migrazione dal legacy (backend.md §9) delle provvigioni dei discenti: `pre_info_formaziones`
+      (partner_commerciale_percentuale, partner_commerciale_importo, partner_commerciale_id) ->
+      `formalab_learner_commissions`. Endpoint legacy nuovo + sorgente qnet-2. Il testo libero
+      `partner_commerciale` NON si migra (D-2 revised 2026-11-24).
     - ST-3 Azioni di scrittura del legacy: "Genera Notula/e" (fornitore privato + riga di costo notula sul
       preventivo + ricevuta PDF), "Genera ODA Partner" (ordine fornitore con scadenze), "Importa Discenti
       da Formalab" (anagrafica + opportunita' + offerta per discente), selezione discenti/partner.
@@ -54,8 +55,12 @@
       ripartizione per mese usa solo il ricavo del servizio 1326.
     - D-2 Dati partner per discente in tabella propria `formalab_learner_commissions`, chiave codice
       fiscale (il legacy lavora per codice fiscale: `PreInfoFormazione::where('codice_fiscale')->first()`):
-      partner_name, percentage, amount, supplier_registry_id. Partner del discente = `partner_name` della
-      riga; se vuoto, il Partner commerciale (spec 0417) dell'anagrafica con quel codice fiscale.
+      percentage, amount, supplier_registry_id. [revised 2026-11-24, richiesta utente "bisogna prendere il
+      campo partner commerciale che si trova sulla offerta del discente. nient'altro"] Partner del discente =
+      SOLO il Partner commerciale (spec 0417, `quotes.commercial_partner_id`) dell'offerta del discente:
+      anagrafiche con quel codice fiscale -> opportunita' -> offerte; con piu' offerte vale la piu' recente
+      (id maggiore) che ha un Partner commerciale. Nessun fallback: non il testo libero del legacy, non il
+      Partner commerciale dell'anagrafica. Colonna `partner_name` rimossa (migrazione nuova).
     - D-3 Scrittura % : percentuale limitata 0-100; se > 0 l'importo salvato = utile a discente dello
       scenario attivo x % (come `updatedPercentualiPartner`). Scrittura importo: >= 0. Il legacy
       riallineava gli importi a ogni apertura (`allineaImportiPartner`): in qnet-2 la lettura non scrive;

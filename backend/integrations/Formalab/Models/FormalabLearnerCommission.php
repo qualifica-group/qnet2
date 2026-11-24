@@ -10,11 +10,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Commercial partner of one learner, keyed by tax code (spec 0427 D-2): the
- * partner name, the commission as a percentage of the profit per learner or
- * as a fixed amount, and the supplier registry the partner is paid through.
+ * Commercial partner commission of one learner, keyed by tax code (spec 0427
+ * D-2): a percentage of the profit per learner or a fixed amount, and the
+ * supplier registry the partner is paid through. The partner itself is the
+ * "Partner commerciale" of the learner's offer.
  */
-#[Fillable(['tax_code', 'partner_name', 'percentage', 'amount', 'supplier_registry_id'])]
+#[Fillable(['tax_code', 'percentage', 'amount', 'supplier_registry_id'])]
 class FormalabLearnerCommission extends Model
 {
     protected $table = 'formalab_learner_commissions';

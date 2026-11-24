@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\QuoteLineType;
+use App\Models\Opportunity;
 use App\Models\PersonalData;
 use App\Models\Product;
+use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\Referent;
 use App\Models\Registry;
@@ -78,8 +80,28 @@ function lsProduct(string $source, int $oldId, ?int $categoryId = null): Product
 }
 
 /**
+ * A learner's offer (registry with the tax code, opportunity, quote) carrying
+ * that "Partner commerciale"; the referent is shared by name.
+ */
+function lsLearnerOffer(int $index, ?string $partner, ?Registry $registry = null): Quote
+{
+    if ($registry === null) {
+        $registry = Registry::factory()->create();
+        PersonalData::factory()->individual()->for($registry, 'personable')->create(['tax_code' => lsTaxCode($index)]);
+    }
+    $partnerId = $partner === null ? null
+        : (Referent::query()->where('name', $partner)->value('id') ?? Referent::factory()->create(['name' => $partner])->id);
+
+    return Quote::factory()->create([
+        'opportunity_id' => Opportunity::factory()->create(['registry_id' => $registry->id])->id,
+        'commercial_partner_id' => $partnerId,
+    ]);
+}
+
+/**
  * The work order of order 12574: eligible, class 926 chosen, the quote lines
- * of quotation 23272, the learners' partner data.
+ * of quotation 23272, the learners' offers with their partner, the stored
+ * commissions.
  *
  * @param  array<string, mixed>  $values
  */
@@ -109,7 +131,8 @@ function lsWorkOrder(array $values = [], bool $linkCategory = true): WorkOrder
 
     foreach (LS_LEARNERS as $index => [, , , , , $partner, $percentage, $amount]) {
         if ($partner !== null) {
-            FormalabLearnerCommission::query()->create(['tax_code' => lsTaxCode($index), 'partner_name' => $partner, 'percentage' => $percentage, 'amount' => $amount]);
+            lsLearnerOffer($index, $partner);
+            FormalabLearnerCommission::query()->create(['tax_code' => lsTaxCode($index), 'percentage' => $percentage, 'amount' => $amount]);
         }
     }
 
@@ -272,12 +295,26 @@ it('reports a class Formalab cannot give and a class without learners', function
     $this->getJson(lsUrl($workOrder).'?refresh=1')->assertOk()->assertJsonPath('data.class_status', 'empty');
 });
 
-it('takes the partner from the learner registry when the stored row has none', function () {
+it('takes the partner only from the most recent learner offer that carries one', function () {
     $workOrder = lsSetup();
-    $registry = Registry::factory()->create(['commercial_partner_id' => Referent::factory()->create(['name' => 'Partner Z'])->id]);
+    $registry = Registry::factory()->create(['commercial_partner_id' => Referent::factory()->create(['name' => 'Registry partner'])->id]);
     PersonalData::factory()->individual()->for($registry, 'personable')->create(['tax_code' => lsTaxCode(7)]);
 
+    $this->getJson(lsUrl($workOrder))->assertOk()->assertJsonPath('data.learners.7.partner', null);
+
+    lsLearnerOffer(7, 'Older offer partner', $registry);
+    lsLearnerOffer(7, 'Partner Z', $registry);
+    lsLearnerOffer(7, null, $registry);
+
     $this->getJson(lsUrl($workOrder))->assertOk()->assertJsonPath('data.learners.7.partner', 'Partner Z');
+});
+
+it('shows no partner for a learner whose offer has none, even with a stored commission', function () {
+    $workOrder = lsSetup();
+    lsLearnerOffer(8, null);
+    FormalabLearnerCommission::query()->create(['tax_code' => lsTaxCode(8), 'amount' => 500]);
+
+    $this->getJson(lsUrl($workOrder))->assertOk()->assertJsonPath('data.learners.8.partner', null);
 });
 
 // AC-007
@@ -333,7 +370,7 @@ it('exports the whole statement and one sheet per partner', function () {
 
 it('refuses the partner export when no learner has a partner', function () {
     $workOrder = lsSetup();
-    FormalabLearnerCommission::query()->delete();
+    Quote::query()->update(['commercial_partner_id' => null]);
 
     $this->get(lsUrl($workOrder, '/export?variant=partners'))->assertUnprocessable();
 });

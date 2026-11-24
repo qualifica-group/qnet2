@@ -5,25 +5,27 @@ declare(strict_types=1);
 namespace Integrations\Formalab\Services\LearnerStatement;
 
 use App\Models\PersonalData;
+use App\Models\Quote;
 use App\Models\Registry;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Integrations\Formalab\Models\FormalabLearnerCommission;
 
 /**
  * The commercial partner data of the learners of one class, by tax code
- * (spec 0427 D-2): the stored row first; with no partner name on it, the
- * "Partner commerciale" of the learner's registry (spec 0417).
+ * (spec 0427 D-2): the partner is the "Partner commerciale" (spec 0417) of the
+ * learner's offer, the commission and the supplier are the stored row.
  */
 final class CommissionBook
 {
     /**
      * @param  Collection<string, FormalabLearnerCommission>  $rows
-     * @param  array<string, string>  $registryPartners  tax code => partner name from the registry
+     * @param  array<string, string>  $partners  tax code => partner name from the learner's offer
      * @param  array<string, list<int>>  $registryIds  tax code => registries carrying it
      */
     private function __construct(
         private readonly Collection $rows,
-        private readonly array $registryPartners,
+        private readonly array $partners,
         private readonly array $registryIds,
     ) {}
 
@@ -41,24 +43,49 @@ final class CommissionBook
             ->where('personable_type', (new Registry)->getMorphClass())
             ->get(['tax_code', 'personable_id']);
 
-        $registries = Registry::query()
-            ->with('commercialPartner:id,name')
-            ->whereIn('id', $cards->pluck('personable_id'))
-            ->get(['id', 'commercial_partner_id'])
-            ->keyBy('id');
-
-        $registryPartners = [];
         $registryIds = [];
         foreach ($cards->sortBy('personable_id') as $card) {
-            $taxCode = self::normalize((string) $card->tax_code);
-            $registryIds[$taxCode][] = (int) $card->personable_id;
-            $partner = $registries->get($card->personable_id)?->commercialPartner?->name;
-            if (! isset($registryPartners[$taxCode]) && is_string($partner) && $partner !== '') {
-                $registryPartners[$taxCode] = $partner;
+            $registryIds[self::normalize((string) $card->tax_code)][] = (int) $card->personable_id;
+        }
+
+        return new self($rows, self::offerPartners($registryIds), $registryIds);
+    }
+
+    /**
+     * The partner of each learner: the one on the most recent offer of the
+     * learner's registries that carries a "Partner commerciale".
+     *
+     * @param  array<string, list<int>>  $registryIds
+     * @return array<string, string>
+     */
+    private static function offerPartners(array $registryIds): array
+    {
+        $taxCodesOfRegistry = [];
+        foreach ($registryIds as $taxCode => $ids) {
+            foreach ($ids as $id) {
+                $taxCodesOfRegistry[$id][] = $taxCode;
             }
         }
 
-        return new self($rows, $registryPartners, $registryIds);
+        $quotes = Quote::query()
+            ->whereNotNull('commercial_partner_id')
+            ->whereHas('opportunity', static fn (Builder $query) => $query->whereIn('registry_id', array_keys($taxCodesOfRegistry)))
+            ->with(['opportunity:id,registry_id', 'commercialPartner:id,name'])
+            ->orderBy('id')
+            ->get(['id', 'opportunity_id', 'commercial_partner_id']);
+
+        $partners = [];
+        foreach ($quotes as $quote) {
+            $partner = $quote->commercialPartner?->name;
+            if (! is_string($partner) || $partner === '') {
+                continue;
+            }
+            foreach ($taxCodesOfRegistry[$quote->opportunity->registry_id] ?? [] as $taxCode) {
+                $partners[$taxCode] = $partner;
+            }
+        }
+
+        return $partners;
     }
 
     public static function normalize(string $taxCode): string
@@ -69,14 +96,7 @@ final class CommissionBook
     /** The learner's partner name; null when none (legacy `empty()`). */
     public function partnerOf(string $taxCode): ?string
     {
-        $taxCode = self::normalize($taxCode);
-        $stored = $this->rows->get($taxCode)?->partner_name;
-
-        if (is_string($stored) && $stored !== '') {
-            return $stored;
-        }
-
-        return $this->registryPartners[$taxCode] ?? null;
+        return $this->partners[self::normalize($taxCode)] ?? null;
     }
 
     public function percentageOf(string $taxCode): float
