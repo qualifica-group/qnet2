@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Picker stato delle azioni contratto bloccato senza `contracts.update` (segnalazione utente 2026-11-24, Annarita Palumbo) — VERDE MIRATO, COMMITTATO
+
+- Causa: le finestre Disdici / Modifica stato / Valida / Riapri contratto usano `RelationSelectField metaKey="contract_status_id"`, che leggeva il permesso di CAMPO della scheda (`ContractsAuthorization::fieldPermissionCeiling`: sola lettura senza `contracts.update`). Un utente con `contracts.terminate`/`changeStatus` ma senza `update` (ruoli `reparto-iso`, `reparto-pianificazione`) trovava il menu disabilitato; il server invece autorizza solo l'azione.
+- Fix: `contract-actions-bar.tsx` avvolge le finestre di azione in `<ResourcePermissionsProvider permissions={null}>` (fallback permissivo): le finestre sono autorizzate dal bottone (`permissions.actions.*`) e dall'endpoint. Nessun permesso da concedere all'utente.
+- Test: `contract-actions-status-picker.test.tsx` (2, falliscono senza il fix). Contracts 224/224, ESLint e `tsc -b --force` puliti.
+- Manuale: nessun impatto.
+
 ## Notifica riepilogativa sulle chiusure multiple di task (spec 0428, segnalazione utente 2026-11-24, Annarita Palumbo) — VERDE MIRATO, COMMITTATO
 
 - Causa segnalata: chiudendo con la Completa massiva i 18 task di fase di una commessa, il richiedente riceveva 18 TaskClosed/TaskFeedbackInserted. Concausa dati: 352.212 task migrati hanno `is_template_generated = 0` (ultimo import `tasks` 2026-11-10, prima di spec 0388; il legacy invia il flag da `ede9c847`, su `origin/master`): serve un ri-lancio della sorgente `tasks` SENZA `updated_since` in produzione (riempie solo il flag, `TasksSource::fillEmptySnapshots`). Non eseguito da qui.
