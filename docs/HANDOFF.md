@@ -11,6 +11,14 @@
 - Test: `tests/Feature/WorkOrders/WorkOrderAmountColumnsTest.php` (9), `column-renderers.test.tsx` (+2). Pest WorkOrders 618/623 (5 rossi preesistenti: WorkOrderAttributeLocksTest 3, QuoteLineWorkOrderMigrationTest 2), Tables 74, Projects 100, Exports 43; Vitest work-orders+help 61 file/549; ESLint, Pint, `tsc -b --force` puliti. Verifica DB dev: 200 commesse a caso, 0 differenze fra `total_revenue` e `effective_revenue` della tab Dati contrattuali.
 - Guide in-app `work-orders` IT/EN (paragrafo dopo "Stato pagamento") + manuale Claude Docs (paragrafo "Colonne Importo consulenza e Totale ricavo." dopo "Colonna Stato pagamento.").
 
+## Avanzamento commesse riallineato al legacy (2026-11-24) — VERDE MIRATO, NON COMMITTATO, SEEDER NON ANCORA ESEGUITO
+
+- Causa: `WorkOrderProgressSource` crea soltanto (salta la commessa che ha gia' avanzamenti) e le cancellazioni del legacy (`ListaAvanzamentoCommesseModale::deleteAvanzamento`, hard delete, nessun activity log ne' utente) non arrivano a qnet-2. Esempio: legacy 12574 al 100% (righe rifatte il 29/10), qnet-2 COM-12574 al 37%.
+- Conteggio sulle copie locali: 173 commesse migrate con percentuale diversa; 37 senza avanzamenti inseriti in qnet-2 (allineabili), 136 con righe manuali qnet-2 (da decidere caso per caso, non toccate).
+- `database/seeders/WorkOrderProgressAlignmentSeeder.php` (one-shot, `php artisan db:seed --class=WorkOrderProgressAlignmentSeeder --force`): righe legacy delle 37 commesse scritte nel seeder; sostituisce gli avanzamenti solo se tutti migrati (`created_by` null), idempotente, senza activity log. Date legacy `0000-00-00` (10678, 15903) -> giorno di inserimento; 20140 senza righe nel legacy -> avanzamenti azzerati.
+- Test: `tests/Feature/Seeding/WorkOrderProgressAlignmentSeederTest.php` (4 verdi). Manuale: nessun impatto.
+- Aperto: il problema si ripresenta per le modifiche future nel legacy finche' non esiste un target di riallineamento `work-order-progress`.
+
 ## Costi a IVA 0% (decisione utente 2026-11-24) — VERDE MIRATO, COMMITTATO (qnet-2 + legacy), COMANDO NON ANCORA ESEGUITO
 
 - Regola: righe COSTO dell'offerta e costi effettivi della commessa partono sull'aliquota **"IVA al 0%"** (non vuota). Le righe di RICAVO restano con l'IVA del prodotto. L'operatore puo' cambiarla a mano.
