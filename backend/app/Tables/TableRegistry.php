@@ -92,6 +92,16 @@ class TableRegistry
     public function __construct(private readonly Container $container) {}
 
     /**
+     * Whether `$domain` shows another domain's records and shares ITS custom
+     * fields: never an entity of its own, even when it is also a permission
+     * resource (`project-work-orders`, 2026-11-25).
+     */
+    public static function isCustomFieldEntityAlias(string $domain): bool
+    {
+        return array_key_exists($domain, self::CUSTOM_FIELD_ENTITY_ALIASES);
+    }
+
+    /**
      * Resolve the definition for the given domain, wrapped in
      * `CustomFieldAwareTableDefinition` (spec 0021) when the domain is
      * custom-fieldable, THEN in `RequestManagementScopedTableDefinition`

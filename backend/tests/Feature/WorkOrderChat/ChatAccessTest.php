@@ -69,10 +69,11 @@ it('answers 404 before 422 on a processing work order and 422 before 409 on a cl
     $this->postJson(chatUrl($closed), ['body' => ''])->assertUnprocessable();
 });
 
-it('answers 403 to a team member who lacks the work-orders.view permission', function (): void {
+// REQUIREMENT CHANGED (2026-11-25): a project commessa is opened with `project-work-orders.view`.
+it('answers 403 to a team member who lacks the project-work-orders.view permission', function (): void {
     $workOrder = chatWorkOrder();
     $member = chatMember($workOrder);
-    $member->revokePermissionTo('work-orders.view');
+    $member->revokePermissionTo('project-work-orders.view');
     Sanctum::actingAs($member);
 
     $this->getJson(chatUrl($workOrder))->assertForbidden();

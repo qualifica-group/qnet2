@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Contact, Info, ListChecks, MessagesSquare, Paperclip } from 'lucide-react'
-import { moduleActionHref } from '@/features/modules/module-action-href'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { buildWorkOrderColumnRenderers } from '@/features/work-orders/column-renderers'
-import { moduleDefinition } from '@/features/work-orders/work-order-module'
+import { PROJECT_WORK_ORDERS_DOMAIN } from '@/features/work-orders/project-work-order-module'
+import { workOrderPath } from '@/features/work-orders/work-order-type-routing'
 import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
 import type { ProformaTarget } from '@/features/work-orders/work-order-proforma-cell'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
@@ -22,6 +22,9 @@ const TEAM_ACTION_KEY = 'team'
 /** Row-action key of Elimina, offered only where the policy allows it (user request 2026-11-19). */
 const DELETE_ACTION_KEY = 'delete'
 
+/** Row-action key of the eye, which opens the commessa. */
+const VIEW_ACTION_KEY = 'view'
+
 /** The row actions that open the commessa on one of its detail tabs (spec 0405): action key = tab value. */
 const TAB_ACTION_KEYS: ReadonlySet<string> = new Set(['info', 'notes', 'tasks', 'documents'])
 
@@ -33,17 +36,19 @@ const ROW_ACTION_ICONS: ActionIconMap = {
   paperclip: Paperclip,
 }
 
-const VIEW_HREF = moduleActionHref(WORK_ORDERS_DOMAIN)
+/** A project commessa opens in "Commesse di Progetto", any other in "Commesse" (2026-11-25). */
+const isProjectRow = (row: TableRow): boolean => row.type === 'project'
 
 /**
  * The page each row action leads to, for Ctrl/Cmd+click: the commessa's page
- * for the eye, the page on that tab for Info and the menu entries.
+ * (in the module of its type) for the eye, the page on that tab for Info and
+ * the menu entries.
  */
 const resolveActionHref: ActionHrefResolver = (action, row) => {
   if (TAB_ACTION_KEYS.has(action.key)) {
-    return `${moduleDefinition.basePath}/${row.id}?${new URLSearchParams({ tab: action.key }).toString()}`
+    return `${workOrderPath(row.type, row.id)}?${new URLSearchParams({ tab: action.key }).toString()}`
   }
-  return VIEW_HREF?.(action, row)
+  return action.key === VIEW_ACTION_KEY ? workOrderPath(row.type, row.id) : undefined
 }
 
 export interface UseWorkOrderRowActionsOptions {
@@ -78,7 +83,8 @@ export interface UseWorkOrderRowActionsResult {
 /**
  * The Commesse row actions of the legacy `OrdersTable` (spec 0405), shared by
  * every surface that lists work orders (Commesse, Commesse di Progetto, the
- * Contract and Anagrafica tabs): the eye (in place of the legacy "Modifica")
+ * Contract and Anagrafica tabs). Each row opens in the module of its type
+ * (2026-11-25): a project one on `/project-work-orders/:id`. The eye (in place of the legacy "Modifica")
  * opens the record, "Responsabili e Partecipanti" its team dialog, Info and
  * the menu entries (Storico Note / Task / Documenti) open the record on that
  * tab, Elimina (last in the menu, already confirmed by the row) deletes it. The progress cell keeps its own
@@ -93,25 +99,28 @@ export function useWorkOrderRowActions({
   const [proformaTarget, setProformaTarget] = useState<ProformaTarget | null>(null)
   const renderers = useMemo(() => buildWorkOrderColumnRenderers(setProgressId, setProformaTarget), [])
 
-  const { openCreateWith, openView, openViewTab, sheet } = useModuleOpener(WORK_ORDERS_DOMAIN, {
-    onSaved: onMutated,
-    forceMode,
-  })
+  const processingOpener = useModuleOpener(WORK_ORDERS_DOMAIN, { onSaved: onMutated, forceMode })
+  const projectOpener = useModuleOpener(PROJECT_WORK_ORDERS_DOMAIN, { onSaved: onMutated, forceMode })
+  const { openView: openProcessingView, openViewTab: openProcessingViewTab } = processingOpener
+  const { openView: openProjectView, openViewTab: openProjectViewTab } = projectOpener
   const { remove } = useDeleteWorkOrder(onMutated)
 
   const handleAction: RowActionHandler = useCallback(
     (action: TableActionDefinition, row: TableRow) => {
-      if (action.key === 'view') {
+      const project = isProjectRow(row)
+      if (action.key === VIEW_ACTION_KEY) {
+        const openView = project ? openProjectView : openProcessingView
         openView(row)
       } else if (action.key === TEAM_ACTION_KEY) {
         setTeamId(Number(row.id))
       } else if (TAB_ACTION_KEYS.has(action.key)) {
+        const openViewTab = project ? openProjectViewTab : openProcessingViewTab
         openViewTab(row, action.key)
       } else if (action.key === DELETE_ACTION_KEY) {
         void remove(Number(row.id))
       }
     },
-    [openView, openViewTab, remove],
+    [openProcessingView, openProcessingViewTab, openProjectView, openProjectViewTab, remove],
   )
 
   const closeOnFalse = (close: () => void) => (open: boolean) => {
@@ -152,8 +161,14 @@ export function useWorkOrderRowActions({
     resolveActionHref,
     iconMap: ROW_ACTION_ICONS,
     renderers,
-    openCreateWith,
-    sheet,
+    // A new commessa starts in "Commesse": its type is picked in the form.
+    openCreateWith: processingOpener.openCreateWith,
+    sheet: (
+      <>
+        {processingOpener.sheet}
+        {projectOpener.sheet}
+      </>
+    ),
     dialogs,
   }
 }

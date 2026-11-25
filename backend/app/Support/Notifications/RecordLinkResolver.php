@@ -6,7 +6,9 @@ namespace App\Support\Notifications;
 
 use App\Enums\AssignmentTargetEnum;
 use App\Models\User;
+use App\Models\WorkOrder;
 use App\RequestManagement\RequestModule;
+use App\Services\WorkOrders\WorkOrderTypeAccess;
 
 /**
  * Resolves the SPA path a notification should point THIS recipient to
@@ -53,10 +55,21 @@ final class RecordLinkResolver
                 ? "/opportunities/{$recordId}"
                 : null,
             AssignmentTargetEnum::Quote => self::quotePath($notifiable, $recordId, $module),
-            AssignmentTargetEnum::WorkOrder => $notifiable->can('work-orders.view')
-                ? "/work-orders/{$recordId}"
-                : null,
+            AssignmentTargetEnum::WorkOrder => self::workOrderPath($notifiable, $recordId),
         };
+    }
+
+    /**
+     * A Commessa opens in the module of its type (user decision 2026-11-25):
+     * "Commesse" or "Commesse di Progetto", each with its own permission.
+     */
+    private static function workOrderPath(User $notifiable, int $workOrderId): ?string
+    {
+        $type = WorkOrder::query()->whereKey($workOrderId)->value('type');
+
+        return $notifiable->can(WorkOrderTypeAccess::viewPermission($type))
+            ? WorkOrderTypeAccess::pathFor($type, $workOrderId)
+            : null;
     }
 
     /**

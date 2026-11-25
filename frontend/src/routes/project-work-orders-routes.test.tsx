@@ -24,6 +24,11 @@ describe('project work orders route (spec 0359)', () => {
     expect(matches?.at(-1)?.route.path).toBe('project-work-orders')
   })
 
+  it('resolves the detail page of a project work order on /project-work-orders/:id (2026-11-25)', () => {
+    const matches = matchRoutes(router.routes, { pathname: '/project-work-orders/12' })
+    expect(matches?.at(-1)?.route.path).toBe('project-work-orders/:id')
+  })
+
   it('shows the "Project Work Orders" breadcrumb', async () => {
     render(
       <MemoryRouter initialEntries={['/project-work-orders']}>

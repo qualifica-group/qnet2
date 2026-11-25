@@ -224,7 +224,8 @@ it('adds no attribute column to opportunities and to the project work orders (AC
         ->and($response->json('data.attributeCategoryIds'))->toBeNull();
 })->with([
     'opportunities' => ['opportunities', 'opportunities'],
-    'project-work-orders' => ['project-work-orders', 'work-orders'],
+    // REQUIREMENT CHANGED (2026-11-25): the project grid has its own `project-work-orders.viewAny`.
+    'project-work-orders' => ['project-work-orders', 'project-work-orders'],
 ]);
 
 it('does not take the category from another user\'s saved filters (AC-002)', function () {

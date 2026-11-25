@@ -25,6 +25,7 @@ final class CommercialBackOfficeRoleCatalogue
         'opportunities',
         'quotes',
         'work-orders',
+        'project-work-orders',
         'contracts',
     ];
 

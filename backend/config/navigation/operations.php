@@ -29,8 +29,8 @@ return [
             'label' => 'navigation.projectWorkOrders',
             'icon' => 'clipboard-list',
             'route' => '/project-work-orders',
-            'permission' => 'work-orders.view',
-            'feature' => 'navigation.project_work_orders_enabled',
+            // Its own viewing permission (user decision 2026-11-25), apart from "Commesse".
+            'permission' => 'project-work-orders.view',
         ],
     ],
 ];

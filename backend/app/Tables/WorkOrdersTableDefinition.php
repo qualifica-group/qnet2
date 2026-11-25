@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
+use App\Services\WorkOrders\WorkOrderTypeAccess;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
 use App\Tables\Concerns\SearchesByIdNotLegacyId;
@@ -49,9 +50,11 @@ use Illuminate\Support\Facades\Gate;
  *
  * baseQuery() is scoped by WorkOrderVisibilityScope (user directive
  * 2026-09-02): without `work-orders.viewAll` the actor lists only the
- * commesse where they are Responsabile or Partecipante. Rows, exports and
- * distinct filter values all derive from this one query, so they are scoped
- * by construction.
+ * commesse where they are Responsabile or Partecipante. It is also narrowed
+ * to the types whose module the actor may list (WorkOrderTypeAccess, user
+ * decision 2026-11-25): a project commessa needs `project-work-orders.viewAny`.
+ * Rows, exports and distinct filter values all derive from this one query, so
+ * they are scoped by construction.
  */
 class WorkOrdersTableDefinition extends AbstractTableDefinition
 {
@@ -154,7 +157,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             $query->with(WorkOrderAmountColumns::EAGER_LOADS);
         }
 
-        return WorkOrderVisibilityScope::scopeToActor($query, Auth::user());
+        return WorkOrderTypeAccess::scopeToListableTypes(WorkOrderVisibilityScope::scopeToActor($query, Auth::user()), Auth::user());
     }
 
     /**

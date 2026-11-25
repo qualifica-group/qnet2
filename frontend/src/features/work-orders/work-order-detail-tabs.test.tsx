@@ -300,6 +300,20 @@ describe('WorkOrderDetailTabs — tabs behave like pages', () => {
     expect(screen.getByText('notes-section')).toBeInTheDocument()
   })
 
+  it('gates the Notes tab of a project work order on project-work-orders.view (2026-11-25)', () => {
+    canMock.mockImplementation((permission) => permission === 'work-orders.view')
+    const project = { ...workOrder({}), type: 'project' } as WorkOrderDetailWithPermissions
+    const { unmount } = render(<WorkOrderDetailTabs workOrder={project} info={<div>info-sections</div>} />)
+
+    expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument()
+    unmount()
+
+    canMock.mockImplementation((permission) => permission === 'project-work-orders.view')
+    render(<WorkOrderDetailTabs workOrder={project} info={<div>info-sections</div>} />)
+
+    expect(screen.getByRole('tab', { name: 'Notes' })).toBeInTheDocument()
+  })
+
   it('opens the group holding the requested sub-tab (spec 0405, Documenti)', () => {
     render(
       <WorkOrderDetailTabs

@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreens map colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
@@ -9,7 +9,7 @@ import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/
 import { WorkOrderForm } from '@/features/work-orders/work-order-form'
 import { parseEntityId } from '@/routes/entity-id'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
-import { moduleDefinition } from '@/features/work-orders/work-order-module'
+import { workOrderModuleFor, workOrderRedirectPath } from '@/features/work-orders/work-order-type-routing'
 import type {
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
@@ -28,10 +28,15 @@ import type { WorkOrderDetail } from '@/features/work-orders/types'
  * `onChanged` (the modal host refreshes its grid and keeps the record open).
  * After "Elimina" the record is gone: the Sheet closes (`onSaved`, modal) or
  * the page goes back to the list.
+ *
+ * Shared by "Commesse" and "Commesse di Progetto" (2026-11-25): a work order
+ * reached on the other module's page (an old link, a cross-record link that
+ * does not know the type) is sent to the page of its own type.
  */
 export function WorkOrderDetailScreen({ id, onChanged, onSaved, initialTab }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   // A save inside a tab (Task, Documenti...) refreshes the commessa too: swap
   // the data in place instead of remounting, so the open tab stays open.
   const {
@@ -57,12 +62,17 @@ export function WorkOrderDetailScreen({ id, onChanged, onSaved, initialTab }: Mo
     return <DetailLoading />
   }
 
+  const redirect = workOrderRedirectPath(workOrder.type, workOrder.id, location.pathname, location.search)
+  if (redirect !== null) {
+    return <Navigate to={redirect} replace />
+  }
+
   const handleDeleted = () => {
     onChanged?.()
     if (onSaved) {
       onSaved()
     } else {
-      void navigate(moduleDefinition.basePath)
+      void navigate(workOrderModuleFor(workOrder.type).basePath)
     }
   }
 

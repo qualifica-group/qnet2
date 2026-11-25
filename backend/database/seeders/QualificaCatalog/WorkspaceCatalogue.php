@@ -35,7 +35,7 @@ final class WorkspaceCatalogue
                     'registries', 'companies', 'financial-accounts', 'ledger',
                     'proforma-requests', 'invoices', 'invoice-installments', 'invoice-tags',
                     'purchase-invoices', 'purchase-invoice-installments',
-                    'payment-methods', 'vat-rates', 'work-orders', 'work-order-payment-statuses',
+                    'payment-methods', 'vat-rates', 'work-orders', 'project-work-orders', 'work-order-payment-statuses',
                     // Purchasing.
                     'purchase-requests', 'purchase-request-lines', 'purchase-orders', 'cost-types',
                     'purchase-request-priorities', 'purchase-order-statuses', 'purchase-request-line-statuses',
@@ -73,7 +73,7 @@ final class WorkspaceCatalogue
                     ...self::SHARED_KEYS,
                     // Pipeline.
                     'projects', 'campaigns', 'leads', 'imports', 'pipeline-statuses',
-                    'opportunities', 'quote-workflows', 'quote-system-statuses', 'quotes', 'work-orders', 'contract-statuses', 'contracts',
+                    'opportunities', 'quote-workflows', 'quote-system-statuses', 'quotes', 'work-orders', 'project-work-orders', 'contract-statuses', 'contracts',
                     'request-management', 'field-change-requests', 'enrollee-management', 'request-statistics',
                     'agent-sales-report',
                     // The commercial back office asks for proformas (spec 0299 D-8).

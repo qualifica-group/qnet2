@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { moduleDefinition } from '@/features/work-orders/work-order-module'
 import { WORK_ORDER_INFO_TAB, type WorkOrderDetailTab } from '@/features/work-orders/use-work-order-detail-tabs'
+import { workOrderPath } from '@/features/work-orders/work-order-type-routing'
 
 /**
  * The work order detail's open tab, behaving like a page (user directive
@@ -29,8 +29,10 @@ function topLevelTabFor(tabs: TabNode[], requested: string | null): string | nul
   return owner?.value ?? null
 }
 
+/** The work order's page in either module, "Commesse" or "Commesse di Progetto" (2026-11-25). */
 function isOwnDetailPage(pathname: string, workOrderId: number): boolean {
-  return pathname.replace(/\/+$/, '') === `${moduleDefinition.basePath}/${workOrderId}`
+  const path = pathname.replace(/\/+$/, '')
+  return path === workOrderPath('processing', workOrderId) || path === workOrderPath('project', workOrderId)
 }
 
 export function useWorkOrderActiveTab(workOrderId: number, tabs: TabNode[], initialTab?: string) {

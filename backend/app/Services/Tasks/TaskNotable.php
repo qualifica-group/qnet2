@@ -193,7 +193,7 @@ final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
         return $this->authorizeRead($actor, $record);
     }
 
-    public function modulePermission(): string
+    public function modulePermission(Model $record): string
     {
         return self::VIEW_PERMISSION;
     }

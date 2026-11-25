@@ -31,9 +31,10 @@ use Spatie\Permission\Models\Permission;
  */
 final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
 {
+    /** The "Commesse" viewing permission; a project commessa asks for its own (WorkOrderTypeAccess). */
     public const string VIEW_PERMISSION = 'work-orders.view';
 
-    /** The detail tab holding the notes: a plain `/work-orders/{id}` opens on Info (user directive 2026-11-16). */
+    /** The detail tab holding the notes: a plain record page opens on Info (user directive 2026-11-16). */
     private const string NOTES_TAB_QUERY = '?tab=notes';
 
     public function modelClass(): string
@@ -47,11 +48,11 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
      */
     public function authorizeRead(User $user, Model $record): bool
     {
-        if (! $user->can(self::VIEW_PERMISSION)) {
+        /** @var WorkOrder $record */
+        if (! $user->can(WorkOrderTypeAccess::viewPermission($record->type))) {
             return false;
         }
 
-        /** @var WorkOrder $record */
         return WorkOrderVisibilityScope::isVisibleTo($user, $record);
     }
 
@@ -69,7 +70,7 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
 
     /**
      * authorizeRead() read from the other end: active users holding
-     * `work-orders.view` who are Responsabili/Partecipanti or hold
+     * `work-orders.view` (`project-work-orders.view` on a project commessa) who are Responsabili/Partecipanti or hold
      * `work-orders.viewAll`, plus (spec 0316) holders of `work-orders.viewSite`
      * belonging to an operational site of one of the commessa's source offers,
      * plus super-admins. The Task perimeter reuses it (spec 0379 D-8). Both
@@ -80,7 +81,8 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
     public function readersQuery(WorkOrder $record): Builder
     {
         $memberIds = $this->memberIds($record);
-        $viewExists = $this->permissionExists(self::VIEW_PERMISSION);
+        $viewPermission = WorkOrderTypeAccess::viewPermission($record->type);
+        $viewExists = $this->permissionExists($viewPermission);
         $viewAllExists = $this->permissionExists(WorkOrderVisibilityScope::VIEW_ALL_PERMISSION);
         $siteIds = $this->sourceSiteIds($record);
         $siteExists = $siteIds !== [] && $this->permissionExists(WorkOrderVisibilityScope::VIEW_SITE_PERMISSION);
@@ -88,11 +90,11 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
         return User::query()
             ->excludingServiceAccounts()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($memberIds, $viewExists, $viewAllExists, $siteExists, $siteIds): void {
+            ->where(function (Builder $query) use ($memberIds, $viewPermission, $viewExists, $viewAllExists, $siteExists, $siteIds): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $viewAllExists, $siteExists, $siteIds): void {
-                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $viewAllExists, $siteExists, $siteIds): void {
-                            $reader->permission(self::VIEW_PERMISSION)
+                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $viewPermission, $viewAllExists, $siteExists, $siteIds): void {
+                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $viewPermission, $viewAllExists, $siteExists, $siteIds): void {
+                            $reader->permission($viewPermission)
                                 ->where(function (Builder $access) use ($memberIds, $viewAllExists, $siteExists, $siteIds): void {
                                     $access->whereIn('id', $memberIds)
                                         ->when($viewAllExists, function (Builder $tiers): void {
@@ -143,7 +145,7 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
     public function deepLinkPath(Model $record, User $recipient, ?int $quoteId): ?string
     {
         /** @var WorkOrder $record */
-        return $this->authorizeRead($recipient, $record) ? '/work-orders/'.$record->getKey().self::NOTES_TAB_QUERY : null;
+        return $this->authorizeRead($recipient, $record) ? WorkOrderTypeAccess::recordPath($record).self::NOTES_TAB_QUERY : null;
     }
 
     public function enlistmentRole(): string
@@ -160,9 +162,10 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
         return $this->authorizeRead($actor, $record);
     }
 
-    public function modulePermission(): string
+    public function modulePermission(Model $record): string
     {
-        return self::VIEW_PERMISSION;
+        /** @var WorkOrder $record */
+        return WorkOrderTypeAccess::viewPermission($record->type);
     }
 
     /**

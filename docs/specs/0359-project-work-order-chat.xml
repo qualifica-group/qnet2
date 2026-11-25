@@ -20,6 +20,30 @@
       SUPERATA (decisione utente 2026-11-17): la pagina "Commesse" mostra di nuovo TUTTI i tipi
       (lavorazione e progetto), senza row scope; "Commesse di Progetto" resta invariata. Il row
       scope `work_order_type` resta nel motore (nessun chiamante nel frontend).
+      RIPRISTINATA (decisione utente 2026-11-25, vedi D-12): "Commesse" torna a mandare
+      `workOrderType: 'processing'`.
+    - D-12 (decisione utente 2026-11-25): "Commesse" e "Commesse di Progetto" sono DUE MODULI
+      distinti, con permessi di visualizzazione propri e link propri (la natura del record resta la
+      stessa: una riga di `work_orders`). Unico punto di verita': `App\Services\WorkOrders\WorkOrderTypeAccess`
+      (frontend `work-order-type-routing.ts`).
+      Permessi: `project-work-orders.viewAny` (elenco, griglia `project-work-orders`) e
+      `project-work-orders.view` (voce di menu e apertura di una commessa project), dichiarati da
+      `ProjectWorkOrderPolicy` e assegnabili dal form Ruoli (`ProjectWorkOrdersAuthorization`, area
+      Lavorazioni). `WorkOrderPolicy::view` chiede `project-work-orders.view` al posto di
+      `work-orders.view` su una commessa project; `WorkOrderPolicy::before` nega OGNI ability di
+      record su una commessa project a chi non ha `project-work-orders.view`. Tutte le altre azioni
+      (update, delete, chat, costi, documenti, email...) restano sui permessi `work-orders.*`.
+      La griglia `work-orders` (pagina Commesse e schede Contratto/Anagrafica, export compresi)
+      elenca solo i tipi il cui modulo l'attore puo' elencare (`work-orders.viewAny` /
+      `project-work-orders.viewAny`).
+      Link: una commessa project si apre su `/project-work-orders/:id` (modulo frontend
+      `project-work-orders`, stesse schermate), una di lavorazione su `/work-orders/:id`; le azioni
+      di riga di ogni griglia aprono per tipo; notifiche (`RecordLinkResolver`) e menzioni nelle note
+      (`WorkOrderNotable`) costruiscono il link per tipo; un indirizzo del modulo sbagliato rimanda a
+      quello giusto conservando `?tab=`. L'interruttore `NAVIGATION_PROJECT_WORK_ORDERS_ENABLED`
+      e' rimosso: la voce e' sempre presente per chi ha `project-work-orders.view`.
+      Migrazione `2026_12_26_100000_add_project_work_orders_view_permissions`: ruoli e utenti con
+      `work-orders.view|viewAny` ricevono il gemello `project-work-orders.*` (nessuno perde la vista).
     - D-3: la chat e' un canale distinto dalle note (spec 0134), che restano invariate. Messaggi di
       solo testo, cronologici, senza thread, senza file, senza formattazione, massimo 2.000 caratteri.
       Presente solo sulle commesse `type = project`.
@@ -228,7 +252,8 @@
     <criterion id="AC-013">Dato POST /api/broadcasting/auth per "private-work-orders.{id}.chat", quando lo chiede un membro del team allora 200; quando lo chiede un utente fuori dal team o per una commessa non project allora 403. (Pest)</criterion>
     <criterion id="AC-014">Dato il dominio griglia `project-work-orders`, quando un utente lo carica, allora vede solo commesse `type = project` visibili a lui (stesso perimetro di `work-orders`), con colonna `chat_unread_count` corretta per l'utente. (Pest)</criterion>
     <criterion id="AC-015">Dato il dominio `work-orders` con row scope `work_order_type = processing`, allora nessuna riga project; senza row scope (Contratto, Anagrafica) le righe project ci sono ancora, risposta identica a oggi; i conteggi della striscia categorie escludono le project. (Pest)</criterion>
-    <criterion id="AC-016">Dato il menu, quando un utente con `work-orders.view` lo carica, allora la voce "Commesse di Progetto" / "Project Work Orders" con rotta `/project-work-orders` e' presente accanto a "Commesse"; senza il permesso e' assente. Dal 2026-11-09 la voce richiede anche `navigation.project_work_orders_enabled` (env `NAVIGATION_PROJECT_WORK_ORDERS_ENABLED`, default false): da spenta e' assente per tutti, pagina e permessi restano. (Pest + Vitest)</criterion>
+    <criterion id="AC-016">Dato il menu, quando un utente con `project-work-orders.view` lo carica, allora la voce "Commesse di Progetto" / "Project Work Orders" con rotta `/project-work-orders` e' presente accanto a "Commesse"; senza il permesso e' assente, anche con `work-orders.view` (rev. 2026-11-25, D-12: l'interruttore del 2026-11-09 e' rimosso). (Pest + Vitest)</criterion>
+    <criterion id="AC-016-bis">D-12: la griglia `project-work-orders` richiede `project-work-orders.viewAny`; la griglia `work-orders` (anche con `quoteId`) elenca le project solo a chi ha `project-work-orders.viewAny`; GET /api/work-orders/{id} di una project richiede `project-work-orders.view`, di una processing `work-orders.view`; senza `project-work-orders.view` ogni azione su una project e' 403; notifiche e menzioni puntano a `/project-work-orders/{id}`; la migrazione copia i permessi. (Pest `ProjectWorkOrderModulePermissionsTest`; Vitest `work-order-type-routing`, row actions, detail screen, pagina)</criterion>
     <criterion id="AC-017">Dato il dettaglio di una commessa project con `view_chat` true, quando si apre la scheda, allora c'e' la tab "Chat" con il badge dei non letti; con `view_chat` false o su commessa processing la tab non c'e'. (Vitest)</criterion>
     <criterion id="AC-018">Dato il pannello chat aperto, quando arriva un evento "created"/"updated"/"deleted" sul canale, allora la lista si aggiorna senza ricaricare la pagina e senza duplicare il messaggio inviato dall'utente stesso. (Vitest, Echo mockato)</criterion>
     <criterion id="AC-019">Dato il pannello chat, quando la connessione Echo si riconnette, allora la query dei messaggi viene invalidata e ricaricata. (Vitest)</criterion>

@@ -11,11 +11,25 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In **Operations › Project Work Orders** you find the work orders of type **Project**. These work orders **no longer appear in Work Orders**, which shows only processing work orders. The table works like the Work Orders one: same columns, filters, quick editing and export; opening a row shows the work order detail, described in the **Work Orders** guide.',
+          text: 'In **Operations › Project Work Orders** you find the work orders of type **Project**. These work orders **do not appear in Work Orders**, which shows only processing work orders. The table works like the Work Orders one: same columns, filters, quick editing and export; opening a row shows the work order detail, described in the **Work Orders** guide.',
         },
         {
           type: 'note',
-          text: 'In the **Work orders** tabs of a Contract or a Registry you still see the work orders of every type, Project included.',
+          text: 'In the **Work orders** tabs of a Contract or a Registry you see the work orders of every type you may see, Project included.',
+        },
+      ],
+    },
+    {
+      id: 'permissions',
+      title: 'Permissions and address',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "**Project Work Orders** is a module separate from **Work Orders**, with its own viewing permissions. In the **Roles** form you find it under **Operations**: **View list** opens the page, **View** opens the detail of a project work order. Without them project work orders are not shown anywhere, not even in the tabs of a Contract or a Registry. Everything else (editing, deleting, chat, costs, documents...) follows the **Work Orders** permissions.",
+        },
+        {
+          type: 'paragraph',
+          text: 'A project work order opens at **/project-work-orders/…**. If you open it with the Work Orders address (**/work-orders/…**), for example from an old link, the page moves to the right one by itself.',
         },
       ],
     },

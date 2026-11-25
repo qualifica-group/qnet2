@@ -6,6 +6,7 @@ use App\Enums\TeamActivityRecordEnum;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Policies\Abstracts\BasePolicy;
+use App\Services\WorkOrders\WorkOrderTypeAccess;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +30,12 @@ use Illuminate\Database\Eloquent\Model;
  * `viewActivity` stays resource-level (BasePolicy): the aggregated log's
  * per-record boundary is `view`, which PolicyActivityLogAuthorizer already
  * checks on the record itself.
+ *
+ * Two modules (user decision 2026-11-25, WorkOrderTypeAccess): a `project`
+ * commessa is opened with `project-work-orders.view` instead of
+ * `work-orders.view`, and before() keeps it out of reach of every ability
+ * for whoever lacks that permission. The other abilities keep their
+ * `work-orders.*` permission whatever the type.
  */
 class WorkOrderPolicy extends BasePolicy
 {
@@ -37,9 +44,23 @@ class WorkOrderPolicy extends BasePolicy
         return 'work-orders';
     }
 
+    /**
+     * Runs after the super-admin bypass (Gate::before): a project commessa the
+     * actor may not see is denied for every record ability. Resource-level
+     * abilities (no record) and processing commesse fall through.
+     */
+    public function before(User $user, string $ability, mixed ...$arguments): ?bool
+    {
+        $record = $arguments[0] ?? null;
+
+        return $record instanceof WorkOrder && WorkOrderTypeAccess::isHiddenFrom($user, $record) ? false : null;
+    }
+
     public function view(User $user, Model $model): bool|Response
     {
-        return $this->withinPerimeter($user->can($this->permission('view')), fn (): bool => $this->isInScope($user, $model), 'work_order_out_of_scope');
+        $permission = $model instanceof WorkOrder ? WorkOrderTypeAccess::viewPermission($model->type) : $this->permission('view');
+
+        return $this->withinPerimeter($user->can($permission), fn (): bool => $this->isInScope($user, $model), 'work_order_out_of_scope');
     }
 
     public function update(User $user, Model $model): bool|Response

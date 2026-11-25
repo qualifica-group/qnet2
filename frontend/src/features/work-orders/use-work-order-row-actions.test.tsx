@@ -14,8 +14,21 @@ import type { ICellRendererParams } from 'ag-grid-community'
 
 const openView = vi.fn()
 const openViewTab = vi.fn()
+/** The module domain whose opener ran: a row opens in the module of its type (2026-11-25). */
+const openedIn = vi.fn()
 vi.mock('@/features/modules/use-module-opener', () => ({
-  useModuleOpener: () => ({ openView, openViewTab, openCreateWith: vi.fn(), sheet: null }),
+  useModuleOpener: (domain: string) => ({
+    openView: (row: unknown) => {
+      openedIn(domain)
+      openView(row)
+    },
+    openViewTab: (row: unknown, tab: string) => {
+      openedIn(domain)
+      openViewTab(row, tab)
+    },
+    openCreateWith: vi.fn(),
+    sheet: null,
+  }),
 }))
 
 const remove = vi.fn()
@@ -45,12 +58,14 @@ vi.mock('@/features/work-orders/proforma-request-dialog', () => ({
 }))
 
 const ROW = { id: 7, actions: ['view', 'team', 'info', 'notes', 'tasks', 'documents'] }
+const PROJECT_ROW = { ...ROW, id: 9, type: 'project' }
 
 function action(key: string): TableActionDefinition {
   return { key, label: key, icon: 'info', type: 'link', confirm: false }
 }
 
 beforeEach(() => {
+  openedIn.mockReset()
   openView.mockReset()
   openViewTab.mockReset()
   remove.mockReset()
@@ -102,6 +117,25 @@ describe('useWorkOrderRowActions (spec 0405)', () => {
     expect(resolveActionHref(action('view'), ROW)).toBe('/work-orders/7')
     expect(resolveActionHref(action('notes'), ROW)).toBe('/work-orders/7?tab=notes')
     expect(resolveActionHref(action('team'), ROW)).toBeUndefined()
+  })
+
+  it('opens a project row in "Commesse di Progetto" and any other in "Commesse"', () => {
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }))
+
+    act(() => result.current.handleAction(action('view'), { ...ROW, type: 'processing' }))
+    act(() => result.current.handleAction(action('notes'), PROJECT_ROW))
+    act(() => result.current.handleAction(action('view'), PROJECT_ROW))
+
+    expect(openedIn.mock.calls.map(([domain]) => domain)).toEqual(['work-orders', 'project-work-orders', 'project-work-orders'])
+    expect(openViewTab).toHaveBeenCalledWith(PROJECT_ROW, 'notes')
+  })
+
+  it('links a project row to its "Commesse di Progetto" page', () => {
+    const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }))
+    const { resolveActionHref } = result.current
+
+    expect(resolveActionHref(action('view'), PROJECT_ROW)).toBe('/project-work-orders/9')
+    expect(resolveActionHref(action('tasks'), PROJECT_ROW)).toBe('/project-work-orders/9?tab=tasks')
   })
 
   it('the "€" cell opens the proforma request dialog of its row and a sent request refreshes the grid (spec 0407)', () => {

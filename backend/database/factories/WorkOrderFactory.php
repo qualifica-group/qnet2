@@ -24,7 +24,9 @@ class WorkOrderFactory extends Factory
         return [
             'quote_id' => Quote::factory(),
             'title' => fake()->words(3, true).' work order',
-            'type' => fake()->randomElement(WorkOrderType::cases()),
+            // Processing by default: the type picks the module and its viewing
+            // permissions (2026-11-25), so a random one made authorization random.
+            'type' => WorkOrderType::Processing,
             // Spec 0096: NOT NULL, so it has a real default here. The
             // Responsabili live in their own pivot and are attached by the
             // service (or explicitly by a test), never mass-assigned.
@@ -69,6 +71,12 @@ class WorkOrderFactory extends Factory
         return $this->afterCreating(function (WorkOrder $workOrder) use ($count): void {
             $workOrder->supervisors()->sync(User::factory()->count($count)->create()->pluck('id')->all());
         });
+    }
+
+    /** A "Commesse di Progetto" commessa, opened with `project-work-orders.view`. */
+    public function project(): static
+    {
+        return $this->state(fn (): array => ['type' => WorkOrderType::Project]);
     }
 
     /**

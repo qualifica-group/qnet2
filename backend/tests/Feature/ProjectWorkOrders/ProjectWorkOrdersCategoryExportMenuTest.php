@@ -46,23 +46,30 @@ it('AC-015: the project-work-orders domain is exportable with project rows only;
         ->assertStatus(422)->assertJsonValidationErrors('work_order_type');
 });
 
-// REQUIREMENT CHANGED (2026-11-09): the entry is hidden until its navigation switch is turned on.
-it('hides the menu entry by default, even with work-orders.view, and keeps the page open', function () {
-    Sanctum::actingAs(projectWorkOrderViewer());
-
-    $keys = collect($this->getJson('/api/navigation')->assertOk()->json('data'))
-        ->flatMap(fn (array $item) => [$item, ...($item['children'] ?? [])])->pluck('key')->all();
-
-    expect($keys)->toContain('work-orders')->not->toContain('project-work-orders');
-    $this->getJson('/api/tables/project-work-orders/columns')->assertOk();
-});
-
-it('AC-016: the menu has Commesse di Progetto right after Commesse for work-orders.view', function () {
-    config()->set('navigation.project_work_orders_enabled', true);
-    Permission::findOrCreate('work-orders.view', 'web');
-    $user = User::factory()->create();
-    $user->givePermissionTo('work-orders.view');
+/** The menu keys (sections and their entries) `$user` receives. */
+function projectMenuKeys(User $user): array
+{
     Sanctum::actingAs($user);
+
+    return collect(test()->getJson('/api/navigation')->assertOk()->json('data'))
+        ->flatMap(fn (array $item) => [$item, ...($item['children'] ?? [])])->pluck('key')->all();
+}
+
+function userHolding(string ...$permissions): User
+{
+    $user = User::factory()->create();
+
+    foreach ($permissions as $permission) {
+        $user->givePermissionTo(Permission::findOrCreate($permission, 'web'));
+    }
+
+    return $user;
+}
+
+// REQUIREMENT CHANGED (2026-11-25): the entry is visible again and has its own permission,
+// `project-work-orders.view`, apart from the "Commesse" one (it was `work-orders.view`, then hidden).
+it('AC-016: the menu has Commesse di Progetto right after Commesse for project-work-orders.view', function () {
+    Sanctum::actingAs(userHolding('work-orders.view', 'project-work-orders.view'));
 
     $items = collect($this->getJson('/api/navigation')->assertOk()->json('data'))
         ->flatMap(fn (array $item) => [$item, ...($item['children'] ?? [])])->values();
@@ -75,12 +82,8 @@ it('AC-016: the menu has Commesse di Progetto right after Commesse for work-orde
         ->and(array_search('project-work-orders', $keys, true))->toBe(array_search('work-orders', $keys, true) + 1);
 });
 
-it('AC-016: the menu entry is absent without work-orders.view', function () {
-    config()->set('navigation.project_work_orders_enabled', true);
-    Sanctum::actingAs(User::factory()->create());
-
-    $keys = collect($this->getJson('/api/navigation')->assertOk()->json('data'))
-        ->flatMap(fn (array $item) => [$item, ...($item['children'] ?? [])])->pluck('key')->all();
-
-    expect($keys)->not->toContain('project-work-orders')->not->toContain('work-orders');
+it('AC-016: each entry follows its own permission', function () {
+    expect(projectMenuKeys(userHolding('work-orders.view')))->toContain('work-orders')->not->toContain('project-work-orders')
+        ->and(projectMenuKeys(userHolding('project-work-orders.view')))->toContain('project-work-orders')->not->toContain('work-orders')
+        ->and(projectMenuKeys(User::factory()->create()))->not->toContain('project-work-orders')->not->toContain('work-orders');
 });

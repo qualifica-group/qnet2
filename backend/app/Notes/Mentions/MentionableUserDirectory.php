@@ -97,7 +97,7 @@ final class MentionableUserDirectory
         if ($extended && $users->isNotEmpty()) {
             $pageIds = $users->pluck('id')->all();
             $insideIds = $this->registry->mentionableUsersQuery($entityType, $record)->whereIn('id', $pageIds)->pluck('id')->all();
-            $accessIds = $this->moduleAccessIds($pageIds, $this->registry->enlisterFor($entityType)?->modulePermission());
+            $accessIds = $this->moduleAccessIds($pageIds, $this->registry->enlisterFor($entityType)?->modulePermission($record));
         }
 
         foreach ($users as $user) {

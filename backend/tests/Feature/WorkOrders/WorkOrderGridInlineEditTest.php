@@ -7,6 +7,7 @@ use App\Models\WorkOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
 
 // Spec 0206: the work-orders grid edits its cells through the form's own
 // UpdateWorkOrderRequest + WorkOrderService (WorkOrderCellWriter).
@@ -30,7 +31,10 @@ it('declares exactly the columns the form edits as single fields', function () {
 });
 
 it('saves title, type, dates and supervisors through the form path', function () {
-    Sanctum::actingAs(workOrderUserWith(['viewAny', 'update']));
+    // REQUIREMENT CHANGED (2026-11-25): once `project`, the commessa is reached with the "Commesse di Progetto" permissions.
+    $actor = workOrderUserWith(['viewAny', 'update']);
+    $actor->givePermissionTo(Permission::findOrCreate('project-work-orders.viewAny'), Permission::findOrCreate('project-work-orders.view'));
+    Sanctum::actingAs($actor);
     $workOrder = WorkOrder::factory()->create(['type' => 'processing']);
     $first = User::factory()->create();
     $second = User::factory()->create();

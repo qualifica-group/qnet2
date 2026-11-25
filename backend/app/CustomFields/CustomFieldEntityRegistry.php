@@ -178,7 +178,10 @@ class CustomFieldEntityRegistry
         $tableDomains = array_keys(config('tables.definitions', []));
         $authorizedResources = $this->authorizationRegistry->resourceKeys();
 
-        $customFieldableDomains = array_intersect($tableDomains, $authorizedResources);
+        $customFieldableDomains = array_filter(
+            array_intersect($tableDomains, $authorizedResources),
+            static fn (string $domain): bool => ! TableRegistry::isCustomFieldEntityAlias($domain),
+        );
 
         $map = [];
 

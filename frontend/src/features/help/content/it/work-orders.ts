@@ -458,7 +458,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "La pagina **Commesse** mostra le commesse di tutti i tipi, **Lavorazione** e **Progetto**: la colonna **Tipo commessa** le distingue e il suo filtro restringe l'elenco a un tipo solo. Le commesse di progetto hanno anche una pagina propria, **Commesse di Progetto**, con la colonna **Non letti** e la tab **Chat** nel dettaglio; per ora quella pagina non compare nel menu. Anche le sezioni **Commesse** di un **Contratto** e di un'**Anagrafica** mostrano le commesse di tutti i tipi.",
+          text: "La pagina **Commesse** mostra solo le commesse di **Lavorazione**. Le commesse di tipo **Progetto** stanno in **Commesse di Progetto** (stesso gruppo **Lavorazioni**), con la colonna **Non letti** e la tab **Chat** nel dettaglio: vedi la guida **Commesse di Progetto**. Sono due moduli distinti, ognuno con i **suoi permessi di visualizzazione**: puoi vedere uno senza l'altro.",
+        },
+        {
+          type: 'paragraph',
+          text: "Una commessa si apre all'indirizzo del suo modulo: **/work-orders/…** per una commessa di lavorazione, **/project-work-orders/…** per una di progetto. Se apri una commessa di progetto da un vecchio link o da un altro punto dell'app, la pagina passa da sola all'indirizzo giusto. Le sezioni **Commesse** di un **Contratto** e di un'**Anagrafica** mostrano le commesse di tutti i tipi che puoi vedere, e ognuna si apre nel suo modulo.",
         },
         {
           type: 'note',

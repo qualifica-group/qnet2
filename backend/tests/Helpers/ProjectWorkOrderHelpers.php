@@ -9,8 +9,10 @@ use Spatie\Permission\Models\Permission;
 
 if (! function_exists('projectWorkOrderViewer')) {
     /**
-     * A user who can list/open and export work orders ($viewAll: sees every
-     * one, otherwise only the ones they belong to).
+     * A user who can list/open and export work orders of both modules
+     * ($viewAll: sees every one, otherwise only the ones they belong to).
+     * REQUIREMENT CHANGED (2026-11-25): "Commesse di Progetto" has its own
+     * `project-work-orders.viewAny|view`.
      */
     function projectWorkOrderViewer(bool $viewAll = true): User
     {
@@ -18,6 +20,10 @@ if (! function_exists('projectWorkOrderViewer')) {
 
         foreach (['viewAny', 'view', 'export', ...($viewAll ? ['viewAll'] : [])] as $ability) {
             $user->givePermissionTo(Permission::findOrCreate("work-orders.{$ability}", 'web'));
+        }
+
+        foreach (['viewAny', 'view'] as $ability) {
+            $user->givePermissionTo(Permission::findOrCreate("project-work-orders.{$ability}", 'web'));
         }
 
         return $user;

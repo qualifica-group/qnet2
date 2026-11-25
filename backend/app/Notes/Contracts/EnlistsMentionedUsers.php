@@ -34,9 +34,10 @@ interface EnlistsMentionedUsers
     public function canEnlist(User $actor, Model $record): bool;
 
     /**
-     * The permission that lets an enlisted user open the record.
+     * The permission that lets an enlisted user open the record (a Commessa
+     * asks for its module's own, by type).
      */
-    public function modulePermission(): string;
+    public function modulePermission(Model $record): string;
 
     /**
      * Adds $userIds to $record under the role; people already holding it are

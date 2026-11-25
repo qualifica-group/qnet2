@@ -2,14 +2,22 @@ import { useCallback, useRef } from 'react'
 import { PageHeader } from '@/components/page-header'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE, type TableConfigScope } from '@/features/table/use-table-config'
+import type { TableRowScope } from '@/features/table/types'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { useWorkPhaseTabs } from '@/features/work-orders/use-work-phase-tabs'
 import { WorkPhaseTabs } from '@/features/work-orders/work-phase-tabs'
 
+/**
+ * "Commesse" lists the `processing` work orders only: the project ones are in "Commesse di
+ * Progetto", a module of its own (user decision 2026-11-25, back to spec 0359 D-2).
+ */
+const PROCESSING_ROW_SCOPE: TableRowScope = { workOrderType: 'processing' }
+
 interface WorkOrdersGridProps {
   /** Grid domain: `work-orders` or the project-only `project-work-orders` (same columns and actions). */
   domain: string
+  rowScope?: TableRowScope
   /** Config scope of the grid; only the "Commesse" page takes the filter-driven flexible-field columns (spec 0374). */
   scope?: TableConfigScope
   /** Shows the working-phase tabs at the top right; only the "Commesse" page has them. */
@@ -21,13 +29,13 @@ interface WorkOrdersGridProps {
  * (Modifica, Responsabili e Partecipanti, the tab menu, via `useWorkOrderRowActions`, spec 0405)
  * and its dialogs. Permission gating is an affordance only; the backend re-authorizes each call.
  */
-export function WorkOrdersGrid({ domain, scope, showWorkPhaseTabs = false }: WorkOrdersGridProps) {
+export function WorkOrdersGrid({ domain, rowScope, scope, showWorkPhaseTabs = false }: WorkOrdersGridProps) {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => {
     tableRef.current?.refresh()
   }, [])
   const workPhaseTabs = useWorkPhaseTabs(tableRef)
-  // The project-only grid has its own domain, but its rows open the Commessa pages.
+  // Every row opens in the module of its type, whichever grid lists it (2026-11-25).
   const { handleAction, resolveActionHref, iconMap, renderers, sheet, dialogs } = useWorkOrderRowActions({
     onMutated: refreshGrid,
   })
@@ -51,6 +59,7 @@ export function WorkOrdersGrid({ domain, scope, showWorkPhaseTabs = false }: Wor
         ref={tableRef}
         domain={domain}
         scope={scope}
+        rowScope={rowScope}
         onFilterModelChange={workPhaseTabs.onFilterModelChange}
         onAggregatesChange={workPhaseTabs.onAggregatesChange}
         renderers={renderers}
@@ -65,7 +74,14 @@ export function WorkOrdersGrid({ domain, scope, showWorkPhaseTabs = false }: Wor
   )
 }
 
-/** "Commesse" adapter: the `work-orders` grid with every work order type, processing and project (user decision 2026-11-17, supersedes spec 0359 D-2). */
+/** "Commesse" adapter: the `work-orders` grid narrowed to `processing` work orders. */
 export function WorkOrdersTable() {
-  return <WorkOrdersGrid domain={WORK_ORDERS_DOMAIN} scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE} showWorkPhaseTabs />
+  return (
+    <WorkOrdersGrid
+      domain={WORK_ORDERS_DOMAIN}
+      rowScope={PROCESSING_ROW_SCOPE}
+      scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE}
+      showWorkPhaseTabs
+    />
+  )
 }

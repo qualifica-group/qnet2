@@ -185,6 +185,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // module resource — title/type mandatory, `code`/`quote_id` writable
         // only on create, D-1/D-5).
         'work-orders',
+        // REQUIREMENT CHANGED (2026-11-25): `project-work-orders` (ProjectWorkOrdersAuthorization: no field,
+        // registered so the "Commesse di Progetto" viewing permissions are role-assignable).
+        'project-work-orders',
         // spec 0201 `work-order-payment-statuses` (WorkOrderPaymentStatusesAuthorization:
         // the commessa line payment-status lookup — name/color mandatory, REQUIREMENT CHANGED).
         'work-order-payment-statuses',

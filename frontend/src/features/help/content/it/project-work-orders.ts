@@ -11,11 +11,25 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In **Lavorazioni › Commesse di Progetto** trovi le commesse di tipo **Progetto**. Queste commesse **non compaiono più in Commesse**, che mostra solo le commesse di lavorazione. La tabella funziona come quella delle Commesse: stesse colonne, filtri, modifica rapida ed esportazione; aprendo una riga vedi il dettaglio della commessa, descritto nella guida **Commesse**.',
+          text: 'In **Lavorazioni › Commesse di Progetto** trovi le commesse di tipo **Progetto**. Queste commesse **non compaiono in Commesse**, che mostra solo le commesse di lavorazione. La tabella funziona come quella delle Commesse: stesse colonne, filtri, modifica rapida ed esportazione; aprendo una riga vedi il dettaglio della commessa, descritto nella guida **Commesse**.',
         },
         {
           type: 'note',
-          text: "Nelle schede **Commesse** di un Contratto o di un'Anagrafica continui a vedere le commesse di tutti i tipi, Progetto compreso.",
+          text: "Nelle schede **Commesse** di un Contratto o di un'Anagrafica vedi le commesse di tutti i tipi che puoi vedere, Progetto compreso.",
+        },
+      ],
+    },
+    {
+      id: 'permissions',
+      title: 'Permessi e indirizzo',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "**Commesse di Progetto** è un modulo distinto da **Commesse**, con i suoi permessi di visualizzazione. Nel form dei **Ruoli** lo trovi sotto **Lavorazioni**: **Visualizza elenco** apre la pagina, **Visualizza** apre il dettaglio di una commessa di progetto. Senza questi permessi le commesse di progetto non si vedono da nessuna parte, nemmeno nelle schede di un Contratto o di un'Anagrafica. Tutto il resto (modificare, eliminare, chat, costi, documenti...) segue i permessi delle **Commesse**.",
+        },
+        {
+          type: 'paragraph',
+          text: "Una commessa di progetto si apre all'indirizzo **/project-work-orders/…**. Se la apri con l'indirizzo delle Commesse (**/work-orders/…**), per esempio da un vecchio link, la pagina passa da sola a quello giusto.",
         },
       ],
     },

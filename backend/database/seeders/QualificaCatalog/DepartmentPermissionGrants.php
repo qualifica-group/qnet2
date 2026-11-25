@@ -74,7 +74,8 @@ final class DepartmentPermissionGrants
         'quotes_history' => ['quotes.viewActivity'],
 
         // Commesse (29-41): chat rides on view, force close on update.
-        'work_orders_view' => ['work-orders.viewAny', 'work-orders.view'],
+        // "Commesse di Progetto" has its own viewing permissions (2026-11-25): the same answer opens both modules.
+        'work_orders_view' => ['work-orders.viewAny', 'work-orders.view', 'project-work-orders.viewAny', 'project-work-orders.view'],
         'work_orders_view_competence' => ['work-orders.viewCompetence'],
         'work_orders_view_site' => ['work-orders.viewSite'],
         'work_orders_view_all' => ['work-orders.viewAll'],

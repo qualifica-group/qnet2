@@ -17,6 +17,7 @@ import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-co
 import { WorkOrderPagePanel } from '@/features/work-order-page/work-order-page-panel'
 import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-order-invoices-section'
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
+import { workOrderModuleFor } from '@/features/work-orders/work-order-type-routing'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 import { IntegrationWorkOrderAccountingActions } from '@/integrations/integration-work-order-accounting-actions'
@@ -198,9 +199,10 @@ export function useWorkOrderDetailTabs({
     }
   }
 
-  // Step 5: Note. Gated on the resource permission alone: the membership half of the server rule
+  // Step 5: Note. Gated on the viewing permission of the work order's module alone (2026-11-25: a project
+  // one is `project-work-orders.view`): the membership half of the server rule
   // (`WorkOrderNotable::authorizeRead`) is not evaluable client-side; `NotesSection` owns that error state.
-  if (can('work-orders.view')) {
+  if (can(`${workOrderModuleFor(workOrder.type).domain}.view`)) {
     tabs.push({
       value: 'notes',
       label: t('notes.section.title'),

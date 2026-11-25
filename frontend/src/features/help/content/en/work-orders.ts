@@ -458,7 +458,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Work Orders** page shows work orders of every type, **Processing** and **Project**: the **Work order type** column tells them apart and its filter narrows the list to one type. Project work orders also have their own page, **Project Work Orders**, with the **Unread** column and the **Chat** tab in the detail; for now that page does not appear in the menu. The **Work orders** sections of a **Contract** and a **Registry** also show work orders of every type.',
+          text: 'The **Work Orders** page shows only **Processing** work orders. Work orders of type **Project** live in **Project Work Orders** (same **Operations** group), with the **Unread** column and the **Chat** tab in the detail: see the **Project Work Orders** guide. They are two separate modules, each with **its own viewing permissions**: you may see one without the other.',
+        },
+        {
+          type: 'paragraph',
+          text: 'A work order opens at the address of its module: **/work-orders/…** for a processing work order, **/project-work-orders/…** for a project one. If you open a project work order from an old link or from another part of the app, the page moves to the right address by itself. The **Work orders** sections of a **Contract** and a **Registry** show the work orders of every type you may see, and each opens in its own module.',
         },
         {
           type: 'note',

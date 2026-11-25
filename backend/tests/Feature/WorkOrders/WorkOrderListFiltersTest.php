@@ -9,6 +9,7 @@ use App\Models\WorkOrder;
 use App\Tables\Shared\ParentCategoryListModule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
 
 // User request 2026-11-09: the category strip of the Commesse page is replaced
 // by advanced filters (parent category, product category, Anagrafica) and the
@@ -261,6 +262,8 @@ it('refuses a non-list category', function () {
 
 it('does not preset the parent category in the Commesse di Progetto', function () {
     [$actor] = commesseLimitedActor();
+    // REQUIREMENT CHANGED (2026-11-25): the page has its own `project-work-orders.viewAny`.
+    $actor->givePermissionTo(Permission::findOrCreate('project-work-orders.viewAny'));
     Sanctum::actingAs($actor);
 
     $parent = collect($this->getJson('/api/tables/project-work-orders/columns')->assertOk()->json('data.advancedFilters'))->firstWhere('name', 'parent_category');

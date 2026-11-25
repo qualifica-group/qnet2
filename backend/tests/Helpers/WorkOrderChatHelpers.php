@@ -22,15 +22,20 @@ if (! function_exists('chatWorkOrder')) {
 
 if (! function_exists('chatMember')) {
     /**
-     * A user who only holds `work-orders.view` and sits in the team of $workOrder
-     * as a Responsabile ('supervisors') or Partecipante ('participants').
+     * A user who only holds the `view` of both commesse modules and sits in the
+     * team of $workOrder as a Responsabile ('supervisors') or Partecipante
+     * ('participants'). REQUIREMENT CHANGED (2026-11-25): a project commessa
+     * opens with `project-work-orders.view`.
      */
     function chatMember(WorkOrder $workOrder, string $team = 'supervisors'): User
     {
-        Permission::findOrCreate('work-orders.view');
+        $permissions = ['work-orders.view', 'project-work-orders.view'];
+        foreach ($permissions as $permission) {
+            Permission::findOrCreate($permission);
+        }
 
         $user = User::factory()->create();
-        $user->givePermissionTo('work-orders.view');
+        $user->givePermissionTo($permissions);
         $team === 'participants'
             ? $workOrder->participants()->attach($user->id, ['position' => $workOrder->participants()->count() + 1])
             : $workOrder->supervisors()->attach($user->id);
@@ -45,12 +50,13 @@ if (! function_exists('chatOutsider')) {
      */
     function chatOutsider(): User
     {
-        foreach (['view', 'viewAll'] as $ability) {
-            Permission::findOrCreate("work-orders.{$ability}");
+        $permissions = ['work-orders.view', 'work-orders.viewAll', 'project-work-orders.view'];
+        foreach ($permissions as $permission) {
+            Permission::findOrCreate($permission);
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['work-orders.view', 'work-orders.viewAll']);
+        $user->givePermissionTo($permissions);
 
         return $user;
     }

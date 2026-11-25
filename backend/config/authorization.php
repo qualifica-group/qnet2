@@ -46,6 +46,7 @@ use App\Authorization\ProductsAuthorization;
 use App\Authorization\ProductTypologiesAuthorization;
 use App\Authorization\ProformaRequestsAuthorization;
 use App\Authorization\ProjectsAuthorization;
+use App\Authorization\ProjectWorkOrdersAuthorization;
 use App\Authorization\PurchaseInvoiceInstallmentsAuthorization;
 use App\Authorization\PurchaseInvoicesAuthorization;
 use App\Authorization\PurchaseOrdersAuthorization;
@@ -148,6 +149,8 @@ return [
         'quote-workflows' => QuoteWorkflowsAuthorization::class,
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersAuthorization::class,
+        // 2026-11-25: the viewing permissions of "Commesse di Progetto", apart from "Commesse".
+        'project-work-orders' => ProjectWorkOrdersAuthorization::class,
         'work-order-payment-statuses' => WorkOrderPaymentStatusesAuthorization::class,
         // spec 0322: Configuratore Stati Commessa, twin of quote-workflows.
         'work-order-workflows' => WorkOrderWorkflowsAuthorization::class,

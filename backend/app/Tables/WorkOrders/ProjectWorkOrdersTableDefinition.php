@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderChatMessage;
 use App\Models\WorkOrderChatRead;
+use App\Services\WorkOrders\WorkOrderTypeAccess;
 use App\Tables\WorkOrdersTableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -18,9 +19,11 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Table definition for the `project-work-orders` domain (spec 0359, D-1):
- * the `work-orders` grid (same columns, actions, allow-lists, visibility
- * scope and `viewAny`, all inherited) restricted to `type = project`, plus
- * the read-only `chat_unread_count` column.
+ * the `work-orders` grid (same columns, actions, allow-lists and visibility
+ * scope, all inherited) restricted to `type = project`, plus the read-only
+ * `chat_unread_count` column. Its own module (user decision 2026-11-25): the
+ * list needs `project-work-orders.viewAny`, the actions that open the record
+ * `project-work-orders.view` (WorkOrderTypeAccess).
  *
  * `chat_unread_count` counts the chat messages of OTHERS (not soft-deleted,
  * newer than the actor's last read mark) as one correlated subquery, never a
@@ -42,11 +45,32 @@ class ProjectWorkOrdersTableDefinition extends WorkOrdersTableDefinition
     }
 
     /**
-     * Permissions, field catalogue and inline-edit rights are the work orders' own.
+     * Field catalogue, inline-edit rights and the non-viewing permissions are
+     * the work orders' own.
      */
     public function resource(): string
     {
         return 'work-orders';
+    }
+
+    public function authorizeViewAny(User $actor): bool
+    {
+        return $actor->can(WorkOrderTypeAccess::viewAnyPermission(WorkOrderType::Project));
+    }
+
+    /**
+     * The inherited catalogue, with the "Commesse" viewing permission of the
+     * actions that open the record swapped for this module's own.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function actions(): array
+    {
+        $processingView = WorkOrderTypeAccess::viewPermission(WorkOrderType::Processing);
+
+        return array_map(static fn (array $action): array => ($action['permission'] ?? null) === $processingView
+            ? [...$action, 'permission' => WorkOrderTypeAccess::viewPermission(WorkOrderType::Project)]
+            : $action, parent::actions());
     }
 
     /**

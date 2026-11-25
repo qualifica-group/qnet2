@@ -35,8 +35,23 @@ vi.mock('@/features/modules/use-form-leave-guard', () => ({ useFormLeaveGuard: (
 
 const WORK_ORDER_ID = 4
 
-function workOrder(title: string) {
-  return { id: WORK_ORDER_ID, title } as WorkOrderDetailWithPermissions
+function workOrder(title: string, type: 'processing' | 'project' = 'processing') {
+  return { id: WORK_ORDER_ID, title, type } as WorkOrderDetailWithPermissions
+}
+
+function renderAt(path: string) {
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/work-orders/:id" element={<WorkOrderDetailScreen id={WORK_ORDER_ID} />} />
+          <Route path="/project-work-orders/:id" element={<WorkOrderDetailScreen id={WORK_ORDER_ID} />} />
+          <Route path="/work-orders" element={<span>commesse-list</span>} />
+          <Route path="/project-work-orders" element={<span>project-list</span>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
 }
 
 describe('WorkOrderDetailScreen', () => {
@@ -90,19 +105,28 @@ describe('WorkOrderDetailScreen', () => {
 
   it('after a delete on the record page goes back to the Commesse list', async () => {
     vi.mocked(fetchWorkOrder).mockResolvedValueOnce(workOrder('Da eliminare'))
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <MemoryRouter initialEntries={[`/work-orders/${WORK_ORDER_ID}`]}>
-          <Routes>
-            <Route path="/work-orders/:id" element={<WorkOrderDetailScreen id={WORK_ORDER_ID} />} />
-            <Route path="/work-orders" element={<span>commesse-list</span>} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
+    renderAt(`/work-orders/${WORK_ORDER_ID}`)
 
     fireEvent.click(await screen.findByRole('button', { name: 'deleted' }))
 
     expect(await screen.findByText('commesse-list')).toBeInTheDocument()
+  })
+
+  it('after deleting a project work order goes back to the Commesse di Progetto list (2026-11-25)', async () => {
+    vi.mocked(fetchWorkOrder).mockResolvedValue(workOrder('Progetto', 'project'))
+    renderAt(`/project-work-orders/${WORK_ORDER_ID}`)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'deleted' }))
+
+    expect(await screen.findByText('project-list')).toBeInTheDocument()
+  })
+
+  it('sends a project work order opened on the Commesse page to its Commesse di Progetto page (2026-11-25)', async () => {
+    vi.mocked(fetchWorkOrder).mockResolvedValue(workOrder('Progetto', 'project'))
+    renderAt(`/work-orders/${WORK_ORDER_ID}`)
+
+    expect(await screen.findByText('title:Progetto')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'deleted' }))
+    expect(await screen.findByText('project-list')).toBeInTheDocument()
   })
 })

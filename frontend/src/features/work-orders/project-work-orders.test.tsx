@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle } from 'react'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -7,11 +7,17 @@ import ProjectWorkOrdersPage from '@/pages/project-work-orders-page'
 import { WorkOrdersTable } from '@/features/work-orders/work-orders-table'
 
 /**
- * Spec 0359 D-1: "Commesse" lists every work order type (no row scope, user decision 2026-11-17), "Commesse di Progetto" mounts the
- * `project-work-orders` domain with no row scope. Neither page has the category strip. Grid and row actions are stubbed.
+ * Spec 0359 D-1/D-2: "Commesse" sends `workOrderType: 'processing'` (back again, user decision 2026-11-25), "Commesse di Progetto"
+ * mounts the `project-work-orders` domain with no row scope. Neither page has the category strip. Grid and row actions are stubbed.
  */
 vi.mock('@/components/page-header', () => ({ PageHeader: () => <div /> }))
-vi.mock('@/features/auth/can', () => ({ Can: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
+/** The permissions the stubbed `<Can>` grants. */
+const granted = vi.hoisted(() => new Set<string>())
+vi.mock('@/features/auth/can', () => ({
+  Can: ({ permission, children, fallback }: { permission: string; children: React.ReactNode; fallback?: React.ReactNode }) => (
+    <>{granted.has(permission) ? children : fallback}</>
+  ),
+}))
 vi.mock('@/features/work-orders/use-work-order-row-actions', () => ({
   useWorkOrderRowActions: () => ({
     handleAction: vi.fn(),
@@ -40,15 +46,21 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
+beforeEach(() => {
+  granted.clear()
+  granted.add('project-work-orders.viewAny')
+})
+
 describe('work orders pages (spec 0359)', () => {
-  it('"Commesse" mounts the work-orders grid unscoped (processing and project), without the category strip', () => {
+  // REQUIREMENT CHANGED (2026-11-25): "Commesse" lists processing work orders only, project ones are in their own module.
+  it('"Commesse" narrows the work-orders grid to processing work orders, without the category strip', () => {
     render(
       <MemoryRouter>
         <WorkOrdersTable />
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('region', { name: 'table-work-orders-unscoped' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'table-work-orders-processing' })).toBeInTheDocument()
     expect(screen.getByText('attr-columns-from-filters')).toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
@@ -63,5 +75,18 @@ describe('work orders pages (spec 0359)', () => {
     expect(screen.getByRole('region', { name: 'table-project-work-orders-unscoped' })).toBeInTheDocument()
     expect(screen.getByText('no-attr-columns')).toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  })
+
+  it('"Commesse di Progetto" needs its own project-work-orders.viewAny, not the "Commesse" one (2026-11-25)', () => {
+    granted.clear()
+    granted.add('work-orders.viewAny')
+    render(
+      <MemoryRouter>
+        <ProjectWorkOrdersPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    expect(screen.getByText(i18n.t('workOrders.forbidden'))).toBeInTheDocument()
   })
 })

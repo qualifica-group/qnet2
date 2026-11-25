@@ -25,6 +25,7 @@ final class SeniorSalesRoleCatalogue
         'opportunities',
         'quotes',
         'work-orders',
+        'project-work-orders',
     ];
 
     /**
