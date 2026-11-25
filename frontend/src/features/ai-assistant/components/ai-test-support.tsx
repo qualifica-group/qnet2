@@ -21,6 +21,7 @@ export function buildAiConfig(overrides: Partial<AiAssistantConfig> = {}): AiAss
       max_files: 2,
       max_file_size_kb: 1024,
       accepted_mimes: ['application/pdf', 'image/png'],
+      poll_interval_ms: 1000,
     },
     mention_modules: ['companies', 'tasks'],
     ...overrides,

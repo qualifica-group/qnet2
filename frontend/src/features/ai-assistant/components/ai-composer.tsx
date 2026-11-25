@@ -1,6 +1,6 @@
 import { useCallback, useId, useRef, type ChangeEvent, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AtSign, Paperclip, SendHorizontal, Square } from 'lucide-react'
+import { AtSign, Paperclip, SendHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { AiComposerChips } from '@/features/ai-assistant/components/ai-composer-chips'
@@ -17,7 +17,7 @@ interface Props {
 /** Message composer: draft, attachments, "@" mentions and send/stop (AC-021..AC-023). */
 export function AiComposer({ composer, allowedModules }: Props) {
   const { t } = useTranslation()
-  const { form, textareaRef, limits, files, mentions, content, isSending, failure } = composer
+  const { form, textareaRef, limits, files, mentions, content, isBusy, failure } = composer
   const ids = { content: useId(), files: useId(), mentions: useId(), hint: useId(), modules: useId() }
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { errors } = form.formState
@@ -79,7 +79,7 @@ export function AiComposer({ composer, allowedModules }: Props) {
       <AiComposerChips
         files={files}
         mentions={mentions}
-        disabled={isSending}
+        disabled={isBusy}
         onRemoveFile={composer.removeFile}
         onRemoveMention={composer.removeMention}
       />
@@ -101,7 +101,6 @@ export function AiComposer({ composer, allowedModules }: Props) {
           textareaRef.current = element
         }}
         rows={1}
-        readOnly={isSending}
         aria-label={t('aiAssistant.composer.label')}
         placeholder={t('aiAssistant.composer.placeholder')}
         aria-invalid={Boolean(errors.content)}
@@ -150,7 +149,7 @@ export function AiComposer({ composer, allowedModules }: Props) {
               type="button"
               variant="ghost"
               size="icon-sm"
-              disabled={isSending}
+              disabled={isBusy}
               aria-label={t('aiAssistant.composer.attach')}
               aria-invalid={Boolean(errors.files)}
               aria-describedby={errors.files ? ids.files : undefined}
@@ -164,7 +163,7 @@ export function AiComposer({ composer, allowedModules }: Props) {
           type="button"
           variant="ghost"
           size="icon-sm"
-          disabled={isSending || mentions.length >= limits.max_mentions}
+          disabled={isBusy || mentions.length >= limits.max_mentions}
           aria-label={t('aiAssistant.composer.mention')}
           aria-invalid={Boolean(errors.mentions)}
           aria-describedby={errors.mentions ? ids.mentions : undefined}
@@ -179,17 +178,10 @@ export function AiComposer({ composer, allowedModules }: Props) {
           {t('aiAssistant.composer.hint')}
         </p>
         <div className="ml-auto">
-          {isSending ? (
-            <Button type="button" size="sm" variant="secondary" onClick={composer.cancel}>
-              <Square className="size-3.5" />
-              {t('aiAssistant.composer.stop')}
-            </Button>
-          ) : (
-            <Button type="submit" size="sm" disabled={content.trim() === ''}>
-              <SendHorizontal className="size-3.5" />
-              {t('aiAssistant.composer.send')}
-            </Button>
-          )}
+          <Button type="submit" size="sm" disabled={isBusy || content.trim() === ''} title={isBusy ? t('aiAssistant.composer.sendBusy') : undefined}>
+            <SendHorizontal className="size-3.5" />
+            {t('aiAssistant.composer.send')}
+          </Button>
         </div>
       </div>
     </form>

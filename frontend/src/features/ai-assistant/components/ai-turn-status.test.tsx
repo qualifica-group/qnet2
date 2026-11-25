@@ -1,0 +1,84 @@
+import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import '@/i18n'
+import { AiTurnStatus } from '@/features/ai-assistant/components/ai-turn-status'
+import type { AiTurn, AiTurnStatus as Status } from '@/features/ai-assistant/types'
+
+function turn(status: Status, overrides: Partial<AiTurn> = {}): AiTurn {
+  return {
+    id: 5, conversation_id: 1, status, user_message_id: 10, assistant_text: '', assistant_message: null,
+    steps: [], preview: null, queue_position: null, error_code: null, error_message: null,
+    created_at: 'now', updated_at: 'now', finished_at: null, ...overrides,
+  }
+}
+
+describe('AiTurnStatus', () => {
+  it('shows the queued state, with the position when the server sends it', () => {
+    const { rerender } = render(<AiTurnStatus turn={turn('queued')} />)
+    expect(screen.getByRole('status')).toHaveTextContent('In coda: l\'assistente inizia a breve.')
+
+    rerender(<AiTurnStatus turn={turn('queued', { queue_position: 3 })} />)
+    expect(screen.getByRole('status')).toHaveTextContent('In coda, posizione 3')
+  })
+
+  it('shows the partial text, with the steps and their state, while running', () => {
+    render(
+      <AiTurnStatus
+        turn={turn('running', {
+          assistant_text: 'Ecco **le commesse**',
+          steps: [
+            { index: 0, tool: 'search_operations', label: 'Cerco l\'operazione', state: 'done' },
+            { index: 1, tool: 'list_records', label: 'Leggo le commesse', state: 'running' },
+          ],
+        })}
+      />,
+    )
+
+    const steps = screen.getByRole('list', { name: 'Passi dell\'assistente' })
+    const items = within(steps).getAllByRole('listitem')
+    expect(items[0]).toHaveTextContent('Cerco l\'operazione')
+    expect(items[0]).toHaveTextContent('completato')
+    expect(items[1]).toHaveTextContent('Leggo le commesse')
+    expect(items[1]).toHaveTextContent('in corso')
+    expect(screen.getByText('le commesse')).toHaveProperty('tagName', 'STRONG')
+  })
+
+  it('shows the typing hint while running with neither text nor steps', () => {
+    render(<AiTurnStatus turn={turn('running')} />)
+    expect(screen.getByRole('status')).toHaveTextContent('L\'assistente sta scrivendo...')
+  })
+
+  it('shows only a placeholder while waiting for the confirmation (the card is ticket 05)', () => {
+    render(<AiTurnStatus turn={turn('awaiting_confirmation', { preview: { id: 'p1' } })} />)
+    expect(screen.getByRole('status')).toHaveTextContent('aspetta la tua conferma')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('shows a fixed translated text per error code, never the server text', () => {
+    render(
+      <AiTurnStatus
+        turn={turn('failed', { error_code: 'turn_timeout', error_message: 'English server text', assistant_text: 'Parziale' })}
+      />,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent('la richiesta ha richiesto troppo tempo')
+    expect(screen.queryByText('English server text')).not.toBeInTheDocument()
+    expect(screen.getByText('Parziale')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['failed', null, 'L\'assistente si è fermato. Il tuo messaggio è salvato'],
+    ['cancelled', null, 'La richiesta è stata annullata'],
+    ['limit_reached', 'limit_person', 'limite mensile di spesa'],
+    ['failed', 'not_a_known_code' as never, 'L\'assistente si è fermato. Il tuo messaggio è salvato'],
+  ] as const)('falls back to the state text: %s / %s', (status, code, text) => {
+    render(<AiTurnStatus turn={turn(status, { error_code: code })} />)
+    expect(screen.getByRole('alert')).toHaveTextContent(text)
+  })
+
+  it('keeps the final text of a completed turn until the saved message replaces it', () => {
+    render(<AiTurnStatus turn={turn('completed', { assistant_text: 'Fatto' })} />)
+    expect(screen.getByText('Fatto')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+})
