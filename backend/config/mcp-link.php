@@ -38,6 +38,13 @@ return [
         'decay_minutes' => (int) env('MCP_LINK_OPEN_DECAY_MINUTES', 15),
     ],
 
+    // API client of the connector, where the links of the AI assistant belong (same client as the
+    // MCP clients). Unset, no assistant link is opened.
+    'assistant_client_id' => env('MCP_LINK_ASSISTANT_CLIENT_ID') !== null ? (int) env('MCP_LINK_ASSISTANT_CLIENT_ID') : null,
+
+    // Label of the MCP client on an assistant link: what tells it apart from the links of ChatGPT and Claude.
+    'assistant_mcp_client' => 'qnet2-assistant',
+
     // Commit of QNET2 in service. Required: QNET2 exposes no version elsewhere, so
     // the release sets it every time. Unset or empty, the exchange issues no token
     // and answers 500 with reason `release_commit_not_configured`.
