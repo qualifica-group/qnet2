@@ -167,19 +167,24 @@ final class CommissionRuleResolver
             });
 
         if ($scope === CommissionApplicationScope::ProductCategory) {
-            return $this->closestCategoryRule($query->whereIn('product_category_id', $lineage)->get(), $lineage);
+            // Only the lineage categories are loaded: they are all closestCategoryRule() needs.
+            $query->whereHas('productCategories', fn (Builder $categories) => $categories->whereIn('product_categories.id', $lineage))
+                ->with(['productCategories' => fn ($categories) => $categories->whereIn('product_categories.id', $lineage)]);
+
+            return $this->closestCategoryRule($query->get(), $lineage);
         }
 
         if ($scope === CommissionApplicationScope::Product) {
-            $query->where('product_id', $context->productId);
+            $query->whereHas('products', fn (Builder $products) => $products->where('products.id', $context->productId));
         }
 
         return $query->first();
     }
 
     /**
-     * The first candidate of the closest category: candidates arrive in
-     * tie-break order, so the first one of a category is that category's winner.
+     * The first candidate that contains the closest category: candidates arrive in
+     * tie-break order, so the first one of a category is that category's winner
+     * (spec 0430 D-5: a rule may hold several categories of the lineage).
      *
      * @param  Collection<int, CommissionConfiguration>  $candidates
      * @param  list<int>  $lineage
@@ -187,7 +192,9 @@ final class CommissionRuleResolver
     private function closestCategoryRule(Collection $candidates, array $lineage): ?CommissionConfiguration
     {
         foreach ($lineage as $categoryId) {
-            $winner = $candidates->firstWhere('product_category_id', $categoryId);
+            $winner = $candidates->first(
+                static fn (CommissionConfiguration $candidate): bool => $candidate->productCategories->contains('id', $categoryId),
+            );
 
             if ($winner !== null) {
                 return $winner;

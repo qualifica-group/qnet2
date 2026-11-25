@@ -62,11 +62,9 @@ function supplierDirectionProduct(bool $enabled = true, ?ProductTypology $typolo
 
 function supplierDirectionRule(Product $product, CommissionRecipientRole $role, CommissionType $type, float $value, SupplierCommissionDirection $direction = SupplierCommissionDirection::Paid): CommissionConfiguration
 {
-    return CommissionConfiguration::factory()->create([
+    return CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => $role,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'commission_type' => $type,
         'supplier_commission_direction' => $role === CommissionRecipientRole::Supplier ? $direction : null,
         'value' => $value,
@@ -380,8 +378,8 @@ it('AC-004: the migrations backfill PAID on the Supplier rules only, touch no sn
     $enabled = ProductTypology::factory()->supplierCommission()->create();
     $disabled = ProductTypology::factory()->create();
     $product = Product::factory()->create();
-    $supplierRule = CommissionConfiguration::factory()->create(['recipient_role' => CommissionRecipientRole::Supplier, 'product_id' => $product->id, 'supplier_commission_direction' => SupplierCommissionDirection::Received]);
-    $commercialRule = CommissionConfiguration::factory()->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id]);
+    $supplierRule = CommissionConfiguration::factory()->forProducts([$product->id])->create(['recipient_role' => CommissionRecipientRole::Supplier, 'supplier_commission_direction' => SupplierCommissionDirection::Received]);
+    $commercialRule = CommissionConfiguration::factory()->forProducts([$product->id])->create(['recipient_role' => CommissionRecipientRole::Commercial]);
     $quote = Quote::factory()->create(['margin_net' => 123.45]);
     $line = QuoteLine::factory()->create(['quote_id' => $quote->id, 'product_id' => $product->id, 'supplier_commission_direction' => SupplierCommissionDirection::Received]);
     $commission = QuoteLineCommission::factory()->create(['quote_line_id' => $line->id, 'calculated_amount' => 77.7]);

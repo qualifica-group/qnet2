@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Authorization\LegacyIdVisibility;
 use App\Models\CommissionConfiguration;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,15 +27,12 @@ class CommissionConfigurationResource extends JsonResource
             'name' => $this->name,
             'recipient_role' => $this->recipient_role->value,
             'application_scope' => $this->application_scope->value,
-            'product_category_id' => $this->product_category_id,
-            'product_category' => $this->productCategory === null ? null : [
-                'id' => $this->productCategory->id,
-                'name' => $this->productCategory->name,
-            ],
-            'product_id' => $this->product_id,
-            'product' => $this->product === null ? null : ['id' => $this->product->id, 'name' => $this->product->name],
+            'product_category_ids' => $this->productCategories->pluck('id')->all(),
+            'product_categories' => $this->productCategories->sortBy('name')->map(self::summary(...))->values()->all(),
+            'product_ids' => $this->products->pluck('id')->all(),
+            'products' => $this->products->sortBy('name')->map(self::summary(...))->values()->all(),
             // Spec 0089: `recipient_type` is read-only (D-7, AC-011) and,
-            // like `product_id`/`product`, `recipient_id`/`recipient` fall
+            // like `product_ids`/`products`, `recipient_id`/`recipient` fall
             // together under the SAME field permission (D-12).
             'recipient_type' => $this->recipient_type,
             'recipient_id' => $this->recipient_id,
@@ -58,15 +56,21 @@ class CommissionConfigurationResource extends JsonResource
 
             unset($payload[$field]);
 
-            if ($field === 'product_category_id') {
-                unset($payload['product_category']);
-            } elseif ($field === 'product_id') {
-                unset($payload['product']);
+            if ($field === 'product_category_ids') {
+                unset($payload['product_categories']);
+            } elseif ($field === 'product_ids') {
+                unset($payload['products']);
             } elseif ($field === 'recipient_id') {
                 unset($payload['recipient_type'], $payload['recipient']);
             }
         }
 
         return $payload;
+    }
+
+    /** @return array{id: int, name: string} */
+    private static function summary(Model $related): array
+    {
+        return ['id' => $related->id, 'name' => $related->name];
     }
 }

@@ -494,10 +494,9 @@ it('0320 D-23: a legacy cost line keeps its historical price even when its suppl
         'usages' => [ProductUsage::Cost],
         'product_typology_id' => ProductTypology::factory()->supplierCommission()->create()->id,
     ], $supplier);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$costProduct->id])->create([
         'recipient_role' => CommissionRecipientRole::Supplier,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $costProduct->id,
         'recipient_type' => 'registry',
         'recipient_id' => $supplier->id,
     ]);

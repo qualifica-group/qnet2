@@ -30,7 +30,12 @@ const DEDICATED_DELETE_GUARDS = [
     // ChartAccount::hasChildren(), TreasuryTypeService, CommissionConfigurationService, CampaignService.
     'chart_accounts' => ['chart_accounts.parent_id', 'cost_types.chart_account_id', 'revenue_types.chart_account_id', 'treasury_types.chart_account_id'],
     'treasury_types' => ['treasury_movements.treasury_type_id'],
-    'commission_configurations' => ['quote_line_commissions.commission_configuration_id'],
+    'commission_configurations' => [
+        'quote_line_commissions.commission_configuration_id',
+        // Spec 0430: the pivots are parts the rule owns (deleted with it).
+        'commission_configuration_product.commission_configuration_id',
+        'commission_configuration_product_category.commission_configuration_id',
+    ],
     'campaigns' => ['leads.campaign_id', 'campaign_product_lines.campaign_id'],
 ];
 

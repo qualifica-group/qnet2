@@ -46,7 +46,7 @@ function recipientCrudPayload(array $overrides = []): array
         'name' => 'Recipient rule',
         'recipient_role' => 'COMMERCIAL',
         'application_scope' => 'PRODUCT',
-        'product_id' => Product::factory()->create()->id,
+        'product_ids' => [Product::factory()->create()->id],
         'commission_type' => 'PERCENTAGE',
         'value' => 5,
         'priority' => 0,
@@ -55,18 +55,18 @@ function recipientCrudPayload(array $overrides = []): array
     ], $overrides);
 }
 
-it('rejects RECIPIENT scope without a recipient_id and rejects a product_id alongside it (AC-009)', function () {
+it('rejects RECIPIENT scope without a recipient_id and rejects a product_ids list alongside it (AC-009)', function () {
     Sanctum::actingAs(recipientCrudActor(['create']));
 
     $this->postJson('/api/commission-configurations', recipientCrudPayload([
         'application_scope' => 'RECIPIENT',
-        'product_id' => null,
+        'product_ids' => [],
     ]))->assertUnprocessable()->assertJsonValidationErrors('recipient_id');
 
     $this->postJson('/api/commission-configurations', recipientCrudPayload([
         'application_scope' => 'RECIPIENT',
         'recipient_id' => Referent::factory()->create()->id,
-    ]))->assertUnprocessable()->assertJsonValidationErrors('product_id');
+    ]))->assertUnprocessable()->assertJsonValidationErrors('product_ids');
 });
 
 it('rejects a SUPERVISOR rule pointing at an id that only exists in referents, not users (AC-010)', function () {
@@ -193,8 +193,8 @@ it('omits recipient_id, recipient_type and recipient from the response when the 
 
     $commercial = Referent::factory()->create();
     $configuration = CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => Product::factory()->create()->id]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)->forProducts([Product::factory()->create()->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial]);
 
     $detail = $this->getJson("/api/commission-configurations/{$configuration->id}")
         ->assertOk()
@@ -235,10 +235,9 @@ it('rejects a recipient_id submission with 422, not 403, when the actor lacks ed
         ->assertUnprocessable()
         ->assertJsonValidationErrors('recipient_id');
 
-    $configuration = CommissionConfiguration::factory()->create([
+    $configuration = CommissionConfiguration::factory()->forProducts([Product::factory()->create()->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => Product::factory()->create()->id,
     ]);
 
     $this->patchJson("/api/commission-configurations/{$configuration->id}", ['recipient_id' => $commercial->id])
@@ -275,8 +274,8 @@ it('rejects a submitted recipient_type when recipient_id is locked, even resubmi
 
     $commercial = Referent::factory()->create();
     $configuration = CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => Product::factory()->create()->id]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)->forProducts([Product::factory()->create()->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial]);
 
     $this->patchJson("/api/commission-configurations/{$configuration->id}", [
         'recipient_type' => 'user',

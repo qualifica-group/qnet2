@@ -30,8 +30,8 @@ const SCOPE_SECTION_FIELDS = [
   'recipient_role',
   'recipient_id',
   'application_scope',
-  'product_category_id',
-  'product_id',
+  'product_category_ids',
+  'product_ids',
 ] as const
 const CALCULATION_SECTION_FIELDS = ['commission_type', 'supplier_commission_direction', 'value', 'priority', 'status'] as const
 const VALIDITY_SECTION_FIELDS = ['valid_from', 'valid_until', 'internal_note'] as const

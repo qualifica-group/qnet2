@@ -108,7 +108,7 @@ final class UsageMap
             'product_categories.current_category_id' => 'legacy_categories',
             'products.category_id' => 'products',
             'campaign_product_lines.product_category_id' => 'campaign_product_lines',
-            'commission_configurations.product_category_id' => 'commission_configurations',
+            'commission_configuration_product_category.product_category_id' => 'commission_configurations',
             'employment_product_lines.product_category_id' => 'employment_product_lines',
             'opportunity_product_lines.product_category_id' => 'opportunity_product_lines',
             'project_product_lines.product_category_id' => 'project_product_lines',

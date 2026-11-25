@@ -10,6 +10,7 @@ use App\Models\QuoteLine;
 use App\Models\Registry;
 use App\Services\Invoices\SupplierCommissionCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 
 /**
  * Spec 0288 D-4: the supplier commission on the sale net amount of a line.
@@ -25,9 +26,14 @@ function supplierSoldLine(Registry $supplier, ?ProductCategory $category = null)
 
 function supplierRule(Registry $supplier, CommissionApplicationScope $scope, array $attributes): CommissionConfiguration
 {
-    return CommissionConfiguration::factory()
-        ->forRecipient(CommissionRecipientRole::Supplier->recipientType(), $supplier->id, $scope)
-        ->create(['recipient_role' => CommissionRecipientRole::Supplier, 'valid_from' => '2026-01-01', ...$attributes]);
+    $productId = Arr::pull($attributes, 'product_id');
+    $categoryId = Arr::pull($attributes, 'product_category_id');
+    $factory = CommissionConfiguration::factory()
+        ->forRecipient(CommissionRecipientRole::Supplier->recipientType(), $supplier->id, $scope);
+    $factory = $productId === null ? $factory : $factory->forProducts([$productId]);
+    $factory = $categoryId === null ? $factory : $factory->forCategories([$categoryId]);
+
+    return $factory->create(['recipient_role' => CommissionRecipientRole::Supplier, 'valid_from' => '2026-01-01', ...$attributes]);
 }
 
 function commissionOf(QuoteLine $line)

@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Regole commissione su piu' categorie / piu' prodotti, spec 0430 (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+
+- Pivot `commission_configuration_product_category` e `commission_configuration_product` (FK con nomi corti `cc_*_fk`, unique `cc_*_unique`), unica fonte: tolte le colonne `product_category_id`/`product_id`, i 4 indici di risoluzione e il CHECK `commission_configurations_scope_check`. Migrazione `2026_12_26_100000_create_commission_configuration_product_pivots.php`, GIA' APPLICATA su qnet2 con `--path` (2.441 regole -> 985 righe categoria + 1.456 prodotto, 0 differenze col fotogramma prima; 2.998/3.000 commissioni salvate risolvono la stessa regola, le 2 diverse sono un limite dello script di prova: riga senza fornitore).
+- Incidente: un primo `migrate` su qnet2 si era fermato su un nome FK di 79 caratteri (>64 MySQL) dopo aver gia' tolto CHECK, FK e indici (MariaDB non annulla il DDL). Ripristinati a mano e rilanciata la migrazione corretta. In produzione gira su uno stato pulito.
+- API: `product_category_ids[]`/`product_ids[]` (1..500, distinct; categorie anche inattive, prodotti `ActiveProduct` con esenzione dei salvati), risposta con `product_categories`/`products` `{id,name}`. Permessi di campo `product_category_ids`/`product_ids` (multiselect). Cambio ambito svuota l'elenco lasciato. Storico: voce "Commission scope lists change" con old/attributes (pattern `PeopleChangeLog`). Resolver: categoria piu' vicina fra quelle della regola, poi tie-break. Tabella: nomi uniti ", ", filtro su uno qualsiasi, sort sul primo nome.
+- Seeder aggiornati alle pivot (ReporterCommissionRules, IsoSubcategoriesConsolidation, ECampus*, McDirectory, DemoCommissionShowcase); legacy `CommissionConfigurationsSource` fa sync dell'unico id. Factory: `forProducts()`/`forCategories()` via `hasAttached` (con `afterCreating` creavano un prodotto orfano e rendevano instabile `ProductSupplierCommissionsTest` AC-029).
+- Frontend: `RelationMultiSelectField` nella riga Ambito, dettaglio con l'elenco, etichette al plurale, payload con liste (quella dell'altro ambito `[]`), diff PATCH per contenuto. Guida in-app IT/EN e manuale QNet aggiornati.
+- Verifiche: Pest 87 file commissioni/categorie/prodotti/seeder/migrazione 892/896 (i 4 rossi preesistenti: `UsageMapSchemaTest` 4 FK di altre tabelle; 3 test di rollback SQLite bloccati da `2026_12_24_100000_create_document_checklist_sections_table.php` che usa `dropForeign` per nome). Vitest 62 file / 512, ESLint ok, `tsc -b --force` EXIT 0.
+- Fuori scope (D-1/D-2): accorpamento delle regole esistenti, regola mista categorie+prodotti.
+
 ## Comune San Nicandro Garganico non trovabile (segnalazione utente 2026-11-25) — VERDE, COMMITTATO
 
 - Il comune c'era (city id 60310, Foggia) ma world.sql lo scrive "Sannicandro Garganico": la ricerca a prefisso di `/api/cities` non lo trovava digitando "San Nicandro". Aggiunto `'Sannicandro Garganico' => 'San Nicandro Garganico'` a `GeoNameLocalizer::TO_ITALIAN`: mostrato col nome ISTAT, trovato con entrambe le grafie, filtri tabellari coerenti (bijection). Colonna DB invariata, quindi l'import (`ItalianGeoLocalizer`, che mappa all'inverso) resta giusto.

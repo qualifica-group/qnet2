@@ -29,8 +29,8 @@ it('persists the snapshot intestato to the referent on the quote, never to the l
     $product = Product::factory()->create();
 
     CommissionConfiguration::factory()
-        ->forRecipient('user', $linkedUser->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id, 'value' => 12]);
+        ->forRecipient('user', $linkedUser->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'value' => 12]);
 
     $quote = Quote::factory()->create(['commercial_id' => $commercial->id]);
     $line = QuoteLine::factory()->create([

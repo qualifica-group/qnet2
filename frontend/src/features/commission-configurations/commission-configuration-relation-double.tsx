@@ -24,3 +24,21 @@ export function RelationSelectFieldDouble({ control, name, label, resource, sele
     </div>
   )
 }
+
+interface MultiRelationDoubleProps extends Omit<RelationDoubleProps, 'selected'> {
+  selected: { id: number; name: string }[]
+}
+
+/** Test double of `RelationMultiSelectField`: a pick adds id 99 to the bound list. */
+export function RelationMultiSelectFieldDouble({ control, name, label, resource, selected }: MultiRelationDoubleProps) {
+  const { field, fieldState } = useController({ control, name })
+  const value: number[] = field.value
+  return (
+    <div>
+      <span>{`${label}: ${resource}: ${value.join(',')}`}</span>
+      {selected.length > 0 ? <span>{`${name} selected: ${selected.map((item) => item.name).join(', ')}`}</span> : null}
+      {fieldState.error?.message ? <p role="alert">{fieldState.error.message}</p> : null}
+      <button type="button" onClick={() => field.onChange([...value, 99])}>{`pick ${name}`}</button>
+    </div>
+  )
+}

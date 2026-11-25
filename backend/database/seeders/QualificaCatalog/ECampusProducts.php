@@ -29,7 +29,7 @@ final class ECampusProducts
         'quote_lines' => 'product_id',
         'opportunity_product' => 'product_id',
         'lead_product' => 'product_id',
-        'commission_configurations' => 'product_id',
+        'commission_configuration_product' => 'product_id',
     ];
 
     /** "[LM-56] Scienze dell'Economia": the code, then the course. */

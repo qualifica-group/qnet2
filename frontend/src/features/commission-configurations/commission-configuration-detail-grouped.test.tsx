@@ -23,6 +23,10 @@ vi.mock('./api', async (importOriginal) => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+vi.mock('@/components/form/relation-multi-select-field', async () => ({
+  RelationMultiSelectField: (await import('./commission-configuration-relation-double')).RelationMultiSelectFieldDouble,
+}))
+
 vi.mock('@/components/form/relation-select-field', async () => ({
   RelationSelectField: (await import('./commission-configuration-relation-double')).RelationSelectFieldDouble,
 }))
@@ -173,14 +177,14 @@ describe('CommissionConfigurationDetailView grouped rows', () => {
 
     openRow(SCOPE)
     pickOption(/^Application scope/, 'Product category')
-    fireEvent.click(screen.getByRole('button', { name: 'pick product_category_id' }))
+    fireEvent.click(screen.getByRole('button', { name: 'pick product_category_ids' }))
     saveRow()
 
     await waitFor(() =>
       expect(updateMock).toHaveBeenCalledWith(1, {
         application_scope: 'PRODUCT_CATEGORY',
-        product_category_id: 99,
-        product_id: null,
+        product_category_ids: [99],
+        product_ids: [],
       }),
     )
   })
@@ -192,7 +196,7 @@ describe('CommissionConfigurationDetailView grouped rows', () => {
     pickOption(/^Application scope/, 'Product category')
     saveRow()
 
-    expect(await screen.findByText('Select a product category.')).toBeInTheDocument()
+    expect(await screen.findByText('Select at least one product category.')).toBeInTheDocument()
     expect(updateMock).not.toHaveBeenCalled()
   })
 
