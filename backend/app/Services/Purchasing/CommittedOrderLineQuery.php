@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * (spec 0268, D-14): the formula and the base query live here once. A line is
  * committed only on an invoiceable order, net of the quantity any payable
  * document already bills on it (spec 0254, D-2, D-9). Amounts are net, summed
- * as integer cents.
+ * as integer cents; only the cash flow reads them VAT included (spec 0270, D-15).
  */
 final class CommittedOrderLineQuery
 {
@@ -26,6 +26,14 @@ final class CommittedOrderLineQuery
      * of GREATEST so it runs on MySQL and SQLite; constant text, no input.
      */
     public const string COMMITTED_AMOUNT = 'ROUND(CASE WHEN (CASE WHEN purchase_order_lines.residual_closed_at IS NOT NULL THEN purchase_order_lines.received_quantity ELSE purchase_order_lines.quantity END) - COALESCE(billed.billed_quantity, 0) > 0 THEN (CASE WHEN purchase_order_lines.residual_closed_at IS NOT NULL THEN purchase_order_lines.received_quantity ELSE purchase_order_lines.quantity END) - COALESCE(billed.billed_quantity, 0) ELSE 0 END * purchase_order_lines.unit_price, 2)';
+
+    /**
+     * Committed amount VAT included, for the cash flow (spec 0270, D-15): the
+     * committed net plus its VAT at the line rate, rounded to the cent as the
+     * line amounts do (LineAmountCalculator); no rate = no VAT. Needs the
+     * `vat_rates` join of linesWithVatRate().
+     */
+    public const string COMMITTED_GROSS_AMOUNT = self::COMMITTED_AMOUNT.' + ROUND('.self::COMMITTED_AMOUNT.' * COALESCE(vat_rates.rate, 0) / 100, 2)';
 
     /**
      * Order lines of invoiceable orders (joined to `purchase_orders`), with the
@@ -43,6 +51,14 @@ final class CommittedOrderLineQuery
             ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_lines.purchase_order_id')
             ->leftJoinSub($billed, 'billed', 'billed.purchase_order_line_id', '=', 'purchase_order_lines.id')
             ->whereIn('purchase_orders.status', $statuses);
+    }
+
+    /**
+     * lines() with the line VAT rate joined, the base of COMMITTED_GROSS_AMOUNT.
+     */
+    public function linesWithVatRate(): Builder
+    {
+        return $this->lines()->leftJoin('vat_rates', 'vat_rates.id', '=', 'purchase_order_lines.vat_rate_id');
     }
 
     /**

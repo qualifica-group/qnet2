@@ -57,7 +57,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni mese mostra le **Entrate** (rate attive aperte), le **Uscite** (rate passive aperte, già al netto di ritenuta ed ENASARCO), gli **Impegni** (ordini a fornitore approvati e non ancora fatturati), il **Netto** (entrate − uscite − impegni) e il **Cumulato**. Una rata cade nel mese della sua scadenza; un ordine cade nel mese della sua prima scadenza attesa, calcolata dalla data dell’ordine e dal metodo di pagamento (la data dell’ordine stessa se manca il metodo).',
+          text: 'Ogni mese mostra le **Entrate** (rate attive aperte), le **Uscite** (rate passive aperte, già al netto di ritenuta ed ENASARCO), gli **Impegni** (ordini a fornitore approvati e non ancora fatturati, IVA compresa come le rate), il **Netto** (entrate − uscite − impegni) e il **Cumulato**. Una rata cade nel mese della sua scadenza; un ordine cade nel mese della sua prima scadenza attesa, calcolata dalla data dell’ordine e dal metodo di pagamento (la data dell’ordine stessa se manca il metodo).',
         },
         {
           type: 'paragraph',

@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Cash flow previsionale: impegni ODA IVA compresa (spec 0270 D-15, 2026-11-25) — NON COMMITTATO
+
+- `CommittedOrderLineQuery::COMMITTED_GROSS_AMOUNT` (= `COMMITTED_AMOUNT` + IVA all'aliquota della riga, arrotondata come `LineAmountCalculator`, riga senza aliquota = nessuna IVA) su `linesWithVatRate()` (left join `vat_rates`). Usata SOLO da `CommittedFlowAggregator` (cash flow). Conto economico, costi di struttura, cifre di commessa, esposizione e costi passivi di commessa restano su `COMMITTED_AMOUNT` (imponibile).
+- Shape API invariata. Test: `CashFlowPayableTest` "AC-004 / D-15" (22% + riga senza aliquota + residuo di riga parzialmente fatturata = 184.21). Guide in-app IT/EN `management-control-cash-flow` aggiornate.
+- Da verificare: manuale Claude Docs non raggiungibile dalla sessione, sezione "Cash flow previsionale" -> voce Impegni da aggiornare a "IVA compresa".
+- Fallimento preesistente non toccato: `ExposureAccessTest` AC-001 cerca la sezione menu `management-control-section`, che non esiste piu' (voce spostata in `config/navigation/accounting.php`).
+- In progettazione (nessun codice): import statini paga (file costi del consulente -> costo reale sulle commesse via segnatempo; file netti -> documento "Cedolino" in Fatture Acquisto con rata = netto). Decisioni utente 2026-11-25: campo codice fiscale nella scheda utente (compilato dall'utente; oggi 0/428), societa' riconosciute dal codice azienda del consulente (mappa una tantum), Italian Quality Institute SRL da creare, divisore della tariffa = ore registrate nel segnatempo, fine rapporto riconosciuta dal TIPO CEDOLINO, costo di 13a/14a sul mese in cui sono pagate. File netti: CF nella colonna `RIP.1: CODICE` con `RIP.1: TIPO` = "Codice fiscale", codifica non UTF-8, campi tra virgolette. Report per la direzione: `C:\Users\PC\Documents\Statini_paga_flusso_di_lavoro.pdf`. Prossimo passo: `/plan-feature` fase A (costi sulle commesse).
+
 ## Richieste di documenti dalla commessa verso ArchivioSmart (spec 0428, 2026-11-24) — NON PROVATO NEL BROWSER
 
 - Tabelle:
