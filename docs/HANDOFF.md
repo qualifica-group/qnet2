@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Costi del personale, parte A statini (spec 0430, 2026-11-25) — VERDE, NON COMMITTATO
+
+- Tabella `payroll_costs` (societa' + utente + `period` "YYYY-MM", unica), model `PayrollCost`, `config/payroll.php` `company_codes` (codice consulente -> P.IVA; 1,2,3,4,7,8,9,10,11,14,15). Permessi `payroll-costs.view|import` (`PayrollCostPolicy`, `viewAny` -> view; `PayrollCostsAuthorization` senza campi per il form Ruoli). Menu `management-control-payroll-costs`. Dopo il deploy: `migrate` + `permissions:sync`.
+- Import `POST /api/payroll-costs/import` (`file`, `dry_run`): `App\Imports\PayrollCosts\*`, tab/`;`/`,` + Windows-1252, colonna `Azienda` obbligatoria, tutto o niente, un mese per file, sostituzione del mese.
+- Costo reale: `LaborCostSource` + `ManagementControl\Payroll\{PayrollLaborCost,PayrollMonthMinutes}`: mese con costo = somma societa' / minuti segnatempo del mese; costo senza ore -> riga senza commessa (funzioni o struttura). Griglia `PayrollCostsTableDefinition` (colonne calcolate non ordinabili).
+- FE `features/payroll-costs` (griglia + dialog import), guide IT/EN `management-control-payroll-costs`, guide conto economico e andamento aggiornate. Tab dell'andamento per funzione ora a larghezza del testo (`trend-function-table.tsx`).
+- Verifier: AC 12/12 PASS, tsc pulito, ESLint e Pint puliti dopo le correzioni (test help keys 113, route management-control 8 pagine, `tests/Pest.php` LF). Backend completo 15932/16082: i rossi non riguardano la feature (menu `management-control-section`, Formalab provider, migrazioni SQLite drop FK, AgentSalesReport helper, permessi duplicati request-management, notifyTeam, altri elencati dal verifier).
+- Dati locali: 112 codici fiscali utente compilati (log in scratchpad), ottobre 2026 importato (261.209,46; 22.126,24 ribaltati sulle commesse). In produzione i codici fiscali vanno compilati prima del primo import.
+- Manuale Claude Docs da aggiornare a mano: Costi del personale (nuova), Conto economico e Andamento mensile (costo del lavoro reale).
+- Prossimo: parte B, spec 0431 `docs/specs/0431-payslips-import.xml` (approvata dall'utente, si parte dopo il commit della A).
+
 ## Cash flow previsionale: impegni ODA IVA compresa (spec 0270 D-15, 2026-11-25) — COMMITTATO (e0f1c0462)
 
 - `CommittedOrderLineQuery::COMMITTED_GROSS_AMOUNT` (= `COMMITTED_AMOUNT` + IVA all'aliquota della riga, arrotondata come `LineAmountCalculator`, riga senza aliquota = nessuna IVA) su `linesWithVatRate()` (left join `vat_rates`). Usata SOLO da `CommittedFlowAggregator` (cash flow). Conto economico, costi di struttura, cifre di commessa, esposizione e costi passivi di commessa restano su `COMMITTED_AMOUNT` (imponibile).

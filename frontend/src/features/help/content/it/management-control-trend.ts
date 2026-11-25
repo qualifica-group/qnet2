@@ -29,7 +29,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il **fatturato** conta solo le fatture (le proforma non sono fatturato); i **costi** contano i documenti passivi, proforma comprese, **più il costo del lavoro**: le ore del segnatempo moltiplicate per il costo orario di chi le ha lavorate (dalla retribuzione della condizione contrattuale in vigore alla data dell’ora), per mese della data del segnatempo. Le ore di chi in quella data non ha una condizione con retribuzione sono contate come ore ma non valorizzate.',
+          text: 'Il **fatturato** conta solo le fatture (le proforma non sono fatturato); i **costi** contano i documenti passivi, proforma comprese, **più il costo del lavoro**: le ore del segnatempo moltiplicate per il costo orario di chi le ha lavorate (dalla retribuzione della condizione contrattuale in vigore alla data dell’ora), per mese della data del segnatempo. Nei mesi con il **file costi del personale** importato (Costi del personale) si usa il costo **reale**: il costo mensile della persona diviso per le ore registrate nel segnatempo in quel mese; il costo di chi non ha ore va alle sue funzioni di appartenenza o alla struttura. Nei mesi senza costo importato resta la stima dalla condizione contrattuale. Le ore di chi in quella data non ha una condizione con retribuzione sono contate come ore ma non valorizzate.',
         },
       ],
     },

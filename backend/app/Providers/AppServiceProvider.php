@@ -63,6 +63,7 @@ use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\OutboundEmail;
 use App\Models\PaymentMethod;
+use App\Models\PayrollCost;
 use App\Models\PersonalData;
 use App\Models\PipelineStatus;
 use App\Models\Product;
@@ -285,6 +286,7 @@ class AppServiceProvider extends ServiceProvider
             'commission_settlement' => CommissionSettlement::class,
             'commission_settlement_run' => CommissionSettlementRun::class,
             'enasarco_parameter' => EnasarcoParameter::class,
+            'payroll_cost' => PayrollCost::class,
             'proforma_request' => ProformaRequest::class,
             'purchase_request' => PurchaseRequest::class,
             'purchase_request_line' => PurchaseRequestLine::class,

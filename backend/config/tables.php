@@ -42,6 +42,7 @@ use App\Tables\NotificationsTableDefinition;
 use App\Tables\OperationalSitesTableDefinition;
 use App\Tables\OpportunitiesTableDefinition;
 use App\Tables\PaymentMethodsTableDefinition;
+use App\Tables\PayrollCostsTableDefinition;
 use App\Tables\PipelineStatusesTableDefinition;
 use App\Tables\ProductCategoriesTableDefinition;
 use App\Tables\ProductsTableDefinition;
@@ -171,6 +172,7 @@ return [
         'import-runs' => LeadImportsTableDefinition::class,
         'opportunities' => OpportunitiesTableDefinition::class,
         'payment-methods' => PaymentMethodsTableDefinition::class,
+        'payroll-costs' => PayrollCostsTableDefinition::class,
         'quotes' => QuotesTableDefinition::class,
         // spec 0365: the read-only "Report Vendite Agenti" over quotes.
         'agent-sales-report' => AgentSalesReportTableDefinition::class,

@@ -200,6 +200,14 @@ return [
                     'route' => '/management-control/agents',
                     'permission' => 'management-control.view',
                 ],
+                [
+                    // Spec 0430: monthly personnel costs from the labour consultant's file.
+                    'key' => 'management-control-payroll-costs',
+                    'label' => 'navigation.payrollCosts',
+                    'icon' => 'users',
+                    'route' => '/management-control/payroll-costs',
+                    'permission' => 'payroll-costs.view',
+                ],
             ],
         ],
     ],
