@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Duplicare un ruolo (richiesta utente 2026-11-25) — VERDE, NON COMMITTATO
+
+- Azione di riga `duplicate` su `/roles`, stesso schema di attributi/workflow preventivi: `RolesTableDefinition` (`actions()` + `actionsFor`, gate `create` su `Role::class`, mai sul `super-admin`), `roles-table.tsx` (`openDuplicate`, `SYSTEM_ROLE_HIDDEN_ACTIONS`), `roles-screens.tsx` (`RoleDuplicateLoader` rilegge il ruolo), `RoleFormMode` `duplicate` in `use-role-form.ts` (`source` passa da `RoleForm` -> `RoleFormBody` -> `useRoleForm`). Nessun endpoint nuovo: salva via `POST /roles`.
+- Copia: nome + `common.copySuffix`, permessi, `field_permissions`, campi personalizzati. Membri NON copiati (`users: []`).
+- Manuale: guide `roles.ts` IT/EN sezione `duplicate-role`; Claude Docs "Duplicare un ruolo" prima di "Eliminare un ruolo".
+- Verdi: Pest `RolesTableDuplicateActionTest` (4) + `tests/Feature/Table` e `tests/Feature/Roles`, Vitest roles+help (248), ESLint, Pint, `tsc -b --force`. Rossi preesistenti (falliscono anche sull'albero pulito): `DemoRolesSeederTest` (permessi viewer), `TableBulkDeleteTest` last super-admin (`forbidden` vs `guarded`), `TableDefinitionContractTest` (`FormalabCallLog::factory`).
+
 ## Stato commessa con le parole e i colori del vecchio QNet (richiesta utente 2026-11-25) — VERDE, COMMITTATO
 
 - Come il legacy (lista `OrdersTable` + `manageorder`): badge/colonna Stato IT = In programmazione, In lavorazione, Chiusa, Annullata, Disdetta (`it-enums.ts` `work_order_work_phase`); tab = Da pianificare, In lavorazione, Concluse, Annullate, Disdette (`it-work-orders.ts` invariato). EN invariato.

@@ -38,6 +38,15 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'duplicate-role',
+      title: 'Duplicating a role',
+      blocks: [
+        { type: 'paragraph', text: 'To create a role similar to an existing one, choose **Duplicate** on the row of the role to copy (you need the permission to create roles). A new role record opens already filled in: the **Name** is the original one followed by "(copy)", and the **Permissions**, field permissions and other fields are the same.' },
+        { type: 'paragraph', text: 'Change the name and whatever else you need, then press **Save**: QNet creates a new role, and the original stays as it was.' },
+        { type: 'note', text: '**Members** are not copied: the new role starts with no users, add them yourself. The **super-admin** role cannot be duplicated.' },
+      ],
+    },
+    {
       id: 'permission-catalog',
       title: 'How the permission catalog is organized',
       blocks: [
