@@ -24,6 +24,18 @@
     - AC-020 Guide IT/EN e manuale Claude Docs aggiornati; rilancio su dev della sola sorgente stati con i conteggi.
   </amendment>
 
+  <amendment date="2026-11-25" status="applied">
+    Segnalazione utente su COM-9831 (ISO_9001_1SA_2026): Chiusa nel legacy con stato 1002 "X _ RICHIESTA PENALI- DA
+    PARTE DEL COMMERCIALE", in qnet-2 finita su "8.b" (esito positivo) per D-10, perche' 1002 era `in_progress`.
+    - D-11 (utente) D-2 integrata: 1002 entra nel gruppo `closed` senza chiave (`LegacyWorkOrderStatusRoles`
+      `CLOSED_GROUP_IDS` nel legacy). Con D-10 le commesse Chiuse e Annullate su 1002 tengono quello stato come
+      chiusura negativa; le 2 in Lavorazione nel legacy (8307, 8308) restano su 1002, ora del gruppo `closed`.
+      Nessun cambio di codice in qnet-2: il re-run di `work-order-workflows` riallinea il gruppo (D-4).
+    - AC-021 Rilancio su dev: `work-order-workflows` (gruppo di 1002 -> closed), poi `work-order-workflow-statuses`
+      con aggiorna esistenti: 45 commesse su 1002 (7 Chiuse, 36 Annullate, 2 aperte); 9841 resta su "Chiusa con
+      esito negativo" perche' modificata in qnet-2 (D-13 di 0372).
+  </amendment>
+
   <goal>
     Gli stati legacy delle commesse prendono il ruolo di sistema che hanno davvero (Aperta, Chiusa con esito
     positivo, Chiusa con esito negativo) invece di affiancare tre righe di sistema aggiunte, e ci possono essere

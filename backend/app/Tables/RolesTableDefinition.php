@@ -179,6 +179,14 @@ class RolesTableDefinition extends AbstractTableDefinition
                 'permission' => 'roles.delete',
             ],
             [
+                'key' => 'duplicate',
+                'label' => 'actions.duplicate',
+                'icon' => 'copy',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'roles.create',
+            ],
+            [
                 'key' => 'activity',
                 'label' => 'actions.activity',
                 'icon' => 'history',
@@ -281,7 +289,7 @@ class RolesTableDefinition extends AbstractTableDefinition
      * Allowed action keys for a single row, computed via RolePolicy. The
      * protected `super-admin` system role never offers delete (it cannot be
      * mutated — RoleService enforces the hard guard), so the UI never advertises
-     * a dead-end action.
+     * a dead-end action, nor duplicate (see below).
      *
      * @return array<int, string>
      */
@@ -298,6 +306,13 @@ class RolesTableDefinition extends AbstractTableDefinition
 
         if (! $isSystemRole && Gate::forUser($actor)->allows('delete', $row)) {
             $allowed[] = 'delete';
+        }
+
+        // Gated on the CREATE ability: the copy is a new role, submitted through
+        // the create path. Never on super-admin: its powers come from
+        // Gate::before, not from its stored permissions, so a copy would mislead.
+        if (! $isSystemRole && Gate::forUser($actor)->allows('create', Role::class)) {
+            $allowed[] = 'duplicate';
         }
 
         if (Gate::forUser($actor)->allows('viewActivity', $row)) {

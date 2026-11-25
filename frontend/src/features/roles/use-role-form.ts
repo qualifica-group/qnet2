@@ -22,8 +22,14 @@ const SERVER_ERROR_FIELDS = ['name', 'permissions', 'users', 'field_permissions'
 
 export type RoleFormValues = CreateRoleFormValues & UpdateRoleFormValues
 
-/** `edit` is the in-place detail (spec 0230); the create form is the only screen left on `create`. */
-export type RoleFormMode = { type: 'create' } | { type: 'edit'; role: RoleDetailWithPermissions }
+/**
+ * `edit` is the in-place detail (spec 0230); the create form runs on `create`,
+ * or on `duplicate` (row action "duplicate"): a create pre-filled from `source`.
+ */
+export type RoleFormMode =
+  | { type: 'create' }
+  | { type: 'duplicate'; source: RoleDetailWithPermissions }
+  | { type: 'edit'; role: RoleDetailWithPermissions }
 
 const CREATE_MODE: RoleFormMode = { type: 'create' }
 
@@ -41,11 +47,15 @@ export function useRoleFormState(mode: RoleFormMode) {
 
   // Custom fields (spec 0021): the single reusable integration — builds the
   // dynamic schema, defaults and 422 paths; `<CustomFieldRecordSections>` renders.
+  // Duplicate seeds its values from the source, exactly like edit, even though
+  // it submits through the create payload builder.
   const customFields = useCustomFieldsForm(
     'roles',
     mode.type === 'edit'
       ? { type: 'edit', customFields: mode.role.custom_fields }
-      : { type: 'create' },
+      : mode.type === 'duplicate'
+        ? { type: 'edit', customFields: mode.source.custom_fields }
+        : { type: 'create' },
   )
 
   const schema = useMemo(
@@ -76,6 +86,17 @@ export function useRoleFormState(mode: RoleFormMode) {
         custom_fields: customFields.defaultValues,
       }
     }
+    if (mode.type === 'duplicate') {
+      // Members are not copied: the new role starts empty, so duplicating to
+      // build a variant never hands it to the source role's users by accident.
+      return {
+        name: mode.source.name + t('common.copySuffix'),
+        permissions: mode.source.permissions,
+        users: [],
+        field_permissions: mode.source.field_permissions,
+        custom_fields: customFields.defaultValues,
+      }
+    }
     return {
       name: '',
       permissions: [],
@@ -83,7 +104,7 @@ export function useRoleFormState(mode: RoleFormMode) {
       field_permissions: [],
       custom_fields: customFields.defaultValues,
     }
-  }, [mode, customFields.defaultValues])
+  }, [mode, customFields.defaultValues, t])
 
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(schema),
@@ -100,21 +121,24 @@ export function useRoleFormState(mode: RoleFormMode) {
 }
 
 interface UseRoleFormArgs {
+  /** The role copied (row action "duplicate"); absent for a bare create. */
+  source?: RoleDetailWithPermissions
   onSuccess: (role: RoleDetail) => void
 }
 
 /**
- * Owns every non-render concern of the role create form: the shared form
+ * Owns every non-render concern of the role create (and duplicate) form: the shared form
  * state plus the create submit and server 422 mapping. The permission
  * explorer's own tree/search/selection state lives in `permission-explorer/`
  * (spec 0076) — this hook only exposes the flat `permissions`/`field_permissions`
  * RHF fields it reads/writes. The component stays UI-only; this hook is the
  * orchestration point (`onSubmit`).
  */
-export function useRoleForm({ onSuccess }: UseRoleFormArgs) {
+export function useRoleForm({ source, onSuccess }: UseRoleFormArgs) {
   const { t } = useTranslation()
   const [serverError, setServerError] = useState<string | null>(null)
-  const { form, errorFields, canManageFieldPermissions } = useRoleFormState(CREATE_MODE)
+  const mode = useMemo<RoleFormMode>(() => (source ? { type: 'duplicate', source } : CREATE_MODE), [source])
+  const { form, errorFields, canManageFieldPermissions } = useRoleFormState(mode)
 
   const onSubmit = async (values: RoleFormValues) => {
     setServerError(null)

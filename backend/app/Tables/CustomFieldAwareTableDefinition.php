@@ -277,7 +277,8 @@ class CustomFieldAwareTableDefinition implements TableDefinition
             return $this->inner->distinctValues($actor, $columnId, $columnConfig, $search, $query, $limit);
         }
 
-        $values = $this->columnBuilder->handlerFor($definition)->distinctValues($query, $this->valuesJsonBaseColumn(), $definition->key);
+        $narrowed = $this->filterApplier->narrowedBySearch($query, $this->valuesJsonColumn($definition->key), $search);
+        $values = $this->columnBuilder->handlerFor($definition)->distinctValues($narrowed, $this->valuesJsonBaseColumn(), $definition->key);
 
         if ($search !== null && $search !== '') {
             $needle = mb_strtolower($search);

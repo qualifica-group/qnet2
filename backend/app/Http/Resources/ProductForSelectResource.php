@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use App\Products\ProductSupplierPayload;
+use App\Support\Amounts\CostVatRate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -70,6 +71,9 @@ class ProductForSelectResource extends ForSelectResource
                 // Spec 0251: the default cost type, so ODA / invoice / commessa
                 // cost rows pre-fill it from the pick.
                 'cost_type' => $this->costType === null ? null : ['id' => $this->costType->id, 'name' => $this->costType->name, 'color' => $this->costType->color],
+                // The VAT a cost row starts on (0%, not the product's own), so
+                // offer cost lines and work order costs pre-fill it from the pick.
+                'cost_vat_rate' => $this->costVatRateSummary(),
             ],
         ];
     }
@@ -101,6 +105,16 @@ class ProductForSelectResource extends ForSelectResource
         }
 
         return ['id' => $unitOfMeasure->id, 'name' => $unitOfMeasure->name, 'symbol' => $unitOfMeasure->symbol];
+    }
+
+    /**
+     * @return array{id: int, name: string, rate: string}|null
+     */
+    private function costVatRateSummary(): ?array
+    {
+        $rate = CostVatRate::resolve();
+
+        return $rate === null ? null : ['id' => $rate->id, 'name' => $rate->name, 'rate' => $rate->rate];
     }
 
     /**

@@ -18,6 +18,7 @@ use App\Tables\Shared\DocumentsCountColumn;
 use App\Tables\Shared\NotesCountColumn;
 use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderAdvancedFilterApplier;
+use App\Tables\WorkOrders\WorkOrderAmountColumns;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
@@ -74,6 +75,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderWorkPhaseColumn $workPhaseColumn,
         private readonly WorkOrderProformaStatusColumn $proformaStatusColumn,
         private readonly WorkOrderLinePaymentStatusColumn $linePaymentStatusColumn,
+        private readonly WorkOrderAmountColumns $amountColumns,
     ) {}
 
     /**
@@ -147,6 +149,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             $this->proformaStatusColumn->withFlags($query);
         }
 
+        // The "Importo consulenza"/"Totale ricavo" cells, only for whoever sees them.
+        if (WorkOrderAmountColumns::isVisibleTo(Auth::user())) {
+            $query->with(WorkOrderAmountColumns::EAGER_LOADS);
+        }
+
         return WorkOrderVisibilityScope::scopeToActor($query, Auth::user());
     }
 
@@ -155,10 +162,14 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function columns(): array
     {
-        // Spec 0407: without the "€" column the actor can neither sort nor filter by it.
-        return WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())
-            ? [...WorkOrderColumnCatalog::columns(), WorkOrderColumnCatalog::proformaStatusColumn()]
-            : WorkOrderColumnCatalog::columns();
+        // Spec 0407: without the "€" column the actor can neither sort nor filter by it; the same for the amounts.
+        $actor = Auth::user();
+
+        return [
+            ...WorkOrderColumnCatalog::columns(),
+            ...(WorkOrderAmountColumns::isVisibleTo($actor) ? WorkOrderAmountColumns::columns() : []),
+            ...(WorkOrderProformaStatusColumn::isVisibleTo($actor) ? [WorkOrderColumnCatalog::proformaStatusColumn()] : []),
+        ];
     }
 
     /**
@@ -166,9 +177,13 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function filters(): array
     {
-        return WorkOrderProformaStatusColumn::isVisibleTo(Auth::user())
-            ? [...WorkOrderColumnCatalog::filters(), ['columnId' => WorkOrderProformaStatusColumn::COLUMN, 'type' => 'set']]
-            : WorkOrderColumnCatalog::filters();
+        $actor = Auth::user();
+
+        return [
+            ...WorkOrderColumnCatalog::filters(),
+            ...(WorkOrderAmountColumns::isVisibleTo($actor) ? WorkOrderAmountColumns::filters() : []),
+            ...(WorkOrderProformaStatusColumn::isVisibleTo($actor) ? [['columnId' => WorkOrderProformaStatusColumn::COLUMN, 'type' => 'set']] : []),
+        ];
     }
 
     /**
@@ -298,9 +313,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         $proforma = WorkOrderProformaStatusColumn::isVisibleTo($actor)
             ? [WorkOrderProformaStatusColumn::COLUMN => $this->proformaStatusColumn->project($row)]
             : [];
+        $amounts = WorkOrderAmountColumns::isVisibleTo($actor) ? $this->amountColumns->project($row) : [];
 
         return [
             ...$proforma,
+            ...$amounts,
             'id' => $row->id,
             'code' => $row->code,
             'title' => $row->title,

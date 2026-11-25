@@ -5,7 +5,9 @@ namespace App\Http\Requests\Attributes;
 use App\CustomFields\FieldTypeRegistry;
 use App\DataObjects\Attributes\CreateAttributeData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesCurrentAttribute;
 use App\Http\Requests\Concerns\ValidatesFieldTypeDefinition;
+use App\Models\Attribute;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -24,7 +26,7 @@ use Illuminate\Validation\Rule;
  */
 class StoreAttributeRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesFieldTypeDefinition;
+    use EnforcesFieldPermissions, ValidatesCurrentAttribute, ValidatesFieldTypeDefinition;
 
     public function authorize(): bool
     {
@@ -47,6 +49,7 @@ class StoreAttributeRequest extends FormRequest
             'icon' => ['nullable', 'string', 'max:191'],
             'config' => ['nullable', 'array'],
             'relation_target' => ['nullable', 'array'],
+            'current_attribute_id' => ['nullable', 'integer', Rule::exists('attributes', 'id')],
             'options' => ['sometimes', 'array'],
             'options.*.value' => ['required', 'string', 'max:191'],
             'options.*.label' => ['required', 'string', 'max:191'],
@@ -64,6 +67,7 @@ class StoreAttributeRequest extends FormRequest
             $this->validateEnumOptions($validator);
             $this->validateRelationTarget($validator);
             $this->validateTableConfig($validator);
+            $this->validateCurrentAttribute($validator);
         });
     }
 
@@ -73,6 +77,11 @@ class StoreAttributeRequest extends FormRequest
     }
 
     protected function authorizationModel(): ?Model
+    {
+        return null;
+    }
+
+    protected function linkedAttribute(): ?Attribute
     {
         return null;
     }

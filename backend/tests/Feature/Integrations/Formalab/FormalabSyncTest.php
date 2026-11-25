@@ -9,25 +9,18 @@ use Integrations\Formalab\Models\FormalabCallLog;
 use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabSyncRun;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
-use Integrations\Formalab\Services\ClassCatalogSync;
 use Integrations\Formalab\Services\StatusReport;
-use Integrations\Formalab\Support\Trigger;
 use Spatie\Activitylog\Models\Activity;
 
 uses(RefreshDatabase::class);
-
-function runFormalabSync(): FormalabSyncRun
-{
-    return app(ClassCatalogSync::class)->handle(Trigger::Manual);
-}
 
 // AC-003
 it('syncs every page, stays idempotent and never logs credentials or tokens', function () {
     formalabEnable(['page_size' => 2]);
     formalabFakeApi([formalabClassPayload(1), formalabClassPayload(2), formalabClassPayload(3)]);
 
-    $run = runFormalabSync();
-    runFormalabSync();
+    $run = formalabSync();
+    formalabSync();
 
     expect($run->outcome)->toBe('success')->and($run->classes_synced)->toBe(3)
         ->and(FormalabClass::query()->count())->toBe(3)
@@ -51,12 +44,12 @@ it('records in a successful run the course fields whose code no longer exists', 
     formalabGolWorkOrder(); // REQUIREMENT CHANGED (spec 0423 D-8): only mapped codes are checked
     formalabCourseAttributes()['gol_saldo_data_accredito']->update(['code' => 'gol_balance_renamed']);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     expect($run->outcome)->toBe('success')->and($run->warning_message)->toContain('gol_saldo_data_accredito');
 
     Attribute::query()->where('code', 'gol_balance_renamed')->update(['code' => 'gol_saldo_data_accredito']);
-    expect(runFormalabSync()->warning_message)->toBeNull();
+    expect(formalabSync()->warning_message)->toBeNull();
 });
 
 // AC-004
@@ -68,7 +61,7 @@ it('retries once with a fresh login after a 401 and fails on the second one', fu
         '*/api/classi*' => Http::response(['message' => 'Unauthenticated'], 401),
     ]);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     expect($run->outcome)->toBe('failure')->and($run->error_message)->toContain('401');
     $logs = FormalabCallLog::query()->orderBy('id')->get();
@@ -83,7 +76,7 @@ it('records a failed run when Formalab is down and leaves the catalogue untouche
     Http::preventStrayRequests();
     Http::fake(['*/api/login' => Http::response(['accessToken' => 't']), '*/api/classi*' => Http::response('boom', 500)]);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     expect($run->outcome)->toBe('failure')->and($run->error_message)->not->toBeNull()
         ->and(FormalabClass::query()->count())->toBe(1)
@@ -91,7 +84,7 @@ it('records a failed run when Formalab is down and leaves the catalogue untouche
 
     Http::fake(fn () => throw new ConnectionException('cURL error 7: refused'));
     app('cache')->flush();
-    $down = runFormalabSync();
+    $down = formalabSync();
 
     expect($down->outcome)->toBe('failure')
         ->and(FormalabCallLog::query()->whereNull('status_code')->value('error_message'))->toContain('refused');
@@ -100,7 +93,7 @@ it('records a failed run when Formalab is down and leaves the catalogue untouche
 it('fails the run cleanly when the integration is not configured', function () {
     formalabEnable(['user_password' => '']);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     expect($run->outcome)->toBe('failure')->and(FormalabCallLog::query()->count())->toBe(0);
 });
@@ -120,7 +113,7 @@ it('links on every sync the work orders whose chosen edition is in the catalogue
     $notLinkedCategory = formalabGolWorkOrder(['gol_corso' => 1], linkCategory: false);
     expect(FormalabWorkOrderLink::query()->count())->toBe(0);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     expect($run->outcome)->toBe('success')->and($run->work_orders_updated)->toBe(2)
         ->and(FormalabWorkOrderLink::query()->pluck('edition_id', 'work_order_id')->all())->toBe([$matching->id => 1, $twin->id => 3])
@@ -130,7 +123,7 @@ it('links on every sync the work orders whose chosen edition is in the catalogue
         ->and($notLinkedCategory->refresh()->attribute_values)->not->toHaveKey('gol_stato_corso');
 
     // nothing new: the next run links and rewrites nothing
-    expect(runFormalabSync()->work_orders_updated)->toBe(0)->and(FormalabWorkOrderLink::query()->count())->toBe(2);
+    expect(formalabSync()->work_orders_updated)->toBe(0)->and(FormalabWorkOrderLink::query()->count())->toBe(2);
 });
 
 // spec 0423 D-15 — REQUIREMENT CHANGED (spec 0426 D-7): no "ambiguous" any more
@@ -143,7 +136,7 @@ it('reports on the status page why the work orders of linked categories are stil
     formalabGolWorkOrder();
     formalabGolWorkOrder(['gol_corso' => 99], linkCategory: false);
 
-    runFormalabSync();
+    formalabSync();
     // Written without events (as a data import would): the next sync links it.
     $late = formalabGolWorkOrder();
     $late->forceFill(['attribute_values' => ['gol_corso' => 1]])->saveQuietly();
@@ -157,12 +150,12 @@ it('reports on the status page why the work orders of linked categories are stil
 it('propagates a changed class to the linked work orders only', function () {
     formalabEnable();
     $catalog = formalabFakeApi([formalabClassPayload(7, ['saldo_data_accredito' => '2026-09-01'])]);
-    runFormalabSync();
+    formalabSync();
 
     $workOrder = formalabGolWorkOrder(['gol_notice' => 'keep me']);
     FormalabWorkOrderLink::query()->create(['work_order_id' => $workOrder->id, 'edition_id' => 7]);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     $values = $workOrder->refresh()->attribute_values;
     expect($run->work_orders_updated)->toBe(1)
@@ -175,10 +168,10 @@ it('propagates a changed class to the linked work orders only', function () {
         ->and(Activity::query()->where('subject_id', $workOrder->id)->where('description', 'People and request fields change')->count())->toBe(1);
 
     // no change on Formalab: nothing is rewritten
-    expect(runFormalabSync()->work_orders_updated)->toBe(0);
+    expect(formalabSync()->work_orders_updated)->toBe(0);
 
     $catalog['classes'] = [formalabClassPayload(7, ['stato_corso' => ['name' => 'Concluso'], 'saldo_data_accredito' => ''])];
-    $third = runFormalabSync();
+    $third = formalabSync();
 
     $after = $workOrder->refresh()->attribute_values;
     expect($third->work_orders_updated)->toBe(1)->and($after['gol_stato_corso'])->toBe('Concluso')
@@ -189,7 +182,7 @@ it('propagates a changed class to the linked work orders only', function () {
 it('does not count an empty Formalab value on an already empty field as a change', function () {
     formalabEnable();
     formalabFakeApi([formalabClassPayload(8)]);
-    runFormalabSync();
+    formalabSync();
 
     // same values the class carries; its empty fields are simply absent on the work order
     $workOrder = formalabGolWorkOrder([
@@ -203,7 +196,7 @@ it('does not count an empty Formalab value on an already empty field as a change
     // REQUIREMENT CHANGED (spec 0426 D-5): saving the class select links the work order at once
     expect(FormalabWorkOrderLink::query()->where('work_order_id', $workOrder->id)->value('edition_id'))->toBe(8);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     expect($run->work_orders_updated)->toBe(0)
         ->and($workOrder->refresh()->attribute_values)->not->toHaveKey('gol_data_esame')
@@ -218,7 +211,7 @@ it('skips a linked work order without the course fields and goes on with the oth
     FormalabWorkOrderLink::query()->create(['work_order_id' => $withoutFields->id, 'edition_id' => 7]);
     FormalabWorkOrderLink::query()->create(['work_order_id' => $good->id, 'edition_id' => 7]);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     expect($run->outcome)->toBe('success')->and($run->work_orders_updated)->toBe(1)
         ->and($good->refresh()->attribute_values['gol_corso'])->toBe(7);
@@ -236,7 +229,7 @@ it('records a sync error on the link of a work order whose fields refuse the val
     FormalabWorkOrderLink::query()->create(['work_order_id' => $refusing->id, 'edition_id' => 7]);
     FormalabWorkOrderLink::query()->create(['work_order_id' => $good->id, 'edition_id' => 7]);
 
-    $run = runFormalabSync();
+    $run = formalabSync();
 
     $error = FormalabWorkOrderLink::query()->where('work_order_id', $refusing->id)->first();
     expect($run->outcome)->toBe('success')->and($run->work_orders_updated)->toBe(1)

@@ -64,19 +64,23 @@ trait WritesCategoryAttributeCells
             ? $this->attributeColumns->codeFor((string) request()->input('column'))
             : null;
 
+        $linked = $this->attributeColumns->linked();
+
         if ($code === null) {
             $saved = $this->inner->updateCell($row, $columnId, $value);
         } else {
             /** @var User $actor */
             $actor = Auth::user();
-            $saved = $this->writeAttributeValue($row, $code, $value, $actor);
+            // A merged column writes the field the record carries (spec 0429, D-5).
+            $saved = $this->writeAttributeValue($row, $linked->writableCode($code, $this->applicableAttributesOf($row)), $value, $actor);
         }
 
         // The PATCH response replaces the whole grid row, and the PATCH carries
         // no advanced-filter scope: the record's OWN attributes stand in for it,
         // so the written cell shows and the other `attr.*` cells are not blanked
         // (an edit of the Responsabili also sets the assignment date, task 428419).
-        $this->rowAttributesOverride = $this->applicableAttributesOf($saved);
+        // A legacy field also answers under its current field's merged column.
+        $this->rowAttributesOverride = $linked->withCurrentAliases($this->applicableAttributesOf($saved));
 
         return $saved;
     }

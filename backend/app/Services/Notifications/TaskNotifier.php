@@ -18,6 +18,7 @@ use App\Notifications\TaskValidationApproved;
 use App\Notifications\TaskValidationRejected;
 use App\Notifications\TaskValidationReopened;
 use App\Notifications\TaskValidationRequested;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
@@ -45,6 +46,45 @@ use Illuminate\Support\Facades\Notification;
 final class TaskNotifier
 {
     /**
+     * The closures held back while summarizingClosures() runs; null outside it.
+     *
+     * @var list<array{task: Task, actor: ?User, recipientIds: array<int, int>, notification: class-string<TaskNotification>}>|null
+     */
+    private ?array $pendingClosures = null;
+
+    public function __construct(private readonly TaskClosureSummarySender $summarySender) {}
+
+    /**
+     * Spec 0428: runs $write, ONE user operation that may close several Tasks
+     * (bulk Completa, a parent with its open sub-tasks), holding back the
+     * voce 2/3 notifications it causes and sending them grouped by recipient
+     * once it returns: one summary instead of one email per Task. A write that
+     * throws sends nothing. Re-entrant: a nested call joins the outer one.
+     *
+     * @template TResult
+     *
+     * @param  Closure(): TResult  $write
+     * @return TResult
+     */
+    public function summarizingClosures(Closure $write): mixed
+    {
+        if ($this->pendingClosures !== null) {
+            return $write();
+        }
+
+        $this->pendingClosures = [];
+
+        try {
+            $result = $write();
+            $this->summarySender->send($this->pendingClosures);
+
+            return $result;
+        } finally {
+            $this->pendingClosures = null;
+        }
+    }
+
+    /**
      * Voce 1. The requester is asked to validate; D-5 lets the creator stand
      * in when there is no requester, since here they are the sole recipient.
      */
@@ -61,13 +101,13 @@ final class TaskNotifier
      */
     public function closed(Task $task, ?User $actor, bool $includeAssignees): void
     {
-        $this->send($task, $this->audience($task)->closure($actor, $includeAssignees), TaskClosed::class, $actor, activeOnly: true);
+        $this->sendClosure($task, $actor, $includeAssignees, TaskClosed::class);
     }
 
     /** Voce 3 (spec 0153, D-11). Closed carrying a closing feedback — same audience as closed(). */
     public function feedbackInserted(Task $task, ?User $actor, bool $includeAssignees): void
     {
-        $this->send($task, $this->audience($task)->closure($actor, $includeAssignees), TaskFeedbackInserted::class, $actor, activeOnly: true);
+        $this->sendClosure($task, $actor, $includeAssignees, TaskFeedbackInserted::class);
     }
 
     /** Voce 4, which doubles as the document's "email di conferma". */
@@ -137,6 +177,25 @@ final class TaskNotifier
     public function unlocked(Task $task, ?User $actor): void
     {
         $this->send($task, $this->audience($task)->everyone($actor), TaskUnLocked::class, $actor);
+    }
+
+    /**
+     * Voci 2/3: sent now, or held back for the summary while
+     * summarizingClosures() runs (spec 0428).
+     *
+     * @param  class-string<TaskNotification>  $notification
+     */
+    private function sendClosure(Task $task, ?User $actor, bool $includeAssignees, string $notification): void
+    {
+        $recipientIds = $this->audience($task)->closure($actor, $includeAssignees);
+
+        if ($this->pendingClosures !== null) {
+            $this->pendingClosures[] = ['task' => $task, 'actor' => $actor, 'recipientIds' => $recipientIds, 'notification' => $notification];
+
+            return;
+        }
+
+        $this->send($task, $recipientIds, $notification, $actor, activeOnly: true);
     }
 
     /**

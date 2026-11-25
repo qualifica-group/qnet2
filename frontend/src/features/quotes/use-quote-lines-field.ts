@@ -74,7 +74,8 @@ type ProductRowValues = Pick<
 
 /**
  * The row values a picked product precompiles (AC-074, D-6; spec 0320 D-4):
- * the VAT rate, the product's default supplier (null when it has none) and the
+ * the product's VAT rate on a revenue row, the 0% cost rate on a cost row
+ * (costs carry no VAT, user decision 2026-11-24), the product's default supplier (null when it has none) and the
  * price of the tab's own variant — the default supplier's sale price on a
  * revenue row, its cost on a cost row (the standard price/cost without suppliers, rev.2 D-16).
  * Pure, so the deep-link seeding path (an offer opened with products already
@@ -93,7 +94,7 @@ export function lineValuesFromProduct(item: QuoteProductForSelectItem, variant: 
     // whole create/edit, even though the product always carries a unit.
     unit_of_measure: item.meta.unit_of_measure,
     unit_price: priceSource,
-    vat_rate_id: item.meta.vat_rate_id,
+    vat_rate_id: variant === 'revenue' ? item.meta.vat_rate_id : (item.meta.cost_vat_rate?.id ?? null),
     supplier_id: defaultSupplier?.supplier_id ?? null,
     supplier: defaultSupplier ? { id: defaultSupplier.supplier_id, name: defaultSupplier.name } : null,
     product_suppliers: productSuppliersOf(item.meta),

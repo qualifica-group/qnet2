@@ -133,3 +133,35 @@ describe('RoleForm — a replica of the detail (spec 0230 D-4)', () => {
     expect(createRole).not.toHaveBeenCalled()
   })
 })
+
+describe('RoleForm — duplicate (row action "duplicate")', () => {
+  const fieldPermission = { resource: 'users', field: 'email', visible: true, editable: false, required: false }
+
+  function sourceRole(): RoleDetailWithPermissions {
+    return {
+      ...createdRole(),
+      permissions: ['tasks.view', 'tasks.create'],
+      users: [5, 6],
+      field_permissions: [fieldPermission],
+    }
+  }
+
+  it('creates a copy with the suffixed name, the permissions and the field matrix, but no members', async () => {
+    createRole.mockResolvedValue({ ...createdRole(), id: 9 })
+    const onSuccess = vi.fn()
+
+    render(<RoleForm source={sourceRole()} onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    expect(await screen.findByRole('heading', { name: 'Support (copy)' })).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+    await waitFor(() => expect(createRole).toHaveBeenCalled())
+    expect(createRole).toHaveBeenCalledWith({
+      name: 'Support (copy)',
+      permissions: ['tasks.view', 'tasks.create'],
+      users: [],
+      field_permissions: [fieldPermission],
+    })
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+  })
+})

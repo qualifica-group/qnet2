@@ -14,6 +14,8 @@ function values(overrides: Partial<AttributeFormValues> = {}): AttributeFormValu
     code: 'weight',
     name: 'Weight',
     ...emptyFieldDefinitionValues(),
+    current_attribute_id: null,
+    current_attribute_label: null,
     custom_fields: {},
     ...overrides,
   }
@@ -31,6 +33,7 @@ function original(overrides: Partial<AttributeDetail> = {}): AttributeDetail {
     icon: null,
     config: null,
     relation_target: null,
+    current_attribute_id: null,
     options: [
       { id: 1, value: 'red', label: 'Red', color: null, icon: null, sort_order: 0, is_default: false },
       { id: 2, value: 'blue', label: 'Blue', color: null, icon: null, sort_order: 1, is_default: false },

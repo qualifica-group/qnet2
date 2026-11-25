@@ -44,7 +44,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Pulsante', 'Cosa fa'],
           rows: [
-            ['**Sincronizza ora**', 'Avvia subito la sincronizzazione: rilegge il catalogo classi, allinea le commesse all\'edizione scelta nella loro select (abbinamento solo per ID edizione) e aggiorna i campi delle commesse collegate. Lo stato si aggiorna a pochi secondi dal clic.'],
+            ['**Sincronizza ora**', 'Avvia subito la sincronizzazione: rilegge il catalogo classi, allinea le commesse all\'edizione scelta nella loro select (abbinamento solo per ID edizione) e aggiorna i campi delle commesse collegate. Si esegue **una sincronizzazione alla volta**: finché quella avviata (anche quella automatica) non è finita il pulsante resta disattivato e mostra **Sincronizzazione in corso**, e la pagina si aggiorna da sola quando termina.'],
             ['**Verifica connessione**', 'Prova a contattare il servizio e mostra il tempo di risposta oppure il motivo dell\'errore.'],
           ],
         },
@@ -66,7 +66,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In **Integrazioni esterne › Formalab › Classi** trovi il **catalogo delle classi** letto da Formalab, in sola lettura: ID edizione, codice, titolo, stato classe e corso, date, ore, sede, discenti e ultima lettura. È lo stesso elenco da cui la commessa sceglie la classe. Il pulsante **Sincronizza ora** avvia subito la lettura del catalogo (la sincronizzazione parte in coda: ricarica la tabella dopo qualche secondo).',
+          text: 'In **Integrazioni esterne › Formalab › Classi** trovi il **catalogo delle classi** letto da Formalab, in sola lettura: ID edizione, codice, titolo, stato classe e corso, date, ore, sede, discenti e ultima lettura. È lo stesso elenco da cui la commessa sceglie la classe. Il pulsante **Sincronizza ora** avvia subito la lettura del catalogo (la sincronizzazione parte in coda e dura alcuni minuti: mentre è in corso il pulsante è disattivato; ricarica la tabella quando è finita).',
         },
       ],
     },
@@ -116,7 +116,7 @@ const guide: HelpGuide = {
           items: [
             'Scegli la classe nel campo **Nome corso / edizione** della commessa e salva: il collegamento è immediato e i campi mappati si compilano dal catalogo.',
             'Apri la scheda **Formalab** per vedere i dati della classe.',
-            'Fai clic su **Sincronizza** per rileggere subito da Formalab l\'edizione scelta e riscrivere i campi mappati. Da quel momento la commessa si aggiorna anche da sola ogni 10 minuti.',
+            'Fai clic su **Sincronizza** per rileggere subito da Formalab l\'edizione scelta e riscrivere i campi mappati. Da quel momento la commessa si aggiorna anche da sola ogni ora.',
             'Se cambi la classe, salva: il collegamento passa alla nuova edizione. Se svuoti la select, il collegamento viene rimosso.',
           ],
         },
@@ -125,7 +125,7 @@ const guide: HelpGuide = {
           items: [
             '**Commessa non collegabile**: la sua categoria non è collegata a Formalab, oppure la mappatura non indica il campo Nome corso / edizione.',
             '**Nessuna classe scelta**: scegli prima la classe nel campo **Nome corso / edizione** (premendo **Sincronizza** a select vuota compare "Scegli la classe Formalab").',
-            '**Classe non presente nel catalogo**: l\'edizione è nuova e il catalogo non l\'ha ancora ricevuta (si aggiorna ogni 10 minuti, oppure usa **Sincronizza ora** nella pagina Classi).',
+            '**Classe non presente nel catalogo**: l\'edizione è nuova e il catalogo non l\'ha ancora ricevuta (si aggiorna ogni ora, oppure usa **Sincronizza ora** nella pagina Classi).',
           ],
         },
         {
@@ -135,12 +135,49 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'learner-statement',
+      title: 'Prospetto contabile discenti',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Sulle commesse di una categoria collegata a Formalab, con la classe scelta, la scheda **Amministrazione** > **Costi** mostra il pulsante **Prospetto contabile discenti** (serve il permesso di vedere i costi della commessa). Il prospetto legge i discenti della classe da Formalab, con le loro ore di presenza e l\'esito, e li incrocia con il preventivo della commessa, come nel QNet precedente.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Costo del discente**: ore di presenza intere × 1 €/h; **ricavo**: ore arrotondate al quarto d\'ora per difetto × 0,85 €/h. Le ore non superano il totale ore del corso.',
+            '**Riepilogo Costi e Ricavi**: costo discenti, altri costi del preventivo (escluse le provvigioni partner), ricavi formazione, utile, **MOL Qualifica** e **utile a discente** (diviso per i discenti che hanno superato il corso).',
+            '**Scenari**: con solo l\'anticipo incassato compaiono acconto reale, saldo previsto e totale economico previsionale; con solo il saldo il pagamento unico; con anticipo e saldo le due tranche e il totale finanziario reale. Anticipo e saldo vengono dai campi **€ Anticipo Incassato** e **€ Saldo Incassato** della commessa.',
+            '**Provvigioni partner**: il partner del discente è il **Partner commerciale** della sua offerta (se il discente ha più offerte, la più recente che ne ha uno); per cambiarlo si modifica l\'offerta. Per ogni discente con partner si indica una **percentuale** (applicata all\'utile a discente) oppure un **importo fisso**; le modifiche si salvano uscendo dal campo. Lo scenario **Economico** usa l\'utile previsto, il **Finanziario** quello incassato ed è disponibile solo con il saldo registrato.',
+            '**Fornitore del partner**: nel riepilogo per partner si sceglie il fornitore con cui il partner viene pagato; vale per tutti i suoi discenti della classe. Accanto compare l\'ordine fornitore del partner sulla commessa, se esiste.',
+            '**Avanzamento Commessa**: le percentuali di avanzamento per mese, con la quota del ricavo discenti.',
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: '**Esporta Excel** scarica il prospetto completo; **Esporta per Partner** un foglio per ogni partner con i soli suoi discenti, senza il MOL Qualifica. **Aggiorna da Formalab** rilegge subito la classe.',
+        },
+        {
+          type: 'note',
+          text: 'Modificare percentuali, importi e fornitori richiede il permesso di gestire i costi della commessa. In fase di sviluppo: generazione delle notule e degli ordini ai partner, importazione dei discenti, notule discenti.',
+        },
+      ],
+    },
+    {
       id: 'automatic-sync',
       title: 'Sincronizzazione automatica',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni **10 minuti** QNet rilegge il catalogo delle classi e riallinea tutte le commesse delle categorie collegate all\'edizione scelta nella loro select (collega, sposta o scollega, per ID edizione), scrivendo subito i loro campi. Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata.',
+          text: 'Ogni **ora** QNet rilegge il catalogo delle classi e collega le commesse delle categorie collegate che hanno scelto un\'edizione ora presente nel catalogo (sempre per ID edizione). Se una classe collegata a una commessa è cambiata, i campi mappati della commessa vengono aggiornati; se non è cambiato nulla, la commessa non viene toccata. Quando scegli, cambi o svuoti la classe di una commessa, il collegamento si aggiorna subito al salvataggio.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Se all\'ora prevista è ancora in corso una sincronizzazione, quel giro viene saltato: due sincronizzazioni non partono mai insieme. Una sincronizzazione interrotta prima di finire (per esempio per un riavvio del server) compare in **Ultima sincronizzazione** come **Fallita** con il messaggio "Sincronizzazione interrotta"; la successiva riparte da capo.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Se una classe **non esiste più su Formalab** (non compare più nel catalogo, oppure Formalab risponde che non esiste quando la rilegge con **Sincronizza** o con una notifica), QNet la toglie dal catalogo, **rimuove il collegamento** delle sue commesse e **svuota la classe scelta** nella loro select; gli altri campi della commessa restano con gli ultimi valori. Il numero di classi rimosse compare in **Ultima sincronizzazione**. Se Formalab restituisce un catalogo vuoto o incompleto non viene rimosso nulla.',
         },
       ],
     },

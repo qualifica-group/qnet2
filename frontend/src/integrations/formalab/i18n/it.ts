@@ -1,5 +1,7 @@
 /** Traduzioni italiane (namespace `formalab`, spec 0422). */
+import { learnerStatementIt } from '@/integrations/formalab/i18n/it-learner-statement'
 export const formalabIt = {
+  learnerStatement: learnerStatementIt,
   nav: { label: 'Formalab', status: 'Stato e configurazione', classes: 'Classi' },
   classes: {
     entity: 'Classi Formalab',
@@ -23,6 +25,7 @@ export const formalabIt = {
   actions: {
     sync: 'Sincronizza ora',
     syncQueued: 'Sincronizzazione avviata.',
+    syncRunning: 'Sincronizzazione in corso',
     syncError: 'Impossibile avviare la sincronizzazione.',
     testConnection: 'Verifica connessione',
     testOk: 'Connessione riuscita ({{ms}} ms).',
@@ -56,6 +59,7 @@ export const formalabIt = {
     finishedAt: 'Fine',
     classesSynced: 'Classi aggiornate',
     workOrdersUpdated: 'Commesse aggiornate',
+    classesRemoved: 'Classi rimosse (non piu\' su Formalab)',
     calls24h: 'Chiamate nelle ultime 24 ore',
     callsTotal: 'Totale',
     callsFailures: 'Fallite',

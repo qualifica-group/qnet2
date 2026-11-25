@@ -40,6 +40,9 @@ export interface AttributeDetail {
   icon: string | null
   config: CustomFieldConfig | null
   relation_target: CustomFieldRelationTarget | null
+  /** The current field this legacy one continues: the grids show both in its column (spec 0429). */
+  current_attribute_id: number | null
+  current_attribute?: { id: number; code: string; name: string } | null
   options: AttributeOption[]
   created_at: string
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
@@ -81,6 +84,7 @@ export interface CreateAttributePayload {
   icon?: string | null
   config?: CustomFieldConfig | null
   relation_target?: CustomFieldRelationTarget | null
+  current_attribute_id?: number | null
   options?: AttributeOptionInput[]
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>

@@ -21,9 +21,9 @@ use Spatie\Permission\Models\Permission;
 /**
  * The `work-orders` notable_types descriptor (spec 0134, D-1/D-2): attaches
  * the agnostic notes component to a Commessa through THIS module's own
- * authorization story. Read access and the mentionable set are the same
+ * authorization story. Read access and readersQuery() are the same
  * membership rule read from opposite ends, both delegating to
- * WorkOrderVisibilityScope — never a restated copy of its predicate.
+ * WorkOrderVisibilityScope; the mentionable set is the team among those readers.
  *
  * Lives in the module's own namespace, never in app/Notes/ (spec 0052,
  * AC-021): the module declares how it wants to be treated, the notes core
@@ -56,17 +56,29 @@ final class WorkOrderNotable implements EnlistsMentionedUsers, NotableEntity
     }
 
     /**
-     * authorizeRead() read from the other end: active users holding
-     * `work-orders.view` who are Responsabili/Partecipanti or hold
-     * `work-orders.viewAll`, plus (spec 0316) holders of `work-orders.viewSite`
-     * belonging to an operational site of one of the commessa's source offers,
-     * plus super-admins. Both permission branches are
-     * probed for existence first because spatie's `permission()` scope throws
-     * on a name no row carries (unsynced catalogue must answer, not 500).
+     * The @ menu offers the commessa's team only: the readers who are
+     * Responsabili or Partecipanti (spec 0134 D-2 rev. 2026-11-24, user
+     * report). A reader outside the team (viewAll, viewSite, super-admin) is
+     * mentioned through "Menziona chiunque" and joins the Partecipanti (spec 0353).
      */
     public function mentionableUsersQuery(Model $record): Builder
     {
         /** @var WorkOrder $record */
+        return $this->readersQuery($record)->whereIn('id', $this->memberIds($record));
+    }
+
+    /**
+     * authorizeRead() read from the other end: active users holding
+     * `work-orders.view` who are Responsabili/Partecipanti or hold
+     * `work-orders.viewAll`, plus (spec 0316) holders of `work-orders.viewSite`
+     * belonging to an operational site of one of the commessa's source offers,
+     * plus super-admins. The Task perimeter reuses it (spec 0379 D-8). Both
+     * permission branches are probed for existence first because spatie's
+     * `permission()` scope throws on a name no row carries (unsynced catalogue
+     * must answer, not 500).
+     */
+    public function readersQuery(WorkOrder $record): Builder
+    {
         $memberIds = $this->memberIds($record);
         $viewExists = $this->permissionExists(self::VIEW_PERMISSION);
         $viewAllExists = $this->permissionExists(WorkOrderVisibilityScope::VIEW_ALL_PERMISSION);

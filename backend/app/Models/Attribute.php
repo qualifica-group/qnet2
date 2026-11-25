@@ -7,6 +7,7 @@ use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\AttributeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'code', 'name', 'type', 'description', 'help_text', 'placeholder', 'icon',
-    'config', 'relation_target',
+    'config', 'relation_target', 'current_attribute_id',
 ])]
 class Attribute extends BaseModel
 {
@@ -57,5 +58,14 @@ class Attribute extends BaseModel
         return $this->belongsToMany(ProductCategory::class, 'attribute_category', 'attribute_id', 'category_id')
             ->withPivot(['is_required', 'syncs_with_quote', 'sort_order', 'context'])
             ->withTimestamps();
+    }
+
+    /**
+     * The current field this legacy one continues (spec 0429, D-1): the grids
+     * show both in its column.
+     */
+    public function currentAttribute(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'current_attribute_id');
     }
 }

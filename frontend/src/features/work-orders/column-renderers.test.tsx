@@ -89,6 +89,13 @@ describe('workOrderColumnRenderers.renewal_number (spec 0358 AC-029)', () => {
   })
 })
 
+describe('workOrderColumnRenderers amount columns', () => {
+  it.each(['consultancy_amount', 'total_revenue'])('renders %s as a formatted amount', (columnId) => {
+    renderCell(columnId, '1250.50')
+    expect(screen.getByText('1,250.50')).toBeInTheDocument()
+  })
+})
+
 describe('workOrderColumnRenderers.line_payment_statuses', () => {
   const groups = [
     {

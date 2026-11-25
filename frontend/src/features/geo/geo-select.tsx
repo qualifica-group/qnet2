@@ -22,7 +22,7 @@ export interface GeoValue {
 /**
  * How the four levels are laid out.
  * - `cascade` (default): the four selects stacked top-down, country first.
- * - `compact`: comune-first, the three ancestors behind a disclosure.
+ * - `compact`: the three ancestors on one row, the comune below.
  */
 export type GeoLayout = 'cascade' | 'compact'
 
@@ -248,7 +248,6 @@ export function GeoSelect({
         state={state}
         province={province}
         city={city}
-        collapsible={cityFirst}
       />
     )
   }

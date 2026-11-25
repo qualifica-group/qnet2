@@ -1,12 +1,10 @@
 import { useTranslation } from 'react-i18next'
-import { RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TableView } from '@/features/table/table-view'
 import NotFoundPage from '@/pages/not-found-page'
 import { FORMALAB_CLASSES_DOMAIN } from '@/integrations/formalab/api'
-import { useFormalabActions } from '@/integrations/formalab/use-formalab-actions'
+import { SyncButton } from '@/integrations/formalab/components/sync-button'
 import { FORMALAB_KEY } from '@/integrations/formalab/definition-key'
 import { useIsIntegrationActive } from '@/integrations/use-active-integrations'
 
@@ -31,16 +29,12 @@ export default function FormalabClassesPage() {
 
 function ClassesContent() {
   const { t } = useTranslation('formalab')
-  const { sync } = useFormalabActions()
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
       <PageHeader
         actions={
-          <Button size="sm" variant="secondary" disabled={sync.isPending} onClick={() => sync.mutate()}>
-            <RefreshCw className="size-3.5" aria-hidden />
-            {t('actions.sync')}
-          </Button>
+          <SyncButton />
         }
       />
       <section className="flex flex-col gap-2" aria-labelledby="formalab-classes-title">

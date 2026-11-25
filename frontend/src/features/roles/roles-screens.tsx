@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchRole, roleDetailQueryKey } from '@/features/roles/api'
 import { RoleForm } from '@/features/roles/role-form'
@@ -52,9 +53,9 @@ export function RoleDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
 }
 
 /**
- * Create only (spec 0230): there is no edit form, and the registry generates
- * no `:id/edit` route. Leaving a role being created — Cancel, the Sheet's
- * X/overlay/Esc, a link, a reload — always asks first.
+ * Create and duplicate only (spec 0230): there is no edit form, and the
+ * registry generates no `:id/edit` route. Leaving a role being created —
+ * Cancel, the Sheet's X/overlay/Esc, a link, a reload — always asks first.
  */
 export function RoleFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
@@ -67,7 +68,7 @@ export function RoleFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
     tone: 'warning',
   })
 
-  if (mode.type !== 'create') {
+  if (mode.type === 'edit') {
     return null
   }
 
@@ -89,9 +90,53 @@ export function RoleFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
   return (
     <>
       {leaveGuard.navigationGuard}
-      <RoleForm onSuccess={handleSuccess} onCancel={handleCancel} />
+      {mode.type === 'duplicate' ? (
+        <RoleDuplicateLoader roleId={mode.id} onSuccess={handleSuccess} onCancel={handleCancel} />
+      ) : (
+        <RoleForm onSuccess={handleSuccess} onCancel={handleCancel} />
+      )}
     </>
   )
+}
+
+interface RoleDuplicateLoaderProps {
+  roleId: number
+  onSuccess: (role: RoleDetail) => void
+  onCancel: () => void
+}
+
+/**
+ * Fetches the fresh, re-authorized source role before mounting the create
+ * form pre-filled from it (row action "duplicate"), so the copy starts from
+ * its current permissions rather than a grid snapshot. The form still
+ * submits via POST.
+ */
+function RoleDuplicateLoader({ roleId, onSuccess, onCancel }: RoleDuplicateLoaderProps) {
+  const { t } = useTranslation()
+  const {
+    data: role,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useEntityDetail(roleDetailQueryKey(roleId), () => fetchRole(roleId))
+
+  if (isError) {
+    return (
+      <DetailError
+        error={error}
+        message={t('roles.detail.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
+    )
+  }
+
+  if (isLoading || !role) {
+    return <RecordFormSkeleton />
+  }
+
+  return <RoleForm source={role} onSuccess={onSuccess} onCancel={onCancel} />
 }
 
 /** Screens of this module, loaded on first use by the module registry (spec 0042). */

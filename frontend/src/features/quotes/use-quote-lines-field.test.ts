@@ -70,11 +70,18 @@ describe('lineValuesFromProduct', () => {
     })
   })
 
-  it('carries the same unit on a Cost row, priced from meta.cost (D-6)', () => {
-    expect(lineValuesFromProduct(PRODUCT, 'cost')).toMatchObject({
+  it('carries the same unit on a Cost row, priced from meta.cost (D-6), on the 0% cost VAT', () => {
+    const product = { ...PRODUCT, meta: { ...PRODUCT.meta, cost_vat_rate: { id: 4, name: 'IVA al 0%', rate: '0.00' } } }
+    expect(lineValuesFromProduct(product, 'cost')).toMatchObject({
       unit_of_measure: { id: 1, name: 'Kilogram', symbol: 'kg' },
       unit_price: 80,
+      vat_rate_id: 4,
     })
+    expect(lineValuesFromProduct(product, 'revenue').vat_rate_id).toBe(7)
+  })
+
+  it('leaves a Cost row VAT empty when the 0% cost VAT is missing', () => {
+    expect(lineValuesFromProduct(PRODUCT, 'cost').vat_rate_id).toBeNull()
   })
 
   it('leaves the unit null for a product without one', () => {
