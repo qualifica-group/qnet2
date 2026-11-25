@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Layout preventivo "PREVENTIVO SIC_HACCP" (id 7, `qualifica_quote_safety_haccp`) sostituito con la revisione 19.11.2026 (richiesta utente 2026-11-25) — VERDE MIRATO, NON COMMITTATO, NON APPLICATO AL DB LOCALE
+
+- Fonte: `Template preventivo _SIC_HACCP Rev. 19.11.2026.docx`. Novita': informativa privacy clienti per la consulenza salute e sicurezza (paragrafi 1-10, 3 tabelle statiche, elenco destinatari con prefisso "• ", dichiarazione di presa visione e consenso); sparisce la clausola "Ai sensi degli art. 1341-1342". Testata, tabella prodotti, totali e condizioni di pagamento invariati (blocchi fino a `text-18` copiati tali e quali; diff dell'asset = solo aggiunta + clausola tolta). Carta intestata identica (md5 = `letterhead-75cb7b747891.png`).
+- Convertito con un convertitore Python una tantum (NON nel repo) con le convenzioni della conversione del 2026-11-18 (`services.json`): Normal = after 0 / line 1.0, a capo = un blocco per riga, tab eliminati, hyperlink come testo semplice, larghezze colonne da `tblGrid`.
+- One-shot `QualificaSafetyHaccpLayoutRevisionSeeder` (estende `QualificaQuoteLayoutRevisionSeeder`, `REVISED_LAYOUTS = ['safety_haccp']`; il padre ora legge `static::REVISED_LAYOUTS`): non ritocca servizi/ISO. Sovrascrive config e descrizione, lascia nome/attivo/predefinito, layout assente -> warning, idempotente, riusa l'immagine gia' posseduta. **Produzione: `php artisan db:seed --class=QualificaSafetyHaccpLayoutRevisionSeeder --force`.** Catalogo: file sorgente di `safety_haccp` aggiornato.
+- Provato sul DB locale in transazione annullata: id 7 -> 93 blocchi, validator `[]`, 0 nuovi allegati (riusa id 20), render `.docx` ok su QUO-107291 (copia in `~/Downloads/Anteprima_SIC_HACCP_rev_19.11.2026_QUO-107291.docx`). PDF non provato: LibreOffice non installato su questa macchina.
+- Test: `tests/Feature/Seeding/QualificaSafetyHaccpLayoutRevisionSeederTest.php` (4). Verdi: Seeding 309, DocumentLayouts Feature 149, Unit 93/94 (rosso noto `ProductsTableRendererTest` cost_lines AC-245, non toccato). Pint pulito.
+- Manuale: nessun impatto (cambia solo il contenuto del documento generato).
+
+## Indirizzi: Nazione/Regione/Provincia sempre visibili (segnalazione utente 2026-11-25, /referents) — VERDE MIRATO, NON COMMITTATO
+
+- Causa: il layout `compact` di `GeoSelect` (tutti i form indirizzo: anagrafiche, referenti, societa', sedi operative, conti finanziari) nascondeva Nazione/Regione/Provincia dietro il link con freccia "Modifica area geografica": nessuno apriva la freccia, quindi gli indirizzi esteri non venivano compilati.
+- Fix: `features/geo/geo-compact-fields.tsx` senza Collapsible: riga Nazione/Regione/Provincia (3 colonne da `sm`) + Comune sotto, sempre visibili. Supera la decisione 2026-09-07 ("antenati dietro disclosure"). Prop `collapsible` e chiavi i18n `geo.editArea`/`geo.hideArea` rimosse. Il comune resta ricercabile da solo e compila gli antenati (`cityFirst` in `GeoSelect` invariato).
+- Test (REQUIREMENT CHANGED): `geo-select.test.tsx` blocco `layout="compact"` riscritto (4 select sempre visibili, nessun pulsante, Nazione modificabile subito). Vitest geo/personal-data/referents/registries/companies/operational-sites/financial-accounts/help verdi, eslint e `tsc -b --force` puliti.
+- Manuale: guide in-app referenti e anagrafiche (IT+EN, riga Indirizzi) + manuale Claude Docs (cella tabella campi indirizzo, rev 963) aggiornati.
+
 ## Campi collegati in una sola colonna (spec 0429, segnalazione utente 2026-11-24) — VERDE MIRATO, COMMITTATO (0e08fe8e3), MIGRAZIONE E SEEDER NON LANCIATI SU qnet2
 
 - Causa: filtrando ISO, Commesse/Offerte/Contratti mostrano le colonne di ISO e [OLD] ISO (spec 0374) e i due cataloghi hanno campi doppi (es. "Data di assegnazione" = `iso_assignment_date` e `data_inizio_lavorazione`): 17 nomi doppi sulle commesse, 26 sulle offerte. Supera spec 0374 D-10 per i campi collegati.
