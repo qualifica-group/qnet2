@@ -1,8 +1,9 @@
 /**
  * Roadmap view of the Task board (user request 2026-11-25, Planner-style):
  * one section per fase in `sort_order` (then "Senza fase" when it has tasks),
- * each task a bar from its start to its end date on a week grid, today marked
- * by a vertical line. The window is computed on the UNFILTERED board so the
+ * each task a bar from its start to its end date on a time grid, today marked
+ * by a vertical line. The grid reads by week, month or year (Settimane / Mesi /
+ * Anno, remembered in the browser). The window is computed on the UNFILTERED board so the
  * timeline does not jump while filtering; the rows are the filtered ones.
  * Read-only on dates: a bar opens the task, where the dates are edited.
  */
@@ -10,26 +11,26 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BoardStageGroup, BoardTaskNode } from '@/features/work-orders/task-board/task-board-filters'
+import { TaskBoardRoadmapControls, TaskBoardRoadmapTimeHeader } from '@/features/work-orders/task-board/task-board-roadmap-header'
 import {
   TaskBoardRoadmapBar,
   TaskBoardRoadmapRow,
   TaskBoardRoadmapTaskRows,
 } from '@/features/work-orders/task-board/task-board-roadmap-row'
 import {
+  ROADMAP_SCALE_CONFIGS,
   buildRoadmapRange,
   daysBetween,
   mergeSpans,
   roadmapPx,
+  roadmapSlices,
   roadmapSpan,
-  roadmapWeeks,
   type RoadmapTimeline,
 } from '@/features/work-orders/task-board/task-board-roadmap'
 import { NO_STAGE_ACCENT, stageAccentAt, type StageAccent } from '@/features/work-orders/task-board/task-board-stage-accent'
 import type { BoardTask } from '@/features/work-orders/task-board/types'
+import { useRoadmapScale } from '@/features/work-orders/task-board/use-roadmap-scale'
 import { cn } from '@/lib/utils'
-
-/** On open the timeline scrolls so today sits this many weeks from its left edge: the recent past stays in view. */
-const WEEKS_BEFORE_TODAY_ON_OPEN = 2
 
 function flattenNodes(nodes: BoardTaskNode[]): BoardTask[] {
   return nodes.flatMap((node) => [node.task, ...flattenNodes(node.children)])
@@ -55,24 +56,34 @@ export function TaskBoardRoadmapView({
   onToggleSelection,
   onOpenTask,
 }: TaskBoardRoadmapViewProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const { scale, setScale } = useRoadmapScale()
 
-  // Step 1: the window and its weeks, over every task of the board
+  // Step 1: the window and its columns at the chosen scale, over every task of the board
   const timeline = useMemo<RoadmapTimeline>(() => {
-    const range = buildRoadmapRange(allGroups.flatMap((group) => flattenNodes(group.roots)), today)
-    return { range, todayOffset: daysBetween(range.start, today) }
-  }, [allGroups, today])
-  const weeks = roadmapWeeks(timeline.range)
-  const weekLabel = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short', timeZone: 'UTC' })
+    const config = ROADMAP_SCALE_CONFIGS[scale]
+    const range = buildRoadmapRange(allGroups.flatMap((group) => flattenNodes(group.roots)), today, scale)
+    return {
+      range,
+      todayOffset: daysBetween(range.start, today),
+      dayWidthPx: config.dayWidthPx,
+      columns: roadmapSlices(range, config.columnUnit),
+    }
+  }, [allGroups, today, scale])
 
-  // Step 2: bring today into view (a DOM scroll position, the one thing outside React's render)
-  const initialScrollLeft = Math.max(roadmapPx(timeline.todayOffset - WEEKS_BEFORE_TODAY_ON_OPEN * 7), 0)
+  // Step 2: bring today into view on open, on a scale change and on "Oggi" (a DOM scroll position, the one thing outside React's render)
+  const todayScrollLeft = Math.max(roadmapPx(timeline, timeline.todayOffset - ROADMAP_SCALE_CONFIGS[scale].daysBeforeTodayOnOpen), 0)
+  const scrollToToday = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = todayScrollLeft
+    }
+  }
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollLeft = initialScrollLeft
+      scrollRef.current.scrollLeft = todayScrollLeft
     }
-  }, [initialScrollLeft])
+  }, [todayScrollLeft])
 
   // Step 3: the fasi in order, "Senza fase" only when it holds a task
   const sections = groups
@@ -84,23 +95,10 @@ export function TaskBoardRoadmapView({
       aria-label={t('workOrders.taskBoard.roadmap.label')}
       className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border/70"
     >
+      <TaskBoardRoadmapControls scale={scale} onScaleChange={setScale} onScrollToToday={scrollToToday} />
       <div ref={scrollRef} className="overflow-x-auto">
         <div className="w-max min-w-full">
-          <TaskBoardRoadmapRow
-            timeline={timeline}
-            className="h-8 bg-card"
-            label={<span className="text-xs font-medium text-muted-foreground">{t('workOrders.taskBoard.roadmap.taskColumn')}</span>}
-          >
-            {weeks.map((week) => (
-              <span
-                key={week.monday}
-                className="absolute top-1/2 -translate-y-1/2 pl-1.5 text-[11px] whitespace-nowrap text-muted-foreground tabular-nums"
-                style={{ left: roadmapPx(week.offset) }}
-              >
-                {weekLabel.format(new Date(`${week.monday}T00:00:00Z`))}
-              </span>
-            ))}
-          </TaskBoardRoadmapRow>
+          <TaskBoardRoadmapTimeHeader scale={scale} timeline={timeline} />
 
           {sections.map(({ group, accent }) => (
             <RoadmapStageSection

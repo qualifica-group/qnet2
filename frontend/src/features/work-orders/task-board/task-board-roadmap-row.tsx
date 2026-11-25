@@ -3,7 +3,8 @@
  * label cell pinned on the left, the timeline cell with the week grid and the
  * today line on the right), `TaskBoardRoadmapTaskRows` a task with its bar and,
  * nested below it, its sub-tasks. Positions come from `task-board-roadmap.ts`
- * in days; this file only turns them into pixels through `roadmapPx`.
+ * in days; this file only turns them into pixels through `roadmapPx`, at the
+ * timeline's scale.
  */
 
 import type { CSSProperties, ReactNode } from 'react'
@@ -12,7 +13,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import type { BoardTaskNode } from '@/features/work-orders/task-board/task-board-filters'
 import { isClosedTask, isOverdue } from '@/features/work-orders/task-board/task-board-metrics'
 import {
-  ROADMAP_DAY_WIDTH_PX,
   roadmapBar,
   roadmapPx,
   roadmapSpan,
@@ -24,19 +24,37 @@ import type { BoardTask } from '@/features/work-orders/task-board/types'
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
 
-const WEEK_WIDTH_PX = ROADMAP_DAY_WIDTH_PX * 7
 const INDENT_REM = 1.25
 const INDENT_DEPTH_MAX = 3
 const MILESTONE_SIZE_PX = 12
+/** At the Anno scale a one-day task is 2px wide: never narrower than this, so it stays visible and clickable. */
+const MIN_BAR_WIDTH_PX = 6
 
 /** The label column stays put while the timeline scrolls under it: same rung as the card, so the bars slide below it. */
 const ROADMAP_LABEL_CELL_CLASS =
   'sticky left-0 z-10 flex w-44 shrink-0 items-center gap-2 border-r border-border/70 bg-card px-3 sm:w-72'
 
-/** Vertical week lines drawn as a background, so no row renders one element per week. */
-const WEEK_GRID_STYLE: CSSProperties = {
-  backgroundImage: 'linear-gradient(to right, var(--border) 1px, transparent 1px)',
-  backgroundSize: `${WEEK_WIDTH_PX}px 100%`,
+const GRID_LINE = 'linear-gradient(var(--border), var(--border))'
+const gridStyles = new WeakMap<RoadmapTimeline, CSSProperties>()
+
+/**
+ * The column lines drawn as one 1px background layer per column, so no row
+ * renders one element per column; months are not all as wide, hence one
+ * positioned layer each instead of a repeating pattern. Built once per timeline.
+ */
+function gridStyleOf(timeline: RoadmapTimeline): CSSProperties {
+  let style = gridStyles.get(timeline)
+  if (!style) {
+    style = {
+      backgroundImage: timeline.columns.map(() => GRID_LINE).join(', '),
+      backgroundPosition: timeline.columns.map((column) => `${roadmapPx(timeline, column.offset)}px 0`).join(', '),
+      backgroundSize: '1px 100%',
+      backgroundRepeat: 'no-repeat',
+    }
+    gridStyles.set(timeline, style)
+  }
+
+  return style
 }
 
 interface TaskBoardRoadmapRowProps {
@@ -50,11 +68,11 @@ export function TaskBoardRoadmapRow({ timeline, label, children, className }: Ta
   return (
     <div className={cn('flex min-h-9', className)}>
       <div className={ROADMAP_LABEL_CELL_CLASS}>{label}</div>
-      <div className="relative shrink-0" style={{ ...WEEK_GRID_STYLE, width: roadmapPx(timeline.range.days) }}>
+      <div className="relative shrink-0" style={{ ...gridStyleOf(timeline), width: roadmapPx(timeline, timeline.range.days) }}>
         <span
           aria-hidden="true"
           className="absolute inset-y-0 w-px bg-primary/70"
-          style={{ left: roadmapPx(timeline.todayOffset) + ROADMAP_DAY_WIDTH_PX / 2 }}
+          style={{ left: roadmapPx(timeline, timeline.todayOffset + 0.5) }}
         />
         {children}
       </div>
@@ -89,8 +107,8 @@ interface RoadmapBarProps {
 export function TaskBoardRoadmapBar({ span, timeline, className, label, onClick }: RoadmapBarProps) {
   const bar = roadmapBar(span, timeline.range)
   const style: CSSProperties = span.isMilestone
-    ? { left: roadmapPx(bar.offset) + (ROADMAP_DAY_WIDTH_PX - MILESTONE_SIZE_PX) / 2, width: MILESTONE_SIZE_PX, height: MILESTONE_SIZE_PX }
-    : { left: roadmapPx(bar.offset) + 1, width: roadmapPx(bar.length) - 2 }
+    ? { left: roadmapPx(timeline, bar.offset + 0.5) - MILESTONE_SIZE_PX / 2, width: MILESTONE_SIZE_PX, height: MILESTONE_SIZE_PX }
+    : { left: roadmapPx(timeline, bar.offset) + 1, width: Math.max(roadmapPx(timeline, bar.length) - 2, MIN_BAR_WIDTH_PX) }
   const shapeClass = cn(
     'absolute top-1/2 -translate-y-1/2',
     span.isMilestone ? 'rotate-45 rounded-[2px]' : 'h-4 rounded-md',
@@ -195,7 +213,7 @@ export function TaskBoardRoadmapTaskRows({
         ) : (
           <span
             className="absolute top-1/2 -translate-y-1/2 pl-2 text-[11px] whitespace-nowrap text-muted-foreground"
-            style={{ left: roadmapPx(timeline.todayOffset + 1) }}
+            style={{ left: roadmapPx(timeline, timeline.todayOffset + 1) }}
           >
             {t('workOrders.taskBoard.roadmap.noDates')}
           </span>

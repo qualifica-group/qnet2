@@ -40,7 +40,15 @@
 - Da eseguire in produzione: `php artisan db:seed --class=QualificaAvvalimentiTenderFieldsSeeder`. Provato sul DB locale in transazione annullata: 43 -> 12 campi Offerta, 31 Commessa, 4 sezioni Commessa.
 - Verdi: Pest `tests/Feature/Seeding/QualificaAvvalimentiTenderFieldsSeederTest.php` (4), Pint. Manuale: nessun impatto (configurazione dati).
 
-## Task board: vista Roadmap, predefinita nelle Commesse di Progetto (richiesta utente 2026-11-25) — VERDE, solo frontend, NON COMMITTATO
+## Roadmap del task board: scala Settimane / Mesi / Anno (richiesta utente 2026-11-25) — VERDE, solo frontend, COMMITTATO
+
+- `task-board-roadmap.ts`: `RoadmapScale = 'week' | 'month' | 'year'`, `ROADMAP_SCALE_CONFIGS` (px/giorno 14 / 5 / 2; finestra allineata a settimane / mesi / anni solari; margine 1 settimana / 1 mese / 0; minimo 8 settimane / 6 mesi / 1 anno; colonne settimane / mesi / mesi; gruppi di intestazione mesi / anni / anni). `buildRoadmapRange(tasks, today, scale)`; `roadmapWeeks` sostituita da `roadmapSlices(range, unit)` (fette di calendario tagliate alla finestra); `roadmapPx(timeline, days)`; `RoadmapTimeline` ora porta `dayWidthPx` e `columns`. Tolti `ROADMAP_DAY_WIDTH_PX`/`ROADMAP_MIN_WEEKS`.
+- `task-board-roadmap-header.tsx` (nuovo): `TaskBoardRoadmapControls` (toggle scala + pulsante Oggi, usa la chiave i18n `roadmap.today` prima inutilizzata) e `TaskBoardRoadmapTimeHeader` (due righe: gruppi sopra, colonne sotto). Griglia verticale: un layer di background 1px per colonna (mesi di larghezza diversa), cache per timeline. Barre larghe almeno 6px (a scala Anno un giorno = 2px).
+- `use-roadmap-scale.ts`: scala in localStorage `work-orders.task-board.roadmap-scale`, default `week`, uguale per i due tipi di commessa.
+- Test: `task-board-roadmap.test.ts` aggiornato alla nuova firma + casi Mesi/Anno/slices; `task-board-roadmap-view.test.tsx` +2 (cambio scala e persistenza, barra cliccabile a scala Anno). Vitest task-board 20 file / 163 test + help 14 / 165 verdi, ESLint pulito, `tsc -b --force` EXIT 0. Non verificata a schermo nel browser.
+- Manuale: guide IT/EN `task-board-roadmap` (nuovo punto sulla scala) + manuale Claude Docs (paragrafo "Vista Roadmap", rev 972). DA FARE: rigenerare il PDF del manuale.
+
+## Task board: vista Roadmap, predefinita nelle Commesse di Progetto (richiesta utente 2026-11-25) — VERDE, solo frontend, COMMITTATO (bf80aa13c)
 
 - Terza vista `TaskBoardViewMode = 'roadmap' | 'list' | 'kanban'` (toggle Roadmap | Lista | Board in `task-board-toolbar.tsx`), disponibile su entrambi i tipi di commessa. Nessun endpoint nuovo: legge `start_date`/`end_date` del payload `task-board`.
 - Geometria pura `task-board/task-board-roadmap.ts` (`roadmapSpan`, `buildRoadmapRange` = da lunedi', +1 settimana di margine, min 8 settimane, include sempre oggi; `roadmapBar`, `mergeSpans`, `roadmapPx`, `ROADMAP_DAY_WIDTH_PX = 14`). Righe `task-board-roadmap-row.tsx`, vista `task-board-roadmap-view.tsx` (finestra calcolata su `allGroups` non filtrati, righe filtrate; scroll iniziale a oggi - 2 settimane).

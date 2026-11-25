@@ -8,11 +8,12 @@ export const taskSections: HelpSection[] = [
       blocks: [
         {
           type: 'paragraph',
-          text: "In the **Tasks** tab pick the view with the buttons in the filter bar: **Roadmap**, **List** or **Board**. The **Roadmap** shows the tasks on a timeline split into weeks: on the left the phases with their tasks, on the right a bar for each task, from the **Start date** to the **End date**. A vertical line marks **today**; on opening the timeline scrolls to today and moves sideways to show the rest.",
+          text: "In the **Tasks** tab pick the view with the buttons in the filter bar: **Roadmap**, **List** or **Board**. The **Roadmap** shows the tasks on a timeline: on the left the phases with their tasks, on the right a bar for each task, from the **Start date** to the **End date**. A vertical line marks **today**; on opening the timeline scrolls to today and moves sideways to show the rest.",
         },
         {
           type: 'list',
           items: [
+            "At the top right of the Roadmap pick the scale: **Weeks** (one column per week, with the month above), **Months** (one column per month, with the year above) or **Year** (whole years, month by month). The **Today** button brings the timeline back to today's date. The scale is remembered between sessions too.",
             "The bar takes the colour of its phase; a **red** bar is an overdue task, an **orange** one a blocked task, a **grey** one a closed task (with its title struck through). Hovering the bar shows title, dates and state.",
             "A task with a single date shows as a **diamond** on that day; a task with no date stays in its phase marked **No dates**.",
             "Next to each phase name a thin bar shows the period its tasks cover. Sub-tasks sit indented under their parent task.",

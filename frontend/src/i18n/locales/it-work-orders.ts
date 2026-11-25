@@ -233,6 +233,12 @@ export const workOrders = {
       today: 'Oggi',
       blocked: 'Bloccato',
       bar: '{{title}}: {{period}}, {{state}}',
+      scaleLabel: 'Scala della timeline',
+      scales: {
+        week: 'Settimane',
+        month: 'Mesi',
+        year: 'Anno',
+      },
     },
     kpi: {
       total: 'Task totali',

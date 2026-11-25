@@ -1,8 +1,10 @@
 /**
  * Pure timeline geometry of the Task board's Roadmap view (user request
- * 2026-11-25, Planner-style): the visible date window, its week columns and
- * where each task's bar sits in it, in DAYS from the window's first day;
- * `roadmapPx` turns days into pixels. Nothing here touches the DOM.
+ * 2026-11-25, Planner-style): the visible date window, its header columns and
+ * groups, and where each task's bar sits in it, in DAYS from the window's first
+ * day; `roadmapPx` turns days into pixels at the timeline's scale. Three scales
+ * (Settimane / Mesi / Anno) differ only in their `RoadmapScaleConfig`. Nothing
+ * here touches the DOM.
  *
  * Every date is a `Y-m-d` handled as a UTC midnight, so no step shifts by a
  * day with the runner's timezone (same reasoning as `task-board-filters.ts`).
@@ -13,18 +15,35 @@ import type { BoardTask } from '@/features/work-orders/task-board/types'
 const MS_PER_DAY = 86_400_000
 const DAYS_PER_WEEK = 7
 
-/** Width of one day on screen: the only pixel value of the view, everything else is counted in days. */
-export const ROADMAP_DAY_WIDTH_PX = 14
+export type RoadmapScale = 'week' | 'month' | 'year'
 
-export function roadmapPx(days: number): number {
-  return days * ROADMAP_DAY_WIDTH_PX
+export const ROADMAP_SCALES: readonly RoadmapScale[] = ['week', 'month', 'year']
+
+/** A calendar unit the window snaps to, the header columns and groups are cut by. */
+type CalendarUnit = 'week' | 'month' | 'year'
+
+export interface RoadmapScaleConfig {
+  /** Width of one day on screen: the only pixel value of a scale, everything else is counted in days. */
+  dayWidthPx: number
+  /** The window starts and ends on this unit's boundaries, padded and widened in this unit. */
+  windowUnit: CalendarUnit
+  paddingUnits: number
+  /** The window never shrinks below this many units, so a commessa with few dated tasks still reads as a timeline. */
+  minUnits: number
+  /** One header column (and one grid line) per this unit... */
+  columnUnit: Exclude<CalendarUnit, 'year'>
+  /** ...under a header group per this one (the month above the weeks, the year above the months). */
+  groupUnit: Exclude<CalendarUnit, 'week'>
+  /** On open the timeline scrolls so today sits this many days from its left edge: the recent past stays in view. */
+  daysBeforeTodayOnOpen: number
 }
 
-/** The window never shrinks below this many weeks, so a commessa with few dated tasks still reads as a timeline. */
-export const ROADMAP_MIN_WEEKS = 8
-
-/** The window opens one week before the earliest date and closes one week after the latest: bars never touch the edges. */
-const ROADMAP_PADDING_WEEKS = 1
+/** Week 98px, month about 150px (Mesi) or 60px (Anno): the labels fit and each scale reads at a different zoom. */
+export const ROADMAP_SCALE_CONFIGS: Record<RoadmapScale, RoadmapScaleConfig> = {
+  week: { dayWidthPx: 14, windowUnit: 'week', paddingUnits: 1, minUnits: 8, columnUnit: 'week', groupUnit: 'month', daysBeforeTodayOnOpen: 14 },
+  month: { dayWidthPx: 5, windowUnit: 'month', paddingUnits: 1, minUnits: 6, columnUnit: 'month', groupUnit: 'year', daysBeforeTodayOnOpen: 31 },
+  year: { dayWidthPx: 2, windowUnit: 'year', paddingUnits: 0, minUnits: 1, columnUnit: 'month', groupUnit: 'year', daysBeforeTodayOnOpen: 92 },
+}
 
 function parseUtcDate(date: string): Date {
   const [year, month, day] = date.split('-').map(Number)
@@ -46,9 +65,29 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((parseUtcDate(to).getTime() - parseUtcDate(from).getTime()) / MS_PER_DAY)
 }
 
-function mondayOf(date: string): string {
-  const isoWeekday = parseUtcDate(date).getUTCDay() || DAYS_PER_WEEK
-  return addDays(date, 1 - isoWeekday)
+/** The first day of the unit holding `date`: its Monday, the 1st of its month, or the 1st of January. */
+function startOfUnit(date: string, unit: CalendarUnit): string {
+  if (unit === 'week') {
+    const isoWeekday = parseUtcDate(date).getUTCDay() || DAYS_PER_WEEK
+    return addDays(date, 1 - isoWeekday)
+  }
+
+  return unit === 'month' ? `${date.slice(0, 7)}-01` : `${date.slice(0, 4)}-01-01`
+}
+
+/** Moves a unit START by whole units (on any other day a month step could overflow into the next month). */
+function addUnits(unitStart: string, unit: CalendarUnit, count: number): string {
+  if (unit === 'week') {
+    return addDays(unitStart, count * DAYS_PER_WEEK)
+  }
+  const parsed = parseUtcDate(unitStart)
+  if (unit === 'month') {
+    parsed.setUTCMonth(parsed.getUTCMonth() + count)
+  } else {
+    parsed.setUTCFullYear(parsed.getUTCFullYear() + count)
+  }
+
+  return formatUtcDate(parsed)
 }
 
 /**
@@ -75,7 +114,7 @@ export function roadmapSpan(task: Pick<BoardTask, 'start_date' | 'end_date'>): R
   return start <= end ? { start, end, isMilestone: false } : { start: end, end: start, isMilestone: false }
 }
 
-/** The visible window: Monday `start`, `days` long (always whole weeks). */
+/** The visible window: `start` on a unit boundary of its scale, `days` long (always whole units). */
 export interface RoadmapRange {
   start: string
   days: number
@@ -83,9 +122,16 @@ export interface RoadmapRange {
 
 /**
  * Covers every dated task AND today (the today line must always be on
- * screen), padded by a week on both sides and widened to `ROADMAP_MIN_WEEKS`.
+ * screen), snapped to whole units of the scale, padded on both sides and
+ * widened to the scale's minimum.
  */
-export function buildRoadmapRange(tasks: Pick<BoardTask, 'start_date' | 'end_date'>[], today: string): RoadmapRange {
+export function buildRoadmapRange(
+  tasks: Pick<BoardTask, 'start_date' | 'end_date'>[],
+  today: string,
+  scale: RoadmapScale,
+): RoadmapRange {
+  const { windowUnit, paddingUnits, minUnits } = ROADMAP_SCALE_CONFIGS[scale]
+
   // Step 1: earliest and latest date among the dated tasks and today
   let earliest = today
   let latest = today
@@ -98,12 +144,13 @@ export function buildRoadmapRange(tasks: Pick<BoardTask, 'start_date' | 'end_dat
     latest = span.end > latest ? span.end : latest
   }
 
-  // Step 2: snap to whole weeks with the padding on both sides
-  const start = addDays(mondayOf(earliest), -ROADMAP_PADDING_WEEKS * DAYS_PER_WEEK)
-  const lastMonday = addDays(mondayOf(latest), ROADMAP_PADDING_WEEKS * DAYS_PER_WEEK)
-  const weeks = Math.max(daysBetween(start, lastMonday) / DAYS_PER_WEEK + 1, ROADMAP_MIN_WEEKS)
+  // Step 2: snap to whole units with the padding on both sides, then widen to the minimum
+  const start = addUnits(startOfUnit(earliest, windowUnit), windowUnit, -paddingUnits)
+  const paddedEnd = addUnits(startOfUnit(latest, windowUnit), windowUnit, paddingUnits + 1)
+  const minimumEnd = addUnits(start, windowUnit, minUnits)
+  const end = paddedEnd > minimumEnd ? paddedEnd : minimumEnd
 
-  return { start, days: weeks * DAYS_PER_WEEK }
+  return { start, days: daysBetween(start, end) }
 }
 
 /** The timeline's geometry, computed once by the view. */
@@ -111,19 +158,37 @@ export interface RoadmapTimeline {
   range: RoadmapRange
   /** Days from the window start to today. */
   todayOffset: number
+  dayWidthPx: number
+  /** The header columns, also the timeline's vertical grid lines. */
+  columns: RoadmapSlice[]
 }
 
-/** One week column of the header: its Monday and its offset in days from the window start. */
-export interface RoadmapWeek {
-  monday: string
+export function roadmapPx(timeline: RoadmapTimeline, days: number): number {
+  return days * timeline.dayWidthPx
+}
+
+/**
+ * One calendar unit of the header, clipped to the window: `start` is the
+ * unit's own first day (it labels the slice even when the window cuts in
+ * after it), `offset` and `days` the part inside the window.
+ */
+export interface RoadmapSlice {
+  start: string
   offset: number
+  days: number
 }
 
-export function roadmapWeeks(range: RoadmapRange): RoadmapWeek[] {
-  return Array.from({ length: range.days / DAYS_PER_WEEK }, (_, index) => ({
-    monday: addDays(range.start, index * DAYS_PER_WEEK),
-    offset: index * DAYS_PER_WEEK,
-  }))
+export function roadmapSlices(range: RoadmapRange, unit: CalendarUnit): RoadmapSlice[] {
+  const end = addDays(range.start, range.days)
+  const slices: RoadmapSlice[] = []
+  for (let cursor = startOfUnit(range.start, unit); cursor < end; cursor = addUnits(cursor, unit, 1)) {
+    const next = addUnits(cursor, unit, 1)
+    const from = cursor < range.start ? range.start : cursor
+    const to = next < end ? next : end
+    slices.push({ start: cursor, offset: daysBetween(range.start, from), days: daysBetween(from, to) })
+  }
+
+  return slices
 }
 
 /** A bar inside the window: `offset` days from its start, `length` days long (both ends included). */

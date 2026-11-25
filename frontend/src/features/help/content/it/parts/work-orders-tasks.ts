@@ -8,11 +8,12 @@ export const taskSections: HelpSection[] = [
       blocks: [
         {
           type: 'paragraph',
-          text: "Nella scheda **Task** scegli la vista dai pulsanti nella barra dei filtri: **Roadmap**, **Lista** o **Board**. La **Roadmap** mostra i task su una linea del tempo divisa in settimane: a sinistra le fasi con i loro task, a destra una barra per ogni task, dalla **Data inizio** alla **Data fine**. Una linea verticale segna **oggi**; all'apertura la linea del tempo scorre fino a oggi e si sposta in orizzontale per vedere il resto.",
+          text: "Nella scheda **Task** scegli la vista dai pulsanti nella barra dei filtri: **Roadmap**, **Lista** o **Board**. La **Roadmap** mostra i task su una linea del tempo: a sinistra le fasi con i loro task, a destra una barra per ogni task, dalla **Data inizio** alla **Data fine**. Una linea verticale segna **oggi**; all'apertura la linea del tempo scorre fino a oggi e si sposta in orizzontale per vedere il resto.",
         },
         {
           type: 'list',
           items: [
+            "In alto a destra della Roadmap scegli la scala: **Settimane** (una colonna per settimana, con il mese sopra), **Mesi** (una colonna per mese, con l'anno sopra) o **Anno** (gli anni interi, mese per mese). Il pulsante **Oggi** riporta la linea del tempo alla data di oggi. Anche la scala si ricorda tra un accesso e l'altro.",
             "Il colore della barra è quello della fase; una barra **rossa** è un task scaduto, **arancione** un task bloccato, **grigia** un task chiuso (con il titolo barrato). Passando il mouse sulla barra leggi titolo, date e stato.",
             "Un task con una sola data compare come un **rombo** su quel giorno; un task senza date resta nella sua fase con la scritta **Senza date**.",
             "Accanto al nome di ogni fase una barra sottile mostra il periodo coperto dai suoi task. I sotto-task stanno rientrati sotto il task padre.",

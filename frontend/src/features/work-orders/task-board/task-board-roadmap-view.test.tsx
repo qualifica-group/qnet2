@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { boardTask, workOrderStage } from '@/features/work-orders/task-board/task-board-fixtures'
@@ -26,6 +26,10 @@ function renderRoadmap(tasks: BoardTask[], { isReadOnly = false, onOpenTask = vi
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
+})
+
+beforeEach(() => {
+  window.localStorage.clear()
 })
 
 describe('TaskBoardRoadmapView', () => {
@@ -74,5 +78,30 @@ describe('TaskBoardRoadmapView', () => {
     renderRoadmap([boardTask({ id: 10, title: 'Padre' })], { isReadOnly: true })
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('switches the timeline between weeks, months and year, and remembers the choice', () => {
+    renderRoadmap([boardTask({ id: 10, title: 'Requisiti', start_date: '2026-11-23', end_date: '2026-11-27' })])
+
+    expect(screen.getByRole('button', { name: 'Weeks' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('November 2026')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Months' }))
+    expect(screen.getByRole('button', { name: 'Months' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByText('November 2026')).not.toBeInTheDocument()
+    expect(screen.getByText('Nov')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Year' }))
+    expect(screen.getAllByText(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/)).toHaveLength(12)
+    expect(window.localStorage.getItem('work-orders.task-board.roadmap-scale')).toBe('year')
+  })
+
+  it('keeps the bar clickable at every scale', () => {
+    const { onOpenTask } = renderRoadmap([boardTask({ id: 10, title: 'Requisiti', start_date: '2026-11-25', end_date: '2026-11-25' })])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Year' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Requisiti: / }))
+
+    expect(onOpenTask).toHaveBeenCalledWith(10)
   })
 })
