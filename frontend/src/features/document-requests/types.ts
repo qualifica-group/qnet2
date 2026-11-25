@@ -97,7 +97,7 @@ export interface DocumentRequestDefaults {
 export interface CreateDocumentRequestPayload {
   document_checklist_id: number
   due_date: string | null
-  recipient_email: string | null
+  recipient_email: string
   message: string | null
   send: boolean
 }

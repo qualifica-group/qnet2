@@ -51,6 +51,10 @@
     <decision id="D-5">
       Lo stato remoto (`status`: draft|sent|in_progress|completed|expired|cancelled) resta null finché ArchivioSmart non
       risponde la prima volta. Lo scrive solo la risposta di ArchivioSmart o un webhook, mai QNet 2 da solo.
+      Eccezione (revisione 2026-11-25): una richiesta mai arrivata ad ArchivioSmart (`status` null e nessuna chiamata in
+      coda, cioè `delivery_status` diverso da pending) si annulla solo in QNet 2: `status` cancelled, `cancelled_at` adesso,
+      `delivery_status` delivered, `pending_operation` e `delivery_error` null, nessun job. Su quella richiesta il refresh
+      risponde 422 `status` (ArchivioSmart non la conosce e risponderebbe sempre 404): si corregge con Modifica.
     </decision>
     <decision id="D-6">
       Webhook: `POST /api/webhooks/archivio-smart`, senza login.
@@ -117,7 +121,7 @@
       <errors>403 senza document-requests.create.</errors>
     </endpoint>
     <endpoint method="POST" path="/api/work-orders/{workOrder}/document-requests">
-      <request>{ document_checklist_id: int, due_date: "YYYY-MM-DD"|null (oggi o dopo), recipient_email: email|null (max 255), message: string|null (max 2000), send: bool (default true) }</request>
+      <request>{ document_checklist_id: int, due_date: "YYYY-MM-DD"|null (oggi o dopo), recipient_email: email obbligatoria (max 255, revisione 2026-11-25), message: string|null (max 2000), send: bool (default true) }</request>
       <response status="201">{ data: DocumentRequest } con delivery_status "pending", pending_operation "upsert"; il job è accodato dopo il commit</response>
       <errors>422: document_checklist_id inesistente, non attiva o non sincronizzata; due_date passata; email non valida; message oltre 2000. 403 senza create.</errors>
     </endpoint>
@@ -125,7 +129,7 @@
       <response status="200">{ data: DocumentRequest }</response>
     </endpoint>
     <endpoint method="PUT" path="/api/document-requests/{documentRequest}">
-      <request>{ due_date, recipient_email, message, send: bool }: solo questi campi (§4, modifica)</request>
+      <request>{ due_date, recipient_email (obbligatoria), message, send: bool }: solo questi campi (§4, modifica)</request>
       <response status="200">{ data } con pending_operation "upsert"</response>
       <errors>422 `status` se la richiesta è completed, expired o cancelled. 403 senza update.</errors>
     </endpoint>
@@ -133,9 +137,11 @@
       <errors>422 `status` se lo stato non è sent o in_progress.</errors>
     </endpoint>
     <endpoint method="POST" path="/api/document-requests/{documentRequest}/cancel">
-      <errors>422 `status` se è completed o expired. Su una richiesta già cancelled: 200, niente in coda (§4 idempotente).</errors>
+      <errors>422 `status` se è completed o expired. Su una richiesta già cancelled: 200, niente in coda (§4 idempotente). Su una richiesta mai arrivata ad ArchivioSmart: 200, annullata solo in QNet 2 (D-5).</errors>
     </endpoint>
-    <endpoint method="POST" path="/api/document-requests/{documentRequest}/refresh"/>
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/refresh">
+      <errors>422 `status` su una richiesta mai arrivata ad ArchivioSmart (D-5).</errors>
+    </endpoint>
     <endpoint method="GET" path="/api/document-requests/{documentRequest}/sync-logs">
       <response status="200">{ data: [{ id, operation, outcome, http_status, attempt, message, created_at }] } (ultimi 20)</response>
     </endpoint>
@@ -193,6 +199,8 @@
     <criterion id="AC-017">Frontend: la scheda "Richieste documenti" elenca le richieste con l'etichetta di stato del §5, la barra (satisfied/items) e le voci per gruppo con stato e motivazione; le azioni compaiono secondo i permessi e lo stato; "in attesa di invio" e l'errore di invio sono visibili.</criterion>
     <criterion id="AC-018">Frontend: il dialog "Richiedi documenti" propone solo checklist selezionabili, filtrabili per categoria, con l'email precompilata da defaults; l'invio chiama il POST e un 422 viene mostrato sul campo.</criterion>
     <criterion id="AC-019">Frontend: annulla chiede conferma; sollecita e annulla chiamano gli endpoint e aggiornano la scheda.</criterion>
+    <criterion id="AC-021">Revisione 2026-11-25: POST o PUT senza recipient_email → 422 sul campo, nessun job; il form la richiede già lato client.</criterion>
+    <criterion id="AC-022">Revisione 2026-11-25: cancel su una richiesta con status null e delivery_status failed → 200, status cancelled e cancelled_at valorizzati, delivery_status delivered, nessun job; con delivery_status pending (upsert in coda) passa invece da ArchivioSmart come sempre. refresh sulla stessa richiesta failed → 422 `status`, nessun job; il frontend non mostra "Aggiorna stato".</criterion>
     <criterion id="AC-020">Guide in-app IT/EN aggiornate (commessa: richieste documenti; connessione: segreto webhook), con parity verde.</criterion>
   </acceptance_criteria>
 

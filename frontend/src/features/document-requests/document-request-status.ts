@@ -9,8 +9,14 @@ const REJECTED_ITEM_STATUSES: readonly string[] = ['ko', 'rejected_manually']
 /** Poll period while a call to ArchivioSmart is still queued. */
 export const PENDING_DELIVERY_REFETCH_MS = 5000
 
-function isOpen(request: DocumentRequest): boolean {
+/** False once the request reached a final state (completed, expired, cancelled), or before ArchivioSmart answered. */
+export function isOpen(request: DocumentRequest): boolean {
   return request.status === null || !TERMINAL_STATUSES.includes(request.status)
+}
+
+/** ArchivioSmart never answered and nothing is queued: it does not know the request (spec 0428, D-5). */
+export function neverReachedArchivioSmart(request: DocumentRequest): boolean {
+  return request.status === null && request.delivery_status !== 'pending'
 }
 
 /** Which actions a request offers: the actor's permission AND the states allowed by spec 0428. */
@@ -19,7 +25,7 @@ export function requestActions(request: DocumentRequest) {
     edit: request.permissions.update && isOpen(request),
     remind: request.permissions.remind && request.status !== null && REMINDABLE_STATUSES.includes(request.status),
     cancel: request.permissions.cancel && isOpen(request),
-    refresh: request.permissions.update,
+    refresh: request.permissions.update && !neverReachedArchivioSmart(request),
     complete: request.permissions.complete,
   }
 }

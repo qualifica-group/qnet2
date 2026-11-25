@@ -8,15 +8,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Fields shared by the creation and the edit of a document request (spec 0428).
- * Authorization is handled in the controller (DocumentRequestPolicy + the work order).
+ * Each subclass authorizes before validating, so a user without the permission
+ * gets 403 and never learns the rules (DocumentRequestPolicy + the work order).
  */
 abstract class SaveDocumentRequestRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     /**
      * @return array<string, array<int, mixed>>
      */
@@ -24,7 +20,7 @@ abstract class SaveDocumentRequestRequest extends FormRequest
     {
         return [
             'due_date' => $this->dueDateRules(),
-            'recipient_email' => ['nullable', 'string', 'email', 'max:'.(int) config('archivio-smart.max_length.email')],
+            'recipient_email' => ['required', 'string', 'email', 'max:'.(int) config('archivio-smart.max_length.email')],
             'message' => ['nullable', 'string', 'max:'.(int) config('archivio-smart.max_length.request_message')],
             'send' => ['sometimes', 'boolean'],
         ];
@@ -52,7 +48,7 @@ abstract class SaveDocumentRequestRequest extends FormRequest
     }
 
     /**
-     * @return array{due_date: string|null, recipient_email: string|null, message: string|null}
+     * @return array{due_date: string|null, recipient_email: string, message: string|null}
      */
     public function requestData(): array
     {
@@ -61,7 +57,7 @@ abstract class SaveDocumentRequestRequest extends FormRequest
 
         return [
             'due_date' => $validated['due_date'] ?? null,
-            'recipient_email' => $validated['recipient_email'] ?? null,
+            'recipient_email' => (string) $validated['recipient_email'],
             'message' => $validated['message'] ?? null,
         ];
     }

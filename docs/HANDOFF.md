@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Richieste documenti mai arrivate ad ArchivioSmart + email obbligatoria (spec 0428 rev. 2026-11-25, AC-021/022) — NON PROVATO NEL BROWSER
+
+- Bug: richiesta creata senza email → upsert 422 → mai creata su ArchivioSmart; cancel/refresh davano sempre 404, richiesta bloccata.
+- `DocumentRequest::neverReachedArchivioSmart()` = `status` null e `delivery_status` diverso da pending.
+  - `cancel` su quella richiesta: annullata solo in QNet (`status` cancelled, `cancelled_at`, delivered, niente job). Con upsert ancora in coda passa da ArchivioSmart come prima.
+  - `refresh`: 422 `status` (`archivio_smart.request_never_delivered`); il FE nasconde "Aggiorna stato" (`neverReachedArchivioSmart` in `document-request-status.ts`).
+- `recipient_email` obbligatoria in POST e PUT (FormRequest + schema Zod, `FormLabel required`, chiave i18n `validation.emailRequired`).
+- Authz di store/update spostata in `StoreDocumentRequestRequest::authorize()` / `UpdateDocumentRequestRequest::authorize()` (prima del validate: senza permesso resta 403, non 422); tolte le `authorize()` duplicate dal controller.
+- Test: Pest `tests/Feature/DocumentRequests` + `DocumentChecklists` 329 verdi; Vitest `document-requests` + `help` 211 verdi; tsc -b e ESLint puliti. Guide IT/EN `work-orders` aggiornate.
+- Da verificare nel browser: la richiesta id 5 (commessa 20) ora si annulla con "Annulla richiesta".
+
 ## Richieste documenti: scarica file, approva/rifiuta a mano, chiudi richiesta (spec 0429, 2026-11-25) — NON PROVATO NEL BROWSER
 
 - Download: `GET /api/document-requests/{id}/documents/{document}/download`.

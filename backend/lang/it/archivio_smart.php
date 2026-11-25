@@ -28,6 +28,7 @@ return [
     'request_item_not_found' => 'La voce non appartiene alla richiesta',
     'request_item_without_document' => 'La voce non ha nessun file caricato',
     'request_action_unavailable' => 'ArchivioSmart non supporta ancora questa azione',
+    'request_never_delivered' => "La richiesta non e' mai arrivata ad ArchivioSmart: correggila con Modifica e inviala di nuovo, oppure annullala",
     'document_download_failed' => 'Impossibile scaricare il file da ArchivioSmart',
     'document_not_found' => 'File non trovato',
     'webhook_not_found' => 'Non trovato',

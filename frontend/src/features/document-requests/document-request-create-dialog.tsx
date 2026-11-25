@@ -119,7 +119,7 @@ function CreateForm({ workOrderId, recipientEmail, onClose }: CreateFormProps) {
 export function DocumentRequestCreateDialog({ workOrderId, open, onOpenChange }: DocumentRequestCreateDialogProps) {
   const { t } = useTranslation()
   const defaults = useDocumentRequestDefaults(workOrderId, open)
-  // A failed defaults lookup must not block the request: the recipient is optional.
+  // A failed defaults lookup must not block the request: the user types the recipient by hand.
   const ready = defaults.isSuccess || defaults.isError
 
   return (

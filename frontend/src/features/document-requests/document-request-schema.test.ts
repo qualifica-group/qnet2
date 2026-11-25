@@ -23,10 +23,18 @@ describe('document request schema', () => {
   const t = i18n.t.bind(i18n)
 
   it('accepts empty optional fields and rejects a missing checklist on create only', () => {
-    const optionalEmpty = { ...VALID, due_date: '', recipient_email: '', message: '' }
+    const optionalEmpty = { ...VALID, due_date: '', message: '' }
     expect(buildCreateDocumentRequestSchema(t).safeParse(optionalEmpty).success).toBe(true)
     expect(buildCreateDocumentRequestSchema(t).safeParse({ ...VALID, document_checklist_id: null }).success).toBe(false)
     expect(buildEditDocumentRequestSchema(t).safeParse({ ...VALID, document_checklist_id: null }).success).toBe(true)
+  })
+
+  it('requires the recipient email on create and edit (AC-021)', () => {
+    for (const schema of [buildCreateDocumentRequestSchema(t), buildEditDocumentRequestSchema(t)]) {
+      const result = schema.safeParse({ ...VALID, recipient_email: '  ' })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]).toMatchObject({ path: ['recipient_email'], message: "Indica l'email del destinatario." })
+    }
   })
 
   it('mirrors the server limits: past date, email, 2000 characters', () => {
@@ -37,11 +45,11 @@ describe('document request schema', () => {
     expect(schema.safeParse({ ...VALID, message: 'x'.repeat(2001) }).success).toBe(false)
   })
 
-  it('maps empty strings to null in the payload', () => {
-    expect(toCreateDocumentRequestPayload({ ...VALID, due_date: '', recipient_email: ' ', message: '' })).toEqual({
+  it('maps empty optional strings to null and trims the email in the payload', () => {
+    expect(toCreateDocumentRequestPayload({ ...VALID, due_date: '', recipient_email: ' a@example.com ', message: '' })).toEqual({
       document_checklist_id: 3,
       due_date: null,
-      recipient_email: null,
+      recipient_email: 'a@example.com',
       message: null,
       send: true,
     })
@@ -54,6 +62,11 @@ describe('requestActions', () => {
     expect(requestActions(buildRequest({ status: null }))).toMatchObject({ edit: true, remind: false, cancel: true })
     expect(requestActions(buildRequest({ status: 'cancelled' }))).toMatchObject({ edit: false, remind: false, cancel: false })
     expect(requestActions(buildRequest({ status: 'expired' }))).toMatchObject({ edit: false, cancel: false })
+  })
+
+  it('hides refresh on a request that never reached ArchivioSmart, but keeps edit and cancel (AC-022)', () => {
+    expect(requestActions(buildRequest({ status: null, delivery_status: 'failed' }))).toMatchObject({ edit: true, cancel: true, refresh: false })
+    expect(requestActions(buildRequest({ status: null, delivery_status: 'pending' }))).toMatchObject({ refresh: true })
   })
 })
 

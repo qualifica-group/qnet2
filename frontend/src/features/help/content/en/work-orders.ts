@@ -423,14 +423,14 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "**Request documents**: choose the checklist (you can narrow the list by **category**; only active checklists already synced with ArchivioSmart appear), the **due date** (today or later), the **recipient email** (pre-filled with the primary email of the customer's registry, if any) and a **message** of at most 2000 characters. With the switch on, the request is sent right away.",
-            "**Status**: each request shows its remote status (**Sent**, **In progress**, **Completed**, **Expired**, **Cancelled**, **Draft**), a bar with the satisfied items out of the total and the items grouped as in the checklist, each with its status, the reason (for example why a document must be fixed) and the number of uploaded files.",
+            "**Request documents**: choose the checklist (you can narrow the list by **category**; only active checklists already synced with ArchivioSmart appear), the **due date** (today or later), the **recipient email** (mandatory; pre-filled with the primary email of the customer's registry, if any, otherwise type it by hand) and a **message** of at most 2000 characters. With the switch on, the request is sent right away.",
+            "**Status**: each request shows its remote status (**Sent**, **In progress**, **Completed**, **Expired**, **Cancelled**, **Draft**), a bar with the satisfied items out of the total and the items grouped as in the checklist, each with its status, the reason (for example why a document must be fixed) and the number of uploaded files. Closed requests (**Completed**, **Expired**, **Cancelled**) appear compact, with only status and progress: click the title to open or close them again. Requests still open always stay expanded.",
             "**Waiting to be sent** means the request is queued towards ArchivioSmart; if sending fails, **Sending failed** appears with the ArchivioSmart message, and you can fix the data with **Edit**.",
           ],
         },
         {
           type: 'paragraph',
-          text: "Actions (with the edit permission): **Edit** (due date, recipient and message; the checklist does not change, and it is not possible once the request is completed, expired or cancelled), **Remind** (only if the request is sent or in progress), **Cancel request** (asks for confirmation and is not possible once completed or expired), **Refresh status** (rereads the request from ArchivioSmart) and **Syncs** (the last 20 calls to ArchivioSmart).",
+          text: "Actions (with the edit permission): **Edit** (due date, recipient and message; the checklist does not change, and it is not possible once the request is completed, expired or cancelled), **Remind** (only if the request is sent or in progress), **Cancel request** (asks for confirmation and is not possible once completed or expired; if the request never reached ArchivioSmart, for example because sending failed, it is cancelled right away in QNet only), **Refresh status** (rereads the request from ArchivioSmart; not shown if the request never reached it: fix it with **Edit** and send it again) and **Syncs** (the last 20 calls to ArchivioSmart).",
         },
         {
           type: 'paragraph',
