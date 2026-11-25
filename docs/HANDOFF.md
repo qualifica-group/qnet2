@@ -14,7 +14,7 @@
 - Test: Pest `tests/Feature/DocumentRequests` + `DocumentChecklists` 329 verdi; Vitest `document-requests` + `help` 211 verdi; tsc -b e ESLint puliti. Guide IT/EN `work-orders` aggiornate.
 - Da verificare nel browser: la richiesta id 5 (commessa 20) ora si annulla con "Annulla richiesta".
 
-## Duplicare un ruolo (richiesta utente 2026-11-25) — VERDE, NON COMMITTATO
+## Duplicare un ruolo (richiesta utente 2026-11-25) — VERDE, COMMITTATO (dd430cf68)
 
 - Azione di riga `duplicate` su `/roles`, stesso schema di attributi/workflow preventivi: `RolesTableDefinition` (`actions()` + `actionsFor`, gate `create` su `Role::class`, mai sul `super-admin`), `roles-table.tsx` (`openDuplicate`, `SYSTEM_ROLE_HIDDEN_ACTIONS`), `roles-screens.tsx` (`RoleDuplicateLoader` rilegge il ruolo), `RoleFormMode` `duplicate` in `use-role-form.ts` (`source` passa da `RoleForm` -> `RoleFormBody` -> `useRoleForm`). Nessun endpoint nuovo: salva via `POST /roles`.
 - Copia: nome + `common.copySuffix`, permessi, `field_permissions`, campi personalizzati. Membri NON copiati (`users: []`).
