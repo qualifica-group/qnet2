@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -184,6 +185,17 @@ class User extends Authenticatable implements HasLocalePreference
     public function managedBusinessFunctions(): HasMany
     {
         return $this->hasMany(BusinessFunction::class, 'manager_id');
+    }
+
+    /**
+     * The supplier registry the person is paid through (spec 0431, D-4).
+     * Not fillable: written only by the payslip import.
+     *
+     * @return BelongsTo<Registry, $this>
+     */
+    public function supplierRegistry(): BelongsTo
+    {
+        return $this->belongsTo(Registry::class, 'supplier_registry_id');
     }
 
     /**

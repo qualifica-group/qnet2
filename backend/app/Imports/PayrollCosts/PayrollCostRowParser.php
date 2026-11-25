@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Imports\PayrollCosts;
 
 use App\Imports\ChartOfAccounts\ImportRow;
+use App\Imports\Support\ImportNumber;
+use App\Imports\Support\PayrollLookups;
 use DateTimeImmutable;
 
 /**
@@ -22,7 +24,7 @@ final class PayrollCostRowParser
 
     public static function normalizeTaxCode(string $value): string
     {
-        return strtoupper((string) preg_replace('/\s+/u', '', $value));
+        return PayrollLookups::normalizeTaxCode($value);
     }
 
     /**
@@ -98,7 +100,7 @@ final class PayrollCostRowParser
             return 0.0;
         }
 
-        $number = $this->toNumber($value);
+        $number = ImportNumber::parse($value);
         if ($number === null) {
             $errors->add($row->number, $key, 'invalid_amount');
 
@@ -106,27 +108,6 @@ final class PayrollCostRowParser
         }
 
         return $number;
-    }
-
-    /**
-     * The last separator is the decimal one when both appear; a lone comma is
-     * decimal; a lone dot is decimal unless it repeats (thousands).
-     */
-    private function toNumber(string $value): ?float
-    {
-        $value = str_replace([' ', "\u{00A0}"], '', $value);
-        $lastComma = strrpos($value, ',');
-        $lastDot = strrpos($value, '.');
-
-        if ($lastComma !== false && ($lastDot === false || $lastComma > $lastDot)) {
-            $value = str_replace(',', '.', str_replace('.', '', $value));
-        } elseif ($lastComma !== false) {
-            $value = str_replace(',', '', $value);
-        } elseif ($lastDot !== false && substr_count($value, '.') > 1) {
-            $value = str_replace('.', '', $value);
-        }
-
-        return preg_match('/^-?\d+(\.\d+)?$/', $value) === 1 ? (float) $value : null;
     }
 
     private function date(ImportRow $row, string $key, PayrollCostImportErrors $errors): ?string

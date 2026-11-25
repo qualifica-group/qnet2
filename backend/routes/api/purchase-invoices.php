@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Payslips\PayslipImportController;
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceBulkPaymentController;
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceController;
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceDraftController;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\Route;
 | declared ABOVE the bound wildcard so they win.
 */
 
+// Payslips of the consultant's net file (spec 0431), declared above the bound wildcard.
+Route::post('purchase-invoices/payslips/import', PayslipImportController::class);
 Route::get('purchase-invoices/for-select', PurchaseInvoiceForSelectController::class);
 Route::get('purchase-invoices/draft', PurchaseInvoiceDraftController::class);
 Route::get('purchase-invoices/invoiceable-orders', PurchaseInvoiceInvoiceableOrdersController::class);

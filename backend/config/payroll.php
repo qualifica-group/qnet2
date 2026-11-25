@@ -25,4 +25,17 @@ return [
         '14' => '07770971211',  // Italian Quality Institute
         '15' => '04837460262',  // Qualifica Group Berit
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payslips (spec 0431, D-1, D-6)
+    |--------------------------------------------------------------------------
+    |
+    | Payment method code and cost type code of the payslip documents created
+    | by the net file import.
+    */
+    'payslip' => [
+        'payment_method_code' => env('PAYSLIP_PAYMENT_METHOD_CODE', 'bonifico_bancario'),
+        'cost_type_code' => env('PAYSLIP_COST_TYPE_CODE', '63.01.001'),
+    ],
 ];

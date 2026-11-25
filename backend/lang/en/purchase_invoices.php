@@ -17,5 +17,7 @@ return [
     'order_party_mismatch' => 'The purchase order must have the same supplier and company as the document.',
     'order_not_invoiceable' => 'The purchase order is not in an invoiceable status.',
     'settlement_locked' => 'The document comes from an agent commission settlement: it cannot be edited, deleted or renumbered.',
+    'payslip_locked' => 'A payslip cannot be edited: only its notes can be changed.',
+    'payslip_no_number' => 'A payslip has no document number.',
     'payable_not_positive' => 'Withholding and ENASARCO must be lower than the document total.',
 ];

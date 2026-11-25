@@ -53,7 +53,8 @@ it('AC-003: exposes the contract columns with their sort/filter flags and the ro
         ->and($columns['paid_amount']['aggFunc'])->toBe('sum')
         ->and($columns['residual_amount']['aggFunc'])->toBe('sum')
         ->and($columns['supplier']['aggFunc'])->toBeNull()
-        ->and($columns['document_type']['options'])->toBe(['proforma', 'invoice'])
+        // REQUIREMENT CHANGED (spec 0431): the payslip type joins the filter options.
+        ->and($columns['document_type']['options'])->toBe(['proforma', 'invoice', 'payslip'])
         ->and($columns['status']['filterType'])->toBe('set')
         ->and($columns['status']['options'])->toBe(['unpaid', 'paid'])
         ->and($columns['purchase_orders']['filterType'])->toBe('text')

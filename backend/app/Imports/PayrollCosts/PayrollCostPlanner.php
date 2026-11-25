@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Imports\PayrollCosts;
 
 use App\Imports\ChartOfAccounts\ImportRow;
-use App\Models\Company;
+use App\Imports\Support\PayrollLookups;
 use App\Models\PayrollCost;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Validates every row of the cost file and decides what would be written
@@ -18,7 +17,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class PayrollCostPlanner
 {
-    public function __construct(private readonly PayrollCostRowParser $parser) {}
+    public function __construct(
+        private readonly PayrollCostRowParser $parser,
+        private readonly PayrollLookups $lookups,
+    ) {}
 
     /**
      * @param  list<ImportRow>  $rows
@@ -41,8 +43,8 @@ final class PayrollCostPlanner
         $period = $this->checkPeriod($parsed, $errors);
 
         // Step 3: people and companies, then the cross-row checks
-        $usersByTaxCode = $this->usersByTaxCode(array_unique(array_map(static fn (ParsedPayrollRow $r): string => $r->taxCode, $parsed)));
-        $companyByCode = $this->companyIdsByCode();
+        $usersByTaxCode = $this->lookups->usersByTaxCode(array_unique(array_map(static fn (ParsedPayrollRow $r): string => $r->taxCode, $parsed)));
+        $companyByCode = $this->lookups->companyIdsByCode();
         $entries = $this->buildEntries($parsed, $usersByTaxCode, $companyByCode, $period, $actor, $errors);
 
         return new PayrollCostPlan($entries, $errors, $period, count($rows), $period === null ? 0 : PayrollCost::query()->where('period', $period)->count());
@@ -133,62 +135,5 @@ final class PayrollCostPlanner
     private function decimal(int $cents): string
     {
         return number_format($cents / 100, 2, '.', '');
-    }
-
-    /**
-     * Normalized tax code => ids of the users holding it (inactive included).
-     *
-     * @param  array<int, string>  $taxCodes
-     * @return array<string, list<int>>
-     */
-    private function usersByTaxCode(array $taxCodes): array
-    {
-        if ($taxCodes === []) {
-            return [];
-        }
-
-        $normalized = "UPPER(REPLACE(REPLACE(personal_data.tax_code, ' ', ''), CHAR(9), ''))";
-        $found = DB::table('personal_data')
-            ->join('users', 'users.id', '=', 'personal_data.personable_id')
-            ->where('personal_data.personable_type', (new User)->getMorphClass())
-            ->whereRaw($normalized.' IN ('.implode(',', array_fill(0, count($taxCodes), '?')).')', array_values($taxCodes))
-            ->get(['users.id as user_id', DB::raw($normalized.' as code')]);
-
-        $map = [];
-        foreach ($found as $item) {
-            $map[$item->code][] = (int) $item->user_id;
-        }
-
-        return $map;
-    }
-
-    /**
-     * Consultant company code => company id, through the configured VAT numbers.
-     *
-     * @return array<string, int>
-     */
-    private function companyIdsByCode(): array
-    {
-        $vats = array_values(array_map('strval', (array) config('payroll.company_codes')));
-        if ($vats === []) {
-            return [];
-        }
-
-        $idByVat = Company::query()
-            ->whereRaw('TRIM(vat_number) IN ('.implode(',', array_fill(0, count($vats), '?')).')', $vats)
-            ->orderBy('id')
-            ->get(['id', 'vat_number'])
-            ->reverse()
-            ->mapWithKeys(static fn (Company $company): array => [trim((string) $company->vat_number) => $company->id])
-            ->all();
-
-        $map = [];
-        foreach ((array) config('payroll.company_codes') as $code => $vat) {
-            if (isset($idByVat[(string) $vat])) {
-                $map[(string) $code] = $idByVat[(string) $vat];
-            }
-        }
-
-        return $map;
     }
 }

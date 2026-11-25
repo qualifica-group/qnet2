@@ -13,6 +13,7 @@ import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-si
 import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
 import { WORK_ORDERS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 import { formatDate } from '@/lib/formatting/date-display'
+import { hasFixedHeader } from '@/features/purchase-invoices/purchase-invoice-settlement-lock'
 import type { PurchaseInvoice } from '@/features/purchase-invoices/types'
 import type { PurchaseInvoiceRecordEditor } from '@/features/purchase-invoices/use-purchase-invoice-inline-edit'
 
@@ -35,7 +36,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
   const { form, inline } = editor
   const { control } = form
   const unfrozen = !invoice.has_payments
-  const unlocked = invoice.commission_settlement == null
+  const unlocked = !hasFixedHeader(invoice)
   const field = (key: string) => t(`purchaseInvoiceViews.detail.fields.${key}`)
   const pick = (key: string) => t(`purchaseInvoices.editor.fields.${key}`)
 
@@ -150,7 +151,7 @@ function RegistrationSection({ invoice, editor }: SectionProps) {
       <RecordFieldList>
         <RecordInlineField
           field="document_number"
-          canEdit={invoice.commission_settlement == null}
+          canEdit={!hasFixedHeader(invoice)}
           label={numberLabel}
           inline={inline}
           editor={

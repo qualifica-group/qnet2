@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Enums\PurchaseInvoiceType;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
 use App\Services\PurchaseInvoices\LinkedSettlementGuard;
@@ -59,7 +60,7 @@ class PurchaseInvoicesAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['update', 'delete', 'details', 'downgrade', 'export', 'view_activity', 'pay'];
+        return ['update', 'delete', 'details', 'downgrade', 'export', 'import', 'view_activity', 'pay'];
     }
 
     /**
@@ -86,6 +87,13 @@ class PurchaseInvoicesAuthorization extends AbstractResourceAuthorization
                 : FieldPermission::visibleReadonly();
         }
 
+        // A payslip (spec 0431, D-7) edits its notes only
+        if ($model instanceof PurchaseInvoice && $model->document_type === PurchaseInvoiceType::Payslip) {
+            foreach (array_keys($permissions) as $key) {
+                $permissions[$key] = $key === 'notes' ? $editable : FieldPermission::visibleReadonly();
+            }
+        }
+
         return $permissions;
     }
 
@@ -95,15 +103,17 @@ class PurchaseInvoicesAuthorization extends AbstractResourceAuthorization
     public function actionPermissions(User $actor, ?Model $model): array
     {
         $registered = $model instanceof PurchaseInvoice && $model->isRegistered();
+        $payslip = $model instanceof PurchaseInvoice && $model->document_type === PurchaseInvoiceType::Payslip;
         $linked = $model instanceof PurchaseInvoice && $this->settlementGuard->isLinked($model);
         $deletable = $model instanceof PurchaseInvoice && ! $registered && ! $linked && ! $model->hasPayments();
 
         return [
-            'update' => $model !== null && ! $registered && ! $linked && $actor->can('purchase-invoices.update'),
+            'update' => $model !== null && ! $registered && ! $payslip && ! $linked && $actor->can('purchase-invoices.update'),
             'delete' => $deletable && $actor->can('purchase-invoices.delete'),
             'details' => $model !== null && $actor->can('purchase-invoices.update'),
             'downgrade' => $registered && ! $linked && $actor->can('purchase-invoices.downgrade'),
             'export' => $actor->can('purchase-invoices.export'),
+            'import' => $actor->can('purchase-invoices.import'),
             'view_activity' => $model !== null && $actor->can('purchase-invoices.viewActivity'),
             'pay' => $actor->can('purchase-invoices.pay'),
         ];

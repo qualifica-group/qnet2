@@ -3,7 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Costi del personale, parte A statini (spec 0430, 2026-11-25) — VERDE, NON COMMITTATO
+## Cedolini, parte B statini (spec 0431, 2026-11-25) — VERDE, NON COMMITTATO
+
+- `PurchaseInvoiceType::Payslip` ('Cedolino'); tabella `payslips` (chiave societa'+utente+period+payslip_type, `purchase_invoice_id` unico), `users.supplier_registry_id`; tipo di costo `63.01.001` "Retribuzioni al personale" sotto conto 63.01 (migrazione dati); `config/payroll.php` `payslip.payment_method_code` (bonifico_bancario) e `payslip.cost_type_code`.
+- Import `POST /api/purchase-invoices/payslips/import` (`file`, `dry_run`, `payment_date`): `App\Imports\Payslips\*`; CF dalla ripartizione con TIPO "Codice fiscale"; un cedolino per riga (data fine mese, nessun numero, riga senza IVA, una rata = netto alla data di pagamento), scritto sui model riusando `PurchaseInvoiceAmountCalculator`; ricarico aggiorna i non pagati, pagati = errore; fornitore: collegato > unico con stesso CF (marcato fornitore) > nuovo; IBAN su `employment_profiles.iban` con avvisi. Codice condiviso con 0430 in `App\Imports\Support\{SpreadsheetRecords,ImportNumber,PayrollLookups}`.
+- Regole: niente numero ne' cambio tipo, solo note modificabili, POST pubblico solo proforma|invoice (`RegisteredPurchaseInvoiceGuard::assertNumberAllowed/assertNotPayslip`). Esclusi dal costo in StructureCosts, CostTrend, WorkOrderFigureSources, WorkOrderPassiveCost; restano nelle rate e nel cash flow. Permesso `purchase-invoices.import` (+ create). Dopo il deploy: `migrate` + `permissions:sync`.
+- FE: `features/purchase-invoices/payslips/*` ("Importa netti" con data di pagamento, anteprima con errori e avvisi), tipo "Cedolino", dettaglio bloccato tranne note; guida purchase-invoices IT/EN sezione `payslips`. Schede Tutte/Proforma/Fatture/Cedolini sopra l'elenco (`use-purchase-invoice-type-tab.ts`, default Fatture, decisione utente 2026-11-25).
+- Verifier: AC 11/11 PASS, tsc pulito, Pint/ESLint puliti. Test CostTypes aggiornati (REQUIREMENT CHANGED: 5 tipi di costo seed). Rossi non della feature: elenco della parte A + PendingChangeRequestsColumn, RequestManagementAllColumnsSortFilter, TaskBoardEndpoints, ProjectWorkOrdersCategoryExportMenu, QualificaCommercialBackOfficeSeeder, UsageMapSchema, AttributeLayoutConditionalSection, EmploymentProductLine, request-dashboard-tabs (FE).
+- Aperto: Esposizione con filtro predefinito `invoice` non mostra i cedolini (solo con "tutti"): decisione utente. Manuale Claude Docs: sezione Cedolini in Fatture Acquisto e permesso di import.
+
+## Costi del personale, parte A statini (spec 0430, 2026-11-25) — COMMITTATO (f42cfec42)
 
 - Tabella `payroll_costs` (societa' + utente + `period` "YYYY-MM", unica), model `PayrollCost`, `config/payroll.php` `company_codes` (codice consulente -> P.IVA; 1,2,3,4,7,8,9,10,11,14,15). Permessi `payroll-costs.view|import` (`PayrollCostPolicy`, `viewAny` -> view; `PayrollCostsAuthorization` senza campi per il form Ruoli). Menu `management-control-payroll-costs`. Dopo il deploy: `migrate` + `permissions:sync`.
 - Import `POST /api/payroll-costs/import` (`file`, `dry_run`): `App\Imports\PayrollCosts\*`, tab/`;`/`,` + Windows-1252, colonna `Azienda` obbligatoria, tutto o niente, un mese per file, sostituzione del mese.

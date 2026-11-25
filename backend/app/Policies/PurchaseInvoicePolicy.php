@@ -25,7 +25,7 @@ class PurchaseInvoicePolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'pay', 'downgrade'];
+        return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'pay', 'downgrade'];
     }
 
     public function pay(User $user, PurchaseInvoice $purchaseInvoice): bool

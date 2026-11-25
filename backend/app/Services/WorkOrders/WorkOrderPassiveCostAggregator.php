@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
+use App\Enums\PurchaseInvoiceType;
 use App\Models\CostType;
 use App\Models\WorkOrder;
 use App\Services\Purchasing\CommittedOrderLineQuery;
@@ -34,7 +35,7 @@ final class WorkOrderPassiveCostAggregator
         $sources = [
             'manual_cents' => $this->committed->centsBy(DB::table('work_order_costs')->where('work_order_id', $workOrder->id), 'net_amount', 'cost_type_id'),
             'committed_cents' => $this->committed->committedCentsBy($this->committed->forWorkOrders([$workOrder->id]), 'purchase_order_lines.cost_type_id'),
-            'invoiced_cents' => $this->committed->centsBy(DB::table('purchase_invoice_lines')->where('work_order_id', $workOrder->id), 'net_amount', 'cost_type_id'),
+            'invoiced_cents' => $this->committed->centsBy(DB::table('purchase_invoice_lines')->where('work_order_id', $workOrder->id)->whereNotIn('purchase_invoice_id', DB::table('purchase_invoices')->where('document_type', PurchaseInvoiceType::Payslip->value)->select('id')), 'net_amount', 'cost_type_id'),
         ];
 
         // Step 2: the types involved, in display order

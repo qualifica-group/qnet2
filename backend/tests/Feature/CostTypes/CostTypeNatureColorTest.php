@@ -85,5 +85,6 @@ it('AC-004: the grid exposes the nature badge column (set filter, enum key) and 
         'filterModel' => ['nature' => ['filterType' => 'set', 'values' => ['general']]],
     ])->assertOk()->json('items');
 
-    expect(collect($filtered)->pluck('name')->all())->toBe(['Gen']);
+    // REQUIREMENT CHANGED (spec 0431, D-6): the seeded payslip cost type has nature general too.
+    expect(collect($filtered)->pluck('name')->all())->toEqualCanonicalizing(['Gen', 'Retribuzioni al personale']);
 });

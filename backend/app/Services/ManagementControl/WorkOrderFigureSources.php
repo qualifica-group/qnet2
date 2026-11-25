@@ -6,6 +6,7 @@ namespace App\Services\ManagementControl;
 
 use App\Enums\CommissionRecipientRole;
 use App\Enums\InvoiceType;
+use App\Enums\PurchaseInvoiceType;
 use App\Enums\QuoteLineType;
 use App\Enums\SupplierCommissionDirection;
 use App\Models\QuoteLine;
@@ -67,7 +68,7 @@ final class WorkOrderFigureSources
         );
         $manual = $this->committed->centsBy(DB::table('work_order_costs')->whereIn('work_order_id', $workOrderIds), 'net_amount', 'work_order_id');
         $committed = $this->committed->committedCentsBy($this->committed->forWorkOrders($workOrderIds), 'purchase_order_lines.work_order_id');
-        $payable = $this->committed->centsBy(DB::table('purchase_invoice_lines')->whereIn('work_order_id', $workOrderIds), 'net_amount', 'work_order_id');
+        $payable = $this->committed->centsBy(DB::table('purchase_invoice_lines')->whereIn('work_order_id', $workOrderIds)->whereNotIn('purchase_invoice_id', DB::table('purchase_invoices')->where('document_type', PurchaseInvoiceType::Payslip->value)->select('id')), 'net_amount', 'work_order_id');
         $collected = $this->collectedByWorkOrder($workOrderIds);
         $labor = $this->labor->byWorkOrder($workOrderIds);
         $budgetByLine = $this->budgetByRevenueLine($lines->keys()->all());
