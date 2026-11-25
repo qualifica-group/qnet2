@@ -245,6 +245,7 @@ describe('AiComposer without attachments (spec 0347 AC-029)', () => {
   it.each([
     ['no accepted type', { accepted_mimes: [] }],
     ['max_files 0', { max_files: 0 }],
+    ['a text-only model (spec 0433)', { accepts_attachments: false }],
   ])('hides the attach button and file input when %s', async (_label, limits) => {
     const base = buildAiConfig()
     await renderComposer(buildAiConfig({ limits: { ...base.limits, ...limits } }))

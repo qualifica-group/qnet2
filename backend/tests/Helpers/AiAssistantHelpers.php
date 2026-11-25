@@ -53,6 +53,8 @@ if (! function_exists('aiapi_configure')) {
         // REQUIREMENT CHANGED (D-16): both surfaces are off by default and the API answers 404 without them.
         config()->set('ai-assistant.floating_enabled', true);
         config()->set('ai-assistant.page_enabled', true);
+        // REQUIREMENT CHANGED (spec 0433): the model is text-only by default; the attachment tests need one that takes files.
+        config()->set('ai-assistant.model_accepts_attachments', true);
         config()->set('ai-assistant.driver', $driver);
         config()->set('ai-assistant.openai', ['base_url' => AIAPI_PROVIDER_URL, 'api_key' => 'sk-secret', 'model' => 'gpt-x']);
         config()->set('ai-assistant.anthropic', ['base_url' => 'https://claude.test/v1', 'api_key' => 'ak-secret', 'model' => 'claude-x', 'version' => '2023-06-01']);

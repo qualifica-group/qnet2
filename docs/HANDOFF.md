@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assistente AI, ticket 07: chat esistente adeguata (spec 0433) - VERDE, COMMITTATO NEL RAMO `assistente/07-chat-adeguata`
+
+- Menzione al modello: solo `<record module="companies" id="12"/>` nel turno corrente e `[menzione: companies #12]` nello storico; mai campo ne' etichetta. `AiMentionResolver::resolve` autorizza ancora (`view`) e restituisce `ResolvedAiMention(module, id, label)`: l'etichetta resta salvata in `ai_messages.mentions` per la persona. Rimossi proiezione, campi ammessi, `gatedFields` e `AI_ASSISTANT_MENTION_MAX_CHARS`; `AiMentionDefinition` ha solo `with` (relazioni lette dall'etichetta). Spec 0347 (AC-009 e `mention_max_chars`) superata su questo punto.
+- Criterio «solo testo»: `App\Services\AiAssistant\AiModelCapabilities::acceptsAttachments()` (da sostituire con le impostazioni del modello, ticket 08), oggi `config('ai-assistant.model_accepts_attachments')`, env `AI_ASSISTANT_MODEL_ACCEPTS_ATTACHMENTS`, default false. `StoreAiMessageRequest`: `files` proibito con 422 e testo fisso IT/EN (chiave in `lang/it.json`); `GET /ai-assistant/config` espone `limits.accepts_attachments`; il compositore nasconde la graffetta. Allegati gia' salvati: download invariato. I test con allegati usano `aiapi_configure()` che imposta il flag a true.
+- Permesso: migrazione `2026_12_29_100000_grant_ai_assistant_use_to_all_roles` (crea il permesso se manca, lo da' a tutti i ruoli `web`; `down` non revoca). Form ruolo nuovo: `DEFAULT_NEW_ROLE_PERMISSIONS` in `use-role-form.ts` pre-seleziona `ai-assistant.use` (non sulla duplicazione).
+- Guide in-app IT/EN `ai-assistant` e `roles` aggiornate. Manuale completo Claude Docs: da aggiornare (sezioni Assistente AI e Ruoli).
+- Noto, non mio: `AiAssistantLocalModelTest` AC-029 (env restringe i tipi) fallisce anche sulla base.
+
 ## Assistente AI, ticket 03: collegamento aperto dalla sessione (ADR 0020) - VERDE, COMMITTATO NEL RAMO `assistente/03-collegamento-sessione`
 
 - Backend, modulo MCP: `AssistantLinkService::credentialFor(User, PersonalAccessToken): string` apre (o riusa) il collegamento del client API del connettore (`mcp-link.assistant_client_id`, env `MCP_LINK_ASSISTANT_CLIENT_ID`, da aggiungere a `.env.example`) con etichetta `mcp-link.assistant_mcp_client` (`qnet2-assistant`). Nessuna rotta. Tabella `assistant_links` (user, mcp_link unique, token Sanctum nullable unique `nullOnDelete`, `credential` cifrata col cast `encrypted`, nascosta).

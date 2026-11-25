@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\AiAssistant;
 
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Services\AiAssistant\AiModelCapabilities;
 use App\Services\AiAssistant\Drivers\AiChatDriverManager;
 use App\Services\AiAssistant\Mentions\AiMentionRegistry;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ class AiAssistantConfigController extends BaseApiController
     public function __construct(
         private readonly AiChatDriverManager $drivers,
         private readonly AiMentionRegistry $registry,
+        private readonly AiModelCapabilities $capabilities,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -35,6 +37,7 @@ class AiAssistantConfigController extends BaseApiController
                     'max_mentions' => (int) config('ai-assistant.max_mentions'),
                     'max_files' => (int) config('ai-assistant.max_files'),
                     'max_file_size_kb' => (int) config('ai-assistant.max_file_size_kb'),
+                    'accepts_attachments' => $this->capabilities->acceptsAttachments(),
                     'accepted_mimes' => array_values((array) config('ai-assistant.accepted_mimes')),
                 ],
                 'mention_modules' => $this->registry->availableModules($request->user()),

@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The assistant does not look up data on its own: it only sees what you write, the records you mention with @, the files you attach and the in-app guide of the page you are on.',
+          text: 'The assistant does not look up data on its own: it only sees what you write, the type and identifier of the records you mention with @, the files you attach and the in-app guide of the page you are on.',
         },
       ],
     },
@@ -75,7 +75,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The record data is sent to the assistant only in the message where you mention it. In later messages of the same conversation only the reference remains: if the content is needed again, mention it again. You can only mention records you can open; for a record you cannot see, sending is refused.',
+          text: 'Only the record type and its identifier reach the assistant, not its data: the assistant reads the content itself, with your permissions and the masking of restricted data. In the chat the mention stays as you wrote it. You can only mention records you can open; for a record you cannot see, sending is refused.',
         },
       ],
     },
@@ -85,11 +85,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'With the paperclip you can attach PDFs and images (PNG, JPG, WEBP). The limits (number of files and maximum size) are shown if you exceed them, before sending. Like mentions, files are sent to the assistant only in the message where you add them. The accepted types depend on the configured model: with some models, for example locally installed ones, PDFs are not accepted or the paperclip does not appear at all.',
+          text: 'With the paperclip you can attach PDFs and images (PNG, JPG, WEBP). The limits (number of files and maximum size) are shown if you exceed them, before sending. Like mentions, files are sent to the assistant only in the message where you add them. The accepted types depend on the configured model: with a text-only model the paperclip does not appear at all and the server refuses new attachments.',
         },
         {
           type: 'tip',
-          text: 'The attachments of your messages stay downloadable from the conversation by clicking their name.',
+          text: 'The attachments of your messages stay downloadable from the conversation by clicking their name, even if the model in use has since become text-only.',
         },
       ],
     },
@@ -99,7 +99,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'The assistant uses the artificial intelligence model chosen by the administrator: a service external to QNet (OpenAI, Anthropic, OpenRouter) or a model installed on the company servers. With an external service, every message sends outside the company: the text you write, the page guide, the latest messages of the conversation, the attached files and the data of the mentioned records (including personal data of users and referents, if you mention them). If you do not know which model is in use, do not mention or attach anything that must not leave the company.',
+          text: 'The assistant uses the artificial intelligence model chosen by the administrator: a service external to QNet (OpenAI, Anthropic, OpenRouter) or a model installed on the company servers. With an external service, every message sends outside the company: the text you write, the page guide, the latest messages of the conversation, the attached files and the type and identifier of the mentioned records. If you do not know which model is in use, do not attach anything that must not leave the company.',
         },
       ],
     },

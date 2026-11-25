@@ -79,7 +79,7 @@ final class AiPromptBuilder
         }
 
         foreach ($message->mentions ?? [] as $mention) {
-            $lines[] = "[menzione: {$mention['module']} #{$mention['id']} {$mention['label']}]";
+            $lines[] = "[menzione: {$mention['module']} #{$mention['id']}]";
         }
 
         return implode("\n", $lines);
@@ -93,7 +93,8 @@ final class AiPromptBuilder
         $blocks = [$message->content];
 
         foreach ($mentions as $mention) {
-            $blocks[] = "<record module=\"{$mention->module}\" id=\"{$mention->id}\">\n{$mention->context}\n</record>";
+            // Spec 0433: type and identifier only, never a field or the label.
+            $blocks[] = "<record module=\"{$mention->module}\" id=\"{$mention->id}\"/>";
         }
 
         $files = $message->attachments

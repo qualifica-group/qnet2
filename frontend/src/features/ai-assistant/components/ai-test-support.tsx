@@ -20,6 +20,7 @@ export function buildAiConfig(overrides: Partial<AiAssistantConfig> = {}): AiAss
       max_mentions: 2,
       max_files: 2,
       max_file_size_kb: 1024,
+      accepts_attachments: true,
       accepted_mimes: ['application/pdf', 'image/png'],
     },
     mention_modules: ['companies', 'tasks'],
