@@ -8,6 +8,7 @@ use App\Enums\QuoteLineType;
 use App\Models\QuoteLine;
 use App\Models\WorkOrder;
 use App\Services\ProductCategories\CategoryHierarchy;
+use App\Services\WorkOrders\WorkOrderReferences;
 use Illuminate\Support\Collection;
 
 /**
@@ -22,8 +23,8 @@ use Illuminate\Support\Collection;
  * QuoteClassificationSource, which reads the category's own column only
  * (reported separately, spec 0322 "out").
  *
- * Spec 0431 (D-11): a commessa born without an offer has no lines; its own
- * business-function rows (`productLines`) give the categories instead.
+ * Spec 0431 (D-11/D-17): a commessa born without an offer has no lines; its
+ * own business-function rows and products give the categories instead.
  *
  * Assumes the caller already eager-loaded `quoteLines.product` — the
  * contract WorkOrderWorkflowResolver::resolve() enforces with its own
@@ -48,7 +49,7 @@ final class WorkOrderClassificationSource
     public function categoryIds(WorkOrder $workOrder): array
     {
         if ($workOrder->is_standalone) {
-            return $this->distinctIds($workOrder->productLines->pluck('product_category_id'));
+            return app(WorkOrderReferences::class)->standaloneCategoryIds($workOrder);
         }
 
         return $this->distinctIds(

@@ -28,6 +28,7 @@ const VALID_BASE = {
   company_site_id: null,
   operational_site_id: null,
   product_lines: [],
+  product_ids: [],
 }
 
 function requiredTextAttribute(): ApplicableAttributeSummary {

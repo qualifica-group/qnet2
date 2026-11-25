@@ -41,7 +41,28 @@ class WorkOrderFormContextRequest extends FormRequest
         return [
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer', Rule::exists('quote_lines', 'id')],
+            // Spec 0431 (D-17): a project work order born without an offer previews from these instead.
+            'product_ids' => ['sometimes', 'array'],
+            'product_ids.*' => ['integer', Rule::exists('products', 'id')],
+            'product_category_ids' => ['sometimes', 'array'],
+            'product_category_ids.*' => ['integer', Rule::exists('product_categories', 'id')],
         ];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function productIds(): array
+    {
+        return $this->distinctIds('product_ids');
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function productCategoryIds(): array
+    {
+        return $this->distinctIds('product_category_ids');
     }
 
     /**
@@ -52,7 +73,15 @@ class WorkOrderFormContextRequest extends FormRequest
      */
     public function quoteLineIds(): array
     {
-        return collect((array) ($this->validated('quote_line_ids') ?? []))
+        return $this->distinctIds('quote_line_ids');
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function distinctIds(string $key): array
+    {
+        return collect((array) ($this->validated($key) ?? []))
             ->map(static fn (mixed $id): int => (int) $id)
             ->unique()
             ->values()

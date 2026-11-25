@@ -11,6 +11,7 @@ use App\Models\WorkOrder;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeLayoutMerger;
 use App\RequestManagement\AttributeSetResolver;
+use App\Services\WorkOrders\WorkOrderReferences;
 use Illuminate\Support\Collection;
 
 /**
@@ -94,12 +95,20 @@ final class WorkOrderAttributeResolver
      * `quote_line_ids` composed so far, be it the WorkOrder form or the
      * Contract's "Programma" dialog.
      *
+     * Spec 0431 (D-17): a project work order born without an offer previews
+     * from its products and business-function categories instead.
+     *
      * @param  array<int, int>  $quoteLineIds
+     * @param  array<int, int>  $productIds
+     * @param  array<int, int>  $productCategoryIds
      * @return array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null, locked_attributes: list<array{code: string, source: string}>}
      */
-    public function formContext(array $quoteLineIds, FormMode $formMode): array
+    public function formContext(array $quoteLineIds, FormMode $formMode, array $productIds = [], array $productCategoryIds = []): array
     {
-        $categoryIds = $this->categoryIdsForQuoteLineIds($quoteLineIds);
+        $categoryIds = array_values(array_unique([
+            ...$this->categoryIdsForQuoteLineIds($quoteLineIds),
+            ...app(WorkOrderReferences::class)->draftCategoryIds($productIds, $productCategoryIds),
+        ]));
 
         return [
             'applicable_attributes' => $this->setResolver->resolve($categoryIds, AttributeContext::WorkOrder),
@@ -113,9 +122,9 @@ final class WorkOrderAttributeResolver
      */
     private function categoryIdsForWorkOrder(WorkOrder $workOrder): array
     {
-        // Spec 0431 (D-11): born without an offer, the own business-function rows give the categories.
+        // Spec 0431 (D-11/D-17): born without an offer, its own rows and products give the categories.
         if ($workOrder->is_standalone) {
-            return $workOrder->loadMissing('productLines')->productLines->pluck('product_category_id')->unique()->values()->all();
+            return app(WorkOrderReferences::class)->standaloneCategoryIds($workOrder);
         }
 
         $workOrder->loadMissing('quoteLines.product.category');

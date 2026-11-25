@@ -62,7 +62,7 @@ class WorkOrderController extends BaseApiController
             Gate::allowIf($user !== null && ($user->can('work-orders.create') || $user->can('work-orders.update')));
 
             return $this->ok(new WorkOrderFormContextResource(
-                $this->attributeResolver->formContext($request->quoteLineIds(), FormMode::Create),
+                $this->attributeResolver->formContext($request->quoteLineIds(), FormMode::Create, $request->productIds(), $request->productCategoryIds()),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

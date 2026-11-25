@@ -45,11 +45,22 @@ export async function fetchWorkOrder(id: number): Promise<WorkOrderDetailWithPer
  * sull'assenza: nessuna riga risolve un set vuoto, mai 422. Serve sia il form
  * Commessa sia il dialog "Programma" del Contratto.
  */
-export async function fetchWorkOrderFormContext(quoteLineIds: number[]): Promise<WorkOrderFormContext> {
+export async function fetchWorkOrderFormContext(
+  quoteLineIds: number[],
+  standalone?: StandaloneContextSource,
+): Promise<WorkOrderFormContext> {
   const { data } = await apiClient.post<ApiResponse<WorkOrderFormContext>>('/work-orders/form-context', {
     quote_line_ids: quoteLineIds,
+    // Spec 0431 (D-17): a work order born without an offer previews from its products and categories.
+    ...(standalone ? { product_ids: standalone.productIds, product_category_ids: standalone.productCategoryIds } : {}),
   })
   return data.data
+}
+
+/** What a project work order born without an offer resolves its flexible fields from (spec 0431, D-17). */
+export interface StandaloneContextSource {
+  productIds: number[]
+  productCategoryIds: number[]
 }
 
 /**

@@ -60,6 +60,8 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     operational_site_id: z.number().nullable(),
     // `root_category_id` is UI-only state of the shared row editor (spec 0132 D-3).
     product_lines: z.array(z.object({ root_category_id: z.number().nullable(), product_category_id: z.number().nullable() })),
+    // D-17: optional products in place of offer lines (their categories bring the flexible fields).
+    product_ids: z.array(z.number()),
   }
 }
 

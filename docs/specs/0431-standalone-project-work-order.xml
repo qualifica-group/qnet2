@@ -50,8 +50,27 @@
     D-15 (in implementazione) Variabili email: `client.*`, `company.*`, `company_site.*` si risolvono dai campi
         propri; le categorie solo-offerta (`quote`, `opportunity`, `referent`, `commercial`...) restano vuote.
         Referente del dettaglio: il referente principale del cliente.
-    D-16 (in implementazione) "Informazioni aggiuntive" non compaiono nel modulo di creazione (l'anteprima
-        `form-context` lavora sulle righe offerta): si compilano dal dettaglio, dove il set viene dalle righe proprie.
+    D-16 SUPERATA da D-17: le "Informazioni aggiuntive" compaiono anche nel modulo di creazione.
+    D-17 (richiesta utente 2026-11-25) Prodotti: la commessa senza offerta abbina prodotti attivi (pivot
+        `work_order_products`, `product_ids`), al posto delle righe d'offerta, senza prezzo ne' fatturazione. Le
+        categorie dei prodotti, insieme a quelle delle funzioni aziendali, danno "Informazioni aggiuntive", set dello
+        Stato lavorazione e filtri/visibilita' per categoria (`WorkOrderReferences::standaloneCategoryIds`).
+        `POST /work-orders/form-context` accetta anche `product_ids` e `product_category_ids` per l'anteprima.
+    D-18 (richiesta utente 2026-11-25) Prima la linea prodotto, poi i prodotti: le "Funzioni aziendali" diventano
+        "Linee prodotto" (stesso editore categoria madre -> categoria di Gestione Richieste/opportunita'), la
+        funzione aziendale si legge dalla categoria (riga in sola lettura), i prodotti si scelgono solo fra le
+        categorie delle linee (regola `ProductCategoryCoherence`, messaggio WORK_ORDER_MESSAGE, 422 su `product_ids`
+        anche quando una PATCH delle linee lascia scoperto un prodotto salvato; il modulo toglie da solo i prodotti
+        di una linea rimossa). Piu' linee: come una commessa normale con righe di categorie diverse — funzioni
+        elencate tutte, Informazioni aggiuntive di tutte le categorie, stato lavorazione dalla regola piu'
+        specifica, costi del Controllo di gestione divisi in parti uguali fra le funzioni distinte (non ci sono
+        ricavi per pesarle).
+    D-19 (richiesta utente 2026-11-25) Linee prodotto e Prodotti in una sezione propria "Linee prodotto e prodotti",
+        prima di "Dati contrattuali commessa"; la Funzione aziendale (sola lettura) resta in "Riferimenti", sotto Sede
+        operativa; nei Dati contrattuali nessuna riga Importo e nessun blocco righe d'offerta ("La commessa non ha
+        righe prodotto" non compare).
+        Regressione corretta: `contract-data` e `proforma-requests/summary` rispondevano 500 (ramo "offerta singola"
+        senza offerta); un test chiama ogni rotta GET del dettaglio su una commessa senza offerta.
   </context>
 
   <data_contract>

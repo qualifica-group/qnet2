@@ -29,6 +29,7 @@ const formValues: WorkOrderFormValues = {
   company_site_id: null,
   operational_site_id: null,
   product_lines: [],
+  product_ids: [],
 }
 
 function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
@@ -300,6 +301,7 @@ describe('standalone project work order (spec 0431)', () => {
       { root_category_id: 1, product_category_id: 2 },
       { root_category_id: null, product_category_id: null },
     ],
+    product_ids: [40],
   }
 
   it('creates without offer, lines and type, with the own references and only complete rows', () => {
@@ -315,6 +317,7 @@ describe('standalone project work order (spec 0431)', () => {
       company_site_id: 7,
       operational_site_id: null,
       product_lines: [{ product_category_id: 2 }],
+      product_ids: [40],
     })
   })
 
@@ -330,11 +333,16 @@ describe('standalone project work order (spec 0431)', () => {
       product_lines: [
         { id: 1, business_function: { id: 3, name: 'F' }, product_category: { id: 2, name: 'C' } },
       ],
+      products: [{ id: 40, code: 'PRD-0040', name: 'Audit' }],
     })
 
     expect(buildUpdatePayload({ ...standaloneValues, title: persisted.title }, persisted)).not.toHaveProperty('registry_id')
     expect(buildUpdatePayload({ ...standaloneValues, title: persisted.title, company_site_id: null }, persisted)).toMatchObject({
       company_site_id: null,
+    })
+    expect(buildUpdatePayload({ ...standaloneValues, title: persisted.title }, persisted)).not.toHaveProperty('product_ids')
+    expect(buildUpdatePayload({ ...standaloneValues, title: persisted.title, product_ids: [40, 41] }, persisted)).toMatchObject({
+      product_ids: [40, 41],
     })
   })
 

@@ -72,6 +72,7 @@ function references(values: WorkOrderFormValues): StandaloneWorkOrderReferencesP
     product_lines: values.product_lines
       .filter((row) => row.product_category_id !== null)
       .map((row) => ({ product_category_id: row.product_category_id as number })),
+    product_ids: values.product_ids,
   }
 }
 
@@ -104,6 +105,9 @@ function changedReferences(
   const originalCategoryIds = (original.product_lines ?? []).map((line) => line.product_category.id)
   if (!sameIdSet(next.product_lines.map((line) => line.product_category_id), originalCategoryIds)) {
     changed.product_lines = next.product_lines
+  }
+  if (!sameIdSet(next.product_ids, (original.products ?? []).map((product) => product.id))) {
+    changed.product_ids = next.product_ids
   }
 
   return changed

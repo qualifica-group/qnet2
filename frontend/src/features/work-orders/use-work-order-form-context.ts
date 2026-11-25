@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { sameIdSet } from '@/lib/utils'
-import { fetchWorkOrderFormContext } from '@/features/work-orders/api'
+import { fetchWorkOrderFormContext, type StandaloneContextSource } from '@/features/work-orders/api'
 import type { WorkOrderFormContext } from '@/features/work-orders/types'
 
 /** Nessuna riga offerta scelta: nessuna categoria, quindi nessun attributo. Hoistato per riferimento stabile. */
@@ -10,7 +10,13 @@ const EMPTY_CONTEXT: WorkOrderFormContext = { applicable_attributes: [], attribu
 /** What a persisted work order already resolved for its own lines (`WorkOrderResource`). */
 export interface PersistedWorkOrderContext {
   quoteLineIds: number[]
+  /** Spec 0431: the saved products and categories of a work order born without an offer. */
+  standalone?: StandaloneContextSource
   context: WorkOrderFormContext
+}
+
+function sortedIds(ids: number[]): number[] {
+  return Array.from(new Set(ids)).sort((a, b) => a - b)
 }
 
 /**
@@ -28,20 +34,35 @@ export interface PersistedWorkOrderContext {
  * cosi' aggiungere una seconda riga non fa sparire e riapparire i campi gia'
  * compilati.
  */
-export function useWorkOrderFormContext(quoteLineIds: number[], persisted?: PersistedWorkOrderContext) {
-  const stableIds = Array.from(new Set(quoteLineIds)).sort((a, b) => a - b)
-  const isPersistedSet = persisted !== undefined && sameIdSet(stableIds, persisted.quoteLineIds)
-  const enabled = stableIds.length > 0 && !isPersistedSet
+export function useWorkOrderFormContext(
+  quoteLineIds: number[],
+  persisted?: PersistedWorkOrderContext,
+  standalone?: StandaloneContextSource,
+) {
+  const stableIds = sortedIds(quoteLineIds)
+  // Spec 0431 (D-17): a work order born without an offer resolves from its products and categories.
+  const productIds = sortedIds(standalone?.productIds ?? [])
+  const categoryIds = sortedIds(standalone?.productCategoryIds ?? [])
+  const isPersistedSet =
+    persisted !== undefined &&
+    sameIdSet(stableIds, persisted.quoteLineIds) &&
+    sameIdSet(productIds, persisted.standalone?.productIds ?? []) &&
+    sameIdSet(categoryIds, persisted.standalone?.productCategoryIds ?? [])
+  const hasSource = stableIds.length > 0 || productIds.length > 0 || categoryIds.length > 0
+  const enabled = hasSource && !isPersistedSet
 
   const query = useQuery<WorkOrderFormContext, AxiosError>({
-    queryKey: ['work-orders', 'form-context', stableIds],
-    queryFn: () => fetchWorkOrderFormContext(stableIds),
+    queryKey: ['work-orders', 'form-context', stableIds, productIds, categoryIds],
+    queryFn: () =>
+      standalone !== undefined
+        ? fetchWorkOrderFormContext(stableIds, { productIds, productCategoryIds: categoryIds })
+        : fetchWorkOrderFormContext(stableIds),
     enabled,
     placeholderData: (previous) => previous,
   })
 
   if (isPersistedSet) {
-    return { context: persisted.context, isLoading: false, hasPickedLines: stableIds.length > 0 }
+    return { context: persisted.context, isLoading: false, hasPickedLines: hasSource }
   }
 
   return {

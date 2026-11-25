@@ -95,7 +95,7 @@ class UpdateWorkOrderRequest extends FormRequest
             ...$this->managerSlotsRules(self::PARTICIPANT_SLOTS_FIELD),
             // Spec 0431: the own references exist only on a commessa born without an offer.
             ...($this->workOrder()->is_standalone
-                ? $this->standaloneReferenceRules(required: false)
+                ? $this->standaloneReferenceRules(required: false, currentProductIds: $this->workOrder()->products()->pluck('products.id')->all())
                 : array_fill_keys(self::STANDALONE_REFERENCE_KEYS, ['prohibited'])),
         ];
     }
@@ -121,7 +121,13 @@ class UpdateWorkOrderRequest extends FormRequest
             $this->rejectLockedAttributeChangesOf($validator, $workOrder);
 
             if ($workOrder->is_standalone) {
-                $this->validateStandaloneReferences($validator, $workOrder->company_id, $workOrder->company_site_id);
+                $this->validateStandaloneReferences(
+                    $validator,
+                    $workOrder->company_id,
+                    $workOrder->company_site_id,
+                    $workOrder->products()->pluck('products.id')->all(),
+                    $workOrder->productLines()->pluck('product_category_id')->all(),
+                );
                 // Spec 0431, D-5: without an offer the commessa stays a project one.
                 if ($this->has('type') && $this->input('type') !== WorkOrderType::Project->value) {
                     $validator->errors()->add('type', __('work_orders.standalone_type_is_project'));

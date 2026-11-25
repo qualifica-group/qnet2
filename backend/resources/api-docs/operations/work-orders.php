@@ -11,7 +11,7 @@ return [
     ],
     'POST /work-orders/form-context' => [
         'summary' => 'Preview the additional information for chosen quote lines',
-        'description' => 'Given the quote_line_ids composed so far, returns the additional information attributes that apply to them (applicable_attributes) and their form layout (attribute_layout), so a work order form can render the right fields before saving. Nothing is written. Requires work-orders.create or work-orders.update.',
+        'description' => 'Given the quote_line_ids composed so far (or, for a project work order without an offer, its product_ids and product_category_ids), returns the additional information attributes that apply to them (applicable_attributes) and their form layout (attribute_layout), so a work order form can render the right fields before saving. Nothing is written. Requires work-orders.create or work-orders.update.',
     ],
     'GET /work-orders/next-code' => [
         'summary' => 'Preview the next work order code',
@@ -23,7 +23,7 @@ return [
     ],
     'PUT /work-orders/{workOrder}' => [
         'summary' => 'Update a work order',
-        'description' => 'Partially updates a work order; code, quote_id and task_template_id cannot be sent. quote_line_ids, supervisor_ids and participant_slots replace the whole list when sent. On a project work order born without an offer (is_standalone) registry_id, company_id, company_site_id, operational_site_id and product_lines can be changed (never emptied, type stays project); on any other they cannot be sent. Setting is_force_closed to true (with force_close_reason) force-closes its open tasks and moves it to a closed status. A manually chosen workflow status whose positive progress percentage is not above the progress already reached is refused with 422; a higher one adds a progress entry. Newly added members are notified. Requires work-orders.update on a visible work order.',
+        'description' => 'Partially updates a work order; code, quote_id and task_template_id cannot be sent. quote_line_ids, supervisor_ids and participant_slots replace the whole list when sent. On a project work order born without an offer (is_standalone) registry_id, company_id, company_site_id, operational_site_id, product_lines and product_ids can be changed (never emptied, type stays project); on any other they cannot be sent. Setting is_force_closed to true (with force_close_reason) force-closes its open tasks and moves it to a closed status. A manually chosen workflow status whose positive progress percentage is not above the progress already reached is refused with 422; a higher one adds a progress entry. Newly added members are notified. Requires work-orders.update on a visible work order.',
     ],
     'DELETE /work-orders/{workOrder}' => [
         'summary' => 'Delete a work order',

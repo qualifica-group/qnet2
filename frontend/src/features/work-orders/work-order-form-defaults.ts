@@ -20,9 +20,10 @@ const NO_REFERENCES = {
   company_site_id: null,
   operational_site_id: null,
   product_lines: [],
+  product_ids: [],
 } satisfies Pick<
   WorkOrderFormValues,
-  'registry_id' | 'company_id' | 'company_site_id' | 'operational_site_id' | 'product_lines'
+  'registry_id' | 'company_id' | 'company_site_id' | 'operational_site_id' | 'product_lines' | 'product_ids'
 >
 
 /** Default values hydrated from the persisted work order (the in-place detail). */
@@ -66,6 +67,7 @@ export function editDefaults(workOrder: WorkOrderDetail): WorkOrderFormValues {
             root_category_id: null,
             product_category_id: line.product_category.id,
           })),
+          product_ids: (workOrder.products ?? []).map((product) => product.id),
         }
       : NO_REFERENCES),
   }

@@ -116,6 +116,10 @@ class WorkOrderResource extends JsonResource
             'reporter' => $this->summarizeByName($this->quote?->reporter),
             'source' => $this->summarizeByName($this->quote?->source),
             'product_lines' => $this->summarizeProductLines(app(WorkOrderReferences::class)->productLines($this->resource)),
+            // Spec 0431 (D-17): the products of a commessa born without an offer, [] on any other.
+            'products' => $this->is_standalone
+                ? $this->products->sortBy('name')->map(static fn ($product): array => ['id' => $product->id, 'code' => $product->code, 'name' => $product->name])->values()->all()
+                : [],
             'rewards' => $this->summarizeRewards($this->quote?->rewards ?? []),
             'layout' => $this->summarizeByName($this->quote?->layout),
             'payment_method' => $this->summarizeByName($this->quote?->paymentMethod),

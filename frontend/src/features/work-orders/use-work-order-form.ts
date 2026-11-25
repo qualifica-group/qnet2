@@ -59,6 +59,7 @@ const SERVER_ERROR_FIELDS = [
   'company_site_id',
   'operational_site_id',
   'product_lines',
+  'product_ids',
 ] as const
 
 export type WorkOrderFormValues = CreateWorkOrderFormValues & UpdateWorkOrderFormValues
@@ -133,6 +134,12 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode, standalone = fa
       mode.type === 'edit'
         ? {
             quoteLineIds: mode.workOrder.quote_lines.map((line) => line.id),
+            standalone: mode.workOrder.is_standalone
+              ? {
+                  productIds: (mode.workOrder.products ?? []).map((product) => product.id),
+                  productCategoryIds: (mode.workOrder.product_lines ?? []).map((line) => line.product_category.id),
+                }
+              : undefined,
             context: {
               applicable_attributes: mode.workOrder.applicable_attributes,
               attribute_layout: mode.workOrder.attribute_layout,
@@ -143,10 +150,26 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode, standalone = fa
     [mode],
   )
 
-  // Spec 0098 D-1: le categorie vengono dalle righe COMMESSA scelte finora.
-  const quoteLineIds = useWatch({ control: form.control, name: 'quote_line_ids' })
+  // Spec 0098 D-1: le categorie vengono dalle righe COMMESSA scelte finora;
+  // spec 0431 D-17: senza offerta, dai prodotti e dalle funzioni aziendali.
+  const [quoteLineIds, productIds, productLines] = useWatch({
+    control: form.control,
+    name: ['quote_line_ids', 'product_ids', 'product_lines'],
+  })
+  const standaloneSource = useMemo(
+    () =>
+      isStandalone
+        ? {
+            productIds: productIds ?? [],
+            productCategoryIds: (productLines ?? []).flatMap((row) =>
+              row.product_category_id !== null ? [row.product_category_id] : [],
+            ),
+          }
+        : undefined,
+    [isStandalone, productIds, productLines],
+  )
   const { context: attributeContext, isLoading: attributesLoading, hasPickedLines } =
-    useWorkOrderFormContext(quoteLineIds ?? [], persistedContext)
+    useWorkOrderFormContext(quoteLineIds ?? [], persistedContext, standaloneSource)
 
   const schema = useMemo(
     () =>

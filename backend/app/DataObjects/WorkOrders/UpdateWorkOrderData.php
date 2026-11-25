@@ -27,10 +27,10 @@ use App\Enums\WorkOrderType;
  * `workOrderWorkflowStatusId` (spec 0322): the explicit "Stato lavorazione";
  * null (absent, or sent as null) leaves the resolver's baseline untouched.
  *
- * `referenceAttributes` / `productLines` (spec 0431): the submitted own
- * client, company and sites (joining submittedAttributes()) and the
- * business-function lines (null = untouched) of a commessa born without an
- * offer; the request prohibits them on any other.
+ * `referenceAttributes` / `productLines` / `productIds` (spec 0431): the
+ * submitted own client, company and sites (joining submittedAttributes()),
+ * the business-function lines and the products (null = untouched) of a
+ * commessa born without an offer; the request prohibits them on any other.
  */
 final readonly class UpdateWorkOrderData
 {
@@ -66,6 +66,8 @@ final readonly class UpdateWorkOrderData
         public array $referenceAttributes = [],
         /** @var array<int, array{product_category_id: int}>|null */
         public ?array $productLines = null,
+        /** @var array<int, int>|null spec 0431 D-17, null = untouched */
+        public ?array $productIds = null,
     ) {}
 
     /**
@@ -103,6 +105,7 @@ final readonly class UpdateWorkOrderData
             productLines: array_key_exists('product_lines', $data)
                 ? array_values(array_map(static fn (array $line): array => ['product_category_id' => (int) $line['product_category_id']], (array) $data['product_lines']))
                 : null,
+            productIds: array_key_exists('product_ids', $data) ? self::normalizeIds($data['product_ids']) : null,
         );
     }
 

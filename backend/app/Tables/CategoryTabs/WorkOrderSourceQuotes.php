@@ -50,6 +50,12 @@ final class WorkOrderSourceQuotes
                 DB::table('work_order_product_lines')
                     ->select('work_order_product_lines.work_order_id')
                     ->whereIn('work_order_product_lines.product_category_id', (array) $categoryIds)
+            )
+            ->union(
+                DB::table('work_order_products')
+                    ->join('products', 'products.id', '=', 'work_order_products.product_id')
+                    ->select('work_order_products.work_order_id')
+                    ->whereIn('products.category_id', (array) $categoryIds)
             );
     }
 }

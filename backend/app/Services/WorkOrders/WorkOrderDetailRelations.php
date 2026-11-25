@@ -71,6 +71,8 @@ final class WorkOrderDetailRelations
         'quote.opportunity.productLines.businessFunction',
         'productLines.productCategory',
         'productLines.businessFunction',
+        // Spec 0431 (D-17): the products of a commessa born without an offer.
+        'products',
         'quote.commercial',
         'quote.commercialPartner',
         'quote.reporter',

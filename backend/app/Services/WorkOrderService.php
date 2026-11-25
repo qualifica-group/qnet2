@@ -208,6 +208,7 @@ class WorkOrderService
             // workflow set and the "Informazioni aggiuntive" that resolve off them.
             if ($data->standaloneReferences !== null) {
                 $this->productLineWriter->sync($workOrder, $data->standaloneReferences->productLines);
+                $workOrder->products()->sync($data->standaloneReferences->productIds);
             }
 
             // Step 2: validate + sync the REVENUE line membership (D-7).
@@ -311,6 +312,10 @@ class WorkOrderService
             if ($data->productLines !== null) {
                 $this->productLineWriter->sync($workOrder, $data->productLines);
             }
+            if ($data->productIds !== null) {
+                $workOrder->products()->sync($data->productIds);
+                $workOrder->unsetRelation('products');
+            }
 
             // Spec 0215, D-2: a submitted title (even null) is applied against
             // the lines as they are NOW; otherwise new lines re-derive an
@@ -323,7 +328,7 @@ class WorkOrderService
 
             // Spec 0322, D-8/AC-008/AC-010: new lines may change the resolved set; an
             // explicit status must belong to it.
-            if ($data->hasQuoteLineIds() || $data->productLines !== null || $data->workOrderWorkflowStatusId !== null) {
+            if ($data->hasQuoteLineIds() || $data->productLines !== null || $data->productIds !== null || $data->workOrderWorkflowStatusId !== null) {
                 $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: true);
                 $this->applyManualStatusProgress($workOrder, $previousStatusId, $data->workOrderWorkflowStatusId);
             }

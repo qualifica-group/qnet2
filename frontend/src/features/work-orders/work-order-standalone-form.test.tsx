@@ -79,11 +79,13 @@ describe('WorkOrderFormBody — project work order without an offer (spec 0431)'
       'workOrders.detail.companySite',
       'workOrders.detail.operationalSite',
       'workOrders.form.references.productLines',
+      'workOrders.form.references.products',
     ]) {
       expect(queryPencil(label(field))).toBeInTheDocument()
     }
     expect(queryPencil(label('workOrders.form.quoteId'))).not.toBeInTheDocument()
-    expect(queryPencil(label('workOrders.detail.lines'))).not.toBeInTheDocument()
+    // The offer lines are absent: the one "Product lines" row is the product-line editor (same English name).
+    expect(screen.getAllByRole('button', { name: label('common.inlineEdit.edit', { field: label('workOrders.detail.lines') }) })).toHaveLength(1)
   })
 
   it('is always a project work order: the type is not editable', () => {
@@ -104,5 +106,17 @@ describe('WorkOrderFormBody — project work order without an offer (spec 0431)'
     expect(screen.queryByText(label('workOrders.form.quoteRequired'))).not.toBeInTheDocument()
     expect(createStandaloneProjectWorkOrder).not.toHaveBeenCalled()
     expect(createWorkOrder).not.toHaveBeenCalled()
+  })
+
+  // D-18: the product line comes first, the function is read from it, the products follow within it.
+  it('reads the business function from the product lines and locks the products until a line is chosen', () => {
+    renderStandaloneForm()
+
+    expect(screen.getByText(label('workOrders.form.references.businessFunctionDerived'))).toBeInTheDocument()
+    expect(queryPencil(label('workOrders.detail.businessFunction'))).not.toBeInTheDocument()
+
+    fireEvent.click(queryPencil(label('workOrders.form.references.products'))!)
+
+    expect(screen.getByText(label('products.ofInterest.hintNoCategories'))).toBeInTheDocument()
   })
 })

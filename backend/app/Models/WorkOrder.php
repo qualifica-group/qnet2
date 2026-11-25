@@ -72,7 +72,7 @@ use Illuminate\Support\Facades\DB;
  * Spec 0431: `is_standalone` (absent from #[Fillable], set once by the
  * service) marks a project commessa born without any offer; only then are
  * `registry_id`/`company_id`/`company_site_id`/`operational_site_id` and
- * `productLines()` filled. Read them through WorkOrderReferences, never here.
+ * `productLines()`/`products()` filled. Read them through WorkOrderReferences, never here.
  */
 #[Fillable([
     'quote_id',
@@ -154,6 +154,12 @@ class WorkOrder extends BaseModel
     public function productLines(): HasMany
     {
         return $this->hasMany(WorkOrderProductLine::class);
+    }
+
+    /** Spec 0431 (D-17): the products of a commessa born without an offer, in place of offer lines. */
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'work_order_products')->withTimestamps();
     }
 
     /**

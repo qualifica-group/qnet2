@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Building2 } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
@@ -18,7 +19,10 @@ import { WorkOrderAmountRow } from '@/features/work-orders/work-order-amount-row
 import { WorkOrderInternalNotesRow, WorkOrderWorkflowStatusSection } from '@/features/work-orders/work-order-record-identity'
 import { WorkOrderForceCloseReasonRow, WorkOrderStartDateRow } from '@/features/work-orders/work-order-record-rows'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
-import { WorkOrderReferencesSection } from '@/features/work-orders/work-order-references-section'
+import {
+  WorkOrderProductsSection,
+  WorkOrderReferencesSection,
+} from '@/features/work-orders/work-order-references-section'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
@@ -49,6 +53,13 @@ function LinkedField({ label, domain, record }: { label: string; domain: string;
 interface DetailSectionProps {
   workOrder: WorkOrderDetailWithPermissions
   editor: WorkOrderDetailEditor
+}
+
+/** The distinct business functions of the work order's product lines, joined; the empty marker without any. */
+function businessFunctionsOf(workOrder: WorkOrderDetailWithPermissions): ReactNode {
+  const names = [...new Set((workOrder.product_lines ?? EMPTY_PRODUCT_LINES).map((line) => line.business_function.name))]
+
+  return names.length > 0 ? names.join(', ') : <DetailEmpty />
 }
 
 /**
@@ -126,8 +137,20 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
         {hasSingleQuote && workOrder.registry && workOrder.client_info ? (
           <WorkOrderClientInfoSection registry={workOrder.registry} info={workOrder.client_info} />
         ) : null}
+        {isStandalone ? (
+          // User directive 2026-11-25: the lines and products in a section of their own, before the contract data.
+          <WorkOrderProductsSection
+            values={{
+              productLines: <ProductLinesReadOnlyList lines={workOrder.product_lines ?? EMPTY_PRODUCT_LINES} />,
+              products: (workOrder.products ?? []).map((product) => ({ id: product.id, name: product.name })),
+            }}
+            form={editor}
+            inline={inline}
+          />
+        ) : null}
         <WorkOrderContractDataPanel workOrder={workOrder}>
-          <WorkOrderAmountRow amount={workOrder.amount} />
+          {/* User directive 2026-11-25: no amount on a work order without an offer, it is never billed. */}
+          {isStandalone ? null : <WorkOrderAmountRow amount={workOrder.amount} />}
           <WorkOrderStartDateRow form={editor} inline={inline} startDate={workOrder.start_date} />
           {hasSingleQuote && !isStandalone ? (
             <LinkedField
@@ -165,12 +188,7 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
               operationalSite: workOrder.operational_site
                 ? { id: workOrder.operational_site.id, name: workOrder.operational_site.label }
                 : null,
-              productLines:
-                (workOrder.product_lines ?? EMPTY_PRODUCT_LINES).length > 0 ? (
-                  <ProductLinesReadOnlyList lines={workOrder.product_lines ?? EMPTY_PRODUCT_LINES} />
-                ) : (
-                  <DetailEmpty />
-                ),
+              businessFunctions: businessFunctionsOf(workOrder),
             }}
             form={editor}
             inline={inline}

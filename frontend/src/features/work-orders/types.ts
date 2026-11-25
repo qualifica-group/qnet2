@@ -265,6 +265,8 @@ export interface WorkOrderDetail {
    */
   source?: { id: number; name: string } | null
   product_lines?: ProductLine[]
+  /** Spec 0431 (D-17): the products of a work order born without an offer, in place of offer lines; `[]` otherwise. */
+  products?: WorkOrderProductRef[]
   quote_lines: WorkOrderQuoteLine[]
   /** Spec 0124 D-9: `null` when the commessa was not generated from a Modello di Task. */
   task_template: WorkOrderTaskTemplateRef | null
@@ -357,6 +359,15 @@ export interface StandaloneWorkOrderReferencesPayload {
   company_site_id: number | null
   operational_site_id: number | null
   product_lines: { product_category_id: number }[]
+  /** D-17: their categories bring the flexible fields, as offer lines do. */
+  product_ids: number[]
+}
+
+/** A product of a work order born without an offer (spec 0431, D-17). */
+export interface WorkOrderProductRef {
+  id: number
+  code: string
+  name: string
 }
 
 /** Payload for POST /project-work-orders (spec 0431): no offer, no lines, the type is always `project`. */

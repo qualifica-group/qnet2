@@ -32,6 +32,12 @@ vi.mock('@/features/work-orders/task-board/work-order-task-board', () => ({
   WorkOrderTaskBoard: () => <div>task-board</div>,
 }))
 
+const fetchContractDataMock = vi.hoisted(() => vi.fn())
+vi.mock('@/features/work-order-contract-data/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/work-order-contract-data/api')>('@/features/work-order-contract-data/api')
+  return { ...actual, fetchWorkOrderContractData: fetchContractDataMock }
+})
+
 vi.mock('@/features/work-orders/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/work-orders/api')>('@/features/work-orders/api')
   return { ...actual, updateWorkOrder: vi.fn(), fetchWorkOrderFormContext: vi.fn() }
@@ -328,6 +334,7 @@ describe('WorkOrderDetailView — work order born without an offer', () => {
       company_site: { id: 7, name: 'Sede Nord' },
       operational_site: { id: 8, label: 'Via Roma 1, Bari' },
       product_lines: [{ id: 1, business_function: { id: 3, name: 'Formazione' }, product_category: { id: 2, name: 'Corsi' } }],
+      products: [{ id: 40, code: 'PRD-0040', name: 'Audit di prima certificazione' }],
     })
 
   it('edits client, company, sites and business functions in place, with no contract row', () => {
@@ -339,11 +346,45 @@ describe('WorkOrderDetailView — work order born without an offer', () => {
       'workOrders.detail.companySite',
       'workOrders.detail.operationalSite',
       'workOrders.form.references.productLines',
+      'workOrders.form.references.products',
     ]) {
       expect(queryPencil(label(field))).toBeInTheDocument()
     }
     expect(screen.getAllByText('Cliente Interno').length).toBeGreaterThan(0)
+    expect(screen.getByText('Audit di prima certificazione')).toBeInTheDocument()
+    // D-18: the business function is read from the product line, never edited.
+    expect(screen.getAllByText(/Formazione/).length).toBeGreaterThan(0)
+    expect(queryPencil(label('workOrders.detail.businessFunction'))).not.toBeInTheDocument()
     expect(screen.queryByText(label('workOrders.detail.contract'))).not.toBeInTheDocument()
+  })
+
+  // User directives 2026-11-25: lines and products in a section of their own, no amount.
+  it('shows the product lines and products in their own section, and no amount', () => {
+    // The server reports 0.00 for a work order with no lines: the row must still not show.
+    renderDetail({ ...standalone(), amount: '0.00' })
+
+    expect(screen.getByText(label('workOrders.detail.sections.products'))).toBeInTheDocument()
+    expect(screen.queryByText(label('workOrders.detail.amount'))).not.toBeInTheDocument()
+  })
+
+  it('shows no offer-lines block in the contract data, even to who may see it', () => {
+    const record = standalone()
+    renderDetail({
+      ...record,
+      permissions: { ...record.permissions, actions: { ...record.permissions.actions, view_costs: true, view_contract_data: true } },
+    })
+
+    expect(fetchContractDataMock).not.toHaveBeenCalled()
+    expect(screen.queryByText(label('workOrders.contractData.empty'))).not.toBeInTheDocument()
+  })
+
+  it('places the business function under the operational site', () => {
+    renderDetail(standalone())
+
+    const operationalSite = screen.getByText(label('workOrders.detail.operationalSite'))
+    const businessFunction = screen.getByText(label('workOrders.detail.businessFunction'))
+    expect(operationalSite.compareDocumentPosition(businessFunction) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getAllByText('Formazione').length).toBeGreaterThan(0)
   })
 
   it('keeps the type read-only: always a project work order', () => {

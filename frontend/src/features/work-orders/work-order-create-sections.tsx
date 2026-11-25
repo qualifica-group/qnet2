@@ -21,11 +21,15 @@ import {
   WorkOrderQuoteField,
   WorkOrderQuoteLinesFormField,
 } from '@/features/work-orders/work-order-relation-fields'
-import { WorkOrderReferencesSection } from '@/features/work-orders/work-order-references-section'
+import {
+  WorkOrderProductsSection,
+  WorkOrderReferencesSection,
+} from '@/features/work-orders/work-order-references-section'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { COMPANY_SITES_FOR_SELECT_RESOURCE } from '@/features/company-sites/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
+import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { WorkOrderFormState } from '@/features/work-orders/use-work-order-form'
@@ -122,9 +126,10 @@ function refOf(id: number | null | undefined, labels: ReturnType<typeof useForSe
  * offer; the closed rows name them through the pickers' label cache.
  */
 function WorkOrderDraftReferencesSection({ workOrderForm, draft }: Omit<DraftProps, 'registryId'>) {
-  const [registryId, companyId, companySiteId, operationalSiteId, productLines] = useWatch({
+  const { t } = useTranslation()
+  const [registryId, companyId, companySiteId, operationalSiteId, productLines, productIds] = useWatch({
     control: workOrderForm.form.control,
-    name: ['registry_id', 'company_id', 'company_site_id', 'operational_site_id', 'product_lines'],
+    name: ['registry_id', 'company_id', 'company_site_id', 'operational_site_id', 'product_lines', 'product_ids'],
   })
   const categoryIds = useMemo(
     () => productLines.flatMap((row) => (row.product_category_id !== null ? [row.product_category_id] : [])),
@@ -138,30 +143,42 @@ function WorkOrderDraftReferencesSection({ workOrderForm, draft }: Omit<DraftPro
     ids: idsOf(operationalSiteId),
   })
   const categories = useForSelectLabels({ resource: PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE, ids: categoryIds })
+  const products = useForSelectLabels({ resource: PRODUCTS_FOR_SELECT_RESOURCE, ids: productIds })
 
   return (
-    <WorkOrderReferencesSection
-      values={{
-        registry: refOf(registryId, registries),
-        company: refOf(companyId, companies),
-        companySite: refOf(companySiteId, companySites),
-        operationalSite: refOf(operationalSiteId, operationalSites),
-        productLines:
-          categoryIds.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {categoryIds.map((id) => (
-                <li key={id} className="min-w-0 font-medium">
-                  {categories.get(id)?.label ?? PENDING_LABEL}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <DetailEmpty />
-          ),
-      }}
-      form={workOrderForm}
-      inline={draft}
-    />
+    <>
+      <WorkOrderReferencesSection
+        values={{
+          registry: refOf(registryId, registries),
+          company: refOf(companyId, companies),
+          companySite: refOf(companySiteId, companySites),
+          operationalSite: refOf(operationalSiteId, operationalSites),
+          // D-18: the function is read from each line's category once saved.
+          businessFunctions: <span className="text-muted-foreground">{t('workOrders.form.references.businessFunctionDerived')}</span>,
+        }}
+        form={workOrderForm}
+        inline={draft}
+      />
+      <WorkOrderProductsSection
+        values={{
+          productLines:
+            categoryIds.length > 0 ? (
+              <ul className="flex flex-col gap-1">
+                {categoryIds.map((id) => (
+                  <li key={id} className="min-w-0 font-medium">
+                    {categories.get(id)?.label ?? PENDING_LABEL}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <DetailEmpty />
+            ),
+          products: productIds.map((id) => ({ id, name: products.get(id)?.label ?? PENDING_LABEL })),
+        }}
+        form={workOrderForm}
+        inline={draft}
+      />
+    </>
   )
 }
 

@@ -13,6 +13,7 @@ final readonly class StandaloneWorkOrderReferences
 {
     /**
      * @param  array<int, array{product_category_id: int}>  $productLines
+     * @param  array<int, int>  $productIds  D-17: the products in place of offer lines
      */
     public function __construct(
         public int $registryId,
@@ -20,6 +21,7 @@ final readonly class StandaloneWorkOrderReferences
         public ?int $companySiteId,
         public ?int $operationalSiteId,
         public array $productLines,
+        public array $productIds = [],
     ) {}
 
     /**
@@ -36,6 +38,7 @@ final readonly class StandaloneWorkOrderReferences
                 static fn (array $line): array => ['product_category_id' => (int) $line['product_category_id']],
                 (array) $data['product_lines'],
             )),
+            productIds: array_values(array_unique(array_map(static fn (mixed $id): int => (int) $id, (array) ($data['product_ids'] ?? [])))),
         );
     }
 

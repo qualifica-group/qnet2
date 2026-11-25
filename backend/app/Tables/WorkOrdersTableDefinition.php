@@ -133,9 +133,10 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // `completion_recorded_on` (spec 0321) without one query per row.
         $query = $this->statusResolver->withProgress(WorkOrderVisibilityScope::withCompetenceVerdict(WorkOrder::query(), Auth::user())->with([
             'quote.opportunity.registry',
-            // Spec 0431: the own client and rows of a commessa born without an offer.
+            // Spec 0431: the own client, rows and products of a commessa born without an offer.
             'registry',
             'productLines',
+            'products',
             'quote.contract',
             'supervisors.avatar',
             'participants.avatar',

@@ -110,3 +110,23 @@ it('offers no proforma request on a commessa without an offer (D-9)', function (
         ->assertOk()
         ->assertJsonPath('permissions.actions.request_proforma', false);
 });
+
+it('answers the contract data of a work order without an offer: no lines, no error', function () {
+    $user = workOrderPaymentsUserWith(['viewContractData']);
+    $user->givePermissionTo(Permission::findOrCreate('project-work-orders.view', 'web'));
+    Sanctum::actingAs($user);
+    $workOrder = standaloneProjectWorkOrder();
+
+    $this->getJson("/api/work-orders/{$workOrder->id}/contract-data")
+        ->assertOk()
+        ->assertJsonPath('data.lines', []);
+});
+
+it('answers the proforma summary of a work order without an offer: no payment method, no error', function () {
+    $user = standaloneEditor();
+    $user->givePermissionTo(Permission::findOrCreate('proforma-requests.create', 'web'));
+    Sanctum::actingAs($user);
+    $workOrder = standaloneProjectWorkOrder();
+
+    $this->getJson("/api/work-orders/{$workOrder->id}/proforma-requests/summary")->assertOk();
+});

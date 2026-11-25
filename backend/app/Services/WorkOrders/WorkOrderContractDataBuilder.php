@@ -104,7 +104,8 @@ final class WorkOrderContractDataBuilder
     {
         $quotes = $workOrder->isMultiQuote()
             ? Quote::query()->whereIn('id', $workOrder->sourceQuoteIds())->get()
-            : collect([$workOrder->loadMissing('quote')->quote]);
+            // Spec 0431: a commessa born without an offer has none to judge (and no lines).
+            : collect([$workOrder->loadMissing('quote')->quote])->filter();
 
         $visibility = [];
 

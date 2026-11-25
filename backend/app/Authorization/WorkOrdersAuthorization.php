@@ -70,6 +70,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('company_site_id', 'select'),
             new FieldDefinition('operational_site_id', 'select'),
             new FieldDefinition('product_lines', 'custom'),
+            new FieldDefinition('product_ids', 'multiselect'),
         ];
     }
 
@@ -123,6 +124,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'company_site_id' => $references,
             'operational_site_id' => $references,
             'product_lines' => $references,
+            'product_ids' => $references,
         ];
     }
 

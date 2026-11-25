@@ -44,6 +44,9 @@ final class ProductCategoryCoherence
     /** The opportunities wording ("l'opportunità"), used by that module's channels. */
     public const string OPPORTUNITY_MESSAGE = 'These products of interest belong to a product category the opportunity does not carry: :products. Add that product category to the opportunity, or remove the product.';
 
+    /** The work order wording (spec 0431, D-18): a project work order born without an offer, its products and product lines. */
+    public const string WORK_ORDER_MESSAGE = 'These products belong to a product line the work order does not carry: :products. Add that product line to the work order, or remove the product.';
+
     /** The leads wording ("il lead"/campagna), used by that module's channels (spec 0094). */
     public const string LEAD_MESSAGE = 'These products of interest belong to a product category the lead does not carry: :products. Add that product category to the campaign, or remove the product.';
 

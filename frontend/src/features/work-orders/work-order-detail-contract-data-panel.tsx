@@ -101,7 +101,8 @@ export function WorkOrderContractDataPanel({ workOrder, children }: WorkOrderCon
           </RecordField>
         ) : null}
       </RecordFieldList>
-      {actions.view_costs && actions.view_contract_data ? (
+      {/* User directive 2026-11-25: a work order without an offer never has offer lines, so no lines block. */}
+      {workOrder.is_standalone === true ? null : actions.view_costs && actions.view_contract_data ? (
         <WorkOrderContractDataSection
           workOrderId={workOrder.id}
           canManage={actions.manage_payments === true}

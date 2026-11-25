@@ -92,7 +92,8 @@ class ProformaRequestService
     public function summary(WorkOrder $workOrder): array
     {
         $statuses = $workOrder->proformaRequests()->pluck('status');
-        $paymentMethod = $workOrder->isMultiQuote() ? null : $workOrder->loadMissing('quote.paymentMethod')->quote->paymentMethod;
+        // Spec 0431: a commessa born without an offer has no offer to take the method from.
+        $paymentMethod = $workOrder->isMultiQuote() ? null : $workOrder->loadMissing('quote.paymentMethod')->quote?->paymentMethod;
         $lastRequest = $workOrder->proformaRequests()->latest('created_at')->first(['id', 'created_at']);
 
         return [
