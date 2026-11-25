@@ -432,6 +432,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Azioni (con il permesso di modifica): **Modifica** (scadenza, destinatario e messaggio; la checklist non cambia, e non è possibile se la richiesta è completata, scaduta o annullata), **Sollecita** (solo se la richiesta è inviata o in corso), **Annulla richiesta** (chiede conferma e non è possibile se è completata o scaduta), **Aggiorna stato** (rilegge la richiesta da ArchivioSmart) e **Sincronizzazioni** (le ultime 20 chiamate verso ArchivioSmart).",
         },
+        {
+          type: 'paragraph',
+          text: "Su ogni voce, accanto al numero di file, compare **Scarica** per ciascun file caricato dal cliente (anche quelli scartati o non ancora verificati): il file si salva con il suo nome originale. Con il permesso dedicato **Revisionare** (richieste documenti, assegnabile dal ruolo) puoi **Approvare** una voce che ha un documento (nota facoltativa) oppure **Rifiutarla** (nota obbligatoria, massimo 1000 caratteri), scavalcando l'esito automatico: lo stato diventa **Approvato manualmente** o **Rifiutato manualmente**. Approva non compare se la voce è già approvata, Rifiuta se è già rifiutata; entrambe sono possibili solo con richiesta inviata o in corso. **Chiudi richiesta** (con il permesso di modifica) la chiude come completata anche se mancano voci e disattiva il link del cliente; **Annulla richiesta** invece la scarta. Le azioni vengono messe in coda verso ArchivioSmart: se falliscono, il messaggio compare sulla richiesta.",
+        },
       ],
     },
     {

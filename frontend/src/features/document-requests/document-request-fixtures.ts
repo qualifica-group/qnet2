@@ -14,6 +14,8 @@ export function buildItem(overrides: Partial<DocumentRequestItem> = {}): Documen
     status_reason: null,
     latest_validation: null,
     documents_count: 1,
+    documents: [],
+    current_document_id: null,
     ...overrides,
   }
 }
@@ -49,7 +51,7 @@ export function buildRequest(overrides: Partial<DocumentRequest> = {}): Document
     pending_operation: null,
     delivery_error: null,
     created_at: '2027-03-01T09:00:00Z',
-    permissions: { update: true, remind: true, cancel: true },
+    permissions: { update: true, remind: true, cancel: true, review: false, complete: false },
     ...overrides,
   }
 }

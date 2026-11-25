@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0429-document-requests-review-download-complete" status="approved" owner="utente" date="2026-11-24">
+
+  <goal>
+    Dalla scheda "Richieste documenti" della commessa si possono scaricare i file caricati dal cliente (anche quelli scartati
+    o non ancora validati), approvare o rifiutare a mano una voce scavalcando l'esito dell'AI, e chiudere la richiesta in
+    anticipo anche se mancano voci. Estende la spec 0428.
+  </goal>
+
+  <context>
+    - Spec 0428 (richieste di documenti, commit cfc818cf9 e a3ca95b55): `DocumentRequest` con snapshot JSON,
+      `SyncDocumentRequestJob(id, operation, send)` con le operazioni upsert/remind/cancel/refresh, `pending_operation`,
+      `delivery_status`, sync log, `DocumentRequestActionController` (remind/cancel/refresh), `DocumentRequestPolicy`,
+      permessi `document-requests.viewAny|view|create|update` in `permission_only_resources`.
+    - Lo snapshot di ogni voce contiene già `current_document_id` e `documents: [{ id, slot, version, is_current, status,
+      status_reason, original_name, mime_type, size_bytes, sha256, created_at }]` (verificato sui dati reali di ArchivioSmart).
+      La risorsa oggi espone solo `documents_count`.
+    - Stati di voce di ArchivioSmart (enum `ItemStatus`): pending, uploaded, validating, ok, ko, review, approved_manually,
+      rejected_manually. Il frontend oggi ha etichette solo per pending, uploaded, ok, ko.
+    - Stati richiesta di ArchivioSmart: draft → sent|cancelled; sent → in_progress|completed|expired|cancelled;
+      in_progress → completed|expired|cancelled; completed, expired, cancelled finali.
+    - API pubblica di ArchivioSmart (quella che usa QNet, token Bearer), oggi: GET/PUT `/requests/{external_id}`,
+      POST `/cancel`, POST `/remind`, GET `/requests/{external_id}/documents/{document}/download` → `{ data: { url, ... } }`
+      con un URL temporaneo (TTL 300 s).
+    - Nell'interfaccia interna di ArchivioSmart (non nell'API pubblica) esistono già:
+      * approva voce: nota facoltativa max 1000, voce → `approved_manually`;
+      * rifiuta voce: nota obbligatoria max 1000, voce → `rejected_manually`;
+      * entrambe rifiutano con 422 `status` se la richiesta è chiusa e con 422 `document` se la voce non ha un documento;
+      * completa richiesta: → `completed`, revoca il link del portale, emette `request.completed`; 422 `status` se la
+        transizione non è ammessa.
+    - I file delle voci `ok` e `approved_manually` vengono già allegati alla commessa da ArchivioSmart (connettore QNet,
+      collection `documents`).
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Download: passa sempre dal backend di QNet, che controlla i permessi, chiede ad ArchivioSmart l'URL temporaneo e
+      restituisce il file in streaming con il nome originale. Il browser non vede mai l'URL di ArchivioSmart (che può non
+      essere raggiungibile dall'utente). Chiamata sincrona, non in coda: l'utente sta aspettando il file. Il documento deve
+      appartenere a una voce dello snapshot di quella richiesta, altrimenti 404 senza chiamare ArchivioSmart.
+    </decision>
+    <decision id="D-2">
+      Approvazione e rifiuto manuali: nuovo permesso separato `document-requests.review` (decisione utente 2026-11-24),
+      richiesto insieme a view sulla commessa. Rifiuto con nota obbligatoria, approvazione con nota facoltativa (come in
+      ArchivioSmart). Verso ArchivioSmart si invia anche `reviewer_name` = nome dell'utente QNet, perché l'utente QNet non
+      esiste in ArchivioSmart.
+    </decision>
+    <decision id="D-3">
+      Chiusura forzata: azione "Chiudi richiesta" con il permesso `document-requests.update` (come annulla). Ammessa da sent e
+      in_progress; su una richiesta già completed → 200 senza chiamata (idempotente, come cancel); su expired o cancelled → 422.
+    </decision>
+    <decision id="D-4">
+      Approva, rifiuta e chiudi seguono lo schema delle altre azioni: in coda con `SyncDocumentRequestJob`, nuove operazioni
+      `approve`, `reject`, `complete`; `pending_operation` valorizzata finché non risponde ArchivioSmart; retry su 5xx/429;
+      422 di ArchivioSmart → `delivery_status` failed con il messaggio. La risposta di ArchivioSmart (forma della richiesta)
+      sostituisce lo snapshot. Il job riceve anche gli argomenti dell'operazione (`item_id`, `note`, `reviewer_name`); la nota
+      e il nome non vanno mai nei log.
+    </decision>
+    <decision id="D-5">
+      Etichette per tutti gli stati di voce di ArchivioSmart: In attesa, Caricato, In verifica, Approvato, Da correggere,
+      Da revisionare, Approvato manualmente, Rifiutato manualmente (EN equivalenti).
+    </decision>
+    <decision id="D-6">
+      Dipendenza esterna: gli endpoint approve, reject e complete NON esistono ancora nell'API pubblica di ArchivioSmart.
+      QNet si costruisce contro il contratto qui sotto (test con Http::fake); finché ArchivioSmart non li rilascia, le tre
+      azioni falliscono con l'errore restituito da ArchivioSmart, visibile sulla richiesta. Il download funziona già.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      Download dei file delle voci; approva e rifiuta manuali; chiudi richiesta; nuovo permesso review; etichette di tutti
+      gli stati di voce; guide in-app IT/EN; messaggio per ArchivioSmart con il contratto dei tre endpoint.
+    </in>
+    <out>
+      Rivalidazione con l'AI (`revalidate`); anteprima del file nel browser; download di tutti i file in un archivio;
+      approvazione di più voci insieme; modifiche al codice di ArchivioSmart.
+    </out>
+  </scope>
+
+  <data_contract>
+    <shape name="DocumentRequest (delta rispetto a 0428)">
+      items[] aggiunge documents: [{ id, slot, version, is_current, status, status_reason, original_name, mime_type,
+      size_bytes, created_at }] (sha256 escluso) e current_document_id; documents_count resta.
+      permissions aggiunge review: bool (review e richiesta sent o in_progress) e complete: bool (update e richiesta sent o
+      in_progress).
+    </shape>
+
+    <endpoint method="GET" path="/api/document-requests/{documentRequest}/documents/{document}/download">
+      <auth>view sulla richiesta (DocumentRequestPolicy::view)</auth>
+      <response status="200">binario in streaming, Content-Type = mime_type, Content-Disposition attachment con original_name</response>
+      <errors>404 se il documento non è nello snapshot della richiesta o ArchivioSmart risponde 404; 502 { success:false, message } se ArchivioSmart non risponde o restituisce un errore; 403 senza permesso.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/items/{item}/approve">
+      <auth>document-requests.review + view sulla commessa</auth>
+      <request>{ note?: string|null (max 1000) }</request>
+      <response status="200">{ data: DocumentRequest } con pending_operation "approve"; job accodato dopo il commit</response>
+      <errors>422 `status` se la richiesta non è sent o in_progress; 422 `item` se la voce non è nello snapshot; 422 `document` se la voce non ha current_document_id; 422 `note` oltre 1000; 403 senza permesso.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/items/{item}/reject">
+      <auth>document-requests.review + view sulla commessa</auth>
+      <request>{ note: string (obbligatoria, max 1000) }</request>
+      <response status="200">{ data: DocumentRequest } con pending_operation "reject"</response>
+      <errors>come approve, più 422 `note` se assente.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/complete">
+      <auth>document-requests.update + view sulla commessa</auth>
+      <response status="200">{ data: DocumentRequest } con pending_operation "complete"; su una richiesta già completed: 200 senza job</response>
+      <errors>422 `status` se la richiesta è draft, expired o cancelled; 403 senza permesso.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="{archivio_smart.base_url}/requests/{external_id}/documents/{document}/download" direction="outbound" exists="si">
+      <response>{ data: { url } } → QNet scarica il file da url (solo http/https) e lo restituisce in streaming.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="{archivio_smart.base_url}/requests/{external_id}/items/{item_id}/approve" direction="outbound" exists="no, da chiedere ad ArchivioSmart">
+      <request>{ note: string|null (max 1000), reviewer_name: string (max 255) }</request>
+      <response>{ data: forma della richiesta come GET /requests/{external_id} } con la voce in approved_manually</response>
+      <errors>422 `status` richiesta chiusa; 422 `document` voce senza documento; 404 voce o richiesta sconosciuta.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="{archivio_smart.base_url}/requests/{external_id}/items/{item_id}/reject" direction="outbound" exists="no, da chiedere ad ArchivioSmart">
+      <request>{ note: string (obbligatoria, max 1000), reviewer_name: string (max 255) }</request>
+      <response>{ data: forma della richiesta } con la voce in rejected_manually</response>
+      <errors>come approve.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="{archivio_smart.base_url}/requests/{external_id}/complete" direction="outbound" exists="no, da chiedere ad ArchivioSmart">
+      <request>nessun corpo</request>
+      <response>{ data: forma della richiesta } con status completed e completed_at; link del portale revocato; webhook request.completed</response>
+      <errors>422 `status` se la transizione non è ammessa.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">GET download di un documento dello snapshot, con view: QNet chiama GET .../documents/{id}/download su ArchivioSmart, poi scarica l'url restituito e risponde 200 con il contenuto, Content-Type del documento e Content-Disposition con original_name (Http::fake + assertSent).</criterion>
+    <criterion id="AC-002">Download di un id non presente nello snapshot della richiesta → 404 senza nessuna chiamata ad ArchivioSmart; senza view → 403; ArchivioSmart 404 → 404; ArchivioSmart 500 o irraggiungibile → 502 con messaggio, senza URL né token nei log.</criterion>
+    <criterion id="AC-003">La risorsa espone items[].documents (senza sha256) e current_document_id, e permissions.review / permissions.complete secondo permessi e stato.</criterion>
+    <criterion id="AC-004">approve con review su una voce con documento di una richiesta in_progress → 200, pending_operation approve, job accodato; il job invia POST .../items/{item_id}/approve con note e reviewer_name = nome dell'utente; la risposta sostituisce lo snapshot e mette delivery_status delivered.</criterion>
+    <criterion id="AC-005">reject senza note → 422 `note`; con note → job che invia POST .../reject con note e reviewer_name.</criterion>
+    <criterion id="AC-006">approve o reject su richiesta completed/expired/cancelled → 422 `status`; su voce assente → 422 `item`; su voce senza current_document_id → 422 `document`; senza review (anche con update) → 403. Nessun job in questi casi.</criterion>
+    <criterion id="AC-007">complete su sent o in_progress → job che invia POST .../complete e salva status completed; su già completed → 200 senza job; su expired o cancelled → 422 `status`; senza update → 403.</criterion>
+    <criterion id="AC-008">422 di ArchivioSmart su approve/reject/complete → delivery_status failed con il messaggio, nessun retry; 404 (endpoint non ancora rilasciato) → failed con messaggio; 5xx e 429 → retry come le altre operazioni. Né nota né reviewer_name compaiono nei log.</criterion>
+    <criterion id="AC-009">Il permesso document-requests.review esiste nel catalogo, è assegnabile dal form Ruoli con la sua etichetta IT/EN.</criterion>
+    <criterion id="AC-010">Frontend: ogni file della voce ha il pulsante Scarica, che scarica il file con il suo nome tramite il client autenticato; un errore mostra un toast.</criterion>
+    <criterion id="AC-011">Frontend: con permissions.review, sulle voci con documento compaiono Approva (se lo stato non è ok o approved_manually) e Rifiuta (se lo stato non è ko o rejected_manually); Approva apre un dialog con nota facoltativa, Rifiuta con nota obbligatoria (max 1000, errore sul campo).</criterion>
+    <criterion id="AC-012">Frontend: con permissions.complete compare "Chiudi richiesta", con conferma che spiega la differenza da Annulla; la conferma chiama complete e aggiorna la scheda.</criterion>
+    <criterion id="AC-013">Frontend: tutti gli otto stati di voce hanno un'etichetta IT/EN (D-5).</criterion>
+    <criterion id="AC-014">Guide in-app IT/EN della commessa aggiornate (download, approva/rifiuta, chiudi), parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Nessun throttle.
+    - Riuso di ArchivioSmartClient, SyncDocumentRequestJob e PushesToArchivioSmart: niente secondo meccanismo di retry o log.
+    - Download in streaming (nessun file salvato su disco in QNet); l'URL temporaneo e il token non vanno mai nei log né al browser.
+    - Authz server-side su ogni endpoint; envelope di progetto; Resource.
+    - Testi UI in italiano (IT/EN via i18n); UI compatta.
+    - Non si modifica ArchivioSmart: si consegna all'utente il messaggio con il contratto dei tre endpoint.
+  </constraints>
+
+  <plan>
+    <task id="BE-01" owner="backend" lane="sequenziale" write="backend/app (DocumentRequests, Jobs, Enums, Policies, Resources, client), routes/api/document-requests.php, config/authorization.php, lang, tests/Feature/DocumentRequests, api-docs">Download, approve/reject/complete con nuove operazioni del job, permesso review, risorsa estesa. AC-001..009.</task>
+    <task id="FE-01" owner="frontend" lane="parallelo a BE-01 (contratto congelato)" write="frontend/src/features/document-requests, i18n (document-requests, permissions), help work-orders">Pulsante Scarica, dialog approva/rifiuta, chiudi richiesta, etichette stati, guide. AC-010..014.</task>
+    <task id="VER" owner="verifier" lane="gate finale">Mappatura degli AC, test mirati, gate completo.</task>
+  </plan>
+
+</spec>

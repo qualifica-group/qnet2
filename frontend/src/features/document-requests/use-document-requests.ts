@@ -3,6 +3,7 @@ import type { AxiosError } from 'axios'
 import type { ApiErrorResponse } from '@/api/types'
 import {
   createDocumentRequest,
+  reviewDocumentRequestItem,
   fetchDocumentRequestDefaults,
   fetchDocumentRequests,
   fetchDocumentRequestSyncLogs,
@@ -18,6 +19,7 @@ import type {
   DocumentRequestDefaults,
   DocumentRequestList,
   DocumentRequestSyncLog,
+  ReviewDocumentRequestItemPayload,
   UpdateDocumentRequestPayload,
 } from '@/features/document-requests/types'
 
@@ -65,11 +67,24 @@ export function useUpdateDocumentRequest(workOrderId: number, requestId: number)
   })
 }
 
-/** Remind, cancel and refresh share one mutation: each reloads the list, where the queued state shows. */
+/** Remind, cancel, refresh and complete share one mutation: each reloads the list, where the queued state shows. */
 export function useDocumentRequestAction(workOrderId: number, requestId: number) {
   const queryClient = useQueryClient()
   return useMutation<void, RequestError, DocumentRequestAction>({
     mutationFn: (action) => runDocumentRequestAction(requestId, action),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: documentRequestKeys.list(workOrderId) }),
+        queryClient.invalidateQueries({ queryKey: documentRequestKeys.syncLogs(requestId) }),
+      ]),
+  })
+}
+
+/** Approve or reject one item: the list is re-read, where the queued operation shows. */
+export function useReviewDocumentRequestItem(workOrderId: number, requestId: number) {
+  const queryClient = useQueryClient()
+  return useMutation<void, RequestError, ReviewDocumentRequestItemPayload>({
+    mutationFn: (payload) => reviewDocumentRequestItem(requestId, payload),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: documentRequestKeys.list(workOrderId) }),

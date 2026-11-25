@@ -11,4 +11,7 @@ enum DocumentRequestOperation: string
     case Remind = 'remind';
     case Cancel = 'cancel';
     case Refresh = 'refresh';
+    case Approve = 'approve';
+    case Reject = 'reject';
+    case Complete = 'complete';
 }

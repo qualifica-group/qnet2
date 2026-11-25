@@ -203,7 +203,7 @@ return [
     ],
     'GET /work-orders/{workOrder}/document-requests' => [
         'summary' => 'List the document requests of a work order',
-        'description' => 'Returns data (the requests of the work order, newest first) and meta.can_create. Each request has the checklist copy ({ id, code, name }), category_name, due_date, recipient_email, message, status (null until ArchivioSmart answers the first time, then draft, sent, in_progress, completed, expired or cancelled), counters, sections and items with their state and latest validation (files are only counted as documents_count), the dates, delivery_status (pending, delivered or failed), pending_operation, delivery_error and a permissions block (update, remind, cancel). Requires document-requests.viewAny and view on the work order.',
+        'description' => 'Returns data (the requests of the work order, newest first) and meta.can_create. Each request has the checklist copy ({ id, code, name }), category_name, due_date, recipient_email, message, status (null until ArchivioSmart answers the first time, then draft, sent, in_progress, completed, expired or cancelled), counters, sections and items with their state and latest validation (each item lists its files without checksum, with current_document_id and documents_count), the dates, delivery_status (pending, delivered or failed), pending_operation, delivery_error and a permissions block (update, remind, cancel, review, complete). Requires document-requests.viewAny and view on the work order.',
     ],
     'GET /work-orders/{workOrder}/document-requests/defaults' => [
         'summary' => 'Get the default values of a new document request',

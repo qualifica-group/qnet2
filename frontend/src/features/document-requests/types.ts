@@ -9,7 +9,7 @@ import type { DocumentChecklistSyncOutcome } from '@/features/document-checklist
 
 export type DocumentRequestStatus = 'draft' | 'sent' | 'in_progress' | 'completed' | 'expired' | 'cancelled'
 export type DocumentRequestDeliveryStatus = 'pending' | 'delivered' | 'failed'
-export type DocumentRequestOperation = 'upsert' | 'remind' | 'cancel' | 'refresh'
+export type DocumentRequestOperation = 'upsert' | 'remind' | 'cancel' | 'refresh' | 'approve' | 'reject' | 'complete'
 
 export interface DocumentRequestSection {
   name: string
@@ -20,6 +20,20 @@ export interface DocumentRequestValidation {
   outcome: string
   reason_for_customer: string | null
   decided_by: string | null
+  created_at: string | null
+}
+
+/** One file uploaded by the customer for an item (spec 0429; `sha256` is never exposed). */
+export interface DocumentRequestDocument {
+  id: number | string
+  slot: number | null
+  version: number | null
+  is_current: boolean
+  status: string
+  status_reason: string | null
+  original_name: string
+  mime_type: string | null
+  size_bytes: number | null
   created_at: string | null
 }
 
@@ -36,6 +50,8 @@ export interface DocumentRequestItem {
   status_reason: string | null
   latest_validation: DocumentRequestValidation | null
   documents_count: number
+  documents: DocumentRequestDocument[]
+  current_document_id: number | string | null
 }
 
 export interface DocumentRequest {
@@ -64,7 +80,7 @@ export interface DocumentRequest {
   pending_operation: DocumentRequestOperation | null
   delivery_error: string | null
   created_at: string
-  permissions: { update: boolean; remind: boolean; cancel: boolean }
+  permissions: { update: boolean; remind: boolean; cancel: boolean; review: boolean; complete: boolean }
 }
 
 export interface DocumentRequestList {
@@ -97,4 +113,13 @@ export interface DocumentRequestSyncLog {
   attempt: number
   message: string | null
   created_at: string
+}
+
+export type DocumentRequestReviewDecision = 'approve' | 'reject'
+
+/** Input of the manual review of one item; the note is optional to approve, mandatory to reject. */
+export interface ReviewDocumentRequestItemPayload {
+  itemId: number | string
+  decision: DocumentRequestReviewDecision
+  note: string | null
 }

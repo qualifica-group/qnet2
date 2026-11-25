@@ -27,14 +27,18 @@ use Throwable;
 
 /**
  * Runs ONE outbound operation of a document request against ArchivioSmart
- * (spec 0428, D-4): upsert, remind, cancel or refresh. Operations of the same
+ * (spec 0428, D-4): upsert, remind, cancel, refresh or, from spec 0429, approve,
+ * reject and complete. Operations of the same
  * request run one at a time. Transient failures (network, 5xx, 429) are retried
  * with backoff; 401/409/422 and other 4xx are final. The response replaces the
  * local snapshot. Log rows never hold the token, the body or personal data.
  */
 class SyncDocumentRequestJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, PushesToArchivioSmart, Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable;
+    use PushesToArchivioSmart {
+        interpret as protected interpretResponse;
+    }
 
     /** Seconds before an overlapped run is released back to the queue. */
     private const OVERLAP_RELEASE_SECONDS = 10;
@@ -42,15 +46,26 @@ class SyncDocumentRequestJob implements ShouldQueue
     /** Lock safety net, above the HTTP timeouts, so a crashed worker never blocks a request. */
     private const OVERLAP_LOCK_SECONDS = 120;
 
+    /** @var array<int, DocumentRequestOperation> */
+    private const array REVIEW_OPERATIONS = [
+        DocumentRequestOperation::Approve,
+        DocumentRequestOperation::Reject,
+        DocumentRequestOperation::Complete,
+    ];
+
     public int $tries;
 
     /** The last remote response, read by succeed() and by the 409 message. */
     private ?Response $response = null;
 
+    /**
+     * @param  array{item_id?: int, note?: string|null, reviewer_name?: string}  $arguments  of approve and reject; the note and the name never reach a log
+     */
     public function __construct(
         public readonly int $documentRequestId,
         public readonly DocumentRequestOperation $operation,
         public readonly bool $send = true,
+        public readonly array $arguments = [],
     ) {
         $this->tries = (int) config('archivio-smart.tries');
     }
@@ -94,8 +109,30 @@ class SyncDocumentRequestJob implements ShouldQueue
                 DocumentRequestOperation::Remind => $client->remindRequest($setting, $externalId),
                 DocumentRequestOperation::Cancel => $client->cancelRequest($setting, $externalId),
                 DocumentRequestOperation::Refresh => $client->getRequest($setting, $externalId),
+                DocumentRequestOperation::Approve, DocumentRequestOperation::Reject => $client->reviewItem(
+                    $setting,
+                    $externalId,
+                    (int) $this->arguments['item_id'],
+                    $this->operation->value,
+                    $this->arguments['note'] ?? null,
+                    (string) $this->arguments['reviewer_name'],
+                ),
+                DocumentRequestOperation::Complete => $client->completeRequest($setting, $externalId),
             };
         });
+    }
+
+    /**
+     * The review and complete endpoints may not be released by ArchivioSmart yet
+     * (spec 0429, D-6): a 404 on them says so instead of a generic message.
+     */
+    protected function interpret(Model $record, BackedEnum $operation, Response $response): ArchivioSmartCallResult
+    {
+        if ($response->status() === 404 && in_array($this->operation, self::REVIEW_OPERATIONS, true)) {
+            return $this->failSync($record, $operation, 404, __('archivio_smart.request_action_unavailable'));
+        }
+
+        return $this->interpretResponse($record, $operation, $response);
     }
 
     /**

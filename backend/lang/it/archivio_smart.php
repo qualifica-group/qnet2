@@ -23,6 +23,13 @@ return [
     'request_status_closed' => "La richiesta non e' piu' modificabile",
     'request_not_remindable' => "Si puo' sollecitare solo una richiesta inviata o in corso",
     'request_not_cancellable' => "Una richiesta completata o scaduta non si puo' annullare",
+    'request_not_reviewable' => "Si puo' lavorare solo su una richiesta inviata o in corso",
+    'request_not_completable' => "Una richiesta in bozza, scaduta o annullata non si puo' chiudere",
+    'request_item_not_found' => 'La voce non appartiene alla richiesta',
+    'request_item_without_document' => 'La voce non ha nessun file caricato',
+    'request_action_unavailable' => 'ArchivioSmart non supporta ancora questa azione',
+    'document_download_failed' => 'Impossibile scaricare il file da ArchivioSmart',
+    'document_not_found' => 'File non trovato',
     'webhook_not_found' => 'Non trovato',
     'webhook_invalid_signature' => 'Firma non valida',
 

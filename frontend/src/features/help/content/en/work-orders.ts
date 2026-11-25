@@ -432,6 +432,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Actions (with the edit permission): **Edit** (due date, recipient and message; the checklist does not change, and it is not possible once the request is completed, expired or cancelled), **Remind** (only if the request is sent or in progress), **Cancel request** (asks for confirmation and is not possible once completed or expired), **Refresh status** (rereads the request from ArchivioSmart) and **Syncs** (the last 20 calls to ArchivioSmart).",
         },
+        {
+          type: 'paragraph',
+          text: "On each item, beside the number of files, **Download** appears for every file the customer uploaded (including rejected or not yet checked ones): the file is saved with its original name. With the dedicated **Review** permission (document requests, assignable from the role) you can **Approve** an item that has a document (optional note) or **Reject** it (mandatory note, up to 1000 characters), overriding the automatic outcome: the status becomes **Manually approved** or **Manually rejected**. Approve is not shown if the item is already approved, Reject if it is already rejected; both are only possible while the request is sent or in progress. **Close request** (with the edit permission) closes it as completed even if items are missing and disables the customer link; **Cancel request** instead discards it. The actions are queued towards ArchivioSmart: if they fail, the message appears on the request.",
+        },
       ],
     },
     {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Bell, History, Pencil, RefreshCw, Ban } from 'lucide-react'
+import { Bell, CheckCheck, History, Pencil, RefreshCw, Ban } from 'lucide-react'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { Button } from '@/components/ui/button'
 import type { DocumentRequestAction } from '@/features/document-requests/api'
@@ -44,6 +44,18 @@ export function DocumentRequestActions({ request }: { request: DocumentRequest }
     }
   }
 
+  async function completeRequest() {
+    const confirmed = await confirm({
+      title: t('documentRequests.complete.title'),
+      description: t('documentRequests.complete.description', { name: request.checklist.name }),
+      confirmLabel: t('documentRequests.complete.confirm'),
+      cancelLabel: t('documentRequests.complete.keep'),
+    })
+    if (confirmed) {
+      execute('complete')
+    }
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {allowed.edit ? (
@@ -62,6 +74,12 @@ export function DocumentRequestActions({ request }: { request: DocumentRequest }
         <Button type="button" size="sm" variant="secondary" disabled={run.isPending} onClick={() => execute('refresh')}>
           <RefreshCw aria-hidden="true" />
           {t('documentRequests.actions.refresh')}
+        </Button>
+      ) : null}
+      {allowed.complete ? (
+        <Button type="button" size="sm" variant="secondary" disabled={run.isPending} onClick={() => void completeRequest()}>
+          <CheckCheck aria-hidden="true" />
+          {t('documentRequests.actions.complete')}
         </Button>
       ) : null}
       {allowed.cancel ? (

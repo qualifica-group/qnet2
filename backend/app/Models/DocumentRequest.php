@@ -97,6 +97,14 @@ class DocumentRequest extends Model
         return in_array($this->status, DocumentRequestStatus::closed(), true);
     }
 
+    /**
+     * Sent or in progress: the states in which a file can be reviewed and the request closed early (spec 0429).
+     */
+    public function isReviewable(): bool
+    {
+        return $this->isRemindable();
+    }
+
     public function isRemindable(): bool
     {
         return in_array($this->status, DocumentRequestStatus::remindable(), true);

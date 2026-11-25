@@ -50,7 +50,7 @@ describe('document request schema', () => {
 
 describe('requestActions', () => {
   it('allows reminders only on sent or in progress, edit and cancel until a terminal state', () => {
-    expect(requestActions(buildRequest({ status: 'sent' }))).toEqual({ edit: true, remind: true, cancel: true, refresh: true })
+    expect(requestActions(buildRequest({ status: 'sent' }))).toEqual({ edit: true, remind: true, cancel: true, refresh: true, complete: false })
     expect(requestActions(buildRequest({ status: null }))).toMatchObject({ edit: true, remind: false, cancel: true })
     expect(requestActions(buildRequest({ status: 'cancelled' }))).toMatchObject({ edit: false, remind: false, cancel: false })
     expect(requestActions(buildRequest({ status: 'expired' }))).toMatchObject({ edit: false, cancel: false })

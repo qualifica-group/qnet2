@@ -3,6 +3,39 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Richieste documenti: scarica file, approva/rifiuta a mano, chiudi richiesta (spec 0429, 2026-11-25) — NON PROVATO NEL BROWSER
+
+- Download: `GET /api/document-requests/{id}/documents/{document}/download`.
+  - `DocumentRequestFileController` → `DocumentRequestFileDownloader`.
+  - Sincrono, il file passa in streaming e non viene salvato su disco.
+  - Il documento deve stare nello snapshot, altrimenti 404 senza chiamare ArchivioSmart.
+  - Accetta solo URL http/https; un errore di ArchivioSmart dà 502.
+  - Nei log e nella risposta non compaiono mai l'URL temporaneo né il token.
+- `POST .../items/{item}/approve` (`note` facoltativa) e `.../reject` (`note` obbligatoria), max 1000 caratteri.
+  - Nuovo permesso `document-requests.review`: abilità in `DocumentRequestPolicy::abilities()`, etichetta "Revisionare".
+  - Errori 422 su `status`, `item`, `document`.
+- `POST .../complete`: richiede update; ammesso da sent e in_progress; su completed risponde 200 senza job.
+- `SyncDocumentRequestJob(id, operation, send, array $arguments)`: nuove operazioni approve/reject/complete.
+  - Il job invia `note` e `reviewer_name` (nome dell'utente QNet), che non finiscono mai nei log.
+  - Un 404 di ArchivioSmart dà failed "azione non rilasciata".
+- Risorsa:
+  - `items[].documents` (senza sha256) e `current_document_id`;
+  - `permissions.review` e `permissions.complete`.
+- Frontend:
+  - `document-request-item-row.tsx`: pulsante Scarica, Approva/Rifiuta;
+  - `document-request-review-dialog.tsx` e schema;
+  - "Chiudi richiesta" con conferma;
+  - etichette degli 8 stati voce;
+  - guide IT/EN `work-orders`.
+- DIPENDENZA: ArchivioSmart deve ancora esporre nell'API pubblica `POST /requests/{external_id}/items/{item_id}/approve|reject` `{note, reviewer_name}` e `POST /requests/{external_id}/complete`. All'utente è stato consegnato il prompt per implementarli; serve anche una gestione del revisore senza utente ArchivioSmart. Il download funziona già.
+- Migliorabile, non bloccante: in caso di errore del download il toast è generico, perché il messaggio del server dentro il blob non viene letto.
+- Manuale Claude Docs da aggiornare a mano: scarica file, approva/rifiuta, chiudi richiesta, permesso Revisionare.
+- Verifica: AC 14/14 PASS.
+  - Backend mirato: 547 su 549; i 2 rossi sono noti.
+  - Suite completa backend: nessun rosso nei file della feature.
+  - Frontend: 10949 test verdi, tsc pulito.
+  - Restano 11 "Unhandled Rejection" (`toast.error is not a function`) nei test dei form absence-type, vat-rate, skill e altri, estranei alla feature.
+
 ## Richieste di documenti dalla commessa verso ArchivioSmart (spec 0428, 2026-11-24) — NON PROVATO NEL BROWSER
 
 - Tabelle:

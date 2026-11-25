@@ -54,6 +54,8 @@ export const permissions = {
     // `updateSource` gates writing request-management's protected "Fonte"
     // field directly on any of its three write channels
     // (RequestManagementPolicy, generated as `request-management.updateSource`).
+    // Spec 0429: manual approval/rejection of document request items.
+    review: 'Review',
     manage: 'Manage',
     updateSource: 'Edit the Source',
     // Spec 0116: the Task record-role matrix. `manageAll` is the "gestore"

@@ -6,6 +6,7 @@ import type {
   DocumentRequestDefaults,
   DocumentRequestList,
   DocumentRequestSyncLog,
+  ReviewDocumentRequestItemPayload,
   UpdateDocumentRequestPayload,
 } from '@/features/document-requests/types'
 
@@ -49,9 +50,9 @@ export async function updateDocumentRequest(
   return data.data
 }
 
-export type DocumentRequestAction = 'remind' | 'cancel' | 'refresh'
+export type DocumentRequestAction = 'remind' | 'cancel' | 'refresh' | 'complete'
 
-/** Queues a remind, cancel or refresh of one request; the caller rereads the list, so the body is not used. */
+/** Queues a remind, cancel, refresh or complete of one request; the caller rereads the list, so the body is not used. */
 export async function runDocumentRequestAction(id: number, action: DocumentRequestAction): Promise<void> {
   await apiClient.post(`/document-requests/${id}/${action}`)
 }
@@ -60,4 +61,20 @@ export async function runDocumentRequestAction(id: number, action: DocumentReque
 export async function fetchDocumentRequestSyncLogs(id: number): Promise<DocumentRequestSyncLog[]> {
   const { data } = await apiClient.get<ApiResponse<DocumentRequestSyncLog[]>>(`/document-requests/${id}/sync-logs`)
   return data.data
+}
+
+/** Queues the manual approval or rejection of one item; the note is optional to approve, mandatory to reject. */
+export async function reviewDocumentRequestItem(
+  id: number,
+  { itemId, decision, note }: ReviewDocumentRequestItemPayload,
+): Promise<void> {
+  await apiClient.post(`/document-requests/${id}/items/${itemId}/${decision}`, { note })
+}
+
+/** One file of an item, streamed by the backend through the authenticated client (the browser never sees the ArchivioSmart URL). */
+export async function downloadDocumentRequestFile(id: number, documentId: number | string): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(`/document-requests/${id}/documents/${documentId}/download`, {
+    responseType: 'blob',
+  })
+  return data
 }

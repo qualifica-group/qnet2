@@ -181,7 +181,7 @@ it('AC-005: the list of a work order holds only its own requests, newest first, 
         ->assertJsonCount(2, 'data')
         ->assertJsonPath('data.0.id', $second->id)
         ->assertJsonPath('data.1.id', $first->id)
-        ->assertJsonPath('data.0.permissions', ['update' => true, 'remind' => true, 'cancel' => true]);
+        ->assertJsonPath('data.0.permissions', ['update' => true, 'remind' => true, 'cancel' => true, 'review' => false, 'complete' => true]);
 });
 
 it('exposes the snapshot as sections and items with a documents count, never the files', function () {

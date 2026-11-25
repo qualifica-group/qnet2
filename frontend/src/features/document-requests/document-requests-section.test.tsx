@@ -80,7 +80,7 @@ describe('DocumentRequestsSection', () => {
         buildRequest({ id: 21, title: 'Aperta' }),
         buildRequest({ id: 22, title: 'Completata', status: 'completed' }),
         buildRequest({ id: 23, title: 'Bozza', status: 'draft' }),
-        buildRequest({ id: 24, title: 'Sola lettura', permissions: { update: false, remind: false, cancel: false } }),
+        buildRequest({ id: 24, title: 'Sola lettura', permissions: { update: false, remind: false, cancel: false, review: false, complete: false } }),
       ],
       canCreate: false,
     })
