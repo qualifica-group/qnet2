@@ -331,5 +331,7 @@
     "This request belongs to the product category :root: its product lines must stay under it. For another product category create a new request.": "Questa richiesta appartiene alla categoria :root: le sue linee di prodotto devono restare sotto questa categoria. Per un'altra categoria crea una nuova richiesta.",
     "The offers of this opportunity are bound to the product categories :roots: the product lines cannot add or remove a parent product category. For another product category create a new request.": "Le offerte di questa opportunità sono legate alle categorie :roots: le linee di prodotto non possono aggiungere o togliere una categoria madre. Per un'altra categoria crea una nuova richiesta.",
     "This offer belongs to the product category :root: the product \":product\" belongs to another one.": "Questa offerta appartiene alla categoria :root: il prodotto \":product\" è di un'altra categoria.",
-    "The product \":product\" does not belong to any parent product category of the request: add its product category to the product lines, or remove the row.": "Il prodotto \":product\" non appartiene a nessuna categoria madre della richiesta: aggiungi la sua categoria alle linee di prodotto oppure togli la riga."
+    "The product \":product\" does not belong to any parent product category of the request: add its product category to the product lines, or remove the row.": "Il prodotto \":product\" non appartiene a nessuna categoria madre della richiesta: aggiungi la sua categoria alle linee di prodotto oppure togli la riga.",
+    "The selected model is not available.": "Il modello selezionato non è disponibile.",
+    "The model list is not available. Try again later.": "L'elenco dei modelli non è disponibile. Riprova più tardi."
 }

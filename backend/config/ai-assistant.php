@@ -88,4 +88,27 @@ return [
 
     'retention_days' => (int) env('AI_ASSISTANT_RETENTION_DAYS', 30),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Super-admin settings (spec 0433)
+    |--------------------------------------------------------------------------
+    |
+    | Initial values of the single settings row (model, routing) and the limits
+    | of the settings page. The OpenRouter key stays in .env above.
+    |
+    */
+
+    'settings' => [
+        'default_model' => env('AI_ASSISTANT_DEFAULT_MODEL', 'deepseek/deepseek-v4-flash-0731'),
+        'default_routing' => [
+            'zdr' => true,
+            'data_collection' => 'deny',
+            'require_parameters' => true,
+            'sort' => 'throughput',
+        ],
+        'instructions_max_chars' => (int) env('AI_ASSISTANT_INSTRUCTIONS_MAX_CHARS', 8000),
+        'models_cache_seconds' => (int) env('AI_ASSISTANT_MODELS_CACHE_SECONDS', 300),
+        'catalog_timeout_seconds' => (int) env('AI_ASSISTANT_CATALOG_TIMEOUT_SECONDS', 10),
+    ],
+
 ];

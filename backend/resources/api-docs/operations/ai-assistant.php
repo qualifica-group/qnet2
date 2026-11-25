@@ -5,6 +5,22 @@ return [
         'summary' => 'Get the AI assistant configuration',
         'description' => 'Returns what a client needs before chatting: whether the floating and page assistant are enabled, whether a provider is configured, the driver and model name, the limits (message length, guide length, mentions, files, file size, accepted MIME types) and the modules whose records the user may mention. Provider keys are never exposed. Requires ai-assistant.use.',
     ],
+    'GET /ai-assistant/settings' => [
+        'summary' => 'Get the AI assistant settings',
+        'description' => 'Returns the single settings row: general switch, chosen model, additional instructions and their length limit, monthly spend caps, OpenRouter routing, whether the OpenRouter key is present on the server (never its value) and who changed the settings last and when. The row is created with the initial values on first read. Reserved to the super-admin role (403 otherwise).',
+    ],
+    'PUT /ai-assistant/settings' => [
+        'summary' => 'Save the AI assistant settings',
+        'description' => 'Changes the fields sent (enabled, model_id, instructions, spend_cap_person_usd, spend_cap_total_usd, routing) and records author and date in the activity log. A changed model_id must be in the filtered model list, otherwise 422 with "The selected model is not available." (503 when OpenRouter cannot confirm it); the saved model is accepted without asking OpenRouter. Reserved to the super-admin role.',
+    ],
+    'GET /ai-assistant/models' => [
+        'summary' => 'List the models the assistant can use',
+        'description' => 'Reads OpenRouter from the backend (cached for a few minutes) and returns only models with tool calling and text-only input and output, with context length and prices in dollars per million tokens (input, output, cache read), the flag of the chosen model, search on id and name, and offset and limit (default 50, max 100). 503 when OpenRouter is not reachable. Reserved to the super-admin role.',
+    ],
+    'GET /ai-assistant/models/providers' => [
+        'summary' => 'List the providers without data retention of a model',
+        'description' => 'Takes model_id (author/slug) in the query and returns the providers of that model that keep no prompts and support tools, with availability, prices per million tokens and, when OpenRouter publishes them, speed and latency (null otherwise). 503 when OpenRouter is not reachable. Reserved to the super-admin role.',
+    ],
     'GET /ai-assistant/conversations' => [
         'summary' => 'List my AI assistant conversations',
         'description' => 'Returns the conversations of the authenticated user only, most recently answered first (never answered ones last), as a paginated list driven by offset and limit (default 30). Requires ai-assistant.use.',

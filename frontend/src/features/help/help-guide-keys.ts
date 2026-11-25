@@ -120,4 +120,5 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'workspaces',
   'formalab',
   'ai-assistant',
+  'ai-assistant-settings',
 ]
